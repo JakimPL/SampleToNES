@@ -28,6 +28,7 @@ from sampletones_core.reconstructions.reconstruction.stems.channel_assignment im
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import (
     EXT_FILE_BITPHASE,
@@ -945,6 +946,7 @@ class TestReconstructionPanelLogicStemSelection:
                 StemEntry(id=0, channels=[ChannelName.PULSE1]),
                 StemEntry(id=1, channels=[ChannelName.PULSE1]),
             ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]]),
         )
         stems_reconstruction = reconstruction.model_copy(
             update={

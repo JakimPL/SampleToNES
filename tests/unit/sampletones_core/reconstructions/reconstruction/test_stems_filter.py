@@ -10,6 +10,7 @@ from sampletones_core.reconstructions.reconstruction.stems.filter import (
 )
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 
 FRAME_LENGTH: Final[int] = 2
 
@@ -17,7 +18,10 @@ FRAME_LENGTH: Final[int] = 2
 def _stems_data(*stem_lists: Tuple[ChannelName, List[int]]) -> StemsData:
     entries = [StemEntry(id=stem_id, channels=[ChannelName.PULSE1]) for stem_id in range(3)]
     return StemsData(
-        config=StemsConfig(entries=entries),
+        config=StemsConfig(
+            entries=entries,
+            hierarchy=StemsHierarchy(levels=[[entry.id] for entry in entries]),
+        ),
         assignments=[ChannelAssignment(channel_name=channel, stem_ids=stem_ids) for channel, stem_ids in stem_lists],
     )
 

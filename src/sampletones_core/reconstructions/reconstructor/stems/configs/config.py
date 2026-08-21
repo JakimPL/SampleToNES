@@ -1,4 +1,5 @@
-from typing import List, Self
+from functools import cached_property
+from typing import Dict, FrozenSet, List, Self
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -48,10 +49,39 @@ class StemsConfig(DataModel):
             channel_cap=channel_cap,
         )
 
+    @cached_property
+    def entries_by_id(self) -> Dict[int, StemEntry]:
+        """The entries keyed by the id the hierarchy names them with."""
+        return {entry.id: entry for entry in self.entries}
+
+    @cached_property
+    def covered_channels(self) -> FrozenSet[ChannelName]:
+        """Every channel some stem may occupy, which is the set an assignment puts in play."""
+        return frozenset(channel for entry in self.entries for channel in entry.channels)
+
+    @property
+    def frame_budget(self) -> int:
+        """The most channels that can sound in one frame under this setup.
+
+        Each stem holds at most ``channel_cap`` channels per frame and every held channel is one
+        of the covered ones, so the smaller of the two bounds is what a frame can reach. The
+        working level is measured against this budget, which keeps a capped run's target within
+        what its channels render.
+        """
+        return min(len(self.covered_channels), len(self.entries) * self.channel_cap)
+
     @model_validator(mode="after")
     def _validate_unique_entry_ids(self) -> Self:
         ids = [entry.id for entry in self.entries]
         if len(set(ids)) != len(ids):
             raise ValueError("Stem entries must have unique ids")
+
+        return self
+
+    @model_validator(mode="after")
+    def _validate_hierarchy_names_every_entry(self) -> Self:
+        referenced = sorted(stem_id for level in self.hierarchy.levels for stem_id in level)
+        if referenced != sorted(entry.id for entry in self.entries):
+            raise ValueError("Hierarchy levels must name every stem exactly once")
 
         return self

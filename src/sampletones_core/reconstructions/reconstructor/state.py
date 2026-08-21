@@ -7,8 +7,6 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import Fragment
 from sampletones_core.instructions import InstructionUnion
 
-from .approximation import ApproximationData
-
 
 class FragmentReconstructionState(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
@@ -34,9 +32,16 @@ class ReconstructionState(BaseModel):
 
     def append(
         self,
-        fragment_approximation: ApproximationData,
+        channel_name: ChannelName,
+        instruction: InstructionUnion,
         approximation: np.ndarray,
     ) -> None:
-        name = fragment_approximation.channel_name
-        self.instructions[name].append(fragment_approximation.instruction)
-        self.approximations[name].append(approximation)
+        """Records one frame of one channel: what it plays and how it sounds."""
+        self.instructions[channel_name].append(instruction)
+        self.approximations[channel_name].append(approximation)
+
+    def drop(self, channel_name: ChannelName) -> None:
+        """Releases a channel's stream, leaving it out of the reconstruction being assembled."""
+        self.channel_names.remove(channel_name)
+        del self.instructions[channel_name]
+        del self.approximations[channel_name]

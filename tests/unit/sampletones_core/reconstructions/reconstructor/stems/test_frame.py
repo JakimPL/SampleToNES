@@ -1,4 +1,4 @@
-from typing import Dict, FrozenSet, Sequence, Tuple
+from typing import Dict, List, Sequence, Tuple
 
 import pytest
 
@@ -7,60 +7,46 @@ from sampletones_core.fft import Fragment
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.reconstructions.reconstructor.selector.matching import FrameMatcher
-from sampletones_core.reconstructions.reconstructor.stems.configs.stem import Stem
-from sampletones_core.reconstructions.reconstructor.stems.frame import assign_frame
+from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
-from sampletones_core.reconstructions.reconstructor.stems.models.hierarchy import StemHierarchy
 
-DEFAULT_CHANNELS: FrozenSet[ChannelName] = frozenset((ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE))
+DEFAULT_CHANNELS: List[ChannelName] = [ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE]
+
+
+def _config(
+    entries: Dict[int, List[ChannelName]],
+    levels: List[List[int]],
+    mode: HierarchyMode,
+    channel_cap: int,
+) -> StemsConfig:
+    return StemsConfig(
+        entries=[StemEntry(id=stem_id, channels=channels) for stem_id, channels in entries.items()],
+        hierarchy=StemsHierarchy(levels=levels, mode=mode),
+        channel_cap=channel_cap,
+    )
 
 
 def _assign(
     fragment: Fragment,
-    stems: Dict[int, Stem],
-    hierarchy: StemHierarchy,
+    stems_config: StemsConfig,
     channels: Dict[ChannelName, GeneratorUnion],
     matcher: FrameMatcher,
     extractor: FeatureExtractor,
-    channel_cap: int,
 ) -> StemFrameAssignment:
     return assign_frame(
         fragment,
-        stems,
-        hierarchy,
+        stems_config,
         channels,
         matcher,
         extractor,
-        channel_cap,
     )
 
 
 class TestAssignFrameValidation:
-    def test_zero_cap_raises(
-        self,
-        synthetic_fragment: Fragment,
-        channels: Dict[ChannelName, GeneratorUnion],
-        matcher: FrameMatcher,
-        extractor: FeatureExtractor,
-    ) -> None:
-        stems = {0: Stem(id=0, channels=DEFAULT_CHANNELS)}
-        hierarchy = StemHierarchy(levels=((0,),), mode=HierarchyMode.STRICT)
-        with pytest.raises(ValueError, match="channel_cap"):
-            _assign(synthetic_fragment, stems, hierarchy, channels, matcher, extractor, 0)
-
-    def test_stem_id_disagreeing_with_its_key_raises(
-        self,
-        synthetic_fragment: Fragment,
-        channels: Dict[ChannelName, GeneratorUnion],
-        matcher: FrameMatcher,
-        extractor: FeatureExtractor,
-    ) -> None:
-        stems = {0: Stem(id=1, channels=DEFAULT_CHANNELS)}
-        hierarchy = StemHierarchy(levels=((0,),), mode=HierarchyMode.STRICT)
-        with pytest.raises(ValueError, match="keyed"):
-            _assign(synthetic_fragment, stems, hierarchy, channels, matcher, extractor, 1)
-
     def test_channel_outside_enabled_channels_raises(
         self,
         synthetic_fragment: Fragment,
@@ -68,49 +54,56 @@ class TestAssignFrameValidation:
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
     ) -> None:
-        stems = {0: Stem(id=0, channels=frozenset((ChannelName.PULSE2,)))}
-        hierarchy = StemHierarchy(levels=((0,),), mode=HierarchyMode.STRICT)
+        stems_config = _config({0: [ChannelName.PULSE2]}, [[0]], HierarchyMode.STRICT, 1)
         with pytest.raises(ValueError, match="configuration lacks"):
-            _assign(synthetic_fragment, stems, hierarchy, channels, matcher, extractor, 1)
+            _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
 
-    def test_hierarchy_duplicating_a_stem_raises(
+
+class TestFrameCompleteness:
+    """Every covered channel leaves the frame either picked or resting, never neither."""
+
+    def test_a_capped_frame_rests_the_channels_no_stem_took(
         self,
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
     ) -> None:
-        stems = {0: Stem(id=0, channels=DEFAULT_CHANNELS)}
-        hierarchy = StemHierarchy(levels=((0,), (0,)), mode=HierarchyMode.STRICT)
-        with pytest.raises(ValueError, match="exactly once"):
-            _assign(synthetic_fragment, stems, hierarchy, channels, matcher, extractor, 1)
+        stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, 1)
 
-    def test_hierarchy_leaving_a_stem_out_raises(
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+
+        assert len(assignment.choices) == 1
+        assert set(assignment.by_channel) | set(assignment.resting) == stems_config.covered_channels
+        assert set(assignment.by_channel).isdisjoint(assignment.resting)
+
+    def test_a_full_frame_rests_nothing(
         self,
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
     ) -> None:
-        stems = {
-            0: Stem(id=0, channels=DEFAULT_CHANNELS),
-            1: Stem(id=1, channels=frozenset((ChannelName.NOISE,))),
-        }
-        hierarchy = StemHierarchy(levels=((0,),), mode=HierarchyMode.STRICT)
-        with pytest.raises(ValueError, match="exactly once"):
-            _assign(synthetic_fragment, stems, hierarchy, channels, matcher, extractor, 1)
+        stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, len(DEFAULT_CHANNELS))
 
-    def test_hierarchy_naming_an_unknown_stem_raises(
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+
+        assert assignment.resting == ()
+        assert set(assignment.by_channel) == stems_config.covered_channels
+
+    def test_a_channel_no_stem_may_occupy_stays_out_of_the_frame(
         self,
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
     ) -> None:
-        stems = {0: Stem(id=0, channels=DEFAULT_CHANNELS)}
-        hierarchy = StemHierarchy(levels=((0,), (5,)), mode=HierarchyMode.STRICT)
-        with pytest.raises(ValueError, match="exactly once"):
-            _assign(synthetic_fragment, stems, hierarchy, channels, matcher, extractor, 1)
+        stems_config = _config({0: [ChannelName.PULSE1]}, [[0]], HierarchyMode.STRICT, 1)
+
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+
+        assert set(assignment.by_channel) == {ChannelName.PULSE1}
+        assert assignment.resting == ()
 
 
 class TestChannelCap:
@@ -121,13 +114,12 @@ class TestChannelCap:
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
     ) -> None:
-        stems = {0: Stem(id=0, channels=DEFAULT_CHANNELS)}
-        hierarchy = StemHierarchy(levels=((0,),), mode=HierarchyMode.STRICT)
-
         for cap, expected_count in ((1, 1), (2, 2), (5, 3)):
-            assignment = _assign(synthetic_fragment, stems, hierarchy, channels, matcher, extractor, cap)
+            stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, cap)
+            assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
             assert len(assignment.choices) == expected_count
             assert {choice.stem_id for choice in assignment.choices} == {0}
+            assert len(assignment.resting) == len(DEFAULT_CHANNELS) - expected_count
 
     def test_round_robin_mode_respects_the_cap(
         self,
@@ -136,11 +128,12 @@ class TestChannelCap:
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
     ) -> None:
-        stems = {0: Stem(id=0, channels=DEFAULT_CHANNELS)}
-        hierarchy = StemHierarchy(levels=((0,),), mode=HierarchyMode.ROUND_ROBIN)
+        stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.ROUND_ROBIN, 2)
 
-        assignment = _assign(synthetic_fragment, stems, hierarchy, channels, matcher, extractor, 2)
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+
         assert len(assignment.choices) == 2
+        assert len(assignment.resting) == 1
 
 
 class TestTieBreakDeterminism:
@@ -151,31 +144,23 @@ class TestTieBreakDeterminism:
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
     ) -> None:
-        pulse_only = frozenset((ChannelName.PULSE1,))
-        stems = {
-            0: Stem(id=0, channels=pulse_only),
-            1: Stem(id=1, channels=pulse_only),
-        }
+        entries = {0: [ChannelName.PULSE1], 1: [ChannelName.PULSE1]}
 
         first = _assign(
             synthetic_fragment,
-            stems,
-            StemHierarchy(levels=((0, 1),), mode=HierarchyMode.STRICT),
+            _config(entries, [[0, 1]], HierarchyMode.STRICT, 1),
             channels,
             matcher,
             extractor,
-            1,
         )
         assert [(choice.stem_id, choice.channel_name) for choice in first.choices] == [(0, ChannelName.PULSE1)]
 
         swapped = _assign(
             synthetic_fragment,
-            stems,
-            StemHierarchy(levels=((1, 0),), mode=HierarchyMode.STRICT),
+            _config(entries, [[1, 0]], HierarchyMode.STRICT, 1),
             channels,
             matcher,
             extractor,
-            1,
         )
         assert [(choice.stem_id, choice.channel_name) for choice in swapped.choices] == [(1, ChannelName.PULSE1)]
 
@@ -186,15 +171,18 @@ class TestTieBreakDeterminism:
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
     ) -> None:
-        stems = {
-            0: Stem(id=0, channels=frozenset((ChannelName.PULSE1, ChannelName.TRIANGLE))),
-            1: Stem(id=1, channels=frozenset((ChannelName.NOISE,))),
-        }
-        hierarchy = StemHierarchy(levels=((0,), (1,)), mode=HierarchyMode.STRICT)
+        stems_config = _config(
+            {0: [ChannelName.PULSE1, ChannelName.TRIANGLE], 1: [ChannelName.NOISE]},
+            [[0], [1]],
+            HierarchyMode.STRICT,
+            2,
+        )
 
-        first = _assign(synthetic_fragment, stems, hierarchy, channels, matcher, extractor, 2)
-        second = _assign(synthetic_fragment, stems, hierarchy, channels, matcher, extractor, 2)
+        first = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+        second = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+
         assert _choice_keys(first.choices) == _choice_keys(second.choices)
+        assert first.resting == second.resting
 
 
 class TestHierarchyOrdering:
@@ -205,13 +193,14 @@ class TestHierarchyOrdering:
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
     ) -> None:
-        stems = {
-            0: Stem(id=0, channels=frozenset((ChannelName.PULSE1, ChannelName.TRIANGLE))),
-            1: Stem(id=1, channels=frozenset((ChannelName.NOISE,))),
-        }
-        hierarchy = StemHierarchy(levels=((0,), (1,)), mode=HierarchyMode.STRICT)
+        stems_config = _config(
+            {0: [ChannelName.PULSE1, ChannelName.TRIANGLE], 1: [ChannelName.NOISE]},
+            [[0], [1]],
+            HierarchyMode.STRICT,
+            2,
+        )
 
-        assignment = _assign(synthetic_fragment, stems, hierarchy, channels, matcher, extractor, 2)
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
 
         assert [choice.stem_id for choice in assignment.choices] == [0, 0, 1]
         assert {choice.channel_name for choice in assignment.choices[:2]} == {
@@ -227,13 +216,14 @@ class TestHierarchyOrdering:
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
     ) -> None:
-        stems = {
-            0: Stem(id=0, channels=frozenset((ChannelName.PULSE1, ChannelName.TRIANGLE))),
-            1: Stem(id=1, channels=frozenset((ChannelName.NOISE,))),
-        }
-        hierarchy = StemHierarchy(levels=((0,), (1,)), mode=HierarchyMode.ROUND_ROBIN)
+        stems_config = _config(
+            {0: [ChannelName.PULSE1, ChannelName.TRIANGLE], 1: [ChannelName.NOISE]},
+            [[0], [1]],
+            HierarchyMode.ROUND_ROBIN,
+            2,
+        )
 
-        assignment = _assign(synthetic_fragment, stems, hierarchy, channels, matcher, extractor, 2)
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
 
         assert [choice.stem_id for choice in assignment.choices] == [0, 1, 0]
         assert assignment.choices[1].channel_name == ChannelName.NOISE

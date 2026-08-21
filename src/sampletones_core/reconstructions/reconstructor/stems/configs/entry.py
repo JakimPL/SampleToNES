@@ -1,4 +1,5 @@
-from typing import List
+from functools import cached_property
+from typing import FrozenSet, List
 
 from pydantic import ConfigDict, Field
 
@@ -17,3 +18,8 @@ class StemEntry(DataModel):
         ...,
         description="The channels the stem may occupy",
     )
+
+    @cached_property
+    def channel_set(self) -> FrozenSet[ChannelName]:
+        """The channels this stem may occupy, in the form an assignment tests membership against."""
+        return frozenset(self.channels)

@@ -2,29 +2,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import List
-from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.fft import Fragment
 from sampletones_core.instructions import PulseInstruction
-from sampletones_core.reconstructions.reconstructor.approximation import (
-    ApproximationData,
-)
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
 from tests.suite.case import BaseTestCase
 
 _FRAME_LENGTH = 16
 
 
-def _make_approximation_data(channel_name: ChannelName) -> ApproximationData:
-    return ApproximationData(
-        channel_name=channel_name,
-        approximation=MagicMock(spec=Fragment),
-        instruction=PulseInstruction(on=True, pitch=60, volume=10, duty_cycle=0),
-    )
+def _make_instruction() -> PulseInstruction:
+    return PulseInstruction(on=True, pitch=60, volume=10, duty_cycle=0)
 
 
 def _make_audio(value: float = 1.0) -> np.ndarray:
@@ -89,27 +80,48 @@ class TestReconstructionStateAppend:
         return ReconstructionState.create([ChannelName.PULSE1, ChannelName.TRIANGLE])
 
     def test_instruction_added_for_correct_generator(self, state: ReconstructionState) -> None:
-        approximation_data = _make_approximation_data(ChannelName.PULSE1)
-        state.append(approximation_data, _make_audio())
-        assert state.instructions[ChannelName.PULSE1] == [approximation_data.instruction]
+        instruction = _make_instruction()
+        state.append(ChannelName.PULSE1, instruction, _make_audio())
+        assert state.instructions[ChannelName.PULSE1] == [instruction]
 
     def test_approximation_added_for_correct_generator(self, state: ReconstructionState) -> None:
         audio = _make_audio(0.5)
-        state.append(_make_approximation_data(ChannelName.PULSE1), audio)
+        state.append(ChannelName.PULSE1, _make_instruction(), audio)
         assert len(state.approximations[ChannelName.PULSE1]) == 1
         np.testing.assert_array_equal(state.approximations[ChannelName.PULSE1][0], audio)
 
     @pytest.mark.parametrize("case", ACCUMULATE_CASES, ids=lambda c: c.label)
     def test_multiple_appends_accumulate_in_order(self, case: TestCase, state: ReconstructionState) -> None:
-        for i in range(case.count):
-            state.append(_make_approximation_data(ChannelName.PULSE1), _make_audio(float(i)))
+        for index in range(case.count):
+            state.append(ChannelName.PULSE1, _make_instruction(), _make_audio(float(index)))
         assert len(state.instructions[ChannelName.PULSE1]) == case.count
         assert len(state.approximations[ChannelName.PULSE1]) == case.count
 
     def test_append_to_separate_generators_are_independent(self, state: ReconstructionState) -> None:
-        state.append(_make_approximation_data(ChannelName.PULSE1), _make_audio(1.0))
-        state.append(_make_approximation_data(ChannelName.TRIANGLE), _make_audio(2.0))
+        state.append(ChannelName.PULSE1, _make_instruction(), _make_audio(1.0))
+        state.append(ChannelName.TRIANGLE, _make_instruction(), _make_audio(2.0))
         assert len(state.instructions[ChannelName.PULSE1]) == 1
         assert len(state.approximations[ChannelName.PULSE1]) == 1
         assert len(state.instructions[ChannelName.TRIANGLE]) == 1
         assert len(state.approximations[ChannelName.TRIANGLE]) == 1
+
+
+class TestReconstructionStateDrop:
+    @pytest.fixture
+    def state(self) -> ReconstructionState:
+        state = ReconstructionState.create([ChannelName.PULSE1, ChannelName.TRIANGLE])
+        state.append(ChannelName.PULSE1, _make_instruction(), _make_audio())
+        return state
+
+    def test_dropping_a_channel_releases_its_stream(self, state: ReconstructionState) -> None:
+        state.drop(ChannelName.TRIANGLE)
+
+        assert state.channel_names == [ChannelName.PULSE1]
+        assert set(state.instructions) == {ChannelName.PULSE1}
+        assert set(state.approximations) == {ChannelName.PULSE1}
+
+    def test_the_remaining_channels_keep_their_frames(self, state: ReconstructionState) -> None:
+        state.drop(ChannelName.TRIANGLE)
+
+        assert len(state.instructions[ChannelName.PULSE1]) == 1
+        assert len(state.approximations[ChannelName.PULSE1]) == 1

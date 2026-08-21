@@ -1,4 +1,4 @@
-from typing import Dict, Final, Tuple
+from typing import Dict, Final, Iterable, List, Tuple
 
 import numpy as np
 import pytest
@@ -12,14 +12,28 @@ from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstructor.approximation import ApproximationData
 from sampletones_core.reconstructions.reconstructor.selector.greedy import GreedySelector
 from sampletones_core.reconstructions.reconstructor.selector.matching import FrameMatcher
-from sampletones_core.reconstructions.reconstructor.stems.configs.stem import Stem
-from sampletones_core.reconstructions.reconstructor.stems.frame import assign_frame
+from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
-from sampletones_core.reconstructions.reconstructor.stems.models.hierarchy import StemHierarchy
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 
 RANDOM_SEEDS: Final[Tuple[int, ...]] = (11, 23, 47, 89, 131, 197)
+
+
+def _config(
+    entries: Dict[int, Iterable[ChannelName]],
+    levels: List[List[int]],
+    mode: HierarchyMode,
+    channel_cap: int,
+) -> StemsConfig:
+    return StemsConfig(
+        entries=[StemEntry(id=stem_id, channels=list(channels)) for stem_id, channels in entries.items()],
+        hierarchy=StemsHierarchy(levels=levels, mode=mode),
+        channel_cap=channel_cap,
+    )
 
 
 class TestSingleStemEquivalence:
@@ -31,17 +45,14 @@ class TestSingleStemEquivalence:
         extractor: FeatureExtractor,
         greedy_selector: GreedySelector,
     ) -> None:
-        stems = {0: Stem(id=0, channels=frozenset(channels))}
-        hierarchy = StemHierarchy(levels=((0,),), mode=HierarchyMode.STRICT)
+        stems_config = _config({0: channels}, [[0]], HierarchyMode.STRICT, len(channels))
 
         assignment = assign_frame(
             synthetic_fragment,
-            stems,
-            hierarchy,
+            stems_config,
             channels,
             matcher,
             extractor,
-            len(channels),
         )
         baseline = greedy_selector.reconstruct_fragment(synthetic_fragment)
 
@@ -57,17 +68,14 @@ class TestSingleStemEquivalence:
         extractor: FeatureExtractor,
         all_channels_selector: GreedySelector,
     ) -> None:
-        stems = {0: Stem(id=0, channels=frozenset(all_channels))}
-        hierarchy = StemHierarchy(levels=((0,),), mode=HierarchyMode.STRICT)
+        stems_config = _config({0: all_channels}, [[0]], HierarchyMode.STRICT, len(all_channels))
 
         assignment = assign_frame(
             synthetic_fragment,
-            stems,
-            hierarchy,
+            stems_config,
             all_channels,
             matcher,
             extractor,
-            len(all_channels),
         )
         baseline = all_channels_selector.reconstruct_fragment(synthetic_fragment)
 
@@ -100,20 +108,19 @@ class TestStrictDisjointStems:
         expected = dict(baseline_first)
         expected.update(baseline_second)
 
-        stems = {
-            0: Stem(id=0, channels=frozenset(subset_pulse_triangle)),
-            1: Stem(id=1, channels=frozenset(subset_noise)),
-        }
-        hierarchy = StemHierarchy(levels=((0,), (1,)), mode=HierarchyMode.STRICT)
+        stems_config = _config(
+            {0: subset_pulse_triangle, 1: subset_noise},
+            [[0], [1]],
+            HierarchyMode.STRICT,
+            len(channels),
+        )
 
         assignment = assign_frame(
             synthetic_fragment,
-            stems,
-            hierarchy,
+            stems_config,
             channels,
             matcher,
             extractor,
-            len(channels),
         )
 
         assert len(assignment.choices) == len(channels)
@@ -134,41 +141,39 @@ class TestRandomizedDifferential:
     ) -> None:
         rng = np.random.default_rng(random_seed)
         fragment = _random_target_fragment(rng, config, window, extractor, library_data)
-        stems, hierarchy, channel_cap = _random_setup(rng, tuple(all_channels))
+        stems_config = _random_setup(rng, tuple(all_channels))
 
         assignment = assign_frame(
             fragment,
-            stems,
-            hierarchy,
+            stems_config,
             all_channels,
             matcher,
             extractor,
-            channel_cap,
         )
         repeat = assign_frame(
             fragment,
-            stems,
-            hierarchy,
+            stems_config,
             all_channels,
             matcher,
             extractor,
-            channel_cap,
         )
 
         assert _choice_keys(assignment.choices) == _choice_keys(repeat.choices)
+        assert assignment.resting == repeat.resting
 
         channels_assigned = [choice.channel_name for choice in assignment.choices]
         assert len(channels_assigned) == len(set(channels_assigned))
         assert set(channels_assigned) <= set(all_channels)
+        assert set(channels_assigned) | set(assignment.resting) == stems_config.covered_channels
 
         counts: Dict[int, int] = {}
         for choice in assignment.choices:
             counts[choice.stem_id] = counts.get(choice.stem_id, 0) + 1
-            assert choice.channel_name in stems[choice.stem_id].channels
-        assert all(count <= channel_cap for count in counts.values())
+            assert choice.channel_name in stems_config.entries_by_id[choice.stem_id].channel_set
+        assert all(count <= stems_config.channel_cap for count in counts.values())
 
-        if hierarchy.mode == HierarchyMode.STRICT:
-            _assert_strict_ordering(assignment, hierarchy)
+        if stems_config.hierarchy.mode == HierarchyMode.STRICT:
+            _assert_strict_ordering(assignment, stems_config.hierarchy)
 
 
 def _assert_same_picks(
@@ -198,7 +203,7 @@ def _assert_same_fragment(left: Fragment, right: Fragment) -> None:
 
 def _assert_strict_ordering(
     assignment: StemFrameAssignment,
-    hierarchy: StemHierarchy,
+    hierarchy: StemsHierarchy,
 ) -> None:
     first_positions = [
         index for index, choice in enumerate(assignment.choices) if choice.stem_id in hierarchy.levels[0]
@@ -232,19 +237,18 @@ def _restricted_selector(
 def _random_setup(
     rng: np.random.Generator,
     channel_names: Tuple[ChannelName, ...],
-) -> Tuple[Dict[int, Stem], StemHierarchy, int]:
+) -> StemsConfig:
     shuffled = list(channel_names)
     rng.shuffle(shuffled)
     split = int(rng.integers(1, len(shuffled)))
 
-    stems = {
-        0: Stem(id=0, channels=frozenset(shuffled[:split])),
-        1: Stem(id=1, channels=frozenset(shuffled[split:])),
-    }
     mode = HierarchyMode.ROUND_ROBIN if bool(rng.integers(2)) else HierarchyMode.STRICT
-    hierarchy = StemHierarchy(levels=((0,), (1,)), mode=mode)
-    channel_cap = int(rng.integers(1, len(channel_names) + 1))
-    return stems, hierarchy, channel_cap
+    return _config(
+        {0: shuffled[:split], 1: shuffled[split:]},
+        [[0], [1]],
+        mode,
+        int(rng.integers(1, len(channel_names) + 1)),
+    )
 
 
 def _random_target_fragment(

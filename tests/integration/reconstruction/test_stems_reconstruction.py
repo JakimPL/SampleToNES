@@ -7,7 +7,7 @@ import pytest
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_core.audio import load_audio, mix, write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import DEFAULT_STEMS_CHANNEL_CAP
+from sampletones_core.constants.algorithm import DEFAULT_STEMS_CHANNEL_CAP, RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -17,6 +17,7 @@ from tests.integration.assets.reconstruction import (
     STEM_A_ID,
     STEM_B_ID,
     STEM_C_ID,
+    STEM_RECORDING_DURATION_SECONDS,
     build_mini_library,
     three_stem_config,
     three_stem_reconstruction_config,
@@ -26,6 +27,10 @@ from tests.integration.assets.reconstruction import (
 _TONE_FREQUENCY: Final[float] = 440.0
 _DURATION_SECONDS: Final[float] = 0.5
 _MIX_TOLERANCE: Final[float] = 1e-6  # float32 sums drift with accumulation order
+
+
+def _frame_count(config: Config, duration_seconds: float) -> int:
+    return int(config.library.sample_rate * duration_seconds) // config.library.frame_length
 
 
 def _stems_config() -> StemsConfig:
@@ -119,12 +124,46 @@ class TestThreeStemHierarchy:
 
         assignments = stems_data.assignments_by_channel
         assert assignments
-        assert set(assignments.get(ChannelName.PULSE2, [])) == {STEM_B_ID}
-        assert set(assignments.get(ChannelName.TRIANGLE, [])) <= {STEM_A_ID, STEM_B_ID}
-        assert set(assignments.get(ChannelName.PULSE1, [])) <= {STEM_A_ID, STEM_C_ID}
-        assert set(assignments.get(ChannelName.NOISE, [])) <= {STEM_A_ID, STEM_C_ID}
+        holders = {
+            ChannelName.PULSE2: {STEM_B_ID},
+            ChannelName.TRIANGLE: {STEM_A_ID, STEM_B_ID},
+            ChannelName.PULSE1: {STEM_A_ID, STEM_C_ID},
+            ChannelName.NOISE: {STEM_A_ID, STEM_C_ID},
+        }
+        for channel, allowed in holders.items():
+            assert set(assignments.get(channel, [])) - {RESTING_STEM_ID} <= allowed
+
         for channel, stem_ids in assignments.items():
             assert len(reconstruction.instructions[channel]) == len(stem_ids)
+
+    def test_every_channel_in_play_carries_one_entry_per_frame(self, tmp_path: Path) -> None:
+        """A cap leaves channels unclaimed, and each of them rests rather than dropping its frame.
+
+        Streams that skipped a frame would carry their later frames early, so what a channel plays
+        would drift out of step with the recording it was matched against.
+        """
+        config = three_stem_reconstruction_config()
+        library = build_mini_library(config)
+        reconstructor = Reconstructor(config, library=library)
+        stems_config = three_stem_config()
+        paths = write_three_stem_recordings(config, tmp_path)
+
+        reconstruction = reconstructor.reconstruct_stems(list(paths), stems_config)
+
+        assert reconstruction is not None
+        frame_count = _frame_count(config, STEM_RECORDING_DURATION_SECONDS)
+        assignments = reconstruction.stems_data.assignments_by_channel
+        assert set(assignments) == set(reconstruction.playing_channels)
+
+        for channel, stem_ids in assignments.items():
+            assert len(stem_ids) == frame_count
+            assert len(reconstruction.instructions[channel]) == frame_count
+            assert len(reconstruction.approximations[channel]) == frame_count * config.library.frame_length
+
+        picks_per_frame = [
+            sum(stem_ids[frame] != RESTING_STEM_ID for stem_ids in assignments.values()) for frame in range(frame_count)
+        ]
+        assert picks_per_frame == [len(stems_config.entries)] * frame_count
 
     def test_round_trips_through_the_file(self, tmp_path: Path) -> None:
         config = three_stem_reconstruction_config()
@@ -305,6 +344,7 @@ class TestClassicRunCarriesTheSingleEntryRecord:
             assert len(stem_ids) == len(reconstruction.instructions[channel])
 
     def test_a_cap_of_one_leaves_every_frame_to_one_channel(self, tmp_path: Path) -> None:
+        """One channel sounds per frame while the others rest, each keeping its place in the frame."""
         config = Config()
         library = build_mini_library(config)
         reconstructor = Reconstructor(config, library=library)
@@ -316,9 +356,13 @@ class TestClassicRunCarriesTheSingleEntryRecord:
         )
 
         assert reconstruction is not None
-        stems_data = reconstruction.stems_data
-        frame_count = int(config.library.sample_rate * _DURATION_SECONDS) // config.library.frame_length
-        assert sum(len(stem_ids) for stem_ids in stems_data.assignments_by_channel.values()) == frame_count
-        for stem_ids in stems_data.assignments_by_channel.values():
-            assert set(stem_ids) <= {0}
-            assert len(stem_ids) <= frame_count
+        assignments = reconstruction.stems_data.assignments_by_channel
+        frame_count = _frame_count(config, _DURATION_SECONDS)
+
+        for channel, stem_ids in assignments.items():
+            assert set(stem_ids) <= {0, RESTING_STEM_ID}
+            assert len(stem_ids) == frame_count
+            assert len(reconstruction.instructions[channel]) == frame_count
+
+        sounding = [sum(stem_ids[frame] == 0 for stem_ids in assignments.values()) for frame in range(frame_count)]
+        assert sounding == [1] * frame_count

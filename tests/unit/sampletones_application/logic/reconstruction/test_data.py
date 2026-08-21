@@ -13,6 +13,7 @@ from sampletones_core.reconstructions.reconstruction.stems.channel_assignment im
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 
 
 class TestFromReconstruction:
@@ -287,6 +288,7 @@ class TestStemFilteredProjections:
                 StemEntry(id=0, channels=[ChannelName.PULSE1]),
                 StemEntry(id=1, channels=[ChannelName.PULSE1]),
             ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]]),
         )
         reconstruction = Reconstruction.create(
             approximation=approximation,
@@ -339,6 +341,7 @@ class TestStemFilteredProjections:
                 StemEntry(id=0, channels=[ChannelName.PULSE1]),
                 StemEntry(id=1, channels=[ChannelName.PULSE1]),
             ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]]),
         )
         reconstruction = reconstruction_factory().model_copy(
             update={

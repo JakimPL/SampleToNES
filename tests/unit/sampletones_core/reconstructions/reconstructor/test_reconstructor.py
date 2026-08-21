@@ -15,6 +15,7 @@ from sampletones_core.reconstructions.reconstructor.approximation import (
 )
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_shared.exceptions import NoLibraryDataError
 
 
@@ -65,9 +66,8 @@ class TestReconstructorGetCoefficient:
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
         audio = np.ones(config.library.frame_length, dtype=np.float32) * 0.5
-        coefficient = reconstructor.get_coefficient(audio)
-        total_mixer = sum(MIXER_LEVELS[gen.class_name()] for gen in reconstructor.channels.values())
-        assert coefficient == pytest.approx(0.5 / total_mixer)
+        coefficient = reconstructor.get_coefficient(audio, _full_setup(config))
+        assert coefficient == pytest.approx(0.5 / _total_mixer(reconstructor))
 
     def test_coefficient_is_robust_to_a_lone_transient(
         self,
@@ -76,10 +76,10 @@ class TestReconstructorGetCoefficient:
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
         frame_length = config.library.frame_length
-        total_mixer = sum(MIXER_LEVELS[gen.class_name()] for gen in reconstructor.channels.values())
+        total_mixer = _total_mixer(reconstructor)
         audio = np.full(frame_length * 24, 0.05, dtype=np.float32)
         audio[:frame_length] = 1.0
-        coefficient = reconstructor.get_coefficient(audio)
+        coefficient = reconstructor.get_coefficient(audio, _full_setup(config))
         assert coefficient == pytest.approx(0.05 / total_mixer, rel=1e-3)
         assert coefficient < 1.0 / total_mixer
 
@@ -89,9 +89,32 @@ class TestReconstructorGetCoefficient:
         library_data: InstructionLibraryData,
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
+        setup = _full_setup(config)
         quiet = np.ones(config.library.frame_length, dtype=np.float32) * 0.1
         loud = np.ones(config.library.frame_length, dtype=np.float32) * 0.9
-        assert reconstructor.get_coefficient(loud) > reconstructor.get_coefficient(quiet)
+        assert reconstructor.get_coefficient(loud, setup) > reconstructor.get_coefficient(quiet, setup)
+
+    def test_a_capped_setup_anchors_to_what_one_frame_reaches(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+    ) -> None:
+        """One channel per frame reaches one channel's weight, so that is what the level is measured against."""
+        reconstructor = _make_reconstructor(config, library_data)
+        capped = StemsConfig.single_entry(list(config.generation.channels), channel_cap=1)
+        audio = np.ones(config.library.frame_length, dtype=np.float32) * 0.5
+
+        loudest = max(MIXER_LEVELS[generator.class_name()] for generator in reconstructor.channels.values())
+
+        assert reconstructor.get_coefficient(audio, capped) == pytest.approx(0.5 / loudest)
+
+
+def _full_setup(config: Config) -> StemsConfig:
+    return StemsConfig.single_entry(list(config.generation.channels))
+
+
+def _total_mixer(reconstructor: Reconstructor) -> float:
+    return sum(MIXER_LEVELS[generator.class_name()] for generator in reconstructor.channels.values())
 
 
 class TestReconstructorGetFragments:

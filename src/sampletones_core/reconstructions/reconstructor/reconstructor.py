@@ -3,10 +3,11 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from sampletones_core.audio import active_frame_level, load_audio, mix
+from sampletones_core.audio import active_frame_level, load_audio, mix, silence
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import (
     MINIMUM_AUDIO_LEVEL,
+    RESTING_STEM_ID,
 )
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import FragmentedAudio, Window
@@ -15,6 +16,7 @@ from sampletones_core.generators import (
     GeneratorUnion,
     get_generators_by_channels,
 )
+from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibrary, InstructionLibraryData
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -22,10 +24,9 @@ from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.approximation import ApproximationData
 from sampletones_core.reconstructions.reconstructor.selector.matching import FrameMatcher
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
+from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
-from sampletones_core.reconstructions.reconstructor.stems.configs.stem import Stem
-from sampletones_core.reconstructions.reconstructor.stems.frame import assign_frame
-from sampletones_core.reconstructions.reconstructor.stems.models.hierarchy import StemHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 from sampletones_shared.exceptions import NoLibraryDataError
 from sampletones_shared.types.path import Pathlike
@@ -150,17 +151,15 @@ class Reconstructor:
         checked_paths = self._check_stem_paths(paths, stems_config)
         mixed = self._mix_stem_audios(checked_paths)
         fragmented_audio, coefficient = self._prepare_stem_frames(mixed, stems_config)
-        stems, hierarchy = self._build_stem_models(stems_config)
         worker, matcher = self._build_stem_matcher(mixed)
         assignments = self._assign_stem_frames(
             fragmented_audio,
-            stems,
-            hierarchy,
+            stems_config,
             worker,
             matcher,
-            stems_config.channel_cap,
         )
-        stems_data = self._build_stems_data(stems_config, assignments)
+        playing = self._drop_resting_channels(assignments)
+        stems_data = self._build_stems_data(stems_config, playing)
         return Reconstruction.from_state(
             self.state,
             self.config,
@@ -207,23 +206,11 @@ class Reconstructor:
         Returns the framed target together with the coefficient it was scaled by, so
         the assembled reconstruction records the level it was matched at.
         """
-        coefficient = self.get_coefficient(mixed)
+        coefficient = self.get_coefficient(mixed, stems_config)
         self.reset_generators()
-        covered = {channel for entry in stems_config.entries for channel in entry.channels}
+        covered = stems_config.covered_channels
         self.state = ReconstructionState.create([name for name in ChannelName.items() if name in covered])
         return self.get_fragments(mixed / coefficient), coefficient
-
-    @staticmethod
-    def _build_stem_models(
-        stems_config: StemsConfig,
-    ) -> Tuple[Dict[int, Stem], StemHierarchy]:
-        """Converts the stems setup into the runtime stem and hierarchy models."""
-        stems = {entry.id: Stem(id=entry.id, channels=frozenset(entry.channels)) for entry in stems_config.entries}
-        hierarchy = StemHierarchy(
-            levels=tuple(tuple(level) for level in stems_config.hierarchy.levels),
-            mode=stems_config.hierarchy.mode,
-        )
-        return stems, hierarchy
 
     def _build_stem_matcher(
         self,
@@ -248,40 +235,77 @@ class Reconstructor:
     def _assign_stem_frames(
         self,
         fragmented_audio: FragmentedAudio,
-        stems: Dict[int, Stem],
-        hierarchy: StemHierarchy,
+        stems_config: StemsConfig,
         worker: ReconstructorWorker,
         matcher: FrameMatcher,
-        channel_cap: int,
     ) -> Dict[ChannelName, List[int]]:
         """Assigns every frame's channels to the stems and records both sides of the outcome.
 
-        Each choice updates the reconstruction state and the per-channel stem record,
-        the two lists staying parallel so stem id ``i`` names frame ``i`` of its channel.
+        Each frame contributes one entry to every channel in play — a pick or a rest — so the
+        reconstruction state and the per-channel stem record stay parallel to the frames, and
+        stem id ``i`` names frame ``i`` of its channel.
         """
-        assignments: Dict[ChannelName, List[int]] = {}
+        assignments: Dict[ChannelName, List[int]] = {name: [] for name in self.state.channel_names}
         for fragment_id in fragmented_audio.fragments_ids:
-            fragment = fragmented_audio[fragment_id]
             frame_assignment = assign_frame(
-                fragment,
-                stems,
-                hierarchy,
+                fragmented_audio[fragment_id],
+                stems_config,
                 self.channels,
                 matcher,
                 worker.feature_extractor,
-                channel_cap,
             )
-            for choice in frame_assignment.choices:
-                self.update_state(
-                    ApproximationData(
-                        channel_name=choice.channel_name,
-                        approximation=choice.approximation,
-                        instruction=choice.instruction,
-                    )
-                )
-                assignments.setdefault(choice.channel_name, []).append(choice.stem_id)
+            self._record_frame(frame_assignment, assignments)
 
         return assignments
+
+    def _record_frame(
+        self,
+        frame_assignment: StemFrameAssignment,
+        assignments: Dict[ChannelName, List[int]],
+    ) -> None:
+        """Writes one frame's outcome into the state and the per-channel stem record."""
+        for choice in frame_assignment.choices:
+            self._record(
+                choice.channel_name,
+                choice.instruction,
+                choice.approximation.audio,
+            )
+            assignments[choice.channel_name].append(choice.stem_id)
+
+        for channel_name in frame_assignment.resting:
+            self._record_rest(channel_name)
+            assignments[channel_name].append(RESTING_STEM_ID)
+
+    def _record_rest(self, channel_name: ChannelName) -> None:
+        """Records the frame of a channel no stem took: its null instruction, sounding nothing.
+
+        The channel keeps its place in the frame, which is what holds every channel's stream
+        against the timeline the frames lay out, and the silent frame is what a cap or a
+        hierarchy leaving the channel free actually sounds like.
+        """
+        generator = self.channels[channel_name]
+        instruction = generator.get_instruction_type().null_instruction()
+        self._record(channel_name, instruction, silence(generator.frame_length))
+
+    def _drop_resting_channels(
+        self,
+        assignments: Dict[ChannelName, List[int]],
+    ) -> Dict[ChannelName, List[int]]:
+        """Leaves the channels that sound, dropping those that rested through every frame.
+
+        A channel no stem ever took describes nothing, so it stands by: the state releases its
+        stream and the record names it no more, which is what keeps a silent channel out of
+        every export.
+        """
+        playing: Dict[ChannelName, List[int]] = {}
+        for channel_name, stem_ids in assignments.items():
+            if all(stem_id == RESTING_STEM_ID for stem_id in stem_ids):
+                self.state.drop(channel_name)
+                continue
+
+            playing[channel_name] = stem_ids
+
+        return playing
 
     @staticmethod
     def _build_stems_data(
@@ -316,22 +340,29 @@ class Reconstructor:
             quantization_levels=self.config.general.quantization_levels,
         )
 
-    def get_coefficient(self, audio: np.ndarray) -> float:
+    def get_coefficient(
+        self,
+        audio: np.ndarray,
+        stems_config: StemsConfig,
+    ) -> float:
         """
-        Working-level coefficient that scales the input into the range the enabled
-        channels span.
+        Working-level coefficient that scales the input into the range one frame spans.
 
         The reference anchors to the robust active-frame level using the configured
         percentile and audibility floor, and is floored at `MINIMUM_AUDIO_LEVEL` so
-        a fully silent input yields a finite coefficient.
+        a fully silent input yields a finite coefficient. The range it is measured against
+        is what the setup's frame budget reaches: the loudest mixer weights among the covered
+        channels, as many of them as one frame can hold, so a capped run targets a level its
+        channels render.
 
         Args:
             audio: The prepared input audio.
+            stems_config: The stems setup the reconstruction runs under.
 
         Returns:
             float: The positive scale factor the input is divided by before matching.
         """
-        total = sum(MIXER_LEVELS[generator.class_name()] for generator in self.channels.values())
+        total = self._frame_mixer_total(stems_config)
         level = max(
             active_frame_level(
                 audio,
@@ -342,6 +373,15 @@ class Reconstructor:
             MINIMUM_AUDIO_LEVEL,
         )
         return float(level / total)
+
+    def _frame_mixer_total(self, stems_config: StemsConfig) -> float:
+        """The mixer weight one frame reaches: the loudest covered channels, up to the budget."""
+        covered = stems_config.covered_channels
+        levels = sorted(
+            (MIXER_LEVELS[generator.class_name()] for name, generator in self.channels.items() if name in covered),
+            reverse=True,
+        )
+        return sum(levels[: stems_config.frame_budget])
 
     def get_fragments(self, audio: np.ndarray) -> FragmentedAudio:
         """Frames the audio into the fragments matched against the library.
@@ -409,30 +449,42 @@ class Reconstructor:
     def update_state(self, fragment_approximation: ApproximationData) -> None:
         """Appends one fragment's chosen approximation to the reconstruction state.
 
-        Regenerates the approximation from its instruction when final regeneration is
-        enabled, otherwise reuses the stored approximation, scaling either by the
-        configured drive.
-
         Args:
             fragment_approximation: The chosen approximation for one fragment and
                 channel.
         """
-        generator: GeneratorUnion = self.channels[fragment_approximation.channel_name]
+        self._record(
+            fragment_approximation.channel_name,
+            fragment_approximation.instruction,
+            fragment_approximation.approximation.audio,
+        )
+
+    def _record(
+        self,
+        channel_name: ChannelName,
+        instruction: InstructionUnion,
+        matched_audio: np.ndarray,
+    ) -> None:
+        """Appends one frame of one channel to the reconstruction state.
+
+        Regenerates the frame from its instruction when final regeneration is enabled, which
+        carries the oscillator's phase into the next frame, otherwise keeps the audio the match
+        was made on. Either one is scaled by the configured drive.
+        """
+        generator: GeneratorUnion = self.channels[channel_name]
         if self.config.generation.final_regeneration:
-            instruction = fragment_approximation.instruction
-            initials = generator.initials
             approximation = (
                 generator(
                     instruction,  # type: ignore[arg-type]
-                    initials=initials,
+                    initials=generator.initials,
                     save=True,
                 )
                 * self.config.generation.drive
             )
         else:
-            approximation = fragment_approximation.approximation.audio * self.config.generation.drive
+            approximation = matched_audio * self.config.generation.drive
 
-        self.state.append(fragment_approximation, approximation)
+        self.state.append(channel_name, instruction, approximation)
 
     def reset_generators(self) -> None:
         """Resets every channel's generator so the next reconstruction starts fresh."""
