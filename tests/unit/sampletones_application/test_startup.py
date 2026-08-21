@@ -327,7 +327,7 @@ class TestAddOpenReconstructionToSequencer:
 
         sample = app.project_manager.current.samples[0]
         assert sample.reconstruction is not app.reconstruction_manager.reconstruction
-        assert sample.reconstruction.audio_filepath is None
+        assert sample.reconstruction.audio_filepath == ()
         assert not app._editing_project_sample()
 
 

@@ -19,13 +19,16 @@ def filter_approximations(
     every other frame keeps its samples. The arrays keep their lengths, which is what
     aligns a filtered mix with the unfiltered one sample for sample. Every selected stem
     answers the original arrays, and channels the stems data names come back filtered.
+    The mask covers the frames the stored array holds; samples past the last recorded
+    frame keep their values.
     """
     filtered: Dict[ChannelName, np.ndarray] = {}
     for channel, stem_ids in stems_data.assignments_by_channel.items():
         approximation = approximations[channel]
         keep = np.isin(np.array(stem_ids, dtype=int), list(selected_stem_ids))
+        keep_samples = np.repeat(keep, frame_length)
         masked = np.array(approximation, copy=True)
-        masked[~np.repeat(keep, frame_length)] = 0
+        masked[~keep_samples[: len(masked)]] = 0
         filtered[channel] = masked
 
     return filtered

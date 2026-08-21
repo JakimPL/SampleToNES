@@ -265,14 +265,7 @@ class ReconstructionPanelLogic(CallbackMixin):
     def _all_stem_ids(
         reconstruction_data: ReconstructionData,
     ) -> FrozenSet[int]:
-        stems_data = reconstruction_data.reconstruction.stems_data
-        if stems_data is not None:
-            return frozenset(entry.id for entry in stems_data.config.entries)
-
-        if reconstruction_data.reconstruction.source_paths:
-            return frozenset({0})
-
-        return frozenset()
+        return frozenset(entry.id for entry in reconstruction_data.reconstruction.stems_data.config.entries)
 
     def _build_stems_view_model(
         self,
@@ -280,45 +273,29 @@ class ReconstructionPanelLogic(CallbackMixin):
     ) -> ReconstructionStemsViewModel:
         reconstruction = reconstruction_data.reconstruction
         stems_data = reconstruction.stems_data
-        if stems_data is not None:
-            assigned_stem_ids = {
-                stem_id for stem_ids in stems_data.assignments_by_channel.values() for stem_id in stem_ids
-            }
-            rows = tuple(
-                StemViewModel(
-                    stem_id=entry.id,
-                    label=reconstruction.source_paths[index].name,
-                    channels=tuple(entry.channels),
-                    enabled=entry.id in assigned_stem_ids,
-                    selected=entry.id in self._selected_stems,
-                )
-                for index, entry in enumerate(stems_data.config.entries)
-            )
+        source_paths = reconstruction.audio_filepath
+        if not source_paths:
             return ReconstructionStemsViewModel(
                 reconstruction_loaded=True,
-                stems=rows,
-                hierarchy_mode=stems_data.config.hierarchy.mode,
-                channel_cap=stems_data.config.channel_cap,
+                stems=(),
             )
 
-        source_paths = reconstruction.source_paths
-        if source_paths:
-            return ReconstructionStemsViewModel(
-                reconstruction_loaded=True,
-                stems=(
-                    StemViewModel(
-                        stem_id=0,
-                        label=source_paths[0].name,
-                        channels=tuple(reconstruction.playing_channels),
-                        enabled=True,
-                        selected=0 in self._selected_stems,
-                    ),
-                ),
+        assigned_stem_ids = {stem_id for stem_ids in stems_data.assignments_by_channel.values() for stem_id in stem_ids}
+        rows = tuple(
+            StemViewModel(
+                stem_id=entry.id,
+                label=source_paths[index].name,
+                channels=tuple(entry.channels),
+                enabled=entry.id in assigned_stem_ids,
+                selected=entry.id in self._selected_stems,
             )
-
+            for index, entry in enumerate(stems_data.config.entries)
+        )
         return ReconstructionStemsViewModel(
             reconstruction_loaded=True,
-            stems=(),
+            stems=rows,
+            hierarchy_mode=stems_data.config.hierarchy.mode,
+            channel_cap=stems_data.config.channel_cap,
         )
 
     def request_export_instrument_dialog(
@@ -594,7 +571,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         """
         reconstruction_file = self._build_file_path_view_model(reconstruction_data.filepath)
         original_audio = self._build_audio_path_view_model(
-            reconstruction_data.reconstruction.source_paths,
+            reconstruction_data.reconstruction.audio_filepath,
             reconstruction_data.original_audio,
         )
         return reconstruction_file, original_audio

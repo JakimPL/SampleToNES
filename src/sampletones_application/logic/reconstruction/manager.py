@@ -220,4 +220,4 @@ class ReconstructionManager(CallbackMixin):
         if self._current_reconstruction is None:
             return ()
 
-        return self._current_reconstruction.reconstruction.source_paths
+        return self._current_reconstruction.reconstruction.audio_filepath

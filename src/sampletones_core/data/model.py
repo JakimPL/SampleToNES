@@ -139,12 +139,6 @@ class DataModel(BaseModel, ABC):
 
                 return self._pack_value(value, optional_inner, field_name)
 
-            if isinstance(value, Path):
-                return str(value)
-
-            if isinstance(value, tuple):
-                return [str(path) for path in value]
-
             return self._pack_union(value)
 
         if isinstance(annotation, TypeVar):
@@ -152,6 +146,17 @@ class DataModel(BaseModel, ABC):
 
         if get_origin(annotation) is list:
             return self._pack_list(value, field_name)
+
+        if get_origin(annotation) is tuple:
+            item_class = get_args(annotation)[0]
+            return [
+                self._pack_value(
+                    item,
+                    item_class,
+                    field_name,
+                )
+                for item in value
+            ]
 
         if issubclass(annotation, DataModel):
             return value.serialize_inner()
@@ -196,12 +201,6 @@ class DataModel(BaseModel, ABC):
                     fast,
                 )
 
-            if isinstance(raw, list):
-                return tuple(Path(item) for item in raw)
-
-            if isinstance(raw, str):
-                return Path(raw)
-
             return cls._unpack_union(raw)
 
         if isinstance(annotation, TypeVar):
@@ -216,6 +215,10 @@ class DataModel(BaseModel, ABC):
                 validation,
                 fast,
             )
+
+        if get_origin(annotation) is tuple:
+            item_class = get_args(annotation)[0]
+            return tuple(cls._unpack_value(item, item_class, field_name, validation, fast) for item in raw)
 
         if issubclass(annotation, DataModel):
             return annotation.deserialize_inner(raw, validation, fast=fast)

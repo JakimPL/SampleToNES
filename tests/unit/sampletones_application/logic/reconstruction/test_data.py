@@ -63,7 +63,7 @@ class TestFromReconstruction:
             name="Sample",
         )
 
-        assert reconstruction.audio_filepath is None
+        assert reconstruction.audio_filepath == ()
         assert data.original_audio is None
 
     def test_loads_original_audio_when_source_file_is_available(
@@ -77,7 +77,7 @@ class TestFromReconstruction:
             Config().library.sample_rate,
             np.ones(64, dtype=np.float32) * 0.5,
         )
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
+        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (source_audio,)})
 
         data = ReconstructionData.from_reconstruction(
             reconstruction,
@@ -217,8 +217,8 @@ class TestDetachedCopy:
 
         copy = data.detached_copy(tmp_path / "lead.stn")
 
-        assert reconstruction.audio_filepath is not None
-        assert copy.name == reconstruction.audio_filepath.stem
+        assert reconstruction.audio_filepath
+        assert copy.name == reconstruction.audio_filepath[0].stem
 
     def test_names_after_the_shared_directory_of_stems(
         self,
@@ -235,20 +235,18 @@ class TestDetachedCopy:
 
         assert copy.name == "drums"
 
-    def test_names_after_the_file_when_stems_share_no_directory(
+    def test_names_after_the_first_source_when_stems_share_no_directory(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
     ) -> None:
-        (tmp_path / "one").mkdir()
-        (tmp_path / "two").mkdir()
-        stems = (tmp_path / "one" / "kick.wav", tmp_path / "two" / "snare.wav")
+        stems = (Path("/one/kick.wav"), Path("/two/snare.wav"))
         reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": stems})
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         copy = data.detached_copy(tmp_path / "lead.stn")
 
-        assert copy.name == "lead"
+        assert copy.name == "kick"
 
     def test_reuses_the_already_loaded_original_audio(
         self,
@@ -261,7 +259,7 @@ class TestDetachedCopy:
             Config().library.sample_rate,
             np.ones(64, dtype=np.float32) * 0.5,
         )
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
+        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (source_audio,)})
         data = ReconstructionData.from_reconstruction(
             reconstruction,
             name="Sample",
@@ -374,7 +372,7 @@ class TestStemFilteredProjections:
     ) -> None:
         source_audio = tmp_path / "source.wav"
         write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
+        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (source_audio,)})
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 

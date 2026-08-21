@@ -44,6 +44,7 @@ from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.song import Song
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures import IdentifiedCollection
+from tests.suite.stems import single_entry_stems_data
 
 RECONSTRUCTION_LENGTH: Final[int] = 4
 ROWS_PER_PATTERN: Final[int] = 8
@@ -70,7 +71,8 @@ def build_reconstruction(
         instructions=instructions,
         config=Config(),
         coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
+        audio_filepath=(Path("/dev/null"),),
+        stems_data=single_entry_stems_data(list(Config().generation.channels), instructions),
     )
 
 

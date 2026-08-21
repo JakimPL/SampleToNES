@@ -20,6 +20,7 @@ from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
+from tests.suite.stems import single_entry_stems_data
 
 
 def make_controller() -> ProjectController:
@@ -66,7 +67,11 @@ def make_pulse_reconstruction(
         instructions={ChannelName.PULSE1: instructions},
         config=Config(),
         coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
+        audio_filepath=(Path("/dev/null"),),
+        stems_data=single_entry_stems_data(
+            list(Config().generation.channels),
+            {ChannelName.PULSE1: instructions},
+        ),
     )
     if held_features:
         reconstruction.update_channel_data(
@@ -92,7 +97,11 @@ def make_triangle_reconstruction(
         instructions={ChannelName.TRIANGLE: instructions},
         config=Config(),
         coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
+        audio_filepath=(Path("/dev/null"),),
+        stems_data=single_entry_stems_data(
+            list(Config().generation.channels),
+            {ChannelName.TRIANGLE: instructions},
+        ),
     )
 
 
@@ -109,7 +118,11 @@ def make_noise_reconstruction(
         instructions={ChannelName.NOISE: instructions},
         config=Config(),
         coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
+        audio_filepath=(Path("/dev/null"),),
+        stems_data=single_entry_stems_data(
+            list(Config().generation.channels),
+            {ChannelName.NOISE: instructions},
+        ),
     )
 
 

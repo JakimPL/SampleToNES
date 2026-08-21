@@ -37,8 +37,8 @@ from sampletones_core.utils.display import (
 )
 from sampletones_shared.constants.general import HEXADECIMAL_BASE
 from sampletones_shared.constants.symbols import MINUS, MIXED, PLUS
+from tests.suite.stems import single_entry_stems_data
 
-SAMPLE_LENGTH: Final[int] = 64
 SAMPLE_PITCH: Final[int] = 60
 SAMPLE_VOLUME: Final[int] = 8
 SAMPLE_PERIOD: Final[int] = 4
@@ -57,17 +57,21 @@ def sample_reconstruction(channels: Sequence[ChannelName]) -> Reconstruction:
 
     Each channel carries the instruction its own channel sounds, since the instruction type is
     what names the exporter a channel is read through — so a reading taken off this reconstruction
-    is the reading the channel gives.
+    is the reading the channel gives. The audio spans one frame per instruction, which keeps the
+    stems record the reconstruction carries parallel to the stored waveforms.
     """
+    config = Config()
+    length = config.library.frame_length
     instructions = {channel: [_instruction(channel)] for channel in channels}
-    approximations = {channel: np.zeros(SAMPLE_LENGTH, dtype=np.float32) for channel in channels}
+    approximations = {channel: np.zeros(length, dtype=np.float32) for channel in channels}
     return Reconstruction.create(
-        approximation=np.zeros(SAMPLE_LENGTH, dtype=np.float32),
+        approximation=np.zeros(length, dtype=np.float32),
         approximations=approximations,
         instructions=instructions,
-        config=Config(),
+        config=config,
         coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
+        audio_filepath=(Path("/dev/null"),),
+        stems_data=single_entry_stems_data(list(config.generation.channels), instructions),
     )
 
 

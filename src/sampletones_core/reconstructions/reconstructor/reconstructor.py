@@ -5,7 +5,9 @@ import numpy as np
 
 from sampletones_core.audio import active_frame_level, load_audio, mix
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
+from sampletones_core.constants.algorithm import (
+    MINIMUM_AUDIO_LEVEL,
+)
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import FragmentedAudio, Window
 from sampletones_core.generators import (
@@ -103,8 +105,10 @@ class Reconstructor:
     def __call__(self, path: Pathlike) -> Optional[Reconstruction]:
         """Reconstructs an audio file into a :class:`Reconstruction`.
 
-        Loads and normalizes the audio, frames it, matches every frame against the
-        library, and assembles the chosen instructions into a reconstruction.
+        The classic run is the stems pipeline's single-stem case: one stem covering
+        every enabled channel on one precedence level, with the cap at the channel
+        count. The cap equals the channel count, so the greedy baseline plays
+        unchanged.
 
         Args:
             path: Path to the audio file to reconstruct.
@@ -115,17 +119,8 @@ class Reconstructor:
         Raises:
             TypeError: If ``path`` is not a string or ``Path``.
         """
-        if not isinstance(path, (str, Path)):
-            raise TypeError("Input must be a path to an audio file")
-
-        path = to_path(path)
-        audio = self.load_audio(path)
-        self.reset_generators()
-        self.state = ReconstructionState.create(list(self.channels.keys()))
-        coefficient = self.get_coefficient(audio)
-        fragmented_audio = self.get_fragments(audio / coefficient)
-        self.reconstruct(fragmented_audio)
-        return Reconstruction.from_state(self.state, self.config, coefficient, path)
+        stems_config = StemsConfig.single_entry(list(self.config.generation.channels))
+        return self.reconstruct_stems([path], stems_config)
 
     def reconstruct_stems(
         self,

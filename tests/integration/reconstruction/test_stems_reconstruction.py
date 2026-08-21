@@ -7,6 +7,7 @@ import pytest
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_core.audio import load_audio, mix, write_wave
 from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import DEFAULT_STEMS_CHANNEL_CAP
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -139,7 +140,7 @@ class TestThreeStemHierarchy:
 
         loaded = Reconstruction.load(save_path)
 
-        assert loaded.source_paths == paths
+        assert loaded.audio_filepath == paths
         assert loaded.stems_data is not None
         assert loaded.stems_data.config == stems_config
         assert loaded.stems_data.assignments_by_channel == reconstruction.stems_data.assignments_by_channel
@@ -256,7 +257,7 @@ class TestStemsOriginalAudio:
 
         data = ReconstructionData.load(save_path)
 
-        assert data.reconstruction.source_paths == (tone_path, noise_path)
+        assert data.reconstruction.audio_filepath == (tone_path, noise_path)
         assert data.name == tmp_path.name
         load_options = {
             "target_sample_rate": config.library.sample_rate,
@@ -271,3 +272,53 @@ class TestStemsOriginalAudio:
         )
         assert data.original_audio is not None
         np.testing.assert_allclose(data.original_audio, expected)
+
+
+class TestClassicRunCarriesTheSingleEntryRecord:
+    """The classic single-file run is the stems pipeline's one-stem case."""
+
+    def _tone_path(self, tmp_path: Path, config: Config) -> Path:
+        sample_rate = config.library.sample_rate
+        count = int(sample_rate * _DURATION_SECONDS)
+        time = np.arange(count) / sample_rate
+        tone = 0.5 * np.sin(2 * np.pi * _TONE_FREQUENCY * time)
+        tone_path = tmp_path / "tone.wav"
+        write_wave(tone_path, sample_rate, tone)
+        return tone_path
+
+    def test_classic_conversion_records_one_stem_over_every_enabled_channel(self, tmp_path: Path) -> None:
+        config = Config()
+        library = build_mini_library(config)
+        reconstructor = Reconstructor(config, library=library)
+        tone_path = self._tone_path(tmp_path, config)
+
+        reconstruction = reconstructor(tone_path)
+
+        assert reconstruction is not None
+        assert reconstruction.audio_filepath == (tone_path,)
+        stems_data = reconstruction.stems_data
+        assert stems_data.config.entries[0].id == 0
+        assert stems_data.config.entries[0].channels == list(config.generation.channels)
+        assert stems_data.config.channel_cap == DEFAULT_STEMS_CHANNEL_CAP
+        for channel, stem_ids in stems_data.assignments_by_channel.items():
+            assert set(stem_ids) <= {0}
+            assert len(stem_ids) == len(reconstruction.instructions[channel])
+
+    def test_a_cap_of_one_leaves_every_frame_to_one_channel(self, tmp_path: Path) -> None:
+        config = Config()
+        library = build_mini_library(config)
+        reconstructor = Reconstructor(config, library=library)
+        tone_path = self._tone_path(tmp_path, config)
+
+        reconstruction = reconstructor.reconstruct_stems(
+            [tone_path],
+            StemsConfig.single_entry(list(config.generation.channels), channel_cap=1),
+        )
+
+        assert reconstruction is not None
+        stems_data = reconstruction.stems_data
+        frame_count = int(config.library.sample_rate * _DURATION_SECONDS) // config.library.frame_length
+        assert sum(len(stem_ids) for stem_ids in stems_data.assignments_by_channel.values()) == frame_count
+        for stem_ids in stems_data.assignments_by_channel.values():
+            assert set(stem_ids) <= {0}
+            assert len(stem_ids) <= frame_count

@@ -12,6 +12,7 @@ from sampletones_core.exporters import Features, PulseExporter
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.application import synchronous_executor, synchronous_queue
+from tests.suite.stems import single_entry_stems_data
 
 __all__ = ["synchronous_executor", "synchronous_queue"]
 
@@ -49,7 +50,11 @@ def minimal_reconstruction(default_config, pulse_instructions) -> Reconstruction
         instructions={ChannelName.PULSE1: pulse_instructions},
         config=default_config,
         coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
+        audio_filepath=(Path("/dev/null"),),
+        stems_data=single_entry_stems_data(
+            list(default_config.generation.channels),
+            {ChannelName.PULSE1: pulse_instructions},
+        ),
     )
 
 

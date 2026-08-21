@@ -65,7 +65,8 @@ MAX_DRIVE: Final[float] = 5.0
 
 # Stems assignment
 
-DEFAULT_STEMS_CHANNEL_CAP: Final[int] = len(ChannelName)
+ALL_STEMS_CHANNEL_CAP: Final[int] = len(ChannelName)
+DEFAULT_STEMS_CHANNEL_CAP: Final[int] = ALL_STEMS_CHANNEL_CAP
 DEFAULT_STEMS_HIERARCHY_MODE: Final[HierarchyMode] = HierarchyMode.ROUND_ROBIN
 
 # Execution

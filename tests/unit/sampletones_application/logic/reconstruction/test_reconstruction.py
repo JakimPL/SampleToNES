@@ -128,7 +128,7 @@ def data_with_original_audio(
         Config().library.sample_rate,
         np.ones(64, dtype=np.float32) * 0.5,
     )
-    reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
+    reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (source_audio,)})
     return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
 

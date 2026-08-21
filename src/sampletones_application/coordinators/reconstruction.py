@@ -291,7 +291,7 @@ class ReconstructionCoordinator:
             raise RuntimeError("No reconstruction is loaded after loading process")
 
         self._audio_device_manager.stop()
-        missing_path = first_missing(reconstruction_data.reconstruction.source_paths)
+        missing_path = first_missing(reconstruction_data.reconstruction.audio_filepath)
         if missing_path is not None:
             self._dialogs.show_file_not_found(
                 missing_path,

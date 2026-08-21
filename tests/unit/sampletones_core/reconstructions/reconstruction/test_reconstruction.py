@@ -6,6 +6,7 @@ from unittest.mock import patch
 import msgpack
 import numpy as np
 import pytest
+from pydantic import ValidationError
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, FeatureKey, HierarchyMode
@@ -38,6 +39,7 @@ from tests.suite.arrays import assert_array_equal
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import DIRECTORY_READ_ERRORS
+from tests.suite.stems import single_entry_stems_data
 
 _RETUNED_FREQUENCY: Final[int] = DEFAULT_NES_FREQUENCY // 2
 _FASTER_FREQUENCY: Final[int] = DEFAULT_NES_FREQUENCY * 2
@@ -60,7 +62,11 @@ def _reconstruction(instructions: List[PulseInstruction]) -> Reconstruction:
         instructions={ChannelName.PULSE1: instructions},
         config=Config(),
         coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
+        audio_filepath=(Path("/dev/null"),),
+        stems_data=single_entry_stems_data(
+            list(Config().generation.channels),
+            {ChannelName.PULSE1: instructions},
+        ),
     )
 
 
@@ -100,7 +106,7 @@ class TestStemsDataRoundTrip:
             instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH), _pulse(_BASE_PITCH)]},
             config=Config(),
             coefficient=1.0,
-            audio_filepath=Path("/dev/null"),
+            audio_filepath=(Path("/dev/null"),),
             stems_data=stems_data,
         )
         path = tmp_path / "stems.stn"
@@ -110,18 +116,21 @@ class TestStemsDataRoundTrip:
 
         assert loaded.stems_data == stems_data
 
-    def test_load_without_stems_data_keeps_none(self, tmp_path: Path) -> None:
-        path = tmp_path / "plain.stn"
-        _reconstruction([_pulse(_BASE_PITCH)]).save(path)
-
-        loaded = Reconstruction.load(path)
-
-        assert loaded.stems_data is None
-
     def test_audio_filepath_tuple_survives_save_and_load(self, tmp_path: Path) -> None:
         stem_paths = (
             Path("/dev/null/stem_a.wav"),
             Path("/dev/null/stem_b.wav"),
+        )
+        stems_data = StemsData(
+            config=StemsConfig(
+                entries=[
+                    StemEntry(id=0, channels=[ChannelName.PULSE1]),
+                    StemEntry(id=1, channels=[ChannelName.PULSE1]),
+                ],
+                hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
+                channel_cap=1,
+            ),
+            assignments=[],
         )
         reconstruction = Reconstruction.create(
             approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
@@ -130,6 +139,7 @@ class TestStemsDataRoundTrip:
             config=Config(),
             coefficient=1.0,
             audio_filepath=stem_paths,
+            stems_data=stems_data,
         )
         path = tmp_path / "stems_paths.stn"
         reconstruction.save(path)
@@ -138,17 +148,46 @@ class TestStemsDataRoundTrip:
 
         assert loaded.audio_filepath == stem_paths
 
+    def test_paths_numbering_the_entries_is_enforced(self) -> None:
+        stems_data = StemsData.single_entry(
+            [ChannelName.PULSE1],
+            [ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
+            channel_cap=1,
+        )
+
+        with pytest.raises(ValidationError, match="one per stems entry"):
+            Reconstruction.create(
+                approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
+                approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
+                instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH)]},
+                config=Config(),
+                coefficient=1.0,
+                audio_filepath=(Path("/dev/null/a.wav"), Path("/dev/null/b.wav")),
+                stems_data=stems_data,
+            )
+
 
 class TestSourcePaths:
     def test_single_source_yields_one_path(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
 
-        assert reconstruction.source_paths == (Path("/dev/null"),)
+        assert reconstruction.audio_filepath == (Path("/dev/null"),)
 
     def test_stem_sources_yield_the_recorded_tuple(self) -> None:
         stem_paths = (
             Path("/dev/null/stem_a.wav"),
             Path("/dev/null/stem_b.wav"),
+        )
+        stems_data = StemsData(
+            config=StemsConfig(
+                entries=[
+                    StemEntry(id=0, channels=[ChannelName.PULSE1]),
+                    StemEntry(id=1, channels=[ChannelName.PULSE1]),
+                ],
+                hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
+                channel_cap=1,
+            ),
+            assignments=[],
         )
         reconstruction = Reconstruction.create(
             approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
@@ -157,17 +196,18 @@ class TestSourcePaths:
             config=Config(),
             coefficient=1.0,
             audio_filepath=stem_paths,
+            stems_data=stems_data,
         )
 
-        assert reconstruction.source_paths == stem_paths
+        assert reconstruction.audio_filepath == stem_paths
 
     def test_detaching_empties_the_source_paths(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
-        assert reconstruction.source_paths == (Path("/dev/null"),)
+        assert reconstruction.audio_filepath == (Path("/dev/null"),)
 
         reconstruction.detach_source()
 
-        assert reconstruction.source_paths == ()
+        assert reconstruction.audio_filepath == ()
 
 
 class TestRoundTrip:
@@ -187,7 +227,7 @@ class TestRoundTrip:
         assert loaded.audio_filepath == reconstruction.audio_filepath
         assert_array_equal(loaded.approximation, reconstruction.approximation)
 
-    def test_detached_source_round_trips_as_none(
+    def test_detached_source_round_trips_as_empty(
         self,
         tmp_path: Path,
         reconstruction_factory: ReconstructionFactory,
@@ -199,7 +239,7 @@ class TestRoundTrip:
         reconstruction.save(path)
         loaded = Reconstruction.load(path)
 
-        assert loaded.audio_filepath is None
+        assert loaded.audio_filepath == ()
 
 
 class TestDetachSource:
@@ -208,11 +248,11 @@ class TestDetachSource:
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
         reconstruction = reconstruction_factory()
-        assert reconstruction.audio_filepath is not None
+        assert reconstruction.audio_filepath
 
         reconstruction.detach_source()
 
-        assert reconstruction.audio_filepath is None
+        assert reconstruction.audio_filepath == ()
 
 
 class TestLoadRejectsForeignFiles:
@@ -332,6 +372,45 @@ class TestVersionUpgradeOnLoad:
         assert loaded.metadata.reconstruction_data_version == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
         assert loaded.config.metadata.reconstruction_data_version == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
         assert set(loaded.approximations) == set(reconstruction.approximations)
+        assert loaded.audio_filepath == reconstruction.audio_filepath
+        assert loaded.stems_data == reconstruction.stems_data
+
+    def test_a_2_1_file_without_stems_record_gains_the_single_entry_record(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        path = tmp_path / "old_plain.stn"
+        reconstruction.save(path)
+
+        binary = path.read_bytes()
+        data = msgpack.unpackb(binary, raw=False)
+        data["metadata"]["reconstruction_data_version"] = "2.1"
+        data.pop("stems_data")
+        data["audio_filepath"] = str(reconstruction.audio_filepath[0])
+        for item in data["approximations_data"]:
+            item["generator_name"] = item.pop("channel_name")
+
+        for item in data["instructions_data"]:
+            item["generator_name"] = item.pop("channel_name")
+
+        generation = data["config"]["generation"]
+        generation["generators"] = generation.pop("channels")
+        config_metadata = data["config"].get("metadata")
+        if isinstance(config_metadata, dict):
+            config_metadata["reconstruction_data_version"] = "2.1"
+
+        path.write_bytes(msgpack.packb(data, use_bin_type=True))
+
+        loaded = Reconstruction.load(path)
+
+        stems_data = loaded.stems_data
+        assert stems_data.config.entries[0].id == 0
+        assert stems_data.config.entries[0].channels == list(loaded.config.generation.channels)
+        assert loaded.audio_filepath == reconstruction.audio_filepath
+        for channel, stem_ids in stems_data.assignments_by_channel.items():
+            assert len(stem_ids) == len(loaded.instructions[channel])
 
 
 class TestDeserializeDataWrapping(BaseTestSuite):

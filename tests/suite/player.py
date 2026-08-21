@@ -27,6 +27,7 @@ from sampletones_player.specification.registers import (
     TRIANGLE_SOUNDING_RELOAD,
 )
 from sampletones_shared.utils.frequencies import pitch_to_frequency
+from tests.suite.stems import single_entry_stems_data
 
 PLAYER_REFERENCE_TIMER: Final[int] = 0x154
 PLAYER_OCTAVE_UP_TIMER: Final[int] = PLAYER_REFERENCE_TIMER // 2
@@ -142,11 +143,13 @@ def player_reconstruction(
     The audio itself is silent, since what a player test reads off a reconstruction is the
     instructions its channels carry and the rate they advance at.
     """
+    config = Config().with_library(nes_frequency=nes_frequency)
     return Reconstruction.create(
         approximation=np.zeros(PLAYER_APPROXIMATION_SAMPLES, dtype=np.float32),
         approximations={},
         instructions=instructions,
-        config=Config().with_library(nes_frequency=nes_frequency),
+        config=config,
         coefficient=1.0,
-        audio_filepath=Path(os.devnull),
+        audio_filepath=(Path(os.devnull),),
+        stems_data=single_entry_stems_data(list(config.generation.channels), instructions),
     )
