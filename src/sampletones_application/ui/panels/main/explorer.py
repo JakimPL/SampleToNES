@@ -24,6 +24,7 @@ from sampletones_application.ui.elements.tree.spec import NodeSpec
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tags import FileBrowserTags
 from sampletones_application.ui.elements.tree.tree import NO_EXPANDED_ROWS
+from sampletones_application.utils.gui.keyboard.modifiers import Modifier, capture_modifiers
 from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_core.structures.tree import (
     FileSystemNode,
@@ -93,6 +94,7 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
 
         self.on_wave_file_clicked: Optional[PathCallback] = None
         self.on_directory_clicked: Optional[PathCallback] = None
+        self.on_directory_add_requested: Optional[PathCallback] = None
         self.on_reconstruct_directory: Optional[PathCallback] = None
         self.on_reconstruct_file: Optional[PathCallback] = None
         self.on_load_reconstruction: Optional[PathCallback] = None
@@ -331,8 +333,13 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         node: FileSystemNode,
         node_tag: str,
     ) -> None:
+        """Answers a click on a folder: Ctrl offers its recordings, a plain click opens it."""
         has_content = self._explorer_logic.has_relevant_content(node.filepath)
         if not has_content:
+            return
+
+        if Modifier.CTRL in capture_modifiers():
+            self.call(self.on_directory_add_requested, node.filepath)
             return
 
         self._toggle_directory_expansion(node, node_tag)

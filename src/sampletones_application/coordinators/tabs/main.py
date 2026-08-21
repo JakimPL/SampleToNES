@@ -32,6 +32,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
     TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
     TAG_MAIN_CONVERTER_DIALOG_CANCEL,
+    TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS,
     TAG_MAIN_CONVERTER_DIALOG_LOAD,
     TAG_MAIN_CONVERTER_PANEL,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
@@ -42,6 +43,7 @@ from sampletones_application.tags.main import (
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.layout.responsive import expanded_side_width
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSelectionWindow
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter import GUIConverterPanel
@@ -62,6 +64,7 @@ from sampletones_application.view_model.main.reconstructor import (
 )
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.reconstructions.converter import top_level_audio_files
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
@@ -106,6 +109,7 @@ class MainTabCoordinator:
         on_cancelled: VoidCallback,
         on_refresh_trees: VoidCallback,
         on_generate_library: VoidCallback,
+        stem_selection_window: GUIStemSelectionWindow,
     ) -> None:
         self._language_manager = language_manager
         self._config_manager = config_manager
@@ -118,6 +122,7 @@ class MainTabCoordinator:
         self._on_busy_state_changed = on_busy_state_changed
         self._on_refresh_trees = on_refresh_trees
         self._dialogs = dialogs
+        self._stem_selection_window = stem_selection_window
 
         self._geometry = layout.geometry
         self._side_panel_count: int
@@ -222,6 +227,7 @@ class MainTabCoordinator:
         self._explorer_panel.set_callbacks(
             on_wave_file_clicked=self._on_wave_file_clicked,
             on_directory_clicked=self._on_directory_clicked,
+            on_directory_add_requested=self._on_directory_add_requested,
             on_reconstruct_file=self._request_reconstruct_file,
             on_reconstruct_directory=self._request_reconstruct_directory,
             on_load_reconstruction=on_load_reconstruction,
@@ -254,6 +260,13 @@ class MainTabCoordinator:
 
         self._converter_panel.on_convert_requested = self._converter_logic.start_conversion
         self._converter_panel.on_cancel_requested = self._request_cancel_confirmation
+        self._converter_panel.on_stems_mode_changed = self._request_stems_mode
+        self._converter_panel.on_channel_cap_changed = self._converter_logic.set_channel_cap
+        self._converter_panel.on_hierarchy_mode_changed = self._converter_logic.set_hierarchy_mode
+        self._converter_panel.on_source_channels_changed = self._converter_logic.set_source_channels
+        self._converter_panel.on_source_level_changed = self._converter_logic.set_source_level
+        self._converter_panel.on_source_removed = self._converter_logic.remove_source
+        self._stem_selection_window.on_add = self._converter_logic.add_sources
 
     def _repaint_explorer_favorites(self, node: FileSystemNode) -> None:
         """Repaints the row whose star was toggled: the explorer mirrors the disk, so a path is one row."""
@@ -320,6 +333,46 @@ class MainTabCoordinator:
             path=path,
             on_cancel=self._converter_logic.close,
         )
+
+    def _request_stems_mode(self, stems_mode: bool) -> None:
+        """Answers the stems-mode switch, asking first where leaving it would drop recordings.
+
+        Turning stems mode off keeps the first recording, so a list of several loses the rest;
+        that is what the prompt confirms. Every other switch takes effect straight away.
+        """
+        if stems_mode or self._converter_logic.source_count <= 1:
+            self._converter_logic.set_stems_mode(stems_mode)
+            return
+
+        self._dialogs.show_confirmation(
+            TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS,
+            self._language_manager["main.converter.message.discard_stems_prompt"],
+            self._language_manager["main.converter.title.discard_stems_dialog"],
+            lambda: self._converter_logic.set_stems_mode(False),
+            ok_label=self._language_manager["main.converter.label.discard_stems_button"],
+            cancel_label=self._language_manager["main.converter.label.keep_stems_button"],
+            on_cancel=self._converter_logic.refresh_view,
+        )
+
+    def _on_directory_add_requested(self, directory_path: Path) -> None:
+        """Offers a folder's recordings to a stems conversion, asking which ones where they overflow.
+
+        Where the folder holds no more than the list has room for, every recording joins at once.
+        A fuller folder raises the selection window, which shows what fits already ticked.
+        """
+        if self._is_operation_active() or not self._converter_logic.stems_mode:
+            return
+
+        candidates = top_level_audio_files(directory_path)
+        if not candidates:
+            return
+
+        room = self._converter_logic.room_for_sources
+        if len(candidates) <= room:
+            self._converter_logic.add_sources(candidates)
+            return
+
+        self._stem_selection_window.open(candidates, room)
 
     def _request_cancel_confirmation(self) -> None:
         self._dialogs.show_confirmation(

@@ -8,6 +8,7 @@ from .paths.utils import (
     get_output_path,
     get_relative_path,
     group_output_path,
+    top_level_audio_files,
 )
 from .plan import ConversionPlan, DirectoryConversion, GroupConversion
 
@@ -24,4 +25,5 @@ __all__ = [
     "get_relative_path",
     "group_output_path",
     "reconstruct_job",
+    "top_level_audio_files",
 ]

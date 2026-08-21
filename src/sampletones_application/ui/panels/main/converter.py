@@ -1,27 +1,48 @@
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any, Callable, Dict, FrozenSet, List, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.conversion import DEFAULT_STEM_LEVEL, MIN_CHANNEL_CAP
 from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.tabs.main.converter import ConverterLayout
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
+    SUF_BUTTON,
+    SUF_CHANNELS,
+    SUF_CHECKBOX,
+    SUF_GROUP,
+    SUF_INPUT,
+    SUF_TEXT,
     TAG_GLOBAL_THEME_DANGER_BUTTON,
     TAG_GLOBAL_THEME_PANEL_EMPHASIS,
     TAG_GLOBAL_THEME_PRIMARY_BUTTON,
 )
 from sampletones_application.tags.main import (
+    PRE_MAIN_CONVERTER_STEM,
     TAG_MAIN_CONVERTER_BUTTON_ACTION,
+    TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE,
+    TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
     TAG_MAIN_CONVERTER_GROUP,
+    TAG_MAIN_CONVERTER_GROUP_CONTROLS,
     TAG_MAIN_CONVERTER_GROUP_CONVERT,
+    TAG_MAIN_CONVERTER_GROUP_STEMS,
     TAG_MAIN_CONVERTER_GROUP_SUMMARY,
+    TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP,
     TAG_MAIN_CONVERTER_PANEL,
     TAG_MAIN_CONVERTER_PATH_INPUT_PATH,
     TAG_MAIN_CONVERTER_PROGRESS,
     TAG_MAIN_CONVERTER_TEXT_OUTPUT_PATH,
     TAG_MAIN_CONVERTER_TEXT_STATUS,
+    TAG_MAIN_CONVERTER_TEXT_STEMS_HINT,
     TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT,
+    TAG_MAIN_CONVERTER_TOOLTIP_CHANNEL_CAP,
     TAG_MAIN_CONVERTER_TOOLTIP_CONVERT,
+    TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE,
+    TAG_MAIN_CONVERTER_TOOLTIP_STEMS_MODE,
+    TAG_MAIN_CONVERTER_WINDOW_STEMS,
     TAG_MAIN_CONVERTER_WINDOW_SUMMARY,
 )
 from sampletones_application.ui.elements.button import GUIButton
@@ -34,6 +55,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
+    dpg_delete_item,
     dpg_set_item_callback,
     dpg_set_value,
 )
@@ -41,8 +63,11 @@ from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
 from sampletones_application.view_model.main.converter import (
     ConverterAction,
     ConverterViewModel,
+    StemSourceRow,
 )
-from sampletones_shared.types.callback import VoidCallback
+from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import PathCallback, VoidCallback
 
 
 class GUIConverterPanel(GUIPanel):
@@ -65,6 +90,12 @@ class GUIConverterPanel(GUIPanel):
 
         self.on_convert_requested: Optional[VoidCallback] = None
         self.on_cancel_requested: Optional[VoidCallback] = None
+        self.on_stems_mode_changed: Optional[Callable[[bool], None]] = None
+        self.on_channel_cap_changed: Optional[Callable[[int], None]] = None
+        self.on_hierarchy_mode_changed: Optional[Callable[[HierarchyMode], None]] = None
+        self.on_source_channels_changed: Optional[Callable[[Path, FrozenSet[ChannelName]], None]] = None
+        self.on_source_level_changed: Optional[Callable[[Path, int], None]] = None
+        self.on_source_removed: Optional[PathCallback] = None
 
         self._layout = layout
         self._path_colors = path_colors
@@ -72,6 +103,12 @@ class GUIConverterPanel(GUIPanel):
         self._msg_destination = language_manager["global.status.message.destination"]
         self._msg_status_convert = language_manager["main.converter.message.status_convert"]
         self._status_action_message = self._msg_status_convert
+        self._hierarchy_labels: Dict[HierarchyMode, str] = {
+            HierarchyMode.ROUND_ROBIN: language_manager["main.converter.label.hierarchy_round_robin"],
+            HierarchyMode.STRICT: language_manager["main.converter.label.hierarchy_strict"],
+        }
+        self._hierarchy_modes: List[HierarchyMode] = list(self._hierarchy_labels)
+        self._stem_rows: List[Path] = []
 
         super().__init__(
             tag=TAG_MAIN_CONVERTER_PANEL,
@@ -89,6 +126,8 @@ class GUIConverterPanel(GUIPanel):
         ):
             self._create_action_button()
             dpg.add_separator()
+            self._create_controls()
+            self._create_stems_list()
             self._create_summary()
             self._create_conversion_status()
 
@@ -100,6 +139,7 @@ class GUIConverterPanel(GUIPanel):
         self._update_status(view_model)
         self._update_paths(view_model)
         self._update_controls(view_model)
+        self._update_setup(view_model)
 
     def _update_visibility(self, view_model: ConverterViewModel) -> None:
         dpg.configure_item(TAG_MAIN_CONVERTER_GROUP, show=view_model.subpanel_visible)
@@ -140,6 +180,229 @@ class GUIConverterPanel(GUIPanel):
         dpg_configure_item(
             TAG_MAIN_CONVERTER_TOOLTIP_CONVERT,
             show=view_model.other_operation_active and view_model.primary_action == ConverterAction.CONVERT,
+        )
+
+    def _create_controls(self) -> None:
+        """The row of choices every conversion carries: stems mode, the cap, and the picking order."""
+        with dpg.group(horizontal=True, tag=TAG_MAIN_CONVERTER_GROUP_CONTROLS):
+            dpg.add_checkbox(
+                label=self._language_manager["main.converter.label.stems_mode"],
+                tag=TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE,
+                callback=self._on_stems_mode_toggled,
+            )
+            dpg.add_input_int(
+                label=self._language_manager["main.converter.label.channel_cap"],
+                tag=TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP,
+                width=self._layout.cap_input_width,
+                min_value=MIN_CHANNEL_CAP,
+                min_clamped=True,
+                max_clamped=True,
+                step=1,
+                step_fast=1,
+                callback=self._on_channel_cap_changed,
+            )
+
+        with dpg.group(horizontal=True):
+            dpg.add_combo(
+                items=list(self._hierarchy_labels.values()),
+                label=self._language_manager["main.converter.label.hierarchy_mode"],
+                tag=TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
+                width=self._layout.hierarchy_combo_width,
+                default_value=self._hierarchy_labels[HierarchyMode.ROUND_ROBIN],
+                callback=self._on_hierarchy_mode_changed,
+            )
+
+        self._attach_control_tooltips()
+        self._status_bar.bind_to_item(
+            TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE,
+            self._language_manager["main.converter.message.status_stems_mode"],
+        )
+
+    def _attach_control_tooltips(self) -> None:
+        for tag, message, tooltip_tag in (
+            (
+                TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE,
+                self._language_manager["main.converter.message.stems_mode_tooltip"],
+                TAG_MAIN_CONVERTER_TOOLTIP_STEMS_MODE,
+            ),
+            (
+                TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP,
+                self._language_manager["main.converter.message.channel_cap_tooltip"],
+                TAG_MAIN_CONVERTER_TOOLTIP_CHANNEL_CAP,
+            ),
+            (
+                TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
+                self._language_manager["main.converter.message.hierarchy_mode_tooltip"],
+                TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE,
+            ),
+        ):
+            with dpg.tooltip(tag, tag=tooltip_tag):
+                dpg.add_text(message)
+
+    def _create_stems_list(self) -> None:
+        """The recordings gathered so far, one row each, scrolling when the list outgrows its space."""
+        with dpg.child_window(
+            tag=TAG_MAIN_CONVERTER_WINDOW_STEMS,
+            width=-1,
+            height=self._layout.stems_list_height,
+            border=False,
+            show=False,
+        ):
+            hint = dpg.add_text(
+                self._language_manager["main.converter.message.stems_empty_hint"],
+                tag=TAG_MAIN_CONVERTER_TEXT_STEMS_HINT,
+                wrap=0,
+            )
+            FontRegistry.bind_to_item(hint, Font.REGULAR_SMALL)
+            dpg.add_group(tag=TAG_MAIN_CONVERTER_GROUP_STEMS)
+
+    def _update_setup(self, view_model: ConverterViewModel) -> None:
+        dpg_set_value(TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE, view_model.stems_mode)
+        dpg_configure_item(
+            TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP,
+            max_value=view_model.max_channel_cap,
+            enabled=not view_model.is_active,
+        )
+        dpg_set_value(TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP, view_model.channel_cap)
+        dpg_set_value(
+            TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
+            self._hierarchy_labels[view_model.hierarchy_mode],
+        )
+        dpg_configure_item(TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE, show=view_model.stems_mode)
+        dpg_configure_item(TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE, enabled=not view_model.is_active)
+        self._update_stems_list(view_model)
+
+    def _update_stems_list(self, view_model: ConverterViewModel) -> None:
+        dpg_configure_item(
+            TAG_MAIN_CONVERTER_WINDOW_STEMS,
+            show=view_model.stems_mode and not view_model.subpanel_visible,
+        )
+        dpg_configure_item(
+            TAG_MAIN_CONVERTER_TEXT_STEMS_HINT,
+            show=view_model.source_count == 0,
+        )
+        self._sync_stem_rows(view_model)
+        for row in view_model.stem_sources:
+            self._render_stem_row(row, view_model)
+
+        self.set_expanded_height(self._card_height(view_model))
+
+    def _card_height(self, view_model: ConverterViewModel) -> int:
+        """The room the card takes: its own, plus the list's where the list is on show."""
+        if view_model.stems_mode and not view_model.subpanel_visible:
+            return self._layout.height + self._layout.stems_list_height
+
+        return self._layout.height
+
+    def _sync_stem_rows(self, view_model: ConverterViewModel) -> None:
+        """Rebuilds the rows when the recordings change, keeps them otherwise."""
+        listed = [row.path for row in view_model.stem_sources]
+        if listed == self._stem_rows:
+            return
+
+        for path in self._stem_rows:
+            dpg_delete_item(self._row_tag(path, SUF_GROUP))
+
+        self._stem_rows = listed
+        for row in view_model.stem_sources:
+            self._create_stem_row(row, view_model)
+
+    def _create_stem_row(self, row: StemSourceRow, view_model: ConverterViewModel) -> None:
+        with dpg.group(
+            horizontal=True,
+            tag=self._row_tag(row.path, SUF_GROUP),
+            parent=TAG_MAIN_CONVERTER_GROUP_STEMS,
+        ):
+            name = dpg.add_text(row.name, tag=self._row_tag(row.path, SUF_TEXT))
+            FontRegistry.bind_to_item(name, Font.REGULAR_SMALL)
+            with dpg.tooltip(name):
+                dpg.add_text(str(row.path))
+
+            for channel_name in ChannelName.items():
+                dpg.add_checkbox(
+                    label=channel_label(self._language_manager, channel_name),
+                    tag=self._channel_tag(row.path, channel_name),
+                    show=channel_name in view_model.enabled_channels,
+                    default_value=channel_name in row.channels,
+                    user_data=row.path,
+                    callback=self._on_source_channels_changed,
+                )
+
+            dpg.add_input_int(
+                label=self._language_manager["main.converter.label.stem_level"],
+                tag=self._row_tag(row.path, SUF_INPUT),
+                width=self._layout.level_input_width,
+                min_value=DEFAULT_STEM_LEVEL,
+                min_clamped=True,
+                step=1,
+                step_fast=1,
+                default_value=row.level,
+                user_data=row.path,
+                callback=self._on_source_level_changed,
+            )
+            remove = dpg.add_button(
+                label=self._language_manager["main.converter.label.stem_remove"],
+                tag=self._row_tag(row.path, SUF_BUTTON),
+                width=self._layout.remove_button_width,
+                user_data=row.path,
+                callback=self._on_source_removed,
+            )
+            self._status_bar.bind_to_item(
+                remove,
+                self._language_manager["main.converter.message.status_stem_remove"],
+            )
+
+    def _render_stem_row(self, row: StemSourceRow, view_model: ConverterViewModel) -> None:
+        for channel_name in ChannelName.items():
+            tag = self._channel_tag(row.path, channel_name)
+            dpg_configure_item(
+                tag,
+                show=channel_name in view_model.enabled_channels,
+                enabled=not view_model.is_active,
+            )
+            dpg_set_value(tag, channel_name in row.channels)
+
+        dpg_set_value(self._row_tag(row.path, SUF_INPUT), row.level)
+        dpg_configure_item(self._row_tag(row.path, SUF_INPUT), enabled=not view_model.is_active)
+        dpg_configure_item(self._row_tag(row.path, SUF_BUTTON), enabled=not view_model.is_active)
+
+    def _on_stems_mode_toggled(self, _sender: Sender, value: bool) -> None:
+        self.call(self.on_stems_mode_changed, value)
+
+    def _on_channel_cap_changed(self, _sender: Sender, value: int) -> None:
+        self.call(self.on_channel_cap_changed, value)
+
+    def _on_hierarchy_mode_changed(self, _sender: Sender, value: str) -> None:
+        for hierarchy_mode, label in self._hierarchy_labels.items():
+            if label == value:
+                self.call(self.on_hierarchy_mode_changed, hierarchy_mode)
+                return
+
+    def _on_source_channels_changed(self, _sender: Sender, _value: bool, user_data: Path) -> None:
+        channels = frozenset(
+            channel_name
+            for channel_name in ChannelName.items()
+            if dpg.get_value(self._channel_tag(user_data, channel_name))
+        )
+        self.call(self.on_source_channels_changed, user_data, channels)
+
+    def _on_source_level_changed(self, _sender: Sender, value: int, user_data: Path) -> None:
+        self.call(self.on_source_level_changed, user_data, value)
+
+    def _on_source_removed(self, _sender: Sender, _app_data: Any, user_data: Path) -> None:
+        self.call(self.on_source_removed, user_data)
+
+    @staticmethod
+    def _row_tag(path: Path, suffix: str) -> str:
+        return compose_tag(PRE_MAIN_CONVERTER_STEM, str(path), suffix)
+
+    @classmethod
+    def _channel_tag(cls, path: Path, channel_name: ChannelName) -> str:
+        return compose_tag(
+            PRE_MAIN_CONVERTER_STEM,
+            str(path),
+            SUF_CHANNELS,
+            compose_tag(channel_name, SUF_CHECKBOX),
         )
 
     def _create_action_button(self) -> None:

@@ -12,6 +12,9 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.tags.general import SUF_BUTTON, SUF_GROUP, SUF_INPUT
+from sampletones_application.tags.main import TAG_MAIN_CONVERTER_WINDOW_STEMS
+from sampletones_application.ui.panels.main.converter import GUIConverterPanel
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
@@ -399,3 +402,54 @@ class TestTabKeys:
     def test_the_key_answers_while_a_field_is_edited(self, app: Application, tab: Tab) -> None:
         """Naming a tab reaches it the way stepping to the next one does, typing included."""
         assert app._shortcut_source.shortcut(TAB_SHORTCUT_IDS[tab]).field_transparent
+
+
+class TestConverterStemsCard:
+    """Gathering recordings paints the converter card: a row each, carrying what the reader set."""
+
+    def _gather(self, app: Application, tmp_path: Path, names: List[str]) -> List[Path]:
+        paths = []
+        for name in names:
+            path = tmp_path / name
+            path.touch()
+            paths.append(path)
+
+        converter_logic = app._main_tab._converter_logic
+        converter_logic.set_stems_mode(True)
+        converter_logic.add_sources(paths)
+        return paths
+
+    def test_a_row_is_built_for_every_recording(self, app: Application, tmp_path: Path) -> None:
+        paths = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+
+        for path in paths:
+            assert dpg.does_item_exist(GUIConverterPanel._row_tag(path, SUF_GROUP))
+            assert dpg.does_item_exist(GUIConverterPanel._row_tag(path, SUF_INPUT))
+            assert dpg.does_item_exist(GUIConverterPanel._row_tag(path, SUF_BUTTON))
+
+    def test_a_rows_level_and_channels_show_what_was_set(self, app: Application, tmp_path: Path) -> None:
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+        converter_logic = app._main_tab._converter_logic
+
+        converter_logic.set_source_level(path, 3)
+        converter_logic.set_source_channels(path, frozenset({ChannelName.NOISE}))
+
+        assert dpg.get_value(GUIConverterPanel._row_tag(path, SUF_INPUT)) == 3
+        assert dpg.get_value(GUIConverterPanel._channel_tag(path, ChannelName.NOISE)) is True
+        assert dpg.get_value(GUIConverterPanel._channel_tag(path, ChannelName.PULSE1)) is False
+
+    def test_removing_a_recording_takes_its_row_with_it(self, app: Application, tmp_path: Path) -> None:
+        first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+
+        app._main_tab._converter_logic.remove_source(first)
+
+        assert not dpg.does_item_exist(GUIConverterPanel._row_tag(first, SUF_GROUP))
+        assert dpg.does_item_exist(GUIConverterPanel._row_tag(second, SUF_GROUP))
+
+    def test_leaving_stems_mode_hides_the_list(self, app: Application, tmp_path: Path) -> None:
+        self._gather(app, tmp_path, ["a.wav"])
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is True
+
+        app._main_tab._converter_logic.set_stems_mode(False)
+
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is False

@@ -1,5 +1,6 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key.tag import TagName
+from sampletones_application.tags.compose import compose_tag
 
 TAG_MAIN_CONFIG_PANEL_CONFIG_CELL = TagName(
     Page.MAIN,
@@ -249,3 +250,109 @@ TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT = TagName(
 )
 
 PRE_MAIN_RECONSTRUCTOR_CHANNEL = "channel"
+TAG_MAIN_CONVERTER_GROUP_CONTROLS = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.GROUP,
+    "controls",
+)
+TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.CHECKBOX,
+    "stems_mode",
+)
+TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.INPUT,
+    "channel_cap",
+)
+TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.COMBO,
+    "hierarchy_mode",
+)
+TAG_MAIN_CONVERTER_TOOLTIP_STEMS_MODE = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TOOLTIP,
+    "stems_mode",
+)
+TAG_MAIN_CONVERTER_TOOLTIP_CHANNEL_CAP = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TOOLTIP,
+    "channel_cap",
+)
+TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TOOLTIP,
+    "hierarchy_mode",
+)
+TAG_MAIN_CONVERTER_WINDOW_STEMS = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.WINDOW,
+    "stems",
+)
+TAG_MAIN_CONVERTER_GROUP_STEMS = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.GROUP,
+    "stems",
+)
+TAG_MAIN_CONVERTER_TEXT_STEMS_HINT = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TEXT,
+    "stems_hint",
+)
+TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.DIALOG,
+    "discard_stems",
+)
+TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.WINDOW,
+    "stem_selection",
+)
+PRE_MAIN_CONVERTER_STEM = compose_tag(
+    Page.MAIN,
+    Panel.CONVERTER,
+    "stem",
+)
+TAG_MAIN_CONVERTER_TEXT_STEM_SELECTION_LIMIT = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TEXT,
+    "stem_selection_limit",
+)
+TAG_MAIN_CONVERTER_GROUP_STEM_SELECTION = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.GROUP,
+    "stem_selection",
+)
+TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.BUTTON,
+    "add_stems",
+)
+TAG_MAIN_CONVERTER_BUTTON_CANCEL_STEMS = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.BUTTON,
+    "cancel_stems",
+)
+PRE_MAIN_CONVERTER_CANDIDATE = compose_tag(
+    Page.MAIN,
+    Panel.CONVERTER,
+    "candidate",
+)

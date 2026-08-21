@@ -75,6 +75,21 @@ def get_audio_files(
     return audio_files
 
 
+def top_level_audio_files(
+    input_directory: Path,
+    extensions: Tuple[str, ...] = EXT_FILES_AUDIO,
+) -> List[Path]:
+    """The audio files sitting directly in a directory, in name order.
+
+    Where a batch reaches every recording below a folder, gathering the sources of one
+    reconstruction stays with the folder a reader pointed at, so what it offers is what that
+    folder itself holds.
+    """
+    audio_files = [path for path in input_directory.iterdir() if path.is_file() and path.suffix.lower() in extensions]
+    audio_files.sort()
+    return audio_files
+
+
 def filter_files(
     audio_files: List[Path],
     base_directory: Path,

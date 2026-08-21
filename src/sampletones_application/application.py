@@ -107,6 +107,7 @@ from sampletones_application.ui.panels.dialogs.project_properties import (
     GUIProjectPropertiesWindow,
 )
 from sampletones_application.ui.panels.dialogs.render import GUIRenderWindow
+from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSelectionWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.callbacks.queue import CallbackQueue
@@ -287,6 +288,16 @@ class Application:
             key_router=self.key_router,
             shortcut_source=self._shortcut_source,
         )
+        self.stem_selection_window: GUIStemSelectionWindow = GUIStemSelectionWindow(
+            layout=self.layout.tabs.main.converter.stem_selection,
+            title=self.language_manager["main.converter.title.stem_selection_dialog"],
+            message=self.language_manager["main.converter.message.stem_selection_prompt"],
+            limit_template=self.language_manager["main.converter.template.stem_selection_limit"],
+            add_label=self.language_manager["main.converter.label.add_stems_button"],
+            cancel_label=self.language_manager["global.dialog.label.cancel"],
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+        )
         self.render_window: GUIRenderWindow = GUIRenderWindow(
             layout=self.layout.settings,
             path_colors=self.layout.general.colors.paths,
@@ -439,6 +450,7 @@ class Application:
             on_cancelled=self._refresh_reconstruction_trees,
             on_refresh_trees=self._refresh_reconstruction_trees,
             on_generate_library=self._instructions_tab.ensure_library_loaded,
+            stem_selection_window=self.stem_selection_window,
         )
 
         self._sequencer_tab = SequencerTabCoordinator(

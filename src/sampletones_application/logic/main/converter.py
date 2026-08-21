@@ -127,6 +127,21 @@ class ConverterLogic(CallbackMixin):
         self.is_library_available: Optional[Callable[[], bool]] = None
 
     @property
+    def stems_mode(self) -> bool:
+        """Several recordings are being gathered into one reconstruction."""
+        return self._stems_mode
+
+    @property
+    def source_count(self) -> int:
+        """How many recordings the stems list holds."""
+        return len(self._sources)
+
+    @property
+    def room_for_sources(self) -> int:
+        """How many more recordings the stems list has room for."""
+        return MAX_STEM_SOURCES - self.source_count
+
+    @property
     def is_active(self) -> bool:
         """A conversion is occupying resources from the moment of request (the WAITING phase, during
         which the library is prepared and the run is scheduled) until it reaches a terminal phase."""
@@ -467,9 +482,12 @@ class ConverterLogic(CallbackMixin):
 
     def _compose_action_label(self, input_path: Optional[Path]) -> str:
         """The label the single action button shows: the cancel label while a conversion holds
-        resources, otherwise the convert label named after the selected input."""
+        resources, otherwise the convert label named after what it would convert."""
         if self._phase in ACTIVE_PHASES:
             return self._language_manager["main.converter.label.cancel_button"]
+
+        if self._stems_mode:
+            return self._compose_stems_action_label()
 
         base = (
             self._language_manager["main.converter.label.convert_sample_button"]
@@ -480,6 +498,17 @@ class ConverterLogic(CallbackMixin):
             return base
 
         return self._language_manager["main.converter.template.convert_label_template"].format(base, input_path.name)
+
+    def _compose_stems_action_label(self) -> str:
+        """The stems label, named after how many recordings are gathered."""
+        base = self._language_manager["main.converter.label.convert_stems_button"]
+        if not self._sources:
+            return base
+
+        return self._language_manager["main.converter.template.convert_label_template"].format(
+            base,
+            len(self._sources),
+        )
 
     def _emit_view_model(
         self,

@@ -1,3 +1,11 @@
 width: -1
 height: 180
 button_height: 45
+stems_list_height: 150
+cap_input_width: 60
+hierarchy_combo_width: 120
+level_input_width: 60
+remove_button_width: 24
+stem_selection:
+  width: 420
+  height: 360
