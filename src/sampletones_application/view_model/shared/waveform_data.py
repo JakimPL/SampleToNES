@@ -18,7 +18,8 @@ class WaveformData:
         """Sums the selected generators' approximations, silent when none apply.
 
         The approximation sets the length, so the silent result matches the waveform even when
-        no original audio is present.
+        no original audio is present. Each selected approximation pads to that length before
+        the sum, so a channel that ends early leaves the tail in silence.
         """
         if not channel_names:
             return np.zeros_like(self.approximation)
@@ -30,5 +31,10 @@ class WaveformData:
         if not selected_approximations:
             return np.zeros_like(self.approximation)
 
-        partials: np.ndarray = np.sum(selected_approximations, axis=0)
-        return partials
+        length = len(self.approximation)
+        dtype: np.dtype = np.result_type(*[audio.dtype for audio in selected_approximations])
+        summed = np.zeros(length, dtype=dtype)
+        for audio in selected_approximations:
+            summed[: len(audio)] += audio  # does audio.mixing applies here? if no, remove the comment; otherwises apply
+
+        return summed

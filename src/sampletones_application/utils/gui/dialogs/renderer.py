@@ -9,11 +9,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
-    SUF_BUTTON_CANCEL,
     SUF_BUTTON_OK,
-    SUF_BUTTON_SAVE,
-    SUF_BUTTON_SHOW_TRACEBACK,
-    SUF_CHECKBOX,
     SUF_DIALOG_INFO,
     SUF_GROUP,
     SUF_PATH,
@@ -30,17 +26,22 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.elements.trace import GUITraceback
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.align import center_when_settled, table_wrapper
+from sampletones_application.utils.gui.align import center_when_settled
 from sampletones_application.utils.gui.dialog_navigation import (
     DialogKeyboardNavigator,
     FocusStop,
 )
-from sampletones_application.utils.gui.dpg import (
-    dpg_configure_item,
-    dpg_delete_item,
+from sampletones_application.utils.gui.dialogs.windows.confirmation import (
+    GUIConfirmationWindow,
 )
+from sampletones_application.utils.gui.dialogs.windows.error import (
+    GUIErrorDialogWindow,
+)
+from sampletones_application.utils.gui.dialogs.windows.save_confirmation import (
+    GUISaveConfirmationWindow,
+)
+from sampletones_application.utils.gui.dpg import dpg_delete_item
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
@@ -165,7 +166,7 @@ class DialogsRenderer:
         self._msg_path = language_manager["global.status.message.path"]
         self._lbl_ok = language_manager["global.dialog.label.ok"]
         self._lbl_cancel = language_manager["global.dialog.label.cancel"]
-        self._lbl_traceback_show = language_manager["global.traceback.label.show"]
+        self._lbl_save = language_manager["global.dialog.label.save"]
 
     def show_modal(
         self,
@@ -322,98 +323,21 @@ class DialogsRenderer:
             if trailing:
                 dpg.add_text(trailing, parent=group_tag)
 
-    # TODO: refactor
     def show_error(
         self,
         exception: Exception,
         message: Optional[str] = None,
     ) -> None:
-        tag = get_dialog_tag(TAG_GLOBAL_DIALOG_ERROR)
-        show_button_tag = compose_tag(tag, SUF_BUTTON_SHOW_TRACEBACK)
-        ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
-        navigator: Optional[DialogKeyboardNavigator] = None
-
-        def close() -> None:
-            if navigator is not None:
-                navigator.dispose()
-
-            dpg_delete_item(tag)
-
-        with dpg.window(
-            label=self._language_manager["global.dialog.title.error"],
-            tag=tag,
-            modal=True,
-            min_size=(self._error_width, self._error_height),
-            autosize=True,
-            no_scrollbar=False,
-            on_close=close,
-        ):
-            _bind_dialog_theme(tag)
-            if message is not None:
-                dpg.add_text(message, parent=tag, wrap=self._error_wrap)
-
-            group_tag = compose_tag(tag, SUF_GROUP)
-            with dpg.group(tag=group_tag, parent=tag):
-                name_text = dpg.add_text(
-                    f"{type(exception).__name__!s}: ",
-                    parent=group_tag,
-                )
-                dpg_set_palette_color(name_text, self._col_text_error)
-                message_text = dpg.add_text(
-                    str(exception),
-                    parent=group_tag,
-                    wrap=self._error_wrap,
-                )
-                dpg_set_palette_color(message_text, self._col_text_error)
-
-            traceback = GUITraceback(
-                parent=tag,
-                exception=exception,
-                language_manager=self._language_manager,
-            )
-
-            dpg.add_separator()
-
-            def toggle_traceback() -> None:
-                traceback.toggle_visibility()
-                dpg_configure_item(
-                    show_button_tag,
-                    label=(
-                        self._lbl_traceback_show
-                        if not traceback.visible
-                        else self._language_manager["global.traceback.label.hide"]
-                    ),
-                )
-
-            @table_wrapper(columns=2)
-            def content(_: None) -> None:
-                GUIButton(
-                    tag=show_button_tag,
-                    label=self._lbl_traceback_show,
-                    width=-1,
-                    callback=toggle_traceback,
-                )
-                GUIButton(
-                    tag=ok_button_tag,
-                    label=self._lbl_ok,
-                    callback=close,
-                    width=-1,
-                )
-
-            content(None)
-
-        navigator = _install_navigation(
-            window_tag=tag,
-            stops=[
-                FocusStop.button(show_button_tag, toggle_traceback),
-                FocusStop.button(ok_button_tag, close),
-            ],
-            on_escape=close,
+        GUIErrorDialogWindow(
+            tag=get_dialog_tag(TAG_GLOBAL_DIALOG_ERROR),
+            width=self._error_width,
+            height=self._error_height,
+            wrap=self._error_wrap,
+            language_manager=self._language_manager,
+            error_color=self._col_text_error,
             key_router=self._router,
             shortcut_source=self._shortcuts,
-            initial_index=1,
-        )
-        center_when_settled(tag)
+        ).show(exception, message)
 
     def show_file_not_found(self, filepath: Path, message: str) -> None:
         tag = get_dialog_tag(TAG_GLOBAL_DIALOG_FILE_NOT_FOUND)
@@ -438,7 +362,6 @@ class DialogsRenderer:
             height=self._default_height,
         )
 
-    # TODO: refactor
     def show_confirmation(
         self,
         tag: str,
@@ -462,102 +385,29 @@ class DialogsRenderer:
         When ``opt_out_label`` is given, a checkbox is shown; if it is ticked when the user
         confirms, ``on_opt_out`` runs as well — letting the caller suppress future prompts.
         """
-        tag = get_dialog_tag(tag)
-        opt_out_tag = compose_tag(tag, SUF_CHECKBOX)
-        cancel_label = cancel_label if cancel_label is not None else self._lbl_cancel
-        ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
-        cancel_button_tag = compose_tag(tag, SUF_BUTTON_CANCEL)
-        navigator: Optional[DialogKeyboardNavigator] = None
-
-        def disable() -> None:
-            dpg_configure_item(ok_button_tag, enabled=False)
-            dpg_configure_item(cancel_button_tag, enabled=False)
-
-        def close() -> None:
-            if navigator is not None:
-                navigator.dispose()
-
-            dpg_delete_item(tag)
-
-        def _on_confirm() -> None:
-            disable()
-            if opt_out_label is not None and on_opt_out is not None and dpg.get_value(opt_out_tag):
-                on_opt_out()
-
-            on_confirm()
-            close()
-
-        def _on_cancel() -> None:
-            disable()
-            if on_cancel is not None:
-                on_cancel()
-
-            close()
-
-        def content(parent: str) -> None:
-            dpg.add_text(message, parent=parent, wrap=self._default_wrap)
-
-            if path is not None:
-                GUIPathText(
-                    tag=compose_tag(tag, SUF_PATH),
-                    path=path,
-                    parent=parent,
-                    color=self._col_path,
-                    hover_color=self._col_path_hover,
-                    status_message=self._msg_path,
-                    use_filename_only=True,
-                    status_bar=self._status_bar,
-                )
-
-            if opt_out_label is not None:
-                dpg.add_checkbox(
-                    label=opt_out_label,
-                    tag=opt_out_tag,
-                    parent=parent,
-                )
-
-            @table_wrapper(columns=2)
-            def buttons(_: None) -> None:
-                GUIButton(
-                    tag=ok_button_tag,
-                    label=ok_label,
-                    callback=_on_confirm,
-                    width=-1,
-                )
-                GUIButton(
-                    tag=cancel_button_tag,
-                    label=cancel_label,
-                    callback=_on_cancel,
-                    width=-1,
-                )
-
-            buttons(None)
-
-        with dpg.window(
-            label=title,
-            tag=tag,
-            modal=True,
-            min_size=(self._default_width, self._confirmation_height),
-            no_resize=True,
-            on_close=_on_cancel,
-        ):
-            _bind_dialog_theme(tag)
-            content(tag)
-
-        navigator = _install_navigation(
-            window_tag=tag,
-            stops=[
-                FocusStop.button(ok_button_tag, _on_confirm),
-                FocusStop.button(cancel_button_tag, _on_cancel),
-            ],
-            on_escape=_on_cancel,
+        GUIConfirmationWindow(
+            tag=get_dialog_tag(tag),
+            width=self._default_width,
+            height=self._confirmation_height,
+            wrap=self._default_wrap,
+            path_color=self._col_path,
+            path_hover_color=self._col_path_hover,
+            path_message=self._msg_path,
+            status_bar=self._status_bar,
             key_router=self._router,
             shortcut_source=self._shortcuts,
-            initial_index=1,
+        ).show(
+            message,
+            title,
+            on_confirm,
+            ok_label=ok_label,
+            cancel_label=cancel_label if cancel_label is not None else self._lbl_cancel,
+            path=path,
+            opt_out_label=opt_out_label,
+            on_opt_out=on_opt_out,
+            on_cancel=on_cancel,
         )
-        center_when_settled(tag)
 
-    # TODO: refactor
     def show_save_confirmation(
         self,
         tag: str,
@@ -575,90 +425,22 @@ class DialogsRenderer:
         prompt open for another attempt. The middle button discards the pending changes and runs
         ``on_confirm`` to proceed, and Cancel — the initially focused button — dismisses the prompt.
         """
-        tag = get_dialog_tag(tag)
-        save_button_tag = compose_tag(tag, SUF_BUTTON_SAVE)
-        ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
-        cancel_button_tag = compose_tag(tag, SUF_BUTTON_CANCEL)
-        navigator: Optional[DialogKeyboardNavigator] = None
-
-        def disable() -> None:
-            dpg_configure_item(save_button_tag, enabled=False)
-            dpg_configure_item(ok_button_tag, enabled=False)
-            dpg_configure_item(cancel_button_tag, enabled=False)
-
-        def close() -> None:
-            if navigator is not None:
-                navigator.dispose()
-
-            dpg_delete_item(tag)
-
-        def _on_save() -> None:
-            if not on_save():
-                return
-
-            disable()
-            on_confirm()
-            close()
-
-        def _on_confirm() -> None:
-            disable()
-            on_confirm()
-            close()
-
-        def _on_cancel() -> None:
-            disable()
-            close()
-
-        def content(parent: str) -> None:
-            dpg.add_text(message, parent=parent, wrap=self._default_wrap)
-
-            @table_wrapper(columns=3)
-            def buttons(_: None) -> None:
-                GUIButton(
-                    tag=save_button_tag,
-                    label=self._language_manager["global.dialog.label.save"],
-                    callback=_on_save,
-                    width=-1,
-                )
-                GUIButton(
-                    tag=ok_button_tag,
-                    label=ok_label,
-                    callback=_on_confirm,
-                    width=-1,
-                )
-                GUIButton(
-                    tag=cancel_button_tag,
-                    label=self._lbl_cancel,
-                    callback=_on_cancel,
-                    width=-1,
-                )
-
-            buttons(None)
-
-        with dpg.window(
-            label=title,
-            tag=tag,
-            modal=True,
-            min_size=(self._default_width, self._confirmation_height),
-            no_resize=True,
-            on_close=close,
-        ):
-            _bind_dialog_theme(tag)
-            content(tag)
-
-        navigator = _install_navigation(
-            window_tag=tag,
-            stops=[
-                FocusStop.button(save_button_tag, _on_save),
-                FocusStop.button(ok_button_tag, _on_confirm),
-                FocusStop.button(cancel_button_tag, _on_cancel),
-            ],
-            on_escape=_on_cancel,
+        GUISaveConfirmationWindow(
+            tag=get_dialog_tag(tag),
+            width=self._default_width,
+            height=self._confirmation_height,
+            wrap=self._default_wrap,
+            save_label=self._lbl_save,
+            cancel_label=self._lbl_cancel,
             key_router=self._router,
             shortcut_source=self._shortcuts,
-            initial_index=2,
+        ).show(
+            message,
+            title,
+            on_save,
+            on_confirm,
+            ok_label=ok_label,
         )
-        center_when_settled(tag)
 
     def show_reconstruction_not_loaded(self) -> None:
         tag = get_dialog_tag(TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED)

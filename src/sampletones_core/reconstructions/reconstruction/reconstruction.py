@@ -14,12 +14,11 @@ from typing import (
     Self,
     Sequence,
     Tuple,
-    Union,
 )
 from uuid import uuid4
 
 import numpy as np
-from pydantic import ConfigDict, Field, ValidationError, field_serializer
+from pydantic import ConfigDict, Field, ValidationError, field_serializer, model_validator
 
 from sampletones_core.audio.mixing import align, common_length, mix
 from sampletones_core.compatibility.kind import ObjectKind
@@ -52,7 +51,6 @@ from sampletones_shared.types.callback import Callback
 from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_binary, serialize_array
-from sampletones_shared.utils.system.paths import to_paths
 
 RECONSTRUCTION_DATA_CONTRACT: Final[MetadataContract] = MetadataContract(
     label="Reconstruction data",
@@ -72,11 +70,11 @@ class Reconstruction(DataModel):
         ...,
         description="Unique identifier for the reconstruction",
     )
-    audio_filepath: Optional[Union[Path, Tuple[Path, ...]]] = Field(
+    audio_filepath: Tuple[Path, ...] = Field(
         ...,
         description=(
-            "Location of the source audio: one path for a single source, the stem paths "
-            "for a stems reconstruction, and None once detached from the local origin"
+            "Location of the source audio: one path per stems entry, in entry order, and "
+            "empty once detached from the local origin"
         ),
     )
     config: Config = Field(
@@ -96,19 +94,21 @@ class Reconstruction(DataModel):
         ...,
         description="Instructions per channel",
     )
-    stems_data: Optional[StemsData] = Field(
-        None,
-        description="Stems assignment recorded when built from several stems",
+    stems_data: StemsData = Field(
+        ...,
+        description="The stems setup and per-frame assignment recorded by the conversion",
     )
     coefficient: float = Field(
         ...,
         description="Normalization coefficient used during reconstruction",
     )
 
-    @cached_property
-    def source_paths(self) -> Tuple[Path, ...]:
-        """The recorded source audio paths, empty while the reconstruction is detached."""
-        return to_paths(self.audio_filepath)
+    @model_validator(mode="after")
+    def _validate_source_stem_parallel(self) -> Self:
+        if self.audio_filepath and len(self.audio_filepath) != len(self.stems_data.config.entries):
+            raise ValueError("The recorded source paths number one per stems entry")
+
+        return self
 
     @cached_property
     def approximations(self) -> Dict[ChannelName, np.ndarray]:
@@ -198,8 +198,8 @@ class Reconstruction(DataModel):
         instructions: Mapping[ChannelName, Sequence[InstructionUnion]],
         config: Config,
         coefficient: float,
-        audio_filepath: Union[Path, Tuple[Path, ...]],
-        stems_data: Optional[StemsData] = None,
+        audio_filepath: Tuple[Path, ...],
+        stems_data: StemsData,
     ) -> Self:
         approximation = np.nan_to_num(approximation, nan=0.0)
         approximations_data: List[ApproximationsItem] = [
@@ -244,14 +244,18 @@ class Reconstruction(DataModel):
         state: ReconstructionState,
         config: Config,
         coefficient: float,
-        path: Union[Path, Tuple[Path, ...]],
-        stems_data: Optional[StemsData] = None,
+        path: Tuple[Path, ...],
+        stems_data: StemsData,
     ) -> Optional[Self]:
-        if any(len(approximation) == 0 for approximation in state.approximations.values()):
+        if all(len(approximation) == 0 for approximation in state.approximations.values()):
             logger.warning(f"Reconstruction for file: {path} is empty")
             return None
 
-        approximations = {name: np.concatenate(state.approximations[name]) for name in state.approximations}
+        approximations = {
+            name: np.concatenate(state.approximations[name])
+            for name in state.approximations
+            if state.approximations[name]
+        }
         approximation = mix(list(approximations.values()))
 
         return cls.create(
@@ -281,7 +285,9 @@ class Reconstruction(DataModel):
 
         The channel keeps its place among the streams however the edit leaves it, so one
         cleared of every frame stands by and stays editable. Its rendered audio lasts as
-        long as it carries samples, which keeps silence out of the stored waveforms.
+        long as it carries samples, which keeps silence out of the stored waveforms. The
+        edited channel leaves the stems record: the edit re-derives the stream, so the
+        conversion's per-frame ownership no longer applies to it.
         """
         partial_approximation = np.trim_zeros(partial_approximation, trim="b")
         rendered = {name: audio for name, audio in self.approximations.items() if name != channel_name}
@@ -303,6 +309,10 @@ class Reconstruction(DataModel):
             held_features=held_features,
         )
         self.instructions_data = [streams[name] for name in ChannelName.items()]
+        self.stems_data = StemsData(
+            config=self.stems_data.config,
+            assignments=[item for item in self.stems_data.assignments if item.channel_name != channel_name],
+        )
         self._invalidate_derived_caches(self)
         self.approximation = mix([item.approximation for item in self.approximations_data])
 
@@ -316,12 +326,11 @@ class Reconstruction(DataModel):
         """Drops the local source-audio location so the reconstruction becomes self-contained.
 
         Embedding a reconstruction in a project makes it part of a shareable artifact, where an
-        absolute path to the author's machine carries no meaning. Clearing ``audio_filepath`` keeps
-        the reconstruction — its approximation and instructions — intact while removing the local
-        origin, so a saved project stays portable.
+        absolute path to the author's machine carries no meaning. Emptying ``audio_filepath``
+        keeps the reconstruction — its approximation and instructions — intact while removing the
+        local origin, so a saved project stays portable.
         """
-        self.audio_filepath = None
-        self.__dict__.pop("source_paths", None)
+        self.audio_filepath = ()
 
     def with_nes_frequency(self, nes_frequency: int) -> Reconstruction:
         """Returns a copy retuned to ``nes_frequency`` by re-rendering its audio.
@@ -490,13 +499,7 @@ class Reconstruction(DataModel):
     @field_serializer("audio_filepath")
     def _serialize_audio_filepath(
         self,
-        audio_filepath: Optional[Union[Path, Tuple[Path, ...]]],
+        audio_filepath: Tuple[Path, ...],
         _info: Any,
-    ) -> Optional[Union[str, List[str]]]:
-        if audio_filepath is None:
-            return None
-
-        if isinstance(audio_filepath, Path):
-            return str(audio_filepath)
-
+    ) -> List[str]:
         return [str(path) for path in audio_filepath]

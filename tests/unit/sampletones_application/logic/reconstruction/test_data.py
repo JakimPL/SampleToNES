@@ -7,7 +7,12 @@ from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_core.audio import load_audio, mix, write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 
 
 class TestFromReconstruction:
@@ -58,7 +63,7 @@ class TestFromReconstruction:
             name="Sample",
         )
 
-        assert reconstruction.audio_filepath is None
+        assert reconstruction.audio_filepath == ()
         assert data.original_audio is None
 
     def test_loads_original_audio_when_source_file_is_available(
@@ -72,7 +77,7 @@ class TestFromReconstruction:
             Config().library.sample_rate,
             np.ones(64, dtype=np.float32) * 0.5,
         )
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
+        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (source_audio,)})
 
         data = ReconstructionData.from_reconstruction(
             reconstruction,
@@ -212,8 +217,8 @@ class TestDetachedCopy:
 
         copy = data.detached_copy(tmp_path / "lead.stn")
 
-        assert reconstruction.audio_filepath is not None
-        assert copy.name == reconstruction.audio_filepath.stem
+        assert reconstruction.audio_filepath
+        assert copy.name == reconstruction.audio_filepath[0].stem
 
     def test_names_after_the_shared_directory_of_stems(
         self,
@@ -230,20 +235,18 @@ class TestDetachedCopy:
 
         assert copy.name == "drums"
 
-    def test_names_after_the_file_when_stems_share_no_directory(
+    def test_names_after_the_first_source_when_stems_share_no_directory(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
     ) -> None:
-        (tmp_path / "one").mkdir()
-        (tmp_path / "two").mkdir()
-        stems = (tmp_path / "one" / "kick.wav", tmp_path / "two" / "snare.wav")
+        stems = (Path("/one/kick.wav"), Path("/two/snare.wav"))
         reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": stems})
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         copy = data.detached_copy(tmp_path / "lead.stn")
 
-        assert copy.name == "lead"
+        assert copy.name == "kick"
 
     def test_reuses_the_already_loaded_original_audio(
         self,
@@ -256,7 +259,7 @@ class TestDetachedCopy:
             Config().library.sample_rate,
             np.ones(64, dtype=np.float32) * 0.5,
         )
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
+        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (source_audio,)})
         data = ReconstructionData.from_reconstruction(
             reconstruction,
             name="Sample",
@@ -264,8 +267,121 @@ class TestDetachedCopy:
 
         copy = data.detached_copy(tmp_path / "lead.stn")
 
+        assert copy.stem_audios is data.stem_audios
         assert data.original_audio is not None
-        assert copy.original_audio is data.original_audio
+        np.testing.assert_allclose(copy.original_audio, data.original_audio)
+
+
+class TestStemFilteredProjections:
+    def _stems_data(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> ReconstructionData:
+        config = Config()
+        frame_length = config.library.frame_length
+        length = 2 * frame_length
+        approximation = np.arange(length, dtype=np.float32)
+        stems_config = StemsConfig(
+            entries=[
+                StemEntry(id=0, channels=[ChannelName.PULSE1]),
+                StemEntry(id=1, channels=[ChannelName.PULSE1]),
+            ],
+        )
+        reconstruction = Reconstruction.create(
+            approximation=approximation,
+            approximations={ChannelName.PULSE1: approximation.copy()},
+            instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)] * 2},
+            config=config,
+            coefficient=1.0,
+            audio_filepath=(tmp_path / "a.wav", tmp_path / "b.wav"),
+            stems_data=StemsData(
+                config=stems_config,
+                assignments=[
+                    ChannelAssignment(
+                        channel_name=ChannelName.PULSE1,
+                        stem_ids=[0, 1],
+                    )
+                ],
+            ),
+        )
+        return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+    def test_partials_keep_only_the_selected_stems_frames(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        data = self._stems_data(reconstruction_factory, tmp_path)
+        frame_length = data.reconstruction.config.frame_length
+        expected = data.reconstruction.approximation.copy()
+        expected[frame_length:] = 0
+
+        partials = data.partials_for([ChannelName.PULSE1], frozenset({0}))
+
+        np.testing.assert_allclose(partials, expected)
+        np.testing.assert_allclose(
+            data.partials_for([ChannelName.PULSE1], frozenset({0, 1})),
+            data.reconstruction.approximation,
+        )
+
+    def test_original_mix_mixes_the_selected_recordings(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        first = tmp_path / "kick.wav"
+        second = tmp_path / "snare.wav"
+        write_wave(first, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        write_wave(second, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.25)
+        stems_config = StemsConfig(
+            entries=[
+                StemEntry(id=0, channels=[ChannelName.PULSE1]),
+                StemEntry(id=1, channels=[ChannelName.PULSE1]),
+            ],
+        )
+        reconstruction = reconstruction_factory().model_copy(
+            update={
+                "audio_filepath": (first, second),
+                "stems_data": StemsData(
+                    config=stems_config,
+                    assignments=[
+                        ChannelAssignment(
+                            channel_name=ChannelName.PULSE1,
+                            stem_ids=[0, 1],
+                        )
+                    ],
+                ),
+            }
+        )
+
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        np.testing.assert_allclose(data.original_mix_for(frozenset({0})), data.stem_audios[0])
+        assert data.original_audio is not None
+        np.testing.assert_allclose(data.original_mix_for(frozenset({0, 1})), data.original_audio)
+        np.testing.assert_array_equal(
+            data.original_mix_for(frozenset()),
+            np.zeros_like(data.reconstruction.approximation),
+        )
+
+    def test_a_single_source_with_no_selection_is_silence(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        source_audio = tmp_path / "source.wav"
+        write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (source_audio,)})
+
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        np.testing.assert_array_equal(
+            data.partials_for([ChannelName.PULSE1], frozenset()),
+            np.zeros_like(data.reconstruction.approximation),
+        )
+        assert data.original_audio is not None
+        np.testing.assert_allclose(data.original_mix_for(frozenset({0})), data.original_audio)
 
 
 class TestWaveformData:

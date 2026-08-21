@@ -36,6 +36,11 @@ class ReconstructionPanelElements(AbstractElement):
     LOCATE_AUDIO_FAILED = "locate_audio_failed"
     EXPORT_WAV_SUCCESS = "export_wav_success"
     EXPORT_WAV_FAILED = "export_wav_failed"
+    STEMS = "stems"
+    STEMS_EMPTY = "stems_empty"
+    STEMS_MODE_ROUND_ROBIN = "stems_mode_round_robin"
+    STEMS_MODE_STRICT = "stems_mode_strict"
+    STEMS_SETUP = "stems_setup"
 
 
 class ReconstructionsInstrumentsElements(AbstractElement):

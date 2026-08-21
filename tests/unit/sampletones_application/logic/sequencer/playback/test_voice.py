@@ -19,6 +19,7 @@ from sampletones_core.instructions import (
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.stems import single_entry_stems_data
 
 AUDIO_LENGTH: Final[int] = 64
 REFERENCE_PITCH: Final[int] = 60
@@ -37,13 +38,18 @@ def _reconstruction(
     held_features: Iterable[FeatureKey],
 ) -> Reconstruction:
     """A one-channel reconstruction whose instrument leaves ``held_features`` to the channel."""
+    instructions_list = list(instructions)
     reconstruction = Reconstruction.create(
         approximation=np.zeros(AUDIO_LENGTH, dtype=np.float32),
         approximations={channel_name: np.zeros(AUDIO_LENGTH, dtype=np.float32)},
-        instructions={channel_name: list(instructions)},
+        instructions={channel_name: instructions_list},
         config=Config(),
         coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
+        audio_filepath=(Path("/dev/null"),),
+        stems_data=single_entry_stems_data(
+            list(Config().generation.channels),
+            {channel_name: instructions_list},
+        ),
     )
     reconstruction.update_channel_data(
         channel_name,

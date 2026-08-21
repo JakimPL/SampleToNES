@@ -12,6 +12,10 @@ from sampletones_application.view_model.reconstruction.paths.state import (
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
+from sampletones_application.view_model.reconstruction.stems import (
+    ReconstructionStemsViewModel,
+)
+from sampletones_core.constants.enums import HierarchyMode
 
 
 @dataclass(frozen=True)
@@ -126,3 +130,30 @@ class TestReconstructionPathStateFromSourcePaths:
         paths = (Path("/a/one.wav"), Path("/b/two.wav"))
 
         assert ReconstructionPathState.from_source_paths(paths) is ReconstructionPathState.MULTIPLE
+
+
+class TestReconstructionStemsViewModel:
+    def test_the_setup_line_follows_the_stems_record(self) -> None:
+        stems = ReconstructionStemsViewModel(
+            reconstruction_loaded=True,
+            stems=(),
+            hierarchy_mode=HierarchyMode.STRICT,
+            channel_cap=2,
+        )
+
+        assert stems.show_setup_line
+        assert stems.channel_cap == 2
+
+    def test_the_empty_state_names_a_loaded_reconstruction_with_no_source(self) -> None:
+        loaded = ReconstructionStemsViewModel(
+            reconstruction_loaded=True,
+            stems=(),
+        )
+        closed = ReconstructionStemsViewModel(
+            reconstruction_loaded=False,
+            stems=(),
+        )
+
+        assert loaded.show_empty_state
+        assert not loaded.show_setup_line
+        assert not closed.show_empty_state

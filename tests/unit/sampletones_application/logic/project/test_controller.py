@@ -73,12 +73,12 @@ class TestSamples:
     ) -> None:
         controller = _controller()
         reconstruction = reconstruction_factory()
-        assert reconstruction.audio_filepath is not None
+        assert reconstruction.audio_filepath
 
         sample = controller.add_sample(reconstruction, name="lead")
 
         assert sample.reconstruction is reconstruction
-        assert sample.reconstruction.audio_filepath is None
+        assert sample.reconstruction.audio_filepath == ()
 
     def test_remove_sample_purges_row_references(
         self,
@@ -232,11 +232,11 @@ class TestSamples:
         controller = _controller()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         replacement = reconstruction_factory()
-        assert replacement.audio_filepath is not None
+        assert replacement.audio_filepath
 
         controller.replace_sample_reconstruction(sample.id, replacement)
 
-        assert replacement.audio_filepath is None
+        assert replacement.audio_filepath == ()
 
     def test_replace_sample_reconstruction_preserves_row_references(
         self,

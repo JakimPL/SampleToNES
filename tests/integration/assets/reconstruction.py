@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Final, FrozenSet, List
+from typing import Any, Dict, Final, FrozenSet, List, Tuple
 
 import numpy as np
 
@@ -7,7 +7,7 @@ from sampletones_core.audio import write_wave
 from sampletones_core.audio.processing import normalize
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.configs.generation import GenerationConfig
-from sampletones_core.constants.enums import ChannelName, SpectrumMethod
+from sampletones_core.constants.enums import ChannelName, HierarchyMode, SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.fft.features import get_feature_extractor
 from sampletones_core.generators import get_generators_by_channels
@@ -19,6 +19,9 @@ from sampletones_core.library import (
 )
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_yaml
 from tests.integration.assets.synth_config import SynthConfig
@@ -30,8 +33,72 @@ CHANNELS: Final[List[ChannelName]] = [
     ChannelName.NOISE,
 ]
 
+STEM_A_ID: Final[int] = 0
+STEM_B_ID: Final[int] = 1
+STEM_C_ID: Final[int] = 2
+THREE_STEM_CHANNELS: Final[List[ChannelName]] = [
+    ChannelName.PULSE1,
+    ChannelName.PULSE2,
+    ChannelName.TRIANGLE,
+    ChannelName.NOISE,
+]
+THREE_STEM_ENTRY_CHANNELS: Final[Dict[int, List[ChannelName]]] = {
+    STEM_A_ID: [ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE],
+    STEM_B_ID: [ChannelName.PULSE2, ChannelName.TRIANGLE],
+    STEM_C_ID: [ChannelName.PULSE1, ChannelName.NOISE],
+}
+STEM_RECORDING_DURATION_SECONDS: Final[float] = 0.5
 
-def build_mini_library(config: Config, *, per_generator: int = INSTRUCTIONS_PER_GENERATOR) -> InstructionLibrary:
+
+def three_stem_config() -> StemsConfig:
+    """Builds the three-stem setup the stems tests share.
+
+    Stems a (pulse 1, triangle, noise) and b (pulse 2, triangle) pick on the first
+    hierarchy level, stem c (pulse 1, noise) on the second.
+    """
+    return StemsConfig(
+        entries=[StemEntry(id=stem_id, channels=channels) for stem_id, channels in THREE_STEM_ENTRY_CHANNELS.items()],
+        hierarchy=StemsHierarchy(
+            levels=[[STEM_A_ID, STEM_B_ID], [STEM_C_ID]],
+            mode=HierarchyMode.STRICT,
+        ),
+        channel_cap=1,
+    )
+
+
+def three_stem_reconstruction_config() -> Config:
+    """Builds a reconstruction config with both pulses enabled for the three-stem example."""
+    return Config(generation=GenerationConfig(channels=THREE_STEM_CHANNELS))
+
+
+def write_three_stem_recordings(
+    config: Config,
+    tmp_dir: Pathlike,
+) -> Tuple[Path, Path, Path]:
+    """Writes three distinct stem recordings a, b, c and returns their paths in order."""
+    sample_rate = config.library.sample_rate
+    count = int(sample_rate * STEM_RECORDING_DURATION_SECONDS)
+    time = np.arange(count) / sample_rate
+    recordings = {
+        "a": 0.5 * np.sin(2 * np.pi * 440.0 * time),
+        "b": 0.4 * np.sin(2 * np.pi * 220.0 * time),
+        "c": np.random.default_rng(93).uniform(-0.3, 0.3, count),
+    }
+
+    paths: List[Path] = []
+    for name, audio in recordings.items():
+        path = Path(tmp_dir) / f"stem_{name}.wav"
+        write_wave(path, sample_rate, audio)
+        paths.append(path)
+
+    return paths[0], paths[1], paths[2]
+
+
+def build_mini_library(
+    config: Config,
+    *,
+    per_generator: int = INSTRUCTIONS_PER_GENERATOR,
+) -> InstructionLibrary:
     """Builds a small in-memory instruction library covering pulse/triangle/noise.
 
     Candidates are sampled with an even stride across each channel's instruction

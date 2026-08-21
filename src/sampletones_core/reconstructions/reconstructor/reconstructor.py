@@ -1,11 +1,13 @@
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
 from sampletones_core.audio import active_frame_level, load_audio, mix
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
+from sampletones_core.constants.algorithm import (
+    MINIMUM_AUDIO_LEVEL,
+)
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import FragmentedAudio, Window
 from sampletones_core.generators import (
@@ -103,8 +105,10 @@ class Reconstructor:
     def __call__(self, path: Pathlike) -> Optional[Reconstruction]:
         """Reconstructs an audio file into a :class:`Reconstruction`.
 
-        Loads and normalizes the audio, frames it, matches every frame against the
-        library, and assembles the chosen instructions into a reconstruction.
+        The classic run is the stems pipeline's single-stem case: one stem covering
+        every enabled channel on one precedence level, with the cap at the channel
+        count. The cap equals the channel count, so the greedy baseline plays
+        unchanged.
 
         Args:
             path: Path to the audio file to reconstruct.
@@ -115,20 +119,9 @@ class Reconstructor:
         Raises:
             TypeError: If ``path`` is not a string or ``Path``.
         """
-        if not isinstance(path, (str, Path)):
-            raise TypeError("Input must be a path to an audio file")
+        stems_config = StemsConfig.single_entry(list(self.config.generation.channels))
+        return self.reconstruct_stems([path], stems_config)
 
-        path = to_path(path)
-        audio = self.load_audio(path)
-        self.reset_generators()
-        self.state = ReconstructionState.create(list(self.channels.keys()))
-        coefficient = self.get_coefficient(audio)
-        fragmented_audio = self.get_fragments(audio / coefficient)
-        self.reconstruct(fragmented_audio)
-        return Reconstruction.from_state(self.state, self.config, coefficient, path)
-
-    # TODO: refactor: split into steps so this function reads as prose
-    # each step should be a separate function that has a single concrete objective
     def reconstruct_stems(
         self,
         paths: Sequence[Pathlike],
@@ -154,6 +147,39 @@ class Reconstructor:
             ValueError: If the entries count differently than ``paths``.
             TypeError: If a path is not a string or ``Path``.
         """
+        checked_paths = self._check_stem_paths(paths, stems_config)
+        mixed = self._mix_stem_audios(checked_paths)
+        fragmented_audio, coefficient = self._prepare_stem_frames(mixed, stems_config)
+        stems, hierarchy = self._build_stem_models(stems_config)
+        worker, matcher = self._build_stem_matcher(mixed)
+        assignments = self._assign_stem_frames(
+            fragmented_audio,
+            stems,
+            hierarchy,
+            worker,
+            matcher,
+            stems_config.channel_cap,
+        )
+        stems_data = self._build_stems_data(stems_config, assignments)
+        return Reconstruction.from_state(
+            self.state,
+            self.config,
+            coefficient,
+            tuple(checked_paths),
+            stems_data=stems_data,
+        )
+
+    @staticmethod
+    def _check_stem_paths(
+        paths: Sequence[Pathlike],
+        stems_config: StemsConfig,
+    ) -> List[Path]:
+        """Validates the stem paths against the entries and converts them to ``Path``.
+
+        Raises:
+            ValueError: If the entries count differently than ``paths``.
+            TypeError: If a path is not a string or ``Path``.
+        """
         if len(paths) != len(stems_config.entries):
             raise ValueError(f"Expected {len(stems_config.entries)} stem paths, got {len(paths)}")
 
@@ -161,22 +187,55 @@ class Reconstructor:
         for path in paths:
             if not isinstance(path, (str, Path)):
                 raise TypeError("Input must be a path to an audio file")
+
             checked_paths.append(to_path(path))
 
+        return checked_paths
+
+    def _mix_stem_audios(self, checked_paths: List[Path]) -> np.ndarray:
+        """Loads every stem and returns their mix, the target the frames match against."""
         audios = [self.load_audio(path) for path in checked_paths]
-        mixed = mix(audios)
+        return mix(audios)
+
+    def _prepare_stem_frames(
+        self,
+        mixed: np.ndarray,
+        stems_config: StemsConfig,
+    ) -> Tuple[FragmentedAudio, float]:
+        """Scales the mix to the working level and frames it over the stems' channels.
+
+        Returns the framed target together with the coefficient it was scaled by, so
+        the assembled reconstruction records the level it was matched at.
+        """
         coefficient = self.get_coefficient(mixed)
         self.reset_generators()
         covered = {channel for entry in stems_config.entries for channel in entry.channels}
         self.state = ReconstructionState.create([name for name in ChannelName.items() if name in covered])
-        fragmented_audio = self.get_fragments(mixed / coefficient)
+        return self.get_fragments(mixed / coefficient), coefficient
 
+    @staticmethod
+    def _build_stem_models(
+        stems_config: StemsConfig,
+    ) -> Tuple[Dict[int, Stem], StemHierarchy]:
+        """Converts the stems setup into the runtime stem and hierarchy models."""
+        stems = {entry.id: Stem(id=entry.id, channels=frozenset(entry.channels)) for entry in stems_config.entries}
+        hierarchy = StemHierarchy(
+            levels=tuple(tuple(level) for level in stems_config.hierarchy.levels),
+            mode=stems_config.hierarchy.mode,
+        )
+        return stems, hierarchy
+
+    def _build_stem_matcher(
+        self,
+        signal: np.ndarray,
+    ) -> Tuple[ReconstructorWorker, FrameMatcher]:
+        """Builds the worker and the frame matcher that score the stems' candidates."""
         worker = ReconstructorWorker(
             config=self.config,
             window=self.window,
             channels=self.channels,
             library_data=self.library_data,
-            signal_length=mixed.shape[0],
+            signal_length=signal.shape[0],
         )
         matcher = FrameMatcher(
             config=worker.config,
@@ -184,18 +243,22 @@ class Reconstructor:
             scorer=worker.scorer,
             phase_aligner=worker.phase_aligner,
         )
-        stems = {
-            entry.id: Stem(
-                id=entry.id,
-                channels=frozenset(entry.channels),
-            )
-            for entry in stems_config.entries
-        }
-        hierarchy = StemHierarchy(
-            levels=tuple(tuple(level) for level in stems_config.hierarchy.levels),
-            mode=stems_config.hierarchy.mode,
-        )
+        return worker, matcher
 
+    def _assign_stem_frames(
+        self,
+        fragmented_audio: FragmentedAudio,
+        stems: Dict[int, Stem],
+        hierarchy: StemHierarchy,
+        worker: ReconstructorWorker,
+        matcher: FrameMatcher,
+        channel_cap: int,
+    ) -> Dict[ChannelName, List[int]]:
+        """Assigns every frame's channels to the stems and records both sides of the outcome.
+
+        Each choice updates the reconstruction state and the per-channel stem record,
+        the two lists staying parallel so stem id ``i`` names frame ``i`` of its channel.
+        """
         assignments: Dict[ChannelName, List[int]] = {}
         for fragment_id in fragmented_audio.fragments_ids:
             fragment = fragmented_audio[fragment_id]
@@ -206,7 +269,7 @@ class Reconstructor:
                 self.channels,
                 matcher,
                 worker.feature_extractor,
-                stems_config.channel_cap,
+                channel_cap,
             )
             for choice in frame_assignment.choices:
                 self.update_state(
@@ -218,22 +281,19 @@ class Reconstructor:
                 )
                 assignments.setdefault(choice.channel_name, []).append(choice.stem_id)
 
-        stems_data = StemsData(
+        return assignments
+
+    @staticmethod
+    def _build_stems_data(
+        stems_config: StemsConfig,
+        assignments: Dict[ChannelName, List[int]],
+    ) -> StemsData:
+        """Assembles the per-channel per-frame stem record into serializable stems data."""
+        return StemsData(
             config=stems_config,
             assignments=[
-                ChannelAssignment(
-                    channel_name=channel,
-                    stem_ids=stem_ids,
-                )
-                for channel, stem_ids in assignments.items()
+                ChannelAssignment(channel_name=channel, stem_ids=stem_ids) for channel, stem_ids in assignments.items()
             ],
-        )
-        return Reconstruction.from_state(
-            self.state,
-            self.config,
-            coefficient,
-            tuple(checked_paths),
-            stems_data=stems_data,
         )
 
     def load_audio(self, path: Path) -> np.ndarray:

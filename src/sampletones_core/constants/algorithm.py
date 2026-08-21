@@ -1,7 +1,13 @@
 from typing import Final
 
-from .enums import HierarchyMode, PhaseAlignerName, SelectorName, SpectralDistance
-from .general import MAX_VOLUME, MIN_VOLUME
+from sampletones_core.constants.enums import (
+    ChannelName,
+    HierarchyMode,
+    PhaseAlignerName,
+    SelectorName,
+    SpectralDistance,
+)
+from sampletones_core.constants.general import MAX_VOLUME, MIN_VOLUME
 
 # Matching floors
 
@@ -59,7 +65,8 @@ MAX_DRIVE: Final[float] = 5.0
 
 # Stems assignment
 
-DEFAULT_STEMS_CHANNEL_CAP: Final[int] = 1
+ALL_STEMS_CHANNEL_CAP: Final[int] = len(ChannelName)
+DEFAULT_STEMS_CHANNEL_CAP: Final[int] = ALL_STEMS_CHANNEL_CAP
 DEFAULT_STEMS_HIERARCHY_MODE: Final[HierarchyMode] = HierarchyMode.ROUND_ROBIN
 
 # Execution

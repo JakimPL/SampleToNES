@@ -52,6 +52,7 @@ from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_STEMS,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.layout.responsive import expanded_side_width
@@ -67,6 +68,9 @@ from sampletones_application.ui.panels.reconstruction.instruments.instruments im
 )
 from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
+)
+from sampletones_application.ui.panels.reconstruction.stems import (
+    GUIReconstructionStemsPanel,
 )
 from sampletones_application.utils.file_dialogs.api import save_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
@@ -196,8 +200,13 @@ class ReconstructionTabCoordinator:
             language_manager=language_manager,
             status_bar=status_bar,
         )
+        self._reconstruction_stems_panel: GUIReconstructionStemsPanel = GUIReconstructionStemsPanel(
+            language_manager=language_manager,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_STEMS),
+        )
         self._reconstruction_audio_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._reconstruction_plot_panel.set_collapse_handler(self._on_card_collapse_changed)
+        self._reconstruction_stems_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._reconstruction_player_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
             session_manager,
@@ -227,9 +236,11 @@ class ReconstructionTabCoordinator:
 
         self._reconstruction_audio_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
         self._reconstruction_plot_panel.on_channels_changed = self._reconstruction_panel_logic.set_selected_channels
+        self._reconstruction_stems_panel.on_stems_changed = self._reconstruction_panel_logic.set_selected_stems
         self._browser_panel.on_locate_original_audio = self._original_audio_locator.locate
 
         self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view
+        self._reconstruction_panel_logic.on_stems_view_changed = self._reconstruction_stems_panel.update_view
         self._reconstruction_panel_logic.on_audio_data_changed = self._on_audio_data_changed
         self._reconstruction_panel_logic.on_waveform_load_changed = self._reconstruction_plot_panel.load_waveform_data
         self._reconstruction_panel_logic.on_waveform_update_changed = (
@@ -475,10 +486,12 @@ class ReconstructionTabCoordinator:
         self._sync_instruments_width()
 
     def _build_reconstruction_column(self, parent: str) -> None:
-        """Stacks the audio and plot cards down the centre column."""
+        """Stacks the audio, plot, and stems cards down the centre column."""
         self._reconstruction_audio_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._reconstruction_plot_panel.create_panel(parent)
+        dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
+        self._reconstruction_stems_panel.create_panel(parent)
 
     def _on_card_collapse_changed(
         self,
