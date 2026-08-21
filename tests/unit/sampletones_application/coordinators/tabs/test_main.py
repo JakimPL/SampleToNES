@@ -113,7 +113,7 @@ class TestConversionSuccessDialog:
         coordinator = _success_coordinator()
         output_path = Path("/reconstructions/kick.rcn")
 
-        coordinator._on_conversion_success(ConversionSuccess(is_file=True, output_path=output_path))
+        coordinator._on_conversion_success(ConversionSuccess(written=(output_path,)))
 
         coordinator._on_refresh_trees.assert_called_once_with()
         coordinator._dialogs.show_confirmation.assert_called_once()
@@ -126,10 +126,11 @@ class TestConversionSuccessDialog:
         assert kwargs["path"] == output_path
         assert kwargs["on_cancel"] == coordinator._converter_logic.close
 
-    def test_directory_success_offers_to_open_without_a_path(self) -> None:
+    def test_a_batch_offers_to_open_the_folder(self) -> None:
         coordinator = _success_coordinator()
+        written = (Path("/reconstructions/kick.rcn"), Path("/reconstructions/snare.rcn"))
 
-        coordinator._on_conversion_success(ConversionSuccess(is_file=False, output_path=Path("/reconstructions")))
+        coordinator._on_conversion_success(ConversionSuccess(written=written))
 
         _, kwargs = coordinator._dialogs.show_confirmation.call_args
         assert kwargs["ok_label"] == OPEN_BUTTON_KEY

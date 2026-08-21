@@ -300,10 +300,10 @@ class MainTabCoordinator:
 
     def _on_conversion_success(self, success: ConversionSuccess) -> None:
         self._on_refresh_trees()
-        if success.is_file:
+        if success.is_single:
             message = self._language_manager["main.converter.message.load_file_prompt"]
             ok_label = self._language_manager["main.converter.label.load_button"]
-            path = success.output_path
+            path: Optional[Path] = success.written[0]
         else:
             message = self._language_manager["main.converter.message.load_directory_prompt"]
             ok_label = self._language_manager["main.converter.label.open_button"]

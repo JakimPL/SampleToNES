@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, Optional, Tuple, TypeVar, Union
 
 from sampletones_core.parallelization import TaskProgress
 
@@ -44,7 +44,7 @@ ConversionResult = Union[
     ServiceStarted,
     ServiceProgress[Path],
     ServiceIntermediate[TaskProgress],
-    ServiceSuccess[Path],
+    ServiceSuccess[Tuple[Path, ...]],
     ServiceError,
     ServiceCancelled,
 ]

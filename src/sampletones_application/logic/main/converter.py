@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional, Protocol
+from typing import Callable, Optional, Protocol, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -23,7 +23,13 @@ from sampletones_application.view_model.main.converter import (
 )
 from sampletones_core.configs import Config
 from sampletones_core.parallelization import ETAEstimator, TaskProgress
-from sampletones_core.reconstructions.converter import get_output_path
+from sampletones_core.reconstructions.converter import (
+    ConversionPlan,
+    DirectoryConversion,
+    GroupConversion,
+    get_output_path,
+)
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
@@ -33,13 +39,17 @@ from sampletones_shared.utils.system.paths import to_path
 
 @dataclass(frozen=True)
 class ConversionSuccess:
-    """The outcome a completed conversion hands to its listener.
+    """The outcome a completed conversion hands to its listener: the reconstructions it wrote.
 
-    Carries what the follow-up load offer needs: whether a single file or a
-    directory was converted, and where its reconstruction was written."""
+    One written reconstruction is one the reader can open straight away; several are a batch,
+    which the reader reaches as a folder."""
 
-    is_file: bool
-    output_path: Optional[Path]
+    written: Tuple[Path, ...]
+
+    @property
+    def is_single(self) -> bool:
+        """One reconstruction was written, so it is the one a follow-up offer would load."""
+        return len(self.written) == 1
 
 
 class ConversionServiceProtocol(Protocol):
@@ -52,7 +62,7 @@ class ConversionServiceProtocol(Protocol):
 
     def subscribe(self, handler: Callable[[ConversionResult], None]) -> None: ...
 
-    def start(self, config: Config, input_path: Path) -> None: ...
+    def start(self, config: Config, plan: ConversionPlan) -> None: ...
 
     def cancel(self) -> None: ...
 
@@ -84,6 +94,7 @@ class ConverterLogic(CallbackMixin):
         self._phase: ConversionPhase = ConversionPhase.IDLE
         self._input_path: Optional[Path] = None
         self._output_path: Optional[Path] = None
+        self._written: Tuple[Path, ...] = ()
         self._is_file: bool = True
         self._system_progress = SystemProgress()
 
@@ -158,13 +169,13 @@ class ConverterLogic(CallbackMixin):
             self._service.cleanup()
         finally:
             self._system_progress.clear()
+            self._written = ()
             self._phase = ConversionPhase.IDLE
             self._emit_view_model(self._msg_idle, 0.0)
 
     def handle_load_request(self) -> None:
-        if self._is_file:
-            if self._output_path:
-                self.call(self.on_load_file, self._output_path)
+        if len(self._written) == 1:
+            self.call(self.on_load_file, self._written[0])
         else:
             self.call(self.on_load_directory)
 
@@ -182,8 +193,8 @@ class ConverterLogic(CallbackMixin):
                 self._handle_progress_result(progress)
             case ServiceIntermediate(data=progress):
                 self._handle_library_progress(progress)
-            case ServiceSuccess(value=output_path):
-                self._on_conversion_complete(output_path)
+            case ServiceSuccess(value=written):
+                self._on_conversion_complete(written)
             case ServiceError(exception=exception):
                 self._on_conversion_error(exception)
             case ServiceCancelled():
@@ -261,21 +272,25 @@ class ConverterLogic(CallbackMixin):
         assert self._input_path is not None, "Input path is not set"
         config = self._config_manager.config.model_copy()
         self._system_progress.initialize()
-        self._service.start(config, self._input_path)
+        self._service.start(config, self._conversion_plan(config, self._input_path))
 
-    def _on_conversion_complete(self, output_path: Path) -> None:
-        if output_path.exists():
-            self._output_path = output_path
+    def _conversion_plan(self, config: Config, input_path: Path) -> ConversionPlan:
+        """What the request amounts to: one reconstruction from the selected file, or one per
+        audio file the selected directory holds."""
+        stems = StemsConfig.single_entry(list(config.generation.channels))
+        if self._is_file:
+            return GroupConversion(sources=(input_path,), stems=stems)
+
+        return DirectoryConversion(directory=input_path, stems=stems)
+
+    def _on_conversion_complete(self, written: Tuple[Path, ...]) -> None:
+        self._written = written
+        if len(written) == 1:
+            self._output_path = written[0]
 
         self._phase = ConversionPhase.COMPLETED
         self._emit_view_model(self._language_manager["main.converter.message.status_reconstruction_completed"], 1.0)
-        self.call(
-            self.on_success,
-            ConversionSuccess(
-                is_file=self._is_file,
-                output_path=self._output_path,
-            ),
-        )
+        self.call(self.on_success, ConversionSuccess(written=written))
 
     def _on_conversion_error(self, exception: Exception) -> None:
         self._system_progress.error()

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.result import (
@@ -13,7 +13,7 @@ from sampletones_application.services.result import (
 )
 from sampletones_core.configs import Config
 from sampletones_core.parallelization import ETAEstimator, TaskProgress, TaskStatus
-from sampletones_core.reconstructions.converter import ReconstructionConverter
+from sampletones_core.reconstructions.converter import ConversionPlan, ReconstructionConverter
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.system.paths import to_path
 
@@ -33,17 +33,12 @@ class ConversionService(ServiceBase[ConversionResult]):
         self._converter: Optional[ReconstructionConverter] = None
         self._eta_estimator: Optional[ETAEstimator] = None
 
-    def start(self, config: Config, input_path: Path) -> None:
+    def start(self, config: Config, plan: ConversionPlan) -> None:
         if self._converter is not None and self._converter.is_running():
             logger.warning("Conversion is already in progress")
             return
 
-        is_file = input_path.is_file()
-        self._converter = ReconstructionConverter(
-            config=config,
-            input_path=input_path,
-            is_file=is_file,
-        )
+        self._converter = ReconstructionConverter(config=config, plan=plan)
         self._converter.set_callbacks(
             on_start=self._on_start,
             on_progress=self._on_progress,
@@ -109,8 +104,8 @@ class ConversionService(ServiceBase[ConversionResult]):
             case _:
                 pass
 
-    def _on_completed(self, output_path: Path) -> None:
-        self._emit(ServiceSuccess(value=output_path))
+    def _on_completed(self, written: Tuple[Path, ...]) -> None:
+        self._emit(ServiceSuccess(value=written))
 
     def _on_error(self, exception: Exception) -> None:
         self._emit(ServiceError(exception=exception))

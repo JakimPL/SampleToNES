@@ -5,6 +5,7 @@ from sampletones_core.configs import Config
 from sampletones_core.reconstructions.converter.paths.fields import (
     ConfigDirectoryFields,
 )
+from sampletones_core.reconstructions.naming.derive import derive_name
 from sampletones_shared.paths.extensions import (
     EXT_FILE_RECONSTRUCTION,
     EXT_FILES_AUDIO,
@@ -41,6 +42,25 @@ def get_output_path(
         raise FileNotFoundError(f"Input file does not exist: {input_path}")
 
     raise OSError(f"Invalid path: {input_path}")
+
+
+def group_output_path(
+    config: Config,
+    sources: Tuple[Path, ...],
+    suffix: str = EXT_FILE_RECONSTRUCTION,
+) -> Path:
+    """Where the one reconstruction built from ``sources`` is written.
+
+    The file sits in the configuration's own directory, under the name the source rules derive:
+    one source names it after itself, and several after what they share
+    (:func:`sampletones_core.reconstructions.naming.derive.derive_name`).
+
+    Raises:
+        ValueError: If ``sources`` is empty.
+    """
+    config_directory = ConfigDirectoryFields.generate_config_directory_name(config)
+    output_directory = to_path(config.general.reconstructions_directory) / config_directory
+    return Path((output_directory / f"{derive_name(sources)}{suffix}").absolute())
 
 
 def get_audio_files(

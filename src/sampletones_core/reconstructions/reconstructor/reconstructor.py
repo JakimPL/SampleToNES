@@ -84,14 +84,14 @@ class Reconstructor:
             TypeError: If ``path`` is not a string or ``Path``.
         """
         stems_config = StemsConfig.single_entry(list(self.config.generation.channels))
-        return self.reconstruct_stems([path], stems_config)
+        return self.reconstruct([path], stems_config)
 
-    def reconstruct_stems(
+    def reconstruct(
         self,
         paths: Sequence[Pathlike],
         stems_config: StemsConfig,
     ) -> Optional[Reconstruction]:
-        """Reconstructs the mix of several stem audio files into one reconstruction.
+        """Reconstructs the mix of one or more stem audio files into one reconstruction.
 
         Loads and normalizes every stem, matches the frames of the stems' mix against
         the library, and assigns each frame's channels to the stems following the

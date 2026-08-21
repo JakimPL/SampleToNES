@@ -65,7 +65,7 @@ class TestReconstructStems:
         write_wave(tone_path, sample_rate, tone)
         write_wave(noise_path, sample_rate, noise)
 
-        reconstruction = reconstructor.reconstruct_stems(
+        reconstruction = reconstructor.reconstruct(
             [tone_path, noise_path],
             _stems_config(),
         )
@@ -97,7 +97,7 @@ class TestReconstructStems:
         reconstructor = Reconstructor(config, library=library)
 
         with pytest.raises(ValueError, match="stem paths"):
-            reconstructor.reconstruct_stems(
+            reconstructor.reconstruct(
                 [tmp_path / "only_one.wav"],
                 _stems_config(),
             )
@@ -114,7 +114,7 @@ class TestThreeStemHierarchy:
         stems_config = three_stem_config()
         paths = write_three_stem_recordings(config, tmp_path)
 
-        reconstruction = reconstructor.reconstruct_stems(list(paths), stems_config)
+        reconstruction = reconstructor.reconstruct(list(paths), stems_config)
 
         assert reconstruction is not None
         assert reconstruction.audio_filepath == paths
@@ -148,7 +148,7 @@ class TestThreeStemHierarchy:
         stems_config = three_stem_config()
         paths = write_three_stem_recordings(config, tmp_path)
 
-        reconstruction = reconstructor.reconstruct_stems(list(paths), stems_config)
+        reconstruction = reconstructor.reconstruct(list(paths), stems_config)
 
         assert reconstruction is not None
         frame_count = _frame_count(config, STEM_RECORDING_DURATION_SECONDS)
@@ -171,7 +171,7 @@ class TestThreeStemHierarchy:
         reconstructor = Reconstructor(config, library=library)
         stems_config = three_stem_config()
         paths = write_three_stem_recordings(config, tmp_path)
-        reconstruction = reconstructor.reconstruct_stems(list(paths), stems_config)
+        reconstruction = reconstructor.reconstruct(list(paths), stems_config)
         assert reconstruction is not None
 
         save_path = tmp_path / "three_stems.stn"
@@ -196,7 +196,7 @@ class TestThreeStemHierarchy:
         reconstructor = Reconstructor(config, library=library)
         stems_config = three_stem_config()
         paths = write_three_stem_recordings(config, tmp_path)
-        reconstruction = reconstructor.reconstruct_stems(list(paths), stems_config)
+        reconstruction = reconstructor.reconstruct(list(paths), stems_config)
         assert reconstruction is not None
 
         save_path = tmp_path / "three_stems.stn"
@@ -285,7 +285,7 @@ class TestStemsOriginalAudio:
         write_wave(tone_path, sample_rate, tone)
         write_wave(noise_path, sample_rate, noise)
 
-        reconstruction = reconstructor.reconstruct_stems(
+        reconstruction = reconstructor.reconstruct(
             [tone_path, noise_path],
             _stems_config(),
         )
@@ -350,7 +350,7 @@ class TestClassicRunCarriesTheSingleEntryRecord:
         reconstructor = Reconstructor(config, library=library)
         tone_path = self._tone_path(tmp_path, config)
 
-        reconstruction = reconstructor.reconstruct_stems(
+        reconstruction = reconstructor.reconstruct(
             [tone_path],
             StemsConfig.single_entry(list(config.generation.channels), channel_cap=1),
         )

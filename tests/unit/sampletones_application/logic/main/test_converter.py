@@ -13,6 +13,9 @@ from sampletones_application.view_model.main.converter import (
     ConversionPhase,
     ConverterViewModel,
 )
+from sampletones_core.configs import Config
+from sampletones_core.reconstructions.converter import DirectoryConversion, GroupConversion
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from tests.suite.language import FakeLanguageManager
 
 TEXTS: Final[Dict[str, str]] = {
@@ -279,24 +282,46 @@ class TestAssignPaths:
 
 
 class TestConversionCompleteHandsOverOutcome:
-    """A completed conversion tells its listener what was produced, so the follow-up load offer can
-    target the single reconstruction (file) or the browser (directory)."""
+    """A completed conversion tells its listener what it wrote, so the follow-up offer can target
+    the single reconstruction or the folder holding a batch."""
 
-    def test_success_carries_input_kind_and_output_path(
+    def test_success_carries_the_reconstructions_that_were_written(
         self,
         converter_logic: ConverterLogic,
     ) -> None:
         on_success = MagicMock()
         converter_logic.on_success = on_success
-        converter_logic._is_file = True
-        converter_logic._output_path = Path("/reconstructions/kick.rcn")
+        written = (Path("/reconstructions/kick.rcn"),)
 
-        converter_logic._on_conversion_complete(Path("/reconstructions/kick.rcn"))
+        converter_logic._on_conversion_complete(written)
 
         assert converter_logic._phase == ConversionPhase.COMPLETED
-        on_success.assert_called_once_with(
-            ConversionSuccess(is_file=True, output_path=Path("/reconstructions/kick.rcn"))
-        )
+        on_success.assert_called_once_with(ConversionSuccess(written=written))
+
+    def test_one_written_reconstruction_becomes_the_displayed_output(
+        self,
+        converter_logic: ConverterLogic,
+    ) -> None:
+        written = (Path("/reconstructions/kick.rcn"),)
+
+        converter_logic._on_conversion_complete(written)
+
+        assert converter_logic._output_path == written[0]
+
+    def test_a_batch_loads_the_folder_and_one_file_loads_itself(
+        self,
+        converter_logic: ConverterLogic,
+    ) -> None:
+        converter_logic.on_load_file = MagicMock()
+        converter_logic.on_load_directory = MagicMock()
+
+        converter_logic._on_conversion_complete((Path("/reconstructions/kick.rcn"),))
+        converter_logic.handle_load_request()
+        converter_logic.on_load_file.assert_called_once_with(Path("/reconstructions/kick.rcn"))
+
+        converter_logic._on_conversion_complete((Path("/reconstructions/kick.rcn"), Path("/reconstructions/snare.rcn")))
+        converter_logic.handle_load_request()
+        converter_logic.on_load_directory.assert_called_once_with()
 
 
 class TestFailureReturnsToIdle:
@@ -316,3 +341,49 @@ class TestFailureReturnsToIdle:
         scheduled.assert_called_once()
         assert scheduled.call_args.args[0] == converter_logic.close
         converter_logic.on_error.assert_called_once()
+
+
+class TestConversionPlan:
+    """What the converter asks the service to run: one reconstruction for a file, one per audio
+    file for a directory."""
+
+    def _prepare(self, converter_logic: ConverterLogic, input_path: Path, is_file: bool) -> Config:
+        config = Config()
+        converter_logic._config_manager.config = config
+        converter_logic._input_path = input_path
+        converter_logic._is_file = is_file
+        return config
+
+    def test_a_file_becomes_one_group_over_that_file(self, converter_logic: ConverterLogic) -> None:
+        config = self._prepare(converter_logic, Path("/audio/kick.wav"), is_file=True)
+
+        plan = converter_logic._conversion_plan(config, Path("/audio/kick.wav"))
+
+        assert isinstance(plan, GroupConversion)
+        assert plan.sources == (Path("/audio/kick.wav"),)
+
+    def test_a_directory_becomes_a_directory_conversion(self, converter_logic: ConverterLogic) -> None:
+        config = self._prepare(converter_logic, Path("/audio"), is_file=False)
+
+        plan = converter_logic._conversion_plan(config, Path("/audio"))
+
+        assert isinstance(plan, DirectoryConversion)
+        assert plan.directory == Path("/audio")
+
+    def test_the_setup_covers_every_enabled_channel(self, converter_logic: ConverterLogic) -> None:
+        """With no stems chosen, one stem holds every channel the configuration enables."""
+        config = self._prepare(converter_logic, Path("/audio/kick.wav"), is_file=True)
+
+        plan = converter_logic._conversion_plan(config, Path("/audio/kick.wav"))
+
+        assert plan.stems == StemsConfig.single_entry(list(config.generation.channels))
+
+    def test_starting_hands_the_plan_to_the_service(self, converter_logic: ConverterLogic) -> None:
+        config = self._prepare(converter_logic, Path("/audio/kick.wav"), is_file=True)
+        converter_logic._config_manager.config = config
+
+        converter_logic._start_conversion()
+
+        started_config, started_plan = converter_logic._service.start.call_args.args
+        assert started_config == config
+        assert isinstance(started_plan, GroupConversion)
