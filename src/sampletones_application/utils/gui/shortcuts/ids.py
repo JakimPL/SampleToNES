@@ -64,6 +64,7 @@ class ShortcutId(Enum):
     EXPORT_RECONSTRUCTION_WAV = ("ExportReconstructionWav", ShortcutCategory.APPLICATION)
     EXPORT_INSTRUMENTS_FAMITRACKER = ("ExportInstrumentsFamiTracker", ShortcutCategory.APPLICATION)
     EXPORT_INSTRUMENTS_BITPHASE_PRESET = ("ExportInstrumentsBitphasePreset", ShortcutCategory.APPLICATION)
+    EXPORT_INSTRUMENTS_NSF = ("ExportInstrumentsNSF", ShortcutCategory.APPLICATION)
     ADD_RECONSTRUCTION_TO_SEQUENCER = ("AddReconstructionToSequencer", ShortcutCategory.APPLICATION)
     OPEN_RECONSTRUCTION_IN_EXPLORER = ("OpenReconstructionInExplorer", ShortcutCategory.APPLICATION)
     LOCATE_ORIGINAL_AUDIO = ("LocateOriginalAudio", ShortcutCategory.APPLICATION)
@@ -228,4 +229,5 @@ PROJECT_EXPORT_SHORTCUT_IDS: Final[Dict[ExportFormat, ShortcutId]] = {
 SAMPLE_EXPORT_SHORTCUT_IDS: Final[Dict[ExportFormat, ShortcutId]] = {
     ExportFormat.FAMITRACKER: ShortcutId.EXPORT_INSTRUMENTS_FAMITRACKER,
     ExportFormat.BITPHASE_PRESET: ShortcutId.EXPORT_INSTRUMENTS_BITPHASE_PRESET,
+    ExportFormat.NSF: ShortcutId.EXPORT_INSTRUMENTS_NSF,
 }

@@ -9,19 +9,19 @@ from sampletones_application.categories.exports import (
     EXPORT_SAMPLE_MENU_LABELS,
     INSTRUMENT_EXPORT_FORMATS,
 )
+from sampletones_application.exports import build_export_backends
 from sampletones_application.utils.gui.shortcuts.ids import (
     PROJECT_EXPORT_SHORTCUT_IDS,
     SAMPLE_EXPORT_SHORTCUT_IDS,
 )
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
-from sampletones_core.exports.registry import build_tracker_backends
 from sampletones_core.exports.scope import ExportScope
 
 
 @pytest.fixture(name="backends")
 def backends_fixture() -> Dict[ExportFormat, ExportBackend]:
-    return build_tracker_backends()
+    return build_export_backends()
 
 
 def formats_supporting(
@@ -32,8 +32,8 @@ def formats_supporting(
 
 
 class TestEveryOfferedFormatHasABackend:
-    """A menu entry reaches a backend through the registry, so an entry the registry has no
-    backend for would raise a ``KeyError`` the moment it is chosen."""
+    """A menu entry reaches a backend through the registry the composition root builds, so an
+    entry that registry has no backend for would raise a ``KeyError`` the moment it is chosen."""
 
     @pytest.mark.parametrize(
         "offered",

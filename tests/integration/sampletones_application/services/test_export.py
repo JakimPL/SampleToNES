@@ -12,14 +12,35 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.exports.implementation.famitracker import FamiTrackerBackend
 from sampletones_core.exports.request import InstrumentExport, SampleExport
+from sampletones_player.export import NSFBackend
+from sampletones_player.specification.nsf import NSF_MAGIC, PROGRAM_SIZE
 from sampletones_shared.music import Tuning
 
 NES_FREQUENCY: Final[int] = 60
+REFERENCE_PITCH: Final[int] = 60
+MAX_VOLUME: Final[int] = 15
 
 
 @pytest.fixture(name="backend")
 def backend_fixture() -> FamiTrackerBackend:
     return FamiTrackerBackend()
+
+
+@pytest.fixture(name="console_backend")
+def console_backend_fixture() -> NSFBackend:
+    return NSFBackend()
+
+
+def overlong_features(initial_pitch: int) -> Features:
+    """Envelopes running longer than the console's program area has room for."""
+    return Features(
+        initial_pitch=initial_pitch,
+        volume=np.full(PROGRAM_SIZE, MAX_VOLUME, dtype=int),
+        arpeggio=np.zeros(PROGRAM_SIZE, dtype=int),
+        pitch=None,
+        hi_pitch=None,
+        duty_cycle=np.zeros(PROGRAM_SIZE, dtype=int),
+    )
 
 
 def instrument_export(name: str, features: Features) -> InstrumentExport:
@@ -177,3 +198,49 @@ class TestExportSampleIntegration:
 
         assert list(tmp_path.glob("*.fti")) == []
         assert isinstance(results[0], ExportSuccess)
+
+
+class TestExportToTheConsoleIntegration:
+    """The console player's backend writing through the same service the trackers do."""
+
+    def test_a_playable_program_is_created_on_disk(self, tmp_path, pulse_features, console_backend) -> None:
+        export_service = ExportService()
+        export_service.subscribe(lambda _: None)
+
+        filepath = tmp_path / "sample.nsf"
+        export_service.export_sample(
+            filepath, console_backend, sample_export("sample", instrument_export("inst", pulse_features))
+        )
+
+        assert filepath.read_bytes()[: len(NSF_MAGIC)] == NSF_MAGIC
+
+    def test_the_result_names_the_program_that_was_written(self, tmp_path, pulse_features, console_backend) -> None:
+        export_service = ExportService()
+        results: List[Any] = []
+        export_service.subscribe(results.append)
+
+        filepath = tmp_path / "sample.nsf"
+        export_service.export_sample(
+            filepath, console_backend, sample_export("sample", instrument_export("inst", pulse_features))
+        )
+
+        assert len(results) == 1
+        assert isinstance(results[0], ExportSuccess)
+        assert results[0].kind == ExportKind.SAMPLE
+        assert results[0].filepath == filepath
+
+    def test_a_reconstruction_outgrowing_the_program_area_is_reported(self, tmp_path, console_backend) -> None:
+        """The console holds one program in 32 KB, so a reconstruction running past it reaches
+        the user as a failed export rather than as a file playing part of itself.
+        """
+        export_service = ExportService()
+        results: List[Any] = []
+        export_service.subscribe(results.append)
+
+        filepath = tmp_path / "sample.nsf"
+        request = sample_export("sample", instrument_export("inst", overlong_features(REFERENCE_PITCH)))
+        export_service.export_sample(filepath, console_backend, request)
+
+        assert len(results) == 1
+        assert isinstance(results[0], ExportError)
+        assert results[0].kind == ExportKind.SAMPLE

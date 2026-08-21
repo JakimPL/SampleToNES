@@ -33,7 +33,7 @@ It supports:
     * `pulse2`
     * `triangle`
     * `noise`
-* exporting reconstructed audio as FamiTracker `.fti` instruments, Bitphase `.json` instrument presets, or `.wav`
+* exporting reconstructed audio as FamiTracker `.fti` instruments, Bitphase `.json` instrument presets, `.nsf` programs the NES itself plays, or `.wav`
 
 ## Installation
 

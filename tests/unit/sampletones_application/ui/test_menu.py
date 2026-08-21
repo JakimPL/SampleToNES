@@ -198,10 +198,10 @@ def menu_bar(
 
 
 class TestInstrumentsExportMenu:
-    """Each tracker that writes a file per slice gets its own item, so choosing the tracker
-    is one click and the destination dialog then offers that tracker's type alone."""
+    """Each offered format gets its own item, so choosing the format is one click and the
+    destination dialog then offers that format's type alone."""
 
-    def test_every_offered_tracker_is_listed(
+    def test_every_offered_format_is_listed(
         self,
         menu_bar: MenuBar,
         framework: _DearPyGuiRecorder,
@@ -214,6 +214,7 @@ class TestInstrumentsExportMenu:
         assert [entry["label"] for entry in entries] == [
             "FamiTracker instruments...",
             "Bitphase presets...",
+            "NSF program...",
         ]
 
     def test_the_submenu_waits_for_a_loaded_reconstruction(

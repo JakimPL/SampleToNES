@@ -29,6 +29,7 @@ bindings:
   ExportReconstructionWav: {combination: "Ctrl+E"}
   ExportInstrumentsFamiTracker: {combination: "Ctrl+I"}
   ExportInstrumentsBitphasePreset: {combination: ~}
+  ExportInstrumentsNSF: {combination: ~}
   AddReconstructionToSequencer: {combination: ~}
   OpenReconstructionInExplorer: {combination: ~}
   LocateOriginalAudio: {combination: ~}

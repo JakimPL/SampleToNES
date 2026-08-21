@@ -63,7 +63,8 @@ left it the next time you start the application.
 
 To get your results out, use the **Reconstruction** menu. **Export instruments ▸
 FamiTracker instruments...** writes one `.fti` per channel, **Bitphase
-presets...** writes the same as `.json`, and **Export to WAV...** renders the
+presets...** writes the same as `.json`, **NSF program...** writes a single `.nsf`
+that plays the whole reconstruction on a NES, and **Export to WAV...** renders the
 audio. To use the reconstruction in a song, right-click it and choose **Add to
 Sequencer** (see the [sequencer guide](sequencer.md)).
 

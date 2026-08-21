@@ -57,6 +57,7 @@ class KeybindingActionElements(AbstractElement):
     EXPORT_RECONSTRUCTION_WAV = "export_reconstruction_wav"
     EXPORT_INSTRUMENTS_FAMITRACKER = "export_instruments_famitracker"
     EXPORT_INSTRUMENTS_BITPHASE_PRESET = "export_instruments_bitphase_preset"
+    EXPORT_INSTRUMENTS_NSF = "export_instruments_nsf"
     ADD_RECONSTRUCTION_TO_SEQUENCER = "add_reconstruction_to_sequencer"
     OPEN_RECONSTRUCTION_IN_EXPLORER = "open_reconstruction_in_explorer"
     LOCATE_ORIGINAL_AUDIO = "locate_original_audio"

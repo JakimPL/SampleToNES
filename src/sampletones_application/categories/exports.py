@@ -53,14 +53,17 @@ EXPORT_PROJECT_MENU_LABELS: Final[Dict[ExportFormat, MenuElements]] = {
 INSTRUMENT_EXPORT_FORMATS: Final[Tuple[ExportFormat, ...]] = (
     ExportFormat.FAMITRACKER,
     ExportFormat.BITPHASE_PRESET,
+    ExportFormat.NSF,
 )
 
 EXPORT_INSTRUMENT_FILTERS: Final[Dict[ExportFormat, FileFilterElements]] = {
     ExportFormat.FAMITRACKER: FileFilterElements.FAMITRACKER_INSTRUMENT,
     ExportFormat.BITPHASE_PRESET: FileFilterElements.BITPHASE_PRESET,
+    ExportFormat.NSF: FileFilterElements.NSF,
 }
 
 EXPORT_SAMPLE_MENU_LABELS: Final[Dict[ExportFormat, MenuElements]] = {
     ExportFormat.FAMITRACKER: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_FAMITRACKER,
     ExportFormat.BITPHASE_PRESET: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_BITPHASE_PRESET,
+    ExportFormat.NSF: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_NSF,
 }

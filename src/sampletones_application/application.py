@@ -33,6 +33,7 @@ from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
 from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
+from sampletones_application.exports import build_export_backends
 from sampletones_application.layout import LayoutConfig, load_layout_config
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
@@ -144,12 +145,10 @@ from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
-from sampletones_core.exports.registry import build_tracker_backends
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.types.feature import FeatureValue
-from sampletones_player.export import NSFBackend
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
     SAMPLETONES_GROUP,
@@ -240,10 +239,7 @@ class Application:
         self.retune_service: SampleRetuneService = SampleRetuneService(priority=_priority)
         self.retune_service.subscribe(self._on_retune_result)
 
-        self.export_backends: Dict[ExportFormat, ExportBackend] = {
-            **build_tracker_backends(),
-            ExportFormat.NSF: NSFBackend(),
-        }
+        self.export_backends: Dict[ExportFormat, ExportBackend] = build_export_backends()
 
         self.project_manager: ProjectManager = ProjectManager()
         self.project_controller: ProjectController = ProjectController(self.project_manager)

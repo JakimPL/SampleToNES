@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
+from sampletones_application.exports import build_export_backends
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import (
@@ -21,7 +22,6 @@ from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.exports.format import ExportFormat
-from sampletones_core.exports.registry import build_tracker_backends
 from sampletones_core.instructions import TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.music import Tuning
@@ -30,6 +30,7 @@ from sampletones_shared.paths.extensions import (
     EXT_FILE_INSTRUMENT,
     EXT_FILE_JSON,
     EXT_FILE_MODULE,
+    EXT_FILE_NSF,
 )
 from tests.suite.case import BaseRegularTestCase
 
@@ -47,6 +48,7 @@ INSTRUMENT_FORMAT_CASES: Final[List[FormatCase]] = [
     FormatCase(extension=EXT_FILE_INSTRUMENT, export_format=ExportFormat.FAMITRACKER),
     FormatCase(extension=EXT_FILE_BITPHASE, export_format=ExportFormat.BITPHASE),
     FormatCase(extension=EXT_FILE_JSON, export_format=ExportFormat.BITPHASE_PRESET),
+    FormatCase(extension=EXT_FILE_NSF, export_format=ExportFormat.NSF),
 ]
 
 UNSUPPORTED_EXTENSIONS: Final[List[str]] = [".xm", EXT_FILE_MODULE, NO_EXTENSION]
@@ -96,7 +98,7 @@ def mock_export_backends() -> Dict[ExportFormat, MagicMock]:
     the registry's backend declares and leaves only the writing to the mock.
     """
     backends: Dict[ExportFormat, MagicMock] = {}
-    for export_format, backend in build_tracker_backends().items():
+    for export_format, backend in build_export_backends().items():
         stub = MagicMock()
         stub.supported_scopes = backend.supported_scopes
         stub.extension.side_effect = backend.extension
