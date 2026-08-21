@@ -116,6 +116,10 @@ def main() -> None:
 
         raise SystemExit(run_self_check())
 
+    from sampletones_shared.array import report_array_backend
+
+    report_array_backend()
+
     config_path = Path(args.config) if args.config else None
     output_path = Path(args.output) if args.output else None
 

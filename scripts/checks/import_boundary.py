@@ -19,8 +19,9 @@ Token rules additionally forbid a regex within a file glob, enforcing contracts 
 express — e.g. that panels never compose a column suffix (`SUF_PANEL_*`) or parent into another
 panel's container.
 
-This script declares what the boundaries are; `sampletones_shared/meta/import_boundary/` holds how
-they are read and reported.
+`sampletones_config/boundaries/` declares what the boundaries are and
+`sampletones_shared/meta/import_boundary/` holds how they are read and reported; this script runs
+them over a source tree and prints what they find.
 
 Usage:
     python scripts/checks/import_boundary.py [files...]   # check specific files
@@ -30,169 +31,11 @@ Usage:
 import argparse
 import sys
 from pathlib import Path
-from typing import Dict, Final, List, Sequence, Tuple
+from typing import List, Sequence
 
 from sampletones_shared.meta.import_boundary.check import check_boundaries
-from sampletones_shared.meta.import_boundary.graph import LayerGraph
-from sampletones_shared.meta.import_boundary.rule import BoundaryRule
-from sampletones_shared.meta.import_boundary.token import TokenRule
+from sampletones_shared.meta.import_boundary.configs.rules import ImportBoundaryRules
 from sampletones_shared.paths.source import SOURCE_ROOT
-
-APPLICATION: Final[str] = "sampletones_application"
-PLAYER: Final[str] = "sampletones_player"
-
-VISUAL: Final[Tuple[str, ...]] = (
-    "dearpygui",
-    "sampletones_application.ui",
-    "sampletones_application.utils.gui",
-)
-
-SERVICE_CONTRACTS: Final[Tuple[str, ...]] = (
-    "sampletones_application.services.result",
-    "sampletones_application.services.render.result",
-    "sampletones_application.services.song_player.result",
-)
-
-PACKAGE_LAYERS: Final[Dict[str, Tuple[str, ...]]] = {
-    "sampletones_shared": (),
-    "sampletones_config": (),
-    "sampletones_assets": ("sampletones_shared",),
-    "sampletones_synthesis": ("sampletones_shared",),
-    "sampletones_core": ("sampletones_shared", "sampletones_synthesis"),
-    "sampletones_player": ("sampletones_shared", "sampletones_core"),
-    "sampletones_application": ("sampletones_shared", "sampletones_core", "sampletones_player"),
-    "sampletones": ("sampletones_shared", "sampletones_core", "sampletones_application"),
-}
-
-PLAYER_LAYERS: Final[Dict[str, Tuple[str, ...]]] = {
-    "__init__.py": (),
-    "specification": (),
-    "clock": ("specification",),
-    "registers": ("specification",),
-    "song.py": ("clock", "registers"),
-    "builder.py": ("song.py", "registers", "clock"),
-    "trace": ("song.py", "specification"),
-    "nsf": ("song.py", "registers", "specification", "driver"),
-    "export.py": ("builder.py", "nsf", "driver"),
-    "driver": ("specification",),
-    "driver/assembler": ("driver", "specification"),
-}
-
-PACKAGES: Final[LayerGraph] = LayerGraph(
-    root="",
-    package="",
-    layers=PACKAGE_LAYERS,
-)
-
-PLAYER_GRAPH: Final[LayerGraph] = LayerGraph(
-    root=PLAYER,
-    package=PLAYER,
-    layers=PLAYER_LAYERS,
-)
-
-APPLICATION_RULES: Final[Tuple[BoundaryRule, ...]] = (
-    BoundaryRule(
-        root=APPLICATION,
-        pattern="config/**/*.py",
-        forbidden=(
-            *VISUAL,
-            "sampletones_application.coordinators",
-            "sampletones_application.application",
-        ),
-    ),
-    BoundaryRule(
-        root=APPLICATION,
-        pattern="logic/**/*.py",
-        forbidden=(
-            *VISUAL,
-            "sampletones_application.coordinators",
-            "sampletones_application.services",
-        ),
-        contracts=SERVICE_CONTRACTS,
-    ),
-    BoundaryRule(
-        root=APPLICATION,
-        pattern="view_model/**/*.py",
-        forbidden=(
-            *VISUAL,
-            "sampletones_application.coordinators",
-            "sampletones_application.config",
-            "sampletones_application.logic",
-            "sampletones_application.services",
-        ),
-    ),
-    BoundaryRule(
-        root=APPLICATION,
-        pattern="services/**/*.py",
-        forbidden=(
-            *VISUAL,
-            "sampletones_application.view_model",
-            "sampletones_application.coordinators",
-            "sampletones_application.config",
-            "sampletones_application.logic",
-        ),
-    ),
-    BoundaryRule(
-        root=APPLICATION,
-        pattern="shell.py",
-        forbidden=(
-            "sampletones_application.logic",
-            "sampletones_application.services",
-        ),
-    ),
-    BoundaryRule(
-        root=APPLICATION,
-        pattern="coordinators/**/*.py",
-        forbidden=(
-            "sampletones_application.application",
-            "sampletones_application.shell",
-        ),
-    ),
-    BoundaryRule(
-        root=APPLICATION,
-        pattern="ui/**/*.py",
-        forbidden=(
-            "sampletones_application.coordinators",
-            "sampletones_application.logic",
-            "sampletones_application.services",
-            "sampletones_application.config",
-            "sampletones_application.application",
-            "sampletones_application.shell",
-            "sampletones_application.utils.gui.dialogs",
-        ),
-    ),
-)
-
-RULES: Final[Tuple[BoundaryRule, ...]] = (
-    *PACKAGES.rules(),
-    *PLAYER_GRAPH.rules(),
-    *APPLICATION_RULES,
-)
-
-TOKEN_RULES: Final[Tuple[TokenRule, ...]] = (
-    TokenRule(
-        root=APPLICATION,
-        pattern="ui/panels/**/*.py",
-        forbidden=r"\bSUF_PANEL_",
-        message="ui/panels must not reference a column suffix (SUF_PANEL_*); a panel receives its "
-        "parent through create_panel(parent), set by the coordinator that owns the layout",
-    ),
-    TokenRule(
-        root=APPLICATION,
-        pattern="ui/panels/**/*.py",
-        forbidden=r"parent\s*=\s*TAG_SEQUENCER_TRACKER_PANEL\b",
-        message="ui/panels must not parent into another panel's container (TAG_SEQUENCER_TRACKER_PANEL); "
-        "the coordinator injects the parent through create_panel(parent)",
-    ),
-    TokenRule(
-        root=APPLICATION,
-        pattern="ui/panels/**/*.py",
-        forbidden=r"\bTAG_GLOBAL_THEME_PANEL_(SURFACE|GROUND)\b",
-        message="ui/panels must not bind a structural depth theme (TAG_GLOBAL_THEME_PANEL_SURFACE/"
-        "GROUND); only the layout primitives own depth (TabColumns binds the column, card() "
-        "binds the card), and a panel binds only semantic themes",
-    ),
-)
 
 
 def main(argv: Sequence[str]) -> int:
@@ -221,7 +64,13 @@ def main(argv: Sequence[str]) -> int:
 
     files: List[Path] = arguments.files
     selection = None if arguments.all else {path.resolve() for path in files}
-    violations = check_boundaries(arguments.source, RULES, TOKEN_RULES, selection)
+    boundaries = ImportBoundaryRules.load()
+    violations = check_boundaries(
+        arguments.source,
+        boundaries.boundary_rules(),
+        boundaries.tokens,
+        selection,
+    )
     if not violations:
         return 0
 

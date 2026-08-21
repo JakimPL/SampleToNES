@@ -1,0 +1,55 @@
+- root: sampletones_application
+  pattern: "config/**/*.py"
+  forbidden_groups: [visual]
+  forbidden:
+    - sampletones_application.coordinators
+    - sampletones_application.application
+
+- root: sampletones_application
+  pattern: "logic/**/*.py"
+  forbidden_groups: [visual]
+  forbidden:
+    - sampletones_application.coordinators
+    - sampletones_application.services
+  contract_groups: [service_contracts]
+
+- root: sampletones_application
+  pattern: "view_model/**/*.py"
+  forbidden_groups: [visual]
+  forbidden:
+    - sampletones_application.coordinators
+    - sampletones_application.config
+    - sampletones_application.logic
+    - sampletones_application.services
+
+- root: sampletones_application
+  pattern: "services/**/*.py"
+  forbidden_groups: [visual]
+  forbidden:
+    - sampletones_application.view_model
+    - sampletones_application.coordinators
+    - sampletones_application.config
+    - sampletones_application.logic
+
+- root: sampletones_application
+  pattern: "shell.py"
+  forbidden:
+    - sampletones_application.logic
+    - sampletones_application.services
+
+- root: sampletones_application
+  pattern: "coordinators/**/*.py"
+  forbidden:
+    - sampletones_application.application
+    - sampletones_application.shell
+
+- root: sampletones_application
+  pattern: "ui/**/*.py"
+  forbidden:
+    - sampletones_application.coordinators
+    - sampletones_application.logic
+    - sampletones_application.services
+    - sampletones_application.config
+    - sampletones_application.application
+    - sampletones_application.shell
+    - sampletones_application.utils.gui.dialogs

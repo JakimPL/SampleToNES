@@ -1,0 +1,26 @@
+packages:
+  layers:
+    sampletones_shared: []
+    sampletones_config: []
+    sampletones_assets: [sampletones_shared]
+    sampletones_synthesis: [sampletones_shared]
+    sampletones_core: [sampletones_shared, sampletones_synthesis]
+    sampletones_player: [sampletones_shared, sampletones_core]
+    sampletones_application: [sampletones_shared, sampletones_core, sampletones_player]
+    sampletones: [sampletones_shared, sampletones_core, sampletones_application]
+
+player:
+  root: sampletones_player
+  package: sampletones_player
+  layers:
+    __init__.py: []
+    specification: []
+    clock: [specification]
+    registers: [specification]
+    song.py: [clock, registers]
+    builder.py: [song.py, registers, clock]
+    trace: [song.py, specification]
+    nsf: [song.py, registers, specification, driver]
+    export.py: [builder.py, nsf, driver]
+    driver: [specification]
+    driver/assembler: [driver, specification]

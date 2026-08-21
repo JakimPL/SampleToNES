@@ -1,0 +1,21 @@
+- root: sampletones_application
+  pattern: "ui/panels/**/*.py"
+  forbidden: '\bSUF_PANEL_'
+  message: >-
+    ui/panels must not reference a column suffix (SUF_PANEL_*); a panel receives its
+    parent through create_panel(parent), set by the coordinator that owns the layout
+
+- root: sampletones_application
+  pattern: "ui/panels/**/*.py"
+  forbidden: 'parent\s*=\s*TAG_SEQUENCER_TRACKER_PANEL\b'
+  message: >-
+    ui/panels must not parent into another panel's container (TAG_SEQUENCER_TRACKER_PANEL);
+    the coordinator injects the parent through create_panel(parent)
+
+- root: sampletones_application
+  pattern: "ui/panels/**/*.py"
+  forbidden: '\bTAG_GLOBAL_THEME_PANEL_(SURFACE|GROUND)\b'
+  message: >-
+    ui/panels must not bind a structural depth theme (TAG_GLOBAL_THEME_PANEL_SURFACE/GROUND);
+    only the layout primitives own depth (TabColumns binds the column, card() binds the card),
+    and a panel binds only semantic themes

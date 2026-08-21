@@ -1,6 +1,9 @@
 from typing import Final
 
-from sampletones_shared.meta.import_boundary.graph import LayerGraph
+import pytest
+from pydantic import ValidationError
+
+from sampletones_shared.meta.import_boundary.graph import LayerGraph, reached_units
 
 GRAPH: Final[LayerGraph] = LayerGraph(
     root="package",
@@ -35,3 +38,41 @@ class TestLayerRules:
 
     def test_a_rule_names_its_unit_by_the_glob_the_unit_holds(self) -> None:
         assert [rule.pattern for rule in GRAPH.rules()] == ["low/**/*.py", "high/**/*.py", "high/nested/**/*.py"]
+
+
+class TestWellFormedGraphs:
+    """A graph states an order over its units, so one it cannot state is refused as it is read."""
+
+    def test_a_unit_reaching_an_undeclared_unit_is_refused(self) -> None:
+        with pytest.raises(ValidationError):
+            LayerGraph(
+                root="package",
+                package="package",
+                layers={"high": ("absent",)},
+            )
+
+    def test_a_graph_closing_a_cycle_is_refused(self) -> None:
+        with pytest.raises(ValidationError):
+            LayerGraph(
+                root="package",
+                package="package",
+                layers={"low": ("high",), "high": ("low",)},
+            )
+
+    def test_a_unit_importing_itself_is_refused(self) -> None:
+        with pytest.raises(ValidationError):
+            LayerGraph(
+                root="package",
+                package="package",
+                layers={"low": ("low",)},
+            )
+
+
+class TestReachedUnits:
+    """What a unit imports through the units it imports, which is what an order is read from."""
+
+    def test_a_unit_reaches_what_its_layers_reach(self) -> None:
+        assert reached_units(GRAPH.layers, "high") == {"low"}
+
+    def test_a_unit_standing_on_nothing_reaches_nothing(self) -> None:
+        assert reached_units(GRAPH.layers, "low") == set()
