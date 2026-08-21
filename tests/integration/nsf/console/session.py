@@ -55,4 +55,4 @@ def captured_trace(song: Song, information: NSFInformation) -> RegisterTrace:
     Returns:
         RegisterTrace: The writes of the initialisation and of every play call in the run.
     """
-    return captured_file_trace(nsf_to_bytes(song, information), song)
+    return captured_file_trace(nsf_to_bytes(song, information, DriverImage.load()), song)

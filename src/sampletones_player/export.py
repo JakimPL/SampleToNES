@@ -10,6 +10,7 @@ from sampletones_core.exports.request import (
 )
 from sampletones_core.exports.scope import ExportScope
 from sampletones_player.builder import song_from_sample
+from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.file import write_nsf
 from sampletones_player.nsf.information import NSFInformation
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
@@ -36,7 +37,21 @@ class NSFBackend:
 
     The console's program area bounds how long a song may run, and one outgrowing it is reported
     rather than written short.
+
+    Every file carries the same assembled driver, which the backend reads once as it is built.
+    A build shipping without it therefore reports itself where the backends are composed, and
+    an export spends its reads on the song alone.
     """
+
+    def __init__(self) -> None:
+        """Reads the driver every written file carries.
+
+        Raises:
+            OSError: If the packaged driver is absent.
+            ValueError: If the packaged driver lays out something other than the addresses it
+                is built to answer at.
+        """
+        self._image = DriverImage.load()
 
     @property
     def export_format(self) -> ExportFormat:
@@ -46,7 +61,7 @@ class NSFBackend:
     def supported_scopes(self) -> FrozenSet[ExportScope]:
         return SUPPORTED_SCOPES
 
-    def extension(self, scope: ExportScope) -> str:
+    def extension(self, scope: ExportScope) -> str:  # pylint: disable=unused-argument
         return EXT_FILE_NSF
 
     def write_instrument(
@@ -87,6 +102,7 @@ class NSFBackend:
                 title=request.name,
                 artist=NO_ARTIST,
             ),
+            self._image,
         )
 
         return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE)

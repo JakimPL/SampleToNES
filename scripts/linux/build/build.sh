@@ -44,6 +44,7 @@ echo "Building executable..."
     --add-data "src/sampletones_assets/icons:assets/icons" \
     --add-data "src/sampletones_assets/fonts:assets/fonts" \
     --add-data "src/sampletones_config:config" \
+    --add-data "src/sampletones_player/driver/binary:sampletones_player/driver/binary" \
     --copy-metadata sampletones \
     --exclude-module PIL \
     "${RELEASE_HOOK_ARGS[@]}" \

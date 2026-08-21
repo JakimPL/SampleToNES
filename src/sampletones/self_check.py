@@ -126,6 +126,17 @@ def _check_resources() -> str:
     return f"{len(FontResource)} fonts, {len(IconResource)} icons"
 
 
+def _check_export_backends() -> str:
+    """Composes every backend the application exports through.
+
+    A backend reads the resources it writes with as it is built, so this is where a build
+    shipping without one — the player's assembled driver among them — names what is missing.
+    """
+    from sampletones_application.exports import build_export_backends
+
+    return ", ".join(sorted(build_export_backends()))
+
+
 def _check_file_dialog_backend() -> str:
     from sampletones_application.utils.file_dialogs.selection import select_file_dialog_backend
 
@@ -141,6 +152,7 @@ CHECKS: Final[Tuple[SelfCheck, ...]] = (
     SelfCheck(name="themes", run=_check_themes),
     SelfCheck(name="language", run=_check_language),
     SelfCheck(name="resources", run=_check_resources),
+    SelfCheck(name="export backends", run=_check_export_backends),
     SelfCheck(name="file dialog backend", run=_check_file_dialog_backend),
 )
 

@@ -44,9 +44,14 @@ def stream_offsets(block: bytes) -> Tuple[int, ...]:
 
 
 @pytest.fixture
-def exported(song: Song, sample: Sample, nsf_paths: Dict[str, Path]) -> bytes:
+def exported(
+    song: Song,
+    sample: Sample,
+    nsf_paths: Dict[str, Path],
+    driver_image: DriverImage,
+) -> bytes:
     destination = nsf_paths[sample.name]
-    write_nsf(destination, song, exported_information(sample.name))
+    write_nsf(destination, song, exported_information(sample.name), driver_image)
     return destination.read_bytes()
 
 
@@ -57,10 +62,11 @@ class TestNsfPipeline:
         self,
         instrument_catalog: Dict[str, Sample],
         nsf_paths: Dict[str, Path],
+        driver_image: DriverImage,
     ) -> None:
         for name, sample in instrument_catalog.items():
             song = song_from_reconstruction(sample.reconstruction, loop_tick=None)
-            write_nsf(nsf_paths[name], song, exported_information(name))
+            write_nsf(nsf_paths[name], song, exported_information(name), driver_image)
             assert nsf_paths[name].read_bytes()[: len(NSF_MAGIC)] == NSF_MAGIC
 
     def test_the_file_carries_the_shipped_driver(self, exported: bytes, driver_image: DriverImage) -> None:
@@ -135,6 +141,7 @@ class TestAStoredReconstructionExportsTheSameFile:
         sample: Sample,
         song: Song,
         tmp_path: Path,
+        driver_image: DriverImage,
     ) -> None:
         stored = tmp_path / f"{sample.name}{EXT_FILE_RECONSTRUCTION}"
         sample.reconstruction.save(stored)
@@ -143,7 +150,7 @@ class TestAStoredReconstructionExportsTheSameFile:
         information = exported_information(sample.name)
         before = tmp_path / "before.nsf"
         after = tmp_path / "after.nsf"
-        write_nsf(before, song, information)
-        write_nsf(after, reloaded, information)
+        write_nsf(before, song, information, driver_image)
+        write_nsf(after, reloaded, information, driver_image)
 
         assert after.read_bytes() == before.read_bytes()

@@ -52,28 +52,28 @@ class TestNSFBytes:
     """The three parts a console loads, in the order it loads them."""
 
     def test_the_file_leads_with_its_header(self, song: Song, image: DriverImage) -> None:
-        assert nsf_to_bytes(song, INFORMATION)[:HEADER_SIZE] == header_to_bytes(INFORMATION, image.addresses)
+        assert nsf_to_bytes(song, INFORMATION, image)[:HEADER_SIZE] == header_to_bytes(INFORMATION, image.addresses)
 
     def test_the_driver_follows_the_header(self, song: Song, image: DriverImage) -> None:
-        assert nsf_to_bytes(song, INFORMATION)[HEADER_SIZE : HEADER_SIZE + len(image.code)] == image.code
+        assert nsf_to_bytes(song, INFORMATION, image)[HEADER_SIZE : HEADER_SIZE + len(image.code)] == image.code
 
     def test_the_song_follows_the_driver(self, song: Song, image: DriverImage) -> None:
-        data = nsf_to_bytes(song, INFORMATION)
+        data = nsf_to_bytes(song, INFORMATION, image)
         assert data[HEADER_SIZE + len(image.code) :] == song_to_bytes(song, PROGRAM_SIZE - len(image.code))
 
     def test_the_file_is_its_three_parts_and_nothing_more(self, song: Song, image: DriverImage) -> None:
         block = song_to_bytes(song, PROGRAM_SIZE - len(image.code))
-        assert len(nsf_to_bytes(song, INFORMATION)) == HEADER_SIZE + len(image.code) + len(block)
+        assert len(nsf_to_bytes(song, INFORMATION, image)) == HEADER_SIZE + len(image.code) + len(block)
 
-    def test_the_loaded_image_fits_the_program_area(self, song: Song) -> None:
-        assert len(nsf_to_bytes(song, INFORMATION)) - HEADER_SIZE <= PROGRAM_SIZE
+    def test_the_loaded_image_fits_the_program_area(self, song: Song, image: DriverImage) -> None:
+        assert len(nsf_to_bytes(song, INFORMATION, image)) - HEADER_SIZE <= PROGRAM_SIZE
 
     def test_the_header_loads_the_image_where_the_driver_expects_it(
         self,
         song: Song,
         image: DriverImage,
     ) -> None:
-        data = nsf_to_bytes(song, INFORMATION)
+        data = nsf_to_bytes(song, INFORMATION, image)
         assert struct.unpack_from("<H", data, LOAD_ADDRESS_OFFSET)[0] == image.addresses.load
 
     def test_the_song_lands_at_the_address_the_driver_reads_it_from(
@@ -81,7 +81,7 @@ class TestNSFBytes:
         song: Song,
         image: DriverImage,
     ) -> None:
-        data = nsf_to_bytes(song, INFORMATION)
+        data = nsf_to_bytes(song, INFORMATION, image)
         block = song_to_bytes(song, PROGRAM_SIZE - len(image.code))
         song_start = len(data) - len(block)
         assert image.addresses.load + song_start - HEADER_SIZE == image.addresses.song
@@ -92,13 +92,18 @@ class TestSongsBeyondTheProgramArea:
 
     def test_a_song_too_large_for_the_program_area_raises(self, image: DriverImage) -> None:
         with pytest.raises(SongTooLargeError):
-            nsf_to_bytes(oversized_song(image), INFORMATION)
+            nsf_to_bytes(oversized_song(image), INFORMATION, image)
 
 
 class TestWriteNSF:
     """The bytes reaching a file on disk."""
 
-    def test_the_file_holds_the_bytes_the_song_serialises_to(self, song: Song, tmp_path: Path) -> None:
+    def test_the_file_holds_the_bytes_the_song_serialises_to(
+        self,
+        song: Song,
+        image: DriverImage,
+        tmp_path: Path,
+    ) -> None:
         destination = tmp_path / FILENAME
-        write_nsf(destination, song, INFORMATION)
-        assert destination.read_bytes() == nsf_to_bytes(song, INFORMATION)
+        write_nsf(destination, song, INFORMATION, image)
+        assert destination.read_bytes() == nsf_to_bytes(song, INFORMATION, image)
