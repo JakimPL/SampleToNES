@@ -1,4 +1,4 @@
-.PHONY: help setup install build release system-deps run clean pre-commit test \
+.PHONY: help setup install build release system-deps run clean pre-commit test benchmarks \
 	ftm-samples nsf-samples nsf-render compression-report icons player check-import-boundary check-tag-names check-unused-tags \
 	check-language-keys check-palette-colors calibration lint pylint mypy format
 
@@ -69,6 +69,7 @@ help:
 	@echo $(Q)  make build       - Compile standalone executable (respects current deployment config)$(Q)
 	@echo $(Q)  make release     - Compile standalone executable with the release deployment config$(Q)
 	@echo $(Q)  make test        - Run unit tests with coverage$(Q)
+	@echo $(Q)  make benchmarks  - Run the measured-duration suite on its own$(Q)
 	@echo $(Q)  make ftm-samples - Emit example .ftm files to build/ftm via the integration suite$(Q)
 	@echo $(Q)  make nsf-samples - Emit example .nsf files to build/nsf via the integration suite$(Q)
 	@echo $(Q)  make nsf-render  - Render the .nsf files in build/nsf to waves with ffmpeg$(Q)
@@ -110,6 +111,9 @@ pre-commit:
 
 test:
 	$(call script,dev/tests)
+
+benchmarks:
+	uv run python -m pytest tests/benchmarks --no-cov
 
 ftm-samples: export SAMPLETONES_FTM_OUTPUT_DIR := build/ftm
 ftm-samples:

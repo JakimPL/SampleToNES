@@ -8,26 +8,18 @@ import pytest
 
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
-from sampletones_core.project.settings import ProjectSettings
-from sampletones_core.timing import SongTiming
-from sampletones_player.builder import song_from_project, song_from_reconstruction
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.decode import decode_planes
-from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.dictionary.table import phrase_table
 from sampletones_player.compression.encode import STREAM_START, encode_planes
 from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.matches.matcher import PhraseMatcher
 from sampletones_player.compression.options import CodecOptions
 from sampletones_player.compression.parse.plane import parse_plane
-from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.rebuild import streams_from_planes
-from sampletones_player.compression.planes.separate import planes_from_streams
 from sampletones_player.compression.planes.song import SongPlanes
-from sampletones_player.compression.seeds import phrases_from_project
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.registers.streams import ChannelStreams
-from sampletones_player.song import Song
 from sampletones_player.specification.compression import (
     MAX_LITERAL_BYTES,
     PLANE_COUNT,
@@ -35,13 +27,9 @@ from sampletones_player.specification.compression import (
 )
 from sampletones_player.specification.registers import DUTY_CYCLE_SHIFT
 from sampletones_player.specification.song import SONG_HEADER_SIZE
-from sampletones_shared.music import Tuning
+from tests.integration.nsf.corpus import LONG_ARRANGEMENT, CorpusEntry, build_corpus
 from tests.integration.nsf.report import ReportRow, write_csv, write_markdown
-from tests.integration.nsf.songs import (
-    RECORD_BYTES_PER_TICK,
-    available_bytes,
-    lengthened,
-)
+from tests.integration.nsf.songs import available_bytes
 from tests.integration.output import resolve_output_directory, resolve_output_path
 from tests.integration.paths import COMPRESSION_OUTPUT_ENV
 
@@ -61,37 +49,8 @@ PLANE_VARIANTS: Final[Tuple[Tuple[str, CodecOptions], ...]] = (
     (SEARCH, CodecOptions(holds=True, phrases=True, transposition=True, search=True)),
 )
 
-ARRANGEMENT: Final[str] = "arrangement"
-LONG_ARRANGEMENT: Final[str] = "arrangement, three minutes"
-TARGET_SECONDS: Final[int] = 180
-MAX_ENCODER_SECONDS: Final[float] = 120.0
 CSV_FILENAME: Final[str] = "report.csv"
 MARKDOWN_FILENAME: Final[str] = "report.md"
-
-
-@dataclass(frozen=True)
-class CorpusEntry:
-    """One song the report measures, alongside the phrases its own instruments offer."""
-
-    name: str
-    song: Song
-    seeds: Tuple[Phrase, ...]
-    tuning: Tuning
-
-    @property
-    def pitches(self) -> PitchTable:
-        """The timer each pitch of the song sounds at."""
-        return PitchTable.from_tuning(self.tuning)
-
-    @property
-    def planes(self) -> SongPlanes:
-        """The eight planes the song separates into."""
-        return planes_from_streams(self.song.streams, self.pitches)
-
-    @property
-    def records(self) -> int:
-        """The bytes the song takes as one record per tick per channel."""
-        return RECORD_BYTES_PER_TICK * self.song.ticks
 
 
 @dataclass(frozen=True)
@@ -113,12 +72,6 @@ class Encoding:
     def streams(self) -> int:
         """The bytes the token streams take, which is the part that grows with the song."""
         return sum(len(stream) for stream in self.compressed.streams)
-
-
-def _sample_project(sample: Sample, settings: ProjectSettings) -> Project:
-    project = Project.create(settings=settings)
-    project.samples.append(sample)
-    return project
 
 
 def _register_planes(streams: ChannelStreams) -> Tuple[bytes, ...]:
@@ -155,38 +108,7 @@ def corpus(
     integration_project: Project,
 ) -> Tuple[CorpusEntry, ...]:
     """The songs the report measures: each sample alone, and the arrangement at two lengths."""
-    tuning = Tuning()
-    entries: List[CorpusEntry] = []
-    for name, sample in instrument_catalog.items():
-        reconstruction = sample.reconstruction
-        entries.append(
-            CorpusEntry(
-                name=name,
-                song=song_from_reconstruction(reconstruction, loop_tick=None),
-                seeds=phrases_from_project(
-                    _sample_project(sample, integration_project.settings),
-                    reconstruction.config.library.tuning,
-                ),
-                tuning=reconstruction.config.library.tuning,
-            )
-        )
-
-    groove = SongTiming.from_project(integration_project).groove()
-    frames = ceil(TARGET_SECONDS * integration_project.settings.nes_frequency / groove.total_ticks)
-    for name, project in (
-        (ARRANGEMENT, integration_project),
-        (LONG_ARRANGEMENT, lengthened(integration_project, frames)),
-    ):
-        entries.append(
-            CorpusEntry(
-                name=name,
-                song=song_from_project(project, tuning, loop_tick=None),
-                seeds=phrases_from_project(project, tuning),
-                tuning=tuning,
-            )
-        )
-
-    return tuple(entries)
+    return build_corpus(instrument_catalog, integration_project)
 
 
 @pytest.fixture(scope="module")
@@ -347,18 +269,6 @@ class TestTheProgramAreaHoldsAWholeSong:
         """The pitch table is paid once, so what a song's own data is held against is the records."""
         for encoding in encodings:
             assert encoding.compressed.size < encoding.entry.records
-
-    def test_the_encoder_answers_within_the_budget_an_export_allows(
-        self,
-        encodings: Tuple[Encoding, ...],
-    ) -> None:
-        """The gate measures this under coverage, which multiplies the encoder's own cost tenfold.
-
-        The budget is set against that reading, so it catches an encoder an export would wait on
-        rather than the ordinary drift of a machine under load.
-        """
-        for encoding in encodings:
-            assert encoding.seconds < MAX_ENCODER_SECONDS
 
 
 class TestTheReportStatesWhatEachLayerSaves:
