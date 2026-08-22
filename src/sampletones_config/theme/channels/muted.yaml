@@ -1,0 +1,12 @@
+name: channel_muted
+tag: global.theme.channel_muted
+
+components:
+  - item_type: Checkbox
+    entries:
+      - type: color
+        key: CheckMark
+        value: .text_muted
+      - type: color
+        key: Text
+        value: .text_muted

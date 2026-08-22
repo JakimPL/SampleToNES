@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, FrozenSet, List, Optional, Protocol, Tuple
+from typing import Callable, Dict, Final, FrozenSet, List, Optional, Protocol, Set, Tuple
 
 import numpy as np
 
@@ -17,9 +17,12 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_application.view_model.reconstruction.stems import (
     ReconstructionStemsViewModel,
-    StemViewModel,
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
+from sampletones_application.view_model.shared.stems import (
+    StemRowViewModel,
+    StemsListViewModel,
+)
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.configs.library import InstructionsLibraryConfig
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
@@ -30,6 +33,7 @@ from sampletones_core.exports.extensions import format_for_extension
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.exports.scope import ExportScope
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_shared.logger import logger
 from sampletones_shared.music import Tuning
 from sampletones_shared.types.callback import PathCallback, VoidCallback
@@ -38,6 +42,14 @@ from sampletones_shared.utils.system.paths import (
     first_missing,
     get_filename,
     open_path_in_explorer,
+)
+
+EMPTY_STEMS_LIST: Final[StemsListViewModel] = StemsListViewModel(
+    rows=(),
+    channels_in_play=(),
+    muted_channels=frozenset(),
+    live=True,
+    collapse_levels=False,
 )
 
 
@@ -86,8 +98,8 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._playing_channels: FrozenSet[ChannelName] = frozenset()
         self._selected_channels: List[ChannelName] = []
-        self._available_stems: FrozenSet[int] = frozenset()
-        self._selected_stems: FrozenSet[int] = frozenset()
+        self._offered_stem_channels: Dict[int, FrozenSet[ChannelName]] = {}
+        self._stem_channels: Dict[int, FrozenSet[ChannelName]] = {}
 
         self.on_view_changed: Optional[Callable[[ReconstructionViewModel], None]] = None
         self.on_audio_data_changed: Optional[Callable[[Optional[AudioData]], None]] = None
@@ -110,8 +122,8 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self._playing_channels = frozenset(reconstruction_data.reconstruction.playing_channels)
         self._selected_channels = self._in_channel_order(self._playing_channels)
-        self._available_stems = self._all_stem_ids(reconstruction_data)
-        self._selected_stems = self._available_stems
+        self._offered_stem_channels = self._offered_channels(reconstruction_data)
+        self._stem_channels = dict(self._offered_stem_channels)
 
         view_model = self._build_view_model(reconstruction_data)
         if not view_model.audio_source_enabled:
@@ -125,7 +137,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.call(self.on_waveform_source_changed, self._current_audio_source)
         self.call(
             self.on_waveform_load_changed,
-            reconstruction_data.waveform_data(self._selected_stems),
+            reconstruction_data.waveform_data(self._stem_selection),
             self._selected_channels,
         )
         self._emit_audio_data()
@@ -136,7 +148,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             return
 
         self._adopt_playing_channels(frozenset(reconstruction_data.reconstruction.playing_channels))
-        self._adopt_selected_stems(self._all_stem_ids(reconstruction_data))
+        self._adopt_stem_channels(self._offered_channels(reconstruction_data))
 
         self.call(self.on_view_changed, self._build_view_model(reconstruction_data))
         self.call(
@@ -145,7 +157,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self.call(
             self.on_waveform_update_changed,
-            reconstruction_data.waveform_data(self._selected_stems),
+            reconstruction_data.waveform_data(self._stem_selection),
             self._selected_channels,
         )
         if self._current_audio_source != AudioSourceType.ORIGINAL:
@@ -186,15 +198,15 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._current_audio_source = AudioSourceType.RECONSTRUCTION
         self._playing_channels = frozenset()
         self._selected_channels = []
-        self._available_stems = frozenset()
-        self._selected_stems = frozenset()
+        self._offered_stem_channels = {}
+        self._stem_channels = {}
         self.call(self.on_audio_data_changed, None)
         self.call(self.on_waveform_cleared)
         self.call(
             self.on_stems_view_changed,
             ReconstructionStemsViewModel(
                 reconstruction_loaded=False,
-                stems=(),
+                stems=EMPTY_STEMS_LIST,
             ),
         )
         empty_path = ReconstructionPathViewModel(
@@ -218,25 +230,8 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.call(self.on_waveform_source_changed, audio_source)
 
     def set_selected_channels(self, channels: List[ChannelName]) -> None:
+        """Adopts the reader's channel choice, which the stems list reports as muted columns."""
         self._selected_channels = channels
-        reconstruction_data = self._reconstruction_data
-        if not reconstruction_data:
-            return
-
-        self.call(
-            self.on_waveform_load_changed,
-            reconstruction_data.waveform_data(self._selected_stems),
-            channels,
-        )
-        self._emit_audio_data()
-
-    def set_selected_stems(self, stem_ids: FrozenSet[int]) -> None:
-        """Adopts the reader's stem choice and re-answers playback and the waveform.
-
-        The choice is listening state, so it filters what plays and what the waveform
-        shows without touching the document.
-        """
-        self._selected_stems = stem_ids
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             return
@@ -247,55 +242,125 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self.call(
             self.on_waveform_load_changed,
-            reconstruction_data.waveform_data(self._selected_stems),
+            reconstruction_data.waveform_data(self._stem_selection),
+            channels,
+        )
+        self._emit_audio_data()
+
+    def set_stem_channels(self, stem_id: int, channels: FrozenSet[ChannelName]) -> None:
+        """Adopts the channels one recording is heard on and re-answers playback and the waveform.
+
+        The choice is listening state, so it filters what plays and what the waveform
+        shows without touching the document.
+        """
+        self._stem_channels[stem_id] = channels
+        reconstruction_data = self._reconstruction_data
+        if not reconstruction_data:
+            return
+
+        self.call(
+            self.on_stems_view_changed,
+            self._build_stems_view_model(reconstruction_data),
+        )
+        self.call(
+            self.on_waveform_load_changed,
+            reconstruction_data.waveform_data(self._stem_selection),
             self._selected_channels,
         )
         self._emit_audio_data()
 
-    def _adopt_selected_stems(self, stem_ids: FrozenSet[int]) -> None:
-        """Carries the reader's stem choice across an edit.
+    def _adopt_stem_channels(self, offered: Dict[int, FrozenSet[ChannelName]]) -> None:
+        """Carries the reader's per-channel stem choice across an edit.
 
-        A stem that keeps existing keeps whatever the reader chose for it, and one
-        appearing for the first time joins selected, so a deliberate choice survives
-        while the new stems' content is heard.
+        A channel a stem keeps holding frames on keeps whatever the reader chose for it, and
+        one the stem reaches for the first time joins ticked, so a deliberate choice survives
+        while the new content is heard. A stem appearing for the first time offers everything
+        it holds, which is the same rule read against the nothing it offered before.
         """
-        selected = (set(self._selected_stems) & stem_ids) | (stem_ids - self._available_stems)
-        self._available_stems = stem_ids
-        self._selected_stems = frozenset(selected)
+        self._stem_channels = {
+            stem_id: (self._stem_channels.get(stem_id, frozenset()) & channels)
+            | (channels - self._offered_stem_channels.get(stem_id, frozenset()))
+            for stem_id, channels in offered.items()
+        }
+        self._offered_stem_channels = offered
+
+    @property
+    def _stem_selection(self) -> StemSelection:
+        """What the reader is listening to, read the way the filter asks for it.
+
+        The card keeps the channels each recording is heard on; the filter asks each channel
+        which recordings it keeps, so the selection is that map turned around.
+        """
+        channels: Dict[ChannelName, Set[int]] = {channel_name: set() for channel_name in ChannelName.items()}
+        for stem_id, stem_channels in self._stem_channels.items():
+            for channel_name in stem_channels:
+                channels[channel_name].add(stem_id)
+
+        return StemSelection(
+            channels={channel_name: frozenset(stem_ids) for channel_name, stem_ids in channels.items()}
+        )
 
     @staticmethod
-    def _all_stem_ids(
+    def _offered_channels(
         reconstruction_data: ReconstructionData,
-    ) -> FrozenSet[int]:
-        return frozenset(entry.id for entry in reconstruction_data.reconstruction.stems_data.config.entries)
+    ) -> Dict[int, FrozenSet[ChannelName]]:
+        """The channels each stem holds frames on, which is what its row offers a box for.
+
+        A stem the picker never chose on a channel contributes nothing there whatever the
+        reader ticks, so the row draws a box exactly where the choice reaches something.
+        """
+        stems_data = reconstruction_data.reconstruction.stems_data
+        offered: Dict[int, Set[ChannelName]] = {entry.id: set() for entry in stems_data.config.entries}
+        for channel_name, stem_ids in stems_data.assignments_by_channel.items():
+            for stem_id in set(stem_ids):
+                if stem_id in offered:
+                    offered[stem_id].add(channel_name)
+
+        return {stem_id: frozenset(channels) for stem_id, channels in offered.items()}
 
     def _build_stems_view_model(
         self,
         reconstruction_data: ReconstructionData,
     ) -> ReconstructionStemsViewModel:
+        """The recorded assignment as the stems list draws it, banded by the picking levels."""
         reconstruction = reconstruction_data.reconstruction
         stems_data = reconstruction.stems_data
         source_paths = reconstruction.audio_filepath
         if not source_paths:
             return ReconstructionStemsViewModel(
                 reconstruction_loaded=True,
-                stems=(),
+                stems=EMPTY_STEMS_LIST,
             )
 
-        assigned_stem_ids = {stem_id for stem_ids in stems_data.assignments_by_channel.values() for stem_id in stem_ids}
+        recordings = {entry.id: source_paths[index] for index, entry in enumerate(stems_data.config.entries)}
+        levels = stems_data.config.hierarchy.levels
         rows = tuple(
-            StemViewModel(
-                stem_id=entry.id,
-                label=source_paths[index].name,
-                channels=tuple(entry.channels),
-                enabled=entry.id in assigned_stem_ids,
-                selected=entry.id in self._selected_stems,
+            StemRowViewModel(
+                key=str(stem_id),
+                path=recordings[stem_id],
+                channels=self._stem_channels.get(stem_id, frozenset()),
+                offered_channels=self._offered_stem_channels.get(stem_id, frozenset()),
+                available=recordings[stem_id].is_file(),
+                level=level_index,
+                position=position,
+                level_size=len(level),
+                level_count=len(levels),
             )
-            for index, entry in enumerate(stems_data.config.entries)
+            for level_index, level in enumerate(levels)
+            for position, stem_id in enumerate(level)
+        )
+        channels_in_play = self._in_channel_order(
+            frozenset(channel_name for row in rows for channel_name in row.offered_channels)
         )
         return ReconstructionStemsViewModel(
             reconstruction_loaded=True,
-            stems=rows,
+            stems=StemsListViewModel(
+                rows=rows,
+                channels_in_play=tuple(channels_in_play),
+                muted_channels=frozenset(channels_in_play) - frozenset(self._selected_channels),
+                live=True,
+                collapse_levels=False,
+            ),
             hierarchy_mode=stems_data.config.hierarchy.mode,
             channel_cap=stems_data.config.channel_cap,
         )
@@ -519,7 +584,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         audio_snapshot = reconstruction_data.partials_for(
             self._selected_channels,
-            self._selected_stems,
+            self._stem_selection,
         )
         sample_rate = reconstruction_data.reconstruction.config.sample_rate
         self._session_manager.set_audio_path(filepath)
@@ -569,12 +634,12 @@ class ReconstructionPanelLogic(CallbackMixin):
             if reconstruction_data.original_audio is None:
                 return None
 
-            selected_original_audio = reconstruction_data.original_mix_for(self._selected_stems)
+            selected_original_audio = reconstruction_data.original_mix_for(self._stem_selection)
             return AudioData.from_array(selected_original_audio, sample_rate)
 
         partial_approximation = reconstruction_data.partials_for(
             self._selected_channels,
-            self._selected_stems,
+            self._stem_selection,
         )
         return AudioData.from_array(partial_approximation, sample_rate)
 

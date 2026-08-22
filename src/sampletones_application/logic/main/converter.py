@@ -28,8 +28,8 @@ from sampletones_application.view_model.main.converter import (
     ACTIVE_PHASES,
     ConversionPhase,
     ConverterViewModel,
-    StemSourceRow,
 )
+from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
@@ -123,6 +123,7 @@ class ConverterLogic(CallbackMixin):
         self.on_error: Optional[Callable[[Exception], None]] = None
         self.on_no_files_to_process: Optional[VoidCallback] = None
         self.on_no_generators: Optional[VoidCallback] = None
+        self.on_target_exists: Optional[PathCallback] = None
         self.on_load_file: Optional[PathCallback] = None
         self.on_load_directory: Optional[VoidCallback] = None
         self.on_cancelled: Optional[VoidCallback] = None
@@ -265,13 +266,23 @@ class ConverterLogic(CallbackMixin):
         self._hierarchy_mode = hierarchy_mode
         self._refresh_setup()
 
-    def start_conversion(self) -> None:
+    def start_conversion(self, confirmed: bool = False) -> None:
+        """Starts the run the current setup describes, asking first where it would write over work.
+
+        ``confirmed`` states that the reader has already answered for the file standing at the
+        target, which is what lets the prompt's answer come back and run.
+        """
         if self._is_operation_active():
             logger.warning("A conversion or library generation is already in progress")
             return
 
         if not self._config_manager.config.generation.channels:
             self.call(self.on_no_generators)
+            return
+
+        standing_target = self._standing_target()
+        if standing_target is not None and not confirmed:
+            self.call(self.on_target_exists, standing_target)
             return
 
         self._phase = ConversionPhase.WAITING
@@ -418,6 +429,19 @@ class ConverterLogic(CallbackMixin):
         self._system_progress.initialize()
         self._service.start(config, self._conversion_plan(config, self._input_path))
 
+    def _standing_target(self) -> Optional[Path]:
+        """The reconstruction this run would write over, where one stands.
+
+        A batch converts what is still to be written and keeps the rest, so it puts nothing to
+        the reader; a single conversion writes one file, and that is the one worth asking about.
+        """
+        if self._input_path is None:
+            return None
+
+        config = self._config_manager.config
+        targets = self._conversion_plan(config, self._input_path).existing_targets(config)
+        return targets[0] if targets else None
+
     def _conversion_plan(self, config: Config, input_path: Path) -> ConversionPlan:
         """What the request amounts to: one reconstruction from the recordings listed or the file
         selected, or one per audio file the selected directory holds."""
@@ -493,13 +517,21 @@ class ConverterLogic(CallbackMixin):
         if sources:
             self._output_path = group_output_path(self._config_manager.config, sources)
 
-    def _stem_rows(self, config: Config) -> Tuple[StemSourceRow, ...]:
-        """The gathered recordings as the panel reads them, each stating where it stands."""
+    def _stem_rows(self, config: Config) -> Tuple[StemRowViewModel, ...]:
+        """The gathered recordings as the panel reads them, each stating where it stands.
+
+        A gathered recording is named by its path, so the list reports every gesture under the
+        path it landed on, and it offers a box on every channel the configuration enables. A
+        recording that has left the disk since it was gathered reports itself as missing.
+        """
         enabled = list(config.generation.channels)
         return tuple(
-            StemSourceRow(
+            StemRowViewModel(
+                key=str(source.path),
                 path=source.path,
                 channels=frozenset(effective_channels(source, enabled)),
+                offered_channels=frozenset(enabled),
+                available=source.path.is_file(),
                 level=level_index,
                 position=position,
                 level_size=len(level),

@@ -147,8 +147,8 @@ class ReconstructionManager(CallbackMixin):
             name=name,
         )
 
-    def apply_regenerated(self, reconstruction: Reconstruction) -> None:
-        """Adopts an edited reconstruction produced by regeneration.
+    def apply_edited(self, reconstruction: Reconstruction) -> None:
+        """Adopts a reconstruction an edit produced.
 
         The open document rebinds to the fresh reconstruction object so the editor
         and any owning project sample continue to share one identity, while the

@@ -1,0 +1,9 @@
+name: stems_row
+tag: global.theme.stems_row
+
+components:
+  - item_type: Selectable
+    entries:
+      - type: color
+        key: Text
+        value: .text

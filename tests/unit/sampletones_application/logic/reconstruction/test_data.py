@@ -11,9 +11,16 @@ from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+
+
+def _heard(*stem_ids: int) -> StemSelection:
+    """The selection hearing every named stem on every channel."""
+    return StemSelection.everywhere(frozenset(stem_ids), ChannelName.items())
 
 
 class TestFromReconstruction:
@@ -319,11 +326,11 @@ class TestStemFilteredProjections:
         expected = data.reconstruction.approximation.copy()
         expected[frame_length:] = 0
 
-        partials = data.partials_for([ChannelName.PULSE1], frozenset({0}))
+        partials = data.partials_for([ChannelName.PULSE1], _heard(0))
 
         np.testing.assert_allclose(partials, expected)
         np.testing.assert_allclose(
-            data.partials_for([ChannelName.PULSE1], frozenset({0, 1})),
+            data.partials_for([ChannelName.PULSE1], _heard(0, 1)),
             data.reconstruction.approximation,
         )
 
@@ -360,11 +367,11 @@ class TestStemFilteredProjections:
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
-        np.testing.assert_allclose(data.original_mix_for(frozenset({0})), data.stem_audios[0])
+        np.testing.assert_allclose(data.original_mix_for(_heard(0)), data.stem_audios[0])
         assert data.original_audio is not None
-        np.testing.assert_allclose(data.original_mix_for(frozenset({0, 1})), data.original_audio)
+        np.testing.assert_allclose(data.original_mix_for(_heard(0, 1)), data.original_audio)
         np.testing.assert_array_equal(
-            data.original_mix_for(frozenset()),
+            data.original_mix_for(_heard()),
             np.zeros_like(data.reconstruction.approximation),
         )
 
@@ -380,11 +387,91 @@ class TestStemFilteredProjections:
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         np.testing.assert_array_equal(
-            data.partials_for([ChannelName.PULSE1], frozenset()),
+            data.partials_for([ChannelName.PULSE1], _heard()),
             np.zeros_like(data.reconstruction.approximation),
         )
         assert data.original_audio is not None
-        np.testing.assert_allclose(data.original_mix_for(frozenset({0})), data.original_audio)
+        np.testing.assert_allclose(data.original_mix_for(_heard(0)), data.original_audio)
+
+
+class TestRebindingToAnEditedReconstruction:
+    def _three_recordings(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> ReconstructionData:
+        """A document over three recordings, each carrying a shape of its own.
+
+        The shapes differ rather than the levels, since loading normalises each recording and
+        would read three levels of one shape as the same waveform.
+        """
+        sample_rate = Config().library.sample_rate
+        shapes = (
+            np.linspace(-1.0, 1.0, 64, dtype=np.float32),
+            np.linspace(1.0, -1.0, 64, dtype=np.float32),
+            np.concatenate([np.ones(32, dtype=np.float32), -np.ones(32, dtype=np.float32)]),
+        )
+        paths = []
+        for index, shape in enumerate(shapes):
+            path = tmp_path / f"stem_{index}.wav"
+            write_wave(path, sample_rate, shape)
+            paths.append(path)
+
+        reconstruction = reconstruction_factory().model_copy(
+            update={
+                "audio_filepath": tuple(paths),
+                "stems_data": StemsData(
+                    config=StemsConfig(
+                        entries=[StemEntry(id=stem_id, channels=[ChannelName.PULSE1]) for stem_id in range(3)],
+                        hierarchy=StemsHierarchy(levels=[[0], [1], [2]]),
+                    ),
+                    assignments=[
+                        ChannelAssignment(
+                            channel_name=ChannelName.PULSE1,
+                            stem_ids=[0],
+                        )
+                    ],
+                ),
+            }
+        )
+        return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+    def test_a_recording_follows_the_entry_it_was_loaded_for(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        """A recording is read by position, so one entry leaving would slide the rest onto the wrong audio."""
+        data = self._three_recordings(reconstruction_factory, tmp_path)
+        third = data.stem_audios[2]
+
+        remaining = data.with_reconstruction(without_stem(data.reconstruction, 1))
+
+        np.testing.assert_allclose(remaining.original_mix_for(_heard(2)), third)
+
+    def test_the_removed_recording_is_released(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        data = self._three_recordings(reconstruction_factory, tmp_path)
+        second = data.stem_audios[1]
+
+        remaining = data.with_reconstruction(without_stem(data.reconstruction, 1))
+
+        assert len(remaining.stem_audios) == 2
+        assert all(not np.array_equal(audio, second) for audio in remaining.stem_audios)
+
+    def test_an_edit_keeping_every_entry_keeps_every_recording(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        data = self._three_recordings(reconstruction_factory, tmp_path)
+
+        rebound = data.with_reconstruction(data.reconstruction.model_copy())
+
+        assert rebound.stem_audios == data.stem_audios
 
 
 class TestWaveformData:

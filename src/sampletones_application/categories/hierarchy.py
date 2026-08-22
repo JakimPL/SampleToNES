@@ -62,6 +62,7 @@ class Panel(StrEnum):
     TRACEBACK = auto()
     CONTEXT = auto()
     STATUS = auto()
+    STEMS = auto()
     GRAPH = auto()
     PITCH = auto()
 

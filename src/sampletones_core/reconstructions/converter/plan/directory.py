@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 from sampletones_core.configs import Config
 from sampletones_core.reconstructions.converter.job import ConversionJob
@@ -38,6 +38,10 @@ class DirectoryConversion:
             raise NoFilesToProcessError(f"No audio files found in {self.directory}")
 
         return [self._job(audio_file, output_path) for audio_file in audio_files]
+
+    def existing_targets(self, _config: Config) -> Tuple[Path, ...]:
+        """The empty tuple: the scan converts what is still to be written and keeps the rest."""
+        return ()
 
     def _job(self, audio_file: Path, output_path: Path) -> ConversionJob:
         return ConversionJob(

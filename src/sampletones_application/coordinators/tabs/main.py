@@ -34,6 +34,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_CANCEL,
     TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS,
     TAG_MAIN_CONVERTER_DIALOG_LOAD,
+    TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
     TAG_MAIN_CONVERTER_PANEL,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
     TAG_MAIN_EXPLORER_PANEL,
@@ -205,6 +206,7 @@ class MainTabCoordinator:
         )
         self._converter_panel: GUIConverterPanel = GUIConverterPanel(
             layout=layout.main.converter,
+            stems_layout=layout.stems,
             inputs=layout.inputs,
             path_colors=layout.path_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_CONVERTER_PANEL),
@@ -252,6 +254,7 @@ class MainTabCoordinator:
             _msg_no_generators,
             self._ttl_progress,
         )
+        self._converter_logic.on_target_exists = self._confirm_overwriting_target
         self._converter_logic.is_library_available = library_manager.is_library_available_for_config
         self._converter_logic.cancel_library_generation = library_manager.cancel_generation
         self._converter_logic.on_load_file = on_load_file
@@ -334,6 +337,21 @@ class MainTabCoordinator:
             on_cancel=self._converter_logic.refresh_view,
         )
 
+    def _confirm_overwriting_target(self, target: Path) -> None:
+        """Asks before a conversion writes over the reconstruction already standing at its target.
+
+        A batch keeps what it finds and converts the rest, so this reaches the reader for a
+        single conversion — the one run whose output would replace a file already made.
+        """
+        self._dialogs.show_confirmation(
+            TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
+            self._language_manager["main.converter.message.overwrite_target_prompt"],
+            self._language_manager["main.converter.title.overwrite_target_dialog"],
+            lambda: self._converter_logic.start_conversion(confirmed=True),
+            ok_label=self._language_manager["main.converter.label.overwrite_target_button"],
+            path=target,
+        )
+
     def _notify_converter_running(self) -> bool:
         if not self._is_operation_active():
             return False
@@ -382,8 +400,8 @@ class MainTabCoordinator:
         self._confirm_discarding_stems(lambda: self._converter_logic.set_stems_mode(False))
 
     def _can_add_stems(self) -> bool:
-        """A stems list is being gathered and is free to take another recording."""
-        return self._converter_logic.stems_mode and not self._is_operation_active()
+        """The converter is free to gather recordings into a stems conversion."""
+        return not self._is_operation_active()
 
     def _on_file_add_requested(self, filepath: Path) -> None:
         """Gathers one recording into a stems conversion, opening one where none is being built."""

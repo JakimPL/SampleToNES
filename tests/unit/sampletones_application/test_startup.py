@@ -15,16 +15,16 @@ from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_GROUP,
-    SUF_HANDLE,
     SUF_STRIP,
     SUF_TABLE,
     SUF_TEXT,
+    TAG_GLOBAL_THEME_STEMS_ROW_INERT,
 )
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE,
     TAG_MAIN_CONVERTER_WINDOW_STEMS,
 )
-from sampletones_application.ui.panels.main.converter import GUIConverterPanel
+from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
@@ -40,6 +40,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
+DRAG_PAYLOAD_SLOT: Final[int] = 3
 
 _DPG_DISPLAY_FUNCTIONS = [
     "create_context",
@@ -415,6 +416,16 @@ class TestTabKeys:
         assert app._shortcut_source.shortcut(TAB_SHORTCUT_IDS[tab]).field_transparent
 
 
+def stems_list(app: Application) -> GUIStemsList:
+    """The converter card's stems list, which owns the tags its rows carry."""
+    return app._main_tab._converter_panel.stems_list
+
+
+def drop(tag: str, payload: str) -> None:
+    """Deliver ``payload`` to whatever ``tag`` accepts drops with, the way DearPyGui would."""
+    dpg.get_item_configuration(tag)["drop_callback"](dpg.get_alias_id(tag), payload)
+
+
 class TestConverterStemsCard:
     """Gathering recordings paints the converter card: a row each, carrying what the reader set."""
 
@@ -434,8 +445,8 @@ class TestConverterStemsCard:
         paths = self._gather(app, tmp_path, ["a.wav", "b.wav"])
 
         for path in paths:
-            assert dpg.does_item_exist(GUIConverterPanel._row_tag(path, SUF_GROUP))
-            assert dpg.does_item_exist(GUIConverterPanel._row_tag(path, SUF_BUTTON))
+            assert dpg.does_item_exist(stems_list(app).row_tag(str(path), SUF_GROUP))
+            assert dpg.does_item_exist(stems_list(app).row_tag(str(path), SUF_BUTTON))
 
     def test_a_rows_channels_show_what_was_set(self, app: Application, tmp_path: Path) -> None:
         """The row offers a checkbox per channel the configuration enables, ticked as the row holds it."""
@@ -446,16 +457,16 @@ class TestConverterStemsCard:
 
         converter_logic.set_source_channels(path, frozenset({kept}))
 
-        assert dpg.get_value(GUIConverterPanel._channel_tag(path, kept)) is True
-        assert dpg.get_value(GUIConverterPanel._channel_tag(path, cleared)) is False
+        assert dpg.get_value(stems_list(app).channel_tag(str(path), kept)) is True
+        assert dpg.get_value(stems_list(app).channel_tag(str(path), cleared)) is False
 
     def test_removing_a_recording_takes_its_row_with_it(self, app: Application, tmp_path: Path) -> None:
         first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
 
         app._main_tab._converter_logic.remove_source(first)
 
-        assert not dpg.does_item_exist(GUIConverterPanel._row_tag(first, SUF_GROUP))
-        assert dpg.does_item_exist(GUIConverterPanel._row_tag(second, SUF_GROUP))
+        assert not dpg.does_item_exist(stems_list(app).row_tag(str(first), SUF_GROUP))
+        assert dpg.does_item_exist(stems_list(app).row_tag(str(second), SUF_GROUP))
 
     def test_leaving_stems_mode_hides_the_list(self, app: Application, tmp_path: Path) -> None:
         self._gather(app, tmp_path, ["a.wav"])
@@ -475,7 +486,7 @@ class TestConverterStemsCard:
         converter_logic._emit_view_model("running", 0.5)
 
         assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is True
-        assert dpg.get_item_configuration(GUIConverterPanel._row_tag(path, SUF_BUTTON))["enabled"] is False
+        assert dpg.get_item_configuration(stems_list(app).row_tag(str(path), SUF_BUTTON))["enabled"] is False
 
     def test_a_level_draws_its_own_band(self, app: Application, tmp_path: Path) -> None:
         first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
@@ -483,28 +494,27 @@ class TestConverterStemsCard:
 
         converter_logic.isolate_source(second)
 
-        assert dpg.does_item_exist(GUIConverterPanel._level_tag(0, SUF_TABLE))
-        assert dpg.does_item_exist(GUIConverterPanel._level_tag(1, SUF_TABLE))
-        assert dpg.does_item_exist(GUIConverterPanel._level_tag(2, SUF_STRIP))
-        assert dpg.get_item_parent(GUIConverterPanel._row_tag(first, SUF_GROUP)) == GUIConverterPanel._level_tag(
+        assert dpg.does_item_exist(stems_list(app).level_tag(0, SUF_TABLE))
+        assert dpg.does_item_exist(stems_list(app).level_tag(1, SUF_TABLE))
+        assert dpg.does_item_exist(stems_list(app).level_tag(2, SUF_STRIP))
+        assert dpg.get_item_parent(stems_list(app).row_tag(str(first), SUF_GROUP)) == stems_list(app).level_tag(
             0, SUF_TABLE
         )
-        assert dpg.get_item_parent(GUIConverterPanel._row_tag(second, SUF_GROUP)) == GUIConverterPanel._level_tag(
+        assert dpg.get_item_parent(stems_list(app).row_tag(str(second), SUF_GROUP)) == stems_list(app).level_tag(
             1, SUF_TABLE
         )
 
-    def test_a_row_carries_a_handle_to_drag_it_by(self, app: Application, tmp_path: Path) -> None:
+    def test_a_row_is_the_thing_you_drag_it_by(self, app: Application, tmp_path: Path) -> None:
         path = self._gather(app, tmp_path, ["a.wav"])[0]
 
-        assert dpg.does_item_exist(GUIConverterPanel._row_tag(path, SUF_HANDLE))
+        assert dpg.get_item_children(stems_list(app).row_tag(str(path), SUF_TEXT), DRAG_PAYLOAD_SLOT)
 
     def test_dropping_a_recording_on_a_row_joins_that_rows_level(self, app: Application, tmp_path: Path) -> None:
         first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
         converter_logic = app._main_tab._converter_logic
         converter_logic.isolate_source(second)
 
-        panel = app._main_tab._converter_panel
-        panel._on_dropped_on_source(dpg.get_alias_id(GUIConverterPanel._row_tag(second, SUF_TEXT)), str(first))
+        drop(stems_list(app).row_tag(str(second), SUF_TEXT), str(first))
 
         assert converter_logic._levels.level_count == 1
 
@@ -512,8 +522,7 @@ class TestConverterStemsCard:
         first, _second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
         converter_logic = app._main_tab._converter_logic
 
-        panel = app._main_tab._converter_panel
-        panel._on_dropped_on_level(dpg.get_alias_id(GUIConverterPanel._level_tag(1, SUF_STRIP)), str(first))
+        drop(stems_list(app).level_tag(1, SUF_STRIP), str(first))
 
         assert converter_logic._levels.level_count == 2
         assert converter_logic._levels.level_of(first) == 1
@@ -537,5 +546,7 @@ class TestConverterStemsCard:
 
         app._main_tab._converter_logic.set_source_channels(path, frozenset())
 
-        assert dpg.does_item_exist(GUIConverterPanel._row_tag(path, SUF_GROUP))
-        assert dpg.get_item_configuration(GUIConverterPanel._row_tag(path, SUF_TEXT))["enabled"] is False
+        name_tag = stems_list(app).row_tag(str(path), SUF_TEXT)
+        assert dpg.does_item_exist(stems_list(app).row_tag(str(path), SUF_GROUP))
+        assert dpg.get_item_alias(dpg.get_item_theme(name_tag)) == TAG_GLOBAL_THEME_STEMS_ROW_INERT
+        assert dpg.get_item_configuration(name_tag)["enabled"] is True

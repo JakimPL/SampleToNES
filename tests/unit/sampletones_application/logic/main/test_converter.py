@@ -32,10 +32,24 @@ TEXTS: Final[Dict[str, str]] = {
 }
 
 
+def _config_writing_under(reconstructions_directory: Path) -> Config:
+    """A configuration whose reconstructions are written under ``reconstructions_directory``."""
+    config = Config()
+    general = config.general.model_copy(update={"reconstructions_directory": str(reconstructions_directory)})
+    return config.model_copy(update={"general": general})
+
+
 @pytest.fixture
-def converter_logic() -> ConverterLogic:
+def converter_logic(tmp_path: Path) -> ConverterLogic:
+    """A converter reading a real configuration, so resolving where a run writes answers as it does live.
+
+    The configuration writes under the test's own directory, which keeps a target this converter
+    resolves within the test rather than in the reconstructions the developer holds.
+    """
+    reconstructions_directory = tmp_path / "reconstructions"
     config_manager = MagicMock()
-    config_manager.get_reconstructions_directory.return_value = Path("/tmp/reconstructions")
+    config_manager.config = _config_writing_under(reconstructions_directory)
+    config_manager.get_reconstructions_directory.return_value = reconstructions_directory
     service = MagicMock()
     service.is_running.return_value = False
     scheduling = MagicMock(
@@ -117,7 +131,10 @@ class TestNoChannelsGuard:
         self,
         converter_logic: ConverterLogic,
     ) -> None:
-        converter_logic._config_manager.config.generation.channels = []
+        config = converter_logic._config_manager.config
+        converter_logic._config_manager.config = config.model_copy(
+            update={"generation": config.generation.model_copy(update={"channels": []})}
+        )
         on_no_generators = MagicMock()
         converter_logic.on_no_generators = on_no_generators
 
@@ -126,6 +143,99 @@ class TestNoChannelsGuard:
         on_no_generators.assert_called_once()
         converter_logic.generate_library.assert_not_called()
         assert converter_logic._phase == ConversionPhase.IDLE
+
+
+class TestOverwriteGuard:
+    """A single conversion writes one named file, so a run that would replace one asks first.
+
+    A batch settles the question itself — it converts what is still to be written — so the
+    prompt reaches the reader for the single-file and stems runs alone.
+    """
+
+    @staticmethod
+    def _aimed_at(converter_logic: ConverterLogic, path: Path) -> Path:
+        """Points the converter at ``path`` and answers where its run would write."""
+        converter_logic.set_input_path(path)
+        config = converter_logic._config_manager.config
+        return GroupConversion(sources=(path,), stems=StemsConfig()).jobs(config)[0].output_path
+
+    @staticmethod
+    def _standing(target: Path) -> None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.touch()
+
+    def test_a_standing_target_is_put_to_the_reader_and_nothing_starts(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        source = tmp_path / "song.wav"
+        source.touch()
+        target = self._aimed_at(converter_logic, source)
+        self._standing(target)
+        on_target_exists = MagicMock()
+        converter_logic.on_target_exists = on_target_exists
+
+        with patch("sampletones_application.logic.main.converter.CallbackQueue.add"):
+            converter_logic.start_conversion()
+
+        on_target_exists.assert_called_once_with(target)
+        converter_logic.generate_library.assert_not_called()
+        assert converter_logic._phase == ConversionPhase.IDLE
+
+    def test_a_confirmed_run_goes_ahead(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        source = tmp_path / "song.wav"
+        source.touch()
+        self._standing(self._aimed_at(converter_logic, source))
+        on_target_exists = MagicMock()
+        converter_logic.on_target_exists = on_target_exists
+
+        with patch("sampletones_application.logic.main.converter.CallbackQueue.add"):
+            converter_logic.start_conversion(confirmed=True)
+
+        on_target_exists.assert_not_called()
+        converter_logic.generate_library.assert_called_once()
+        assert converter_logic._phase == ConversionPhase.WAITING
+
+    def test_a_target_still_to_be_written_starts_straight_away(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        source = tmp_path / "song.wav"
+        source.touch()
+        self._aimed_at(converter_logic, source)
+        on_target_exists = MagicMock()
+        converter_logic.on_target_exists = on_target_exists
+
+        with patch("sampletones_application.logic.main.converter.CallbackQueue.add"):
+            converter_logic.start_conversion()
+
+        on_target_exists.assert_not_called()
+        assert converter_logic._phase == ConversionPhase.WAITING
+
+    def test_a_batch_starts_without_asking(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        """The scan keeps every reconstruction already written, so a standing file stops nothing."""
+        sources = tmp_path / "sources"
+        sources.mkdir()
+        (sources / "song.wav").touch()
+        converter_logic.set_input_path(sources)
+        on_target_exists = MagicMock()
+        converter_logic.on_target_exists = on_target_exists
+
+        with patch("sampletones_application.logic.main.converter.CallbackQueue.add"):
+            converter_logic.start_conversion()
+
+        on_target_exists.assert_not_called()
+        assert converter_logic._phase == ConversionPhase.WAITING
 
 
 class TestActivePhases:
@@ -558,7 +668,7 @@ class TestStemsView:
 
         view_model = self._emitted(converter_logic)
 
-        assert [row.name for row in view_model.stem_sources] == ["a.wav", "b.wav"]
+        assert [row.name for row in view_model.stem_sources] == ["a", "b"]
         assert view_model.stems_mode is True
         assert view_model.has_input is True
 

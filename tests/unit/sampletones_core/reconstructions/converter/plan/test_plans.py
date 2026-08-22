@@ -127,6 +127,69 @@ class TestDirectoryConversion:
             DirectoryConversion(directory=tmp_path, stems=stems).jobs(config)
 
 
+def _config_writing_under(reconstructions_directory: Path) -> Config:
+    """A configuration whose reconstructions are written under ``reconstructions_directory``."""
+    config = Config()
+    general = config.general.model_copy(update={"reconstructions_directory": str(reconstructions_directory)})
+    return config.model_copy(update={"general": general})
+
+
+class TestExistingTargets:
+    """What a plan would write over, which is what a caller settles before starting a run."""
+
+    def test_a_group_conversion_names_the_target_already_standing(
+        self,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        config = _config_writing_under(tmp_path / "out")
+        source = _write_audio_files(tmp_path, ["song.wav"])[0]
+        plan = GroupConversion(sources=(source,), stems=stems)
+        target = plan.jobs(config)[0].output_path
+        target.parent.mkdir(parents=True)
+        target.touch()
+
+        assert plan.existing_targets(config) == (target,)
+
+    def test_a_target_still_to_be_written_leaves_the_answer_empty(
+        self,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        config = _config_writing_under(tmp_path / "out")
+        source = _write_audio_files(tmp_path, ["song.wav"])[0]
+
+        assert GroupConversion(sources=(source,), stems=stems).existing_targets(config) == ()
+
+    def test_a_directory_sitting_at_the_target_path_leaves_the_answer_empty(
+        self,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        """A target is a file, so a directory of that name is a different matter the run reports itself."""
+        config = _config_writing_under(tmp_path / "out")
+        source = _write_audio_files(tmp_path, ["song.wav"])[0]
+        plan = GroupConversion(sources=(source,), stems=stems)
+        plan.jobs(config)[0].output_path.mkdir(parents=True)
+
+        assert plan.existing_targets(config) == ()
+
+    def test_a_directory_conversion_settles_the_question_itself(
+        self,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        """The scan converts what is still to be written, so a standing output puts nothing to the reader."""
+        config = _config_writing_under(tmp_path / "out")
+        _write_audio_files(tmp_path, ["a.wav"])
+        plan = DirectoryConversion(directory=tmp_path, stems=stems)
+        target = plan.jobs(config)[0].output_path
+        target.parent.mkdir(parents=True)
+        target.touch()
+
+        assert plan.existing_targets(config) == ()
+
+
 class TestGroupOutputPath:
     def test_one_source_names_the_file_after_itself(self, config: Config, tmp_path: Path) -> None:
         source = tmp_path / "song.wav"

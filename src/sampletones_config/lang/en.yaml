@@ -256,6 +256,22 @@ global.status.message.node_sample: "Click to {expand_or_collapse} the reconstruc
 global.status.message.retuning_samples: "Retuning samples..."
 
 # =============================================================================
+# Global — Stems
+# =============================================================================
+global.stems.template.level_caption: "Level {}"
+global.stems.label.remove: "x"
+global.stems.message.drag_tooltip: "Drag onto another row to share its level, or onto a gap to start a new level."
+global.stems.message.inert_tooltip: "Tick a channel to use this recording."
+global.stems.message.missing_tooltip: "This recording is missing from disk."
+global.stems.message.unoffered_tooltip: "This recording holds no frames."
+global.stems.message.status_row_drag: "Drag {name} onto another row or a gap to move it, or right-click for more actions."
+global.stems.message.status_row_reveal: "Show {name} in the file browser."
+global.stems.message.status_master: "Turn every channel on or off for {name}."
+global.stems.message.status_channel: "Turn the {channel} channel on or off for {name}."
+global.stems.message.status_channel_muted: "The {channel} channel is off for everything, so {name} stays quiet on it."
+global.stems.message.status_remove: "Remove {name} from the list."
+
+# =============================================================================
 # Global — Player
 # =============================================================================
 global.player.label.play: "Play"
@@ -361,32 +377,29 @@ main.converter.label.channel_cap: "Channels per source"
 main.converter.label.hierarchy_mode: "Order"
 main.converter.label.hierarchy_round_robin: "Round robin"
 main.converter.label.hierarchy_strict: "Strict"
-main.converter.label.stem_remove: "x"
 main.converter.label.convert_stems_button: "Convert stems"
 main.converter.label.discard_stems_button: "Keep the first"
 main.converter.label.keep_stems_button: "Stay in stems mode"
 main.converter.label.add_stems_button: "Add"
+main.converter.label.overwrite_target_button: "Convert anyway"
 main.converter.message.stems_mode_tooltip: "Mix several recordings into one reconstruction, each holding the channels you give it."
 main.converter.message.channel_cap_tooltip: "How many channels one recording may hold in a single frame."
 main.converter.message.hierarchy_mode_tooltip: "Round robin gives every level a turn each round; strict fills a level before the next one picks."
 main.converter.message.stems_empty_hint: "Click recordings in the browser to gather the sources of one reconstruction."
 main.converter.message.discard_stems_prompt: "Leaving stems mode keeps the first recording and drops the rest. Continue?"
+main.converter.message.overwrite_target_prompt: "A reconstruction of this name already stands here. Converting writes over it."
 main.converter.message.stem_selection_prompt: "Pick the recordings to add."
-main.converter.message.status_stem_remove: "Take this recording out of the conversion."
 main.converter.message.status_stems_mode: "Mix several recordings into one reconstruction."
 main.converter.title.discard_stems_dialog: "Leave stems mode?"
+main.converter.title.overwrite_target_dialog: "Write over it?"
 main.converter.title.stem_selection_dialog: "Add recordings"
 main.converter.template.stem_selection_limit: "Room for {} more of the {} recordings found."
-main.converter.template.stem_level_caption: "Level {}"
-main.converter.label.stem_handle: "::"
 main.converter.label.context_move_up: "Move up"
 main.converter.label.context_move_down: "Move down"
 main.converter.label.context_join_above: "Join the level above"
 main.converter.label.context_join_below: "Join the level below"
 main.converter.label.context_isolate: "Put on its own level"
 main.converter.label.context_remove_stem: "Remove from the conversion"
-main.converter.message.stem_handle_tooltip: "Drag onto another recording to share its level, or onto a gap to open a new one."
-main.converter.message.stem_inert_tooltip: "This recording holds no channel, so it takes no part in the conversion."
 
 # =============================================================================
 # Main tab — Advanced
@@ -433,7 +446,6 @@ reconstructions.browser.template.incompatible_version_template: "Incompatible re
 reconstructions.reconstruction.label.audio_source_label: "Source"
 reconstructions.reconstruction.label.autoscale_checkbox: "Autoscale"
 reconstructions.reconstruction.label.reconstruction_file_label: "Reconstruction file:"
-reconstructions.reconstruction.label.original_audio_label: "Original audio:"
 reconstructions.reconstruction.label.path_not_found: "not found"
 reconstructions.reconstruction.label.path_not_applicable: "N/A"
 reconstructions.reconstruction.label.original_audio_radio: "Original audio"
@@ -448,6 +460,11 @@ reconstructions.reconstruction.label.stems_empty: "This reconstruction records n
 reconstructions.reconstruction.label.stems_mode_round_robin: "Round robin"
 reconstructions.reconstruction.label.stems_mode_strict: "Strict"
 reconstructions.reconstruction.template.stems_setup: "Mode: {mode} · Channel cap: {cap}"
+reconstructions.reconstruction.label.collapse_levels: "Collapse levels"
+reconstructions.reconstruction.message.collapse_levels_tooltip: "Draw every recording in one table."
+reconstructions.reconstruction.message.status_collapse_levels: "Draw the recordings in one table or under their levels."
+reconstructions.reconstruction.title.remove_stem_dialog: "Remove recording"
+reconstructions.reconstruction.message.remove_stem_message: "Remove this recording from the reconstruction? Its frames fall silent."
 
 # =============================================================================
 # Reconstructions tab — Instruments

@@ -288,6 +288,13 @@ class SequencerHistoryDetail:
             self._segment(_FEATURE_LETTERS[feature_key], _FEATURE_ROLES[feature_key]),
         )
 
+    def remove_stem(self, sample_id: str, stem_name: str) -> Segments:
+        """Describes a recording taken out of a sample's reconstruction: its position and name."""
+        return (
+            self._sample(sample_id, colon=True),
+            self._name(stem_name),
+        )
+
     def value(self, number: int) -> Segments:
         return (self._value(str(number)),)
 
@@ -352,7 +359,11 @@ class SequencerHistoryDetail:
             role=HistoryDetailRole.ROW,
         )
 
-    def _frame_range(self, first_position: int, last_position: int) -> HistoryDetailSegment:
+    def _frame_range(
+        self,
+        first_position: int,
+        last_position: int,
+    ) -> HistoryDetailSegment:
         """Reads a span of positions as one frame token, a single position standing as its own."""
         if first_position == last_position:
             return self._frame(first_position)
@@ -363,7 +374,9 @@ class SequencerHistoryDetail:
         )
 
     @staticmethod
-    def _covered_channels(covered: Set[Optional[ChannelName]]) -> List[ChannelName]:
+    def _covered_channels(
+        covered: Set[Optional[ChannelName]],
+    ) -> List[ChannelName]:
         """The channels a run of columns names, an aggregate one standing for all it summarises.
 
         Both grids carry a column that answers for every channel — the tracker's sample column and

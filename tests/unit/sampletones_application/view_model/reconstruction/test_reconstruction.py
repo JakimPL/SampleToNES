@@ -15,7 +15,16 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 from sampletones_application.view_model.reconstruction.stems import (
     ReconstructionStemsViewModel,
 )
+from sampletones_application.view_model.shared.stems import StemsListViewModel
 from sampletones_core.constants.enums import HierarchyMode
+
+EMPTY_STEMS = StemsListViewModel(
+    rows=(),
+    channels_in_play=(),
+    muted_channels=frozenset(),
+    live=True,
+    collapse_levels=False,
+)
 
 
 @dataclass(frozen=True)
@@ -136,7 +145,7 @@ class TestReconstructionStemsViewModel:
     def test_the_setup_line_follows_the_stems_record(self) -> None:
         stems = ReconstructionStemsViewModel(
             reconstruction_loaded=True,
-            stems=(),
+            stems=EMPTY_STEMS,
             hierarchy_mode=HierarchyMode.STRICT,
             channel_cap=2,
         )
@@ -147,11 +156,11 @@ class TestReconstructionStemsViewModel:
     def test_the_empty_state_names_a_loaded_reconstruction_with_no_source(self) -> None:
         loaded = ReconstructionStemsViewModel(
             reconstruction_loaded=True,
-            stems=(),
+            stems=EMPTY_STEMS,
         )
         closed = ReconstructionStemsViewModel(
             reconstruction_loaded=False,
-            stems=(),
+            stems=EMPTY_STEMS,
         )
 
         assert loaded.show_empty_state
