@@ -5,7 +5,8 @@ console or an NSF player loads, and the song block inside it that the player's o
 driver reads. Read it before changing anything under `sampletones_player/nsf/`,
 `sampletones_player/compression/`, or the assembly under `sampletones_player/driver/`.
 The design behind the format — why a song is stored this way and how the driver is held
-to it — is in [the player](../development/player.md); the layout itself is here.
+to it — is in [the player](../development/player.md), and the compression scheme is explained
+in [song compression](../concepts/compression.md); the layout itself is here.
 
 An `.nsf` is unlike the tracker exports beside it. A [FamiTracker](famitracker.md) or
 [Bitphase](bitphase.md) file describes a song to a program that already knows how to play

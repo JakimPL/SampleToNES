@@ -63,6 +63,9 @@ than sounded half in tune.
 The codec turns the four channels' per-tick register values into the eight token streams the
 driver reads, and back again. `compression/decode.py` is the golden model: every encoding is
 held against it, so what the console plays and what the encoder meant are the same values.
+The scheme itself, with the measurements each layer is settled on, is
+[song compression](../concepts/compression.md); what governs it here is where each part
+belongs and what holds it.
 
 **Planes.** A channel's registers for one tick sit adjacent, which is exactly the
 interleaving that destroys self-similarity — a volume envelope, a pitch line and a timbre

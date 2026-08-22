@@ -216,7 +216,9 @@ the limits it respects.
 the console itself plays, carrying its own player, so it needs no tracker to sound.
 The console holds one program in 32 KB, so a long song can outgrow it — the export
 says so rather than writing a file that plays part of itself. See
-[NSF export](../formats/nsf.md) for what the file holds.
+[NSF export](../formats/nsf.md) for what the file holds, and
+[song compression](../concepts/compression.md) for how a song of minutes is fitted
+into that space.
 
 ## Rendering to audio
 
