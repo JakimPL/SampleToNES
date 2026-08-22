@@ -42,5 +42,10 @@ class TestTheEncoderKeepsWithinWhatAnExportAllows:
         """The bound stands where an export would keep the user waiting, against five seconds today."""
         planes = long_arrangement.planes
         started = process_time()
-        encode_planes(planes, long_arrangement.seeds, EVERY_LAYER, frozenset())
+        encode_planes(
+            planes,
+            long_arrangement.seeds,
+            options=EVERY_LAYER,
+            boundaries=frozenset(),
+        )
         assert process_time() - started < MAX_ENCODER_SECONDS

@@ -70,13 +70,23 @@ class TestEncodingASong:
 
     def test_a_song_plays_back_as_the_planes_it_was_written_from(self) -> None:
         planes = song_planes(TIMBRE * REPEATS, MOTIF * REPEATS)
-        compressed = encode_planes(planes, (), EVERY_LAYER, NO_BOUNDARIES)
+        compressed = encode_planes(
+            planes,
+            (),
+            options=EVERY_LAYER,
+            boundaries=NO_BOUNDARIES,
+        )
         assert decode_planes(compressed) == planes
 
     def test_the_figure_the_song_repeats_reaches_the_dictionary(self) -> None:
         """The search states the figure at whatever length pays best, the motif being its unit."""
         planes = song_planes(bytes((0x30,)) * (len(MOTIF) * REPEATS), MOTIF * REPEATS)
-        compressed = encode_planes(planes, (), EVERY_LAYER, NO_BOUNDARIES)
+        compressed = encode_planes(
+            planes,
+            (),
+            options=EVERY_LAYER,
+            boundaries=NO_BOUNDARIES,
+        )
         assert compressed.phrases.phrases
         for phrase in compressed.phrases.phrases:
             assert phrase.body == MOTIF * (len(phrase.body) // len(MOTIF))
@@ -84,22 +94,42 @@ class TestEncodingASong:
     def test_a_seed_the_song_never_leans_on_leaves_the_dictionary(self) -> None:
         """A phrase earns its entry by sparing more than the entry costs."""
         planes = song_planes(bytes((0x30,)) * len(MOTIF), MOTIF)
-        compressed = encode_planes(planes, (Phrase(body=MOTIF),), SEEDED, NO_BOUNDARIES)
+        compressed = encode_planes(
+            planes,
+            (Phrase(body=MOTIF),),
+            options=SEEDED,
+            boundaries=NO_BOUNDARIES,
+        )
         assert compressed.phrases.phrases == ()
 
     def test_the_figure_played_most_takes_the_cheapest_id(self) -> None:
         planes = song_planes(bytes((0x30,)) * (len(MOTIF) * REPEATS), MOTIF * REPEATS)
         seeds: Tuple[Phrase, ...] = (Phrase(body=bytes((0x30,)) * 8), Phrase(body=MOTIF))
-        compressed = encode_planes(planes, seeds, SEEDED, NO_BOUNDARIES)
+        compressed = encode_planes(
+            planes,
+            seeds,
+            options=SEEDED,
+            boundaries=NO_BOUNDARIES,
+        )
         assert compressed.phrases[0] == Phrase(body=MOTIF)
 
     def test_a_song_re_entered_at_a_boundary_still_plays_back_whole(self) -> None:
         planes = song_planes(TIMBRE * REPEATS, MOTIF * REPEATS)
-        compressed = encode_planes(planes, (), EVERY_LAYER, frozenset({len(MOTIF) * 3}))
+        compressed = encode_planes(
+            planes,
+            (),
+            options=EVERY_LAYER,
+            boundaries=frozenset({len(MOTIF) * 3}),
+        )
         assert decode_planes(compressed) == planes
 
     def test_every_plane_of_the_song_carries_a_stream(self) -> None:
         planes = song_planes(bytes((0x30,)) * 4, MOTIF)
-        compressed = encode_planes(planes, (), EVERY_LAYER, NO_BOUNDARIES)
+        compressed = encode_planes(
+            planes,
+            (),
+            options=EVERY_LAYER,
+            boundaries=NO_BOUNDARIES,
+        )
         assert len(compressed.streams) == len(planes.planes)
         assert compressed.ticks == planes.ticks

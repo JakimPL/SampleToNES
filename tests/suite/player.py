@@ -6,13 +6,13 @@ import numpy as np
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH
 from sampletones_core.exporters import Features
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.timers.arithmetic import frequency_to_timer
+from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.clock.schedule import PlaySchedule
+from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.registers.noise import NoiseRegisters
 from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.registers.streams import ChannelStreams
@@ -28,12 +28,18 @@ from sampletones_player.specification.registers import (
     TRIANGLE_SILENT_RELOAD,
     TRIANGLE_SOUNDING_RELOAD,
 )
+from sampletones_shared.constants.music import OCTAVE_SEMITONES
 from sampletones_shared.music import Tuning
-from sampletones_shared.utils.frequencies import pitch_to_frequency
 from tests.suite.stems import single_entry_stems_data
 
-PLAYER_REFERENCE_TIMER: Final[int] = 0x154
-PLAYER_OCTAVE_UP_TIMER: Final[int] = PLAYER_REFERENCE_TIMER // 2
+PLAYER_TUNING: Final[Tuning] = Tuning()
+PLAYER_PITCHES: Final[PitchTable] = PitchTable.from_tuning(PLAYER_TUNING)
+PLAYER_TIMER_TABLE: Final[Dict[int, int]] = get_timer_table(PLAYER_TUNING)
+
+PLAYER_REFERENCE_PITCH: Final[int] = 57
+PLAYER_OCTAVE_UP_PITCH: Final[int] = PLAYER_REFERENCE_PITCH + OCTAVE_SEMITONES
+PLAYER_REFERENCE_TIMER: Final[int] = PLAYER_TIMER_TABLE[PLAYER_REFERENCE_PITCH]
+PLAYER_OCTAVE_UP_TIMER: Final[int] = PLAYER_TIMER_TABLE[PLAYER_OCTAVE_UP_PITCH]
 PLAYER_REFERENCE_PERIOD: Final[int] = 0x0A
 PLAYER_FULL_VOLUME: Final[int] = 15
 PLAYER_SILENT_VOLUME: Final[int] = 0
@@ -103,17 +109,16 @@ def player_song(
     nes_frequency: int,
     loop_tick: Optional[int],
 ) -> Song:
-    return Song(
+    """A song the console plays those streams as, compressed the way an exported one is."""
+    return Song.from_streams(
         streams=streams,
+        pitches=PLAYER_PITCHES,
         schedule=PlaySchedule.from_parameters(nes_frequency),
         loop_tick=loop_tick,
+        seeds=(),
     )
 
 
-PLAYER_TIMER_TABLE: Final[Dict[int, int]] = {
-    pitch: frequency_to_timer(pitch_to_frequency(pitch)) for pitch in range(MIN_PITCH, MAX_PITCH + 1)
-}
-PLAYER_REFERENCE_PITCH: Final[int] = 69
 PLAYER_PULSE_TIMER_MUTE_FLOOR: Final[int] = 8
 
 
@@ -156,9 +161,6 @@ def player_reconstruction(
         audio_filepath=(Path(os.devnull),),
         stems_data=single_entry_stems_data(list(config.generation.channels), instructions),
     )
-
-
-PLAYER_TUNING: Final[Tuning] = Tuning()
 
 
 def player_features(

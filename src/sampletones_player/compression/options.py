@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Final
 
 
 @dataclass(frozen=True)
@@ -21,3 +22,11 @@ class CodecOptions:
     phrases: bool
     transposition: bool
     search: bool
+
+
+EVERY_LAYER: Final[CodecOptions] = CodecOptions(
+    holds=True,
+    phrases=True,
+    transposition=True,
+    search=True,
+)

@@ -112,6 +112,7 @@ def _settle(
 def encode_planes(
     planes: SongPlanes,
     seeds: Sequence[Phrase],
+    *,
     options: CodecOptions,
     boundaries: FrozenSet[int],
 ) -> CompressedPlanes:

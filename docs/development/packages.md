@@ -85,8 +85,8 @@ them.
 | `clock/` | `PlaySchedule` and `FixedPointStep` — the engine ticks one play call advances a stream by | `specification/` |
 | `registers/` | The per-tick register values each channel plays, and the four streams together | `specification/` |
 | `compression/` | The planes a song separates into, the dictionary its tokens name, and the codec that reads them both ways | `specification/`, `registers/` |
-| `song.py` | `Song` — the streams, the schedule and the loop point as one value | `clock/`, `registers/` |
-| `builder.py` | The song a reconstruction or an export request plays as, its instructions encoded and its rate scheduled | `song.py`, `registers/`, `clock/` |
+| `song.py` | `Song` — the compressed planes, the timer table, the schedule and the loop point as one value | `clock/`, `registers/`, `compression/` |
+| `builder.py` | The song a reconstruction or an export request plays as, its instructions encoded, its planes compressed and its rate scheduled | `song.py`, `registers/`, `clock/`, `compression/` |
 | `trace/` | `RegisterTrace` — what the driver is expected to write, call by call | `song.py`, `specification/` |
 | `nsf/` | The song block, the header and the `.nsf` file the console loads | `song.py`, `registers/`, `specification/`, `driver/` |
 | `driver/` | The assembled 6502 driver and the addresses its build reports | `specification/` |

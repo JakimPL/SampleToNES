@@ -1,27 +1,78 @@
 from __future__ import annotations
 
-from typing import Optional
+from functools import cached_property
+from typing import Optional, Sequence
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from sampletones_player.clock.schedule import PlaySchedule
+from sampletones_player.compression.compressed import CompressedPlanes
+from sampletones_player.compression.dictionary.phrase import Phrase
+from sampletones_player.compression.pitch import PitchTable
+from sampletones_player.compression.song import compress_song, decompress_song
 from sampletones_player.registers.streams import ChannelStreams
 
 
 class Song(BaseModel):
-    """A reconstruction as the player holds it: the four streams, the clock, and where it repeats.
+    """A song as the console holds it: compressed channel planes, a timer table and a clock.
+
+    A file carries a song as eight token streams over one dictionary, and this is that song, so
+    what the player holds and what the console reads are the same value. The register values each
+    channel writes are read back out of the streams, the timer table turning a plane's pitch index
+    into the divider the hardware takes.
 
     Attributes:
-        streams: The per-tick register values every channel plays.
+        planes: The dictionary and the eight token streams the channels play.
+        pitches: The timer each pitch sounds at.
         schedule: The engine ticks each play call advances the streams by.
         loop_tick: The tick the song returns to once it ends, or ``None`` where it stops there.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    streams: ChannelStreams
+    planes: CompressedPlanes
+    pitches: PitchTable
     schedule: PlaySchedule
     loop_tick: Optional[int]
+
+    @classmethod
+    def from_streams(
+        cls,
+        streams: ChannelStreams,
+        pitches: PitchTable,
+        *,
+        schedule: PlaySchedule,
+        loop_tick: Optional[int],
+        seeds: Sequence[Phrase],
+    ) -> Song:
+        """Compresses the register values a song plays into the song the console holds.
+
+        Args:
+            streams: The per-tick register values every channel plays.
+            pitches: The timer each pitch sounds at.
+            schedule: The engine ticks each play call advances the streams by.
+            loop_tick: The tick the song returns to once it ends, or ``None`` where it stops
+                there.
+            seeds: The phrases the song's instruments offer the dictionary.
+
+        Returns:
+            Song: The song as the console holds it.
+
+        Raises:
+            ValueError: If ``loop_tick`` lies outside the song's ticks, or a channel sounds a
+                timer the pitch table states no index for.
+        """
+        return cls(
+            planes=compress_song(
+                streams,
+                pitches,
+                seeds=seeds,
+                loop_tick=loop_tick,
+            ),
+            pitches=pitches,
+            schedule=schedule,
+            loop_tick=loop_tick,
+        )
 
     @model_validator(mode="after")
     def _validate_the_loop_lies_within_the_song(self) -> Song:
@@ -33,7 +84,16 @@ class Song(BaseModel):
     @property
     def ticks(self) -> int:
         """The ticks the song lasts."""
-        return self.streams.ticks
+        return self.planes.ticks
+
+    @cached_property
+    def streams(self) -> ChannelStreams:
+        """The per-tick register values every channel plays, read back out of the token streams.
+
+        Every channel is carried to the song's full length, so one whose own instructions ran out
+        first holds the silent values it stopped on through the ticks that remain.
+        """
+        return decompress_song(self.planes, self.pitches)
 
     def tick_at(self, play_call: int) -> Optional[int]:
         """The tick the call at ``play_call`` leaves the streams on.

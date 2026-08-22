@@ -24,6 +24,7 @@ from sampletones_player.builder import (
     streams_from_instructions,
 )
 from sampletones_player.clock.schedule import PlaySchedule
+from sampletones_player.registers.channel import channel_registers
 from sampletones_player.specification.registers import (
     TRIANGLE_COUNTER_CONTROL,
     TRIANGLE_SOUNDING_RELOAD,
@@ -209,7 +210,7 @@ class TestSongFromSample:
         )
         assert len(song.streams.pulse1) == SOUNDING_TICKS + 1
         assert song.streams.triangle[0].linear_counter == TRIANGLE_COUNTER_CONTROL | TRIANGLE_SOUNDING_RELOAD
-        assert len(song.streams.pulse2) == 1
+        assert set(song.streams.pulse2) == {channel_registers(ChannelName.PULSE2, {}, PLAYER_TIMER_TABLE)[0]}
 
     def test_the_schedule_follows_the_rate_the_request_states(self) -> None:
         song = song_from_sample(player_sample("demo", (lead(loop=False),), nes_frequency=HALF_RATE_FREQUENCY))

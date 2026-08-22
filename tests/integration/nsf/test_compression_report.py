@@ -99,7 +99,15 @@ def _split_control_planes(planes: SongPlanes) -> Tuple[bytes, ...]:
 def _coded_size(planes: Sequence[bytes], options: CodecOptions) -> int:
     matcher = PhraseMatcher(phrase_table(()))
     entries = frozenset({STREAM_START})
-    return sum(parse_plane(PlaneIndex.from_plane(plane), matcher, options, entries).size for plane in planes)
+    return sum(
+        parse_plane(
+            PlaneIndex.from_plane(plane),
+            matcher,
+            options,
+            entries,
+        ).size
+        for plane in planes
+    )
 
 
 @pytest.fixture(scope="module")
@@ -119,7 +127,12 @@ def encodings(corpus: Tuple[CorpusEntry, ...]) -> Tuple[Encoding, ...]:
         planes = entry.planes
         for variant, options in PLANE_VARIANTS:
             started = process_time()
-            compressed = encode_planes(planes, entry.seeds, options, frozenset())
+            compressed = encode_planes(
+                planes,
+                entry.seeds,
+                options=options,
+                boundaries=frozenset(),
+            )
             encoded.append(
                 Encoding(
                     entry=entry,

@@ -14,16 +14,28 @@ FIRST_VALUE_INDEX: Final[int] = 1
 SECOND_VALUE_INDEX: Final[int] = 2
 
 
+def _pitch_indices(
+    registers: Sequence[ChannelRegisters],
+    indices: Dict[int, int],
+) -> bytes:
+    try:
+        return bytes(
+            indices[tick.values[FIRST_VALUE_INDEX] | (tick.values[SECOND_VALUE_INDEX] << TIMER_HIGH_SHIFT)]
+            for tick in registers
+        )
+    except KeyError as error:
+        raise ValueError(f"a channel sounds timer {error.args[0]}, which no pitch of the table sounds") from error
+
+
 def _tone_planes(
     registers: Sequence[ChannelRegisters],
     indices: Dict[int, int],
 ) -> ChannelPlanes:
     control = bytes(tick.values[CONTROL_VALUE_INDEX] for tick in registers)
-    value = bytes(
-        indices[tick.values[FIRST_VALUE_INDEX] | (tick.values[SECOND_VALUE_INDEX] << TIMER_HIGH_SHIFT)]
-        for tick in registers
+    return ChannelPlanes(
+        control=control,
+        value=_pitch_indices(registers, indices),
     )
-    return ChannelPlanes(control=control, value=value)
 
 
 def _noise_planes(registers: Sequence[ChannelRegisters]) -> ChannelPlanes:
@@ -46,6 +58,9 @@ def channel_planes(
 
     Returns:
         ChannelPlanes: The channel's control and value planes.
+
+    Raises:
+        ValueError: If a tone channel sounds a timer the pitch table states no index for.
     """
     if channel in TONE_CHANNELS:
         return _tone_planes(registers, pitches.indices)
@@ -53,7 +68,10 @@ def channel_planes(
     return _noise_planes(registers)
 
 
-def planes_from_streams(streams: ChannelStreams, pitches: PitchTable) -> SongPlanes:
+def planes_from_streams(
+    streams: ChannelStreams,
+    pitches: PitchTable,
+) -> SongPlanes:
     """Separates a song's four streams into the eight planes the codec compresses.
 
     Every channel is carried to the song's full length first, so the eight planes cover the same
@@ -65,6 +83,9 @@ def planes_from_streams(streams: ChannelStreams, pitches: PitchTable) -> SongPla
 
     Returns:
         SongPlanes: The eight planes, two per channel.
+
+    Raises:
+        ValueError: If a tone channel sounds a timer the pitch table states no index for.
     """
     indices = pitches.indices
     pulse1, pulse2, triangle, noise = streams.padded
