@@ -28,9 +28,9 @@ them offers **Open** instead. **Cancel** stops a run, and only one runs at a tim
 **Stems mode** turns the card into a list of the recordings mixed into one
 reconstruction. Tick it and click each recording in the browser, or right-click one
 and choose **Add as stem** — that starts a stems conversion from a classic one in a
-single step. **Add folder as stems** offers everything in a folder, as does
-Ctrl-clicking it while you are gathering; where a folder holds more recordings than
-the list has room for, you pick which ones.
+single step. Ctrl-clicking a recording does the same, and Ctrl-clicking a folder
+offers everything in it, as **Add folder as stems** does; where a folder holds more
+recordings than the list has room for, you pick which ones.
 
 Each row names its recording and carries a checkbox per channel that recording may
 use. Untick them all and the row greys out: that recording takes no part in the
@@ -38,12 +38,13 @@ conversion, and its row stays listed so you can bring it back.
 
 The rows sit under **level** bands, and a level is a turn to choose: every recording
 on level 1 picks its channels before any on level 2, so a lead can take what it needs
-before a pad does. Drag a row by its handle onto another row to share that row's
-level, or onto the gap between two levels to give it a level of its own.
-Right-clicking a row names the same moves in words, alongside the recording's own actions — its name or path to the clipboard, and the file shown in your file manager. **Order** decides how the levels
-take turns — round by round, or one level filled before the next picks — and **x**
-takes a row out. Untick **Stems mode** and the first recording stays as your single
-selection.
+before a pad does. Drag a row onto another row to share that row's level, or onto
+the gap between two levels to give it a level of its own.
+Right-clicking a row names the same moves in words, alongside the recording's own
+actions — its name or path to the clipboard, and the file shown in your file
+manager. **Order** decides how the levels take turns — round by round, or one level
+filled before the next picks — and **x** takes a row out. Untick **Stems mode** and
+the first recording stays as your single selection.
 
 **Channels per source** caps how many channels one recording may hold in a single
 frame, and it applies to every conversion — one file, a whole folder, or a stems

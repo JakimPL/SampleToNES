@@ -383,8 +383,8 @@ class MainTabCoordinator:
         self._confirm_discarding_stems(lambda: self._converter_logic.set_stems_mode(False))
 
     def _can_add_stems(self) -> bool:
-        """A stems list is being gathered and is free to take another recording."""
-        return self._converter_logic.stems_mode and not self._is_operation_active()
+        """The converter is free to gather recordings into a stems conversion."""
+        return not self._is_operation_active()
 
     def _on_file_add_requested(self, filepath: Path) -> None:
         """Gathers one recording into a stems conversion, opening one where none is being built."""

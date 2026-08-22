@@ -59,14 +59,12 @@ class StemsElements(AbstractElement):
     """The vocabulary of a stems list, shared by every card that draws one."""
 
     LEVEL_CAPTION = "level_caption"
-    HANDLE = "handle"
-    HANDLE_TOOLTIP = "handle_tooltip"
     REMOVE = "remove"
+    DRAG_TOOLTIP = "drag_tooltip"
     INERT_TOOLTIP = "inert_tooltip"
     STATUS_ROW = "status_row"
     STATUS_CHANNEL = "status_channel"
     STATUS_REMOVE = "status_remove"
-    STATUS_HANDLE = "status_handle"
 
 
 class NodeDetailElements(AbstractElement):

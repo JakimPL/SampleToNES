@@ -259,14 +259,12 @@ global.status.message.retuning_samples: "Retuning samples..."
 # Global — Stems
 # =============================================================================
 global.stems.template.level_caption: "Level {}"
-global.stems.label.handle: "::"
 global.stems.label.remove: "x"
-global.stems.message.handle_tooltip: "Drag onto another recording to share its level, or onto a gap to open a new one."
-global.stems.message.inert_tooltip: "This recording holds no channel, so it takes no part."
-global.stems.message.status_row: "{name} — right-click for the actions this recording answers."
-global.stems.message.status_channel: "Give {name} the {channel} channel, or take it back."
-global.stems.message.status_remove: "Take {name} out."
-global.stems.message.status_handle: "Drag {name} onto a row to share its level, or onto a gap for a level of its own."
+global.stems.message.drag_tooltip: "Drag onto another row to share its level, or onto a gap to start a new level."
+global.stems.message.inert_tooltip: "Tick a channel to use this recording."
+global.stems.message.status_row: "Drag {name} onto another row or a gap to move it, or right-click for more actions."
+global.stems.message.status_channel: "Turn the {channel} channel on or off for {name}."
+global.stems.message.status_remove: "Remove {name} from the list."
 
 # =============================================================================
 # Global — Player

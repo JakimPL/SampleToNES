@@ -323,13 +323,13 @@ class TestFileAdd:
 
 
 class TestModifierAddAvailability:
-    """The modifier click reaches a stems list only while one stands ready to take a recording."""
+    """The modifier click gathers a recording whenever the converter is free to take one."""
 
     def test_a_gathered_list_takes_the_click(self) -> None:
         assert _stems_coordinator()._can_add_stems() is True
 
-    def test_a_classic_conversion_leaves_the_click_alone(self) -> None:
-        assert _stems_coordinator(stems_mode=False)._can_add_stems() is False
+    def test_a_classic_conversion_takes_the_click_and_opens_a_list(self) -> None:
+        assert _stems_coordinator(stems_mode=False)._can_add_stems() is True
 
     def test_a_busy_application_leaves_the_click_alone(self) -> None:
         assert _stems_coordinator(operation_active=True)._can_add_stems() is False

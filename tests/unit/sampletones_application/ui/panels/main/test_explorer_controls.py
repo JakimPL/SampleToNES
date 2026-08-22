@@ -196,3 +196,64 @@ class TestCollapseAll:
         root = tree.get_root()
         assert root is not None
         assert [str(node.name) for node in root.descendants] == [str(ROOT)]
+
+
+class FakeAutoplayLogic:
+    """Answers the panel's request to preview a recording, recording what it was handed."""
+
+    def __init__(self) -> None:
+        self.played: List[FileSystemNode] = []
+
+    def request_autoplay(self, node: FileSystemNode) -> None:
+        self.played.append(node)
+
+
+class RecordingClick:
+    """A panel wired to record where a click on a recording went."""
+
+    def __init__(self, *, can_add_stems: bool) -> None:
+        tree = explorer_tree()
+        self.panel = build_panel(tree)
+        self.node = tree.find_nodes(FileSystemNode, lambda node: node.filepath == MUSIC / "song.wav")[0]
+        self.autoplay = FakeAutoplayLogic()
+        self.gathered: List[Path] = []
+        self.selected: List[Path] = []
+        self.panel._logic = self.autoplay  # type: ignore[assignment]
+        self.panel.can_add_stems = lambda: can_add_stems
+        self.panel.on_file_add_requested = self.gathered.append
+        self.panel.on_wave_file_clicked = self.selected.append
+
+    def click(self, monkeypatch: pytest.MonkeyPatch, *, holding_ctrl: bool) -> None:
+        held = {explorer_module.Modifier.CTRL} if holding_ctrl else set()
+        monkeypatch.setattr(explorer_module, "capture_modifiers", lambda: frozenset(held))
+        self.panel._audio_node_clicked(self.node)
+
+
+class TestClickingARecording:
+    """Ctrl gathers a recording as a stem; a plain click hands it to the converter and plays it."""
+
+    def test_a_plain_click_selects_the_recording_and_plays_it(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        clicked = RecordingClick(can_add_stems=True)
+
+        clicked.click(monkeypatch, holding_ctrl=False)
+
+        assert clicked.selected == [MUSIC / "song.wav"]
+        assert clicked.autoplay.played == [clicked.node]
+        assert clicked.gathered == []
+
+    def test_holding_ctrl_gathers_the_recording_as_a_stem(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        clicked = RecordingClick(can_add_stems=True)
+
+        clicked.click(monkeypatch, holding_ctrl=True)
+
+        assert clicked.gathered == [MUSIC / "song.wav"]
+        assert clicked.selected == []
+        assert clicked.autoplay.played == []
+
+    def test_a_busy_converter_leaves_ctrl_the_plain_click(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        clicked = RecordingClick(can_add_stems=False)
+
+        clicked.click(monkeypatch, holding_ctrl=True)
+
+        assert clicked.selected == [MUSIC / "song.wav"]
+        assert clicked.gathered == []

@@ -1,4 +1,5 @@
-handle_width: 24
 channel_column_width: 90
-remove_button_width: 24
+remove_button_width: 30
 level_strip_height: 6
+well_padding: 8
+well_margin: 4

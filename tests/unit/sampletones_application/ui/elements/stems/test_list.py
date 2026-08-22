@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import FrozenSet, Iterator, List, Tuple
+from typing import Final, FrozenSet, Iterator, List, Tuple
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -19,11 +19,12 @@ from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_CHANNELS,
     SUF_CHECKBOX,
-    SUF_HANDLE,
     SUF_LEVEL,
     SUF_ROW,
     SUF_STRIP,
     SUF_TEXT,
+    TAG_GLOBAL_THEME_STEMS_ROW,
+    TAG_GLOBAL_THEME_STEMS_ROW_INERT,
 )
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -41,6 +42,7 @@ from sampletones_core.constants.enums import ChannelName
 ROOT_TAG = "test_root"
 PREFIX = "test.stems"
 CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.TRIANGLE)
+DRAG_PAYLOAD_SLOT: Final[int] = 3
 
 
 @pytest.fixture
@@ -136,13 +138,27 @@ class TestRows:
         assert dpg.get_value(channel_tag(bass, ChannelName.PULSE1))
         assert not dpg.get_value(channel_tag(bass, ChannelName.TRIANGLE))
 
-    def test_a_row_holding_no_channel_greys_out(self, dpg_context: None, layout_config) -> None:
+    def test_a_row_holding_no_channel_greys_out_and_still_answers(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
         stems_list = build(layout_config)
         bass = row("bass", channels=frozenset())
 
         stems_list.update_view(view(bass))
 
-        assert not dpg.is_item_enabled(row_tag(bass, SUF_TEXT))
+        name_tag = row_tag(bass, SUF_TEXT)
+        assert dpg.get_item_alias(dpg.get_item_theme(name_tag)) == TAG_GLOBAL_THEME_STEMS_ROW_INERT
+        assert dpg.is_item_enabled(name_tag)
+
+    def test_a_row_taking_part_reads_in_full(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.get_item_alias(dpg.get_item_theme(row_tag(bass, SUF_TEXT))) == TAG_GLOBAL_THEME_STEMS_ROW
 
     def test_rows_follow_a_changed_list(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config)
@@ -193,21 +209,29 @@ class TestLevels:
 
 
 class TestAffordances:
-    def test_a_draggable_list_gives_each_row_a_handle(self, dpg_context: None, layout_config) -> None:
+    def test_a_draggable_list_makes_the_row_itself_the_thing_you_drag(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
         stems_list = build(layout_config, draggable=True)
         bass = row("bass")
 
         stems_list.update_view(view(bass))
 
-        assert dpg.does_item_exist(row_tag(bass, SUF_HANDLE))
+        assert dpg.get_item_children(row_tag(bass, SUF_TEXT), DRAG_PAYLOAD_SLOT)
 
-    def test_a_list_without_dragging_gives_no_handle_and_no_strip(self, dpg_context: None, layout_config) -> None:
+    def test_a_list_without_dragging_carries_no_payload_and_no_strip(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
         stems_list = build(layout_config, draggable=False)
         bass = row("bass")
 
         stems_list.update_view(view(bass))
 
-        assert not dpg.does_item_exist(row_tag(bass, SUF_HANDLE))
+        assert not dpg.get_item_children(row_tag(bass, SUF_TEXT), DRAG_PAYLOAD_SLOT)
         assert not dpg.does_item_exist(compose_tag(PREFIX, SUF_LEVEL, "0", SUF_STRIP))
 
     def test_a_removable_list_gives_each_row_a_button(self, dpg_context: None, layout_config) -> None:
@@ -262,7 +286,6 @@ class TestBusyState:
         stems_list.update_view(view(bass, live=False))
 
         assert not dpg.is_item_enabled(row_tag(bass, SUF_TEXT))
-        assert not dpg.is_item_enabled(row_tag(bass, SUF_HANDLE))
         assert not dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
         for channel_name in CHANNELS:
             assert not dpg.is_item_enabled(channel_tag(bass, channel_name))
@@ -275,5 +298,4 @@ class TestBusyState:
         stems_list.update_view(view(bass, live=True))
 
         assert dpg.is_item_enabled(row_tag(bass, SUF_TEXT))
-        assert dpg.is_item_enabled(row_tag(bass, SUF_HANDLE))
         assert dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))

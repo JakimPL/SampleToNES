@@ -260,6 +260,24 @@ TAG_GLOBAL_THEME_PLUS_MINUS_BUTTONS = TagName(
     Widget.THEME,
     "plus_minus_buttons",
 )
+TAG_GLOBAL_THEME_STEMS_DROP_STRIP = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_drop_strip",
+)
+TAG_GLOBAL_THEME_STEMS_ROW = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_row",
+)
+TAG_GLOBAL_THEME_STEMS_ROW_INERT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_row_inert",
+)
 TAG_GLOBAL_THEME_TOOLTIP = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -717,7 +735,6 @@ SUF_INPUT_SEARCH = compose_tag(SUF_INPUT, "search")
 SUF_CHECKBOX = "checkbox"
 SUF_CHECKBOX_FAVORITES = compose_tag(SUF_CHECKBOX, "favorites")
 SUF_STRIP = "strip"
-SUF_HANDLE = "handle"
 SUF_TABLE = "table"
 SUF_TOOLTIP = "tooltip"
 SUF_TOOLTIP_DETAIL = compose_tag(SUF_TOOLTIP, "detail")

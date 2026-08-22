@@ -275,13 +275,26 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
                 case extensions.EXT_FILE_RECONSTRUCTION:
                     return self._logic.request_autoplay(node)
                 case suffix if suffix in extensions.EXT_FILES_AUDIO:
-                    self.call(self.on_wave_file_clicked, node.filepath)
-                    return self._logic.request_autoplay(node)
+                    return self._audio_node_clicked(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
             return self._show_file_context_menu(node)
 
         return None
+
+    def _audio_node_clicked(self, node: FileSystemNode) -> None:
+        """Answers a click on a recording: Ctrl gathers it as a stem, else it becomes the selection.
+
+        Ctrl is the gathering gesture throughout the browser, so it reaches a recording the same
+        way it reaches a folder and does what **Add as stem** does, opening a stems conversion
+        where none is being built. A plain click hands the recording to the converter and plays it.
+        """
+        if Modifier.CTRL in capture_modifiers() and self.query(self.can_add_stems, default=False):
+            self.call(self.on_file_add_requested, node.filepath)
+            return
+
+        self.call(self.on_wave_file_clicked, node.filepath)
+        self._logic.request_autoplay(node)
 
     def _on_file_node_double_clicked(
         self,
@@ -335,10 +348,10 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         node: FileSystemNode,
         node_tag: str,
     ) -> None:
-        """Answers a click on a folder: Ctrl offers its recordings to a stems list, else it opens.
+        """Answers a click on a folder: Ctrl offers its recordings as stems, else it opens.
 
-        The modifier reaches the stems list only while one is being gathered, so a Ctrl-click with
-        nothing to gather into opens the folder the way a plain click does.
+        Ctrl does what **Add folder as stems** does, opening a stems conversion where none is
+        being built. While the converter is busy the folder opens the way a plain click opens it.
         """
         has_content = self._explorer_logic.has_relevant_content(node.filepath)
         if not has_content:

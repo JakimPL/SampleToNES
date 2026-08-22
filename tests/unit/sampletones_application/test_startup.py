@@ -15,7 +15,6 @@ from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_GROUP,
-    SUF_HANDLE,
     SUF_STRIP,
     SUF_TABLE,
     SUF_TEXT,
@@ -40,6 +39,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
+DRAG_PAYLOAD_SLOT: Final[int] = 3
 
 _DPG_DISPLAY_FUNCTIONS = [
     "create_context",
@@ -503,10 +503,10 @@ class TestConverterStemsCard:
             1, SUF_TABLE
         )
 
-    def test_a_row_carries_a_handle_to_drag_it_by(self, app: Application, tmp_path: Path) -> None:
+    def test_a_row_is_the_thing_you_drag_it_by(self, app: Application, tmp_path: Path) -> None:
         path = self._gather(app, tmp_path, ["a.wav"])[0]
 
-        assert dpg.does_item_exist(stems_list(app).row_tag(str(path), SUF_HANDLE))
+        assert dpg.get_item_children(stems_list(app).row_tag(str(path), SUF_TEXT), DRAG_PAYLOAD_SLOT)
 
     def test_dropping_a_recording_on_a_row_joins_that_rows_level(self, app: Application, tmp_path: Path) -> None:
         first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])

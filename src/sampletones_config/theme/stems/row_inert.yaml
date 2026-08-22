@@ -1,0 +1,9 @@
+name: stems_row_inert
+tag: global.theme.stems_row_inert
+
+components:
+  - item_type: Selectable
+    entries:
+      - type: color
+        key: Text
+        value: .text_muted
