@@ -65,7 +65,6 @@ The [**development**](development/) section is for contributors.
 - [Coding guidelines](development/guidelines.md) — conventions for the codebase.
 - [Dependencies](development/dependencies.md) — the libraries _SampleToNES_ builds on.
 - [Bugs and to-dos](development/bugs-and-todos.md) — the working ledger of known gaps.
-- [Bitphase integration status](development/bitphase-integration-status.md) — what the Bitphase export covers and what is left to verify.
 
 ## Glossary
 

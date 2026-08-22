@@ -174,11 +174,10 @@ directory fall back to the `.stn` filename.
 The reconstruction tab names every recorded path on the Stems card, one row per
 stem, each row carrying its own full-path tooltip and revealing its recording on
 a click. The Audio source panel keeps the reconstruction's own file and the
-choice between the two waveforms. Locating reveals every recorded path according
-to the capability matrix in
-[Desktop capabilities](../development/desktop-capabilities.md): one file-manager
-window with every stem selected where the file manager supports it, one window
-per directory otherwise.
+choice between the two waveforms. Locating reveals every recorded path at once:
+a Linux file manager offering `org.freedesktop.FileManager1` opens one window
+with every stem selected, and every other environment opens one window per
+directory holding them.
 
 ## The stems card
 
