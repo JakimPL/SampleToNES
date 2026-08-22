@@ -5,6 +5,7 @@ from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.dictionary.prune import prune
 from sampletones_player.compression.dictionary.table import PhraseTable, phrase_table
+from sampletones_player.compression.matches.cache import MatchCache
 from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.options import CodecOptions
 from sampletones_player.compression.parse.result import Parse
@@ -82,18 +83,18 @@ def _savings(
 
 
 def _settle(
-    indices: Sequence[PlaneIndex],
+    cache: MatchCache,
     table: PhraseTable,
     options: CodecOptions,
     boundaries: FrozenSet[int],
 ) -> Tuple[PhraseTable, Tuple[Parse, ...]]:
     baseline = parse_planes(
-        indices,
+        cache,
         phrase_table(()),
         replace(options, phrases=False),
         boundaries,
     )
-    parses = parse_planes(indices, table, options, boundaries)
+    parses = parse_planes(cache, table, options, boundaries)
     for _ in range(SETTLING_ROUNDS):
         pruned = prune(
             table,
@@ -104,7 +105,7 @@ def _settle(
             break
 
         table = pruned
-        parses = parse_planes(indices, table, options, boundaries)
+        parses = parse_planes(cache, table, options, boundaries)
 
     return table, parses
 
@@ -132,13 +133,13 @@ def encode_planes(
     Returns:
         CompressedPlanes: The dictionary, the eight token streams and the ticks the song lasts.
     """
-    indices = tuple(PlaneIndex.from_plane(plane) for plane in planes.planes)
+    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes.planes)
     entries = boundaries | {STREAM_START}
     table = phrase_table(seeds) if options.phrases else phrase_table(())
     if options.phrases and options.search:
-        table = search_phrases(indices, table, options, entries)
+        table = search_phrases(cache, table, options, entries)
 
-    table, parses = _settle(indices, table, options, entries)
+    table, parses = _settle(cache, table, options, entries)
     return CompressedPlanes(
         phrases=table,
         streams=PlaneOrder.across(emit(parse.tokens) for parse in parses),

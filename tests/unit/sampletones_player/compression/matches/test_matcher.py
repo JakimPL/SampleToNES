@@ -2,20 +2,21 @@ from typing import Final, List, Tuple
 
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.dictionary.table import phrase_table
+from sampletones_player.compression.matches.cache import KEY_LENGTH, MatchCache
 from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.matches.match import PhraseMatch
-from sampletones_player.compression.matches.matcher import KEY_LENGTH, PhraseMatcher
+from sampletones_player.compression.matches.matcher import PhraseMatcher
 from sampletones_player.specification.compression import MAX_PHRASE_TICKS
 
 MOTIF: Final[bytes] = bytes((40, 44, 47))
+SINGLE_PLANE: Final[int] = 0
 
 
 def found(plane: bytes, phrases: Tuple[Phrase, ...], position: int) -> List[PhraseMatch]:
-    index = PlaneIndex.from_plane(plane)
-    matcher = PhraseMatcher(phrase_table(phrases))
+    cache = MatchCache((PlaneIndex.from_plane(plane),))
+    matcher = PhraseMatcher(phrase_table(phrases), SINGLE_PLANE, cache)
     return list(
         matcher.matches(
-            index,
             position,
             min(MAX_PHRASE_TICKS, len(plane) - position),
             transposition=True,

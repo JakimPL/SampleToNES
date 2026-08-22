@@ -2,6 +2,7 @@ from typing import Final, FrozenSet, Tuple
 
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.dictionary.table import phrase_table
+from sampletones_player.compression.matches.cache import MatchCache
 from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.matches.matcher import PhraseMatcher
 from sampletones_player.compression.options import CodecOptions
@@ -27,6 +28,7 @@ LITERALS_ONLY: Final[CodecOptions] = CodecOptions(
 )
 START: Final[FrozenSet[int]] = frozenset({0})
 MOTIF: Final[bytes] = bytes((40, 44, 47, 44))
+SINGLE_PLANE: Final[int] = 0
 
 
 def parsed(
@@ -35,9 +37,9 @@ def parsed(
     options: CodecOptions = EVERY_LAYER,
     boundaries: FrozenSet[int] = START,
 ) -> Parse:
+    cache = MatchCache((PlaneIndex.from_plane(plane),))
     return parse_plane(
-        PlaneIndex.from_plane(plane),
-        PhraseMatcher(phrase_table(phrases)),
+        PhraseMatcher(phrase_table(phrases), SINGLE_PLANE, cache),
         options,
         boundaries,
     )

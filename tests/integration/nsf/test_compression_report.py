@@ -12,6 +12,7 @@ from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.dictionary.table import phrase_table
 from sampletones_player.compression.encode import STREAM_START, encode_planes
+from sampletones_player.compression.matches.cache import MatchCache
 from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.matches.matcher import PhraseMatcher
 from sampletones_player.compression.options import CodecOptions
@@ -97,16 +98,16 @@ def _split_control_planes(planes: SongPlanes) -> Tuple[bytes, ...]:
 
 
 def _coded_size(planes: Sequence[bytes], options: CodecOptions) -> int:
-    matcher = PhraseMatcher(phrase_table(()))
+    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes)
+    table = phrase_table(())
     entries = frozenset({STREAM_START})
     return sum(
         parse_plane(
-            PlaneIndex.from_plane(plane),
-            matcher,
+            PhraseMatcher(table, plane, cache),
             options,
             entries,
         ).size
-        for plane in planes
+        for plane in range(len(planes))
     )
 
 

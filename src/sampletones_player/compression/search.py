@@ -1,11 +1,12 @@
 from typing import Dict, Final, FrozenSet, List, NamedTuple, Sequence
 
-from sampletones_player.compression.dictionary.phrase import Phrase
+from sampletones_player.compression.dictionary.phrase import Phrase, phrase_entry_size
 from sampletones_player.compression.dictionary.table import PhraseTable, phrase_table
+from sampletones_player.compression.matches.cache import MatchCache
 from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.options import CodecOptions
 from sampletones_player.compression.parse.result import Parse
-from sampletones_player.compression.parse.song import parse_planes
+from sampletones_player.compression.parse.song import parse_planes, parse_planes_offered
 from sampletones_player.compression.tokens.literal import LiteralToken
 from sampletones_player.compression.tokens.sizes import phrase_size
 from sampletones_player.specification.compression import MAX_PHRASE_IDS
@@ -15,6 +16,8 @@ MAX_CANDIDATE_LENGTH: Final[int] = 48
 MAX_CANDIDATE_ENTRIES: Final[int] = 200_000
 MAX_SEARCH_ROUNDS: Final[int] = 64
 CONFIRMED_CANDIDATES: Final[int] = 3
+MIN_OCCURRENCES: Final[int] = 2
+UNSHIFTED_OCCURRENCE_TRANSPOSE: Final[int] = 0
 SHIFTED_OCCURRENCE_TRANSPOSE: Final[int] = 1
 
 
@@ -50,20 +53,21 @@ def _candidates(
     parses: Sequence[Parse],
 ) -> Dict[bytes, List[_Occurrence]]:
     found: Dict[bytes, List[_Occurrence]] = {}
+    gather = found.setdefault
     entries = 0
     for plane, (index, parse) in enumerate(zip(indices, parses)):
+        differences = index.differences
         for span in _residue_spans(parse):
             if entries > MAX_CANDIDATE_ENTRIES:
                 return found
 
             for position in range(span.start, span.end):
                 longest = min(MAX_CANDIDATE_LENGTH, span.end - position)
+                occurrence = _Occurrence(plane=plane, position=position)
                 for length in range(MIN_CANDIDATE_LENGTH, longest + 1):
-                    key = index.differences[position : position + length - 1]
-                    found.setdefault(key, []).append(
-                        _Occurrence(plane=plane, position=position),
-                    )
-                    entries += 1
+                    gather(differences[position : position + length - 1], []).append(occurrence)
+
+                entries += max(0, longest - MIN_CANDIDATE_LENGTH + 1)
 
     return found
 
@@ -91,13 +95,13 @@ def _gain(
     phrase_id: int,
 ) -> int:
     parsed = 0
-    tokens = 0
-    for order, occurrence in enumerate(occurrences):
+    for occurrence in occurrences:
         costs = parses[occurrence.plane].costs
         parsed += costs[occurrence.position + length] - costs[occurrence.position]
-        tokens += phrase_size(phrase_id, 0 if order == 0 else SHIFTED_OCCURRENCE_TRANSPOSE)
 
-    return parsed - tokens
+    stated = phrase_size(phrase_id, UNSHIFTED_OCCURRENCE_TRANSPOSE)
+    shifted = phrase_size(phrase_id, SHIFTED_OCCURRENCE_TRANSPOSE)
+    return parsed - stated - shifted * (len(occurrences) - 1)
 
 
 def _ranked(
@@ -107,14 +111,17 @@ def _ranked(
 ) -> List[_Candidate]:
     ranked: List[_Candidate] = []
     for key, occurrences in _candidates(indices, parses).items():
+        if len(occurrences) < MIN_OCCURRENCES:
+            continue
+
         length = len(key) + 1
         spread = _spread(occurrences, length)
-        if len(spread) < 2:
+        if len(spread) < MIN_OCCURRENCES:
             continue
 
         first = spread[0]
         body = indices[first.plane].plane[first.position : first.position + length]
-        gain = _gain(spread, length, parses, phrase_id) - Phrase(body=body).size
+        gain = _gain(spread, length, parses, phrase_id) - phrase_entry_size(length)
         if gain > 0:
             ranked.append(_Candidate(gain=gain, body=body))
 
@@ -127,7 +134,7 @@ def _total(table: PhraseTable, parses: Sequence[Parse]) -> int:
 
 
 def search_phrases(
-    indices: Sequence[PlaneIndex],
+    cache: MatchCache,
     table: PhraseTable,
     options: CodecOptions,
     boundaries: FrozenSet[int],
@@ -144,7 +151,7 @@ def search_phrases(
     pitches is one candidate seen five times.
 
     Args:
-        indices: The planes and the readings of them matching is decided against.
+        cache: The planes the song covers, alongside what each phrase plays against them.
         table: The phrases the instruments seeded.
         options: Which of the codec's layers the encoding is built from.
         boundaries: The ticks a token starts on.
@@ -152,7 +159,8 @@ def search_phrases(
     Returns:
         PhraseTable: The seeded phrases alongside the ones the search earned.
     """
-    parses = parse_planes(indices, table, options, boundaries)
+    indices = cache.indices
+    parses = parse_planes(cache, table, options, boundaries)
     total = _total(table, parses)
     for _ in range(MAX_SEARCH_ROUNDS):
         if len(table) == MAX_PHRASE_IDS:
@@ -160,12 +168,15 @@ def search_phrases(
 
         settled = False
         for candidate in _ranked(indices, parses, len(table)):
-            enlarged = phrase_table(table.phrases + (Phrase(body=candidate.body),))
-            trial = parse_planes(
-                indices,
+            offered = Phrase(body=candidate.body)
+            enlarged = phrase_table(table.phrases + (offered,))
+            trial = parse_planes_offered(
+                cache,
                 enlarged,
                 options,
                 boundaries,
+                parses=parses,
+                offered=offered,
             )
             if _total(enlarged, trial) < total:
                 table = enlarged

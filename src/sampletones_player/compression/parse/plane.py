@@ -62,7 +62,6 @@ def _relax_forward(
         return
 
     for phrase_id, ticks, transpose in matcher.matches(
-        index,
         position,
         min(MAX_PHRASE_TICKS, reach),
         transposition=options.transposition,
@@ -76,7 +75,6 @@ def _relax_forward(
 
 
 def parse_plane(
-    index: PlaneIndex,
     matcher: PhraseMatcher,
     options: CodecOptions,
     boundaries: FrozenSet[int],
@@ -92,14 +90,14 @@ def parse_plane(
     elsewhere.
 
     Args:
-        index: The plane and the two readings of it matching is decided against.
-        matcher: The phrases the plane may play.
+        matcher: The plane, alongside the phrases it may play.
         options: Which of the codec's layers the encoding is built from.
         boundaries: The ticks a token starts on.
 
     Returns:
         Parse: The tokens the plane is written as, and what each of its prefixes costs.
     """
+    index = matcher.index
     plane = index.plane
     ticks = index.ticks
     entries = Boundaries.across(ticks, boundaries)
