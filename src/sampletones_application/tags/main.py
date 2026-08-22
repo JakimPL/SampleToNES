@@ -230,12 +230,6 @@ TAG_MAIN_CONVERTER_TOOLTIP_CONVERT = TagName(
     Widget.TOOLTIP,
     "convert",
 )
-TAG_MAIN_CONVERTER_WINDOW_SUMMARY = TagName(
-    Page.MAIN,
-    Panel.CONVERTER,
-    Widget.WINDOW,
-    "summary",
-)
 TAG_MAIN_CONVERTER_GROUP_SUMMARY = TagName(
     Page.MAIN,
     Panel.CONVERTER,
@@ -355,4 +349,9 @@ PRE_MAIN_CONVERTER_CANDIDATE = compose_tag(
     Page.MAIN,
     Panel.CONVERTER,
     "candidate",
+)
+PRE_MAIN_CONVERTER_LEVEL = compose_tag(
+    Page.MAIN,
+    Panel.CONVERTER,
+    "level",
 )

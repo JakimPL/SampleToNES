@@ -134,6 +134,20 @@ class ConverterViewModel(BaseModel, frozen=True):
         return len(self.stem_sources)
 
     @property
+    def channels_in_play(self) -> Tuple[ChannelName, ...]:
+        """The channels a conversion may reach, in the order the application names them.
+
+        A stems row offers a checkbox per channel in play, so a channel the configuration leaves
+        out costs the row no column at all.
+        """
+        return tuple(channel_name for channel_name in ChannelName.items() if channel_name in self.enabled_channels)
+
+    @property
+    def level_count(self) -> int:
+        """How many levels the gathered recordings are spread over."""
+        return max((row.level + 1 for row in self.stem_sources), default=0)
+
+    @property
     def playing_count(self) -> int:
         """How many of the listed recordings take part in the conversion."""
         return sum(1 for row in self.stem_sources if row.takes_part)

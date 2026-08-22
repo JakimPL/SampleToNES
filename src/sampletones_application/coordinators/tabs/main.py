@@ -205,6 +205,7 @@ class MainTabCoordinator:
         )
         self._converter_panel: GUIConverterPanel = GUIConverterPanel(
             layout=layout.main.converter,
+            inputs=layout.inputs,
             path_colors=layout.path_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_CONVERTER_PANEL),
             language_manager=language_manager,
@@ -265,6 +266,11 @@ class MainTabCoordinator:
         self._converter_panel.on_hierarchy_mode_changed = self._converter_logic.set_hierarchy_mode
         self._converter_panel.on_source_channels_changed = self._converter_logic.set_source_channels
         self._converter_panel.on_source_removed = self._converter_logic.remove_source
+        self._converter_panel.on_source_moved = self._converter_logic.move_source_within_level
+        self._converter_panel.on_source_level_joined = self._converter_logic.join_source_level
+        self._converter_panel.on_source_isolated = self._converter_logic.isolate_source
+        self._converter_panel.on_source_dropped_on_source = self._converter_logic.move_source_onto
+        self._converter_panel.on_source_dropped_on_level = self._converter_logic.move_source_to_new_level
         self._stem_selection_window.on_add = self._converter_logic.add_sources
 
     def _repaint_explorer_favorites(self, node: FileSystemNode) -> None:

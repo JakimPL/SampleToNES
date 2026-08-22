@@ -289,7 +289,7 @@ class Application:
             shortcut_source=self._shortcut_source,
         )
         self.stem_selection_window: GUIStemSelectionWindow = GUIStemSelectionWindow(
-            layout=self.layout.tabs.main.converter.stem_selection,
+            layout=self.layout.tabs.main.converter,
             title=self.language_manager["main.converter.title.stem_selection_dialog"],
             message=self.language_manager["main.converter.message.stem_selection_prompt"],
             limit_template=self.language_manager["main.converter.template.stem_selection_limit"],

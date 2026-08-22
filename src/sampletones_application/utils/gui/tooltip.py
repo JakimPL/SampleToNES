@@ -32,6 +32,17 @@ def show_tooltip(
     return tooltip_text
 
 
+def set_tooltip_visible(tag: str, visible: bool) -> None:
+    """Shows or hides a tooltip along with the widget it explains.
+
+    DearPyGui keeps a tooltip live over the rectangle its parent last drew at, so a tooltip left
+    showing while its widget is hidden explains whatever moved into that place. Toggling the two
+    together keeps an explanation on the control it belongs to.
+    """
+    if dpg.does_item_exist(tag):
+        dpg.configure_item(tag, show=visible)
+
+
 def attach_disabled_tooltip(
     parent: str,
     message: str,

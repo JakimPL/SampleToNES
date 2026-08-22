@@ -3,7 +3,7 @@ from typing import Any, Callable, Final, List, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.layout.primitives import Dimensions
+from sampletones_application.layout.tabs.main.converter import ConverterLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.main import (
     PRE_MAIN_CONVERTER_CANDIDATE,
@@ -34,7 +34,7 @@ class GUIStemSelectionWindow(GUIDialogWindow):
     def __init__(
         self,
         *,
-        layout: Dimensions,
+        layout: ConverterLayout,
         title: str,
         message: str,
         limit_template: str,
@@ -50,13 +50,14 @@ class GUIStemSelectionWindow(GUIDialogWindow):
         self._cancel_label = cancel_label
         self._candidates: Tuple[Path, ...] = ()
         self._room = 0
+        self._footer_height = layout.stem_selection_footer
 
         self.on_add: Optional[Callable[[List[Path]], None]] = None
 
         super().__init__(
             tag=TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION,
-            width=layout.width,
-            height=layout.height,
+            width=layout.stem_selection.width,
+            height=layout.stem_selection.height,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )
@@ -78,7 +79,7 @@ class GUIStemSelectionWindow(GUIDialogWindow):
             with dpg.child_window(
                 tag=TAG_MAIN_CONVERTER_GROUP_STEM_SELECTION,
                 width=-1,
-                height=-self.height // 4,
+                height=-self._footer_height,
                 border=False,
             ):
                 self._create_candidate_rows()

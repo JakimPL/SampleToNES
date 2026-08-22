@@ -12,8 +12,18 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.logic.history.action import HistoryAction
-from sampletones_application.tags.general import SUF_BUTTON, SUF_GROUP
-from sampletones_application.tags.main import TAG_MAIN_CONVERTER_WINDOW_STEMS
+from sampletones_application.tags.general import (
+    SUF_BUTTON,
+    SUF_GROUP,
+    SUF_HANDLE,
+    SUF_STRIP,
+    SUF_TABLE,
+    SUF_TEXT,
+)
+from sampletones_application.tags.main import (
+    TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE,
+    TAG_MAIN_CONVERTER_WINDOW_STEMS,
+)
 from sampletones_application.ui.panels.main.converter import GUIConverterPanel
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.shortcuts.ids import (
@@ -25,6 +35,7 @@ from sampletones_application.utils.parallelization.background import (
     stop_background_workers,
 )
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
+from sampletones_application.view_model.main.converter import ConversionPhase
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 
@@ -427,12 +438,16 @@ class TestConverterStemsCard:
             assert dpg.does_item_exist(GUIConverterPanel._row_tag(path, SUF_BUTTON))
 
     def test_a_rows_channels_show_what_was_set(self, app: Application, tmp_path: Path) -> None:
+        """The row offers a checkbox per channel the configuration enables, ticked as the row holds it."""
         path = self._gather(app, tmp_path, ["a.wav"])[0]
+        converter_logic = app._main_tab._converter_logic
+        enabled = list(converter_logic._config_manager.config.generation.channels)
+        kept, cleared = enabled[-1], enabled[0]
 
-        app._main_tab._converter_logic.set_source_channels(path, frozenset({ChannelName.NOISE}))
+        converter_logic.set_source_channels(path, frozenset({kept}))
 
-        assert dpg.get_value(GUIConverterPanel._channel_tag(path, ChannelName.NOISE)) is True
-        assert dpg.get_value(GUIConverterPanel._channel_tag(path, ChannelName.PULSE1)) is False
+        assert dpg.get_value(GUIConverterPanel._channel_tag(path, kept)) is True
+        assert dpg.get_value(GUIConverterPanel._channel_tag(path, cleared)) is False
 
     def test_removing_a_recording_takes_its_row_with_it(self, app: Application, tmp_path: Path) -> None:
         first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
@@ -449,3 +464,78 @@ class TestConverterStemsCard:
         app._main_tab._converter_logic.set_stems_mode(False)
 
         assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is False
+
+    def test_the_list_stays_on_screen_while_a_conversion_runs(self, app: Application, tmp_path: Path) -> None:
+        """The setup is what a running conversion is making, so it keeps saying what that is."""
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+        converter_logic = app._main_tab._converter_logic
+
+        converter_logic._phase = ConversionPhase.RUNNING
+        converter_logic.refresh_view()
+        converter_logic._emit_view_model("running", 0.5)
+
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is True
+        assert dpg.get_item_configuration(GUIConverterPanel._row_tag(path, SUF_BUTTON))["enabled"] is False
+
+    def test_a_level_draws_its_own_band(self, app: Application, tmp_path: Path) -> None:
+        first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+        converter_logic = app._main_tab._converter_logic
+
+        converter_logic.isolate_source(second)
+
+        assert dpg.does_item_exist(GUIConverterPanel._level_tag(0, SUF_TABLE))
+        assert dpg.does_item_exist(GUIConverterPanel._level_tag(1, SUF_TABLE))
+        assert dpg.does_item_exist(GUIConverterPanel._level_tag(2, SUF_STRIP))
+        assert dpg.get_item_parent(GUIConverterPanel._row_tag(first, SUF_GROUP)) == GUIConverterPanel._level_tag(
+            0, SUF_TABLE
+        )
+        assert dpg.get_item_parent(GUIConverterPanel._row_tag(second, SUF_GROUP)) == GUIConverterPanel._level_tag(
+            1, SUF_TABLE
+        )
+
+    def test_a_row_carries_a_handle_to_drag_it_by(self, app: Application, tmp_path: Path) -> None:
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+
+        assert dpg.does_item_exist(GUIConverterPanel._row_tag(path, SUF_HANDLE))
+
+    def test_dropping_a_recording_on_a_row_joins_that_rows_level(self, app: Application, tmp_path: Path) -> None:
+        first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+        converter_logic = app._main_tab._converter_logic
+        converter_logic.isolate_source(second)
+
+        panel = app._main_tab._converter_panel
+        panel._on_dropped_on_source(dpg.get_alias_id(GUIConverterPanel._row_tag(second, SUF_TEXT)), str(first))
+
+        assert converter_logic._levels.level_count == 1
+
+    def test_dropping_a_recording_in_a_gap_opens_a_level(self, app: Application, tmp_path: Path) -> None:
+        first, _second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+        converter_logic = app._main_tab._converter_logic
+
+        panel = app._main_tab._converter_panel
+        panel._on_dropped_on_level(dpg.get_alias_id(GUIConverterPanel._level_tag(1, SUF_STRIP)), str(first))
+
+        assert converter_logic._levels.level_count == 2
+        assert converter_logic._levels.level_of(first) == 1
+
+    def test_the_order_explanation_leaves_with_the_control_it_belongs_to(self, app: Application) -> None:
+        """A tooltip left live over a hidden widget's rectangle explains whatever moved into it."""
+        converter_logic = app._main_tab._converter_logic
+
+        converter_logic.set_stems_mode(True)
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE)["show"] is True
+
+        converter_logic.set_stems_mode(False)
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE)["show"] is False
+
+    def test_a_recording_holding_no_channel_greys_out_but_stays_listed(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+
+        app._main_tab._converter_logic.set_source_channels(path, frozenset())
+
+        assert dpg.does_item_exist(GUIConverterPanel._row_tag(path, SUF_GROUP))
+        assert dpg.get_item_configuration(GUIConverterPanel._row_tag(path, SUF_TEXT))["enabled"] is False

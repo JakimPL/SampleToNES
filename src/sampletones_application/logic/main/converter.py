@@ -203,8 +203,18 @@ class ConverterLogic(CallbackMixin):
         self._refresh_setup()
 
     def set_source_channels(self, path: Path, channels: FrozenSet[ChannelName]) -> None:
-        """Names the channels one recording may take."""
-        self._apply(self._levels.replace_source(path, lambda source: source.with_channels(channels)))
+        """Names the channels one recording may take, among the ones the reader was offered.
+
+        A channel the configuration leaves out reaches no checkbox, so the recording keeps
+        whatever it was given for it and gets that choice back when the channel returns.
+        """
+        enabled = frozenset(self._config_manager.config.generation.channels)
+        self._apply(
+            self._levels.replace_source(
+                path,
+                lambda source: source.with_channels((source.channels - enabled) | channels),
+            )
+        )
 
     def move_source_within_level(self, path: Path, offset: int) -> None:
         """Moves a recording past the neighbour it shares a level with."""

@@ -374,6 +374,16 @@ main.converter.message.status_stems_mode: "Mix several recordings into one recon
 main.converter.title.discard_stems_dialog: "Leave stems mode?"
 main.converter.title.stem_selection_dialog: "Add recordings"
 main.converter.template.stem_selection_limit: "Room for {} more of the {} recordings found."
+main.converter.template.stem_level_caption: "Level {}"
+main.converter.label.stem_handle: "::"
+main.converter.label.context_move_up: "Move up"
+main.converter.label.context_move_down: "Move down"
+main.converter.label.context_join_above: "Join the level above"
+main.converter.label.context_join_below: "Join the level below"
+main.converter.label.context_isolate: "Put on its own level"
+main.converter.label.context_remove_stem: "Remove from the conversion"
+main.converter.message.stem_handle_tooltip: "Drag onto another recording to share its level, or onto a gap to open a new one."
+main.converter.message.stem_inert_tooltip: "This recording holds no channel, so it takes no part in the conversion."
 
 # =============================================================================
 # Main tab — Advanced
