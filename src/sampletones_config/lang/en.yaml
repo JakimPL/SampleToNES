@@ -446,6 +446,7 @@ reconstructions.browser.template.incompatible_version_template: "Incompatible re
 reconstructions.reconstruction.label.audio_source_label: "Source"
 reconstructions.reconstruction.label.autoscale_checkbox: "Autoscale"
 reconstructions.reconstruction.label.reconstruction_file_label: "Reconstruction file:"
+reconstructions.reconstruction.label.nes_frequency_label: "NES frequency:"
 reconstructions.reconstruction.label.path_not_found: "not found"
 reconstructions.reconstruction.label.path_not_applicable: "N/A"
 reconstructions.reconstruction.label.original_audio_radio: "Original audio"
