@@ -40,6 +40,15 @@ class Theme:
 
         return dictionary
 
+    @property
+    def components(self) -> Tuple[ThemeParameter, ...]:
+        """The components the theme is built from, in the order DearPyGui fills an item from them.
+
+        A later component covering a colour is the one the item wears, so the order states which
+        of two components naming the same colour has the final say.
+        """
+        return tuple(self._items.items)
+
     def create(self) -> None:
         """Builds the DearPyGui theme once, registering each colour item it fills.
 

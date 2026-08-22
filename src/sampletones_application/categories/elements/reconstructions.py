@@ -26,6 +26,7 @@ class ReconstructionPanelElements(AbstractElement):
     AUDIO_SOURCE_LABEL = "audio_source_label"
     AUTOSCALE_CHECKBOX = "autoscale_checkbox"
     RECONSTRUCTION_FILE_LABEL = "reconstruction_file_label"
+    NES_FREQUENCY_LABEL = "nes_frequency_label"
     PATH_NOT_FOUND = "path_not_found"
     PATH_NOT_APPLICABLE = "path_not_applicable"
     ORIGINAL_AUDIO_RADIO = "original_audio_radio"

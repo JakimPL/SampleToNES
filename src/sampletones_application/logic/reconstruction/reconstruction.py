@@ -192,6 +192,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             selected_channels=frozenset(self._selected_channels),
             reconstruction_file=reconstruction_file,
             original_audio=original_audio,
+            nes_frequency=reconstruction_data.config.nes_frequency,
         )
 
     def close_reconstruction(self) -> None:
@@ -221,6 +222,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                 selected_channels=frozenset(),
                 reconstruction_file=empty_path,
                 original_audio=empty_path,
+                nes_frequency=None,
             ),
         )
 

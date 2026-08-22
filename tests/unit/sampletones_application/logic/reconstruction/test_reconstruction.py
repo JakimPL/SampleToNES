@@ -29,6 +29,7 @@ from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_shared.constants.nes import PAL_FREQUENCY
 from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import (
     EXT_FILE_BITPHASE,
@@ -132,6 +133,17 @@ def retuned_data(
     config = reconstruction.config.model_copy(update={"library": library})
     return ReconstructionData.from_reconstruction(
         reconstruction.model_copy(update={"config": config}),
+        name="Sample",
+    )
+
+
+@pytest.fixture
+def reclocked_data(
+    reconstruction_factory: Callable[[], Reconstruction],
+) -> ReconstructionData:
+    """A reconstruction running at the PAL rate, which a fresh configuration departs from."""
+    return ReconstructionData.from_reconstruction(
+        reconstruction_factory().with_nes_frequency(PAL_FREQUENCY),
         name="Sample",
     )
 
@@ -419,6 +431,39 @@ class TestReconstructionPanelLogicPlayingChannels:
 
         assert received[0].playing_channels == frozenset()
         assert received[0].selected_channels == frozenset()
+
+
+class TestReconstructionPanelLogicEngineRate:
+    """The rate the card states, which follows the open document."""
+
+    @staticmethod
+    def _received(panel_logic: ReconstructionPanelLogic) -> List[ReconstructionViewModel]:
+        received: List[ReconstructionViewModel] = []
+        panel_logic.on_view_changed = received.append
+        return received
+
+    def test_the_view_states_the_rate_the_reconstruction_runs_at(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        reclocked_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = reclocked_data
+        received = self._received(panel_logic)
+
+        panel_logic.display_reconstruction()
+
+        assert received[0].nes_frequency == reclocked_data.config.nes_frequency
+
+    def test_a_closed_tab_states_no_rate(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+    ) -> None:
+        received = self._received(panel_logic)
+
+        panel_logic.close_reconstruction()
+
+        assert received[0].nes_frequency is None
 
 
 class TestReconstructionPanelLogicClose:

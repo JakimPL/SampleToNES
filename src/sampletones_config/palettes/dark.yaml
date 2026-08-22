@@ -49,6 +49,7 @@ colors:
   danger_hover: "#b85850"
   danger_active: "#853830"
   on_danger: "#f2f2f4"
+  danger_disabled: "#4a3230"
 
   dialog_surface: "#2c2c30"
   dialog_title: "#333a44"

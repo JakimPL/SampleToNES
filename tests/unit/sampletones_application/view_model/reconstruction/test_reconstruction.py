@@ -101,6 +101,7 @@ class TestReconstructionViewModelEnablement:
             selected_channels=frozenset(),
             reconstruction_file=ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, paths=()),
             original_audio=ReconstructionPathViewModel(state=case.original_audio_state, paths=()),
+            nes_frequency=None,
         )
 
         assert view_model.audio_source_enabled is case.audio_source_enabled
