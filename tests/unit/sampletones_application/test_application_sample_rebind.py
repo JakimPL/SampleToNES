@@ -27,7 +27,7 @@ class TestRebindReplacedSample:
 
         app._rebind_replaced_sample("bass-id", incoming)
 
-        app.reconstruction_manager.apply_regenerated.assert_called_once_with(incoming)
+        app.reconstruction_manager.apply_edited.assert_called_once_with(incoming)
         app._reconstructions_tab.update_reconstruction.assert_called_once()
 
     def test_leaves_the_editor_alone_when_a_different_sample_is_open(self) -> None:
@@ -37,7 +37,7 @@ class TestRebindReplacedSample:
 
         app._rebind_replaced_sample("bass-id", MagicMock())
 
-        app.reconstruction_manager.apply_regenerated.assert_not_called()
+        app.reconstruction_manager.apply_edited.assert_not_called()
         app._reconstructions_tab.update_reconstruction.assert_not_called()
 
     def test_leaves_the_editor_alone_when_no_document_is_open(self) -> None:
@@ -47,7 +47,7 @@ class TestRebindReplacedSample:
 
         app._rebind_replaced_sample("bass-id", MagicMock())
 
-        app.reconstruction_manager.apply_regenerated.assert_not_called()
+        app.reconstruction_manager.apply_edited.assert_not_called()
         app._reconstructions_tab.update_reconstruction.assert_not_called()
 
     def test_ignores_an_unknown_sample(self) -> None:
@@ -55,5 +55,5 @@ class TestRebindReplacedSample:
 
         app._rebind_replaced_sample("gone", MagicMock())
 
-        app.reconstruction_manager.apply_regenerated.assert_not_called()
+        app.reconstruction_manager.apply_edited.assert_not_called()
         app._reconstructions_tab.update_reconstruction.assert_not_called()

@@ -460,6 +460,8 @@ reconstructions.reconstruction.template.stems_setup: "Mode: {mode} · Channel ca
 reconstructions.reconstruction.label.collapse_levels: "Collapse levels"
 reconstructions.reconstruction.message.collapse_levels_tooltip: "Draw every recording in one table."
 reconstructions.reconstruction.message.status_collapse_levels: "Draw the recordings in one table or under their levels."
+reconstructions.reconstruction.title.remove_stem_dialog: "Remove recording"
+reconstructions.reconstruction.message.remove_stem_message: "Remove this recording from the reconstruction? Its frames fall silent."
 
 # =============================================================================
 # Reconstructions tab — Instruments

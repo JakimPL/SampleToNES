@@ -38,7 +38,8 @@ class GUIReconstructionStemsPanel(GUIPanel):
     box moves every channel the recording offers at once. A channel switched off for the whole
     reconstruction shows its boxes muted while they stay as clickable as any other, so the
     reader's per-recording choice keeps standing. A click on a row shows the recording where it
-    sits on disk.
+    sits on disk, and the button beside it asks to take the recording out of the reconstruction
+    for good. The list holds on to its last row, so one recording always stands.
     """
 
     def __init__(
@@ -66,11 +67,13 @@ class GUIReconstructionStemsPanel(GUIPanel):
             language_manager=language_manager,
             status_bar=status_bar,
             draggable=False,
-            removable=False,
+            removable=True,
+            retain_last_row=True,
             master_checkbox=True,
         )
 
         self.on_stem_channels_changed: Optional[Callable[[int, FrozenSet[ChannelName]], None]] = None
+        self.on_stem_remove_requested: Optional[Callable[[int], None]] = None
 
         super().__init__(tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_STEMS)
         self._enable_vertical_collapse(
@@ -108,6 +111,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
 
         self._stems_list.on_channels_changed = self._on_channels_changed
         self._stems_list.on_row_activated = self._on_row_activated
+        self._stems_list.on_remove_requested = self._on_remove_requested
 
     def update_view(self, view_model: ReconstructionStemsViewModel) -> None:
         self._view_model = view_model
@@ -173,6 +177,9 @@ class GUIReconstructionStemsPanel(GUIPanel):
 
     def _on_channels_changed(self, key: str, channels: FrozenSet[ChannelName]) -> None:
         self.call(self.on_stem_channels_changed, int(key), channels)
+
+    def _on_remove_requested(self, key: str) -> None:
+        self.call(self.on_stem_remove_requested, int(key))
 
     def _on_row_activated(self, key: str) -> None:
         """A clicked row shows its recording where it sits on disk."""

@@ -141,6 +141,7 @@ class GUIConverterPanel(GUIPanel):
             status_bar=status_bar,
             draggable=True,
             removable=True,
+            retain_last_row=False,
             master_checkbox=False,
         )
 

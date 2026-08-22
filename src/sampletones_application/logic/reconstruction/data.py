@@ -75,16 +75,30 @@ class ReconstructionData:
     def with_reconstruction(self, reconstruction: Reconstruction) -> Self:
         """Rebinds this data to an edited reconstruction, keeping name and origin.
 
-        A regeneration produces a fresh reconstruction object; the display name,
-        file location and source audio are unchanged, so only the reconstruction
-        and its derived features are refreshed.
+        An edit produces a fresh reconstruction object; the display name and file location
+        stand, so the reconstruction, its derived features and the recordings its entries
+        hold are what the rebind refreshes.
         """
         return replace(
             self,
             reconstruction=reconstruction,
             config=reconstruction.config,
             feature_data=FeatureData.load(reconstruction),
+            stem_audios=self._recordings_for(reconstruction),
         )
+
+    def _recordings_for(self, reconstruction: Reconstruction) -> Tuple[np.ndarray, ...]:
+        """The loaded recordings, each following the entry it was loaded for.
+
+        A recording belongs to the entry standing at its position, so an entry the edit keeps
+        carries its audio to the position it now holds and an entry taken out releases it.
+        Recordings the load left out stay out.
+        """
+        if not self.stem_audios:
+            return ()
+
+        positions = {entry.id: index for index, entry in enumerate(self.reconstruction.stems_data.config.entries)}
+        return tuple(self.stem_audios[positions[entry.id]] for entry in reconstruction.stems_data.config.entries)
 
     @classmethod
     def _assemble(

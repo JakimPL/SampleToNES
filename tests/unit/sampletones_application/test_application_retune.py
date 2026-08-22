@@ -64,7 +64,7 @@ class TestApplyRetunedSample:
 
         app._apply_retuned_sample(retuned)
 
-        app.reconstruction_manager.apply_regenerated.assert_called_once_with(retuned.reconstruction)
+        app.reconstruction_manager.apply_edited.assert_called_once_with(retuned.reconstruction)
         app._reconstructions_tab.update_reconstruction.assert_called_once()
 
     def test_leaves_the_editor_alone_when_a_different_sample_is_open(self) -> None:
@@ -75,7 +75,7 @@ class TestApplyRetunedSample:
 
         app._apply_retuned_sample(retuned)
 
-        app.reconstruction_manager.apply_regenerated.assert_not_called()
+        app.reconstruction_manager.apply_edited.assert_not_called()
         app._reconstructions_tab.update_reconstruction.assert_not_called()
 
 

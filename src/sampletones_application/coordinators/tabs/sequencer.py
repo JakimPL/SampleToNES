@@ -884,6 +884,14 @@ class SequencerTabCoordinator:
             feature_key,
         )
 
+    def reconstruction_stem_detail(
+        self,
+        sample_id: str,
+        stem_name: str,
+    ) -> HistoryDetail:
+        """Describes a recording taken out of a reconstruction for the project history."""
+        return self._history_detail.remove_stem(sample_id, stem_name)
+
     def _build_history_view_model(self) -> HistoryViewModel:
         cursor = self._history.cursor
         entries = tuple(

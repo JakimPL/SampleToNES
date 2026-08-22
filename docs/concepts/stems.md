@@ -222,6 +222,11 @@ silences them.
    [Playback](../development/playback.md). Saving the reconstruction records
    the assignment, never the selection. So is the banding: collapsing the levels
    changes how the card draws, never what it describes.
+7. **Removing a recording edits the document.** Where a box steers listening,
+   the remove button rewrites what is described: the entry leaves the recorded
+   setup, its frames rest, and the change is asked about first and recorded in
+   the project history. A reconstruction holds at least one recording, so the
+   last row standing keeps its button held back.
 
 ### Mechanics
 
@@ -237,3 +242,14 @@ choice changes; the coordinator wires the card's `on_stem_channels_changed` hook
 to that handler. A reconstruction that records one source presents a single row
 for its recording, and one that records no source shows the card's empty
 state.
+
+Removal runs through `without_stem`
+(`sampletones_core.reconstructions.reconstruction.stems.removal`), which returns
+a fresh reconstruction: the entry leaves the setup, taking its level along once
+that level holds nothing else; its source path leaves `audio_filepath` from the
+position it stood at; every frame it held states the silent instruction, zeroes
+its samples and takes `RESTING_STEM_ID`; a channel the removal empties stands
+by; and the mixed approximation is summed afresh. The tab coordinator hands the
+result on as a `ReconstructionEdit`, the payload both a regenerated instrument
+and a removed recording travel as, so one path rebinds the open document and
+records the edit against the project history.

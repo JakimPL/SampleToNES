@@ -7,6 +7,10 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
+from sampletones_application.logic.reconstruction.edit import (
+    InstrumentEdit,
+    ReconstructionEdit,
+)
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services import (
     RegeneratedInstrument,
@@ -64,7 +68,7 @@ class ReconstructionCoordinator:
         language_manager: LanguageManager,
         on_tab_switch: Callback,
         on_session_state_changed: VoidCallback,
-        on_reconstruction_updated: Callable[[RegeneratedInstrument], None],
+        on_reconstruction_updated: Callable[[ReconstructionEdit], None],
         is_reconstruction_embedded: Callable[[], bool],
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
@@ -307,24 +311,25 @@ class ReconstructionCoordinator:
         self._tab.close_reconstruction()
         self._session_manager.set_current_reconstruction(None)
 
-    def _on_updated(self, outcome: RegeneratedInstrument) -> None:
-        """Applies a regenerated reconstruction across the open document and project.
+    def apply_edit(self, edit: ReconstructionEdit) -> None:
+        """Applies an edited reconstruction across the open document and project.
 
-        The owning-sample hook runs first, while the manager still holds the prior
-        reconstruction, so it can locate the owned sample by identity and record the
-        edit against the project history, tagged with the channel and feature the
-        ``outcome`` names. The open document then rebinds to the new reconstruction,
-        keeping the editor and any owned sample sharing one object.
+        Every edit of the open document arrives here, so one path answers a regenerated
+        instrument and a removed recording alike. The owning-sample hook runs first, while
+        the manager still holds the prior reconstruction, so it can locate the owned sample
+        by identity and record the edit against the project history as the ``edit``
+        describes itself. The open document then rebinds to the new reconstruction, keeping
+        the editor and any owned sample sharing one object.
         """
-        self._on_reconstruction_updated_callback(outcome)
-        self._reconstruction_manager.apply_regenerated(outcome.reconstruction)
+        self._on_reconstruction_updated_callback(edit)
+        self._reconstruction_manager.apply_edited(edit.reconstruction)
         self._tab.update_reconstruction()
         self._reconstruction_manager.mark_updated()
 
     def _on_regeneration_result(self, result: RegenerationResult) -> None:
         match result:
             case ServiceSuccess(value=outcome):
-                self._on_updated(outcome)
+                self.apply_edit(self._instrument_edit(outcome))
             case ServiceError(exception=exception):
                 logger.error_with_traceback(exception, "Regeneration failed")
                 self._dialogs.show_error(exception)
@@ -332,6 +337,15 @@ class ReconstructionCoordinator:
                 logger.info("Regeneration cancelled")
 
         self._set_reconstruction_dimmed(self._regeneration_service.is_running())
+
+    @staticmethod
+    def _instrument_edit(outcome: RegeneratedInstrument) -> InstrumentEdit:
+        """Reads a regeneration result as the edit the project history records."""
+        return InstrumentEdit(
+            reconstruction=outcome.reconstruction,
+            channel_name=outcome.channel_name,
+            feature_key=outcome.feature_key,
+        )
 
     def _set_reconstruction_dimmed(self, dimmed: bool) -> None:
         """Fades the reconstruction waveform while the regeneration worker is busy.

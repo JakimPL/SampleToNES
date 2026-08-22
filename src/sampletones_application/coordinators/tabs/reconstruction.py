@@ -17,6 +17,7 @@ from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.logic.reconstruction.browser.logic import BrowserLogic
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
+from sampletones_application.logic.reconstruction.edit import StemRemoval
 from sampletones_application.logic.reconstruction.instruments import (
     OnReconstructionInstrumentUpdatedCallback,
     ReconstructionInstrumentsLogic,
@@ -50,6 +51,7 @@ from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
     TAG_RECONSTRUCTIONS_BROWSER_PANEL,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_REMOVE_STEM_CONFIRMATION,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_STEMS,
@@ -88,6 +90,7 @@ from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.scope import ExportScope
+from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.exceptions import (
     DeserializationError,
@@ -120,6 +123,7 @@ class ReconstructionTabCoordinator:
         on_change_audio_state: VoidCallback,
         on_favorite_changed: Callable[[FileSystemNode], None],
         on_reconstruction_instrument_updated: OnReconstructionInstrumentUpdatedCallback,
+        on_reconstruction_stem_removed: Callable[[StemRemoval], None],
         original_audio_locator: OriginalAudioLocator,
         *,
         layout: ReconstructionTabParameters,
@@ -133,6 +137,7 @@ class ReconstructionTabCoordinator:
         self._export_backends = export_backends
         self._dialogs = dialogs
         self._original_audio_locator = original_audio_locator
+        self._on_reconstruction_stem_removed = on_reconstruction_stem_removed
 
         self._geometry = layout.geometry
         self._side_panel_count: int
@@ -239,6 +244,7 @@ class ReconstructionTabCoordinator:
         self._reconstruction_audio_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
         self._reconstruction_plot_panel.on_channels_changed = self._reconstruction_panel_logic.set_selected_channels
         self._reconstruction_stems_panel.on_stem_channels_changed = self._reconstruction_panel_logic.set_stem_channels
+        self._reconstruction_stems_panel.on_stem_remove_requested = self._request_remove_stem
         self._browser_panel.on_locate_original_audio = self._original_audio_locator.locate
 
         self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view
@@ -386,7 +392,11 @@ class ReconstructionTabCoordinator:
         type selector, so the one that is picked there names the format.
         """
         return tuple(
-            self._export_filter(export_format, ExportScope.INSTRUMENT) for export_format in INSTRUMENT_EXPORT_FORMATS
+            self._export_filter(
+                export_format,
+                ExportScope.INSTRUMENT,
+            )
+            for export_format in INSTRUMENT_EXPORT_FORMATS
         )
 
     @ignore_none_path
@@ -395,7 +405,10 @@ class ReconstructionTabCoordinator:
         filepath: Path,
         channel_name: ChannelName,
     ) -> None:
-        self._reconstruction_panel_logic.handle_export_instrument_confirmed(filepath, channel_name)
+        self._reconstruction_panel_logic.handle_export_instrument_confirmed(
+            filepath,
+            channel_name,
+        )
 
     def _open_export_instruments_dialog(
         self,
@@ -434,14 +447,26 @@ class ReconstructionTabCoordinator:
         destination: Path,
         export_format: ExportFormat,
     ) -> None:
-        self._reconstruction_panel_logic.handle_export_instruments_confirmed(destination, export_format)
+        self._reconstruction_panel_logic.handle_export_instruments_confirmed(
+            destination,
+            export_format,
+        )
 
-    def _open_export_wav_dialog(self, default_filename: str, default_path: str) -> None:
+    def _open_export_wav_dialog(
+        self,
+        default_filename: str,
+        default_path: str,
+    ) -> None:
         filepath = save_file_dialog(
             title=self._export_messages.wav_title,
             initial_directory=default_path,
             default_filename=default_filename,
-            filters=(FileFilter.for_extensions(self._language_manager["global.dialog.filter.wave"], [EXT_FILE_WAVE]),),
+            filters=(
+                FileFilter.for_extensions(
+                    self._language_manager["global.dialog.filter.wave"],
+                    [EXT_FILE_WAVE],
+                ),
+            ),
         )
         self._handle_export_wav(filepath)
 
@@ -580,7 +605,10 @@ class ReconstructionTabCoordinator:
             self._browser_panel.expanded_rows,
         )
 
-    def repaint_browser_favorites(self, nodes: Sequence[FileSystemNode]) -> None:
+    def repaint_browser_favorites(
+        self,
+        nodes: Sequence[FileSystemNode],
+    ) -> None:
         self._browser_panel.update_favorite_indicators(nodes)
 
     def display_reconstruction(self) -> None:
@@ -599,6 +627,37 @@ class ReconstructionTabCoordinator:
             on_confirm=lambda: self._remove_reconstruction(filepath),
             ok_label=self._lbl_remove,
             path=filepath,
+        )
+
+    def _request_remove_stem(self, stem_id: int) -> None:
+        """Asks before a recording leaves the loaded reconstruction, naming the file it stands as."""
+        row = self._reconstruction_stems_panel.stems_list.row(str(stem_id))
+        if row is None:
+            return
+
+        self._dialogs.show_confirmation(
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_REMOVE_STEM_CONFIRMATION,
+            title=self._language_manager["reconstructions.reconstruction.title.remove_stem_dialog"],
+            message=self._language_manager["reconstructions.reconstruction.message.remove_stem_message"],
+            on_confirm=lambda: self._remove_stem(stem_id, row.name),
+            ok_label=self._lbl_remove,
+            path=row.path,
+        )
+
+    def _remove_stem(self, stem_id: int, name: str) -> None:
+        """Takes the recording out of the open document and hands the edit on to be recorded."""
+        reconstruction_data = self._reconstruction_manager.current_reconstruction
+        if reconstruction_data is None:
+            return
+
+        self._on_reconstruction_stem_removed(
+            StemRemoval(
+                reconstruction=without_stem(
+                    reconstruction_data.reconstruction,
+                    stem_id,
+                ),
+                stem_name=name,
+            )
         )
 
     def _request_remove_directory(self, directory: Path) -> None:
@@ -661,7 +720,10 @@ class ReconstructionTabCoordinator:
     def request_export_wav_dialog(self) -> None:
         self._reconstruction_panel_logic.request_export_wav_dialog()
 
-    def request_export_instruments_dialog(self, export_format: ExportFormat) -> None:
+    def request_export_instruments_dialog(
+        self,
+        export_format: ExportFormat,
+    ) -> None:
         self._reconstruction_panel_logic.request_export_instruments_dialog(export_format)
 
     def _on_browser_autoplay_error(self, exception: Exception) -> None:

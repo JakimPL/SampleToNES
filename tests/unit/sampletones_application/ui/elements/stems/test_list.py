@@ -73,6 +73,7 @@ def build(
     *,
     draggable: bool = True,
     removable: bool = True,
+    retain_last_row: bool = False,
     master_checkbox: bool = False,
 ) -> GUIStemsList:
     stems_list = GUIStemsList(
@@ -82,6 +83,7 @@ def build(
         status_bar=GUIStatusBar(),
         draggable=draggable,
         removable=removable,
+        retain_last_row=retain_last_row,
         master_checkbox=master_checkbox,
     )
     with dpg.window(tag=ROOT_TAG):
@@ -275,6 +277,47 @@ class TestAffordances:
         stems_list.update_view(view(bass))
 
         assert not dpg.does_item_exist(row_tag(bass, SUF_BUTTON))
+
+
+class TestRetainedLastRow:
+    def test_a_list_holding_on_to_its_last_row_offers_no_way_to_remove_it(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        stems_list = build(layout_config, retain_last_row=True)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert not dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
+
+    def test_a_row_may_leave_once_another_stands_beside_it(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config, retain_last_row=True)
+        bass = row("bass")
+        lead = row("lead")
+
+        stems_list.update_view(view(bass, lead))
+
+        assert dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
+
+    def test_the_last_row_left_standing_stops_answering(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config, retain_last_row=True)
+        bass = row("bass")
+        lead = row("lead")
+        stems_list.update_view(view(bass, lead))
+
+        stems_list.update_view(view(bass))
+
+        assert not dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
+
+    def test_a_list_that_keeps_no_row_lets_the_last_one_go(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config, retain_last_row=False)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
 
 
 class TestGestures:

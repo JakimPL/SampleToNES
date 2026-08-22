@@ -43,6 +43,8 @@ class ReconstructionPanelElements(AbstractElement):
     COLLAPSE_LEVELS = "collapse_levels"
     COLLAPSE_LEVELS_TOOLTIP = "collapse_levels_tooltip"
     STATUS_COLLAPSE_LEVELS = "status_collapse_levels"
+    REMOVE_STEM_DIALOG = "remove_stem_dialog"
+    REMOVE_STEM_MESSAGE = "remove_stem_message"
 
 
 class ReconstructionsInstrumentsElements(AbstractElement):

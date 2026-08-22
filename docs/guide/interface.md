@@ -101,6 +101,11 @@ Click a row to show its recording in your file browser, and tick **Collapse
 levels** to read the whole list as one table. The ticks are yours for the session;
 saving records the assignment, never the selection.
 
+**x** at the end of a row is a different matter: it takes the recording out of
+the reconstruction for good, so the application asks first. The frames it held
+fall silent and its row goes, leaving the rest playing as they did. One recording
+always stays, so the last row keeps its **x** greyed out.
+
 To get your results out, use the **Reconstruction** menu. **Export instruments ▸
 FamiTracker instruments...** writes one `.fti` per channel, **Bitphase
 presets...** writes the same as `.json`, **NSF program...** writes a single `.nsf`

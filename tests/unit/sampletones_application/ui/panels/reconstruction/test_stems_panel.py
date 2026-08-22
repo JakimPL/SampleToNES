@@ -14,7 +14,7 @@ from sampletones_application.paths import (
     PALETTES_DIRECTORY,
     THEME_DIRECTORY,
 )
-from sampletones_application.tags.general import SUF_CHECKBOX, SUF_TEXT
+from sampletones_application.tags.general import SUF_BUTTON, SUF_CHECKBOX, SUF_TEXT
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_EMPTY,
@@ -194,6 +194,32 @@ class TestStemsPanelSelection:
         dpg.get_item_callback(master_tag)(master_tag, False, "0")
 
         assert reported == [(0, frozenset())]
+
+
+class TestStemsPanelRemoval:
+    def test_the_remove_button_reports_the_recording_it_stands_for(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        requested: List[int] = []
+        render(panel)
+        panel.on_stem_remove_requested = requested.append
+        panel.update_view(_view_model(_row(0, name="bass"), _row(1, name="lead")))
+
+        tag = panel.stems_list.row_tag("0", SUF_BUTTON)
+        dpg.get_item_callback(tag)(tag, None, dpg.get_item_user_data(tag))
+
+        assert requested == [0]
+
+    def test_the_last_recording_standing_offers_no_way_out(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        """A reconstruction holds at least one recording, so its row stops answering."""
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="bass")))
+
+        assert not dpg.is_item_enabled(panel.stems_list.row_tag("0", SUF_BUTTON))
 
 
 class TestStemsPanelLevels:

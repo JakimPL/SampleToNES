@@ -48,6 +48,11 @@ from sampletones_application.logic.project.title.document import (
     document_title,
 )
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
+from sampletones_application.logic.reconstruction.edit import (
+    InstrumentEdit,
+    ReconstructionEdit,
+    StemRemoval,
+)
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.render import SongRenderLogic
 from sampletones_application.parameters import (
@@ -68,7 +73,6 @@ from sampletones_application.paths import (
 from sampletones_application.services import (
     ConversionService,
     ExportService,
-    RegeneratedInstrument,
     RegenerationService,
     RetunedSample,
     RetuneResult,
@@ -135,6 +139,7 @@ from sampletones_application.utils.parallelization.background import (
 from sampletones_application.view_model.shared.audio_settings import (
     AudioSettingsViewModel,
 )
+from sampletones_application.view_model.shared.history import HistoryDetail
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.view_model.shared.project_properties import (
     ProjectPropertiesViewModel,
@@ -405,6 +410,7 @@ class Application:
             on_change_audio_state=self._update_menu,
             on_favorite_changed=self._repaint_reconstruction_favorites,
             on_reconstruction_instrument_updated=self._regenerate_instrument,
+            on_reconstruction_stem_removed=self._reconstruction_coordinator.apply_edit,
             original_audio_locator=self._original_audio_locator,
             layout=ReconstructionTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
@@ -1002,7 +1008,7 @@ class Application:
         if sample is None or sample.reconstruction is not self.reconstruction_manager.reconstruction:
             return
 
-        self.reconstruction_manager.apply_regenerated(reconstruction)
+        self.reconstruction_manager.apply_edited(reconstruction)
         self._reconstructions_tab.update_reconstruction()
 
     def _regenerate_instrument(
@@ -1021,17 +1027,15 @@ class Application:
 
     def _on_reconstruction_updated(
         self,
-        outcome: RegeneratedInstrument,
+        edit: ReconstructionEdit,
     ) -> None:
         """Records a reconstruction edit against the project when it owns the sample.
 
-        Regeneration produces a fresh reconstruction. When the edited document is a
+        An edit produces a fresh reconstruction. When the edited document is a
         project sample, the sample adopts the new reconstruction as one history
-        entry labelled with the channel and feature ``outcome`` names; the
-        copy-on-write swap keeps every prior snapshot's reconstruction intact. A
-        standalone reconstruction leaves the project untouched. Consecutive edits
-        of the same sample coalesce, so a continuous graph movement records a
-        single entry.
+        entry the ``edit`` labels and keys; the copy-on-write swap keeps every prior
+        snapshot's reconstruction intact. A standalone reconstruction leaves the
+        project untouched.
         """
         sample = self._owning_project_sample()
         if sample is None:
@@ -1039,17 +1043,28 @@ class Application:
 
         with self.history.transaction(
             HistoryAction.EDIT_RECONSTRUCTION,
-            detail=self._sequencer_tab.reconstruction_edit_detail(
-                sample.id,
-                outcome.channel_name,
-                outcome.feature_key,
-            ),
-            coalesce=(sample.id,),
+            detail=self._edit_detail(sample.id, edit),
+            coalesce=edit.coalesce_key(sample.id),
         ):
             self.project_controller.replace_sample_reconstruction(
                 sample.id,
-                outcome.reconstruction,
+                edit.reconstruction,
             )
+
+    def _edit_detail(self, sample_id: str, edit: ReconstructionEdit) -> HistoryDetail:
+        """The history line an edit reads as: the feature it moved, or the recording it took out."""
+        match edit:
+            case InstrumentEdit():
+                return self._sequencer_tab.reconstruction_edit_detail(
+                    sample_id,
+                    edit.channel_name,
+                    edit.feature_key,
+                )
+            case StemRemoval():
+                return self._sequencer_tab.reconstruction_stem_detail(
+                    sample_id,
+                    edit.stem_name,
+                )
 
     def _retune_samples_for_rate(self, nes_frequency: int) -> None:
         """Refreshes the stored reconstructions of samples left out of sync by a rate change.
@@ -1120,7 +1135,7 @@ class Application:
             )
 
         if is_open:
-            self.reconstruction_manager.apply_regenerated(
+            self.reconstruction_manager.apply_edited(
                 retuned.reconstruction,
             )
             self._reconstructions_tab.update_reconstruction()

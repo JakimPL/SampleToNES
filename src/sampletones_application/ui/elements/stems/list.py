@@ -61,7 +61,8 @@ class GUIStemsList(CallbackMixin):
     same list, so one definition draws them and each owner turns on the affordances it can
     honour: ``draggable`` makes a row itself the thing you drag and opens a drop strip between
     the bands, ``master_checkbox`` gives the row a leading box moving every channel at once,
-    and ``removable`` gives it the danger-toned button that takes it out. Rows are keyed by the
+    ``removable`` gives it the danger-toned button that takes it out, and ``retain_last_row``
+    holds that button back once one row is all that stands. Rows are keyed by the
     identity their owner reports gestures under, and every column lines up across the bands
     because each table holds one fixed column per channel in play.
     """
@@ -75,6 +76,7 @@ class GUIStemsList(CallbackMixin):
         status_bar: GUIStatusBar,
         draggable: bool,
         removable: bool,
+        retain_last_row: bool,
         master_checkbox: bool,
     ) -> None:
         self._prefix = prefix
@@ -83,6 +85,7 @@ class GUIStemsList(CallbackMixin):
         self._status_bar = status_bar
         self._draggable = draggable
         self._removable = removable
+        self._retain_last_row = retain_last_row
         self._master_checkbox = master_checkbox
 
         self._level_template = language_manager["global.stems.template.level_caption"]
@@ -406,7 +409,12 @@ class GUIStemsList(CallbackMixin):
             dpg_set_value(master_tag, row.takes_part)
 
         if self._removable:
-            dpg_configure_item(self.row_tag(row.key, SUF_BUTTON), enabled=self._live)
+            dpg_configure_item(self.row_tag(row.key, SUF_BUTTON), enabled=self._live and self._releasable)
+
+    @property
+    def _releasable(self) -> bool:
+        """Whether a row may leave, which a list holding on to its last one answers by its count."""
+        return len(self._rows) > 1 or not self._retain_last_row
 
     def _row_boxes(self, row: StemRowViewModel) -> Tuple[ChannelName, ...]:
         """The channels the row actually draws a box for, in the order the columns stand."""
