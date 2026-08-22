@@ -19,6 +19,7 @@ from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_CHANNELS,
     SUF_CHECKBOX,
+    SUF_HANDLER_REGISTRY,
     SUF_LEVEL,
     SUF_ROW,
     SUF_STRIP,
@@ -38,6 +39,7 @@ from sampletones_application.view_model.shared.stems import (
     StemsListViewModel,
 )
 from sampletones_core.constants.enums import ChannelName
+from sampletones_shared.types.callback import Callback
 
 ROOT_TAG = "test_root"
 PREFIX = "test.stems"
@@ -116,6 +118,12 @@ def row_tag(entry: StemRowViewModel, suffix: str) -> str:
 
 def channel_tag(entry: StemRowViewModel, channel_name: ChannelName) -> str:
     return compose_tag(PREFIX, SUF_ROW, entry.key, SUF_CHANNELS, compose_tag(channel_name, SUF_CHECKBOX))
+
+
+def hover_handler(suffix: str) -> Callback:
+    """The hover callback a row widget of that kind shares, as DearPyGui would call it."""
+    registry = compose_tag(PREFIX, suffix, SUF_HANDLER_REGISTRY)
+    return dpg.get_item_callback(dpg.get_item_children(registry, 1)[-1])
 
 
 class TestRows:
@@ -299,3 +307,32 @@ class TestBusyState:
 
         assert dpg.is_item_enabled(row_tag(bass, SUF_TEXT))
         assert dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
+
+
+class TestVanishedWidgets:
+    """DearPyGui reports a hover a frame after it happened, by which time the row may have gone."""
+
+    def test_a_hover_naming_a_row_that_went_is_let_be(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+        hovered = dpg.get_alias_id(row_tag(bass, SUF_TEXT))
+
+        stems_list.update_view(view())
+
+        hover_handler(SUF_TEXT)(0, hovered)
+
+    def test_unticking_the_last_channel_keeps_the_widget_the_pointer_is_over(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        """Greying a row is drawn onto the widgets it stands as, so the pointer keeps its box."""
+        stems_list = build(layout_config)
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+        standing = dpg.get_alias_id(channel_tag(bass, ChannelName.PULSE1))
+
+        stems_list.update_view(view(row("bass", channels=frozenset())))
+
+        assert dpg.get_alias_id(channel_tag(bass, ChannelName.PULSE1)) == standing

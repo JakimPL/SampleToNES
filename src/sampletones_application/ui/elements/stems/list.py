@@ -264,6 +264,7 @@ class GUIStemsList(CallbackMixin):
             label=row.name,
             tag=self.row_tag(row.key, SUF_TEXT),
             user_data=row.key,
+            callback=self._on_name_clicked_off,
             payload_type=self._payload,
             drop_callback=self._on_dropped_on_row,
         )
@@ -377,6 +378,10 @@ class GUIStemsList(CallbackMixin):
 
     def _on_remove_requested(self, _sender: Sender, _app_data: Any, user_data: str) -> None:
         self.call(self.on_remove_requested, user_data)
+
+    def _on_name_clicked_off(self, sender: Sender, _value: bool, _user_data: str) -> None:
+        """Let go of a clicked row: the list names recordings and moves them, it selects none."""
+        dpg_set_value(sender, False)
 
     def _on_name_clicked(self, _sender: Sender, app_data: Tuple[int, int]) -> None:
         mouse_button, clicked_item = app_data

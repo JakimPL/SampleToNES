@@ -18,6 +18,7 @@ from sampletones_application.tags.general import (
     SUF_STRIP,
     SUF_TABLE,
     SUF_TEXT,
+    TAG_GLOBAL_THEME_STEMS_ROW_INERT,
 )
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE,
@@ -545,5 +546,7 @@ class TestConverterStemsCard:
 
         app._main_tab._converter_logic.set_source_channels(path, frozenset())
 
+        name_tag = stems_list(app).row_tag(str(path), SUF_TEXT)
         assert dpg.does_item_exist(stems_list(app).row_tag(str(path), SUF_GROUP))
-        assert dpg.get_item_configuration(stems_list(app).row_tag(str(path), SUF_TEXT))["enabled"] is False
+        assert dpg.get_item_alias(dpg.get_item_theme(name_tag)) == TAG_GLOBAL_THEME_STEMS_ROW_INERT
+        assert dpg.get_item_configuration(name_tag)["enabled"] is True
