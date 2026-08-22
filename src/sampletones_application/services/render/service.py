@@ -3,7 +3,7 @@ from functools import partial
 from pathlib import Path
 
 from sampletones_application.services.base import ServiceBase
-from sampletones_application.services.render.progress import StageProgress
+from sampletones_application.services.progress import StageProgress
 from sampletones_application.services.render.result import RenderResult, RenderStage
 from sampletones_application.services.render.sink import (
     EncodeReporter,
@@ -133,7 +133,7 @@ class SongRenderService(ServiceBase[RenderResult]):
         The song is rendered as the document holds it, from the top: the position a listener left
         the playhead at is a listening choice, and a render describes the whole song.
         """
-        progress = StageProgress(RenderStage.SYNTHESIS, total_samples, emit=self._emit)
+        progress = StageProgress(RenderStage.SYNTHESIS, total_samples, emit=self._emit, estimates=True)
         synthesizer.set_position(0, 0)
         synthesizer.reset()
 
@@ -150,10 +150,10 @@ class SongRenderService(ServiceBase[RenderResult]):
         return not self._cancel_event.is_set()
 
     def _encode_reporter(self, total_samples: int) -> EncodeReporter:
-        progress = StageProgress(RenderStage.ENCODING, total_samples, emit=self._emit)
+        progress = StageProgress(RenderStage.ENCODING, total_samples, emit=self._emit, estimates=True)
         return partial(self._report_encoded, progress)
 
-    def _report_encoded(self, progress: StageProgress, encoded: int) -> bool:
+    def _report_encoded(self, progress: StageProgress[RenderStage], encoded: int) -> bool:
         progress.advance(encoded)
         return not self._cancel_event.is_set()
 

@@ -67,6 +67,7 @@ from sampletones_application.paths import (
 )
 from sampletones_application.services import (
     ConversionService,
+    ExportResult,
     ExportService,
     RegeneratedInstrument,
     RegenerationService,
@@ -75,6 +76,7 @@ from sampletones_application.services import (
     SampleRetuneService,
     ServiceCancelled,
     ServiceError,
+    ServiceProgress,
     ServiceSuccess,
     SongRenderService,
 )
@@ -236,6 +238,7 @@ class Application:
         self.conversion_service: ConversionService = ConversionService(priority=_priority)
         self.regeneration_service: RegenerationService = RegenerationService(priority=_priority)
         self.export_service: ExportService = ExportService(priority=_priority)
+        self.export_service.subscribe(self._on_export_activity)
         self.render_service: SongRenderService = SongRenderService(priority=_priority)
         self.retune_service: SampleRetuneService = SampleRetuneService(priority=_priority)
         self.retune_service.subscribe(self._on_retune_result)
@@ -882,7 +885,22 @@ class Application:
             self._main_tab.is_converter_active()
             or self._instructions_tab.is_library_generating()
             or self._render_coordinator.is_active
+            or self.export_service.is_running()
         )
+
+    def _on_export_activity(self, result: ExportResult) -> None:
+        """Follows an export claiming the application and handing it back.
+
+        A format carrying its own player spends seconds on a song, which is the same ground a
+        conversion or a render occupies, so its edges reach the same busy state. What a run says
+        while it is under way changes nothing about who holds the application, so only its
+        starting and its finishing are edges.
+        """
+        match result:
+            case ServiceProgress():
+                return
+            case _:
+                self._refresh_busy_state()
 
     def _refresh_busy_state(self) -> None:
         """Re-evaluate the reconstruct and generate-library buttons whenever a conversion, library

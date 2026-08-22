@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Final, List, Optional, Tuple
+from typing import Any, Callable, Final, List, Optional, Tuple
 from unittest.mock import patch
 
 import numpy as np
@@ -9,21 +9,39 @@ from sampletones_application.services.export.error import ExportError
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.service import ExportService
 from sampletones_application.services.export.success import ExportSuccess
+from sampletones_application.services.result import (
+    ServiceCancelled,
+    ServiceProgress,
+    ServiceStarted,
+)
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.progress import (
+    SILENT_REPORTER,
+    ExportReporter,
+    announce,
+)
 from sampletones_core.exports.request import (
     InstrumentExport,
     ProjectExport,
     SampleExport,
 )
 from sampletones_core.exports.scope import ExportScope
+from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.project import Project
 from sampletones_shared.music import Tuning
 
 NES_FREQUENCY: Final[int] = 60
+NOTHING_WRITTEN: Final[int] = 0
+ONE_FILE: Final[int] = 1
+
+
+def outcome(results: List[Any]) -> Any:
+    """The result a run finished on, which follows whatever it said while it ran."""
+    return results[-1]
 
 
 class StubBackend:
@@ -41,6 +59,7 @@ class StubBackend:
         self.truncation = truncation
         self.exception = exception
         self.calls: List[Tuple[str, Path, Any]] = []
+        self.on_write: Optional[Callable[[], None]] = None
 
     @property
     def export_format(self) -> ExportFormat:
@@ -57,33 +76,42 @@ class StubBackend:
         self,
         destination: Path,
         request: InstrumentExport,
+        report: ExportReporter = SILENT_REPORTER,
     ) -> ExportArtifact:
-        return self._write("instrument", destination, request)
+        return self._write("instrument", destination, request, report)
 
     def write_sample(
         self,
         destination: Path,
         request: SampleExport,
+        report: ExportReporter = SILENT_REPORTER,
     ) -> ExportArtifact:
-        return self._write("sample", destination, request)
+        return self._write("sample", destination, request, report)
 
     def write_project(
         self,
         destination: Path,
         request: ProjectExport,
+        report: ExportReporter = SILENT_REPORTER,
     ) -> ExportArtifact:
-        return self._write("project", destination, request)
+        return self._write("project", destination, request, report)
 
     def _write(
         self,
         scope: str,
         destination: Path,
         request: Any,
+        report: ExportReporter,
     ) -> ExportArtifact:
         self.calls.append((scope, destination, request))
+        if self.on_write is not None:
+            self.on_write()
+
+        announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
         if self.exception is not None:
             raise self.exception
 
+        announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
         return ExportArtifact(paths=(destination,), truncation=self.truncation)
 
 
@@ -134,8 +162,7 @@ class TestExportWav:
         with patch("sampletones_application.services.export.service.write_wave"):
             export_service.export_wav(filepath, 44100, np.zeros(100))
 
-        assert len(results) == 1
-        result = results[0]
+        result = outcome(results)
         assert isinstance(result, ExportSuccess)
         assert result.kind == ExportKind.WAV
         assert result.filepath == filepath
@@ -165,8 +192,7 @@ class TestExportWav:
         ):
             export_service.export_wav(filepath, 44100, np.zeros(100))
 
-        assert len(results) == 1
-        result = results[0]
+        result = outcome(results)
         assert isinstance(result, ExportError)
         assert result.kind == ExportKind.WAV
         assert result.exception is exception
@@ -194,8 +220,7 @@ class TestExportInstrument:
             build_instrument(),
         )
 
-        assert len(results) == 1
-        result = results[0]
+        result = outcome(results)
         assert isinstance(result, ExportSuccess)
         assert result.kind == ExportKind.INSTRUMENT
         assert result.filepath == filepath
@@ -224,8 +249,7 @@ class TestExportInstrument:
             build_instrument(),
         )
 
-        assert len(results) == 1
-        result = results[0]
+        result = outcome(results)
         assert isinstance(result, ExportError)
         assert result.kind == ExportKind.INSTRUMENT
         assert result.exception is exception
@@ -252,8 +276,7 @@ class TestExportSample:
 
         export_service.export_sample(tmp_path, StubBackend(), build_sample())
 
-        assert len(results) == 1
-        result = results[0]
+        result = outcome(results)
         assert isinstance(result, ExportSuccess)
         assert result.kind == ExportKind.SAMPLE
         assert result.filepath == tmp_path
@@ -281,8 +304,7 @@ class TestExportSample:
             build_sample(),
         )
 
-        assert len(results) == 1
-        result = results[0]
+        result = outcome(results)
         assert isinstance(result, ExportError)
         assert result.kind == ExportKind.SAMPLE
         assert result.exception is exception
@@ -296,9 +318,8 @@ class TestExportSample:
 
         export_service.export_sample(tmp_path, StubBackend(), build_sample(0))
 
-        assert len(results) == 1
-        assert isinstance(results[0], ExportSuccess)
-        assert results[0].kind == ExportKind.SAMPLE
+        assert isinstance(outcome(results), ExportSuccess)
+        assert outcome(results).kind == ExportKind.SAMPLE
 
 
 class TestExportProject:
@@ -308,8 +329,7 @@ class TestExportProject:
 
         export_service.export_project(filepath, StubBackend(), build_project())
 
-        assert len(results) == 1
-        result = results[0]
+        result = outcome(results)
         assert isinstance(result, ExportSuccess)
         assert result.kind == ExportKind.PROJECT
         assert result.filepath == filepath
@@ -338,8 +358,7 @@ class TestExportProject:
             build_project(),
         )
 
-        assert len(results) == 1
-        result = results[0]
+        result = outcome(results)
         assert isinstance(result, ExportError)
         assert result.kind == ExportKind.PROJECT
         assert result.exception is exception
@@ -359,7 +378,7 @@ class TestExportFormatReporting:
             build_instrument(),
         )
 
-        assert results[0].export_format == ExportFormat.FAMITRACKER
+        assert outcome(results).export_format == ExportFormat.FAMITRACKER
 
     def test_a_failed_tracker_export_names_the_format_it_was_written_in(
         self,
@@ -374,7 +393,7 @@ class TestExportFormatReporting:
             build_sample(),
         )
 
-        assert results[0].export_format == ExportFormat.FAMITRACKER
+        assert outcome(results).export_format == ExportFormat.FAMITRACKER
 
     def test_a_wav_export_names_no_format(self, service, tmp_path) -> None:
         export_service, results = service
@@ -386,7 +405,7 @@ class TestExportFormatReporting:
                 np.zeros(100),
             )
 
-        assert results[0].export_format is None
+        assert outcome(results).export_format is None
 
 
 class TestExportTruncationReporting:
@@ -403,7 +422,7 @@ class TestExportTruncationReporting:
             build_instrument(),
         )
 
-        assert results[0].truncation is None
+        assert outcome(results).truncation is None
 
     def test_a_shortened_instrument_carries_the_backend_report(
         self,
@@ -423,7 +442,7 @@ class TestExportTruncationReporting:
             build_instrument(),
         )
 
-        assert results[0].truncation == truncation
+        assert outcome(results).truncation == truncation
 
     def test_a_shortened_sample_carries_the_backend_report(
         self,
@@ -443,7 +462,7 @@ class TestExportTruncationReporting:
             build_sample(3),
         )
 
-        assert results[0].truncation == truncation
+        assert outcome(results).truncation == truncation
 
     def test_a_wav_export_reports_no_truncation(
         self,
@@ -459,7 +478,7 @@ class TestExportTruncationReporting:
                 np.zeros(100),
             )
 
-        assert results[0].truncation is None
+        assert outcome(results).truncation is None
 
 
 class TestExportServiceConcurrency:
@@ -510,3 +529,121 @@ class TestExportServiceConcurrency:
                 )
 
         assert call_count == 0
+
+
+class CancellingBackend:
+    """Withdraws the run from inside it, the way a user pressing Cancel does."""
+
+    def __init__(self, service: ExportService) -> None:
+        self._service = service
+        self.stages: List[ExportStage] = []
+
+    @property
+    def export_format(self) -> ExportFormat:
+        return ExportFormat.NSF
+
+    @property
+    def supported_scopes(self) -> frozenset:
+        return frozenset(ExportScope)
+
+    def extension(self, scope: ExportScope) -> str:
+        return ".nsf"
+
+    def write_instrument(
+        self,
+        destination: Path,
+        request: InstrumentExport,
+        report: ExportReporter = SILENT_REPORTER,
+    ) -> ExportArtifact:
+        announce(report, ExportStage.WALKING, NOTHING_WRITTEN, None)
+        self.stages.append(ExportStage.WALKING)
+        self._service.cancel()
+        announce(report, ExportStage.COMPRESSING, ONE_FILE, None)
+        self.stages.append(ExportStage.COMPRESSING)
+        return ExportArtifact(paths=(destination,), truncation=None)
+
+    def write_sample(
+        self,
+        destination: Path,
+        request: SampleExport,
+        report: ExportReporter = SILENT_REPORTER,
+    ) -> ExportArtifact:
+        raise NotImplementedError
+
+    def write_project(
+        self,
+        destination: Path,
+        request: ProjectExport,
+        report: ExportReporter = SILENT_REPORTER,
+    ) -> ExportArtifact:
+        raise NotImplementedError
+
+
+class TestWhatARunSaysAboutItself:
+    """The export speaks the vocabulary every other service speaks."""
+
+    def test_a_run_opens_with_a_start(self, service, tmp_path) -> None:
+        export_service, results = service
+        export_service.export_instrument(tmp_path / "instrument.fti", StubBackend(), build_instrument())
+        assert isinstance(results[0], ServiceStarted)
+
+    def test_the_stage_a_format_names_reaches_the_subscriber(self, service, tmp_path) -> None:
+        export_service, results = service
+        export_service.export_instrument(tmp_path / "instrument.fti", StubBackend(), build_instrument())
+        reported = [result for result in results if isinstance(result, ServiceProgress)]
+        assert reported and all(result.current_item == ExportStage.WRITING for result in reported)
+
+    def test_a_stage_that_lands_on_its_total_is_reported(self, service, tmp_path) -> None:
+        export_service, results = service
+        export_service.export_instrument(tmp_path / "instrument.fti", StubBackend(), build_instrument())
+        reported = [result for result in results if isinstance(result, ServiceProgress)]
+        assert reported[-1].completed == ONE_FILE
+
+
+class TestWithdrawingARun:
+    """A cancelled export answers with a cancellation rather than a failure."""
+
+    def test_a_cancelled_run_ends_cancelled(self, service, tmp_path) -> None:
+        export_service, results = service
+        export_service.export_instrument(
+            tmp_path / "instrument.nsf",
+            CancellingBackend(export_service),
+            build_instrument(),
+        )
+        assert isinstance(outcome(results), ServiceCancelled)
+
+    def test_a_cancelled_run_reports_no_failure(self, service, tmp_path) -> None:
+        export_service, results = service
+        export_service.export_instrument(
+            tmp_path / "instrument.nsf",
+            CancellingBackend(export_service),
+            build_instrument(),
+        )
+        assert not any(isinstance(result, (ExportSuccess, ExportError)) for result in results)
+
+    def test_the_format_stops_where_it_was_told(self, service, tmp_path) -> None:
+        export_service, _ = service
+        backend = CancellingBackend(export_service)
+        export_service.export_instrument(tmp_path / "instrument.nsf", backend, build_instrument())
+        assert backend.stages == [ExportStage.WALKING]
+
+
+class TestOneExportAtATime:
+    """An export claims the application, so a second request is declined rather than queued."""
+
+    def test_a_finished_run_leaves_the_service_idle(self, service, tmp_path) -> None:
+        export_service, _ = service
+        export_service.export_instrument(tmp_path / "instrument.fti", StubBackend(), build_instrument())
+        assert export_service.is_running() is False
+
+    def test_a_request_arriving_mid_run_is_declined(self, service, tmp_path) -> None:
+        export_service, _ = service
+        backend = StubBackend()
+        second = StubBackend()
+
+        def start_another() -> None:
+            export_service.export_instrument(tmp_path / "second.fti", second, build_instrument())
+
+        backend.on_write = start_another
+        export_service.export_instrument(tmp_path / "instrument.fti", backend, build_instrument())
+        assert second.calls == []
