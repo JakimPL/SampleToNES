@@ -1,7 +1,7 @@
 from dataclasses import dataclass, replace
 from functools import cached_property
 from pathlib import Path
-from typing import AbstractSet, Dict, List, Optional, Self, Tuple
+from typing import Dict, List, Optional, Self, Tuple
 
 import numpy as np
 
@@ -16,6 +16,7 @@ from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.filter import (
     filter_approximations,
 )
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_shared.logger import logger
 
 
@@ -171,8 +172,9 @@ class ReconstructionData:
         stems_data = self.reconstruction.stems_data
         return {entry.id: index for index, entry in enumerate(stems_data.config.entries)}
 
-    def original_mix_for(self, selected_stem_ids: AbstractSet[int]) -> np.ndarray:
-        """The original audio of the selected stems, silence once none are selected."""
+    def original_mix_for(self, selection: StemSelection) -> np.ndarray:
+        """The original audio of the stems heard anywhere, silence once none are."""
+        selected_stem_ids = selection.any_channel()
         indexes = self._stem_recording_indexes
         recordings = [self.stem_audios[index] for stem_id, index in indexes.items() if stem_id in selected_stem_ids]
         if not recordings:
@@ -182,18 +184,19 @@ class ReconstructionData:
 
     def waveform_data(
         self,
-        selected_stem_ids: Optional[AbstractSet[int]] = None,
+        selection: Optional[StemSelection] = None,
     ) -> WaveformData:
         """Projects the slice of this data the waveform display renders.
 
-        With a stems selection, the projection carries the selected stems' frames alone
-        and their original mix, so the waveform answers exactly what plays.
+        With a stems selection, the projection carries the frames each channel's selected
+        stems own and the mix of the recordings heard anywhere, so the waveform answers
+        exactly what plays.
         """
-        if selected_stem_ids is None:
+        if selection is None:
             return self._unfiltered_waveform()
 
         return self._filtered_waveform(
-            selected_stem_ids,
+            selection,
             self.reconstruction.stems_data,
         )
 
@@ -207,18 +210,18 @@ class ReconstructionData:
 
     def _filtered_waveform(
         self,
-        selected_stem_ids: AbstractSet[int],
+        selection: StemSelection,
         stems_data: StemsData,
     ) -> WaveformData:
         """The selected stems' frames and their original mix, in the unfiltered shape."""
         approximations = filter_approximations(
             stems_data,
             self.reconstruction.approximations,
-            selected_stem_ids,
+            selection,
             self.reconstruction.config.frame_length,
         )
         return self._waveform_data(
-            self.original_mix_for(selected_stem_ids),
+            self.original_mix_for(selection),
             approximations,
             mix(list(approximations.values())),
         )
@@ -243,7 +246,7 @@ class ReconstructionData:
     def partials_for(
         self,
         channel_names: List[ChannelName],
-        selected_stem_ids: AbstractSet[int],
+        selection: StemSelection,
     ) -> np.ndarray:
         """Sums the selected channels with the unselected stems' frames silenced."""
-        return self.waveform_data(selected_stem_ids).partials(channel_names)
+        return self.waveform_data(selection).partials(channel_names)

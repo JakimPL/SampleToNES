@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, FrozenSet, Optional, Tuple
+from typing import Any, Callable, Dict, FrozenSet, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -20,6 +20,7 @@ from sampletones_application.tags.general import (
     SUF_TEXT,
     SUF_TOOLTIP,
     SUF_WELL,
+    TAG_GLOBAL_THEME_CHANNEL_MUTED,
     TAG_GLOBAL_THEME_DANGER_BUTTON,
     TAG_GLOBAL_THEME_STEMS_DROP_STRIP,
     TAG_GLOBAL_THEME_STEMS_ROW,
@@ -46,7 +47,7 @@ from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, StringCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
-RowShape = Tuple[Tuple[str, ...], Tuple[Tuple[str, int], ...]]
+RowShape = Tuple[Tuple[str, ...], bool, Tuple[Tuple[str, int, Tuple[str, ...]], ...]]
 
 ChannelsCallback = Callable[[str, FrozenSet[ChannelName]], None]
 KeyOffsetCallback = Callable[[str, int], None]
@@ -59,9 +60,10 @@ class GUIStemsList(CallbackMixin):
     Both the converter's gathered recordings and a reconstruction's recorded assignment are the
     same list, so one definition draws them and each owner turns on the affordances it can
     honour: ``draggable`` makes a row itself the thing you drag and opens a drop strip between
-    the bands, and ``removable`` gives it the danger-toned button that takes it out. Rows are
-    keyed by the identity their owner reports gestures under, and every column lines up across
-    the bands because the table holds one fixed column per channel in play.
+    the bands, ``master_checkbox`` gives the row a leading box moving every channel at once,
+    and ``removable`` gives it the danger-toned button that takes it out. Rows are keyed by the
+    identity their owner reports gestures under, and every column lines up across the bands
+    because each table holds one fixed column per channel in play.
     """
 
     def __init__(
@@ -73,6 +75,7 @@ class GUIStemsList(CallbackMixin):
         status_bar: GUIStatusBar,
         draggable: bool,
         removable: bool,
+        master_checkbox: bool,
     ) -> None:
         self._prefix = prefix
         self._layout = layout
@@ -80,39 +83,61 @@ class GUIStemsList(CallbackMixin):
         self._status_bar = status_bar
         self._draggable = draggable
         self._removable = removable
+        self._master_checkbox = master_checkbox
 
         self._level_template = language_manager["global.stems.template.level_caption"]
         self._lbl_remove = language_manager["global.stems.label.remove"]
         self._msg_drag = language_manager["global.stems.message.drag_tooltip"]
         self._msg_inert = language_manager["global.stems.message.inert_tooltip"]
+        self._msg_missing = language_manager["global.stems.message.missing_tooltip"]
+        self._msg_unoffered = language_manager["global.stems.message.unoffered_tooltip"]
 
         self._payload = compose_tag(prefix, SUF_PAYLOAD)
         self._well_tag = compose_tag(prefix, SUF_WELL)
         self._body_tag = compose_tag(self._well_tag, SUF_GROUP)
+        self._table_tag = compose_tag(prefix, SUF_TABLE)
         self._name_handler_tag = compose_tag(prefix, SUF_TEXT, SUF_HANDLER_REGISTRY)
         self._channel_handler_tag = compose_tag(prefix, SUF_CHANNELS, SUF_HANDLER_REGISTRY)
+        self._master_handler_tag = compose_tag(prefix, SUF_CHECKBOX, SUF_HANDLER_REGISTRY)
         self._button_handler_tag = compose_tag(prefix, SUF_BUTTON, SUF_HANDLER_REGISTRY)
 
         self._rows: Dict[str, StemRowViewModel] = {}
         self._channels_in_play: Tuple[ChannelName, ...] = ()
-        self._shape: RowShape = ((), ())
+        self._muted_channels: FrozenSet[ChannelName] = frozenset()
+        self._shape: RowShape = ((), False, ())
         self._live = True
 
         self.on_channels_changed: Optional[ChannelsCallback] = None
         self.on_remove_requested: Optional[StringCallback] = None
         self.on_menu_requested: Optional[StringCallback] = None
+        self.on_row_activated: Optional[StringCallback] = None
         self.on_dropped_on_row: Optional[KeyPairCallback] = None
         self.on_dropped_on_level: Optional[KeyOffsetCallback] = None
 
     @property
     def _handler_tags(self) -> Tuple[str, ...]:
         """The registries the rows bind to, one per widget kind the list draws."""
-        return (self._name_handler_tag, self._channel_handler_tag, self._button_handler_tag)
+        return (
+            self._name_handler_tag,
+            self._channel_handler_tag,
+            self._master_handler_tag,
+            self._button_handler_tag,
+        )
 
     @property
     def tag(self) -> str:
         """The recessed region the list is drawn in, which is what an owner shows and hides."""
         return self._well_tag
+
+    @property
+    def activatable(self) -> bool:
+        """The owner answers a click on a row, so the list hands one on rather than absorbing it."""
+        return self.on_row_activated is not None
+
+    @property
+    def table_tag(self) -> str:
+        """The one table every row stands in while the levels are collapsed."""
+        return self._table_tag
 
     def create(self, parent: str, *, show: bool = True) -> None:
         """Build the list's recessed region and the handlers its rows share."""
@@ -128,6 +153,7 @@ class GUIStemsList(CallbackMixin):
     def update_view(self, view_model: StemsListViewModel) -> None:
         self._rows = {row.key: row for row in view_model.rows}
         self._channels_in_play = view_model.channels_in_play
+        self._muted_channels = view_model.muted_channels
         self._live = view_model.live
         self._sync_rows(view_model)
         for row in view_model.rows:
@@ -154,6 +180,9 @@ class GUIStemsList(CallbackMixin):
         with dpg.item_handler_registry(tag=self._channel_handler_tag):
             dpg.add_item_hover_handler(callback=self._hover_callback(self._channel_message))
 
+        with dpg.item_handler_registry(tag=self._master_handler_tag):
+            dpg.add_item_hover_handler(callback=self._hover_callback(self._master_message))
+
         with dpg.item_handler_registry(tag=self._button_handler_tag):
             dpg.add_item_hover_handler(callback=self._hover_callback(self._remove_message))
 
@@ -175,13 +204,21 @@ class GUIStemsList(CallbackMixin):
         return hover_callback
 
     def _sync_rows(self, view_model: StemsListViewModel) -> None:
-        """Rebuild the bands when the recordings or the levels change, keep them otherwise."""
+        """Rebuild the bands when the recordings, their levels or their boxes change.
+
+        Collapsing the levels draws every recording in one table, which is the shape a list
+        takes where the bands are a record of the setup rather than somewhere to drop onto.
+        """
         shape = self._row_shape(view_model)
         if shape == self._shape:
             return
 
         self._shape = shape
         dpg.delete_item(self._body_tag, children_only=True)
+        if view_model.collapse_levels:
+            self._create_table(self._table_tag, view_model, view_model.rows)
+            return
+
         for level_index in range(view_model.level_count):
             self._create_level_strip(level_index)
             self._create_level_caption(level_index)
@@ -192,14 +229,22 @@ class GUIStemsList(CallbackMixin):
 
     @staticmethod
     def _row_shape(view_model: StemsListViewModel) -> RowShape:
-        """What the bands are built from: the channels in play, and where each row stands.
+        """What the bands are built from: the columns, the banding, and where each row stands.
 
         Which channels a row holds is drawn onto the widgets already standing, so a tick keeps
         the bands as they are and the pointer keeps whatever it was over.
         """
         return (
             tuple(str(channel_name) for channel_name in view_model.channels_in_play),
-            tuple((row.key, row.level) for row in view_model.rows),
+            view_model.collapse_levels,
+            tuple(
+                (
+                    row.key,
+                    row.level,
+                    tuple(sorted(str(channel_name) for channel_name in row.offered_channels)),
+                )
+                for row in view_model.rows
+            ),
         )
 
     def _create_level_strip(self, position: int) -> None:
@@ -231,13 +276,29 @@ class GUIStemsList(CallbackMixin):
         FontRegistry.bind_to_item(caption, Font.MONO_SMALL)
 
     def _create_level_table(self, level_index: int, view_model: StemsListViewModel) -> None:
+        self._create_table(
+            self.level_tag(level_index, SUF_TABLE),
+            view_model,
+            [row for row in view_model.rows if row.level == level_index],
+        )
+
+    def _create_table(
+        self,
+        tag: str,
+        view_model: StemsListViewModel,
+        rows: Sequence[StemRowViewModel],
+    ) -> None:
+        """One grid of rows: the master box, the name, a column per channel in play, the button."""
         with dpg.table(
-            tag=self.level_tag(level_index, SUF_TABLE),
+            tag=tag,
             parent=self._body_tag,
             header_row=False,
             policy=dpg.mvTable_SizingFixedFit,
             resizable=False,
         ):
+            if self._master_checkbox:
+                dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.master_column_width)
+
             dpg.add_table_column(width_stretch=True)
             for _channel_name in view_model.channels_in_play:
                 dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.channel_column_width)
@@ -245,18 +306,30 @@ class GUIStemsList(CallbackMixin):
             if self._removable:
                 dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.remove_button_width)
 
-            for row in view_model.rows:
-                if row.level == level_index:
-                    self._create_row(row, view_model)
+            for row in rows:
+                self._create_row(row, view_model)
 
     def _create_row(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
         with dpg.table_row(tag=self.row_tag(row.key, SUF_GROUP)):
+            if self._master_checkbox:
+                self._create_master(row)
+
             self._create_name(row)
             for channel_name in view_model.channels_in_play:
                 self._create_channel(row, channel_name)
 
             if self._removable:
                 self._create_remove(row)
+
+    def _create_master(self, row: StemRowViewModel) -> None:
+        """The box moving every channel the row offers at once."""
+        master = dpg.add_checkbox(
+            tag=self.row_tag(row.key, SUF_CHECKBOX),
+            default_value=row.takes_part,
+            user_data=row.key,
+            callback=self._on_master_changed,
+        )
+        dpg.bind_item_handler_registry(master, self._master_handler_tag)
 
     def _create_name(self, row: StemRowViewModel) -> None:
         """The row itself: what names the recording, what you drag it by, and what you drop onto."""
@@ -277,6 +350,15 @@ class GUIStemsList(CallbackMixin):
         show_tooltip(name, self._row_explanation(row), text_tag=self.row_tag(row.key, SUF_TOOLTIP))
 
     def _create_channel(self, row: StemRowViewModel, channel_name: ChannelName) -> None:
+        """The box giving the recording a channel, where the recording holds frames on it.
+
+        A recording holding none on this channel leaves the cell open, so the columns keep
+        lining up across the rows while only a reachable choice is drawn.
+        """
+        if channel_name not in row.offered_channels:
+            dpg.add_spacer()
+            return
+
         checkbox_tag = self.channel_tag(row.key, channel_name)
         dpg.add_checkbox(
             label=channel_label(self._language_manager, channel_name),
@@ -285,7 +367,6 @@ class GUIStemsList(CallbackMixin):
             user_data=(row.key, channel_name),
             callback=self._on_channels_changed,
         )
-        ThemeRegistry.get(CHANNEL_THEME_TAGS[channel_name]).bind_to_item(checkbox_tag)
         dpg.bind_item_handler_registry(checkbox_tag, self._channel_handler_tag)
 
     def _create_remove(self, row: StemRowViewModel) -> None:
@@ -303,28 +384,50 @@ class GUIStemsList(CallbackMixin):
     def _render_row(self, row: StemRowViewModel) -> None:
         """Draw what the row currently holds onto the widgets it already stands as.
 
-        A row holding no channel greys through its theme rather than through ``enabled``, so it
-        answers a drag and a right-click as readily as one that takes part.
+        A row contributing nothing greys through its theme rather than through ``enabled``, so
+        it answers a drag and a right-click as readily as one in play. A box on a channel
+        switched off elsewhere takes the muted tone and stays as clickable as any other.
         """
-        for channel_name in self._channels_in_play:
+        for channel_name in self._row_boxes(row):
             tag = self.channel_tag(row.key, channel_name)
             dpg_configure_item(tag, enabled=self._live)
             dpg_set_value(tag, channel_name in row.channels)
+            ThemeRegistry.get(self._channel_theme(channel_name)).bind_to_item(tag)
 
         name_tag = self.row_tag(row.key, SUF_TEXT)
         dpg_set_value(name_tag, False)
         dpg_configure_item(name_tag, enabled=self._live)
         dpg_set_value(self.row_tag(row.key, SUF_TOOLTIP), self._row_explanation(row))
-        row_theme = TAG_GLOBAL_THEME_STEMS_ROW if row.takes_part else TAG_GLOBAL_THEME_STEMS_ROW_INERT
+        row_theme = TAG_GLOBAL_THEME_STEMS_ROW if row.in_play else TAG_GLOBAL_THEME_STEMS_ROW_INERT
         ThemeRegistry.get(row_theme).bind_to_item(name_tag)
+        if self._master_checkbox:
+            master_tag = self.row_tag(row.key, SUF_CHECKBOX)
+            dpg_configure_item(master_tag, enabled=self._live and row.offers_channels)
+            dpg_set_value(master_tag, row.takes_part)
+
         if self._removable:
             dpg_configure_item(self.row_tag(row.key, SUF_BUTTON), enabled=self._live)
 
+    def _row_boxes(self, row: StemRowViewModel) -> Tuple[ChannelName, ...]:
+        """The channels the row actually draws a box for, in the order the columns stand."""
+        return tuple(channel_name for channel_name in self._channels_in_play if channel_name in row.offered_channels)
+
+    def _channel_theme(self, channel_name: ChannelName) -> str:
+        """The tone a channel's boxes take: its own colour, muted where the channel is off."""
+        if channel_name in self._muted_channels:
+            return TAG_GLOBAL_THEME_CHANNEL_MUTED
+
+        return CHANNEL_THEME_TAGS[channel_name]
+
     def _row_explanation(self, row: StemRowViewModel) -> str:
-        """What the row's hover states: where the recording is, how it moves, and where it holds
-        no channel, why it is greyed out."""
+        """What the row's hover states: where the recording is, why it is greyed out where it
+        contributes nothing, and how it moves where the list lets it."""
         lines = [str(row.path)]
-        if not row.takes_part:
+        if not row.available:
+            lines.append(self._msg_missing)
+        elif not row.offers_channels:
+            lines.append(self._msg_unoffered)
+        elif not row.takes_part:
             lines.append(self._msg_inert)
 
         if self._draggable:
@@ -337,7 +440,13 @@ class GUIStemsList(CallbackMixin):
         if row is None:
             return ""
 
-        return self._language_manager["global.stems.message.status_row"].format(name=row.name)
+        if self._draggable:
+            return self._language_manager["global.stems.message.status_row_drag"].format(name=row.name)
+
+        if self.activatable:
+            return self._language_manager["global.stems.message.status_row_reveal"].format(name=row.name)
+
+        return row.name
 
     def _channel_message(
         self,
@@ -350,10 +459,24 @@ class GUIStemsList(CallbackMixin):
         if row is None:
             return ""
 
+        channel = channel_label(self._language_manager, channel_name)
+        if channel_name in self._muted_channels:
+            return self._language_manager["global.stems.message.status_channel_muted"].format(
+                channel=channel,
+                name=row.name,
+            )
+
         return self._language_manager["global.stems.message.status_channel"].format(
-            channel=channel_label(self._language_manager, channel_name),
+            channel=channel,
             name=row.name,
         )
+
+    def _master_message(self, *_args: Any, user_data: str, **_kwargs: Any) -> str:
+        row = self._rows.get(user_data)
+        if row is None:
+            return ""
+
+        return self._language_manager["global.stems.message.status_master"].format(name=row.name)
 
     def _remove_message(self, *_args: Any, user_data: str, **_kwargs: Any) -> str:
         row = self._rows.get(user_data)
@@ -369,19 +492,32 @@ class GUIStemsList(CallbackMixin):
         user_data: Tuple[str, ChannelName],
     ) -> None:
         key, _channel_name = user_data
+        row = self._rows.get(key)
+        if row is None:
+            return
+
         channels = frozenset(
-            channel_name
-            for channel_name in self._channels_in_play
-            if dpg.get_value(self.channel_tag(key, channel_name))
+            channel_name for channel_name in self._row_boxes(row) if dpg.get_value(self.channel_tag(key, channel_name))
         )
         self.call(self.on_channels_changed, key, channels)
+
+    def _on_master_changed(self, _sender: Sender, value: bool, user_data: str) -> None:
+        """The master box hands the row every channel it offers, or takes them all away."""
+        row = self._rows.get(user_data)
+        if row is None:
+            return
+
+        channels = frozenset(self._row_boxes(row)) if value else frozenset()
+        self.call(self.on_channels_changed, user_data, channels)
 
     def _on_remove_requested(self, _sender: Sender, _app_data: Any, user_data: str) -> None:
         self.call(self.on_remove_requested, user_data)
 
-    def _on_name_clicked_off(self, sender: Sender, _value: bool, _user_data: str) -> None:
-        """Let go of a clicked row: the list names recordings and moves them, it selects none."""
+    def _on_name_clicked_off(self, sender: Sender, _value: bool, user_data: str) -> None:
+        """Let go of a clicked row and hand it on: the list names recordings, it selects none."""
         dpg_set_value(sender, False)
+        if self.activatable:
+            self.call(self.on_row_activated, user_data)
 
     def _on_name_clicked(self, _sender: Sender, app_data: Tuple[int, int]) -> None:
         mouse_button, clicked_item = app_data

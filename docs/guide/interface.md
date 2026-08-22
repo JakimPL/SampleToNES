@@ -72,8 +72,8 @@ made with, and **By sample** gathers every version of one source audio together.
 If the current reconstruction has unsaved edits, you are asked whether to save it
 first. You can play it back and
 switch **Play audio source:** between **Reconstruction** and **Original audio** to
-compare the two, and **Locate original audio** re-links the source file if it has
-moved.
+compare the two, and **Locate original audio** re-links the source files if they
+have moved.
 
 To keep the reconstructions you return to within reach, right-click one — or a
 whole folder — and choose **Mark as favorite**, which highlights it in both views.
@@ -90,10 +90,16 @@ click. Whatever you leave open is remembered, so the tree comes back the way you
 left it the next time you start the application.
 
 A reconstruction mixed from several recordings carries a **Stems** card listing
-each of them with the channels it took. Untick one and its frames fall silent
-everywhere at once — in the waveform, in playback, in the original audio, and in a
-WAV export — so you can hear what each recording contributed. The ticks are yours
-for the session; saving records the assignment, never the selection.
+each of them under the level it was picked on, the way the converter's list showed
+them while you were gathering. Every row offers a coloured box on each channel the
+recording actually took, and the box at the front of the row moves all of them at
+once. Untick one and those frames fall silent everywhere — in the waveform, in
+playback, in the original audio, and in a WAV export — so you can hear what each
+recording contributed, channel by channel. A channel you have switched off under
+the waveform shows its column greyed while your ticks stay where you put them.
+Click a row to show its recording in your file browser, and tick **Collapse
+levels** to read the whole list as one table. The ticks are yours for the session;
+saving records the assignment, never the selection.
 
 To get your results out, use the **Reconstruction** menu. **Export instruments ▸
 FamiTracker instruments...** writes one `.fti` per channel, **Bitphase

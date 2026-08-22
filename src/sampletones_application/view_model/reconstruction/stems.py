@@ -1,25 +1,21 @@
-from typing import Optional, Tuple
+from typing import Optional
 
 from pydantic import BaseModel
 
-from sampletones_core.constants.enums import ChannelName, HierarchyMode
-
-
-class StemViewModel(BaseModel, frozen=True):
-    """One stem row: its identity, source file, channels, and selection."""
-
-    stem_id: int
-    label: str
-    channels: Tuple[ChannelName, ...]
-    enabled: bool
-    selected: bool
+from sampletones_application.view_model.shared.stems import StemsListViewModel
+from sampletones_core.constants.enums import HierarchyMode
 
 
 class ReconstructionStemsViewModel(BaseModel, frozen=True):
-    """What the stems card renders for the loaded reconstruction."""
+    """What the stems card renders for the loaded reconstruction.
+
+    The recorded assignment is a stems list like the converter's, so the card hands
+    :attr:`stems` straight to the shared element and keeps the setup line describing how the
+    levels were picked.
+    """
 
     reconstruction_loaded: bool
-    stems: Tuple[StemViewModel, ...]
+    stems: StemsListViewModel
     hierarchy_mode: Optional[HierarchyMode] = None
     channel_cap: Optional[int] = None
 
@@ -31,4 +27,4 @@ class ReconstructionStemsViewModel(BaseModel, frozen=True):
     @property
     def show_empty_state(self) -> bool:
         """The empty state explains a loaded reconstruction that records no source."""
-        return self.reconstruction_loaded and not self.stems
+        return self.reconstruction_loaded and not self.stems.rows

@@ -10,6 +10,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_CHANNEL_CAP, RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
@@ -222,12 +223,16 @@ class TestThreeStemHierarchy:
                 masked[channel] = frames
             return masked
 
+        def heard(selected: AbstractSet[int]) -> StemSelection:
+            """The selection hearing the named stems on every channel."""
+            return StemSelection.everywhere(frozenset(selected), channels)
+
         unfiltered = data.waveform_data()
-        full = data.waveform_data(frozenset(all_stem_ids))
+        full = data.waveform_data(heard(all_stem_ids))
         np.testing.assert_allclose(full.approximation, unfiltered.approximation, atol=_MIX_TOLERANCE)
         np.testing.assert_allclose(full.original_audio, unfiltered.original_audio, atol=_MIX_TOLERANCE)
         np.testing.assert_allclose(
-            data.partials_for(channels, frozenset(all_stem_ids)),
+            data.partials_for(channels, heard(all_stem_ids)),
             data.get_partials(channels),
             atol=_MIX_TOLERANCE,
         )
@@ -235,22 +240,22 @@ class TestThreeStemHierarchy:
         for selected_id in (STEM_A_ID, STEM_B_ID, STEM_C_ID):
             selected = frozenset({selected_id})
             expected = masked_channels(selected)
-            waveform = data.waveform_data(selected)
+            waveform = data.waveform_data(heard(selected))
 
             for channel, expected_audio in expected.items():
                 np.testing.assert_array_equal(waveform.approximations[channel], expected_audio)
             np.testing.assert_allclose(waveform.approximation, mix(list(expected.values())), atol=_MIX_TOLERANCE)
             np.testing.assert_allclose(
-                data.partials_for(channels, selected),
+                data.partials_for(channels, heard(selected)),
                 mix(list(expected.values())),
                 atol=_MIX_TOLERANCE,
             )
             np.testing.assert_allclose(
-                data.original_mix_for(selected), data.stem_audios[selected_id], atol=_MIX_TOLERANCE
+                data.original_mix_for(heard(selected)), data.stem_audios[selected_id], atol=_MIX_TOLERANCE
             )
 
         selected = frozenset()
-        waveform = data.waveform_data(selected)
+        waveform = data.waveform_data(heard(selected))
         for channel in stems_data.assignments_by_channel:
             np.testing.assert_array_equal(
                 waveform.approximations[channel],
@@ -258,11 +263,11 @@ class TestThreeStemHierarchy:
             )
         np.testing.assert_allclose(waveform.approximation, np.zeros_like(data.reconstruction.approximation))
         np.testing.assert_allclose(
-            data.partials_for(channels, selected),
+            data.partials_for(channels, heard(selected)),
             np.zeros_like(data.reconstruction.approximation),
         )
         np.testing.assert_allclose(
-            data.original_mix_for(selected),
+            data.original_mix_for(heard(selected)),
             np.zeros_like(data.reconstruction.approximation),
         )
 

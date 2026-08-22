@@ -8,6 +8,7 @@ from sampletones_application.tags.general import (
     SUF_GROUP,
     SUF_HANDLER_REGISTRY,
     SUF_LABEL,
+    SUF_TOOLTIP,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -66,6 +67,7 @@ class GUIPathText(CallbackMixin):
         self.label_tag = compose_tag(tag, SUF_LABEL)
         self.handler_tag = compose_tag(tag, SUF_HANDLER_REGISTRY)
         self.group_tag = compose_tag(tag, SUF_GROUP)
+        self.tooltip_tag = compose_tag(tag, SUF_TOOLTIP)
 
         self._create_text()
         self._create_handler()
@@ -87,7 +89,7 @@ class GUIPathText(CallbackMixin):
             FontRegistry.bind_to_item(self.label_tag, self.font)
             FontRegistry.bind_to_item(self.tag, self.font)
 
-        self.tooltip = show_tooltip(self.tag, self.path_text)
+        self.tooltip = show_tooltip(self.tag, self.path_text, tag=self.tooltip_tag)
 
     @property
     def path_text(self) -> str:
@@ -162,8 +164,15 @@ class GUIPathText(CallbackMixin):
         return self.path
 
     def destroy(self) -> None:
+        """Takes the whole widget away, the hover explanation among it.
+
+        DearPyGui keeps a tooltip beside the item it explains rather than inside it, so a
+        tooltip outliving its path would go on triggering off whatever moved into that place.
+        """
         dpg_delete_item(self.handler_tag)
+        dpg_delete_item(self.tooltip_tag)
         dpg_delete_item(self.tag)
+        dpg_delete_item(self.group_tag)
 
 
 class GUIDestinationPathText(GUIPathText):

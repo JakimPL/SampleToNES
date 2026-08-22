@@ -497,7 +497,8 @@ class ConverterLogic(CallbackMixin):
         """The gathered recordings as the panel reads them, each stating where it stands.
 
         A gathered recording is named by its path, so the list reports every gesture under the
-        path it landed on.
+        path it landed on, and it offers a box on every channel the configuration enables. A
+        recording that has left the disk since it was gathered reports itself as missing.
         """
         enabled = list(config.generation.channels)
         return tuple(
@@ -505,6 +506,8 @@ class ConverterLogic(CallbackMixin):
                 key=str(source.path),
                 path=source.path,
                 channels=frozenset(effective_channels(source, enabled)),
+                offered_channels=frozenset(enabled),
+                available=source.path.is_file(),
                 level=level_index,
                 position=position,
                 level_size=len(level),

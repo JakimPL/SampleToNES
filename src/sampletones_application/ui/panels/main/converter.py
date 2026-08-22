@@ -84,9 +84,9 @@ class GUIConverterPanel(GUIPanel):
     """The card a conversion is set up on: what it converts, how, and what it is doing.
 
     In stems mode the card lists the recordings being gathered under the levels they pick on.
-    A row is dragged by its handle onto another row to share that row's level, or onto the gap
-    between two levels to open one of its own; the row's menu names the same moves in words and
-    offers the recording's own filesystem actions.
+    A row is dragged onto another row to share that row's level, or onto the gap between two
+    levels to open one of its own; the row's menu names the same moves in words and offers the
+    recording's own filesystem actions.
     """
 
     def __init__(
@@ -141,6 +141,7 @@ class GUIConverterPanel(GUIPanel):
             status_bar=status_bar,
             draggable=True,
             removable=True,
+            master_checkbox=False,
         )
 
         super().__init__(tag=TAG_MAIN_CONVERTER_PANEL)

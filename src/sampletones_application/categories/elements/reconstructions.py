@@ -26,7 +26,6 @@ class ReconstructionPanelElements(AbstractElement):
     AUDIO_SOURCE_LABEL = "audio_source_label"
     AUTOSCALE_CHECKBOX = "autoscale_checkbox"
     RECONSTRUCTION_FILE_LABEL = "reconstruction_file_label"
-    ORIGINAL_AUDIO_LABEL = "original_audio_label"
     PATH_NOT_FOUND = "path_not_found"
     PATH_NOT_APPLICABLE = "path_not_applicable"
     ORIGINAL_AUDIO_RADIO = "original_audio_radio"
@@ -41,6 +40,9 @@ class ReconstructionPanelElements(AbstractElement):
     STEMS_MODE_ROUND_ROBIN = "stems_mode_round_robin"
     STEMS_MODE_STRICT = "stems_mode_strict"
     STEMS_SETUP = "stems_setup"
+    COLLAPSE_LEVELS = "collapse_levels"
+    COLLAPSE_LEVELS_TOOLTIP = "collapse_levels_tooltip"
+    STATUS_COLLAPSE_LEVELS = "status_collapse_levels"
 
 
 class ReconstructionsInstrumentsElements(AbstractElement):

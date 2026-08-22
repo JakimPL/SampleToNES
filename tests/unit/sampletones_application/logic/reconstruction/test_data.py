@@ -11,9 +11,15 @@ from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+
+
+def _heard(*stem_ids: int) -> StemSelection:
+    """The selection hearing every named stem on every channel."""
+    return StemSelection.everywhere(frozenset(stem_ids), ChannelName.items())
 
 
 class TestFromReconstruction:
@@ -319,11 +325,11 @@ class TestStemFilteredProjections:
         expected = data.reconstruction.approximation.copy()
         expected[frame_length:] = 0
 
-        partials = data.partials_for([ChannelName.PULSE1], frozenset({0}))
+        partials = data.partials_for([ChannelName.PULSE1], _heard(0))
 
         np.testing.assert_allclose(partials, expected)
         np.testing.assert_allclose(
-            data.partials_for([ChannelName.PULSE1], frozenset({0, 1})),
+            data.partials_for([ChannelName.PULSE1], _heard(0, 1)),
             data.reconstruction.approximation,
         )
 
@@ -360,11 +366,11 @@ class TestStemFilteredProjections:
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
-        np.testing.assert_allclose(data.original_mix_for(frozenset({0})), data.stem_audios[0])
+        np.testing.assert_allclose(data.original_mix_for(_heard(0)), data.stem_audios[0])
         assert data.original_audio is not None
-        np.testing.assert_allclose(data.original_mix_for(frozenset({0, 1})), data.original_audio)
+        np.testing.assert_allclose(data.original_mix_for(_heard(0, 1)), data.original_audio)
         np.testing.assert_array_equal(
-            data.original_mix_for(frozenset()),
+            data.original_mix_for(_heard()),
             np.zeros_like(data.reconstruction.approximation),
         )
 
@@ -380,11 +386,11 @@ class TestStemFilteredProjections:
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         np.testing.assert_array_equal(
-            data.partials_for([ChannelName.PULSE1], frozenset()),
+            data.partials_for([ChannelName.PULSE1], _heard()),
             np.zeros_like(data.reconstruction.approximation),
         )
         assert data.original_audio is not None
-        np.testing.assert_allclose(data.original_mix_for(frozenset({0})), data.original_audio)
+        np.testing.assert_allclose(data.original_mix_for(_heard(0)), data.original_audio)
 
 
 class TestWaveformData:

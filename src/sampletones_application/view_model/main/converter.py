@@ -107,7 +107,9 @@ class ConverterViewModel(BaseModel, frozen=True):
         return StemsListViewModel(
             rows=self.stem_sources,
             channels_in_play=self.channels_in_play,
+            muted_channels=frozenset(),
             live=not self.is_active,
+            collapse_levels=False,
         )
 
     @property

@@ -201,7 +201,9 @@ class ReconstructionTabCoordinator:
             status_bar=status_bar,
         )
         self._reconstruction_stems_panel: GUIReconstructionStemsPanel = GUIReconstructionStemsPanel(
+            stems_layout=layout.stems,
             language_manager=language_manager,
+            status_bar=status_bar,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_STEMS),
         )
         self._reconstruction_audio_panel.set_collapse_handler(self._on_card_collapse_changed)
@@ -236,7 +238,7 @@ class ReconstructionTabCoordinator:
 
         self._reconstruction_audio_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
         self._reconstruction_plot_panel.on_channels_changed = self._reconstruction_panel_logic.set_selected_channels
-        self._reconstruction_stems_panel.on_stems_changed = self._reconstruction_panel_logic.set_selected_stems
+        self._reconstruction_stems_panel.on_stem_channels_changed = self._reconstruction_panel_logic.set_stem_channels
         self._browser_panel.on_locate_original_audio = self._original_audio_locator.locate
 
         self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view

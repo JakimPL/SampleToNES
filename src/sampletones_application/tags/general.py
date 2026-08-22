@@ -260,6 +260,12 @@ TAG_GLOBAL_THEME_PLUS_MINUS_BUTTONS = TagName(
     Widget.THEME,
     "plus_minus_buttons",
 )
+TAG_GLOBAL_THEME_CHANNEL_MUTED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_muted",
+)
 TAG_GLOBAL_THEME_STEMS_DROP_STRIP = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

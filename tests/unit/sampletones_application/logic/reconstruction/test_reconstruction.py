@@ -964,7 +964,7 @@ class TestReconstructionPanelLogicStemSelection:
         )
         return ReconstructionData.from_reconstruction(stems_reconstruction, name="Sample")
 
-    def test_display_selects_every_stem(
+    def test_display_hears_every_recording_on_the_channels_it_holds(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
@@ -976,13 +976,50 @@ class TestReconstructionPanelLogicStemSelection:
 
         panel_logic.display_reconstruction()
 
-        assert panel_logic._selected_stems == frozenset({0, 1})
+        assert panel_logic._stem_channels == {
+            0: frozenset({ChannelName.PULSE1}),
+            1: frozenset(),
+        }
         assert len(stems_views) == 1
-        assert {row.stem_id for row in stems_views[0].stems} == {0, 1}
-        assert all(row.selected for row in stems_views[0].stems)
-        assert stems_views[0].hierarchy_mode is None or stems_views[0].show_setup_line
+        rows = stems_views[0].stems.rows
+        assert {row.key for row in rows} == {"0", "1"}
+        assert all(row.channels == row.offered_channels for row in rows)
+        assert stems_views[0].stems.channels_in_play == (ChannelName.PULSE1,)
 
-    def test_set_selected_stems_filters_waveform_and_playback(
+    def test_a_recording_holding_no_frames_offers_no_box(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = stems_data
+        stems_views = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        rows = {row.key: row for row in stems_views[0].stems.rows}
+        assert rows["0"].offered_channels == frozenset({ChannelName.PULSE1})
+        assert rows["1"].offered_channels == frozenset()
+        assert not rows["1"].offers_channels
+
+    def test_a_row_stands_where_the_hierarchy_put_its_recording(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = stems_data
+        stems_views = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        rows = stems_views[0].stems.rows
+        assert [(row.key, row.level, row.position) for row in rows] == [("0", 0, 0), ("1", 0, 1)]
+        assert all(row.level_size == 2 and row.level_count == 1 for row in rows)
+
+    def test_silencing_a_recording_filters_waveform_and_playback(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
@@ -995,17 +1032,35 @@ class TestReconstructionPanelLogicStemSelection:
         panel_logic.on_waveform_load_changed = lambda waveform, channels: waveform_updates.append(waveform)
         panel_logic.on_audio_data_changed = lambda audio: audio_updates.append(audio)
 
-        panel_logic.set_selected_stems(frozenset({0}))
+        panel_logic.set_stem_channels(0, frozenset())
 
         expected = stems_data.partials_for(
             panel_logic._selected_channels,
-            frozenset({0}),
+            panel_logic._stem_selection,
         )
         assert len(waveform_updates) == 1
         np.testing.assert_allclose(waveform_updates[0].partials(panel_logic._selected_channels), expected)
         assert len(audio_updates) == 1
         assert audio_updates[0] is not None
         np.testing.assert_allclose(audio_updates[0].sample, expected)
+
+    def test_a_channel_switched_off_for_everything_mutes_its_column(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = stems_data
+        panel_logic.display_reconstruction()
+        stems_views = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.set_selected_channels([])
+
+        assert len(stems_views) == 1
+        rows = {row.key: row for row in stems_views[0].stems.rows}
+        assert stems_views[0].stems.muted_channels == frozenset({ChannelName.PULSE1})
+        assert rows["0"].channels == frozenset({ChannelName.PULSE1})
 
     def test_export_wav_uses_the_stems_filter(
         self,
@@ -1017,7 +1072,7 @@ class TestReconstructionPanelLogicStemSelection:
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = stems_data
         panel_logic.display_reconstruction()
-        panel_logic.set_selected_stems(frozenset({0}))
+        panel_logic.set_stem_channels(0, frozenset())
 
         panel_logic.handle_export_wav_confirmed(tmp_path / "output.wav")
 
@@ -1025,6 +1080,6 @@ class TestReconstructionPanelLogicStemSelection:
         exported_audio = mock_export_service.export_wav.call_args.args[2]
         expected = stems_data.partials_for(
             panel_logic._selected_channels,
-            frozenset({0}),
+            panel_logic._stem_selection,
         )
         np.testing.assert_allclose(exported_audio, expected)

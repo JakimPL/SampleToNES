@@ -262,8 +262,13 @@ global.stems.template.level_caption: "Level {}"
 global.stems.label.remove: "x"
 global.stems.message.drag_tooltip: "Drag onto another row to share its level, or onto a gap to start a new level."
 global.stems.message.inert_tooltip: "Tick a channel to use this recording."
-global.stems.message.status_row: "Drag {name} onto another row or a gap to move it, or right-click for more actions."
+global.stems.message.missing_tooltip: "This recording is missing from disk."
+global.stems.message.unoffered_tooltip: "This recording holds no frames."
+global.stems.message.status_row_drag: "Drag {name} onto another row or a gap to move it, or right-click for more actions."
+global.stems.message.status_row_reveal: "Show {name} in the file browser."
+global.stems.message.status_master: "Turn every channel on or off for {name}."
 global.stems.message.status_channel: "Turn the {channel} channel on or off for {name}."
+global.stems.message.status_channel_muted: "The {channel} channel is off for everything, so {name} stays quiet on it."
 global.stems.message.status_remove: "Remove {name} from the list."
 
 # =============================================================================
@@ -438,7 +443,6 @@ reconstructions.browser.template.incompatible_version_template: "Incompatible re
 reconstructions.reconstruction.label.audio_source_label: "Source"
 reconstructions.reconstruction.label.autoscale_checkbox: "Autoscale"
 reconstructions.reconstruction.label.reconstruction_file_label: "Reconstruction file:"
-reconstructions.reconstruction.label.original_audio_label: "Original audio:"
 reconstructions.reconstruction.label.path_not_found: "not found"
 reconstructions.reconstruction.label.path_not_applicable: "N/A"
 reconstructions.reconstruction.label.original_audio_radio: "Original audio"
@@ -453,6 +457,9 @@ reconstructions.reconstruction.label.stems_empty: "This reconstruction records n
 reconstructions.reconstruction.label.stems_mode_round_robin: "Round robin"
 reconstructions.reconstruction.label.stems_mode_strict: "Strict"
 reconstructions.reconstruction.template.stems_setup: "Mode: {mode} · Channel cap: {cap}"
+reconstructions.reconstruction.label.collapse_levels: "Collapse levels"
+reconstructions.reconstruction.message.collapse_levels_tooltip: "Draw every recording in one table."
+reconstructions.reconstruction.message.status_collapse_levels: "Draw the recordings in one table or under their levels."
 
 # =============================================================================
 # Reconstructions tab — Instruments

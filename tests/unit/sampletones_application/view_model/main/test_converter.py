@@ -31,6 +31,8 @@ def _row(
         key=str(path),
         path=path,
         channels=channels,
+        offered_channels=frozenset(ChannelName.items()),
+        available=True,
         level=level,
         position=position,
         level_size=level_size,

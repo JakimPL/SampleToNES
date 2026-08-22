@@ -13,12 +13,15 @@ class StemRowViewModel(BaseModel, frozen=True):
     recordings sharing that level, and how many of each the list holds — so the moves a list
     offers grey themselves out from the row alone. ``key`` is the identity the list reports a
     gesture under: the recording's path where the list gathers files, the stem id where it
-    describes a recorded assignment.
+    describes a recorded assignment. ``offered_channels`` names the boxes the row draws and
+    ``channels`` the ones ticked among them.
     """
 
     key: str
     path: Path
     channels: FrozenSet[ChannelName]
+    offered_channels: FrozenSet[ChannelName]
+    available: bool
     level: int
     position: int
     level_size: int
@@ -33,6 +36,16 @@ class StemRowViewModel(BaseModel, frozen=True):
     def takes_part(self) -> bool:
         """The recording holds a channel, so the list counts it in."""
         return bool(self.channels)
+
+    @property
+    def offers_channels(self) -> bool:
+        """The row draws at least one box, so there is a channel to give the recording."""
+        return bool(self.offered_channels)
+
+    @property
+    def in_play(self) -> bool:
+        """The recording is there to be read and holds a channel, so what it carries is heard."""
+        return self.available and self.takes_part
 
     @property
     def is_first_on_level(self) -> bool:
@@ -56,11 +69,18 @@ class StemRowViewModel(BaseModel, frozen=True):
 
 
 class StemsListViewModel(BaseModel, frozen=True):
-    """What a stems list renders: the rows, the columns they line up in, and whether they answer."""
+    """What a stems list renders: the rows, the columns they line up in, and how they answer.
+
+    ``muted_channels`` names the columns a choice made elsewhere has switched off, which the
+    boxes report while staying as clickable as any other. ``collapse_levels`` draws every row
+    in one table, leaving the levels to the reader's memory rather than to a caption.
+    """
 
     rows: Tuple[StemRowViewModel, ...]
     channels_in_play: Tuple[ChannelName, ...]
+    muted_channels: FrozenSet[ChannelName]
     live: bool
+    collapse_levels: bool
 
     @property
     def row_count(self) -> int:

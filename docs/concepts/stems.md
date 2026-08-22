@@ -171,9 +171,11 @@ order: a single source names the document after the file's stem, several stems
 sharing one directory name it after that directory, and paths sharing no
 directory fall back to the `.stn` filename.
 
-The reconstruction tab's Audio source panel shows one shortened path line per
-stem, each line carrying its own full-path tooltip. Locating reveals every
-recorded path according to the capability matrix in
+The reconstruction tab names every recorded path on the Stems card, one row per
+stem, each row carrying its own full-path tooltip and revealing its recording on
+a click. The Audio source panel keeps the reconstruction's own file and the
+choice between the two waveforms. Locating reveals every recorded path according
+to the capability matrix in
 [Desktop capabilities](../development/desktop-capabilities.md): one file-manager
 window with every stem selected where the file manager supports it, one window
 per directory otherwise.
@@ -181,42 +183,57 @@ per directory otherwise.
 ## The stems card
 
 The reconstruction tab's Stems card turns the recorded assignment into a
-listener the user can steer. Each row carries one stem: a checkbox, the recorded
-file name, and the channels the stem holds, in entry order. A setup line above
-the rows names the assignment's hierarchy mode and channel cap. Checking a stem
-admits its frames to everything the tab plays and exports; unchecking silences
-them.
+listener the user can steer. It draws the same list the converter's card draws:
+each row carries one stem under the level it was picked on, named by its
+recording, with a leading master box and a coloured box on every channel the
+stem holds frames on. A setup line above the rows names the assignment's
+hierarchy mode and channel cap, and a **Collapse levels** toggle draws every row
+in one table where the banding is in the way. Ticking a box admits that stem's
+frames on that channel to everything the tab plays and exports; unticking
+silences them.
 
 ### Principles
 
-1. **Selection filters what plays.** A checked set projects the document rather
-   than mutating it: the waveform shows the checked stems' frames alone, the
-   reconstruction toggle plays their frames mixed, original playback plays
-   their recordings mixed, and WAV export writes the same filtered projection.
-   Each answer derives from the recorded per-channel assignment, so a stem that
-   holds a frame owns its samples everywhere at once.
-2. **Every stem starts checked.** A freshly opened stems reconstruction selects
-   every recorded stem, which answers the full waveform and the full original —
-   the unfiltered document.
-3. **The selection follows the open document.** The card lives with the
-   reconstruction it describes: opening a document seeds the rows and the
-   checked set, a regenerated reconstruction keeps the checked stems and admits
-   the newly recorded ones, and closing the document empties the card.
-4. **Listening choices stay out of the document.** The checked set is session
+1. **Selection filters what plays.** A ticked set projects the document rather
+   than mutating it: the waveform shows the ticked frames alone, the
+   reconstruction toggle plays them mixed, original playback plays the
+   recordings heard anywhere mixed, and WAV export writes the same filtered
+   projection. Each answer derives from the recorded per-channel assignment, so
+   a stem heard on one channel keeps its samples there and stays quiet on the
+   next.
+2. **A box stands where the choice reaches something.** A stem draws a box on a
+   channel exactly where the picker gave it a frame there, so every box the card
+   offers changes what is heard. A stem the picker never chose offers none, and
+   its row reads as holding no frames.
+3. **Every stem starts heard everywhere it holds frames.** A freshly opened
+   stems reconstruction ticks every box, which answers the full waveform and the
+   full original — the unfiltered document.
+4. **The global channel choice takes precedence.** A channel switched off for
+   the whole reconstruction mutes its column while leaving every value where the
+   reader put it, so switching the channel back on restores the per-stem choice
+   intact. The two compose by construction: the global choice filters the
+   partials, the stems choice the approximations.
+5. **The selection follows the open document.** The card lives with the
+   reconstruction it describes: opening a document seeds the rows and the ticked
+   boxes, a regenerated reconstruction keeps what the reader chose and ticks the
+   channels a stem newly reaches, and closing the document empties the card.
+6. **Listening choices stay out of the document.** The ticked set is session
    state, like every choice that shapes what is heard — see
    [Playback](../development/playback.md). Saving the reconstruction records
-   the assignment, never the selection.
+   the assignment, never the selection. So is the banding: collapsing the levels
+   changes how the card draws, never what it describes.
 
 ### Mechanics
 
-`ReconstructionData.partials_for` and `ReconstructionData.waveform_data` take
-the checked ids and zero the unselected stems' frames per channel before
-mixing — `filter_approximations` in
-`sampletones_core.reconstructions.reconstruction.stems` — keeping every array
-at its unfiltered length, so a filtered mix aligns with the unfiltered one
-sample for sample. `ReconstructionPanelLogic` holds the checked set and
-re-answers the stems view model, the waveform, and the audio data whenever it
-changes; the coordinator wires the card's `on_stems_changed` hook to that
-handler. A reconstruction that records one source presents a single implicit
-stem for its recording, and one that records no source shows the card's empty
+`ReconstructionData.partials_for` and `ReconstructionData.waveform_data` take a
+`StemSelection` — the stems each channel keeps — and zero the unselected frames
+per channel before mixing (`filter_approximations` in
+`sampletones_core.reconstructions.reconstruction.stems`), keeping every array at
+its unfiltered length, so a filtered mix aligns with the unfiltered one sample
+for sample. `original_mix_for` mixes the recordings of the stems heard on any
+channel. `ReconstructionPanelLogic` holds the channels each stem is heard on and
+re-answers the stems view model, the waveform, and the audio data whenever the
+choice changes; the coordinator wires the card's `on_stem_channels_changed` hook
+to that handler. A reconstruction that records one source presents a single row
+for its recording, and one that records no source shows the card's empty
 state.

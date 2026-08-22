@@ -24,6 +24,7 @@ from sampletones_application.tags.general import (
     SUF_ROW,
     SUF_STRIP,
     SUF_TEXT,
+    TAG_GLOBAL_THEME_CHANNEL_MUTED,
     TAG_GLOBAL_THEME_STEMS_ROW,
     TAG_GLOBAL_THEME_STEMS_ROW_INERT,
 )
@@ -72,6 +73,7 @@ def build(
     *,
     draggable: bool = True,
     removable: bool = True,
+    master_checkbox: bool = False,
 ) -> GUIStemsList:
     stems_list = GUIStemsList(
         prefix=PREFIX,
@@ -80,6 +82,7 @@ def build(
         status_bar=GUIStatusBar(),
         draggable=draggable,
         removable=removable,
+        master_checkbox=master_checkbox,
     )
     with dpg.window(tag=ROOT_TAG):
         stems_list.create(ROOT_TAG)
@@ -91,6 +94,8 @@ def row(
     name: str,
     *,
     channels: FrozenSet[ChannelName] = frozenset(CHANNELS),
+    offered_channels: FrozenSet[ChannelName] = frozenset(CHANNELS),
+    available: bool = True,
     level: int = 0,
     position: int = 0,
     level_size: int = 1,
@@ -101,6 +106,8 @@ def row(
         key=str(path),
         path=path,
         channels=channels,
+        offered_channels=offered_channels,
+        available=available,
         level=level,
         position=position,
         level_size=level_size,
@@ -108,8 +115,19 @@ def row(
     )
 
 
-def view(*rows: StemRowViewModel, live: bool = True) -> StemsListViewModel:
-    return StemsListViewModel(rows=rows, channels_in_play=CHANNELS, live=live)
+def view(
+    *rows: StemRowViewModel,
+    live: bool = True,
+    muted_channels: FrozenSet[ChannelName] = frozenset(),
+    collapse_levels: bool = False,
+) -> StemsListViewModel:
+    return StemsListViewModel(
+        rows=rows,
+        channels_in_play=CHANNELS,
+        muted_channels=muted_channels,
+        live=live,
+        collapse_levels=collapse_levels,
+    )
 
 
 def row_tag(entry: StemRowViewModel, suffix: str) -> str:
@@ -336,3 +354,169 @@ class TestVanishedWidgets:
         stems_list.update_view(view(row("bass", channels=frozenset())))
 
         assert dpg.get_alias_id(channel_tag(bass, ChannelName.PULSE1)) == standing
+
+
+class TestOfferedChannels:
+    def test_a_row_draws_a_box_only_on_the_channels_it_offers(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass", channels=frozenset({ChannelName.PULSE1}), offered_channels=frozenset({ChannelName.PULSE1}))
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.does_item_exist(channel_tag(bass, ChannelName.PULSE1))
+        assert not dpg.does_item_exist(channel_tag(bass, ChannelName.TRIANGLE))
+
+    def test_a_recording_missing_from_disk_greys_out(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass", available=False)
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.get_item_theme(row_tag(bass, SUF_TEXT)) == ThemeRegistry.get(TAG_GLOBAL_THEME_STEMS_ROW_INERT).tag
+
+    def test_a_row_gaining_a_box_is_drawn_again(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        stems_list.update_view(view(row("bass", offered_channels=frozenset({ChannelName.PULSE1}))))
+
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        assert dpg.does_item_exist(channel_tag(bass, ChannelName.TRIANGLE))
+
+
+class TestMasterCheckbox:
+    def test_a_master_box_reads_whether_the_row_holds_a_channel(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config, master_checkbox=True)
+        playing = row("bass")
+        quiet = row("pad", channels=frozenset())
+
+        stems_list.update_view(view(playing, quiet))
+
+        assert dpg.get_value(row_tag(playing, SUF_CHECKBOX))
+        assert not dpg.get_value(row_tag(quiet, SUF_CHECKBOX))
+
+    def test_ticking_the_master_box_hands_the_row_every_channel_it_offers(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        reported: List[Tuple[str, FrozenSet[ChannelName]]] = []
+        stems_list = build(layout_config, master_checkbox=True)
+        stems_list.on_channels_changed = lambda key, channels: reported.append((key, channels))
+        bass = row("bass", channels=frozenset(), offered_channels=frozenset({ChannelName.PULSE1}))
+        stems_list.update_view(view(bass))
+
+        master_tag = row_tag(bass, SUF_CHECKBOX)
+        dpg.get_item_callback(master_tag)(master_tag, True, bass.key)
+
+        assert reported == [(bass.key, frozenset({ChannelName.PULSE1}))]
+
+    def test_unticking_the_master_box_takes_every_channel_away(self, dpg_context: None, layout_config) -> None:
+        reported: List[Tuple[str, FrozenSet[ChannelName]]] = []
+        stems_list = build(layout_config, master_checkbox=True)
+        stems_list.on_channels_changed = lambda key, channels: reported.append((key, channels))
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        master_tag = row_tag(bass, SUF_CHECKBOX)
+        dpg.get_item_callback(master_tag)(master_tag, False, bass.key)
+
+        assert reported == [(bass.key, frozenset())]
+
+    def test_a_row_offering_no_channel_has_nothing_for_its_master_box_to_do(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        stems_list = build(layout_config, master_checkbox=True)
+        silent = row("pad", channels=frozenset(), offered_channels=frozenset())
+
+        stems_list.update_view(view(silent))
+
+        assert not dpg.is_item_enabled(row_tag(silent, SUF_CHECKBOX))
+
+    def test_a_list_without_a_master_box_draws_none(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert not dpg.does_item_exist(row_tag(bass, SUF_CHECKBOX))
+
+
+class TestMutedChannels:
+    def test_a_muted_channel_takes_the_muted_tone(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass, muted_channels=frozenset({ChannelName.TRIANGLE})))
+
+        muted = ThemeRegistry.get(TAG_GLOBAL_THEME_CHANNEL_MUTED).tag
+        assert dpg.get_item_theme(channel_tag(bass, ChannelName.TRIANGLE)) == muted
+        assert dpg.get_item_theme(channel_tag(bass, ChannelName.PULSE1)) != muted
+
+    def test_a_muted_box_keeps_its_value_and_stays_clickable(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass, muted_channels=frozenset(CHANNELS)))
+
+        for channel_name in CHANNELS:
+            assert dpg.get_value(channel_tag(bass, channel_name))
+            assert dpg.is_item_enabled(channel_tag(bass, channel_name))
+
+    def test_a_channel_switched_back_on_takes_its_own_colour_again(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+        stems_list.update_view(view(bass, muted_channels=frozenset({ChannelName.TRIANGLE})))
+
+        stems_list.update_view(view(bass))
+
+        muted = ThemeRegistry.get(TAG_GLOBAL_THEME_CHANNEL_MUTED).tag
+        assert dpg.get_item_theme(channel_tag(bass, ChannelName.TRIANGLE)) != muted
+
+
+class TestCollapsedLevels:
+    def test_collapsing_draws_every_row_in_one_table(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config, draggable=False)
+        rows = (
+            row("bass", level=0, position=0, level_size=1, level_count=2),
+            row("pad", level=1, position=0, level_size=1, level_count=2),
+        )
+
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        assert dpg.does_item_exist(stems_list.table_tag)
+        assert not dpg.does_item_exist(compose_tag(PREFIX, SUF_LEVEL, "0", SUF_TEXT))
+        for entry in rows:
+            assert dpg.does_item_exist(row_tag(entry, SUF_TEXT))
+
+    def test_expanding_brings_the_captions_back(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config, draggable=False)
+        rows = (
+            row("bass", level=0, position=0, level_size=1, level_count=2),
+            row("pad", level=1, position=0, level_size=1, level_count=2),
+        )
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        stems_list.update_view(view(*rows))
+
+        assert not dpg.does_item_exist(stems_list.table_tag)
+        assert dpg.does_item_exist(compose_tag(PREFIX, SUF_LEVEL, "0", SUF_TEXT))
+        assert dpg.does_item_exist(compose_tag(PREFIX, SUF_LEVEL, "1", SUF_TEXT))
+
+
+class TestActivation:
+    def test_a_clicked_row_reports_itself_and_stays_unselected(self, dpg_context: None, layout_config) -> None:
+        activated: List[str] = []
+        stems_list = build(layout_config, draggable=False)
+        stems_list.on_row_activated = activated.append
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        name_tag = row_tag(bass, SUF_TEXT)
+        dpg.set_value(name_tag, True)
+        dpg.get_item_callback(name_tag)(name_tag, True, bass.key)
+
+        assert activated == [bass.key]
+        assert not dpg.get_value(name_tag)

@@ -6,6 +6,7 @@ from sampletones_application.layout.behavior.scheduling.scheduling import Schedu
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.general.colors.feature import FeatureColors
 from sampletones_application.layout.general.colors.path import PathColors
+from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.parameters.geometry import TabGeometry
 from sampletones_application.ui.elements.pitch_stepper import PitchStepperStyle
@@ -32,6 +33,7 @@ class ReconstructionTabParameters:
     path_colors: PathColors
     path_status_color: BaseColor
     tree_colors: TreeColors
+    stems: StemsListLayout
     scheduling: SchedulingBehavior
 
     @classmethod
@@ -51,5 +53,6 @@ class ReconstructionTabParameters:
                 general.colors,
                 accent=general.colors.headers.reconstruction,
             ),
+            stems=general.stems,
             scheduling=config.behavior.scheduling,
         )
