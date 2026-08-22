@@ -7,7 +7,7 @@ import numpy as np
 
 from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.view_model.shared.waveform_data import WaveformData
-from sampletones_core.audio import load_audio, mix
+from sampletones_core.audio import load_stems, mix
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
@@ -140,6 +140,9 @@ class ReconstructionData:
     ) -> Tuple[np.ndarray, ...]:
         """Loads the recorded source, one recording per path, in path order.
 
+        The set is loaded together, so every recording carries the level it holds in the
+        mix and one heard on its own sounds at that level.
+
         A reconstruction detached from its origin (a project sample) records no source
         path, and a file-backed reconstruction may point at audio absent or unreadable on
         this machine. One unreadable stem costs the whole original, so the recordings
@@ -151,22 +154,17 @@ class ReconstructionData:
             return ()
 
         config = reconstruction.config
-        recordings: List[np.ndarray] = []
-        for path in source_paths:
-            try:
-                recordings.append(
-                    load_audio(
-                        path=path,
-                        target_sample_rate=config.library.sample_rate,
-                        normalize=config.general.normalize,
-                        quantize=config.general.quantize,
-                    )
-                )
-            except (FileNotFoundError, IsADirectoryError, PermissionError, OSError):
-                logger.warning(f"Could not load original audio from '{path}'. The original is unavailable")
-                return ()
-
-        return tuple(recordings)
+        try:
+            return load_stems(
+                source_paths,
+                target_sample_rate=config.library.sample_rate,
+                normalize=config.general.normalize,
+                quantize=config.general.quantize,
+                quantization_levels=config.general.quantization_levels,
+            )
+        except (FileNotFoundError, IsADirectoryError, PermissionError, OSError) as error:
+            logger.warning(f"Could not load the original audio: {error}. The original is unavailable")
+            return ()
 
     @cached_property
     def original_audio(self) -> Optional[np.ndarray]:

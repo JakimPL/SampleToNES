@@ -1,9 +1,10 @@
-from typing import Any, Dict, Final
+from typing import Any, Dict, Final, List
 
 import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import STEM_ACTIVITY_FLOOR
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor, get_feature_extractor
@@ -82,8 +83,32 @@ def synthetic_fragment(
     config: Config,
     window: Window,
 ) -> Fragment:
-    active_instruction = next(instrument for instrument in library_data.keys() if instrument.on)
-    return library_data[active_instruction].get_fragment(0, config, window)
+    """A frame of sound a channel renders, the stand-in for what one stem contributes."""
+    return _renderable_fragments(library_data, config, window)[0]
+
+
+@pytest.fixture
+def audible_fragments(
+    library_data: InstructionLibraryData,
+    config: Config,
+    window: Window,
+) -> List[Fragment]:
+    """The distinct sounds a case hands its stems, each loud enough for a channel to render."""
+    return _renderable_fragments(library_data, config, window)
+
+
+def _renderable_fragments(
+    library_data: InstructionLibraryData,
+    config: Config,
+    window: Window,
+) -> List[Fragment]:
+    """The library's frames loud enough to render, which is what the assignment asks of a stem."""
+    fragments = [
+        library_data[instruction].get_fragment(0, config, window)
+        for instruction in library_data.keys()
+        if instruction.on
+    ]
+    return [fragment for fragment in fragments if float(np.max(np.abs(fragment.audio))) > STEM_ACTIVITY_FLOOR]
 
 
 @pytest.fixture

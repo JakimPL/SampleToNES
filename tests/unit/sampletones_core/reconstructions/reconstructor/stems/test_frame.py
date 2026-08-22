@@ -1,4 +1,4 @@
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, Final, List, Sequence, Tuple
 
 import numpy as np
 import pytest
@@ -16,7 +16,10 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy impo
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 
+from .conftest import shared_frames
+
 DEFAULT_CHANNELS: List[ChannelName] = [ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE]
+LOUDER_STEM_SCALE: Final[float] = 4.0
 
 
 def _config(
@@ -41,7 +44,7 @@ def _assign(
     lattice_width: int = SINGLE_STATE_LATTICE_WIDTH,
 ) -> StemFrameAssignment:
     return assign_frame(
-        fragment,
+        shared_frames(fragment, stems_config),
         stems_config,
         channels,
         matcher,
@@ -108,6 +111,145 @@ class TestFrameCompleteness:
 
         assert set(assignment.by_channel) == {ChannelName.PULSE1}
         assert assignment.resting == ()
+
+
+class TestSoundingStems:
+    """A stem takes a channel where its own recording sounds, and stands aside where it does not."""
+
+    def test_a_stem_sounding_nothing_leaves_the_channel_to_one_that_does(
+        self,
+        synthetic_fragment: Fragment,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+        extractor: FeatureExtractor,
+    ) -> None:
+        """A silent stem picking first passes, so the channel reaches the stem behind it.
+
+        This is what keeps a recording quiet through a passage from sounding that passage on the
+        channels it holds elsewhere.
+        """
+        stems_config = _config(
+            {0: [ChannelName.PULSE1], 1: [ChannelName.PULSE1]},
+            [[0], [1]],
+            HierarchyMode.STRICT,
+            1,
+        )
+
+        assignment = assign_frame(
+            {0: synthetic_fragment * 0.0, 1: synthetic_fragment},
+            stems_config,
+            channels,
+            matcher,
+            extractor,
+            SINGLE_STATE_LATTICE_WIDTH,
+        )
+
+        assert [choice.stem_id for choice in assignment.choices] == [1]
+        assert assignment.resting == ()
+
+    def test_a_frame_no_stem_sounds_in_rests_every_channel(
+        self,
+        synthetic_fragment: Fragment,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+        extractor: FeatureExtractor,
+    ) -> None:
+        """Every covered channel still answers the frame, each holding its null instruction."""
+        stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, len(DEFAULT_CHANNELS))
+        silent = synthetic_fragment * 0.0
+
+        assignment = assign_frame(
+            {0: silent},
+            stems_config,
+            channels,
+            matcher,
+            extractor,
+            SINGLE_STATE_LATTICE_WIDTH,
+        )
+
+        assert assignment.choices == ()
+        assert set(assignment.resting) == set(DEFAULT_CHANNELS)
+        for rest in assignment.rests:
+            assert not rest.column[0].instruction.on
+
+
+class TestBidsWithinALevel:
+    """Two stems sharing a level compete for a channel by what each still has to render."""
+
+    def _pulse_cost(
+        self,
+        fragment: Fragment,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> float:
+        pulse = channels[ChannelName.PULSE1]
+        return matcher.score_candidates(fragment, {pulse.class_name(): pulse})[0].cost
+
+    def test_the_louder_stem_takes_the_channel(
+        self,
+        synthetic_fragment: Fragment,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+        extractor: FeatureExtractor,
+    ) -> None:
+        """The louder recording wins the channel though the quieter one is the closer match.
+
+        A cost is a fraction of its own recording's energy, so the quiet stem scores the better
+        cost; weighting that cost by the energy behind it is what sends the channel where more
+        sound is waiting. The winner follows the recordings, not the place a stem holds.
+        """
+        quiet = synthetic_fragment
+        loud = synthetic_fragment * LOUDER_STEM_SCALE
+        assert self._pulse_cost(quiet, channels, matcher) < self._pulse_cost(loud, channels, matcher)
+
+        stems_config = _config(
+            {0: [ChannelName.PULSE1], 1: [ChannelName.PULSE1]},
+            [[0, 1]],
+            HierarchyMode.STRICT,
+            1,
+        )
+
+        for loud_stem_id in (0, 1):
+            assignment = assign_frame(
+                {loud_stem_id: loud, 1 - loud_stem_id: quiet},
+                stems_config,
+                channels,
+                matcher,
+                extractor,
+                SINGLE_STATE_LATTICE_WIDTH,
+            )
+
+            assert [choice.stem_id for choice in assignment.choices] == [loud_stem_id]
+
+    def test_a_level_of_its_own_takes_the_channel_first(
+        self,
+        synthetic_fragment: Fragment,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+        extractor: FeatureExtractor,
+    ) -> None:
+        """Levels pick in the order they are listed, so the first level takes the channel.
+
+        Bids settle a level's own competition; precedence between levels stays the hierarchy's,
+        which is what a reader arranges the levels to say.
+        """
+        stems_config = _config(
+            {0: [ChannelName.PULSE1], 1: [ChannelName.PULSE1]},
+            [[0], [1]],
+            HierarchyMode.STRICT,
+            1,
+        )
+
+        assignment = assign_frame(
+            {0: synthetic_fragment, 1: synthetic_fragment * LOUDER_STEM_SCALE},
+            stems_config,
+            channels,
+            matcher,
+            extractor,
+            SINGLE_STATE_LATTICE_WIDTH,
+        )
+
+        assert [choice.stem_id for choice in assignment.choices] == [0]
 
 
 class TestColumns:

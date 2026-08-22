@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from sampletones_core.audio import active_frame_level, load_audio, mix
+from sampletones_core.audio import active_frame_level, common_length, load_audio, load_stems, mix
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
 from sampletones_core.constants.enums import ChannelName
@@ -91,14 +91,15 @@ class Reconstructor:
         paths: Sequence[Pathlike],
         stems_config: StemsConfig,
     ) -> Optional[Reconstruction]:
-        """Reconstructs the mix of one or more stem audio files into one reconstruction.
+        """Reconstructs one or more stem audio files into one reconstruction.
 
-        Loads and normalizes every stem, matches the frames of the stems' mix against
-        the library, and assigns each frame's channels to the stems following the
-        configured hierarchy and channel cap. The assignment leaves every channel in
-        play a column of candidates per frame, which the configured decoder reads into
-        the stream that channel plays. The per-frame assignment is recorded in the
-        reconstruction's stems data.
+        Loads the stems onto one scale drawn from their mix, matches each stem's frames
+        against the library on its own, and assigns each frame's channels to the stems
+        following the configured hierarchy and channel cap. A stem takes a channel where
+        its own recording sounds, so what the channel carries is that recording. The
+        assignment leaves every channel in play a column of candidates per frame, which
+        the configured decoder reads into the stream that channel plays. The per-frame
+        assignment is recorded in the reconstruction's stems data.
 
         Args:
             paths: Paths to the stem audio files, one per stems entry.
@@ -107,17 +108,17 @@ class Reconstructor:
                 per-stem channel cap.
 
         Returns:
-            Optional[Reconstruction]: The reconstruction built from the mix.
+            Optional[Reconstruction]: The reconstruction built from the stems.
 
         Raises:
             ValueError: If the entries count differently than ``paths``.
             TypeError: If a path is not a string or ``Path``.
         """
         checked_paths = self._check_stem_paths(paths, stems_config)
-        mixed = self._mix_stem_audios(checked_paths)
-        fragmented_audio, coefficient = self._prepare_stem_frames(mixed, stems_config)
-        worker = self._build_worker(mixed)
-        assignment = self._assign_stem_frames(fragmented_audio, stems_config, worker)
+        recordings = self._load_stem_recordings(checked_paths)
+        stem_frames, coefficient = self._prepare_stem_frames(recordings, stems_config)
+        worker = self._build_worker(common_length(recordings))
+        assignment = self._assign_stem_frames(stem_frames, stems_config, worker)
         self._drop_resting_channels(assignment)
         self._record_streams(worker.decoder.decode(assignment.lattices))
         return Reconstruction.from_state(
@@ -151,54 +152,73 @@ class Reconstructor:
 
         return checked_paths
 
-    def _mix_stem_audios(self, checked_paths: List[Path]) -> np.ndarray:
-        """Loads every stem and returns their mix, the target the frames match against."""
-        audios = [self.load_audio(path) for path in checked_paths]
-        return mix(audios)
+    def _load_stem_recordings(self, checked_paths: List[Path]) -> Tuple[np.ndarray, ...]:
+        """Loads the recordings onto the one scale and length the run measures them on.
+
+        The set is scaled by the peak of its own mix, so each recording keeps the level it
+        holds there and the mix is the balance the recordings were captured in.
+        """
+        return load_stems(
+            checked_paths,
+            target_sample_rate=self.config.library.sample_rate,
+            normalize=self.config.general.normalize,
+            quantize=self.config.general.quantize,
+            quantization_levels=self.config.general.quantization_levels,
+        )
 
     def _prepare_stem_frames(
         self,
-        mixed: np.ndarray,
+        recordings: Sequence[np.ndarray],
         stems_config: StemsConfig,
-    ) -> Tuple[FragmentedAudio, float]:
-        """Scales the mix to the working level and frames it over the stems' channels.
+    ) -> Tuple[Dict[int, FragmentedAudio], float]:
+        """Scales the recordings to the working level and frames each of them.
 
-        Returns the framed target together with the coefficient it was scaled by, so
-        the assembled reconstruction records the level it was matched at.
+        The level is measured on their mix, so one factor scales the whole set and a
+        recording quieter than the mix reaches its frames at the level it holds there.
+        Framing every recording on its own is what lets a stem's picks be scored against
+        the sound that stem contributes.
+
+        Returns the framed recordings keyed by stem id, together with the coefficient they
+        were scaled by, so the assembled reconstruction records the level it was matched at.
         """
-        coefficient = self.get_coefficient(mixed, stems_config)
+        coefficient = self.get_coefficient(mix(list(recordings)), stems_config)
         self.reset_generators()
         covered = stems_config.covered_channels
         self.state = ReconstructionState.create([name for name in ChannelName.items() if name in covered])
-        return self.get_fragments(mixed / coefficient), coefficient
+        stem_frames = {
+            entry.id: self.get_fragments(recording / coefficient)
+            for entry, recording in zip(stems_config.entries, recordings)
+        }
+        return stem_frames, coefficient
 
-    def _build_worker(self, signal: np.ndarray) -> ReconstructorWorker:
+    def _build_worker(self, signal_length: int) -> ReconstructorWorker:
         """Builds the matching machinery and the decoder this recording runs through."""
         return ReconstructorWorker(
             config=self.config,
             window=self.window,
             channels=self.channels,
             library_data=self.library_data,
-            signal_length=signal.shape[0],
+            signal_length=signal_length,
         )
 
     def _assign_stem_frames(
         self,
-        fragmented_audio: FragmentedAudio,
+        stem_frames: Dict[int, FragmentedAudio],
         stems_config: StemsConfig,
         worker: ReconstructorWorker,
     ) -> TrackAssignment:
         """Assigns every frame's channels to the stems and gathers the outcome per channel.
 
-        Each frame answers every channel in play — a pick or a rest — so the lattices the
-        decoder reads and the per-channel stem record stay parallel to the frames, and stem
-        id ``i`` names frame ``i`` of its channel.
+        Every stem hands the assignment the same frame of its own recording, so a pick is
+        judged against what that stem sounds there. Each frame answers every channel in play
+        — a pick or a rest — so the lattices the decoder reads and the per-channel stem record
+        stay parallel to the frames, and stem id ``i`` names frame ``i`` of its channel.
         """
         assignment = TrackAssignment(self.state.channel_names)
-        for fragment_id in fragmented_audio.fragments_ids:
+        for fragment_id in range(self._stem_frame_count(stem_frames)):
             assignment.add(
                 assign_frame(
-                    fragmented_audio[fragment_id],
+                    {stem_id: fragments[fragment_id] for stem_id, fragments in stem_frames.items()},
                     stems_config,
                     self.channels,
                     worker.matcher,
@@ -208,6 +228,11 @@ class Reconstructor:
             )
 
         return assignment
+
+    @staticmethod
+    def _stem_frame_count(stem_frames: Dict[int, FragmentedAudio]) -> int:
+        """The frames every recording answers, which they share by sharing a length."""
+        return min((len(fragments) for fragments in stem_frames.values()), default=0)
 
     def _drop_resting_channels(self, assignment: TrackAssignment) -> None:
         """Leaves the channels that sound, releasing those that rested through every frame.

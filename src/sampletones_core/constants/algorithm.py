@@ -7,7 +7,13 @@ from sampletones_core.constants.enums import (
     SelectorName,
     SpectralDistance,
 )
-from sampletones_core.constants.general import MAX_VOLUME, MIN_VOLUME
+from sampletones_core.constants.general import (
+    MAX_VOLUME,
+    MIN_VOLUME,
+    MIXER_NOISE,
+    MIXER_PULSE,
+    MIXER_TRIANGLE,
+)
 
 # Matching floors
 
@@ -71,6 +77,7 @@ DEFAULT_STEMS_CHANNEL_CAP: Final[int] = ALL_STEMS_CHANNEL_CAP
 DEFAULT_STEMS_HIERARCHY_MODE: Final[HierarchyMode] = HierarchyMode.ROUND_ROBIN
 RESTING_STEM_ID: Final[int] = -1
 RESTING_FRAME_COST: Final[float] = 0.0
+STEM_ACTIVITY_FLOOR: Final[float] = TEMPORAL_LEVEL_FLOOR * min(MIXER_PULSE, MIXER_TRIANGLE, MIXER_NOISE)
 
 # Execution
 

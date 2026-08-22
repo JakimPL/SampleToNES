@@ -47,7 +47,9 @@ have very different waveforms depending on phase.
 input through a fixed sequence of stages:
 
 1. **Load** the audio (`sampletones_core.audio`) — mix to mono, resample, and
-   optionally clean it up (normalize, quantize).
+   optionally clean it up (normalize, quantize). Several sources load together, so
+   one scale drawn from the peak of their sum holds them at the balance they were
+   captured in.
 2. **Set a working level** — scale the whole signal so its typical loudness sits in
    the range the NES channels can reproduce, keeping quiet passages matchable (§3.4).
 3. **Fragment** it into short, fixed-length frames
@@ -56,7 +58,8 @@ input through a fixed sequence of stages:
 4. **Describe each frame** by a spectral feature that captures its frequency
    content (§3).
 5. **Assign** every frame's channels to the sources, and with each channel the
-   candidates it may sound there, judged by the criterion (§5 and §4).
+   candidates it may sound there, each source judged against its own audio by the
+   criterion (§5 and §4).
 6. **Decode** each channel's stream, reading its candidates across the whole
    recording (§5).
 7. **Render** the chosen instructions back into audio through the generators,
@@ -199,24 +202,31 @@ A frame is assigned one pick at a time:
 
 ```
 free = {channels the setup covers}
+residual[source] = that source's own frame, for every source that sounds in it
 while a source may still take a channel and free is non-empty:
-    pick the single (source, channel, instruction) with the lowest cost
-        across every candidate of every channel that source may still take
-    subtract its rendered contribution from the frame's residual
+    pick the single (source, channel, instruction) covering the most of
+        residual[source], across every channel that source may still take
+    subtract its rendered contribution from residual[source]
     assign it and remove that channel from `free`
 ```
 
-Every pick lets whichever channel fits the residual best go first. Where several
-channels share one generator kind, the lowest free channel of that kind represents it
-during scoring, so successive picks over one kind land on the lowest free channel. A
-channel still free when the picks end **rests**: it holds its channel's null
+Every pick lets whichever channel fits that source's residual best go first. Where
+several channels share one generator kind, the lowest free channel of that kind
+represents it during scoring, so successive picks over one kind land on the lowest free
+channel. A channel still free when the picks end **rests**: it holds its channel's null
 instruction for that frame, which is what keeps every channel's stream in step with
 the frames it describes.
 
+A source takes a channel in the frames its own audio reaches a level a channel can
+render, and stands aside in the rest, so a frame it is silent in leaves its channels
+resting.
+
 A classic single-file conversion is one source covering every enabled channel, so the
-loop above assigns each channel exactly once per frame. Several sources, a precedence
-hierarchy and a per-source channel cap are the general case, described in
-[Stems reconstruction](stems.md).
+one residual is the frame itself and the loop assigns every channel in each frame the
+source sounds in. Several sources, a precedence hierarchy and a per-source channel cap
+are the general case, described in [Stems reconstruction](stems.md); there each residual
+holds one source's own sound, which is what makes the channel a source wins carry that
+source's material.
 
 ### 5.2 Greedy decoding
 
@@ -267,8 +277,9 @@ reconstruction and the original can be shown and played on a common scale.
 - **CQT time resolution.** Because constant-Q analysis needs long windows at low
   frequencies, low-pitched transients are inherently smeared in time under `cqt`;
   `fft`/`logfft` localize time better at the cost of low-frequency resolution.
-- **Per-channel independence in Viterbi.** Channels are decoded independently after a
-  shared residual is formed, which is fast but not jointly optimal across channels.
+- **Per-channel independence in Viterbi.** Channels are decoded independently once the
+  assignment has settled their columns, which is fast but not jointly optimal across
+  channels.
 
 ## Appendix — key parameters and where things live
 

@@ -1,11 +1,11 @@
 from pathlib import Path
-from typing import AbstractSet, Dict, Final, Tuple
+from typing import AbstractSet, Dict, Final, List, Sequence, Tuple
 
 import numpy as np
 import pytest
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_core.audio import load_audio, mix, write_wave
+from sampletones_core.audio import mix, write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_CHANNEL_CAP, RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
@@ -29,6 +29,9 @@ from tests.integration.assets.reconstruction import (
 _TONE_FREQUENCY: Final[float] = 440.0
 _DURATION_SECONDS: Final[float] = 0.5
 _MIX_TOLERANCE: Final[float] = 1e-6  # float32 sums drift with accumulation order
+_DISJOINT_DURATION_SECONDS: Final[float] = 0.9
+_DISJOINT_TONES: Final[Tuple[float, ...]] = (220.0, 440.0, 880.0)
+_DISJOINT_AMPLITUDE: Final[float] = 0.5
 
 
 def _frame_count(config: Config, duration_seconds: float) -> int:
@@ -315,17 +318,22 @@ class TestRemovingAStem:
             ]
 
     def test_the_channels_it_alone_held_stand_by(self, tmp_path: Path) -> None:
-        """Under a cap of one, stem c alone sounds pulse 1 and noise, so both fall quiet with it.
+        """A channel every remaining recording passes over describes no frame at all.
 
-        A channel every remaining recording passes over describes no frame at all, which is what
-        tells it apart from a channel that plays.
+        The channels stem c alone sounded come from the recorded assignment, so the test states
+        what a removal does to them rather than which channels this material happened to reach.
         """
         reconstruction, _paths, _config = self._three_stems(tmp_path)
+        assignments = reconstruction.stems_data.assignments_by_channel
+        held_alone = tuple(
+            channel for channel, stem_ids in assignments.items() if set(stem_ids) - {RESTING_STEM_ID} == {STEM_C_ID}
+        )
+        assert held_alone
 
         remaining = without_stem(reconstruction, STEM_C_ID)
 
-        assert remaining.playing_channels == (ChannelName.PULSE2, ChannelName.TRIANGLE)
-        for channel in (ChannelName.PULSE1, ChannelName.NOISE):
+        assert set(remaining.playing_channels) == set(assignments) - set(held_alone)
+        for channel in held_alone:
             np.testing.assert_array_equal(
                 remaining.approximations[channel],
                 np.zeros_like(reconstruction.approximations[channel]),
@@ -363,7 +371,12 @@ class TestRemovingAStem:
 
 
 class TestStemsOriginalAudio:
-    def test_mixes_the_recorded_stems_into_one_original(self, tmp_path: Path) -> None:
+    def test_mixes_the_recorded_stems_at_the_balance_they_were_captured_in(self, tmp_path: Path) -> None:
+        """The recordings reach the original at the levels they hold relative to one another.
+
+        The set is scaled by one factor drawn from its mix, so the ratio between two recordings
+        survives loading and the mix reaches the full range.
+        """
         config = Config()
         library = build_mini_library(config)
         reconstructor = Reconstructor(config, library=library)
@@ -393,19 +406,15 @@ class TestStemsOriginalAudio:
 
         assert data.reconstruction.audio_filepath == (tone_path, noise_path)
         assert data.name == tmp_path.name
-        load_options = {
-            "target_sample_rate": config.library.sample_rate,
-            "normalize": config.general.normalize,
-            "quantize": config.general.quantize,
-        }
-        expected = mix(
-            [
-                load_audio(path=tone_path, **load_options),
-                load_audio(path=noise_path, **load_options),
-            ]
-        )
         assert data.original_audio is not None
-        np.testing.assert_allclose(data.original_audio, expected)
+        loaded_tone, loaded_noise = data.stem_audios
+        np.testing.assert_allclose(
+            np.max(np.abs(loaded_tone)) / np.max(np.abs(loaded_noise)),
+            np.max(np.abs(tone)) / np.max(np.abs(noise)),
+            rtol=1e-5,
+        )
+        np.testing.assert_allclose(data.original_audio, mix([loaded_tone, loaded_noise]), atol=_MIX_TOLERANCE)
+        np.testing.assert_allclose(np.max(np.abs(data.original_audio)), 1.0, rtol=1e-5)
 
 
 class TestClassicRunCarriesTheSingleEntryRecord:
@@ -438,6 +447,40 @@ class TestClassicRunCarriesTheSingleEntryRecord:
             assert set(stem_ids) <= {0}
             assert len(stem_ids) == len(reconstruction.instructions[channel])
 
+    def test_a_silent_stretch_rests_and_states_silence(self, tmp_path: Path) -> None:
+        """A source below the quietest renderable note leaves its channels resting there.
+
+        The frames it does sound in are answered as they always were, so the run keeps its shape
+        while the silence it holds reaches the streams as silence.
+        """
+        config = Config()
+        library = build_mini_library(config)
+        reconstructor = Reconstructor(config, library=library)
+
+        sample_rate = config.library.sample_rate
+        frame_length = config.library.frame_length
+        frames = int(sample_rate * _DURATION_SECONDS) // frame_length
+        sounding = range(frames // 2)
+        audio = np.zeros(frames * frame_length, dtype=np.float32)
+        span = slice(0, len(sounding) * frame_length)
+        time = np.arange(span.stop) / sample_rate
+        audio[span] = _DISJOINT_AMPLITUDE * np.sin(2 * np.pi * _TONE_FREQUENCY * time)
+        tone_path = tmp_path / "half_silent.wav"
+        write_wave(tone_path, sample_rate, audio)
+
+        reconstruction = reconstructor(tone_path)
+
+        assert reconstruction is not None
+        for channel, stem_ids in reconstruction.stems_data.assignments_by_channel.items():
+            assert set(stem_ids[: len(sounding)]) == {0}
+            assert set(stem_ids[len(sounding) :]) == {RESTING_STEM_ID}
+            for frame in range(len(sounding), frames):
+                assert not reconstruction.instructions[channel][frame].on
+                np.testing.assert_array_equal(
+                    reconstruction.approximations[channel][frame * frame_length : (frame + 1) * frame_length],
+                    np.zeros(frame_length, dtype=np.float32),
+                )
+
     def test_a_cap_of_one_leaves_every_frame_to_one_channel(self, tmp_path: Path) -> None:
         """One channel sounds per frame while the others rest, each keeping its place in the frame."""
         config = Config()
@@ -461,3 +504,95 @@ class TestClassicRunCarriesTheSingleEntryRecord:
 
         sounding = [sum(stem_ids[frame] == 0 for stem_ids in assignments.values()) for frame in range(frame_count)]
         assert sounding == [1] * frame_count
+
+
+class TestStemsCarryTheirOwnSound:
+    """Three recordings sounding one after another, never together.
+
+    Each stem is matched against its own recording, so the frames it holds fall inside the span
+    it sounds in and the channels stand quiet everywhere else. A stem heard on its own therefore
+    plays what was recorded on it.
+    """
+
+    def _recordings(self, config: Config, tmp_path: Path) -> Tuple[Tuple[Path, ...], List[range]]:
+        """Writes one recording per tone, each sounding over its own span of whole frames."""
+        sample_rate = config.library.sample_rate
+        frame_length = config.library.frame_length
+        frames = int(sample_rate * _DISJOINT_DURATION_SECONDS) // frame_length
+        span_frames = frames // len(_DISJOINT_TONES)
+
+        paths: List[Path] = []
+        spans: List[range] = []
+        for index, frequency in enumerate(_DISJOINT_TONES):
+            audio = np.zeros(frames * frame_length, dtype=np.float32)
+            start, stop = index * span_frames, (index + 1) * span_frames
+            samples = slice(start * frame_length, stop * frame_length)
+            time = np.arange(samples.stop - samples.start) / sample_rate
+            audio[samples] = _DISJOINT_AMPLITUDE * np.sin(2 * np.pi * frequency * time)
+            path = tmp_path / f"stem_{index}.wav"
+            write_wave(path, sample_rate, audio)
+            paths.append(path)
+            spans.append(range(start, stop))
+
+        return tuple(paths), spans
+
+    def _stems_config(self, channels: Sequence[ChannelName]) -> StemsConfig:
+        """Every stem may take every channel, each on a level of its own."""
+        return StemsConfig(
+            entries=[StemEntry(id=index, channels=list(channels)) for index in range(len(_DISJOINT_TONES))],
+            hierarchy=StemsHierarchy(
+                levels=[[index] for index in range(len(_DISJOINT_TONES))],
+                mode=HierarchyMode.ROUND_ROBIN,
+            ),
+            channel_cap=len(channels),
+        )
+
+    def _reconstruct(self, tmp_path: Path) -> Tuple[Reconstruction, List[range], Config]:
+        config = Config()
+        library = build_mini_library(config)
+        reconstructor = Reconstructor(config, library=library)
+        paths, spans = self._recordings(config, tmp_path)
+
+        reconstruction = reconstructor.reconstruct(list(paths), self._stems_config(config.generation.channels))
+
+        assert reconstruction is not None
+        return reconstruction, spans, config
+
+    def test_a_stem_holds_frames_only_where_its_recording_sounds(self, tmp_path: Path) -> None:
+        reconstruction, spans, _config = self._reconstruct(tmp_path)
+
+        assignments = reconstruction.stems_data.assignments_by_channel
+        assert assignments
+        for stem_ids in assignments.values():
+            for frame, stem_id in enumerate(stem_ids):
+                if stem_id != RESTING_STEM_ID:
+                    assert frame in spans[stem_id]
+
+    def test_every_stem_is_heard_where_its_recording_sounds(self, tmp_path: Path) -> None:
+        """Standing aside where a recording is silent leaves every sounding span answered."""
+        reconstruction, spans, _config = self._reconstruct(tmp_path)
+
+        assignments = reconstruction.stems_data.assignments_by_channel
+        for stem_id, span in enumerate(spans):
+            held = {
+                frame for stem_ids in assignments.values() for frame, holder in enumerate(stem_ids) if holder == stem_id
+            }
+            assert held == set(span)
+
+    def test_soloing_a_stem_sounds_nothing_outside_its_span(self, tmp_path: Path) -> None:
+        """A stem heard on its own falls silent beyond the span its recording sounds in.
+
+        The energy its channels put out there is the leakage, and it is what this measures.
+        """
+        reconstruction, spans, config = self._reconstruct(tmp_path)
+
+        frame_length = config.library.frame_length
+        assignments = reconstruction.stems_data.assignments_by_channel
+        for stem_id, span in enumerate(spans):
+            selection = StemSelection.everywhere(frozenset({stem_id}), list(assignments))
+            heard = ReconstructionData.from_reconstruction(reconstruction, name="disjoint").waveform_data(selection)
+            outside = np.array(heard.approximation, copy=True)
+            for frame in span:
+                outside[frame * frame_length : (frame + 1) * frame_length] = 0.0
+
+            assert float(np.sum(outside**2)) == 0.0

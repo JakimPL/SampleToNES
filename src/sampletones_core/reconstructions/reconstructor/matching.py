@@ -107,6 +107,10 @@ class FrameMatcher:
         scored.sort(key=lambda candidate: candidate.cost)
         return scored
 
+    def reference_energy(self, fragment: Fragment) -> float:
+        """How much sound a target holds, in the units the scoring measures its cost in."""
+        return self.scorer.reference_energy(fragment)
+
     def build_approximation(
         self,
         fragment: Fragment,

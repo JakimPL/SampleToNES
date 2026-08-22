@@ -18,7 +18,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy impo
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 
-from .conftest import greedy_baseline
+from .conftest import greedy_baseline, shared_frames
 
 RANDOM_SEEDS: Final[Tuple[int, ...]] = (11, 23, 47, 89, 131, 197)
 
@@ -47,7 +47,7 @@ class TestSingleStemEquivalence:
         stems_config = _config({0: channels}, [[0]], HierarchyMode.STRICT, len(channels))
 
         assignment = assign_frame(
-            synthetic_fragment,
+            shared_frames(synthetic_fragment, stems_config),
             stems_config,
             channels,
             matcher,
@@ -70,7 +70,7 @@ class TestSingleStemEquivalence:
         stems_config = _config({0: all_channels}, [[0]], HierarchyMode.STRICT, len(all_channels))
 
         assignment = assign_frame(
-            synthetic_fragment,
+            shared_frames(synthetic_fragment, stems_config),
             stems_config,
             all_channels,
             matcher,
@@ -102,7 +102,7 @@ class TestLatticeWidthLeavesOwnership:
         )
 
         narrow = assign_frame(
-            synthetic_fragment,
+            shared_frames(synthetic_fragment, stems_config),
             stems_config,
             all_channels,
             matcher,
@@ -110,7 +110,7 @@ class TestLatticeWidthLeavesOwnership:
             SINGLE_STATE_LATTICE_WIDTH,
         )
         wide = assign_frame(
-            synthetic_fragment,
+            shared_frames(synthetic_fragment, stems_config),
             stems_config,
             all_channels,
             matcher,
@@ -127,27 +127,28 @@ class TestLatticeWidthLeavesOwnership:
 
 
 class TestStrictDisjointStems:
-    def test_matches_sequential_per_subset_baselines(
+    def test_each_stem_answers_its_own_recording(
         self,
-        synthetic_fragment: Fragment,
+        audible_fragments: List[Fragment],
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
     ) -> None:
+        """Two stems sounding differently each answer their own frame over their own channels.
+
+        A stem's picks are the greedy reconstruction of the sound it contributes, so the channels
+        it holds carry that recording and the other stem takes no part in them.
+        """
+        assert len(audible_fragments) >= 2
+        first_fragment, second_fragment = audible_fragments[0], audible_fragments[-1]
         subset_pulse_triangle = {
             ChannelName.PULSE1: channels[ChannelName.PULSE1],
             ChannelName.TRIANGLE: channels[ChannelName.TRIANGLE],
         }
         subset_noise = {ChannelName.NOISE: channels[ChannelName.NOISE]}
 
-        baseline_first = greedy_baseline(synthetic_fragment, subset_pulse_triangle, matcher, extractor)
-        residual = synthetic_fragment
-        for candidate in baseline_first.values():
-            residual = extractor.subtract(residual, candidate.approximation)
-        baseline_second = greedy_baseline(residual, subset_noise, matcher, extractor)
-
-        expected = dict(baseline_first)
-        expected.update(baseline_second)
+        expected = dict(greedy_baseline(first_fragment, subset_pulse_triangle, matcher, extractor))
+        expected.update(greedy_baseline(second_fragment, subset_noise, matcher, extractor))
 
         stems_config = _config(
             {0: subset_pulse_triangle, 1: subset_noise},
@@ -157,7 +158,7 @@ class TestStrictDisjointStems:
         )
 
         assignment = assign_frame(
-            synthetic_fragment,
+            {0: first_fragment, 1: second_fragment},
             stems_config,
             channels,
             matcher,
@@ -186,7 +187,7 @@ class TestRandomizedDifferential:
         stems_config = _random_setup(rng, tuple(all_channels))
 
         assignment = assign_frame(
-            fragment,
+            shared_frames(fragment, stems_config),
             stems_config,
             all_channels,
             matcher,
@@ -194,7 +195,7 @@ class TestRandomizedDifferential:
             SINGLE_STATE_LATTICE_WIDTH,
         )
         repeat = assign_frame(
-            fragment,
+            shared_frames(fragment, stems_config),
             stems_config,
             all_channels,
             matcher,

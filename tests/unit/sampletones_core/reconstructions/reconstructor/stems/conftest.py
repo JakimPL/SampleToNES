@@ -14,6 +14,7 @@ from sampletones_core.generators import (
     get_remaining_generator_classes,
 )
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher, ScoredCandidate
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 
 
@@ -58,3 +59,12 @@ def greedy_baseline(
 def lattice_width() -> int:
     """The width a greedy decoder reads, which is what the equivalence baseline assumes."""
     return SINGLE_STATE_LATTICE_WIDTH
+
+
+def shared_frames(fragment: Fragment, stems_config: StemsConfig) -> Dict[int, Fragment]:
+    """The frame every stem of ``stems_config`` contributes, one entry apiece.
+
+    Stems sounding alike leave hierarchy order, the channel cap and tie resolution as the only
+    things deciding the frame, which is what a case using this states.
+    """
+    return {entry.id: fragment for entry in stems_config.entries}
