@@ -2,6 +2,8 @@ from pathlib import Path
 from typing import Final
 from unittest.mock import MagicMock
 
+import pytest
+
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.logic.main.converter import ConversionSuccess
@@ -31,6 +33,8 @@ def _coordinator(*, operation_active: bool) -> MainTabCoordinator:
     coordinator._language_manager = FakeLanguageManager()
     coordinator._on_reconstruct_file = MagicMock()
     coordinator._on_reconstruct_directory = MagicMock()
+    coordinator._converter_logic = MagicMock()
+    coordinator._converter_logic.stems_mode = False
     return coordinator
 
 
@@ -173,6 +177,7 @@ def _stems_coordinator(
 ) -> MainTabCoordinator:
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
     coordinator._is_operation_active = lambda: operation_active
+    coordinator._notify_converter_running = lambda: operation_active
     coordinator._dialogs = MagicMock()
     coordinator._language_manager = FakeLanguageManager()
     coordinator._converter_logic = MagicMock()
@@ -269,13 +274,15 @@ class TestDirectoryAdd:
         coordinator._converter_logic.add_sources.assert_not_called()
         coordinator._stem_selection_window.open.assert_not_called()
 
-    def test_a_classic_conversion_ignores_the_gesture(self, tmp_path: Path) -> None:
+    def test_a_classic_conversion_starts_gathering(self, tmp_path: Path) -> None:
+        """The gesture is what starts a stems conversion, so it turns the mode on to answer."""
         (tmp_path / "a.wav").touch()
         coordinator = _stems_coordinator(stems_mode=False)
 
         coordinator._on_directory_add_requested(tmp_path)
 
-        coordinator._converter_logic.add_sources.assert_not_called()
+        coordinator._converter_logic.set_stems_mode.assert_called_once_with(True)
+        assert coordinator._converter_logic.add_sources.call_args.args[0][0].name == "a.wav"
 
     def test_a_busy_application_ignores_the_gesture(self, tmp_path: Path) -> None:
         (tmp_path / "a.wav").touch()
@@ -284,3 +291,91 @@ class TestDirectoryAdd:
         coordinator._on_directory_add_requested(tmp_path)
 
         coordinator._converter_logic.add_sources.assert_not_called()
+
+
+class TestFileAdd:
+    """A recording added from the browser's menu joins a stems list, opening one where none stands."""
+
+    def test_a_recording_joins_the_list(self, tmp_path: Path) -> None:
+        recording = tmp_path / "bass.wav"
+        recording.touch()
+        coordinator = _stems_coordinator()
+
+        coordinator._on_file_add_requested(recording)
+
+        coordinator._converter_logic.add_sources.assert_called_once_with([recording])
+
+    def test_adding_from_a_classic_conversion_turns_stems_mode_on(self, tmp_path: Path) -> None:
+        recording = tmp_path / "bass.wav"
+        recording.touch()
+        coordinator = _stems_coordinator(stems_mode=False)
+
+        coordinator._on_file_add_requested(recording)
+
+        coordinator._converter_logic.set_stems_mode.assert_called_once_with(True)
+
+    def test_a_busy_application_ignores_the_gesture(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator(operation_active=True)
+
+        coordinator._on_file_add_requested(tmp_path / "bass.wav")
+
+        coordinator._converter_logic.add_sources.assert_not_called()
+
+
+class TestModifierAddAvailability:
+    """The modifier click reaches a stems list only while one stands ready to take a recording."""
+
+    def test_a_gathered_list_takes_the_click(self) -> None:
+        assert _stems_coordinator()._can_add_stems() is True
+
+    def test_a_classic_conversion_leaves_the_click_alone(self) -> None:
+        assert _stems_coordinator(stems_mode=False)._can_add_stems() is False
+
+    def test_a_busy_application_leaves_the_click_alone(self) -> None:
+        assert _stems_coordinator(operation_active=True)._can_add_stems() is False
+
+
+class TestReconstructLeavesStemsMode:
+    """A Reconstruct names what a classic conversion converts, so a gathered list is asked about."""
+
+    def _coordinator(self, *, stems_mode: bool) -> MainTabCoordinator:
+        coordinator = _stems_coordinator(stems_mode=stems_mode)
+        coordinator._on_reconstruct_file = MagicMock()
+        coordinator._on_reconstruct_directory = MagicMock()
+        return coordinator
+
+    def test_a_classic_conversion_reconstructs_straight_away(self, tmp_path: Path) -> None:
+        coordinator = self._coordinator(stems_mode=False)
+
+        coordinator._request_reconstruct_file(tmp_path / "a.wav")
+
+        coordinator._on_reconstruct_file.assert_called_once_with(tmp_path / "a.wav")
+        coordinator._dialogs.show_confirmation.assert_not_called()
+
+    @pytest.mark.parametrize("gesture", ["_request_reconstruct_file", "_request_reconstruct_directory"])
+    def test_a_gathered_list_is_asked_about_first(self, tmp_path: Path, gesture: str) -> None:
+        coordinator = self._coordinator(stems_mode=True)
+
+        getattr(coordinator, gesture)(tmp_path)
+
+        coordinator._on_reconstruct_file.assert_not_called()
+        coordinator._on_reconstruct_directory.assert_not_called()
+        assert coordinator._dialogs.show_confirmation.call_args.args[1] == DISCARD_STEMS_PROMPT_KEY
+
+    def test_confirming_leaves_stems_mode_and_converts(self, tmp_path: Path) -> None:
+        coordinator = self._coordinator(stems_mode=True)
+
+        coordinator._request_reconstruct_directory(tmp_path)
+        coordinator._dialogs.show_confirmation.call_args.args[3]()
+
+        coordinator._converter_logic.set_stems_mode.assert_called_once_with(False)
+        coordinator._on_reconstruct_directory.assert_called_once_with(tmp_path)
+
+    def test_declining_converts_nothing(self, tmp_path: Path) -> None:
+        coordinator = self._coordinator(stems_mode=True)
+
+        coordinator._request_reconstruct_directory(tmp_path)
+        coordinator._dialogs.show_confirmation.call_args.kwargs["on_cancel"]()
+
+        coordinator._converter_logic.set_stems_mode.assert_not_called()
+        coordinator._on_reconstruct_directory.assert_not_called()

@@ -8,6 +8,8 @@ class ExplorerElements(AbstractElement):
     CONTEXT_LOAD_LIBRARY = "context_load_library"
     CONTEXT_RECONSTRUCT_FILE = "context_reconstruct_file"
     CONTEXT_RECONSTRUCT_DIRECTORY = "context_reconstruct_directory"
+    CONTEXT_ADD_STEM = "context_add_stem"
+    CONTEXT_ADD_FOLDER_STEMS = "context_add_folder_stems"
     CONTEXT_SET_LIBRARY_DIRECTORY = "context_set_library_directory"
     CONTEXT_SET_OUTPUT_DIRECTORY = "context_set_output_directory"
     STATUS_REFRESH = "status_refresh"

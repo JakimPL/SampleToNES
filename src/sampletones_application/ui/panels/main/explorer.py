@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, List, Optional, Protocol, Tuple
+from typing import Any, Callable, List, Optional, Protocol, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -95,6 +95,8 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         self.on_wave_file_clicked: Optional[PathCallback] = None
         self.on_directory_clicked: Optional[PathCallback] = None
         self.on_directory_add_requested: Optional[PathCallback] = None
+        self.on_file_add_requested: Optional[PathCallback] = None
+        self.can_add_stems: Optional[Callable[[], bool]] = None
         self.on_reconstruct_directory: Optional[PathCallback] = None
         self.on_reconstruct_file: Optional[PathCallback] = None
         self.on_load_reconstruction: Optional[PathCallback] = None
@@ -333,12 +335,16 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         node: FileSystemNode,
         node_tag: str,
     ) -> None:
-        """Answers a click on a folder: Ctrl offers its recordings, a plain click opens it."""
+        """Answers a click on a folder: Ctrl offers its recordings to a stems list, else it opens.
+
+        The modifier reaches the stems list only while one is being gathered, so a Ctrl-click with
+        nothing to gather into opens the folder the way a plain click does.
+        """
         has_content = self._explorer_logic.has_relevant_content(node.filepath)
         if not has_content:
             return
 
-        if Modifier.CTRL in capture_modifiers():
+        if Modifier.CTRL in capture_modifiers() and self.query(self.can_add_stems, default=False):
             self.call(self.on_directory_add_requested, node.filepath)
             return
 
@@ -410,6 +416,10 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
                     label=self._language_manager["main.explorer.label.context_reconstruct_file"],
                     callback=lambda: self._context_reconstruct_file(node),
                 )
+                dpg.add_menu_item(
+                    label=self._language_manager["main.explorer.label.context_add_stem"],
+                    callback=lambda: self.call(self.on_file_add_requested, node.filepath),
+                )
 
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
@@ -430,6 +440,10 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         dpg.add_menu_item(
             label=self._language_manager["main.explorer.label.context_reconstruct_directory"],
             callback=lambda: self._context_reconstruct_directory(node),
+        )
+        dpg.add_menu_item(
+            label=self._language_manager["main.explorer.label.context_add_folder_stems"],
+            callback=lambda: self.call(self.on_directory_add_requested, node.filepath),
         )
 
     def _add_context_menu_set_directory_items(self, node: FileSystemNode) -> None:

@@ -229,6 +229,8 @@ class MainTabCoordinator:
             on_wave_file_clicked=self._on_wave_file_clicked,
             on_directory_clicked=self._on_directory_clicked,
             on_directory_add_requested=self._on_directory_add_requested,
+            on_file_add_requested=self._on_file_add_requested,
+            can_add_stems=self._can_add_stems,
             on_reconstruct_file=self._request_reconstruct_file,
             on_reconstruct_directory=self._request_reconstruct_directory,
             on_load_reconstruction=on_load_reconstruction,
@@ -296,13 +298,41 @@ class MainTabCoordinator:
         if self._notify_converter_running():
             return
 
-        self._on_reconstruct_file(filepath)
+        self._leaving_stems_mode(lambda: self._on_reconstruct_file(filepath))
 
     def _request_reconstruct_directory(self, directory_path: Path) -> None:
         if self._notify_converter_running():
             return
 
-        self._on_reconstruct_directory(directory_path)
+        self._leaving_stems_mode(lambda: self._on_reconstruct_directory(directory_path))
+
+    def _leaving_stems_mode(self, reconstruct: VoidCallback) -> None:
+        """Runs a conversion the browser asked for, asking first where it would drop a stems list.
+
+        A Reconstruct names one file or one folder, which is what a classic conversion converts, so
+        the gathered recordings are what the reader is being asked about. Declining leaves the
+        setup as it stands and starts nothing.
+        """
+        if not self._converter_logic.stems_mode:
+            reconstruct()
+            return
+
+        self._confirm_discarding_stems(lambda: self._reconstruct_without_stems(reconstruct))
+
+    def _reconstruct_without_stems(self, reconstruct: VoidCallback) -> None:
+        self._converter_logic.set_stems_mode(False)
+        reconstruct()
+
+    def _confirm_discarding_stems(self, on_confirm: VoidCallback) -> None:
+        self._dialogs.show_confirmation(
+            TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS,
+            self._language_manager["main.converter.message.discard_stems_prompt"],
+            self._language_manager["main.converter.title.discard_stems_dialog"],
+            on_confirm,
+            ok_label=self._language_manager["main.converter.label.discard_stems_button"],
+            cancel_label=self._language_manager["main.converter.label.keep_stems_button"],
+            on_cancel=self._converter_logic.refresh_view,
+        )
 
     def _notify_converter_running(self) -> bool:
         if not self._is_operation_active():
@@ -349,15 +379,19 @@ class MainTabCoordinator:
             self._converter_logic.set_stems_mode(stems_mode)
             return
 
-        self._dialogs.show_confirmation(
-            TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS,
-            self._language_manager["main.converter.message.discard_stems_prompt"],
-            self._language_manager["main.converter.title.discard_stems_dialog"],
-            lambda: self._converter_logic.set_stems_mode(False),
-            ok_label=self._language_manager["main.converter.label.discard_stems_button"],
-            cancel_label=self._language_manager["main.converter.label.keep_stems_button"],
-            on_cancel=self._converter_logic.refresh_view,
-        )
+        self._confirm_discarding_stems(lambda: self._converter_logic.set_stems_mode(False))
+
+    def _can_add_stems(self) -> bool:
+        """A stems list is being gathered and is free to take another recording."""
+        return self._converter_logic.stems_mode and not self._is_operation_active()
+
+    def _on_file_add_requested(self, filepath: Path) -> None:
+        """Gathers one recording into a stems conversion, opening one where none is being built."""
+        if self._is_operation_active():
+            return
+
+        self._converter_logic.set_stems_mode(True)
+        self._converter_logic.add_sources([filepath])
 
     def _on_directory_add_requested(self, directory_path: Path) -> None:
         """Offers a folder's recordings to a stems conversion, asking which ones where they overflow.
@@ -365,13 +399,14 @@ class MainTabCoordinator:
         Where the folder holds no more than the list has room for, every recording joins at once.
         A fuller folder raises the selection window, which shows what fits already ticked.
         """
-        if self._is_operation_active() or not self._converter_logic.stems_mode:
+        if self._is_operation_active():
             return
 
         candidates = top_level_audio_files(directory_path)
         if not candidates:
             return
 
+        self._converter_logic.set_stems_mode(True)
         room = self._converter_logic.room_for_sources
         if len(candidates) <= room:
             self._converter_logic.add_sources(candidates)
