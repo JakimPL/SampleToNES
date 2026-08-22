@@ -7,7 +7,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG_WINDOW
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.align import center_item, center_when_settled
+from sampletones_application.utils.gui.align import center_when_settled
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.types.callback import VoidCallback
@@ -33,9 +33,6 @@ class GUIWindow(GUIPanel, ABC):
     """
 
     _fits_content: bool = False
-
-    def center(self) -> None:
-        center_item(self.tag)
 
     def yield_to(self, raise_modal: VoidCallback) -> None:
         """Steps off screen and runs ``raise_modal`` a frame later, so what it raises can open.
@@ -95,16 +92,19 @@ class GUIWindow(GUIPanel, ABC):
             yield
 
     def show(self, *args: Any, **kwargs: Any) -> None:
+        """Builds this appearance's tree and centres it once the layout has measured it.
+
+        A window's size is known to DearPyGui only after a frame has drawn it, so the centre
+        waits for that frame to arrive on its own. Waiting for it in place would hold the render
+        thread, and a window is raised from wherever a result reaches the screen — including the
+        callback drain that runs between frames, where the frame being waited for is the one this
+        call is standing in the way of.
+        """
         self.hide()
         self.prepare(*args, **kwargs)
         self.create_window()
         ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG_WINDOW).bind_to_item(self.tag)
-        if self._fits_content:
-            center_when_settled(self.tag)
-            return
-
-        dpg.split_frame()
-        self.center()
+        center_when_settled(self.tag)
 
     def hide(self) -> None:
         self._teardown()

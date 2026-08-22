@@ -116,3 +116,42 @@ class TestModalHandOff:
             window.yield_to(MagicMock())
 
         assert dpg.get_item_children(TAG, 1)
+
+
+class TestRaisingAWindow:
+    """A window is raised from wherever a result reaches the screen, the callback drain between
+    frames included, so opening one waits on no frame."""
+
+    def test_opening_waits_on_no_frame(self, dpg_context: None) -> None:
+        window = ProbeWindow(on_close=None)
+
+        with (
+            patch(f"{MODULE}.ThemeRegistry"),
+            patch(f"{MODULE}.center_when_settled"),
+            patch.object(dpg, "split_frame") as split_frame,
+        ):
+            window.show()
+
+        split_frame.assert_not_called()
+
+    def test_opening_centres_the_window_once_it_has_been_measured(self, dpg_context: None) -> None:
+        window = ProbeWindow(on_close=None)
+
+        with (
+            patch(f"{MODULE}.ThemeRegistry"),
+            patch(f"{MODULE}.center_when_settled") as center_when_settled,
+        ):
+            window.show()
+
+        center_when_settled.assert_called_once_with(TAG)
+
+    def test_opening_builds_the_tree(self, dpg_context: None) -> None:
+        window = ProbeWindow(on_close=None)
+
+        with (
+            patch(f"{MODULE}.ThemeRegistry"),
+            patch(f"{MODULE}.center_when_settled"),
+        ):
+            window.show()
+
+        assert dpg.get_item_children(TAG, 1)

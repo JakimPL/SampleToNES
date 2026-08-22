@@ -69,6 +69,8 @@ This decouples widget construction (which happens during `create_panel()`) from 
 
 Services execute long-running work on background threads. Their results are posted to `CallbackQueue` with a priority, and the main-thread render loop drains the due results each frame within a per-frame time budget (`scheduling.queue_budget_seconds`), so a large backlog spreads across frames while rendering continues. Draining on the render thread keeps every callback's DPG work on the thread that owns the context. This is the only mechanism for crossing the thread boundary; applying a background result to UI state directly from the worker thread is forbidden.
 
+**The drain runs between frames, so a callback waits for none.** The render thread is inside the drain rather than inside a frame, which makes the next frame the drain's own to reach: `dpg.split_frame` there waits for what the wait itself prevents, and the application stops for good. Work that needs a drawn frame — reading a laid-out size, letting a configuration take effect — is scheduled through `FrameCallbackManager` and picked up when that frame arrives.
+
 ### 7. Construction flows from the composition root
 
 `Application.__init__` constructs the application graph — managers, controllers, shared services, coordinators, the shell — and wires their callbacks. A tab coordinator in turn constructs the panels, logic objects, and tab-scoped services it owns. Beyond these two sites, no component constructs another major component: every dependency arrives as a constructor argument, and none is obtained through a global lookup.
