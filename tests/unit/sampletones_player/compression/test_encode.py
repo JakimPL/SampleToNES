@@ -1,11 +1,14 @@
 from typing import Final, FrozenSet, Tuple
 
+import pytest
+
 from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.encode import emit, encode_planes
 from sampletones_player.compression.options import CodecOptions
 from sampletones_player.compression.planes.channel import ChannelPlanes
 from sampletones_player.compression.planes.song import SongPlanes
+from sampletones_player.compression.progress.report import CodecProgress
 from sampletones_player.compression.tokens.hold import HoldToken
 from sampletones_player.compression.tokens.literal import LiteralToken
 from sampletones_player.compression.tokens.phrase import PhraseToken
@@ -14,6 +17,8 @@ from sampletones_player.specification.compression import (
     PHRASE_ID_ESCAPE,
     TokenTag,
 )
+from sampletones_shared.exceptions import OperationCancelled
+from tests.suite.progress import FIRST_REPORT, RecordingReporter
 
 EVERY_LAYER: Final[CodecOptions] = CodecOptions(
     holds=True,
@@ -133,3 +138,62 @@ class TestEncodingASong:
         )
         assert len(compressed.streams) == len(planes.planes)
         assert compressed.ticks == planes.ticks
+
+
+class TestWhatAnEncodingSaysAboutItself:
+    """Compressing a song takes as long as the song decides, so it reports as it runs."""
+
+    def test_the_last_word_is_what_the_run_answered_with(self) -> None:
+        reporter: RecordingReporter[CodecProgress] = RecordingReporter()
+        planes = song_planes(TIMBRE * REPEATS, MOTIF * REPEATS)
+        compressed = encode_planes(
+            planes,
+            (),
+            options=EVERY_LAYER,
+            boundaries=NO_BOUNDARIES,
+            report=reporter,
+        )
+        assert reporter.last == CodecProgress(phrases=len(compressed.phrases), size=compressed.size)
+
+    def test_a_run_looks_up_often_enough_to_be_stopped(self) -> None:
+        """The stretch between two reports is one plane, so a withdrawal lands within one."""
+        reporter: RecordingReporter[CodecProgress] = RecordingReporter()
+        planes = song_planes(TIMBRE * REPEATS, MOTIF * REPEATS)
+        encode_planes(
+            planes,
+            (),
+            options=EVERY_LAYER,
+            boundaries=NO_BOUNDARIES,
+            report=reporter,
+        )
+        assert len(reporter.reports) > len(planes.planes)
+
+
+class TestWithdrawingAnEncoding:
+    """A caller that stops wanting the song stops the work producing it."""
+
+    def test_a_withdrawn_run_unwinds(self) -> None:
+        reporter: RecordingReporter[CodecProgress] = RecordingReporter(withdraw_at=FIRST_REPORT)
+        planes = song_planes(TIMBRE * REPEATS, MOTIF * REPEATS)
+        with pytest.raises(OperationCancelled):
+            encode_planes(
+                planes,
+                (),
+                options=EVERY_LAYER,
+                boundaries=NO_BOUNDARIES,
+                report=reporter,
+            )
+
+    def test_a_withdrawn_run_stops_where_it_was_told(self) -> None:
+        reporter: RecordingReporter[CodecProgress] = RecordingReporter(withdraw_at=FIRST_REPORT)
+        planes = song_planes(TIMBRE * REPEATS, MOTIF * REPEATS)
+        with pytest.raises(OperationCancelled):
+            encode_planes(
+                planes,
+                (),
+                options=EVERY_LAYER,
+                boundaries=NO_BOUNDARIES,
+                report=reporter,
+            )
+
+        assert len(reporter.reports) == FIRST_REPORT

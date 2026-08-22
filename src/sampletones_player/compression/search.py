@@ -7,6 +7,7 @@ from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.options import CodecOptions
 from sampletones_player.compression.parse.result import Parse
 from sampletones_player.compression.parse.song import parse_planes, parse_planes_offered
+from sampletones_player.compression.progress.monitor import CodecMonitor
 from sampletones_player.compression.tokens.literal import LiteralToken
 from sampletones_player.compression.tokens.sizes import phrase_size
 from sampletones_player.specification.compression import MAX_PHRASE_IDS
@@ -51,11 +52,13 @@ def _residue_spans(parse: Parse) -> List[_Span]:
 def _candidates(
     indices: Sequence[PlaneIndex],
     parses: Sequence[Parse],
+    monitor: CodecMonitor,
 ) -> Dict[bytes, List[_Occurrence]]:
     found: Dict[bytes, List[_Occurrence]] = {}
     gather = found.setdefault
     entries = 0
     for plane, (index, parse) in enumerate(zip(indices, parses)):
+        monitor.poll()
         differences = index.differences
         for span in _residue_spans(parse):
             if entries > MAX_CANDIDATE_ENTRIES:
@@ -108,9 +111,10 @@ def _ranked(
     indices: Sequence[PlaneIndex],
     parses: Sequence[Parse],
     phrase_id: int,
+    monitor: CodecMonitor,
 ) -> List[_Candidate]:
     ranked: List[_Candidate] = []
-    for key, occurrences in _candidates(indices, parses).items():
+    for key, occurrences in _candidates(indices, parses, monitor).items():
         if len(occurrences) < MIN_OCCURRENCES:
             continue
 
@@ -138,6 +142,7 @@ def search_phrases(
     table: PhraseTable,
     options: CodecOptions,
     boundaries: FrozenSet[int],
+    monitor: CodecMonitor,
 ) -> PhraseTable:
     """Fills the dictionary with the phrases the song's own planes repeat.
 
@@ -155,19 +160,24 @@ def search_phrases(
         table: The phrases the instruments seeded.
         options: Which of the codec's layers the encoding is built from.
         boundaries: The ticks a token starts on.
+        monitor: Carries the run's reckoning of itself onward.
 
     Returns:
         PhraseTable: The seeded phrases alongside the ones the search earned.
+
+    Raises:
+        OperationCancelled: If the run is no longer wanted.
     """
     indices = cache.indices
-    parses = parse_planes(cache, table, options, boundaries)
+    parses = parse_planes(cache, table, options, boundaries, monitor)
     total = _total(table, parses)
+    monitor.reached(len(table), total)
     for _ in range(MAX_SEARCH_ROUNDS):
         if len(table) == MAX_PHRASE_IDS:
             return table
 
         settled = False
-        for candidate in _ranked(indices, parses, len(table)):
+        for candidate in _ranked(indices, parses, len(table), monitor):
             offered = Phrase(body=candidate.body)
             enlarged = phrase_table(table.phrases + (offered,))
             trial = parse_planes_offered(
@@ -175,6 +185,7 @@ def search_phrases(
                 enlarged,
                 options,
                 boundaries,
+                monitor,
                 parses=parses,
                 offered=offered,
             )
@@ -182,6 +193,7 @@ def search_phrases(
                 table = enlarged
                 parses = trial
                 total = _total(enlarged, trial)
+                monitor.reached(len(table), total)
                 settled = True
                 break
 

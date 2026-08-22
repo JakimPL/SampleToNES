@@ -1,15 +1,17 @@
 from pathlib import Path
-from typing import FrozenSet, List, Optional
+from typing import Final, FrozenSet, List, Optional
 
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.progress import SILENT_REPORTER, ExportReporter, announce
 from sampletones_core.exports.request import (
     InstrumentExport,
     ProjectExport,
     SampleExport,
 )
 from sampletones_core.exports.scope import ExportScope
+from sampletones_core.exports.stage import ExportStage
 from sampletones_core.formats.famitracker.builder import build_instrument
 from sampletones_core.formats.famitracker.export import write_ftm
 from sampletones_core.formats.famitracker.instrument import write_fti
@@ -23,6 +25,9 @@ from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MO
 from sampletones_shared.utils.system.paths import get_filename
 
 SUPPORTED_SCOPES: FrozenSet[ExportScope] = frozenset(ExportScope)
+
+NOTHING_WRITTEN: Final[int] = 0
+ONE_FILE: Final[int] = 1
 
 
 class FamiTrackerBackend:
@@ -48,7 +53,9 @@ class FamiTrackerBackend:
         self,
         destination: Path,
         request: InstrumentExport,
+        report: ExportReporter = SILENT_REPORTER,
     ) -> ExportArtifact:
+        announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
         instrument = build_instrument(
             STANDALONE_INSTRUMENT_INDEX,
             request.name,
@@ -56,6 +63,7 @@ class FamiTrackerBackend:
             loop=request.loop,
         )
         write_fti(destination, instrument)
+        announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
 
         return ExportArtifact(
             paths=(destination,),
@@ -69,21 +77,26 @@ class FamiTrackerBackend:
         self,
         destination: Path,
         request: SampleExport,
+        report: ExportReporter = SILENT_REPORTER,
     ) -> ExportArtifact:
         destination.parent.mkdir(parents=True, exist_ok=True)
 
+        written = len(request.instruments)
+        announce(report, ExportStage.WRITING, NOTHING_WRITTEN, written)
+
         paths: List[Path] = []
         truncations: List[Optional[EnvelopeTruncation]] = []
-        for instrument in request.instruments:
+        for index, instrument in enumerate(request.instruments, start=ONE_FILE):
             filepath = destination.with_name(
                 get_filename(
                     instrument.name,
                     EXT_FILE_INSTRUMENT,
                 )
             )
-            artifact = self.write_instrument(filepath, instrument)
+            artifact = self.write_instrument(filepath, instrument, SILENT_REPORTER)
             paths.extend(artifact.paths)
             truncations.append(artifact.truncation)
+            announce(report, ExportStage.WRITING, index, written)
 
         return ExportArtifact(
             paths=tuple(paths),
@@ -94,6 +107,10 @@ class FamiTrackerBackend:
         self,
         destination: Path,
         request: ProjectExport,
+        report: ExportReporter = SILENT_REPORTER,
     ) -> ExportArtifact:
+        announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
         write_ftm(destination, request.project)
+        announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
+
         return ExportArtifact(paths=(destination,), truncation=None)

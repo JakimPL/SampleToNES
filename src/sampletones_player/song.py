@@ -9,6 +9,7 @@ from sampletones_player.clock.schedule import PlaySchedule
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.pitch import PitchTable
+from sampletones_player.compression.progress.report import SILENT_REPORTER, CodecReporter
 from sampletones_player.compression.song import compress_song, decompress_song
 from sampletones_player.registers.streams import ChannelStreams
 
@@ -44,6 +45,7 @@ class Song(BaseModel):
         schedule: PlaySchedule,
         loop_tick: Optional[int],
         seeds: Sequence[Phrase],
+        report: CodecReporter = SILENT_REPORTER,
     ) -> Song:
         """Compresses the register values a song plays into the song the console holds.
 
@@ -54,11 +56,14 @@ class Song(BaseModel):
             loop_tick: The tick the song returns to once it ends, or ``None`` where it stops
                 there.
             seeds: The phrases the song's instruments offer the dictionary.
+            report: Hears what the codec holds each time it looks up, and answers whether the
+                compression goes on.
 
         Returns:
             Song: The song as the console holds it.
 
         Raises:
+            OperationCancelled: If ``report`` withdraws the compression.
             ValueError: If ``loop_tick`` lies outside the song's ticks, or a channel sounds a
                 timer the pitch table states no index for.
         """
@@ -68,6 +73,7 @@ class Song(BaseModel):
                 pitches,
                 seeds=seeds,
                 loop_tick=loop_tick,
+                report=report,
             ),
             pitches=pitches,
             schedule=schedule,

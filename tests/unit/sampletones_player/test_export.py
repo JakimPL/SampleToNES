@@ -6,8 +6,10 @@ import pytest
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.progress import ExportProgress
 from sampletones_core.exports.request import InstrumentExport, ProjectExport
 from sampletones_core.exports.scope import ExportScope
+from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_player.export import NSFBackend
@@ -18,7 +20,7 @@ from sampletones_player.specification.nsf import (
     STRING_FIELD_SIZE,
     TITLE_OFFSET,
 )
-from sampletones_shared.exceptions import SongTooLargeError
+from sampletones_shared.exceptions import OperationCancelled, SongTooLargeError
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 from tests.suite.player import (
     PLAYER_REFERENCE_PITCH,
@@ -26,6 +28,7 @@ from tests.suite.player import (
     player_instrument,
     player_sample,
 )
+from tests.suite.progress import RecordingReporter, reported_stages
 
 NTSC_FREQUENCY: Final[int] = 60
 SOUNDING_TICKS: Final[int] = 8
@@ -34,6 +37,8 @@ OVERLONG_TICKS: Final[int] = PROGRAM_SIZE
 FILENAME: Final[str] = "reconstruction.nsf"
 SAMPLE_NAME: Final[str] = "Amen"
 PROJECT_TITLE: Final[str] = "Demo"
+WITHDRAWN_WHILE_WALKING: Final[int] = 1
+WITHDRAWN_WHILE_COMPRESSING: Final[int] = 2
 
 
 def lead_slice(name: str, frames: int) -> InstrumentExport:
@@ -172,3 +177,69 @@ class TestWriteProject:
         project = Project.create(title=PROJECT_TITLE, settings=ProjectSettings())
         with pytest.raises(NotImplementedError):
             backend.write_project(tmp_path / FILENAME, ProjectExport(project=project))
+
+
+class TestWhatARunSaysAboutItself:
+    """A program takes seconds to build, so the run names the work it is doing as it does it."""
+
+    def test_the_run_names_each_stage_in_the_order_it_reaches_it(
+        self,
+        backend: NSFBackend,
+        tmp_path: Path,
+    ) -> None:
+        reporter: RecordingReporter[ExportProgress] = RecordingReporter()
+        request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
+        backend.write_sample(tmp_path / FILENAME, request, reporter)
+        assert reported_stages(reporter.reports) == [
+            ExportStage.WALKING,
+            ExportStage.COMPRESSING,
+            ExportStage.WRITING,
+        ]
+
+    def test_the_compression_reports_the_bytes_it_has_laid_down(
+        self,
+        backend: NSFBackend,
+        tmp_path: Path,
+    ) -> None:
+        """A search ends where the song runs out of phrases that pay, so it counts bytes alone."""
+        reporter: RecordingReporter[ExportProgress] = RecordingReporter()
+        request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
+        backend.write_sample(tmp_path / FILENAME, request, reporter)
+        compressing = [report for report in reporter.reports if report.stage == ExportStage.COMPRESSING]
+        assert compressing and all(report.total is None for report in compressing)
+
+    def test_a_slice_reports_the_program_its_reconstruction_would(
+        self,
+        backend: NSFBackend,
+        tmp_path: Path,
+    ) -> None:
+        alone: RecordingReporter[ExportProgress] = RecordingReporter()
+        backend.write_instrument(tmp_path / FILENAME, lead_slice("lead", SOUNDING_TICKS), alone)
+        assert reported_stages(alone.reports)[0] == ExportStage.WALKING
+
+
+class TestWithdrawingARun:
+    """A caller that stops wanting the program is left with no file to open."""
+
+    def test_a_withdrawn_run_writes_nothing(self, backend: NSFBackend, tmp_path: Path) -> None:
+        destination = tmp_path / FILENAME
+        reporter: RecordingReporter[ExportProgress] = RecordingReporter(withdraw_at=WITHDRAWN_WHILE_WALKING)
+        request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
+        with pytest.raises(OperationCancelled):
+            backend.write_sample(destination, request, reporter)
+
+        assert not destination.exists()
+
+    def test_a_run_withdrawn_mid_compression_writes_nothing(
+        self,
+        backend: NSFBackend,
+        tmp_path: Path,
+    ) -> None:
+        destination = tmp_path / FILENAME
+        reporter: RecordingReporter[ExportProgress] = RecordingReporter(withdraw_at=WITHDRAWN_WHILE_COMPRESSING)
+        request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
+        with pytest.raises(OperationCancelled):
+            backend.write_sample(destination, request, reporter)
+
+        assert reporter.last.stage == ExportStage.COMPRESSING
+        assert not destination.exists()

@@ -9,15 +9,22 @@ from sampletones_core.exporters import Features
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.implementation.famitracker import FamiTrackerBackend
+from sampletones_core.exports.progress import ExportProgress
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.exports.scope import ExportScope
+from sampletones_core.exports.stage import ExportStage
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
+from sampletones_shared.exceptions import OperationCancelled
 from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
+from tests.suite.progress import RecordingReporter
 
 NES_FREQUENCY: Final[int] = 60
+ENVELOPE_FRAMES: Final[int] = 4
+AFTER_THE_FIRST_FILE: Final[int] = 2
+ONE_FILE: Final[int] = 1
 
 
 def build_features(frames: int, *, duty_cycle_frames: Optional[int] = None) -> Features:
@@ -168,3 +175,46 @@ class TestWriteSample:
         artifact = backend.write_sample(tmp_path / "Kick", request)
 
         assert artifact.truncation is None
+
+
+class TestWhatABatchSaysAboutItself:
+    """A reconstruction lands as a file per slice, so the run counts them as it writes them."""
+
+    def test_the_run_counts_every_slice_it_writes(self, backend: FamiTrackerBackend, tmp_path: Path) -> None:
+        reporter: RecordingReporter[ExportProgress] = RecordingReporter()
+        sample = build_sample(
+            "kit",
+            build_instrument("lead", ENVELOPE_FRAMES),
+            build_instrument("bass", ENVELOPE_FRAMES),
+        )
+        backend.write_sample(tmp_path / f"kit{EXT_FILE_INSTRUMENT}", sample, reporter)
+        assert reporter.last == ExportProgress(
+            stage=ExportStage.WRITING,
+            completed=len(sample.instruments),
+            total=len(sample.instruments),
+        )
+
+    def test_a_withdrawn_batch_leaves_the_slices_it_had_not_reached(
+        self,
+        backend: FamiTrackerBackend,
+        tmp_path: Path,
+    ) -> None:
+        reporter: RecordingReporter[ExportProgress] = RecordingReporter(withdraw_at=AFTER_THE_FIRST_FILE)
+        sample = build_sample(
+            "kit",
+            build_instrument("lead", ENVELOPE_FRAMES),
+            build_instrument("bass", ENVELOPE_FRAMES),
+        )
+        with pytest.raises(OperationCancelled):
+            backend.write_sample(tmp_path / f"kit{EXT_FILE_INSTRUMENT}", sample, reporter)
+
+        assert not (tmp_path / f"bass{EXT_FILE_INSTRUMENT}").exists()
+
+    def test_a_module_reports_the_one_file_it_writes(self, backend: FamiTrackerBackend, tmp_path: Path) -> None:
+        reporter: RecordingReporter[ExportProgress] = RecordingReporter()
+        backend.write_instrument(
+            tmp_path / f"lead{EXT_FILE_INSTRUMENT}",
+            build_instrument("lead", ENVELOPE_FRAMES),
+            reporter,
+        )
+        assert reporter.last == ExportProgress(stage=ExportStage.WRITING, completed=ONE_FILE, total=ONE_FILE)

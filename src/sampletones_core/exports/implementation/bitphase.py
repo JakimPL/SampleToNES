@@ -1,14 +1,16 @@
 from pathlib import Path
-from typing import FrozenSet, List
+from typing import Final, FrozenSet, List
 
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.progress import SILENT_REPORTER, ExportReporter, announce
 from sampletones_core.exports.request import (
     InstrumentExport,
     ProjectExport,
     SampleExport,
 )
 from sampletones_core.exports.scope import ExportScope
+from sampletones_core.exports.stage import ExportStage
 from sampletones_core.formats.bitphase.btp import write_btp
 from sampletones_core.formats.bitphase.builder import (
     instrument_to_bitphase,
@@ -23,6 +25,8 @@ DOCUMENT_SCOPES: FrozenSet[ExportScope] = frozenset(ExportScope)
 PRESET_SCOPES: FrozenSet[ExportScope] = frozenset({ExportScope.INSTRUMENT, ExportScope.SAMPLE})
 
 WHOLE_ENVELOPE: None = None
+NOTHING_WRITTEN: Final[int] = 0
+ONE_FILE: Final[int] = 1
 
 
 class BitphaseBackend:
@@ -49,24 +53,36 @@ class BitphaseBackend:
         self,
         destination: Path,
         request: InstrumentExport,
+        report: ExportReporter = SILENT_REPORTER,
     ) -> ExportArtifact:
+        announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
         write_btp(destination, instrument_to_bitphase(request))
+        announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
+
         return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE)
 
     def write_sample(
         self,
         destination: Path,
         request: SampleExport,
+        report: ExportReporter = SILENT_REPORTER,
     ) -> ExportArtifact:
+        announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
         write_btp(destination, sample_to_bitphase(request))
+        announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
+
         return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE)
 
     def write_project(
         self,
         destination: Path,
         request: ProjectExport,
+        report: ExportReporter = SILENT_REPORTER,
     ) -> ExportArtifact:
+        announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
         write_btp(destination, project_to_bitphase(request.project))
+        announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
+
         return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE)
 
 
@@ -94,26 +110,35 @@ class BitphasePresetBackend:
         self,
         destination: Path,
         request: InstrumentExport,
+        report: ExportReporter = SILENT_REPORTER,
     ) -> ExportArtifact:
+        announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
         write_preset(destination, instrument_to_preset(request))
+        announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
+
         return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE)
 
     def write_sample(
         self,
         destination: Path,
         request: SampleExport,
+        report: ExportReporter = SILENT_REPORTER,
     ) -> ExportArtifact:
         destination.parent.mkdir(parents=True, exist_ok=True)
 
+        written = len(request.instruments)
+        announce(report, ExportStage.WRITING, NOTHING_WRITTEN, written)
+
         paths: List[Path] = []
-        for instrument in request.instruments:
+        for index, instrument in enumerate(request.instruments, start=ONE_FILE):
             filepath = destination.with_name(
                 get_filename(
                     instrument.name,
                     EXT_FILE_JSON,
                 )
             )
-            paths.extend(self.write_instrument(filepath, instrument).paths)
+            paths.extend(self.write_instrument(filepath, instrument, SILENT_REPORTER).paths)
+            announce(report, ExportStage.WRITING, index, written)
 
         return ExportArtifact(paths=tuple(paths), truncation=WHOLE_ENVELOPE)
 
@@ -121,6 +146,7 @@ class BitphasePresetBackend:
         self,
         destination: Path,
         request: ProjectExport,
+        report: ExportReporter = SILENT_REPORTER,
     ) -> ExportArtifact:
         """Reports that a preset holds one instrument.
 

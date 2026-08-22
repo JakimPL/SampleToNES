@@ -91,7 +91,7 @@ them.
 | `nsf/` | The song block, the header and the `.nsf` file the console loads | `song.py`, `registers/`, `specification/`, `driver/` |
 | `driver/` | The assembled 6502 driver and the addresses its build reports | `specification/` |
 | `driver/assembler/` | The cc65 build: the layout, the toolchain, the linker map reader and the builder | `driver/`, `specification/` |
-| `export.py` | `NSFBackend` — the export seam answered in `.nsf` files, holding the driver every one of them carries | `builder.py`, `nsf/`, `driver/` |
+| `export.py` | `NSFBackend` — the export seam answered in `.nsf` files, holding the driver every one of them carries and saying which stage a run is in | `builder.py`, `nsf/`, `driver/`, `compression/` |
 
 ### The build toolchain is a developer tool
 
