@@ -3,15 +3,13 @@ from typing import Any
 
 import pytest
 
-from sampletones_application.logic.sequencer.playback.synthesizer import (
-    apply_modifiers,
-)
 from sampletones_core.constants.general import MAX_PITCH, MAX_VOLUME, MIN_PITCH
 from sampletones_core.instructions import (
     NoiseInstruction,
     PulseInstruction,
     TriangleInstruction,
 )
+from sampletones_core.performance import apply_modifiers
 from tests.suite.case import BaseRegularTestCase, BaseTestCase
 
 

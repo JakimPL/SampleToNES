@@ -10,12 +10,16 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
+from sampletones_core.project.project import Project
+from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.timers.utils import get_timer_table
+from sampletones_core.timing import SongTiming
 from sampletones_player.builder import (
     SONG_START,
     channel_instructions,
     instructions_from_instruments,
     loop_tick_from_instruments,
+    song_from_project,
     song_from_reconstruction,
     song_from_sample,
     streams_from_instructions,
@@ -26,6 +30,11 @@ from sampletones_player.specification.registers import (
     TRIANGLE_SOUNDING_RELOAD,
 )
 from sampletones_shared.music import Tuning
+from tests.suite.performance import (
+    make_pulse_reconstruction,
+    place_instrument,
+    project_with_sample,
+)
 from tests.suite.player import (
     PLAYER_FULL_VOLUME,
     PLAYER_REFERENCE_PITCH,
@@ -242,3 +251,62 @@ class TestSongFromSample:
         song = song_from_sample(player_sample("demo", (lead(loop=False),), nes_frequency=NTSC_FREQUENCY, tuning=tuning))
         timer = get_timer_table(tuning)[PLAYER_REFERENCE_PITCH]
         assert (song.streams.pulse1[0].timer_low, song.streams.pulse1[0].timer_high) == (timer & 0xFF, timer >> 8)
+
+
+ROWS_PER_PATTERN: Final[int] = 4
+SONG_SETTINGS: Final[ProjectSettings] = ProjectSettings(
+    tempo=150,
+    speed=6,
+    nes_frequency=NTSC_FREQUENCY,
+)
+
+
+def drum_project() -> Project:
+    """A one-frame project sounding a pulse envelope from the first row."""
+    project, sample = project_with_sample(
+        make_pulse_reconstruction(pitch=PLAYER_REFERENCE_PITCH, count=SOUNDING_TICKS),
+        rows_per_pattern=ROWS_PER_PATTERN,
+        settings=SONG_SETTINGS,
+    )
+    place_instrument(
+        project,
+        channel_name=ChannelName.PULSE1,
+        row_index=0,
+        sample=sample,
+    )
+    return project
+
+
+class TestSongFromProject:
+    """A whole project reaching the console as the four streams the driver plays."""
+
+    def test_the_song_lasts_the_ticks_the_projects_groove_gives_its_rows(self) -> None:
+        project = drum_project()
+        song = song_from_project(project, Tuning(), None)
+        groove = SongTiming.from_project(project).groove()
+        assert song.ticks == project.song.order_length() * groove.total_ticks
+
+    def test_the_schedule_follows_the_rate_the_project_states(self) -> None:
+        song = song_from_project(drum_project(), Tuning(), None)
+        assert song.schedule == PlaySchedule.from_parameters(SONG_SETTINGS.nes_frequency)
+
+    def test_every_channel_carries_the_songs_whole_length(self) -> None:
+        song = song_from_project(drum_project(), Tuning(), None)
+        assert len(song.streams.noise) == song.ticks
+        assert len(song.streams.triangle) == song.ticks
+
+    def test_a_pitch_reaches_the_timer_the_tuning_names(self) -> None:
+        song = song_from_project(drum_project(), Tuning(), None)
+        timer = get_timer_table(Tuning())[PLAYER_REFERENCE_PITCH]
+        assert (song.streams.pulse1[0].timer_low, song.streams.pulse1[0].timer_high) == (timer & 0xFF, timer >> 8)
+
+    def test_the_song_carries_the_loop_it_is_given(self) -> None:
+        song = song_from_project(drum_project(), Tuning(), SONG_START)
+        assert song.loop_tick == SONG_START
+
+    def test_a_frame_the_order_plays_twice_lasts_twice_as_long(self) -> None:
+        project = drum_project()
+        one_frame = song_from_project(project, Tuning(), None).ticks
+        project.song.append_frame()
+        project.song.set_order_entry(1, ChannelName.PULSE1, 0)
+        assert song_from_project(project, Tuning(), None).ticks == 2 * one_frame

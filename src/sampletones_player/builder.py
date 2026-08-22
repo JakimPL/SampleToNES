@@ -10,6 +10,8 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
+from sampletones_core.performance import song_instructions
+from sampletones_core.project.project import Project
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.clock.schedule import PlaySchedule
@@ -18,6 +20,7 @@ from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.registers.streams import ChannelStreams
 from sampletones_player.registers.triangle import TriangleRegisters
 from sampletones_player.song import Song
+from sampletones_shared.music import Tuning
 
 SONG_START: Final[int] = 0
 
@@ -205,4 +208,38 @@ def song_from_sample(request: SampleExport) -> Song:
         ),
         schedule=PlaySchedule.from_parameters(request.nes_frequency),
         loop_tick=loop_tick_from_instruments(request.instruments),
+    )
+
+
+def song_from_project(
+    project: Project,
+    tuning: Tuning,
+    loop_tick: Optional[int],
+) -> Song:
+    """Builds the song the console plays a whole project as.
+
+    The project's song is played out row by row into the instructions each channel sounds, so
+    what reaches the console is the arrangement itself rather than one reconstruction: the same
+    walk the sequencer sounds a song through, read as register values instead of audio. The
+    project states the rate the driver re-clocks those ticks by.
+
+    Args:
+        project: The project whose song is played.
+        tuning: Where concert pitch sits, which decides the timer each pitch sounds at.
+        loop_tick: The tick the song returns to once it ends, or ``None`` where it stops there.
+
+    Returns:
+        Song: The streams, the clock and the loop point as the player holds them.
+
+    Raises:
+        TypeError: If a channel's stream holds an instruction another channel sounds.
+        ValueError: If ``loop_tick`` lies outside the song's ticks.
+    """
+    return Song(
+        streams=streams_from_instructions(
+            song_instructions(project),
+            get_timer_table(tuning),
+        ),
+        schedule=PlaySchedule.from_parameters(project.settings.nes_frequency),
+        loop_tick=loop_tick,
     )

@@ -5,7 +5,6 @@ from typing import Dict, Final, Iterable, List, Sequence
 import numpy as np
 import pytest
 
-from sampletones_application.logic.sequencer.playback.synthesizer import SampleVoice
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.constants.general import MAX_VOLUME
@@ -16,6 +15,7 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
+from sampletones_core.performance import SampleVoice
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase

@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from typing import Self
 
 from sampletones_core.project import Project
+from sampletones_core.timing import SongTiming
 
 from .rates import EngineRates
-from .timing import SongTiming
 
 
 @dataclass(frozen=True)

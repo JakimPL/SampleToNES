@@ -10,17 +10,11 @@ from sampletones_application.logic.sequencer.channels import ALL_CHANNELS
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
-from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_core.instructions import (
-    NoiseInstruction,
-    PulseInstruction,
-    TriangleInstruction,
-)
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
-from tests.suite.stems import single_entry_stems_data
 
 
 def make_controller() -> ProjectController:
@@ -45,84 +39,6 @@ def make_synthesizer(
         config,
         active_channels=active_channels,
         sample_rate=lambda: sample_rate,
-    )
-
-
-def make_pulse_reconstruction(
-    *,
-    pitch: int = 60,
-    volume: int = 15,
-    count: int = 1,
-    held_features: Iterable[FeatureKey] = (),
-) -> Reconstruction:
-    """Single-channel reconstruction with ``count`` identical PulseInstructions.
-
-    ``held_features`` names the dimensions the instrument leaves to the channel, which is what
-    an envelope cleared in the instruments panel produces.
-    """
-    instructions = [PulseInstruction(on=True, pitch=pitch, volume=volume, duty_cycle=0)] * count
-    reconstruction = Reconstruction.create(
-        approximation=np.zeros(64, dtype=np.float32),
-        approximations={ChannelName.PULSE1: np.zeros(64, dtype=np.float32)},
-        instructions={ChannelName.PULSE1: instructions},
-        config=Config(),
-        coefficient=1.0,
-        audio_filepath=(Path("/dev/null"),),
-        stems_data=single_entry_stems_data(
-            list(Config().generation.channels),
-            {ChannelName.PULSE1: instructions},
-        ),
-    )
-    if held_features:
-        reconstruction.update_channel_data(
-            ChannelName.PULSE1,
-            list(instructions),
-            np.zeros(64, dtype=np.float32),
-            reconstruction.initial_pitches[ChannelName.PULSE1],
-            held_features,
-        )
-
-    return reconstruction
-
-
-def make_triangle_reconstruction(
-    *,
-    pitch: int = 60,
-    count: int = 1,
-) -> Reconstruction:
-    instructions = [TriangleInstruction(on=True, pitch=pitch)] * count
-    return Reconstruction.create(
-        approximation=np.zeros(64, dtype=np.float32),
-        approximations={ChannelName.TRIANGLE: np.zeros(64, dtype=np.float32)},
-        instructions={ChannelName.TRIANGLE: instructions},
-        config=Config(),
-        coefficient=1.0,
-        audio_filepath=(Path("/dev/null"),),
-        stems_data=single_entry_stems_data(
-            list(Config().generation.channels),
-            {ChannelName.TRIANGLE: instructions},
-        ),
-    )
-
-
-def make_noise_reconstruction(
-    *,
-    period: int = 3,
-    volume: int = 15,
-    count: int = 1,
-) -> Reconstruction:
-    instructions = [NoiseInstruction(on=True, period=period, volume=volume, short=False)] * count
-    return Reconstruction.create(
-        approximation=np.zeros(64, dtype=np.float32),
-        approximations={ChannelName.NOISE: np.zeros(64, dtype=np.float32)},
-        instructions={ChannelName.NOISE: instructions},
-        config=Config(),
-        coefficient=1.0,
-        audio_filepath=(Path("/dev/null"),),
-        stems_data=single_entry_stems_data(
-            list(Config().generation.channels),
-            {ChannelName.NOISE: instructions},
-        ),
     )
 
 

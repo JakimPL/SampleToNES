@@ -44,7 +44,7 @@ graph TD
 | `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, calibration, and these boundaries themselves — reached as package data rather than by import | — |
 | `sampletones_assets` | The application mark and the bundled fonts, with the code that draws the mark | `sampletones_shared` |
 | `sampletones_synthesis` | Analytic waveform synthesis: oscillators, envelopes, layers and voices | `sampletones_shared` |
-| `sampletones_core` | The reconstruction engine, the project model, and the tracker export formats | `sampletones_shared`, `sampletones_synthesis` |
+| `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats | `sampletones_shared`, `sampletones_synthesis` |
 | `sampletones_player` | The NES player: the register model, the re-clocking schedule, the 6502 driver and the NSF file | `sampletones_shared`, `sampletones_core` |
 | `sampletones_application` | The DearPyGui front end | `sampletones_shared`, `sampletones_core`, `sampletones_player` |
 | `sampletones` | The command-line entry point and the startup self-check | `sampletones_shared`, `sampletones_core`, `sampletones_application` |
@@ -56,6 +56,14 @@ and exported to a tracker with `sampletones_player` absent from the process, whi
 player's format move while the engine holds still. The consequence is that an export backend
 reaching the console — the seam `sampletones_core/exports/backend.py` describes — is registered
 from above rather than from the engine's own registry.
+
+**A song is played out once, for every reader of it.** Turning an arrangement into the
+instruction each channel sounds on each engine tick — the order walked frame by frame, a row's note
+column starting a sample, its transpose and volume bending what the sample carries, a looping sample
+wrapping where a one-shot falls silent — is `sampletones_core/performance/`. The sequencer renders
+those instructions to audio and the player encodes them into register values, so what a listener
+hears and what the console plays are the same walk read two ways rather than two implementations of
+one rule.
 
 **Equal temperament sits at the bottom.** The MIDI pitch limits and the A4 reference are
 `sampletones_shared/constants/music.py`, and the pitch-to-frequency conversion they govern is

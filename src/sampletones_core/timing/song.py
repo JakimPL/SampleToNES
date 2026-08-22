@@ -1,12 +1,11 @@
 from dataclasses import dataclass
 from typing import Self
 
-from sampletones_application.constants.playback import (
-    MAX_TICKS_PER_ROW,
-    MIN_TICKS_PER_ROW,
-)
 from sampletones_core.project import Project
-from sampletones_core.timing import Groove, Metre, RowRate, calculate_groove
+from sampletones_core.timing.bounds import MAX_TICKS_PER_ROW, MIN_TICKS_PER_ROW
+from sampletones_core.timing.groove import Groove, calculate_groove
+from sampletones_core.timing.metre import Metre
+from sampletones_core.timing.rate import RowRate
 
 
 @dataclass(frozen=True)
@@ -35,8 +34,8 @@ class SongTiming:
     def groove(self) -> Groove:
         """Spreads the row rate across a pattern's rows.
 
-        Playback follows whatever tempo the project states, so the one bound it sets is that
-        every row lasts at least a tick and keeps sounding; the ceiling is the fastest row the
+        A song runs at whatever tempo the project states, so the one bound that applies is that
+        every row lasts at least a tick and keeps sounding; the ceiling is the slowest row the
         settings can ask for, which leaves the groove free to realize the rate exactly.
         """
         return calculate_groove(

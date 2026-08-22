@@ -4,18 +4,17 @@ from typing import Final, Optional, Tuple
 import numpy as np
 import pytest
 
-from sampletones_application.constants.playback import MAX_TICKS_PER_ROW, MIN_TICKS_PER_ROW
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.timing import Metre, RowRate, TickClock, calculate_groove
+from sampletones_core.timing import MAX_TICKS_PER_ROW, MIN_TICKS_PER_ROW, Metre, RowRate, TickClock, calculate_groove
 from tests.suite.base import BaseTestSuite
+from tests.suite.performance import make_pulse_reconstruction
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
     add_sample,
     all_channels,
     make_controller,
-    make_pulse_reconstruction,
     make_synthesizer,
     place_row,
 )
