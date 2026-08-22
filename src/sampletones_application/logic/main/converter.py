@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, FrozenSet, Optional, Protocol, Sequence, Tuple
+from typing import Callable, Final, FrozenSet, Optional, Protocol, Sequence, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -47,6 +47,8 @@ from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import to_path
+
+SINGLE_JOB: Final[int] = 1
 
 
 @dataclass(frozen=True)
@@ -336,10 +338,7 @@ class ConverterLogic(CallbackMixin):
         self._system_progress.set(progress.completed, progress.total)
         eta_string = ETAEstimator.format_duration(progress.eta_seconds)
         total = max(progress.total, 1)
-        status_text = self._language_manager["main.converter.template.progress_template"].format(
-            progress.completed, progress.total
-        )
-
+        status_text = self._compose_progress_text(progress)
         if eta_string:
             status_text += self._language_manager["global.dialog.template.time_estimation"].format(
                 eta_string=eta_string
@@ -353,6 +352,28 @@ class ConverterLogic(CallbackMixin):
             progress.completed / total,
             input_path=display_input_path,
         )
+
+    def _compose_progress_text(self, progress: ServiceProgress[Path]) -> str:
+        """What the run is doing: the reconstruction being built, or how far a batch has come.
+
+        A batch is many reconstructions and a count says where it stands; a single job counts to
+        one, so it names the document it is writing instead.
+        """
+        if progress.total > SINGLE_JOB:
+            return self._language_manager["main.converter.template.progress_template"].format(
+                progress.completed, progress.total
+            )
+
+        return self._language_manager["main.converter.template.single_progress_template"].format(
+            self._reconstruction_name()
+        )
+
+    def _reconstruction_name(self) -> str:
+        """The document a single job writes, which is what a run of one is making."""
+        if self._output_path is not None:
+            return self._output_path.stem
+
+        return self._input_path.stem if self._input_path is not None else ""
 
     def _handle_library_progress(self, progress: TaskProgress) -> None:
         if self._phase != ConversionPhase.WAITING:

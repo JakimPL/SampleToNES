@@ -7,10 +7,11 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG_WINDOW
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.align import center_item
+from sampletones_application.utils.gui.align import center_item, center_when_settled
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.types.data import SerializedData
 
 
 class GUIWindow(GUIPanel, ABC):
@@ -26,7 +27,12 @@ class GUIWindow(GUIPanel, ABC):
     A dialog that raises another modal — a prompt, a countdown — hands the screen
     over with ``yield_to`` and takes it back with ``resume``, which is what keeps
     the two from competing for the one modal DearPyGui carries at a time.
+
+    A window holding prose of a length it learns at the moment it opens sets
+    ``_fits_content``, which lets it grow past the height it states.
     """
+
+    _fits_content: bool = False
 
     def center(self) -> None:
         center_item(self.tag)
@@ -60,25 +66,31 @@ class GUIWindow(GUIPanel, ABC):
     ) -> Iterator[None]:
         """Open this window's modal frame, with the block's widgets building inside it.
 
-        The window holds the width it states and fits its height to the content it is given, which
-        is what lets a field, a combo or a button stretch across it: a stretched item measures one
-        pixel inside the region it is offered, so a window sized from its own content would take
-        that pixel back on every frame. A stated width settles the geometry in one pass and gives
-        every dialog the same reading width whatever it holds.
+        The window holds the width it states, which is what lets a field, a combo or a button
+        stretch across it: a stretched item measures one pixel inside the region it is offered, so
+        a window sized from its own content would take that pixel back on every frame. A stated
+        width settles the geometry in one pass and gives every dialog the same reading width
+        whatever it holds.
+
+        A window that sets ``_fits_content`` reads its stated height as a floor and grows to hold
+        what it is given, so a prompt whose text wraps over several lines shows all of it.
 
         A dialog offers the title bar's close button when ``on_close`` names what closing means,
         and omits it otherwise, so the only way out of a window is one the window answers for.
         """
+        geometry: SerializedData = (
+            {"min_size": (self.width, self.height), "autosize": True} if self._fits_content else {"height": self.height}
+        )
         with dpg.window(
             tag=self.tag,
             label=label,
             width=self.width,
-            height=self.height,
             no_resize=True,
             no_collapse=True,
             no_close=on_close is None,
             on_close=on_close,
             modal=True,
+            **geometry,
         ):
             yield
 
@@ -87,6 +99,10 @@ class GUIWindow(GUIPanel, ABC):
         self.prepare(*args, **kwargs)
         self.create_window()
         ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG_WINDOW).bind_to_item(self.tag)
+        if self._fits_content:
+            center_when_settled(self.tag)
+            return
+
         dpg.split_frame()
         self.center()
 

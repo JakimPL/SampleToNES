@@ -71,6 +71,7 @@ class ConverterElements(AbstractElement):
     CANCEL_DIALOG = "cancel_dialog"
     CANCEL_PROMPT = "cancel_prompt"
     PROGRESS_TEMPLATE = "progress_template"
+    SINGLE_PROGRESS_TEMPLATE = "single_progress_template"
     CONVERT_LABEL_TEMPLATE = "convert_label_template"
     STEMS_MODE = "stems_mode"
     STEMS_MODE_TOOLTIP = "stems_mode_tooltip"

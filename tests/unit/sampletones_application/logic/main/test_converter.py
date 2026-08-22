@@ -9,6 +9,7 @@ from sampletones_application.logic.main.converter import (
     ConversionSuccess,
     ConverterLogic,
 )
+from sampletones_application.services.result import ServiceProgress
 from sampletones_application.view_model.main.converter import (
     ACTIVE_PHASES,
     ConversionPhase,
@@ -25,6 +26,9 @@ TEXTS: Final[Dict[str, str]] = {
     "main.converter.label.convert_directory_button": "Convert directory",
     "main.converter.label.cancel_button": "Cancel",
     "main.converter.template.convert_label_template": "{}: {}",
+    "main.converter.template.progress_template": "Progress: {}/{} files",
+    "main.converter.template.single_progress_template": "Reconstructing {}...",
+    "global.dialog.template.time_estimation": "",
 }
 
 
@@ -584,3 +588,34 @@ class TestStemsView:
 
         assert view_model.has_input is False
         assert view_model.convert_button_enabled is False
+
+
+class TestProgressText:
+    """A batch counts the files it has written; a single job names the reconstruction it is making."""
+
+    def _progress(self, completed: int, total: int) -> ServiceProgress[Path]:
+        return ServiceProgress(completed=completed, total=total, eta_seconds=None, current_item=None)
+
+    def _status(self, converter_logic: ConverterLogic) -> str:
+        view_model = converter_logic.on_view_changed.call_args.args[0]
+        return str(view_model.status_text)
+
+    def test_a_batch_counts_its_files(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._handle_progress_result(self._progress(2, 5))
+
+        assert self._status(converter_logic) == "Progress: 2/5 files"
+
+    def test_a_single_job_names_the_reconstruction_it_writes(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._output_path = Path("/reconstructions/track.stn")
+
+        converter_logic._handle_progress_result(self._progress(0, 1))
+
+        assert self._status(converter_logic) == "Reconstructing track..."
+
+    def test_a_single_job_falls_back_to_the_selected_input(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._output_path = None
+        converter_logic._input_path = Path("/audio/kick.wav")
+
+        converter_logic._handle_progress_result(self._progress(0, 1))
+
+        assert self._status(converter_logic) == "Reconstructing kick..."

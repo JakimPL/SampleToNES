@@ -30,6 +30,8 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
     the prompt.
     """
 
+    _fits_content = True
+
     def __init__(
         self,
         tag: str,

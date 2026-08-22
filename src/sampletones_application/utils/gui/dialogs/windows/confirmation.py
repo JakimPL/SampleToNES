@@ -35,6 +35,8 @@ class GUIConfirmationWindow(GUIDialogWindow):
     keyboard alone.
     """
 
+    _fits_content = True
+
     def __init__(
         self,
         tag: str,
