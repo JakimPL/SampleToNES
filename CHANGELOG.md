@@ -3,6 +3,8 @@
 ## v0.3.2
 
 * Added NSF player and export.
+* Added stems conversion: mix several recordings into one reconstruction
+* Added a per-source channel cap
 * Bumped the reconstruction data-version to `2.2` with backward compatibility for `2.1`.
 
 ## v0.3.1 [2026-08-18]

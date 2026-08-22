@@ -21,9 +21,21 @@ were last working in, and **Collapse all** folds them away again. The
 [instruction library](../concepts/instruction-library.md) for your settings is
 built automatically the first time it is needed, so you can convert straight away.
 While it runs, the panel names the file going in and where the result is going, and
-clicking either path shows it in your file manager. When a single file finishes,
-**Load** opens the result on the **Reconstructions** tab; **Cancel** stops a run, and
-only one runs at a time.
+clicking either path shows it in your file manager. When a run writes one
+reconstruction, **Load** opens it on the **Reconstructions** tab; a whole folder of
+them offers **Open** instead. **Cancel** stops a run, and only one runs at a time.
+
+**Stems mode** turns the card into a list: tick it, then click each recording you
+want mixed into one reconstruction, and Ctrl-click a folder to offer everything in
+it at once. Each row names its recording, the channels that recording may use, and
+a **Level** — the sources on level 1 choose their channels before those on level 2,
+so a lead can take what it needs before a pad does. **Order** decides how the levels
+take turns, and **x** takes a row out. Untick **Stems mode** and the first recording
+stays as your single selection.
+
+**Channels per source** caps how many channels one recording may hold in a single
+frame, and it applies to every conversion — one file, a whole folder, or a stems
+mix. Leaving it at one channel per source gives each recording a single voice.
 
 A few settings are worth knowing before you convert. Under **Reconstructor
 settings**, the **Channels** toggles choose which channels take part — at least
@@ -60,6 +72,12 @@ and unticking folds those rows back.
 **Collapse all**, beside the refresh button, folds the whole tree away in one
 click. Whatever you leave open is remembered, so the tree comes back the way you
 left it the next time you start the application.
+
+A reconstruction mixed from several recordings carries a **Stems** card listing
+each of them with the channels it took. Untick one and its frames fall silent
+everywhere at once — in the waveform, in playback, in the original audio, and in a
+WAV export — so you can hear what each recording contributed. The ticks are yours
+for the session; saving records the assignment, never the selection.
 
 To get your results out, use the **Reconstruction** menu. **Export instruments ▸
 FamiTracker instruments...** writes one `.fti` per channel, **Bitphase

@@ -33,6 +33,13 @@ the transform itself. The steps of one format form a chain, registered in
 after the version it writes — `compatibility/reconstruction/v2_2.py` carries
 the step that writes reconstruction data version 2.2.
 
+That step shows the shape a whole step takes: it names each stored stream and
+approximation by its channel, names the embedded config's channel selection the
+same way and stamps that config with the target version, lists the source audio
+as one path per stem, and synthesizes the stems record every 2.2 file carries —
+one stem covering every enabled channel and holding every frame the file plays,
+which is what the conversion that wrote the file did.
+
 ### A chain applies whole or not at all
 
 An upgrade runs only when the registered steps form a complete path from the
