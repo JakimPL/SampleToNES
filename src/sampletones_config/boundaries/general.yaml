@@ -7,4 +7,5 @@ groups:
   service_contracts:
     - sampletones_application.services.result
     - sampletones_application.services.render.result
+    - sampletones_application.services.export.result
     - sampletones_application.services.song_player.result

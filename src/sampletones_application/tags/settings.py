@@ -390,3 +390,51 @@ TAG_SETTINGS_PROPERTIES_BUTTON_CANCEL = TagName(
     Widget.BUTTON,
     "cancel",
 )
+TAG_SETTINGS_EXPORT_WINDOW = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.WINDOW,
+    "export",
+)
+TAG_SETTINGS_EXPORT_GROUP_STAGES = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.GROUP,
+    "stages",
+)
+TAG_SETTINGS_EXPORT_GROUP_MEASURED = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.GROUP,
+    "measured",
+)
+TAG_SETTINGS_EXPORT_GROUP_WORKING = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.GROUP,
+    "working",
+)
+TAG_SETTINGS_EXPORT_TEXT_STAGE = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.TEXT,
+    "stage",
+)
+TAG_SETTINGS_EXPORT_TEXT_FIGURE = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.TEXT,
+    "figure",
+)
+TAG_SETTINGS_EXPORT_PROGRESS = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.PROGRESS,
+    "export",
+)
+TAG_SETTINGS_EXPORT_BUTTON_CANCEL = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.BUTTON,
+    "cancel",
+)

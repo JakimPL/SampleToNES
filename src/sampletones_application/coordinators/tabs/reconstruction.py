@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 from typing import Callable, Dict, Optional, Sequence, Tuple
 
@@ -285,16 +286,21 @@ class ReconstructionTabCoordinator:
         )
 
     def _on_export_result(self, result: ExportResult) -> None:
+        """Reports a finished export in the words of the artefact it produced.
+
+        A run long enough to watch held a window while it ran, and DearPyGui carries one modal at
+        a time, so the report waits for the frame that draws the screen without it.
+        """
         messages = self._export_messages
         match result:
             case ExportSuccess(kind=ExportKind.WAV, filepath=fp):
-                self._dialogs.show_message_with_path(messages.wav_title, messages.wav_success, fp)
+                self._present_path(messages.wav_title, messages.wav_success, fp)
             case ExportSuccess(
                 kind=ExportKind.INSTRUMENT,
                 filepath=fp,
                 truncation=truncation,
             ):
-                self._dialogs.show_message_with_path(
+                self._present_path(
                     messages.status_title,
                     self._export_message(
                         messages.instrument_success,
@@ -308,7 +314,7 @@ class ReconstructionTabCoordinator:
                 filepath=fp,
                 truncation=truncation,
             ):
-                self._dialogs.show_message_with_path(
+                self._present_path(
                     messages.status_title,
                     self._export_message(
                         messages.instruments_success,
@@ -318,11 +324,19 @@ class ReconstructionTabCoordinator:
                     fp,
                 )
             case ExportError(kind=ExportKind.WAV, exception=exception):
-                self._dialogs.show_error(exception, messages.wav_failed)
+                self._present_error(exception, messages.wav_failed)
             case ExportError(kind=ExportKind.INSTRUMENT, exception=exception):
-                self._dialogs.show_error(exception, messages.instrument_failed)
+                self._present_error(exception, messages.instrument_failed)
             case ExportError(kind=ExportKind.SAMPLE, exception=exception):
-                self._dialogs.show_error(exception, messages.instruments_failed)
+                self._present_error(exception, messages.instruments_failed)
+
+    def _present_path(self, title: str, message: str, filepath: Path) -> None:
+        """Reports a written file once the frame the export window left the screen in has finished."""
+        FrameCallbackManager.set_frame_callback(partial(self._dialogs.show_message_with_path, title, message, filepath))
+
+    def _present_error(self, exception: Exception, message: str) -> None:
+        """Reports a failure once the frame the export window left the screen in has finished."""
+        FrameCallbackManager.set_frame_callback(partial(self._dialogs.show_error, exception, message))
 
     def _export_message(
         self,

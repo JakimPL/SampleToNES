@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -31,6 +32,7 @@ from sampletones_application.utils.file_dialogs.api import (
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.scope import ExportScope
@@ -295,26 +297,40 @@ class ProjectCoordinator:
         return True
 
     def _on_export_result(self, result: ExportResult) -> None:
-        """Reports a finished project export in the words of the format it was written in."""
+        """Reports a finished project export in the words of the format it was written in.
+
+        A run long enough to watch held a window while it ran, and DearPyGui carries one modal at
+        a time, so the report waits for the frame that draws the screen without it.
+        """
         match result:
             case ExportSuccess(
                 kind=ExportKind.PROJECT,
                 export_format=ExportFormat() as export_format,
             ):
-                self._dialogs.show_info(
-                    TAG_GLOBAL_DIALOG_MODULE_EXPORTED,
-                    self._message(EXPORT_PROJECT_ELEMENTS[export_format].exported_message),
-                    self._title(GlobalDialogTitleElements.PROJECT_EXPORTED),
+                self._present(
+                    partial(
+                        self._dialogs.show_info,
+                        TAG_GLOBAL_DIALOG_MODULE_EXPORTED,
+                        self._message(EXPORT_PROJECT_ELEMENTS[export_format].exported_message),
+                        self._title(GlobalDialogTitleElements.PROJECT_EXPORTED),
+                    )
                 )
             case ExportError(
                 kind=ExportKind.PROJECT,
                 export_format=ExportFormat() as export_format,
                 exception=exception,
             ):
-                self._dialogs.show_error(
-                    exception,
-                    self._message(EXPORT_PROJECT_ELEMENTS[export_format].export_failed_message),
+                self._present(
+                    partial(
+                        self._dialogs.show_error,
+                        exception,
+                        self._message(EXPORT_PROJECT_ELEMENTS[export_format].export_failed_message),
+                    )
                 )
+
+    def _present(self, raise_dialog: VoidCallback) -> None:
+        """Raises ``raise_dialog`` once the frame the export window left the screen in has finished."""
+        FrameCallbackManager.set_frame_callback(raise_dialog)
 
     def _guard_open(
         self,

@@ -6,6 +6,7 @@ import pytest
 
 from sampletones_application.categories.export import ExportMessages
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.coordinators.tabs import reconstruction as reconstruction_module
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
@@ -23,6 +24,7 @@ from sampletones_shared.exceptions import (
     LoadReconstructionError,
     UnhandledReconstructionError,
 )
+from sampletones_shared.types.callback import VoidCallback
 from tests.suite.language import FakeLanguageManager
 
 FILE_NOT_FOUND_KEY: Final[str] = "reconstructions.browser.message.file_not_found"
@@ -248,8 +250,18 @@ class TestRemoveTreeEntries:
 
 
 @pytest.fixture
-def export_coordinator() -> ReconstructionTabCoordinator:
-    """A coordinator with only the collaborators ``_on_export_result`` touches."""
+def export_coordinator(monkeypatch: pytest.MonkeyPatch) -> ReconstructionTabCoordinator:
+    """A coordinator with only the collaborators ``_on_export_result`` touches.
+
+    A report waits for the frame the export window leaves the screen in, so the wait is run
+    through at once and what the coordinator reports stays observable from the call that asks.
+    """
+
+    def run_now(callback: VoidCallback, frame_count: int = 1) -> None:
+        callback()
+
+    monkeypatch.setattr(reconstruction_module.FrameCallbackManager, "set_frame_callback", run_now)
+
     instance = object.__new__(ReconstructionTabCoordinator)
     instance._dialogs = MagicMock()
     instance._export_messages = ExportMessages.build(LanguageManager(LANG_EN))

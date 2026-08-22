@@ -16,6 +16,7 @@ from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.display import DisplayCoordinator
 from sampletones_application.coordinators.edit.router import EditRouter
+from sampletones_application.coordinators.export import SongExportCoordinator
 from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -35,6 +36,7 @@ from sampletones_application.coordinators.tabs.reconstruction import (
 from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
 from sampletones_application.exports import build_export_backends
 from sampletones_application.layout import LayoutConfig, load_layout_config
+from sampletones_application.logic.export import SongExportLogic
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.instruction.library_manager import (
@@ -104,6 +106,7 @@ from sampletones_application.ui.panels.dialogs.countdown import GUICountdownWind
 from sampletones_application.ui.panels.dialogs.display_settings import (
     GUIDisplaySettingsWindow,
 )
+from sampletones_application.ui.panels.dialogs.export import GUIExportWindow
 from sampletones_application.ui.panels.dialogs.keybindings import GUIKeybindingsWindow
 from sampletones_application.ui.panels.dialogs.project_properties import (
     GUIProjectPropertiesWindow,
@@ -148,6 +151,7 @@ from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
@@ -308,6 +312,13 @@ class Application:
             key_router=self.key_router,
             shortcut_source=self._shortcut_source,
             status_bar=self.status_bar,
+        )
+        self.export_window: GUIExportWindow = GUIExportWindow(
+            layout=self.layout.settings,
+            text_colors=self.layout.general.colors.text,
+            language_manager=self.language_manager,
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
         )
         self.project_properties_window: GUIProjectPropertiesWindow = GUIProjectPropertiesWindow(
             layout=self.layout.project_properties,
@@ -514,6 +525,22 @@ class Application:
             dialogs=self.dialogs,
             language_manager=self.language_manager,
             on_activity_changed=self._on_render_activity_changed,
+        )
+
+        self._export_logic = SongExportLogic(
+            self.export_service,
+            stage_labels={
+                ExportStage.WALKING: self.language_manager["settings.export.label.stage_walking"],
+                ExportStage.COMPRESSING: self.language_manager["settings.export.label.stage_compressing"],
+                ExportStage.WRITING: self.language_manager["settings.export.label.stage_writing"],
+            },
+            size_template=self.language_manager["settings.export.template.size"],
+            cancelling_label=self.language_manager["settings.export.message.status_cancelling"],
+        )
+
+        self._export_coordinator = SongExportCoordinator(
+            self._export_logic,
+            window=self.export_window,
         )
 
         self._shell = ApplicationShell(
@@ -1497,6 +1524,7 @@ class Application:
 
     def _exit_application(self) -> None:
         self._render_coordinator.cleanup()
+        self._export_coordinator.cleanup()
         stop_background_workers()
         self._playback_router.shutdown()
         self._main_tab.cleanup()
@@ -1554,6 +1582,7 @@ class Application:
             return
         finally:
             self._render_coordinator.cleanup()
+            self._export_coordinator.cleanup()
             stop_background_workers()
             self._playback_router.shutdown()
             self._main_tab.cleanup()

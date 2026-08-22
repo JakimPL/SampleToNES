@@ -97,3 +97,4 @@ class Panel(StrEnum):
     KEYBINDINGS = auto()
     PROPERTIES = auto()
     RENDER = auto()
+    EXPORT = auto()
