@@ -81,7 +81,6 @@ class ConverterElements(AbstractElement):
     HIERARCHY_MODE_TOOLTIP = "hierarchy_mode_tooltip"
     HIERARCHY_ROUND_ROBIN = "hierarchy_round_robin"
     HIERARCHY_STRICT = "hierarchy_strict"
-    STEM_REMOVE = "stem_remove"
     STEMS_EMPTY_HINT = "stems_empty_hint"
     CONVERT_STEMS_BUTTON = "convert_stems_button"
     DISCARD_STEMS_DIALOG = "discard_stems_dialog"
@@ -92,12 +91,7 @@ class ConverterElements(AbstractElement):
     STEM_SELECTION_PROMPT = "stem_selection_prompt"
     STEM_SELECTION_LIMIT = "stem_selection_limit"
     ADD_STEMS_BUTTON = "add_stems_button"
-    STATUS_STEM_REMOVE = "status_stem_remove"
     STATUS_STEMS_MODE = "status_stems_mode"
-    STEM_LEVEL_CAPTION = "stem_level_caption"
-    STEM_HANDLE = "stem_handle"
-    STEM_HANDLE_TOOLTIP = "stem_handle_tooltip"
-    STEM_INERT_TOOLTIP = "stem_inert_tooltip"
 
 
 class ConverterStemMoveElements(AbstractElement):

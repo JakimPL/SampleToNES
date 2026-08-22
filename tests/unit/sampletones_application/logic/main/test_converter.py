@@ -558,7 +558,7 @@ class TestStemsView:
 
         view_model = self._emitted(converter_logic)
 
-        assert [row.name for row in view_model.stem_sources] == ["a.wav", "b.wav"]
+        assert [row.name for row in view_model.stem_sources] == ["a", "b"]
         assert view_model.stems_mode is True
         assert view_model.has_input is True
 

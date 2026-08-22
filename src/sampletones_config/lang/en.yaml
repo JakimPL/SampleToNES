@@ -256,6 +256,19 @@ global.status.message.node_sample: "Click to {expand_or_collapse} the reconstruc
 global.status.message.retuning_samples: "Retuning samples..."
 
 # =============================================================================
+# Global — Stems
+# =============================================================================
+global.stems.template.level_caption: "Level {}"
+global.stems.label.handle: "::"
+global.stems.label.remove: "x"
+global.stems.message.handle_tooltip: "Drag onto another recording to share its level, or onto a gap to open a new one."
+global.stems.message.inert_tooltip: "This recording holds no channel, so it takes no part."
+global.stems.message.status_row: "{name} — right-click for the actions this recording answers."
+global.stems.message.status_channel: "Give {name} the {channel} channel, or take it back."
+global.stems.message.status_remove: "Take {name} out."
+global.stems.message.status_handle: "Drag {name} onto a row to share its level, or onto a gap for a level of its own."
+
+# =============================================================================
 # Global — Player
 # =============================================================================
 global.player.label.play: "Play"
@@ -361,7 +374,6 @@ main.converter.label.channel_cap: "Channels per source"
 main.converter.label.hierarchy_mode: "Order"
 main.converter.label.hierarchy_round_robin: "Round robin"
 main.converter.label.hierarchy_strict: "Strict"
-main.converter.label.stem_remove: "x"
 main.converter.label.convert_stems_button: "Convert stems"
 main.converter.label.discard_stems_button: "Keep the first"
 main.converter.label.keep_stems_button: "Stay in stems mode"
@@ -372,21 +384,16 @@ main.converter.message.hierarchy_mode_tooltip: "Round robin gives every level a 
 main.converter.message.stems_empty_hint: "Click recordings in the browser to gather the sources of one reconstruction."
 main.converter.message.discard_stems_prompt: "Leaving stems mode keeps the first recording and drops the rest. Continue?"
 main.converter.message.stem_selection_prompt: "Pick the recordings to add."
-main.converter.message.status_stem_remove: "Take this recording out of the conversion."
 main.converter.message.status_stems_mode: "Mix several recordings into one reconstruction."
 main.converter.title.discard_stems_dialog: "Leave stems mode?"
 main.converter.title.stem_selection_dialog: "Add recordings"
 main.converter.template.stem_selection_limit: "Room for {} more of the {} recordings found."
-main.converter.template.stem_level_caption: "Level {}"
-main.converter.label.stem_handle: "::"
 main.converter.label.context_move_up: "Move up"
 main.converter.label.context_move_down: "Move down"
 main.converter.label.context_join_above: "Join the level above"
 main.converter.label.context_join_below: "Join the level below"
 main.converter.label.context_isolate: "Put on its own level"
 main.converter.label.context_remove_stem: "Remove from the conversion"
-main.converter.message.stem_handle_tooltip: "Drag onto another recording to share its level, or onto a gap to open a new one."
-main.converter.message.stem_inert_tooltip: "This recording holds no channel, so it takes no part in the conversion."
 
 # =============================================================================
 # Main tab — Advanced

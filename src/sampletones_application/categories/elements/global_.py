@@ -55,6 +55,20 @@ class ContextElements(AbstractElement):
     SIZE_BYTES = "size_bytes"
 
 
+class StemsElements(AbstractElement):
+    """The vocabulary of a stems list, shared by every card that draws one."""
+
+    LEVEL_CAPTION = "level_caption"
+    HANDLE = "handle"
+    HANDLE_TOOLTIP = "handle_tooltip"
+    REMOVE = "remove"
+    INERT_TOOLTIP = "inert_tooltip"
+    STATUS_ROW = "status_row"
+    STATUS_CHANNEL = "status_channel"
+    STATUS_REMOVE = "status_remove"
+    STATUS_HANDLE = "status_handle"
+
+
 class NodeDetailElements(AbstractElement):
     SAMPLE_RATE = "detail_sample_rate"
     NES_FREQUENCY = "detail_nes_frequency"

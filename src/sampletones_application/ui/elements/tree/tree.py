@@ -49,6 +49,7 @@ from sampletones_application.tags.instructions import (
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import (
     add_detail_items,
+    add_path_menu_items,
     add_play_menu_item,
 )
 from sampletones_application.ui.elements.fonts.font import Font
@@ -110,7 +111,6 @@ from sampletones_shared.types.callback import (
     PathCallback,
     VoidCallback,
 )
-from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 NO_EXPANDED_ROWS: Final[FrozenSet[str]] = frozenset()
 
@@ -832,19 +832,7 @@ class GUITreePanel(GUIPanel, ABC):
         )
 
     def _add_context_menu_path_items(self, path: Path) -> None:
-        dpg.add_separator()
-        dpg.add_menu_item(
-            label=self._language_manager["global.context.label.copy_filename"],
-            callback=lambda: dpg.set_clipboard_text(str(path.name)),
-        )
-        dpg.add_menu_item(
-            label=self._language_manager["global.context.label.copy_path"],
-            callback=lambda: dpg.set_clipboard_text(str(path)),
-        )
-        dpg.add_menu_item(
-            label=self._language_manager["global.context.label.open_in_explorer"],
-            callback=lambda: open_path_in_explorer(path),
-        )
+        add_path_menu_items(self._language_manager, path)
 
     def _add_context_menu_sequencer_items(self, node: FileSystemNode) -> None:
         """Add the send-to-sequencer item, live while its host reports the sequencer accepts one."""

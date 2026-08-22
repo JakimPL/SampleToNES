@@ -292,12 +292,6 @@ TAG_MAIN_CONVERTER_WINDOW_STEMS = TagName(
     Widget.WINDOW,
     "stems",
 )
-TAG_MAIN_CONVERTER_GROUP_STEMS = TagName(
-    Page.MAIN,
-    Panel.CONVERTER,
-    Widget.GROUP,
-    "stems",
-)
 TAG_MAIN_CONVERTER_TEXT_STEMS_HINT = TagName(
     Page.MAIN,
     Panel.CONVERTER,
@@ -315,11 +309,6 @@ TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION = TagName(
     Panel.CONVERTER,
     Widget.WINDOW,
     "stem_selection",
-)
-PRE_MAIN_CONVERTER_STEM = compose_tag(
-    Page.MAIN,
-    Panel.CONVERTER,
-    "stem",
 )
 TAG_MAIN_CONVERTER_TEXT_STEM_SELECTION_LIMIT = TagName(
     Page.MAIN,
@@ -345,13 +334,13 @@ TAG_MAIN_CONVERTER_BUTTON_CANCEL_STEMS = TagName(
     Widget.BUTTON,
     "cancel_stems",
 )
+PRE_MAIN_CONVERTER_STEMS = compose_tag(
+    Page.MAIN,
+    Panel.CONVERTER,
+    "stems",
+)
 PRE_MAIN_CONVERTER_CANDIDATE = compose_tag(
     Page.MAIN,
     Panel.CONVERTER,
     "candidate",
-)
-PRE_MAIN_CONVERTER_LEVEL = compose_tag(
-    Page.MAIN,
-    Panel.CONVERTER,
-    "level",
 )

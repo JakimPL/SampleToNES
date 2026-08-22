@@ -5,6 +5,10 @@ from typing import Final, FrozenSet, Optional, Tuple
 from pydantic import BaseModel
 
 from sampletones_application.view_model.shared.percent import format_percent
+from sampletones_application.view_model.shared.stems import (
+    StemRowViewModel,
+    StemsListViewModel,
+)
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 
 
@@ -38,51 +42,6 @@ ACTIVE_PHASES: Final[FrozenSet[ConversionPhase]] = frozenset(
 )
 
 
-class StemSourceRow(BaseModel, frozen=True):
-    """One recording in the converter's stems list, as the panel renders it.
-
-    A row states where it stands — the level it picks on, the place it takes among the
-    recordings sharing that level, and how many of each the list holds — so the moves the panel
-    offers grey themselves out from the row alone.
-    """
-
-    path: Path
-    channels: FrozenSet[ChannelName]
-    level: int
-    position: int
-    level_size: int
-    level_count: int
-
-    @property
-    def name(self) -> str:
-        return self.path.name
-
-    @property
-    def takes_part(self) -> bool:
-        """The recording holds a channel, so the conversion mixes it and gives it a stem."""
-        return bool(self.channels)
-
-    @property
-    def is_first_on_level(self) -> bool:
-        return self.position == 0
-
-    @property
-    def is_last_on_level(self) -> bool:
-        return self.position == self.level_size - 1
-
-    @property
-    def has_level_above(self) -> bool:
-        return self.level > 0
-
-    @property
-    def has_level_below(self) -> bool:
-        return self.level < self.level_count - 1
-
-    @property
-    def alone_on_level(self) -> bool:
-        return self.level_size == 1
-
-
 class ConverterViewModel(BaseModel, frozen=True):
     """
     An immutable snapshot of converter state that defines what the panel is allowed to know.
@@ -101,7 +60,7 @@ class ConverterViewModel(BaseModel, frozen=True):
     is_file: bool
     other_operation_active: bool
     stems_mode: bool
-    stem_sources: Tuple[StemSourceRow, ...]
+    stem_sources: Tuple[StemRowViewModel, ...]
     enabled_channels: FrozenSet[ChannelName]
     channel_cap: int
     max_channel_cap: int
@@ -141,6 +100,15 @@ class ConverterViewModel(BaseModel, frozen=True):
         out costs the row no column at all.
         """
         return tuple(channel_name for channel_name in ChannelName.items() if channel_name in self.enabled_channels)
+
+    @property
+    def stems_list(self) -> StemsListViewModel:
+        """The gathered recordings as the stems list draws them, inert while a conversion runs."""
+        return StemsListViewModel(
+            rows=self.stem_sources,
+            channels_in_play=self.channels_in_play,
+            live=not self.is_active,
+        )
 
     @property
     def level_count(self) -> int:

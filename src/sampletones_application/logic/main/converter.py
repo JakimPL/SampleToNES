@@ -28,8 +28,8 @@ from sampletones_application.view_model.main.converter import (
     ACTIVE_PHASES,
     ConversionPhase,
     ConverterViewModel,
-    StemSourceRow,
 )
+from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
@@ -493,11 +493,16 @@ class ConverterLogic(CallbackMixin):
         if sources:
             self._output_path = group_output_path(self._config_manager.config, sources)
 
-    def _stem_rows(self, config: Config) -> Tuple[StemSourceRow, ...]:
-        """The gathered recordings as the panel reads them, each stating where it stands."""
+    def _stem_rows(self, config: Config) -> Tuple[StemRowViewModel, ...]:
+        """The gathered recordings as the panel reads them, each stating where it stands.
+
+        A gathered recording is named by its path, so the list reports every gesture under the
+        path it landed on.
+        """
         enabled = list(config.generation.channels)
         return tuple(
-            StemSourceRow(
+            StemRowViewModel(
+                key=str(source.path),
                 path=source.path,
                 channels=frozenset(effective_channels(source, enabled)),
                 level=level_index,

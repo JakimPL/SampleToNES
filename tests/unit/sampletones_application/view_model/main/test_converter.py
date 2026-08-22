@@ -8,8 +8,8 @@ from sampletones_application.view_model.main.converter import (
     ConversionPhase,
     ConverterAction,
     ConverterViewModel,
-    StemSourceRow,
 )
+from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 
 ENABLED_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(
@@ -25,9 +25,11 @@ def _row(
     position: int = 0,
     level_size: int = 1,
     level_count: int = 1,
-) -> StemSourceRow:
-    return StemSourceRow(
-        path=Path(f"/audio/{name}.wav"),
+) -> StemRowViewModel:
+    path = Path(f"/audio/{name}.wav")
+    return StemRowViewModel(
+        key=str(path),
+        path=path,
         channels=channels,
         level=level,
         position=position,
@@ -43,7 +45,7 @@ def _view_model(
     progress: float = 0.0,
     input_path: Optional[Path] = Path("/audio/sample.wav"),
     stems_mode: bool = False,
-    stem_sources: Tuple[StemSourceRow, ...] = (),
+    stem_sources: Tuple[StemRowViewModel, ...] = (),
     channel_cap: int = len(ENABLED_CHANNELS),
     max_sources: int = MAX_STEM_SOURCES,
 ) -> ConverterViewModel:
@@ -183,8 +185,8 @@ class TestStemsSection:
 
         assert view_model.can_add_source is True
 
-    def test_a_row_names_itself_by_its_file(self) -> None:
-        assert _row("bass").name == "bass.wav"
+    def test_a_row_names_itself_by_its_recording(self) -> None:
+        assert _row("bass").name == "bass"
 
     def test_a_row_holding_no_channel_offers_nothing_to_convert(self) -> None:
         view_model = _view_model(

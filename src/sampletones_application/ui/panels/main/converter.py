@@ -3,39 +3,29 @@ from typing import Any, Callable, Dict, FrozenSet, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.elements.main import ConverterStemMoveElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.conversion import MIN_CHANNEL_CAP
 from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.general.inputs import InputsLayout
+from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.tabs.main.converter import ConverterLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
-    SUF_BUTTON,
-    SUF_CHANNELS,
-    SUF_CHECKBOX,
-    SUF_GROUP,
-    SUF_HANDLE,
     SUF_HANDLER_REGISTRY,
-    SUF_STRIP,
-    SUF_TABLE,
-    SUF_TEXT,
     TAG_GLOBAL_THEME_DANGER_BUTTON,
     TAG_GLOBAL_THEME_PANEL_EMPHASIS,
     TAG_GLOBAL_THEME_PRIMARY_BUTTON,
 )
 from sampletones_application.tags.main import (
-    PRE_MAIN_CONVERTER_LEVEL,
-    PRE_MAIN_CONVERTER_STEM,
+    PRE_MAIN_CONVERTER_STEMS,
     TAG_MAIN_CONVERTER_BUTTON_ACTION,
     TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE,
     TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
     TAG_MAIN_CONVERTER_GROUP,
     TAG_MAIN_CONVERTER_GROUP_CONTROLS,
     TAG_MAIN_CONVERTER_GROUP_CONVERT,
-    TAG_MAIN_CONVERTER_GROUP_STEMS,
     TAG_MAIN_CONVERTER_GROUP_SUMMARY,
     TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP,
     TAG_MAIN_CONVERTER_PANEL,
@@ -52,14 +42,14 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_WINDOW_STEMS,
 )
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.context_menu import context_menu
+from sampletones_application.ui.elements.context_menu import add_path_menu_items, context_menu
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIDestinationPathText, GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
+from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.dpg import (
@@ -76,16 +66,14 @@ from sampletones_application.utils.gui.widgets import clamp_widget_value
 from sampletones_application.view_model.main.converter import (
     ConverterAction,
     ConverterViewModel,
-    StemSourceRow,
 )
+from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 
-RowShape = Tuple[Tuple[str, ...], Tuple[Tuple[str, int, bool], ...]]
 PathOffsetCallback = Callable[[Path, int], None]
 
-STEM_PAYLOAD: str = compose_tag(PRE_MAIN_CONVERTER_STEM, "payload")
 LEVEL_ABOVE: int = -1
 LEVEL_BELOW: int = 1
 POSITION_EARLIER: int = -1
@@ -97,13 +85,15 @@ class GUIConverterPanel(GUIPanel):
 
     In stems mode the card lists the recordings being gathered under the levels they pick on.
     A row is dragged by its handle onto another row to share that row's level, or onto the gap
-    between two levels to open one of its own; the row's menu names the same moves in words.
+    between two levels to open one of its own; the row's menu names the same moves in words and
+    offers the recording's own filesystem actions.
     """
 
     def __init__(
         self,
         *,
         layout: ConverterLayout,
+        stems_layout: StemsListLayout,
         inputs: InputsLayout,
         path_colors: PathColors,
         initial_collapsed: bool = False,
@@ -139,16 +129,19 @@ class GUIConverterPanel(GUIPanel):
         self._msg_destination = language_manager["global.status.message.destination"]
         self._msg_status_convert = language_manager["main.converter.message.status_convert"]
         self._status_action_message = self._msg_status_convert
-        self._level_template = language_manager["main.converter.template.stem_level_caption"]
         self._hierarchy_labels: Dict[HierarchyMode, str] = {
             HierarchyMode.ROUND_ROBIN: language_manager["main.converter.label.hierarchy_round_robin"],
             HierarchyMode.STRICT: language_manager["main.converter.label.hierarchy_strict"],
         }
         self._settings_handler_tag = compose_tag(TAG_MAIN_CONVERTER_PANEL, SUF_HANDLER_REGISTRY)
-        self._row_handler_tag = compose_tag(PRE_MAIN_CONVERTER_STEM, SUF_HANDLER_REGISTRY)
-        self._rows: Tuple[StemSourceRow, ...] = ()
-        self._channels_in_play: Tuple[ChannelName, ...] = ()
-        self._shape: RowShape = ((), ())
+        self._stems_list = GUIStemsList(
+            prefix=PRE_MAIN_CONVERTER_STEMS,
+            layout=stems_layout,
+            language_manager=language_manager,
+            status_bar=status_bar,
+            draggable=True,
+            removable=True,
+        )
 
         super().__init__(tag=TAG_MAIN_CONVERTER_PANEL)
         self._enable_vertical_collapse(initial_collapsed=initial_collapsed, auto_height=True)
@@ -170,6 +163,11 @@ class GUIConverterPanel(GUIPanel):
             self._create_summary()
             self._create_conversion_status()
 
+    @property
+    def stems_list(self) -> GUIStemsList:
+        """The list the gathered recordings are drawn in, which is what addresses their widgets."""
+        return self._stems_list
+
     def is_visible(self) -> bool:
         return bool(dpg.get_item_configuration(self.tag)["show"])
 
@@ -183,9 +181,6 @@ class GUIConverterPanel(GUIPanel):
     def _create_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._settings_handler_tag):
             dpg.add_item_deactivated_after_edit_handler(callback=self._on_channel_cap_edited)
-
-        with dpg.item_handler_registry(tag=self._row_handler_tag):
-            dpg.add_item_clicked_handler(callback=self._on_row_clicked)
 
     def _update_visibility(self, view_model: ConverterViewModel) -> None:
         dpg_configure_item(TAG_MAIN_CONVERTER_GROUP, show=view_model.subpanel_visible)
@@ -292,7 +287,13 @@ class GUIConverterPanel(GUIPanel):
                 wrap=0,
             )
             FontRegistry.bind_to_item(hint, Font.REGULAR_SMALL)
-            dpg.add_group(tag=TAG_MAIN_CONVERTER_GROUP_STEMS)
+            self._stems_list.create(TAG_MAIN_CONVERTER_WINDOW_STEMS)
+
+        self._stems_list.on_channels_changed = self._on_source_channels_changed
+        self._stems_list.on_remove_requested = self._on_source_removed
+        self._stems_list.on_menu_requested = self._show_row_menu
+        self._stems_list.on_dropped_on_row = self._on_dropped_on_source
+        self._stems_list.on_dropped_on_level = self._on_dropped_on_level
 
     def _update_setup(self, view_model: ConverterViewModel) -> None:
         dpg_set_value(TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE, view_model.stems_mode)
@@ -314,155 +315,7 @@ class GUIConverterPanel(GUIPanel):
     def _update_stems_list(self, view_model: ConverterViewModel) -> None:
         dpg_configure_item(TAG_MAIN_CONVERTER_WINDOW_STEMS, show=view_model.stems_mode)
         dpg_configure_item(TAG_MAIN_CONVERTER_TEXT_STEMS_HINT, show=view_model.source_count == 0)
-        self._rows = view_model.stem_sources
-        self._channels_in_play = view_model.channels_in_play
-        self._sync_stem_rows(view_model)
-        for level_index in range(view_model.level_count + 1):
-            dpg_set_value(self._level_tag(level_index, SUF_STRIP), False)
-
-        for row in view_model.stem_sources:
-            self._render_stem_row(row, view_model)
-
-    def _sync_stem_rows(self, view_model: ConverterViewModel) -> None:
-        """Rebuilds the bands when the recordings or the levels change, keeps them otherwise."""
-        shape = self._row_shape(view_model)
-        if shape == self._shape:
-            return
-
-        self._shape = shape
-        dpg.delete_item(TAG_MAIN_CONVERTER_GROUP_STEMS, children_only=True)
-        for level_index in range(view_model.level_count):
-            self._create_level_strip(level_index)
-            self._create_level_caption(level_index)
-            self._create_level_table(level_index, view_model)
-
-        if view_model.level_count:
-            self._create_level_strip(view_model.level_count)
-
-    @staticmethod
-    def _row_shape(view_model: ConverterViewModel) -> RowShape:
-        """What the bands are built from: the channels in play, and where each row stands."""
-        return (
-            tuple(str(channel_name) for channel_name in view_model.channels_in_play),
-            tuple((str(row.path), row.level, row.takes_part) for row in view_model.stem_sources),
-        )
-
-    def _create_level_strip(self, position: int) -> None:
-        """The gap a level is broken at: a recording dropped here takes a level of its own."""
-        dpg.add_selectable(
-            label="",
-            tag=self._level_tag(position, SUF_STRIP),
-            parent=TAG_MAIN_CONVERTER_GROUP_STEMS,
-            height=self._layout.level_strip_height,
-            user_data=position,
-            payload_type=STEM_PAYLOAD,
-            drop_callback=self._on_dropped_on_level,
-        )
-
-    def _create_level_caption(self, level_index: int) -> None:
-        caption = dpg.add_text(
-            self._level_template.format(level_index + 1).upper(),
-            tag=self._level_tag(level_index, SUF_TEXT),
-            parent=TAG_MAIN_CONVERTER_GROUP_STEMS,
-        )
-        FontRegistry.bind_to_item(caption, Font.MONO_SMALL)
-
-    def _create_level_table(self, level_index: int, view_model: ConverterViewModel) -> None:
-        with dpg.table(
-            tag=self._level_tag(level_index, SUF_TABLE),
-            parent=TAG_MAIN_CONVERTER_GROUP_STEMS,
-            header_row=False,
-            policy=dpg.mvTable_SizingFixedFit,
-            resizable=False,
-        ):
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.handle_width)
-            dpg.add_table_column(width_stretch=True)
-            for _channel_name in view_model.channels_in_play:
-                dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.channel_column_width)
-
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.remove_button_width)
-            for row in view_model.stem_sources:
-                if row.level == level_index:
-                    self._create_stem_row(row, view_model)
-
-    def _create_stem_row(self, row: StemSourceRow, view_model: ConverterViewModel) -> None:
-        with dpg.table_row(tag=self._row_tag(row.path, SUF_GROUP)):
-            self._create_row_handle(row)
-            self._create_row_name(row)
-            for channel_name in view_model.channels_in_play:
-                self._create_row_channel(row, channel_name)
-
-            self._create_row_remove(row)
-
-    def _create_row_handle(self, row: StemSourceRow) -> None:
-        handle = dpg.add_button(
-            label=self._language_manager["main.converter.label.stem_handle"],
-            tag=self._row_tag(row.path, SUF_HANDLE),
-            width=self._layout.handle_width,
-            user_data=row.path,
-            payload_type=STEM_PAYLOAD,
-            drop_callback=self._on_dropped_on_source,
-        )
-        with dpg.drag_payload(parent=handle, drag_data=str(row.path), payload_type=STEM_PAYLOAD):
-            dpg.add_text(row.name)
-
-        show_tooltip(handle, self._language_manager["main.converter.message.stem_handle_tooltip"])
-
-    def _create_row_name(self, row: StemSourceRow) -> None:
-        name = dpg.add_selectable(
-            label=row.name,
-            tag=self._row_tag(row.path, SUF_TEXT),
-            user_data=row.path,
-            payload_type=STEM_PAYLOAD,
-            drop_callback=self._on_dropped_on_source,
-        )
-        FontRegistry.bind_to_item(name, Font.REGULAR_SMALL)
-        dpg.bind_item_handler_registry(name, self._row_handler_tag)
-        show_tooltip(name, self._row_explanation(row))
-
-    def _create_row_channel(self, row: StemSourceRow, channel_name: ChannelName) -> None:
-        checkbox_tag = self._channel_tag(row.path, channel_name)
-        dpg.add_checkbox(
-            label=channel_label(self._language_manager, channel_name),
-            tag=checkbox_tag,
-            default_value=channel_name in row.channels,
-            user_data=row.path,
-            callback=self._on_source_channels_changed,
-        )
-        ThemeRegistry.get(CHANNEL_THEME_TAGS[channel_name]).bind_to_item(checkbox_tag)
-
-    def _create_row_remove(self, row: StemSourceRow) -> None:
-        remove = dpg.add_button(
-            label=self._language_manager["main.converter.label.stem_remove"],
-            tag=self._row_tag(row.path, SUF_BUTTON),
-            width=self._layout.remove_button_width,
-            user_data=row.path,
-            callback=self._on_source_removed,
-        )
-        self._status_bar.bind_to_item(
-            remove,
-            self._language_manager["main.converter.message.status_stem_remove"],
-        )
-
-    def _row_explanation(self, row: StemSourceRow) -> str:
-        """What the row's hover states: where the recording is, and where it holds no channel, why
-        it is greyed out."""
-        if row.takes_part:
-            return str(row.path)
-
-        return f"{row.path}\n{self._language_manager['main.converter.message.stem_inert_tooltip']}"
-
-    def _render_stem_row(self, row: StemSourceRow, view_model: ConverterViewModel) -> None:
-        live = not view_model.is_active
-        for channel_name in view_model.channels_in_play:
-            tag = self._channel_tag(row.path, channel_name)
-            dpg_configure_item(tag, enabled=live)
-            dpg_set_value(tag, channel_name in row.channels)
-
-        dpg_set_value(self._row_tag(row.path, SUF_TEXT), False)
-        dpg_configure_item(self._row_tag(row.path, SUF_TEXT), enabled=row.takes_part)
-        dpg_configure_item(self._row_tag(row.path, SUF_HANDLE), enabled=live)
-        dpg_configure_item(self._row_tag(row.path, SUF_BUTTON), enabled=live)
+        self._stems_list.update_view(view_model.stems_list)
 
     def _on_stems_mode_toggled(self, _sender: Sender, value: bool) -> None:
         self.call(self.on_stems_mode_changed, value)
@@ -476,44 +329,22 @@ class GUIConverterPanel(GUIPanel):
                 self.call(self.on_hierarchy_mode_changed, hierarchy_mode)
                 return
 
-    def _on_source_channels_changed(self, _sender: Sender, _value: bool, user_data: Path) -> None:
-        channels = frozenset(
-            channel_name
-            for channel_name in self._channels_in_play
-            if dpg.get_value(self._channel_tag(user_data, channel_name))
-        )
-        self.call(self.on_source_channels_changed, user_data, channels)
+    def _on_source_channels_changed(self, key: str, channels: FrozenSet[ChannelName]) -> None:
+        self.call(self.on_source_channels_changed, Path(key), channels)
 
-    def _on_source_removed(self, _sender: Sender, _app_data: Any, user_data: Path) -> None:
-        self.call(self.on_source_removed, user_data)
+    def _on_source_removed(self, key: str) -> None:
+        self.call(self.on_source_removed, Path(key))
 
-    def _on_dropped_on_source(self, sender: Sender, app_data: str) -> None:
-        """A recording was dropped on a row, so it joins that row's level at its place."""
-        target = dpg.get_item_user_data(sender)
-        if isinstance(target, Path):
-            self.call(self.on_source_dropped_on_source, Path(app_data), target)
+    def _on_dropped_on_source(self, key: str, target_key: str) -> None:
+        self.call(self.on_source_dropped_on_source, Path(key), Path(target_key))
 
-    def _on_dropped_on_level(self, sender: Sender, app_data: str) -> None:
-        """A recording was dropped in a gap, so it takes a level of its own there."""
-        position = dpg.get_item_user_data(sender)
-        if isinstance(position, int):
-            self.call(self.on_source_dropped_on_level, Path(app_data), position)
+    def _on_dropped_on_level(self, key: str, position: int) -> None:
+        self.call(self.on_source_dropped_on_level, Path(key), position)
 
-    def _on_row_clicked(self, _sender: Sender, app_data: Tuple[int, int]) -> None:
-        mouse_button, clicked_item = app_data
-        if mouse_button != dpg.mvMouseButton_Right:
-            return
-
-        path = dpg.get_item_user_data(clicked_item)
-        if isinstance(path, Path):
-            self._show_row_menu(path)
-
-    def _row_for(self, path: Path) -> Optional[StemSourceRow]:
-        return next((row for row in self._rows if row.path == path), None)
-
-    def _show_row_menu(self, path: Path) -> None:
-        """Names the moves the row can make, greying out the ones that would change nothing."""
-        row = self._row_for(path)
+    def _show_row_menu(self, key: str) -> None:
+        """Names the moves the row can make, greying out the ones that would change nothing,
+        and offers the recording's own filesystem actions below them."""
+        row = self._stems_list.row(key)
         if row is None:
             return
 
@@ -528,7 +359,9 @@ class GUIConverterPanel(GUIPanel):
                     callback=callback,
                 )
 
-    def _row_moves(self, row: StemSourceRow) -> List[Tuple[ConverterStemMoveElements, bool, VoidCallback]]:
+            add_path_menu_items(self._language_manager, row.path)
+
+    def _row_moves(self, row: StemRowViewModel) -> List[Tuple[ConverterStemMoveElements, bool, VoidCallback]]:
         path = row.path
         return [
             (
@@ -565,23 +398,6 @@ class GUIConverterPanel(GUIPanel):
 
     def _label(self, element: ConverterStemMoveElements) -> str:
         return self._language_manager[Page.MAIN, Panel.CONVERTER, TextType.LABEL, element]
-
-    @staticmethod
-    def _row_tag(path: Path, suffix: str) -> str:
-        return compose_tag(PRE_MAIN_CONVERTER_STEM, str(path), suffix)
-
-    @staticmethod
-    def _level_tag(level_index: int, suffix: str) -> str:
-        return compose_tag(PRE_MAIN_CONVERTER_LEVEL, str(level_index), suffix)
-
-    @classmethod
-    def _channel_tag(cls, path: Path, channel_name: ChannelName) -> str:
-        return compose_tag(
-            PRE_MAIN_CONVERTER_STEM,
-            str(path),
-            SUF_CHANNELS,
-            compose_tag(channel_name, SUF_CHECKBOX),
-        )
 
     def _create_action_button(self) -> None:
         self._theme_convert = ThemeRegistry.get(TAG_GLOBAL_THEME_PRIMARY_BUTTON)

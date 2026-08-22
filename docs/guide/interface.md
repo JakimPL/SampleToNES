@@ -40,7 +40,7 @@ The rows sit under **level** bands, and a level is a turn to choose: every recor
 on level 1 picks its channels before any on level 2, so a lead can take what it needs
 before a pad does. Drag a row by its handle onto another row to share that row's
 level, or onto the gap between two levels to give it a level of its own.
-Right-clicking a row names the same moves in words. **Order** decides how the levels
+Right-clicking a row names the same moves in words, alongside the recording's own actions — its name or path to the clipboard, and the file shown in your file manager. **Order** decides how the levels
 take turns — round by round, or one level filled before the next picks — and **x**
 takes a row out. Untick **Stems mode** and the first recording stays as your single
 selection.

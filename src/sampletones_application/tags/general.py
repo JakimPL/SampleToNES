@@ -729,3 +729,7 @@ SUF_COLLAPSE_STRIP = compose_tag("collapse", "strip")
 SUF_COLLAPSE_BODY = compose_tag("collapse", "body")
 SUF_COLLAPSE_RAIL = compose_tag("collapse", "rail")
 SUF_COLLAPSE_CHEVRON = compose_tag("collapse", "chevron")
+SUF_ROW = "row"
+SUF_LEVEL = "level"
+SUF_WELL = "well"
+SUF_PAYLOAD = "payload"
