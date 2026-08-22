@@ -144,9 +144,11 @@ parallel to the instruction streams. Every reconstruction carries one.
 
 The stems setup is built per conversion from the sources and the reader's
 choices and travels with the job; it is part of the request rather than of the
-standard configuration. The assignment is greedy per frame: continuity of *who*
-owns a channel across frames, and playback that decides per frame on the
-recorded streams, are future work.
+standard configuration. A source the reader left holding no channel takes no part:
+the recordings and the entries are derived in one pass, so such a source reaches
+neither, and the target stays what the covered channels can render. The assignment
+is greedy per frame: continuity of *who* owns a channel across frames, and playback
+that decides per frame on the recorded streams, are future work.
 
 ## The recorded stems in the application
 

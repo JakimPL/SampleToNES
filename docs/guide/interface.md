@@ -25,17 +25,32 @@ clicking either path shows it in your file manager. When a run writes one
 reconstruction, **Load** opens it on the **Reconstructions** tab; a whole folder of
 them offers **Open** instead. **Cancel** stops a run, and only one runs at a time.
 
-**Stems mode** turns the card into a list: tick it, then click each recording you
-want mixed into one reconstruction, and Ctrl-click a folder to offer everything in
-it at once. Each row names its recording, the channels that recording may use, and
-a **Level** — the sources on level 1 choose their channels before those on level 2,
-so a lead can take what it needs before a pad does. **Order** decides how the levels
-take turns, and **x** takes a row out. Untick **Stems mode** and the first recording
-stays as your single selection.
+**Stems mode** turns the card into a list of the recordings mixed into one
+reconstruction. Tick it and click each recording in the browser, or right-click one
+and choose **Add as stem** — that starts a stems conversion from a classic one in a
+single step. **Add folder as stems** offers everything in a folder, as does
+Ctrl-clicking it while you are gathering; where a folder holds more recordings than
+the list has room for, you pick which ones.
+
+Each row names its recording and carries a checkbox per channel that recording may
+use. Untick them all and the row greys out: that recording takes no part in the
+conversion, and its row stays listed so you can bring it back.
+
+The rows sit under **level** bands, and a level is a turn to choose: every recording
+on level 1 picks its channels before any on level 2, so a lead can take what it needs
+before a pad does. Drag a row by its handle onto another row to share that row's
+level, or onto the gap between two levels to give it a level of its own.
+Right-clicking a row names the same moves in words. **Order** decides how the levels
+take turns — round by round, or one level filled before the next picks — and **x**
+takes a row out. Untick **Stems mode** and the first recording stays as your single
+selection.
 
 **Channels per source** caps how many channels one recording may hold in a single
 frame, and it applies to every conversion — one file, a whole folder, or a stems
 mix. Leaving it at one channel per source gives each recording a single voice.
+
+Reconstructing a file or a folder from the browser converts that one thing, so while
+you are gathering stems it asks before dropping the list.
 
 A few settings are worth knowing before you convert. Under **Reconstructor
 settings**, the **Channels** toggles choose which channels take part — at least
