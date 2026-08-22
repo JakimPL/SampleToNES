@@ -84,6 +84,7 @@ them.
 | `specification/` | The register addresses, control bits, offsets and address constants the format is written by, one module per subject | — |
 | `clock/` | `PlaySchedule` and `FixedPointStep` — the engine ticks one play call advances a stream by | `specification/` |
 | `registers/` | The per-tick register values each channel plays, and the four streams together | `specification/` |
+| `compression/` | The planes a song separates into, the dictionary its tokens name, and the codec that reads them both ways | `specification/`, `registers/` |
 | `song.py` | `Song` — the streams, the schedule and the loop point as one value | `clock/`, `registers/` |
 | `builder.py` | The song a reconstruction or an export request plays as, its instructions encoded and its rate scheduled | `song.py`, `registers/`, `clock/` |
 | `trace/` | `RegisterTrace` — what the driver is expected to write, call by call | `song.py`, `specification/` |

@@ -1,65 +1,20 @@
-from typing import Dict, Final, List, Mapping, Optional, Sequence, Type
+from typing import Dict, Final, Mapping, Optional, Sequence
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.maps import CHANNEL_TO_EXPORTER_MAP
 from sampletones_core.exports.request import InstrumentExport, SampleExport
-from sampletones_core.instructions import (
-    InstructionT,
-    InstructionUnion,
-    NoiseInstruction,
-    PulseInstruction,
-    TriangleInstruction,
-)
+from sampletones_core.instructions import InstructionUnion
 from sampletones_core.performance import song_instructions
 from sampletones_core.project.project import Project
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.clock.schedule import PlaySchedule
-from sampletones_player.registers.noise import NoiseRegisters
-from sampletones_player.registers.pulse import PulseRegisters
+from sampletones_player.registers.channel import channel_registers
 from sampletones_player.registers.streams import ChannelStreams
-from sampletones_player.registers.triangle import TriangleRegisters
 from sampletones_player.song import Song
 from sampletones_shared.music import Tuning
 
 SONG_START: Final[int] = 0
-
-
-def channel_instructions(
-    instructions: Sequence[InstructionUnion],
-    instruction_type: Type[InstructionT],
-) -> List[InstructionT]:
-    """One channel's stream, read as the instruction type that channel sounds.
-
-    A reconstruction holds a stream for every channel, and a channel standing by holds one
-    describing no frame. Such a channel reaches the player resting for a single tick, which is
-    the shortest stream a song lays its records out from.
-
-    Args:
-        instructions: The channel's stream, as the reconstruction holds it.
-        instruction_type: The instruction type the channel's encoder reads.
-
-    Returns:
-        List[InstructionT]: The stream, covering at least one tick.
-
-    Raises:
-        TypeError: If the stream holds an instruction another channel sounds.
-    """
-    typed: List[InstructionT] = []
-    for instruction in instructions:
-        if not isinstance(instruction, instruction_type):
-            raise TypeError(
-                f"a {instruction_type.__name__} stream holds {type(instruction).__name__} "
-                f"{instruction.name}, which another channel sounds"
-            )
-
-        typed.append(instruction)
-
-    if typed:
-        return typed
-
-    resting: InstructionT = instruction_type.null_instruction()
-    return [resting]
 
 
 def streams_from_instructions(
@@ -81,28 +36,11 @@ def streams_from_instructions(
     Raises:
         TypeError: If a channel's stream holds an instruction another channel sounds.
     """
-    pulse1 = channel_instructions(
-        instructions.get(ChannelName.PULSE1, ()),
-        PulseInstruction,
-    )
-    pulse2 = channel_instructions(
-        instructions.get(ChannelName.PULSE2, ()),
-        PulseInstruction,
-    )
-    triangle = channel_instructions(
-        instructions.get(ChannelName.TRIANGLE, ()),
-        TriangleInstruction,
-    )
-    noise = channel_instructions(
-        instructions.get(ChannelName.NOISE, ()),
-        NoiseInstruction,
-    )
-
     return ChannelStreams(
-        pulse1=tuple(PulseRegisters.from_instructions(pulse1, timer_table)),
-        pulse2=tuple(PulseRegisters.from_instructions(pulse2, timer_table)),
-        triangle=tuple(TriangleRegisters.from_instructions(triangle, timer_table)),
-        noise=tuple(NoiseRegisters.from_instructions(noise)),
+        pulse1=channel_registers(ChannelName.PULSE1, instructions, timer_table),
+        pulse2=channel_registers(ChannelName.PULSE2, instructions, timer_table),
+        triangle=channel_registers(ChannelName.TRIANGLE, instructions, timer_table),
+        noise=channel_registers(ChannelName.NOISE, instructions, timer_table),
     )
 
 

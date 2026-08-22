@@ -16,7 +16,6 @@ from sampletones_core.timers.utils import get_timer_table
 from sampletones_core.timing import SongTiming
 from sampletones_player.builder import (
     SONG_START,
-    channel_instructions,
     instructions_from_instruments,
     loop_tick_from_instruments,
     song_from_project,
@@ -82,24 +81,6 @@ def bass(*, loop: bool) -> InstrumentExport:
         nes_frequency=NTSC_FREQUENCY,
         loop=loop,
     )
-
-
-class TestChannelInstructions:
-    """A channel's stream read as the instruction type its encoder takes."""
-
-    def test_a_stream_of_the_channels_own_type_passes_through(self) -> None:
-        instructions = melody()
-        assert channel_instructions(instructions, PulseInstruction) == instructions
-
-    def test_a_channel_describing_no_frame_rests_for_a_tick(self) -> None:
-        assert channel_instructions([], PulseInstruction) == [PulseInstruction.null_instruction()]
-
-    def test_a_resting_channel_rests_in_its_own_type(self) -> None:
-        assert channel_instructions([], NoiseInstruction) == [NoiseInstruction.null_instruction()]
-
-    def test_a_stream_of_another_channels_type_raises(self) -> None:
-        with pytest.raises(TypeError):
-            channel_instructions(melody(), TriangleInstruction)
 
 
 class TestStreamsFromInstructions:

@@ -1,5 +1,5 @@
 .PHONY: help setup install build release system-deps run clean pre-commit test \
-	ftm-samples nsf-samples nsf-render icons player check-import-boundary check-tag-names check-unused-tags \
+	ftm-samples nsf-samples nsf-render compression-report icons player check-import-boundary check-tag-names check-unused-tags \
 	check-language-keys check-palette-colors calibration lint pylint mypy format
 
 ifeq ($(OS),Windows_NT)
@@ -72,6 +72,7 @@ help:
 	@echo $(Q)  make ftm-samples - Emit example .ftm files to build/ftm via the integration suite$(Q)
 	@echo $(Q)  make nsf-samples - Emit example .nsf files to build/nsf via the integration suite$(Q)
 	@echo $(Q)  make nsf-render  - Render the .nsf files in build/nsf to waves with ffmpeg$(Q)
+	@echo $(Q)  make compression-report - Measure the song codec into build/compression$(Q)
 	@echo $(Q)  make icons       - Generate the icon suite into src/sampletones_assets/icons$(Q)
 	@echo $(Q)  make player      - Assemble the NES player driver with cc65$(Q)
 	@echo $(Q)  make calibration - Score the reconstruction corpus; the report lands in Documents/SampleToNES/calibration$(Q)
@@ -120,6 +121,10 @@ nsf-samples:
 
 nsf-render: nsf-samples
 	uv run scripts/nsf_render.py
+
+compression-report: export SAMPLETONES_COMPRESSION_OUTPUT_DIR := build/compression
+compression-report:
+	uv run python -m pytest tests/integration/nsf/test_compression_report.py
 
 icons:
 	uv run --group assets python scripts/assets/icons.py

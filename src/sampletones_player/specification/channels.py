@@ -1,4 +1,4 @@
-from typing import Dict, Final, Tuple
+from typing import Dict, Final, FrozenSet, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.specification.registers import (
@@ -21,3 +21,11 @@ CHANNEL_REGISTER_ADDRESSES: Final[Dict[ChannelName, Tuple[int, ...]]] = {
     ChannelName.TRIANGLE: (TRIANGLE_LINEAR_COUNTER, TRIANGLE_TIMER_LOW, TRIANGLE_TIMER_HIGH),
     ChannelName.NOISE: (NOISE_CONTROL, NOISE_PERIOD),
 }
+
+TONE_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(
+    {
+        ChannelName.PULSE1,
+        ChannelName.PULSE2,
+        ChannelName.TRIANGLE,
+    }
+)

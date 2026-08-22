@@ -17,6 +17,7 @@ player:
     specification: []
     clock: [specification]
     registers: [specification]
+    compression: [specification, registers]
     song.py: [clock, registers]
     builder.py: [song.py, registers, clock]
     trace: [song.py, specification]
