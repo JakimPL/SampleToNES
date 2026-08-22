@@ -39,15 +39,48 @@ ACTIVE_PHASES: Final[FrozenSet[ConversionPhase]] = frozenset(
 
 
 class StemSourceRow(BaseModel, frozen=True):
-    """One recording in the converter's stems list, as the panel renders it."""
+    """One recording in the converter's stems list, as the panel renders it.
+
+    A row states where it stands — the level it picks on, the place it takes among the
+    recordings sharing that level, and how many of each the list holds — so the moves the panel
+    offers grey themselves out from the row alone.
+    """
 
     path: Path
     channels: FrozenSet[ChannelName]
     level: int
+    position: int
+    level_size: int
+    level_count: int
 
     @property
     def name(self) -> str:
         return self.path.name
+
+    @property
+    def takes_part(self) -> bool:
+        """The recording holds a channel, so the conversion mixes it and gives it a stem."""
+        return bool(self.channels)
+
+    @property
+    def is_first_on_level(self) -> bool:
+        return self.position == 0
+
+    @property
+    def is_last_on_level(self) -> bool:
+        return self.position == self.level_size - 1
+
+    @property
+    def has_level_above(self) -> bool:
+        return self.level > 0
+
+    @property
+    def has_level_below(self) -> bool:
+        return self.level < self.level_count - 1
+
+    @property
+    def alone_on_level(self) -> bool:
+        return self.level_size == 1
 
 
 class ConverterViewModel(BaseModel, frozen=True):
@@ -90,15 +123,20 @@ class ConverterViewModel(BaseModel, frozen=True):
 
     @property
     def has_input(self) -> bool:
-        """Something is selected to convert: a listed recording in stems mode, a path otherwise."""
+        """Something is there to convert: a listed recording holding a channel, or a selected path."""
         if self.stems_mode:
-            return bool(self.stem_sources)
+            return any(row.takes_part for row in self.stem_sources)
 
         return self.input_path is not None
 
     @property
     def source_count(self) -> int:
         return len(self.stem_sources)
+
+    @property
+    def playing_count(self) -> int:
+        """How many of the listed recordings take part in the conversion."""
+        return sum(1 for row in self.stem_sources if row.takes_part)
 
     @property
     def can_add_source(self) -> bool:

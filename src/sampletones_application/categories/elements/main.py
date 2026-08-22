@@ -78,7 +78,6 @@ class ConverterElements(AbstractElement):
     HIERARCHY_MODE_TOOLTIP = "hierarchy_mode_tooltip"
     HIERARCHY_ROUND_ROBIN = "hierarchy_round_robin"
     HIERARCHY_STRICT = "hierarchy_strict"
-    STEM_LEVEL = "stem_level"
     STEM_REMOVE = "stem_remove"
     STEMS_EMPTY_HINT = "stems_empty_hint"
     CONVERT_STEMS_BUTTON = "convert_stems_button"

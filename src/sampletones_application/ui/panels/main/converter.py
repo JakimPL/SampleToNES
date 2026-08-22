@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.conversion import DEFAULT_STEM_LEVEL, MIN_CHANNEL_CAP
+from sampletones_application.constants.conversion import MIN_CHANNEL_CAP
 from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.tabs.main.converter import ConverterLayout
 from sampletones_application.tags.compose import compose_tag
@@ -14,7 +14,6 @@ from sampletones_application.tags.general import (
     SUF_CHANNELS,
     SUF_CHECKBOX,
     SUF_GROUP,
-    SUF_INPUT,
     SUF_TEXT,
     TAG_GLOBAL_THEME_DANGER_BUTTON,
     TAG_GLOBAL_THEME_PANEL_EMPHASIS,
@@ -94,7 +93,6 @@ class GUIConverterPanel(GUIPanel):
         self.on_channel_cap_changed: Optional[Callable[[int], None]] = None
         self.on_hierarchy_mode_changed: Optional[Callable[[HierarchyMode], None]] = None
         self.on_source_channels_changed: Optional[Callable[[Path, FrozenSet[ChannelName]], None]] = None
-        self.on_source_level_changed: Optional[Callable[[Path, int], None]] = None
         self.on_source_removed: Optional[PathCallback] = None
 
         self._layout = layout
@@ -328,18 +326,6 @@ class GUIConverterPanel(GUIPanel):
                     callback=self._on_source_channels_changed,
                 )
 
-            dpg.add_input_int(
-                label=self._language_manager["main.converter.label.stem_level"],
-                tag=self._row_tag(row.path, SUF_INPUT),
-                width=self._layout.level_input_width,
-                min_value=DEFAULT_STEM_LEVEL,
-                min_clamped=True,
-                step=1,
-                step_fast=1,
-                default_value=row.level,
-                user_data=row.path,
-                callback=self._on_source_level_changed,
-            )
             remove = dpg.add_button(
                 label=self._language_manager["main.converter.label.stem_remove"],
                 tag=self._row_tag(row.path, SUF_BUTTON),
@@ -362,8 +348,6 @@ class GUIConverterPanel(GUIPanel):
             )
             dpg_set_value(tag, channel_name in row.channels)
 
-        dpg_set_value(self._row_tag(row.path, SUF_INPUT), row.level)
-        dpg_configure_item(self._row_tag(row.path, SUF_INPUT), enabled=not view_model.is_active)
         dpg_configure_item(self._row_tag(row.path, SUF_BUTTON), enabled=not view_model.is_active)
 
     def _on_stems_mode_toggled(self, _sender: Sender, value: bool) -> None:
@@ -385,9 +369,6 @@ class GUIConverterPanel(GUIPanel):
             if dpg.get_value(self._channel_tag(user_data, channel_name))
         )
         self.call(self.on_source_channels_changed, user_data, channels)
-
-    def _on_source_level_changed(self, _sender: Sender, value: int, user_data: Path) -> None:
-        self.call(self.on_source_level_changed, user_data, value)
 
     def _on_source_removed(self, _sender: Sender, _app_data: Any, user_data: Path) -> None:
         self.call(self.on_source_removed, user_data)

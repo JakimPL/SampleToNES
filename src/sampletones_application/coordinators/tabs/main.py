@@ -264,7 +264,6 @@ class MainTabCoordinator:
         self._converter_panel.on_channel_cap_changed = self._converter_logic.set_channel_cap
         self._converter_panel.on_hierarchy_mode_changed = self._converter_logic.set_hierarchy_mode
         self._converter_panel.on_source_channels_changed = self._converter_logic.set_source_channels
-        self._converter_panel.on_source_level_changed = self._converter_logic.set_source_level
         self._converter_panel.on_source_removed = self._converter_logic.remove_source
         self._stem_selection_window.on_add = self._converter_logic.add_sources
 

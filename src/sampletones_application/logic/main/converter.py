@@ -1,16 +1,18 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, FrozenSet, List, Optional, Protocol, Sequence, Tuple
+from typing import Callable, FrozenSet, Optional, Protocol, Sequence, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
-from sampletones_application.constants.conversion import (
-    DEFAULT_STEM_LEVEL,
-    MAX_STEM_SOURCES,
-    MIN_CHANNEL_CAP,
-)
+from sampletones_application.constants.conversion import MAX_STEM_SOURCES, MIN_CHANNEL_CAP
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
-from sampletones_application.logic.main.stems import StemSource, derive_stems_config, effective_channels
+from sampletones_application.logic.main.stems import (
+    ConversionSetup,
+    StemLevels,
+    StemSource,
+    derive_conversion_setup,
+    effective_channels,
+)
 from sampletones_application.services.result import (
     ConversionResult,
     ServiceCancelled,
@@ -107,7 +109,7 @@ class ConverterLogic(CallbackMixin):
         self._written: Tuple[Path, ...] = ()
         self._is_file: bool = True
         self._stems_mode: bool = False
-        self._sources: List[StemSource] = []
+        self._levels: StemLevels = StemLevels()
         self._channel_cap: int = len(ChannelName)
         self._hierarchy_mode: HierarchyMode = DEFAULT_STEMS_HIERARCHY_MODE
         self._system_progress = SystemProgress()
@@ -134,7 +136,7 @@ class ConverterLogic(CallbackMixin):
     @property
     def source_count(self) -> int:
         """How many recordings the stems list holds."""
-        return len(self._sources)
+        return self._levels.count
 
     @property
     def room_for_sources(self) -> int:
@@ -187,28 +189,42 @@ class ConverterLogic(CallbackMixin):
         A path already listed keeps the row it has, so adding it again leaves the setup as it is.
         """
         enabled = frozenset(self._config_manager.config.generation.channels)
-        listed = {source.path for source in self._sources}
         for path in paths:
-            if path in listed or len(self._sources) >= MAX_STEM_SOURCES:
-                continue
+            if self._levels.count >= MAX_STEM_SOURCES:
+                break
 
-            self._sources.append(StemSource(path=path, channels=enabled, level=DEFAULT_STEM_LEVEL))
-            listed.add(path)
+            self._levels = self._levels.add(StemSource(path=path, channels=enabled))
 
         self._refresh_setup()
 
     def remove_source(self, path: Path) -> None:
         """Takes a recording out of the stems list."""
-        self._sources = [source for source in self._sources if source.path != path]
+        self._levels = self._levels.remove(path)
         self._refresh_setup()
 
     def set_source_channels(self, path: Path, channels: FrozenSet[ChannelName]) -> None:
         """Names the channels one recording may take."""
-        self._replace_source(path, lambda source: source.with_channels(channels))
+        self._apply(self._levels.replace_source(path, lambda source: source.with_channels(channels)))
 
-    def set_source_level(self, path: Path, level: int) -> None:
-        """Names the level one recording picks on."""
-        self._replace_source(path, lambda source: source.with_level(max(level, DEFAULT_STEM_LEVEL)))
+    def move_source_within_level(self, path: Path, offset: int) -> None:
+        """Moves a recording past the neighbour it shares a level with."""
+        self._apply(self._levels.move_within_level(path, offset))
+
+    def join_source_level(self, path: Path, offset: int) -> None:
+        """Sends a recording to the level above or below the one it picks on."""
+        self._apply(self._levels.join_level(path, offset))
+
+    def isolate_source(self, path: Path) -> None:
+        """Gives a recording a level of its own, picking after the one it shared."""
+        self._apply(self._levels.isolate(path))
+
+    def move_source_onto(self, path: Path, target_path: Path) -> None:
+        """Moves a recording to the level and the place another one holds."""
+        self._apply(self._levels.move_onto(path, target_path))
+
+    def move_source_to_new_level(self, path: Path, position: int) -> None:
+        """Gives a recording a level of its own, in the slot the levels are broken at."""
+        self._apply(self._levels.move_to_new_level(path, position))
 
     def set_stems_mode(self, stems_mode: bool) -> None:
         """Switches between converting one selection and mixing several recordings into one.
@@ -374,32 +390,39 @@ class ConverterLogic(CallbackMixin):
     def _conversion_plan(self, config: Config, input_path: Path) -> ConversionPlan:
         """What the request amounts to: one reconstruction from the recordings listed or the file
         selected, or one per audio file the selected directory holds."""
-        stems = self._stems_setup(config)
+        setup = self._stems_setup(config)
         if self._stems_mode:
-            return GroupConversion(sources=self._source_paths, stems=stems)
+            return GroupConversion(sources=setup.sources, stems=setup.stems)
 
         if self._is_file:
-            return GroupConversion(sources=(input_path,), stems=stems)
+            return GroupConversion(sources=(input_path,), stems=setup.stems)
 
-        return DirectoryConversion(directory=input_path, stems=stems)
+        return DirectoryConversion(directory=input_path, stems=setup.stems)
 
-    def _stems_setup(self, config: Config) -> StemsConfig:
-        """The setup the conversion runs under: the rows a reader listed, or one stem over every
-        enabled channel where none were listed. Either way it carries the channel cap."""
+    def _stems_setup(self, config: Config) -> ConversionSetup:
+        """The recordings and the setup the conversion runs with, carrying the channel cap.
+
+        In stems mode this is what the gathered levels amount to; otherwise it is one stem over
+        every enabled channel, which is the classic run's shape.
+        """
         enabled = list(config.generation.channels)
-        if self._stems_mode and self._sources:
-            return derive_stems_config(
-                self._sources,
+        if self._stems_mode:
+            return derive_conversion_setup(
+                self._levels,
                 enabled,
                 channel_cap=self._effective_channel_cap,
                 hierarchy_mode=self._hierarchy_mode,
             )
 
-        return StemsConfig.single_entry(enabled, channel_cap=self._effective_channel_cap)
+        return ConversionSetup(
+            sources=(),
+            stems=StemsConfig.single_entry(enabled, channel_cap=self._effective_channel_cap),
+        )
 
     @property
     def _source_paths(self) -> Tuple[Path, ...]:
-        return tuple(source.path for source in self._sources)
+        """The recordings that take part, in the order the conversion mixes them."""
+        return self._stems_setup(self._config_manager.config).sources
 
     @property
     def _effective_channel_cap(self) -> int:
@@ -409,20 +432,20 @@ class ConverterLogic(CallbackMixin):
     def _max_channel_cap(self) -> int:
         return max(len(self._config_manager.config.generation.channels), MIN_CHANNEL_CAP)
 
-    def _replace_source(self, path: Path, change: Callable[[StemSource], StemSource]) -> None:
-        """Rewrites one row of the stems list, leaving the others where they are."""
-        self._sources = [change(source) if source.path == path else source for source in self._sources]
+    def _apply(self, levels: StemLevels) -> None:
+        """Takes up a rewritten stems list and follows it wherever the setup changed."""
+        self._levels = levels
         self._refresh_setup()
 
     def _enter_stems_mode(self) -> None:
         enabled = frozenset(self._config_manager.config.generation.channels)
-        if not self._sources and self._input_path is not None and self._is_file:
-            self._sources = [StemSource(path=self._input_path, channels=enabled, level=DEFAULT_STEM_LEVEL)]
+        if self._levels.count == 0 and self._input_path is not None and self._is_file:
+            self._levels = self._levels.add(StemSource(path=self._input_path, channels=enabled))
 
     def _leave_stems_mode(self) -> None:
-        if self._sources:
-            self._sources = self._sources[:1]
-            self._assign_paths(self._sources[0].path, self._config_manager.config)
+        if self._levels.count:
+            self._levels = self._levels.keep_first()
+            self._assign_paths(self._levels.paths[0], self._config_manager.config)
 
     def _refresh_setup(self) -> None:
         """Follows the setup wherever it changed: the destination it now names, and the view."""
@@ -432,20 +455,27 @@ class ConverterLogic(CallbackMixin):
             self._emit_view_model(self._msg_idle, 0.0)
 
     def _update_stems_output_path(self) -> None:
-        if not self._stems_mode or not self._sources:
+        if not self._stems_mode:
             return
 
-        self._output_path = group_output_path(self._config_manager.config, self._source_paths)
+        sources = self._source_paths
+        if sources:
+            self._output_path = group_output_path(self._config_manager.config, sources)
 
     def _stem_rows(self, config: Config) -> Tuple[StemSourceRow, ...]:
+        """The gathered recordings as the panel reads them, each stating where it stands."""
         enabled = list(config.generation.channels)
         return tuple(
             StemSourceRow(
                 path=source.path,
                 channels=frozenset(effective_channels(source, enabled)),
-                level=source.level,
+                level=level_index,
+                position=position,
+                level_size=len(level),
+                level_count=self._levels.level_count,
             )
-            for source in self._sources
+            for level_index, level in enumerate(self._levels.levels)
+            for position, source in enumerate(level)
         )
 
     def _on_conversion_complete(self, written: Tuple[Path, ...]) -> None:
@@ -500,15 +530,13 @@ class ConverterLogic(CallbackMixin):
         return self._language_manager["main.converter.template.convert_label_template"].format(base, input_path.name)
 
     def _compose_stems_action_label(self) -> str:
-        """The stems label, named after how many recordings are gathered."""
+        """The stems label, named after how many recordings take part."""
         base = self._language_manager["main.converter.label.convert_stems_button"]
-        if not self._sources:
+        playing = len(self._source_paths)
+        if not playing:
             return base
 
-        return self._language_manager["main.converter.template.convert_label_template"].format(
-            base,
-            len(self._sources),
-        )
+        return self._language_manager["main.converter.template.convert_label_template"].format(base, playing)
 
     def _emit_view_model(
         self,

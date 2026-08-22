@@ -12,7 +12,7 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.logic.history.action import HistoryAction
-from sampletones_application.tags.general import SUF_BUTTON, SUF_GROUP, SUF_INPUT
+from sampletones_application.tags.general import SUF_BUTTON, SUF_GROUP
 from sampletones_application.tags.main import TAG_MAIN_CONVERTER_WINDOW_STEMS
 from sampletones_application.ui.panels.main.converter import GUIConverterPanel
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
@@ -424,17 +424,13 @@ class TestConverterStemsCard:
 
         for path in paths:
             assert dpg.does_item_exist(GUIConverterPanel._row_tag(path, SUF_GROUP))
-            assert dpg.does_item_exist(GUIConverterPanel._row_tag(path, SUF_INPUT))
             assert dpg.does_item_exist(GUIConverterPanel._row_tag(path, SUF_BUTTON))
 
-    def test_a_rows_level_and_channels_show_what_was_set(self, app: Application, tmp_path: Path) -> None:
+    def test_a_rows_channels_show_what_was_set(self, app: Application, tmp_path: Path) -> None:
         path = self._gather(app, tmp_path, ["a.wav"])[0]
-        converter_logic = app._main_tab._converter_logic
 
-        converter_logic.set_source_level(path, 3)
-        converter_logic.set_source_channels(path, frozenset({ChannelName.NOISE}))
+        app._main_tab._converter_logic.set_source_channels(path, frozenset({ChannelName.NOISE}))
 
-        assert dpg.get_value(GUIConverterPanel._row_tag(path, SUF_INPUT)) == 3
         assert dpg.get_value(GUIConverterPanel._channel_tag(path, ChannelName.NOISE)) is True
         assert dpg.get_value(GUIConverterPanel._channel_tag(path, ChannelName.PULSE1)) is False
 

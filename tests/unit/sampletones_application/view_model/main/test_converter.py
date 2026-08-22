@@ -17,8 +17,23 @@ ENABLED_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(
 )
 
 
-def _row(name: str, level: int = 1) -> StemSourceRow:
-    return StemSourceRow(path=Path(f"/audio/{name}.wav"), channels=ENABLED_CHANNELS, level=level)
+def _row(
+    name: str,
+    *,
+    channels: FrozenSet[ChannelName] = ENABLED_CHANNELS,
+    level: int = 0,
+    position: int = 0,
+    level_size: int = 1,
+    level_count: int = 1,
+) -> StemSourceRow:
+    return StemSourceRow(
+        path=Path(f"/audio/{name}.wav"),
+        channels=channels,
+        level=level,
+        position=position,
+        level_size=level_size,
+        level_count=level_count,
+    )
 
 
 def _view_model(
@@ -170,3 +185,41 @@ class TestStemsSection:
 
     def test_a_row_names_itself_by_its_file(self) -> None:
         assert _row("bass").name == "bass.wav"
+
+    def test_a_row_holding_no_channel_offers_nothing_to_convert(self) -> None:
+        view_model = _view_model(
+            phase=ConversionPhase.IDLE,
+            input_path=None,
+            stems_mode=True,
+            stem_sources=(_row("bass", channels=frozenset()),),
+        )
+
+        assert view_model.has_input is False
+        assert view_model.playing_count == 0
+        assert view_model.convert_button_enabled is False
+
+
+class TestRowStanding:
+    """A row states where it stands, so the moves it offers grey themselves out from the row alone."""
+
+    def test_the_only_row_of_the_only_level_can_go_nowhere(self) -> None:
+        row = _row("bass")
+
+        assert row.is_first_on_level is True
+        assert row.is_last_on_level is True
+        assert row.alone_on_level is True
+        assert row.has_level_above is False
+        assert row.has_level_below is False
+
+    def test_a_row_between_levels_can_join_either(self) -> None:
+        row = _row("lead", level=1, level_count=3)
+
+        assert row.has_level_above is True
+        assert row.has_level_below is True
+
+    def test_a_row_sharing_a_level_names_its_place_among_its_peers(self) -> None:
+        row = _row("lead", position=1, level_size=3)
+
+        assert row.is_first_on_level is False
+        assert row.is_last_on_level is False
+        assert row.alone_on_level is False

@@ -413,13 +413,13 @@ class TestStemsSetup:
     def test_adding_a_listed_recording_leaves_the_list_as_it_is(self, converter_logic: ConverterLogic) -> None:
         self._with_config(converter_logic)
         converter_logic.set_stems_mode(True)
-        converter_logic.add_sources([Path("/audio/bass.wav")])
+        converter_logic.add_sources([Path("/audio/bass.wav"), Path("/audio/lead.wav")])
+        converter_logic.isolate_source(Path("/audio/lead.wav"))
 
-        converter_logic.set_source_level(Path("/audio/bass.wav"), 3)
-        converter_logic.add_sources([Path("/audio/bass.wav")])
+        converter_logic.add_sources([Path("/audio/lead.wav")])
 
-        assert converter_logic._source_paths == (Path("/audio/bass.wav"),)
-        assert converter_logic._sources[0].level == 3
+        assert converter_logic._source_paths == (Path("/audio/bass.wav"), Path("/audio/lead.wav"))
+        assert converter_logic._levels.level_of(Path("/audio/lead.wav")) == 1
 
     def test_the_list_stops_at_the_room_it_has(self, converter_logic: ConverterLogic) -> None:
         self._with_config(converter_logic)
@@ -427,7 +427,7 @@ class TestStemsSetup:
 
         converter_logic.add_sources([Path(f"/audio/{index}.wav") for index in range(MAX_STEM_SOURCES + 3)])
 
-        assert len(converter_logic._sources) == MAX_STEM_SOURCES
+        assert converter_logic.source_count == MAX_STEM_SOURCES
 
     def test_removing_a_recording_takes_it_out(self, converter_logic: ConverterLogic) -> None:
         self._with_config(converter_logic)
@@ -454,7 +454,7 @@ class TestStemsSetup:
 
         converter_logic.set_stems_mode(False)
 
-        assert converter_logic._source_paths == (Path("/audio/a.wav"),)
+        assert converter_logic._levels.paths == (Path("/audio/a.wav"),)
 
     def test_a_stems_conversion_groups_every_listed_recording(self, converter_logic: ConverterLogic) -> None:
         config = self._with_config(converter_logic)
@@ -472,12 +472,37 @@ class TestStemsSetup:
         converter_logic.set_stems_mode(True)
         converter_logic.add_sources([Path("/audio/a.wav"), Path("/audio/b.wav")])
         converter_logic.set_source_channels(Path("/audio/a.wav"), frozenset({ChannelName.PULSE1}))
-        converter_logic.set_source_level(Path("/audio/b.wav"), 2)
+        converter_logic.isolate_source(Path("/audio/b.wav"))
 
         plan = converter_logic._conversion_plan(config, Path("/audio/a.wav"))
 
         assert plan.stems.entries[0].channels == [ChannelName.PULSE1]
         assert plan.stems.hierarchy.levels == [[0], [1]]
+
+    def test_a_recording_left_with_no_channel_takes_no_part(self, converter_logic: ConverterLogic) -> None:
+        config = self._with_config(converter_logic)
+        converter_logic.set_stems_mode(True)
+        converter_logic.add_sources([Path("/audio/a.wav"), Path("/audio/b.wav")])
+
+        converter_logic.set_source_channels(Path("/audio/a.wav"), frozenset())
+        plan = converter_logic._conversion_plan(config, Path("/audio/a.wav"))
+
+        assert converter_logic.source_count == 2
+        assert plan.sources == (Path("/audio/b.wav"),)
+        assert [entry.id for entry in plan.stems.entries] == [0]
+
+    def test_a_row_reports_the_level_it_landed_on(self, converter_logic: ConverterLogic) -> None:
+        config = self._with_config(converter_logic)
+        converter_logic.set_stems_mode(True)
+        converter_logic.add_sources([Path("/audio/a.wav"), Path("/audio/b.wav")])
+
+        converter_logic.move_source_to_new_level(Path("/audio/b.wav"), 0)
+        rows = converter_logic._stem_rows(config)
+
+        assert [(row.path.name, row.level, row.level_count) for row in rows] == [
+            ("b.wav", 0, 2),
+            ("a.wav", 1, 2),
+        ]
 
     def test_the_cap_holds_within_the_channels_enabled(self, converter_logic: ConverterLogic) -> None:
         config = self._with_config(converter_logic)
