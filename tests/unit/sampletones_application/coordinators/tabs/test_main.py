@@ -10,6 +10,7 @@ from sampletones_application.logic.main.converter import ConversionSuccess
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_CANCEL,
     TAG_MAIN_CONVERTER_DIALOG_LOAD,
+    TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
 )
 from tests.suite.language import FakeLanguageManager
@@ -333,6 +334,41 @@ class TestModifierAddAvailability:
 
     def test_a_busy_application_leaves_the_click_alone(self) -> None:
         assert _stems_coordinator(operation_active=True)._can_add_stems() is False
+
+
+OVERWRITE_TARGET_PROMPT_KEY: Final[str] = "main.converter.message.overwrite_target_prompt"
+OVERWRITE_TARGET_BUTTON_KEY: Final[str] = "main.converter.label.overwrite_target_button"
+
+
+class TestOverwritePrompt:
+    """A conversion that would replace a reconstruction already made is put to the reader first."""
+
+    def test_the_prompt_names_the_file_it_would_replace(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator()
+        target = tmp_path / "song.stn"
+
+        coordinator._confirm_overwriting_target(target)
+
+        args, kwargs = coordinator._dialogs.show_confirmation.call_args
+        assert args[0] == TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET
+        assert args[1] == OVERWRITE_TARGET_PROMPT_KEY
+        assert kwargs["ok_label"] == OVERWRITE_TARGET_BUTTON_KEY
+        assert kwargs["path"] == target
+
+    def test_confirming_runs_the_conversion_it_asked_about(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator()
+
+        coordinator._confirm_overwriting_target(tmp_path / "song.stn")
+        coordinator._dialogs.show_confirmation.call_args.args[3]()
+
+        coordinator._converter_logic.start_conversion.assert_called_once_with(confirmed=True)
+
+    def test_declining_converts_nothing(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator()
+
+        coordinator._confirm_overwriting_target(tmp_path / "song.stn")
+
+        coordinator._converter_logic.start_conversion.assert_not_called()
 
 
 class TestReconstructLeavesStemsMode:

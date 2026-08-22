@@ -123,6 +123,7 @@ class ConverterLogic(CallbackMixin):
         self.on_error: Optional[Callable[[Exception], None]] = None
         self.on_no_files_to_process: Optional[VoidCallback] = None
         self.on_no_generators: Optional[VoidCallback] = None
+        self.on_target_exists: Optional[PathCallback] = None
         self.on_load_file: Optional[PathCallback] = None
         self.on_load_directory: Optional[VoidCallback] = None
         self.on_cancelled: Optional[VoidCallback] = None
@@ -265,13 +266,23 @@ class ConverterLogic(CallbackMixin):
         self._hierarchy_mode = hierarchy_mode
         self._refresh_setup()
 
-    def start_conversion(self) -> None:
+    def start_conversion(self, confirmed: bool = False) -> None:
+        """Starts the run the current setup describes, asking first where it would write over work.
+
+        ``confirmed`` states that the reader has already answered for the file standing at the
+        target, which is what lets the prompt's answer come back and run.
+        """
         if self._is_operation_active():
             logger.warning("A conversion or library generation is already in progress")
             return
 
         if not self._config_manager.config.generation.channels:
             self.call(self.on_no_generators)
+            return
+
+        standing_target = self._standing_target()
+        if standing_target is not None and not confirmed:
+            self.call(self.on_target_exists, standing_target)
             return
 
         self._phase = ConversionPhase.WAITING
@@ -417,6 +428,19 @@ class ConverterLogic(CallbackMixin):
         config = self._config_manager.config.model_copy()
         self._system_progress.initialize()
         self._service.start(config, self._conversion_plan(config, self._input_path))
+
+    def _standing_target(self) -> Optional[Path]:
+        """The reconstruction this run would write over, where one stands.
+
+        A batch converts what is still to be written and keeps the rest, so it puts nothing to
+        the reader; a single conversion writes one file, and that is the one worth asking about.
+        """
+        if self._input_path is None:
+            return None
+
+        config = self._config_manager.config
+        targets = self._conversion_plan(config, self._input_path).existing_targets(config)
+        return targets[0] if targets else None
 
     def _conversion_plan(self, config: Config, input_path: Path) -> ConversionPlan:
         """What the request amounts to: one reconstruction from the recordings listed or the file

@@ -28,5 +28,10 @@ class GroupConversion:
             )
         ]
 
+    def existing_targets(self, config: Config) -> Tuple[Path, ...]:
+        """The one file this conversion writes, where it already stands."""
+        output_path = self._output_path(config)
+        return (output_path,) if output_path.is_file() else ()
+
     def _output_path(self, config: Config) -> Path:
         return group_output_path(config, self.sources)

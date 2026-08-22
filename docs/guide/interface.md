@@ -25,6 +25,12 @@ clicking either path shows it in your file manager. When a run writes one
 reconstruction, **Load** opens it on the **Reconstructions** tab; a whole folder of
 them offers **Open** instead. **Cancel** stops a run, and only one runs at a time.
 
+Converting one file or one stems mix writes a reconstruction of a settled name, so
+where one of that name already stands the application asks before writing over it —
+choose **Convert anyway** to go ahead. Converting a folder needs no such question:
+it converts the recordings still to be done and keeps the reconstructions already
+made, so a repeated run picks up where the last one stopped.
+
 **Stems mode** turns the card into a list of the recordings mixed into one
 reconstruction. Tick it and click each recording in the browser, or right-click one
 and choose **Add as stem** — that starts a stems conversion from a classic one in a

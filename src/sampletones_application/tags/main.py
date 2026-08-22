@@ -304,6 +304,12 @@ TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS = TagName(
     Widget.DIALOG,
     "discard_stems",
 )
+TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.DIALOG,
+    "overwrite_target",
+)
 TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION = TagName(
     Page.MAIN,
     Panel.CONVERTER,
