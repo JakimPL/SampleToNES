@@ -44,6 +44,7 @@ The [**formats**](formats/) section documents the files _SampleToNES_ reads and 
 - [Projects](formats/projects.md) — the `.stp` project bundle.
 - [FamiTracker export](formats/famitracker.md) — the `.fti` instrument and `.ftm` module formats.
 - [Bitphase export](formats/bitphase.md) — the `.btp` document and `.json` instrument preset formats.
+- [NSF export](formats/nsf.md) — the `.nsf` program the console plays, and the song block inside it.
 - [Configuration file](formats/configuration.md) — the `config.json` structure.
 
 ## Programming with SampleToNES
@@ -60,6 +61,7 @@ The [**development**](development/) section is for contributors.
 - [Undo engine](development/undo.md) — the design of the undo/redo subsystem.
 - [Sequencer blocks](development/sequencer-blocks.md) — the rules copy, cut, paste and delete follow on both grids.
 - [Playback](development/playback.md) — the audio transport shared by every view, and rendering the song to a file.
+- [Console player](development/player.md) — the 6502 driver an `.nsf` carries, the codec that fits a song beside it, and how both are verified.
 - [Reconstruction browser](development/browser.md) — how a reconstructions directory becomes the tree both browser tabs render, and what narrows it.
 - [Configuration](development/config-organization.md) — how the YAML configuration package is laid out.
 - [Coding guidelines](development/guidelines.md) — conventions for the codebase.

@@ -27,7 +27,6 @@
 
 * In-application guide/tutorial
 * Language selector
-* NSF export
 
 ### Technical
 

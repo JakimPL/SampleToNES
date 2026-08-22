@@ -91,6 +91,19 @@ def make_noise_reconstruction(
     return _reconstruction(ChannelName.NOISE, instructions)
 
 
+def retuned_reconstruction(
+    reconstruction: Reconstruction,
+    a4_frequency: float,
+) -> Reconstruction:
+    """The same reconstruction read as though concert pitch had sat at ``a4_frequency``.
+
+    A tuning reaches a reconstruction through the library settings it was built with, so a case
+    needing two samples that disagree copies one of them onto another reference.
+    """
+    library = reconstruction.config.library.model_copy(update={"a4_frequency": a4_frequency})
+    return reconstruction.model_copy(update={"config": reconstruction.config.model_copy(update={"library": library})})
+
+
 def project_with_sample(
     reconstruction: Reconstruction,
     *,

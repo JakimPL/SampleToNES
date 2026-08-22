@@ -48,6 +48,7 @@ class ShortcutId(Enum):
     PROJECT_PROPERTIES = ("ProjectProperties", ShortcutCategory.APPLICATION)
     EXPORT_PROJECT_FAMITRACKER = ("ExportProjectFamiTracker", ShortcutCategory.APPLICATION)
     EXPORT_PROJECT_BITPHASE = ("ExportProjectBitphase", ShortcutCategory.APPLICATION)
+    EXPORT_PROJECT_NSF = ("ExportProjectNSF", ShortcutCategory.APPLICATION)
     RENDER_SONG = ("RenderSong", ShortcutCategory.APPLICATION)
     CLOSE_PROJECT = ("CloseProject", ShortcutCategory.APPLICATION)
     EXIT = ("Exit", ShortcutCategory.APPLICATION)
@@ -224,6 +225,7 @@ CHANNEL_SHORTCUT_IDS: Final[Dict[ChannelName, ShortcutId]] = {
 PROJECT_EXPORT_SHORTCUT_IDS: Final[Dict[ExportFormat, ShortcutId]] = {
     ExportFormat.FAMITRACKER: ShortcutId.EXPORT_PROJECT_FAMITRACKER,
     ExportFormat.BITPHASE: ShortcutId.EXPORT_PROJECT_BITPHASE,
+    ExportFormat.NSF: ShortcutId.EXPORT_PROJECT_NSF,
 }
 
 SAMPLE_EXPORT_SHORTCUT_IDS: Final[Dict[ExportFormat, ShortcutId]] = {

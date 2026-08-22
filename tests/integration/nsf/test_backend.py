@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Final, List, Optional
 
 import numpy as np
 import pytest
@@ -7,19 +7,39 @@ import pytest
 from sampletones_core.audio.mixing import mix
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.naming import instrument_slice_name
-from sampletones_core.exports.request import InstrumentExport, SampleExport
+from sampletones_core.exports.request import (
+    InstrumentExport,
+    ProjectExport,
+    SampleExport,
+)
 from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import InstructionUnion
+from sampletones_core.performance import song_instructions
 from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.project import Project
+from sampletones_core.project.tuning import tuning_from_project
 from sampletones_core.timers.utils import get_timer_table
-from sampletones_player.builder import instructions_from_instruments, song_from_sample
+from sampletones_player.builder import (
+    SONG_START,
+    instructions_from_instruments,
+    song_from_project,
+    song_from_sample,
+)
 from sampletones_player.export import NSFBackend
+from sampletones_player.song import Song
 from sampletones_player.specification.nsf import NSF_MAGIC
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 from tests.integration.nsf.console.instructions import instructions_from_trace
-from tests.integration.nsf.console.session import captured_file_trace
+from tests.integration.nsf.console.session import (
+    captured_file_trace,
+    captured_run,
+    play_calls_reaching,
+)
+from tests.integration.output import resolve_output_path
 
 ChannelInstructions = Dict[ChannelName, List[InstructionUnion]]
+
+PROJECT_ARTIFACT: Final[str] = "song"
 
 
 def resting(instruction: InstructionUnion) -> InstructionUnion:
@@ -168,3 +188,74 @@ class TestTheConsoleSoundsTheRequest:
             assert np.array_equal(rendered[:audible], approximation[:audible])
             assert not np.any(rendered[audible:])
             assert not np.any(approximation[audible:])
+
+
+@pytest.fixture(scope="module")
+def project_song(integration_project: Project) -> Song:
+    """The song the console plays the integration project's arrangement as."""
+    return song_from_project(integration_project, SONG_START)
+
+
+@pytest.fixture(scope="module")
+def project_file(
+    backend: NSFBackend,
+    integration_project: Project,
+    nsf_output_dir: Optional[Path],
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Path:
+    """The whole arrangement written through the backend the application registers.
+
+    It joins the samples in the emitted artifacts, so the arrangement can be listened to
+    beside the instruments it is built from.
+    """
+    destination = resolve_output_path(
+        nsf_output_dir,
+        tmp_path_factory.mktemp("nsf-project"),
+        f"{PROJECT_ARTIFACT}{EXT_FILE_NSF}",
+    )
+    backend.write_project(destination, ProjectExport(project=integration_project))
+    return destination
+
+
+class TestTheBackendWritesAWholeSong:
+    """What reaches disk when the application exports its arrangement to the console."""
+
+    def test_the_project_reaches_a_file_a_player_recognizes(self, project_file: Path) -> None:
+        assert project_file.read_bytes()[: len(NSF_MAGIC)] == NSF_MAGIC
+
+    def test_the_console_sounds_the_arrangement_the_project_states(
+        self,
+        project_file: Path,
+        project_song: Song,
+        integration_project: Project,
+    ) -> None:
+        """This closes the loop a project export opens: the arrangement was played out row by
+        row, compressed to eight token streams, decoded by the 6502 and written to the APU, and
+        what stood in those registers is the very song the sequencer sounds.
+        """
+        trace = captured_run(
+            project_file.read_bytes(),
+            play_calls_reaching(project_song, project_song.ticks),
+        )
+        played = instructions_from_trace(trace, get_timer_table(tuning_from_project(integration_project)))
+        for channel, instructions in song_instructions(integration_project).items():
+            sounded = played[channel][: len(instructions)]
+            assert [resting(instruction) for instruction in sounded] == [
+                resting(instruction) for instruction in instructions
+            ]
+
+    def test_the_song_comes_round_rather_than_falling_silent(
+        self,
+        project_file: Path,
+        project_song: Song,
+        integration_project: Project,
+    ) -> None:
+        """The file repeats, so the calls past the arrangement's end sound its first ticks again."""
+        ticks = project_song.ticks
+        trace = captured_run(project_file.read_bytes(), play_calls_reaching(project_song, 2 * ticks))
+        played = instructions_from_trace(trace, get_timer_table(tuning_from_project(integration_project)))
+        for channel, sounded in played.items():
+            assert len(sounded) > ticks
+            assert [resting(instruction) for instruction in sounded[ticks : 2 * ticks]] == [
+                resting(instruction) for instruction in sounded[:ticks]
+            ]

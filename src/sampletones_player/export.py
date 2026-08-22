@@ -16,7 +16,8 @@ from sampletones_core.exports.request import (
 )
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.exports.stage import ExportStage
-from sampletones_player.builder import song_from_sample
+from sampletones_core.performance import WalkProgress, WalkReporter
+from sampletones_player.builder import SONG_START, song_from_project, song_from_sample
 from sampletones_player.compression.progress.report import CodecProgress, CodecReporter
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.file import write_nsf
@@ -27,6 +28,7 @@ SUPPORTED_SCOPES: FrozenSet[ExportScope] = frozenset(
     {
         ExportScope.INSTRUMENT,
         ExportScope.SAMPLE,
+        ExportScope.PROJECT,
     }
 )
 
@@ -35,6 +37,31 @@ WHOLE_ENVELOPE: None = None
 NOTHING_DONE: Final[int] = 0
 ONE_FILE: Final[int] = 1
 UNMEASURED: None = None
+
+
+def _walking(report: ExportReporter) -> WalkReporter:
+    """The walk's own reckoning, said in the words an export reports itself in.
+
+    A song's order states the ticks it lasts before a row of it is played, so this stage travels
+    toward a length it knows and reads as a true fraction of the song.
+
+    Args:
+        report: Hears each stage of the export, and answers whether it goes on.
+
+    Returns:
+        WalkReporter: What playing the song out tells the export about itself.
+    """
+
+    def reached(progress: WalkProgress) -> bool:
+        return report(
+            ExportProgress(
+                stage=ExportStage.WALKING,
+                completed=progress.ticks,
+                total=progress.total,
+            )
+        )
+
+    return reached
 
 
 def _compressing(report: ExportReporter) -> CodecReporter:
@@ -163,9 +190,39 @@ class NSFBackend:
         request: ProjectExport,
         report: ExportReporter = SILENT_REPORTER,
     ) -> ExportArtifact:
-        """Reports that a program plays one reconstruction.
+        """Writes a program playing a whole composition.
+
+        The arrangement is played out row by row into the ticks each channel sounds, those ticks
+        are compressed to what the console has room for, and the file is written; each of those
+        says so as it starts, and the walk reads as a fraction of the song it is playing out.
+
+        The file repeats from its first tick, which is how a piece of music is listened to and
+        what an NSF player expects of a song that has reached its end.
 
         Raises:
-            NotImplementedError: Always, until a song flattens to the four streams a program plays.
+            OperationCancelled: If ``report`` withdraws the write.
+            SongTooLargeError: If the song holds more than the program area has room for.
+            OSError: If the destination cannot be written.
+            ValueError: If the project's samples were reconstructed against tunings that differ.
         """
-        raise NotImplementedError("An NSF plays one reconstruction; a whole song reaches the console later")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        song = song_from_project(
+            request.project,
+            SONG_START,
+            _compressing(report),
+            _walking(report),
+        )
+
+        announce(report, ExportStage.WRITING, NOTHING_DONE, ONE_FILE)
+        write_nsf(
+            destination,
+            song,
+            NSFInformation(
+                title=request.project.info.title,
+                artist=request.project.info.author,
+            ),
+            self._image,
+        )
+        announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
+
+        return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE)

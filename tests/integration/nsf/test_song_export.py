@@ -13,7 +13,6 @@ from sampletones_player.specification.song import (
     TOTAL_TICKS_OFFSET,
 )
 from sampletones_shared.exceptions import SongTooLargeError
-from sampletones_shared.music import Tuning
 from tests.integration.nsf.songs import RECORD_BYTES_PER_TICK, available_bytes
 
 
@@ -24,7 +23,7 @@ def read_word(data: bytes, offset: int) -> int:
 @pytest.fixture
 def project_song(integration_project: Project) -> Song:
     """The song the console plays the integration project's arrangement as."""
-    return song_from_project(integration_project, Tuning(), loop_tick=None)
+    return song_from_project(integration_project, loop_tick=None)
 
 
 class TestTheProjectReachesTheConsole:

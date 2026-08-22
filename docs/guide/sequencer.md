@@ -212,6 +212,12 @@ FamiTracker module...**) writes the `.ftm`. See
 [FamiTracker export](../formats/famitracker.md) for what the module contains and
 the limits it respects.
 
+**File ▸ Export ▸ NSF program...** writes the song as an `.nsf` instead: a program
+the console itself plays, carrying its own player, so it needs no tracker to sound.
+The console holds one program in 32 KB, so a long song can outgrow it — the export
+says so rather than writing a file that plays part of itself. See
+[NSF export](../formats/nsf.md) for what the file holds.
+
 ## Rendering to audio
 
 A module is for a tracker. To get a file anyone can play, use **File ▸ Render

@@ -4,8 +4,13 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.maps import CHANNEL_TO_EXPORTER_MAP
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.instructions import InstructionUnion
-from sampletones_core.performance import song_instructions
+from sampletones_core.performance import (
+    SILENT_WALK_REPORTER,
+    WalkReporter,
+    song_instructions,
+)
 from sampletones_core.project.project import Project
+from sampletones_core.project.tuning import tuning_from_project
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.clock.schedule import PlaySchedule
@@ -16,7 +21,6 @@ from sampletones_player.compression.seeds import phrases_from_project
 from sampletones_player.registers.channel import channel_registers
 from sampletones_player.registers.streams import ChannelStreams
 from sampletones_player.song import Song
-from sampletones_shared.music import Tuning
 
 SONG_START: Final[int] = 0
 NO_SEEDS: Final[Tuple[Phrase, ...]] = ()
@@ -179,38 +183,41 @@ def song_from_sample(
 
 def song_from_project(
     project: Project,
-    tuning: Tuning,
     loop_tick: Optional[int],
     report: CodecReporter = SILENT_REPORTER,
+    walk: WalkReporter = SILENT_WALK_REPORTER,
 ) -> Song:
     """Builds the song the console plays a whole project as.
 
     The project's song is played out row by row into the instructions each channel sounds, so
     what reaches the console is the arrangement itself rather than one reconstruction: the same
     walk the sequencer sounds a song through, read as register values instead of audio. The
-    project states the rate the driver re-clocks those ticks by.
+    project states both the rate the driver re-clocks those ticks by and, through the samples it
+    holds, the tuning its pitches become timers under.
 
     A row plays a sample the project already holds, so the samples themselves seed the dictionary
     and every row naming one reaches the stream as a token naming that entry.
 
     Args:
         project: The project whose song is played.
-        tuning: Where concert pitch sits, which decides the timer each pitch sounds at.
         loop_tick: The tick the song returns to once it ends, or ``None`` where it stops there.
         report: Hears what the codec holds each time it looks up, and answers whether the
             compression goes on.
+        walk: Hears how far the song has been played out, and answers whether the walk goes on.
 
     Returns:
         Song: The streams, the clock and the loop point as the player holds them.
 
     Raises:
-        OperationCancelled: If ``report`` withdraws the compression.
+        OperationCancelled: If ``report`` or ``walk`` withdraws the run.
         TypeError: If a channel's stream holds an instruction another channel sounds.
-        ValueError: If ``loop_tick`` lies outside the song's ticks.
+        ValueError: If ``loop_tick`` lies outside the song's ticks, or the project's samples were
+            reconstructed against tunings that differ.
     """
+    tuning = tuning_from_project(project)
     return Song.from_streams(
         streams=streams_from_instructions(
-            song_instructions(project),
+            song_instructions(project, walk),
             get_timer_table(tuning),
         ),
         pitches=PitchTable.from_tuning(tuning),
