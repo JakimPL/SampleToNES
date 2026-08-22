@@ -15,10 +15,10 @@ from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_player.export import NSFBackend
 from sampletones_player.specification.nsf import NSF_MAGIC, PROGRAM_SIZE
 from sampletones_shared.music import Tuning
+from tests.suite.player import varied_features
 
 NES_FREQUENCY: Final[int] = 60
 REFERENCE_PITCH: Final[int] = 60
-MAX_VOLUME: Final[int] = 15
 
 
 def outcome(results: List[Any]) -> Any:
@@ -37,15 +37,8 @@ def console_backend_fixture() -> NSFBackend:
 
 
 def overlong_features(initial_pitch: int) -> Features:
-    """Envelopes running longer than the console's program area has room for."""
-    return Features(
-        initial_pitch=initial_pitch,
-        volume=np.full(PROGRAM_SIZE, MAX_VOLUME, dtype=int),
-        arpeggio=np.zeros(PROGRAM_SIZE, dtype=int),
-        pitch=None,
-        hi_pitch=None,
-        duty_cycle=np.zeros(PROGRAM_SIZE, dtype=int),
-    )
+    """Envelopes turning over at every tick for longer than the program area has room for."""
+    return varied_features(PROGRAM_SIZE, initial_pitch, duty_cycle=True)
 
 
 def instrument_export(name: str, features: Features) -> InstrumentExport:

@@ -1,8 +1,10 @@
 from enum import IntEnum
+from math import ceil
 from typing import Final
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.specification.binary import WORD_SIZE
+from sampletones_shared.constants.general import BITS_PER_BYTE
 
 
 class TokenTag(IntEnum):
@@ -21,6 +23,9 @@ class TokenTag(IntEnum):
     TRANSPOSED_PHRASE = 0xC0
 
 
+BYTE_VALUES: Final[int] = 256
+MAX_BYTE_VALUE: Final[int] = BYTE_VALUES - 1
+
 TOKEN_TAG_MASK: Final[int] = 0xC0
 TOKEN_OPERAND_MASK: Final[int] = 0x3F
 
@@ -31,19 +36,16 @@ TRANSPOSE_SIZE: Final[int] = 1
 
 MAX_HOLD_TICKS: Final[int] = TOKEN_OPERAND_MASK + 1
 MAX_LITERAL_BYTES: Final[int] = TOKEN_OPERAND_MASK + 1
-MAX_PHRASE_TICKS: Final[int] = 256
+MAX_PHRASE_TICKS: Final[int] = BYTE_VALUES
 
 PHRASE_ID_ESCAPE: Final[int] = TOKEN_OPERAND_MASK
 CHEAP_PHRASE_IDS: Final[int] = PHRASE_ID_ESCAPE
-MAX_PHRASE_IDS: Final[int] = 256
-MAX_PHRASE_LENGTH: Final[int] = 255
+MAX_PHRASE_IDS: Final[int] = MAX_BYTE_VALUE
+MAX_PHRASE_LENGTH: Final[int] = MAX_BYTE_VALUE
 
-PHRASE_TABLE_COUNT_SIZE: Final[int] = 1
+PHRASE_TABLE_COUNT_SIZE: Final[int] = ceil(MAX_PHRASE_IDS.bit_length() / BITS_PER_BYTE)
 PHRASE_TABLE_ENTRY_SIZE: Final[int] = WORD_SIZE
 PHRASE_LENGTH_SIZE: Final[int] = 1
-
-BYTE_VALUES: Final[int] = 256
-MAX_BYTE_VALUE: Final[int] = BYTE_VALUES - 1
 
 INITIAL_PLANE_VALUE: Final[int] = 0
 

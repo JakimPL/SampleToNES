@@ -88,7 +88,7 @@ them.
 | `song.py` | `Song` — the compressed planes, the timer table, the schedule and the loop point as one value | `clock/`, `registers/`, `compression/` |
 | `builder.py` | The song a reconstruction or an export request plays as, its instructions encoded, its planes compressed and its rate scheduled | `song.py`, `registers/`, `clock/`, `compression/` |
 | `trace/` | `RegisterTrace` — what the driver is expected to write, call by call | `song.py`, `specification/` |
-| `nsf/` | The song block, the header and the `.nsf` file the console loads | `song.py`, `registers/`, `specification/`, `driver/` |
+| `nsf/` | The song block, the header and the `.nsf` file the console loads | `song.py`, `specification/`, `compression/`, `driver/` |
 | `driver/` | The assembled 6502 driver and the addresses its build reports | `specification/` |
 | `driver/assembler/` | The cc65 build: the layout, the toolchain, the linker map reader and the builder | `driver/`, `specification/` |
 | `export.py` | `NSFBackend` — the export seam answered in `.nsf` files, holding the driver every one of them carries and saying which stage a run is in | `builder.py`, `nsf/`, `driver/`, `compression/` |

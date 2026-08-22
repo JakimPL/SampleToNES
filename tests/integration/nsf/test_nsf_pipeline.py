@@ -13,6 +13,7 @@ from sampletones_player.nsf.file import write_nsf
 from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import WORD_SIZE
+from sampletones_player.specification.compression import PLANE_COUNT
 from sampletones_player.specification.nsf import (
     HEADER_SIZE,
     NSF_MAGIC,
@@ -40,7 +41,7 @@ def read_word(data: bytes, offset: int) -> int:
 
 
 def stream_offsets(block: bytes) -> Tuple[int, ...]:
-    return tuple(read_word(block, STREAM_OFFSETS_OFFSET + WORD_SIZE * channel) for channel in range(len(ChannelName)))
+    return tuple(read_word(block, STREAM_OFFSETS_OFFSET + WORD_SIZE * plane) for plane in range(PLANE_COUNT))
 
 
 @pytest.fixture
@@ -121,10 +122,10 @@ class TestTheSongTheFileCarries:
     ) -> None:
         block = song_block(exported, driver_image)
         offsets = stream_offsets(block)
-        assert offsets[0] == SONG_HEADER_SIZE
+        assert offsets[0] > SONG_HEADER_SIZE
         assert all(offset < len(block) for offset in offsets)
 
-    def test_the_streams_stand_in_channel_order(
+    def test_the_streams_stand_in_plane_order(
         self,
         exported: bytes,
         driver_image: DriverImage,

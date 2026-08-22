@@ -7,7 +7,11 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.progress import ExportProgress
-from sampletones_core.exports.request import InstrumentExport, ProjectExport
+from sampletones_core.exports.request import (
+    InstrumentExport,
+    ProjectExport,
+    SampleExport,
+)
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.project import Project
@@ -27,13 +31,14 @@ from tests.suite.player import (
     player_features,
     player_instrument,
     player_sample,
+    varied_features,
 )
 from tests.suite.progress import RecordingReporter, reported_stages
 
 NTSC_FREQUENCY: Final[int] = 60
 SOUNDING_TICKS: Final[int] = 8
 BASS_PITCH: Final[int] = 45
-OVERLONG_TICKS: Final[int] = PROGRAM_SIZE
+OVERLONG_TICKS: Final[int] = 8192
 FILENAME: Final[str] = "reconstruction.nsf"
 SAMPLE_NAME: Final[str] = "Amen"
 PROJECT_TITLE: Final[str] = "Demo"
@@ -48,6 +53,37 @@ def lead_slice(name: str, frames: int) -> InstrumentExport:
         player_features(frames, PLAYER_REFERENCE_PITCH, duty_cycle=True),
         nes_frequency=NTSC_FREQUENCY,
         loop=False,
+    )
+
+
+def overlong_sample() -> SampleExport:
+    """A reconstruction whose channels turn over at every tick, so its song outgrows the console."""
+    return player_sample(
+        SAMPLE_NAME,
+        (
+            player_instrument(
+                "lead",
+                ChannelName.PULSE1,
+                varied_features(OVERLONG_TICKS, PLAYER_REFERENCE_PITCH, duty_cycle=True),
+                nes_frequency=NTSC_FREQUENCY,
+                loop=False,
+            ),
+            player_instrument(
+                "harmony",
+                ChannelName.PULSE2,
+                varied_features(OVERLONG_TICKS, PLAYER_REFERENCE_PITCH, duty_cycle=True),
+                nes_frequency=NTSC_FREQUENCY,
+                loop=False,
+            ),
+            player_instrument(
+                "bass",
+                ChannelName.TRIANGLE,
+                varied_features(OVERLONG_TICKS, BASS_PITCH, duty_cycle=False),
+                nes_frequency=NTSC_FREQUENCY,
+                loop=False,
+            ),
+        ),
+        nes_frequency=NTSC_FREQUENCY,
     )
 
 
@@ -143,9 +179,8 @@ class TestWriteSample:
         tmp_path: Path,
     ) -> None:
         destination = tmp_path / FILENAME
-        request = player_sample(SAMPLE_NAME, (lead_slice("lead", OVERLONG_TICKS),), nes_frequency=NTSC_FREQUENCY)
         with pytest.raises(SongTooLargeError):
-            backend.write_sample(destination, request)
+            backend.write_sample(destination, overlong_sample())
 
 
 class TestWriteInstrument:

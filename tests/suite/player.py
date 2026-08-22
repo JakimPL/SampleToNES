@@ -6,18 +6,28 @@ import numpy as np
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.general import DUTY_CYCLES
 from sampletones_core.exporters import Features
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.clock.schedule import PlaySchedule
-from sampletones_player.compression.pitch import PitchTable
+from sampletones_player.compression.compressed import CompressedPlanes
+from sampletones_player.compression.dictionary.table import PhraseTable
+from sampletones_player.compression.encode import emit
+from sampletones_player.compression.pitch import PITCH_COUNT, PitchTable
+from sampletones_player.compression.planes.order import PlaneOrder
+from sampletones_player.compression.tokens.literal import LiteralToken
 from sampletones_player.registers.noise import NoiseRegisters
 from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.registers.streams import ChannelStreams
 from sampletones_player.registers.triangle import TriangleRegisters
 from sampletones_player.song import Song
+from sampletones_player.specification.compression import (
+    MAX_LITERAL_BYTES,
+    PLANE_COUNT,
+)
 from sampletones_player.specification.registers import (
     DUTY_CYCLE_SHIFT,
     MAX_REGISTER_VALUE,
@@ -139,6 +149,35 @@ def silent_pulse() -> PulseInstruction:
     return PulseInstruction.null_instruction()
 
 
+PLAYER_VARIED_SEED: Final[int] = 7
+
+
+def spelled_song(ticks: int, nes_frequency: int) -> Song:
+    """A song whose every plane spells its values out, which is the most room a song can take.
+
+    A block reaching past what the console holds is what a refusal is measured on, and a plane
+    the codec finds nothing in is where a song takes most room: one byte a tick and an opcode
+    every sixty-four. Building the streams outright states that shape exactly.
+    """
+    values = bytes(tick % PITCH_COUNT for tick in range(ticks))
+    stream = emit(
+        [
+            LiteralToken(values=values[start : start + MAX_LITERAL_BYTES])
+            for start in range(0, len(values), MAX_LITERAL_BYTES)
+        ]
+    )
+    return Song(
+        planes=CompressedPlanes(
+            phrases=PhraseTable(phrases=()),
+            streams=PlaneOrder.across((stream,) * PLANE_COUNT),
+            ticks=ticks,
+        ),
+        pitches=PLAYER_PITCHES,
+        schedule=PlaySchedule.from_parameters(nes_frequency),
+        loop_tick=None,
+    )
+
+
 PLAYER_APPROXIMATION_SAMPLES: Final[int] = 64
 
 
@@ -177,6 +216,28 @@ def player_features(
         pitch=None,
         hi_pitch=None,
         duty_cycle=np.zeros(frames, dtype=int) if duty_cycle else None,
+    )
+
+
+def varied_features(
+    frames: int,
+    pitch: int,
+    *,
+    duty_cycle: bool,
+) -> Features:
+    """Envelopes turning over at every tick, the shape a plane holds least to repeat.
+
+    A song outgrowing the console is a song the codec finds little in, so the envelopes are
+    drawn at random from a stated seed: the same shape every run, and one that repeats nowhere.
+    """
+    generator = np.random.default_rng(PLAYER_VARIED_SEED)
+    return Features(
+        initial_pitch=pitch,
+        volume=generator.integers(0, PLAYER_FULL_VOLUME + 1, frames),
+        arpeggio=generator.integers(-OCTAVE_SEMITONES, OCTAVE_SEMITONES + 1, frames),
+        pitch=None,
+        hi_pitch=None,
+        duty_cycle=generator.integers(0, len(DUTY_CYCLES), frames) if duty_cycle else None,
     )
 
 

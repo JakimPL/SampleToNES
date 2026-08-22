@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, NamedTuple
+from typing import Iterable, NamedTuple, Tuple
 
 from sampletones_player.specification.compression import PLANE_COUNT
 
@@ -32,6 +32,11 @@ class PlaneOrder(NamedTuple):
     triangle_value: bytes
     noise_control: bytes
     noise_value: bytes
+
+    @classmethod
+    def names(cls) -> Tuple[str, ...]:
+        """The planes' names, in the order the song block writes them."""
+        return cls._fields
 
     @classmethod
     def across(cls, planes: Iterable[bytes]) -> PlaneOrder:

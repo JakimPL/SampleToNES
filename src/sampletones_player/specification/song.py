@@ -1,14 +1,17 @@
 from typing import Final
 
-from sampletones_core.constants.enums import ChannelName
 from sampletones_player.specification.binary import WORD_SIZE
+from sampletones_player.specification.compression import PLANE_COUNT
 
 STEP_WHOLE_OFFSET: Final[int] = 0
 STEP_FRACTION_OFFSET: Final[int] = STEP_WHOLE_OFFSET + 1
 TOTAL_TICKS_OFFSET: Final[int] = STEP_FRACTION_OFFSET + WORD_SIZE
 LOOP_TICK_OFFSET: Final[int] = TOTAL_TICKS_OFFSET + WORD_SIZE
-STREAM_OFFSETS_OFFSET: Final[int] = LOOP_TICK_OFFSET + WORD_SIZE
-SONG_HEADER_SIZE: Final[int] = STREAM_OFFSETS_OFFSET + WORD_SIZE * len(ChannelName)
+TIMER_TABLE_OFFSET: Final[int] = LOOP_TICK_OFFSET + WORD_SIZE
+PHRASE_TABLE_OFFSET: Final[int] = TIMER_TABLE_OFFSET + WORD_SIZE
+STREAM_OFFSETS_OFFSET: Final[int] = PHRASE_TABLE_OFFSET + WORD_SIZE
+LOOP_ENTRIES_OFFSET: Final[int] = STREAM_OFFSETS_OFFSET + WORD_SIZE * PLANE_COUNT
+SONG_HEADER_SIZE: Final[int] = LOOP_ENTRIES_OFFSET + WORD_SIZE * PLANE_COUNT
 
 NO_LOOP: Final[int] = 0xFFFF
-MAX_STREAM_OFFSET: Final[int] = 0xFFFF
+MAX_BLOCK_OFFSET: Final[int] = 0xFFFF
