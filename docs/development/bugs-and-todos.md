@@ -27,6 +27,11 @@
 * A sample's loop point is offered as a switch in the voice list, though the model carries the
   point for both kinds of voice.
 * Exporting a shape as an instrument file from the Reconstructions tab.
+* `SubColumn.INSTRUMENT` names the first slot of both tracker column kinds, and the two hold
+  different things: the voice id under the Voice column, and the note on a channel column. One
+  name for both is wrong half the time, and splitting it reaches the layout keys
+  (`sequencer/colors.yaml`, `sequencer/tracker.yaml`) and their DTOs, so it is a question of its
+  own rather than part of naming a voice.
 
 ### Workflow
 
@@ -43,7 +48,15 @@
 
 * API documentation
 * Code documentation
-* Backward compatibility: library/reconstruction upgrade scheme
+* A backward-compatibility corpus of files older builds actually wrote. Every upgrade step is
+  exercised against a payload the test builds itself — hand-written mappings for the step, and,
+  for projects, a current document rewritten backwards into the older shape — so a step is held
+  only to the fields it names. One archived `.stn`, `.ins` and `.stp` per shipped version, each
+  written by that version and exercising every feature it could store, would hold the whole
+  document to the chain and would catch a field that changed shape while no step named it.
+  Configuration and session state carry no version at all, so the same corpus would state what a
+  build is expected to make of a `state.yaml` an older one left behind. Reaches
+  `tests/unit/sampletones_core/compatibility/` and each format's load tests.
 * Respecting FamiTracker limitations
 * Per-tab undo routing
 * In-application console

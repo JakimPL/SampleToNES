@@ -15,7 +15,7 @@ class SequencerCellViewModel(BaseModel, frozen=True):
     """One channel cell on one tracker row, pre-formatted for display.
 
     The columns are produced by :mod:`sampletones_core.utils.display`, the single
-    source of tracker cell formatting (sample position, transpose, volume). The
+    source of tracker cell formatting (voice position, transpose, volume). The
     tracker grid renders :attr:`label`, the combined cell text.
     """
 
@@ -32,32 +32,32 @@ class SequencerRowViewModel(BaseModel, frozen=True):
     index: int
     cells: Dict[ChannelName, SequencerCellViewModel]
     relevant_channels: FrozenSet[ChannelName]
-    """Channels the row's sample(s) span — the union of their reconstructions' channels.
+    """Channels the row's voices span — the union of their reconstructions' channels.
 
-    The sample column summarises a subcolumn only across these channels, so a
+    The voice column summarises a subcolumn only across these channels, so a
     sample that spans more channels than it currently occupies reads as mixed.
     """
 
     @property
     def subcolumn_channels(self) -> FrozenSet[ChannelName]:
-        """Channels every sample column summary spans.
+        """Channels every voice column summary spans.
 
         A sample governs the channels its reconstruction covers, so its subcolumns
-        summarise exactly those. Transpose and volume exist independently of an
-        instrument, so a row with no sample spans every channel.
+        summarise exactly those. Transpose and volume stand on their own, so a row
+        naming no voice spans every channel.
         """
         return self.relevant_channels or frozenset(self.cells)
 
     @property
-    def sample_instrument(self) -> str:
+    def voice(self) -> str:
         return self._aggregate(lambda cell: cell.instrument, display_id(None))
 
     @property
-    def sample_transpose(self) -> str:
+    def transpose(self) -> str:
         return self._aggregate(lambda cell: cell.transpose, display_transpose(None))
 
     @property
-    def sample_volume(self) -> str:
+    def volume(self) -> str:
         return self._aggregate(lambda cell: cell.volume, display_volume(None))
 
     def _aggregate(
@@ -65,10 +65,10 @@ class SequencerRowViewModel(BaseModel, frozen=True):
         select: Callable[[SequencerCellViewModel], str],
         default: str,
     ) -> str:
-        """Summarise one subcolumn across the channels the sample column spans.
+        """Summarise one subcolumn across the channels the voice column spans.
 
         The summary holds a value only where every channel agrees on it, so
-        :data:`MIXED` marks each way they can differ: a sample missing from one of
+        :data:`MIXED` marks each way they can differ: a voice missing from one of
         its channels, a transpose set on some of them, or a row cut on some and
         blank on the rest. A row with no cells at all shows the empty default.
         """

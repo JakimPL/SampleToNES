@@ -109,10 +109,10 @@ class TestCollisions:
 
     def test_one_combination_serves_a_category_of_its_own(self, rebound: RebindScheme) -> None:
         """Tab moves between dialog controls and between tracker columns, each in its own scope."""
-        scheme = rebound({ShortcutId.SAMPLES_RENAME_SAMPLE: WrittenShortcut(combination="Tab")})
+        scheme = rebound({ShortcutId.VOICES_RENAME_VOICE: WrittenShortcut(combination="Tab")})
 
         assert scheme.shortcut(ShortcutId.TRACKER_NEXT_COLUMN).display() == "Tab"
-        assert scheme.shortcut(ShortcutId.SAMPLES_RENAME_SAMPLE).display() == "Tab"
+        assert scheme.shortcut(ShortcutId.VOICES_RENAME_VOICE).display() == "Tab"
 
     def test_a_combination_naming_no_key_raises(self, rebound: RebindScheme) -> None:
         with pytest.raises(KeyError):
@@ -127,7 +127,7 @@ class TestAction:
         assert shipped.action(ShortcutCategory.ORDER, _press("Num+")) is ShortcutId.ORDER_INSERT_FRAME
 
     def test_a_press_the_category_leaves_unnamed_resolves_to_nothing(self, shipped: ShortcutScheme) -> None:
-        assert shipped.action(ShortcutCategory.SAMPLES, _press("Ctrl+S")) is None
+        assert shipped.action(ShortcutCategory.VOICES, _press("Ctrl+S")) is None
 
     def test_each_category_answers_a_shared_combination_with_its_own_action(
         self,
@@ -160,7 +160,7 @@ class TestClaimant:
         assert claimant is ShortcutId.REDO
 
     def test_a_combination_the_category_leaves_unclaimed_reads_as_nothing(self, shipped: ShortcutScheme) -> None:
-        assert shipped.claimant(ShortcutCategory.SAMPLES, KeyCombination.parse("Ctrl+Z")) is None
+        assert shipped.claimant(ShortcutCategory.VOICES, KeyCombination.parse("Ctrl+Z")) is None
 
     def test_each_category_answers_a_shared_combination_with_its_own_action(self, shipped: ShortcutScheme) -> None:
         escape = KeyCombination.parse("Esc")
@@ -272,7 +272,7 @@ class TestWithOverrides:
         scheme = shipped.with_overrides({"AboutDialog": TABLE_COMBINATION})
 
         assert scheme.action(ShortcutCategory.APPLICATION, _press(TABLE_COMBINATION)) is ShortcutId.ABOUT_DIALOG
-        assert scheme.action(ShortcutCategory.SAMPLES, _press(TABLE_COMBINATION)) is ShortcutId.SAMPLES_REMOVE_SAMPLE
+        assert scheme.action(ShortcutCategory.VOICES, _press(TABLE_COMBINATION)) is ShortcutId.VOICES_REMOVE_VOICE
 
     def test_an_override_stating_no_combination_leaves_the_action_unbound(self, shipped: ShortcutScheme) -> None:
         scheme = shipped.with_overrides({"Undo": None})

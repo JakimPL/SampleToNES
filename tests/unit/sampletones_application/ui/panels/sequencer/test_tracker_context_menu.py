@@ -23,8 +23,8 @@ positional argument. The original bug let this id overwrite the step payload."""
 
 
 _CONTEXT_LABELS = (
-    "_lbl_context_set_instrument",
-    "_lbl_context_no_samples",
+    "_lbl_context_set_voice",
+    "_lbl_context_no_voices",
 )
 
 

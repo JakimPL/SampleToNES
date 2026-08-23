@@ -393,5 +393,5 @@ class TestHeaderTooltips:
 
     def test_both_headers_explain_their_click(self, panel: GUISequencerTrackerPanel) -> None:
         assert panel._tooltip_header_channel
-        assert panel._tooltip_header_sample
-        assert panel._tooltip_header_channel != panel._tooltip_header_sample
+        assert panel._tooltip_header_voice
+        assert panel._tooltip_header_channel != panel._tooltip_header_voice

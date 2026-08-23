@@ -217,7 +217,7 @@ class SequencerTrackerLogic(CallbackMixin):
         voice_id: str,
     ) -> None:
         if channel is None:
-            self.set_sample_instrument(row_index, voice_id)
+            self.set_row_voice(row_index, voice_id)
         else:
             self.set_row(
                 channel,
@@ -332,21 +332,20 @@ class SequencerTrackerLogic(CallbackMixin):
                 volume=volume,
             )
 
-    def set_sample_instrument(
+    def set_row_voice(
         self,
         row_index: int,
         voice_id: Optional[str],
     ) -> None:
         """Places a sample across the channels its reconstruction uses.
 
-        The sample column is authoritative: the instrument is written to every
-        channel the sample covers, and the remaining channels on that row are
-        cleared so the row reflects exactly that sample. Clearing an empty sample
-        id wipes the whole row.
+        The voice column is authoritative: the sample is written to every channel it covers, and
+        the remaining channels on that row are cleared so the row plays exactly that sample.
+        An empty voice id wipes the whole row.
 
-        The column speaks for samples, which carry a slice per channel; an instrument carries one
-        instrument the reader places on the channel they want it on, so it is named in a channel
-        column and this one leaves the row as it stands.
+        The column speaks for samples, which carry a slice per channel. A hand-written voice sounds
+        on whichever channel the reader names it in, so it is placed in a channel column and this
+        one leaves the row as it stands.
         """
         if voice_id is None:
             self.clear_all_channels(row_index)

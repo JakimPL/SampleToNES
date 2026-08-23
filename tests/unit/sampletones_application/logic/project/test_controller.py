@@ -63,13 +63,13 @@ class TestSamples:
     ) -> None:
         controller = _controller()
         emitted: List[str] = []
-        controller.on_voices_changed = lambda: emitted.append("samples")
+        controller.on_voices_changed = lambda: emitted.append("voices")
 
         sample = controller.add_sample(reconstruction_factory(), name="lead")
 
         assert list(controller.project.voices) == [sample]
         assert controller.project.voice(sample.id) is sample
-        assert emitted == ["samples"]
+        assert emitted == ["voices"]
 
     def test_add_sample_detaches_source_but_keeps_object_identity(
         self,
@@ -171,12 +171,12 @@ class TestSamples:
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         controller.add_sample(reconstruction_factory(), name="pad")
         emitted: List[str] = []
-        controller.on_voices_changed = lambda: emitted.append("samples")
+        controller.on_voices_changed = lambda: emitted.append("voices")
         controller.on_song_changed = lambda: emitted.append("song")
 
         controller.move_voice(sample.id, 1)
 
-        assert "samples" in emitted
+        assert "voices" in emitted
         assert "song" in emitted
 
     def test_duplicate_sample_appends_independent_copy(
@@ -203,11 +203,11 @@ class TestSamples:
         controller = _controller()
         source = controller.add_sample(reconstruction_factory(), name="lead")
         emitted: List[str] = []
-        controller.on_voices_changed = lambda: emitted.append("samples")
+        controller.on_voices_changed = lambda: emitted.append("voices")
 
         controller.duplicate_voice(source.id)
 
-        assert emitted == ["samples"]
+        assert emitted == ["voices"]
 
     def test_replace_sample_reconstruction_swaps_content_and_keeps_identity(
         self,
@@ -267,7 +267,7 @@ class TestSamples:
         controller = _controller()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         emitted: List[str] = []
-        controller.on_voices_changed = lambda: emitted.append("samples")
+        controller.on_voices_changed = lambda: emitted.append("voices")
         controller.on_song_changed = lambda: emitted.append("song")
 
         controller.replace_sample_reconstruction(
@@ -275,7 +275,7 @@ class TestSamples:
             reconstruction_factory(),
         )
 
-        assert "samples" in emitted
+        assert "voices" in emitted
         assert "song" in emitted
 
 

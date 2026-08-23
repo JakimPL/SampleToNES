@@ -43,8 +43,8 @@ from sampletones_application.ui.panels.sequencer.columns import (
     DIVIDER_TABLE_COLUMN,
     HEADER_TABLE_ROW,
     HEADER_TABLE_ROWS,
-    SAMPLE_TABLE_COLUMN,
     TRACKER_TABLE_COLUMNS,
+    VOICE_TABLE_COLUMN,
     channel_color,
     tracker_table_column,
     tracker_table_row,
@@ -326,7 +326,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         """Reads the name each column carries, which its header label and its menu title show."""
         self._lbl_col_row = self._label(language_manager, SequencerTrackerElements.COLUMN_ROW)
         self._column_labels: Dict[Optional[ChannelName], str] = {
-            None: self._label(language_manager, SequencerTrackerElements.COLUMN_SAMPLE),
+            None: self._label(language_manager, SequencerTrackerElements.COLUMN_VOICE),
             ChannelName.PULSE1: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_1),
             ChannelName.PULSE2: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_2),
             ChannelName.TRIANGLE: self._label(language_manager, SequencerTrackerElements.COLUMN_TRIANGLE),
@@ -355,8 +355,8 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._lbl_context_select_column = label(SequencerTrackerElements.CONTEXT_SELECT_COLUMN)
         self._lbl_context_select_subcolumn = label(SequencerTrackerElements.CONTEXT_SELECT_SUBCOLUMN)
         self._lbl_context_note_off = label(SequencerTrackerElements.CONTEXT_NOTE_OFF)
-        self._lbl_context_set_instrument = label(SequencerTrackerElements.CONTEXT_SET_INSTRUMENT)
-        self._lbl_context_no_samples = label(SequencerTrackerElements.CONTEXT_NO_SAMPLES)
+        self._lbl_context_set_voice = label(SequencerTrackerElements.CONTEXT_SET_VOICE)
+        self._lbl_context_no_voices = label(SequencerTrackerElements.CONTEXT_NO_VOICES)
         self._lbl_context_clear_subcolumn = label(SequencerTrackerElements.CONTEXT_CLEAR_SUBCOLUMN)
         self._lbl_context_clear_cell = label(SequencerTrackerElements.CONTEXT_CLEAR_CELL)
         self._lbl_context_clear_row = label(SequencerTrackerElements.CONTEXT_CLEAR_ROW)
@@ -371,7 +371,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             return language_manager[Page.SEQUENCER, Panel.TRACKER, TextType.TOOLTIP, element]
 
         self._tooltip_header_channel = channel_tooltip(tooltip(SequencerTrackerElements.HEADER_CHANNEL))
-        self._tooltip_header_sample = tooltip(SequencerTrackerElements.HEADER_SAMPLE)
+        self._tooltip_header_voice = tooltip(SequencerTrackerElements.HEADER_VOICE)
 
     def _create_channel_switch(self, language_manager: LanguageManager) -> None:
         """Builds the switch a column header's click and menu act through.
@@ -715,7 +715,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         """
         dpg.highlight_table_column(
             TAG_SEQUENCER_TRACKER_TABLE,
-            SAMPLE_TABLE_COLUMN,
+            VOICE_TABLE_COLUMN,
             self._layout.colors.sample.column.rgba,
         )
         dpg.highlight_table_column(
@@ -770,9 +770,9 @@ class GUISequencerTrackerPanel(GUIPanel):
     ) -> CellValues:
         cell_values: CellValues = {}
         for row in view_model.rows:
-            cell_values[(row.index, None, SubColumn.INSTRUMENT)] = row.sample_instrument
-            cell_values[(row.index, None, SubColumn.TRANSPOSE)] = row.sample_transpose
-            cell_values[(row.index, None, SubColumn.VOLUME)] = row.sample_volume
+            cell_values[(row.index, None, SubColumn.INSTRUMENT)] = row.voice
+            cell_values[(row.index, None, SubColumn.TRANSPOSE)] = row.transpose
+            cell_values[(row.index, None, SubColumn.VOLUME)] = row.volume
             for channel in ChannelName.items():
                 cell = row.cells[channel]
                 for subcolumn in SubColumn:
@@ -849,7 +849,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         dpg.bind_item_handler_registry(selectable, self._header_handler_tag)
         show_tooltip(
             selectable,
-            self._tooltip_header_sample if channel is None else self._tooltip_header_channel,
+            self._tooltip_header_voice if channel is None else self._tooltip_header_channel,
         )
         self._header_columns[selectable] = channel
 
@@ -1443,11 +1443,11 @@ class GUISequencerTrackerPanel(GUIPanel):
         )
 
     def _add_instrument_submenu(self, cell: TrackerCursor) -> None:
-        with dpg.menu(label=self._lbl_context_set_instrument):
+        with dpg.menu(label=self._lbl_context_set_voice):
             samples = self._current_samples.voices if self._current_samples is not None else ()
             if not samples:
                 dpg.add_menu_item(
-                    label=self._lbl_context_no_samples,
+                    label=self._lbl_context_no_voices,
                     enabled=False,
                 )
                 return

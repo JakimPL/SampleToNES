@@ -264,8 +264,8 @@ class TestActionItems:
         shortcuts = shipped_source()
         _panel(monkeypatch).panel.build_edit_actions()
 
-        assert recorder.items[RENAME_ITEM].shortcut == shortcuts.display(ShortcutId.SAMPLES_RENAME_SAMPLE)
-        assert recorder.items[REMOVE_ITEM].shortcut == shortcuts.display(ShortcutId.SAMPLES_REMOVE_SAMPLE)
+        assert recorder.items[RENAME_ITEM].shortcut == shortcuts.display(ShortcutId.VOICES_RENAME_VOICE)
+        assert recorder.items[REMOVE_ITEM].shortcut == shortcuts.display(ShortcutId.VOICES_REMOVE_VOICE)
         assert [item.shortcut for item in recorder.items[MOVE_UP_ITEM:]] == [
             shortcuts.display(move.shortcut) for move in VOICE_MOVES
         ]

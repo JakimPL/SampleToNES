@@ -123,7 +123,7 @@ class TestTheSampleColumnSpeaksForSamples:
         controller, logic = _logic()
         instrument = _instrument(controller)
 
-        logic.set_sample_instrument(0, instrument.id)
+        logic.set_row_voice(0, instrument.id)
 
         assert all(logic.row(channel, 0) is None or logic.row(channel, 0).is_empty() for channel in ChannelName.items())
 
@@ -134,4 +134,4 @@ class TestTheSampleColumnSpeaksForSamples:
         _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), transpose=0)
         _write(controller, ChannelName.PULSE2, 0, command=NoteOn(voice_id=sample.id), transpose=0)
 
-        assert logic.build_grid().rows[0].sample_transpose == "?"
+        assert logic.build_grid().rows[0].transpose == "?"

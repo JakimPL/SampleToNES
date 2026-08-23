@@ -70,22 +70,22 @@ class SampleMove:
 VOICE_MOVES: Final[Tuple[SampleMove, ...]] = (
     SampleMove(
         element=SequencerVoicesElements.CONTEXT_MOVE_UP,
-        shortcut=ShortcutId.SAMPLES_MOVE_SAMPLE_UP,
+        shortcut=ShortcutId.VOICES_MOVE_VOICE_UP,
         direction=MoveDirection.PREVIOUS,
     ),
     SampleMove(
         element=SequencerVoicesElements.CONTEXT_MOVE_DOWN,
-        shortcut=ShortcutId.SAMPLES_MOVE_SAMPLE_DOWN,
+        shortcut=ShortcutId.VOICES_MOVE_VOICE_DOWN,
         direction=MoveDirection.NEXT,
     ),
     SampleMove(
         element=SequencerVoicesElements.CONTEXT_MOVE_TOP,
-        shortcut=ShortcutId.SAMPLES_MOVE_SAMPLE_TO_TOP,
+        shortcut=ShortcutId.VOICES_MOVE_VOICE_TO_TOP,
         direction=MoveDirection.FIRST,
     ),
     SampleMove(
         element=SequencerVoicesElements.CONTEXT_MOVE_BOTTOM,
-        shortcut=ShortcutId.SAMPLES_MOVE_SAMPLE_TO_BOTTOM,
+        shortcut=ShortcutId.VOICES_MOVE_VOICE_TO_BOTTOM,
         direction=MoveDirection.LAST,
     ),
 )
@@ -483,7 +483,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         The scheme says which press each samples action answers to; a press the samples category
         leaves unnamed goes to the application's global shortcuts.
         """
-        shortcut_id = self._shortcuts.action(ShortcutCategory.SAMPLES, event)
+        shortcut_id = self._shortcuts.action(ShortcutCategory.VOICES, event)
         if self._editing_voice_id is not None:
             return self._cancel_edit(shortcut_id)
 
@@ -495,9 +495,9 @@ class GUISequencerVoicesPanel(GUIPanel):
             return True
 
         match shortcut_id:
-            case ShortcutId.SAMPLES_REMOVE_SAMPLE:
+            case ShortcutId.VOICES_REMOVE_VOICE:
                 self.call(self.on_remove_requested, voice_id)
-            case ShortcutId.SAMPLES_RENAME_SAMPLE:
+            case ShortcutId.VOICES_RENAME_VOICE:
                 self._start_rename(voice_id)
             case _:
                 return False
@@ -510,7 +510,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         A rename in progress keeps every other key for the input, so typing a name reaches the
         field rather than the panel.
         """
-        if shortcut_id is not ShortcutId.SAMPLES_CANCEL_RENAME:
+        if shortcut_id is not ShortcutId.VOICES_CANCEL_RENAME:
             return False
 
         self._cancel_rename()
@@ -764,7 +764,7 @@ class GUISequencerVoicesPanel(GUIPanel):
                 self._language_manager,
                 SequencerVoicesElements.CONTEXT_RENAME,
             ),
-            shortcut=self._shortcuts.display(ShortcutId.SAMPLES_RENAME_SAMPLE),
+            shortcut=self._shortcuts.display(ShortcutId.VOICES_RENAME_VOICE),
             callback=lambda: self._start_rename(target.voice_id),
         )
         dpg.add_menu_item(
@@ -780,7 +780,7 @@ class GUISequencerVoicesPanel(GUIPanel):
                 self._language_manager,
                 SequencerVoicesElements.CONTEXT_REMOVE,
             ),
-            shortcut=self._shortcuts.display(ShortcutId.SAMPLES_REMOVE_SAMPLE),
+            shortcut=self._shortcuts.display(ShortcutId.VOICES_REMOVE_VOICE),
             callback=lambda: self.call(self.on_remove_requested, target.voice_id),
         )
         dpg.add_separator()

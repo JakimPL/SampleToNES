@@ -145,9 +145,9 @@ class TestAssign(BaseTestSuite):
         ),
         TestCase(
             label="a combination held in another category too",
-            shortcut_id=ShortcutId.SAMPLES_MOVE_SAMPLE_UP,
+            shortcut_id=ShortcutId.VOICES_MOVE_VOICE_UP,
             written="F2",
-            holder=ShortcutId.SAMPLES_RENAME_SAMPLE,
+            holder=ShortcutId.VOICES_RENAME_VOICE,
         ),
     )
 

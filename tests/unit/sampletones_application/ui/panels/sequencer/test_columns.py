@@ -4,8 +4,8 @@ from sampletones_application.ui.panels.sequencer.columns import (
     DIVIDER_TABLE_COLUMN,
     HEADER_TABLE_ROW,
     HEADER_TABLE_ROWS,
-    SAMPLE_TABLE_COLUMN,
     TRACKER_TABLE_COLUMNS,
+    VOICE_TABLE_COLUMN,
     tracker_table_column,
     tracker_table_row,
 )
@@ -22,8 +22,8 @@ _PATTERN_ROWS = [(0, 1), (1, 2), (5, 6), (63, 64)]
 
 
 def test_sample_column_directly_precedes_the_divider() -> None:
-    assert tracker_table_column(None) == SAMPLE_TABLE_COLUMN == 2
-    assert DIVIDER_TABLE_COLUMN == SAMPLE_TABLE_COLUMN + 1
+    assert tracker_table_column(None) == VOICE_TABLE_COLUMN == 2
+    assert DIVIDER_TABLE_COLUMN == VOICE_TABLE_COLUMN + 1
 
 
 @pytest.mark.parametrize("channel, expected_column", _CHANNEL_COLUMNS)

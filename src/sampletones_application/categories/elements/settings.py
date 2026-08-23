@@ -157,13 +157,13 @@ class KeybindingActionElements(AbstractElement):
     TRACKER_CANCEL_ENTRY = "tracker_cancel_entry"
     TRACKER_PLAY_FROM_ROW = "tracker_play_from_row"
 
-    SAMPLES_RENAME_SAMPLE = "samples_rename_sample"
-    SAMPLES_REMOVE_SAMPLE = "samples_remove_sample"
-    SAMPLES_MOVE_SAMPLE_UP = "samples_move_sample_up"
-    SAMPLES_MOVE_SAMPLE_DOWN = "samples_move_sample_down"
-    SAMPLES_MOVE_SAMPLE_TO_TOP = "samples_move_sample_to_top"
-    SAMPLES_MOVE_SAMPLE_TO_BOTTOM = "samples_move_sample_to_bottom"
-    SAMPLES_CANCEL_RENAME = "samples_cancel_rename"
+    VOICES_RENAME_VOICE = "voices_rename_voice"
+    VOICES_REMOVE_VOICE = "voices_remove_voice"
+    VOICES_MOVE_VOICE_UP = "voices_move_voice_up"
+    VOICES_MOVE_VOICE_DOWN = "voices_move_voice_down"
+    VOICES_MOVE_VOICE_TO_TOP = "voices_move_voice_to_top"
+    VOICES_MOVE_VOICE_TO_BOTTOM = "voices_move_voice_to_bottom"
+    VOICES_CANCEL_RENAME = "voices_cancel_rename"
 
 
 class KeybindingCategoryElements(AbstractElement):
@@ -172,7 +172,7 @@ class KeybindingCategoryElements(AbstractElement):
     APPLICATION = "application"
     ORDER = "order"
     TRACKER = "tracker"
-    SAMPLES = "samples"
+    VOICES = "voices"
 
 
 class KeybindingsElements(AbstractElement):

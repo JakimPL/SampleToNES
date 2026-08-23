@@ -81,7 +81,7 @@ class TestClearCellSubcolumn:
             sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
+        logic.set_row_voice(0, sample.id)
         logic.set_note_off(ChannelName.NOISE, 0)
 
         logic.clear_cell_subcolumn(0, None, SubColumn.INSTRUMENT)
@@ -96,7 +96,7 @@ class TestClearCellSubcolumn:
             sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
+        logic.set_row_voice(0, sample.id)
         for channel in ChannelName.items():
             logic.set_row(channel, 0, transpose=5)
 
@@ -294,7 +294,7 @@ class TestSetSampleInstrument:
             name="lead",
         )
 
-        logic.set_sample_instrument(0, sample.id)
+        logic.set_row_voice(0, sample.id)
 
         for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
             command = _row(controller, channel).command
@@ -324,7 +324,7 @@ class TestSetSampleInstrument:
             sample_reconstruction([ChannelName.PULSE1]),
             name="lead",
         )
-        logic.set_sample_instrument(0, lead.id)
+        logic.set_row_voice(0, lead.id)
 
         assert _row(controller, ChannelName.PULSE1).command is not None
         cleared = _row(controller, ChannelName.PULSE2)
@@ -338,9 +338,9 @@ class TestSetSampleInstrument:
             sample_reconstruction([ChannelName.PULSE1]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
+        logic.set_row_voice(0, sample.id)
 
-        logic.set_sample_instrument(0, None)
+        logic.set_row_voice(0, None)
 
         for channel in ChannelName.items():
             assert _row(controller, channel).command is None
@@ -397,7 +397,7 @@ class TestSampleSubcolumn:
             sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
+        logic.set_row_voice(0, sample.id)
         logic.set_sample_subcolumn(0, transpose=5)
         logic.set_sample_subcolumn(0, volume=10)
 
@@ -491,7 +491,7 @@ class TestBuildTrackerAggregation:
 
         row = logic.build_grid().rows[0]
 
-        assert row.sample_instrument == MIXED
+        assert row.voice == MIXED
 
     def test_full_placement_reads_as_the_sample(self) -> None:
         controller = _controller()
@@ -500,12 +500,12 @@ class TestBuildTrackerAggregation:
             sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
+        logic.set_row_voice(0, sample.id)
 
         row = logic.build_grid().rows[0]
 
-        assert row.sample_instrument == row.cells[ChannelName.PULSE1].instrument
-        assert row.sample_instrument != MIXED
+        assert row.voice == row.cells[ChannelName.PULSE1].instrument
+        assert row.voice != MIXED
 
     def test_diverging_transpose_renders_as_mixed(self) -> None:
         controller = _controller()
@@ -514,12 +514,12 @@ class TestBuildTrackerAggregation:
             sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
+        logic.set_row_voice(0, sample.id)
         logic.set_row(ChannelName.PULSE1, 0, transpose=5)
 
         row = logic.build_grid().rows[0]
 
-        assert row.sample_transpose == MIXED
+        assert row.transpose == MIXED
 
     def test_shared_transpose_is_reflected_in_the_sample_column(self) -> None:
         controller = _controller()
@@ -528,13 +528,13 @@ class TestBuildTrackerAggregation:
             sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
+        logic.set_row_voice(0, sample.id)
         logic.set_sample_subcolumn(0, transpose=5)
 
         row = logic.build_grid().rows[0]
 
-        assert row.sample_transpose == row.cells[ChannelName.PULSE1].transpose
-        assert row.sample_transpose != MIXED
+        assert row.transpose == row.cells[ChannelName.PULSE1].transpose
+        assert row.transpose != MIXED
 
 
 class TestEmptyFrameAutoCreate:

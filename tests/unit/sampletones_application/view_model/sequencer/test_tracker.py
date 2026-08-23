@@ -182,6 +182,6 @@ class TestSampleColumnAggregate(BaseTestSuite):
             relevant_channels=case.relevant_channels,
         )
 
-        assert row.sample_instrument == case.expected_instrument
-        assert row.sample_transpose == case.expected_transpose
-        assert row.sample_volume == case.expected_volume
+        assert row.voice == case.expected_instrument
+        assert row.transpose == case.expected_transpose
+        assert row.volume == case.expected_volume

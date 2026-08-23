@@ -20,7 +20,7 @@ class ShortcutCategory(StrEnum):
     APPLICATION = "application"
     ORDER = "order"
     TRACKER = "tracker"
-    SAMPLES = "samples"
+    VOICES = "voices"
     DIALOG = "dialog"
 
 
@@ -182,13 +182,13 @@ class ShortcutId(Enum):
     TRACKER_CANCEL_ENTRY = ("TrackerCancelEntry", ShortcutCategory.TRACKER)
     TRACKER_PLAY_FROM_ROW = ("TrackerPlayFromRow", ShortcutCategory.TRACKER)
 
-    SAMPLES_RENAME_SAMPLE = ("SamplesRenameSample", ShortcutCategory.SAMPLES)
-    SAMPLES_REMOVE_SAMPLE = ("SamplesRemoveSample", ShortcutCategory.SAMPLES)
-    SAMPLES_MOVE_SAMPLE_UP = ("SamplesMoveSampleUp", ShortcutCategory.SAMPLES)
-    SAMPLES_MOVE_SAMPLE_DOWN = ("SamplesMoveSampleDown", ShortcutCategory.SAMPLES)
-    SAMPLES_MOVE_SAMPLE_TO_TOP = ("SamplesMoveSampleToTop", ShortcutCategory.SAMPLES)
-    SAMPLES_MOVE_SAMPLE_TO_BOTTOM = ("SamplesMoveSampleToBottom", ShortcutCategory.SAMPLES)
-    SAMPLES_CANCEL_RENAME = ("SamplesCancelRename", ShortcutCategory.SAMPLES)
+    VOICES_RENAME_VOICE = ("VoicesRenameVoice", ShortcutCategory.VOICES)
+    VOICES_REMOVE_VOICE = ("VoicesRemoveVoice", ShortcutCategory.VOICES)
+    VOICES_MOVE_VOICE_UP = ("VoicesMoveVoiceUp", ShortcutCategory.VOICES)
+    VOICES_MOVE_VOICE_DOWN = ("VoicesMoveVoiceDown", ShortcutCategory.VOICES)
+    VOICES_MOVE_VOICE_TO_TOP = ("VoicesMoveVoiceToTop", ShortcutCategory.VOICES)
+    VOICES_MOVE_VOICE_TO_BOTTOM = ("VoicesMoveVoiceToBottom", ShortcutCategory.VOICES)
+    VOICES_CANCEL_RENAME = ("VoicesCancelRename", ShortcutCategory.VOICES)
 
     DIALOG_NEXT_CONTROL = ("DialogNextControl", ShortcutCategory.DIALOG)
     DIALOG_PREVIOUS_CONTROL = ("DialogPreviousControl", ShortcutCategory.DIALOG)
