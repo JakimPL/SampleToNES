@@ -44,6 +44,7 @@ These rules govern the Python in this repository. They complement
 1. Write type names unquoted, using `from __future__ import annotations` (only when needed), `Self`, or `TYPE_CHECKING`.
 1. Reserve `Any` and `object` for boundaries that genuinely accept arbitrary data.
 1. Cast or silence a type error only at an untyped or mistyped third-party boundary.
+1. Stub an untyped dependency under `stubs/` when our own classes derive from it. A class deriving from an untyped one reads as `Any` throughout, so the stub is what holds that class and every reader of it to the attributes it carries — `stubs/anytree` does this for the tree nodes.
 1. Validate with `mypy`.
 
 ## Error Handling

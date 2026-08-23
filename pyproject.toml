@@ -151,6 +151,7 @@ fail_under = 90
 
 [tool.mypy]
 python_version = "3.12"
+mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"
 files = [
     "src/sampletones",
     "src/sampletones_application",
