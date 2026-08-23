@@ -20,6 +20,7 @@ class SequencerModuleElements(AbstractElement):
 
 class SequencerTrackerElements(AbstractElement):
     TRACKER_TEXT = "tracker_text"
+    OCTAVE = "octave"
     COLUMN_ROW = "column_row"
     COLUMN_SAMPLE = "column_sample"
     COLUMN_PULSE_1 = "column_pulse_1"

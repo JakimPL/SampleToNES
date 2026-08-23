@@ -258,6 +258,7 @@ class SequencerTabCoordinator:
             self._sequencer_tracker_logic.settings,
             layout=layout.sequencer,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_TRACKER_PANEL),
+            initial_octave=session_manager.octave,
             language_manager=language_manager,
             key_router=key_router,
             tab_active=tab_active,
@@ -371,6 +372,13 @@ class SequencerTabCoordinator:
             detail=self._history_detail.note_off,
             coalesce=self._cell_key,
         )
+        self._sequencer_tracker_panel.on_note_typed = self._undoable(
+            HistoryAction.EDIT_ROW,
+            self._sequencer_tracker_logic.write_note,
+            detail=self._history_detail.note_typed,
+            coalesce=self._note_key,
+        )
+        self._sequencer_tracker_panel.on_octave_changed = self._session_manager.set_octave
         self._sequencer_tracker_panel.on_cell_selected = self._on_tracker_cell_focused
         self._sequencer_tracker_panel.on_play_from_row = self._on_tracker_play_from_row
         self._sequencer_tracker_panel.on_play_from_frame = self.play_from_current_frame
@@ -794,6 +802,15 @@ class SequencerTabCoordinator:
         """
         channel_key = channel if channel is not None else ""
         return (self._sequencer_tracker_logic.frame_index, channel_key, row_index)
+
+    def _note_key(
+        self,
+        row_index: int,
+        channel: ChannelName,
+        _pitch: int,
+    ) -> CoalesceKey:
+        """Identifies the cell a typed note landed in, so retyping one note coalesces onto it."""
+        return self._cell_key(row_index, channel)
 
     def _adjustment_key(
         self,

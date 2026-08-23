@@ -526,6 +526,8 @@ sequencer.module.label.speed: "Speed"
 # Sequencer tab — Tracker
 # =============================================================================
 sequencer.tracker.label.tracker_text: "Tracker"
+sequencer.tracker.label.octave: "Octave"
+sequencer.tracker.tooltip.octave: "The octave a note key types at"
 sequencer.tracker.label.column_row: "Row"
 sequencer.tracker.label.column_sample: "Sample"
 sequencer.tracker.label.column_pulse_1: "Pulse 1"

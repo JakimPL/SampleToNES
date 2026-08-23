@@ -140,6 +140,12 @@ TAG_SEQUENCER_ORDER_BUTTON_PAIR = TagName(
     Widget.BUTTON,
     "pair",
 )
+TAG_SEQUENCER_TRACKER_INPUT_OCTAVE = TagName(
+    Page.SEQUENCER,
+    Panel.TRACKER,
+    Widget.INPUT,
+    "octave",
+)
 TAG_SEQUENCER_VOICES_PANEL = TagName(
     Page.SEQUENCER,
     Panel.VOICES,

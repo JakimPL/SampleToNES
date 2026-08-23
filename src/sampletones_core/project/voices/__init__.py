@@ -5,7 +5,7 @@ from .note_on import NoteOn
 from .record import SampleRecord, VoiceRecord
 from .sample import Sample
 from .shape import Shape
-from .voice import VoiceUnion, samples, voice_channels
+from .voice import VoiceUnion, samples, voice_channels, voice_reference
 
 __all__ = [
     "WHOLE_LOOP_POINT",
@@ -19,4 +19,5 @@ __all__ = [
     "VoiceUnion",
     "samples",
     "voice_channels",
+    "voice_reference",
 ]

@@ -22,6 +22,7 @@ from sampletones_core.constants.enums import (
     abbreviate_channel_names,
 )
 from sampletones_core.utils.display import display_id, display_transpose, display_volume
+from sampletones_core.utils.pitch_kind import channel_pitch_kind
 
 Segments = HistoryDetail
 
@@ -113,6 +114,23 @@ class SequencerHistoryDetail:
                 self._segment(display_volume(volume), HistoryDetailRole.VOLUME),
             )
 
+        return tuple(segments)
+
+    def note_typed(
+        self,
+        row_index: int,
+        channel: ChannelName,
+        pitch: int,
+    ) -> Segments:
+        """Names a typed note by the cell it landed in and the note the key stood for."""
+        segments = list(self._location(row_index, channel, [channel]))
+        segments.append(self._subcolumn(SubColumn.TRANSPOSE))
+        segments.append(
+            self._segment(
+                channel_pitch_kind(channel).to_name(pitch),
+                HistoryDetailRole.TRANSPOSE,
+            ),
+        )
         return tuple(segments)
 
     def note_off(

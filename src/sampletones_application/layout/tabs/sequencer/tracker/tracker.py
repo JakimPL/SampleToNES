@@ -19,5 +19,6 @@ class TrackerLayout(BaseModel, extra="forbid", frozen=True):
     row_height: int
     header_height: int
     subcolumn_widths: SubcolumnWidths
+    octave_width: int
     channel_column_tint: float
     muted_text_fraction: float

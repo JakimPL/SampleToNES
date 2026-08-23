@@ -8,7 +8,7 @@ from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP, ExporterTypeUnio
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.shape import Shape
-from sampletones_core.project.voices.voice import VoiceUnion
+from sampletones_core.project.voices.voice import VoiceUnion, voice_reference
 
 
 @dataclass(frozen=True)
@@ -61,13 +61,10 @@ class VoiceReading:
         """
         match voice:
             case Sample():
-                reconstruction = voice.reconstruction
-                instructions: Sequence[InstructionUnion] = reconstruction.instructions[channel_name]
-                reference = reconstruction.initial_pitches[channel_name]
-                held_features = reconstruction.held_features[channel_name]
+                instructions: Sequence[InstructionUnion] = voice.reconstruction.instructions[channel_name]
+                held_features = voice.reconstruction.held_features[channel_name]
             case Shape():
                 instructions = voice.instructions(channel_name)
-                reference = voice.reference(channel_name)
                 held_features = voice.held_features(channel_name)
 
         if not instructions:
@@ -76,7 +73,7 @@ class VoiceReading:
         return cls(
             exporter=CHANNEL_TO_EXPORTER_MAP[channel_name],
             instructions=instructions,
-            reference=reference,
+            reference=voice_reference(voice, channel_name),
             held_features=held_features,
             loop_point=voice.loop_point,
         )

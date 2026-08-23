@@ -7,6 +7,7 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.tracker import DEFAULT_OCTAVE, MAX_OCTAVE, MIN_OCTAVE
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
@@ -17,6 +18,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_THEME_TABLE_PATTERN,
     TAG_SEQUENCER_TRACKER_GROUP,
+    TAG_SEQUENCER_TRACKER_INPUT_OCTAVE,
     TAG_SEQUENCER_TRACKER_PANEL,
     TAG_SEQUENCER_TRACKER_TABLE,
     TAG_SEQUENCER_TRACKER_WINDOW,
@@ -80,6 +82,7 @@ from sampletones_application.utils.gui.keyboard import (
 )
 from sampletones_application.utils.gui.keyboard.keys import HEX_KEYS, SIGN_KEYS
 from sampletones_application.utils.gui.keyboard.modifiers import Modifier, capture_modifiers
+from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -108,9 +111,10 @@ from sampletones_application.view_model.sequencer.voices import (
 )
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
+from sampletones_core.features import speaks_in_periods
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.utils.display import NOTE_OFF, display_id
-from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
+from sampletones_shared.constants.music import OCTAVE_OFFSET, OCTAVE_SEMITONES, SEMITONE_STEP
 from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
 
@@ -118,6 +122,7 @@ OnClearRowCallback = Callable[[int, Optional[ChannelName]], None]
 OnClearSubcolumnCallback = Callable[[int, Optional[ChannelName], SubColumn], None]
 OnSetRowCallback = Callable[[int, Optional[ChannelName], Optional[str], Optional[int], Optional[int]], None]
 OnSetNoteOffCallback = Callable[[int, Optional[ChannelName]], None]
+OnNoteTypedCallback = Callable[[int, ChannelName, int], None]
 OnCellSelectedCallback = VoidCallback
 OnPlayFromRowCallback = Callable[[int], None]
 OnPlayFromFrameCallback = VoidCallback
@@ -202,9 +207,11 @@ class GUISequencerTrackerPanel(GUIPanel):
         key_router: KeyRouter,
         tab_active: ActivePredicate,
         shortcut_source: ShortcutSource,
+        initial_octave: int = DEFAULT_OCTAVE,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
+        self._octave = initial_octave
         self._settings = initial_settings
         self._language_manager = language_manager
         self._router = key_router
@@ -257,6 +264,8 @@ class GUISequencerTrackerPanel(GUIPanel):
         self.on_clear_subcolumn: Optional[OnClearSubcolumnCallback] = None
         self.on_set_row: Optional[OnSetRowCallback] = None
         self.on_set_note_off: Optional[OnSetNoteOffCallback] = None
+        self.on_note_typed: Optional[OnNoteTypedCallback] = None
+        self.on_octave_changed: Optional[Callable[[int], None]] = None
         self.on_cell_selected: Optional[OnCellSelectedCallback] = None
         self.on_play_from_row: Optional[OnPlayFromRowCallback] = None
         self.on_play_from_frame: Optional[OnPlayFromFrameCallback] = None
@@ -288,6 +297,16 @@ class GUISequencerTrackerPanel(GUIPanel):
         )
         self.pattern_theme = ThemeRegistry.get(TAG_SEQUENCER_THEME_TABLE_PATTERN)
 
+        self._lbl_octave = self._label(
+            language_manager,
+            SequencerTrackerElements.OCTAVE,
+        )
+        self._tip_octave = language_manager[
+            Page.SEQUENCER,
+            Panel.TRACKER,
+            TextType.TOOLTIP,
+            SequencerTrackerElements.OCTAVE,
+        ]
         self._lbl_tracker = self._label(
             language_manager,
             SequencerTrackerElements.TRACKER_TEXT,
@@ -454,6 +473,29 @@ class GUISequencerTrackerPanel(GUIPanel):
         )
         self._column_label_theme = create_label_selectable_theme(self._layout.colors.label)
 
+    def _create_octave_control(self) -> None:
+        """Offers the octave a note key types at, which is what turns one key row into a keyboard."""
+        with dpg.group(horizontal=True):
+            label = dpg.add_text(self._lbl_octave)
+            FontRegistry.bind_to_item(label, Font.REGULAR_SMALL)
+            octave_input = dpg.add_input_int(
+                tag=TAG_SEQUENCER_TRACKER_INPUT_OCTAVE,
+                default_value=self._octave,
+                min_value=MIN_OCTAVE,
+                max_value=MAX_OCTAVE,
+                min_clamped=True,
+                max_clamped=True,
+                width=self._layout.tracker.octave_width,
+                step=1,
+                callback=self._on_octave_typed,
+            )
+            FontRegistry.bind_to_item(octave_input, Font.MONO_SMALL)
+            show_tooltip(octave_input, self._tip_octave)
+
+    def _on_octave_typed(self, _sender: Sender, app_data: int) -> None:
+        self._octave = max(MIN_OCTAVE, min(MAX_OCTAVE, app_data))
+        self.call(self.on_octave_changed, self._octave)
+
     def _create_tracker_view(self, parent: str) -> None:
         """Builds the tracker card and the empty table its rows are filled into.
 
@@ -472,6 +514,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             self._lbl_tracker,
             glyph=self._glyphs.headers.tracker,
         ):
+            self._create_octave_control()
             dpg.add_group(tag=TAG_SEQUENCER_TRACKER_GROUP)
             with (
                 dpg.child_window(
@@ -1872,6 +1915,9 @@ class GUISequencerTrackerPanel(GUIPanel):
         if Modifier.CTRL in event.modifiers or Modifier.ALT in event.modifiers:
             return False
 
+        if self._type_note(event):
+            return True
+
         char = HEX_KEYS.get(event.key) or SIGN_KEYS.get(event.key)
         if char is None:
             return False
@@ -1882,6 +1928,33 @@ class GUISequencerTrackerPanel(GUIPanel):
             new_state = new_state.navigate_row(1, self._current_row_count)
 
         self._apply_state(new_state)
+        return True
+
+    def _type_note(self, event: KeyEvent) -> bool:
+        """Types the note a piano key names into the cell under the cursor.
+
+        The keys reach the pitch column of a channel that names notes: the sample column speaks
+        for a whole sample, whose channels rest at pitches of their own, and the noise channel
+        selects one of sixteen periods, which its own hex entry already writes.
+        """
+        cursor = self._input_state.cursor
+        if cursor is None or cursor.subcolumn is not SubColumn.TRANSPOSE or cursor.channel is None:
+            return False
+
+        if speaks_in_periods(cursor.channel):
+            return False
+
+        semitone = PIANO_KEYS.get(event.key)
+        if semitone is None:
+            return False
+
+        self.call(
+            self.on_note_typed,
+            cursor.row,
+            cursor.channel,
+            (self._octave + OCTAVE_OFFSET) * OCTAVE_SEMITONES + semitone,
+        )
+        self._apply_state(self._input_state.reset_pending().navigate_row(1, self._current_row_count))
         return True
 
     def _on_row_number_clicked(

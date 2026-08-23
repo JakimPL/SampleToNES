@@ -6,6 +6,7 @@ from sampletones_core.constants.general import (
     NOTE_NAMES,
     NUM_PERIODS,
 )
+from sampletones_shared.constants.music import OCTAVE_OFFSET, OCTAVE_SEMITONES
 from sampletones_shared.utils.arrays import clamp
 from sampletones_shared.utils.frequencies import validate_pitch
 
@@ -95,8 +96,8 @@ def pitch_to_name(pitch: int, transpose: int = 0) -> str:
     pitch += transpose
     validate_pitch(pitch)
 
-    octave = (pitch // 12) - 2
-    note_index = pitch % 12
+    octave = pitch // OCTAVE_SEMITONES - OCTAVE_OFFSET
+    note_index = pitch % OCTAVE_SEMITONES
     return f"{NOTE_NAMES[note_index]}{octave}"
 
 

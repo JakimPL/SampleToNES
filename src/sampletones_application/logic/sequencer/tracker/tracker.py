@@ -18,7 +18,7 @@ from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.shape import Shape
-from sampletones_core.project.voices.voice import VoiceUnion, voice_channels
+from sampletones_core.project.voices.voice import VoiceUnion, voice_channels, voice_reference
 from sampletones_core.utils.display import (
     display_command,
     display_id,
@@ -367,6 +367,56 @@ class SequencerTrackerLogic(CallbackMixin):
             else:
                 self.clear_row(channel, row_index)
 
+    def write_note(
+        self,
+        row_index: int,
+        channel: ChannelName,
+        pitch: int,
+    ) -> None:
+        """Writes the step that reaches ``pitch`` on the voice this channel is carrying.
+
+        A note key names the note the reader wants to hear; the row states it as the step from the
+        voice's own reference, which is the one number a pitch cell holds. A row carrying no voice
+        has nothing to measure the note against, so the press leaves it as it stands.
+
+        Args:
+            row_index: The row within the frame shown.
+            channel: The channel the note is typed into.
+            pitch: The note the key names, on the scale the channel reads.
+        """
+        voice = self.carried_voice(channel, row_index)
+        if voice is None:
+            return
+
+        self.write_cell(
+            row_index,
+            channel,
+            None,
+            pitch - voice_reference(voice, channel),
+            None,
+        )
+
+    def carried_voice(
+        self,
+        channel: ChannelName,
+        row_index: int,
+    ) -> Optional[VoiceUnion]:
+        """The voice a channel is carrying at a row of the frame shown.
+
+        A row may bend a note it did not start, so the answer is found by reading down the frame's
+        rows to this one, the way the grid reads its pitch column.
+        """
+        pattern_index = self._pattern_index_at_frame(channel)
+        pattern = self._controller.project.song.pattern(channel, pattern_index) if pattern_index is not None else None
+        if pattern is None:
+            return None
+
+        carried: Optional[VoiceUnion] = None
+        for row in pattern.rows[: row_index + 1]:
+            carried = self._carried_voice(row, carried)
+
+        return carried
+
     def set_note_off(self, channel: ChannelName, row_index: int) -> None:
         """Writes a note-off into one channel's cell, materialising the pattern if needed."""
         self.set_row(channel, row_index, command=NoteOff())
@@ -680,11 +730,11 @@ class SequencerTrackerLogic(CallbackMixin):
         voice: Optional[VoiceUnion],
     ) -> str:
         match voice:
-            case Shape() as shape:
+            case Shape():
                 return display_note(
                     transpose,
                     channel_name=channel,
-                    reference=shape.reference(channel),
+                    reference=voice_reference(voice, channel),
                 )
             case _:
                 return display_transpose(transpose)
