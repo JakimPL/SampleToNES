@@ -395,7 +395,7 @@ class LibraryLogic(CallbackMixin):
                 eta_string=eta_string
             )
 
-        self._emit_view(status_text, progress=task_progress.get_progress())
+        self._emit_view(status_text, progress=task_progress.fraction)
 
     def _on_generation_completed(self) -> None:
         self.call(self.on_generation_completed)
