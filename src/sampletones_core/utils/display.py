@@ -2,7 +2,7 @@ from typing import Final, Optional, Union
 
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
-from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.structures import IdentifiedCollection
 from sampletones_shared.constants.symbols import MINUS, PLUS
 
@@ -34,7 +34,7 @@ def display_id(value: Optional[int]) -> str:
 
 def display_voice(
     *,
-    voices: IdentifiedCollection[Sample],
+    voices: IdentifiedCollection[VoiceUnion],
     voice_id: Optional[str] = None,
 ) -> str:
     """
@@ -52,7 +52,7 @@ def display_voice_label(position: int, name: str) -> str:
 
 
 def display_command(
-    voices: IdentifiedCollection[Sample],
+    voices: IdentifiedCollection[VoiceUnion],
     command: Optional[Union[NoteOn, NoteOff]],
 ) -> str:
     """Render a row's note-column command: a voice's list position, ``--`` for note-off, or ``..``."""

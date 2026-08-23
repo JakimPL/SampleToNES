@@ -3,7 +3,7 @@ from typing import List
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.data import Metadata
-from sampletones_core.project.voices.record import SampleRecord
+from sampletones_core.project.voices.record import VoiceRecord
 from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
 
 from .info import ProjectInfo
@@ -30,5 +30,5 @@ class ProjectDocument(BaseModel):
     metadata: Metadata
     info: ProjectInfo
     settings: ProjectSettings
-    voices: List[SampleRecord]
+    voices: List[VoiceRecord]
     song: Song

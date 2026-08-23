@@ -158,6 +158,7 @@ from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import samples
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.types.feature import FeatureValue
@@ -1025,7 +1026,7 @@ class Application:
 
     def _edit_project_sample(self, voice_id: str) -> None:
         sample = self.project_manager.current.voice(voice_id)
-        if sample is None:
+        if not isinstance(sample, Sample):
             logger.warning(f"Cannot edit unknown project sample: {voice_id}")
             return
 
@@ -1050,7 +1051,7 @@ class Application:
             reconstruction: The reconstruction the sample is about to hold.
         """
         sample = self.project_manager.current.voice(voice_id)
-        if sample is None or sample.reconstruction is not self.reconstruction_manager.reconstruction:
+        if not isinstance(sample, Sample) or sample.reconstruction is not self.reconstruction_manager.reconstruction:
             return
 
         self.reconstruction_manager.apply_edited(reconstruction)
@@ -1120,7 +1121,7 @@ class Application:
         """
         targets = [
             (sample.id, sample.reconstruction)
-            for sample in self.project_manager.current.voices
+            for sample in samples(self.project_manager.current.voices)
             if sample.reconstruction.config.nes_frequency != nes_frequency
         ]
         if not targets:
@@ -1161,7 +1162,7 @@ class Application:
         """
         project = self.project_manager.current
         sample = project.voices.get(retuned.voice_id)
-        if sample is None:
+        if not isinstance(sample, Sample):
             return
 
         nes_frequency = retuned.reconstruction.config.nes_frequency
@@ -1319,7 +1320,7 @@ class Application:
         if reconstruction is None:
             return None
 
-        for sample in self.project_manager.current.voices:
+        for sample in samples(self.project_manager.current.voices):
             if sample.reconstruction is reconstruction:
                 return sample
 

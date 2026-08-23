@@ -1,14 +1,16 @@
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Iterator, Optional, Tuple
 
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME, MIN_TRANSPOSE
 from sampletones_core.exports.request import ProjectExport
 from sampletones_core.project import Project
 from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.project.song import Song
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.shape import Shape
+from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
@@ -200,6 +202,63 @@ class ProjectController(CallbackMixin):
         self._announce(self.on_voices_changed)
         return sample
 
+    def add_shape(self, name: str) -> Shape:
+        """Appends a hand-written voice, resting at the roots a channel added by hand sounds on.
+
+        A shape opens with no envelope, so every dimension is the channel's until one is written;
+        the voice list holds it from this moment and the tracker can name it.
+        """
+        shape = Shape(name=name)
+        self.project.voices.append(shape)
+        self._touch()
+        self._announce(self.on_voices_changed)
+        return shape
+
+    def set_shape_envelope(
+        self,
+        voice_id: str,
+        feature_key: FeatureKey,
+        items: Tuple[int, ...],
+    ) -> None:
+        """Writes one dimension of a shape's envelopes, emptying it to leave it to the channel.
+
+        Raises:
+            TypeError: If ``voice_id`` names a voice that writes no envelopes of its own.
+        """
+        shape = self._shape(voice_id)
+        shape.envelopes = shape.envelopes.with_envelope(feature_key, items)
+        shape.invalidate()
+        self._touch()
+        self._announce(self.on_voices_changed)
+        self._announce(self.on_song_changed)
+
+    def set_shape_root(
+        self,
+        voice_id: str,
+        *,
+        pitch: int,
+        period: int,
+    ) -> None:
+        """Moves the roots a shape's arpeggio is measured against, on the tonal channels and on noise.
+
+        Raises:
+            TypeError: If ``voice_id`` names a voice that states no root of its own.
+        """
+        shape = self._shape(voice_id)
+        shape.root_pitch = pitch
+        shape.root_period = period
+        shape.invalidate()
+        self._touch()
+        self._announce(self.on_voices_changed)
+        self._announce(self.on_song_changed)
+
+    def _shape(self, voice_id: str) -> Shape:
+        voice = self.project.voices[voice_id]
+        if not isinstance(voice, Shape):
+            raise TypeError(f"Voice '{voice_id}' is no shape")
+
+        return voice
+
     def replace_sample_reconstruction(self, voice_id: str, reconstruction: Reconstruction) -> None:
         """Substitutes a sample's reconstruction, detaching its local source-audio origin.
 
@@ -208,7 +267,11 @@ class ProjectController(CallbackMixin):
         reconstruction, the project stays a self-contained, shareable artifact.
         """
         reconstruction.detach_source()
-        self.project.voices[voice_id].reconstruction = reconstruction
+        voice = self.project.voices[voice_id]
+        if not isinstance(voice, Sample):
+            raise TypeError(f"Voice '{voice_id}' carries no reconstruction to substitute")
+
+        voice.reconstruction = reconstruction
         self._touch()
         self._announce(self.on_voices_changed)
         self._announce(self.on_song_changed)
@@ -235,7 +298,7 @@ class ProjectController(CallbackMixin):
         self._announce(self.on_voices_changed)
         self._announce(self.on_song_changed)
 
-    def duplicate_voice(self, voice_id: str) -> Sample:
+    def duplicate_voice(self, voice_id: str) -> VoiceUnion:
         """Appends an independent copy of a voice (same name and loop point).
 
         The copy is appended, so existing voices keep their positions; it keeps the

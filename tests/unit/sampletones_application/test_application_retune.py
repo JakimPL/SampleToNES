@@ -4,6 +4,12 @@ from unittest.mock import MagicMock
 from sampletones_application.application import Application
 from sampletones_application.services.result import ServiceCancelled
 from sampletones_application.services.retune import RetunedSample
+from sampletones_core.project.voices.sample import Sample
+
+
+def _sample_double() -> Sample:
+    """A real project sample over a stand-in reconstruction, since the routing tells the kinds apart."""
+    return Sample(name="lead", reconstruction=MagicMock())
 
 
 def _retuned(voice_id: str, rate: int) -> RetunedSample:
@@ -14,7 +20,7 @@ def _retuned(voice_id: str, rate: int) -> RetunedSample:
 
 def _app(
     current_rate: int,
-    sample: Optional[MagicMock],
+    sample: Optional[Sample],
     open_reconstruction: Optional[MagicMock] = None,
 ) -> Application:
     app = Application.__new__(Application)
@@ -32,7 +38,7 @@ def _app(
 
 class TestApplyRetunedSample:
     def test_swaps_the_reconstruction_when_the_rate_matches(self) -> None:
-        app = _app(current_rate=60, sample=MagicMock())
+        app = _app(current_rate=60, sample=_sample_double())
         retuned = _retuned("lead", 60)
 
         app._apply_retuned_sample(retuned)
@@ -40,7 +46,7 @@ class TestApplyRetunedSample:
         app.project_controller.replace_sample_reconstruction.assert_called_once_with("lead", retuned.reconstruction)
 
     def test_discards_a_stale_result_from_a_superseded_rate(self) -> None:
-        app = _app(current_rate=30, sample=MagicMock())
+        app = _app(current_rate=30, sample=_sample_double())
         retuned = _retuned("lead", 60)
 
         app._apply_retuned_sample(retuned)
@@ -57,7 +63,7 @@ class TestApplyRetunedSample:
 
     def test_rebinds_the_open_editor_when_it_shows_the_sample(self) -> None:
         open_reconstruction = MagicMock()
-        sample = MagicMock()
+        sample = _sample_double()
         sample.reconstruction = open_reconstruction
         app = _app(current_rate=60, sample=sample, open_reconstruction=open_reconstruction)
         retuned = _retuned("lead", 60)
@@ -68,7 +74,7 @@ class TestApplyRetunedSample:
         app._reconstructions_tab.update_reconstruction.assert_called_once()
 
     def test_leaves_the_editor_alone_when_a_different_sample_is_open(self) -> None:
-        sample = MagicMock()
+        sample = _sample_double()
         sample.reconstruction = MagicMock()
         app = _app(current_rate=60, sample=sample, open_reconstruction=MagicMock())
         retuned = _retuned("lead", 60)
@@ -79,15 +85,15 @@ class TestApplyRetunedSample:
         app._reconstructions_tab.update_reconstruction.assert_not_called()
 
 
-def _sample(voice_id: str, rate: int) -> MagicMock:
-    sample = MagicMock()
+def _sample(voice_id: str, rate: int) -> Sample:
+    sample = _sample_double()
     sample.id = voice_id
     sample.reconstruction.config.nes_frequency = rate
     return sample
 
 
 def _app_for_rate(
-    samples: List[MagicMock],
+    samples: List[Sample],
     open_reconstruction: Optional[MagicMock],
     running: bool = False,
 ) -> Application:

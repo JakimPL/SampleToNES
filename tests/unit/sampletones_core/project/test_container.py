@@ -10,8 +10,11 @@ from sampletones_core.data import Metadata
 from sampletones_core.project.container import ProjectContainer
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
+from sampletones_core.project.voices.envelopes import ShapeEnvelopes
+from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.shape import Shape
 from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
 from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
@@ -120,6 +123,78 @@ class TestRoundTrip:
         assert loaded.voice(row.command.voice_id) is loaded.voices[0]
         index_at_2 = loaded_song.order[2].get(ChannelName.PULSE1)
         assert channel.pattern(index_at_0) is channel.pattern(index_at_2)
+
+
+class TestShapesRoundTrip:
+    """A shape carries no payload beside itself, so a project holds it whole in its document."""
+
+    def test_a_shape_survives_a_round_trip(self, tmp_path: Path) -> None:
+        project = Project.create(title="Demo")
+        shape = Shape(
+            name="lead",
+            envelopes=ShapeEnvelopes(volume=(15, 12), arpeggio=(0, 7), duty_cycle=(2,)),
+            root_pitch=55,
+            root_period=3,
+            loop_point=WHOLE_LOOP_POINT,
+        )
+        project.voices.append(shape)
+        path = tmp_path / "demo.stp"
+
+        ProjectContainer.save(project, path)
+        loaded = ProjectContainer.load(path)
+
+        assert loaded.voices[0] == shape
+        restored = loaded.voice(shape.id)
+        assert isinstance(restored, Shape)
+        assert restored.envelopes == shape.envelopes
+        assert restored.root_pitch == shape.root_pitch
+        assert restored.root_period == shape.root_period
+        assert restored.loop_point == shape.loop_point
+
+    def test_a_shape_leaves_no_reconstruction_in_the_archive(self, tmp_path: Path) -> None:
+        project = Project.create(title="Demo")
+        project.voices.append(Shape(name="lead"))
+        path = tmp_path / "demo.stp"
+
+        ProjectContainer.save(project, path)
+
+        with zipfile.ZipFile(path) as archive:
+            assert [name for name in archive.namelist() if name.startswith(RECONSTRUCTIONS_DIRECTORY)] == []
+
+    def test_both_kinds_share_one_pool_in_their_written_order(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        project = Project.create(title="Demo")
+        sample = Sample(name="bass", reconstruction=reconstruction_factory())
+        shape = Shape(name="lead")
+        project.voices.extend([sample, shape])
+        path = tmp_path / "demo.stp"
+
+        ProjectContainer.save(project, path)
+        loaded = ProjectContainer.load(path)
+
+        assert [voice.id for voice in loaded.voices] == [sample.id, shape.id]
+        assert isinstance(loaded.voices[0], Sample)
+        assert isinstance(loaded.voices[1], Shape)
+
+    def test_a_row_naming_a_shape_still_names_it_after_a_round_trip(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        project = Project.create(title="Demo")
+        shape = Shape(name="lead", envelopes=ShapeEnvelopes(volume=(15,)))
+        project.voices.append(shape)
+        project.song[ChannelName.PULSE1].patterns[0].rows[0] = Row(command=NoteOn(voice_id=shape.id))
+        path = tmp_path / "demo.stp"
+
+        ProjectContainer.save(project, path)
+        loaded = ProjectContainer.load(path)
+
+        row = loaded.song[ChannelName.PULSE1].patterns[0].rows[0]
+        assert row.command is not None
+        assert loaded.voice(row.command.voice_id) is loaded.voices[0]
 
 
 class TestArchiveLayout:

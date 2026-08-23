@@ -8,8 +8,10 @@ from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.compatibility.upgrade import upgrade_json
 from sampletones_core.project.document import ProjectDocument
 from sampletones_core.project.project import Project
-from sampletones_core.project.voices.record import SampleRecord
+from sampletones_core.project.voices.record import SampleRecord, VoiceRecord
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.shape import Shape
+from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures import IdentifiedCollection
 from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
@@ -115,15 +117,7 @@ class ProjectContainer:
             metadata=project.metadata,
             info=project.info,
             settings=project.settings,
-            voices=[
-                SampleRecord(
-                    id=voice.id,
-                    name=voice.name,
-                    reconstruction_id=voice.reconstruction.id,
-                    loop_point=voice.loop_point,
-                )
-                for voice in project.voices
-            ],
+            voices=[ProjectContainer._voice_record(voice) for voice in project.voices],
             song=project.song,
         )
 
@@ -132,10 +126,9 @@ class ProjectContainer:
         document: ProjectDocument,
         reconstructions: Dict[str, Reconstruction],
     ) -> Project:
-        voices: IdentifiedCollection[Sample] = IdentifiedCollection()
+        voices: IdentifiedCollection[VoiceUnion] = IdentifiedCollection()
         for record in document.voices:
-            reconstruction = reconstructions[record.reconstruction_id]
-            voices.append(ProjectContainer._restore_sample(record, reconstruction))
+            voices.append(ProjectContainer._restore_voice(record, reconstructions))
 
         return Project(
             metadata=document.metadata,
@@ -146,20 +139,47 @@ class ProjectContainer:
         )
 
     @staticmethod
-    def _restore_sample(record: SampleRecord, reconstruction: Reconstruction) -> Sample:
-        sample = Sample(
-            name=record.name,
-            reconstruction=reconstruction,
-            loop_point=record.loop_point,
-        )
-        sample.id = record.id
-        return sample
+    def _voice_record(voice: VoiceUnion) -> VoiceRecord:
+        """The record a voice is written as: a reference for a sample, the shape itself for a shape."""
+        match voice:
+            case Sample():
+                return SampleRecord(
+                    id=voice.id,
+                    name=voice.name,
+                    reconstruction_id=voice.reconstruction.id,
+                    loop_point=voice.loop_point,
+                )
+            case Shape():
+                return voice
+
+    @staticmethod
+    def _restore_voice(
+        record: VoiceRecord,
+        reconstructions: Dict[str, Reconstruction],
+    ) -> VoiceUnion:
+        """The voice a record describes, resolving a sample's reconstruction from the archive.
+
+        Raises:
+            KeyError: If a sample record names a reconstruction the archive holds none of.
+        """
+        match record:
+            case SampleRecord():
+                sample = Sample(
+                    name=record.name,
+                    reconstruction=reconstructions[record.reconstruction_id],
+                    loop_point=record.loop_point,
+                )
+                sample.id = record.id
+                return sample
+            case Shape():
+                return record
 
     @staticmethod
     def _unique_reconstructions(project: Project) -> Dict[str, Reconstruction]:
         reconstructions: Dict[str, Reconstruction] = {}
         for voice in project.voices:
-            reconstructions[voice.reconstruction.id] = voice.reconstruction
+            if isinstance(voice, Sample):
+                reconstructions[voice.reconstruction.id] = voice.reconstruction
 
         return reconstructions
 

@@ -7,6 +7,8 @@ from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP, ExporterTypeUnion
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.shape import Shape
+from sampletones_core.project.voices.voice import VoiceUnion
 
 
 @dataclass(frozen=True)
@@ -39,10 +41,15 @@ class VoiceReading:
     @classmethod
     def read(
         cls,
-        voice: Sample,
+        voice: VoiceUnion,
         channel_name: ChannelName,
     ) -> Optional[VoiceReading]:
         """The reading one channel plays ``voice`` through.
+
+        A sample answers with the frames its reconstruction found for this channel and the
+        reference they were measured against; a shape answers with the frames its envelopes make
+        of this channel and the root it states. Both kinds therefore reach a channel as one
+        reading.
 
         Args:
             voice: The voice being sounded.
@@ -52,16 +59,25 @@ class VoiceReading:
             Optional[VoiceReading]: The reading of that channel's frames, or ``None`` where the
                 voice describes no frame there and the channel rests.
         """
-        reconstruction = voice.reconstruction
-        instructions = reconstruction.instructions[channel_name]
+        match voice:
+            case Sample():
+                reconstruction = voice.reconstruction
+                instructions: Sequence[InstructionUnion] = reconstruction.instructions[channel_name]
+                reference = reconstruction.initial_pitches[channel_name]
+                held_features = reconstruction.held_features[channel_name]
+            case Shape():
+                instructions = voice.instructions(channel_name)
+                reference = voice.reference(channel_name)
+                held_features = voice.held_features(channel_name)
+
         if not instructions:
             return None
 
         return cls(
             exporter=CHANNEL_TO_EXPORTER_MAP[channel_name],
             instructions=instructions,
-            reference=reconstruction.initial_pitches[channel_name],
-            held_features=reconstruction.held_features[channel_name],
+            reference=reference,
+            held_features=held_features,
             loop_point=voice.loop_point,
         )
 

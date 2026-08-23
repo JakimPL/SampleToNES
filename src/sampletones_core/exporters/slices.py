@@ -8,6 +8,7 @@ from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.naming import instrument_slice_name
 from sampletones_core.project.project import Project
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import samples
 
 
 @dataclass(frozen=True)
@@ -71,7 +72,7 @@ def iterate_voice_slices(project: Project) -> Iterator[VoiceSlice]:
         VoiceSlice: Each slice alongside the index it takes in the instrument table.
     """
     index = 0
-    for voice in project.voices:
+    for voice in samples(project.voices):
         features_by_channel = voice.reconstruction.export()
         for channel in ChannelName.items():
             features = features_by_channel[channel]

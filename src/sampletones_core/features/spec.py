@@ -73,6 +73,33 @@ GENERATOR_CHANNEL_KINDS: Final[Dict[GeneratorName, FrozenSet[ChannelName]]] = {
 }
 
 
+def channel_reference(
+    channel_name: ChannelName,
+    *,
+    pitch: int,
+    period: int,
+) -> int:
+    """Which of a pitch-and-period pair a channel measures its arpeggio against.
+
+    An arpeggio envelope is a semitone offset on the tonal channels and a period offset on noise,
+    so a reference is stated as both and the channel picks the one it reads. Every voice states
+    its reference this way, which is what lets one voice be started on any channel.
+
+    Args:
+        channel_name: The channel reading the reference.
+        pitch: The reference a tonal channel measures against.
+        period: The reference the noise channel measures against.
+
+    Returns:
+        int: The reference this channel reads.
+    """
+    match CHANNEL_GENERATOR_KIND[channel_name]:
+        case GeneratorName.NOISE:
+            return period
+        case _:
+            return pitch
+
+
 def resting_reference(channel_name: ChannelName) -> int:
     """The reference an arpeggio envelope is measured against while a channel describes no frame.
 
@@ -86,11 +113,11 @@ def resting_reference(channel_name: ChannelName) -> int:
     Returns:
         int: The pitch a tonal channel rests at, or the period the noise channel rests at.
     """
-    match CHANNEL_GENERATOR_KIND[channel_name]:
-        case GeneratorName.NOISE:
-            return RESTING_REFERENCE_PERIOD
-        case _:
-            return RESTING_REFERENCE_PITCH
+    return channel_reference(
+        channel_name,
+        pitch=RESTING_REFERENCE_PITCH,
+        period=RESTING_REFERENCE_PERIOD,
+    )
 
 
 def resting_held_features(

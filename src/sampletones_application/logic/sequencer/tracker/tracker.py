@@ -16,7 +16,7 @@ from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
-from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion, voice_channels
 from sampletones_core.utils.display import (
     display_command,
     display_id,
@@ -527,9 +527,9 @@ class SequencerTrackerLogic(CallbackMixin):
         )
         return pattern_index
 
-    def _used_generators(self, sample: Sample) -> List[ChannelName]:
-        """The channels a sample's reconstruction provides instructions for."""
-        return [channel for channel in ChannelName.items() if sample.reconstruction.get_channel_instructions(channel)]
+    def _used_generators(self, voice: VoiceUnion) -> List[ChannelName]:
+        """The channels a voice sounds on."""
+        return list(voice_channels(voice))
 
     def _subcolumn_generators(self, row_index: int) -> List[ChannelName]:
         """Channels a sample-column transpose/volume edit writes to.

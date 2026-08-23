@@ -32,6 +32,8 @@ class HistoryAction(AbstractElement):
     MOVE_SAMPLE = "move_sample"
     DUPLICATE_SAMPLE = "duplicate_sample"
     SET_SAMPLE_LOOP = "set_sample_loop"
+    ADD_SHAPE = "add_shape"
+    EDIT_SHAPE = "edit_shape"
     SET_TEMPO = "set_tempo"
     SET_SPEED = "set_speed"
     SET_NES_FREQUENCY = "set_nes_frequency"

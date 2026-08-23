@@ -93,7 +93,7 @@ class SequencerSamplesLogic(CallbackMixin):
             pool holds no such sample.
         """
         sample = self._controller.project.voices.get(voice_id)
-        if sample is None:
+        if not isinstance(sample, Sample):
             return None
 
         return SampleFootprintViewModel.from_footprints(
@@ -167,7 +167,7 @@ class SequencerSamplesLogic(CallbackMixin):
         priority: PlaybackPriority,
     ) -> None:
         sample = self._controller.project.voices.get(voice_id)
-        if sample is None:
+        if not isinstance(sample, Sample):
             return
 
         try:

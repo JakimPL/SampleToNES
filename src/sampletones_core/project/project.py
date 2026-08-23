@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional
 
 from sampletones_core.data import Metadata
-from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.structures import IdentifiedCollection
 from sampletones_shared.constants.project import (
     DEFAULT_PROJECT_AUTHOR,
@@ -20,10 +20,10 @@ from .song import Song
 class Project:
     """The top-level container for everything a user composes.
 
-    Owns the voices (each a sample embedding its own reconstruction) and the song
-    arrangement. References inside the song point at voices by their stable
-    ``id``; the :class:`IdentifiedCollection` resolves those ids in O(1) while
-    also exposing reorder-safe positions for the UI.
+    Owns the voices — samples embedding their own reconstruction, and shapes carrying
+    their own envelopes — and the song arrangement. References inside the song point at
+    voices by their stable ``id``; the :class:`IdentifiedCollection` resolves those ids
+    in O(1) while also exposing reorder-safe positions for the UI.
     """
 
     def __init__(
@@ -31,13 +31,13 @@ class Project:
         metadata: Metadata,
         info: ProjectInfo,
         settings: ProjectSettings,
-        voices: IdentifiedCollection[Sample],
+        voices: IdentifiedCollection[VoiceUnion],
         song: Song,
     ) -> None:
         self.metadata: Metadata = metadata
         self.info: ProjectInfo = info
         self.settings: ProjectSettings = settings
-        self.voices: IdentifiedCollection[Sample] = voices
+        self.voices: IdentifiedCollection[VoiceUnion] = voices
         self.song: Song = song
 
     @classmethod
@@ -66,7 +66,7 @@ class Project:
             song=Song.empty(rows_per_pattern),
         )
 
-    def voice(self, voice_id: str) -> Optional[Sample]:
+    def voice(self, voice_id: str) -> Optional[VoiceUnion]:
         return self.voices.get(voice_id)
 
     def __repr__(self) -> str:

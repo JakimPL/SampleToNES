@@ -14,7 +14,7 @@ from sampletones_core.performance.ticks import sound_tick
 from sampletones_core.performance.voice import VoiceReading
 from sampletones_core.project.project import Project
 from sampletones_core.project.song_position import SongPosition
-from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.timing.song import SongTiming
 
 
@@ -75,7 +75,7 @@ def song_instructions(
 
 
 def _channel_ticks(
-    voice: Optional[Sample],
+    voice: Optional[VoiceUnion],
     channel_name: ChannelName,
     performance: ChannelPerformance,
     ticks: int,

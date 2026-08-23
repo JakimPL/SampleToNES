@@ -2,10 +2,16 @@ from typing import Optional
 from unittest.mock import MagicMock
 
 from sampletones_application.application import Application
+from sampletones_core.project.voices.sample import Sample
+
+
+def _sample_double() -> Sample:
+    """A real project sample over a stand-in reconstruction, since the routing tells the kinds apart."""
+    return Sample(name="lead", reconstruction=MagicMock())
 
 
 def _app(
-    sample: Optional[MagicMock],
+    sample: Optional[Sample],
     open_reconstruction: Optional[MagicMock],
 ) -> Application:
     app = Application.__new__(Application)
@@ -20,7 +26,7 @@ def _app(
 class TestRebindReplacedSample:
     def test_rebinds_the_editor_showing_the_replaced_sample(self) -> None:
         outgoing = MagicMock()
-        sample = MagicMock()
+        sample = _sample_double()
         sample.reconstruction = outgoing
         app = _app(sample=sample, open_reconstruction=outgoing)
         incoming = MagicMock()
@@ -31,7 +37,7 @@ class TestRebindReplacedSample:
         app._reconstructions_tab.update_reconstruction.assert_called_once()
 
     def test_leaves_the_editor_alone_when_a_different_sample_is_open(self) -> None:
-        sample = MagicMock()
+        sample = _sample_double()
         sample.reconstruction = MagicMock()
         app = _app(sample=sample, open_reconstruction=MagicMock())
 
@@ -41,7 +47,7 @@ class TestRebindReplacedSample:
         app._reconstructions_tab.update_reconstruction.assert_not_called()
 
     def test_leaves_the_editor_alone_when_no_document_is_open(self) -> None:
-        sample = MagicMock()
+        sample = _sample_double()
         sample.reconstruction = MagicMock()
         app = _app(sample=sample, open_reconstruction=None)
 
