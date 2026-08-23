@@ -1,6 +1,6 @@
 .PHONY: help setup install build release system-deps run clean pre-commit test benchmarks \
 	ftm-samples nsf-samples nsf-render compression-report icons player check-import-boundary check-tag-names check-unused-tags \
-	check-language-keys check-palette-colors calibration lint pylint mypy format
+	check-language-keys check-palette-colors check-shortcut-actions calibration lint pylint mypy format
 
 ifeq ($(OS),Windows_NT)
 ifeq ($(MSYSTEM),)
@@ -150,6 +150,9 @@ check-language-keys:
 
 check-palette-colors:
 	uv run scripts/checks/palette_colors.py
+
+check-shortcut-actions:
+	uv run scripts/checks/shortcut_actions.py
 
 calibration:
 	uv run scripts/calibration.py

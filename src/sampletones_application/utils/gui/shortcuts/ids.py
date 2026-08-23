@@ -1,5 +1,5 @@
 from enum import Enum, StrEnum
-from typing import Dict, Final, Self, Tuple
+from typing import Dict, Final, FrozenSet, Self, Tuple
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.constants.playback import FollowMode
@@ -235,3 +235,15 @@ SAMPLE_EXPORT_SHORTCUT_IDS: Final[Dict[ExportFormat, ShortcutId]] = {
     ExportFormat.BITPHASE_PRESET: ShortcutId.EXPORT_INSTRUMENTS_BITPHASE_PRESET,
     ExportFormat.NSF: ShortcutId.EXPORT_INSTRUMENTS_NSF,
 }
+
+FAMILY_SHORTCUT_IDS: Final[FrozenSet[ShortcutId]] = frozenset(
+    shortcut_id
+    for family in (
+        FOLLOW_MODE_SHORTCUT_IDS,
+        TAB_SHORTCUT_IDS,
+        CHANNEL_SHORTCUT_IDS,
+        PROJECT_EXPORT_SHORTCUT_IDS,
+        SAMPLE_EXPORT_SHORTCUT_IDS,
+    )
+    for shortcut_id in family.values()
+)

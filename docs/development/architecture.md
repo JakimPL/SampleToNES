@@ -174,6 +174,25 @@ A shade is composed by naming its form. `utils/palette/colors/` is a flat star: 
 
 What DearPyGui has already taken a copy of is registered rather than remembered by whoever set it. `PaletteBindings` (`utils/gui/palette/`) records each `(item, argument)` a palette colour reached, and `dpg_set_palette_color` / `dpg_add_palette_theme_color` are how a colour gets there. A palette change is then one switch: `PaletteSource.activate` fires the composition root's listener, which re-applies the bindings, refreshes the viewport clear colour, and repaints the sequencer for the row and cell highlights DearPyGui holds as table state. The `palette-colors` hook holds all three rules (see Enforcement).
 
+### 14. An action is declared once; whoever shows it prints it
+
+An **action** is one `ShortcutId` — the name a key press, a menu item and a context item all reach one behaviour by. Declaring one is a chain of four links, and the `shortcut-actions` check holds every one of them (see Enforcement):
+
+| Link | Where | What it states |
+|------|-------|----------------|
+| The action | `utils/gui/shortcuts/ids.py` | its name, and the category that answers it |
+| Its keys | every scheme under `sampletones_config/keybindings/` | the combination that fires it, `~` where it ships unbound |
+| Its call | `shell.py` — a `ShortcutBindings` field and the entry naming it in the binding map, or membership of `FAMILY_SHORTCUT_IDS` | the one call the action makes |
+| Its label | a `KeybindingActionElements` member and its `en.yaml` entry | how the keybindings editor lists it |
+
+Two kinds of action state their call differently, and the check knows both. One that a whole enum parameterises — an export item per format, an item per channel — is a **family**: a `Dict[Enum, ShortcutId]` in `ids.py` whose reader dispatches on the enum member. A family is *declared*, not recognised: `FAMILY_SHORTCUT_IDS` names the mappings that are ones, so what excuses an action from stating a call of its own is written down rather than inferred from the shape of a dictionary — `SHORTCUT_IDS_BY_NAME` answers with every action and is deliberately not among them. A **panel-scope** action states no call at all, because its key scope (principle 12) acts on the press itself. A `DIALOG` action is named nowhere in the editor, since a dialog is operated by the keys its category holds.
+
+**A menu item is a view of an action, never a second declaration of it.** `ShortcutManager.add_menu_item(shortcut_id, ...)` is how a menu names one: it takes both the accelerator and the call from the action, and keeps the item under it, so a rebind re-prints the key already on screen. An item passes a `callback` of its own only where it carries a state to show, and then that call is the one switching the state it shows.
+
+**A set of actions several menus show is declared by whoever owns them, once.** The owner states one builder — `GUISequencerVoicesPanel.add_action_items` for a voice, a grid's edit surface for a cell — and each door decides where to print it: the panel's own row menu, the menu bar's **Edit** group through `EditSurfaceProtocol` and `EditRouter`, the **Voice** group through the panel. Adding an action to the builder reaches every door, and the dividers around it belong to the door rather than to the set.
+
+**A menu whose contents follow a selection states them when it is opened.** A menu bar is built once, while what an item should say follows the cursor at the moment a reader opens the menu. `ui/elements/menu_section.py::MenuSection` is that mechanism: a marker leads the menu, the framework reports it drawn once a frame while the menu stands open, and a gap in those reports marks a fresh opening and restates the section. The marker leads rather than trails because a container standing below a menu item takes the width those items span as its own, which the popup would then grow to fit on every frame.
+
 ---
 
 ## Enforcement
@@ -182,7 +201,7 @@ Two mechanisms keep the codebase aligned with this document.
 
 **Import-expressible contracts are enforced by a check.** `sampletones_config/boundaries/rules.yaml` states one rule per layer, mirroring the **Must not import** lists in the Layer Reference; the Layer Reference is the source of truth, and a divergence between it and the configuration is itself a defect. The same domain holds the order the repository's packages import each other in, and the layering inside `sampletones_player`, both declared as layer tables in `docs/development/packages.md`. `sampletones_config/boundaries/` declares what the boundaries are, `sampletones_shared/meta/import_boundary/` holds how they are read and reported, and `scripts/checks/import_boundary.py` (a pre-commit hook, also run via `make check-import-boundary`) runs them over the source tree. A rule names the prefixes it reaches through the groups `boundaries/general.yaml` declares, so the interface several layers stay clear of is written once and each rule names it. Where a layer may consume another layer's data contract while its implementation stays out of reach (logic and the service result types), the rule names the contracts group that stays in reach. The hook audits the entire source tree on every commit (`--all`), so strengthening a rule surfaces violations in files a commit never touched. That property sets the working idiom for structural refactors: turn the stricter rule on first, and let the failing hook enumerate the remaining work.
 
-**The identifier vocabularies are enforced the same way.** Further scripts under `scripts/checks/` run whole-tree as pre-commit hooks, each also available as a `make check-*` target:
+**The identifier vocabularies, and the declarations that complete them, are enforced the same way.** Further scripts under `scripts/checks/` run whole-tree as pre-commit hooks, each also available as a `make check-*` target:
 
 | Hook | Script | What it holds |
 |------|--------|---------------|
@@ -190,8 +209,9 @@ Two mechanisms keep the codebase aligned with this document.
 | `tag-names` | `tag_names.py` | A tag constant's name against the tag it composes (principle 9) |
 | `unused-tags` | `unused_tags.py` | Every `TAG_*`/`SUF_*`/`PRE_*` the `tags/` package declares against the reads of it across `src/`, `tests/`, and `scripts/`, where an import alone stands at no reads |
 | `palette-colors` | `palette_colors.py` | A colour as a token up to the moment it is drawn with: an attribute assigned a resolved `rgba`, a theme colour filled outside the palette bindings, and a hex literal in the shipped configuration outside `palettes/` (principle 13) |
+| `shortcut-actions` | `shortcut_actions.py` | Every action against the links it needs: a combination in every shipped scheme, a name the keybindings editor lists it by, and — for an application-scope action — the call it makes, whether its own binding or a family (principle 14) |
 
-They read the source as an AST through the shared layer in `sampletones_shared/meta/source/`, which discovers modules, resolves the receiver a subscript sits on, and expands an enum-annotated key part to its members; the palette check reads the shipped YAML beside it. That layer derives each package directory from its own location and reports a root it finds nothing at, so a check that sweeps nothing fails loudly where it would otherwise pass clean. Because the checks are global by nature — a dead entry and an unread fragment are both absences — the hooks pass whole-tree rather than filenames.
+They read the source as an AST through the shared layer in `sampletones_shared/meta/source/`, which discovers modules, resolves the receiver a subscript sits on, and expands an enum-annotated key part to its members; the palette and shortcut checks read the shipped YAML beside it. That layer derives each package directory from its own location and reports a root it finds nothing at, so a check that sweeps nothing fails loudly where it would otherwise pass clean. Because the checks are global by nature — a dead entry and an unread fragment are both absences — the hooks pass whole-tree rather than filenames.
 
 **Behavioral contracts are enforced by review.** Contracts a grep cannot see — where state lives, which methods touch DPG, how errors travel — are upheld in code review against this document. Deviations that survive review are recorded in `docs/development/bugs-and-todos.md § Architecture` until they are paid off; the ledger, not the codebase, is the memory of what is currently out of line.
 
@@ -217,7 +237,7 @@ They read the source as an AST through the shared layer in `sampletones_shared/m
 
 | Path | Role |
 |------|------|
-| `ui/elements/` | Reusable low-level widgets: `GUIPanel` (the panel base class), `GUIWindow` (modal variant), buttons, tables, graphs, trees, fonts, the status bar |
+| `ui/elements/` | Reusable low-level widgets: `GUIPanel` (the panel base class), `GUIWindow` (modal variant), buttons, tables, graphs, trees, fonts, the status bar, and `MenuSection` — a run of menu items restated each time its menu is opened |
 | `ui/elements/layout/` | Reusable layout primitives: `TabColumns` (the tab column scaffold), the `card()` context manager and the `well()` inset region, driven declaratively by tab coordinators |
 | `ui/panels/` | Domain-level composite panels, organised by feature area |
 | `ui/themes/` | DPG themes and per-widget style helpers |
