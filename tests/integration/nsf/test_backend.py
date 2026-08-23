@@ -71,7 +71,7 @@ def sample_request(sample: Sample) -> SampleExport:
                 name=instrument_slice_name(sample.name, channel),
                 channel=channel,
                 features=features,
-                loop=sample.loops,
+                loop_point=sample.loop_point,
                 nes_frequency=config.nes_frequency,
                 tuning=config.tuning,
             )

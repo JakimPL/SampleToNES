@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Optional, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
@@ -15,7 +15,8 @@ class InstrumentExport:
         name: Name the written instrument carries.
         channel: The NES channel the slice was reconstructed for.
         features: The per-dimension envelopes describing the slice.
-        loop: Whether the instrument repeats its envelopes while its note is held.
+        loop_point: The tick the instrument repeats from while its note is held, or ``None``
+            where it plays its envelopes once.
         nes_frequency: Rate in Hz the envelopes advance at, one item per tick.
         tuning: Where concert pitch sat for the reconstruction the slice came from.
     """
@@ -23,7 +24,7 @@ class InstrumentExport:
     name: str
     channel: ChannelName
     features: Features
-    loop: bool
+    loop_point: Optional[int]
     nes_frequency: int
     tuning: Tuning
 

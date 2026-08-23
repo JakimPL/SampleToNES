@@ -97,7 +97,7 @@ class SequencerSamplesLogic(CallbackMixin):
             return None
 
         return SampleFootprintViewModel.from_footprints(
-            reconstruction_footprints(sample.reconstruction, loop=sample.loops)
+            reconstruction_footprints(sample.reconstruction, loop_point=sample.loop_point)
         )
 
     def sample_name(self, voice_id: str) -> str:

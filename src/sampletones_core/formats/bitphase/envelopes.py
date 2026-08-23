@@ -91,17 +91,17 @@ def features_to_envelopes(
     features: Features,
     channel: ChannelName,
     *,
-    loop: bool,
+    loop_point: Optional[int],
 ) -> ChannelEnvelopes:
     """Converts one channel slice's envelopes into Bitphase instrument and table rows.
 
     Volume becomes the instrument's per-tick level, the duty cycle becomes the channel's
     waveform field, and the arpeggio becomes the table contour that moves the note. A
     slice that leaves its volume to the channel takes a full level for every frame it
-    describes, so the channel governs how loud it sounds. A looping slice returns to its
-    first row so it sustains for as long as the note is held; a one-shot returns to its
-    last row, resting on the level its volume envelope ends with — silence where the
-    slice writes its own, the channel's level where it holds one.
+    describes, so the channel governs how loud it sounds. A slice with a loop point returns to
+    that row so it sustains for as long as the note is held; a one-shot returns to its last row,
+    resting on the level its volume envelope ends with — silence where the slice writes its own,
+    the channel's level where it holds one.
 
     A slice describing no frame comes back as the one silent row that is the smallest
     instrument Bitphase plays.
@@ -109,7 +109,8 @@ def features_to_envelopes(
     Args:
         features: The per-dimension envelopes describing the slice.
         channel: The NES channel the slice was reconstructed for.
-        loop: Whether the instrument repeats its envelopes while its note is held.
+        loop_point: The row the instrument repeats from while its note is held, or ``None``
+            where it plays its rows once.
 
     Returns:
         ChannelEnvelopes: The rows, contour, and loop point describing the slice.
@@ -119,7 +120,7 @@ def features_to_envelopes(
         FeatureKey.ARPEGGIO: features.arpeggio,
         FeatureKey.DUTY_CYCLE: features.duty_cycle,
     }
-    items = equalize_lengths({key: _to_items(array) for key, array in arrays.items()}, loop)
+    items = equalize_lengths({key: _to_items(array) for key, array in arrays.items()}, loop_point is not None)
     frames = max(len(values) for values in items.values())
 
     if not frames:
@@ -146,5 +147,5 @@ def features_to_envelopes(
     return ChannelEnvelopes(
         rows=rows,
         table_rows=table_rows,
-        loop=LOOP_FROM_START if loop else len(rows) - 1,
+        loop=(min(loop_point, len(rows) - 1) if loop_point is not None else len(rows) - 1),
     )

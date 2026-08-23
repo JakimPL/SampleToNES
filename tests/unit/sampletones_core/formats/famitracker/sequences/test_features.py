@@ -9,6 +9,7 @@ from sampletones_core.formats.famitracker.specification.sequences import (
     NO_LOOP_POINT,
     SequenceKind,
 )
+from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 
 
 class TestFeaturesToInstrumentSequences:
@@ -19,7 +20,7 @@ class TestFeaturesToInstrumentSequences:
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
-            loop=False,
+            loop_point=None,
         )
         assert set(sequences) == set(SequenceKind)
 
@@ -30,7 +31,7 @@ class TestFeaturesToInstrumentSequences:
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
-            loop=False,
+            loop_point=None,
         )
         volume = sequences[SequenceKind.VOLUME]
         assert volume.enabled is True
@@ -43,7 +44,7 @@ class TestFeaturesToInstrumentSequences:
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
-            loop=False,
+            loop_point=None,
         )
         assert sequences[SequenceKind.PITCH].enabled is False
         assert sequences[SequenceKind.PITCH].items == ()
@@ -56,7 +57,7 @@ class TestFeaturesToInstrumentSequences:
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
-            loop=False,
+            loop_point=None,
         )
         assert all(isinstance(item, int) for item in sequences[SequenceKind.VOLUME].items)
         assert all(isinstance(item, int) for item in sequences[SequenceKind.ARPEGGIO].items)
@@ -68,7 +69,7 @@ class TestFeaturesToInstrumentSequences:
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
-            loop=True,
+            loop_point=WHOLE_LOOP_POINT,
         )
         assert sequences[SequenceKind.VOLUME].loop_point == LOOP_FROM_START
         assert sequences[SequenceKind.ARPEGGIO].loop_point == LOOP_FROM_START
@@ -80,7 +81,7 @@ class TestFeaturesToInstrumentSequences:
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
-            loop=True,
+            loop_point=WHOLE_LOOP_POINT,
         )
         assert sequences[SequenceKind.PITCH].loop_point == NO_LOOP_POINT
 
@@ -91,7 +92,7 @@ class TestFeaturesToInstrumentSequences:
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
-            loop=False,
+            loop_point=None,
         )
         assert sequences[SequenceKind.VOLUME].loop_point == NO_LOOP_POINT
 
@@ -104,7 +105,7 @@ class TestSequenceLengths:
             pitch=None,
             hi_pitch=None,
             duty_cycle=np.array([1, 1, 2]),
-            loop=True,
+            loop_point=WHOLE_LOOP_POINT,
         )
         assert sequences[SequenceKind.VOLUME].items == (15, 12, 9)
         assert sequences[SequenceKind.ARPEGGIO].items == (0, 2, 4)
@@ -118,7 +119,7 @@ class TestSequenceLengths:
             pitch=None,
             hi_pitch=None,
             duty_cycle=np.array([1]),
-            loop=False,
+            loop_point=None,
         )
         assert sequences[SequenceKind.VOLUME].items == (15, 12, 9, 0)
         assert sequences[SequenceKind.ARPEGGIO].items == (0, 2, 4)
@@ -131,7 +132,7 @@ class TestSequenceLengths:
             pitch=np.array([0, 1]),
             hi_pitch=None,
             duty_cycle=np.array([1, 1, 2]),
-            loop=True,
+            loop_point=WHOLE_LOOP_POINT,
         )
         lengths = {len(sequence.items) for sequence in sequences.values() if sequence.enabled}
         assert lengths == {2}
@@ -143,7 +144,7 @@ class TestSequenceLengths:
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
-            loop=False,
+            loop_point=None,
         )
         assert sequences[SequenceKind.ARPEGGIO].items == ()
         assert sequences[SequenceKind.PITCH].items == ()
@@ -156,7 +157,7 @@ class TestSequenceLengths:
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
-            loop=False,
+            loop_point=None,
         )
         zeroed = features_to_instrument_sequences(
             volume=np.array([15, 0]),
@@ -164,7 +165,7 @@ class TestSequenceLengths:
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
-            loop=False,
+            loop_point=None,
         )
         assert cleared[SequenceKind.ARPEGGIO].enabled is False
         assert zeroed[SequenceKind.ARPEGGIO].enabled is True
@@ -177,7 +178,7 @@ class TestSequenceLengths:
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
-            loop=True,
+            loop_point=WHOLE_LOOP_POINT,
         )
         assert all(not sequence.enabled for sequence in sequences.values())
 
@@ -190,7 +191,7 @@ class TestSequenceLengths:
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
-            loop=False,
+            loop_point=None,
         )
 
         assert all(len(sequence.items) <= MAX_SEQUENCE_ITEMS for sequence in sequences.values())

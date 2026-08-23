@@ -548,7 +548,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             name=name,
             channel=channel_name,
             features=feature,
-            loop=False,
+            loop_point=None,
             nes_frequency=self._nes_frequency(),
             tuning=self._tuning(),
         )

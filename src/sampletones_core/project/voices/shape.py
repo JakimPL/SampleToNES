@@ -109,13 +109,33 @@ class Shape(BaseModel):
             Features: The per-dimension envelopes for that channel.
         """
         kind = CHANNEL_GENERATOR_KIND[channel_name]
+        length = self.envelopes.frame_count
         return Features(
             initial_pitch=self.reference(channel_name),
-            volume=_items(self.envelopes.volume),
-            arpeggio=_items(self.envelopes.arpeggio),
+            volume=_items(self.envelopes.volume, length),
+            arpeggio=_items(self.envelopes.arpeggio, length),
             pitch=None,
             hi_pitch=None,
-            duty_cycle=(_items(self.envelopes.duty_cycle) if supports(kind, FeatureKey.DUTY_CYCLE) else None),
+            duty_cycle=(_items(self.envelopes.duty_cycle, length) if supports(kind, FeatureKey.DUTY_CYCLE) else None),
+        )
+
+    def instrument_features(self) -> Features:
+        """The envelopes as a tracker instrument holds them: every dimension the shape writes.
+
+        A tracker instrument is one set of sequences whatever channel plays it, and each channel
+        reads what it can of them — which is why a shape reaches a tracker as a single instrument.
+
+        Returns:
+            Features: The envelopes, measured against the shape's tonal root.
+        """
+        length = self.envelopes.frame_count
+        return Features(
+            initial_pitch=self.root_pitch,
+            volume=_items(self.envelopes.volume, length),
+            arpeggio=_items(self.envelopes.arpeggio, length),
+            pitch=None,
+            hi_pitch=None,
+            duty_cycle=_items(self.envelopes.duty_cycle, length),
         )
 
     @cached_property
@@ -160,5 +180,22 @@ class Shape(BaseModel):
         return f"Shape(id={self.id!r}, name={self.name!r})"
 
 
-def _items(envelope: Tuple[int, ...]) -> np.ndarray:
-    return np.array(envelope, dtype=np.int8)
+def _items(envelope: Tuple[int, ...], length: int) -> np.ndarray:
+    """One dimension brought to the length the shape's longest runs, holding its final value.
+
+    A tracker advances each sequence on a counter of its own, so a dimension shorter than the rest
+    would circle at its own pace once the shape repeats. Running every written dimension the same
+    length keeps a tracker sounding the shape the way the engine here plays it, where a dimension
+    holds its final value for as long as the note lasts.
+
+    Args:
+        envelope: The items the dimension states, empty where the channel governs it.
+        length: The ticks the shape's longest dimension runs.
+
+    Returns:
+        np.ndarray: The dimension's items, empty where the channel governs it.
+    """
+    if not envelope:
+        return np.array([], dtype=np.int8)
+
+    return np.array(envelope + (envelope[-1],) * (length - len(envelope)), dtype=np.int8)

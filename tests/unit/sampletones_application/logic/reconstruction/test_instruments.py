@@ -146,7 +146,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         footprint = received[0].footprint
         assert footprint is not None
         expected = total_footprint(
-            features_footprint(features, loop=False)
+            features_footprint(features, loop_point=None)
             for features in feature_data.channels.values()
             if features.has_frames
         )
@@ -175,7 +175,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         edited[FeatureKey.VOLUME] = volume
         footprint = received[0].footprint
         assert footprint is not None
-        assert footprint.bytes_for(ChannelName.PULSE1) == features_footprint(edited, loop=False).total_bytes
+        assert footprint.bytes_for(ChannelName.PULSE1) == features_footprint(edited, loop_point=None).total_bytes
 
     def test_a_bar_edit_is_measured_as_it_arrives(
         self,

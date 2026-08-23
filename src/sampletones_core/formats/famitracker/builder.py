@@ -5,7 +5,7 @@ from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.slices import (
     InstrumentSlot,
     InstrumentTable,
-    iterate_voice_slices,
+    iterate_instrument_entries,
 )
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.model.module import (
@@ -66,18 +66,19 @@ def build_instrument(
     name: str,
     features: Features,
     *,
-    loop: bool,
+    loop_point: Optional[int],
 ) -> Instrument2A03:
-    """Builds one FamiTracker instrument from the envelopes of a channel slice.
+    """Builds one FamiTracker instrument from a set of envelopes.
 
-    The slice's envelopes become the instrument's five 2A03 sequences, so an instrument reaching a
+    The envelopes become the instrument's five 2A03 sequences, so an instrument reaching a
     ``.fti`` file on its own and one taking a slot in a module are built the same way.
 
     Args:
         index: The slot the instrument is numbered under.
         name: The name FamiTracker lists the instrument by.
         features: The per-dimension envelopes the sequences are read from.
-        loop: Whether every populated sequence loops from its first item, sustaining a held note.
+        loop_point: The item every populated sequence repeats from, sustaining a held note, or
+            ``None`` where the instrument plays its envelopes once.
 
     Returns:
         The instrument the envelopes describe.
@@ -88,7 +89,7 @@ def build_instrument(
         pitch=features.pitch,
         hi_pitch=features.hi_pitch,
         duty_cycle=features.duty_cycle,
-        loop=loop,
+        loop_point=loop_point,
     )
 
     return Instrument2A03(
@@ -99,28 +100,32 @@ def build_instrument(
 
 
 def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], InstrumentTable]:
-    """Builds one FamiTracker instrument per channel slice of every sample.
+    """Builds the module's instruments and the table a pattern row resolves through.
 
-    Each sample contributes one instrument for every channel its reconstruction
-    covers, so a sample yields one to four instruments. Instruments are numbered in
-    sample order, then channel order.
+    A sample contributes one instrument for every channel its reconstruction covers, so it yields
+    one to four; a shape contributes one instrument every channel it sounds on reaches, each
+    against that channel's own root. Instruments are numbered in voice order, then channel order.
+
+    Raises:
+        ValueError: If the project holds more instruments than FamiTracker has room for.
     """
     instruments: List[Instrument2A03] = []
     slots: InstrumentTable = {}
 
-    for voice_slice in iterate_voice_slices(project):
-        if voice_slice.index >= MAX_INSTRUMENTS:
+    for entry in iterate_instrument_entries(project):
+        if entry.index >= MAX_INSTRUMENTS:
             raise ValueError(f"Module exceeds the FamiTracker limit of {MAX_INSTRUMENTS} instruments")
 
         instruments.append(
             build_instrument(
-                voice_slice.index,
-                voice_slice.instrument_name,
-                voice_slice.features,
-                loop=voice_slice.voice.loops,
+                entry.index,
+                entry.name,
+                entry.features,
+                loop_point=entry.loop_point,
             )
         )
-        slots[voice_slice.key] = voice_slice.slot
+        for channel, slot in entry.slots.items():
+            slots[(entry.voice_id, channel)] = slot
 
     return instruments, slots
 

@@ -64,7 +64,7 @@ def instrument_to_preset(request: InstrumentExport) -> BitphaseInstrumentPreset:
     envelopes = features_to_envelopes(
         request.features,
         request.channel,
-        loop=request.loop,
+        loop_point=request.loop_point,
     )
     offsets = _tone_offsets(
         request.channel,

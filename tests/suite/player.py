@@ -10,6 +10,7 @@ from sampletones_core.constants.general import DUTY_CYCLES
 from sampletones_core.exporters import Features
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
+from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.clock.schedule import PlaySchedule
@@ -255,7 +256,7 @@ def player_instrument(
         name=name,
         channel=channel,
         features=features,
-        loop=loop,
+        loop_point=WHOLE_LOOP_POINT if loop else None,
         nes_frequency=nes_frequency,
         tuning=tuning,
     )

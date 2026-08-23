@@ -136,7 +136,7 @@ def loop_tick_from_instruments(instruments: Sequence[InstrumentExport]) -> Optio
     Returns:
         Optional[int]: The tick to return to, or ``None`` where the song stops at its end.
     """
-    if instruments and all(instrument.loop for instrument in instruments):
+    if instruments and all(instrument.loop_point is not None for instrument in instruments):
         return SONG_START
 
     return None

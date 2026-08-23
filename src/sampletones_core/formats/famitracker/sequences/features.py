@@ -20,7 +20,7 @@ def _to_items(array: Optional[np.ndarray]) -> Tuple[int, ...]:
 
 def _sequence_items(
     arrays: Dict[SequenceKind, Optional[np.ndarray]],
-    loop: bool,
+    loops: bool,
 ) -> Dict[SequenceKind, Tuple[int, ...]]:
     """Reads the dimensions as the item tuples an instrument stores.
 
@@ -31,8 +31,8 @@ def _sequence_items(
     instrument on their own.
     """
     items_by_kind = {kind: _to_items(array) for kind, array in arrays.items()}
-    if loop:
-        return equalize_lengths(items_by_kind, loop, limit=MAX_SEQUENCE_ITEMS)
+    if loops:
+        return equalize_lengths(items_by_kind, loops, limit=MAX_SEQUENCE_ITEMS)
 
     return limit_lengths(items_by_kind, limit=MAX_SEQUENCE_ITEMS)
 
@@ -44,16 +44,17 @@ def features_to_instrument_sequences(
     pitch: Optional[np.ndarray],
     hi_pitch: Optional[np.ndarray],
     duty_cycle: Optional[np.ndarray],
-    loop: bool,
+    loop_point: Optional[int],
 ) -> Dict[SequenceKind, InstrumentSequence]:
     """Builds the five 2A03 sequences from per-dimension envelope arrays.
 
     Each dimension becomes an :class:`InstrumentSequence`; a dimension passed as ``None``
     or as an empty envelope becomes a disabled sequence the instrument stores nothing for.
     Item counts stay within the ``MAX_SEQUENCE_ITEMS`` items FamiTracker holds, so a longer
-    reconstruction exports its opening frames and the shortening is logged. When ``loop``
-    is set, every populated sequence loops from its first item so the instrument sustains
-    on a held note, and the populated dimensions share one length to repeat in step.
+    reconstruction exports its opening frames and the shortening is logged. A ``loop_point``
+    sets every populated sequence to repeat from that item so the instrument sustains on a held
+    note, and the populated dimensions share one length to repeat in step; a point beyond a
+    sequence's own items repeats its final item, which is the value it would hold anyway.
     """
     arrays: Dict[SequenceKind, Optional[np.ndarray]] = {
         SequenceKind.VOLUME: volume,
@@ -63,15 +64,21 @@ def features_to_instrument_sequences(
         SequenceKind.DUTY: duty_cycle,
     }
 
-    items_by_kind = _sequence_items(arrays, loop)
+    items_by_kind = _sequence_items(arrays, loop_point is not None)
 
     sequences: Dict[SequenceKind, InstrumentSequence] = {}
     for kind, items in items_by_kind.items():
-        loop_point = LOOP_FROM_START if loop and items else NO_LOOP_POINT
         sequences[kind] = InstrumentSequence(
             kind=kind,
             items=items,
-            loop_point=loop_point,
+            loop_point=_loop_item(loop_point, len(items)),
         )
 
     return sequences
+
+
+def _loop_item(loop_point: Optional[int], length: int) -> int:
+    if loop_point is None or not length:
+        return NO_LOOP_POINT
+
+    return max(LOOP_FROM_START, min(loop_point, length - 1))

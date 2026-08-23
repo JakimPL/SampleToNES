@@ -61,7 +61,7 @@ def instrument_export(name: str, features: Features) -> InstrumentExport:
         name=name,
         channel=ChannelName.PULSE1,
         features=features,
-        loop=False,
+        loop_point=None,
         nes_frequency=NES_FREQUENCY,
         tuning=Tuning(),
     )

@@ -52,7 +52,7 @@ def build_instrument(name: str, frames: int) -> InstrumentExport:
         name=name,
         channel=ChannelName.PULSE1,
         features=build_features(frames),
-        loop=False,
+        loop_point=None,
         nes_frequency=NES_FREQUENCY,
         tuning=Tuning(),
     )

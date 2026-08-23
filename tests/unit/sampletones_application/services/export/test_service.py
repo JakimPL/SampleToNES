@@ -127,7 +127,7 @@ def build_instrument(name: str = "Lead") -> InstrumentExport:
             hi_pitch=None,
             duty_cycle=None,
         ),
-        loop=False,
+        loop_point=None,
         nes_frequency=NES_FREQUENCY,
         tuning=Tuning(),
     )

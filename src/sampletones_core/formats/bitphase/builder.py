@@ -279,7 +279,7 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
             features_to_envelopes(
                 instrument.features,
                 instrument.channel,
-                loop=instrument.loop,
+                loop_point=instrument.loop_point,
             ),
             maximum_table_id=MAX_TABLE_ID,
         )
@@ -332,14 +332,14 @@ def _build_voice_table(
     voices: List[SliceVoice] = []
     by_reference: SliceVoiceTable = {}
 
-    for voice_slice in iterate_voice_slices(project):
+    for index, voice_slice in enumerate(iterate_voice_slices(project)):
         envelopes = features_to_envelopes(
             voice_slice.features,
             voice_slice.channel,
-            loop=voice_slice.voice.loops,
+            loop_point=voice_slice.voice.loop_point,
         )
         voice = _build_slice_voice(
-            voice_slice.index,
+            index,
             voice_slice.instrument_name,
             voice_slice.channel,
             voice_slice.features.initial_pitch,

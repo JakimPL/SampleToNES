@@ -10,6 +10,7 @@ from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.sequences.features import (
     features_to_instrument_sequences,
 )
+from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 
 GOLDEN_INSTRUMENT_NAME = "Test Instrument"
 GOLDEN_VOLUME = np.array([15, 12, 8, 0])
@@ -34,7 +35,7 @@ def build_instrument(
     pitch: Optional[np.ndarray] = None,
     hi_pitch: Optional[np.ndarray] = None,
     duty_cycle: Optional[np.ndarray] = None,
-    loop: bool = False,
+    loop_point: Optional[int] = None,
     index: int = 0,
 ) -> Instrument2A03:
     sequences = features_to_instrument_sequences(
@@ -43,7 +44,7 @@ def build_instrument(
         pitch=pitch,
         hi_pitch=hi_pitch,
         duty_cycle=duty_cycle,
-        loop=loop,
+        loop_point=loop_point,
     )
     return Instrument2A03(index=index, name=name, sequences=sequences)
 
@@ -174,7 +175,7 @@ class TestWriteFtiRoundTrip:
 
     def test_loop_flag_sets_loop_point(self, tmp_path: Path) -> None:
         path = tmp_path / "instrument.fti"
-        write_fti(path, build_instrument("Pad", volume=np.array([15, 10, 5]), loop=True))
+        write_fti(path, build_instrument("Pad", volume=np.array([15, 10, 5]), loop_point=WHOLE_LOOP_POINT))
         parsed = parse_fti(path.read_bytes())
         assert parsed.sequences[0].loop_point == 0
 

@@ -191,7 +191,7 @@ class TestBuildSampleFootprint:
         footprint = logic.build_sample_footprint(sample.id)
 
         assert footprint == SampleFootprintViewModel.from_footprints(
-            reconstruction_footprints(sample.reconstruction, loop=True)
+            reconstruction_footprints(sample.reconstruction, loop_point=WHOLE_LOOP_POINT)
         )
 
     def test_a_looping_sample_costs_less_than_a_one_shot(

@@ -86,14 +86,14 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
     ) -> SampleFootprintViewModel:
         """Measures each playing channel's instrument as the size its own export writes.
 
-        A reconstruction has no loop flag of its own — that belongs to a sample placed in a
+        A reconstruction has no loop point of its own — that belongs to a voice placed in a
         project — so each instrument is measured playing its envelopes once, matching what
         **Export instrument...** produces. A channel standing by is written nowhere, so it is
         measured nowhere and the sample's total names what the export costs.
         """
         return SampleFootprintViewModel.from_footprints(
             {
-                channel_name: features_footprint(features, loop=False)
+                channel_name: features_footprint(features, loop_point=None)
                 for channel_name, features in channels.items()
                 if features.has_frames
             }

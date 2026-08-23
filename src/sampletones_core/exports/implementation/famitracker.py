@@ -60,7 +60,7 @@ class FamiTrackerBackend:
             STANDALONE_INSTRUMENT_INDEX,
             request.name,
             request.features,
-            loop=request.loop,
+            loop_point=request.loop_point,
         )
         write_fti(destination, instrument)
         announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)

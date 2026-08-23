@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Iterable
+from typing import Dict, Iterable, Optional
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
@@ -69,7 +69,7 @@ def instrument_footprint(instrument: Instrument2A03) -> InstrumentFootprint:
 def features_footprint(
     features: Features,
     *,
-    loop: bool,
+    loop_point: Optional[int],
 ) -> InstrumentFootprint:
     """Measures the instrument a channel slice's envelopes export to.
 
@@ -79,7 +79,8 @@ def features_footprint(
 
     Args:
         features: The per-dimension envelopes describing the slice.
-        loop: Whether the instrument loops while its note is held, which decides the shared length.
+        loop_point: The tick the instrument repeats from, which decides the shared length, or
+            ``None`` where it plays its envelopes once.
 
     Returns:
         InstrumentFootprint: The footprint of the instrument those envelopes describe.
@@ -90,7 +91,7 @@ def features_footprint(
         pitch=features.pitch,
         hi_pitch=features.hi_pitch,
         duty_cycle=features.duty_cycle,
-        loop=loop,
+        loop_point=loop_point,
     )
     return sequences_footprint(sequences.values())
 
@@ -98,7 +99,7 @@ def features_footprint(
 def reconstruction_footprints(
     reconstruction: Reconstruction,
     *,
-    loop: bool,
+    loop_point: Optional[int],
 ) -> Dict[ChannelName, InstrumentFootprint]:
     """Measures one instrument per channel a reconstruction plays.
 
@@ -108,13 +109,13 @@ def reconstruction_footprints(
 
     Args:
         reconstruction: The reconstruction whose channels are measured.
-        loop: Whether the sample carrying it loops while its note is held.
+        loop_point: The tick the sample carrying it repeats from, or ``None`` where it plays once.
 
     Returns:
         Dict[ChannelName, InstrumentFootprint]: The footprint of each playing channel's instrument.
     """
     return {
-        channel_name: features_footprint(features, loop=loop)
+        channel_name: features_footprint(features, loop_point=loop_point)
         for channel_name, features in reconstruction.export().items()
         if features.has_frames
     }
