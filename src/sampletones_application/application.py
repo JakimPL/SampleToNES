@@ -1030,7 +1030,8 @@ class Application:
         """Opens the voice list's selection on the Reconstructions tab, in the terms of its kind.
 
         A sample opens as the reconstruction behind it, waveform and stems and all; a shape stands
-        on no recording, so the tab shows its envelopes alone.
+        on no recording, so the tab shows its envelopes alone. Either kind brings that tab to the
+        front, so the voice a reader asked to edit is the one in view.
         """
         match self.project_manager.current.voice(voice_id):
             case Sample() as sample:
@@ -1041,6 +1042,7 @@ class Application:
                 )
             case Shape():
                 self._reconstructions_tab.edit_shape(voice_id)
+                self._navigate_to_reconstructions()
             case _:
                 logger.warning(f"Cannot edit unknown project voice: {voice_id}")
 

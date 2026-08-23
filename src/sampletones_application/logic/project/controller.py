@@ -202,13 +202,13 @@ class ProjectController(CallbackMixin):
         self._announce(self.on_voices_changed)
         return sample
 
-    def add_shape(self, name: str) -> Shape:
-        """Appends a hand-written voice, resting at the roots a channel added by hand sounds on.
+    def add_shape(self, shape: Shape) -> Shape:
+        """Appends a hand-written voice, which the voice list holds and the tracker can name.
 
-        A shape opens with no envelope, so every dimension is the channel's until one is written;
-        the voice list holds it from this moment and the tracker can name it.
+        A shape is its own record, so whoever made it — a reader asking for a new one, an
+        instrument file read from disk, a sample's channel frozen into envelopes — hands the
+        whole voice over and the pool takes it as it stands.
         """
-        shape = Shape(name=name)
         self.project.voices.append(shape)
         self._touch()
         self._announce(self.on_voices_changed)

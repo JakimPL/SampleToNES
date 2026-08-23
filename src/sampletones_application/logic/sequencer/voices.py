@@ -23,6 +23,7 @@ from sampletones_core.formats.famitracker.footprint import (
     reconstruction_footprints,
 )
 from sampletones_core.generators.render import render_instructions
+from sampletones_core.project.voices.creation import new_shape
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.shape import Shape
@@ -86,7 +87,7 @@ class SequencerVoicesLogic(CallbackMixin):
         return self._controller.add_sample(reconstruction, name)
 
     def add_shape(self, name: str) -> Shape:
-        return self._controller.add_shape(name)
+        return self._controller.add_shape(new_shape(name))
 
     def rename_voice(self, voice_id: str, name: str) -> None:
         self._controller.rename_voice(voice_id, name)

@@ -23,6 +23,7 @@ from sampletones_core.formats.famitracker.footprint import (
     features_footprint,
     total_footprint,
 )
+from sampletones_core.project.voices.creation import new_shape
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.reconstructions import Reconstruction
 
@@ -331,7 +332,7 @@ class TestTheInstrumentsPanelShowsAShape:
     ) -> ReconstructionInstrumentsLogic:
         mock_reconstruction_manager.current_features = None
         editor = InstrumentEditor(mock_reconstruction_manager, project_controller)
-        shape = project_controller.add_shape("lead")
+        shape = project_controller.add_shape(new_shape("lead"))
         project_controller.set_shape_envelope(shape.id, FeatureKey.VOLUME, (15, 12))
         editor.edit_shape(shape.id)
         return ReconstructionInstrumentsLogic(editor, scheduling=scheduling)

@@ -4,6 +4,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.voices.creation import new_shape
 from sampletones_core.project.voices.envelopes import ShapeEnvelopes
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
@@ -24,7 +25,7 @@ def _logic() -> Tuple[ProjectController, SequencerTrackerLogic]:
 
 
 def _shape(controller: ProjectController) -> Shape:
-    shape = controller.add_shape("lead")
+    shape = controller.add_shape(new_shape("lead"))
     controller.set_shape_root(shape.id, pitch=ROOT_PITCH, period=ROOT_PERIOD)
     shape.envelopes = ShapeEnvelopes(volume=(15,))
     shape.invalidate()

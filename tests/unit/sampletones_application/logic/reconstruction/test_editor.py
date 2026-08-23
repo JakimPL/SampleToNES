@@ -11,6 +11,7 @@ from sampletones_application.logic.reconstruction.editor import InstrumentEditor
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
+from sampletones_core.project.voices.creation import new_shape
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 
 ROOT_PITCH: Final[int] = 55
@@ -67,7 +68,7 @@ class TestWhatTheTabHasInFront:
         editor: InstrumentEditor,
         controller: ProjectController,
     ) -> None:
-        shape = controller.add_shape("lead")
+        shape = controller.add_shape(new_shape("lead"))
         controller.set_shape_root(shape.id, pitch=ROOT_PITCH, period=ROOT_PERIOD)
 
         editor.edit_shape(shape.id)
@@ -84,7 +85,7 @@ class TestWhatTheTabHasInFront:
         reconstruction_manager: MagicMock,
     ) -> None:
         """The tab describes one voice, so its waveform and stems follow what is in front of it."""
-        shape = controller.add_shape("lead")
+        shape = controller.add_shape(new_shape("lead"))
 
         editor.edit_shape(shape.id)
 
@@ -96,7 +97,7 @@ class TestWhatTheTabHasInFront:
         controller: ProjectController,
         reconstruction_manager: MagicMock,
     ) -> None:
-        shape = controller.add_shape("lead")
+        shape = controller.add_shape(new_shape("lead"))
         editor.edit_shape(shape.id)
         reconstruction_manager.current_features = MagicMock(channels={ChannelName.PULSE1: _features()})
 
@@ -109,7 +110,7 @@ class TestWhatTheTabHasInFront:
         editor: InstrumentEditor,
         controller: ProjectController,
     ) -> None:
-        shape = controller.add_shape("lead")
+        shape = controller.add_shape(new_shape("lead"))
         editor.edit_shape(shape.id)
 
         controller.remove_voice(shape.id)
@@ -123,7 +124,7 @@ class TestWritingIntoTheShape:
         editor: InstrumentEditor,
         controller: ProjectController,
     ) -> None:
-        shape = controller.add_shape("lead")
+        shape = controller.add_shape(new_shape("lead"))
         editor.edit_shape(shape.id)
 
         editor.write_envelope(FeatureKey.VOLUME, np.array(VOLUME, dtype=np.int8))
@@ -135,7 +136,7 @@ class TestWritingIntoTheShape:
         editor: InstrumentEditor,
         controller: ProjectController,
     ) -> None:
-        shape = controller.add_shape("lead")
+        shape = controller.add_shape(new_shape("lead"))
         editor.edit_shape(shape.id)
 
         editor.write_roots(pitch=ROOT_PITCH, period=ROOT_PERIOD)
@@ -147,7 +148,7 @@ class TestWritingIntoTheShape:
         editor: InstrumentEditor,
         controller: ProjectController,
     ) -> None:
-        shape = controller.add_shape("lead")
+        shape = controller.add_shape(new_shape("lead"))
         editor.edit_shape(shape.id)
 
         editor.write_loop_point(WHOLE_LOOP_POINT)

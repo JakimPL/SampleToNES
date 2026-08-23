@@ -16,6 +16,7 @@ from sampletones_core.formats.famitracker.footprint import (
 )
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.shape import Shape
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.sequencer import sample_reconstruction
 
@@ -360,8 +361,8 @@ class TestShapesInTheVoiceList:
         assert played.size > 0
 
     def test_a_shape_writing_nothing_sounds_no_preview(self) -> None:
-        _, logic, _, audio_device_manager = _logic_with_mocks()
-        shape = logic.add_shape("lead")
+        controller, logic, _, audio_device_manager = _logic_with_mocks()
+        shape = controller.add_shape(Shape(name="lead"))
 
         logic.play_voice(shape.id)
 

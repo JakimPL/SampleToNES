@@ -22,9 +22,10 @@ reconstruction was made at a different NES frequency than the project and the
 project already has voices, _SampleToNES_ warns with **Different NES frequency**;
 **Add anyway** adds it regardless.
 
-Add a shape with **New shape** at the top of the list. It starts empty and silent —
-give it envelopes on the **Reconstructions** tab (right-click ▸ **Edit**) and it
-begins to sound. See [editing instruments](interface.md#editing-instruments).
+Add a shape with **New shape** at the top of the list. It starts out holding a note at
+full volume, so you can place it and hear it straight away; shape it into the sound you
+want on the **Reconstructions** tab (right-click ▸ **Edit**). See [editing
+instruments](interface.md#editing-instruments).
 
 Right-click any voice to **Edit**, **Rename**, **Duplicate**, **Remove**, or
 reorder it, and toggle its **Loop** flag. The **Edit** menu carries the same actions

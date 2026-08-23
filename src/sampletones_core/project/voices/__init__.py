@@ -1,3 +1,4 @@
+from .creation import new_shape
 from .envelopes import ShapeEnvelopes
 from .loop import WHOLE_LOOP_POINT
 from .note_off import NoteOff
@@ -17,6 +18,7 @@ __all__ = [
     "ShapeEnvelopes",
     "VoiceRecord",
     "VoiceUnion",
+    "new_shape",
     "samples",
     "voice_channels",
     "voice_reference",
