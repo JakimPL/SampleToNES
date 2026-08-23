@@ -641,24 +641,24 @@ class SequencerTabCoordinator:
             self._sequencer_voices_logic.duplicate_voice,
             detail=self._history_detail.duplicate_voice,
         )
-        self._sequencer_voices_panel.on_new_shape_requested = self._add_shape
+        self._sequencer_voices_panel.on_new_instrument_requested = self._add_instrument
         self._sequencer_voices_panel.on_add_sample_requested = self._add_sample_from_file
 
-    def _add_shape(self) -> None:
+    def _add_instrument(self) -> None:
         """Appends a hand-written voice, named for the position it takes in the list.
 
-        A shape arrives sustaining at full volume, so it plays as soon as it is placed and the
+        An instrument arrives sustaining at full volume, so it plays as soon as it is placed and the
         envelopes stay the reader's to write; naming it by its position gives the list a readable
         entry until they rename it.
         """
-        name = self._language_manager["sequencer.voices.template.shape_name"].format(
+        name = self._language_manager["sequencer.voices.template.instrument_name"].format(
             position=display_id(self._project_controller.voice_count),
         )
         with self._history.transaction(
-            HistoryAction.ADD_SHAPE,
-            detail=self._history_detail.add_shape(name),
+            HistoryAction.ADD_INSTRUMENT,
+            detail=self._history_detail.add_instrument(name),
         ):
-            self._sequencer_voices_logic.add_shape(name)
+            self._sequencer_voices_logic.add_instrument(name)
 
     def _add_sample_from_file(self) -> None:
         """Brings a reconstruction saved anywhere on disk into the pool as a sample.

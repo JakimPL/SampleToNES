@@ -2,8 +2,8 @@ import hashlib
 from typing import Callable, Dict, Iterable, List, Tuple
 
 from sampletones_core.project import Project
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.project.voices.voice import samples
 from sampletones_core.reconstructions import Reconstruction
 
@@ -35,7 +35,7 @@ def fingerprint_project(
         match voice:
             case Sample():
                 parts.append(reconstruction_hash(voice.reconstruction))
-            case Shape():
+            case Instrument():
                 parts.append(voice.model_dump_json())
 
     combined = "|".join(parts)

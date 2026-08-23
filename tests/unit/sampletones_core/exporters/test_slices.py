@@ -9,9 +9,9 @@ from sampletones_core.exporters.slices import (
 )
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
-from sampletones_core.project.voices.envelopes import ShapeEnvelopes
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.structures import IdentifiedCollection
 from tests.suite.sequencer import sample_reconstruction
@@ -31,8 +31,8 @@ def _sample(name: str, channels: Sequence[ChannelName]) -> Sample:
     return Sample(name=name, reconstruction=sample_reconstruction(list(channels)))
 
 
-def _shape(name: str) -> Shape:
-    return Shape(name=name, envelopes=ShapeEnvelopes(volume=(15, 10), arpeggio=(0, 5)))
+def _instrument(name: str) -> Instrument:
+    return Instrument(name=name, envelopes=InstrumentEnvelopes(volume=(15, 10), arpeggio=(0, 5)))
 
 
 def _stand_by(sample: Sample, channel: ChannelName) -> None:
@@ -67,22 +67,22 @@ class TestVoiceSlices:
 
         assert [voice_slice.channel for voice_slice in slices] == [ChannelName.PULSE2]
 
-    def test_a_shape_contributes_a_slice_for_every_channel_it_sounds_on(self) -> None:
-        project = _project([_shape("lead")])
+    def test_an_instrument_contributes_a_slice_for_every_channel_it_sounds_on(self) -> None:
+        project = _project([_instrument("lead")])
 
         slices = list(iterate_voice_slices(project))
 
         assert [voice_slice.channel for voice_slice in slices] == ChannelName.items()
 
-    def test_each_of_a_shapes_slices_is_measured_against_that_channels_root(self) -> None:
-        shape = _shape("lead")
-        project = _project([shape])
+    def test_each_of_an_instruments_slices_is_measured_against_that_channels_root(self) -> None:
+        instrument = _instrument("lead")
+        project = _project([instrument])
 
         for voice_slice in iterate_voice_slices(project):
-            assert voice_slice.features.initial_pitch == shape.reference(voice_slice.channel)
+            assert voice_slice.features.initial_pitch == instrument.reference(voice_slice.channel)
 
-    def test_a_shape_writing_nothing_contributes_no_slice(self) -> None:
-        project = _project([Shape(name="empty")])
+    def test_an_instrument_writing_nothing_contributes_no_slice(self) -> None:
+        project = _project([Instrument(name="empty")])
 
         assert list(iterate_voice_slices(project)) == []
 
@@ -98,8 +98,8 @@ class TestInstrumentEntries:
         assert [entry.index for entry in entries] == [0, 1]
         assert [list(entry.slots) for entry in entries] == [[ChannelName.PULSE1], [ChannelName.NOISE]]
 
-    def test_a_shape_yields_one_instrument_every_channel_reaches(self) -> None:
-        project = _project([_shape("lead")])
+    def test_an_instrument_takes_one_table_entry_every_channel_reaches(self) -> None:
+        project = _project([_instrument("lead")])
 
         entries = list(iterate_instrument_entries(project))
 
@@ -107,17 +107,17 @@ class TestInstrumentEntries:
         assert list(entries[0].slots) == ChannelName.items()
         assert {slot.index for slot in entries[0].slots.values()} == {0}
 
-    def test_a_shapes_slots_each_carry_that_channels_root(self) -> None:
-        shape = _shape("lead")
-        project = _project([shape])
+    def test_an_instruments_slots_each_carry_that_channels_root(self) -> None:
+        instrument = _instrument("lead")
+        project = _project([instrument])
 
         entry = next(iter(iterate_instrument_entries(project)))
 
         for channel, slot in entry.slots.items():
-            assert slot.initial_pitch == shape.reference(channel)
+            assert slot.initial_pitch == instrument.reference(channel)
 
-    def test_a_shape_is_named_by_itself_and_a_sample_slice_by_its_channel(self) -> None:
-        project = _project([_shape("lead"), _sample("pad", [ChannelName.TRIANGLE])])
+    def test_an_instrument_is_named_by_itself_and_a_sample_slice_by_its_channel(self) -> None:
+        project = _project([_instrument("lead"), _sample("pad", [ChannelName.TRIANGLE])])
 
         entries = list(iterate_instrument_entries(project))
 
@@ -128,7 +128,7 @@ class TestInstrumentEntries:
         project = _project(
             [
                 _sample("lead", [ChannelName.PULSE1]),
-                _shape("hand"),
+                _instrument("hand"),
                 _sample("pad", [ChannelName.TRIANGLE, ChannelName.NOISE]),
             ]
         )
@@ -146,8 +146,8 @@ class TestInstrumentEntries:
 
         assert [(entry.index, list(entry.slots)) for entry in entries] == [(0, [ChannelName.PULSE2])]
 
-    def test_a_shape_writing_nothing_takes_no_place_in_the_table(self) -> None:
-        project = _project([Shape(name="empty"), _sample("pad", [ChannelName.TRIANGLE])])
+    def test_an_instrument_writing_nothing_takes_no_place_in_the_table(self) -> None:
+        project = _project([Instrument(name="empty"), _sample("pad", [ChannelName.TRIANGLE])])
 
         entries = list(iterate_instrument_entries(project))
 

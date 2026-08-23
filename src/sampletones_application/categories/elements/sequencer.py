@@ -87,10 +87,10 @@ class SequencerOrderElements(AbstractElement):
 
 class SequencerVoicesElements(AbstractElement):
     VOICES_TEXT = "voices_text"
-    NEW_SHAPE = "new_shape"
+    NEW_INSTRUMENT = "new_instrument"
     ADD_SAMPLE = "add_sample"
     KIND_SAMPLE = "kind_sample"
-    KIND_SHAPE = "kind_shape"
+    KIND_INSTRUMENT = "kind_instrument"
     COLUMN_KIND = "column_kind"
     COLUMN_ID = "column_id"
     COLUMN_NAME = "column_name"

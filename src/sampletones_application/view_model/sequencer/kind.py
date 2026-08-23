@@ -1,6 +1,6 @@
 from sampletones_application.view_model.sequencer.voices import VoiceKind
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.project.voices.voice import VoiceUnion
 
 
@@ -16,5 +16,5 @@ def voice_kind(voice: VoiceUnion) -> VoiceKind:
     match voice:
         case Sample():
             return VoiceKind.SAMPLE
-        case Shape():
-            return VoiceKind.SHAPE
+        case Instrument():
+            return VoiceKind.INSTRUMENT

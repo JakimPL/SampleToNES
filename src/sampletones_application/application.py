@@ -51,7 +51,7 @@ from sampletones_application.logic.project.title.document import (
 )
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.logic.reconstruction.edit import (
-    InstrumentEdit,
+    ChannelEdit,
     ReconstructionEdit,
     StemRemoval,
 )
@@ -157,8 +157,8 @@ from sampletones_core.exporters import Features
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.stage import ExportStage
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.project.voices.voice import samples
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
@@ -1029,19 +1029,19 @@ class Application:
     def _edit_project_voice(self, voice_id: str) -> None:
         """Opens the voice list's selection on the Reconstructions tab, in the terms of its kind.
 
-        A sample opens as the reconstruction behind it, waveform and stems and all; a shape stands
+        A sample opens as the reconstruction behind it, waveform and stems and all; an instrument stands
         on no recording, so the tab shows its envelopes alone. Either kind brings that tab to the
         front, so the voice a reader asked to edit is the one in view.
         """
         match self.project_manager.current.voice(voice_id):
             case Sample() as sample:
-                self._reconstructions_tab.release_shape()
+                self._reconstructions_tab.release_instrument()
                 self.reconstruction_manager.load_reconstruction_object(
                     sample.reconstruction,
                     name=sample.name,
                 )
-            case Shape():
-                self._reconstructions_tab.edit_shape(voice_id)
+            case Instrument():
+                self._reconstructions_tab.edit_instrument(voice_id)
                 self._navigate_to_reconstructions()
             case _:
                 logger.warning(f"Cannot edit unknown project voice: {voice_id}")
@@ -1111,7 +1111,7 @@ class Application:
     def _edit_detail(self, voice_id: str, edit: ReconstructionEdit) -> HistoryDetail:
         """The history line an edit reads as: the feature it moved, or the recording it took out."""
         match edit:
-            case InstrumentEdit():
+            case ChannelEdit():
                 return self._sequencer_tab.reconstruction_edit_detail(
                     voice_id,
                     edit.channel_name,
@@ -1453,7 +1453,7 @@ class Application:
     def _save_browser_shapes(self) -> None:
         """Asks every tab holding a tree to write down which of its rows stand open.
 
-        The shape belongs to the browser showing it, and it is read the once here rather than followed
+        The instrument belongs to the browser showing it, and it is read the once here rather than followed
         row by row, a pass over the rows running on the tree worker.
         """
         self._main_tab.save_browser_shape()

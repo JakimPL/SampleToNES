@@ -17,7 +17,7 @@ A `.stp` file is a zip archive with two kinds of member:
 
 Keeping the reconstructions in separate members lets `project.json` stay small
 while the larger audio data travels alongside it in the same archive. A
-[shape](../glossary.md#shape) carries no audio, so the document holds it whole.
+[instrument](../glossary.md#instrument) carries no audio, so the document holds it whole.
 
 ### `project.json`
 
@@ -39,7 +39,7 @@ else it carries:
 | `kind` | Contents |
 | --- | --- |
 | `sample` | the `reconstruction_id` of its audio member |
-| `shape` | its `envelopes` — the `volume`, `arpeggio` and `duty_cycle` values it writes, each a list of one item per tick — and the `root_pitch` and `root_period` those values are measured against |
+| `instrument` | its `envelopes` — the `volume`, `arpeggio` and `duty_cycle` values it writes, each a list of one item per tick — and the `root_pitch` and `root_period` those values are measured against |
 
 ### `song`
 
@@ -70,7 +70,7 @@ deserialization (see
 [Data compatibility](../development/compatibility.md)). Unknown or extra fields
 within a matching version are ignored, which leaves room for the format to grow.
 
-The current format version is 1.2. Version 1.2 gathers `samples` into `voices`,
-each record stating its `kind`, and names a row's note command by `voice_id` alone.
-Version 1.1 named each channel pool by `name` and a row command's channel by
-`channel_name`.
+The current format version is 1.1. It gathers the pool under `voices`, each record
+stating its `kind`; names each channel pool by `name`; and names a row's note
+command by `voice_id` alone. Version 1.0 held the pool under `samples`, named a
+channel pool `generator`, and named a note command's channel beside its sample.

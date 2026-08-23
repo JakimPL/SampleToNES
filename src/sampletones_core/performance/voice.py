@@ -6,8 +6,8 @@ from typing import Dict, Optional, Sequence, Tuple
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP, ExporterTypeUnion
 from sampletones_core.instructions import InstructionUnion
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.project.voices.voice import VoiceUnion, voice_reference
 
 
@@ -47,7 +47,7 @@ class VoiceReading:
         """The reading one channel plays ``voice`` through.
 
         A sample answers with the frames its reconstruction found for this channel and the
-        reference they were measured against; a shape answers with the frames its envelopes make
+        reference they were measured against; an instrument answers with the frames its envelopes make
         of this channel and the root it states. Both kinds therefore reach a channel as one
         reading.
 
@@ -63,7 +63,7 @@ class VoiceReading:
             case Sample():
                 instructions: Sequence[InstructionUnion] = voice.reconstruction.instructions[channel_name]
                 held_features = voice.reconstruction.held_features[channel_name]
-            case Shape():
+            case Instrument():
                 instructions = voice.instructions(channel_name)
                 held_features = voice.held_features(channel_name)
 

@@ -143,7 +143,7 @@ def _panel(
     panel.on_duplicate_requested = requests.duplicated.append
     panel.on_remove_requested = requests.removed.append
     panel.on_move_requested = lambda voice_id, target: requests.moved.append((voice_id, target))
-    panel.on_new_shape_requested = lambda: requests.pool.append(SequencerVoicesElements.NEW_SHAPE.value)
+    panel.on_new_instrument_requested = lambda: requests.pool.append(SequencerVoicesElements.NEW_INSTRUMENT.value)
     panel.on_add_sample_requested = lambda: requests.pool.append(SequencerVoicesElements.ADD_SAMPLE.value)
     monkeypatch.setattr(panel, "_start_rename", requests.renamed.append)
     return VoicesPanelFixture(panel=panel, requests=requests)
@@ -422,7 +422,7 @@ class TestThePoolItems:
         fixture.panel._show_list_menu()
 
         assert [widget.text for widget in build_recorder.widgets] == [
-            SequencerVoicesElements.NEW_SHAPE.value,
+            SequencerVoicesElements.NEW_INSTRUMENT.value,
             SequencerVoicesElements.ADD_SAMPLE.value,
         ]
 
@@ -437,7 +437,7 @@ class TestThePoolItems:
         items = [widget.text for widget in build_recorder.widgets if widget.kind == "item"]
 
         assert items[-2:] == [
-            SequencerVoicesElements.NEW_SHAPE.value,
+            SequencerVoicesElements.NEW_INSTRUMENT.value,
             SequencerVoicesElements.ADD_SAMPLE.value,
         ]
         assert SequencerVoicesElements.CONTEXT_EDIT.value in items
@@ -454,7 +454,7 @@ class TestThePoolItems:
             item.callback()
 
         assert fixture.requests.pool == [
-            SequencerVoicesElements.NEW_SHAPE.value,
+            SequencerVoicesElements.NEW_INSTRUMENT.value,
             SequencerVoicesElements.ADD_SAMPLE.value,
         ]
 

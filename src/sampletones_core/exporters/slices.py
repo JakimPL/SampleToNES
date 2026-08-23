@@ -7,8 +7,8 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.naming import instrument_slice_name
 from sampletones_core.project.project import Project
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.project.voices.voice import VoiceUnion, voice_channels
 
 
@@ -53,7 +53,7 @@ class InstrumentEntry:
     """One instrument an export writes, and the channels whose rows reach it.
 
     A sample's channels each carry frames of their own, so each becomes an instrument answering
-    for that channel alone. A shape carries one set of envelopes every channel reads, so it
+    for that channel alone. An instrument carries one set of envelopes every channel reads, so it
     becomes one instrument answering for every channel it sounds on, each against its own root —
     which is the instrument model FamiTracker itself uses.
 
@@ -77,8 +77,8 @@ class InstrumentEntry:
 def iterate_voice_slices(project: Project) -> Iterator[VoiceSlice]:
     """Walks what every channel of every voice plays, in voice order then channel order.
 
-    A voice contributes one slice per channel it sounds on, so a sample yields one to four and a
-    shape yields one per channel its envelopes make a frame for. Each voice is read once, so a
+    A voice contributes one slice per channel it sounds on, so a sample yields one to four and an
+    instrument yields one per channel its envelopes make a frame for. Each voice is read once, so a
     caller reads a reconstruction's envelopes at a single cost.
 
     Args:
@@ -95,7 +95,7 @@ def iterate_voice_slices(project: Project) -> Iterator[VoiceSlice]:
                     features = features_by_channel[channel]
                     if features.has_frames:
                         yield VoiceSlice(voice=voice, channel=channel, features=features)
-            case Shape():
+            case Instrument():
                 for channel in voice_channels(voice):
                     yield VoiceSlice(voice=voice, channel=channel, features=voice.features(channel))
 
@@ -128,7 +128,7 @@ def iterate_instrument_entries(project: Project) -> Iterator[InstrumentEntry]:
                         slots={channel: InstrumentSlot(index=index, initial_pitch=features.initial_pitch)},
                     )
                     index += 1
-            case Shape():
+            case Instrument():
                 channels = voice_channels(voice)
                 if not channels:
                     continue

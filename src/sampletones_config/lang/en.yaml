@@ -595,10 +595,10 @@ sequencer.order.tooltip.label_channel: "Click to mute or unmute this channel.\n{
 sequencer.order.tooltip.label_master: "Click to mute every channel, or to bring them all back.\nRight-click for channel actions."
 
 # =============================================================================
-# Sequencer tab — Instruments
+# Sequencer tab — Voices
 # =============================================================================
 sequencer.voices.label.voices_text: "Voices"
-sequencer.voices.label.new_shape: "New shape"
+sequencer.voices.label.new_instrument: "New instrument"
 sequencer.voices.label.add_sample: "Add sample from file..."
 sequencer.voices.label.column_kind: "Kind"
 sequencer.voices.label.column_id: "ID"
@@ -612,11 +612,11 @@ sequencer.voices.label.context_move_up: "Move up"
 sequencer.voices.label.context_move_down: "Move down"
 sequencer.voices.label.context_move_top: "Move to top"
 sequencer.voices.label.context_move_bottom: "Move to bottom"
-sequencer.voices.tooltip.new_shape: "Add a hand-written voice, playable on any channel"
+sequencer.voices.tooltip.new_instrument: "Add an instrument written by hand, playable on any channel"
 sequencer.voices.tooltip.kind_sample: "Sample"
-sequencer.voices.tooltip.kind_shape: "Shape"
+sequencer.voices.tooltip.kind_instrument: "Instrument"
 sequencer.voices.title.add_sample_dialog: "Add sample"
-sequencer.voices.template.shape_name: "Shape {position}"
+sequencer.voices.template.instrument_name: "Instrument {position}"
 
 sequencer.history.label.history_text: "History"
 sequencer.history.label.undo: "Undo"
@@ -648,8 +648,8 @@ sequencer.history.label.rename_sample: "Rename sample"
 sequencer.history.label.move_sample: "Move sample"
 sequencer.history.label.duplicate_sample: "Duplicate sample"
 sequencer.history.label.set_sample_loop: "Toggle sample loop"
-sequencer.history.label.add_shape: "Add shape"
-sequencer.history.label.edit_shape: "Edit shape"
+sequencer.history.label.add_instrument: "Add instrument"
+sequencer.history.label.edit_instrument: "Edit instrument"
 sequencer.history.label.loop_on: "on"
 sequencer.history.label.loop_off: "off"
 sequencer.history.label.set_tempo: "Set tempo"

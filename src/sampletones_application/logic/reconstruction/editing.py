@@ -14,13 +14,13 @@ class ReconstructionEdit:
 
 
 @dataclass(frozen=True)
-class ShapeEdit:
-    """The one envelope set a shape carries, with the roots and the loop point it states.
+class InstrumentEdit:
+    """The one envelope set an instrument carries, with the roots and the loop point it states.
 
     Attributes:
-        voice_id: The shape an edit is written back into.
+        voice_id: The instrument an edit is written back into.
         name: The name the panel titles it by.
-        features: The envelopes, read as the channel offering every dimension a shape writes.
+        features: The envelopes, read as the channel offering every dimension an instrument writes.
         root_pitch: The note the tonal channels measure the arpeggio against.
         root_period: The period the noise channel measures the arpeggio against.
         loop_point: The tick the envelopes repeat from, or ``None`` where they play once.
@@ -34,26 +34,26 @@ class ShapeEdit:
     loop_point: Optional[int]
 
 
-EditedInstrument = Union[ReconstructionEdit, ShapeEdit]
+EditedVoice = Union[ReconstructionEdit, InstrumentEdit]
 
 
 class InstrumentEditingProtocol(Protocol):
-    """Where the instruments panel's envelopes come from, and where an edit to a shape goes.
+    """Where the instruments panel's envelopes come from, and where an edit to an instrument goes.
 
-    The panel edits one voice at a time — the channels of a loaded reconstruction, or a shape's
+    The panel edits one voice at a time — the channels of a loaded reconstruction, or an instrument's
     own set — so it asks what is in front of it and renders whichever answer comes back. A
-    reconstruction's envelopes travel back out through the regeneration service; a shape stands on
+    reconstruction's envelopes travel back out through the regeneration service; an instrument stands on
     no audio, so its edits are written here.
     """
 
-    def edited_instrument(self) -> Optional[EditedInstrument]:
+    def edited_instrument(self) -> Optional[EditedVoice]:
         """What the panel is editing, or ``None`` while it holds nothing."""
 
     def write_envelope(self, feature_key: FeatureKey, data: FeatureValue) -> None:
-        """Writes one dimension of the shape in front of the panel."""
+        """Writes one dimension of the instrument in front of the panel."""
 
     def write_roots(self, *, pitch: int, period: int) -> None:
-        """Moves the roots the shape in front of the panel is measured against."""
+        """Moves the roots the instrument in front of the panel is measured against."""
 
     def write_loop_point(self, loop_point: Optional[int]) -> None:
-        """Sets the tick the shape in front of the panel repeats from."""
+        """Sets the tick the instrument in front of the panel repeats from."""

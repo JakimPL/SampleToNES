@@ -8,7 +8,7 @@ common:
 
 voices:
   sample: "≈"
-  shape: "∿"
+  instrument: "∿"
 
 headers:
   waveform: "∿"

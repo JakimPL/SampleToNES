@@ -1,15 +1,19 @@
-from typing import Final
+from typing import Final, List
 
 from sampletones_core.compatibility.fields import (
-    CHANNEL_NAME,
     CHANNELS,
     COMMAND,
     GENERATOR,
-    GENERATOR_NAME,
+    KIND,
+    KIND_SAMPLE,
     NAME,
     PATTERNS,
     ROWS,
+    SAMPLE_ID,
+    SAMPLES,
     SONG,
+    VOICE_ID,
+    VOICES,
 )
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.compatibility.update import VersionUpdate
@@ -18,79 +22,71 @@ from sampletones_shared.types.data import SerializedData
 
 
 def update(data: SerializedData) -> SerializedData:
-    """Names each channel pool and row command by its channel.
+    """Gathers a project's samples into its voices, and names each channel once.
 
-    Project format 1.0 stored a channel pool's channel under ``generator`` and a
-    row instrument's channel under ``generator_name``. Project format 1.1 names
-    them ``name`` and ``channel_name``.
+    Project format 1.0 held the pool under ``samples``, stored a channel pool's channel under
+    ``generator``, and wrote a row's note command as a sample id beside the channel slice it named.
+    Project format 1.1 holds the pool under ``voices``, each record stating the ``kind`` of voice
+    it carries; a channel pool names its channel under ``name``; and a note command names the voice
+    alone, since the channel a voice sounds on is the one whose pattern holds the row.
     """
     updated = dict(data)
+
+    samples = data.get(SAMPLES)
+    if isinstance(samples, list):
+        updated.pop(SAMPLES, None)
+        updated[VOICES] = [{KIND: KIND_SAMPLE, **sample} if isinstance(sample, dict) else sample for sample in samples]
+
     song = data.get(SONG)
-    if not isinstance(song, dict):
-        return updated
-
-    channels = song.get(CHANNELS)
-    if not isinstance(channels, dict):
-        return updated
-
-    renamed_channels = {
-        name: (
-            _renamed_pool(channel)
-            if isinstance(
-                channel,
-                dict,
-            )
-            else channel
-        )
-        for name, channel in channels.items()
-    }
-    updated["song"] = {**song, CHANNELS: renamed_channels}
+    if isinstance(song, dict):
+        updated[SONG] = _updated_song(song)
 
     return updated
 
 
-def _renamed_pool(channel: SerializedData) -> SerializedData:
-    renamed = dict(channel)
-    if GENERATOR in renamed:
-        renamed[NAME] = renamed.pop(GENERATOR)
+def _updated_song(song: SerializedData) -> SerializedData:
+    channels = song.get(CHANNELS)
+    if not isinstance(channels, dict):
+        return song
+
+    return {
+        **song,
+        CHANNELS: {
+            name: _updated_pool(channel) if isinstance(channel, dict) else channel for name, channel in channels.items()
+        },
+    }
+
+
+def _updated_pool(channel: SerializedData) -> SerializedData:
+    updated = dict(channel)
+    if GENERATOR in updated:
+        updated[NAME] = updated.pop(GENERATOR)
 
     patterns = channel.get(PATTERNS)
     if isinstance(patterns, dict):
-        renamed[PATTERNS] = {
-            index: (
-                _renamed_pattern(pattern)
-                if isinstance(
-                    pattern,
-                    dict,
-                )
-                else pattern
-            )
+        updated[PATTERNS] = {
+            index: _updated_pattern(pattern) if isinstance(pattern, dict) else pattern
             for index, pattern in patterns.items()
         }
 
-    return renamed
+    return updated
 
 
-def _renamed_pattern(pattern: SerializedData) -> SerializedData:
+def _updated_pattern(pattern: SerializedData) -> SerializedData:
     rows = pattern.get(ROWS)
     if not isinstance(rows, list):
         return pattern
 
-    return {
-        **pattern,
-        ROWS: [_renamed_row(row) if isinstance(row, dict) else row for row in rows],
-    }
+    updated_rows: List[SerializedData] = [_updated_row(row) if isinstance(row, dict) else row for row in rows]
+    return {**pattern, ROWS: updated_rows}
 
 
-def _renamed_row(row: SerializedData) -> SerializedData:
+def _updated_row(row: SerializedData) -> SerializedData:
     command = row.get(COMMAND)
-    if not isinstance(command, dict) or GENERATOR_NAME not in command:
+    if not isinstance(command, dict) or SAMPLE_ID not in command:
         return row
 
-    renamed_command = dict(command)
-    renamed_command[CHANNEL_NAME] = renamed_command.pop(GENERATOR_NAME)
-
-    return {**row, COMMAND: renamed_command}
+    return {**row, COMMAND: {VOICE_ID: command[SAMPLE_ID]}}
 
 
 V1_1: Final[VersionUpdate] = VersionUpdate(

@@ -14,10 +14,10 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import NoteCommand, Row
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.project.voices.voice import VoiceUnion, voice_channels, voice_reference
 from sampletones_core.utils.display import (
     display_command,
@@ -344,7 +344,7 @@ class SequencerTrackerLogic(CallbackMixin):
         cleared so the row reflects exactly that sample. Clearing an empty sample
         id wipes the whole row.
 
-        The column speaks for samples, which carry a slice per channel; a shape carries one
+        The column speaks for samples, which carry a slice per channel; an instrument carries one
         instrument the reader places on the channel they want it on, so it is named in a channel
         column and this one leaves the row as it stands.
         """
@@ -711,7 +711,7 @@ class SequencerTrackerLogic(CallbackMixin):
     ) -> SequencerCellViewModel:
         """One cell's three readings, the pitch stated in the terms its voice is written in.
 
-        A sample was converted at a pitch of its own, so its rows read as steps from it; a shape
+        A sample was converted at a pitch of its own, so its rows read as steps from it; an instrument
         was written against a root the reader chose, so its rows read as the notes they sound.
         """
         return SequencerCellViewModel(
@@ -730,7 +730,7 @@ class SequencerTrackerLogic(CallbackMixin):
         voice: Optional[VoiceUnion],
     ) -> str:
         match voice:
-            case Shape():
+            case Instrument():
                 return display_note(
                     transpose,
                     channel_name=channel,

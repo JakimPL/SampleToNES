@@ -14,9 +14,9 @@ from sampletones_core.formats.famitracker.footprint import (
     features_footprint,
     reconstruction_footprints,
 )
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.note_on import NoteOn
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.sequencer import sample_reconstruction
 
@@ -315,55 +315,55 @@ class TestAutoplay:
         audio_device_manager.play.assert_not_called()
 
 
-class TestShapesInTheVoiceList:
+class TestInstrumentsInTheVoiceList:
     """A hand-written voice sits in the same list as a converted one, marked by its kind."""
 
-    def test_a_shape_is_listed_beside_the_samples_that_were_added(
+    def test_an_instrument_is_listed_beside_the_samples_that_were_added(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="bass")
-        shape = logic.add_shape("lead")
+        instrument = logic.add_instrument("lead")
 
         entries = logic.build_voices().voices
 
         assert [(entry.voice_id, entry.kind) for entry in entries] == [
             (sample.id, VoiceKind.SAMPLE),
-            (shape.id, VoiceKind.SHAPE),
+            (instrument.id, VoiceKind.INSTRUMENT),
         ]
 
-    def test_a_shape_is_measured_as_the_one_instrument_it_exports(self) -> None:
+    def test_an_instrument_is_measured_as_the_one_export_it_writes(self) -> None:
         controller, logic = _logic()
-        shape = logic.add_shape("lead")
-        controller.set_shape_envelope(shape.id, FeatureKey.VOLUME, (15, 12, 9))
+        instrument = logic.add_instrument("lead")
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15, 12, 9))
 
-        footprint = logic.build_voice_footprint(shape.id)
+        footprint = logic.build_voice_footprint(instrument.id)
 
         assert footprint is not None
         assert (
             footprint.total_bytes
             == features_footprint(
-                shape.instrument_features(),
-                loop_point=shape.loop_point,
+                instrument.instrument_features(),
+                loop_point=instrument.loop_point,
             ).total_bytes
         )
         assert [instrument.channel for instrument in footprint.instruments] == [None]
 
-    def test_a_shape_previews_through_the_pulse_channel(self) -> None:
+    def test_an_instrument_previews_through_the_pulse_channel(self) -> None:
         controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
-        shape = logic.add_shape("lead")
-        controller.set_shape_envelope(shape.id, FeatureKey.VOLUME, (15, 12))
+        instrument = logic.add_instrument("lead")
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15, 12))
 
-        logic.play_voice(shape.id)
+        logic.play_voice(instrument.id)
 
         played = audio_device_manager.play.call_args.args[0]
         assert played.size > 0
 
-    def test_a_shape_writing_nothing_sounds_no_preview(self) -> None:
+    def test_an_instrument_writing_nothing_sounds_no_preview(self) -> None:
         controller, logic, _, audio_device_manager = _logic_with_mocks()
-        shape = controller.add_shape(Shape(name="lead"))
+        instrument = controller.add_instrument(Instrument(name="lead"))
 
-        logic.play_voice(shape.id)
+        logic.play_voice(instrument.id)
 
         audio_device_manager.play.assert_not_called()

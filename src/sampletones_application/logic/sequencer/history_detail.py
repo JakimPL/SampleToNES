@@ -246,7 +246,7 @@ class SequencerHistoryDetail:
     def add_sample(self, name: str) -> Segments:
         return (self._name(name),)
 
-    def add_shape(self, name: str) -> Segments:
+    def add_instrument(self, name: str) -> Segments:
         return (self._name(name),)
 
     def remove_voice(self, voice_id: str) -> Segments:

@@ -23,10 +23,10 @@ from sampletones_core.formats.famitracker.footprint import (
     reconstruction_footprints,
 )
 from sampletones_core.generators.render import render_instructions
-from sampletones_core.project.voices.creation import new_shape
+from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.utils.display import display_voice
 from sampletones_shared.exceptions import PlaybackError
@@ -86,8 +86,8 @@ class SequencerVoicesLogic(CallbackMixin):
     def add_sample(self, reconstruction: Reconstruction, name: str) -> Sample:
         return self._controller.add_sample(reconstruction, name)
 
-    def add_shape(self, name: str) -> Shape:
-        return self._controller.add_shape(new_shape(name))
+    def add_instrument(self, name: str) -> Instrument:
+        return self._controller.add_instrument(new_instrument(name))
 
     def rename_voice(self, voice_id: str, name: str) -> None:
         self._controller.rename_voice(voice_id, name)
@@ -100,8 +100,9 @@ class SequencerVoicesLogic(CallbackMixin):
 
         A voice carries its own loop point, and a looping instrument is compiled to one shared
         length, so it is measured the way it is placed. A sample yields a figure per channel its
-        reconstruction covers; a shape yields the one instrument every channel reaches. Measuring
-        a single voice on demand keeps a pool edit clear of an export it was not asked for.
+        reconstruction covers; an instrument yields one, since every channel reaches the same
+        envelopes. Measuring a single voice on demand keeps a pool edit clear of an export it was
+        not asked for.
 
         Args:
             voice_id: The voice to measure.
@@ -115,9 +116,9 @@ class SequencerVoicesLogic(CallbackMixin):
                 return SampleFootprintViewModel.from_footprints(
                     reconstruction_footprints(sample.reconstruction, loop_point=sample.loop_point)
                 )
-            case Shape() as shape:
+            case Instrument() as instrument:
                 return SampleFootprintViewModel.from_instrument(
-                    features_footprint(shape.instrument_features(), loop_point=shape.loop_point)
+                    features_footprint(instrument.instrument_features(), loop_point=instrument.loop_point)
                 )
             case _:
                 return None
@@ -183,9 +184,9 @@ class SequencerVoicesLogic(CallbackMixin):
             self._play_voice(voice_id, priority=PlaybackPriority.PREVIEW)
 
     def _preview_audio(self, voice_id: str) -> Optional[np.ndarray]:
-        """The audio a preview sounds: a sample's approximation, or a shape rendered on the pulse.
+        """The audio a preview sounds: a sample's approximation, or an instrument rendered on the pulse.
 
-        The pulse channel offers every dimension a shape writes, so rendering the preview there
+        The pulse channel offers every dimension an instrument writes, so rendering the preview there
         sounds the whole instrument rather than the part another channel would read.
 
         Args:
@@ -197,8 +198,8 @@ class SequencerVoicesLogic(CallbackMixin):
         match self._controller.project.voices.get(voice_id):
             case Sample() as sample:
                 return sample.reconstruction.approximation
-            case Shape() as shape:
-                instructions = shape.instructions(PREVIEW_CHANNEL)
+            case Instrument() as instrument:
+                instructions = instrument.instructions(PREVIEW_CHANNEL)
                 if not instructions:
                     return None
 

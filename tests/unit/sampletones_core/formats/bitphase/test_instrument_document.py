@@ -5,32 +5,32 @@ from sampletones_core.formats.bitphase.builder import project_to_bitphase
 from sampletones_core.formats.bitphase.specification.instruments import LOOP_FROM_START
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
-from sampletones_core.project.voices.envelopes import ShapeEnvelopes
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_on import NoteOn
-from sampletones_core.project.voices.shape import Shape
 
 ROWS_PER_PATTERN: Final[int] = 4
 VOLUME: Final[Tuple[int, ...]] = (15, 12, 9)
 ARPEGGIO: Final[Tuple[int, ...]] = (0, 4, 7)
 
 
-def _project(*channels: ChannelName, loop_point: int | None = None) -> Tuple[Project, Shape]:
-    shape = Shape(
+def _project(*channels: ChannelName, loop_point: int | None = None) -> Tuple[Project, Instrument]:
+    instrument = Instrument(
         name="Lead",
-        envelopes=ShapeEnvelopes(volume=VOLUME, arpeggio=ARPEGGIO, duty_cycle=(1,)),
+        envelopes=InstrumentEnvelopes(volume=VOLUME, arpeggio=ARPEGGIO, duty_cycle=(1,)),
         loop_point=loop_point,
     )
     project = Project.create(title="Demo", rows_per_pattern=ROWS_PER_PATTERN)
-    project.voices.append(shape)
+    project.voices.append(instrument)
     for channel in channels:
         pattern = project.song[channel].ensure_pattern(0, ROWS_PER_PATTERN)
-        pattern.rows[0] = Row(command=NoteOn(voice_id=shape.id))
+        pattern.rows[0] = Row(command=NoteOn(voice_id=instrument.id))
         project.song.set_order_entry(0, channel, 0)
 
-    return project, shape
+    return project, instrument
 
 
-class TestAShapeReachesTheDocument:
+class TestAnInstrumentReachesTheDocument:
     def test_each_channel_it_sounds_on_takes_an_instrument_of_its_own(self) -> None:
         """Bitphase bakes registers per tick, so a channel's rows carry that channel's reading."""
         project, _ = _project(ChannelName.PULSE1, ChannelName.NOISE)
@@ -46,7 +46,7 @@ class TestAShapeReachesTheDocument:
 
         assert all(len(instrument.rows) == len(VOLUME) for instrument in document.instruments)
 
-    def test_a_looping_shape_returns_to_its_loop_point(self) -> None:
+    def test_a_looping_instrument_returns_to_its_loop_point(self) -> None:
         project, _ = _project(ChannelName.PULSE1, loop_point=1)
 
         document = project_to_bitphase(project)
@@ -60,7 +60,7 @@ class TestAShapeReachesTheDocument:
 
         assert all(instrument.loop == len(instrument.rows) - 1 for instrument in document.instruments)
 
-    def test_the_table_carries_the_shapes_contour(self) -> None:
+    def test_the_table_carries_the_instruments_contour(self) -> None:
         project, _ = _project(ChannelName.PULSE1)
 
         document = project_to_bitphase(project)

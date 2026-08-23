@@ -22,23 +22,23 @@ from sampletones_core.features import (
     supports,
 )
 from sampletones_core.instructions import InstructionUnion
-from sampletones_core.project.voices.envelopes import ShapeEnvelopes
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 
 
-def _new_shape_id() -> str:
+def _new_instrument_id() -> str:
     return uuid4().hex
 
 
-class Shape(BaseModel):
+class Instrument(BaseModel):
     """A hand-written voice: envelopes with no recording behind them, playable on any channel.
 
-    Where a sample carries the frames a conversion found for each channel, a shape carries one set
-    of envelopes and every channel reads what it can of them — the dimensions its generator offers,
-    measured against the root the shape states. That is the FamiTracker instrument model, so a
-    shape reaches a tracker as one instrument and sounds here as the frames each channel makes of
-    it.
+    Where a sample carries the frames a conversion found for each channel, an instrument carries
+    one set of envelopes, and every channel reads what it can of them — the dimensions its
+    generator offers, measured against the root the instrument states. That is the model
+    FamiTracker itself holds, so one reaches a tracker as it stands and sounds here as the frames
+    each channel makes of it.
 
-    A shape carries no payload beyond what it states, so a project stores it whole rather than
+    An instrument carries no payload beyond what it states, so a project stores it whole rather than
     beside itself: this is both the voice a song plays and the record a ``project.json`` holds.
 
     Attributes:
@@ -52,10 +52,10 @@ class Shape(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["shape"] = "shape"
-    id: str = Field(default_factory=_new_shape_id, description="Stable shape id.")
-    name: str = Field(..., description="Shape name.")
-    envelopes: ShapeEnvelopes = Field(default_factory=ShapeEnvelopes)
+    kind: Literal["instrument"] = "instrument"
+    id: str = Field(default_factory=_new_instrument_id, description="Stable instrument id.")
+    name: str = Field(..., description="Instrument name.")
+    envelopes: InstrumentEnvelopes = Field(default_factory=InstrumentEnvelopes)
     root_pitch: int = Field(
         default=RESTING_REFERENCE_PITCH,
         ge=MIN_PITCH,
@@ -76,7 +76,7 @@ class Shape(BaseModel):
 
     @property
     def loops(self) -> bool:
-        """Whether the shape repeats its envelopes rather than playing them once."""
+        """Whether the instrument repeats its envelopes rather than playing them once."""
         return self.loop_point is not None
 
     def reference(self, channel_name: ChannelName) -> int:
@@ -88,7 +88,7 @@ class Shape(BaseModel):
         )
 
     def held_features(self, channel_name: ChannelName) -> Tuple[FeatureKey, ...]:
-        """The dimensions this channel governs: those it offers and the shape leaves empty."""
+        """The dimensions this channel governs: those it offers and the instrument leaves empty."""
         kind = CHANNEL_GENERATOR_KIND[channel_name]
         return tuple(
             feature_key
@@ -97,13 +97,13 @@ class Shape(BaseModel):
         )
 
     def features(self, channel_name: ChannelName) -> Features:
-        """The envelopes as this channel reads them, measured against the shape's root.
+        """The envelopes as this channel reads them, measured against the instrument's root.
 
         A channel takes the dimensions its generator offers and leaves the rest absent, which is
         what makes one set of envelopes serve every channel.
 
         Args:
-            channel_name: The channel reading the shape.
+            channel_name: The channel reading the instrument.
 
         Returns:
             Features: The per-dimension envelopes for that channel.
@@ -120,13 +120,13 @@ class Shape(BaseModel):
         )
 
     def instrument_features(self) -> Features:
-        """The envelopes as a tracker instrument holds them: every dimension the shape writes.
+        """The envelopes as a tracker instrument holds them: every dimension the instrument writes.
 
         A tracker instrument is one set of sequences whatever channel plays it, and each channel
-        reads what it can of them — which is why a shape reaches a tracker as a single instrument.
+        reads what it can of them, so this is the whole of what a tracker export writes.
 
         Returns:
-            Features: The envelopes, measured against the shape's tonal root.
+            Features: The envelopes, measured against the instrument's tonal root.
         """
         length = self.envelopes.frame_count
         return Features(
@@ -149,10 +149,10 @@ class Shape(BaseModel):
         """The frames this channel plays, one per tick of the envelopes.
 
         Args:
-            channel_name: The channel sounding the shape.
+            channel_name: The channel sounding the instrument.
 
         Returns:
-            List[InstructionUnion]: The frames, empty where the shape writes no envelope.
+            List[InstructionUnion]: The frames, empty where the instrument writes no envelope.
         """
         return self._instructions[channel_name]
 
@@ -174,23 +174,23 @@ class Shape(BaseModel):
         return hash(self.id)
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, Shape) and self.id == other.id
+        return isinstance(other, Instrument) and self.id == other.id
 
     def __repr__(self) -> str:
-        return f"Shape(id={self.id!r}, name={self.name!r})"
+        return f"Instrument(id={self.id!r}, name={self.name!r})"
 
 
 def _items(envelope: Tuple[int, ...], length: int) -> np.ndarray:
-    """One dimension brought to the length the shape's longest runs, holding its final value.
+    """One dimension brought to the length the instrument's longest runs, holding its final value.
 
     A tracker advances each sequence on a counter of its own, so a dimension shorter than the rest
-    would circle at its own pace once the shape repeats. Running every written dimension the same
-    length keeps a tracker sounding the shape the way the engine here plays it, where a dimension
+    would circle at its own pace once the instrument repeats. Running every written dimension the same
+    length keeps a tracker sounding the instrument the way the engine here plays it, where a dimension
     holds its final value for as long as the note lasts.
 
     Args:
         envelope: The items the dimension states, empty where the channel governs it.
-        length: The ticks the shape's longest dimension runs.
+        length: The ticks the instrument's longest dimension runs.
 
     Returns:
         np.ndarray: The dimension's items, empty where the channel governs it.

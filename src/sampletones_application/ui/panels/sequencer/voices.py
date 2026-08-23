@@ -14,7 +14,7 @@ from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_LIST, SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
-    TAG_SEQUENCER_VOICES_BUTTON_NEW_SHAPE,
+    TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT,
     TAG_SEQUENCER_VOICES_INPUT_RENAME,
     TAG_SEQUENCER_VOICES_PANEL,
     TAG_SEQUENCER_VOICES_TABLE,
@@ -122,9 +122,9 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
         self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
         self._tip_size_bytes = context_text(language_manager, TextType.TOOLTIP, ContextElements.SIZE_BYTES)
-        self._tip_new_shape = self._tooltip(language_manager, SequencerVoicesElements.NEW_SHAPE)
+        self._tip_new_instrument = self._tooltip(language_manager, SequencerVoicesElements.NEW_INSTRUMENT)
         self._tip_kind_sample = self._tooltip(language_manager, SequencerVoicesElements.KIND_SAMPLE)
-        self._tip_kind_shape = self._tooltip(language_manager, SequencerVoicesElements.KIND_SHAPE)
+        self._tip_kind_instrument = self._tooltip(language_manager, SequencerVoicesElements.KIND_INSTRUMENT)
         self.sample_footprint: Optional[Callable[[str], Optional[SampleFootprintViewModel]]] = None
         self.on_sample_selected: Optional[StringCallback] = None
         self.on_sample_edit_requested: Optional[StringCallback] = None
@@ -134,7 +134,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         self.on_move_requested: Optional[Callable[[str, int], None]] = None
         self.on_rename_committed: Optional[Callable[[str, str], None]] = None
         self.on_duplicate_requested: Optional[StringCallback] = None
-        self.on_new_shape_requested: Optional[VoidCallback] = None
+        self.on_new_instrument_requested: Optional[VoidCallback] = None
         self.on_add_sample_requested: Optional[VoidCallback] = None
 
         super().__init__(
@@ -150,7 +150,7 @@ class GUISequencerVoicesPanel(GUIPanel):
             self._label(self._language_manager, SequencerVoicesElements.VOICES_TEXT),
             glyph=self._glyphs.headers.voices,
         ):
-            self._create_new_shape_button()
+            self._create_new_instrument_button()
             self._create_voices_table()
 
         self._create_row_handlers()
@@ -182,16 +182,16 @@ class GUISequencerVoicesPanel(GUIPanel):
             active=self._keys_active,
         )
 
-    def _create_new_shape_button(self) -> None:
+    def _create_new_instrument_button(self) -> None:
         """Offers a hand-written voice, which is the one kind no browser brings in."""
         button = dpg.add_button(
-            tag=TAG_SEQUENCER_VOICES_BUTTON_NEW_SHAPE,
-            label=self._label(self._language_manager, SequencerVoicesElements.NEW_SHAPE),
+            tag=TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT,
+            label=self._label(self._language_manager, SequencerVoicesElements.NEW_INSTRUMENT),
             width=-1,
-            callback=lambda: self.call(self.on_new_shape_requested),
+            callback=lambda: self.call(self.on_new_instrument_requested),
         )
         FontRegistry.bind_to_item(button, Font.REGULAR_SMALL)
-        show_tooltip(button, self._tip_new_shape)
+        show_tooltip(button, self._tip_new_instrument)
 
     def _create_voices_table(self) -> None:
         with (
@@ -321,15 +321,15 @@ class GUISequencerVoicesPanel(GUIPanel):
         match kind:
             case VoiceKind.SAMPLE:
                 return self._glyphs.voices.sample
-            case VoiceKind.SHAPE:
-                return self._glyphs.voices.shape
+            case VoiceKind.INSTRUMENT:
+                return self._glyphs.voices.instrument
 
     def _kind_tooltip(self, kind: VoiceKind) -> str:
         match kind:
             case VoiceKind.SAMPLE:
                 return self._tip_kind_sample
-            case VoiceKind.SHAPE:
-                return self._tip_kind_shape
+            case VoiceKind.INSTRUMENT:
+                return self._tip_kind_instrument
 
     def _build_id_cell(
         self,
@@ -634,7 +634,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         """
         return dpg_pointer_within_window(
             TAG_SEQUENCER_VOICES_WINDOW,
-            TAG_SEQUENCER_VOICES_BUTTON_NEW_SHAPE,
+            TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT,
         )
 
     def _show_list_menu(self) -> None:
@@ -733,9 +733,9 @@ class GUISequencerVoicesPanel(GUIPanel):
         dpg.add_menu_item(
             label=self._label(
                 self._language_manager,
-                SequencerVoicesElements.NEW_SHAPE,
+                SequencerVoicesElements.NEW_INSTRUMENT,
             ),
-            callback=lambda: self.call(self.on_new_shape_requested),
+            callback=lambda: self.call(self.on_new_instrument_requested),
         )
         dpg.add_menu_item(
             label=self._label(

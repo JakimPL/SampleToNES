@@ -152,11 +152,11 @@ TAG_SEQUENCER_VOICES_PANEL = TagName(
     Widget.PANEL,
     "voices",
 )
-TAG_SEQUENCER_VOICES_BUTTON_NEW_SHAPE = TagName(
+TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT = TagName(
     Page.SEQUENCER,
     Panel.VOICES,
     Widget.BUTTON,
-    "new_shape",
+    "new_instrument",
 )
 TAG_SEQUENCER_VOICES_TABLE = TagName(
     Page.SEQUENCER,

@@ -14,8 +14,8 @@ class InstrumentSizeViewModel(BaseModel, frozen=True):
 
     The measurement is carried as it was taken, both regions intact, so a display naming the
     whole and one naming a region read the same figure. An instrument naming a channel is a
-    sample's slice of that channel; one naming none is a shape, stored once for every channel
-    that reaches it.
+    sample's slice of that channel; one naming none is a voice written by hand, stored once for
+    every channel that reaches it.
     """
 
     channel: Optional[ChannelName]
@@ -32,8 +32,8 @@ class SampleFootprintViewModel(BaseModel, frozen=True):
 
     A sample exports one instrument per channel its reconstruction covers, so a display reads
     :attr:`total_bytes` for the voice as a whole and :meth:`bytes_for` for a single channel. A
-    shape exports one instrument every channel reaches, so it carries a single entry and its
-    whole figure is that instrument's. Both the instruments panel and the voices menu read their
+    voice written by hand exports one instrument every channel reaches, so it carries a single
+    entry and its whole figure is that instrument's. Both the instruments panel and the voices menu read their
     figures from here, so the two name the same size for the same voice.
     """
 
@@ -58,7 +58,7 @@ class SampleFootprintViewModel(BaseModel, frozen=True):
 
     @classmethod
     def from_instrument(cls, footprint: InstrumentFootprint) -> Self:
-        """Carries one instrument every channel reaches, which is what a shape exports."""
+        """Carries one instrument every channel reaches, which is what a hand-written voice exports."""
         return cls(instruments=(InstrumentSizeViewModel(channel=None, footprint=footprint),))
 
     @property

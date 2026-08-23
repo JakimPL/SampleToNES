@@ -299,11 +299,11 @@ class ReconstructionTabCoordinator:
         self._reconstruction_instruments_panel.on_raw_data_changed = (
             self._reconstruction_instruments_logic.handle_raw_data_changed
         )
-        self._reconstruction_instruments_panel.on_shape_root_period_changed = (
-            self._reconstruction_instruments_logic.handle_shape_root_period_changed
+        self._reconstruction_instruments_panel.on_instrument_root_period_changed = (
+            self._reconstruction_instruments_logic.handle_instrument_root_period_changed
         )
-        self._reconstruction_instruments_panel.on_shape_loop_point_changed = (
-            self._reconstruction_instruments_logic.handle_shape_loop_point_changed
+        self._reconstruction_instruments_panel.on_instrument_loop_point_changed = (
+            self._reconstruction_instruments_logic.handle_instrument_loop_point_changed
         )
 
     def _on_export_result(self, result: ExportResult) -> None:
@@ -639,22 +639,22 @@ class ReconstructionTabCoordinator:
         self._browser_panel.update_favorite_indicators(nodes)
 
     def display_reconstruction(self) -> None:
-        self._instrument_editor.release_shape()
+        self._instrument_editor.release_instrument()
         self._reconstruction_panel_logic.display_reconstruction()
         self._reconstruction_instruments_logic.update_display()
 
-    def edit_shape(self, voice_id: str) -> None:
-        """Puts a shape in front of the tab, closing whatever reconstruction it held.
+    def edit_instrument(self, voice_id: str) -> None:
+        """Puts an instrument in front of the tab, closing whatever reconstruction it held.
 
-        The tab describes one voice at a time — a shape stands on no recording, so the waveform,
+        The tab describes one voice at a time — an instrument stands on no recording, so the waveform,
         the plot and the stems beside the instruments panel have nothing of it to draw.
         """
-        self._instrument_editor.edit_shape(voice_id)
+        self._instrument_editor.edit_instrument(voice_id)
         self._reconstruction_instruments_logic.update_display()
 
-    def release_shape(self) -> None:
-        """Lets go of the shape the tab held, which is what opening a reconstruction does."""
-        self._instrument_editor.release_shape()
+    def release_instrument(self) -> None:
+        """Lets go of the instrument the tab held, which is what opening a reconstruction does."""
+        self._instrument_editor.release_instrument()
 
     def close_reconstruction(self) -> None:
         self._reconstruction_panel_logic.close_reconstruction()

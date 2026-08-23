@@ -8,9 +8,9 @@ from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.compatibility.upgrade import upgrade_json
 from sampletones_core.project.document import ProjectDocument
 from sampletones_core.project.project import Project
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.record import SampleRecord, VoiceRecord
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures import IdentifiedCollection
@@ -140,7 +140,7 @@ class ProjectContainer:
 
     @staticmethod
     def _voice_record(voice: VoiceUnion) -> VoiceRecord:
-        """The record a voice is written as: a reference for a sample, the shape itself for a shape."""
+        """The record a voice is written as: a reference for a sample, the whole of it for an instrument."""
         match voice:
             case Sample():
                 return SampleRecord(
@@ -149,7 +149,7 @@ class ProjectContainer:
                     reconstruction_id=voice.reconstruction.id,
                     loop_point=voice.loop_point,
                 )
-            case Shape():
+            case Instrument():
                 return voice
 
     @staticmethod
@@ -171,7 +171,7 @@ class ProjectContainer:
                 )
                 sample.id = record.id
                 return sample
-            case Shape():
+            case Instrument():
                 return record
 
     @staticmethod

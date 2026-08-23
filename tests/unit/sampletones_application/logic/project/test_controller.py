@@ -10,10 +10,10 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.project import ProjectContainer
-from sampletones_core.project.voices.creation import new_shape
+from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.note_on import NoteOn
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.reconstructions import Reconstruction
 
 
@@ -503,48 +503,48 @@ class TestSampleLoop:
         assert controller.project.voice(sample.id).loop_point == WHOLE_LOOP_POINT
 
 
-class TestShapes:
-    def test_add_shape_appends_the_voice_it_is_given(self) -> None:
+class TestInstruments:
+    def test_add_instrument_appends_the_voice_it_is_given(self) -> None:
         controller = _controller()
-        shape = new_shape("lead")
+        instrument = new_instrument("lead")
 
-        added = controller.add_shape(shape)
+        added = controller.add_instrument(instrument)
 
-        assert added is shape
-        assert controller.project.voice(shape.id) is shape
+        assert added is instrument
+        assert controller.project.voice(instrument.id) is instrument
 
-    def test_writing_an_envelope_reaches_the_frames_the_shape_sounds(self) -> None:
+    def test_writing_an_envelope_reaches_the_frames_the_instrument_sounds(self) -> None:
         controller = _controller()
-        shape = controller.add_shape(new_shape("lead"))
+        instrument = controller.add_instrument(new_instrument("lead"))
 
-        controller.set_shape_envelope(shape.id, FeatureKey.VOLUME, (15, 10))
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15, 10))
 
-        assert shape.envelopes.volume == (15, 10)
-        assert len(shape.instructions(ChannelName.PULSE1)) == 2
+        assert instrument.envelopes.volume == (15, 10)
+        assert len(instrument.instructions(ChannelName.PULSE1)) == 2
 
     def test_emptying_an_envelope_leaves_the_dimension_to_the_channel(self) -> None:
         controller = _controller()
-        shape = controller.add_shape(new_shape("lead"))
-        controller.set_shape_envelope(shape.id, FeatureKey.VOLUME, (15,))
+        instrument = controller.add_instrument(new_instrument("lead"))
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15,))
 
-        controller.set_shape_envelope(shape.id, FeatureKey.VOLUME, ())
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, ())
 
-        assert FeatureKey.VOLUME in shape.held_features(ChannelName.PULSE1)
+        assert FeatureKey.VOLUME in instrument.held_features(ChannelName.PULSE1)
 
     def test_moving_the_roots_reaches_the_frames(self) -> None:
         controller = _controller()
-        shape = controller.add_shape(new_shape("lead"))
-        controller.set_shape_envelope(shape.id, FeatureKey.VOLUME, (15,))
+        instrument = controller.add_instrument(new_instrument("lead"))
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15,))
 
-        controller.set_shape_root(shape.id, pitch=48, period=3)
+        controller.set_instrument_root(instrument.id, pitch=48, period=3)
 
-        assert shape.reference(ChannelName.PULSE1) == 48
-        assert shape.reference(ChannelName.NOISE) == 3
-        first = shape.instructions(ChannelName.PULSE1)[0]
+        assert instrument.reference(ChannelName.PULSE1) == 48
+        assert instrument.reference(ChannelName.NOISE) == 3
+        first = instrument.instructions(ChannelName.PULSE1)[0]
         assert isinstance(first, PulseInstruction)
         assert first.pitch == 48
 
-    def test_a_sample_takes_no_shape_edit(
+    def test_a_sample_takes_no_instrument_edit(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
@@ -552,25 +552,25 @@ class TestShapes:
         sample = controller.add_sample(reconstruction_factory(), name="bass")
 
         with pytest.raises(TypeError):
-            controller.set_shape_envelope(sample.id, FeatureKey.VOLUME, (15,))
+            controller.set_instrument_envelope(sample.id, FeatureKey.VOLUME, (15,))
 
-    def test_a_shape_takes_no_reconstruction(self) -> None:
+    def test_an_instrument_takes_no_reconstruction(self) -> None:
         controller = _controller()
-        shape = controller.add_shape(new_shape("lead"))
+        instrument = controller.add_instrument(new_instrument("lead"))
 
         with pytest.raises(TypeError):
-            controller.replace_sample_reconstruction(shape.id, Mock())
+            controller.replace_sample_reconstruction(instrument.id, Mock())
 
-    def test_a_shape_duplicates_into_a_voice_of_its_own(self) -> None:
+    def test_an_instrument_duplicates_into_a_voice_of_its_own(self) -> None:
         controller = _controller()
-        shape = controller.add_shape(new_shape("lead"))
-        controller.set_shape_envelope(shape.id, FeatureKey.VOLUME, (15,))
+        instrument = controller.add_instrument(new_instrument("lead"))
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15,))
 
-        clone = controller.duplicate_voice(shape.id)
+        clone = controller.duplicate_voice(instrument.id)
 
-        assert clone.id != shape.id
-        assert isinstance(clone, Shape)
-        assert clone.envelopes == shape.envelopes
+        assert clone.id != instrument.id
+        assert isinstance(clone, Instrument)
+        assert clone.envelopes == instrument.envelopes
 
 
 class TestPatternManagement:

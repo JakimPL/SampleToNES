@@ -19,6 +19,7 @@ These rules govern the Python in this repository. They complement
 1. Prefer `pathlib.Path` over `os.path`.
 1. Separate function options with `*`, and choose positional arguments intentionally.
 1. Change internal APIs, configs, and data shapes freely; preserve backward compatibility only when the user explicitly asks.
+1. Move a stored data version once per release. The version a build writes between releases is still being written, so a further change to that format extends the upgrade step already pending — one step carries the whole distance from the version the last release shipped. See `compatibility.md`.
 1. Run `pre-commit` on new files after each change.
 
 ## Ownership

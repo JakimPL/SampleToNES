@@ -40,6 +40,16 @@ as one path per stem, and synthesizes the stems record every 2.2 file carries �
 one stem covering every enabled channel and holding every frame the file plays,
 which is what the conversion that wrote the file did.
 
+### A version belongs to a release
+
+The version a format writes moves once per release. Between releases that
+version is still being written: every file carrying it was written by a working
+tree, so a further change to the stored shape extends the step already pending
+rather than adding a second one, and that step widens to carry the whole
+distance from the version the last release shipped. What a user's files travel
+is therefore one step per release, and `git show <tag>:src/sampletones_shared/application.py`
+names the version their files stand at.
+
 ### A chain applies whole or not at all
 
 An upgrade runs only when the registered steps form a complete path from the
@@ -96,6 +106,11 @@ always did.
 
 ### Adding an upgrade
 
+Read the format's version constant against the one the last release shipped, and
+take whichever route that comparison names.
+
+**The constant stands where the release left it.** The change opens a new step:
+
 1. Bump the format's version constant in `sampletones_shared/application.py`.
 2. Add the step module named after the new version — e.g.
    `compatibility/reconstruction/v2_2.py` — with a transform that takes the
@@ -104,6 +119,11 @@ always did.
 4. Cover the step with unit tests under
    `tests/unit/sampletones_core/compatibility/`, and with a loader test that
    opens a payload written at the previous version.
+
+**The constant already stands ahead of the release.** The pending step is the
+one to widen: fold the new transform into the module named after that version,
+state the whole step from the shipped version in its docstring, and extend its
+tests to cover what was added. The version constant stays where it is.
 
 The engine stamps the new version once the chain runs, so a step module declares
 only its own transform.
