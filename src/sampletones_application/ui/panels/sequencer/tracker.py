@@ -222,7 +222,7 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         widths = layout.tracker.subcolumn_widths
         self._subcolumn_widths: Dict[SubColumn, int] = {
-            SubColumn.INSTRUMENT: widths.instrument,
+            SubColumn.VOICE: widths.voice,
             SubColumn.TRANSPOSE: widths.transpose,
             SubColumn.VOLUME: widths.volume,
         }
@@ -442,7 +442,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         """
         subcolumn_colors = self._layout.colors.text
         theme_colors = {
-            SubColumn.INSTRUMENT: subcolumn_colors.instrument,
+            SubColumn.VOICE: subcolumn_colors.voice,
             SubColumn.TRANSPOSE: subcolumn_colors.transpose,
             SubColumn.VOLUME: subcolumn_colors.volume,
         }
@@ -772,7 +772,7 @@ class GUISequencerTrackerPanel(GUIPanel):
     ) -> CellValues:
         cell_values: CellValues = {}
         for row in view_model.rows:
-            cell_values[(row.index, None, SubColumn.INSTRUMENT)] = row.sample
+            cell_values[(row.index, None, SubColumn.VOICE)] = row.sample
             cell_values[(row.index, None, SubColumn.TRANSPOSE)] = row.transpose
             cell_values[(row.index, None, SubColumn.VOLUME)] = row.volume
             for channel in ChannelName.items():
@@ -1090,7 +1090,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         row, channel = action.row, action.channel
 
         if action.note_off:
-            self._editable_cells.values[(row, channel, SubColumn.INSTRUMENT)] = NOTE_OFF
+            self._editable_cells.values[(row, channel, SubColumn.VOICE)] = NOTE_OFF
             self.call(self.on_set_note_off, row, channel)
             return
 
@@ -1100,8 +1100,8 @@ class GUISequencerTrackerPanel(GUIPanel):
             resolved = self._resolve_voice_id(action.sample_index, channel)
             if resolved is not None:
                 sample_index, voice_id = resolved
-                self._editable_cells.values[(row, channel, SubColumn.INSTRUMENT)] = tracker_display.format_committed(
-                    SubColumn.INSTRUMENT,
+                self._editable_cells.values[(row, channel, SubColumn.VOICE)] = tracker_display.format_committed(
+                    SubColumn.VOICE,
                     sample_index,
                 )
 
@@ -1420,7 +1420,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         dpg.add_separator()
         self._surface.add_block_items(target)
         dpg.add_separator()
-        self._add_instrument_submenu(target.cell)
+        self._add_voice_submenu(target.cell)
         dpg.add_menu_item(
             label=self._lbl_context_note_off,
             callback=lambda: self.call(self.on_set_note_off, target.cell.row, target.cell.channel),
@@ -1455,7 +1455,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             callback=lambda: self._select_shape(ShortcutId.TRACKER_SELECT_SUBCOLUMN, cell),
         )
 
-    def _add_instrument_submenu(self, cell: TrackerCursor) -> None:
+    def _add_voice_submenu(self, cell: TrackerCursor) -> None:
         """Offers the pool to a cell, each voice enabled where that cell's column takes it.
 
         The whole pool is listed wherever the menu is raised, so a reader sees every voice the
@@ -1477,7 +1477,7 @@ class GUISequencerTrackerPanel(GUIPanel):
                 dpg.add_menu_item(
                     label=tracker_display.indexed_label(index, voice.name),
                     user_data=(cell.row, cell.channel, voice.voice_id),
-                    callback=self._on_set_instrument_menu,
+                    callback=self._on_set_voice_menu,
                     enabled=self._column_takes(cell.channel, voice),
                 )
 
@@ -1519,7 +1519,7 @@ class GUISequencerTrackerPanel(GUIPanel):
                 callback=callback,
             )
 
-    def _on_set_instrument_menu(
+    def _on_set_voice_menu(
         self,
         _sender: Sender,
         _app_data: None,
@@ -1999,7 +1999,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         dpg.set_value(sender, False)
         existing = self._input_state.cursor
         channel = existing.channel if existing is not None else None
-        subcolumn = existing.subcolumn if existing is not None else SubColumn.INSTRUMENT
+        subcolumn = existing.subcolumn if existing is not None else SubColumn.VOICE
         self._apply_state(
             TrackerInputState(
                 cursor=TrackerCursor(

@@ -202,7 +202,7 @@ def parse_block(
                 continue
 
             match SUBCOLUMNS[slot_offset % len(SUBCOLUMNS)]:
-                case SubColumn.INSTRUMENT:
+                case SubColumn.VOICE:
                     notes[key] = parse_note(token, voice_ids)
                 case SubColumn.TRANSPOSE:
                     transposes[key] = parse_transpose(token)

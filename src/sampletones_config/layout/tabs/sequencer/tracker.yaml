@@ -6,6 +6,6 @@ octave_width: 90
 channel_column_tint: 0.09
 muted_text_fraction: 0.45
 subcolumn_widths:
-  instrument: 26
+  voice: 26
   transpose: 30
   volume: 18

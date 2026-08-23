@@ -20,7 +20,7 @@ class SequencerCellViewModel(BaseModel, frozen=True):
     tracker grid renders :attr:`label`, the combined cell text.
     """
 
-    instrument: str
+    voice: str
     transpose: str
     volume: str
     kind: Optional[VoiceKind]
@@ -33,7 +33,7 @@ class SequencerCellViewModel(BaseModel, frozen=True):
 
     @property
     def label(self) -> str:
-        return f"{self.instrument} {self.transpose} {self.volume}"
+        return f"{self.voice} {self.transpose} {self.volume}"
 
 
 def _sample_reading(cell: SequencerCellViewModel) -> str:
@@ -46,7 +46,7 @@ def _sample_reading(cell: SequencerCellViewModel) -> str:
     if cell.kind is VoiceKind.INSTRUMENT:
         return display_id(None)
 
-    return cell.instrument
+    return cell.voice
 
 
 class SequencerRowViewModel(BaseModel, frozen=True):

@@ -335,8 +335,8 @@ class GUISequencerHistoryPanel(GUIPanel):
                 return roles.channel
             case HistoryDetailRole.ROW:
                 return text.row
-            case HistoryDetailRole.INSTRUMENT:
-                return text.instrument
+            case HistoryDetailRole.VOICE:
+                return text.voice
             case HistoryDetailRole.TRANSPOSE:
                 return text.transpose
             case HistoryDetailRole.VOLUME:

@@ -26,14 +26,14 @@ class TestTrackerEscapeYieldsToGlobalStop:
     def test_escape_yields_when_no_pending_edit(self) -> None:
         panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
         panel._shortcuts = shipped_source()
-        panel._input_state = TrackerInputState(cursor=TrackerCursor(0, None, SubColumn.INSTRUMENT), pending="")
+        panel._input_state = TrackerInputState(cursor=TrackerCursor(0, None, SubColumn.VOICE), pending="")
 
         assert panel._on_key_pressed(_escape()) is False
 
     def test_escape_cancels_a_pending_edit_and_consumes(self, monkeypatch: pytest.MonkeyPatch) -> None:
         panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
         panel._shortcuts = shipped_source()
-        panel._input_state = TrackerInputState(cursor=TrackerCursor(0, None, SubColumn.INSTRUMENT), pending="3")
+        panel._input_state = TrackerInputState(cursor=TrackerCursor(0, None, SubColumn.VOICE), pending="3")
         applied: List[TrackerInputState] = []
         monkeypatch.setattr(panel, "_apply_state", applied.append)
 
@@ -46,8 +46,8 @@ class TestTrackerEscapeYieldsToGlobalStop:
         panel._shortcuts = shipped_source()
         panel._current_row_count = 64
         panel._input_state = TrackerInputState(
-            cursor=TrackerCursor(4, None, SubColumn.INSTRUMENT),
-            anchor=TrackerCursor(2, None, SubColumn.INSTRUMENT),
+            cursor=TrackerCursor(4, None, SubColumn.VOICE),
+            anchor=TrackerCursor(2, None, SubColumn.VOICE),
         )
         applied: List[TrackerInputState] = []
         monkeypatch.setattr(panel, "_apply_state", applied.append)

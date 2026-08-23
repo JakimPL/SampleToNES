@@ -18,7 +18,7 @@ def _song(rows_per_pattern: int = _ROWS) -> Song:
     return Song.empty(rows_per_pattern)
 
 
-def _place_instrument(song: Song, channel: ChannelName, voice_id: str, row_index: int = 0) -> None:
+def _place_voice(song: Song, channel: ChannelName, voice_id: str, row_index: int = 0) -> None:
     pattern = song.pattern(channel, 0)
     assert pattern is not None
     pattern.rows[row_index] = Row(command=NoteOn(voice_id=voice_id))
@@ -191,7 +191,7 @@ class TestSongDuplicateFrame:
         duplicate_index = song.order[1][ChannelName.PULSE1]
         assert duplicate_index is not None
 
-        _place_instrument(song, ChannelName.PULSE1, "sample-a", row_index=0)
+        _place_voice(song, ChannelName.PULSE1, "sample-a", row_index=0)
 
         shared_pattern = song.pattern(ChannelName.PULSE1, duplicate_index)
         assert shared_pattern is not None
@@ -248,7 +248,7 @@ class TestSongCloneFrame:
 
     def test_editing_a_cloned_pattern_leaves_the_source_untouched(self) -> None:
         song = _song()
-        _place_instrument(song, ChannelName.PULSE1, "sample-a", row_index=0)
+        _place_voice(song, ChannelName.PULSE1, "sample-a", row_index=0)
         source_index = song.order[0][ChannelName.PULSE1]
 
         song.clone_frame(0)
@@ -359,20 +359,20 @@ class TestSongReferencesSample:
 
     def test_true_when_a_row_references_the_sample(self) -> None:
         song = _song()
-        _place_instrument(song, ChannelName.PULSE1, "abc")
+        _place_voice(song, ChannelName.PULSE1, "abc")
         assert song.references_voice("abc") is True
 
     def test_false_for_a_different_voice_id(self) -> None:
         song = _song()
-        _place_instrument(song, ChannelName.PULSE1, "abc")
+        _place_voice(song, ChannelName.PULSE1, "abc")
         assert song.references_voice("xyz") is False
 
 
 class TestSongClearSampleReferences:
     def test_clears_only_rows_referencing_the_target(self) -> None:
         song = _song()
-        _place_instrument(song, ChannelName.PULSE1, "abc", row_index=0)
-        _place_instrument(song, ChannelName.PULSE1, "keep", row_index=1)
+        _place_voice(song, ChannelName.PULSE1, "abc", row_index=0)
+        _place_voice(song, ChannelName.PULSE1, "keep", row_index=1)
 
         song.clear_voice_references("abc")
 
@@ -383,8 +383,8 @@ class TestSongClearSampleReferences:
 
     def test_clears_references_across_all_channels(self) -> None:
         song = _song()
-        _place_instrument(song, ChannelName.PULSE1, "abc")
-        _place_instrument(song, ChannelName.TRIANGLE, "abc")
+        _place_voice(song, ChannelName.PULSE1, "abc")
+        _place_voice(song, ChannelName.TRIANGLE, "abc")
 
         song.clear_voice_references("abc")
 
@@ -392,7 +392,7 @@ class TestSongClearSampleReferences:
 
     def test_leaves_rows_untouched_when_sample_absent(self) -> None:
         song = _song()
-        _place_instrument(song, ChannelName.PULSE1, "abc")
+        _place_voice(song, ChannelName.PULSE1, "abc")
 
         song.clear_voice_references("missing")
 

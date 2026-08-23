@@ -128,7 +128,7 @@ def _place_cursor(
 ) -> None:
     """Puts the cursor where the panel's own state keeps it, the way an edit action does."""
     panel._input_state = TrackerInputState(
-        cursor=TrackerCursor(row_index, channel, SubColumn.INSTRUMENT),
+        cursor=TrackerCursor(row_index, channel, SubColumn.VOICE),
         pending="",
     )
 

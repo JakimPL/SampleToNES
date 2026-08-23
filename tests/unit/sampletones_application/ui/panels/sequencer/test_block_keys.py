@@ -78,7 +78,7 @@ def _panel(
     gestures: Gestures,
     *,
     channel: Optional[ChannelName] = ChannelName.PULSE1,
-    subcolumn: SubColumn = SubColumn.INSTRUMENT,
+    subcolumn: SubColumn = SubColumn.VOICE,
 ) -> GUISequencerTrackerPanel:
     """A tracker panel reporting the gestures it fires, with its grid left unbuilt.
 

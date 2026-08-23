@@ -1597,7 +1597,7 @@ class TestPlayerExposure:
 PULSE1_CELL: Final[TrackerRegion] = TrackerRegion(
     first_row=0,
     last_row=0,
-    first_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.INSTRUMENT).flat_index,
+    first_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.VOICE).flat_index,
     last_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.VOLUME).flat_index,
 )
 PULSE1_FRAME: Final[OrderRegion] = OrderRegion(

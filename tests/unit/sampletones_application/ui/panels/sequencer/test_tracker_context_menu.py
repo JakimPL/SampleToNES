@@ -1,5 +1,5 @@
 import contextlib
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import pytest
 
@@ -89,9 +89,9 @@ def recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuItemRecorder:
     return instance
 
 
-def _cell(row: int, channel: ChannelName) -> TrackerCursor:
+def _cell(row: int, channel: Optional[ChannelName]) -> TrackerCursor:
     """The cell a menu was raised on, which the items carry as their payload."""
-    return TrackerCursor(row, channel, SubColumn.INSTRUMENT)
+    return TrackerCursor(row, channel, SubColumn.VOICE)
 
 
 def _target(row: int, channel: ChannelName) -> TrackerTarget:
@@ -157,7 +157,7 @@ class TestMenuDispatchPreservesPayload:
         chosen: List[str] = []
         panel.on_set_row = lambda row, channel, voice_id, transpose, volume: chosen.append(voice_id)
 
-        panel._add_instrument_submenu(_cell(0, ChannelName.PULSE2))
+        panel._add_voice_submenu(_cell(0, ChannelName.PULSE2))
         recorder.dispatch_as_dpg()
 
         assert chosen == ["lead-id"]
@@ -193,7 +193,7 @@ class TestWhichVoicesAColumnOffers:
     def test_a_channel_column_reaches_both_kinds(self, recorder: _MenuItemRecorder) -> None:
         panel = self._panel_with_both_kinds()
 
-        panel._add_instrument_submenu(_cell(0, ChannelName.PULSE2))
+        panel._add_voice_submenu(_cell(0, ChannelName.PULSE2))
 
         assert recorder.reachable(self.SAMPLE_LABEL) is True
         assert recorder.reachable(self.INSTRUMENT_LABEL) is True
@@ -201,7 +201,7 @@ class TestWhichVoicesAColumnOffers:
     def test_the_sample_column_reaches_a_sample_alone(self, recorder: _MenuItemRecorder) -> None:
         panel = self._panel_with_both_kinds()
 
-        panel._add_instrument_submenu(_cell(0, None))
+        panel._add_voice_submenu(_cell(0, None))
 
         assert recorder.reachable(self.SAMPLE_LABEL) is True
         assert recorder.reachable(self.INSTRUMENT_LABEL) is False
@@ -213,7 +213,7 @@ class TestWhichVoicesAColumnOffers:
         """An unreachable item says the voice exists while leaving it where it belongs."""
         panel = self._panel_with_both_kinds()
 
-        panel._add_instrument_submenu(_cell(0, None))
+        panel._add_voice_submenu(_cell(0, None))
 
         assert [entry["label"] for entry in recorder.entries] == [
             self.SAMPLE_LABEL,
@@ -224,6 +224,6 @@ class TestWhichVoicesAColumnOffers:
         panel = _panel()
         panel._current_samples = SequencerVoicesViewModel(voices=())
 
-        panel._add_instrument_submenu(_cell(0, None))
+        panel._add_voice_submenu(_cell(0, None))
 
         assert [entry["enabled"] for entry in recorder.entries] == [False]

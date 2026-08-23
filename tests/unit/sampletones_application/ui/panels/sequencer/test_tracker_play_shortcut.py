@@ -26,7 +26,7 @@ class TestGridPlayFromHere:
 
     def test_ctrl_shift_space_plays_from_the_cursor_row(self) -> None:
         rows: List[int] = []
-        panel = _panel(TrackerCursor(5, None, SubColumn.INSTRUMENT))
+        panel = _panel(TrackerCursor(5, None, SubColumn.VOICE))
         panel.on_play_from_row = rows.append
 
         assert panel._on_key_pressed(_play_from_here()) is True
@@ -39,7 +39,7 @@ class TestGridPlayFromHere:
 
     def test_ctrl_space_yields_to_the_global_shortcut(self) -> None:
         played: List[int] = []
-        panel = _panel(TrackerCursor(5, None, SubColumn.INSTRUMENT))
+        panel = _panel(TrackerCursor(5, None, SubColumn.VOICE))
         panel.on_play_from_row = played.append
 
         result = panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Spacebar, modifiers=CTRL))

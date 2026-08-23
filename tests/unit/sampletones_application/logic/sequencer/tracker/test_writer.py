@@ -105,7 +105,7 @@ class TestPaste(BaseTestSuite):
             label="a sample through the sample column reaches its channels and clears the rest",
             frame=(".. ... . | .. ... . | .. ... . | .. ... 5",),
             block=(LEAD,),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             origin=TrackerCell(row=0, channel=None),
             expected=(
                 "00 ... . | 00 ... . | .. ... . | .. ... .",
@@ -117,14 +117,14 @@ class TestPaste(BaseTestSuite):
         TestCase(
             label="an instrument through the sample column is passed over",
             block=(PAD,),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             origin=TrackerCell(row=0, channel=None),
             expected=(EMPTY, EMPTY, EMPTY, EMPTY),
         ),
         TestCase(
             label="an instrument through a channel column lands on that channel",
             block=(PAD,),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             origin=TrackerCell(row=0, channel=ChannelName.NOISE),
             expected=(
                 ".. ... . | .. ... . | .. ... . | 02 ... .",
@@ -136,7 +136,7 @@ class TestPaste(BaseTestSuite):
         TestCase(
             label="a channel beside the sample column overwrites what it settled",
             block=(f"{LEAD} ... . | {BASS}",),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             origin=TrackerCell(row=0, channel=None),
             expected=(
                 "01 ... . | 00 ... . | .. ... . | .. ... .",
@@ -148,7 +148,7 @@ class TestPaste(BaseTestSuite):
         TestCase(
             label="a block read from the sample column writes one channel when written to one",
             block=(LEAD,),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             origin=TrackerCell(row=0, channel=ChannelName.TRIANGLE),
             expected=(
                 ".. ... . | .. ... . | 00 ... . | .. ... .",
@@ -161,7 +161,7 @@ class TestPaste(BaseTestSuite):
             label="a mixed cell leaves its target as it stands while its neighbours clear theirs",
             frame=("00 +03 7 | .. ... . | .. ... . | .. ... .",),
             block=(".. ? .",),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             origin=TrackerCell(row=0, channel=ChannelName.PULSE1),
             expected=(
                 ".. +03 . | .. ... . | .. ... . | .. ... .",
@@ -187,7 +187,7 @@ class TestPaste(BaseTestSuite):
             label="a cut through the sample column cuts every channel",
             frame=("00 ... . | 00 ... . | .. ... . | .. ... .",),
             block=("~~",),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             origin=TrackerCell(row=0, channel=None),
             expected=(
                 "~~ ... . | ~~ ... . | ~~ ... . | ~~ ... .",
@@ -200,7 +200,7 @@ class TestPaste(BaseTestSuite):
             label="a note naming an absent sample writes nothing into a channel",
             frame=("00 +02 5 | .. ... . | .. ... . | .. ... .",),
             block=("!! ? ?",),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             origin=TrackerCell(row=0, channel=ChannelName.PULSE1),
             expected=(
                 "00 +02 5 | .. ... . | .. ... . | .. ... .",
@@ -213,7 +213,7 @@ class TestPaste(BaseTestSuite):
             label="a note naming an absent sample clears nothing through the sample column",
             frame=("00 ... . | 00 ... . | .. ... . | .. ... 5",),
             block=("!!",),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             origin=TrackerCell(row=0, channel=None),
             expected=(
                 "00 ... . | 00 ... . | .. ... . | .. ... 5",
@@ -226,7 +226,7 @@ class TestPaste(BaseTestSuite):
             label="an empty instrument through the sample column clears every channel",
             frame=("00 ... . | 00 ... . | .. ... . | ~~ ... .",),
             block=("..",),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             origin=TrackerCell(row=0, channel=None),
             expected=(EMPTY, EMPTY, EMPTY, EMPTY),
         ),
@@ -278,7 +278,7 @@ class TestPaste(BaseTestSuite):
         TestCase(
             label="slots past the last column are dropped rather than wrapped",
             block=(f"{LEAD} ... . | {BASS}",),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             origin=TrackerCell(row=0, channel=ChannelName.NOISE),
             expected=(
                 ".. ... . | .. ... . | .. ... . | 00 ... .",
@@ -291,7 +291,7 @@ class TestPaste(BaseTestSuite):
             label="a wholly mixed block leaves the frame as it stands",
             frame=("00 +02 5 | .. ... . | .. ... . | .. ... .",),
             block=("? ? ?",),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             origin=TrackerCell(row=0, channel=ChannelName.PULSE1),
             expected=(
                 "00 +02 5 | .. ... . | .. ... . | .. ... .",
@@ -304,7 +304,7 @@ class TestPaste(BaseTestSuite):
             label="a wholly empty block empties what it covers",
             frame=("00 +02 5 | 00 +02 5 | .. ... . | .. ... .",),
             block=(".. ... .",),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             origin=TrackerCell(row=0, channel=ChannelName.PULSE1),
             expected=(
                 ".. ... . | 00 +02 5 | .. ... . | .. ... .",
@@ -371,7 +371,7 @@ class TestClear:
                 first_row=0,
                 last_row=0,
                 first_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.TRANSPOSE).flat_index,
-                last_slot=TrackerSlot(ChannelName.PULSE2, SubColumn.INSTRUMENT).flat_index,
+                last_slot=TrackerSlot(ChannelName.PULSE2, SubColumn.VOICE).flat_index,
             )
         )
 
@@ -412,7 +412,7 @@ class TestRoundTrip:
         region = TrackerRegion(
             first_row=0,
             last_row=1,
-            first_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.INSTRUMENT).flat_index,
+            first_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.VOICE).flat_index,
             last_slot=TrackerSlot(ChannelName.NOISE, SubColumn.VOLUME).flat_index,
         )
         block = TrackerBlockReader(grid.logic).read(region)
@@ -449,7 +449,7 @@ class TestMaterialisation:
 
         block = parse_block(
             ("? ? ?",),
-            first_subcolumn=SubColumn.INSTRUMENT,
+            first_subcolumn=SubColumn.VOICE,
             voice_ids=grid.voice_ids,
         )
         grid.writer.write(block, TrackerCell(row=0, channel=ChannelName.PULSE2))

@@ -99,7 +99,7 @@ class TrackerBlockWriter:
                 self._tracker.clear_cell_subcolumn(
                     row_index,
                     channel,
-                    SubColumn.INSTRUMENT,
+                    SubColumn.VOICE,
                 )
 
     def _write_transpose(

@@ -31,12 +31,12 @@ _RANGE: Final[str] = "-"
 
 
 _SUBCOLUMN_LETTERS: Final[Dict[SubColumn, str]] = {
-    SubColumn.INSTRUMENT: "i",
+    SubColumn.VOICE: "n",
     SubColumn.TRANSPOSE: "t",
     SubColumn.VOLUME: "v",
 }
 _SUBCOLUMN_ROLES: Final[Dict[SubColumn, HistoryDetailRole]] = {
-    SubColumn.INSTRUMENT: HistoryDetailRole.INSTRUMENT,
+    SubColumn.VOICE: HistoryDetailRole.VOICE,
     SubColumn.TRANSPOSE: HistoryDetailRole.TRANSPOSE,
     SubColumn.VOLUME: HistoryDetailRole.VOLUME,
 }
@@ -154,9 +154,7 @@ class SequencerHistoryDetail:
         subcolumn: SubColumn,
     ) -> Segments:
         affected = (
-            ChannelName.items()
-            if subcolumn is SubColumn.INSTRUMENT
-            else self._tracker_logic.relevant_channels(row_index)
+            ChannelName.items() if subcolumn is SubColumn.VOICE else self._tracker_logic.relevant_channels(row_index)
         )
         segments = list(self._location(row_index, channel, affected))
         segments.append(self._subcolumn(subcolumn))

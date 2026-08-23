@@ -34,7 +34,7 @@ from sampletones_core.utils.display import (
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 _EMPTY_CELL = SequencerCellViewModel(
-    instrument=display_id(None),
+    voice=display_id(None),
     transpose=display_transpose(None),
     volume=display_volume(None),
     kind=None,
@@ -169,23 +169,23 @@ class SequencerTrackerLogic(CallbackMixin):
     ) -> None:
         """Empties one subcolumn of a cell.
 
-        From the sample column an instrument reaches every channel, since the sample
+        From the sample column the voice slot reaches every channel, since the sample
         it names is the row's whole note, while transpose and volume follow the
         channels that column governs.
         """
-        instrument = subcolumn is SubColumn.INSTRUMENT
+        voice = subcolumn is SubColumn.VOICE
         transpose = subcolumn is SubColumn.TRANSPOSE
         volume = subcolumn is SubColumn.VOLUME
         if channel is not None:
             self.clear_subcolumn(
                 channel,
                 row_index,
-                instrument=instrument,
+                voice=voice,
                 transpose=transpose,
                 volume=volume,
             )
-        elif instrument:
-            self.clear_subcolumn_all_generators(row_index, instrument=True)
+        elif voice:
+            self.clear_subcolumn_all_generators(row_index, voice=True)
         else:
             self.clear_sample_subcolumn(
                 row_index,
@@ -318,7 +318,7 @@ class SequencerTrackerLogic(CallbackMixin):
         channel: ChannelName,
         row_index: int,
         *,
-        instrument: bool = False,
+        voice: bool = False,
         transpose: bool = False,
         volume: bool = False,
     ) -> None:
@@ -330,7 +330,7 @@ class SequencerTrackerLogic(CallbackMixin):
             channel,
             pattern_index,
             row_index,
-            instrument=instrument,
+            voice=voice,
             transpose=transpose,
             volume=volume,
         )
@@ -343,7 +343,7 @@ class SequencerTrackerLogic(CallbackMixin):
         self,
         row_index: int,
         *,
-        instrument: bool = False,
+        voice: bool = False,
         transpose: bool = False,
         volume: bool = False,
     ) -> None:
@@ -351,7 +351,7 @@ class SequencerTrackerLogic(CallbackMixin):
             self.clear_subcolumn(
                 channel,
                 row_index,
-                instrument=instrument,
+                voice=voice,
                 transpose=transpose,
                 volume=volume,
             )
@@ -363,7 +363,7 @@ class SequencerTrackerLogic(CallbackMixin):
     ) -> None:
         """Places a sample across the channels its reconstruction uses.
 
-        The voice column is authoritative: the sample is written to every channel it covers, and
+        The sample column is authoritative: the sample is written to every channel it covers, and
         the remaining channels on that row are cleared so the row plays exactly that sample.
         An empty voice id wipes the whole row.
 
@@ -458,7 +458,7 @@ class SequencerTrackerLogic(CallbackMixin):
     ) -> None:
         """Synchronises a subcolumn across the row's relevant channels.
 
-        Transpose and volume exist independently of an instrument: they follow the
+        Transpose and volume exist independently of the voice slot: they follow the
         sample's channels when one is present, and otherwise reach every channel, so
         a value typed in the sample column always lands somewhere.
         """
@@ -739,7 +739,7 @@ class SequencerTrackerLogic(CallbackMixin):
         was written against a root the reader chose, so its rows read as the notes they sound.
         """
         return SequencerCellViewModel(
-            instrument=display_command(
+            voice=display_command(
                 self._controller.project.voices,
                 row.command,
             ),

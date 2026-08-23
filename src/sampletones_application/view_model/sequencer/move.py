@@ -5,7 +5,7 @@ from typing import Optional
 class MoveDirection(Enum):
     """A reorder action: move an item toward the start or end of its sequence.
 
-    Shared by the instruments list (vertical) and the order table (horizontal);
+    Shared by the voices list (vertical) and the order table (horizontal);
     the axis-neutral names map to up/left (``PREVIOUS``), down/right (``NEXT``),
     top/start (``FIRST``) and bottom/end (``LAST``) at each call site.
     """

@@ -33,7 +33,7 @@ class TrackerBlockReader:
         """Takes the values a region covers, keeping each kind of subcolumn in a map of its own."""
         base = column_slot_base(slot_from_flat(region.first_slot).channel)
         return TrackerBlock(
-            notes=self._read_subcolumn(region, base, SubColumn.INSTRUMENT, self._note_of),
+            notes=self._read_subcolumn(region, base, SubColumn.VOICE, self._note_of),
             transposes=self._read_subcolumn(region, base, SubColumn.TRANSPOSE, self._transpose_of),
             volumes=self._read_subcolumn(region, base, SubColumn.VOLUME, self._volume_of),
         )
@@ -90,8 +90,8 @@ class TrackerBlockReader:
         column it is written into.
         """
         match row.command if row is not None else None:
-            case NoteOn() as instrument:
-                return instrument.voice_id
+            case NoteOn() as note_on:
+                return note_on.voice_id
             case NoteOff() as note_off:
                 return note_off
             case None:

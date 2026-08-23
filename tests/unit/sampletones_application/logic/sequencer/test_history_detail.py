@@ -132,7 +132,7 @@ class TestTrackerDetails:
                 first_row=4,
                 last_row=11,
                 first_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.TRANSPOSE).flat_index,
-                last_slot=TrackerSlot(ChannelName.PULSE2, SubColumn.INSTRUMENT).flat_index,
+                last_slot=TrackerSlot(ChannelName.PULSE2, SubColumn.VOICE).flat_index,
             )
         )
 
@@ -149,7 +149,7 @@ class TestTrackerDetails:
             TrackerRegion(
                 first_row=0,
                 last_row=0,
-                first_slot=TrackerSlot(None, SubColumn.INSTRUMENT).flat_index,
+                first_slot=TrackerSlot(None, SubColumn.VOICE).flat_index,
                 last_slot=TrackerSlot(None, SubColumn.VOLUME).flat_index,
             )
         )
@@ -179,7 +179,7 @@ class TestTrackerDetails:
             TrackerRegion(
                 first_row=0,
                 last_row=0,
-                first_slot=TrackerSlot(ChannelName.PULSE2, SubColumn.INSTRUMENT).flat_index,
+                first_slot=TrackerSlot(ChannelName.PULSE2, SubColumn.VOICE).flat_index,
                 last_slot=TrackerSlot(ChannelName.PULSE2, SubColumn.VOLUME).flat_index,
             ),
             -3,

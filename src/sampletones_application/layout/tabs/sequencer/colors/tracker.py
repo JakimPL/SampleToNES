@@ -7,13 +7,12 @@ class TrackerColors(BaseModel, extra="forbid", frozen=True):
     """The semantic text colours shared across every tracker view.
 
     One palette feeds the pattern grid, the order table, and the history detail so a
-    concept keeps its colour everywhere: ``instrument`` (the note/sample reference,
-    yellow like ``sample``), ``transpose``, ``volume``, ``sample``, the ``frame`` and
-    ``row`` indices, and the ``order`` entries. Defining them once keeps every panel in
-    step.
+    concept keeps its colour everywhere: ``voice`` (the slot naming a voice, yellow like
+    ``sample``), ``transpose``, ``volume``, ``sample``, the ``frame`` and ``row``
+    indices, and the ``order`` entries. Defining them once keeps every panel in step.
     """
 
-    instrument: WrittenColor
+    voice: WrittenColor
     transpose: WrittenColor
     volume: WrittenColor
     sample: WrittenColor

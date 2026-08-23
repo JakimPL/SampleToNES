@@ -26,11 +26,6 @@
 * A loop point per envelope: a voice states one point, applied to every populated sequence.
 * A sample's loop point is offered as a switch in the voice list, though the model carries the
   point for both kinds of voice.
-* `SubColumn.INSTRUMENT` names the first slot of both tracker column kinds, and the two hold
-  different things: the voice id under the Voice column, and the note on a channel column. One
-  name for both is wrong half the time, and splitting it reaches the layout keys
-  (`sequencer/colors.yaml`, `sequencer/tracker.yaml`) and their DTOs, so it is a question of its
-  own rather than part of naming a voice.
 
 ### Workflow
 

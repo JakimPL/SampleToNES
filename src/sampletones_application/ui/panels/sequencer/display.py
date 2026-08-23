@@ -13,7 +13,7 @@ CellValues = Dict[CellKey, str]
 CELL_TITLE_SEPARATOR: Final[str] = " | "
 
 _DEFAULT_LABELS: Final[Dict[SubColumn, str]] = {
-    SubColumn.INSTRUMENT: display_id(None),
+    SubColumn.VOICE: display_id(None),
     SubColumn.TRANSPOSE: display_transpose(None),
     SubColumn.VOLUME: display_volume(None),
 }
@@ -36,8 +36,8 @@ def cell_title(index: int, label: str) -> str:
 def cell_display(cell_view_model: SequencerCellViewModel, subcolumn: SubColumn) -> str:
     """Extract the pre-formatted display string for one subcolumn from a cell view model."""
     match subcolumn:
-        case SubColumn.INSTRUMENT:
-            return cell_view_model.instrument
+        case SubColumn.VOICE:
+            return cell_view_model.voice
         case SubColumn.TRANSPOSE:
             return cell_view_model.transpose
         case SubColumn.VOLUME:
@@ -47,7 +47,7 @@ def cell_display(cell_view_model: SequencerCellViewModel, subcolumn: SubColumn) 
 def format_committed(subcolumn: SubColumn, value: Optional[int]) -> str:
     """Format an integer value as the display string stored in the optimistic cell cache."""
     match subcolumn:
-        case SubColumn.INSTRUMENT:
+        case SubColumn.VOICE:
             return display_id(value)
         case SubColumn.TRANSPOSE:
             return display_transpose(value)

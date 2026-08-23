@@ -15,7 +15,7 @@ class HistoryDetailRole(StrEnum):
     FRAME = "frame"
     CHANNEL = "channel"
     ROW = "row"
-    INSTRUMENT = "instrument"
+    VOICE = "voice"
     TRANSPOSE = "transpose"
     VOLUME = "volume"
     VALUE = "value"

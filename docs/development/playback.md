@@ -152,7 +152,7 @@ says (architecture principle 12).
 
 The mask is pulled per rendered row, which is principle 6 for this control: a channel drops in or
 out as the render-ahead buffer drains, with the immediacy every other live edit has. A silenced
-channel still takes each row's instrument, transpose, and volume, so returning it to the mix resumes
+channel still takes each row's voice, transpose, and volume, so returning it to the mix resumes
 on the state its pattern has reached.
 
 Muting is monitoring, and principle 5 governs what follows. The project holds every channel, so

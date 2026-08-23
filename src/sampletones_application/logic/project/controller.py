@@ -442,7 +442,7 @@ class ProjectController(CallbackMixin):
         pattern_index: int,
         row_index: int,
         *,
-        instrument: bool = True,
+        voice: bool = True,
         transpose: bool = True,
         volume: bool = True,
     ) -> None:
@@ -457,7 +457,7 @@ class ProjectController(CallbackMixin):
             channel,
             pattern_index,
             row_index,
-            command=None if instrument else existing.command,
+            command=None if voice else existing.command,
             transpose=None if transpose else existing.transpose,
             volume=None if volume else existing.volume,
         )

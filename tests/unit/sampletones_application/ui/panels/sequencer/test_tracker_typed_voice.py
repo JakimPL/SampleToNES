@@ -65,7 +65,7 @@ class Panel:
 
     def shown(self, channel: Optional[ChannelName]) -> str:
         """The label the cell cache holds, which is what the cell shows once the commit settles."""
-        return self.panel._editable_cells.values.get((0, channel, SubColumn.INSTRUMENT), STORED_LABEL)
+        return self.panel._editable_cells.values.get((0, channel, SubColumn.VOICE), STORED_LABEL)
 
 
 @pytest.fixture

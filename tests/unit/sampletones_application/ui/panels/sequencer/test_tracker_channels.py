@@ -42,12 +42,12 @@ CHANNEL_COLORS = ChannelColors(
 HEADER_THEME = 1
 MUTED_HEADER_THEME = 2
 SUBCOLUMN_THEMES: Dict[SubColumn, int] = {
-    SubColumn.INSTRUMENT: 10,
+    SubColumn.VOICE: 10,
     SubColumn.TRANSPOSE: 11,
     SubColumn.VOLUME: 12,
 }
 MUTED_SUBCOLUMN_THEMES: Dict[SubColumn, int] = {
-    SubColumn.INSTRUMENT: 20,
+    SubColumn.VOICE: 20,
     SubColumn.TRANSPOSE: 21,
     SubColumn.VOLUME: 22,
 }

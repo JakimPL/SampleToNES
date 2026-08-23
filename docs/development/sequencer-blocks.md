@@ -55,8 +55,8 @@ about reaches nothing.
 
 A tracker block carries subcolumn offsets measured from `column_slot_base(column)`, and
 every base is a multiple of the subcolumn count. An offset therefore addresses the same
-kind of subcolumn at whichever column it is replayed against: an instrument value cannot
-reach a volume slot. The paste hook takes a `TrackerCell` — a row and a column, with no
+kind of subcolumn at whichever column it is replayed against: a voice reference reaches only
+another voice slot. The paste hook takes a `TrackerCell` — a row and a column, with no
 subcolumn — so the type states the rule: the anchor decides *where* a block lands and the
 block decides *which kind* goes where.
 

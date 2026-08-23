@@ -20,7 +20,7 @@ def _state(
 
 class TestNoteOffEntry:
     def test_minus_in_instrument_emits_note_off(self) -> None:
-        state, action = _state(SubColumn.INSTRUMENT).type_char("-")
+        state, action = _state(SubColumn.VOICE).type_char("-")
         assert action is not None
         assert action.note_off is True
         assert action.row == 0
@@ -28,7 +28,7 @@ class TestNoteOffEntry:
         assert state.pending == ""
 
     def test_plus_in_instrument_is_ignored(self) -> None:
-        state = _state(SubColumn.INSTRUMENT)
+        state = _state(SubColumn.VOICE)
         new_state, action = state.type_char("+")
         assert action is None
         assert new_state is state
@@ -43,10 +43,10 @@ class TestSelection:
     """Shift-extended moves grow a region from the cell the selection was started on."""
 
     def test_a_state_without_an_anchor_covers_no_region(self) -> None:
-        assert _state(SubColumn.INSTRUMENT).region is None
+        assert _state(SubColumn.VOICE).region is None
 
     def test_the_first_extend_anchors_the_cell_it_came_from(self) -> None:
-        extended = _state(SubColumn.INSTRUMENT, row=4).extend_row(1, ROW_COUNT)
+        extended = _state(SubColumn.VOICE, row=4).extend_row(1, ROW_COUNT)
 
         region = extended.region
         assert region is not None
@@ -54,13 +54,13 @@ class TestSelection:
 
     def test_extending_upwards_names_the_same_region_as_downwards(self) -> None:
         """The bounds are ordered by the region, so the direction of the drag leaves no trace."""
-        upwards = _state(SubColumn.INSTRUMENT, row=5).extend_row(-1, ROW_COUNT).region
-        downwards = _state(SubColumn.INSTRUMENT, row=4).extend_row(1, ROW_COUNT).region
+        upwards = _state(SubColumn.VOICE, row=5).extend_row(-1, ROW_COUNT).region
+        downwards = _state(SubColumn.VOICE, row=4).extend_row(1, ROW_COUNT).region
 
         assert upwards == downwards
 
     def test_a_further_extend_keeps_the_original_anchor(self) -> None:
-        extended = _state(SubColumn.INSTRUMENT, row=4).extend_row(1, ROW_COUNT).extend_row(3, ROW_COUNT)
+        extended = _state(SubColumn.VOICE, row=4).extend_row(1, ROW_COUNT).extend_row(3, ROW_COUNT)
 
         region = extended.region
         assert region is not None
@@ -74,24 +74,24 @@ class TestSelection:
         assert (region.first_slot, region.last_slot) == (2, 3)
         assert extended.cursor is not None
         assert extended.cursor.channel is ChannelName.PULSE1
-        assert extended.cursor.subcolumn is SubColumn.INSTRUMENT
+        assert extended.cursor.subcolumn is SubColumn.VOICE
 
     def test_extending_slots_stops_at_either_end_of_the_axis(self) -> None:
         """A selection covers a run of the grid, so its reach stops where plain navigation wraps."""
-        first = _state(SubColumn.INSTRUMENT, channel=None).extend_slot(-1)
+        first = _state(SubColumn.VOICE, channel=None).extend_slot(-1)
         last = _state(SubColumn.VOLUME, channel=ChannelName.NOISE).extend_slot(1)
 
-        assert first.cursor == TrackerCursor(0, None, SubColumn.INSTRUMENT)
+        assert first.cursor == TrackerCursor(0, None, SubColumn.VOICE)
         assert last.cursor == TrackerCursor(0, ChannelName.NOISE, SubColumn.VOLUME)
 
     def test_a_plain_move_collapses_the_selection(self) -> None:
-        moved = _state(SubColumn.INSTRUMENT, row=4).extend_row(2, ROW_COUNT).navigate_row(1, ROW_COUNT)
+        moved = _state(SubColumn.VOICE, row=4).extend_row(2, ROW_COUNT).navigate_row(1, ROW_COUNT)
 
         assert moved.anchor is None
         assert moved.region is None
 
     def test_a_plain_column_move_collapses_the_selection(self) -> None:
-        moved = _state(SubColumn.INSTRUMENT).extend_row(2, ROW_COUNT).navigate_column_by(1)
+        moved = _state(SubColumn.VOICE).extend_row(2, ROW_COUNT).navigate_column_by(1)
 
         assert moved.region is None
 
@@ -110,7 +110,7 @@ class TestSelection:
         assert typed.region is None
 
     def test_a_note_off_collapses_the_selection(self) -> None:
-        selected = _state(SubColumn.INSTRUMENT, row=4).extend_row(2, ROW_COUNT)
+        selected = _state(SubColumn.VOICE, row=4).extend_row(2, ROW_COUNT)
 
         typed, action = selected.type_char("-")
 
@@ -145,8 +145,8 @@ class TestTargetRegion:
         assert region.slots == (TrackerSlot(ChannelName.PULSE1, SubColumn.TRANSPOSE),)
 
     def test_a_cell_of_a_selection_is_raised_on_the_whole_of_it(self) -> None:
-        selected = _state(SubColumn.INSTRUMENT, row=4).extend_row(2, ROW_COUNT)
-        cell = TrackerCursor(5, ChannelName.PULSE1, SubColumn.INSTRUMENT)
+        selected = _state(SubColumn.VOICE, row=4).extend_row(2, ROW_COUNT)
+        cell = TrackerCursor(5, ChannelName.PULSE1, SubColumn.VOICE)
 
         assert selected.region_at(cell) == selected.region
 
@@ -193,15 +193,15 @@ class TestSelectShapes:
 
     def test_a_shape_stands_the_cursor_on_the_last_row_it_reaches(self) -> None:
         """A shape ends where the next Shift+arrow starts, which is the far corner it covers."""
-        cell = TrackerCursor(4, ChannelName.PULSE1, SubColumn.INSTRUMENT)
+        cell = TrackerCursor(4, ChannelName.PULSE1, SubColumn.VOICE)
 
-        selected = _state(SubColumn.INSTRUMENT, row=4).select_column(cell, ROW_COUNT)
+        selected = _state(SubColumn.VOICE, row=4).select_column(cell, ROW_COUNT)
 
         assert selected.cursor == TrackerCursor(ROW_COUNT - 1, ChannelName.PULSE1, SubColumn.VOLUME)
-        assert selected.anchor == TrackerCursor(0, ChannelName.PULSE1, SubColumn.INSTRUMENT)
+        assert selected.anchor == TrackerCursor(0, ChannelName.PULSE1, SubColumn.VOICE)
 
     def test_a_frame_holding_no_rows_selects_nothing(self) -> None:
-        state = _state(SubColumn.INSTRUMENT)
+        state = _state(SubColumn.VOICE)
 
         assert state.select_all(0) is state
 

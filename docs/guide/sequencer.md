@@ -38,14 +38,14 @@ asks first, because it clears every row that references it.
 ## Writing a pattern
 
 The **Tracker** grid is the pattern editor. Each row is one step in time; the
-columns are the **Voice** and the four channels — **Pulse 1**, **Pulse 2**,
+columns are the **Sample** and the four channels — **Pulse 1**, **Pulse 2**,
 **Triangle**, **Noise** — each carrying a voice, a pitch, and a volume. Click a cell
 and type its value. Right-clicking a cell opens the rest of the operations — **Set
 voice**, **Note off**, **Clear cell** and **Clear row**, transpose and volume
 adjustments, **Play from here** to audition from the cursor row, and **Play from
 this frame** to start at the top of the shown frame.
 
-The **Voice** column places a sample across every channel its reconstruction
+The **Sample** column places a sample across every channel its reconstruction
 covers. An instrument sounds on one channel at a time, so name it in the
 channel column you want it on.
 
@@ -109,7 +109,7 @@ down and to the right of it.
 In the **Tracker**, a block keeps the kinds of the cells it came from — a transpose
 lands in a transpose, a volume in a volume, whichever column you paste onto — and
 whatever reaches past the last row or the last column is left out. A cell reading
-`?`, where the **Voice** column's channels disagree, passes over its target and
+`?`, where the **Sample** column's channels disagree, passes over its target and
 leaves what was there; an empty cell empties it.
 
 In the **Order**, a block pasted past the last frame grows the song to hold it, and
@@ -192,7 +192,7 @@ wherever you see it.
 |---------|--------|
 | Click a channel's name | Silence it, or bring it back |
 | `Ctrl`+click a channel's name | Solo it — silence the other three; `Ctrl`+click again returns the mix you had |
-| Click **Voice** (tracker) or **Master** (order) | Silence every channel, or bring them all back |
+| Click **Sample** (tracker) or **Master** (order) | Silence every channel, or bring them all back |
 | Right-click any name | The same actions as a menu |
 
 The **Playback ▸ Channels** submenu carries the same mix: a check marks each channel
