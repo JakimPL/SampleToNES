@@ -26,7 +26,7 @@
 * A loop point per envelope: a voice states one point, applied to every populated sequence.
 * A sample's loop point is offered as a switch in the voice list, though the model carries the
   point for both kinds of voice.
-* Exporting a shape as an instrument file from the Reconstructions tab.
+* Exporting a hand-written instrument as an instrument file from the Reconstructions tab.
 * `SubColumn.INSTRUMENT` names the first slot of both tracker column kinds, and the two hold
   different things: the voice id under the Voice column, and the note on a channel column. One
   name for both is wrong half the time, and splitting it reaches the layout keys
@@ -57,6 +57,12 @@
   Configuration and session state carry no version at all, so the same corpus would state what a
   build is expected to make of a `state.yaml` an older one left behind. Reaches
   `tests/unit/sampletones_core/compatibility/` and each format's load tests.
+* The element enums that outlived their keys. A lookup states its key literally, so an element
+  enum is named only where a `_label(element)` helper takes one — `ui/menu.py`,
+  `coordinators/project.py`, `coordinators/keybindings.py`, `ui/panels/dialogs/project_properties.py`
+  and the panels beside them. The language-keys check expands such a helper over the whole enum, so
+  a member no call names is reached all the same and stands unnoticed. Spelling those keys literally
+  at the call site would make each entry exactly checkable and retire the enums that remain.
 * Respecting FamiTracker limitations
 * Per-tab undo routing
 * In-application console

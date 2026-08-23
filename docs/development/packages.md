@@ -62,7 +62,7 @@ instruction each channel sounds on each engine tick — the order walked frame b
 column starting a voice, its transpose and volume bending what that voice carries, a voice with a
 loop point circling where one without falls silent — is `sampletones_core/performance/`. One
 reading answers for both kinds of voice: a sample plays the frames its conversion found for the
-channel, a shape the frames its envelopes make of it. The sequencer renders
+channel, a hand-written instrument the frames its envelopes make of it. The sequencer renders
 those instructions to audio and the player encodes them into register values, so what a listener
 hears and what the console plays are the same walk read two ways rather than two implementations of
 one rule.

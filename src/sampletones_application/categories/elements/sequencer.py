@@ -1,23 +1,6 @@
 from sampletones_application.categories.abstract import AbstractElement
 
 
-class SequencerBrowserElements(AbstractElement):
-    REFRESH_BUTTON = "refresh_button"
-    STATUS_REFRESH = "status_refresh"
-    RECONSTRUCTIONS_TREE = "reconstructions_tree"
-    FILE_NOT_FOUND = "file_not_found"
-    LOAD_ERROR = "load_error"
-    LOAD_RECONSTRUCTION_DIALOG = "load_reconstruction_dialog"
-
-
-class SequencerModuleElements(AbstractElement):
-    MODULE_OPTIONS = "module_options"
-    NES_FREQUENCY = "nes_frequency"
-    ROWS = "rows"
-    TEMPO = "tempo"
-    SPEED = "speed"
-
-
 class SequencerTrackerElements(AbstractElement):
     TRACKER_TEXT = "tracker_text"
     OCTAVE = "octave"

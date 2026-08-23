@@ -148,14 +148,14 @@ down. **Export instrument...** writes the channel you are looking at, in
 whichever tracker format you pick in the save dialog — see [where your files
 live](files.md#exported-files).
 
-A **shape** — a voice you wrote by hand rather than converted, see the
-[sequencer guide](sequencer.md#voices-samples-and-shapes) — opens here too, from
+An **instrument** — a voice you wrote by hand rather than converted, see the
+[sequencer guide](sequencer.md#voices-samples-and-instruments) — opens here too, from
 the **Voices** list's right-click ▸ **Edit**. It stands on no recording, so the tab
-shows its envelopes alone: one instrument every channel reads, under the shape's own
+shows its envelopes alone: one set every channel reads, under the instrument's own
 name. **Root pitch** is the note its arpeggio is measured against on the melodic
 channels and **Root period** the one on **Noise**, and **Loop point** is the tick its
 envelopes repeat from while a note is held — an attack followed by a sustained tail.
-Editing a shape puts away whatever reconstruction the tab held.
+Editing an instrument puts away whatever reconstruction the tab held.
 
 ## Instructions
 

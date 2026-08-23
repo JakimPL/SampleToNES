@@ -26,7 +26,7 @@ coordinates, which is what lets it land anywhere it is anchored.
 Two axes underpin both grids:
 
 - **`constants/sequencer.py::CHANNEL_AXIS`** — `(None,) + ChannelName.items()`. Index 0
-  is the aggregate column (the tracker's **Sample**, the order's **Master**) and 1 to 4
+  is the aggregate column (the tracker's **Voice**, the order's **Master**) and 1 to 4
   are the channels. Both grids lay out along it, so a row index means the same thing in
   either.
 - **`view_model/sequencer/slot.py::TrackerSlot`** — a column paired with a subcolumn,
@@ -75,7 +75,7 @@ Two consequences follow from the order the writes are taken in:
   channel cell in the same block overwrites what the aggregate settled. The more specific
   write wins.
 - In the tracker, notes land before the transposes and volumes sharing their row, because
-  placing a sample through the **Sample** column clears the channels of that row.
+  placing a sample through the **Voice** column clears the channels of that row.
 
 ## The order grows to what a paste reaches
 
@@ -208,7 +208,7 @@ far corner. The whole frame, a column and a subcolumn are therefore three naming
 rectangle, as the whole order and a channel row are of the other, and a grid laying out nothing
 keeps the selection it had.
 
-The aggregate is an ordinary member of the axis here: selecting the **Sample** column selects a
+The aggregate is an ordinary member of the axis here: selecting the **Voice** column selects a
 column the way selecting a channel does, and the **Master** row a row.
 
 A press names its shape from the cell the cursor stands on, which is the cell the context menu's

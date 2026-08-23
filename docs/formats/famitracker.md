@@ -177,18 +177,19 @@ and triggering the instrument at `initial_pitch` replays that contour. Volume, d
 (or noise mode) and any pitch sequences carry across directly. The DPCM
 key-assignment table is empty by design.
 
-A [shape](../glossary.md#shape) is one set of envelopes every channel reads, which is
-the instrument model FamiTracker itself uses, so it becomes a single instrument
-however many channels play it. Its dimensions are written at one length, each holding
-its final value where it is the shorter, so a tracker advancing every sequence on a
-counter of its own sounds the shape the way the engine here plays it. Every channel
-that names the shape reaches that one instrument, each against the root it reads —
-the shape's note on the tonal channels, its period on noise.
+An [instrument](../glossary.md#instrument) written by hand is one set of envelopes
+every channel reads, which is the instrument model FamiTracker itself uses, so it
+becomes a single instrument however many channels play it. Its dimensions are written
+at one length, each holding its final value where it is the shorter, so a tracker
+advancing every sequence on a counter of its own sounds it the way the engine here
+plays it. Every channel that names it reaches that one instrument, each against the
+root it reads — its note on the tonal channels, its period on noise.
 
 **Where a row's note comes from.** A voice states where its zero is and a row states
 the step from it, so a pattern cell holds `reference + transpose`, held inside the
 range a tonal channel plays and wrapped into the sixteen periods on noise. A sample's
-reference is the offset origin its conversion chose; a shape's is the root it states.
+reference is the offset origin its conversion chose; a hand-written instrument's is the
+root it states.
 
 That origin is chosen once, when the reconstruction is built, and stored with it as
 that channel's reference pitch (see [Reconstructions](reconstructions.md#contents)).
@@ -210,7 +211,7 @@ checklist.
 
 | Quantity | FamiTracker limit | Project bound today | Exporter behaviour |
 | --- | --- | --- | --- |
-| Instruments | 64 total | unbounded (1–4 per sample, one per shape) | raises when the instruments exceed 64 |
+| Instruments | 64 total | unbounded (1–4 per sample, one per hand-written instrument) | raises when the instruments exceed 64 |
 | Sequences per kind | 128 | unbounded | raises when a kind's pool exceeds 128 |
 | Items per sequence | 252 | one item per reconstruction frame, unbounded | keeps the opening 252 items and logs a warning |
 | Patterns per channel | 128 (indices 0–127) | pool keyed by arbitrary ints | raises when a pattern index exceeds 127 |

@@ -220,7 +220,7 @@ channel, which carries the pitch contour a FamiTracker arpeggio sequence would.
 
 ### Voice
 
-Anything a tracker row can name: a **sample** or a **shape**. A project holds its
+Anything a tracker row can name: a **sample** or an **instrument**. A project holds its
 voices in one list, and a row states which one to start and the step it plays at.
 
 ### Sample (sequencer)
@@ -228,30 +228,27 @@ voices in one list, and a row states which one to start and the step it plays at
 A reconstruction added to the sequencer as a playable voice, carrying the
 instruction stream its conversion found for each channel.
 
-### Shape
+### Instrument
 
-A voice written by hand: envelopes with no recording behind them. One shape is one
-instrument every channel can read, so it is placed on whichever channel suits it —
-the way a FamiTracker instrument is. See [The sequencer](guide/sequencer.md).
+One set of envelopes a channel reads while a note sounds, saved as an `.fti` file. A
+voice written by hand is a single instrument, placed on whichever channel suits it —
+the way a FamiTracker instrument is; a sample carries one instrument per channel it
+plays. See [The sequencer](guide/sequencer.md) and
+[FamiTracker export](formats/famitracker.md). Bitphase takes the same envelopes as a
+`.json` instrument preset. See [Bitphase export](formats/bitphase.md).
 
 ### Root
 
-The note a shape's arpeggio is measured against, which a row's step moves it from.
-A shape states one for the tonal channels and one for the noise channel's periods,
-so the same envelopes sound on any of the four. The matching value on a sample is
-its per-channel [reference pitch](formats/reconstructions.md#contents).
+The note an instrument's arpeggio is measured against, which a row's step moves it
+from. An instrument written by hand states one for the tonal channels and one for the
+noise channel's periods, so the same envelopes sound on any of the four. The matching
+value on a sample is its per-channel
+[reference pitch](formats/reconstructions.md#contents).
 
 ### Loop point
 
 The tick a voice's envelopes repeat from while a note is held, which lets an attack
 be followed by a sustained tail. A voice without one plays its envelopes once.
-
-### Instrument
-
-A single FamiTracker instrument, saved as an `.fti` file. A sample exports one per
-channel it plays; a shape exports one that every channel reaches. See
-[FamiTracker export](formats/famitracker.md). Bitphase takes the same envelopes as
-a `.json` instrument preset. See [Bitphase export](formats/bitphase.md).
 
 ## File types
 
@@ -263,4 +260,5 @@ a `.json` instrument preset. See [Bitphase export](formats/bitphase.md).
 | `.fti` | FamiTracker instrument ([export](formats/famitracker.md)). |
 | `.ftm` | FamiTracker module ([export](formats/famitracker.md)). |
 | `.btp` | Bitphase document ([export](formats/bitphase.md)). |
+| `.nsf` | [NSF program](formats/nsf.md) — a song and the driver that plays it. |
 | `.json` | Bitphase instrument preset ([export](formats/bitphase.md)), or the [configuration file](formats/configuration.md). |

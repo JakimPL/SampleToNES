@@ -8,11 +8,11 @@ open an existing `.stp`). The pattern grid and order sit in the centre, a browse
 for pulling in reconstructions on the left, and the module settings, voice list,
 and undo history on the right.
 
-## Voices: samples and shapes
+## Voices: samples and instruments
 
 A song is built from **voices**, and there are two kinds. A **sample** is a
-reconstruction imported as a playable instrument. A **shape** is written by hand —
-envelopes with no recording behind them — for the melodies and basses you write
+reconstruction brought in as something a row can play. An **instrument** is written by
+hand — envelopes with no recording behind them — for the melodies and basses you write
 yourself. Both sit in the **Voices** list on the right, numbered together, and a
 mark at the front of each row says which kind it is.
 
@@ -22,42 +22,42 @@ reconstruction was made at a different NES frequency than the project and the
 project already has voices, _SampleToNES_ warns with **Different NES frequency**;
 **Add anyway** adds it regardless.
 
-Add a shape with **New shape** at the top of the list. It starts out holding a note at
-full volume, so you can place it and hear it straight away; shape it into the sound you
+Add an instrument with **New instrument** at the top of the list. It starts out holding a
+note at full volume, so you can place it and hear it straight away; give it the sound you
 want on the **Reconstructions** tab (right-click ▸ **Edit**). See [editing
 instruments](interface.md#editing-instruments).
 
 Right-click any voice to **Edit**, **Rename**, **Duplicate**, **Remove**, or
 reorder it, and toggle its **Loop** flag. The **Edit** menu carries the same actions
 for the voice you have picked. The right-click menu also names how much room the
-voice takes on the NES — a sample's total and then each channel it plays, a shape's
-one instrument — measured as its **Loop** flag has it. The figures are in bytes, and
+voice takes on the NES — a sample's total and then each channel it plays, and an
+instrument's single figure — measured as its **Loop** flag has it. The figures are in bytes, and
 they count what a FamiTracker export saves. Removing a voice that patterns still use
 asks first, because it clears every row that references it.
 
 ## Writing a pattern
 
 The **Tracker** grid is the pattern editor. Each row is one step in time; the
-columns are the **Sample** and the four channels — **Pulse 1**, **Pulse 2**,
+columns are the **Voice** and the four channels — **Pulse 1**, **Pulse 2**,
 **Triangle**, **Noise** — each carrying a voice, a pitch, and a volume. Click a cell
 and type its value. Right-clicking a cell opens the rest of the operations — **Set
-instrument**, **Note off**, **Clear cell** and **Clear row**, transpose and volume
+voice**, **Note off**, **Clear cell** and **Clear row**, transpose and volume
 adjustments, **Play from here** to audition from the cursor row, and **Play from
 this frame** to start at the top of the shown frame.
 
-The **Sample** column places a sample across every channel its reconstruction
-covers. A shape is one instrument for one channel at a time, so name it in the
+The **Voice** column places a sample across every channel its reconstruction
+covers. An instrument sounds on one channel at a time, so name it in the
 channel column you want it on.
 
 ## Reading and typing a pitch
 
 A pitch cell holds one number, and it reads in the terms of the voice the channel is
 carrying. A sample was converted at a pitch of its own, so its cells read as steps
-from it — `+00` plays it as recorded, `+0C` an octave up. A shape was written
+from it — `+00` plays it as recorded, `+0C` an octave up. An instrument was written
 against a root you chose, so its cells read as the notes they sound — `C-4`, `A#3`.
 A row that only bends a note reads the same way as the row that started it.
 
-Type a note into a shape's cell piano-style: the bottom two rows of the keyboard are
+Type a note into an instrument's cell piano-style: the bottom two rows of the keyboard are
 one octave (`Z` `S` `X` `D` `C` …) and the two above them the next (`Q` `2` `W` `3`
 `E` …). **Octave** above the grid says where the bottom row opens. The keys work on
 a sample's cell too, writing the step that reaches the note you pressed. The noise
@@ -109,7 +109,7 @@ down and to the right of it.
 In the **Tracker**, a block keeps the kinds of the cells it came from — a transpose
 lands in a transpose, a volume in a volume, whichever column you paste onto — and
 whatever reaches past the last row or the last column is left out. A cell reading
-`?`, where the **Sample** column's channels disagree, passes over its target and
+`?`, where the **Voice** column's channels disagree, passes over its target and
 leaves what was there; an empty cell empties it.
 
 In the **Order**, a block pasted past the last frame grows the song to hold it, and
@@ -192,7 +192,7 @@ wherever you see it.
 |---------|--------|
 | Click a channel's name | Silence it, or bring it back |
 | `Ctrl`+click a channel's name | Solo it — silence the other three; `Ctrl`+click again returns the mix you had |
-| Click **Sample** (tracker) or **Master** (order) | Silence every channel, or bring them all back |
+| Click **Voice** (tracker) or **Master** (order) | Silence every channel, or bring them all back |
 | Right-click any name | The same actions as a menu |
 
 The **Playback ▸ Channels** submenu carries the same mix: a check marks each channel
