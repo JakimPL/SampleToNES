@@ -148,6 +148,15 @@ down. **Export instrument...** writes the channel you are looking at, in
 whichever tracker format you pick in the save dialog — see [where your files
 live](files.md#exported-files).
 
+A **shape** — a voice you wrote by hand rather than converted, see the
+[sequencer guide](sequencer.md#voices-samples-and-shapes) — opens here too, from
+the **Voices** list's right-click ▸ **Edit**. It stands on no recording, so the tab
+shows its envelopes alone: one instrument every channel reads, under the shape's own
+name. **Root pitch** is the note its arpeggio is measured against on the melodic
+channels and **Root period** the one on **Noise**, and **Loop point** is the tick its
+envelopes repeat from while a note is held — an attack followed by a sustained tail.
+Editing a shape puts away whatever reconstruction the tab held.
+
 ## Instructions
 
 The **Instructions** tab builds and browses the [instruction
@@ -175,7 +184,7 @@ reconstruction and its exports, **Playback** for playing and for muting the
 sequencer's channels, **View** for settings and the window, and **Help** for
 **About**. What **Edit** offers below undo and redo follows your cursor: the
 block actions of the sequencer grid you are in, or the actions of the sample you
-have picked in the **Samples** list.
+have picked in the **Voices** list.
 
 Two items write audio you can play anywhere: **Reconstruction ▸ Export to
 WAV...** for the reconstruction you have open, and **File ▸ Render song...**

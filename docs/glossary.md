@@ -218,17 +218,40 @@ tables, patterns, and order together.
 In Bitphase, a per-tick list of semitone offsets a pattern cell attaches to a
 channel, which carries the pitch contour a FamiTracker arpeggio sequence would.
 
+### Voice
+
+Anything a tracker row can name: a **sample** or a **shape**. A project holds its
+voices in one list, and a row states which one to start and the step it plays at.
+
 ### Sample (sequencer)
 
-A reconstruction added to the sequencer as a playable, placeable voice in the
-song.
+A reconstruction added to the sequencer as a playable voice, carrying the
+instruction stream its conversion found for each channel.
+
+### Shape
+
+A voice written by hand: envelopes with no recording behind them. One shape is one
+instrument every channel can read, so it is placed on whichever channel suits it —
+the way a FamiTracker instrument is. See [The sequencer](guide/sequencer.md).
+
+### Root
+
+The note a shape's arpeggio is measured against, which a row's step moves it from.
+A shape states one for the tonal channels and one for the noise channel's periods,
+so the same envelopes sound on any of the four. The matching value on a sample is
+its per-channel [reference pitch](formats/reconstructions.md#contents).
+
+### Loop point
+
+The tick a voice's envelopes repeat from while a note is held, which lets an attack
+be followed by a sustained tail. A voice without one plays its envelopes once.
 
 ### Instrument
 
-A single FamiTracker instrument, saved as an `.fti` file, exported from one
-channel of a reconstruction. See [FamiTracker export](formats/famitracker.md).
-Bitphase takes the same slice as a `.json` instrument preset. See
-[Bitphase export](formats/bitphase.md).
+A single FamiTracker instrument, saved as an `.fti` file. A sample exports one per
+channel it plays; a shape exports one that every channel reaches. See
+[FamiTracker export](formats/famitracker.md). Bitphase takes the same envelopes as
+a `.json` instrument preset. See [Bitphase export](formats/bitphase.md).
 
 ## File types
 

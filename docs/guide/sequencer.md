@@ -1,40 +1,67 @@
 # The sequencer
 
-The **Sequencer** tab is a tracker: it arranges reconstructions into a song across
-the four NES channels and exports it as a FamiTracker
+The **Sequencer** tab is a tracker: it arranges voices into a song across the four
+NES channels and exports it as a FamiTracker
 [module](../formats/famitracker.md) (`.ftm`). It works on a
 [project](../formats/projects.md), so start one with **File ▸ New project** (or
 open an existing `.stp`). The pattern grid and order sit in the centre, a browser
-for pulling in reconstructions on the left, and the module settings, sample list,
+for pulling in reconstructions on the left, and the module settings, voice list,
 and undo history on the right.
 
-## Adding samples
+## Voices: samples and shapes
 
-A song is built from **samples** — reconstructions imported as playable
-instruments. Add one from the **Reconstructions** browser on the left (right-click
-▸ **Add to Sequencer**), or with **Add to Sequencer** on the **Reconstructions**
-tab. If a reconstruction was made at a different NES frequency than the project and
-the project already has samples, _SampleToNES_ warns with **Different NES
-frequency**; **Add anyway** adds it regardless.
+A song is built from **voices**, and there are two kinds. A **sample** is a
+reconstruction imported as a playable instrument. A **shape** is written by hand —
+envelopes with no recording behind them — for the melodies and basses you write
+yourself. Both sit in the **Voices** list on the right, numbered together, and a
+mark at the front of each row says which kind it is.
 
-Manage the imported samples in the **Samples** list on the right: right-click one
-to **Edit**, **Rename**, **Duplicate**, **Remove**, or reorder it, and toggle its
-**Loop** flag. The **Edit** menu carries the same actions for the sample you have
-picked. The right-click menu also names how much room the sample takes on the NES —
-its total, then each channel it plays — measured as its **Loop** flag has it. The
-figures are in bytes, and they count what a FamiTracker export saves.
-Removing a sample that patterns still use asks **Remove sample** first, because it
-clears every row that references it.
+Add a sample from the **Reconstructions** browser on the left (right-click ▸ **Add
+to Sequencer**), or with **Add to Sequencer** on the **Reconstructions** tab. If a
+reconstruction was made at a different NES frequency than the project and the
+project already has voices, _SampleToNES_ warns with **Different NES frequency**;
+**Add anyway** adds it regardless.
+
+Add a shape with **New shape** at the top of the list. It starts empty and silent —
+give it envelopes on the **Reconstructions** tab (right-click ▸ **Edit**) and it
+begins to sound. See [editing instruments](interface.md#editing-instruments).
+
+Right-click any voice to **Edit**, **Rename**, **Duplicate**, **Remove**, or
+reorder it, and toggle its **Loop** flag. The **Edit** menu carries the same actions
+for the voice you have picked. The right-click menu also names how much room the
+voice takes on the NES — a sample's total and then each channel it plays, a shape's
+one instrument — measured as its **Loop** flag has it. The figures are in bytes, and
+they count what a FamiTracker export saves. Removing a voice that patterns still use
+asks first, because it clears every row that references it.
 
 ## Writing a pattern
 
 The **Tracker** grid is the pattern editor. Each row is one step in time; the
 columns are the **Sample** and the four channels — **Pulse 1**, **Pulse 2**,
-**Triangle**, **Noise** — each carrying a note, volume, and transpose. Click a cell
-and type on your keyboard to enter a note, piano-style. Right-clicking a cell opens
-the rest of the operations — **Set instrument**, **Note off**, **Clear cell** and
-**Clear row**, transpose and volume adjustments, **Play from here** to audition from
-the cursor row, and **Play from this frame** to start at the top of the shown frame.
+**Triangle**, **Noise** — each carrying a voice, a pitch, and a volume. Click a cell
+and type its value. Right-clicking a cell opens the rest of the operations — **Set
+instrument**, **Note off**, **Clear cell** and **Clear row**, transpose and volume
+adjustments, **Play from here** to audition from the cursor row, and **Play from
+this frame** to start at the top of the shown frame.
+
+The **Sample** column places a sample across every channel its reconstruction
+covers. A shape is one instrument for one channel at a time, so name it in the
+channel column you want it on.
+
+## Reading and typing a pitch
+
+A pitch cell holds one number, and it reads in the terms of the voice the channel is
+carrying. A sample was converted at a pitch of its own, so its cells read as steps
+from it — `+00` plays it as recorded, `+0C` an octave up. A shape was written
+against a root you chose, so its cells read as the notes they sound — `C-4`, `A#3`.
+A row that only bends a note reads the same way as the row that started it.
+
+Type a note into a shape's cell piano-style: the bottom two rows of the keyboard are
+one octave (`Z` `S` `X` `D` `C` …) and the two above them the next (`Q` `2` `W` `3`
+`E` …). **Octave** above the grid says where the bottom row opens. The keys work on
+a sample's cell too, writing the step that reaches the note you pressed. The noise
+channel selects one of sixteen periods rather than a note, so its cells are typed as
+a signed value.
 
 ## Arranging the song
 
@@ -96,7 +123,7 @@ A copy also goes to your desktop's clipboard as plain text, so a block carries b
 two open windows of _SampleToNES_ — copy in one, paste in the other — and you can paste
 one into a message to show someone what you wrote. Anything else on the clipboard
 leaves you with the last block you copied here. Notes travel by their number in the
-**Samples** list, so a block pasted into another project plays whichever sample holds
+**Voices** list, so a block pasted into another project plays whichever voice holds
 that number there.
 
 ## Transposing and shading
@@ -182,7 +209,7 @@ audible.
 
 Set the song's timing in **Module options** on the right: **Rows** per pattern,
 **Tempo**, **Speed**, and the **NES frequency**. Changing the **NES frequency**
-after samples exist re-times how they all play back, so it asks **Change NES
+after voices exist re-times how they all play back, so it asks **Change NES
 frequency** first (with a **Don't ask again** option).
 
 The project's title, author, and comment — which carry into the exported module —

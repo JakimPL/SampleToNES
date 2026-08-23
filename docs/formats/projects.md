@@ -1,10 +1,10 @@
 # Projects
 
-A project gathers a set of reconstructions and arranges them into a song, saved
-as a single `.stp` file. It is what the sequencer works with, and what you hand
-over when you share a whole piece. See [Project](../concepts/project.md) for what a
-project is; this page documents the file. [Reconstructions](reconstructions.md)
-documents the individual samples it contains.
+A project gathers a set of voices and arranges them into a song, saved as a single
+`.stp` file. It is what the sequencer works with, and what you hand over when you
+share a whole piece. See [Project](../concepts/project.md) for what a project is;
+this page documents the file. [Reconstructions](reconstructions.md) documents the
+converted audio a sample stands on.
 
 ## Structure
 
@@ -16,7 +16,8 @@ A `.stp` file is a zip archive with two kinds of member:
   id.
 
 Keeping the reconstructions in separate members lets `project.json` stay small
-while the larger audio data travels alongside it in the same archive.
+while the larger audio data travels alongside it in the same archive. A
+[shape](../glossary.md#shape) carries no audio, so the document holds it whole.
 
 ### `project.json`
 
@@ -26,8 +27,19 @@ while the larger audio data travels alongside it in the same archive.
 | `metadata` | the application name and version (managed automatically) |
 | `info` | `title`, `author`, and `comment`, plus `created` and `modified` timestamps |
 | `settings` | the engine settings: `nes_frequency`, `sample_rate`, `tempo`, `speed`, and the metric highlights `first_highlight` and `second_highlight` |
-| `samples` | the song's samples — each an `id`, a `name`, and the `reconstruction_id` of its audio member |
+| `voices` | the song's voices, each told apart by its `kind` (below) |
 | `song` | the arrangement (below) |
+
+### `voices`
+
+Every voice carries an `id`, a `name`, and the `loop_point` its envelopes repeat
+from while a note is held, or `null` where they play once. The `kind` says what
+else it carries:
+
+| `kind` | Contents |
+| --- | --- |
+| `sample` | the `reconstruction_id` of its audio member |
+| `shape` | its `envelopes` — the `volume`, `arpeggio` and `duty_cycle` values it writes, each a list of one item per tick — and the `root_pitch` and `root_period` those values are measured against |
 
 ### `song`
 
@@ -36,8 +48,10 @@ The arrangement across the four channels:
 * `rows_per_pattern` — the row count every pattern in the song shares;
 * `order` — the arrangement itself: an ordered list of frames, each frame mapping
   every channel to the pattern index it plays, or empty for a silent slot;
-* `channels` — per channel, a pool of patterns, each pattern a list of rows
-  carrying the note, volume, and transpose data.
+* `channels` — per channel, a pool of patterns, each pattern a list of rows. A row
+  states the `command` its note column holds — the `voice_id` to start, or a
+  note-off — along with its `transpose` and `volume`. The channel a voice sounds on
+  is the one whose pool holds the row.
 
 ## Detached reconstructions
 
@@ -56,6 +70,7 @@ deserialization (see
 [Data compatibility](../development/compatibility.md)). Unknown or extra fields
 within a matching version are ignored, which leaves room for the format to grow.
 
-The current format version is 1.1. Version 1.1 renamed each channel pool's
-`generator` key to `name` and a row instrument's `generator_name` key to
-`channel_name`; the channel values stored inside never changed.
+The current format version is 1.2. Version 1.2 gathers `samples` into `voices`,
+each record stating its `kind`, and names a row's note command by `voice_id` alone.
+Version 1.1 named each channel pool by `name` and a row command's channel by
+`channel_name`.

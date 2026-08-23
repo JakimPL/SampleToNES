@@ -141,10 +141,10 @@ Each sequence carries:
 - **setting** — the sequence mode; for arpeggio, `0` selects absolute (the offsets
   are added to the played note).
 
-**Looping.** A looping instrument sets the loop point to `0` on every populated
-sequence, so its envelopes repeat from the start while the note is held; a one-shot
-instrument leaves every loop point at `-1`. A sample's `loop` flag drives this when
-the sample is exported into a module.
+**Looping.** A voice's loop point sets every populated sequence to repeat from that
+item, so its envelopes sustain a held note from there on; a voice playing its
+envelopes once leaves every loop point at `-1`. A point beyond a sequence's own items
+repeats its final item, which is the value it would hold anyway.
 
 **Lengths.** FamiTracker advances each sequence on its own per-tick counter. A sequence
 that reaches its last item halts and leaves the value it wrote applied, which the driver
@@ -177,15 +177,27 @@ and triggering the instrument at `initial_pitch` replays that contour. Volume, d
 (or noise mode) and any pitch sequences carry across directly. The DPCM
 key-assignment table is empty by design.
 
-The offset origin is chosen once, when the reconstruction is built, and stored with it
-as that channel's reference pitch (see
-[Reconstructions](reconstructions.md#contents)). For the pitched channels
-`center_pitch` picks it, taking the midpoint of the contour's `(lowest, highest)`
-range; the noise channel takes the first sounding period. Every later export reports
-that stored pitch as `initial_pitch` and writes each frame as `pitch − initial_pitch`,
-wrapped into the 16 available periods on noise. The offsets straddle zero and stay
-compact around one note, and the pattern cell holds the contour's midpoint — a rising
-contour prints its middle note and opens below it.
+A [shape](../glossary.md#shape) is one set of envelopes every channel reads, which is
+the instrument model FamiTracker itself uses, so it becomes a single instrument
+however many channels play it. Its dimensions are written at one length, each holding
+its final value where it is the shorter, so a tracker advancing every sequence on a
+counter of its own sounds the shape the way the engine here plays it. Every channel
+that names the shape reaches that one instrument, each against the root it reads —
+the shape's note on the tonal channels, its period on noise.
+
+**Where a row's note comes from.** A voice states where its zero is and a row states
+the step from it, so a pattern cell holds `reference + transpose`, held inside the
+range a tonal channel plays and wrapped into the sixteen periods on noise. A sample's
+reference is the offset origin its conversion chose; a shape's is the root it states.
+
+That origin is chosen once, when the reconstruction is built, and stored with it as
+that channel's reference pitch (see [Reconstructions](reconstructions.md#contents)).
+For the pitched channels `center_pitch` picks it, taking the midpoint of the contour's
+`(lowest, highest)` range; the noise channel takes the first sounding period. Every
+later export reports that stored pitch as `initial_pitch` and writes each frame as
+`pitch − initial_pitch`, wrapped into the 16 available periods on noise. The offsets
+straddle zero and stay compact around one note, and the pattern cell holds the
+contour's midpoint — a rising contour prints its middle note and opens below it.
 
 ## C. FamiTracker capacity limits
 
@@ -198,13 +210,13 @@ checklist.
 
 | Quantity | FamiTracker limit | Project bound today | Exporter behaviour |
 | --- | --- | --- | --- |
-| Instruments | 64 total | unbounded (1–4 per sample, so ≈16–64 samples) | raises when the distinct slices exceed 64 |
+| Instruments | 64 total | unbounded (1–4 per sample, one per shape) | raises when the instruments exceed 64 |
 | Sequences per kind | 128 | unbounded | raises when a kind's pool exceeds 128 |
 | Items per sequence | 252 | one item per reconstruction frame, unbounded | keeps the opening 252 items and logs a warning |
 | Patterns per channel | 128 (indices 0–127) | pool keyed by arbitrary ints | raises when a pattern index exceeds 127 |
 | Order frames | 128 | unbounded | raises when the order exceeds 128 frames |
 | Pattern length (rows) | 256 | 1–256 (`rows_per_pattern`) | matches; no guard needed |
-| Note range | C-0..B-7 (pitch 24–119) | `initial_pitch` 33–119 + `transpose` −24..+36 can exceed it | clamps to the nearest playable note (fidelity loss at the extremes) |
+| Note range | C-0..B-7 (pitch 24–119) | a reference of 33–119 plus a transpose reaching either end of that span | clamps to the nearest playable note (fidelity loss at the extremes) |
 | Title / author | 32 bytes each | 64 characters | truncates to 32 bytes |
 | Comment | free text (COMMENTS block) | 65536 characters | carried in full |
 | Tempo / speed | engine-dependent (split at row `speed_split_point`) | tempo 32–255, speed 1–31 | written verbatim from settings |
@@ -259,6 +271,6 @@ once, so its own sequences are charged once each.
 
 **Looping levels the sequences.** A looping instrument brings its populated dimensions to the
 shortest length, while a one-shot keeps each dimension as written (section B), so the two forms
-of one set of envelopes cost differently. A sample carries the flag that decides which applies;
-a reconstruction standing on its own is measured as a one-shot, matching the instrument its
-**Export instrument** writes.
+of one set of envelopes cost differently. A voice carries the loop point that decides which
+applies; a reconstruction standing on its own is measured as a one-shot, matching the instrument
+its **Export instrument** writes.

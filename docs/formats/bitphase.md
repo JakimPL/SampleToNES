@@ -78,11 +78,17 @@ carries every register value the channel takes for that tick. From
 | `sweep` / `sweepRate` / `sweepShift` | bool / 0–7 / −7–7 | the square channel's hardware sweep | disabled |
 
 **Looping.** Playback returns to the instrument's `loop` row once it runs off the end,
-which is the only mode there is. A looping slice therefore sets `loop = 0` so its
-envelopes repeat from the start while the note is held; a one-shot sets `loop = len - 1`
-and rests on the level that row carries — silence where the volume envelope ends on a
-note-off item, the channel's own level where the slice holds its volume. A sample's
-`loop` flag drives this, the same flag the FamiTracker exporter reads.
+which is the only mode there is. A slice with a loop point therefore sets `loop` to that
+row so its envelopes repeat from there while the note is held; one playing its rows once
+sets `loop = len - 1` and rests on the level that row carries — silence where the volume
+envelope ends on a note-off item, the channel's own level where the slice holds its
+volume. A voice's loop point drives this, the same point the FamiTracker exporter reads.
+
+**A shape's slices.** Bitphase bakes a channel's registers tick by tick, so a
+[shape](../glossary.md#shape) reaches a document as a slice per channel it sounds on,
+each reading the dimensions that channel offers and moving around the root it states.
+The envelopes are one set whatever the channel, so the slices differ only in what each
+channel reads of them.
 
 **A held volume.** A slice whose volume envelope carries no item leaves its level to the
 channel, so the exporter writes a full `volumeOrRate` for every frame the slice

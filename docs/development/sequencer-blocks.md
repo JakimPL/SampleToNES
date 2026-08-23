@@ -136,9 +136,9 @@ the span of slots or positions the block stands on, and a body whose lines or fi
 with it states no block. The span also carries the alignment a tracker block needs, since the
 first slot decides which subcolumn the block opens on.
 
-**A note names its sample by list position**, the figure the grid prints, so a block carried to
-another project plays whichever sample stands at that position there. A position the project's
-list falls short of reads as mixed, which is what the writer already makes of a sample it has
+**A note names its voice by list position**, the figure the grid prints, so a block carried to
+another project plays whichever voice stands at that position there. A position the project's
+list falls short of reads as mixed, which is what the writer already makes of a voice it has
 nothing to place.
 
 A field the form has no reading for refuses the whole text, so a parse answers with a block or
@@ -268,9 +268,9 @@ Three rules make the travel feel like one gesture:
 - **The selection stays put after a paste** rather than becoming the pasted footprint.
 - **A note crosses a project by whichever route it took.** The in-app slot survives a project
   close, because it must survive `on_project_replaced`, which fires on every undo, and it names
-  its sample by id: a note whose sample the project in place lacks is left out of the write, and
+  its voice by id: a note whose voice the project in place lacks is left out of the write, and
   the target keeps what it had. The clipboard's text names a list position instead, so the same
-  note pasted through it plays whichever sample stands at that position. Transpose and volume
+  note pasted through it plays whichever voice stands at that position. Transpose and volume
   are exact by either route.
 - **A drag past the edge and the followed playhead both write the scroll.** With **Follow rows**
   on during playback, `_reveal_playing_row` carries the sounding row to the head of the band

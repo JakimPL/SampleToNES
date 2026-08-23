@@ -3,7 +3,7 @@ sample: 80
 divider: 4
 channel: 80
 voice:
-  kind: 24
+  kind: 44
   id: 40
   name: 1
   loop: 40
