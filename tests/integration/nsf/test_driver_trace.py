@@ -3,7 +3,7 @@ from typing import Final
 
 import pytest
 
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.voices.sample import Sample
 from sampletones_player.builder import song_from_reconstruction
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.song import song_to_bytes

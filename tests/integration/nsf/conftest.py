@@ -3,7 +3,7 @@ from typing import Dict, Final, Optional
 
 import pytest
 
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.voices.sample import Sample
 from sampletones_player.builder import song_from_reconstruction
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.song import Song

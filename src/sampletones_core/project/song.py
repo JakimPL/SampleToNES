@@ -146,21 +146,21 @@ class Song(BaseModel):
             if frame.get(channel) == index:
                 frame[channel] = None
 
-    def references_sample(self, sample_id: str) -> bool:
-        """Whether any row in any pattern of any channel still points at the sample."""
+    def references_voice(self, voice_id: str) -> bool:
+        """Whether any row in any pattern of any channel still points at the voice."""
         return any(
-            row.references_sample(sample_id)
+            row.references_voice(voice_id)
             for channel in self.channels.values()
             for pattern in channel.patterns.values()
             for row in pattern.rows
         )
 
-    def clear_sample_references(self, sample_id: str) -> None:
-        """Clears the note-column command of every row that points at a removed sample."""
+    def clear_voice_references(self, voice_id: str) -> None:
+        """Clears the note-column command of every row that points at a removed voice."""
         for channel in self.channels.values():
             for pattern in channel.patterns.values():
                 pattern.rows = [
-                    row.model_copy(update={"command": None}) if row.references_sample(sample_id) else row
+                    row.model_copy(update={"command": None}) if row.references_voice(voice_id) else row
                     for row in pattern.rows
                 ]
 

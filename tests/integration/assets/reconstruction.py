@@ -17,7 +17,8 @@ from sampletones_core.library import (
     InstructionLibraryData,
     InstructionLibraryFragment,
 )
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
@@ -154,7 +155,11 @@ def make_sample(
     if played != expected_slices:
         raise AssertionError(f"Sample '{name}' covers {set(played)}, expected {set(expected_slices)}")
 
-    return Sample(name=name, reconstruction=reconstruction, loop=loop)
+    return Sample(
+        name=name,
+        reconstruction=reconstruction,
+        loop_point=WHOLE_LOOP_POINT if loop else None,
+    )
 
 
 def load_instrument_catalog(

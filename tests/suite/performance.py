@@ -11,11 +11,12 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
+from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.stems import single_entry_stems_data
 
@@ -118,8 +119,12 @@ def project_with_sample(
     reaching back into the collection for an id it already knows.
     """
     project = Project.create(rows_per_pattern=rows_per_pattern, settings=settings)
-    sample = Sample(name=name, reconstruction=reconstruction, loop=loop)
-    project.samples.append(sample)
+    sample = Sample(
+        name=name,
+        reconstruction=reconstruction,
+        loop_point=WHOLE_LOOP_POINT if loop else None,
+    )
+    project.voices.append(sample)
     return project, sample
 
 
@@ -139,7 +144,7 @@ def place_instrument(
         project.song.rows_per_pattern,
     )
     pattern.rows[row_index] = Row(
-        command=Instrument(sample_id=sample.id, channel_name=channel_name),
+        command=NoteOn(voice_id=sample.id),
         transpose=transpose,
         volume=volume,
     )

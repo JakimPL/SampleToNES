@@ -291,7 +291,7 @@ class TestReconstructionSaveAsDetachment:
         assert app._build_menu_bar_viewmodel().reconstruction_saveable
         assert app.reconstruction_manager.reconstruction is not original
         assert sample.reconstruction is original
-        assert original in [sample.reconstruction for sample in app.project_manager.current.samples]
+        assert original in [sample.reconstruction for sample in app.project_manager.current.voices]
 
 
 class TestAddOpenReconstructionToSequencer:
@@ -340,7 +340,7 @@ class TestAddOpenReconstructionToSequencer:
 
         app._add_current_reconstruction_to_sequencer()
 
-        sample = app.project_manager.current.samples[0]
+        sample = app.project_manager.current.voices[0]
         assert sample.reconstruction is not app.reconstruction_manager.reconstruction
         assert sample.reconstruction.audio_filepath == ()
         assert not app._editing_project_sample()

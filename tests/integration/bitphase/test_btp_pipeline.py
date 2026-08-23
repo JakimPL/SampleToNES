@@ -81,7 +81,7 @@ def at_tempo(project: Project, tempo: int) -> Project:
         metadata=project.metadata,
         info=project.info,
         settings=project.settings.model_copy(update={"tempo": tempo}),
-        samples=project.samples,
+        voices=project.voices,
         song=project.song,
     )
 

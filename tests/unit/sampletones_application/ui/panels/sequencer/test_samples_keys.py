@@ -10,9 +10,9 @@ from sampletones_application.view_model.sequencer.samples import SampleEntryView
 from tests.suite.shortcuts import shipped_source
 
 ENTRIES: Tuple[SampleEntryViewModel, ...] = (
-    SampleEntryViewModel(sample_id="kick-id", name="Kick", loop=False),
-    SampleEntryViewModel(sample_id="bass-id", name="Bass", loop=True),
-    SampleEntryViewModel(sample_id="lead-id", name="Lead", loop=False),
+    SampleEntryViewModel(voice_id="kick-id", name="Kick", loop=False),
+    SampleEntryViewModel(voice_id="bass-id", name="Bass", loop=True),
+    SampleEntryViewModel(voice_id="lead-id", name="Lead", loop=False),
 )
 
 SELECTED_ID = "bass-id"
@@ -37,13 +37,13 @@ def samples(monkeypatch: pytest.MonkeyPatch) -> SamplesPanelFixture:
     panel = GUISequencerSamplesPanel.__new__(GUISequencerSamplesPanel)
     panel._shortcuts = shipped_source()
     panel._entries = ENTRIES
-    panel._selected_sample_id = SELECTED_ID
+    panel._selected_voice_id = SELECTED_ID
     panel._selected_row = SELECTED_ROW
-    panel._editing_sample_id = None
+    panel._editing_voice_id = None
 
     fixture = SamplesPanelFixture(panel=panel)
     panel.on_remove_requested = fixture.removed.append
-    panel.on_move_requested = lambda sample_id, target: fixture.moved.append((sample_id, target))
+    panel.on_move_requested = lambda voice_id, target: fixture.moved.append((voice_id, target))
     monkeypatch.setattr(panel, "_start_rename", fixture.renamed.append)
     monkeypatch.setattr(panel, "_cancel_rename", lambda: fixture.cancelled.append(None))
     return fixture
@@ -69,7 +69,7 @@ class TestSelectedSampleActions:
         assert samples.removed == []
 
     def test_a_press_without_a_selection_reaches_the_application(self, samples: SamplesPanelFixture) -> None:
-        samples.panel._selected_sample_id = None
+        samples.panel._selected_voice_id = None
 
         assert samples.panel._on_key_pressed(_press("Del")) is False
 
@@ -92,14 +92,14 @@ class TestSampleMoves:
 
 class TestRenameInProgress:
     def test_the_cancel_key_drops_the_name_being_edited(self, samples: SamplesPanelFixture) -> None:
-        samples.panel._editing_sample_id = SELECTED_ID
+        samples.panel._editing_voice_id = SELECTED_ID
 
         assert samples.panel._on_key_pressed(_press("Esc")) is True
         assert samples.cancelled == [None]
 
     def test_every_other_key_stays_with_the_field(self, samples: SamplesPanelFixture) -> None:
         """A rename keeps the keyboard, so typing a name reaches the input rather than the list."""
-        samples.panel._editing_sample_id = SELECTED_ID
+        samples.panel._editing_voice_id = SELECTED_ID
 
         assert samples.panel._on_key_pressed(_press("Del")) is False
         assert samples.removed == []

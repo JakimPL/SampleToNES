@@ -110,9 +110,9 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._shortcuts = shortcut_source
         self._row_handler_tag = compose_tag(TAG_SEQUENCER_INSTRUMENTS_TABLE, SUF_HANDLER_REGISTRY)
         self._rename_handler_tag = compose_tag(TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME, SUF_HANDLER_REGISTRY)
-        self._selected_sample_id: Optional[str] = None
+        self._selected_voice_id: Optional[str] = None
         self._selected_row: Optional[int] = None
-        self._editing_sample_id: Optional[str] = None
+        self._editing_voice_id: Optional[str] = None
         self._entries: Tuple[SampleEntryViewModel, ...] = ()
         self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
         self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
@@ -214,7 +214,7 @@ class GUISequencerSamplesPanel(GUIPanel):
 
     def update_view(self, view_model: SequencerSamplesViewModel) -> None:
         self._entries = view_model.samples
-        self._editing_sample_id = None
+        self._editing_voice_id = None
         self._rebuild()
 
     def _rebuild(self) -> None:
@@ -230,7 +230,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         for position, entry in enumerate(self._entries):
             self._build_sample_row(position, entry)
         if self._selected_row is None:
-            self._selected_sample_id = None
+            self._selected_voice_id = None
 
     def _build_sample_row(
         self,
@@ -241,7 +241,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._build_id_cell(row_id, position, entry)
         self._build_name_cell(row_id, position, entry)
         self._build_loop_cell(row_id, entry)
-        if entry.sample_id == self._selected_sample_id:
+        if entry.voice_id == self._selected_voice_id:
             self._selected_row = position
             self._highlight_selected_row(position)
 
@@ -273,7 +273,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         id_selectable = dpg.add_selectable(
             parent=id_cell,
             label=display_id(position),
-            user_data=(position, entry.sample_id),
+            user_data=(position, entry.voice_id),
             callback=self._on_sample_selected,
         )
         FontRegistry.bind_to_item(id_selectable, Font.MONO_SMALL)
@@ -286,7 +286,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         entry: SampleEntryViewModel,
     ) -> None:
         name_cell = dpg.add_table_cell(parent=row_id)
-        if entry.sample_id == self._editing_sample_id:
+        if entry.voice_id == self._editing_voice_id:
             self._build_name_input(name_cell, entry)
         else:
             self._build_name_selectable(name_cell, position, entry)
@@ -300,7 +300,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         name_selectable = dpg.add_selectable(
             parent=name_cell,
             label=entry.name,
-            user_data=(position, entry.sample_id),
+            user_data=(position, entry.voice_id),
             callback=self._on_sample_selected,
         )
         FontRegistry.bind_to_item(name_selectable, Font.MONO_SMALL)
@@ -331,7 +331,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         loop_checkbox = dpg.add_checkbox(
             parent=loop_cell,
             default_value=entry.loop,
-            user_data=entry.sample_id,
+            user_data=entry.voice_id,
             callback=self._on_loop_toggled,
         )
         FontRegistry.bind_to_item(loop_checkbox, Font.REGULAR_SMALL)
@@ -342,7 +342,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         _app_data: bool,
         user_data: Tuple[int, str],
     ) -> None:
-        position, sample_id = user_data
+        position, voice_id = user_data
         dpg.set_value(sender, False)
         if self._selected_row is not None:
             dpg.unhighlight_table_row(
@@ -351,9 +351,9 @@ class GUISequencerSamplesPanel(GUIPanel):
             )
 
         self._selected_row = position
-        self._selected_sample_id = sample_id
+        self._selected_voice_id = voice_id
         self._highlight_selected_row(position)
-        self.call(self.on_sample_selected, sample_id)
+        self.call(self.on_sample_selected, voice_id)
 
     @property
     def selection(self) -> Optional[SampleSelection]:
@@ -363,15 +363,15 @@ class GUISequencerSamplesPanel(GUIPanel):
         whatever the table currently shows. Lets an operation hosted by another panel of the tab
         address the selection without keeping a copy of it.
         """
-        if self._selected_sample_id is None or self._selected_row is None:
+        if self._selected_voice_id is None or self._selected_row is None:
             return None
 
-        entry = self._entry_for(self._selected_sample_id)
+        entry = self._entry_for(self._selected_voice_id)
         if entry is None:
             return None
 
         return SampleSelection(
-            sample_id=entry.sample_id,
+            voice_id=entry.voice_id,
             position=self._selected_row,
             name=entry.name,
         )
@@ -390,7 +390,7 @@ class GUISequencerSamplesPanel(GUIPanel):
             )
 
         self._selected_row = None
-        self._selected_sample_id = None
+        self._selected_voice_id = None
 
     def _keys_active(self) -> bool:
         """Whether the samples panel owns the next key.
@@ -403,10 +403,10 @@ class GUISequencerSamplesPanel(GUIPanel):
         if not self._tab_active():
             return False
 
-        if self._editing_sample_id is not None:
+        if self._editing_voice_id is not None:
             return True
 
-        return self._selected_sample_id is not None and not self._router.is_field_focused
+        return self._selected_voice_id is not None and not self._router.is_field_focused
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
         """Applies a samples key to the selected sample, reporting whether the panel consumed it.
@@ -415,21 +415,21 @@ class GUISequencerSamplesPanel(GUIPanel):
         leaves unnamed goes to the application's global shortcuts.
         """
         shortcut_id = self._shortcuts.action(ShortcutCategory.SAMPLES, event)
-        if self._editing_sample_id is not None:
+        if self._editing_voice_id is not None:
             return self._cancel_edit(shortcut_id)
 
-        sample_id = self._selected_sample_id
-        if sample_id is None or shortcut_id is None:
+        voice_id = self._selected_voice_id
+        if voice_id is None or shortcut_id is None:
             return False
 
-        if self._move_sample(shortcut_id):
+        if self._move_voice(shortcut_id):
             return True
 
         match shortcut_id:
             case ShortcutId.SAMPLES_REMOVE_SAMPLE:
-                self.call(self.on_remove_requested, sample_id)
+                self.call(self.on_remove_requested, voice_id)
             case ShortcutId.SAMPLES_RENAME_SAMPLE:
-                self._start_rename(sample_id)
+                self._start_rename(voice_id)
             case _:
                 return False
 
@@ -447,28 +447,28 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._cancel_rename()
         return True
 
-    def _move_sample(self, shortcut_id: ShortcutId) -> bool:
+    def _move_voice(self, shortcut_id: ShortcutId) -> bool:
         """Moves the selected sample up, down, to the top or to the bottom of the list.
 
         Returns whether the action was one of the moves, so a boundary with nowhere to go still
         counts as consumed and stays out of the global shortcuts.
         """
         direction = MOVE_DIRECTIONS.get(shortcut_id)
-        if direction is None or self._selected_sample_id is None or self._selected_row is None:
+        if direction is None or self._selected_voice_id is None or self._selected_row is None:
             return False
 
         target = direction.target(self._selected_row, len(self._entries))
         if target is not None:
-            self.call(self.on_move_requested, self._selected_sample_id, target)
+            self.call(self.on_move_requested, self._selected_voice_id, target)
 
         return True
 
-    def _start_rename(self, sample_id: str) -> None:
+    def _start_rename(self, voice_id: str) -> None:
         """Turns the sample's name cell into a focused text input."""
-        if self._entry_for(sample_id) is None:
+        if self._entry_for(voice_id) is None:
             return
 
-        self._editing_sample_id = sample_id
+        self._editing_voice_id = voice_id
         self._rebuild()
         FrameCallbackManager.set_frame_callback(lambda: dpg.focus_item(TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME))
 
@@ -478,20 +478,20 @@ class GUISequencerSamplesPanel(GUIPanel):
         Clears the edit before notifying so the input's deactivated handler, fired
         during the teardown rebuild, sees the edit already finished.
         """
-        if self._editing_sample_id is None:
+        if self._editing_voice_id is None:
             return
 
-        sample_id = self._editing_sample_id
+        voice_id = self._editing_voice_id
         name = dpg.get_value(TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME)
-        self._editing_sample_id = None
-        self.call(self.on_rename_committed, sample_id, name)
+        self._editing_voice_id = None
+        self.call(self.on_rename_committed, voice_id, name)
         self._rebuild()
 
     def _cancel_rename(self) -> None:
-        if self._editing_sample_id is None:
+        if self._editing_voice_id is None:
             return
 
-        self._editing_sample_id = None
+        self._editing_voice_id = None
         self._rebuild()
 
     def _on_rename_enter(self, _sender: Sender, _app_data: str) -> None:
@@ -520,8 +520,8 @@ class GUISequencerSamplesPanel(GUIPanel):
         clicked_item = app_data[1]
         user_data = dpg.get_item_user_data(clicked_item)
         if user_data is not None:
-            _, sample_id = user_data
-            self.call(self.on_sample_edit_requested, sample_id)
+            _, voice_id = user_data
+            self.call(self.on_sample_edit_requested, voice_id)
 
     def _on_sample_clicked(
         self,
@@ -536,19 +536,19 @@ class GUISequencerSamplesPanel(GUIPanel):
         if user_data is None:
             return
 
-        position, sample_id = user_data
-        self._show_context_menu(position, sample_id)
+        position, voice_id = user_data
+        self._show_context_menu(position, voice_id)
 
-    def _entry_for(self, sample_id: str) -> Optional[SampleEntryViewModel]:
-        return next((entry for entry in self._entries if entry.sample_id == sample_id), None)
+    def _entry_for(self, voice_id: str) -> Optional[SampleEntryViewModel]:
+        return next((entry for entry in self._entries if entry.voice_id == voice_id), None)
 
-    def _show_context_menu(self, position: int, sample_id: str) -> None:
-        entry = self._entry_for(sample_id)
+    def _show_context_menu(self, position: int, voice_id: str) -> None:
+        entry = self._entry_for(voice_id)
         if entry is None:
             return
 
         target = SampleSelection(
-            sample_id=sample_id,
+            voice_id=voice_id,
             position=position,
             name=entry.name,
         )
@@ -556,7 +556,7 @@ class GUISequencerSamplesPanel(GUIPanel):
             header = dpg.add_text(target.label)
             FontRegistry.bind_to_item(header, Font.MONO_BOLD)
             add_detail_items(
-                self._footprint_items(sample_id),
+                self._footprint_items(voice_id),
                 color=self._detail_color,
                 tooltip=self._tip_size_bytes,
             )
@@ -565,20 +565,20 @@ class GUISequencerSamplesPanel(GUIPanel):
                 context_label(self._language_manager, ContextElements.PLAY),
                 lambda: self.call(
                     self.on_play_requested,
-                    sample_id,
+                    voice_id,
                 ),
             )
             dpg.add_separator()
             self.add_action_items(target)
 
-    def _footprint_items(self, sample_id: str) -> List[Tuple[str, str]]:
+    def _footprint_items(self, voice_id: str) -> List[Tuple[str, str]]:
         """The byte figures the menu prints for a sample: its total, then each channel that plays.
 
         The figures are asked for as the menu opens, so they name what the sample occupies at the
         moment a reader looks. A channel standing by is written by no export, so it costs nothing
         and the menu names the channels that do.
         """
-        footprint = self.query(self.sample_footprint, sample_id, default=None)
+        footprint = self.query(self.sample_footprint, voice_id, default=None)
         if footprint is None:
             return []
 
@@ -624,7 +624,7 @@ class GUISequencerSamplesPanel(GUIPanel):
                 self._language_manager,
                 SequencerInstrumentsElements.CONTEXT_EDIT,
             ),
-            callback=lambda: self.call(self.on_sample_edit_requested, target.sample_id),
+            callback=lambda: self.call(self.on_sample_edit_requested, target.voice_id),
         )
         dpg.add_menu_item(
             label=self._label(
@@ -632,14 +632,14 @@ class GUISequencerSamplesPanel(GUIPanel):
                 SequencerInstrumentsElements.CONTEXT_RENAME,
             ),
             shortcut=self._shortcuts.display(ShortcutId.SAMPLES_RENAME_SAMPLE),
-            callback=lambda: self._start_rename(target.sample_id),
+            callback=lambda: self._start_rename(target.voice_id),
         )
         dpg.add_menu_item(
             label=self._label(
                 self._language_manager,
                 SequencerInstrumentsElements.CONTEXT_DUPLICATE,
             ),
-            callback=lambda: self.call(self.on_duplicate_requested, target.sample_id),
+            callback=lambda: self.call(self.on_duplicate_requested, target.voice_id),
         )
         dpg.add_separator()
         dpg.add_menu_item(
@@ -648,7 +648,7 @@ class GUISequencerSamplesPanel(GUIPanel):
                 SequencerInstrumentsElements.CONTEXT_REMOVE,
             ),
             shortcut=self._shortcuts.display(ShortcutId.SAMPLES_REMOVE_SAMPLE),
-            callback=lambda: self.call(self.on_remove_requested, target.sample_id),
+            callback=lambda: self.call(self.on_remove_requested, target.voice_id),
         )
         dpg.add_separator()
         for move in SAMPLE_MOVES:
@@ -667,7 +667,7 @@ class GUISequencerSamplesPanel(GUIPanel):
             enabled=position is not None,
             callback=lambda: self.call(
                 self.on_move_requested,
-                target.sample_id,
+                target.voice_id,
                 position,
             ),
         )

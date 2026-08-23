@@ -224,7 +224,7 @@ class TestChannelsFillTheRow(BaseTestSuite):
         controller = make_controller()
         reconstruction = make_pulse_reconstruction(count=1)
         sample = add_sample(controller, reconstruction, loop=True)
-        place_row(controller, channel=ChannelName.PULSE1, row_index=0, sample_id=sample.id)
+        place_row(controller, channel=ChannelName.PULSE1, row_index=0, voice_id=sample.id)
         synthesizer = make_synthesizer(controller, Config(), sample_rate=UNEVEN_SAMPLE_RATE)
 
         chunk, _ = synthesizer.render_row()
@@ -237,7 +237,7 @@ class TestChannelsFillTheRow(BaseTestSuite):
         controller = make_controller()
         reconstruction = make_pulse_reconstruction(count=1)
         sample = add_sample(controller, reconstruction, loop=True)
-        place_row(controller, channel=ChannelName.PULSE1, row_index=0, sample_id=sample.id)
+        place_row(controller, channel=ChannelName.PULSE1, row_index=0, voice_id=sample.id)
         synthesizer = make_synthesizer(controller, Config(), sample_rate=UNEVEN_SAMPLE_RATE)
 
         chunk, _ = synthesizer.render_row()

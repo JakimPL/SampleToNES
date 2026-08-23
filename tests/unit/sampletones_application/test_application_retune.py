@@ -6,10 +6,10 @@ from sampletones_application.services.result import ServiceCancelled
 from sampletones_application.services.retune import RetunedSample
 
 
-def _retuned(sample_id: str, rate: int) -> RetunedSample:
+def _retuned(voice_id: str, rate: int) -> RetunedSample:
     reconstruction = MagicMock()
     reconstruction.config.nes_frequency = rate
-    return RetunedSample(sample_id=sample_id, reconstruction=reconstruction)
+    return RetunedSample(voice_id=voice_id, reconstruction=reconstruction)
 
 
 def _app(
@@ -20,7 +20,7 @@ def _app(
     app = Application.__new__(Application)
     app.project_manager = MagicMock()
     app.project_manager.current.settings.nes_frequency = current_rate
-    app.project_manager.current.samples.get.return_value = sample
+    app.project_manager.current.voices.get.return_value = sample
     app.reconstruction_manager = MagicMock()
     app.reconstruction_manager.reconstruction = open_reconstruction
     app.history = MagicMock()
@@ -79,9 +79,9 @@ class TestApplyRetunedSample:
         app._reconstructions_tab.update_reconstruction.assert_not_called()
 
 
-def _sample(sample_id: str, rate: int) -> MagicMock:
+def _sample(voice_id: str, rate: int) -> MagicMock:
     sample = MagicMock()
-    sample.id = sample_id
+    sample.id = voice_id
     sample.reconstruction.config.nes_frequency = rate
     return sample
 
@@ -93,7 +93,7 @@ def _app_for_rate(
 ) -> Application:
     app = Application.__new__(Application)
     app.project_manager = MagicMock()
-    app.project_manager.current.samples = samples
+    app.project_manager.current.voices = samples
     app.reconstruction_manager = MagicMock()
     app.reconstruction_manager.reconstruction = open_reconstruction
     app.retune_service = MagicMock()

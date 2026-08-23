@@ -1,8 +1,8 @@
 from typing import Final, Optional, Union
 
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.structures import IdentifiedCollection
 from sampletones_shared.constants.symbols import MINUS, PLUS
 
@@ -32,37 +32,37 @@ def display_id(value: Optional[int]) -> str:
     return display_value(value, hexadecimal=True)
 
 
-def display_sample(
+def display_voice(
     *,
-    samples: IdentifiedCollection[Sample],
-    sample_id: Optional[str] = None,
+    voices: IdentifiedCollection[Sample],
+    voice_id: Optional[str] = None,
 ) -> str:
     """
-    Render a sample reference as its current list position (not its uuid).
+    Render a voice reference as its current list position (not its uuid).
     """
-    if sample_id is not None and samples.get(sample_id) is not None:
-        return display_id(samples.get_index(sample_id))
+    if voice_id is not None and voices.get(voice_id) is not None:
+        return display_id(voices.get_index(voice_id))
 
     return display_id(None)
 
 
-def display_sample_label(position: int, name: str) -> str:
-    """Render an instrument's list label as ``"<hex position>: <name>"`` (e.g. ``"1A: Bass"``)."""
+def display_voice_label(position: int, name: str) -> str:
+    """Render a voice's list label as ``"<hex position>: <name>"`` (e.g. ``"1A: Bass"``)."""
     return f"{display_id(position)}: {name}"
 
 
 def display_command(
-    samples: IdentifiedCollection[Sample],
-    command: Optional[Union[Instrument, NoteOff]],
+    voices: IdentifiedCollection[Sample],
+    command: Optional[Union[NoteOn, NoteOff]],
 ) -> str:
-    """Render a row's note-column command: a sample's list position, ``--`` for note-off, or ``..``."""
+    """Render a row's note-column command: a voice's list position, ``--`` for note-off, or ``..``."""
     match command:
         case NoteOff():
             return NOTE_OFF
-        case Instrument():
-            return display_sample(samples=samples, sample_id=command.sample_id)
+        case NoteOn():
+            return display_voice(voices=voices, voice_id=command.voice_id)
         case None:
-            return display_sample(samples=samples, sample_id=None)
+            return display_voice(voices=voices, voice_id=None)
 
 
 def display_volume(value: Optional[int]) -> str:

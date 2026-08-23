@@ -1,13 +1,13 @@
 from typing import Any, Dict, List, Mapping, Optional
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_yaml
 
@@ -39,7 +39,7 @@ def _row(spec: RowSpec, channel: ChannelName, samples_by_name: Mapping[str, Samp
     if channel not in sample.reconstruction.instructions:
         raise ValueError(f"Sample '{sample_name}' has no '{channel.value}' slice for the {channel.value} channel")
 
-    command = Instrument(sample_id=sample.id, channel_name=channel)
+    command = NoteOn(voice_id=sample.id)
     return Row(command=command, transpose=transpose, volume=volume)
 
 

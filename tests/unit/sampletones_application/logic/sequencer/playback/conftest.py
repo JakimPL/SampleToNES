@@ -11,9 +11,10 @@ from sampletones_application.logic.sequencer.playback.synthesizer import RowSynt
 from sampletones_core.configs import Config
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 
 
@@ -51,7 +52,7 @@ def add_sample(
 ) -> Sample:
     sample = controller.add_sample(reconstruction, name)
     if loop:
-        controller.set_sample_loop(sample.id, loop=True)
+        controller.set_voice_loop_point(sample.id, WHOLE_LOOP_POINT)
     return sample
 
 
@@ -60,7 +61,7 @@ def place_row(
     *,
     channel: ChannelName,
     row_index: int = 0,
-    sample_id: str,
+    voice_id: str,
     transpose: int | None = None,
     volume: int | None = None,
 ) -> None:
@@ -69,7 +70,7 @@ def place_row(
         channel,
         pattern_index,
         row_index,
-        command=Instrument(sample_id=sample_id, channel_name=channel),
+        command=NoteOn(voice_id=voice_id),
         transpose=transpose,
         volume=volume,
     )

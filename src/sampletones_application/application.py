@@ -157,7 +157,7 @@ from sampletones_core.exporters import Features
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.stage import ExportStage
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.types.feature import FeatureValue
@@ -1023,10 +1023,10 @@ class Application:
     def _navigate_to_reconstructions(self) -> None:
         self._set_current_tab(Tab.RECONSTRUCTIONS)
 
-    def _edit_project_sample(self, sample_id: str) -> None:
-        sample = self.project_manager.current.sample(sample_id)
+    def _edit_project_sample(self, voice_id: str) -> None:
+        sample = self.project_manager.current.voice(voice_id)
         if sample is None:
-            logger.warning(f"Cannot edit unknown project sample: {sample_id}")
+            logger.warning(f"Cannot edit unknown project sample: {voice_id}")
             return
 
         self.reconstruction_manager.load_reconstruction_object(
@@ -1036,7 +1036,7 @@ class Application:
 
     def _rebind_replaced_sample(
         self,
-        sample_id: str,
+        voice_id: str,
         reconstruction: Reconstruction,
     ) -> None:
         """Points the open Reconstructions-tab document at the reconstruction replacing the one it edits.
@@ -1046,10 +1046,10 @@ class Application:
         reconstruction, which is what identifies the open document as belonging to it.
 
         Args:
-            sample_id: The sample receiving a new reconstruction.
+            voice_id: The sample receiving a new reconstruction.
             reconstruction: The reconstruction the sample is about to hold.
         """
-        sample = self.project_manager.current.sample(sample_id)
+        sample = self.project_manager.current.voice(voice_id)
         if sample is None or sample.reconstruction is not self.reconstruction_manager.reconstruction:
             return
 
@@ -1096,18 +1096,18 @@ class Application:
                 edit.reconstruction,
             )
 
-    def _edit_detail(self, sample_id: str, edit: ReconstructionEdit) -> HistoryDetail:
+    def _edit_detail(self, voice_id: str, edit: ReconstructionEdit) -> HistoryDetail:
         """The history line an edit reads as: the feature it moved, or the recording it took out."""
         match edit:
             case InstrumentEdit():
                 return self._sequencer_tab.reconstruction_edit_detail(
-                    sample_id,
+                    voice_id,
                     edit.channel_name,
                     edit.feature_key,
                 )
             case StemRemoval():
                 return self._sequencer_tab.reconstruction_stem_detail(
-                    sample_id,
+                    voice_id,
                     edit.stem_name,
                 )
 
@@ -1120,7 +1120,7 @@ class Application:
         """
         targets = [
             (sample.id, sample.reconstruction)
-            for sample in self.project_manager.current.samples
+            for sample in self.project_manager.current.voices
             if sample.reconstruction.config.nes_frequency != nes_frequency
         ]
         if not targets:
@@ -1160,7 +1160,7 @@ class Application:
         open in the Reconstructions tab rebinds so its editor and the project sample stay one object.
         """
         project = self.project_manager.current
-        sample = project.samples.get(retuned.sample_id)
+        sample = project.voices.get(retuned.voice_id)
         if sample is None:
             return
 
@@ -1175,7 +1175,7 @@ class Application:
             coalesce=(nes_frequency,),
         ):
             self.project_controller.replace_sample_reconstruction(
-                retuned.sample_id,
+                retuned.voice_id,
                 retuned.reconstruction,
             )
 
@@ -1319,7 +1319,7 @@ class Application:
         if reconstruction is None:
             return None
 
-        for sample in self.project_manager.current.samples:
+        for sample in self.project_manager.current.voices:
             if sample.reconstruction is reconstruction:
                 return sample
 
@@ -1352,7 +1352,7 @@ class Application:
         unsaved_changes = self._reconstruction_coordinator.is_unsaved()
         sample = self._owning_project_sample()
         if sample is not None:
-            ordinal = self.project_manager.current.samples.get_index(sample.id)
+            ordinal = self.project_manager.current.voices.get_index(sample.id)
             name = SEQUENCER_SAMPLE_TITLE_FORMAT.format(
                 ordinal=format(ordinal, SEQUENCER_SAMPLE_ORDINAL_FORMAT),
                 name=sample.name,

@@ -4,13 +4,13 @@ from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamp
 from sampletones_application.view_model.sequencer.samples import SampleEntryViewModel
 
 ENTRIES: Tuple[SampleEntryViewModel, ...] = (
-    SampleEntryViewModel(sample_id="kick-id", name="Kick", loop=False),
-    SampleEntryViewModel(sample_id="bass-id", name="Bass", loop=True),
+    SampleEntryViewModel(voice_id="kick-id", name="Kick", loop=False),
+    SampleEntryViewModel(voice_id="bass-id", name="Bass", loop=True),
 )
 
 
 def _panel(
-    selected_sample_id: Optional[str],
+    selected_voice_id: Optional[str],
     selected_row: Optional[int],
     entries: Tuple[SampleEntryViewModel, ...] = ENTRIES,
 ) -> GUISequencerSamplesPanel:
@@ -21,7 +21,7 @@ def _panel(
     """
     panel = GUISequencerSamplesPanel.__new__(GUISequencerSamplesPanel)
     panel._entries = entries
-    panel._selected_sample_id = selected_sample_id
+    panel._selected_voice_id = selected_voice_id
     panel._selected_row = selected_row
     return panel
 
@@ -33,7 +33,7 @@ class TestSelectionAccessor:
         selection = panel.selection
 
         assert selection is not None
-        assert selection.sample_id == "bass-id"
+        assert selection.voice_id == "bass-id"
         assert selection.position == 1
         assert selection.name == "Bass"
         assert selection.label == "01: Bass"
@@ -48,7 +48,7 @@ class TestSelectionAccessor:
 
     def test_follows_a_renamed_sample(self) -> None:
         panel = _panel("kick-id", 0)
-        panel._entries = (SampleEntryViewModel(sample_id="kick-id", name="Thump", loop=False),)
+        panel._entries = (SampleEntryViewModel(voice_id="kick-id", name="Thump", loop=False),)
 
         selection = panel.selection
 

@@ -161,13 +161,13 @@ class TestReconstructionFootprints:
     def test_one_entry_per_playing_channel(self) -> None:
         """The sample holds every channel; the two that play are the two an export writes."""
         sample = dual_generator_sample("bell", pulse_pitch=72, triangle_pitch=36)
-        footprints = reconstruction_footprints(sample.reconstruction, loop=sample.loop)
+        footprints = reconstruction_footprints(sample.reconstruction, loop=sample.loops)
         assert set(footprints) == {ChannelName.PULSE1, ChannelName.TRIANGLE}
 
     def test_a_triangle_slice_carries_one_sequence_less_than_a_pulse_slice(self) -> None:
         """Triangle exports volume and arpeggio; pulse adds duty, hence one more pointer."""
         sample = dual_generator_sample("bell", pulse_pitch=72, triangle_pitch=36)
-        footprints = reconstruction_footprints(sample.reconstruction, loop=sample.loop)
+        footprints = reconstruction_footprints(sample.reconstruction, loop=sample.loops)
         pulse = footprints[ChannelName.PULSE1]
         triangle = footprints[ChannelName.TRIANGLE]
         assert pulse.instrument_bytes - triangle.instrument_bytes == SEQUENCE_POINTER_BYTES

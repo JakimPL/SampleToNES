@@ -52,12 +52,12 @@ from sampletones_core.formats.famitracker.specification.patterns import (
     MIN_OCTAVE,
     NoteValue,
 )
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.song import Song
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_shared.application import SAMPLETONES_COPYRIGHT
 
 
@@ -117,7 +117,7 @@ def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], Inst
                 sample_slice.index,
                 sample_slice.instrument_name,
                 sample_slice.features,
-                loop=sample_slice.sample.loop,
+                loop=sample_slice.sample.loops,
             )
         )
         slots[sample_slice.key] = sample_slice.slot
@@ -153,12 +153,12 @@ def _row_cell(
     match row.command:
         case NoteOff():
             note = int(NoteValue.HALT)
-        case Instrument() as reference:
-            slot = slots.get((reference.sample_id, reference.channel_name))
+        case NoteOn() as reference:
+            slot = slots.get((reference.voice_id, channel_generator))
             if slot is None:
                 raise ValueError(
-                    f"Row references sample '{reference.sample_id}' slice "
-                    f"'{reference.channel_name}' that has no instrument"
+                    f"Row references voice '{reference.voice_id}' on channel "
+                    f"'{channel_generator}' with no instrument"
                 )
             instrument = slot.index
             note, octave = _note_and_octave(

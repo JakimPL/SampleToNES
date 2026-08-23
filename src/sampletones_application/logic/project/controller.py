@@ -6,9 +6,9 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME, MIN_TRANSPOSE
 from sampletones_core.exports.request import ProjectExport
 from sampletones_core.project import Project
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.project.song import Song
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
@@ -38,7 +38,7 @@ class ProjectController(CallbackMixin):
         self.on_project_replaced: Optional[VoidCallback] = None
         self.on_info_changed: Optional[VoidCallback] = None
         self.on_settings_changed: Optional[VoidCallback] = None
-        self.on_samples_changed: Optional[VoidCallback] = None
+        self.on_voices_changed: Optional[VoidCallback] = None
         self.on_song_changed: Optional[VoidCallback] = None
         self.on_mutation: Optional[VoidCallback] = None
         self.on_saved: Optional[VoidCallback] = None
@@ -66,11 +66,11 @@ class ProjectController(CallbackMixin):
 
     @property
     def has_samples(self) -> bool:
-        return bool(self.project.samples)
+        return bool(self.project.voices)
 
     @property
     def sample_count(self) -> int:
-        return len(self.project.samples)
+        return len(self.project.voices)
 
     @property
     def is_dirty(self) -> bool:
@@ -195,12 +195,12 @@ class ProjectController(CallbackMixin):
         """
         reconstruction.detach_source()
         sample = Sample(name=name, reconstruction=reconstruction)
-        self.project.samples.append(sample)
+        self.project.voices.append(sample)
         self._touch()
-        self._announce(self.on_samples_changed)
+        self._announce(self.on_voices_changed)
         return sample
 
-    def replace_sample_reconstruction(self, sample_id: str, reconstruction: Reconstruction) -> None:
+    def replace_sample_reconstruction(self, voice_id: str, reconstruction: Reconstruction) -> None:
         """Substitutes a sample's reconstruction, detaching its local source-audio origin.
 
         The sample keeps its id, so every pattern row referencing it stays valid and the tracker
@@ -208,54 +208,55 @@ class ProjectController(CallbackMixin):
         reconstruction, the project stays a self-contained, shareable artifact.
         """
         reconstruction.detach_source()
-        self.project.samples[sample_id].reconstruction = reconstruction
+        self.project.voices[voice_id].reconstruction = reconstruction
         self._touch()
-        self._announce(self.on_samples_changed)
+        self._announce(self.on_voices_changed)
         self._announce(self.on_song_changed)
 
-    def rename_sample(self, sample_id: str, name: str) -> None:
-        self.project.samples[sample_id].name = name
+    def rename_voice(self, voice_id: str, name: str) -> None:
+        self.project.voices[voice_id].name = name
         self._touch()
-        self._announce(self.on_samples_changed)
+        self._announce(self.on_voices_changed)
         self._announce(self.on_song_changed)
 
-    def set_sample_loop(self, sample_id: str, loop: bool) -> None:
-        self.project.samples[sample_id].loop = loop
+    def set_voice_loop_point(self, voice_id: str, loop_point: Optional[int]) -> None:
+        """Sets the tick a voice's instructions repeat from, or ``None`` where it plays once."""
+        self.project.voices[voice_id].loop_point = loop_point
         self._touch()
-        self._announce(self.on_samples_changed)
+        self._announce(self.on_voices_changed)
 
-    def is_sample_used(self, sample_id: str) -> bool:
-        return self.song.references_sample(sample_id)
+    def is_voice_used(self, voice_id: str) -> bool:
+        return self.song.references_voice(voice_id)
 
-    def remove_sample(self, sample_id: str) -> None:
-        self.project.samples.pop(sample_id)
-        self.song.clear_sample_references(sample_id)
+    def remove_voice(self, voice_id: str) -> None:
+        self.project.voices.pop(voice_id)
+        self.song.clear_voice_references(voice_id)
         self._touch()
-        self._announce(self.on_samples_changed)
+        self._announce(self.on_voices_changed)
         self._announce(self.on_song_changed)
 
-    def duplicate_sample(self, sample_id: str) -> Sample:
-        """Appends an independent copy of a sample (same name and loop flag).
+    def duplicate_voice(self, voice_id: str) -> Sample:
+        """Appends an independent copy of a voice (same name and loop point).
 
-        The copy is appended, so existing samples keep their positions; it keeps the
+        The copy is appended, so existing voices keep their positions; it keeps the
         source name (like duplicated patterns), leaving renaming to the user.
         """
-        clone = self.project.samples[sample_id].clone()
-        self.project.samples.append(clone)
+        clone = self.project.voices[voice_id].clone()
+        self.project.voices.append(clone)
         self._touch()
-        self._announce(self.on_samples_changed)
+        self._announce(self.on_voices_changed)
         return clone
 
-    def move_sample(self, sample_id: str, to_index: int) -> None:
-        """Reorders the sample pool.
+    def move_voice(self, voice_id: str, to_index: int) -> None:
+        """Reorders the voice pool.
 
-        Pattern rows reference samples by stable id, so reordering keeps every
+        Pattern rows reference voices by stable id, so reordering keeps every
         reference valid; it only changes the positional index the tracker displays,
         hence ``on_song_changed`` fires so the grid re-renders those indices.
         """
-        self.project.samples.move(sample_id, to_index)
+        self.project.voices.move(voice_id, to_index)
         self._touch()
-        self._announce(self.on_samples_changed)
+        self._announce(self.on_voices_changed)
         self._announce(self.on_song_changed)
 
     def add_pattern(self, channel: ChannelName) -> int:

@@ -9,7 +9,8 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.project import ProjectContainer
-from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
+from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.reconstructions import Reconstruction
 
 
@@ -59,12 +60,12 @@ class TestSamples:
     ) -> None:
         controller = _controller()
         emitted: List[str] = []
-        controller.on_samples_changed = lambda: emitted.append("samples")
+        controller.on_voices_changed = lambda: emitted.append("samples")
 
         sample = controller.add_sample(reconstruction_factory(), name="lead")
 
-        assert list(controller.project.samples) == [sample]
-        assert controller.project.sample(sample.id) is sample
+        assert list(controller.project.voices) == [sample]
+        assert controller.project.voice(sample.id) is sample
         assert emitted == ["samples"]
 
     def test_add_sample_detaches_source_but_keeps_object_identity(
@@ -92,13 +93,13 @@ class TestSamples:
             ChannelName.PULSE1,
             pattern_id,
             0,
-            command=Instrument(sample_id=sample.id, channel_name=ChannelName.PULSE1),
+            command=NoteOn(voice_id=sample.id),
             volume=15,
         )
 
-        controller.remove_sample(sample.id)
+        controller.remove_voice(sample.id)
 
-        assert controller.project.sample(sample.id) is None
+        assert controller.project.voice(sample.id) is None
         assert song.pattern(ChannelName.PULSE1, pattern_id).rows[0].command is None
 
     def test_is_sample_used_reflects_pattern_references(
@@ -109,19 +110,16 @@ class TestSamples:
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         pattern_id = controller.project.song.order[0][ChannelName.PULSE1]
 
-        assert controller.is_sample_used(sample.id) is False
+        assert controller.is_voice_used(sample.id) is False
 
         controller.set_row(
             ChannelName.PULSE1,
             pattern_id,
             0,
-            command=Instrument(
-                sample_id=sample.id,
-                channel_name=ChannelName.PULSE1,
-            ),
+            command=NoteOn(voice_id=sample.id),
         )
 
-        assert controller.is_sample_used(sample.id) is True
+        assert controller.is_voice_used(sample.id) is True
 
     def test_move_sample_reorders_pool(
         self,
@@ -132,14 +130,14 @@ class TestSamples:
         controller.add_sample(reconstruction_factory(), name="second")
         controller.add_sample(reconstruction_factory(), name="third")
 
-        controller.move_sample(first.id, 2)
+        controller.move_voice(first.id, 2)
 
-        assert [sample.name for sample in controller.project.samples] == [
+        assert [sample.name for sample in controller.project.voices] == [
             "second",
             "third",
             "first",
         ]
-        assert controller.project.samples.get_index(first.id) == 2
+        assert controller.project.voices.get_index(first.id) == 2
 
     def test_move_sample_preserves_row_references(
         self,
@@ -154,17 +152,14 @@ class TestSamples:
             ChannelName.PULSE1,
             pattern_id,
             0,
-            command=Instrument(
-                sample_id=sample.id,
-                channel_name=ChannelName.PULSE1,
-            ),
+            command=NoteOn(voice_id=sample.id),
         )
 
-        controller.move_sample(sample.id, 1)
+        controller.move_voice(sample.id, 1)
 
         row = song.pattern(ChannelName.PULSE1, pattern_id).rows[0]
         assert row.command is not None
-        assert row.command.sample_id == sample.id
+        assert row.command.voice_id == sample.id
 
     def test_move_sample_emits_samples_and_song_changes(
         self, reconstruction_factory: Callable[[], Reconstruction]
@@ -173,10 +168,10 @@ class TestSamples:
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         controller.add_sample(reconstruction_factory(), name="pad")
         emitted: List[str] = []
-        controller.on_samples_changed = lambda: emitted.append("samples")
+        controller.on_voices_changed = lambda: emitted.append("samples")
         controller.on_song_changed = lambda: emitted.append("song")
 
-        controller.move_sample(sample.id, 1)
+        controller.move_voice(sample.id, 1)
 
         assert "samples" in emitted
         assert "song" in emitted
@@ -187,16 +182,16 @@ class TestSamples:
         controller = _controller()
         source = controller.add_sample(reconstruction_factory(), name="lead")
 
-        clone = controller.duplicate_sample(source.id)
+        clone = controller.duplicate_voice(source.id)
 
         assert clone.id != source.id
         assert clone.name == source.name
         assert clone.reconstruction is not source.reconstruction
-        assert [sample.name for sample in controller.project.samples] == [
+        assert [sample.name for sample in controller.project.voices] == [
             "lead",
             "lead",
         ]
-        assert controller.project.samples.get_index(clone.id) == 1
+        assert controller.project.voices.get_index(clone.id) == 1
 
     def test_duplicate_sample_emits_samples_change(
         self,
@@ -205,9 +200,9 @@ class TestSamples:
         controller = _controller()
         source = controller.add_sample(reconstruction_factory(), name="lead")
         emitted: List[str] = []
-        controller.on_samples_changed = lambda: emitted.append("samples")
+        controller.on_voices_changed = lambda: emitted.append("samples")
 
-        controller.duplicate_sample(source.id)
+        controller.duplicate_voice(source.id)
 
         assert emitted == ["samples"]
 
@@ -223,7 +218,7 @@ class TestSamples:
 
         assert sample.reconstruction is replacement
         assert sample.name == "lead"
-        assert controller.project.sample(sample.id) is sample
+        assert controller.project.voice(sample.id) is sample
 
     def test_replace_sample_reconstruction_detaches_source(
         self,
@@ -250,10 +245,7 @@ class TestSamples:
             ChannelName.PULSE1,
             pattern_id,
             0,
-            command=Instrument(
-                sample_id=sample.id,
-                channel_name=ChannelName.PULSE1,
-            ),
+            command=NoteOn(voice_id=sample.id),
         )
 
         controller.replace_sample_reconstruction(
@@ -263,7 +255,7 @@ class TestSamples:
 
         row = song.pattern(ChannelName.PULSE1, pattern_id).rows[0]
         assert row.command is not None
-        assert row.command.sample_id == sample.id
+        assert row.command.voice_id == sample.id
 
     def test_replace_sample_reconstruction_emits_samples_and_song_changes(
         self,
@@ -272,7 +264,7 @@ class TestSamples:
         controller = _controller()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         emitted: List[str] = []
-        controller.on_samples_changed = lambda: emitted.append("samples")
+        controller.on_voices_changed = lambda: emitted.append("samples")
         controller.on_song_changed = lambda: emitted.append("song")
 
         controller.replace_sample_reconstruction(
@@ -298,17 +290,14 @@ class TestSong:
             ChannelName.PULSE1,
             pattern_id,
             2,
-            command=Instrument(
-                sample_id=sample.id,
-                channel_name=ChannelName.PULSE1,
-            ),
+            command=NoteOn(voice_id=sample.id),
             transpose=0,
             volume=10,
         )
 
         row = song.pattern(ChannelName.PULSE1, pattern_id).rows[2]
         assert row.command is not None
-        assert row.command.sample_id == sample.id
+        assert row.command.voice_id == sample.id
         assert row.transpose == 0
         assert row.volume == 10
 
@@ -354,10 +343,7 @@ class TestPersistenceRoundTrip:
             ChannelName.PULSE1,
             pattern_id,
             0,
-            command=Instrument(
-                sample_id=sample.id,
-                channel_name=ChannelName.PULSE1,
-            ),
+            command=NoteOn(voice_id=sample.id),
             volume=12,
         )
 
@@ -367,10 +353,10 @@ class TestPersistenceRoundTrip:
 
         assert loaded.info.title == "Round"
         assert loaded.settings.tempo == 96
-        assert [stored.name for stored in loaded.samples] == ["lead"]
+        assert [stored.name for stored in loaded.voices] == ["lead"]
         loaded_row = loaded.song.pattern(ChannelName.PULSE1, pattern_id).rows[0]
         assert loaded_row.command is not None
-        assert loaded_row.command.sample_id == sample.id
+        assert loaded_row.command.voice_id == sample.id
         assert loaded_row.volume == 12
 
 
@@ -390,7 +376,7 @@ class TestProperties:
         controller.add_sample(reconstruction_factory(), name="pad")
         assert controller.sample_count == 2
 
-        controller.remove_sample(sample.id)
+        controller.remove_voice(sample.id)
         assert controller.sample_count == 1
 
     def test_is_dirty_false_initially(self) -> None:
@@ -510,8 +496,8 @@ class TestSampleLoop:
     ) -> None:
         controller = _controller()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
-        controller.set_sample_loop(sample.id, True)
-        assert controller.project.sample(sample.id).loop is True
+        controller.set_voice_loop_point(sample.id, WHOLE_LOOP_POINT)
+        assert controller.project.voice(sample.id).loop_point == WHOLE_LOOP_POINT
 
 
 class TestPatternManagement:
@@ -558,7 +544,7 @@ class TestLiveLinkedReconstruction:
         reconstruction = reconstruction_factory()
         sample = controller.add_sample(reconstruction, name="lead")
 
-        assert controller.project.sample(sample.id).reconstruction is reconstruction
+        assert controller.project.voice(sample.id).reconstruction is reconstruction
 
     def test_in_place_reconstruction_edit_is_visible_through_project(
         self, reconstruction_factory: Callable[[], Reconstruction]
@@ -583,7 +569,7 @@ class TestLiveLinkedReconstruction:
             (),
         )
 
-        stored = controller.project.sample(sample.id).reconstruction
+        stored = controller.project.voice(sample.id).reconstruction
         assert stored.get_channel_instructions(ChannelName.PULSE1) == new_instructions
 
 

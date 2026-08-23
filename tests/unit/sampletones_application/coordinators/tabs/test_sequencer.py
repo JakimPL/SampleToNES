@@ -118,11 +118,11 @@ class TestRemoveSample:
         self,
         samples_coordinator: SequencerTabCoordinator,
     ) -> None:
-        samples_coordinator._sequencer_samples_logic.is_sample_used.return_value = False
+        samples_coordinator._sequencer_samples_logic.is_voice_used.return_value = False
 
-        samples_coordinator._remove_sample("abc")
+        samples_coordinator._remove_voice("abc")
 
-        samples_coordinator._sequencer_samples_logic.remove_sample.assert_called_once_with("abc")
+        samples_coordinator._sequencer_samples_logic.remove_voice.assert_called_once_with("abc")
         samples_coordinator._dialogs.show_confirmation.assert_not_called()
 
     def test_used_sample_prompts_confirmation_before_removing(
@@ -130,19 +130,19 @@ class TestRemoveSample:
         samples_coordinator: SequencerTabCoordinator,
     ) -> None:
         logic = samples_coordinator._sequencer_samples_logic
-        logic.is_sample_used.return_value = True
+        logic.is_voice_used.return_value = True
         logic.sample_name.return_value = "lead"
 
-        samples_coordinator._remove_sample("abc")
+        samples_coordinator._remove_voice("abc")
 
         samples_coordinator._dialogs.show_confirmation.assert_called_once()
-        logic.remove_sample.assert_not_called()
+        logic.remove_voice.assert_not_called()
 
         confirmation = samples_coordinator._dialogs.show_confirmation.call_args.kwargs
         assert confirmation["message"] == "Remove lead?"
 
         confirmation["on_confirm"]()
-        logic.remove_sample.assert_called_once_with("abc")
+        logic.remove_voice.assert_called_once_with("abc")
 
 
 class TestSubmitRename:
@@ -152,7 +152,7 @@ class TestSubmitRename:
     ) -> None:
         samples_coordinator._submit_rename("abc", "  bass  ")
 
-        samples_coordinator._sequencer_samples_logic.rename_sample.assert_called_once_with("abc", "bass")
+        samples_coordinator._sequencer_samples_logic.rename_voice.assert_called_once_with("abc", "bass")
 
     def test_submit_rename_ignores_blank_name(
         self,
@@ -628,7 +628,7 @@ def replace_coordinator() -> SequencerTabCoordinator:
     instance._sequencer_samples_logic = MagicMock()
     instance._sequencer_samples_panel = MagicMock()
     instance._sequencer_samples_panel.selection = SampleSelection(
-        sample_id="bass-id",
+        voice_id="bass-id",
         position=26,
         name="bass",
     )
@@ -674,7 +674,7 @@ class TestReplaceReconstruction:
 
         replace_coordinator.replace_reconstruction(Path("/reconstructions/kick_02.stn"))
 
-        replace_coordinator._sequencer_samples_logic.rename_sample.assert_called_once_with(
+        replace_coordinator._sequencer_samples_logic.rename_voice.assert_called_once_with(
             "bass-id",
             "kick_02",
         )

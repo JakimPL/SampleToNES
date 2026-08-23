@@ -4,9 +4,9 @@ from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogi
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_shared.constants.symbols import MIXED
 from tests.suite.sequencer import sample_reconstruction
 
@@ -28,14 +28,14 @@ def _row(
 def _place_instrument(
     controller: ProjectController,
     channel: ChannelName,
-    sample_id: str,
+    voice_id: str,
 ) -> None:
     pattern_index = controller.project.song.order[0][channel]
     controller.set_row(
         channel,
         pattern_index,
         0,
-        command=Instrument(sample_id=sample_id, channel_name=channel),
+        command=NoteOn(voice_id=voice_id),
     )
 
 
@@ -121,13 +121,13 @@ class TestWriteCell:
         logic.write_cell(0, None, sample.id, None, None)
 
         for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
-            assert isinstance(_row(controller, channel).command, Instrument)
+            assert isinstance(_row(controller, channel).command, NoteOn)
 
         for channel in (ChannelName.PULSE2, ChannelName.NOISE):
             assert _row(controller, channel).command is None
 
-    def test_a_sample_in_a_channel_cell_is_named_for_that_channel(self) -> None:
-        """A cell re-targets the sample onto its own channel, whichever channels the sample covers."""
+    def test_a_sample_in_a_channel_cell_lands_on_that_channel(self) -> None:
+        """A cell writes the voice into its own channel's pattern, whichever channels the sample covers."""
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
@@ -138,9 +138,8 @@ class TestWriteCell:
         logic.write_cell(0, ChannelName.NOISE, sample.id, None, None)
 
         command = _row(controller, ChannelName.NOISE).command
-        assert isinstance(command, Instrument)
-        assert command.sample_id == sample.id
-        assert command.channel_name == ChannelName.NOISE
+        assert isinstance(command, NoteOn)
+        assert command.voice_id == sample.id
         assert _row(controller, ChannelName.PULSE1).command is None
 
     def test_a_transpose_in_the_sample_column_reaches_every_channel(self) -> None:
@@ -299,9 +298,8 @@ class TestSetSampleInstrument:
 
         for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
             command = _row(controller, channel).command
-            assert isinstance(command, Instrument)
-            assert command.sample_id == sample.id
-            assert command.channel_name == channel
+            assert isinstance(command, NoteOn)
+            assert command.voice_id == sample.id
 
         for channel in (ChannelName.PULSE2, ChannelName.NOISE):
             assert _row(controller, channel).command is None
@@ -318,10 +316,7 @@ class TestSetSampleInstrument:
             ChannelName.PULSE2,
             pattern_index,
             0,
-            command=Instrument(
-                sample_id=stale.id,
-                channel_name=ChannelName.PULSE2,
-            ),
+            command=NoteOn(voice_id=stale.id),
             volume=15,
         )
 

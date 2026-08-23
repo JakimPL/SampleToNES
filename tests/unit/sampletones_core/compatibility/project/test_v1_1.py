@@ -8,6 +8,15 @@ def _pool(extra: Dict[str, Any]) -> Dict[str, Any]:
     return {"generator": "pulse1", "patterns": {}, **extra}
 
 
+def _pool_with_row(command: Dict[str, Any]) -> Dict[str, Any]:
+    return {"generator": "pulse1", "patterns": {"0": {"rows": [{"command": command}]}}}
+
+
+def _first_command(data: Dict[str, Any]) -> Dict[str, Any]:
+    command: Dict[str, Any] = data["song"]["channels"]["pulse1"]["patterns"]["0"]["rows"][0]["command"]
+    return command
+
+
 class TestProjectV1_1:
     def test_renames_channel_pool_field(self) -> None:
         data = {"song": {"channels": {"pulse1": _pool({})}}}
@@ -18,58 +27,20 @@ class TestProjectV1_1:
         assert "generator" not in upgraded["song"]["channels"]["pulse1"]
 
     def test_renames_instrument_command_channel(self) -> None:
-        data = {
-            "song": {
-                "channels": {
-                    "pulse1": {
-                        "generator": "pulse1",
-                        "patterns": {
-                            "0": {
-                                "rows": {
-                                    "0": {
-                                        "command": {
-                                            "sample_id": "s",
-                                            "generator_name": "pulse1",
-                                        }
-                                    },
-                                }
-                            }
-                        },
-                    }
-                }
-            }
-        }
+        data = {"song": {"channels": {"pulse1": _pool_with_row({"sample_id": "s", "generator_name": "pulse1"})}}}
 
         upgraded = update(data)
 
-        command = upgraded["song"]["channels"]["pulse1"]["patterns"]["0"]["rows"]["0"]["command"]
+        command = _first_command(upgraded)
         assert command[CHANNEL_NAME] == "pulse1"
         assert "generator_name" not in command
 
     def test_leaves_note_off_commands_untouched(self) -> None:
-        data = {
-            "song": {
-                "channels": {
-                    "pulse1": {
-                        "generator": "pulse1",
-                        "patterns": {
-                            "0": {
-                                "rows": {
-                                    "0": {
-                                        "command": {},
-                                    }
-                                }
-                            }
-                        },
-                    }
-                }
-            }
-        }
+        data = {"song": {"channels": {"pulse1": _pool_with_row({})}}}
 
         upgraded = update(data)
 
-        command = upgraded["song"]["channels"]["pulse1"]["patterns"]["0"]["rows"]["0"]["command"]
-        assert command == {}
+        assert _first_command(upgraded) == {}
 
     def test_leaves_the_input_untouched(self) -> None:
         data = {"song": {"channels": {"pulse1": _pool({})}}}

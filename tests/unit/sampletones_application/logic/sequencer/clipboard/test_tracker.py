@@ -9,7 +9,8 @@ from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.project.instruments.note_off import NoteOff
+from sampletones_core.constants.general import MAX_TRANSPOSE, MIN_TRANSPOSE
+from sampletones_core.project.voices.note_off import NoteOff
 
 SAMPLE_IDS: List[str] = ["kick", "snare", "hat"]
 
@@ -17,18 +18,18 @@ SAMPLE_IDS: List[str] = ["kick", "snare", "hat"]
 class FakeSampleDirectory:
     """A list of samples, standing where the project's own list would."""
 
-    def __init__(self, sample_ids: List[str]) -> None:
-        self._sample_ids = sample_ids
+    def __init__(self, voice_ids: List[str]) -> None:
+        self._voice_ids = voice_ids
 
-    def position_of(self, sample_id: str) -> Optional[int]:
-        if sample_id not in self._sample_ids:
+    def position_of(self, voice_id: str) -> Optional[int]:
+        if voice_id not in self._voice_ids:
             return None
 
-        return self._sample_ids.index(sample_id)
+        return self._voice_ids.index(voice_id)
 
     def sample_at(self, position: int) -> Optional[str]:
-        if 0 <= position < len(self._sample_ids):
-            return self._sample_ids[position]
+        if 0 <= position < len(self._voice_ids):
+            return self._voice_ids[position]
 
         return None
 
@@ -270,8 +271,8 @@ REFUSALS: List[RefusalCase] = [
     RefusalCase("a slot past the grid", "SampleToNES/1 tracker rows=1 slots=13..15\n01 +00 F"),
     RefusalCase("a word in a note field", f"{HEADER}\nxx +00 F\n01 +00 F"),
     RefusalCase("an unsigned transpose", f"{HEADER}\n01 12 F\n01 +00 F"),
-    RefusalCase("a transpose past the range", f"{HEADER}\n01 +40 F\n01 +00 F"),
-    RefusalCase("a transpose below the range", f"{HEADER}\n01 -40 F\n01 +00 F"),
+    RefusalCase("a transpose past the range", f"{HEADER}\n01 +{MAX_TRANSPOSE + 1:02X} F\n01 +00 F"),
+    RefusalCase("a transpose below the range", f"{HEADER}\n01 -{abs(MIN_TRANSPOSE) + 1:02X} F\n01 +00 F"),
     RefusalCase("a volume past the range", f"{HEADER}\n01 +00 FF\n01 +00 F"),
     RefusalCase("dots and marks in one field", f"{HEADER}\n.? +00 F\n01 +00 F"),
 ]

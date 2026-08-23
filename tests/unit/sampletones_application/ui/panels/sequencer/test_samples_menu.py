@@ -16,13 +16,13 @@ from sampletones_application.view_model.sequencer.samples import SampleEntryView
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
-from sampletones_core.utils.display import display_sample_label
+from sampletones_core.utils.display import display_voice_label
 from tests.suite.shortcuts import shipped_source
 
 ENTRIES: Tuple[SampleEntryViewModel, ...] = (
-    SampleEntryViewModel(sample_id="kick-id", name="Kick", loop=False),
-    SampleEntryViewModel(sample_id="bass-id", name="Bass", loop=True),
-    SampleEntryViewModel(sample_id="lead-id", name="Lead", loop=False),
+    SampleEntryViewModel(voice_id="kick-id", name="Kick", loop=False),
+    SampleEntryViewModel(voice_id="bass-id", name="Bass", loop=True),
+    SampleEntryViewModel(voice_id="lead-id", name="Lead", loop=False),
 )
 
 SELECTED_ID = "bass-id"
@@ -122,22 +122,22 @@ def _panel(
     panel._language_manager = _Labels()
     panel._shortcuts = shipped_source()
     panel._entries = ENTRIES
-    panel._selected_sample_id = None if selected_row is None else SELECTED_ID
+    panel._selected_voice_id = None if selected_row is None else SELECTED_ID
     panel._selected_row = selected_row
-    panel._editing_sample_id = editing
+    panel._editing_voice_id = editing
     panel._tab_active = lambda: tab_active
     panel._router = _Router(field_focused=field_focused)
     panel._detail_color = DETAIL_COLOR
     panel._lbl_sample_size = SAMPLE_SIZE_LABEL
     panel._tpl_size_bytes = SIZE_TEMPLATE
     panel._tip_size_bytes = SIZE_TOOLTIP
-    panel.sample_footprint = (lambda _sample_id: footprint) if footprint_wired else None
+    panel.sample_footprint = (lambda _voice_id: footprint) if footprint_wired else None
 
     requests = Requests()
     panel.on_sample_edit_requested = requests.edited.append
     panel.on_duplicate_requested = requests.duplicated.append
     panel.on_remove_requested = requests.removed.append
-    panel.on_move_requested = lambda sample_id, target: requests.moved.append((sample_id, target))
+    panel.on_move_requested = lambda voice_id, target: requests.moved.append((voice_id, target))
     monkeypatch.setattr(panel, "_start_rename", requests.renamed.append)
     return SamplesPanelFixture(panel=panel, requests=requests)
 
@@ -310,8 +310,8 @@ class TestTheSizeRows:
         """The figures are asked for as the menu opens, so they answer for the row right-clicked."""
         measured: List[str] = []
 
-        def _measure(sample_id: str) -> SampleFootprintViewModel:
-            measured.append(sample_id)
+        def _measure(voice_id: str) -> SampleFootprintViewModel:
+            measured.append(voice_id)
             return FOOTPRINT
 
         fixture = _panel(monkeypatch)
@@ -339,7 +339,7 @@ class TestMenuComposition:
         _panel(monkeypatch).panel._show_context_menu(SELECTED_ROW, SELECTED_ID)
 
         assert build_recorder.texts_before_the_first_item() == [
-            display_sample_label(SELECTED_ROW, "Bass"),
+            display_voice_label(SELECTED_ROW, "Bass"),
             f"{SAMPLE_SIZE_LABEL}: {PULSE_1_BYTES + NOISE_BYTES} B",
             f"{ContextElements.PULSE_1.value}: {PULSE_1_BYTES} B",
             f"{ContextElements.NOISE.value}: {NOISE_BYTES} B",
@@ -362,7 +362,7 @@ class TestMenuComposition:
     ) -> None:
         _panel(monkeypatch, footprint=None).panel._show_context_menu(SELECTED_ROW, SELECTED_ID)
 
-        assert build_recorder.texts_before_the_first_item() == [display_sample_label(SELECTED_ROW, "Bass")]
+        assert build_recorder.texts_before_the_first_item() == [display_voice_label(SELECTED_ROW, "Bass")]
 
 
 class TestEditActions:

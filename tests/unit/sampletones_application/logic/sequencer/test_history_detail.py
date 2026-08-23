@@ -316,7 +316,7 @@ class TestSampleDetails:
         sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
         formatter = _formatter(controller)
 
-        assert _pairs(formatter.remove_sample(sample.id)) == [
+        assert _pairs(formatter.remove_voice(sample.id)) == [
             ("00:", HistoryDetailRole.SAMPLE),
             ("Bass", HistoryDetailRole.NAME),
         ]
@@ -336,7 +336,7 @@ class TestSampleDetails:
     def test_rename_sample_shows_old_and_new(self) -> None:
         formatter = _formatter(_controller())
 
-        assert _pairs(formatter.rename_sample("Bass", "Kick")) == [
+        assert _pairs(formatter.rename_voice("Bass", "Kick")) == [
             ("Bass", HistoryDetailRole.NAME),
             (">", HistoryDetailRole.SEPARATOR),
             ("Kick", HistoryDetailRole.NAME),
@@ -347,7 +347,7 @@ class TestSampleDetails:
         sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
         formatter = _formatter(controller)
 
-        assert _pairs(formatter.move_sample(sample.id, 5)) == [
+        assert _pairs(formatter.move_voice(sample.id, 5)) == [
             ("00", HistoryDetailRole.SAMPLE),
             (">", HistoryDetailRole.SEPARATOR),
             ("05", HistoryDetailRole.VALUE),

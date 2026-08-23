@@ -3,7 +3,7 @@ from pathlib import Path
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import Tree
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -51,7 +51,7 @@ class SequencerBrowserLogic(CallbackMixin):
 
     def replace_reconstruction(
         self,
-        sample_id: str,
+        voice_id: str,
         reconstruction: Reconstruction,
     ) -> None:
         """Substitutes an existing sample's reconstruction with an already-loaded one.
@@ -59,4 +59,4 @@ class SequencerBrowserLogic(CallbackMixin):
         The sample keeps its identity, so the patterns referencing it sound the new
         reconstruction while their rows stay as they were.
         """
-        self._controller.replace_sample_reconstruction(sample_id, reconstruction)
+        self._controller.replace_sample_reconstruction(voice_id, reconstruction)

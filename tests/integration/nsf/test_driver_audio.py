@@ -7,7 +7,7 @@ from sampletones_core.audio.mixing import mix
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import InstructionUnion
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.builder import song_from_reconstruction
 from tests.integration.nsf.console.instructions import instructions_from_trace

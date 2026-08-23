@@ -4,9 +4,9 @@ import numpy as np
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters.slices import iterate_sample_slices
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.structures import IdentifiedCollection
 from tests.suite.sequencer import sample_reconstruction
 
@@ -17,7 +17,7 @@ def _project(samples: Sequence[Sample]) -> Project:
         collection.append(sample)
 
     project = Project.create(title="Slices", author="Tester", settings=ProjectSettings())
-    project.samples = collection
+    project.voices = collection
     return project
 
 

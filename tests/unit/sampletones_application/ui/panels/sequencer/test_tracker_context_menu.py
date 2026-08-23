@@ -133,19 +133,19 @@ class TestMenuDispatchPreservesPayload:
 
         assert calls[0] == (target.region, SEMITONE_STEP)
 
-    def test_instrument_items_pass_the_sample_id(self, recorder: _MenuItemRecorder) -> None:
+    def test_instrument_items_pass_the_voice_id(self, recorder: _MenuItemRecorder) -> None:
         panel = _panel()
         panel._current_samples = SequencerSamplesViewModel(
             samples=(
                 SampleEntryViewModel(
-                    sample_id="lead-id",
+                    voice_id="lead-id",
                     name="lead",
                     loop=False,
                 ),
             ),
         )
         chosen: List[str] = []
-        panel.on_set_row = lambda row, channel, sample_id, transpose, volume: chosen.append(sample_id)
+        panel.on_set_row = lambda row, channel, voice_id, transpose, volume: chosen.append(voice_id)
 
         panel._add_instrument_submenu(_cell(0, ChannelName.PULSE2))
         recorder.dispatch_as_dpg()

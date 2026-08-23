@@ -12,9 +12,9 @@ from sampletones_core.performance.rows import apply_row, resolve_row
 from sampletones_core.performance.state import ChannelPerformance
 from sampletones_core.performance.ticks import sound_tick
 from sampletones_core.performance.voice import SampleVoice
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
 from sampletones_core.project.song_position import SongPosition
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.timing.song import SongTiming
 
 
@@ -60,7 +60,7 @@ def song_instructions(
 
             streams[channel_name].extend(
                 _channel_ticks(
-                    project.sample(performance.sample_id) if performance.sample_id is not None else None,
+                    project.voice(performance.voice_id) if performance.voice_id is not None else None,
                     channel_name,
                     performance,
                     ticks,
@@ -83,7 +83,7 @@ def _channel_ticks(
     """One channel's instructions across a single row.
 
     A channel with nothing to sound rests for the whole row and keeps the tick it had reached,
-    so a sample removed from the project leaves the rows that named it silent while the rows
+    so a voice removed from the project leaves the rows that named it silent while the rows
     around them play on.
 
     Args:
@@ -109,7 +109,7 @@ def _channel_ticks(
         instruction = sound_tick(
             performance,
             instructions,
-            loop=sample.loop,
+            loop=sample.loops,
             voice=voice,
         )
         sounded.append(resting if instruction is None else instruction)

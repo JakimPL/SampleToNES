@@ -6,8 +6,8 @@ from typing import Dict, Final, List, Optional, Sequence, Tuple
 
 import pytest
 
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
+from sampletones_core.project.voices.sample import Sample
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.dictionary.table import phrase_table

@@ -73,22 +73,12 @@ def _renamed_pool(channel: SerializedData) -> SerializedData:
 
 def _renamed_pattern(pattern: SerializedData) -> SerializedData:
     rows = pattern.get(ROWS)
-    if not isinstance(rows, dict):
+    if not isinstance(rows, list):
         return pattern
 
     return {
         **pattern,
-        ROWS: {
-            index: (
-                _renamed_row(row)
-                if isinstance(
-                    row,
-                    dict,
-                )
-                else row
-            )
-            for index, row in rows.items()
-        },
+        ROWS: [_renamed_row(row) if isinstance(row, dict) else row for row in rows],
     }
 
 

@@ -25,10 +25,10 @@ def fingerprint_project(
         project.settings.model_dump_json(),
         project.song.model_dump_json(),
     ]
-    for sample in project.samples:
+    for sample in project.voices:
         parts.append(sample.id)
         parts.append(sample.name)
-        parts.append(str(sample.loop))
+        parts.append(str(sample.loop_point))
         parts.append(reconstruction_hash(sample.reconstruction))
 
     combined = "|".join(parts)
@@ -62,5 +62,5 @@ class ReconstructionHashCache:
         return cached[1]
 
     def prune(self, projects: Iterable[Project]) -> None:
-        live = {id(sample.reconstruction) for project in projects for sample in project.samples}
+        live = {id(sample.reconstruction) for project in projects for sample in project.voices}
         self._hashes = {key: value for key, value in self._hashes.items() if key in live}

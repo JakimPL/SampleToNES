@@ -2,9 +2,9 @@ from typing import Final
 
 import pytest
 
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
 from sampletones_core.project.tuning import UNTUNED_PROJECT, tuning_from_project
+from sampletones_core.project.voices.sample import Sample
 from sampletones_shared.music import Tuning
 from tests.suite.performance import (
     make_pulse_reconstruction,
@@ -31,11 +31,11 @@ class TestTheTuningAProjectSounds:
 
     def test_a_projects_sample_states_the_tuning(self) -> None:
         project = sampled_project()
-        assert tuning_from_project(project) == project.samples[0].reconstruction.config.tuning
+        assert tuning_from_project(project) == project.voices[0].reconstruction.config.tuning
 
     def test_samples_agreeing_state_the_tuning_they_agree_on(self) -> None:
         project = sampled_project()
-        project.samples.append(
+        project.voices.append(
             Sample(
                 name="second",
                 reconstruction=make_triangle_reconstruction(pitch=45, count=2),
@@ -50,7 +50,7 @@ class TestTheTuningAProjectSounds:
     def test_samples_that_disagree_are_refused(self) -> None:
         """One timer table sounds one tuning, so a project holding two of them names both."""
         project = sampled_project()
-        project.samples.append(
+        project.voices.append(
             Sample(
                 name="baroque",
                 reconstruction=retuned_reconstruction(

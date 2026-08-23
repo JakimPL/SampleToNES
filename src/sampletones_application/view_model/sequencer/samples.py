@@ -2,11 +2,11 @@ from typing import Tuple
 
 from pydantic import BaseModel
 
-from sampletones_core.utils.display import display_sample_label
+from sampletones_core.utils.display import display_voice_label
 
 
 class SampleEntryViewModel(BaseModel, frozen=True):
-    sample_id: str
+    voice_id: str
     name: str
     loop: bool
 
@@ -19,14 +19,14 @@ class SampleSelection(BaseModel, frozen=True):
     selection the same way the samples panel displays it.
     """
 
-    sample_id: str
+    voice_id: str
     position: int
     name: str
 
     @property
     def label(self) -> str:
         """The sample's list label, matching how the samples panel and tracker name it."""
-        return display_sample_label(self.position, self.name)
+        return display_voice_label(self.position, self.name)
 
 
 class SequencerSamplesViewModel(BaseModel, frozen=True):

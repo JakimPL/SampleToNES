@@ -11,10 +11,10 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.tuning import tuning_from_project
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_core.timing import SongTiming
 from sampletones_player.builder import (
@@ -76,7 +76,7 @@ def _sample_project(
     settings: ProjectSettings,
 ) -> Project:
     project = Project.create(settings=settings)
-    project.samples.append(sample)
+    project.voices.append(sample)
     return project
 
 

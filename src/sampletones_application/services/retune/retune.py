@@ -37,12 +37,12 @@ class SampleRetuneService(ServiceBase[RetuneResult]):
 
     def _run(self, targets: List[RetuneTarget], nes_frequency: int) -> None:
         try:
-            for sample_id, reconstruction in targets:
+            for voice_id, reconstruction in targets:
                 retuned = reconstruction.with_nes_frequency(nes_frequency)
                 self._emit(
                     ServiceSuccess(
                         value=RetunedSample(
-                            sample_id=sample_id,
+                            voice_id=voice_id,
                             reconstruction=retuned,
                         )
                     )

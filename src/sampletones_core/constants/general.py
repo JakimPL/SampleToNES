@@ -27,8 +27,8 @@ NOTE_NAMES: Tuple[str, ...] = (
     "B-",
 )
 
-MIN_TRANSPOSE: Final[int] = -24
-MAX_TRANSPOSE: Final[int] = 36
+MAX_TRANSPOSE: Final[int] = PITCH_RANGE
+MIN_TRANSPOSE: Final[int] = -PITCH_RANGE
 ARPEGGIO_MIN: Final[int] = -128
 ARPEGGIO_MAX: Final[int] = 127
 

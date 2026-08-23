@@ -54,15 +54,15 @@ def _samples(tab_active: ActivePredicate) -> GUISequencerSamplesPanel:
     panel = GUISequencerSamplesPanel.__new__(GUISequencerSamplesPanel)
     panel._router = KeyRouter()
     panel._tab_active = tab_active
-    panel._selected_sample_id = SELECTED_ID
-    panel._editing_sample_id = None
+    panel._selected_voice_id = SELECTED_ID
+    panel._editing_voice_id = None
     return panel
 
 
 def _renaming_samples(tab_active: ActivePredicate) -> GUISequencerSamplesPanel:
     """A samples panel mid-rename, the one state that keeps the keyboard on its own tab."""
     panel = _samples(tab_active)
-    panel._editing_sample_id = SELECTED_ID
+    panel._editing_voice_id = SELECTED_ID
     return panel
 
 

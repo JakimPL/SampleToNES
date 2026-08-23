@@ -33,15 +33,15 @@ from sampletones_core.formats.bitphase.specification.patterns import (
 from sampletones_core.instructions.implementation.pulse import PulseInstruction
 from sampletones_core.instructions.implementation.triangle import TriangleInstruction
 from sampletones_core.instructions.instruction import Instruction
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.song import Song
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures import IdentifiedCollection
 from tests.suite.stems import single_entry_stems_data
@@ -104,26 +104,26 @@ def bass_fixture() -> Sample:
 
 @pytest.fixture(name="source")
 def source_fixture(lead: Sample, bass: Sample) -> Project:
-    samples: IdentifiedCollection[Sample] = IdentifiedCollection()
+    voices: IdentifiedCollection[Sample] = IdentifiedCollection()
     for sample in (lead, bass):
-        samples.append(sample)
+        voices.append(sample)
 
     pulse_rows: List[Row] = [Row() for _ in range(ROWS_PER_PATTERN)]
     pulse_rows[TRIGGER_ROW] = Row(
-        command=Instrument(sample_id=lead.id, channel_name=ChannelName.PULSE1),
+        command=NoteOn(voice_id=lead.id),
         transpose=0,
         volume=ROW_VOLUME,
     )
     pulse_rows[NOTE_OFF_ROW] = Row(command=NoteOff())
     pulse_rows[TRANSPOSED_ROW] = Row(
-        command=Instrument(sample_id=lead.id, channel_name=ChannelName.PULSE1),
+        command=NoteOn(voice_id=lead.id),
         transpose=TRANSPOSE,
     )
     pulse_rows[SILENCED_ROW] = Row(volume=SILENT_VOLUME)
 
     triangle_rows: List[Row] = [Row() for _ in range(ROWS_PER_PATTERN)]
     triangle_rows[TRIGGER_ROW] = Row(
-        command=Instrument(sample_id=bass.id, channel_name=ChannelName.TRIANGLE),
+        command=NoteOn(voice_id=bass.id),
         transpose=0,
     )
 
@@ -139,7 +139,7 @@ def source_fixture(lead: Sample, bass: Sample) -> Project:
     ]
 
     project = Project.create(title="Demo", author="Tester", settings=ProjectSettings())
-    project.samples = samples
+    project.voices = voices
     project.song = Song(rows_per_pattern=ROWS_PER_PATTERN, order=order, channels=channels)
     return project
 
@@ -320,12 +320,12 @@ class TestTheTempoBecomesAGroove:
 class TestAnUnbuildableRow:
     def test_a_row_naming_a_slice_with_no_instrument_is_refused(self, source: Project, lead: Sample) -> None:
         rows: List[Row] = [Row() for _ in range(ROWS_PER_PATTERN)]
-        rows[TRIGGER_ROW] = Row(command=Instrument(sample_id=lead.id, channel_name=ChannelName.PULSE2))
+        rows[TRIGGER_ROW] = Row(command=NoteOn(voice_id=lead.id))
         source.song.channels[ChannelName.PULSE2] = Channel(
             name=ChannelName.PULSE2,
             patterns={0: Pattern(rows=rows)},
         )
         source.song.order[0][ChannelName.PULSE2] = 0
 
-        with pytest.raises(ValueError, match="has no instrument"):
+        with pytest.raises(ValueError, match="with no instrument"):
             project_to_bitphase(source)

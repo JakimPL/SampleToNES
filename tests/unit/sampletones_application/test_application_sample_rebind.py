@@ -10,7 +10,7 @@ def _app(
 ) -> Application:
     app = Application.__new__(Application)
     app.project_manager = MagicMock()
-    app.project_manager.current.sample.return_value = sample
+    app.project_manager.current.voice.return_value = sample
     app.reconstruction_manager = MagicMock()
     app.reconstruction_manager.reconstruction = open_reconstruction
     app._reconstructions_tab = MagicMock()

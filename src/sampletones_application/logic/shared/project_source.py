@@ -16,7 +16,7 @@ def snapshot_project(project: Project) -> Project:
     snapshot.
     """
     shared_reconstructions: Dict[int, object] = {
-        id(sample.reconstruction): sample.reconstruction for sample in project.samples
+        id(sample.reconstruction): sample.reconstruction for sample in project.voices
     }
     return copy.deepcopy(project, shared_reconstructions)
 

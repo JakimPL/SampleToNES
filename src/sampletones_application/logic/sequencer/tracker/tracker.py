@@ -12,11 +12,11 @@ from sampletones_application.view_model.sequencer.tracker import (
 )
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import NoteCommand, Row
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.utils.display import (
     display_command,
     display_id,
@@ -187,7 +187,7 @@ class SequencerTrackerLogic(CallbackMixin):
         self,
         row_index: int,
         channel: Optional[ChannelName],
-        sample_id: Optional[str],
+        voice_id: Optional[str],
         transpose: Optional[int],
         volume: Optional[int],
     ) -> None:
@@ -196,8 +196,8 @@ class SequencerTrackerLogic(CallbackMixin):
         An edit names one subcolumn, so a sample takes the write whenever one
         arrives, and an offset lands on its own otherwise.
         """
-        if sample_id is not None:
-            self.place_note(row_index, channel, sample_id)
+        if voice_id is not None:
+            self.place_note(row_index, channel, voice_id)
         elif transpose is not None or volume is not None:
             self.set_cell_subcolumn(
                 row_index,
@@ -210,18 +210,15 @@ class SequencerTrackerLogic(CallbackMixin):
         self,
         row_index: int,
         channel: Optional[ChannelName],
-        sample_id: str,
+        voice_id: str,
     ) -> None:
         if channel is None:
-            self.set_sample_instrument(row_index, sample_id)
+            self.set_sample_instrument(row_index, voice_id)
         else:
             self.set_row(
                 channel,
                 row_index,
-                command=Instrument(
-                    sample_id=sample_id,
-                    channel_name=channel,
-                ),
+                command=NoteOn(voice_id=voice_id),
             )
 
     def cut_note(
@@ -334,7 +331,7 @@ class SequencerTrackerLogic(CallbackMixin):
     def set_sample_instrument(
         self,
         row_index: int,
-        sample_id: Optional[str],
+        voice_id: Optional[str],
     ) -> None:
         """Places a sample across the channels its reconstruction uses.
 
@@ -343,11 +340,11 @@ class SequencerTrackerLogic(CallbackMixin):
         cleared so the row reflects exactly that sample. Clearing an empty sample
         id wipes the whole row.
         """
-        if sample_id is None:
+        if voice_id is None:
             self.clear_all_channels(row_index)
             return
 
-        sample = self._controller.project.samples.get(sample_id)
+        sample = self._controller.project.voices.get(voice_id)
         if sample is None:
             return
 
@@ -357,10 +354,7 @@ class SequencerTrackerLogic(CallbackMixin):
                 self.set_row(
                     channel,
                     row_index,
-                    command=Instrument(
-                        sample_id=sample_id,
-                        channel_name=channel,
-                    ),
+                    command=NoteOn(voice_id=voice_id),
                 )
             else:
                 self.clear_row(channel, row_index)
@@ -486,13 +480,13 @@ class SequencerTrackerLogic(CallbackMixin):
         self._frame_index = frame_index
         self.push_tracker()
 
-    def holds_sample(self, sample_id: str) -> bool:
+    def holds_sample(self, voice_id: str) -> bool:
         """Whether the project holds the sample a note names, which is what makes the note placeable."""
-        return self._controller.project.samples.get(sample_id) is not None
+        return self._controller.project.voices.get(voice_id) is not None
 
-    def used_generators(self, sample_id: str) -> List[ChannelName]:
+    def used_generators(self, voice_id: str) -> List[ChannelName]:
         """The channels a sample provides instructions for, empty when it is unknown."""
-        sample = self._controller.project.samples.get(sample_id)
+        sample = self._controller.project.voices.get(voice_id)
         if sample is None:
             return []
 
@@ -576,27 +570,28 @@ class SequencerTrackerLogic(CallbackMixin):
         self,
         rows: Dict[ChannelName, Optional[Row]],
     ) -> FrozenSet[ChannelName]:
-        """The channels spanned by the samples referenced on a row.
+        """The channels spanned by the voices referenced on a row.
 
-        Each referenced sample contributes the channels its reconstruction covers,
-        so the sample column reasons about a sample's whole channel span, including
-        channels whose cells are empty.
+        Each referenced voice contributes the channels its reconstruction covers, so the sample
+        column reasons about a voice's whole channel span, including channels whose cells are
+        empty. A row naming a voice the project no longer holds contributes the channel it sits
+        on, which keeps that cell reachable while the reference stands.
         """
         relevant: Set[ChannelName] = set()
         resolved: Set[str] = set()
-        for row in rows.values():
+        for channel, row in rows.items():
             command = row.command if row is not None else None
-            if not isinstance(command, Instrument):
+            if not isinstance(command, NoteOn):
                 continue
 
-            sample_id = command.sample_id
-            if sample_id in resolved:
+            voice_id = command.voice_id
+            if voice_id in resolved:
                 continue
 
-            resolved.add(sample_id)
-            sample = self._controller.project.samples.get(sample_id)
+            resolved.add(voice_id)
+            sample = self._controller.project.voices.get(voice_id)
             if sample is None:
-                relevant.add(command.channel_name)
+                relevant.add(channel)
             else:
                 relevant.update(self._used_generators(sample))
 
@@ -628,7 +623,7 @@ class SequencerTrackerLogic(CallbackMixin):
     def _build_cell(self, row: Row) -> SequencerCellViewModel:
         return SequencerCellViewModel(
             instrument=display_command(
-                self._controller.project.samples,
+                self._controller.project.voices,
                 row.command,
             ),
             transpose=display_transpose(row.transpose),

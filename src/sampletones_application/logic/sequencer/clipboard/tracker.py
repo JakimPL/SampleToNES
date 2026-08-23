@@ -18,7 +18,7 @@ from sampletones_core.constants.general import (
     MIN_TRANSPOSE,
     SILENT_VOLUME,
 )
-from sampletones_core.project.instruments.note_off import NoteOff
+from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.utils.display import (
     NOTE_OFF,
     display_id,
@@ -156,8 +156,8 @@ class TrackerBlockText:
         match notes[key]:
             case NoteOff():
                 return NOTE_OFF
-            case str() as sample_id:
-                position = self._samples.position_of(sample_id)
+            case str() as voice_id:
+                position = self._samples.position_of(voice_id)
                 return state_mixed(NOTE_WIDTH) if position is None else display_id(position)
             case _:
                 return display_id(None)
@@ -238,8 +238,8 @@ class TrackerBlockText:
         if position is None:
             return None
 
-        sample_id = self._samples.sample_at(position)
-        return FieldReading.mixed() if sample_id is None else FieldReading.of(sample_id)
+        voice_id = self._samples.sample_at(position)
+        return FieldReading.mixed() if voice_id is None else FieldReading.of(voice_id)
 
     @staticmethod
     def _read_transpose(field: str) -> Optional[FieldReading[int]]:

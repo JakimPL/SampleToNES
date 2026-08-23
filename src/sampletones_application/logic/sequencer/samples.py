@@ -14,9 +14,10 @@ from sampletones_application.view_model.sequencer.samples import (
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.formats.famitracker.footprint import reconstruction_footprints
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.utils.display import display_sample
+from sampletones_core.utils.display import display_voice
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import StringCallback
@@ -50,34 +51,34 @@ class SequencerSamplesLogic(CallbackMixin):
         self._scheduling = scheduling
         self._pending_autoplay_sample: Optional[str] = None
 
-        self.on_samples_changed: Optional[Callable[[SequencerSamplesViewModel], None]] = None
+        self.on_voices_changed: Optional[Callable[[SequencerSamplesViewModel], None]] = None
         self.on_edit_sample_requested: Optional[StringCallback] = None
         self.on_autoplay_error: Optional[Callable[[Exception], None]] = None
 
     def build_samples(self) -> SequencerSamplesViewModel:
         entries = tuple(
             SampleEntryViewModel(
-                sample_id=sample.id,
+                voice_id=sample.id,
                 name=sample.name,
-                loop=sample.loop,
+                loop=sample.loops,
             )
-            for sample in self._controller.project.samples
+            for sample in self._controller.project.voices
         )
         return SequencerSamplesViewModel(samples=entries)
 
     def push_samples(self) -> None:
-        self.call(self.on_samples_changed, self.build_samples())
+        self.call(self.on_voices_changed, self.build_samples())
 
     def add_sample(self, reconstruction: Reconstruction, name: str) -> Sample:
         return self._controller.add_sample(reconstruction, name)
 
-    def rename_sample(self, sample_id: str, name: str) -> None:
-        self._controller.rename_sample(sample_id, name)
+    def rename_voice(self, voice_id: str, name: str) -> None:
+        self._controller.rename_voice(voice_id, name)
 
-    def is_sample_used(self, sample_id: str) -> bool:
-        return self._controller.is_sample_used(sample_id)
+    def is_voice_used(self, voice_id: str) -> bool:
+        return self._controller.is_voice_used(voice_id)
 
-    def build_sample_footprint(self, sample_id: str) -> Optional[SampleFootprintViewModel]:
+    def build_sample_footprint(self, voice_id: str) -> Optional[SampleFootprintViewModel]:
         """Measures one sample's instruments as the module export writes them.
 
         A sample carries its own loop flag, and a looping instrument is compiled to the shortest
@@ -85,57 +86,62 @@ class SequencerSamplesLogic(CallbackMixin):
         single sample on demand keeps a pool edit clear of an export it was not asked for.
 
         Args:
-            sample_id: The sample to measure.
+            voice_id: The sample to measure.
 
         Returns:
             Optional[SampleFootprintViewModel]: The sample's byte figures, or ``None`` while the
             pool holds no such sample.
         """
-        sample = self._controller.project.samples.get(sample_id)
+        sample = self._controller.project.voices.get(voice_id)
         if sample is None:
             return None
 
         return SampleFootprintViewModel.from_footprints(
-            reconstruction_footprints(sample.reconstruction, loop=sample.loop)
+            reconstruction_footprints(sample.reconstruction, loop=sample.loops)
         )
 
-    def sample_name(self, sample_id: str) -> str:
-        return self._controller.project.samples[sample_id].name
+    def sample_name(self, voice_id: str) -> str:
+        return self._controller.project.voices[voice_id].name
 
-    def sample_position(self, sample_id: str) -> str:
+    def sample_position(self, voice_id: str) -> str:
         """Returns the sample's hex list position, matching how the tracker labels it."""
-        return display_sample(
-            samples=self._controller.project.samples,
-            sample_id=sample_id,
+        return display_voice(
+            voices=self._controller.project.voices,
+            voice_id=voice_id,
         )
 
-    def remove_sample(self, sample_id: str) -> None:
-        self._controller.remove_sample(sample_id)
+    def remove_voice(self, voice_id: str) -> None:
+        self._controller.remove_voice(voice_id)
 
-    def move_sample(self, sample_id: str, to_index: int) -> None:
-        self._controller.move_sample(sample_id, to_index)
+    def move_voice(self, voice_id: str, to_index: int) -> None:
+        self._controller.move_voice(voice_id, to_index)
 
-    def duplicate_sample(self, sample_id: str) -> None:
-        self._controller.duplicate_sample(sample_id)
+    def duplicate_voice(self, voice_id: str) -> None:
+        self._controller.duplicate_voice(voice_id)
 
-    def set_sample_loop(self, sample_id: str, loop: bool) -> None:
-        self._controller.set_sample_loop(sample_id, loop)
+    def set_sample_loop(self, voice_id: str, loop: bool) -> None:
+        """Turns the list's loop tick into the point the voice repeats from.
 
-    def request_edit(self, sample_id: str) -> None:
+        The list offers looping as a switch, and a voice that loops repeats the whole of its
+        instructions, which is the point at their start.
+        """
+        self._controller.set_voice_loop_point(voice_id, WHOLE_LOOP_POINT if loop else None)
+
+    def request_edit(self, voice_id: str) -> None:
         self.cancel_autoplay()
-        self.call(self.on_edit_sample_requested, sample_id)
+        self.call(self.on_edit_sample_requested, voice_id)
 
-    def play_sample(self, sample_id: str) -> None:
+    def play_sample(self, voice_id: str) -> None:
         """Plays a sample on demand, regardless of the autoplay setting.
 
         Explicit playback is intentional, so it uses ``NORMAL`` priority and thereby
         preempts the sequencer song / reconstruction players.
         """
-        self._play_sample(sample_id, priority=PlaybackPriority.NORMAL)
+        self._play_sample(voice_id, priority=PlaybackPriority.NORMAL)
 
-    def request_autoplay(self, sample_id: str) -> None:
+    def request_autoplay(self, voice_id: str) -> None:
         """Schedules a debounced preview that a following double-click can cancel."""
-        self._pending_autoplay_sample = sample_id
+        self._pending_autoplay_sample = voice_id
         CallbackQueue.add(
             self._execute_autoplay,
             priority=self._scheduling.priorities.schedule,
@@ -149,18 +155,18 @@ class SequencerSamplesLogic(CallbackMixin):
         if self._pending_autoplay_sample is None:
             return
 
-        sample_id = self._pending_autoplay_sample
+        voice_id = self._pending_autoplay_sample
         self._pending_autoplay_sample = None
         if self._session_manager.autoplay:
-            self._play_sample(sample_id, priority=PlaybackPriority.PREVIEW)
+            self._play_sample(voice_id, priority=PlaybackPriority.PREVIEW)
 
     def _play_sample(
         self,
-        sample_id: str,
+        voice_id: str,
         *,
         priority: PlaybackPriority,
     ) -> None:
-        sample = self._controller.project.samples.get(sample_id)
+        sample = self._controller.project.voices.get(voice_id)
         if sample is None:
             return
 
@@ -173,6 +179,6 @@ class SequencerSamplesLogic(CallbackMixin):
         except (PlaybackError, ValueError) as exception:
             logger.error_with_traceback(
                 exception,
-                f"Failed to preview sample: {sample_id}",
+                f"Failed to preview sample: {voice_id}",
             )
             self.call(self.on_autoplay_error, exception)

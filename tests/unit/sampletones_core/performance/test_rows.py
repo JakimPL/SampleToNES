@@ -6,11 +6,11 @@ import pytest
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.performance import ChannelPerformance, apply_row, resolve_row
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
 from sampletones_core.project.song_position import SongPosition
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -25,7 +25,7 @@ def _song() -> Song:
     song = Song.empty(ROWS_PER_PATTERN)
     pattern = song.channels[ChannelName.PULSE1].patterns[0]
     pattern.rows[SOUNDING_ROW] = Row(
-        command=Instrument(sample_id=SAMPLE_ID, channel_name=ChannelName.PULSE1),
+        command=NoteOn(voice_id=SAMPLE_ID),
     )
     return song
 
@@ -97,15 +97,15 @@ class TestApplyRow(BaseTestSuite):
     class TestCase(BaseRegularTestCase):
         expected: bool
         row: Row
-        sample_id: Optional[str]
+        voice_id: Optional[str]
         transpose: int
         volume: int
 
     test_cases: Tuple["TestApplyRow.TestCase", ...] = (
         TestCase(
             label="a note column with no modifiers takes the defaults",
-            row=Row(command=Instrument(sample_id=SAMPLE_ID, channel_name=ChannelName.PULSE1)),
-            sample_id=SAMPLE_ID,
+            row=Row(command=NoteOn(voice_id=SAMPLE_ID)),
+            voice_id=SAMPLE_ID,
             transpose=0,
             volume=MAX_VOLUME,
             expected=True,
@@ -113,11 +113,11 @@ class TestApplyRow(BaseTestSuite):
         TestCase(
             label="a note column takes the modifiers the row states",
             row=Row(
-                command=Instrument(sample_id=SAMPLE_ID, channel_name=ChannelName.PULSE1),
+                command=NoteOn(voice_id=SAMPLE_ID),
                 transpose=5,
                 volume=8,
             ),
-            sample_id=SAMPLE_ID,
+            voice_id=SAMPLE_ID,
             transpose=5,
             volume=8,
             expected=True,
@@ -125,7 +125,7 @@ class TestApplyRow(BaseTestSuite):
         TestCase(
             label="a note off silences the channel",
             row=Row(command=NoteOff()),
-            sample_id=None,
+            voice_id=None,
             transpose=3,
             volume=8,
             expected=True,
@@ -133,7 +133,7 @@ class TestApplyRow(BaseTestSuite):
         TestCase(
             label="an empty row leaves everything as it stands",
             row=Row(),
-            sample_id=ANOTHER_SAMPLE_ID,
+            voice_id=ANOTHER_SAMPLE_ID,
             transpose=3,
             volume=8,
             expected=False,
@@ -141,7 +141,7 @@ class TestApplyRow(BaseTestSuite):
         TestCase(
             label="a modifier row bends the note already sounding",
             row=Row(transpose=-2, volume=4),
-            sample_id=ANOTHER_SAMPLE_ID,
+            voice_id=ANOTHER_SAMPLE_ID,
             transpose=-2,
             volume=4,
             expected=False,
@@ -151,7 +151,7 @@ class TestApplyRow(BaseTestSuite):
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_what_the_channel_carries_after_the_row(self, test_case: TestCase) -> None:
         performance = ChannelPerformance(
-            sample_id=ANOTHER_SAMPLE_ID,
+            voice_id=ANOTHER_SAMPLE_ID,
             tick_index=6,
             transpose=3,
             volume=8,
@@ -160,7 +160,7 @@ class TestApplyRow(BaseTestSuite):
         retriggered = apply_row(performance, test_case.row)
 
         assert retriggered is test_case.expected
-        assert performance.sample_id == test_case.sample_id
+        assert performance.voice_id == test_case.voice_id
         assert performance.transpose == test_case.transpose
         assert performance.volume == test_case.volume
 
@@ -170,7 +170,7 @@ class TestApplyRow(BaseTestSuite):
         test_case: TestCase,
     ) -> None:
         """A row that starts the note over is a row that starts its envelopes over."""
-        performance = ChannelPerformance(sample_id=ANOTHER_SAMPLE_ID, tick_index=6)
+        performance = ChannelPerformance(voice_id=ANOTHER_SAMPLE_ID, tick_index=6)
 
         retriggered = apply_row(performance, test_case.row)
 

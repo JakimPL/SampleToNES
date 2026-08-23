@@ -28,8 +28,8 @@ from sampletones_core.formats.famitracker.specification.sequences import (
     SequenceKind,
 )
 from sampletones_core.instructions.implementation.pulse import PulseInstruction
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
+from sampletones_core.project.voices.sample import Sample
 
 from .conftest import RECONSTRUCTION_LENGTH, ProjectFixture, build_reconstruction
 
@@ -94,7 +94,7 @@ class TestBuildInstrumentTable:
         for number in range(MAX_INSTRUMENTS + 1):
             instructions = [PulseInstruction(on=True, pitch=60, volume=15, duty_cycle=0)]
             reconstruction = build_reconstruction({ChannelName.PULSE1: instructions})
-            project.samples.append(Sample(name=f"sample-{number}", reconstruction=reconstruction))
+            project.voices.append(Sample(name=f"sample-{number}", reconstruction=reconstruction))
         with pytest.raises(ValueError):
             build_instrument_table(project)
 

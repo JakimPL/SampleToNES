@@ -8,9 +8,9 @@ from sampletones_application.view_model.sequencer.slot import (
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_shared.utils.agreement import Agreement
 
 from .block import BlockKey, BlockNote, TrackerBlock
@@ -90,8 +90,8 @@ class TrackerBlockReader:
         column it is written into.
         """
         match row.command if row is not None else None:
-            case Instrument() as instrument:
-                return instrument.sample_id
+            case NoteOn() as instrument:
+                return instrument.voice_id
             case NoteOff() as note_off:
                 return note_off
             case None:

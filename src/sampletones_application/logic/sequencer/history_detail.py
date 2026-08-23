@@ -88,15 +88,15 @@ class SequencerHistoryDetail:
         self,
         row_index: int,
         channel: Optional[ChannelName],
-        sample_id: Optional[str],
+        voice_id: Optional[str],
         transpose: Optional[int],
         volume: Optional[int],
     ) -> Segments:
-        affected = self._edit_row_channels(channel, sample_id, row_index)
+        affected = self._edit_row_channels(channel, voice_id, row_index)
         segments = list(self._location(row_index, channel, affected))
-        if sample_id is not None:
+        if voice_id is not None:
             segments.append(self._arrow())
-            segments.append(self._sample(sample_id))
+            segments.append(self._sample(voice_id))
 
         if transpose is not None:
             segments.append(self._subcolumn(SubColumn.TRANSPOSE))
@@ -228,51 +228,51 @@ class SequencerHistoryDetail:
     def add_sample(self, name: str) -> Segments:
         return (self._name(name),)
 
-    def remove_sample(self, sample_id: str) -> Segments:
+    def remove_voice(self, voice_id: str) -> Segments:
         return (
-            self._sample(sample_id, colon=True),
-            self._name(self._samples_logic.sample_name(sample_id)),
+            self._sample(voice_id, colon=True),
+            self._name(self._samples_logic.sample_name(voice_id)),
         )
 
-    def replace_sample(self, sample_id: str, name: str) -> Segments:
+    def replace_sample(self, voice_id: str, name: str) -> Segments:
         """Describes a reconstruction substitution as the sample's position and the two names.
 
         ``name`` is the incoming reconstruction's, read against the sample's current one, so the
         caller builds this detail while the sample still holds the reconstruction being replaced.
         """
         return (
-            self._sample(sample_id, colon=True),
-            self._name(self._samples_logic.sample_name(sample_id)),
+            self._sample(voice_id, colon=True),
+            self._name(self._samples_logic.sample_name(voice_id)),
             self._arrow(),
             self._name(name),
         )
 
-    def rename_sample(self, old_name: str, new_name: str) -> Segments:
+    def rename_voice(self, old_name: str, new_name: str) -> Segments:
         return (self._name(old_name), self._arrow(), self._name(new_name))
 
-    def move_sample(self, sample_id: str, to_index: int) -> Segments:
+    def move_voice(self, voice_id: str, to_index: int) -> Segments:
         return (
-            self._sample(sample_id),
+            self._sample(voice_id),
             self._arrow(),
             self._value(display_id(to_index)),
         )
 
-    def duplicate_sample(self, sample_id: str) -> Segments:
+    def duplicate_voice(self, voice_id: str) -> Segments:
         return (
-            self._sample(sample_id, colon=True),
-            self._name(self._samples_logic.sample_name(sample_id)),
+            self._sample(voice_id, colon=True),
+            self._name(self._samples_logic.sample_name(voice_id)),
         )
 
-    def set_sample_loop(self, sample_id: str, loop: bool) -> Segments:
+    def set_sample_loop(self, voice_id: str, loop: bool) -> Segments:
         word = HistoryDetailWord.LOOP_ON if loop else HistoryDetailWord.LOOP_OFF
         return (
-            self._sample(sample_id, colon=True),
+            self._sample(voice_id, colon=True),
             HistoryDetailWordSegment(word=word, role=HistoryDetailRole.VALUE),
         )
 
     def edit_reconstruction(
         self,
-        sample_id: str,
+        voice_id: str,
         channel_name: ChannelName,
         feature_key: FeatureKey,
     ) -> Segments:
@@ -283,15 +283,15 @@ class SequencerHistoryDetail:
         tab plots it with — mirroring the tracker rows.
         """
         return (
-            self._sample(sample_id, colon=True),
+            self._sample(voice_id, colon=True),
             self._channel([channel_name]),
             self._segment(_FEATURE_LETTERS[feature_key], _FEATURE_ROLES[feature_key]),
         )
 
-    def remove_stem(self, sample_id: str, stem_name: str) -> Segments:
+    def remove_stem(self, voice_id: str, stem_name: str) -> Segments:
         """Describes a recording taken out of a sample's reconstruction: its position and name."""
         return (
-            self._sample(sample_id, colon=True),
+            self._sample(voice_id, colon=True),
             self._name(stem_name),
         )
 
@@ -301,14 +301,14 @@ class SequencerHistoryDetail:
     def _edit_row_channels(
         self,
         channel: Optional[ChannelName],
-        sample_id: Optional[str],
+        voice_id: Optional[str],
         row_index: int,
     ) -> List[ChannelName]:
         if channel is not None:
             return [channel]
 
-        if sample_id is not None:
-            return self._tracker_logic.used_generators(sample_id)
+        if voice_id is not None:
+            return self._tracker_logic.used_generators(voice_id)
 
         return self._tracker_logic.relevant_channels(row_index)
 
@@ -417,11 +417,11 @@ class SequencerHistoryDetail:
 
     def _sample(
         self,
-        sample_id: str,
+        voice_id: str,
         *,
         colon: bool = False,
     ) -> HistoryDetailSegment:
-        position = self._samples_logic.sample_position(sample_id)
+        position = self._samples_logic.sample_position(voice_id)
         text = f"{position}:" if colon else position
         return HistoryDetailSegment(text=text, role=HistoryDetailRole.SAMPLE)
 

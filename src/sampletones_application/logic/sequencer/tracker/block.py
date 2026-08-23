@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple, Union
 
-from sampletones_core.project.instruments.note_off import NoteOff
+from sampletones_core.project.voices.note_off import NoteOff
 
 BlockNote = Union[str, NoteOff]
 BlockKey = Tuple[int, int]

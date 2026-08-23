@@ -37,7 +37,7 @@ class Grid:
     controller: ProjectController
     logic: SequencerTrackerLogic
     writer: TrackerBlockWriter
-    sample_ids: Tuple[str, ...]
+    voice_ids: Tuple[str, ...]
 
 
 @pytest.fixture
@@ -64,7 +64,7 @@ def grid() -> Grid:
         controller=controller,
         logic=logic,
         writer=TrackerBlockWriter(logic),
-        sample_ids=(lead.id, bass.id),
+        voice_ids=(lead.id, bass.id),
     )
 
 
@@ -302,11 +302,11 @@ class TestPaste(BaseTestSuite):
         grid: Grid,
         test_case: TestCase,
     ) -> None:
-        fill_frame(grid.logic, test_case.frame, sample_ids=grid.sample_ids)
+        fill_frame(grid.logic, test_case.frame, voice_ids=grid.voice_ids)
         block = parse_block(
             test_case.block,
             first_subcolumn=test_case.first_subcolumn,
-            sample_ids=grid.sample_ids,
+            voice_ids=grid.voice_ids,
         )
 
         grid.writer.write(block, test_case.origin)
@@ -322,7 +322,7 @@ class TestSingleSlotEquivalence:
         block = parse_block(
             ("+02",),
             first_subcolumn=SubColumn.TRANSPOSE,
-            sample_ids=grid.sample_ids,
+            voice_ids=grid.voice_ids,
         )
         grid.writer.write(block, TrackerCell(row=0, channel=ChannelName.PULSE1))
         pasted = render_frame(grid.logic)
@@ -340,7 +340,7 @@ class TestClear:
         fill_frame(
             grid.logic,
             ("00 +02 5 | 00 +03 6 | .. ... . | .. ... .",),
-            sample_ids=grid.sample_ids,
+            voice_ids=grid.voice_ids,
         )
 
         grid.writer.clear(
@@ -358,7 +358,7 @@ class TestClear:
         fill_frame(
             grid.logic,
             ("00 +02 5 | 00 +02 5 | .. ... . | .. ... 5",),
-            sample_ids=grid.sample_ids,
+            voice_ids=grid.voice_ids,
         )
 
         grid.writer.clear(
@@ -383,7 +383,7 @@ class TestRoundTrip:
                 "00 +02 5 | 00 ... . | .. ... . | ~~ ... 3",
                 ".. ... . | 01 +00 0 | .. +07 . | .. ... .",
             ),
-            sample_ids=grid.sample_ids,
+            voice_ids=grid.voice_ids,
         )
         before = render_frame(grid.logic)
         region = TrackerRegion(
@@ -412,7 +412,7 @@ class TestMaterialisation:
         block = parse_block(
             ("+02",),
             first_subcolumn=SubColumn.TRANSPOSE,
-            sample_ids=grid.sample_ids,
+            voice_ids=grid.voice_ids,
         )
         grid.writer.write(block, TrackerCell(row=0, channel=ChannelName.PULSE2))
 
@@ -427,7 +427,7 @@ class TestMaterialisation:
         block = parse_block(
             ("? ? ?",),
             first_subcolumn=SubColumn.INSTRUMENT,
-            sample_ids=grid.sample_ids,
+            voice_ids=grid.voice_ids,
         )
         grid.writer.write(block, TrackerCell(row=0, channel=ChannelName.PULSE2))
 

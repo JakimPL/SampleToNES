@@ -11,15 +11,16 @@ from sampletones_core.instructions.implementation.noise import NoiseInstruction
 from sampletones_core.instructions.implementation.pulse import PulseInstruction
 from sampletones_core.instructions.implementation.triangle import TriangleInstruction
 from sampletones_core.instructions.instruction import Instruction
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.song import Song
+from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures import IdentifiedCollection
 from tests.suite.stems import single_entry_stems_data
@@ -50,7 +51,7 @@ def pulse_sample(name: str, pitch: int, *, loop: bool = False) -> Sample:
     return Sample(
         name=name,
         reconstruction=build_reconstruction({ChannelName.PULSE1: instructions}),
-        loop=loop,
+        loop_point=WHOLE_LOOP_POINT if loop else None,
     )
 
 
@@ -86,13 +87,13 @@ def project_fixture() -> ProjectFixture:
     drum = noise_sample("drum", period=4)
     bell = dual_generator_sample("bell", pulse_pitch=72, triangle_pitch=36)
 
-    samples: IdentifiedCollection[Sample] = IdentifiedCollection()
+    voices: IdentifiedCollection[Sample] = IdentifiedCollection()
     for sample in (lead, pad, drum, bell):
-        samples.append(sample)
+        voices.append(sample)
 
     pulse_rows: List[Row] = [Row() for _ in range(8)]
     pulse_rows[0] = Row(
-        command=Instrument(sample_id=lead.id, channel_name=ChannelName.PULSE1),
+        command=NoteOn(voice_id=lead.id),
         transpose=0,
         volume=10,
     )
@@ -101,7 +102,7 @@ def project_fixture() -> ProjectFixture:
 
     noise_rows: List[Row] = [Row() for _ in range(8)]
     noise_rows[0] = Row(
-        command=Instrument(sample_id=drum.id, channel_name=ChannelName.NOISE),
+        command=NoteOn(voice_id=drum.id),
         transpose=0,
         volume=15,
     )
@@ -130,7 +131,7 @@ def project_fixture() -> ProjectFixture:
 
     project = Project.create(title="Demo", author="Tester", settings=ProjectSettings())
     project.info.comment = "a comment"
-    project.samples = samples
+    project.voices = voices
     project.song = song
 
     return ProjectFixture(project=project, lead=lead, pad=pad, drum=drum, bell=bell)

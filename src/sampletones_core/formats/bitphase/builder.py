@@ -62,10 +62,10 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NoteName,
 )
 from sampletones_core.formats.bitphase.tuning import generate_tuning_table
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.timing import Groove, Metre, RowRate, calculate_groove
 from sampletones_shared.constants.project import DEFAULT_ROWS_PER_PATTERN, DEFAULT_SPEED
 
@@ -336,7 +336,7 @@ def _build_voice_table(
         envelopes = features_to_envelopes(
             sample_slice.features,
             sample_slice.channel,
-            loop=sample_slice.sample.loop,
+            loop=sample_slice.sample.loops,
         )
         voice = _build_voice(
             sample_slice.index,
@@ -352,12 +352,10 @@ def _build_voice_table(
     return voices, by_reference
 
 
-def _resolve_voice(reference: Instrument, voices: VoiceTable) -> Voice:
-    voice = voices.get((reference.sample_id, reference.channel_name))
+def _resolve_voice(reference: NoteOn, channel: ChannelName, voices: VoiceTable) -> Voice:
+    voice = voices.get((reference.voice_id, channel))
     if voice is None:
-        raise ValueError(
-            f"Row references sample '{reference.sample_id}' slice " f"'{reference.channel_name}' that has no instrument"
-        )
+        raise ValueError(f"Row references voice '{reference.voice_id}' on channel '{channel}' with no instrument")
 
     return voice
 
@@ -387,7 +385,7 @@ def _row_cell(
     """Converts one tracker line to the Bitphase row that plays it.
 
     Raises:
-        ValueError: If the line references a sample slice that has no instrument.
+        ValueError: If the line references a voice that has no instrument on this channel.
     """
     volume = _volume_column(row.volume)
     cell = BitphaseRow(volume=volume)
@@ -398,8 +396,8 @@ def _row_cell(
                 note=NoteCell(name=int(NoteName.OFF)),
                 volume=volume,
             )
-        case Instrument() as reference:
-            voice = _resolve_voice(reference, voices)
+        case NoteOn() as reference:
+            voice = _resolve_voice(reference, channel_generator, voices)
             pitch = voice.initial_pitch + (row.transpose or 0)
             cell = _trigger_row(
                 voice,

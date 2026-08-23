@@ -8,10 +8,10 @@ import pytest
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import Metadata
 from sampletones_core.project.container import ProjectContainer
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
 from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
@@ -52,7 +52,7 @@ def _populated_project(
     first = Sample(name="lead", reconstruction=reconstruction_factory())
     second_reconstruction = first.reconstruction if shared else reconstruction_factory()
     second = Sample(name="bass", reconstruction=second_reconstruction)
-    project.samples.extend([first, second])
+    project.voices.extend([first, second])
 
     song = project.song
     channel = song[ChannelName.PULSE1]
@@ -60,10 +60,7 @@ def _populated_project(
     pattern.name = "intro"
     pattern.rows[0] = Row(
         transpose=0,
-        command=Instrument(
-            sample_id=first.id,
-            channel_name=ChannelName.PULSE1,
-        ),
+        command=NoteOn(voice_id=first.id),
         volume=15,
     )
 
@@ -90,8 +87,8 @@ class TestRoundTrip:
         assert loaded.metadata == project.metadata
         assert loaded.info.title == project.info.title
         assert loaded.settings.tempo == 128
-        assert [sample.id for sample in loaded.samples] == [sample.id for sample in project.samples]
-        assert [sample.name for sample in loaded.samples] == ["lead", "bass"]
+        assert [sample.id for sample in loaded.voices] == [sample.id for sample in project.voices]
+        assert [sample.name for sample in loaded.voices] == ["lead", "bass"]
 
         loaded_song = loaded.song
         assert loaded_song.order == project.song.order
@@ -104,7 +101,7 @@ class TestRoundTrip:
         row = first_pattern.rows[0]
         assert row.transpose == 0
         assert row.command is not None
-        assert row.command.sample_id == loaded.samples[0].id
+        assert row.command.voice_id == loaded.voices[0].id
 
     def test_references_resolve_after_load(
         self,
@@ -120,7 +117,7 @@ class TestRoundTrip:
         channel = loaded_song[ChannelName.PULSE1]
         index_at_0 = loaded_song.order[0].get(ChannelName.PULSE1)
         row = channel.pattern(index_at_0).rows[0]
-        assert loaded.sample(row.command.sample_id) is loaded.samples[0]
+        assert loaded.voice(row.command.voice_id) is loaded.voices[0]
         index_at_2 = loaded_song.order[2].get(ChannelName.PULSE1)
         assert channel.pattern(index_at_0) is channel.pattern(index_at_2)
 
@@ -182,7 +179,7 @@ class TestEmptyProject:
         ProjectContainer.save(project, path)
         loaded = ProjectContainer.load(path)
 
-        assert len(loaded.samples) == 0
+        assert len(loaded.voices) == 0
         assert set(loaded.song.channels) == set(ChannelName.items())
 
         with zipfile.ZipFile(path, "r") as archive:
@@ -310,7 +307,7 @@ class TestVersionCompatibility:
     ) -> None:
         """A project carrying a reconstruction from another build is refused as it opens."""
         project = _populated_project(reconstruction_factory)
-        project.samples[0].reconstruction = project.samples[0].reconstruction.model_copy(
+        project.voices[0].reconstruction = project.voices[0].reconstruction.model_copy(
             update={"metadata": Metadata(reconstruction_data_version="0.0")},
         )
         path = tmp_path / "demo.stp"

@@ -2,11 +2,11 @@ import pytest
 from pydantic import ValidationError
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
+from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_shared.constants.project import (
     MAX_ROWS_PER_PATTERN,
     MIN_ROWS_PER_PATTERN,
@@ -18,10 +18,7 @@ def _pattern_with_instrument() -> Pattern:
     pattern.rows[0] = Row(
         transpose=0,
         volume=15,
-        instrument=Instrument(
-            sample_id="abc123",
-            channel_name=ChannelName.PULSE1,
-        ),
+        instrument=NoteOn(voice_id="abc123"),
     )
     return pattern
 

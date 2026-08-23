@@ -196,13 +196,13 @@ class RowSynthesizer:
         if row is not None and apply_row(state.performance, row):
             state.generator.reset()
 
-        sample_id = state.performance.sample_id
-        if sample_id is None or channel_name not in self._active_channels():
+        voice_id = state.performance.voice_id
+        if voice_id is None or channel_name not in self._active_channels():
             return silence(frames.total)
 
         return self._synthesize_ticks(
             state,
-            sample_id,
+            voice_id,
             project,
             channel_name,
             frames,
@@ -211,12 +211,12 @@ class RowSynthesizer:
     def _synthesize_ticks(
         self,
         state: ChannelState,
-        sample_id: str,
+        voice_id: str,
         project: Project,
         channel_name: ChannelName,
         frames: RowFrames,
     ) -> np.ndarray:
-        sample = project.sample(sample_id)
+        sample = project.voice(voice_id)
         if sample is None:
             return silence(frames.total)
 
@@ -233,7 +233,7 @@ class RowSynthesizer:
                 state,
                 instructions,
                 silence_frame[:frame_length],
-                sample.loop,
+                sample.loops,
                 frame_length,
                 voice,
             )

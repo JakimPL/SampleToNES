@@ -604,7 +604,7 @@ class SequencerTabCoordinator:
             self._order_block_writer.write(block, cell)
 
     def _wire_samples_callbacks(self) -> None:
-        self._sequencer_samples_logic.on_samples_changed = self._on_samples_changed
+        self._sequencer_samples_logic.on_voices_changed = self._on_voices_changed
         self._sequencer_samples_logic.on_edit_sample_requested = self._dispatch_edit_sample
         self._sequencer_samples_logic.on_autoplay_error = self._on_preview_error
         self._sequencer_samples_panel.sample_footprint = self._sequencer_samples_logic.build_sample_footprint
@@ -615,18 +615,18 @@ class SequencerTabCoordinator:
             self._sequencer_samples_logic.set_sample_loop,
             detail=self._history_detail.set_sample_loop,
         )
-        self._sequencer_samples_panel.on_remove_requested = self._remove_sample
+        self._sequencer_samples_panel.on_remove_requested = self._remove_voice
         self._sequencer_samples_panel.on_play_requested = self._sequencer_samples_logic.play_sample
         self._sequencer_samples_panel.on_move_requested = self._undoable(
             HistoryAction.MOVE_SAMPLE,
-            self._sequencer_samples_logic.move_sample,
-            detail=self._history_detail.move_sample,
+            self._sequencer_samples_logic.move_voice,
+            detail=self._history_detail.move_voice,
         )
         self._sequencer_samples_panel.on_rename_committed = self._submit_rename
         self._sequencer_samples_panel.on_duplicate_requested = self._undoable(
             HistoryAction.DUPLICATE_SAMPLE,
-            self._sequencer_samples_logic.duplicate_sample,
-            detail=self._history_detail.duplicate_sample,
+            self._sequencer_samples_logic.duplicate_voice,
+            detail=self._history_detail.duplicate_voice,
         )
 
     def _wire_browser_callbacks(self) -> None:
@@ -651,7 +651,7 @@ class SequencerTabCoordinator:
     def _wire_project_callbacks(self) -> None:
         self._project_controller.on_settings_changed = self._sequencer_tracker_logic.push_settings
         self._project_controller.on_song_changed = self._on_song_changed
-        self._project_controller.on_samples_changed = self._sequencer_samples_logic.push_samples
+        self._project_controller.on_voices_changed = self._sequencer_samples_logic.push_samples
         self._project_controller.on_project_replaced = self._on_project_replaced
 
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
@@ -801,7 +801,7 @@ class SequencerTabCoordinator:
         self,
         row_index: int,
         channel: Optional[ChannelName],
-        sample_id: Optional[str],
+        voice_id: Optional[str],
         transpose: Optional[int],
         volume: Optional[int],
     ) -> CoalesceKey:
@@ -813,7 +813,7 @@ class SequencerTabCoordinator:
         """
         return (
             *self._cell_key(row_index, channel),
-            sample_id is not None,
+            voice_id is not None,
             transpose is not None,
             volume is not None,
         )
@@ -873,24 +873,24 @@ class SequencerTabCoordinator:
 
     def reconstruction_edit_detail(
         self,
-        sample_id: str,
+        voice_id: str,
         channel_name: ChannelName,
         feature_key: FeatureKey,
     ) -> HistoryDetail:
         """Describes a reconstruction edit for the project history's detail line."""
         return self._history_detail.edit_reconstruction(
-            sample_id,
+            voice_id,
             channel_name,
             feature_key,
         )
 
     def reconstruction_stem_detail(
         self,
-        sample_id: str,
+        voice_id: str,
         stem_name: str,
     ) -> HistoryDetail:
         """Describes a recording taken out of a reconstruction for the project history."""
-        return self._history_detail.remove_stem(sample_id, stem_name)
+        return self._history_detail.remove_stem(voice_id, stem_name)
 
     def _build_history_view_model(self) -> HistoryViewModel:
         cursor = self._history.cursor
@@ -1192,7 +1192,7 @@ class SequencerTabCoordinator:
         self._reconcile_nes_frequency(
             reconstruction,
             lambda adopt_frequency: self._commit_replace_reconstruction(
-                selection.sample_id,
+                selection.voice_id,
                 reconstruction,
                 filepath.stem,
                 adopt_frequency=adopt_frequency,
@@ -1202,7 +1202,7 @@ class SequencerTabCoordinator:
 
     def _commit_replace_reconstruction(
         self,
-        sample_id: str,
+        voice_id: str,
         reconstruction: Reconstruction,
         name: str,
         *,
@@ -1217,7 +1217,7 @@ class SequencerTabCoordinator:
         and the substitution share a single history entry, so one undo restores the previous rate,
         name, and audio together.
         """
-        detail = self._history_detail.replace_sample(sample_id, name)
+        detail = self._history_detail.replace_sample(voice_id, name)
         with self._history.transaction(
             HistoryAction.REPLACE_SAMPLE,
             detail=detail,
@@ -1225,9 +1225,9 @@ class SequencerTabCoordinator:
             if adopt_frequency is not None:
                 self._sequencer_tracker_logic.set_nes_frequency(adopt_frequency)
 
-            self._sequencer_samples_logic.rename_sample(sample_id, name)
-            self._on_sample_reconstruction_replaced(sample_id, reconstruction)
-            self._sequencer_browser_logic.replace_reconstruction(sample_id, reconstruction)
+            self._sequencer_samples_logic.rename_voice(voice_id, name)
+            self._on_sample_reconstruction_replaced(voice_id, reconstruction)
+            self._sequencer_browser_logic.replace_reconstruction(voice_id, reconstruction)
 
     def _replace_target_label(self) -> Optional[str]:
         """The indexed label of the sample a browser replacement would overwrite, while one is selected."""
@@ -1237,8 +1237,8 @@ class SequencerTabCoordinator:
 
         return selection.label
 
-    def _dispatch_edit_sample(self, sample_id: str) -> None:
-        self._on_edit_sample_requested(sample_id)
+    def _dispatch_edit_sample(self, voice_id: str) -> None:
+        self._on_edit_sample_requested(voice_id)
 
     def _on_tracker_play_from_row(self, row_index: int) -> None:
         """Starts playback from the right-clicked row of the frame the tracker is showing."""
@@ -1247,59 +1247,59 @@ class SequencerTabCoordinator:
             row_index,
         )
 
-    def _on_samples_changed(
+    def _on_voices_changed(
         self,
         view_model: SequencerSamplesViewModel,
     ) -> None:
         self._sequencer_samples_panel.update_view(view_model)
         self._sequencer_tracker_panel.update_samples(view_model)
 
-    def _on_sample_selected(self, sample_id: str) -> None:
+    def _on_sample_selected(self, voice_id: str) -> None:
         self._sequencer_tracker_panel.deselect_cell()
         self._sequencer_order_panel.deselect_cell()
-        self._sequencer_samples_logic.request_autoplay(sample_id)
-        logger.debug(f"Sequencer sample selected: {sample_id}")
+        self._sequencer_samples_logic.request_autoplay(voice_id)
+        logger.debug(f"Sequencer sample selected: {voice_id}")
 
-    def _remove_sample(self, sample_id: str) -> None:
+    def _remove_voice(self, voice_id: str) -> None:
         """Removes a sample, confirming first only when a pattern still references it.
 
         An unused sample is dropped silently; a referenced one would clear every row
         that points at it, so the user confirms that loss first.
         """
-        if not self._sequencer_samples_logic.is_sample_used(sample_id):
-            self._perform_remove_sample(sample_id)
+        if not self._sequencer_samples_logic.is_voice_used(voice_id):
+            self._perform_remove_voice(voice_id)
             return
 
-        name = self._sequencer_samples_logic.sample_name(sample_id)
+        name = self._sequencer_samples_logic.sample_name(voice_id)
         self._dialogs.show_confirmation(
             tag=TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
             title=self._language_manager["global.dialog.title.remove_sample"],
             message=self._language_manager["global.dialog.message.remove_sample"].format(name=name),
-            on_confirm=lambda: self._perform_remove_sample(sample_id),
+            on_confirm=lambda: self._perform_remove_voice(voice_id),
             ok_label=self._language_manager["global.dialog.label.remove"],
         )
 
-    def _perform_remove_sample(self, sample_id: str) -> None:
-        detail = self._history_detail.remove_sample(sample_id)
+    def _perform_remove_voice(self, voice_id: str) -> None:
+        detail = self._history_detail.remove_voice(voice_id)
         with self._history.transaction(
             HistoryAction.REMOVE_SAMPLE,
             detail=detail,
         ):
-            self._sequencer_samples_logic.remove_sample(sample_id)
+            self._sequencer_samples_logic.remove_voice(voice_id)
 
-    def _submit_rename(self, sample_id: str, name: str) -> None:
+    def _submit_rename(self, voice_id: str, name: str) -> None:
         """Applies an inline rename, ignoring a blank name so the sample keeps its current one."""
         stripped = name.strip()
         if stripped:
-            detail = self._history_detail.rename_sample(
-                self._sequencer_samples_logic.sample_name(sample_id),
+            detail = self._history_detail.rename_voice(
+                self._sequencer_samples_logic.sample_name(voice_id),
                 stripped,
             )
             with self._history.transaction(
                 HistoryAction.RENAME_SAMPLE,
                 detail=detail,
             ):
-                self._sequencer_samples_logic.rename_sample(sample_id, stripped)
+                self._sequencer_samples_logic.rename_voice(voice_id, stripped)
 
     def _request_nes_frequency_change(self, nes_frequency: int) -> None:
         """Applies a NES-frequency change, confirming first when it would re-time existing samples.

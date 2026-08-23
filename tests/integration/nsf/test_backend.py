@@ -15,9 +15,9 @@ from sampletones_core.exports.request import (
 from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.performance import song_instructions
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
 from sampletones_core.project.tuning import tuning_from_project
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.builder import (
     SONG_START,
@@ -71,7 +71,7 @@ def sample_request(sample: Sample) -> SampleExport:
                 name=instrument_slice_name(sample.name, channel),
                 channel=channel,
                 features=features,
-                loop=sample.loop,
+                loop=sample.loops,
                 nes_frequency=config.nes_frequency,
                 tuning=config.tuning,
             )

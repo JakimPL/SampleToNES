@@ -22,8 +22,8 @@ def lengthened(project: Project, frames: int) -> Project:
         rows_per_pattern=project.song.rows_per_pattern,
         settings=project.settings,
     )
-    for sample in project.samples:
-        longer.samples.append(sample)
+    for sample in project.voices:
+        longer.voices.append(sample)
 
     longer.song = project.song.model_copy(deep=True)
     while longer.song.order_length() < frames:

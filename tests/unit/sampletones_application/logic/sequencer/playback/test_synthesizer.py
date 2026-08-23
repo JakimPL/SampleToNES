@@ -63,7 +63,7 @@ class SynthesizerContext:
     mask: MaskProvider
     chunks: List[np.ndarray] = field(default_factory=list)
     tick_snapshots: Dict[str, int] = field(default_factory=dict)
-    sample_id_snapshots: Dict[str, Optional[str]] = field(default_factory=dict)
+    voice_id_snapshots: Dict[str, Optional[str]] = field(default_factory=dict)
 
 
 def _make_context() -> SynthesizerContext:
@@ -123,7 +123,7 @@ class TestTriggerSetsDefaults:
                 _controller(context),
                 channel=ChannelName.PULSE1,
                 row_index=0,
-                sample_id=sample.id,
+                voice_id=sample.id,
             )
 
         def render_row_0_and_assert_defaults(context: SynthesizerContext) -> None:
@@ -154,7 +154,7 @@ class TestTriggerSetsDefaults:
                 _controller(context),
                 channel=ChannelName.PULSE1,
                 row_index=0,
-                sample_id=sample.id,
+                voice_id=sample.id,
                 transpose=5,
                 volume=8,
             )
@@ -191,21 +191,21 @@ class TestSustain:
                 _controller(context),
                 channel=ChannelName.PULSE1,
                 row_index=0,
-                sample_id=sample.id,
+                voice_id=sample.id,
             )
 
         def render_row_0_and_record_state(context: SynthesizerContext) -> None:
             _render(context)
             context.tick_snapshots["after_row_0"] = _performance(context).tick_index
-            context.sample_id_snapshots["triggered"] = _performance(context).sample_id
-            assert _performance(context).sample_id is not None
+            context.voice_id_snapshots["triggered"] = _performance(context).voice_id
+            assert _performance(context).voice_id is not None
 
         def render_empty_row_1_and_assert_tick_advanced(
             context: SynthesizerContext,
         ) -> None:
             _render(context)
             assert _performance(context).tick_index > context.tick_snapshots["after_row_0"]
-            assert _performance(context).sample_id == context.sample_id_snapshots["triggered"]
+            assert _performance(context).voice_id == context.voice_id_snapshots["triggered"]
 
         BaseTestScenario(
             label="sustain — empty row continues previous note",
@@ -236,7 +236,7 @@ class TestModifierOnlyRow:
                 _controller(context),
                 channel=ChannelName.PULSE1,
                 row_index=0,
-                sample_id=sample.id,
+                voice_id=sample.id,
                 volume=15,
             )
             place_modifier_row(
@@ -249,7 +249,7 @@ class TestModifierOnlyRow:
         def render_row_0_and_record_state(context: SynthesizerContext) -> None:
             _render(context)
             context.tick_snapshots["after_row_0"] = _performance(context).tick_index
-            context.sample_id_snapshots["after_row_0"] = _performance(context).sample_id
+            context.voice_id_snapshots["after_row_0"] = _performance(context).voice_id
             assert _performance(context).volume == 15
 
         def render_modifier_row_and_assert_volume_changed(
@@ -257,7 +257,7 @@ class TestModifierOnlyRow:
         ) -> None:
             _render(context)
             assert _performance(context).volume == 0
-            assert _performance(context).sample_id == context.sample_id_snapshots["after_row_0"]
+            assert _performance(context).voice_id == context.voice_id_snapshots["after_row_0"]
             assert _performance(context).tick_index > context.tick_snapshots["after_row_0"]
 
         BaseTestScenario(
@@ -284,7 +284,7 @@ class TestModifierOnlyRow:
                 _controller(context),
                 channel=ChannelName.PULSE1,
                 row_index=0,
-                sample_id=sample.id,
+                voice_id=sample.id,
                 transpose=0,
             )
             place_modifier_row(
@@ -296,7 +296,7 @@ class TestModifierOnlyRow:
 
         def render_row_0_and_record_sample(context: SynthesizerContext) -> None:
             _render(context)
-            context.sample_id_snapshots["triggered"] = _performance(context).sample_id
+            context.voice_id_snapshots["triggered"] = _performance(context).voice_id
             assert _performance(context).transpose == 0
 
         def render_modifier_row_and_assert_transpose_changed(
@@ -304,7 +304,7 @@ class TestModifierOnlyRow:
         ) -> None:
             _render(context)
             assert _performance(context).transpose == 7
-            assert _performance(context).sample_id == context.sample_id_snapshots["triggered"]
+            assert _performance(context).voice_id == context.voice_id_snapshots["triggered"]
 
         BaseTestScenario(
             label="modifier-only row changes transpose without retriggering",
@@ -335,7 +335,7 @@ class TestChannelMask:
                 _controller(context),
                 channel=ChannelName.PULSE1,
                 row_index=0,
-                sample_id=sample.id,
+                voice_id=sample.id,
             )
 
         def mute_pulse1(context: SynthesizerContext) -> None:
@@ -377,13 +377,13 @@ class TestChannelMask:
                 _controller(context),
                 channel=ChannelName.PULSE1,
                 row_index=0,
-                sample_id=sample.id,
+                voice_id=sample.id,
             )
 
         def mute_pulse1_and_render_row_0(context: SynthesizerContext) -> None:
             context.mask.mute(ChannelName.PULSE1)
             assert np.allclose(_render(context), 0.0)
-            assert _performance(context).sample_id is not None
+            assert _performance(context).voice_id is not None
 
         def unmute_pulse1_and_render_row_1(context: SynthesizerContext) -> None:
             context.mask.active = ALL_CHANNELS
@@ -500,7 +500,7 @@ class TestNoteOff:
                 _controller(context),
                 channel=ChannelName.PULSE1,
                 row_index=0,
-                sample_id=sample.id,
+                voice_id=sample.id,
             )
             place_note_off(_controller(context), channel=ChannelName.PULSE1, row_index=1)
 
@@ -510,7 +510,7 @@ class TestNoteOff:
         def render_row_1_and_assert_silenced(context: SynthesizerContext) -> None:
             audio = _render(context)
             assert np.all(audio == 0.0)
-            assert _performance(context).sample_id is None
+            assert _performance(context).voice_id is None
 
         BaseTestScenario(
             label="note-off silences a looped voice and clears channel state",
@@ -541,7 +541,7 @@ class TestLoopBehavior:
                 _controller(context),
                 channel=ChannelName.PULSE1,
                 row_index=0,
-                sample_id=sample.id,
+                voice_id=sample.id,
             )
 
         def render_row_0_and_assert_non_silence(context: SynthesizerContext) -> None:
@@ -585,7 +585,7 @@ class TestLoopBehavior:
                 _controller(context),
                 channel=ChannelName.PULSE1,
                 row_index=0,
-                sample_id=sample.id,
+                voice_id=sample.id,
             )
 
         def render_row_0_and_assert_first_tick_audible_rest_silent(
@@ -621,7 +621,7 @@ class TestLoopBehavior:
                 controller,
                 channel=ChannelName.PULSE1,
                 row_index=0,
-                sample_id=sample.id,
+                voice_id=sample.id,
             )
             controller.append_frame()
 
@@ -635,7 +635,7 @@ class TestLoopBehavior:
             audio, (order_position, _) = context.synthesizer.render_row()
             assert order_position == 1
             assert not np.all(audio == 0.0)
-            assert _performance(context).sample_id is not None
+            assert _performance(context).voice_id is not None
 
         BaseTestScenario(
             label="looped voice carries across an empty (None-slot) next frame",
@@ -847,7 +847,7 @@ class TestNesFrequencyTempo:
         controller = make_controller()
         recon = make_pulse_reconstruction(count=12)
         sample = add_sample(controller, recon)
-        place_row(controller, channel=ChannelName.PULSE1, row_index=0, sample_id=sample.id)
+        place_row(controller, channel=ChannelName.PULSE1, row_index=0, voice_id=sample.id)
         synthesizer = make_synthesizer(controller, Config(), sample_rate=SAMPLE_RATE)
 
         controller.set_nes_frequency(60)
@@ -859,7 +859,7 @@ class TestNesFrequencyTempo:
         synthesizer.render_row()
 
         assert pulse_state.generator.frame_length == round(SAMPLE_RATE / 30)
-        assert pulse_state.performance.sample_id is not None
+        assert pulse_state.performance.voice_id is not None
 
 
 class TestChannelHeldValues:
@@ -883,7 +883,7 @@ class TestChannelHeldValues:
             _controller(context),
             channel=ChannelName.PULSE1,
             row_index=row_index,
-            sample_id=sample.id,
+            voice_id=sample.id,
         )
 
     @staticmethod

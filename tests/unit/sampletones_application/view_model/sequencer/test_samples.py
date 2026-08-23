@@ -18,6 +18,6 @@ class TestSampleSelectionLabel:
         name: str,
         expected: str,
     ) -> None:
-        selection = SampleSelection(sample_id="id", position=position, name=name)
+        selection = SampleSelection(voice_id="id", position=position, name=name)
 
         assert selection.label == expected

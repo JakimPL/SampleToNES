@@ -12,7 +12,7 @@ from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.slot import SUBCOLUMNS, TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.project.instruments.note_off import NoteOff
+from sampletones_core.project.voices.note_off import NoteOff
 from tests.suite.sequencer import sample_reconstruction
 
 

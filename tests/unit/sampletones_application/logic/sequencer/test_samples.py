@@ -10,7 +10,8 @@ from sampletones_application.logic.shared.playback_priority import PlaybackPrior
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.famitracker.footprint import reconstruction_footprints
-from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
+from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.sequencer import sample_reconstruction
 
@@ -47,14 +48,14 @@ def _logic_with_mocks() -> Tuple[
 def _place_instrument(
     controller: ProjectController,
     channel: ChannelName,
-    sample_id: str,
+    voice_id: str,
 ) -> None:
     pattern_index = controller.project.song.order[0][channel]
     controller.set_row(
         channel,
         pattern_index,
         0,
-        command=Instrument(sample_id=sample_id, channel_name=channel),
+        command=NoteOn(voice_id=voice_id),
     )
 
 
@@ -75,7 +76,7 @@ class TestIsSampleUsed:
     ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
-        assert logic.is_sample_used(sample.id) is False
+        assert logic.is_voice_used(sample.id) is False
 
     def test_true_after_placing_in_a_pattern(
         self,
@@ -84,7 +85,7 @@ class TestIsSampleUsed:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         _place_instrument(controller, ChannelName.PULSE1, sample.id)
-        assert logic.is_sample_used(sample.id) is True
+        assert logic.is_voice_used(sample.id) is True
 
 
 class TestRemoveSample:
@@ -95,9 +96,9 @@ class TestRemoveSample:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
 
-        logic.remove_sample(sample.id)
+        logic.remove_voice(sample.id)
 
-        assert controller.project.sample(sample.id) is None
+        assert controller.project.voice(sample.id) is None
 
     def test_removing_used_sample_clears_its_references(
         self, reconstruction_factory: Callable[[], Reconstruction]
@@ -106,10 +107,10 @@ class TestRemoveSample:
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         _place_instrument(controller, ChannelName.PULSE1, sample.id)
 
-        logic.remove_sample(sample.id)
+        logic.remove_voice(sample.id)
 
-        assert controller.project.sample(sample.id) is None
-        assert logic.is_sample_used(sample.id) is False
+        assert controller.project.voice(sample.id) is None
+        assert logic.is_voice_used(sample.id) is False
 
 
 class TestMoveSample:
@@ -121,9 +122,9 @@ class TestMoveSample:
         first = controller.add_sample(reconstruction_factory(), name="first")
         controller.add_sample(reconstruction_factory(), name="second")
 
-        logic.move_sample(first.id, 1)
+        logic.move_voice(first.id, 1)
 
-        assert [sample.name for sample in controller.project.samples] == [
+        assert [sample.name for sample in controller.project.voices] == [
             "second",
             "first",
         ]
@@ -137,9 +138,9 @@ class TestDuplicateSample:
         controller, logic = _logic()
         source = controller.add_sample(reconstruction_factory(), name="lead")
 
-        logic.duplicate_sample(source.id)
+        logic.duplicate_voice(source.id)
 
-        assert [sample.name for sample in controller.project.samples] == [
+        assert [sample.name for sample in controller.project.voices] == [
             "lead",
             "lead",
         ]
@@ -156,7 +157,7 @@ class TestBuildSamples:
 
         view_model = logic.build_samples()
 
-        assert [entry.sample_id for entry in view_model.samples] == [
+        assert [entry.voice_id for entry in view_model.samples] == [
             first.id,
             second.id,
         ]
@@ -185,7 +186,7 @@ class TestBuildSampleFootprint:
     ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
-        controller.set_sample_loop(sample.id, True)
+        controller.set_voice_loop_point(sample.id, WHOLE_LOOP_POINT)
 
         footprint = logic.build_sample_footprint(sample.id)
 
@@ -202,7 +203,7 @@ class TestBuildSampleFootprint:
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         one_shot = logic.build_sample_footprint(sample.id)
 
-        controller.set_sample_loop(sample.id, True)
+        controller.set_voice_loop_point(sample.id, WHOLE_LOOP_POINT)
         looping = logic.build_sample_footprint(sample.id)
 
         assert one_shot is not None and looping is not None

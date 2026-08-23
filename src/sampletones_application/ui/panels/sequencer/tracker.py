@@ -1013,7 +1013,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             clip_widget=TAG_SEQUENCER_TRACKER_WINDOW,
         )
 
-    def _resolve_sample_id(
+    def _resolve_voice_id(
         self,
         sample_index: int,
     ) -> Optional[Tuple[int, str]]:
@@ -1022,7 +1022,7 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         samples = self._current_samples.samples
         sample_index = max(0, min(sample_index, len(samples) - 1))
-        return sample_index, samples[sample_index].sample_id
+        return sample_index, samples[sample_index].voice_id
 
     def _handle_edit_action(self, action: EditAction) -> None:
         """Commits a single-subcolumn edit.
@@ -1038,12 +1038,12 @@ class GUISequencerTrackerPanel(GUIPanel):
             self.call(self.on_set_note_off, row, channel)
             return
 
-        sample_id: Optional[str] = None
+        voice_id: Optional[str] = None
 
         if action.sample_index is not None:
-            resolved = self._resolve_sample_id(action.sample_index)
+            resolved = self._resolve_voice_id(action.sample_index)
             sample_index = resolved[0] if resolved is not None else None
-            sample_id = resolved[1] if resolved is not None else None
+            voice_id = resolved[1] if resolved is not None else None
             self._editable_cells.values[(row, channel, SubColumn.INSTRUMENT)] = tracker_display.format_committed(
                 SubColumn.INSTRUMENT,
                 sample_index,
@@ -1065,7 +1065,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             self.on_set_row,
             row,
             channel,
-            sample_id,
+            voice_id,
             action.transpose,
             action.volume,
         )
@@ -1412,7 +1412,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             for index, sample in enumerate(samples):
                 dpg.add_menu_item(
                     label=tracker_display.indexed_label(index, sample.name),
-                    user_data=(cell.row, cell.channel, sample.sample_id),
+                    user_data=(cell.row, cell.channel, sample.voice_id),
                     callback=self._on_set_instrument_menu,
                 )
 
@@ -1449,8 +1449,8 @@ class GUISequencerTrackerPanel(GUIPanel):
         _app_data: None,
         user_data: Tuple[int, Optional[ChannelName], str],
     ) -> None:
-        row_index, channel, sample_id = user_data
-        self.call(self.on_set_row, row_index, channel, sample_id, None, None)
+        row_index, channel, voice_id = user_data
+        self.call(self.on_set_row, row_index, channel, voice_id, None, None)
 
     def _on_transpose_menu(
         self,

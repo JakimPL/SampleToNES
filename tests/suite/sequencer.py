@@ -25,9 +25,9 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import NoteCommand
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.utils.display import (
     BLANK,
@@ -170,7 +170,7 @@ def parse_block(
     rows: Sequence[str],
     *,
     first_subcolumn: SubColumn,
-    sample_ids: Sequence[str],
+    voice_ids: Sequence[str],
 ) -> TrackerBlock:
     """Reads a block written the way the grid draws it, one line per row.
 
@@ -179,7 +179,7 @@ def parse_block(
     the block begins on. A ``?`` states that the block says nothing about that cell, which is what
     leaves it out of the maps entirely.
 
-    A note names its sample by the position the grid prints, resolved through ``sample_ids``;
+    A note names its sample by the position the grid prints, resolved through ``voice_ids``;
     ``!!`` names a sample no project holds.
 
     Raises:
@@ -203,7 +203,7 @@ def parse_block(
 
             match SUBCOLUMNS[slot_offset % len(SUBCOLUMNS)]:
                 case SubColumn.INSTRUMENT:
-                    notes[key] = parse_note(token, sample_ids)
+                    notes[key] = parse_note(token, voice_ids)
                 case SubColumn.TRANSPOSE:
                     transposes[key] = parse_transpose(token)
                 case SubColumn.VOLUME:
@@ -220,7 +220,7 @@ def fill_frame(
     tracker_logic: SequencerTrackerLogic,
     rows: Sequence[str],
     *,
-    sample_ids: Sequence[str],
+    voice_ids: Sequence[str],
 ) -> None:
     """Writes a frame stated the way the grid draws it, one channel cell at a time.
 
@@ -235,13 +235,13 @@ def fill_frame(
                 row_index,
                 channel,
                 cell.split(),
-                sample_ids,
+                voice_ids,
             )
 
 
 def parse_note(
     token: str,
-    sample_ids: Sequence[str],
+    voice_ids: Sequence[str],
 ) -> Optional[BlockNote]:
     """The note a token names: a sample by the position it prints, a cut, or emptiness."""
     if token == display_id(None):
@@ -253,7 +253,7 @@ def parse_note(
     if token == UNKNOWN_SAMPLE:
         return UNKNOWN_SAMPLE_ID
 
-    return sample_ids[int(token, HEXADECIMAL_BASE)]
+    return voice_ids[int(token, HEXADECIMAL_BASE)]
 
 
 def parse_transpose(token: str) -> Optional[int]:
@@ -304,14 +304,14 @@ def _fill_cell(
     row_index: int,
     channel: ChannelName,
     tokens: Sequence[str],
-    sample_ids: Sequence[str],
+    voice_ids: Sequence[str],
 ) -> None:
     """Writes the values one channel cell states, passing over a cell that states none.
 
     A cell is written whole where it carries anything, so the row it lands on materialises exactly
     once however many of its subcolumns hold a value.
     """
-    note = parse_note(tokens[0], sample_ids)
+    note = parse_note(tokens[0], voice_ids)
     transpose = parse_transpose(tokens[1])
     volume = parse_volume(tokens[2])
     if note is None and transpose is None and volume is None:
@@ -334,8 +334,8 @@ def _command(
     match note:
         case NoteOff():
             return note
-        case str() as sample_id:
-            return Instrument(sample_id=sample_id, channel_name=channel)
+        case str() as voice_id:
+            return NoteOn(voice_id=voice_id)
         case None:
             return None
 

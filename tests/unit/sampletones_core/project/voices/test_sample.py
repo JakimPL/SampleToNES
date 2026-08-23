@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
+from sampletones_core.project.voices.sample import Sample
 
 
 class TestSampleClone:
@@ -9,10 +10,10 @@ class TestSampleClone:
         assert sample.clone().id != sample.id
 
     def test_clone_carries_name_and_loop(self) -> None:
-        sample = Sample(name="lead", reconstruction=Mock(), loop=True)
+        sample = Sample(name="lead", reconstruction=Mock(), loop_point=WHOLE_LOOP_POINT)
         clone = sample.clone()
         assert clone.name == "lead"
-        assert clone.loop is True
+        assert clone.loop_point == WHOLE_LOOP_POINT
 
     def test_clone_deep_copies_the_reconstruction(self) -> None:
         reconstruction = Mock()

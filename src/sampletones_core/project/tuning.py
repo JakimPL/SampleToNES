@@ -19,7 +19,7 @@ def tuning_from_project(project: Project) -> Tuning:
     a project holding none takes the tuning a reconstruction is built against by default.
 
     Args:
-        project: The project whose samples state the tuning.
+        project: The project whose voices state the tuning.
 
     Returns:
         Tuning: The tuning every sample of the project was reconstructed against.
@@ -28,7 +28,7 @@ def tuning_from_project(project: Project) -> Tuning:
         ValueError: If the samples were reconstructed against tunings that differ, which one
             timer table sounds only one of.
     """
-    tunings: Set[Tuning] = {sample.reconstruction.config.tuning for sample in project.samples}
+    tunings: Set[Tuning] = {voice.reconstruction.config.tuning for voice in project.voices}
     if not tunings:
         return UNTUNED_PROJECT
 

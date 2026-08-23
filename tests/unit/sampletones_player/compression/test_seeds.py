@@ -39,5 +39,5 @@ class TestTheInstrumentsSeedTheDictionary:
             make_pulse_reconstruction(count=SOUNDING_TICKS),
             rows_per_pattern=ROWS_PER_PATTERN,
         )
-        project.samples.clear()
+        project.voices.clear()
         assert phrases_from_project(project, TUNING) == ()
