@@ -9,12 +9,12 @@ from .rows import apply_row, resolve_row
 from .song import song_instructions
 from .state import ChannelPerformance
 from .ticks import sound_tick
-from .voice import SampleVoice
+from .voice import VoiceReading
 
 __all__ = [
     "SILENT_WALK_REPORTER",
     "ChannelPerformance",
-    "SampleVoice",
+    "VoiceReading",
     "WalkProgress",
     "WalkReporter",
     "announce",

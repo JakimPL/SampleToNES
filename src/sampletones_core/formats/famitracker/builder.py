@@ -5,7 +5,7 @@ from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.slices import (
     InstrumentSlot,
     InstrumentTable,
-    iterate_sample_slices,
+    iterate_voice_slices,
 )
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.model.module import (
@@ -108,19 +108,19 @@ def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], Inst
     instruments: List[Instrument2A03] = []
     slots: InstrumentTable = {}
 
-    for sample_slice in iterate_sample_slices(project):
-        if sample_slice.index >= MAX_INSTRUMENTS:
+    for voice_slice in iterate_voice_slices(project):
+        if voice_slice.index >= MAX_INSTRUMENTS:
             raise ValueError(f"Module exceeds the FamiTracker limit of {MAX_INSTRUMENTS} instruments")
 
         instruments.append(
             build_instrument(
-                sample_slice.index,
-                sample_slice.instrument_name,
-                sample_slice.features,
-                loop=sample_slice.sample.loops,
+                voice_slice.index,
+                voice_slice.instrument_name,
+                voice_slice.features,
+                loop=voice_slice.voice.loops,
             )
         )
-        slots[sample_slice.key] = sample_slice.slot
+        slots[voice_slice.key] = voice_slice.slot
 
     return instruments, slots
 

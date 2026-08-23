@@ -11,7 +11,7 @@ from sampletones_core.performance.progress import (
 from sampletones_core.performance.rows import apply_row, resolve_row
 from sampletones_core.performance.state import ChannelPerformance
 from sampletones_core.performance.ticks import sound_tick
-from sampletones_core.performance.voice import SampleVoice
+from sampletones_core.performance.voice import VoiceReading
 from sampletones_core.project.project import Project
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.project.voices.sample import Sample
@@ -75,7 +75,7 @@ def song_instructions(
 
 
 def _channel_ticks(
-    sample: Optional[Sample],
+    voice: Optional[Sample],
     channel_name: ChannelName,
     performance: ChannelPerformance,
     ticks: int,
@@ -87,7 +87,7 @@ def _channel_ticks(
     around them play on.
 
     Args:
-        sample: The sample the channel is sounding, or ``None`` while it rests.
+        voice: The voice the channel is sounding, or ``None`` while it rests.
         channel_name: The channel being sounded.
         performance: What the channel carries; its tick index moves on per sounded tick.
         ticks: The engine ticks the row lasts.
@@ -96,22 +96,13 @@ def _channel_ticks(
         List[InstructionUnion]: One instruction per tick of the row.
     """
     resting: InstructionUnion = CHANNEL_TO_EXPORTER_MAP[channel_name].get_instruction_type().null_instruction()
-    if sample is None:
+    reading = VoiceReading.read(voice, channel_name) if voice is not None else None
+    if reading is None:
         return [resting] * ticks
 
-    instructions = sample.reconstruction.instructions[channel_name]
-    if not instructions:
-        return [resting] * ticks
-
-    voice = SampleVoice.read(sample.reconstruction, channel_name)
     sounded: List[InstructionUnion] = []
     for _ in range(ticks):
-        instruction = sound_tick(
-            performance,
-            instructions,
-            loop=sample.loops,
-            voice=voice,
-        )
+        instruction = sound_tick(performance, reading)
         sounded.append(resting if instruction is None else instruction)
 
     return sounded

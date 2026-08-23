@@ -15,7 +15,8 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
-from sampletones_core.performance import SampleVoice
+from sampletones_core.performance import VoiceReading
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -65,8 +66,11 @@ def _voice(
     channel_name: ChannelName,
     instructions: Sequence[InstructionUnion],
     held_features: Iterable[FeatureKey],
-) -> SampleVoice:
-    return SampleVoice.read(_reconstruction(channel_name, instructions, held_features), channel_name)
+) -> VoiceReading:
+    voice = Sample(name="lead", reconstruction=_reconstruction(channel_name, instructions, held_features))
+    reading = VoiceReading.read(voice, channel_name)
+    assert reading is not None
+    return reading
 
 
 def _channel_values() -> Dict[FeatureKey, int]:

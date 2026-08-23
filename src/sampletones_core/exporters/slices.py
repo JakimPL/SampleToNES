@@ -12,7 +12,7 @@ from sampletones_core.project.voices.sample import Sample
 
 @dataclass(frozen=True)
 class InstrumentSlot:
-    """Where a sample's channel slice landed in the instrument table."""
+    """Where a voice's channel slice landed in the instrument table."""
 
     index: int
     initial_pitch: int
@@ -22,30 +22,30 @@ InstrumentTable = Dict[Tuple[str, ChannelName], InstrumentSlot]
 
 
 @dataclass(frozen=True)
-class SampleSlice:
-    """One channel slice of a project sample, numbered for the instrument table.
+class VoiceSlice:
+    """One channel slice of a project voice, numbered for the instrument table.
 
     Attributes:
         index: Position the slice takes in the exported instrument table.
-        sample: The sample whose reconstruction the slice came from.
+        voice: The voice the slice came from.
         channel: The NES channel the slice covers.
         features: The per-dimension envelopes describing the slice.
     """
 
     index: int
-    sample: Sample
+    voice: Sample
     channel: ChannelName
     features: Features
 
     @property
     def instrument_name(self) -> str:
         """The exported instrument's name, naming both its sample and its channel."""
-        return instrument_slice_name(self.sample.name, self.channel)
+        return instrument_slice_name(self.voice.name, self.channel)
 
     @property
     def key(self) -> Tuple[str, ChannelName]:
         """The identity a pattern row references the slice by."""
-        return (self.sample.id, self.channel)
+        return (self.voice.id, self.channel)
 
     @property
     def slot(self) -> InstrumentSlot:
@@ -56,31 +56,31 @@ class SampleSlice:
         )
 
 
-def iterate_sample_slices(project: Project) -> Iterator[SampleSlice]:
-    """Walks every channel slice of every sample in instrument-table order.
+def iterate_voice_slices(project: Project) -> Iterator[VoiceSlice]:
+    """Walks every channel slice of every voice in instrument-table order.
 
-    A sample contributes one slice per channel that plays, so it yields one to four. Slices
-    are numbered in sample order, then channel order, which fixes the instrument numbering
-    every tracker format builds on. Each sample's features are exported once, so a caller
-    reads a reconstruction's envelopes at a single cost.
+    A voice contributes one slice per channel that plays, so a sample yields one to four. Slices
+    are numbered in voice order, then channel order, which fixes the instrument numbering every
+    tracker format builds on. Each voice's features are exported once, so a caller reads a
+    reconstruction's envelopes at a single cost.
 
     Args:
-        project: The project whose samples are exported.
+        project: The project whose voices are exported.
 
     Yields:
-        SampleSlice: Each slice alongside the index it takes in the instrument table.
+        VoiceSlice: Each slice alongside the index it takes in the instrument table.
     """
     index = 0
-    for sample in project.voices:
-        features_by_channel = sample.reconstruction.export()
+    for voice in project.voices:
+        features_by_channel = voice.reconstruction.export()
         for channel in ChannelName.items():
             features = features_by_channel[channel]
             if not features.has_frames:
                 continue
 
-            yield SampleSlice(
+            yield VoiceSlice(
                 index=index,
-                sample=sample,
+                voice=voice,
                 channel=channel,
                 features=features,
             )

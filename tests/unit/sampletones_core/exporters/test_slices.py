@@ -3,7 +3,7 @@ from typing import List, Sequence
 import numpy as np
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_core.exporters.slices import iterate_sample_slices
+from sampletones_core.exporters.slices import iterate_voice_slices
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.voices.sample import Sample
@@ -35,9 +35,9 @@ class TestSampleSlices:
     def test_a_sample_contributes_one_slice_per_playing_channel(self) -> None:
         project = _project([_sample("lead", [ChannelName.PULSE1, ChannelName.NOISE])])
 
-        slices = list(iterate_sample_slices(project))
+        slices = list(iterate_voice_slices(project))
 
-        assert [sample_slice.channel for sample_slice in slices] == [
+        assert [voice_slice.channel for voice_slice in slices] == [
             ChannelName.PULSE1,
             ChannelName.NOISE,
         ]
@@ -53,9 +53,9 @@ class TestSampleSlices:
         )
         project = _project([sample])
 
-        slices = list(iterate_sample_slices(project))
+        slices = list(iterate_voice_slices(project))
 
-        assert [(sample_slice.index, sample_slice.channel) for sample_slice in slices] == [
+        assert [(voice_slice.index, voice_slice.channel) for voice_slice in slices] == [
             (0, ChannelName.PULSE2),
         ]
 
@@ -67,6 +67,6 @@ class TestSampleSlices:
             ]
         )
 
-        indices: List[int] = [sample_slice.index for sample_slice in iterate_sample_slices(project)]
+        indices: List[int] = [voice_slice.index for voice_slice in iterate_voice_slices(project)]
 
         assert indices == [0, 1, 2]
