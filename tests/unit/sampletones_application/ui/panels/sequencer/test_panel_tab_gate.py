@@ -9,8 +9,8 @@ from sampletones_application.ui.panels.sequencer.input.order import (
 )
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
-from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.voices import GUISequencerVoicesPanel
 from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter, focus
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from tests.suite.base import BaseTestSuite
@@ -19,7 +19,7 @@ from tests.suite.case import BaseRegularTestCase
 SequencerPanel = Union[
     GUISequencerTrackerPanel,
     GUISequencerOrderPanel,
-    GUISequencerSamplesPanel,
+    GUISequencerVoicesPanel,
 ]
 
 SELECTED_ID = "bass-id"
@@ -49,9 +49,9 @@ def _order(tab_active: ActivePredicate) -> GUISequencerOrderPanel:
     return panel
 
 
-def _samples(tab_active: ActivePredicate) -> GUISequencerSamplesPanel:
+def _samples(tab_active: ActivePredicate) -> GUISequencerVoicesPanel:
     """A samples panel holding a selection, which is what it keeps across a move to another tab."""
-    panel = GUISequencerSamplesPanel.__new__(GUISequencerSamplesPanel)
+    panel = GUISequencerVoicesPanel.__new__(GUISequencerVoicesPanel)
     panel._router = KeyRouter()
     panel._tab_active = tab_active
     panel._selected_voice_id = SELECTED_ID
@@ -59,7 +59,7 @@ def _samples(tab_active: ActivePredicate) -> GUISequencerSamplesPanel:
     return panel
 
 
-def _renaming_samples(tab_active: ActivePredicate) -> GUISequencerSamplesPanel:
+def _renaming_samples(tab_active: ActivePredicate) -> GUISequencerVoicesPanel:
     """A samples panel mid-rename, the one state that keeps the keyboard on its own tab."""
     panel = _samples(tab_active)
     panel._editing_voice_id = SELECTED_ID

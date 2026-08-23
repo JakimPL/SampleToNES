@@ -1,4 +1,6 @@
-from typing import Callable, Optional
+from typing import Callable, Final, Optional
+
+import numpy as np
 
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.layout.behavior.scheduling.scheduling import (
@@ -7,15 +9,23 @@ from sampletones_application.layout.behavior.scheduling.scheduling import (
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.view_model.sequencer.samples import (
-    SampleEntryViewModel,
-    SequencerSamplesViewModel,
+from sampletones_application.view_model.sequencer.kind import voice_kind
+from sampletones_application.view_model.sequencer.voices import (
+    SequencerVoicesViewModel,
+    VoiceEntryViewModel,
 )
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.formats.famitracker.footprint import reconstruction_footprints
+from sampletones_core.configs import Config
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.formats.famitracker.footprint import (
+    features_footprint,
+    reconstruction_footprints,
+)
+from sampletones_core.generators.render import render_instructions
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.shape import Shape
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.utils.display import display_voice
 from sampletones_shared.exceptions import PlaybackError
@@ -23,8 +33,10 @@ from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import StringCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
+PREVIEW_CHANNEL: Final[ChannelName] = ChannelName.PULSE1
 
-class SequencerSamplesLogic(CallbackMixin):
+
+class SequencerVoicesLogic(CallbackMixin):
     """Drives the samples panel: lists the pool, edits it, and previews samples.
 
     Every pool edit goes through the controller so the project stays the single
@@ -51,26 +63,30 @@ class SequencerSamplesLogic(CallbackMixin):
         self._scheduling = scheduling
         self._pending_autoplay_sample: Optional[str] = None
 
-        self.on_voices_changed: Optional[Callable[[SequencerSamplesViewModel], None]] = None
+        self.on_voices_changed: Optional[Callable[[SequencerVoicesViewModel], None]] = None
         self.on_edit_sample_requested: Optional[StringCallback] = None
         self.on_autoplay_error: Optional[Callable[[Exception], None]] = None
 
-    def build_samples(self) -> SequencerSamplesViewModel:
+    def build_voices(self) -> SequencerVoicesViewModel:
         entries = tuple(
-            SampleEntryViewModel(
-                voice_id=sample.id,
-                name=sample.name,
-                loop=sample.loops,
+            VoiceEntryViewModel(
+                voice_id=voice.id,
+                name=voice.name,
+                kind=voice_kind(voice),
+                loop=voice.loops,
             )
-            for sample in self._controller.project.voices
+            for voice in self._controller.project.voices
         )
-        return SequencerSamplesViewModel(samples=entries)
+        return SequencerVoicesViewModel(voices=entries)
 
-    def push_samples(self) -> None:
-        self.call(self.on_voices_changed, self.build_samples())
+    def push_voices(self) -> None:
+        self.call(self.on_voices_changed, self.build_voices())
 
     def add_sample(self, reconstruction: Reconstruction, name: str) -> Sample:
         return self._controller.add_sample(reconstruction, name)
+
+    def add_shape(self, name: str) -> Shape:
+        return self._controller.add_shape(name)
 
     def rename_voice(self, voice_id: str, name: str) -> None:
         self._controller.rename_voice(voice_id, name)
@@ -78,32 +94,37 @@ class SequencerSamplesLogic(CallbackMixin):
     def is_voice_used(self, voice_id: str) -> bool:
         return self._controller.is_voice_used(voice_id)
 
-    def build_sample_footprint(self, voice_id: str) -> Optional[SampleFootprintViewModel]:
-        """Measures one sample's instruments as the module export writes them.
+    def build_voice_footprint(self, voice_id: str) -> Optional[SampleFootprintViewModel]:
+        """Measures one voice's instruments as the module export writes them.
 
-        A sample carries its own loop flag, and a looping instrument is compiled to the shortest
-        length its envelopes share, so the sample is measured the way it is placed. Measuring a
-        single sample on demand keeps a pool edit clear of an export it was not asked for.
+        A voice carries its own loop point, and a looping instrument is compiled to one shared
+        length, so it is measured the way it is placed. A sample yields a figure per channel its
+        reconstruction covers; a shape yields the one instrument every channel reaches. Measuring
+        a single voice on demand keeps a pool edit clear of an export it was not asked for.
 
         Args:
-            voice_id: The sample to measure.
+            voice_id: The voice to measure.
 
         Returns:
-            Optional[SampleFootprintViewModel]: The sample's byte figures, or ``None`` while the
-            pool holds no such sample.
+            Optional[SampleFootprintViewModel]: The voice's byte figures, or ``None`` while the
+            pool holds no such voice.
         """
-        sample = self._controller.project.voices.get(voice_id)
-        if not isinstance(sample, Sample):
-            return None
+        match self._controller.project.voices.get(voice_id):
+            case Sample() as sample:
+                return SampleFootprintViewModel.from_footprints(
+                    reconstruction_footprints(sample.reconstruction, loop_point=sample.loop_point)
+                )
+            case Shape() as shape:
+                return SampleFootprintViewModel.from_instrument(
+                    features_footprint(shape.instrument_features(), loop_point=shape.loop_point)
+                )
+            case _:
+                return None
 
-        return SampleFootprintViewModel.from_footprints(
-            reconstruction_footprints(sample.reconstruction, loop_point=sample.loop_point)
-        )
-
-    def sample_name(self, voice_id: str) -> str:
+    def voice_name(self, voice_id: str) -> str:
         return self._controller.project.voices[voice_id].name
 
-    def sample_position(self, voice_id: str) -> str:
+    def voice_position(self, voice_id: str) -> str:
         """Returns the sample's hex list position, matching how the tracker labels it."""
         return display_voice(
             voices=self._controller.project.voices,
@@ -131,13 +152,13 @@ class SequencerSamplesLogic(CallbackMixin):
         self.cancel_autoplay()
         self.call(self.on_edit_sample_requested, voice_id)
 
-    def play_sample(self, voice_id: str) -> None:
+    def play_voice(self, voice_id: str) -> None:
         """Plays a sample on demand, regardless of the autoplay setting.
 
         Explicit playback is intentional, so it uses ``NORMAL`` priority and thereby
         preempts the sequencer song / reconstruction players.
         """
-        self._play_sample(voice_id, priority=PlaybackPriority.NORMAL)
+        self._play_voice(voice_id, priority=PlaybackPriority.NORMAL)
 
     def request_autoplay(self, voice_id: str) -> None:
         """Schedules a debounced preview that a following double-click can cancel."""
@@ -158,21 +179,52 @@ class SequencerSamplesLogic(CallbackMixin):
         voice_id = self._pending_autoplay_sample
         self._pending_autoplay_sample = None
         if self._session_manager.autoplay:
-            self._play_sample(voice_id, priority=PlaybackPriority.PREVIEW)
+            self._play_voice(voice_id, priority=PlaybackPriority.PREVIEW)
 
-    def _play_sample(
+    def _preview_audio(self, voice_id: str) -> Optional[np.ndarray]:
+        """The audio a preview sounds: a sample's approximation, or a shape rendered on the pulse.
+
+        The pulse channel offers every dimension a shape writes, so rendering the preview there
+        sounds the whole instrument rather than the part another channel would read.
+
+        Args:
+            voice_id: The voice to preview.
+
+        Returns:
+            Optional[np.ndarray]: The waveform to play, or ``None`` where the voice sounds nothing.
+        """
+        match self._controller.project.voices.get(voice_id):
+            case Sample() as sample:
+                return sample.reconstruction.approximation
+            case Shape() as shape:
+                instructions = shape.instructions(PREVIEW_CHANNEL)
+                if not instructions:
+                    return None
+
+                return render_instructions(instructions, PREVIEW_CHANNEL, self._preview_config())
+            case _:
+                return None
+
+    def _preview_config(self) -> Config:
+        settings = self._controller.project.settings
+        return Config().with_library(
+            nes_frequency=settings.nes_frequency,
+            sample_rate=settings.sample_rate,
+        )
+
+    def _play_voice(
         self,
         voice_id: str,
         *,
         priority: PlaybackPriority,
     ) -> None:
-        sample = self._controller.project.voices.get(voice_id)
-        if not isinstance(sample, Sample):
+        audio = self._preview_audio(voice_id)
+        if audio is None:
             return
 
         try:
             self._audio_device_manager.play(
-                sample.reconstruction.approximation,
+                audio,
                 update=False,
                 priority=priority,
             )

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from sampletones_application.layout.tabs.sequencer.tables.instrument import InstrumentColumnWidths
+from sampletones_application.layout.tabs.sequencer.tables.voice import VoiceColumnWidths
 
 
 class SequencerTableCells(BaseModel, extra="forbid", frozen=True):
@@ -8,4 +8,4 @@ class SequencerTableCells(BaseModel, extra="forbid", frozen=True):
     sample: int
     divider: int
     channel: int
-    instrument: InstrumentColumnWidths
+    voice: VoiceColumnWidths

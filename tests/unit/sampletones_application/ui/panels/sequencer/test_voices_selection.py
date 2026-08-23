@@ -1,25 +1,25 @@
 from typing import Optional, Tuple
 
-from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
-from sampletones_application.view_model.sequencer.samples import SampleEntryViewModel
+from sampletones_application.ui.panels.sequencer.voices import GUISequencerVoicesPanel
+from sampletones_application.view_model.sequencer.voices import VoiceEntryViewModel, VoiceKind
 
-ENTRIES: Tuple[SampleEntryViewModel, ...] = (
-    SampleEntryViewModel(voice_id="kick-id", name="Kick", loop=False),
-    SampleEntryViewModel(voice_id="bass-id", name="Bass", loop=True),
+ENTRIES: Tuple[VoiceEntryViewModel, ...] = (
+    VoiceEntryViewModel(voice_id="kick-id", name="Kick", kind=VoiceKind.SAMPLE, loop=False),
+    VoiceEntryViewModel(voice_id="bass-id", name="Bass", kind=VoiceKind.SAMPLE, loop=True),
 )
 
 
 def _panel(
     selected_voice_id: Optional[str],
     selected_row: Optional[int],
-    entries: Tuple[SampleEntryViewModel, ...] = ENTRIES,
-) -> GUISequencerSamplesPanel:
+    entries: Tuple[VoiceEntryViewModel, ...] = ENTRIES,
+) -> GUISequencerVoicesPanel:
     """Builds a panel without its DearPyGui-dependent constructor.
 
     The selection accessor reads only the cached entries and the highlighted row, so a running
     GUI context is unnecessary here.
     """
-    panel = GUISequencerSamplesPanel.__new__(GUISequencerSamplesPanel)
+    panel = GUISequencerVoicesPanel.__new__(GUISequencerVoicesPanel)
     panel._entries = entries
     panel._selected_voice_id = selected_voice_id
     panel._selected_row = selected_row
@@ -48,7 +48,7 @@ class TestSelectionAccessor:
 
     def test_follows_a_renamed_sample(self) -> None:
         panel = _panel("kick-id", 0)
-        panel._entries = (SampleEntryViewModel(voice_id="kick-id", name="Thump", loop=False),)
+        panel._entries = (VoiceEntryViewModel(voice_id="kick-id", name="Thump", kind=VoiceKind.SAMPLE, loop=False),)
 
         selection = panel.selection
 

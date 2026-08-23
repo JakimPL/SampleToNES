@@ -368,19 +368,19 @@ class TestProperties:
         controller = _controller()
         assert controller.order_length >= 1
 
-    def test_sample_count_tracks_the_pool(
+    def test_voice_count_tracks_the_pool(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         controller = _controller()
-        assert controller.sample_count == 0
+        assert controller.voice_count == 0
 
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         controller.add_sample(reconstruction_factory(), name="pad")
-        assert controller.sample_count == 2
+        assert controller.voice_count == 2
 
         controller.remove_voice(sample.id)
-        assert controller.sample_count == 1
+        assert controller.voice_count == 1
 
     def test_is_dirty_false_initially(self) -> None:
         controller = _controller()

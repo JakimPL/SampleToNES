@@ -5,24 +5,24 @@ from typing import Any, Callable, Iterator, List, Optional, Tuple
 import pytest
 
 from sampletones_application.categories.elements.global_ import ContextElements
-from sampletones_application.categories.elements.sequencer import SequencerInstrumentsElements
+from sampletones_application.categories.elements.sequencer import SequencerVoicesElements
 from sampletones_application.ui.elements import context_menu as context_menu_module
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.panels.sequencer import samples as samples_module
-from sampletones_application.ui.panels.sequencer.samples import SAMPLE_MOVES, GUISequencerSamplesPanel
+from sampletones_application.ui.panels.sequencer import voices as voices_module
+from sampletones_application.ui.panels.sequencer.voices import VOICE_MOVES, GUISequencerVoicesPanel
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.palette.colors.literal import LiteralColor
-from sampletones_application.view_model.sequencer.samples import SampleEntryViewModel
+from sampletones_application.view_model.sequencer.voices import VoiceEntryViewModel, VoiceKind
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
 from sampletones_core.utils.display import display_voice_label
 from tests.suite.shortcuts import shipped_source
 
-ENTRIES: Tuple[SampleEntryViewModel, ...] = (
-    SampleEntryViewModel(voice_id="kick-id", name="Kick", loop=False),
-    SampleEntryViewModel(voice_id="bass-id", name="Bass", loop=True),
-    SampleEntryViewModel(voice_id="lead-id", name="Lead", loop=False),
+ENTRIES: Tuple[VoiceEntryViewModel, ...] = (
+    VoiceEntryViewModel(voice_id="kick-id", name="Kick", kind=VoiceKind.SAMPLE, loop=False),
+    VoiceEntryViewModel(voice_id="bass-id", name="Bass", kind=VoiceKind.SAMPLE, loop=True),
+    VoiceEntryViewModel(voice_id="lead-id", name="Lead", kind=VoiceKind.SAMPLE, loop=False),
 )
 
 SELECTED_ID = "bass-id"
@@ -94,16 +94,16 @@ class _MenuRecorder:
 @pytest.fixture
 def recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuRecorder:
     recorded = _MenuRecorder()
-    monkeypatch.setattr(samples_module.dpg, "add_menu_item", recorded.add_menu_item)
-    monkeypatch.setattr(samples_module.dpg, "add_separator", lambda **_kwargs: 0)
+    monkeypatch.setattr(voices_module.dpg, "add_menu_item", recorded.add_menu_item)
+    monkeypatch.setattr(voices_module.dpg, "add_separator", lambda **_kwargs: 0)
     return recorded
 
 
 @dataclass
-class SamplesPanelFixture:
+class VoicesPanelFixture:
     """A panel holding a selection, with the calls each menu item makes recorded."""
 
-    panel: GUISequencerSamplesPanel
+    panel: GUISequencerVoicesPanel
     requests: Requests
 
 
@@ -116,9 +116,9 @@ def _panel(
     field_focused: bool = False,
     footprint: Optional[SampleFootprintViewModel] = FOOTPRINT,
     footprint_wired: bool = True,
-) -> SamplesPanelFixture:
+) -> VoicesPanelFixture:
     """A samples panel whose menu builder can run with no DearPyGui context behind it."""
-    panel = GUISequencerSamplesPanel.__new__(GUISequencerSamplesPanel)
+    panel = GUISequencerVoicesPanel.__new__(GUISequencerVoicesPanel)
     panel._language_manager = _Labels()
     panel._shortcuts = shipped_source()
     panel._entries = ENTRIES
@@ -139,7 +139,7 @@ def _panel(
     panel.on_remove_requested = requests.removed.append
     panel.on_move_requested = lambda voice_id, target: requests.moved.append((voice_id, target))
     monkeypatch.setattr(panel, "_start_rename", requests.renamed.append)
-    return SamplesPanelFixture(panel=panel, requests=requests)
+    return VoicesPanelFixture(panel=panel, requests=requests)
 
 
 class _Labels:
@@ -200,10 +200,10 @@ def _null_menu() -> Iterator[None]:
 def build_recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuBuildRecorder:
     """Records a whole context-menu build, with the DearPyGui calls behind it stood down."""
     recorded = _MenuBuildRecorder()
-    monkeypatch.setattr(samples_module.dpg, "add_text", recorded.add_text)
-    monkeypatch.setattr(samples_module.dpg, "add_separator", recorded.add_separator)
-    monkeypatch.setattr(samples_module.dpg, "add_menu_item", recorded.add_menu_item)
-    monkeypatch.setattr(samples_module, "context_menu", _null_menu)
+    monkeypatch.setattr(voices_module.dpg, "add_text", recorded.add_text)
+    monkeypatch.setattr(voices_module.dpg, "add_separator", recorded.add_separator)
+    monkeypatch.setattr(voices_module.dpg, "add_menu_item", recorded.add_menu_item)
+    monkeypatch.setattr(voices_module, "context_menu", _null_menu)
     monkeypatch.setattr(context_menu_module, "dpg_set_palette_color", lambda _item, _color: None)
     monkeypatch.setattr(context_menu_module, "show_tooltip", recorded.add_tooltip)
     monkeypatch.setattr(FontRegistry, "bind_to_item", lambda _item, _font: None)
@@ -230,11 +230,11 @@ class TestActionItems:
         _panel(monkeypatch).panel.build_edit_actions()
 
         assert [item.label for item in recorder.items] == [
-            SequencerInstrumentsElements.CONTEXT_EDIT.value,
-            SequencerInstrumentsElements.CONTEXT_RENAME.value,
-            SequencerInstrumentsElements.CONTEXT_DUPLICATE.value,
-            SequencerInstrumentsElements.CONTEXT_REMOVE.value,
-            *(move.element.value for move in SAMPLE_MOVES),
+            SequencerVoicesElements.CONTEXT_EDIT.value,
+            SequencerVoicesElements.CONTEXT_RENAME.value,
+            SequencerVoicesElements.CONTEXT_DUPLICATE.value,
+            SequencerVoicesElements.CONTEXT_REMOVE.value,
+            *(move.element.value for move in VOICE_MOVES),
         ]
 
     def test_the_items_print_the_keys_the_panel_answers_to(
@@ -249,7 +249,7 @@ class TestActionItems:
         assert recorder.items[RENAME_ITEM].shortcut == shortcuts.display(ShortcutId.SAMPLES_RENAME_SAMPLE)
         assert recorder.items[REMOVE_ITEM].shortcut == shortcuts.display(ShortcutId.SAMPLES_REMOVE_SAMPLE)
         assert [item.shortcut for item in recorder.items[MOVE_UP_ITEM:]] == [
-            shortcuts.display(move.shortcut) for move in SAMPLE_MOVES
+            shortcuts.display(move.shortcut) for move in VOICE_MOVES
         ]
 
     def test_the_items_act_on_the_sample_they_were_raised_on(

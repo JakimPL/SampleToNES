@@ -1,5 +1,5 @@
-name: table_instruments_row
-tag: sequencer.instruments.theme.row
+name: table_voices_row
+tag: sequencer.voices.theme.row
 
 components:
   - item_type: Table

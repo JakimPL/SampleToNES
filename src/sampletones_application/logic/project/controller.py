@@ -67,11 +67,11 @@ class ProjectController(CallbackMixin):
         return self._project_manager.name
 
     @property
-    def has_samples(self) -> bool:
+    def has_voices(self) -> bool:
         return bool(self.project.voices)
 
     @property
-    def sample_count(self) -> int:
+    def voice_count(self) -> int:
         return len(self.project.voices)
 
     @property

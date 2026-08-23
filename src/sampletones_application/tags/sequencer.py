@@ -140,39 +140,39 @@ TAG_SEQUENCER_ORDER_BUTTON_PAIR = TagName(
     Widget.BUTTON,
     "pair",
 )
-TAG_SEQUENCER_INSTRUMENTS_PANEL = TagName(
+TAG_SEQUENCER_VOICES_PANEL = TagName(
     Page.SEQUENCER,
-    Panel.INSTRUMENTS,
+    Panel.VOICES,
     Widget.PANEL,
-    "instruments",
+    "voices",
 )
-TAG_SEQUENCER_INSTRUMENTS_TABLE = TagName(
+TAG_SEQUENCER_VOICES_TABLE = TagName(
     Page.SEQUENCER,
-    Panel.INSTRUMENTS,
+    Panel.VOICES,
     Widget.TABLE,
-    "instruments",
+    "voices",
 )
-TAG_SEQUENCER_INSTRUMENTS_WINDOW = TagName(
+TAG_SEQUENCER_VOICES_WINDOW = TagName(
     Page.SEQUENCER,
-    Panel.INSTRUMENTS,
+    Panel.VOICES,
     Widget.WINDOW,
-    "instruments",
+    "voices",
 )
-TAG_SEQUENCER_INSTRUMENTS_THEME_ROW = TagName(
+TAG_SEQUENCER_VOICES_THEME_ROW = TagName(
     Page.SEQUENCER,
-    Panel.INSTRUMENTS,
+    Panel.VOICES,
     Widget.THEME,
     "row",
 )
-TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE = TagName(
+TAG_SEQUENCER_VOICES_DIALOG_REMOVE = TagName(
     Page.SEQUENCER,
-    Panel.INSTRUMENTS,
+    Panel.VOICES,
     Widget.DIALOG,
     "remove",
 )
-TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME = TagName(
+TAG_SEQUENCER_VOICES_INPUT_RENAME = TagName(
     Page.SEQUENCER,
-    Panel.INSTRUMENTS,
+    Panel.VOICES,
     Widget.INPUT,
     "rename",
 )

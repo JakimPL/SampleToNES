@@ -45,7 +45,6 @@ from sampletones_application.logic.sequencer.playback.playhead import (
 )
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
-from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.sequencer.tracker import (
     SequencerTrackerLogic,
     TrackerBlock,
@@ -53,6 +52,7 @@ from sampletones_application.logic.sequencer.tracker import (
     TrackerBlockWriter,
     TrackerRegionAdjuster,
 )
+from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
 from sampletones_application.services.song_player.player import SongPlayerService
@@ -72,12 +72,12 @@ from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
     TAG_SEQUENCER_BROWSER_PANEL,
     TAG_SEQUENCER_HISTORY_PANEL,
-    TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
-    TAG_SEQUENCER_INSTRUMENTS_PANEL,
     TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
     TAG_SEQUENCER_MODULE_PANEL,
     TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD,
     TAG_SEQUENCER_TRACKER_PANEL,
+    TAG_SEQUENCER_VOICES_DIALOG_REMOVE,
+    TAG_SEQUENCER_VOICES_PANEL,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.layout.responsive import expanded_side_width
@@ -86,8 +86,8 @@ from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrow
 from sampletones_application.ui.panels.sequencer.history import GUISequencerHistoryPanel
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
-from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.voices import GUISequencerVoicesPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.clipboard import (
     SystemTextClipboard,
@@ -111,13 +111,13 @@ from sampletones_application.view_model.sequencer.region import (
     TrackerCell,
     TrackerRegion,
 )
-from sampletones_application.view_model.sequencer.samples import (
-    SequencerSamplesViewModel,
-)
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
+from sampletones_application.view_model.sequencer.voices import (
+    SequencerVoicesViewModel,
+)
 from sampletones_application.view_model.shared.history import (
     HistoryDetail,
     HistoryDetailSegment,
@@ -128,6 +128,7 @@ from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
+from sampletones_core.utils.display import display_id
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import StringCallback, VoidCallback
@@ -225,7 +226,7 @@ class SequencerTabCoordinator:
         self._tracker_region_adjuster: TrackerRegionAdjuster = TrackerRegionAdjuster(self._sequencer_tracker_logic)
         self._order_block_reader: OrderBlockReader = OrderBlockReader(self._sequencer_order_logic)
         self._order_block_writer: OrderBlockWriter = OrderBlockWriter(self._sequencer_order_logic)
-        self._sequencer_samples_logic: SequencerSamplesLogic = SequencerSamplesLogic(
+        self._sequencer_voices_logic: SequencerVoicesLogic = SequencerVoicesLogic(
             project_controller,
             session_manager,
             audio_device_manager,
@@ -279,10 +280,10 @@ class SequencerTabCoordinator:
             tab_active=tab_active,
             shortcut_source=shortcut_source,
         )
-        self._sequencer_samples_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel(
+        self._sequencer_voices_panel: GUISequencerVoicesPanel = GUISequencerVoicesPanel(
             layout=layout.sequencer,
             detail_color=layout.muted_color,
-            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_INSTRUMENTS_PANEL),
+            initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_VOICES_PANEL),
             language_manager=language_manager,
             key_router=key_router,
             tab_active=tab_active,
@@ -297,7 +298,7 @@ class SequencerTabCoordinator:
         )
         self._history_detail: SequencerHistoryDetail = SequencerHistoryDetail(
             self._sequencer_tracker_logic,
-            self._sequencer_samples_logic,
+            self._sequencer_voices_logic,
         )
 
         self._wire_callbacks()
@@ -321,7 +322,7 @@ class SequencerTabCoordinator:
             self._sequencer_order_panel,
             self._sequencer_tracker_panel,
             self._sequencer_module_panel,
-            self._sequencer_samples_panel,
+            self._sequencer_voices_panel,
             self._sequencer_history_panel,
         ):
             panel.set_collapse_handler(self._on_card_collapse_changed)
@@ -604,30 +605,46 @@ class SequencerTabCoordinator:
             self._order_block_writer.write(block, cell)
 
     def _wire_samples_callbacks(self) -> None:
-        self._sequencer_samples_logic.on_voices_changed = self._on_voices_changed
-        self._sequencer_samples_logic.on_edit_sample_requested = self._dispatch_edit_sample
-        self._sequencer_samples_logic.on_autoplay_error = self._on_preview_error
-        self._sequencer_samples_panel.sample_footprint = self._sequencer_samples_logic.build_sample_footprint
-        self._sequencer_samples_panel.on_sample_selected = self._on_sample_selected
-        self._sequencer_samples_panel.on_sample_edit_requested = self._sequencer_samples_logic.request_edit
-        self._sequencer_samples_panel.on_loop_changed = self._undoable(
+        self._sequencer_voices_logic.on_voices_changed = self._on_voices_changed
+        self._sequencer_voices_logic.on_edit_sample_requested = self._dispatch_edit_sample
+        self._sequencer_voices_logic.on_autoplay_error = self._on_preview_error
+        self._sequencer_voices_panel.sample_footprint = self._sequencer_voices_logic.build_voice_footprint
+        self._sequencer_voices_panel.on_sample_selected = self._on_sample_selected
+        self._sequencer_voices_panel.on_sample_edit_requested = self._sequencer_voices_logic.request_edit
+        self._sequencer_voices_panel.on_loop_changed = self._undoable(
             HistoryAction.SET_SAMPLE_LOOP,
-            self._sequencer_samples_logic.set_sample_loop,
+            self._sequencer_voices_logic.set_sample_loop,
             detail=self._history_detail.set_sample_loop,
         )
-        self._sequencer_samples_panel.on_remove_requested = self._remove_voice
-        self._sequencer_samples_panel.on_play_requested = self._sequencer_samples_logic.play_sample
-        self._sequencer_samples_panel.on_move_requested = self._undoable(
+        self._sequencer_voices_panel.on_remove_requested = self._remove_voice
+        self._sequencer_voices_panel.on_play_requested = self._sequencer_voices_logic.play_voice
+        self._sequencer_voices_panel.on_move_requested = self._undoable(
             HistoryAction.MOVE_SAMPLE,
-            self._sequencer_samples_logic.move_voice,
+            self._sequencer_voices_logic.move_voice,
             detail=self._history_detail.move_voice,
         )
-        self._sequencer_samples_panel.on_rename_committed = self._submit_rename
-        self._sequencer_samples_panel.on_duplicate_requested = self._undoable(
+        self._sequencer_voices_panel.on_rename_committed = self._submit_rename
+        self._sequencer_voices_panel.on_duplicate_requested = self._undoable(
             HistoryAction.DUPLICATE_SAMPLE,
-            self._sequencer_samples_logic.duplicate_voice,
+            self._sequencer_voices_logic.duplicate_voice,
             detail=self._history_detail.duplicate_voice,
         )
+        self._sequencer_voices_panel.on_new_shape_requested = self._add_shape
+
+    def _add_shape(self) -> None:
+        """Appends a hand-written voice, named for the position it takes in the list.
+
+        A shape opens with no envelope, so it is the reader's to write; naming it by its position
+        gives the list a readable entry until they rename it.
+        """
+        name = self._language_manager["sequencer.voices.template.shape_name"].format(
+            position=display_id(self._project_controller.voice_count),
+        )
+        with self._history.transaction(
+            HistoryAction.ADD_SHAPE,
+            detail=self._history_detail.add_shape(name),
+        ):
+            self._sequencer_voices_logic.add_shape(name)
 
     def _wire_browser_callbacks(self) -> None:
         self._sequencer_browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
@@ -651,7 +668,7 @@ class SequencerTabCoordinator:
     def _wire_project_callbacks(self) -> None:
         self._project_controller.on_settings_changed = self._sequencer_tracker_logic.push_settings
         self._project_controller.on_song_changed = self._on_song_changed
-        self._project_controller.on_voices_changed = self._sequencer_samples_logic.push_samples
+        self._project_controller.on_voices_changed = self._sequencer_voices_logic.push_voices
         self._project_controller.on_project_replaced = self._on_project_replaced
 
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
@@ -717,7 +734,7 @@ class SequencerTabCoordinator:
         else:
             footprint = self._history_expanded_height
 
-        self._sequencer_samples_panel.set_expanded_height(-(self._inter_card_gap + footprint))
+        self._sequencer_voices_panel.set_expanded_height(-(self._inter_card_gap + footprint))
 
     def _wire_history(self) -> None:
         self._sequencer_history_panel.on_undo = self.undo
@@ -943,7 +960,7 @@ class SequencerTabCoordinator:
         self._song_player_logic.stop()
         self._sequencer_tracker_logic.refresh()
         self._sequencer_order_logic.refresh()
-        self._sequencer_samples_logic.push_samples()
+        self._sequencer_voices_logic.push_voices()
         self._sequencer_channels_logic.push_channels()
         is_open = self._project_controller.is_open
         self._sequencer_module_panel.set_enabled(is_open)
@@ -960,7 +977,7 @@ class SequencerTabCoordinator:
         """
         self._sequencer_tracker_panel.repaint()
         self._sequencer_order_panel.repaint()
-        self._sequencer_samples_panel.repaint()
+        self._sequencer_voices_panel.repaint()
 
     def refresh_browser(self) -> None:
         self._sequencer_browser_panel.refresh()
@@ -1101,7 +1118,7 @@ class SequencerTabCoordinator:
                 name,
                 adopt_frequency=adopt_frequency,
             ),
-            can_adopt_frequency=not self._project_controller.has_samples,
+            can_adopt_frequency=not self._project_controller.has_voices,
         )
 
     def _reconcile_nes_frequency(
@@ -1178,7 +1195,7 @@ class SequencerTabCoordinator:
         an import does. The target is whatever the samples panel has selected as the gesture starts,
         which is also what named the menu item the user clicked.
         """
-        selection = self._sequencer_samples_panel.selection
+        selection = self._sequencer_voices_panel.selection
         if selection is None:
             return
 
@@ -1197,7 +1214,7 @@ class SequencerTabCoordinator:
                 filepath.stem,
                 adopt_frequency=adopt_frequency,
             ),
-            can_adopt_frequency=self._project_controller.sample_count == 1,
+            can_adopt_frequency=self._project_controller.voice_count == 1,
         )
 
     def _commit_replace_reconstruction(
@@ -1225,13 +1242,13 @@ class SequencerTabCoordinator:
             if adopt_frequency is not None:
                 self._sequencer_tracker_logic.set_nes_frequency(adopt_frequency)
 
-            self._sequencer_samples_logic.rename_voice(voice_id, name)
+            self._sequencer_voices_logic.rename_voice(voice_id, name)
             self._on_sample_reconstruction_replaced(voice_id, reconstruction)
             self._sequencer_browser_logic.replace_reconstruction(voice_id, reconstruction)
 
     def _replace_target_label(self) -> Optional[str]:
         """The indexed label of the sample a browser replacement would overwrite, while one is selected."""
-        selection = self._sequencer_samples_panel.selection
+        selection = self._sequencer_voices_panel.selection
         if selection is None:
             return None
 
@@ -1249,15 +1266,15 @@ class SequencerTabCoordinator:
 
     def _on_voices_changed(
         self,
-        view_model: SequencerSamplesViewModel,
+        view_model: SequencerVoicesViewModel,
     ) -> None:
-        self._sequencer_samples_panel.update_view(view_model)
+        self._sequencer_voices_panel.update_view(view_model)
         self._sequencer_tracker_panel.update_samples(view_model)
 
     def _on_sample_selected(self, voice_id: str) -> None:
         self._sequencer_tracker_panel.deselect_cell()
         self._sequencer_order_panel.deselect_cell()
-        self._sequencer_samples_logic.request_autoplay(voice_id)
+        self._sequencer_voices_logic.request_autoplay(voice_id)
         logger.debug(f"Sequencer sample selected: {voice_id}")
 
     def _remove_voice(self, voice_id: str) -> None:
@@ -1266,13 +1283,13 @@ class SequencerTabCoordinator:
         An unused sample is dropped silently; a referenced one would clear every row
         that points at it, so the user confirms that loss first.
         """
-        if not self._sequencer_samples_logic.is_voice_used(voice_id):
+        if not self._sequencer_voices_logic.is_voice_used(voice_id):
             self._perform_remove_voice(voice_id)
             return
 
-        name = self._sequencer_samples_logic.sample_name(voice_id)
+        name = self._sequencer_voices_logic.voice_name(voice_id)
         self._dialogs.show_confirmation(
-            tag=TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
+            tag=TAG_SEQUENCER_VOICES_DIALOG_REMOVE,
             title=self._language_manager["global.dialog.title.remove_sample"],
             message=self._language_manager["global.dialog.message.remove_sample"].format(name=name),
             on_confirm=lambda: self._perform_remove_voice(voice_id),
@@ -1285,21 +1302,21 @@ class SequencerTabCoordinator:
             HistoryAction.REMOVE_SAMPLE,
             detail=detail,
         ):
-            self._sequencer_samples_logic.remove_voice(voice_id)
+            self._sequencer_voices_logic.remove_voice(voice_id)
 
     def _submit_rename(self, voice_id: str, name: str) -> None:
         """Applies an inline rename, ignoring a blank name so the sample keeps its current one."""
         stripped = name.strip()
         if stripped:
             detail = self._history_detail.rename_voice(
-                self._sequencer_samples_logic.sample_name(voice_id),
+                self._sequencer_voices_logic.voice_name(voice_id),
                 stripped,
             )
             with self._history.transaction(
                 HistoryAction.RENAME_SAMPLE,
                 detail=detail,
             ):
-                self._sequencer_samples_logic.rename_voice(voice_id, stripped)
+                self._sequencer_voices_logic.rename_voice(voice_id, stripped)
 
     def _request_nes_frequency_change(self, nes_frequency: int) -> None:
         """Applies a NES-frequency change, confirming first when it would re-time existing samples.
@@ -1311,7 +1328,7 @@ class SequencerTabCoordinator:
         if nes_frequency == self._sequencer_tracker_logic.settings.nes_frequency:
             return
 
-        if self._nes_frequency_change_acknowledged or not self._project_controller.has_samples:
+        if self._nes_frequency_change_acknowledged or not self._project_controller.has_voices:
             self._perform_nes_frequency_change(nes_frequency)
             return
 
@@ -1453,12 +1470,12 @@ class SequencerTabCoordinator:
         panel consume keystrokes.
         """
         self._sequencer_order_panel.deselect_cell()
-        self._sequencer_samples_panel.deselect()
+        self._sequencer_voices_panel.deselect()
 
     def _on_order_cell_focused(self) -> None:
         """Drops the tracker cursor and sample selection when the order tracker takes focus."""
         self._sequencer_tracker_panel.deselect_cell()
-        self._sequencer_samples_panel.deselect()
+        self._sequencer_voices_panel.deselect()
 
     def create_tab(self) -> None:
         with dpg.tab(
@@ -1507,7 +1524,7 @@ class SequencerTabCoordinator:
         """Stacks the module settings, samples, and history cards in the right column."""
         self._sequencer_module_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap)
-        self._sequencer_samples_panel.create_panel(parent)
+        self._sequencer_voices_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap)
         self._sequencer_history_panel.create_panel(parent)
         self._sync_samples_height()
@@ -1526,5 +1543,5 @@ class SequencerTabCoordinator:
         return (
             self._sequencer_tracker_panel.edit_surface,
             self._sequencer_order_panel.edit_surface,
-            self._sequencer_samples_panel,
+            self._sequencer_voices_panel,
         )

@@ -84,8 +84,12 @@ class SequencerOrderElements(AbstractElement):
     CONTEXT_UNMUTE_ALL = "context_unmute_all"
 
 
-class SequencerInstrumentsElements(AbstractElement):
-    INSTRUMENTS_TEXT = "instruments_text"
+class SequencerVoicesElements(AbstractElement):
+    VOICES_TEXT = "voices_text"
+    NEW_SHAPE = "new_shape"
+    KIND_SAMPLE = "kind_sample"
+    KIND_SHAPE = "kind_shape"
+    COLUMN_KIND = "column_kind"
     COLUMN_ID = "column_id"
     COLUMN_NAME = "column_name"
     COLUMN_LOOP = "column_loop"

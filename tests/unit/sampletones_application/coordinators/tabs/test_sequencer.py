@@ -51,10 +51,10 @@ from sampletones_application.view_model.sequencer.region import (
     TrackerCell,
     TrackerRegion,
 )
-from sampletones_application.view_model.sequencer.samples import SampleSelection
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.voices import VoiceKind, VoiceSelection
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
@@ -88,7 +88,7 @@ def coordinator() -> SequencerTabCoordinator:
     instance._history_detail = MagicMock()
     instance._project_controller = MagicMock()
     instance._project_controller.is_open = True
-    instance._project_controller.has_samples = True
+    instance._project_controller.has_voices = True
     instance._sequencer_browser_logic = MagicMock()
     instance._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 60
     instance._sequencer_tracker_logic = MagicMock()
@@ -107,7 +107,7 @@ def samples_coordinator() -> SequencerTabCoordinator:
     instance = object.__new__(SequencerTabCoordinator)
     instance._history = MagicMock()
     instance._history_detail = MagicMock()
-    instance._sequencer_samples_logic = MagicMock()
+    instance._sequencer_voices_logic = MagicMock()
     instance._dialogs = MagicMock()
     instance._language_manager = FakeLanguageManager(TEXTS)
     return instance
@@ -118,20 +118,20 @@ class TestRemoveSample:
         self,
         samples_coordinator: SequencerTabCoordinator,
     ) -> None:
-        samples_coordinator._sequencer_samples_logic.is_voice_used.return_value = False
+        samples_coordinator._sequencer_voices_logic.is_voice_used.return_value = False
 
         samples_coordinator._remove_voice("abc")
 
-        samples_coordinator._sequencer_samples_logic.remove_voice.assert_called_once_with("abc")
+        samples_coordinator._sequencer_voices_logic.remove_voice.assert_called_once_with("abc")
         samples_coordinator._dialogs.show_confirmation.assert_not_called()
 
     def test_used_sample_prompts_confirmation_before_removing(
         self,
         samples_coordinator: SequencerTabCoordinator,
     ) -> None:
-        logic = samples_coordinator._sequencer_samples_logic
+        logic = samples_coordinator._sequencer_voices_logic
         logic.is_voice_used.return_value = True
-        logic.sample_name.return_value = "lead"
+        logic.voice_name.return_value = "lead"
 
         samples_coordinator._remove_voice("abc")
 
@@ -152,7 +152,7 @@ class TestSubmitRename:
     ) -> None:
         samples_coordinator._submit_rename("abc", "  bass  ")
 
-        samples_coordinator._sequencer_samples_logic.rename_voice.assert_called_once_with("abc", "bass")
+        samples_coordinator._sequencer_voices_logic.rename_voice.assert_called_once_with("abc", "bass")
 
     def test_submit_rename_ignores_blank_name(
         self,
@@ -160,7 +160,7 @@ class TestSubmitRename:
     ) -> None:
         samples_coordinator._submit_rename("abc", "   ")
 
-        samples_coordinator._sequencer_samples_logic.rename_sample.assert_not_called()
+        samples_coordinator._sequencer_voices_logic.rename_sample.assert_not_called()
 
 
 @pytest.fixture
@@ -172,7 +172,7 @@ def nes_frequency_coordinator() -> SequencerTabCoordinator:
     instance._sequencer_tracker_logic = MagicMock()
     instance._sequencer_tracker_logic.settings.nes_frequency = 60
     instance._project_controller = MagicMock()
-    instance._project_controller.has_samples = True
+    instance._project_controller.has_voices = True
     instance._dialogs = MagicMock()
     instance._on_nes_frequency_changed = MagicMock()
     instance._nes_frequency_change_acknowledged = False
@@ -194,7 +194,7 @@ class TestRequestNesFrequencyChange:
         self,
         nes_frequency_coordinator: SequencerTabCoordinator,
     ) -> None:
-        nes_frequency_coordinator._project_controller.has_samples = False
+        nes_frequency_coordinator._project_controller.has_voices = False
 
         nes_frequency_coordinator._request_nes_frequency_change(30)
 
@@ -574,7 +574,7 @@ class TestImportFrequencyCheck:
         self,
         coordinator: SequencerTabCoordinator,
     ) -> None:
-        coordinator._project_controller.has_samples = False
+        coordinator._project_controller.has_voices = False
         coordinator._sequencer_tracker_logic.settings.nes_frequency = 60
         coordinator._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 50
 
@@ -589,7 +589,7 @@ class TestImportFrequencyCheck:
         self,
         coordinator: SequencerTabCoordinator,
     ) -> None:
-        coordinator._project_controller.has_samples = True
+        coordinator._project_controller.has_voices = True
         coordinator._sequencer_tracker_logic.settings.nes_frequency = 60
         coordinator._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 50
 
@@ -620,17 +620,18 @@ def replace_coordinator() -> SequencerTabCoordinator:
     instance._history = MagicMock()
     instance._history_detail = MagicMock()
     instance._project_controller = MagicMock()
-    instance._project_controller.sample_count = 2
+    instance._project_controller.voice_count = 2
     instance._sequencer_browser_logic = MagicMock()
     instance._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 60
     instance._sequencer_tracker_logic = MagicMock()
     instance._sequencer_tracker_logic.settings.nes_frequency = 60
-    instance._sequencer_samples_logic = MagicMock()
-    instance._sequencer_samples_panel = MagicMock()
-    instance._sequencer_samples_panel.selection = SampleSelection(
+    instance._sequencer_voices_logic = MagicMock()
+    instance._sequencer_voices_panel = MagicMock()
+    instance._sequencer_voices_panel.selection = VoiceSelection(
         voice_id="bass-id",
         position=26,
         name="bass",
+        kind=VoiceKind.SAMPLE,
     )
     instance._dialogs = MagicMock()
     instance._on_sample_reconstruction_replaced = MagicMock()
@@ -643,7 +644,7 @@ class TestReplaceReconstruction:
         self,
         replace_coordinator: SequencerTabCoordinator,
     ) -> None:
-        replace_coordinator._sequencer_samples_panel.selection = None
+        replace_coordinator._sequencer_voices_panel.selection = None
 
         replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
 
@@ -663,7 +664,7 @@ class TestReplaceReconstruction:
 
         replace_coordinator._dialogs.show_error.assert_called_once()
         replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_not_called()
-        replace_coordinator._sequencer_samples_logic.rename_sample.assert_not_called()
+        replace_coordinator._sequencer_voices_logic.rename_sample.assert_not_called()
         replace_coordinator._on_sample_reconstruction_replaced.assert_not_called()
 
     def test_selected_sample_is_renamed_and_substituted(
@@ -674,7 +675,7 @@ class TestReplaceReconstruction:
 
         replace_coordinator.replace_reconstruction(Path("/reconstructions/kick_02.stn"))
 
-        replace_coordinator._sequencer_samples_logic.rename_voice.assert_called_once_with(
+        replace_coordinator._sequencer_voices_logic.rename_voice.assert_called_once_with(
             "bass-id",
             "kick_02",
         )
@@ -738,7 +739,7 @@ class TestReplaceReconstruction:
         self,
         replace_coordinator: SequencerTabCoordinator,
     ) -> None:
-        replace_coordinator._project_controller.sample_count = 1
+        replace_coordinator._project_controller.voice_count = 1
         replace_coordinator._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 50
 
         replace_coordinator.replace_reconstruction(Path("kick_02.stn"))
@@ -778,7 +779,7 @@ class TestReplaceTargetLabel:
         self,
         replace_coordinator: SequencerTabCoordinator,
     ) -> None:
-        replace_coordinator._sequencer_samples_panel.selection = None
+        replace_coordinator._sequencer_voices_panel.selection = None
 
         assert replace_coordinator._replace_target_label() is None
 

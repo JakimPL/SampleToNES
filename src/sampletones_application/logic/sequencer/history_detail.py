@@ -1,7 +1,7 @@
 from typing import Dict, Final, List, Optional, Set
 
-from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
+from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
     OrderRegion,
@@ -79,7 +79,7 @@ class SequencerHistoryDetail:
     def __init__(
         self,
         tracker_logic: SequencerTrackerLogic,
-        samples_logic: SequencerSamplesLogic,
+        samples_logic: SequencerVoicesLogic,
     ) -> None:
         self._tracker_logic = tracker_logic
         self._samples_logic = samples_logic
@@ -228,10 +228,13 @@ class SequencerHistoryDetail:
     def add_sample(self, name: str) -> Segments:
         return (self._name(name),)
 
+    def add_shape(self, name: str) -> Segments:
+        return (self._name(name),)
+
     def remove_voice(self, voice_id: str) -> Segments:
         return (
             self._sample(voice_id, colon=True),
-            self._name(self._samples_logic.sample_name(voice_id)),
+            self._name(self._samples_logic.voice_name(voice_id)),
         )
 
     def replace_sample(self, voice_id: str, name: str) -> Segments:
@@ -242,7 +245,7 @@ class SequencerHistoryDetail:
         """
         return (
             self._sample(voice_id, colon=True),
-            self._name(self._samples_logic.sample_name(voice_id)),
+            self._name(self._samples_logic.voice_name(voice_id)),
             self._arrow(),
             self._name(name),
         )
@@ -260,7 +263,7 @@ class SequencerHistoryDetail:
     def duplicate_voice(self, voice_id: str) -> Segments:
         return (
             self._sample(voice_id, colon=True),
-            self._name(self._samples_logic.sample_name(voice_id)),
+            self._name(self._samples_logic.voice_name(voice_id)),
         )
 
     def set_sample_loop(self, voice_id: str, loop: bool) -> Segments:
@@ -421,7 +424,7 @@ class SequencerHistoryDetail:
         *,
         colon: bool = False,
     ) -> HistoryDetailSegment:
-        position = self._samples_logic.sample_position(voice_id)
+        position = self._samples_logic.voice_position(voice_id)
         text = f"{position}:" if colon else position
         return HistoryDetailSegment(text=text, role=HistoryDetailRole.SAMPLE)
 

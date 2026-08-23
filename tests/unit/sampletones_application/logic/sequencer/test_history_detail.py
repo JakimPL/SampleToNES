@@ -9,8 +9,8 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.history_detail import (
     SequencerHistoryDetail,
 )
-from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
+from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
     OrderRegion,
@@ -37,7 +37,7 @@ def _controller() -> ProjectController:
 
 def _formatter(controller: ProjectController) -> SequencerHistoryDetail:
     tracker_logic = SequencerTrackerLogic(controller)
-    samples_logic = SequencerSamplesLogic(
+    samples_logic = SequencerVoicesLogic(
         controller,
         MagicMock(),
         MagicMock(),

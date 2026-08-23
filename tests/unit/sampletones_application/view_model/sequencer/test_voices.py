@@ -1,9 +1,9 @@
 import pytest
 
-from sampletones_application.view_model.sequencer.samples import SampleSelection
+from sampletones_application.view_model.sequencer.voices import VoiceKind, VoiceSelection
 
 
-class TestSampleSelectionLabel:
+class TestVoiceSelectionLabel:
     @pytest.mark.parametrize(
         ("position", "name", "expected"),
         [
@@ -18,6 +18,6 @@ class TestSampleSelectionLabel:
         name: str,
         expected: str,
     ) -> None:
-        selection = SampleSelection(voice_id="id", position=position, name=name)
+        selection = VoiceSelection(voice_id="id", position=position, name=name, kind=VoiceKind.SAMPLE)
 
         assert selection.label == expected

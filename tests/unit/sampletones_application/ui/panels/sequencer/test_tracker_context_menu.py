@@ -7,11 +7,12 @@ from sampletones_application.ui.panels.sequencer import tracker as tracker_modul
 from sampletones_application.ui.panels.sequencer.input.target import TrackerTarget
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.view_model.sequencer.region import TrackerRegion
-from sampletones_application.view_model.sequencer.samples import (
-    SampleEntryViewModel,
-    SequencerSamplesViewModel,
-)
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.voices import (
+    SequencerVoicesViewModel,
+    VoiceEntryViewModel,
+    VoiceKind,
+)
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
 from tests.suite.shortcuts import shipped_source
@@ -135,11 +136,12 @@ class TestMenuDispatchPreservesPayload:
 
     def test_instrument_items_pass_the_voice_id(self, recorder: _MenuItemRecorder) -> None:
         panel = _panel()
-        panel._current_samples = SequencerSamplesViewModel(
-            samples=(
-                SampleEntryViewModel(
+        panel._current_samples = SequencerVoicesViewModel(
+            voices=(
+                VoiceEntryViewModel(
                     voice_id="lead-id",
                     name="lead",
+                    kind=VoiceKind.SAMPLE,
                     loop=False,
                 ),
             ),

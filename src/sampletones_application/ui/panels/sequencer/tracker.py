@@ -90,9 +90,6 @@ from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
 from sampletones_application.view_model.sequencer.region import TrackerCell, TrackerRegion
-from sampletones_application.view_model.sequencer.samples import (
-    SequencerSamplesViewModel,
-)
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
 )
@@ -105,6 +102,9 @@ from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.tracker import (
     SequencerRowViewModel,
     SequencerTrackerViewModel,
+)
+from sampletones_application.view_model.sequencer.voices import (
+    SequencerVoicesViewModel,
 )
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
@@ -250,7 +250,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._header_theme: int = 0
         self._muted_header_theme: int = 0
         self._column_label_theme: int = 0
-        self._current_samples: Optional[SequencerSamplesViewModel] = None
+        self._current_samples: Optional[SequencerVoicesViewModel] = None
         self._current_channels: Optional[SequencerChannelsViewModel] = None
 
         self.on_clear_row: Optional[OnClearRowCallback] = None
@@ -936,7 +936,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._selection.repaint()
         self._update_caret()
 
-    def update_samples(self, view_model: SequencerSamplesViewModel) -> None:
+    def update_samples(self, view_model: SequencerVoicesViewModel) -> None:
         self._current_samples = view_model
 
     def update_channels(self, view_model: SequencerChannelsViewModel) -> None:
@@ -1017,10 +1017,10 @@ class GUISequencerTrackerPanel(GUIPanel):
         self,
         sample_index: int,
     ) -> Optional[Tuple[int, str]]:
-        if not self._current_samples or not self._current_samples.samples:
+        if not self._current_samples or not self._current_samples.voices:
             return None
 
-        samples = self._current_samples.samples
+        samples = self._current_samples.voices
         sample_index = max(0, min(sample_index, len(samples) - 1))
         return sample_index, samples[sample_index].voice_id
 
@@ -1401,7 +1401,7 @@ class GUISequencerTrackerPanel(GUIPanel):
 
     def _add_instrument_submenu(self, cell: TrackerCursor) -> None:
         with dpg.menu(label=self._lbl_context_set_instrument):
-            samples = self._current_samples.samples if self._current_samples is not None else ()
+            samples = self._current_samples.voices if self._current_samples is not None else ()
             if not samples:
                 dpg.add_menu_item(
                     label=self._lbl_context_no_samples,
