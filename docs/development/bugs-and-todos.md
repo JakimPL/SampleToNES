@@ -63,6 +63,13 @@
   and the panels beside them. The language-keys check expands such a helper over the whole enum, so
   a member no call names is reached all the same and stands unnoticed. Spelling those keys literally
   at the call site would make each entry exactly checkable and retire the enums that remain.
+* Tree node attributes stand outside the type checker. `TreeNode` derives from `anytree.Node`,
+  which ships no types, so mypy reads every attribute of a node — and of `FileSystemNode`,
+  `ConfigNode`, `LibraryNode`, `GeneratorNode` — as `Any`, and a misspelled one passes the gate.
+  A rename sweep spelling `GeneratorNode.generator_name` as `channel_name` reached the running
+  application that way. Declaring the attributes on a typed base, or stubbing the part of
+  `anytree` the tree uses, would put node reads back under the checker. Reaches
+  `sampletones_core/structures/tree/`.
 * Respecting FamiTracker limitations
 * Per-tab undo routing
 * In-application console
