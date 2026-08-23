@@ -350,6 +350,33 @@ class TestTheInstrumentsPanelShowsAnInstrument:
         assert received[-1].instrument is not None
         assert received[-1].instrument.name == "lead"
 
+    def test_the_tab_it_is_shown_under_plays_it(
+        self,
+        instrument_logic: ReconstructionInstrumentsLogic,
+    ) -> None:
+        """The tab that plays is the tab an export is offered from, so the button is reachable."""
+        received: List[ReconstructionInstrumentsViewModel] = []
+        instrument_logic.on_view_changed = received.append
+
+        instrument_logic.update_display()
+
+        assert received[-1].playing_channels == frozenset({INSTRUMENT_CHANNEL})
+
+    def test_an_instrument_with_nothing_written_stands_by(
+        self,
+        instrument_logic: ReconstructionInstrumentsLogic,
+        project_controller: ProjectController,
+    ) -> None:
+        """An export writes what has frames, so a voice holding none is offered no export."""
+        instrument = project_controller.project.voices[0]
+        project_controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, ())
+        received: List[ReconstructionInstrumentsViewModel] = []
+        instrument_logic.on_view_changed = received.append
+
+        instrument_logic.update_display()
+
+        assert received[-1].playing_channels == frozenset()
+
     def test_the_envelopes_are_drawn_under_the_channel_that_reads_them_all(
         self,
         instrument_logic: ReconstructionInstrumentsLogic,

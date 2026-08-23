@@ -421,6 +421,7 @@ class Application:
 
         self._instrument_exports = InstrumentExportCoordinator(
             InstrumentExportLogic(
+                self.project_controller,
                 self.session_manager,
                 self.export_service,
                 self.export_backends,
@@ -501,6 +502,7 @@ class Application:
             project_controller=self.project_controller,
             history=self.history,
             original_audio_locator=self._original_audio_locator,
+            instrument_exports=self._instrument_exports,
             tab_active=self._is_sequencer_tab_current,
             layout=SequencerTabParameters.from_config(self.layout),
             language_manager=self.language_manager,

@@ -55,6 +55,15 @@ MOVE_UP_ITEM = 4
 MOVE_DOWN_ITEM = 5
 MOVE_TOP_ITEM = 6
 MOVE_BOTTOM_ITEM = 7
+EXPORT_ITEM = 8
+
+ONE_INSTRUMENT: Tuple[Optional[ChannelName], ...] = (ChannelName.PULSE1,)
+TWO_INSTRUMENTS: Tuple[Optional[ChannelName], ...] = (ChannelName.PULSE1, ChannelName.NOISE)
+NO_INSTRUMENTS: Tuple[Optional[ChannelName], ...] = ()
+
+
+def _unreachable() -> None:
+    """Stands where a greyed-out item would carry a callback, which a reader never fires."""
 
 
 @dataclass
@@ -77,11 +86,18 @@ class Requests:
     removed: List[str] = field(default_factory=list)
     moved: List[Tuple[str, Optional[int]]] = field(default_factory=list)
     pool: List[str] = field(default_factory=list)
+    exported: List[Tuple[str, Optional[ChannelName]]] = field(default_factory=list)
 
 
 class _MenuRecorder:
     def __init__(self) -> None:
         self.items: List[MenuItem] = []
+        self.submenus: List[str] = []
+
+    @contextlib.contextmanager
+    def menu(self, **kwargs: Any) -> Iterator[None]:
+        self.submenus.append(kwargs["label"])
+        yield
 
     def add_menu_item(self, **kwargs: Any) -> int:
         self.items.append(
@@ -89,7 +105,7 @@ class _MenuRecorder:
                 label=kwargs["label"],
                 shortcut=kwargs.get("shortcut", ""),
                 enabled=kwargs.get("enabled", True),
-                callback=kwargs["callback"],
+                callback=kwargs.get("callback", _unreachable),
             )
         )
         return 0
@@ -100,6 +116,7 @@ def recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuRecorder:
     recorded = _MenuRecorder()
     monkeypatch.setattr(voices_module.dpg, "add_menu_item", recorded.add_menu_item)
     monkeypatch.setattr(voices_module.dpg, "add_separator", lambda **_kwargs: 0)
+    monkeypatch.setattr(voices_module.dpg, "menu", recorded.menu)
     return recorded
 
 
@@ -120,6 +137,7 @@ def _panel(
     field_focused: bool = False,
     footprint: Optional[SampleFootprintViewModel] = FOOTPRINT,
     footprint_wired: bool = True,
+    instruments: Tuple[Optional[ChannelName], ...] = ONE_INSTRUMENT,
 ) -> VoicesPanelFixture:
     """A samples panel whose menu builder can run with no DearPyGui context behind it."""
     panel = GUISequencerVoicesPanel.__new__(GUISequencerVoicesPanel)
@@ -137,6 +155,7 @@ def _panel(
     panel._tpl_size_bytes = SIZE_TEMPLATE
     panel._tip_size_bytes = SIZE_TOOLTIP
     panel.sample_footprint = (lambda _voice_id: footprint) if footprint_wired else None
+    panel.voice_instruments = lambda _voice_id: instruments
 
     requests = Requests()
     panel.on_sample_edit_requested = requests.edited.append
@@ -146,6 +165,7 @@ def _panel(
     panel.on_new_instrument_requested = lambda: requests.pool.append(SequencerVoicesElements.NEW_INSTRUMENT.value)
     panel.on_add_sample_requested = lambda: requests.pool.append(SequencerVoicesElements.ADD_SAMPLE.value)
     panel.on_import_instrument_requested = lambda: requests.pool.append(SequencerVoicesElements.IMPORT_INSTRUMENT.value)
+    panel.on_export_instrument_requested = lambda voice_id, channel: requests.exported.append((voice_id, channel))
     monkeypatch.setattr(panel, "_start_rename", requests.renamed.append)
     return VoicesPanelFixture(panel=panel, requests=requests)
 
@@ -188,6 +208,11 @@ class _MenuBuildRecorder:
         self.widgets.append(MenuWidget(kind="item", text=kwargs["label"]))
         return 0
 
+    @contextlib.contextmanager
+    def menu(self, **kwargs: Any) -> Iterator[None]:
+        self.widgets.append(MenuWidget(kind="menu", text=kwargs["label"]))
+        yield
+
     def texts_before_the_first_item(self) -> List[str]:
         widgets: List[str] = []
         for widget in self.widgets:
@@ -222,6 +247,7 @@ def build_recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuBuildRecorder:
     monkeypatch.setattr(voices_module.dpg, "add_text", recorded.add_text)
     monkeypatch.setattr(voices_module.dpg, "add_separator", recorded.add_separator)
     monkeypatch.setattr(voices_module.dpg, "add_menu_item", recorded.add_menu_item)
+    monkeypatch.setattr(voices_module.dpg, "menu", recorded.menu)
     monkeypatch.setattr(voices_module, "context_menu", _null_menu)
     monkeypatch.setattr(context_menu_module, "dpg_set_palette_color", lambda _item, _color: None)
     monkeypatch.setattr(context_menu_module, "show_tooltip", recorded.add_tooltip)
@@ -254,6 +280,7 @@ class TestActionItems:
             SequencerVoicesElements.CONTEXT_DUPLICATE.value,
             SequencerVoicesElements.CONTEXT_REMOVE.value,
             *(move.element.value for move in VOICE_MOVES),
+            SequencerVoicesElements.CONTEXT_EXPORT_INSTRUMENT.value,
         ]
 
     def test_the_items_print_the_keys_the_panel_answers_to(
@@ -267,7 +294,7 @@ class TestActionItems:
 
         assert recorder.items[RENAME_ITEM].shortcut == shortcuts.display(ShortcutId.VOICES_RENAME_VOICE)
         assert recorder.items[REMOVE_ITEM].shortcut == shortcuts.display(ShortcutId.VOICES_REMOVE_VOICE)
-        assert [item.shortcut for item in recorder.items[MOVE_UP_ITEM:]] == [
+        assert [item.shortcut for item in recorder.items[MOVE_UP_ITEM : MOVE_BOTTOM_ITEM + 1]] == [
             shortcuts.display(move.shortcut) for move in VOICE_MOVES
         ]
 
@@ -292,6 +319,7 @@ class TestActionItems:
             (SELECTED_ID, 0),
             (SELECTED_ID, len(ENTRIES) - 1),
         ]
+        assert fixture.requests.exported == [(SELECTED_ID, ChannelName.PULSE1)]
 
     def test_a_move_with_nowhere_to_go_is_greyed_out(
         self,
@@ -304,6 +332,72 @@ class TestActionItems:
         assert not recorder.items[MOVE_TOP_ITEM].enabled
         assert recorder.items[MOVE_DOWN_ITEM].enabled
         assert recorder.items[MOVE_BOTTOM_ITEM].enabled
+
+
+class TestExportingTheVoicesInstruments:
+    """The menu offers what an export would write for the voice, however many instruments that is."""
+
+    def test_a_voice_holding_one_instrument_offers_a_plain_item(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+    ) -> None:
+        """There is nothing to choose between, so the item writes the one instrument straight away."""
+        _panel(monkeypatch).panel.build_edit_actions()
+
+        assert recorder.submenus == []
+        assert recorder.items[EXPORT_ITEM].label == SequencerVoicesElements.CONTEXT_EXPORT_INSTRUMENT.value
+
+    def test_a_voice_holding_several_offers_one_item_per_channel(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+    ) -> None:
+        _panel(monkeypatch, instruments=TWO_INSTRUMENTS).panel.build_edit_actions()
+
+        assert recorder.submenus == [SequencerVoicesElements.CONTEXT_EXPORT_INSTRUMENT.value]
+        assert [item.label for item in recorder.items[EXPORT_ITEM:]] == [
+            ContextElements.PULSE_1.value,
+            ContextElements.NOISE.value,
+        ]
+
+    def test_each_channel_writes_the_instrument_it_names(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+    ) -> None:
+        fixture = _panel(monkeypatch, instruments=TWO_INSTRUMENTS)
+        fixture.panel.build_edit_actions()
+
+        for item in recorder.items[EXPORT_ITEM:]:
+            item.callback()
+
+        assert fixture.requests.exported == [
+            (SELECTED_ID, ChannelName.PULSE1),
+            (SELECTED_ID, ChannelName.NOISE),
+        ]
+
+    def test_an_instrument_stated_for_no_channel_is_named_after_its_voice(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+    ) -> None:
+        """A hand-written voice reads the same envelopes on every channel, so it carries its own name."""
+        _panel(monkeypatch, instruments=(None, ChannelName.NOISE)).panel.build_edit_actions()
+
+        assert recorder.items[EXPORT_ITEM].label == "Bass"
+
+    def test_a_voice_writing_nothing_offers_an_item_it_cannot_reach(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+    ) -> None:
+        """The export exists for every voice, and this one has nothing yet to write."""
+        fixture = _panel(monkeypatch, instruments=NO_INSTRUMENTS)
+        fixture.panel.build_edit_actions()
+
+        assert not recorder.items[EXPORT_ITEM].enabled
+        assert fixture.requests.exported == []
 
 
 class TestTheSizeRows:

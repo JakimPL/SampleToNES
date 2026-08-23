@@ -87,6 +87,7 @@ class SequencerVoicesElements(AbstractElement):
     CONTEXT_MOVE_DOWN = "context_move_down"
     CONTEXT_MOVE_TOP = "context_move_top"
     CONTEXT_MOVE_BOTTOM = "context_move_bottom"
+    CONTEXT_EXPORT_INSTRUMENT = "context_export_instrument"
     OMISSION_PITCH = "omission_pitch"
     OMISSION_HI_PITCH = "omission_hi_pitch"
     OMISSION_RELEASE_POINT = "omission_release_point"

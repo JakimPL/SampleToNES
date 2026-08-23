@@ -5,11 +5,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
 from sampletones_application.exports import build_export_backends
 from sampletones_application.logic.export.instrument import (
     InstrumentExportLogic,
-    voice_instrument,
-    voice_instruments,
+    exportable_instrument,
+    sounding_channel,
+    voice_entries,
 )
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exports.format import ExportFormat
@@ -74,19 +76,27 @@ def export_backends() -> Dict[ExportFormat, MagicMock]:
 
 
 @pytest.fixture
+def project_controller() -> MagicMock:
+    mock = MagicMock()
+    mock.project = Project.create()
+    return mock
+
+
+@pytest.fixture
 def logic(
+    project_controller: MagicMock,
     session_manager: MagicMock,
     export_service: MagicMock,
     export_backends: Dict[ExportFormat, MagicMock],
 ) -> InstrumentExportLogic:
-    return InstrumentExportLogic(session_manager, export_service, export_backends)
+    return InstrumentExportLogic(project_controller, session_manager, export_service, export_backends)
 
 
 def _source() -> InstrumentSource:
     voice = new_instrument("Lead")
     project = Project.create()
     project.voices.append(voice)
-    return voice_instrument(project, voice_instruments(voice)[0]).source
+    return exportable_instrument(project, voice_entries(voice)[0]).source
 
 
 class TestWritingOneInstrument:
@@ -196,18 +206,12 @@ class TestWhatAVoiceOffers:
         """One set of envelopes every channel reads is one instrument, as a module holds it."""
         voice = new_instrument("Lead")
 
-        assert len(voice_instruments(voice)) == 1
+        assert len(voice_entries(voice)) == 1
 
     def test_a_written_instrument_is_named_after_itself(self) -> None:
         voice = new_instrument("Lead")
 
-        assert voice_instruments(voice)[0].name == "Lead"
-
-    def test_a_written_instrument_is_sounded_through_the_first_channel_it_reaches(self) -> None:
-        """A file holding the instrument alone needs one channel to sound it on."""
-        voice = new_instrument("Lead")
-
-        assert voice_instruments(voice)[0].export_channel is ChannelName.PULSE1
+        assert voice_entries(voice)[0].name == "Lead"
 
     def test_a_sample_offers_one_per_channel_that_plays(
         self,
@@ -216,7 +220,7 @@ class TestWhatAVoiceOffers:
         sample = Sample(name="Bass", reconstruction=reconstruction_factory())
         playing = sample.reconstruction.playing_channels
 
-        assert [entry.export_channel for entry in voice_instruments(sample)] == list(playing)
+        assert [entry.channel for entry in voice_entries(sample)] == list(playing)
 
     def test_a_samples_slice_is_named_for_its_channel(
         self,
@@ -224,7 +228,7 @@ class TestWhatAVoiceOffers:
     ) -> None:
         sample = Sample(name="Bass", reconstruction=reconstruction_factory())
 
-        assert all(entry.name.startswith("Bass") for entry in voice_instruments(sample))
+        assert all(entry.name.startswith("Bass") for entry in voice_entries(sample))
 
     def test_both_kinds_answer_with_the_same_shape(
         self,
@@ -235,8 +239,8 @@ class TestWhatAVoiceOffers:
         written = new_instrument("Lead")
         project = self._project(sample, written)
 
-        sources = [voice_instrument(project, entry).source for entry in voice_instruments(sample)]
-        sources += [voice_instrument(project, entry).source for entry in voice_instruments(written)]
+        sources = [exportable_instrument(project, entry).source for entry in voice_entries(sample)]
+        sources += [exportable_instrument(project, entry).source for entry in voice_entries(written)]
 
         assert all(isinstance(source, InstrumentSource) for source in sources)
 
@@ -244,7 +248,7 @@ class TestWhatAVoiceOffers:
         voice = new_instrument("Lead")
         project = self._project(voice)
 
-        source = voice_instrument(project, voice_instruments(voice)[0]).source
+        source = exportable_instrument(project, voice_entries(voice)[0]).source
 
         assert source.nes_frequency == project.settings.nes_frequency
         assert source.tuning == Tuning()
@@ -252,4 +256,112 @@ class TestWhatAVoiceOffers:
     def test_a_voice_with_nothing_written_offers_nothing(self) -> None:
         sample = Sample(name="Silent", reconstruction=sample_reconstruction(set()))
 
-        assert voice_instruments(sample) == ()
+        assert voice_entries(sample) == ()
+
+
+class TestWhichChannelAFileSoundsItOn:
+    """A written file plays its instrument somewhere, and the entry states where or leaves it open."""
+
+    def test_a_samples_slice_sounds_on_the_channel_it_was_reconstructed_for(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        sample = Sample(name="Bass", reconstruction=reconstruction_factory())
+
+        for entry in voice_entries(sample):
+            assert sounding_channel(entry) is entry.channel
+
+    def test_a_written_instrument_sounds_where_the_app_reads_it(self) -> None:
+        """Its envelopes name no channel, so the file plays them where its editor shows them."""
+        voice = new_instrument("Lead")
+
+        assert sounding_channel(voice_entries(voice)[0]) is INSTRUMENT_CHANNEL
+
+    def test_a_written_instrument_is_measured_against_the_root_that_channel_reads(self) -> None:
+        """The channel it is sounded on and the reference its envelopes carry are one answer."""
+        voice = new_instrument("Lead")
+        entry = voice_entries(voice)[0]
+
+        assert entry.features.initial_pitch == voice.reference(sounding_channel(entry))
+
+
+class TestWhatOneVoiceIsAskedFor:
+    """A menu asks what a voice offers, and a click asks for one of them by the channel it named."""
+
+    @staticmethod
+    def _logic(project: Project, session_manager: MagicMock) -> InstrumentExportLogic:
+        controller = MagicMock()
+        controller.project = project
+        return InstrumentExportLogic(controller, session_manager, MagicMock(), {})
+
+    def test_a_sample_offers_each_channel_that_plays(
+        self,
+        session_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        sample = Sample(name="Bass", reconstruction=reconstruction_factory())
+        project = Project.create()
+        project.voices.append(sample)
+
+        offered = self._logic(project, session_manager).voice_instruments(sample.id)
+
+        assert offered == tuple(sample.reconstruction.playing_channels)
+
+    def test_a_written_instrument_offers_one_naming_no_channel(
+        self,
+        session_manager: MagicMock,
+    ) -> None:
+        voice = new_instrument("Lead")
+        project = Project.create()
+        project.voices.append(voice)
+
+        assert self._logic(project, session_manager).voice_instruments(voice.id) == (None,)
+
+    def test_a_voice_the_pool_lost_offers_nothing(self, session_manager: MagicMock) -> None:
+        logic = self._logic(Project.create(), session_manager)
+
+        assert logic.voice_instruments("gone") == ()
+
+    def test_the_instrument_asked_for_is_the_one_that_channel_names(
+        self,
+        session_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        sample = Sample(name="Bass", reconstruction=reconstruction_factory())
+        project = Project.create()
+        project.voices.append(sample)
+        channel = sample.reconstruction.playing_channels[0]
+
+        exportable = self._logic(project, session_manager).voice_instrument(sample.id, channel)
+
+        assert exportable is not None
+        assert exportable.source.channel is channel
+
+    def test_a_written_instrument_is_asked_for_by_naming_no_channel(
+        self,
+        session_manager: MagicMock,
+    ) -> None:
+        voice = new_instrument("Lead")
+        project = Project.create()
+        project.voices.append(voice)
+
+        exportable = self._logic(project, session_manager).voice_instrument(voice.id, None)
+
+        assert exportable is not None
+        assert exportable.name == "Lead"
+
+    def test_a_written_instrument_is_reached_by_naming_no_channel_alone(
+        self,
+        session_manager: MagicMock,
+    ) -> None:
+        """It offers one instrument for every channel at once, so no channel names it by itself."""
+        voice = new_instrument("Lead")
+        project = Project.create()
+        project.voices.append(voice)
+
+        assert self._logic(project, session_manager).voice_instrument(voice.id, ChannelName.NOISE) is None
+
+    def test_a_voice_the_pool_lost_is_written_nowhere(self, session_manager: MagicMock) -> None:
+        logic = self._logic(Project.create(), session_manager)
+
+        assert logic.voice_instrument("gone", None) is None

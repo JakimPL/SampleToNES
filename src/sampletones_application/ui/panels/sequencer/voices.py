@@ -1,3 +1,5 @@
+# TODO: refactor into a subpackage
+
 from dataclasses import dataclass
 from typing import Callable, Dict, Final, List, Optional, Tuple
 
@@ -56,6 +58,8 @@ from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import StringCallback, VoidCallback
 
 FROZEN_HEADER_ROWS: Final[int] = 1
+
+NO_INSTRUMENTS: Final[Tuple[Optional[ChannelName], ...]] = ()
 
 
 @dataclass(frozen=True)
@@ -126,6 +130,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._tip_kind_sample = self._tooltip(language_manager, SequencerVoicesElements.KIND_SAMPLE)
         self._tip_kind_instrument = self._tooltip(language_manager, SequencerVoicesElements.KIND_INSTRUMENT)
         self.sample_footprint: Optional[Callable[[str], Optional[SampleFootprintViewModel]]] = None
+        self.voice_instruments: Optional[Callable[[str], Tuple[Optional[ChannelName], ...]]] = None
         self.on_sample_selected: Optional[StringCallback] = None
         self.on_sample_edit_requested: Optional[StringCallback] = None
         self.on_loop_changed: Optional[Callable[[str, bool], None]] = None
@@ -137,6 +142,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         self.on_new_instrument_requested: Optional[VoidCallback] = None
         self.on_add_sample_requested: Optional[VoidCallback] = None
         self.on_import_instrument_requested: Optional[VoidCallback] = None
+        self.on_export_instrument_requested: Optional[Callable[[str, Optional[ChannelName]], None]] = None
 
         super().__init__(
             tag=TAG_SEQUENCER_VOICES_PANEL,
@@ -811,6 +817,63 @@ class GUISequencerVoicesPanel(GUIPanel):
         dpg.add_separator()
         for move in VOICE_MOVES:
             self._add_move_item(move, target)
+
+        dpg.add_separator()
+        self._add_export_items(target)
+
+    def _add_export_items(self, target: VoiceSelection) -> None:
+        """Offers the instruments the voice would be written as, however many of them it holds.
+
+        The menu asks how many instruments the voice contains rather than which kind of voice it
+        is, so one item stands where there is nothing to choose and a channel submenu stands where
+        a reader picks between slices. A voice writing nothing offers the item unreachable, which
+        says an export exists without pretending this voice has one.
+        """
+        label = self._label(self._language_manager, SequencerVoicesElements.CONTEXT_EXPORT_INSTRUMENT)
+        channels = self.query(self.voice_instruments, target.voice_id, default=NO_INSTRUMENTS)
+        if not channels:
+            dpg.add_menu_item(label=label, enabled=False)
+            return
+
+        if len(channels) > 1:
+            with dpg.menu(label=label):
+                for channel_name in channels:
+                    self._add_export_channel_item(target, channel_name)
+            return
+
+        dpg.add_menu_item(
+            label=label,
+            callback=lambda: self._request_export(target.voice_id, channels[0]),
+        )
+
+    def _add_export_channel_item(
+        self,
+        target: VoiceSelection,
+        channel_name: Optional[ChannelName],
+    ) -> None:
+        """Offers one of a voice's instruments, under the name that instrument carries."""
+        dpg.add_menu_item(
+            label=self._instrument_label(target, channel_name),
+            callback=lambda: self._request_export(target.voice_id, channel_name),
+        )
+
+    def _instrument_label(
+        self,
+        target: VoiceSelection,
+        channel_name: Optional[ChannelName],
+    ) -> str:
+        """The name one of a voice's instruments is listed under.
+
+        A slice is named by the channel it was reconstructed for, which is what tells a voice's
+        slices apart; an instrument stated for every channel alike is named after the voice.
+        """
+        if channel_name is None:
+            return target.name
+
+        return channel_label(self._language_manager, channel_name)
+
+    def _request_export(self, voice_id: str, channel_name: Optional[ChannelName]) -> None:
+        self.call(self.on_export_instrument_requested, voice_id, channel_name)
 
     def _add_move_item(
         self,

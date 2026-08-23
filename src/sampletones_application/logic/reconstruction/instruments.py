@@ -99,7 +99,9 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         if instrument is not None:
             return ReconstructionInstrumentsViewModel(
                 reconstruction_loaded=False,
-                playing_channels=frozenset({INSTRUMENT_CHANNEL}),
+                playing_channels=frozenset(
+                    {INSTRUMENT_CHANNEL} if instrument.features.has_frames else ()  # TODO: deserves a helper function
+                ),
                 footprint=SampleFootprintViewModel.from_instrument(
                     features_footprint(instrument.features, loop_point=instrument.loop_point)
                 ),

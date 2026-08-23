@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from sampletones_application.categories.elements.global_ import FileFilterElements
 from sampletones_application.categories.exports import (
@@ -12,6 +12,7 @@ from sampletones_application.logic.export.instrument import InstrumentExportLogi
 from sampletones_application.utils.file_dialogs.api import save_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.request import InstrumentSource
 from sampletones_core.exports.scope import ExportScope
@@ -38,6 +39,41 @@ class InstrumentExportCoordinator:
             export_format: self._filter_name(language_manager, element)
             for export_format, element in EXPORT_INSTRUMENT_FILTERS.items()
         }
+
+    def voice_instruments(self, voice_id: str) -> Tuple[Optional[ChannelName], ...]:
+        """What one voice offers to an export, each named by the channel it is stated for.
+
+        A menu offering an export asks the exporter itself what a voice holds, so what the menu
+        prints and what a click writes are the same answer.
+
+        Args:
+            voice_id: The voice whose instruments are offered.
+
+        Returns:
+            Tuple[Optional[ChannelName], ...]: One entry per instrument the voice holds, ``None``
+            where the voice holds the one set of envelopes every channel reads.
+        """
+        return self._logic.voice_instruments(voice_id)
+
+    def request_voice(
+        self,
+        voice_id: str,
+        channel_name: Optional[ChannelName],
+    ) -> None:
+        """Asks where one of a project voice's instruments goes, then writes it there.
+
+        Both surfaces naming a voice — the sequencer's voice menu and the Reconstructions tab's
+        export button — reach a file this way, so the same voice is written the same bytes
+        whichever of them asked.
+
+        Args:
+            voice_id: The voice the instrument belongs to.
+            channel_name: The channel the instrument is stated for, ``None`` where the voice
+                holds the one set of envelopes every channel reads.
+        """
+        exportable = self._logic.voice_instrument(voice_id, channel_name)
+        if exportable is not None:
+            self.request(exportable.source, exportable.name)
 
     def request(self, source: InstrumentSource, suggested_name: str) -> None:
         """Asks where one instrument goes, then writes it there.

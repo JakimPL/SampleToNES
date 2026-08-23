@@ -397,8 +397,14 @@ class ReconstructionTabCoordinator:
 
         An instrument reaches a file the same way whichever surface asked for it, so the whole
         gesture from here on belongs to the shared exporter; what the tab contributes is which
-        instrument it has in front of it.
+        instrument it has in front of it. A voice written by hand is one the pool holds, so it is
+        written by voice and the sequencer's voice menu writes the same file for it.
         """
+        instrument = self._instrument_editor.instrument
+        if instrument is not None:
+            self._instrument_exports.request_voice(instrument.id, None)
+            return
+
         exportable = self._reconstruction_panel_logic.exportable_instrument(channel_name)
         if exportable is not None:
             self._instrument_exports.request(exportable.source, exportable.name)

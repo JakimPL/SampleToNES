@@ -1,7 +1,6 @@
 from typing import List, Sequence
 
 import numpy as np
-import pytest
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters.slices import (
@@ -169,7 +168,7 @@ class TestOneVoicesInstruments:
     def test_a_sample_offers_one_per_playing_channel(self) -> None:
         sample = _sample("bass", [ChannelName.PULSE1, ChannelName.NOISE])
 
-        assert [entry.export_channel for entry in self._entries(sample)] == [
+        assert [entry.channel for entry in self._entries(sample)] == [
             ChannelName.PULSE1,
             ChannelName.NOISE,
         ]
@@ -178,14 +177,18 @@ class TestOneVoicesInstruments:
         """One set of envelopes every channel reads is one instrument, however many it sounds on."""
         assert len(self._entries(_instrument("lead"))) == 1
 
-    def test_a_written_instrument_is_sounded_through_the_first_channel_it_reaches(self) -> None:
-        """A file holding the instrument alone needs one channel to sound it on."""
-        assert self._entries(_instrument("lead"))[0].export_channel is ChannelName.PULSE1
+    def test_a_written_instrument_states_its_envelopes_for_no_channel(self) -> None:
+        """One set every channel reads belongs to none of them, so the entry names none."""
+        assert self._entries(_instrument("lead"))[0].channel is None
 
-    def test_a_samples_slice_is_sounded_through_the_channel_it_was_reconstructed_for(self) -> None:
+    def test_a_written_instrument_still_answers_for_every_channel_it_sounds_on(self) -> None:
+        """Naming no channel of its own leaves the rows of every channel reaching it."""
+        assert list(self._entries(_instrument("lead"))[0].slots) == ChannelName.items()
+
+    def test_a_samples_slice_names_the_channel_it_was_reconstructed_for(self) -> None:
         sample = _sample("bass", [ChannelName.TRIANGLE])
 
-        assert self._entries(sample)[0].export_channel is ChannelName.TRIANGLE
+        assert self._entries(sample)[0].channel is ChannelName.TRIANGLE
 
     def test_a_voice_writing_nothing_offers_nothing(self) -> None:
         assert self._entries(_instrument_writing_nothing()) == []
@@ -200,20 +203,6 @@ class TestOneVoicesInstruments:
         per_voice = self._entries(sample) + self._entries(instrument)
 
         assert [entry.name for entry in walked] == [entry.name for entry in per_voice]
-
-    def test_an_instrument_reaching_no_channel_can_be_sounded_nowhere(self) -> None:
-        """A file holds one instrument by sounding it, so an entry answering for nothing refuses."""
-        entry = InstrumentEntry(
-            index=FIRST_INSTRUMENT_INDEX,
-            voice_id="lead-id",
-            name="lead",
-            features=_instrument("lead").instrument_features(),
-            loop_point=None,
-            slots={},
-        )
-
-        with pytest.raises(ValueError):
-            _ = entry.export_channel
 
     def test_the_numbering_starts_where_it_is_told_to(self) -> None:
         sample = _sample("bass", [ChannelName.PULSE1, ChannelName.NOISE])

@@ -19,7 +19,11 @@ class EnvelopeTruncation:
     instruments: int
 
     @classmethod
-    def measure(cls, source_frames: int, limit: Optional[int]) -> Optional[EnvelopeTruncation]:
+    def measure(
+        cls,
+        source_frames: int,
+        limit: Optional[int],
+    ) -> Optional[EnvelopeTruncation]:
         """Reports what an export of one instrument's envelopes keeps.
 
         Args:
@@ -33,7 +37,11 @@ class EnvelopeTruncation:
         if limit is None or source_frames <= limit:
             return None
 
-        return cls(frames=limit, source_frames=source_frames, instruments=1)
+        return cls(
+            frames=limit,
+            source_frames=source_frames,
+            instruments=1,
+        )
 
     @classmethod
     def summarize(

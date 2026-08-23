@@ -93,5 +93,13 @@ class InstrumentImportMessages:
         if not omissions:
             return None
 
-        listed = "\n".join(f"{OMISSION_BULLET}{self.omissions[omission]}" for omission in omissions)
-        return f"{self.template.format(name=name)}\n{listed}"
+        return "\n".join(
+            (
+                self.template.format(name=name),
+                self._listed(omissions),
+            ),
+        )
+
+    def _listed(self, omissions: Tuple[InstrumentOmission, ...]) -> str:
+        """The dimensions a file states past the voice, one to a line under its own mark."""
+        return "\n".join(f"{OMISSION_BULLET}{self.omissions[omission]}" for omission in omissions)

@@ -13,6 +13,7 @@ from sampletones_application.coordinators.tabs.reconstruction import (
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.format import ExportFormat
 from sampletones_shared.exceptions import (
@@ -271,6 +272,52 @@ def export_coordinator(monkeypatch: pytest.MonkeyPatch) -> ReconstructionTabCoor
 def _shown_message(coordinator: ReconstructionTabCoordinator) -> str:
     _, message, _ = coordinator._dialogs.show_message_with_path.call_args.args
     return message
+
+
+class TestExportingTheInstrumentInFront:
+    """Whatever the tab holds reaches a file the same way, so a pool voice is written by voice."""
+
+    @staticmethod
+    def _coordinator(
+        instrument: object,
+        exportable: object,
+    ) -> ReconstructionTabCoordinator:
+        instance = object.__new__(ReconstructionTabCoordinator)
+        instance._instrument_editor = MagicMock()
+        instance._instrument_editor.instrument = instrument
+        instance._instrument_exports = MagicMock()
+        instance._reconstruction_panel_logic = MagicMock()
+        instance._reconstruction_panel_logic.exportable_instrument.return_value = exportable
+        return instance
+
+    def test_a_hand_written_voice_is_written_by_the_voice_it_is(self) -> None:
+        """The sequencer's menu and this button name the same voice, so they write the same file."""
+        instrument = MagicMock()
+        instrument.id = "lead-id"
+        coordinator = self._coordinator(instrument, MagicMock())
+
+        coordinator._export_instrument(ChannelName.PULSE1)
+
+        coordinator._instrument_exports.request_voice.assert_called_once_with("lead-id", None)
+        coordinator._reconstruction_panel_logic.exportable_instrument.assert_not_called()
+
+    def test_a_reconstructions_slice_is_written_as_the_tab_holds_it(self) -> None:
+        exportable = MagicMock()
+        coordinator = self._coordinator(None, exportable)
+
+        coordinator._export_instrument(ChannelName.TRIANGLE)
+
+        coordinator._instrument_exports.request.assert_called_once_with(
+            exportable.source,
+            exportable.name,
+        )
+
+    def test_a_channel_describing_no_frame_is_written_nowhere(self) -> None:
+        coordinator = self._coordinator(None, None)
+
+        coordinator._export_instrument(ChannelName.NOISE)
+
+        coordinator._instrument_exports.request.assert_not_called()
 
 
 class TestExportResultReportsTruncation:

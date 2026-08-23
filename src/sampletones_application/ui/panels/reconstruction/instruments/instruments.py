@@ -551,10 +551,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 channel_name in view_model.playing_channels,
             )
 
-        export_button = self._export_buttons.get(INSTRUMENT_CHANNEL)
-        if export_button is not None and instrument is not None:
-            export_button.set_enabled(False)
-
         if instrument is not None:
             self._apply_instrument_fields(instrument)
 

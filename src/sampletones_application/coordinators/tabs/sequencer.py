@@ -13,6 +13,7 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.edit.protocol import EditSurfaceProtocol
+from sampletones_application.coordinators.export import InstrumentExportCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -162,6 +163,7 @@ class SequencerTabCoordinator:
         project_controller: ProjectController,
         history: HistoryManager,
         original_audio_locator: OriginalAudioLocator,
+        instrument_exports: InstrumentExportCoordinator,
         *,
         tab_active: ActivePredicate,
         layout: SequencerTabParameters,
@@ -179,6 +181,7 @@ class SequencerTabCoordinator:
         self._session_manager = session_manager
         self._history = history
         self._original_audio_locator = original_audio_locator
+        self._instrument_exports = instrument_exports
         self._on_edit_sample_requested = on_edit_sample_requested
         self._on_favorite_changed = on_favorite_changed
         self._on_sample_reconstruction_replaced = on_sample_reconstruction_replaced
@@ -651,6 +654,8 @@ class SequencerTabCoordinator:
         self._sequencer_voices_panel.on_new_instrument_requested = self.add_instrument
         self._sequencer_voices_panel.on_add_sample_requested = self.add_sample_from_file
         self._sequencer_voices_panel.on_import_instrument_requested = self.import_instrument
+        self._sequencer_voices_panel.voice_instruments = self._instrument_exports.voice_instruments
+        self._sequencer_voices_panel.on_export_instrument_requested = self._instrument_exports.request_voice
 
     def add_instrument(self) -> None:
         """Appends a hand-written voice, named for the position it takes in the list.
