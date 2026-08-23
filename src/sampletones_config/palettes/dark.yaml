@@ -194,3 +194,6 @@ colors:
   tracker_frame: "#4fa6ffff"
   tracker_row: "#9a9aa2ff"
   tracker_order: "#c4d0e0ff"
+
+  voice_sample: "#e0c860ff"
+  voice_instrument: "#f476d8ff"

@@ -77,3 +77,14 @@ class TestShippedPalettes:
         expected = set(catalog.default.colors)
         for name, palette in catalog.palettes.items():
             assert set(palette.colors) == expected, f"Palette {name!r} token set differs from {DEFAULT_PALETTE_NAME!r}"
+
+    def test_every_palette_tells_the_two_voice_kinds_apart(self, catalog: PaletteCatalog) -> None:
+        """A recording and a hand-written voice wear their colours in the tracker and the list alike.
+
+        Each palette states the pair for itself, so a colour that separates on one ground can go
+        dark and saturated on another and the kinds stay apart in all of them.
+        """
+        for name, palette in catalog.palettes.items():
+            assert (
+                palette.colors["voice_sample"] != palette.colors["voice_instrument"]
+            ), f"Palette {name!r} gives both voice kinds one colour"
