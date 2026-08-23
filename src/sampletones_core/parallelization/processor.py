@@ -112,6 +112,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
 
         self._stop_pool()
         self._join_thread()
+        self._release_channel()
         self._reset_status()
 
     def is_running(self) -> bool:
@@ -175,12 +176,16 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         self._pump.start()
 
     def _release_channel(self) -> None:
-        """Ends the reading and the channel, which the run does once its tasks are all heard from."""
-        if self._pump is not None:
-            self._pump.stop()
-            self._pump = None
+        """Ends the reading and the channel, which the run does once its tasks are all heard from.
 
+        Every way a run can end reaches here, including one that built its tasks and never started,
+        since the channel is a process of its own to be reaped whatever became of the run.
+        """
         with self._channel_lock:
+            if self._pump is not None:
+                self._pump.stop()
+                self._pump = None
+
             if self._channel is not None:
                 self._channel.close()
                 self._channel = None
@@ -326,6 +331,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
     def _wait_for_cleanup(self) -> None:
         self._stop_pool()
         self._join_thread()
+        self._release_channel()
         self._reset_status()
 
     def _complete_process(self, results: List[T]) -> None:
