@@ -72,6 +72,7 @@ class MenuElements(AbstractElement):
     ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_FAMITRACKER = "item_reconstruction_export_instruments_famitracker"
     ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_BITPHASE_PRESET = "item_reconstruction_export_instruments_bitphase_preset"
     ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_NSF = "item_reconstruction_export_instruments_nsf"
+    GROUP_VOICE = "group_voice"
     GROUP_PLAYBACK = "group_playback"
     ITEM_PLAYBACK_PLAY = "item_playback_play"
     ITEM_PLAYBACK_PAUSE = "item_playback_pause"

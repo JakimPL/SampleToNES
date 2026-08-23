@@ -89,6 +89,8 @@ class ShortcutBindings:
     export_wav: Callback
     export_instruments: Callable[[ExportFormat], None]
     add_reconstruction_to_sequencer: Callback
+    new_instrument: Callback
+    add_sample_from_file: Callback
     open_reconstruction_in_explorer: Callback
     locate_original_audio: Callback
     play: Callback
@@ -241,6 +243,8 @@ class ApplicationShell:
             ShortcutId.CLOSE_RECONSTRUCTION: bindings.close_reconstruction,
             ShortcutId.EXPORT_RECONSTRUCTION_WAV: bindings.export_wav,
             ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER: bindings.add_reconstruction_to_sequencer,
+            ShortcutId.NEW_INSTRUMENT: bindings.new_instrument,
+            ShortcutId.ADD_SAMPLE_FROM_FILE: bindings.add_sample_from_file,
             ShortcutId.OPEN_RECONSTRUCTION_IN_EXPLORER: bindings.open_reconstruction_in_explorer,
             ShortcutId.LOCATE_ORIGINAL_AUDIO: bindings.locate_original_audio,
             ShortcutId.PLAY: bindings.play,

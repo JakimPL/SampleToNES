@@ -408,6 +408,34 @@ class TestEditActions:
         assert recorder.items == []
 
 
+class TestVoiceMenuActions:
+    """The menu bar's Voice group carries the same actions the row menu prints."""
+
+    def test_the_chosen_voice_states_its_actions_under_a_rule(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        build_recorder: _MenuBuildRecorder,
+    ) -> None:
+        """The group lists the pool above them, so the voice's own actions are led by a divider."""
+        _panel(monkeypatch).panel.build_voice_actions()
+
+        kinds = [widget.kind for widget in build_recorder.widgets]
+        items = [widget.text for widget in build_recorder.widgets if widget.kind == "item"]
+
+        assert kinds[0] == "separator"
+        assert items[0] == SequencerVoicesElements.CONTEXT_EDIT.value
+
+    def test_no_voice_chosen_states_nothing_at_all(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        build_recorder: _MenuBuildRecorder,
+    ) -> None:
+        """A group with no voice to act on shows the ways one comes in, and no divider below."""
+        _panel(monkeypatch, selected_row=None).panel.build_voice_actions()
+
+        assert build_recorder.widgets == []
+
+
 class TestThePoolItems:
     """Every door onto the list offers the ways a voice comes in, so adding one is never hidden."""
 

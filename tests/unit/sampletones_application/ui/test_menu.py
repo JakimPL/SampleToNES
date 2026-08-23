@@ -9,12 +9,16 @@ from sampletones_application.paths import LANG_EN
 from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_GROUP_EDIT,
     TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
+    TAG_GLOBAL_MENU_GROUP_VOICE,
+    TAG_GLOBAL_MENU_GROUP_VOICE_MARKER,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,
     TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_DIRECTORIES,
     TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS,
 )
 from sampletones_application.ui import menu as menu_module
+from sampletones_application.ui.elements import menu_section as menu_section_module
+from sampletones_application.ui.elements.menu_section import MenuSection
 from sampletones_application.ui.menu import MenuBar
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
@@ -164,14 +168,24 @@ def framework(monkeypatch: pytest.MonkeyPatch) -> _DearPyGuiRecorder:
     monkeypatch.setattr(menu_module.dpg, "bind_item_handler_registry", instance.bind_item_handler_registry)
     monkeypatch.setattr(menu_module, "dpg_set_value", instance.set_value)
     monkeypatch.setattr(menu_module, "dpg_configure_item", instance.configure_item)
-    monkeypatch.setattr(menu_module, "dpg_append_items", instance.append_items)
-    monkeypatch.setattr(menu_module, "dpg_delete_item", instance.delete_item)
+    monkeypatch.setattr(menu_section_module.dpg, "add_group", instance.add_group)
+    monkeypatch.setattr(menu_section_module.dpg, "item_handler_registry", instance.item_handler_registry)
+    monkeypatch.setattr(menu_section_module.dpg, "add_item_visible_handler", instance.add_item_visible_handler)
+    monkeypatch.setattr(menu_section_module.dpg, "bind_item_handler_registry", instance.bind_item_handler_registry)
+    monkeypatch.setattr(menu_section_module, "dpg_append_items", instance.append_items)
+    monkeypatch.setattr(menu_section_module, "dpg_delete_item", instance.delete_item)
     return instance
 
 
 @pytest.fixture
 def shortcuts(framework: _DearPyGuiRecorder) -> _ShortcutManagerRecorder:
     return _ShortcutManagerRecorder(framework.built)
+
+
+@pytest.fixture
+def voice_actions() -> Callable[[], None]:
+    """Stands in for the voices panel, which states the chosen voice's actions."""
+    return lambda: None
 
 
 @pytest.fixture
@@ -184,6 +198,7 @@ def switched() -> List[ChannelName]:
 def menu_bar(
     shortcuts: _ShortcutManagerRecorder,
     switched: List[ChannelName],
+    voice_actions: Callable[[], None],
 ) -> MenuBar:
     """A bar with the collaborators its submenus read, from the real language file."""
     instance = MenuBar.__new__(MenuBar)
@@ -191,9 +206,16 @@ def menu_bar(
     instance._language_manager = LanguageManager(LANG_EN)
     instance._on_channel_muted = switched.append
     instance._build_edit_actions = lambda: False
-    instance._edit_actions_handler_tag = "handlers"
-    instance._edit_actions_frame = None
-    instance._edit_action_items = ()
+    instance._edit_section = MenuSection(
+        menu_tag=TAG_GLOBAL_MENU_GROUP_EDIT,
+        marker_tag=TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
+        build=instance._add_edit_action_items,
+    )
+    instance._voice_section = MenuSection(
+        menu_tag=TAG_GLOBAL_MENU_GROUP_VOICE,
+        marker_tag=TAG_GLOBAL_MENU_GROUP_VOICE_MARKER,
+        build=voice_actions,
+    )
     return instance
 
 
@@ -422,8 +444,11 @@ def _edit_bar(build_edit_actions: Callable[[], bool]) -> MenuBar:
     instance = MenuBar.__new__(MenuBar)
     instance._language_manager = LanguageManager(LANG_EN)
     instance._build_edit_actions = build_edit_actions
-    instance._edit_actions_frame = None
-    instance._edit_action_items = ()
+    instance._edit_section = MenuSection(
+        menu_tag=TAG_GLOBAL_MENU_GROUP_EDIT,
+        marker_tag=TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
+        build=instance._add_edit_action_items,
+    )
     return instance
 
 
@@ -502,7 +527,7 @@ class TestEditActionsSection:
         self,
         framework: _DearPyGuiRecorder,
     ) -> None:
-        _edit_bar(lambda: False)._refresh_edit_actions()
+        _edit_bar(lambda: False)._edit_section.refresh()
 
         assert [item["label"] for item in framework.items] == ["Copy", "Cut", "Paste", "Delete"]
         assert [item["enabled"] for item in framework.items] == [False] * 4
@@ -517,7 +542,7 @@ class TestEditActionsSection:
             requests.append(True)
             return True
 
-        _edit_bar(build)._refresh_edit_actions()
+        _edit_bar(build)._edit_section.refresh()
 
         assert requests == [True]
         assert framework.items == []
@@ -526,7 +551,7 @@ class TestEditActionsSection:
         self,
         framework: _DearPyGuiRecorder,
     ) -> None:
-        _edit_bar(lambda: False)._refresh_edit_actions()
+        _edit_bar(lambda: False)._edit_section.refresh()
 
         assert framework.containers == [TAG_GLOBAL_MENU_GROUP_EDIT]
 
@@ -536,8 +561,8 @@ class TestEditActionsSection:
     ) -> None:
         menu_bar = _edit_bar(lambda: False)
 
-        menu_bar._refresh_edit_actions()
-        menu_bar._refresh_edit_actions()
+        menu_bar._edit_section.refresh()
+        menu_bar._edit_section.refresh()
 
         assert framework.deleted == [0, 1, 2, 3]
 
@@ -566,36 +591,81 @@ class TestEditMenuOrder:
         ]
 
 
-class TestEditActionsRefresh:
-    """DearPyGui reports the section drawn once a frame while the menu stands open, so a gap in
-    those reports is what marks a fresh opening."""
+class TestVoiceMenu:
+    """One group names every way a voice comes in, and carries what the chosen one offers."""
 
-    def test_the_actions_are_stated_once_while_the_menu_stays_open(
+    def test_the_ways_a_voice_comes_in_are_named_together(
         self,
-        framework: _DearPyGuiRecorder,
-        monkeypatch: pytest.MonkeyPatch,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
     ) -> None:
-        frames = iter([10, 11, 12, 13])
-        monkeypatch.setattr(menu_module.dpg, "get_frame_count", lambda: next(frames))
-        requests: List[int] = []
-        menu_bar = _edit_bar(lambda: bool(requests.append(1)))
+        menu_bar._create_voice_menu(_state(frozenset()))
 
-        for _ in range(4):
-            menu_bar._on_edit_actions_drawn(0, 0)
+        assert shortcuts.labels == [
+            "New instrument",
+            "Add sample from file...",
+            "Add to Sequencer",
+        ]
 
-        assert len(requests) == 1
-
-    def test_the_actions_are_stated_afresh_each_time_the_menu_is_opened(
+    def test_each_way_carries_its_own_action(
         self,
-        framework: _DearPyGuiRecorder,
-        monkeypatch: pytest.MonkeyPatch,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
     ) -> None:
-        frames = iter([10, 11, 40, 41])
-        monkeypatch.setattr(menu_module.dpg, "get_frame_count", lambda: next(frames))
-        requests: List[int] = []
-        menu_bar = _edit_bar(lambda: bool(requests.append(1)))
+        menu_bar._create_voice_menu(_state(frozenset()))
 
-        for _ in range(4):
-            menu_bar._on_edit_actions_drawn(0, 0)
+        assert [item["shortcut_id"] for item in shortcuts.items] == [
+            ShortcutId.NEW_INSTRUMENT,
+            ShortcutId.ADD_SAMPLE_FROM_FILE,
+            ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER,
+        ]
 
-        assert len(requests) == 2
+    def test_the_pool_waits_for_a_project_to_hold_a_voice(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+    ) -> None:
+        menu_bar._create_voice_menu(_state(frozenset()).model_copy(update={"project_open": False}))
+
+        assert shortcuts.item("New instrument")["enabled"] is False
+        assert shortcuts.item("Add sample from file...")["enabled"] is False
+
+    def test_bringing_the_open_reconstruction_in_waits_for_one_to_be_open(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+    ) -> None:
+        menu_bar._create_voice_menu(_state(frozenset()))
+
+        assert shortcuts.item("Add to Sequencer")["enabled"] is False
+
+    def test_the_marker_stands_before_every_item(
+        self,
+        menu_bar: MenuBar,
+        framework: _DearPyGuiRecorder,
+    ) -> None:
+        menu_bar._create_voice_menu(_state(frozenset()))
+
+        assert framework.built[0] == f"group:{TAG_GLOBAL_MENU_GROUP_VOICE_MARKER}"
+
+    def test_the_chosen_voice_is_asked_for_as_the_group_is_built(
+        self,
+        shortcuts: _ShortcutManagerRecorder,
+        framework: _DearPyGuiRecorder,
+        switched: List[ChannelName],
+    ) -> None:
+        """The section is stated once the group stands, so the menu opens with its full height."""
+        asked: List[int] = []
+        instance = MenuBar.__new__(MenuBar)
+        instance._shortcut_manager = shortcuts
+        instance._language_manager = LanguageManager(LANG_EN)
+        instance._voice_section = MenuSection(
+            menu_tag=TAG_GLOBAL_MENU_GROUP_VOICE,
+            marker_tag=TAG_GLOBAL_MENU_GROUP_VOICE_MARKER,
+            build=lambda: asked.append(1),
+        )
+
+        instance._create_voice_menu(_state(frozenset()))
+
+        assert asked == [1]
+        assert framework.containers == [TAG_GLOBAL_MENU_GROUP_VOICE]

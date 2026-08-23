@@ -722,6 +722,20 @@ class GUISequencerVoicesPanel(GUIPanel):
         if selection is not None:
             self.add_action_items(selection)
 
+    def build_voice_actions(self) -> None:
+        """States the actions of the voice the list holds, for a menu listing the pool above them.
+
+        The Voice menu prints the ways a voice comes in first, so the chosen voice's actions are
+        led by a rule of their own here, and nothing is stated while no voice is chosen. The row
+        menu draws its own dividers around the same set.
+        """
+        selection = self.selection
+        if selection is None:
+            return
+
+        dpg.add_separator()
+        self.add_action_items(selection)
+
     def add_pool_items(self) -> None:
         """Builds the ways a voice comes into the pool, in the order each menu prints them.
 
@@ -735,6 +749,7 @@ class GUISequencerVoicesPanel(GUIPanel):
                 self._language_manager,
                 SequencerVoicesElements.NEW_INSTRUMENT,
             ),
+            shortcut=self._shortcuts.display(ShortcutId.NEW_INSTRUMENT),
             callback=lambda: self.call(self.on_new_instrument_requested),
         )
         dpg.add_menu_item(
@@ -742,6 +757,7 @@ class GUISequencerVoicesPanel(GUIPanel):
                 self._language_manager,
                 SequencerVoicesElements.ADD_SAMPLE,
             ),
+            shortcut=self._shortcuts.display(ShortcutId.ADD_SAMPLE_FROM_FILE),
             callback=lambda: self.call(self.on_add_sample_requested),
         )
 

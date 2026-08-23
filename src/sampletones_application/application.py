@@ -348,6 +348,7 @@ class Application:
             player_layout=self.layout.player,
             language_manager=self.language_manager,
             build_edit_actions=self._build_edit_actions,
+            build_voice_actions=self._build_voice_actions,
             on_play_from_start=self._play_from_start,
             on_pause_or_resume=self._play,
             on_stop=self._stop,
@@ -656,6 +657,8 @@ class Application:
             export_wav=self._export_reconstruction_wav_dialog,
             export_instruments=self._export_reconstruction_instruments_dialog,
             add_reconstruction_to_sequencer=self._add_current_reconstruction_to_sequencer,
+            new_instrument=self._add_instrument,
+            add_sample_from_file=self._add_sample_from_file,
             open_reconstruction_in_explorer=self._open_reconstruction_in_explorer,
             locate_original_audio=self._locate_original_audio,
             play=self._play,
@@ -1464,6 +1467,18 @@ class Application:
     def _build_edit_actions(self) -> bool:
         """States the actions of the grid holding the cursor into the Edit menu being built."""
         return self._edit_router.build_menu_actions()
+
+    def _build_voice_actions(self) -> None:
+        """States the chosen voice's actions into the Voice menu being built."""
+        self._sequencer_tab.build_voice_actions()
+
+    def _add_instrument(self) -> None:
+        """Writes a voice by hand into the open project's pool."""
+        self._sequencer_tab.add_instrument()
+
+    def _add_sample_from_file(self) -> None:
+        """Brings a reconstruction saved anywhere on disk into the pool as a sample."""
+        self._sequencer_tab.add_sample_from_file()
 
     def _play_from_start(self) -> None:
         self._playback_router.play_from_start()

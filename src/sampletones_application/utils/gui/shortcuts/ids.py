@@ -66,6 +66,8 @@ class ShortcutId(Enum):
     EXPORT_INSTRUMENTS_FAMITRACKER = ("ExportInstrumentsFamiTracker", ShortcutCategory.APPLICATION)
     EXPORT_INSTRUMENTS_BITPHASE_PRESET = ("ExportInstrumentsBitphasePreset", ShortcutCategory.APPLICATION)
     EXPORT_INSTRUMENTS_NSF = ("ExportInstrumentsNSF", ShortcutCategory.APPLICATION)
+    NEW_INSTRUMENT = ("NewInstrument", ShortcutCategory.APPLICATION)
+    ADD_SAMPLE_FROM_FILE = ("AddSampleFromFile", ShortcutCategory.APPLICATION)
     ADD_RECONSTRUCTION_TO_SEQUENCER = ("AddReconstructionToSequencer", ShortcutCategory.APPLICATION)
     OPEN_RECONSTRUCTION_IN_EXPLORER = ("OpenReconstructionInExplorer", ShortcutCategory.APPLICATION)
     LOCATE_ORIGINAL_AUDIO = ("LocateOriginalAudio", ShortcutCategory.APPLICATION)

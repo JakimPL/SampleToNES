@@ -548,6 +548,36 @@ TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS = TagName(
     Widget.MENU,
     "item_reconstruction_export_instruments",
 )
+TAG_GLOBAL_MENU_GROUP_VOICE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "group_voice",
+)
+TAG_GLOBAL_MENU_GROUP_VOICE_MARKER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "group_voice_marker",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_NEW_INSTRUMENT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_new_instrument",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_ADD_SAMPLE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_add_sample",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_ADD_TO_SEQUENCER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_add_to_sequencer",
+)
 TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

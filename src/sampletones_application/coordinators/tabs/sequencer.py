@@ -641,10 +641,10 @@ class SequencerTabCoordinator:
             self._sequencer_voices_logic.duplicate_voice,
             detail=self._history_detail.duplicate_voice,
         )
-        self._sequencer_voices_panel.on_new_instrument_requested = self._add_instrument
-        self._sequencer_voices_panel.on_add_sample_requested = self._add_sample_from_file
+        self._sequencer_voices_panel.on_new_instrument_requested = self.add_instrument
+        self._sequencer_voices_panel.on_add_sample_requested = self.add_sample_from_file
 
-    def _add_instrument(self) -> None:
+    def add_instrument(self) -> None:
         """Appends a hand-written voice, named for the position it takes in the list.
 
         An instrument arrives sustaining at full volume, so it plays as soon as it is placed and the
@@ -660,7 +660,7 @@ class SequencerTabCoordinator:
         ):
             self._sequencer_voices_logic.add_instrument(name)
 
-    def _add_sample_from_file(self) -> None:
+    def add_sample_from_file(self) -> None:
         """Brings a reconstruction saved anywhere on disk into the pool as a sample.
 
         The tree beside the list reaches the reconstructions folder, so a file kept elsewhere
@@ -1580,6 +1580,10 @@ class SequencerTabCoordinator:
     @property
     def player(self) -> AudioPlayerProtocol:
         return self._guarded_player
+
+    def build_voice_actions(self) -> None:
+        """States the chosen voice's actions into the menu being built, for the bar's Voice group."""
+        self._sequencer_voices_panel.build_voice_actions()
 
     @property
     def edit_surfaces(self) -> Tuple[EditSurfaceProtocol, ...]:

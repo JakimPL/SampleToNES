@@ -35,6 +35,10 @@ bindings:
   OpenReconstructionInExplorer: {combination: ~}
   LocateOriginalAudio: {combination: ~}
 
+  # voice
+  NewInstrument: {combination: ~}
+  AddSampleFromFile: {combination: ~}
+
   # playback
   Play: {combination: "Space"}
   PlayFromStart: {combination: "Shift+Space"}
