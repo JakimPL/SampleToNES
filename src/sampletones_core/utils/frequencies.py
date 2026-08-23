@@ -4,6 +4,7 @@ from sampletones_core.constants.general import (
     MIN_PITCH,
     NOISE_PERIODS,
     NOTE_NAMES,
+    NUM_PERIODS,
 )
 from sampletones_shared.utils.arrays import clamp
 from sampletones_shared.utils.frequencies import validate_pitch
@@ -38,6 +39,16 @@ def validate_period(period: int) -> None:
 
     if not 0 <= period <= MAX_PERIOD:
         raise ValueError(f"Period must be in the range 0-{MAX_PERIOD}")
+
+
+def transpose_pitch(pitch: int, transpose: int) -> int:
+    """The pitch a transpose reaches, held inside the range the channels play."""
+    return clamp_pitch(pitch + transpose)
+
+
+def transpose_period(period: int, transpose: int) -> int:
+    """The period a transpose reaches, walked around the sixteen the hardware offers."""
+    return (period + transpose) % NUM_PERIODS
 
 
 def pitch_to_name(pitch: int, transpose: int = 0) -> str:

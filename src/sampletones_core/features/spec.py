@@ -11,6 +11,7 @@ from sampletones_core.constants.general import (
     MAX_VOLUME,
     NUM_PERIODS,
 )
+from sampletones_core.utils.frequencies import transpose_period, transpose_pitch
 
 
 @dataclass(frozen=True)
@@ -73,6 +74,21 @@ GENERATOR_CHANNEL_KINDS: Final[Dict[GeneratorName, FrozenSet[ChannelName]]] = {
 }
 
 
+def speaks_in_periods(channel_name: ChannelName) -> bool:
+    """Whether this channel reads a pitch-like value as a noise period rather than a semitone.
+
+    The noise channel selects one of sixteen periods where the others name a note, so every rule
+    that reads a pitch — a reference, a note name, a transpose — turns on this one answer.
+
+    Args:
+        channel_name: The channel being read.
+
+    Returns:
+        bool: Whether the channel speaks in noise periods.
+    """
+    return CHANNEL_GENERATOR_KIND[channel_name] is GeneratorName.NOISE
+
+
 def channel_reference(
     channel_name: ChannelName,
     *,
@@ -93,11 +109,32 @@ def channel_reference(
     Returns:
         int: The reference this channel reads.
     """
-    match CHANNEL_GENERATOR_KIND[channel_name]:
-        case GeneratorName.NOISE:
-            return period
-        case _:
-            return pitch
+    return period if speaks_in_periods(channel_name) else pitch
+
+
+def transposed_reference(
+    channel_name: ChannelName,
+    reference: int,
+    transpose: int,
+) -> int:
+    """Where a voice sounds on one channel once a row's transpose has moved it.
+
+    This is the pitch the channel plays, so a grid printing a note and a channel sounding one
+    arrive at the same value: a tonal channel is held inside the range it plays, and the noise
+    channel walks around the sixteen periods the hardware offers.
+
+    Args:
+        channel_name: The channel sounding the voice.
+        reference: The value the voice is measured against on this channel.
+        transpose: The semitones the row has reached.
+
+    Returns:
+        int: The pitch, or the period, the channel sounds.
+    """
+    if speaks_in_periods(channel_name):
+        return transpose_period(reference, transpose)
+
+    return transpose_pitch(reference, transpose)
 
 
 def resting_reference(channel_name: ChannelName) -> int:

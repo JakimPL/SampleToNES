@@ -16,10 +16,13 @@ from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.shape import Shape
 from sampletones_core.project.voices.voice import VoiceUnion, voice_channels
 from sampletones_core.utils.display import (
     display_command,
     display_id,
+    display_note,
     display_transpose,
     display_volume,
 )
@@ -72,7 +75,8 @@ class SequencerTrackerLogic(CallbackMixin):
         frame_index = self._clamp_frame(frame_count)
 
         patterns = self._frame_patterns()
-        rows = tuple(self._build_row(index, patterns) for index in range(self.frame_row_count()))
+        carried: Dict[ChannelName, Optional[VoiceUnion]] = {channel: None for channel in ChannelName.items()}
+        rows = tuple(self._build_row(index, patterns, carried) for index in range(self.frame_row_count()))
         return SequencerTrackerViewModel(
             frame_index=frame_index,
             frame_count=frame_count,
@@ -339,13 +343,17 @@ class SequencerTrackerLogic(CallbackMixin):
         channel the sample covers, and the remaining channels on that row are
         cleared so the row reflects exactly that sample. Clearing an empty sample
         id wipes the whole row.
+
+        The column speaks for samples, which carry a slice per channel; a shape carries one
+        instrument the reader places on the channel they want it on, so it is named in a channel
+        column and this one leaves the row as it stands.
         """
         if voice_id is None:
             self.clear_all_channels(row_index)
             return
 
         sample = self._controller.project.voices.get(voice_id)
-        if sample is None:
+        if not isinstance(sample, Sample):
             return
 
         used = self._used_generators(sample)
@@ -601,7 +609,13 @@ class SequencerTrackerLogic(CallbackMixin):
         self,
         index: int,
         patterns: Dict[ChannelName, Pattern],
+        carried: Dict[ChannelName, Optional[VoiceUnion]],
     ) -> SequencerRowViewModel:
+        """One grid line, with each channel read in the terms of the voice it is carrying.
+
+        ``carried`` walks down the frame with the rows, so a line bending a note it did not start
+        still reads in that voice's terms.
+        """
         rows: Dict[ChannelName, Optional[Row]] = {}
         cells: Dict[ChannelName, SequencerCellViewModel] = {}
         for channel in ChannelName.items():
@@ -609,7 +623,8 @@ class SequencerTrackerLogic(CallbackMixin):
             if pattern is not None and index < pattern.length:
                 row = pattern.rows[index]
                 rows[channel] = row
-                cells[channel] = self._build_cell(row)
+                carried[channel] = self._carried_voice(row, carried[channel])
+                cells[channel] = self._build_cell(row, channel, carried[channel])
             else:
                 rows[channel] = None
                 cells[channel] = _EMPTY_CELL
@@ -620,15 +635,59 @@ class SequencerTrackerLogic(CallbackMixin):
             relevant_channels=self._referenced_generators_from_rows(rows),
         )
 
-    def _build_cell(self, row: Row) -> SequencerCellViewModel:
+    def _carried_voice(
+        self,
+        row: Row,
+        carried: Optional[VoiceUnion],
+    ) -> Optional[VoiceUnion]:
+        """The voice a channel carries once it has reached ``row``.
+
+        A note column names the voice from that line on, a note-off leaves the channel carrying
+        none, and a line naming neither plays on with whatever it already had.
+        """
+        match row.command:
+            case NoteOn() as note_on:
+                return self._controller.project.voices.get(note_on.voice_id)
+            case NoteOff():
+                return None
+            case None:
+                return carried
+
+    def _build_cell(
+        self,
+        row: Row,
+        channel: ChannelName,
+        voice: Optional[VoiceUnion],
+    ) -> SequencerCellViewModel:
+        """One cell's three readings, the pitch stated in the terms its voice is written in.
+
+        A sample was converted at a pitch of its own, so its rows read as steps from it; a shape
+        was written against a root the reader chose, so its rows read as the notes they sound.
+        """
         return SequencerCellViewModel(
             instrument=display_command(
                 self._controller.project.voices,
                 row.command,
             ),
-            transpose=display_transpose(row.transpose),
+            transpose=self._display_pitch(row.transpose, channel, voice),
             volume=display_volume(row.volume),
         )
+
+    @staticmethod
+    def _display_pitch(
+        transpose: Optional[int],
+        channel: ChannelName,
+        voice: Optional[VoiceUnion],
+    ) -> str:
+        match voice:
+            case Shape() as shape:
+                return display_note(
+                    transpose,
+                    channel_name=channel,
+                    reference=shape.reference(channel),
+                )
+            case _:
+                return display_transpose(transpose)
 
     def _clamp_frame(self, frame_count: int) -> int:
         if frame_count == 0:

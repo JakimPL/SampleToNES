@@ -10,8 +10,10 @@ from .spec import (
     feature_range,
     resting_held_features,
     resting_reference,
+    speaks_in_periods,
     supported_features,
     supports,
+    transposed_reference,
 )
 
 __all__ = [
@@ -24,8 +26,10 @@ __all__ = [
     "FeatureRange",
     "channel_reference",
     "feature_range",
+    "speaks_in_periods",
     "resting_held_features",
     "resting_reference",
     "supported_features",
     "supports",
+    "transposed_reference",
 ]

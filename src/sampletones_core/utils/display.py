@@ -1,9 +1,12 @@
 from typing import Final, Optional, Union
 
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.features import transposed_reference
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.structures import IdentifiedCollection
+from sampletones_core.utils.pitch_kind import channel_pitch_kind
 from sampletones_shared.constants.symbols import MINUS, PLUS
 
 DEFAULT_DISPLAY_LENGTH: Final[int] = 2
@@ -67,6 +70,32 @@ def display_command(
 
 def display_volume(value: Optional[int]) -> str:
     return display_value(value, length=1, hexadecimal=True)
+
+
+def display_note(
+    value: Optional[int],
+    *,
+    channel_name: ChannelName,
+    reference: int,
+) -> str:
+    """Render a pitch column as the note it sounds, or ``...`` for an empty one.
+
+    The note is where the voice's reference lands once the row's transpose has moved it, so the
+    grid prints the note the channel plays. The noise channel names its period the same way
+    FamiTracker does.
+
+    Args:
+        value: The semitones the row states, or ``None`` for an empty cell.
+        channel_name: The channel the row sits on.
+        reference: The value the voice is measured against on that channel.
+
+    Returns:
+        str: The note name, three characters wide like every other reading of the column.
+    """
+    if value is None:
+        return NOTE_BLANK
+
+    return channel_pitch_kind(channel_name).to_name(transposed_reference(channel_name, reference, value))
 
 
 def display_transpose(value: Optional[int]) -> str:

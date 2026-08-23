@@ -1,10 +1,11 @@
-from sampletones_core.constants.general import MAX_PITCH, MAX_VOLUME, MIN_PITCH
+from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
     PulseInstruction,
     TriangleInstruction,
 )
+from sampletones_core.utils.frequencies import transpose_period, transpose_pitch
 
 
 def apply_modifiers(
@@ -31,13 +32,13 @@ def apply_modifiers(
     match instruction:
         case PulseInstruction():
             scaled_volume = max(0, min(MAX_VOLUME, round(instruction.volume * row_volume / MAX_VOLUME)))
-            effective_pitch = max(MIN_PITCH, min(MAX_PITCH, instruction.pitch + transpose))
+            effective_pitch = transpose_pitch(instruction.pitch, transpose)
             return instruction.model_copy(update={"pitch": effective_pitch, "volume": scaled_volume})
         case TriangleInstruction():
-            effective_pitch = max(MIN_PITCH, min(MAX_PITCH, instruction.pitch + transpose))
+            effective_pitch = transpose_pitch(instruction.pitch, transpose)
             on = instruction.on and row_volume > MAX_VOLUME // 2
             return instruction.model_copy(update={"pitch": effective_pitch, "on": on})
         case NoiseInstruction():
             scaled_volume = max(0, min(MAX_VOLUME, round(instruction.volume * row_volume / MAX_VOLUME)))
-            effective_period = (instruction.period + transpose) % 16
+            effective_period = transpose_period(instruction.period, transpose)
             return instruction.model_copy(update={"period": effective_period, "volume": scaled_volume})
