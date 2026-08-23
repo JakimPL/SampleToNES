@@ -532,7 +532,7 @@ sequencer.tracker.label.tracker_text: "Tracker"
 sequencer.tracker.label.octave: "Octave"
 sequencer.tracker.tooltip.octave: "The octave a note key types at"
 sequencer.tracker.label.column_row: "Row"
-sequencer.tracker.label.column_voice: "Voice"
+sequencer.tracker.label.column_sample: "Sample"
 sequencer.tracker.label.column_pulse_1: "Pulse 1"
 sequencer.tracker.label.column_pulse_2: "Pulse 2"
 sequencer.tracker.label.column_triangle: "Triangle"
@@ -563,7 +563,7 @@ sequencer.tracker.label.context_unsolo: "Unsolo"
 sequencer.tracker.label.context_mute_all: "Mute all channels"
 sequencer.tracker.label.context_unmute_all: "Unmute all channels"
 sequencer.tracker.tooltip.header_channel: "Click to mute or unmute this channel.\n{modifier}+click to solo it, right-click for channel actions."
-sequencer.tracker.tooltip.header_voice: "Click to mute every channel, or to bring them all back.\nRight-click for channel actions."
+sequencer.tracker.tooltip.header_sample: "Click to mute every channel, or to bring them all back.\nRight-click for channel actions."
 
 # =============================================================================
 # Sequencer tab — Order

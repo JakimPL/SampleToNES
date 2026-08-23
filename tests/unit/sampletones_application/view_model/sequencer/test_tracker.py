@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, FrozenSet
+from typing import Dict, FrozenSet, Optional
 
 import pytest
 
@@ -7,6 +7,7 @@ from sampletones_application.view_model.sequencer.tracker import (
     SequencerCellViewModel,
     SequencerRowViewModel,
 )
+from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.utils.display import (
     NOTE_OFF,
@@ -28,11 +29,13 @@ def _cell(
     instrument: str = _EMPTY_INSTRUMENT,
     transpose: str = _EMPTY_TRANSPOSE,
     volume: str = _EMPTY_VOLUME,
+    kind: Optional[VoiceKind] = None,
 ) -> SequencerCellViewModel:
     return SequencerCellViewModel(
         instrument=instrument,
         transpose=transpose,
         volume=volume,
+        kind=kind,
     )
 
 
@@ -44,6 +47,7 @@ _OCCUPIED = _cell(
     instrument=display_id(0),
     transpose=display_transpose(5),
     volume=display_volume(8),
+    kind=VoiceKind.SAMPLE,
 )
 
 
@@ -61,16 +65,16 @@ class TestSampleColumnAggregate(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class AggregateCase(BaseRegularTestCase):
         cells: Dict[ChannelName, SequencerCellViewModel]
-        relevant_channels: FrozenSet[ChannelName]
+        sample_channels: FrozenSet[ChannelName]
         expected_instrument: str
         expected_transpose: str
         expected_volume: str
 
     test_cases = (
         AggregateCase(
-            label="no_relevant_channels_fall_back_to_defaults",
+            label="no_sample_channels_fall_back_to_defaults",
             cells=_row_cells(),
-            relevant_channels=frozenset(),
+            sample_channels=frozenset(),
             expected_instrument=_EMPTY_INSTRUMENT,
             expected_transpose=_EMPTY_TRANSPOSE,
             expected_volume=_EMPTY_VOLUME,
@@ -78,23 +82,23 @@ class TestSampleColumnAggregate(BaseTestSuite):
         AggregateCase(
             label="transpose_and_volume_span_all_channels_when_no_sample_is_present",
             cells={channel: _cell(volume=display_volume(8)) for channel in ChannelName.items()},
-            relevant_channels=frozenset(),
+            sample_channels=frozenset(),
             expected_instrument=_EMPTY_INSTRUMENT,
             expected_transpose=_EMPTY_TRANSPOSE,
             expected_volume=display_volume(8),
         ),
         AggregateCase(
-            label="single_relevant_channel_present",
+            label="a_single_sample_channel_present",
             cells=_row_cells(pulse1=_OCCUPIED),
-            relevant_channels=frozenset({ChannelName.PULSE1}),
+            sample_channels=frozenset({ChannelName.PULSE1}),
             expected_instrument=display_id(0),
             expected_transpose=display_transpose(5),
             expected_volume=display_volume(8),
         ),
         AggregateCase(
-            label="sample_present_across_all_its_relevant_channels",
+            label="a_sample_present_across_every_channel_it_covers",
             cells=_row_cells(pulse1=_OCCUPIED, triangle=_OCCUPIED),
-            relevant_channels=frozenset(
+            sample_channels=frozenset(
                 {
                     ChannelName.PULSE1,
                     ChannelName.TRIANGLE,
@@ -105,9 +109,9 @@ class TestSampleColumnAggregate(BaseTestSuite):
             expected_volume=display_volume(8),
         ),
         AggregateCase(
-            label="sample_missing_from_one_relevant_channel_is_mixed",
+            label="a_sample_missing_from_one_of_its_channels_is_mixed",
             cells=_row_cells(pulse1=_OCCUPIED),
-            relevant_channels=frozenset(
+            sample_channels=frozenset(
                 {
                     ChannelName.PULSE1,
                     ChannelName.TRIANGLE,
@@ -127,7 +131,7 @@ class TestSampleColumnAggregate(BaseTestSuite):
                     volume=display_volume(8),
                 ),
             ),
-            relevant_channels=frozenset(
+            sample_channels=frozenset(
                 {
                     ChannelName.PULSE1,
                     ChannelName.TRIANGLE,
@@ -138,9 +142,42 @@ class TestSampleColumnAggregate(BaseTestSuite):
             expected_volume=display_volume(8),
         ),
         AggregateCase(
+            label="an_instrument_alone_on_a_row_leaves_the_sample_column_empty",
+            cells=_row_cells(
+                pulse1=_cell(
+                    instrument=display_id(3),
+                    kind=VoiceKind.INSTRUMENT,
+                ),
+            ),
+            sample_channels=frozenset(),
+            expected_instrument=_EMPTY_INSTRUMENT,
+            expected_transpose=_EMPTY_TRANSPOSE,
+            expected_volume=_EMPTY_VOLUME,
+        ),
+        AggregateCase(
+            label="an_instrument_beside_a_sample_leaves_the_samples_reading_alone",
+            cells=_row_cells(
+                pulse1=_OCCUPIED,
+                triangle=_OCCUPIED,
+                noise=_cell(
+                    instrument=display_id(3),
+                    kind=VoiceKind.INSTRUMENT,
+                ),
+            ),
+            sample_channels=frozenset(
+                {
+                    ChannelName.PULSE1,
+                    ChannelName.TRIANGLE,
+                }
+            ),
+            expected_instrument=display_id(0),
+            expected_transpose=display_transpose(5),
+            expected_volume=display_volume(8),
+        ),
+        AggregateCase(
             label="all_channels_note_off_reads_as_note_off",
             cells={channel: _cell(instrument=NOTE_OFF) for channel in ChannelName.items()},
-            relevant_channels=frozenset(),
+            sample_channels=frozenset(),
             expected_instrument=NOTE_OFF,
             expected_transpose=_EMPTY_TRANSPOSE,
             expected_volume=_EMPTY_VOLUME,
@@ -148,7 +185,7 @@ class TestSampleColumnAggregate(BaseTestSuite):
         AggregateCase(
             label="half_cut_row_is_mixed",
             cells=_row_cells(pulse1=_cell(instrument=NOTE_OFF)),
-            relevant_channels=frozenset(),
+            sample_channels=frozenset(),
             expected_instrument=MIXED,
             expected_transpose=_EMPTY_TRANSPOSE,
             expected_volume=_EMPTY_VOLUME,
@@ -156,7 +193,7 @@ class TestSampleColumnAggregate(BaseTestSuite):
         AggregateCase(
             label="zero_transpose_beside_an_empty_one_is_mixed",
             cells=_row_cells(pulse1=_cell(transpose=display_transpose(0))),
-            relevant_channels=frozenset(),
+            sample_channels=frozenset(),
             expected_instrument=_EMPTY_INSTRUMENT,
             expected_transpose=MIXED,
             expected_volume=_EMPTY_VOLUME,
@@ -164,7 +201,7 @@ class TestSampleColumnAggregate(BaseTestSuite):
         AggregateCase(
             label="zero_transpose_shared_by_every_channel_reads_as_zero",
             cells={channel: _cell(transpose=display_transpose(0)) for channel in ChannelName.items()},
-            relevant_channels=frozenset(),
+            sample_channels=frozenset(),
             expected_instrument=_EMPTY_INSTRUMENT,
             expected_transpose=display_transpose(0),
             expected_volume=_EMPTY_VOLUME,
@@ -172,16 +209,16 @@ class TestSampleColumnAggregate(BaseTestSuite):
     )
 
     @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
-    def test_sample_column_aggregates_over_relevant_channels(
+    def test_sample_column_aggregates_over_the_channels_it_spans(
         self,
         case: AggregateCase,
     ) -> None:
         row = SequencerRowViewModel(
             index=0,
             cells=case.cells,
-            relevant_channels=case.relevant_channels,
+            sample_channels=case.sample_channels,
         )
 
-        assert row.voice == case.expected_instrument
+        assert row.sample == case.expected_instrument
         assert row.transpose == case.expected_transpose
         assert row.volume == case.expected_volume

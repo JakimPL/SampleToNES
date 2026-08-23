@@ -14,6 +14,7 @@ from sampletones_application.view_model.sequencer.region import TrackerCell, Tra
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.voices.creation import new_instrument
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.sequencer import (
@@ -28,11 +29,12 @@ FRAME_ROWS: Final[int] = 4
 EMPTY: Final[str] = ".. ... . | .. ... . | .. ... . | .. ... ."
 LEAD: Final[str] = "00"
 BASS: Final[str] = "01"
+PAD: Final[str] = "02"
 
 
 @dataclass(frozen=True, kw_only=True)
 class Grid:
-    """A four-row frame with two samples, the state every paste case starts from."""
+    """A four-row frame with two samples and an instrument, the state every paste case starts from."""
 
     controller: ProjectController
     logic: SequencerTrackerLogic
@@ -42,12 +44,13 @@ class Grid:
 
 @pytest.fixture
 def grid() -> Grid:
-    """A frame short enough for a case to state whole, holding a sample over two channels and one
-    over a third.
+    """A frame short enough for a case to state whole, holding a sample over two channels, one over
+    a third, and an instrument.
 
-    Which channels a sample governs is what the sample column fans a write out over, so the pair
-    covers both readings: a write that reaches some channels and clears the rest, and a note
-    written into a channel its own reconstruction leaves out.
+    Which channels a sample governs is what the sample column fans a write out over, so the pair of
+    samples covers both readings: a write that reaches some channels and clears the rest, and a note
+    written into a channel its own reconstruction leaves out. The instrument beside them is what the
+    sample column stands by for, so a block carrying one states where it does and does not land.
     """
     controller = ProjectController(ProjectManager())
     logic = SequencerTrackerLogic(controller)
@@ -60,11 +63,12 @@ def grid() -> Grid:
         sample_reconstruction([ChannelName.TRIANGLE]),
         name="bass",
     )
+    pad = controller.add_instrument(new_instrument("pad"))
     return Grid(
         controller=controller,
         logic=logic,
         writer=TrackerBlockWriter(logic),
-        voice_ids=(lead.id, bass.id),
+        voice_ids=(lead.id, bass.id, pad.id),
     )
 
 
@@ -105,6 +109,25 @@ class TestPaste(BaseTestSuite):
             origin=TrackerCell(row=0, channel=None),
             expected=(
                 "00 ... . | 00 ... . | .. ... . | .. ... .",
+                EMPTY,
+                EMPTY,
+                EMPTY,
+            ),
+        ),
+        TestCase(
+            label="an instrument through the sample column is passed over",
+            block=(PAD,),
+            first_subcolumn=SubColumn.INSTRUMENT,
+            origin=TrackerCell(row=0, channel=None),
+            expected=(EMPTY, EMPTY, EMPTY, EMPTY),
+        ),
+        TestCase(
+            label="an instrument through a channel column lands on that channel",
+            block=(PAD,),
+            first_subcolumn=SubColumn.INSTRUMENT,
+            origin=TrackerCell(row=0, channel=ChannelName.NOISE),
+            expected=(
+                ".. ... . | .. ... . | .. ... . | 02 ... .",
                 EMPTY,
                 EMPTY,
                 EMPTY,

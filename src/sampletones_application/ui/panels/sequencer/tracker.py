@@ -43,8 +43,8 @@ from sampletones_application.ui.panels.sequencer.columns import (
     DIVIDER_TABLE_COLUMN,
     HEADER_TABLE_ROW,
     HEADER_TABLE_ROWS,
+    SAMPLE_TABLE_COLUMN,
     TRACKER_TABLE_COLUMNS,
-    VOICE_TABLE_COLUMN,
     channel_color,
     tracker_table_column,
     tracker_table_row,
@@ -92,6 +92,7 @@ from sampletones_application.utils.palette.colors.layered import LayeredColor
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
+from sampletones_application.view_model.sequencer.kind import places_across_channels
 from sampletones_application.view_model.sequencer.region import TrackerCell, TrackerRegion
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
@@ -108,6 +109,7 @@ from sampletones_application.view_model.sequencer.tracker import (
 )
 from sampletones_application.view_model.sequencer.voices import (
     SequencerVoicesViewModel,
+    VoiceEntryViewModel,
 )
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
@@ -326,7 +328,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         """Reads the name each column carries, which its header label and its menu title show."""
         self._lbl_col_row = self._label(language_manager, SequencerTrackerElements.COLUMN_ROW)
         self._column_labels: Dict[Optional[ChannelName], str] = {
-            None: self._label(language_manager, SequencerTrackerElements.COLUMN_VOICE),
+            None: self._label(language_manager, SequencerTrackerElements.COLUMN_SAMPLE),
             ChannelName.PULSE1: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_1),
             ChannelName.PULSE2: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_2),
             ChannelName.TRIANGLE: self._label(language_manager, SequencerTrackerElements.COLUMN_TRIANGLE),
@@ -371,7 +373,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             return language_manager[Page.SEQUENCER, Panel.TRACKER, TextType.TOOLTIP, element]
 
         self._tooltip_header_channel = channel_tooltip(tooltip(SequencerTrackerElements.HEADER_CHANNEL))
-        self._tooltip_header_voice = tooltip(SequencerTrackerElements.HEADER_VOICE)
+        self._tooltip_header_sample = tooltip(SequencerTrackerElements.HEADER_SAMPLE)
 
     def _create_channel_switch(self, language_manager: LanguageManager) -> None:
         """Builds the switch a column header's click and menu act through.
@@ -715,7 +717,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         """
         dpg.highlight_table_column(
             TAG_SEQUENCER_TRACKER_TABLE,
-            VOICE_TABLE_COLUMN,
+            SAMPLE_TABLE_COLUMN,
             self._layout.colors.sample.column.rgba,
         )
         dpg.highlight_table_column(
@@ -770,7 +772,7 @@ class GUISequencerTrackerPanel(GUIPanel):
     ) -> CellValues:
         cell_values: CellValues = {}
         for row in view_model.rows:
-            cell_values[(row.index, None, SubColumn.INSTRUMENT)] = row.voice
+            cell_values[(row.index, None, SubColumn.INSTRUMENT)] = row.sample
             cell_values[(row.index, None, SubColumn.TRANSPOSE)] = row.transpose
             cell_values[(row.index, None, SubColumn.VOLUME)] = row.volume
             for channel in ChannelName.items():
@@ -849,7 +851,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         dpg.bind_item_handler_registry(selectable, self._header_handler_tag)
         show_tooltip(
             selectable,
-            self._tooltip_header_voice if channel is None else self._tooltip_header_channel,
+            self._tooltip_header_sample if channel is None else self._tooltip_header_channel,
         )
         self._header_columns[selectable] = channel
 
@@ -1059,13 +1061,24 @@ class GUISequencerTrackerPanel(GUIPanel):
     def _resolve_voice_id(
         self,
         sample_index: int,
+        channel: Optional[ChannelName],
     ) -> Optional[Tuple[int, str]]:
+        """The voice a typed number names, where the column it was typed in takes that voice.
+
+        A number past the end of the pool reads as the last voice, so a reader typing freely lands
+        on something. The sample column stands by for a voice it cannot spread over channels, and
+        answering nothing here is what leaves the cell showing the value it already held.
+        """
         if not self._current_samples or not self._current_samples.voices:
             return None
 
-        samples = self._current_samples.voices
-        sample_index = max(0, min(sample_index, len(samples) - 1))
-        return sample_index, samples[sample_index].voice_id
+        voices = self._current_samples.voices
+        sample_index = max(0, min(sample_index, len(voices) - 1))
+        voice = voices[sample_index]
+        if not self._column_takes(channel, voice):
+            return None
+
+        return sample_index, voice.voice_id
 
     def _handle_edit_action(self, action: EditAction) -> None:
         """Commits a single-subcolumn edit.
@@ -1084,13 +1097,13 @@ class GUISequencerTrackerPanel(GUIPanel):
         voice_id: Optional[str] = None
 
         if action.sample_index is not None:
-            resolved = self._resolve_voice_id(action.sample_index)
-            sample_index = resolved[0] if resolved is not None else None
-            voice_id = resolved[1] if resolved is not None else None
-            self._editable_cells.values[(row, channel, SubColumn.INSTRUMENT)] = tracker_display.format_committed(
-                SubColumn.INSTRUMENT,
-                sample_index,
-            )
+            resolved = self._resolve_voice_id(action.sample_index, channel)
+            if resolved is not None:
+                sample_index, voice_id = resolved
+                self._editable_cells.values[(row, channel, SubColumn.INSTRUMENT)] = tracker_display.format_committed(
+                    SubColumn.INSTRUMENT,
+                    sample_index,
+                )
 
         if action.transpose is not None:
             self._editable_cells.values[(row, channel, SubColumn.TRANSPOSE)] = tracker_display.format_committed(
@@ -1443,21 +1456,41 @@ class GUISequencerTrackerPanel(GUIPanel):
         )
 
     def _add_instrument_submenu(self, cell: TrackerCursor) -> None:
+        """Offers the pool to a cell, each voice enabled where that cell's column takes it.
+
+        The whole pool is listed wherever the menu is raised, so a reader sees every voice the
+        project holds and where each one goes: a channel column takes any of them, while the
+        sample column spreads a voice over the channels it covers and so takes a recording alone.
+        A voice the column stands by for is offered unreachable, which says it exists while
+        leaving it where it belongs.
+        """
         with dpg.menu(label=self._lbl_context_set_voice):
-            samples = self._current_samples.voices if self._current_samples is not None else ()
-            if not samples:
+            voices = self._current_samples.voices if self._current_samples is not None else ()
+            if not voices:
                 dpg.add_menu_item(
                     label=self._lbl_context_no_voices,
                     enabled=False,
                 )
                 return
 
-            for index, sample in enumerate(samples):
+            for index, voice in enumerate(voices):
                 dpg.add_menu_item(
-                    label=tracker_display.indexed_label(index, sample.name),
-                    user_data=(cell.row, cell.channel, sample.voice_id),
+                    label=tracker_display.indexed_label(index, voice.name),
+                    user_data=(cell.row, cell.channel, voice.voice_id),
                     callback=self._on_set_instrument_menu,
+                    enabled=self._column_takes(cell.channel, voice),
                 )
+
+    @staticmethod
+    def _column_takes(
+        channel: Optional[ChannelName],
+        voice: VoiceEntryViewModel,
+    ) -> bool:
+        """Whether the column a cell stands in places the voice a row of the menu names."""
+        if channel is not None:
+            return True
+
+        return places_across_channels(voice.kind)
 
     def _add_transpose_items(self, target: TrackerTarget) -> None:
         self._add_adjust_items(target, TRANSPOSE_ACTIONS, self._on_transpose_menu)

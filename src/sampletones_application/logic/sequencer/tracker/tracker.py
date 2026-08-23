@@ -1,6 +1,10 @@
 from typing import Callable, Dict, FrozenSet, List, Optional, Set
 
 from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.view_model.sequencer.kind import (
+    places_across_channels,
+    voice_kind,
+)
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
 )
@@ -10,6 +14,7 @@ from sampletones_application.view_model.sequencer.tracker import (
     SequencerRowViewModel,
     SequencerTrackerViewModel,
 )
+from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.project.patterns.pattern import Pattern
@@ -32,6 +37,7 @@ _EMPTY_CELL = SequencerCellViewModel(
     instrument=display_id(None),
     transpose=display_transpose(None),
     volume=display_volume(None),
+    kind=None,
 )
 
 
@@ -216,14 +222,32 @@ class SequencerTrackerLogic(CallbackMixin):
         channel: Optional[ChannelName],
         voice_id: str,
     ) -> None:
+        """Places a voice on the cell a column and a row name, where that column takes it.
+
+        Every route that names a voice for a cell arrives here — a typed number, a menu item and a
+        pasted block alike — so the sample column's rule is asked once and each of them follows it.
+        """
         if channel is None:
-            self.set_row_voice(row_index, voice_id)
+            if self.places_in_sample_column(voice_id):
+                self.set_row_sample(row_index, voice_id)
         else:
             self.set_row(
                 channel,
                 row_index,
                 command=NoteOn(voice_id=voice_id),
             )
+
+    def places_in_sample_column(self, voice_id: str) -> bool:
+        """Whether the sample column takes the voice an id names.
+
+        The column spreads a voice over the channels it covers, which a recording states for
+        itself, so it answers for a sample the project holds and stands by for anything else.
+        """
+        voice = self._controller.project.voices.get(voice_id)
+        if voice is None:
+            return False
+
+        return places_across_channels(voice_kind(voice))
 
     def cut_note(
         self,
@@ -332,7 +356,7 @@ class SequencerTrackerLogic(CallbackMixin):
                 volume=volume,
             )
 
-    def set_row_voice(
+    def set_row_sample(
         self,
         row_index: int,
         voice_id: Optional[str],
@@ -537,8 +561,8 @@ class SequencerTrackerLogic(CallbackMixin):
         self._frame_index = frame_index
         self.push_tracker()
 
-    def holds_sample(self, voice_id: str) -> bool:
-        """Whether the project holds the sample a note names, which is what makes the note placeable."""
+    def holds_voice(self, voice_id: str) -> bool:
+        """Whether the project holds the voice a note names, which is what makes the note placeable."""
         return self._controller.project.voices.get(voice_id) is not None
 
     def used_generators(self, voice_id: str) -> List[ChannelName]:
@@ -627,12 +651,13 @@ class SequencerTrackerLogic(CallbackMixin):
         self,
         rows: Dict[ChannelName, Optional[Row]],
     ) -> FrozenSet[ChannelName]:
-        """The channels spanned by the voices referenced on a row.
+        """The channels spanned by the samples a row names.
 
-        Each referenced voice contributes the channels its reconstruction covers, so the sample
-        column reasons about a voice's whole channel span, including channels whose cells are
-        empty. A row naming a voice the project no longer holds contributes the channel it sits
-        on, which keeps that cell reachable while the reference stands.
+        A sample contributes the channels its reconstruction covers, so the sample column reasons
+        about its whole span including channels whose cells stand empty. A hand-written instrument
+        sounds on the one channel it is named in, so it contributes none and leaves the column
+        speaking for samples alone. A row naming a voice the project no longer holds contributes
+        the channel it sits on, which keeps that cell reachable while the reference stands.
         """
         relevant: Set[ChannelName] = set()
         resolved: Set[str] = set()
@@ -646,11 +671,11 @@ class SequencerTrackerLogic(CallbackMixin):
                 continue
 
             resolved.add(voice_id)
-            sample = self._controller.project.voices.get(voice_id)
-            if sample is None:
+            voice = self._controller.project.voices.get(voice_id)
+            if voice is None:
                 relevant.add(channel)
-            else:
-                relevant.update(self._used_generators(sample))
+            elif places_across_channels(voice_kind(voice)):
+                relevant.update(self._used_generators(voice))
 
         return frozenset(relevant)
 
@@ -681,7 +706,7 @@ class SequencerTrackerLogic(CallbackMixin):
         return SequencerRowViewModel(
             index=index,
             cells=cells,
-            relevant_channels=self._referenced_generators_from_rows(rows),
+            sample_channels=self._referenced_generators_from_rows(rows),
         )
 
     def _carried_voice(
@@ -720,7 +745,22 @@ class SequencerTrackerLogic(CallbackMixin):
             ),
             transpose=self._display_pitch(row.transpose, channel, voice),
             volume=display_volume(row.volume),
+            kind=self._named_kind(row.command),
         )
+
+    def _named_kind(self, command: Optional[NoteCommand]) -> Optional[VoiceKind]:
+        """The kind of the voice a row names, absent where it names none the project holds.
+
+        The cell states the voice it starts, so the kind is read from that command rather than from
+        whatever the channel carries into the row: a line that only bends a note names nothing and
+        takes the kind of nothing.
+        """
+        match command:
+            case NoteOn() as note_on:
+                voice = self._controller.project.voices.get(note_on.voice_id)
+                return voice_kind(voice) if voice is not None else None
+            case _:
+                return None
 
     @staticmethod
     def _display_pitch(
