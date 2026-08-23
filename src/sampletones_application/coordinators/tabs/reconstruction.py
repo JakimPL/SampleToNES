@@ -1,18 +1,18 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, Optional, Sequence, Tuple
+from typing import Callable, Dict, Optional, Sequence
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.export import ExportMessages
-from sampletones_application.categories.exports import (
-    EXPORT_INSTRUMENT_FILTERS,
-    INSTRUMENT_EXPORT_FORMATS,
-)
+from sampletones_application.categories.exports import EXPORT_INSTRUMENT_FILTERS
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.coordinators.export.instrument import (
+    InstrumentExportCoordinator,
+)
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -129,6 +129,7 @@ class ReconstructionTabCoordinator:
         on_reconstruction_instrument_updated: OnReconstructionInstrumentUpdatedCallback,
         on_reconstruction_stem_removed: Callable[[StemRemoval], None],
         original_audio_locator: OriginalAudioLocator,
+        instrument_exports: InstrumentExportCoordinator,
         *,
         layout: ReconstructionTabParameters,
         language_manager: LanguageManager,
@@ -143,6 +144,7 @@ class ReconstructionTabCoordinator:
         )
         self._session_manager = session_manager
         self._export_backends = export_backends
+        self._instrument_exports = instrument_exports
         self._dialogs = dialogs
         self._original_audio_locator = original_audio_locator
         self._on_reconstruction_stem_removed = on_reconstruction_stem_removed
@@ -266,7 +268,6 @@ class ReconstructionTabCoordinator:
         self._reconstruction_panel_logic.on_waveform_source_changed = (
             self._reconstruction_plot_panel.set_waveform_top_source
         )
-        self._reconstruction_panel_logic.on_open_export_instrument_dialog = self._open_export_instrument_dialog
         self._reconstruction_panel_logic.on_open_export_instruments_dialog = self._open_export_instruments_dialog
         self._reconstruction_panel_logic.on_open_export_wav_dialog = self._open_export_wav_dialog
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
@@ -284,9 +285,7 @@ class ReconstructionTabCoordinator:
             on_reconstruction_instrument_updated
         )
 
-        self._reconstruction_instruments_panel.on_instrument_export = (
-            self._reconstruction_panel_logic.request_export_instrument_dialog
-        )
+        self._reconstruction_instruments_panel.on_instrument_export = self._export_instrument
         self._reconstruction_instruments_panel.on_reconstruction_instrument_hovered = (
             self._reconstruction_plot_panel.set_overlay
         )
@@ -393,49 +392,16 @@ class ReconstructionTabCoordinator:
         self._reconstruction_audio_panel.update_view(view_model)
         self._reconstruction_plot_panel.update_view(view_model)
 
-    def _open_export_instrument_dialog(
-        self,
-        default_filename: str,
-        default_path: str,
-        channel_name: ChannelName,
-    ) -> None:
-        """Prompts for the file the ``channel_name`` slice is written to.
+    def _export_instrument(self, channel_name: ChannelName) -> None:
+        """Writes the instrument the tab's ``channel_name`` tab holds, wherever it is asked for.
 
-        Every format that writes a single slice is offered at once, so the type picked in the
-        dialog names the format the slice is written in.
+        An instrument reaches a file the same way whichever surface asked for it, so the whole
+        gesture from here on belongs to the shared exporter; what the tab contributes is which
+        instrument it has in front of it.
         """
-        filepath = save_file_dialog(
-            title=self._language_manager["reconstructions.instruments.title.export_instrument_dialog"],
-            initial_directory=default_path,
-            default_filename=default_filename,
-            filters=self._instrument_filters(),
-        )
-        self._handle_export_instrument(filepath, channel_name)
-
-    def _instrument_filters(self) -> Tuple[FileFilter, ...]:
-        """The types a destination for one slice may be given, one per format offered.
-
-        Naming each format's own type puts the programs an export can reach in the dialog's
-        type selector, so the one that is picked there names the format.
-        """
-        return tuple(
-            self._export_filter(
-                export_format,
-                ExportScope.INSTRUMENT,
-            )
-            for export_format in INSTRUMENT_EXPORT_FORMATS
-        )
-
-    @ignore_none_path
-    def _handle_export_instrument(
-        self,
-        filepath: Path,
-        channel_name: ChannelName,
-    ) -> None:
-        self._reconstruction_panel_logic.handle_export_instrument_confirmed(
-            filepath,
-            channel_name,
-        )
+        exportable = self._reconstruction_panel_logic.exportable_instrument(channel_name)
+        if exportable is not None:
+            self._instrument_exports.request(exportable.source, exportable.name)
 
     def _open_export_instruments_dialog(
         self,

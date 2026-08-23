@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Iterator, Optional, Tuple
+from typing import Dict, Final, Iterator, Optional, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
@@ -21,6 +21,8 @@ class InstrumentSlot:
 
 
 InstrumentTable = Dict[Tuple[str, ChannelName], InstrumentSlot]
+
+FIRST_INSTRUMENT_INDEX: Final[int] = 0
 
 
 @dataclass(frozen=True)
@@ -73,6 +75,23 @@ class InstrumentEntry:
     loop_point: Optional[int]
     slots: Dict[ChannelName, InstrumentSlot]
 
+    @property
+    def export_channel(self) -> ChannelName:
+        """The channel a backend sounding this instrument on its own plays it through.
+
+        A slice carries the channel it was reconstructed for, and a hand-written voice carries one
+        set of envelopes every channel reads, so the first channel it answers for — in channel
+        order — is the one a file holding this instrument alone is sounded on.
+
+        Raises:
+            ValueError: If the instrument answers for no channel at all.
+        """
+        for channel in ChannelName.items():
+            if channel in self.slots:
+                return channel
+
+        raise ValueError(f"Instrument '{self.name}' answers for no channel to be sounded on")
+
 
 def iterate_voice_slices(project: Project) -> Iterator[VoiceSlice]:
     """Walks what every channel of every voice plays, in voice order then channel order.
@@ -100,6 +119,58 @@ def iterate_voice_slices(project: Project) -> Iterator[VoiceSlice]:
                     yield VoiceSlice(voice=voice, channel=channel, features=voice.features(channel))
 
 
+def voice_instrument_entries(
+    voice: VoiceUnion,
+    *,
+    start_index: int,
+) -> Iterator[InstrumentEntry]:
+    """The instruments an export writes for one voice, numbered from ``start_index``.
+
+    This is the whole rule for what a voice contributes to an export, so a module writing every
+    voice and a file writing one read the same thing: a reader is offered exactly the instruments
+    a module would have held.
+
+    Args:
+        voice: The voice being exported.
+        start_index: The slot the first of its instruments is numbered under.
+
+    Yields:
+        InstrumentEntry: Each instrument alongside the channels whose rows reach it.
+    """
+    match voice:
+        case Sample():
+            features_by_channel = voice.reconstruction.export()
+            index = start_index
+            for channel in ChannelName.items():
+                features = features_by_channel[channel]
+                if not features.has_frames:
+                    continue
+
+                yield InstrumentEntry(
+                    index=index,
+                    voice_id=voice.id,
+                    name=instrument_slice_name(voice.name, channel),
+                    features=features,
+                    loop_point=voice.loop_point,
+                    slots={channel: InstrumentSlot(index=index, initial_pitch=features.initial_pitch)},
+                )
+                index += 1
+        case Instrument():
+            channels = voice_channels(voice)
+            if channels:
+                yield InstrumentEntry(
+                    index=start_index,
+                    voice_id=voice.id,
+                    name=voice.name,
+                    features=voice.instrument_features(),
+                    loop_point=voice.loop_point,
+                    slots={
+                        channel: InstrumentSlot(index=start_index, initial_pitch=voice.reference(channel))
+                        for channel in channels
+                    },
+                )
+
+
 def iterate_instrument_entries(project: Project) -> Iterator[InstrumentEntry]:
     """Walks the instruments an export writes, numbered in voice order then channel order.
 
@@ -109,39 +180,8 @@ def iterate_instrument_entries(project: Project) -> Iterator[InstrumentEntry]:
     Yields:
         InstrumentEntry: Each instrument alongside the channels whose rows reach it.
     """
-    index = 0
+    index = FIRST_INSTRUMENT_INDEX
     for voice in project.voices:
-        match voice:
-            case Sample():
-                features_by_channel = voice.reconstruction.export()
-                for channel in ChannelName.items():
-                    features = features_by_channel[channel]
-                    if not features.has_frames:
-                        continue
-
-                    yield InstrumentEntry(
-                        index=index,
-                        voice_id=voice.id,
-                        name=instrument_slice_name(voice.name, channel),
-                        features=features,
-                        loop_point=voice.loop_point,
-                        slots={channel: InstrumentSlot(index=index, initial_pitch=features.initial_pitch)},
-                    )
-                    index += 1
-            case Instrument():
-                channels = voice_channels(voice)
-                if not channels:
-                    continue
-
-                yield InstrumentEntry(
-                    index=index,
-                    voice_id=voice.id,
-                    name=voice.name,
-                    features=voice.instrument_features(),
-                    loop_point=voice.loop_point,
-                    slots={
-                        channel: InstrumentSlot(index=index, initial_pitch=voice.reference(channel))
-                        for channel in channels
-                    },
-                )
-                index += 1
+        for entry in voice_instrument_entries(voice, start_index=index):
+            yield entry
+            index += 1

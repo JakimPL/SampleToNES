@@ -599,164 +599,97 @@ class TestReconstructionPanelLogicSelectedChannels:
 
 
 class TestReconstructionPanelLogicExportInstrument:
-    def test_request_export_instrument_dialog_with_no_data_raises_assertion_error(
+    """What the tab offers to an export: the slice one channel holds, ready for a destination."""
+
+    def test_with_no_data_raises_assertion_error(
         self,
         panel_logic: ReconstructionPanelLogic,
     ) -> None:
         with pytest.raises(AssertionError):
-            panel_logic.request_export_instrument_dialog(ChannelName.PULSE1)
+            panel_logic.exportable_instrument(ChannelName.PULSE1)
 
-    def test_request_export_instrument_dialog_fires_dialog_callback(
+    def test_a_playing_channel_offers_its_slice(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = loaded_data
-        callback = MagicMock()
-        panel_logic.on_open_export_instrument_dialog = callback
-        panel_logic.request_export_instrument_dialog(ChannelName.PULSE1)
-        callback.assert_called_once()
 
-    def test_request_export_instrument_dialog_suggests_the_slice_name(
+        exportable = panel_logic.exportable_instrument(ChannelName.PULSE1)
+
+        assert exportable is not None
+        assert exportable.source.features is loaded_data.feature_data[ChannelName.PULSE1]
+
+    def test_the_suggestion_is_the_slice_name(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        """The suggestion is the slice name alone, leaving the tracker to the dialog's own
+        """The suggestion is the slice name alone, leaving the format to the dialog's own
         file-type selector.
         """
         mock_reconstruction_manager.current_reconstruction = loaded_data
-        callback = MagicMock()
-        panel_logic.on_open_export_instrument_dialog = callback
-        panel_logic.request_export_instrument_dialog(ChannelName.PULSE1)
-        assert callback.call_args.args[0] == "Sample (pulse1)"
 
-    def test_request_export_instrument_dialog_for_unknown_generator_is_no_op(
+        exportable = panel_logic.exportable_instrument(ChannelName.PULSE1)
+
+        assert exportable is not None
+        assert exportable.name == "Sample (pulse1)"
+
+    def test_a_channel_standing_by_offers_nothing(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
         mock_reconstruction_manager.current_reconstruction = loaded_data
-        callback = MagicMock()
-        panel_logic.on_open_export_instrument_dialog = callback
-        panel_logic.request_export_instrument_dialog(ChannelName.TRIANGLE)
-        callback.assert_not_called()
 
-    def test_request_export_instrument_dialog_sends_the_generator_to_the_dialog(
+        assert panel_logic.exportable_instrument(ChannelName.TRIANGLE) is None
+
+    def test_the_slice_names_the_channel_it_was_reconstructed_for(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        """The channel travels with the request, so the confirmation names it back."""
+        """A backend sounding the slice on its own plays it through the channel it names."""
         mock_reconstruction_manager.current_reconstruction = loaded_data
-        callback = MagicMock()
-        panel_logic.on_open_export_instrument_dialog = callback
-        panel_logic.request_export_instrument_dialog(ChannelName.PULSE1)
-        assert callback.call_args.args[2] == ChannelName.PULSE1
 
-    def test_handle_export_instrument_confirmed_with_no_data_does_not_export(
-        self,
-        panel_logic: ReconstructionPanelLogic,
-        mock_export_service: MagicMock,
-        tmp_path: Path,
-    ) -> None:
-        panel_logic.handle_export_instrument_confirmed(
-            tmp_path / "instrument.fti",
-            ChannelName.PULSE1,
-        )
-        mock_export_service.export_instrument.assert_not_called()
+        exportable = panel_logic.exportable_instrument(ChannelName.PULSE1)
 
-    def test_handle_export_instrument_confirmed_calls_export_service(
+        assert exportable is not None
+        assert exportable.source.channel == ChannelName.PULSE1
+
+    def test_a_reconstruction_slice_plays_its_envelopes_once(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
-        mock_export_service: MagicMock,
-        tmp_path: Path,
     ) -> None:
+        """A loop belongs to a sample placed in a project, so a reconstruction states none."""
         mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.handle_export_instrument_confirmed(
-            tmp_path / "instrument.fti",
-            ChannelName.PULSE1,
-        )
-        mock_export_service.export_instrument.assert_called_once()
 
-    def test_handle_export_instrument_confirmed_names_the_instrument_after_the_destination(
-        self,
-        panel_logic: ReconstructionPanelLogic,
-        mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
-        mock_export_service: MagicMock,
-        tmp_path: Path,
-    ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.handle_export_instrument_confirmed(
-            tmp_path / "Clap (pulse1).fti",
-            ChannelName.PULSE1,
-        )
-        request = mock_export_service.export_instrument.call_args.args[2]
-        assert request.name == "Clap (pulse1)"
+        exportable = panel_logic.exportable_instrument(ChannelName.PULSE1)
 
-    @pytest.mark.parametrize("case", INSTRUMENT_FORMAT_CASES, ids=lambda case: case.extension)
-    def test_handle_export_instrument_confirmed_selects_the_backend_the_extension_names(
-        self,
-        panel_logic: ReconstructionPanelLogic,
-        mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
-        mock_export_service: MagicMock,
-        mock_export_backends: Dict[ExportFormat, MagicMock],
-        tmp_path: Path,
-        case: FormatCase,
-    ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.handle_export_instrument_confirmed(
-            tmp_path / f"instrument{case.extension}",
-            ChannelName.PULSE1,
-        )
-        backend = mock_export_service.export_instrument.call_args.args[1]
-        assert backend is mock_export_backends[case.export_format]
+        assert exportable is not None
+        assert exportable.source.loop_point is None
 
-    def test_handle_export_instrument_confirmed_carries_the_reconstructions_tuning(
+    def test_the_slice_carries_the_reconstructions_tuning(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         retuned_data: ReconstructionData,
-        mock_export_service: MagicMock,
-        tmp_path: Path,
     ) -> None:
         """A backend sounding the export itself measures its pitches from the tuning the
-        reconstruction was built with, so the request states that tuning rather than the standard.
+        reconstruction was built with, so the slice states that tuning rather than the standard.
         """
         mock_reconstruction_manager.current_reconstruction = retuned_data
-        panel_logic.handle_export_instrument_confirmed(
-            tmp_path / "instrument.fti",
-            ChannelName.PULSE1,
-        )
-        request = mock_export_service.export_instrument.call_args.args[2]
-        assert request.tuning == Tuning(a4_frequency=RETUNED_A4_FREQUENCY)
 
-    @pytest.mark.parametrize("extension", UNSUPPORTED_EXTENSIONS)
-    def test_handle_export_instrument_confirmed_refuses_an_extension_no_format_writes(
-        self,
-        panel_logic: ReconstructionPanelLogic,
-        mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
-        tmp_path: Path,
-        extension: str,
-    ) -> None:
-        """The dialog answers with one of the types it offered, so an extension naming no
-        format is a broken invariant rather than a choice to report.
-        """
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        with pytest.raises(ValueError):
-            panel_logic.handle_export_instrument_confirmed(
-                tmp_path / f"instrument{extension}",
-                ChannelName.PULSE1,
-            )
+        exportable = panel_logic.exportable_instrument(ChannelName.PULSE1)
+
+        assert exportable is not None
+        assert exportable.source.tuning == Tuning(a4_frequency=RETUNED_A4_FREQUENCY)
 
 
 class TestReconstructionPanelLogicExportInstruments:

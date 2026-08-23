@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from typing import Dict, Final, Optional, Self, Tuple
 
-from sampletones_application.categories.elements.sequencer import SequencerVoicesElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerVoicesElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_core.formats.famitracker.voice import InstrumentOmission
@@ -62,7 +64,10 @@ class InstrumentImportMessages:
             title=language_manager["sequencer.voices.title.instrument_imported"],
             template=language_manager["sequencer.voices.template.instrument_omissions"],
             omissions={
-                omission: omission_label(language_manager, element)
+                omission: omission_label(
+                    language_manager,
+                    element,
+                )
                 for omission, element in OMISSION_ELEMENTS.items()
             },
         )

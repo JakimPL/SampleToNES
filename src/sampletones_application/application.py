@@ -16,7 +16,10 @@ from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.display import DisplayCoordinator
 from sampletones_application.coordinators.edit.router import EditRouter
-from sampletones_application.coordinators.export import SongExportCoordinator
+from sampletones_application.coordinators.export import (
+    InstrumentExportCoordinator,
+    SongExportCoordinator,
+)
 from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -37,6 +40,7 @@ from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoor
 from sampletones_application.exports import build_export_backends
 from sampletones_application.layout import LayoutConfig, load_layout_config
 from sampletones_application.logic.export import SongExportLogic
+from sampletones_application.logic.export.instrument import InstrumentExportLogic
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.instruction.library_manager import (
@@ -415,6 +419,15 @@ class Application:
             language_manager=self.language_manager,
         )
 
+        self._instrument_exports = InstrumentExportCoordinator(
+            InstrumentExportLogic(
+                self.session_manager,
+                self.export_service,
+                self.export_backends,
+            ),
+            self.language_manager,
+        )
+
         self._reconstructions_tab = ReconstructionTabCoordinator(
             config_manager=self.config_manager,
             session_manager=self.session_manager,
@@ -430,6 +443,7 @@ class Application:
             on_reconstruction_instrument_updated=self._regenerate_instrument,
             on_reconstruction_stem_removed=self._reconstruction_coordinator.apply_edit,
             original_audio_locator=self._original_audio_locator,
+            instrument_exports=self._instrument_exports,
             layout=ReconstructionTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
