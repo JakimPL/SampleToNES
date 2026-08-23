@@ -1,4 +1,4 @@
-from typing import Callable, Dict, FrozenSet, Optional
+from typing import Callable, Dict, Optional
 
 import numpy as np
 
@@ -21,7 +21,7 @@ from sampletones_application.view_model.reconstruction.update import (
 )
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_core.exporters import Features
+from sampletones_core.exporters import Features, playing_channels
 from sampletones_core.formats.famitracker.footprint import features_footprint
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -61,9 +61,16 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         """
         instrument = self.instrument_edit
         if instrument is not None:
-            return {INSTRUMENT_CHANNEL: instrument.features}
+            return self._instrument_channels(instrument)
 
         return self._current_generators()
+
+    @staticmethod
+    def _instrument_channels(
+        instrument: InstrumentEdit,
+    ) -> Dict[ChannelName, Features]:
+        """An instrument's envelopes under the channel the panel shows it on."""
+        return {INSTRUMENT_CHANNEL: instrument.features}
 
     def refresh_view(self) -> None:
         """Reports which channels play and the sizes they occupy, leaving the displayed envelopes as they are.
@@ -72,7 +79,10 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         channels settle on it. The envelopes themselves are left to the edit that started the
         regeneration, so a field the user is still typing in keeps what they wrote.
         """
-        self.call(self.on_view_changed, self._build_view_model(self._current_generators()))
+        self.call(
+            self.on_view_changed,
+            self._build_view_model(self._current_generators()),
+        )
 
     def _current_generators(self) -> Optional[Dict[ChannelName, Features]]:
         """The channels of the reconstruction in front of the panel, where one is."""
@@ -97,21 +107,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
     ) -> ReconstructionInstrumentsViewModel:
         instrument = self.instrument_edit
         if instrument is not None:
-            return ReconstructionInstrumentsViewModel(
-                reconstruction_loaded=False,
-                playing_channels=frozenset(
-                    {INSTRUMENT_CHANNEL} if instrument.features.has_frames else ()  # TODO: deserves a helper function
-                ),
-                footprint=SampleFootprintViewModel.from_instrument(
-                    features_footprint(instrument.features, loop_point=instrument.loop_point)
-                ),
-                instrument=InstrumentViewModel(
-                    name=instrument.name,
-                    root_pitch=instrument.root_pitch,
-                    root_period=instrument.root_period,
-                    loop_point=instrument.loop_point,
-                ),
-            )
+            return self._instrument_view_model(instrument)
 
         if channels is None:
             return ReconstructionInstrumentsViewModel(
@@ -120,13 +116,37 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
                 footprint=None,
             )
 
-        playing_channels: FrozenSet[ChannelName] = frozenset(
-            channel_name for channel_name, features in channels.items() if features.has_frames
-        )
         return ReconstructionInstrumentsViewModel(
             reconstruction_loaded=True,
-            playing_channels=playing_channels,
+            playing_channels=playing_channels(channels),
             footprint=self._build_footprint(channels),
+        )
+
+    def _instrument_view_model(
+        self,
+        instrument: InstrumentEdit,
+    ) -> ReconstructionInstrumentsViewModel:
+        """What the panel shows of an instrument: its envelopes, its roots and what it costs.
+
+        An instrument is shown under one channel, and it plays there once its envelopes describe a
+        frame, so it stands by the way a reconstruction's silent channel does until the reader
+        writes one.
+        """
+        return ReconstructionInstrumentsViewModel(
+            reconstruction_loaded=False,
+            playing_channels=playing_channels(self._instrument_channels(instrument)),
+            footprint=SampleFootprintViewModel.from_instrument(
+                features_footprint(
+                    instrument.features,
+                    loop_point=instrument.loop_point,
+                )
+            ),
+            instrument=InstrumentViewModel(
+                name=instrument.name,
+                root_pitch=instrument.root_pitch,
+                root_period=instrument.root_period,
+                loop_point=instrument.loop_point,
+            ),
         )
 
     def _build_footprint(
@@ -155,7 +175,10 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
     ) -> None:
         instrument = self.instrument_edit
         if instrument is not None:
-            self._editor.write_roots(pitch=value, period=instrument.root_period)
+            self._editor.write_roots(
+                pitch=value,
+                period=instrument.root_period,
+            )
             self.update_display()
             return
 
@@ -212,7 +235,10 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self._editor.write_roots(pitch=instrument.root_pitch, period=value)
         self.update_display()
 
-    def handle_instrument_loop_point_changed(self, loop_point: Optional[int]) -> None:
+    def handle_instrument_loop_point_changed(
+        self,
+        loop_point: Optional[int],
+    ) -> None:
         """Sets the tick the instrument in front of the panel repeats from."""
         if self.instrument_edit is None:
             return

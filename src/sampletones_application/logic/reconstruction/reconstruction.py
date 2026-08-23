@@ -1,10 +1,20 @@
 from pathlib import Path
-from typing import Callable, Dict, Final, FrozenSet, List, Optional, Protocol, Set, Tuple
+from typing import (
+    Callable,
+    Dict,
+    Final,
+    FrozenSet,
+    List,
+    Optional,
+    Protocol,
+    Set,
+    Tuple,
+)
 
 import numpy as np
 
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.logic.export.instrument import ExportableInstrument
+from sampletones_application.logic.export.instrument.source import ExportableInstrument
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.view_model.reconstruction.paths.path import (
@@ -37,7 +47,9 @@ from sampletones_core.exports.request import (
     SampleExport,
 )
 from sampletones_core.exports.scope import ExportScope
-from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
+from sampletones_core.reconstructions.reconstruction.stems.selection import (
+    StemSelection,
+)
 from sampletones_shared.logger import logger
 from sampletones_shared.music import Tuning
 from sampletones_shared.types.callback import PathCallback, VoidCallback
@@ -252,7 +264,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self._emit_audio_data()
 
-    def set_stem_channels(self, stem_id: int, channels: FrozenSet[ChannelName]) -> None:
+    def set_stem_channels(
+        self,
+        stem_id: int,
+        channels: FrozenSet[ChannelName],
+    ) -> None:
         """Adopts the channels one recording is heard on and re-answers playback and the waveform.
 
         The choice is listening state, so it filters what plays and what the waveform
@@ -274,7 +290,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self._emit_audio_data()
 
-    def _adopt_stem_channels(self, offered: Dict[int, FrozenSet[ChannelName]]) -> None:
+    def _adopt_stem_channels(
+        self,
+        offered: Dict[int, FrozenSet[ChannelName]],
+    ) -> None:
         """Carries the reader's per-channel stem choice across an edit.
 
         A channel a stem keeps holding frames on keeps whatever the reader chose for it, and
@@ -441,7 +460,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         default_filename = reconstruction_data.name
         default_path = str(self._session_manager.get_audio_path())
 
-        self.call(self.on_open_export_wav_dialog, default_filename, default_path)
+        self.call(
+            self.on_open_export_wav_dialog,
+            default_filename,
+            default_path,
+        )
 
     def handle_export_instruments_confirmed(
         self,

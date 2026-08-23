@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
+from typing import Any, Dict, FrozenSet, Iterable, List, Mapping, Optional, Tuple, cast
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from sampletones_core.constants.enums import FeatureKey
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.types.feature import FeatureMap, FeatureValue
 
 
@@ -141,3 +141,19 @@ class Features(BaseModel):
         for feature_key in feature_keys:
             if feature_key in self:
                 self[feature_key] = np.array([], dtype=np.int8)
+
+
+def playing_channels(channels: Mapping[ChannelName, Features]) -> FrozenSet[ChannelName]:
+    """The channels among ``channels`` whose envelopes describe a frame.
+
+    Describing a frame is what puts a channel in play: those are the ones an export writes, the
+    ones a footprint measures and the ones a panel offers, while the rest stand by. Stating the
+    rule once has every reader of a channel's envelopes agree on which of them sound.
+
+    Args:
+        channels: The envelopes each channel plays.
+
+    Returns:
+        FrozenSet[ChannelName]: The channels that sound.
+    """
+    return frozenset(channel_name for channel_name, features in channels.items() if features.has_frames)

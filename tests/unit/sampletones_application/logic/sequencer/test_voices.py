@@ -12,6 +12,7 @@ from sampletones_application.logic.shared.playback_priority import PlaybackPrior
 from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.exporters.naming import instrument_slice_name
 from sampletones_core.formats.famitracker.footprint import (
     features_footprint,
     reconstruction_footprints,
@@ -244,6 +245,90 @@ class TestBuildSampleFootprint:
         _, logic = _logic()
 
         assert logic.build_voice_footprint("missing") is None
+
+
+class TestTakingAChannelAsAnInstrument:
+    """A recording's channel is read back as envelopes, so what it played becomes a voice to edit."""
+
+    def test_every_channel_that_plays_is_offered(self) -> None:
+        controller, logic = _logic()
+        channels = (ChannelName.PULSE1, ChannelName.TRIANGLE)
+        sample = controller.add_sample(sample_reconstruction(channels), name="bell")
+
+        assert logic.instrument_channels(sample.id) == channels
+
+    def test_a_voice_already_written_as_envelopes_offers_none(self) -> None:
+        """It is what this would make of it, so there is nothing to take out of it."""
+        controller, logic = _logic()
+        instrument = logic.add_new_instrument("lead")
+
+        assert logic.instrument_channels(instrument.id) == ()
+
+    def test_a_voice_the_pool_has_dropped_offers_none(self) -> None:
+        _, logic = _logic()
+
+        assert logic.instrument_channels("missing") == ()
+
+    def test_the_envelopes_come_across_as_the_channel_played_them(self) -> None:
+        controller, logic = _logic()
+        sample = controller.add_sample(sample_reconstruction({ChannelName.TRIANGLE}), name="bell")
+        played = sample.reconstruction.export()[ChannelName.TRIANGLE]
+
+        instrument = logic.instrument_from_channel(sample.id, ChannelName.TRIANGLE)
+
+        assert instrument is not None
+        assert instrument.envelopes.volume == tuple(int(item) for item in played.volume)
+        assert instrument.envelopes.arpeggio == tuple(int(item) for item in played.arpeggio)
+
+    def test_the_instrument_is_measured_against_the_reference_that_channel_read(self) -> None:
+        controller, logic = _logic()
+        sample = controller.add_sample(sample_reconstruction({ChannelName.NOISE}), name="bell")
+        played = sample.reconstruction.export()[ChannelName.NOISE]
+
+        instrument = logic.instrument_from_channel(sample.id, ChannelName.NOISE)
+
+        assert instrument is not None
+        assert instrument.reference(ChannelName.NOISE) == played.initial_pitch
+
+    def test_the_instrument_is_named_after_the_channel_it_came_from(self) -> None:
+        """A slice carries the name an export gives it, so the list says where the voice came from."""
+        controller, logic = _logic()
+        sample = controller.add_sample(sample_reconstruction({ChannelName.NOISE}), name="bell")
+
+        instrument = logic.instrument_from_channel(sample.id, ChannelName.NOISE)
+
+        assert instrument is not None
+        assert instrument.name == instrument_slice_name("bell", ChannelName.NOISE)
+
+    def test_the_instrument_repeats_the_way_the_sample_does(self) -> None:
+        controller, logic = _logic()
+        sample = controller.add_sample(sample_reconstruction({ChannelName.PULSE1}), name="bell")
+        controller.set_voice_loop_point(sample.id, WHOLE_LOOP_POINT)
+
+        instrument = logic.instrument_from_channel(sample.id, ChannelName.PULSE1)
+
+        assert instrument is not None
+        assert instrument.loop_point == WHOLE_LOOP_POINT
+
+    def test_taking_a_channel_leaves_the_pool_as_it_stands(self) -> None:
+        """The instrument is written here and added by whoever asked, inside a history entry."""
+        controller, logic = _logic()
+        sample = controller.add_sample(sample_reconstruction({ChannelName.PULSE1}), name="bell")
+
+        logic.instrument_from_channel(sample.id, ChannelName.PULSE1)
+
+        assert controller.voice_count == 1
+
+    def test_a_channel_standing_by_makes_nothing(self) -> None:
+        controller, logic = _logic()
+        sample = controller.add_sample(sample_reconstruction({ChannelName.PULSE1}), name="bell")
+
+        assert logic.instrument_from_channel(sample.id, ChannelName.NOISE) is None
+
+    def test_a_voice_the_pool_has_dropped_makes_nothing(self) -> None:
+        _, logic = _logic()
+
+        assert logic.instrument_from_channel("missing", ChannelName.PULSE1) is None
 
 
 class TestPlaySample:

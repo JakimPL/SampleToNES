@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Final, Optional
+from typing import Callable, Final, Optional, Tuple
 
 import numpy as np
 
@@ -19,14 +19,21 @@ from sampletones_application.view_model.shared.footprint import SampleFootprintV
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exporters.slices import VoiceSlice, sample_slices
 from sampletones_core.formats.famitracker.footprint import (
     features_footprint,
     reconstruction_footprints,
 )
 from sampletones_core.formats.famitracker.instrument import read_fti
-from sampletones_core.formats.famitracker.voice import ImportedVoice, instrument_to_voice
+from sampletones_core.formats.famitracker.voice import (
+    ImportedVoice,
+    instrument_to_voice,
+)
 from sampletones_core.generators.render import render_instructions
-from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.project.voices.creation import (
+    instrument_from_features,
+    new_instrument,
+)
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.sample import Sample
@@ -119,13 +126,72 @@ class SequencerVoicesLogic(CallbackMixin):
 
         return imported
 
+    def instrument_channels(self, voice_id: str) -> Tuple[ChannelName, ...]:
+        """The channels of one voice a new instrument can be written from.
+
+        A recording's channel carries frames of its own, so each of them makes a voice of
+        envelopes the reader edits directly. A voice written by hand already is that, so it offers
+        none and the menu says so.
+
+        Args:
+            voice_id: The voice a new instrument would be taken from.
+
+        Returns:
+            Tuple[ChannelName, ...]: The channels it offers, in channel order.
+        """
+        return tuple(voice_slice.channel for voice_slice in self._channel_slices(voice_id))
+
+    def instrument_from_channel(
+        self,
+        voice_id: str,
+        channel_name: ChannelName,
+    ) -> Optional[Instrument]:
+        """Writes what one channel of a voice plays into an instrument, leaving the pool as it stands.
+
+        The new voice carries the channel's envelopes and the reference they were measured
+        against, and it is named after the channel it came from, so the list says where it came
+        from the way an exported slice does.
+
+        Args:
+            voice_id: The voice the channel belongs to.
+            channel_name: The channel whose envelopes the instrument takes.
+
+        Returns:
+            Optional[Instrument]: The voice those envelopes describe, or ``None`` where the pool
+            holds no such voice or it plays nothing on that channel.
+        """
+        voice_slice = next(
+            (candidate for candidate in self._channel_slices(voice_id) if candidate.channel is channel_name),
+            None,
+        )
+        if voice_slice is None:
+            return None
+
+        return instrument_from_features(
+            voice_slice.instrument_name,
+            voice_slice.features,
+            channel_name,
+            loop_point=voice_slice.voice.loop_point,
+        )
+
+    def _channel_slices(self, voice_id: str) -> Tuple[VoiceSlice, ...]:
+        """What each channel of a recording plays, which is what an instrument is written from."""
+        match self._controller.project.voices.get(voice_id):
+            case Sample() as sample:
+                return tuple(sample_slices(sample))
+            case _:
+                return ()
+
     def rename_voice(self, voice_id: str, name: str) -> None:
         self._controller.rename_voice(voice_id, name)
 
     def is_voice_used(self, voice_id: str) -> bool:
         return self._controller.is_voice_used(voice_id)
 
-    def build_voice_footprint(self, voice_id: str) -> Optional[SampleFootprintViewModel]:
+    def build_voice_footprint(
+        self,
+        voice_id: str,
+    ) -> Optional[SampleFootprintViewModel]:
         """Measures one voice's instruments as the module export writes them.
 
         A voice carries its own loop point, and a looping instrument is compiled to one shared
@@ -144,11 +210,17 @@ class SequencerVoicesLogic(CallbackMixin):
         match self._controller.project.voices.get(voice_id):
             case Sample() as sample:
                 return SampleFootprintViewModel.from_footprints(
-                    reconstruction_footprints(sample.reconstruction, loop_point=sample.loop_point)
+                    reconstruction_footprints(
+                        sample.reconstruction,
+                        loop_point=sample.loop_point,
+                    )
                 )
             case Instrument() as instrument:
                 return SampleFootprintViewModel.from_instrument(
-                    features_footprint(instrument.instrument_features(), loop_point=instrument.loop_point)
+                    features_footprint(
+                        instrument.instrument_features(),
+                        loop_point=instrument.loop_point,
+                    )
                 )
             case _:
                 return None
@@ -233,7 +305,11 @@ class SequencerVoicesLogic(CallbackMixin):
                 if not instructions:
                     return None
 
-                return render_instructions(instructions, PREVIEW_CHANNEL, self._preview_config())
+                return render_instructions(
+                    instructions,
+                    PREVIEW_CHANNEL,
+                    self._preview_config(),
+                )
             case _:
                 return None
 

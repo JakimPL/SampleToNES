@@ -1,12 +1,7 @@
-# TODO: refactor into a subpackage
-
-from dataclasses import dataclass
-from typing import Callable, Dict, Final, List, Optional, Tuple
+from typing import Callable, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.context import channel_label, context_label, context_text
-from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.elements.sequencer import (
     SequencerVoicesElements,
 )
@@ -23,14 +18,11 @@ from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_VOICES_THEME_ROW,
     TAG_SEQUENCER_VOICES_WINDOW,
 )
-from sampletones_application.ui.elements.context_menu import (
-    add_detail_items,
-    add_play_menu_item,
-    context_menu,
-)
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.panels.sequencer.voices.menu import VoicesMenu
+from sampletones_application.ui.panels.sequencer.voices.moves import MOVE_DIRECTIONS
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_children, dpg_pointer_within_window
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -44,7 +36,6 @@ from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, Sh
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.colors.base import BaseColor
-from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.voices import (
     SequencerVoicesViewModel,
     VoiceEntryViewModel,
@@ -58,43 +49,6 @@ from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import StringCallback, VoidCallback
 
 FROZEN_HEADER_ROWS: Final[int] = 1
-
-NO_INSTRUMENTS: Final[Tuple[Optional[ChannelName], ...]] = ()
-
-
-@dataclass(frozen=True)
-class SampleMove:
-    """One of the four moves, as its key press and its menu item each name it."""
-
-    element: SequencerVoicesElements
-    shortcut: ShortcutId
-    direction: MoveDirection
-
-
-VOICE_MOVES: Final[Tuple[SampleMove, ...]] = (
-    SampleMove(
-        element=SequencerVoicesElements.CONTEXT_MOVE_UP,
-        shortcut=ShortcutId.VOICES_MOVE_VOICE_UP,
-        direction=MoveDirection.PREVIOUS,
-    ),
-    SampleMove(
-        element=SequencerVoicesElements.CONTEXT_MOVE_DOWN,
-        shortcut=ShortcutId.VOICES_MOVE_VOICE_DOWN,
-        direction=MoveDirection.NEXT,
-    ),
-    SampleMove(
-        element=SequencerVoicesElements.CONTEXT_MOVE_TOP,
-        shortcut=ShortcutId.VOICES_MOVE_VOICE_TO_TOP,
-        direction=MoveDirection.FIRST,
-    ),
-    SampleMove(
-        element=SequencerVoicesElements.CONTEXT_MOVE_BOTTOM,
-        shortcut=ShortcutId.VOICES_MOVE_VOICE_TO_BOTTOM,
-        direction=MoveDirection.LAST,
-    ),
-)
-
-MOVE_DIRECTIONS: Final[Dict[ShortcutId, MoveDirection]] = {move.shortcut: move.direction for move in VOICE_MOVES}
 
 
 class GUISequencerVoicesPanel(GUIPanel):
@@ -111,7 +65,6 @@ class GUISequencerVoicesPanel(GUIPanel):
     ) -> None:
         self._language_manager = language_manager
         self._layout = layout
-        self._detail_color = detail_color
         self._router = key_router
         self._tab_active = tab_active
         self._shortcuts = shortcut_source
@@ -123,14 +76,12 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._selected_row: Optional[int] = None
         self._editing_voice_id: Optional[str] = None
         self._entries: Tuple[VoiceEntryViewModel, ...] = ()
-        self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
-        self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
-        self._tip_size_bytes = context_text(language_manager, TextType.TOOLTIP, ContextElements.SIZE_BYTES)
         self._tip_new_instrument = self._tooltip(language_manager, SequencerVoicesElements.NEW_INSTRUMENT)
         self._tip_kind_sample = self._tooltip(language_manager, SequencerVoicesElements.KIND_SAMPLE)
         self._tip_kind_instrument = self._tooltip(language_manager, SequencerVoicesElements.KIND_INSTRUMENT)
         self.sample_footprint: Optional[Callable[[str], Optional[SampleFootprintViewModel]]] = None
         self.voice_instruments: Optional[Callable[[str], Tuple[Optional[ChannelName], ...]]] = None
+        self.instrument_channels: Optional[Callable[[str], Tuple[ChannelName, ...]]] = None
         self.on_sample_selected: Optional[StringCallback] = None
         self.on_sample_edit_requested: Optional[StringCallback] = None
         self.on_loop_changed: Optional[Callable[[str, bool], None]] = None
@@ -143,6 +94,13 @@ class GUISequencerVoicesPanel(GUIPanel):
         self.on_add_sample_requested: Optional[VoidCallback] = None
         self.on_import_instrument_requested: Optional[VoidCallback] = None
         self.on_export_instrument_requested: Optional[Callable[[str, Optional[ChannelName]], None]] = None
+        self.on_instrument_from_channel_requested: Optional[Callable[[str, ChannelName], None]] = None
+        self._menu = VoicesMenu(
+            self,
+            language_manager=language_manager,
+            shortcut_source=shortcut_source,
+            detail_color=detail_color,
+        )
 
         super().__init__(
             tag=TAG_SEQUENCER_VOICES_PANEL,
@@ -505,7 +463,7 @@ class GUISequencerVoicesPanel(GUIPanel):
             case ShortcutId.VOICES_REMOVE_VOICE:
                 self.call(self.on_remove_requested, voice_id)
             case ShortcutId.VOICES_RENAME_VOICE:
-                self._start_rename(voice_id)
+                self.start_rename(voice_id)
             case _:
                 return False
 
@@ -539,7 +497,7 @@ class GUISequencerVoicesPanel(GUIPanel):
 
         return True
 
-    def _start_rename(self, voice_id: str) -> None:
+    def start_rename(self, voice_id: str) -> None:
         """Turns the sample's name cell into a focused text input."""
         if self._entry_for(voice_id) is None:
             return
@@ -650,70 +608,30 @@ class GUISequencerVoicesPanel(GUIPanel):
             return
 
         self._list_menu_pending = False
-        with context_menu():
-            self.add_pool_items()
+        self._menu.show_pool()
 
     def _entry_for(self, voice_id: str) -> Optional[VoiceEntryViewModel]:
         return next((entry for entry in self._entries if entry.voice_id == voice_id), None)
 
     def _show_context_menu(self, position: int, voice_id: str) -> None:
+        """Raises the menu of the row a press landed on, for the voice that row holds."""
         entry = self._entry_for(voice_id)
         if entry is None:
             return
 
-        target = VoiceSelection(
-            voice_id=voice_id,
-            position=position,
-            name=entry.name,
-            kind=entry.kind,
+        self._menu.show_for(
+            VoiceSelection(
+                voice_id=voice_id,
+                position=position,
+                name=entry.name,
+                kind=entry.kind,
+            )
         )
-        with context_menu():
-            header = dpg.add_text(target.label)
-            FontRegistry.bind_to_item(header, Font.MONO_BOLD)
-            add_detail_items(
-                self._footprint_items(voice_id),
-                color=self._detail_color,
-                tooltip=self._tip_size_bytes,
-            )
-            dpg.add_separator()
-            add_play_menu_item(
-                context_label(self._language_manager, ContextElements.PLAY),
-                lambda: self.call(
-                    self.on_play_requested,
-                    voice_id,
-                ),
-            )
-            dpg.add_separator()
-            self.add_action_items(target)
-            dpg.add_separator()
-            self.add_pool_items()
 
-    def _footprint_items(self, voice_id: str) -> List[Tuple[str, str]]:
-        """The byte figures the menu prints for a sample: its total, then each channel that plays.
-
-        The figures are asked for as the menu opens, so they name what the sample occupies at the
-        moment a reader looks. A channel standing by is written by no export, so it costs nothing
-        and the menu names the channels that do.
-        """
-        footprint = self.query(self.sample_footprint, voice_id, default=None)
-        if footprint is None:
-            return []
-
-        items = [(self._lbl_sample_size, self._format_size(footprint.total_bytes))]
-        for channel_name in ChannelName.items():
-            instrument_bytes = footprint.bytes_for(channel_name)
-            if instrument_bytes is not None:
-                items.append(
-                    (
-                        channel_label(self._language_manager, channel_name),
-                        self._format_size(instrument_bytes),
-                    )
-                )
-
-        return items
-
-    def _format_size(self, byte_count: int) -> str:
-        return self._tpl_size_bytes.format(bytes=byte_count)
+    @property
+    def voice_count(self) -> int:
+        """How many voices the list holds, which is what says where a move can carry one."""
+        return len(self._entries)
 
     def owns_edit_actions(self) -> bool:
         """Whether the Edit menu states this panel's actions, which it does while it holds a sample.
@@ -724,10 +642,10 @@ class GUISequencerVoicesPanel(GUIPanel):
         return self._keys_active() and self.selection is not None
 
     def build_edit_actions(self) -> None:
-        """Builds the panel's whole action set for the sample the selection holds."""
+        """Builds the panel's whole action set for the voice the selection holds."""
         selection = self.selection
         if selection is not None:
-            self.add_action_items(selection)
+            self._menu.add_action_items(selection)
 
     def build_voice_actions(self) -> None:
         """States the actions of the voice the list holds, for a menu listing the pool above them.
@@ -741,157 +659,7 @@ class GUISequencerVoicesPanel(GUIPanel):
             return
 
         dpg.add_separator()
-        self.add_action_items(selection)
-
-    def add_pool_items(self) -> None:
-        """Builds the ways a voice comes into the pool, in the order each menu prints them.
-
-        A voice is written by hand, converted from a recording, or brought from a tracker, and
-        the three stand apart from the actions a listed voice offers, since each answers with an
-        entry the list did not hold. Every door onto the list prints this section, so a reader
-        reaches it from the list and from a row alike.
-        """
-        dpg.add_menu_item(
-            label=self._label(
-                self._language_manager,
-                SequencerVoicesElements.NEW_INSTRUMENT,
-            ),
-            shortcut=self._shortcuts.display(ShortcutId.NEW_INSTRUMENT),
-            callback=lambda: self.call(self.on_new_instrument_requested),
-        )
-        dpg.add_menu_item(
-            label=self._label(
-                self._language_manager,
-                SequencerVoicesElements.ADD_SAMPLE,
-            ),
-            shortcut=self._shortcuts.display(ShortcutId.ADD_SAMPLE_FROM_FILE),
-            callback=lambda: self.call(self.on_add_sample_requested),
-        )
-        dpg.add_menu_item(
-            label=self._label(
-                self._language_manager,
-                SequencerVoicesElements.IMPORT_INSTRUMENT,
-            ),
-            shortcut=self._shortcuts.display(ShortcutId.IMPORT_INSTRUMENT),
-            callback=lambda: self.call(self.on_import_instrument_requested),
-        )
-
-    def add_action_items(self, target: VoiceSelection) -> None:
-        """Builds every action a sample offers, in the order each menu prints them.
-
-        The panel states its actions once, and whoever asks for them decides where they are shown:
-        the row menu asks for the sample a pointer landed on, and the menu bar asks for the one the
-        selection holds. An action added here reaches both, printing the key it answers to.
-        """
-        dpg.add_menu_item(
-            label=self._label(
-                self._language_manager,
-                SequencerVoicesElements.CONTEXT_EDIT,
-            ),
-            callback=lambda: self.call(self.on_sample_edit_requested, target.voice_id),
-        )
-        dpg.add_menu_item(
-            label=self._label(
-                self._language_manager,
-                SequencerVoicesElements.CONTEXT_RENAME,
-            ),
-            shortcut=self._shortcuts.display(ShortcutId.VOICES_RENAME_VOICE),
-            callback=lambda: self._start_rename(target.voice_id),
-        )
-        dpg.add_menu_item(
-            label=self._label(
-                self._language_manager,
-                SequencerVoicesElements.CONTEXT_DUPLICATE,
-            ),
-            callback=lambda: self.call(self.on_duplicate_requested, target.voice_id),
-        )
-        dpg.add_separator()
-        dpg.add_menu_item(
-            label=self._label(
-                self._language_manager,
-                SequencerVoicesElements.CONTEXT_REMOVE,
-            ),
-            shortcut=self._shortcuts.display(ShortcutId.VOICES_REMOVE_VOICE),
-            callback=lambda: self.call(self.on_remove_requested, target.voice_id),
-        )
-        dpg.add_separator()
-        for move in VOICE_MOVES:
-            self._add_move_item(move, target)
-
-        dpg.add_separator()
-        self._add_export_items(target)
-
-    def _add_export_items(self, target: VoiceSelection) -> None:
-        """Offers the instruments the voice would be written as, however many of them it holds.
-
-        The menu asks how many instruments the voice contains rather than which kind of voice it
-        is, so one item stands where there is nothing to choose and a channel submenu stands where
-        a reader picks between slices. A voice writing nothing offers the item unreachable, which
-        says an export exists without pretending this voice has one.
-        """
-        label = self._label(self._language_manager, SequencerVoicesElements.CONTEXT_EXPORT_INSTRUMENT)
-        channels = self.query(self.voice_instruments, target.voice_id, default=NO_INSTRUMENTS)
-        if not channels:
-            dpg.add_menu_item(label=label, enabled=False)
-            return
-
-        if len(channels) > 1:
-            with dpg.menu(label=label):
-                for channel_name in channels:
-                    self._add_export_channel_item(target, channel_name)
-            return
-
-        dpg.add_menu_item(
-            label=label,
-            callback=lambda: self._request_export(target.voice_id, channels[0]),
-        )
-
-    def _add_export_channel_item(
-        self,
-        target: VoiceSelection,
-        channel_name: Optional[ChannelName],
-    ) -> None:
-        """Offers one of a voice's instruments, under the name that instrument carries."""
-        dpg.add_menu_item(
-            label=self._instrument_label(target, channel_name),
-            callback=lambda: self._request_export(target.voice_id, channel_name),
-        )
-
-    def _instrument_label(
-        self,
-        target: VoiceSelection,
-        channel_name: Optional[ChannelName],
-    ) -> str:
-        """The name one of a voice's instruments is listed under.
-
-        A slice is named by the channel it was reconstructed for, which is what tells a voice's
-        slices apart; an instrument stated for every channel alike is named after the voice.
-        """
-        if channel_name is None:
-            return target.name
-
-        return channel_label(self._language_manager, channel_name)
-
-    def _request_export(self, voice_id: str, channel_name: Optional[ChannelName]) -> None:
-        self.call(self.on_export_instrument_requested, voice_id, channel_name)
-
-    def _add_move_item(
-        self,
-        move: SampleMove,
-        target: VoiceSelection,
-    ) -> None:
-        """Builds one move item, offered while the move carries the sample somewhere new."""
-        position = move.direction.target(target.position, len(self._entries))
-        dpg.add_menu_item(
-            label=self._label(self._language_manager, move.element),
-            shortcut=self._shortcuts.display(move.shortcut),
-            enabled=position is not None,
-            callback=lambda: self.call(
-                self.on_move_requested,
-                target.voice_id,
-                position,
-            ),
-        )
+        self._menu.add_action_items(selection)
 
     @staticmethod
     def _label(

@@ -8,7 +8,7 @@ from sampletones_application.categories.exports import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.logic.export.instrument import InstrumentExportLogic
+from sampletones_application.logic.export.instrument.logic import InstrumentExportLogic
 from sampletones_application.utils.file_dialogs.api import save_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path

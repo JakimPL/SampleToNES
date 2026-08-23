@@ -40,7 +40,7 @@ from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoor
 from sampletones_application.exports import build_export_backends
 from sampletones_application.layout import LayoutConfig, load_layout_config
 from sampletones_application.logic.export import SongExportLogic
-from sampletones_application.logic.export.instrument import InstrumentExportLogic
+from sampletones_application.logic.export.instrument.logic import InstrumentExportLogic
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.instruction.library_manager import (

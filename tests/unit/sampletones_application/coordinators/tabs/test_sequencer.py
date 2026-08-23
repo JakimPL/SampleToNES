@@ -333,6 +333,72 @@ class TestRemoveSample:
         logic.remove_voice.assert_called_once_with("abc")
 
 
+class TestTakingAChannelAsAnInstrument:
+    """A channel of a recording becomes a voice of its own, recorded and brought up to edit."""
+
+    @staticmethod
+    def _taken(samples_coordinator: SequencerTabCoordinator) -> Instrument:
+        instrument = Instrument(name="Bass (triangle)", envelopes=InstrumentEnvelopes(volume=(15,)))
+        samples_coordinator._sequencer_voices_logic.instrument_from_channel.return_value = instrument
+        return instrument
+
+    def test_the_channel_named_is_the_one_taken(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        self._taken(samples_coordinator)
+
+        samples_coordinator.add_instrument_from_channel("bass-id", ChannelName.TRIANGLE)
+
+        samples_coordinator._sequencer_voices_logic.instrument_from_channel.assert_called_once_with(
+            "bass-id",
+            ChannelName.TRIANGLE,
+        )
+
+    def test_the_new_voice_lands_in_the_pool(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        instrument = self._taken(samples_coordinator)
+
+        samples_coordinator.add_instrument_from_channel("bass-id", ChannelName.TRIANGLE)
+
+        samples_coordinator._sequencer_voices_logic.add_instrument.assert_called_once_with(instrument)
+
+    def test_the_history_names_the_voice_that_arrived(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        instrument = self._taken(samples_coordinator)
+
+        samples_coordinator.add_instrument_from_channel("bass-id", ChannelName.TRIANGLE)
+
+        samples_coordinator._history_detail.add_instrument.assert_called_once_with(instrument.name)
+        assert samples_coordinator._history.transaction.call_args.args[0] is HistoryAction.ADD_INSTRUMENT
+
+    def test_the_new_voice_is_brought_up_where_it_is_edited(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """Seeing the envelopes that came across is what taking the channel out was for."""
+        instrument = self._taken(samples_coordinator)
+
+        samples_coordinator.add_instrument_from_channel("bass-id", ChannelName.TRIANGLE)
+
+        samples_coordinator._sequencer_voices_logic.request_edit.assert_called_once_with(instrument.id)
+
+    def test_a_channel_that_plays_nothing_leaves_the_pool_as_it_stands(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        samples_coordinator._sequencer_voices_logic.instrument_from_channel.return_value = None
+
+        samples_coordinator.add_instrument_from_channel("bass-id", ChannelName.NOISE)
+
+        samples_coordinator._sequencer_voices_logic.add_instrument.assert_not_called()
+        samples_coordinator._history.transaction.assert_not_called()
+
+
 class TestSubmitRename:
     def test_submit_rename_trims_whitespace(
         self,

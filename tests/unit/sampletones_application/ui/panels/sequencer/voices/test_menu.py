@@ -8,8 +8,11 @@ from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.elements.sequencer import SequencerVoicesElements
 from sampletones_application.ui.elements import context_menu as context_menu_module
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.panels.sequencer import voices as voices_module
-from sampletones_application.ui.panels.sequencer.voices import VOICE_MOVES, GUISequencerVoicesPanel
+from sampletones_application.ui.panels.sequencer.voices import menu as menu_module
+from sampletones_application.ui.panels.sequencer.voices import panel as panel_module
+from sampletones_application.ui.panels.sequencer.voices.menu import VoicesMenu
+from sampletones_application.ui.panels.sequencer.voices.moves import VOICE_MOVES
+from sampletones_application.ui.panels.sequencer.voices.panel import GUISequencerVoicesPanel
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.palette.colors.literal import LiteralColor
 from sampletones_application.view_model.sequencer.voices import VoiceEntryViewModel, VoiceKind
@@ -50,16 +53,21 @@ RIGHT_BUTTON = 1
 EDIT_ITEM = 0
 RENAME_ITEM = 1
 DUPLICATE_ITEM = 2
-REMOVE_ITEM = 3
-MOVE_UP_ITEM = 4
-MOVE_DOWN_ITEM = 5
-MOVE_TOP_ITEM = 6
-MOVE_BOTTOM_ITEM = 7
-EXPORT_ITEM = 8
+INSTRUMENT_FROM_ITEM = 3
+REMOVE_ITEM = 4
+MOVE_UP_ITEM = 5
+MOVE_DOWN_ITEM = 6
+MOVE_TOP_ITEM = 7
+MOVE_BOTTOM_ITEM = 8
+EXPORT_ITEM = 9
 
 ONE_INSTRUMENT: Tuple[Optional[ChannelName], ...] = (ChannelName.PULSE1,)
 TWO_INSTRUMENTS: Tuple[Optional[ChannelName], ...] = (ChannelName.PULSE1, ChannelName.NOISE)
 NO_INSTRUMENTS: Tuple[Optional[ChannelName], ...] = ()
+
+TWO_CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.NOISE)
+ONE_CHANNEL: Tuple[ChannelName, ...] = (ChannelName.TRIANGLE,)
+NO_CHANNELS: Tuple[ChannelName, ...] = ()
 
 
 def _unreachable() -> None:
@@ -78,7 +86,7 @@ class MenuItem:
 
 @dataclass
 class Requests:
-    """What each sample hook was handed when its menu item fired."""
+    """What each voice hook was handed when its menu item fired."""
 
     edited: List[str] = field(default_factory=list)
     renamed: List[str] = field(default_factory=list)
@@ -87,6 +95,7 @@ class Requests:
     moved: List[Tuple[str, Optional[int]]] = field(default_factory=list)
     pool: List[str] = field(default_factory=list)
     exported: List[Tuple[str, Optional[ChannelName]]] = field(default_factory=list)
+    taken: List[Tuple[str, ChannelName]] = field(default_factory=list)
 
 
 class _MenuRecorder:
@@ -114,9 +123,9 @@ class _MenuRecorder:
 @pytest.fixture
 def recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuRecorder:
     recorded = _MenuRecorder()
-    monkeypatch.setattr(voices_module.dpg, "add_menu_item", recorded.add_menu_item)
-    monkeypatch.setattr(voices_module.dpg, "add_separator", lambda **_kwargs: 0)
-    monkeypatch.setattr(voices_module.dpg, "menu", recorded.menu)
+    monkeypatch.setattr(menu_module.dpg, "add_menu_item", recorded.add_menu_item)
+    monkeypatch.setattr(menu_module.dpg, "add_separator", lambda **_kwargs: 0)
+    monkeypatch.setattr(menu_module.dpg, "menu", recorded.menu)
     return recorded
 
 
@@ -125,6 +134,7 @@ class VoicesPanelFixture:
     """A panel holding a selection, with the calls each menu item makes recorded."""
 
     panel: GUISequencerVoicesPanel
+    menu: VoicesMenu
     requests: Requests
 
 
@@ -138,8 +148,13 @@ def _panel(
     footprint: Optional[SampleFootprintViewModel] = FOOTPRINT,
     footprint_wired: bool = True,
     instruments: Tuple[Optional[ChannelName], ...] = ONE_INSTRUMENT,
+    channels: Tuple[ChannelName, ...] = NO_CHANNELS,
 ) -> VoicesPanelFixture:
-    """A samples panel whose menu builder can run with no DearPyGui context behind it."""
+    """A voices panel whose menu builder can run with no DearPyGui context behind it.
+
+    Each action stands as a single item by default — one instrument to export and no channel to
+    take — so a case naming a position names the same one however the voice is stocked.
+    """
     panel = GUISequencerVoicesPanel.__new__(GUISequencerVoicesPanel)
     panel._language_manager = _Labels()
     panel._shortcuts = shipped_source()
@@ -150,12 +165,9 @@ def _panel(
     panel._list_menu_pending = False
     panel._tab_active = lambda: tab_active
     panel._router = _Router(field_focused=field_focused)
-    panel._detail_color = DETAIL_COLOR
-    panel._lbl_sample_size = SAMPLE_SIZE_LABEL
-    panel._tpl_size_bytes = SIZE_TEMPLATE
-    panel._tip_size_bytes = SIZE_TOOLTIP
     panel.sample_footprint = (lambda _voice_id: footprint) if footprint_wired else None
     panel.voice_instruments = lambda _voice_id: instruments
+    panel.instrument_channels = lambda _voice_id: channels
 
     requests = Requests()
     panel.on_sample_edit_requested = requests.edited.append
@@ -166,8 +178,20 @@ def _panel(
     panel.on_add_sample_requested = lambda: requests.pool.append(SequencerVoicesElements.ADD_SAMPLE.value)
     panel.on_import_instrument_requested = lambda: requests.pool.append(SequencerVoicesElements.IMPORT_INSTRUMENT.value)
     panel.on_export_instrument_requested = lambda voice_id, channel: requests.exported.append((voice_id, channel))
-    monkeypatch.setattr(panel, "_start_rename", requests.renamed.append)
-    return VoicesPanelFixture(panel=panel, requests=requests)
+    panel.on_instrument_from_channel_requested = lambda voice_id, channel: requests.taken.append((voice_id, channel))
+    monkeypatch.setattr(panel, "start_rename", requests.renamed.append)
+
+    menu = VoicesMenu(
+        panel,
+        language_manager=_Labels(),
+        shortcut_source=shipped_source(),
+        detail_color=DETAIL_COLOR,
+    )
+    menu._lbl_sample_size = SAMPLE_SIZE_LABEL
+    menu._tpl_size_bytes = SIZE_TEMPLATE
+    menu._tip_size_bytes = SIZE_TOOLTIP
+    panel._menu = menu
+    return VoicesPanelFixture(panel=panel, menu=menu, requests=requests)
 
 
 class _Labels:
@@ -233,7 +257,7 @@ def _deferred_calls(monkeypatch: pytest.MonkeyPatch) -> List[VoidCallback]:
     """The callbacks handed to the next frame, which is where the list's menu waits."""
     deferred: List[VoidCallback] = []
     monkeypatch.setattr(
-        voices_module.FrameCallbackManager,
+        panel_module.FrameCallbackManager,
         "set_frame_callback",
         lambda callback: deferred.append(callback),
     )
@@ -244,11 +268,11 @@ def _deferred_calls(monkeypatch: pytest.MonkeyPatch) -> List[VoidCallback]:
 def build_recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuBuildRecorder:
     """Records a whole context-menu build, with the DearPyGui calls behind it stood down."""
     recorded = _MenuBuildRecorder()
-    monkeypatch.setattr(voices_module.dpg, "add_text", recorded.add_text)
-    monkeypatch.setattr(voices_module.dpg, "add_separator", recorded.add_separator)
-    monkeypatch.setattr(voices_module.dpg, "add_menu_item", recorded.add_menu_item)
-    monkeypatch.setattr(voices_module.dpg, "menu", recorded.menu)
-    monkeypatch.setattr(voices_module, "context_menu", _null_menu)
+    monkeypatch.setattr(menu_module.dpg, "add_text", recorded.add_text)
+    monkeypatch.setattr(menu_module.dpg, "add_separator", recorded.add_separator)
+    monkeypatch.setattr(menu_module.dpg, "add_menu_item", recorded.add_menu_item)
+    monkeypatch.setattr(menu_module.dpg, "menu", recorded.menu)
+    monkeypatch.setattr(menu_module, "context_menu", _null_menu)
     monkeypatch.setattr(context_menu_module, "dpg_set_palette_color", lambda _item, _color: None)
     monkeypatch.setattr(context_menu_module, "show_tooltip", recorded.add_tooltip)
     monkeypatch.setattr(FontRegistry, "bind_to_item", lambda _item, _font: None)
@@ -267,7 +291,7 @@ class _Router:
 
 
 class TestActionItems:
-    def test_the_menu_reads_as_the_sample_actions(
+    def test_the_menu_reads_as_the_voice_actions(
         self,
         monkeypatch: pytest.MonkeyPatch,
         recorder: _MenuRecorder,
@@ -278,6 +302,7 @@ class TestActionItems:
             SequencerVoicesElements.CONTEXT_EDIT.value,
             SequencerVoicesElements.CONTEXT_RENAME.value,
             SequencerVoicesElements.CONTEXT_DUPLICATE.value,
+            SequencerVoicesElements.CONTEXT_INSTRUMENT_FROM.value,
             SequencerVoicesElements.CONTEXT_REMOVE.value,
             *(move.element.value for move in VOICE_MOVES),
             SequencerVoicesElements.CONTEXT_EXPORT_INSTRUMENT.value,
@@ -298,7 +323,7 @@ class TestActionItems:
             shortcuts.display(move.shortcut) for move in VOICE_MOVES
         ]
 
-    def test_the_items_act_on_the_sample_they_were_raised_on(
+    def test_the_items_act_on_the_voice_they_were_raised_on(
         self,
         monkeypatch: pytest.MonkeyPatch,
         recorder: _MenuRecorder,
@@ -332,6 +357,62 @@ class TestActionItems:
         assert not recorder.items[MOVE_TOP_ITEM].enabled
         assert recorder.items[MOVE_DOWN_ITEM].enabled
         assert recorder.items[MOVE_BOTTOM_ITEM].enabled
+
+
+class TestTakingAChannelAsAnInstrument:
+    """A recording's channel becomes a voice of envelopes, so the menu names the channels it holds."""
+
+    def test_every_channel_that_plays_is_offered(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+    ) -> None:
+        _panel(monkeypatch, channels=TWO_CHANNELS).panel.build_edit_actions()
+
+        assert recorder.submenus == [SequencerVoicesElements.CONTEXT_INSTRUMENT_FROM.value]
+        assert [item.label for item in recorder.items[INSTRUMENT_FROM_ITEM : INSTRUMENT_FROM_ITEM + 2]] == [
+            ContextElements.PULSE_1.value,
+            ContextElements.NOISE.value,
+        ]
+
+    def test_a_single_channel_still_says_which_one_it_is(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+    ) -> None:
+        """What the new voice plays is the channel it came from, so the channel is always named."""
+        _panel(monkeypatch, channels=ONE_CHANNEL).panel.build_edit_actions()
+
+        assert recorder.submenus == [SequencerVoicesElements.CONTEXT_INSTRUMENT_FROM.value]
+        assert recorder.items[INSTRUMENT_FROM_ITEM].label == ContextElements.TRIANGLE.value
+
+    def test_each_channel_asks_for_the_instrument_it_names(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+    ) -> None:
+        fixture = _panel(monkeypatch, channels=TWO_CHANNELS)
+        fixture.panel.build_edit_actions()
+
+        for item in recorder.items[INSTRUMENT_FROM_ITEM : INSTRUMENT_FROM_ITEM + 2]:
+            item.callback()
+
+        assert fixture.requests.taken == [
+            (SELECTED_ID, ChannelName.PULSE1),
+            (SELECTED_ID, ChannelName.NOISE),
+        ]
+
+    def test_a_voice_already_written_as_envelopes_offers_an_item_it_cannot_reach(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+    ) -> None:
+        """It is what this would make of it, so the action stands named and out of reach."""
+        fixture = _panel(monkeypatch, channels=NO_CHANNELS)
+        fixture.panel.build_edit_actions()
+
+        assert not recorder.items[INSTRUMENT_FROM_ITEM].enabled
+        assert fixture.requests.taken == []
 
 
 class TestExportingTheVoicesInstruments:
@@ -404,7 +485,7 @@ class TestTheSizeRows:
     """A sample's menu names the bytes it occupies, so what a pool costs is read where it is edited."""
 
     def test_the_rows_read_as_the_total_then_each_playing_channel(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        items = _panel(monkeypatch).panel._footprint_items(SELECTED_ID)
+        items = _panel(monkeypatch).menu._footprint_items(SELECTED_ID)
 
         assert items == [
             (SAMPLE_SIZE_LABEL, f"{PULSE_1_BYTES + NOISE_BYTES} B"),
@@ -414,12 +495,12 @@ class TestTheSizeRows:
 
     def test_a_channel_standing_by_is_named_nowhere(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A channel that does not play is written by no export, so it costs nothing to name."""
-        labels = [label for label, _value in _panel(monkeypatch).panel._footprint_items(SELECTED_ID)]
+        labels = [label for label, _value in _panel(monkeypatch).menu._footprint_items(SELECTED_ID)]
 
         assert ContextElements.PULSE_2.value not in labels
         assert ContextElements.TRIANGLE.value not in labels
 
-    def test_the_figures_name_the_sample_the_pointer_landed_on(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_the_figures_name_the_voice_the_pointer_landed_on(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """The figures are asked for as the menu opens, so they answer for the row right-clicked."""
         measured: List[str] = []
 
@@ -430,20 +511,20 @@ class TestTheSizeRows:
         fixture = _panel(monkeypatch)
         fixture.panel.sample_footprint = _measure
 
-        fixture.panel._footprint_items("lead-id")
+        fixture.menu._footprint_items("lead-id")
 
         assert measured == ["lead-id"]
 
-    def test_a_sample_the_pool_has_dropped_prints_no_rows(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        assert _panel(monkeypatch, footprint=None).panel._footprint_items(SELECTED_ID) == []
+    def test_a_voice_the_pool_has_dropped_prints_no_rows(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        assert _panel(monkeypatch, footprint=None).menu._footprint_items(SELECTED_ID) == []
 
     def test_an_unwired_hook_prints_no_rows(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A panel tolerates its hooks being unset until the coordinator wires them."""
-        assert _panel(monkeypatch, footprint_wired=False).panel._footprint_items(SELECTED_ID) == []
+        assert _panel(monkeypatch, footprint_wired=False).menu._footprint_items(SELECTED_ID) == []
 
 
 class TestMenuComposition:
-    def test_the_sizes_sit_between_the_sample_name_and_the_actions(
+    def test_the_sizes_sit_between_the_voice_name_and_the_actions(
         self,
         monkeypatch: pytest.MonkeyPatch,
         build_recorder: _MenuBuildRecorder,
@@ -476,6 +557,15 @@ class TestMenuComposition:
         _panel(monkeypatch, footprint=None).panel._show_context_menu(SELECTED_ROW, SELECTED_ID)
 
         assert build_recorder.texts_before_the_first_item() == [display_voice_label(SELECTED_ROW, "Bass")]
+
+    def test_a_row_the_list_no_longer_holds_raises_nothing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        build_recorder: _MenuBuildRecorder,
+    ) -> None:
+        _panel(monkeypatch).panel._show_context_menu(SELECTED_ROW, "gone")
+
+        assert build_recorder.widgets == []
 
 
 class TestEditActions:
@@ -574,7 +664,7 @@ class TestThePoolItems:
     ) -> None:
         """Every way a voice comes in is rebindable, so each item names the press that fires it."""
         shortcuts = shipped_source()
-        _panel(monkeypatch).panel.add_pool_items()
+        _panel(monkeypatch).menu.add_pool_items()
 
         assert [item.shortcut for item in recorder.items] == [
             shortcuts.display(ShortcutId.NEW_INSTRUMENT),
@@ -588,7 +678,7 @@ class TestThePoolItems:
         recorder: _MenuRecorder,
     ) -> None:
         fixture = _panel(monkeypatch)
-        fixture.panel.add_pool_items()
+        fixture.menu.add_pool_items()
 
         for item in recorder.items:
             item.callback()
@@ -625,7 +715,7 @@ class TestWhichDoorAnswersAPress:
         _deferred_calls(monkeypatch)
         monkeypatch.setattr(fixture.panel, "_pointer_within_list", lambda: True)
         monkeypatch.setattr(fixture.panel, "_show_context_menu", lambda _position, _voice_id: None)
-        monkeypatch.setattr(voices_module.dpg, "get_item_user_data", lambda _item: (SELECTED_ROW, SELECTED_ID))
+        monkeypatch.setattr(panel_module.dpg, "get_item_user_data", lambda _item: (SELECTED_ROW, SELECTED_ID))
 
         fixture.panel._on_list_right_clicked(0, RIGHT_BUTTON)
         fixture.panel._on_sample_clicked(0, (RIGHT_BUTTON, 0))

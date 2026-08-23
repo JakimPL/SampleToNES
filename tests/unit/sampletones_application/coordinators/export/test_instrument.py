@@ -11,7 +11,7 @@ from sampletones_application.coordinators.export.instrument import (
     InstrumentExportCoordinator,
 )
 from sampletones_application.exports import build_export_backends
-from sampletones_application.logic.export.instrument import (
+from sampletones_application.logic.export.instrument.source import (
     ExportableInstrument,
     exportable_instrument,
     voice_entries,

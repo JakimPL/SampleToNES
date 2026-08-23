@@ -1,6 +1,6 @@
 from typing import Optional, Tuple
 
-from sampletones_application.ui.panels.sequencer.voices import GUISequencerVoicesPanel
+from sampletones_application.ui.panels.sequencer.voices.panel import GUISequencerVoicesPanel
 from sampletones_application.view_model.sequencer.voices import VoiceEntryViewModel, VoiceKind
 
 ENTRIES: Tuple[VoiceEntryViewModel, ...] = (

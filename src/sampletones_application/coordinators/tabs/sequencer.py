@@ -90,7 +90,7 @@ from sampletones_application.ui.panels.sequencer.history import GUISequencerHist
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
-from sampletones_application.ui.panels.sequencer.voices import GUISequencerVoicesPanel
+from sampletones_application.ui.panels.sequencer.voices.panel import GUISequencerVoicesPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.file_dialogs.api import open_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
@@ -656,6 +656,8 @@ class SequencerTabCoordinator:
         self._sequencer_voices_panel.on_import_instrument_requested = self.import_instrument
         self._sequencer_voices_panel.voice_instruments = self._instrument_exports.voice_instruments
         self._sequencer_voices_panel.on_export_instrument_requested = self._instrument_exports.request_voice
+        self._sequencer_voices_panel.instrument_channels = self._sequencer_voices_logic.instrument_channels
+        self._sequencer_voices_panel.on_instrument_from_channel_requested = self.add_instrument_from_channel
 
     def add_instrument(self) -> None:
         """Appends a hand-written voice, named for the position it takes in the list.
@@ -672,6 +674,34 @@ class SequencerTabCoordinator:
             detail=self._history_detail.add_instrument(name),
         ):
             self._sequencer_voices_logic.add_new_instrument(name)
+
+    def add_instrument_from_channel(
+        self,
+        voice_id: str,
+        channel_name: ChannelName,
+    ) -> None:
+        """Takes what one channel of a voice plays as an instrument of its own, then opens it.
+
+        A recording states its channels as frames, and this reads one of them back as envelopes,
+        so what the conversion found becomes a voice the reader edits by hand. The new voice is
+        brought up where it is edited, since seeing those envelopes is what taking the channel out
+        was for.
+
+        Args:
+            voice_id: The voice the channel belongs to.
+            channel_name: The channel whose envelopes the instrument takes.
+        """
+        instrument = self._sequencer_voices_logic.instrument_from_channel(voice_id, channel_name)
+        if instrument is None:
+            return
+
+        with self._history.transaction(
+            HistoryAction.ADD_INSTRUMENT,
+            detail=self._history_detail.add_instrument(instrument.name),
+        ):
+            self._sequencer_voices_logic.add_instrument(instrument)
+
+        self._sequencer_voices_logic.request_edit(instrument.id)
 
     def add_sample_from_file(self) -> None:
         """Brings a reconstruction saved anywhere on disk into the pool as a sample.
