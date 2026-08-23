@@ -16,9 +16,11 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
+from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser.logic import BrowserLogic
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.logic.reconstruction.edit import StemRemoval
+from sampletones_application.logic.reconstruction.editor import InstrumentEditor
 from sampletones_application.logic.reconstruction.instruments import (
     OnReconstructionInstrumentUpdatedCallback,
     ReconstructionInstrumentsLogic,
@@ -117,6 +119,7 @@ class ReconstructionTabCoordinator:
         session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
         reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
         browser_manager: BrowserManager,
         export_service: ExportService,
         export_backends: Dict[ExportFormat, ExportBackend],
@@ -134,6 +137,10 @@ class ReconstructionTabCoordinator:
     ) -> None:
         self._language_manager = language_manager
         self._reconstruction_manager = reconstruction_manager
+        self._instrument_editor: InstrumentEditor = InstrumentEditor(
+            reconstruction_manager,
+            project_controller,
+        )
         self._session_manager = session_manager
         self._export_backends = export_backends
         self._dialogs = dialogs
@@ -233,7 +240,7 @@ class ReconstructionTabCoordinator:
         )
         self._reconstruction_instruments_panel.set_collapse_handler(self._on_instruments_collapse_changed)
         self._reconstruction_instruments_logic: ReconstructionInstrumentsLogic = ReconstructionInstrumentsLogic(
-            reconstruction_manager,
+            self._instrument_editor,
             scheduling=layout.scheduling,
         )
 
@@ -291,6 +298,12 @@ class ReconstructionTabCoordinator:
         )
         self._reconstruction_instruments_panel.on_raw_data_changed = (
             self._reconstruction_instruments_logic.handle_raw_data_changed
+        )
+        self._reconstruction_instruments_panel.on_shape_root_period_changed = (
+            self._reconstruction_instruments_logic.handle_shape_root_period_changed
+        )
+        self._reconstruction_instruments_panel.on_shape_loop_point_changed = (
+            self._reconstruction_instruments_logic.handle_shape_loop_point_changed
         )
 
     def _on_export_result(self, result: ExportResult) -> None:
@@ -626,8 +639,22 @@ class ReconstructionTabCoordinator:
         self._browser_panel.update_favorite_indicators(nodes)
 
     def display_reconstruction(self) -> None:
+        self._instrument_editor.release_shape()
         self._reconstruction_panel_logic.display_reconstruction()
         self._reconstruction_instruments_logic.update_display()
+
+    def edit_shape(self, voice_id: str) -> None:
+        """Puts a shape in front of the tab, closing whatever reconstruction it held.
+
+        The tab describes one voice at a time — a shape stands on no recording, so the waveform,
+        the plot and the stems beside the instruments panel have nothing of it to draw.
+        """
+        self._instrument_editor.edit_shape(voice_id)
+        self._reconstruction_instruments_logic.update_display()
+
+    def release_shape(self) -> None:
+        """Lets go of the shape the tab held, which is what opening a reconstruction does."""
+        self._instrument_editor.release_shape()
 
     def close_reconstruction(self) -> None:
         self._reconstruction_panel_logic.close_reconstruction()

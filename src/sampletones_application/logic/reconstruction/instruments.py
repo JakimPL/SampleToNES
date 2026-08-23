@@ -2,13 +2,19 @@ from typing import Callable, Dict, FrozenSet, Optional
 
 import numpy as np
 
+from sampletones_application.constants.instruments import SHAPE_CHANNEL
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
 )
-from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.reconstruction.editing import (
+    InstrumentEditingProtocol,
+    ReconstructionEdit,
+    ShapeEdit,
+)
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
+    ShapeInstrumentViewModel,
 )
 from sampletones_application.view_model.reconstruction.update import (
     ReconstructionUpdate,
@@ -29,11 +35,11 @@ OnReconstructionInstrumentUpdatedCallback = Callable[
 class ReconstructionInstrumentsLogic(CallbackMixin):
     def __init__(
         self,
-        reconstruction_manager: ReconstructionManager,
+        editor: InstrumentEditingProtocol,
         *,
         scheduling: SchedulingBehavior,
     ) -> None:
-        self.reconstruction_manager = reconstruction_manager
+        self._editor = editor
         self._scheduling = scheduling
 
         self._pending_reconstruction_update: Optional[ReconstructionUpdate] = None
@@ -43,9 +49,21 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self.on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
 
     def update_display(self) -> None:
-        channels = self._current_generators()
-        self.call(self.on_view_changed, self._build_view_model(channels))
-        self.call(self.on_feature_data_changed, channels)
+        """Renders whatever the panel has in front of it, envelopes and figures together."""
+        self.call(self.on_view_changed, self._build_view_model(self._current_generators()))
+        self.call(self.on_feature_data_changed, self._displayed_features())
+
+    def _displayed_features(self) -> Optional[Dict[ChannelName, Features]]:
+        """The envelopes the panel draws: a reconstruction's channels, or a shape's own set.
+
+        A shape is drawn on the tab the panel shows it under, which is the channel offering every
+        dimension a shape writes.
+        """
+        shape = self.shape_edit
+        if shape is not None:
+            return {SHAPE_CHANNEL: shape.features}
+
+        return self._current_generators()
 
     def refresh_view(self) -> None:
         """Reports which channels play and the sizes they occupy, leaving the displayed envelopes as they are.
@@ -57,13 +75,42 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self.call(self.on_view_changed, self._build_view_model(self._current_generators()))
 
     def _current_generators(self) -> Optional[Dict[ChannelName, Features]]:
-        feature_data = self.reconstruction_manager.current_features
-        return None if feature_data is None else feature_data.channels
+        """The channels of the reconstruction in front of the panel, where one is."""
+        match self._editor.edited_instrument():
+            case ReconstructionEdit() as edit:
+                return edit.channels
+            case _:
+                return None
+
+    @property
+    def shape_edit(self) -> Optional[ShapeEdit]:
+        """The shape in front of the panel, where one is."""
+        match self._editor.edited_instrument():
+            case ShapeEdit() as edit:
+                return edit
+            case _:
+                return None
 
     def _build_view_model(
         self,
         channels: Optional[Dict[ChannelName, Features]],
     ) -> ReconstructionInstrumentsViewModel:
+        shape = self.shape_edit
+        if shape is not None:
+            return ReconstructionInstrumentsViewModel(
+                reconstruction_loaded=False,
+                playing_channels=frozenset({SHAPE_CHANNEL}),
+                footprint=SampleFootprintViewModel.from_instrument(
+                    features_footprint(shape.features, loop_point=shape.loop_point)
+                ),
+                shape=ShapeInstrumentViewModel(
+                    name=shape.name,
+                    root_pitch=shape.root_pitch,
+                    root_period=shape.root_period,
+                    loop_point=shape.loop_point,
+                ),
+            )
+
         if channels is None:
             return ReconstructionInstrumentsViewModel(
                 reconstruction_loaded=False,
@@ -104,6 +151,12 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         channel_name: ChannelName,
         value: int,
     ) -> None:
+        shape = self.shape_edit
+        if shape is not None:
+            self._editor.write_roots(pitch=value, period=shape.root_period)
+            self.update_display()
+            return
+
         self._schedule_reconstruction_update(
             ReconstructionUpdate(
                 channel_name,
@@ -118,6 +171,9 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
+        if self._write_shape_envelope(feature_key, data):
+            return
+
         self._report_edited_size(channel_name, feature_key, data)
         self._schedule_reconstruction_update(
             ReconstructionUpdate(
@@ -133,6 +189,9 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
+        if self._write_shape_envelope(feature_key, data):
+            return
+
         self._report_edited_size(channel_name, feature_key, data)
         self._schedule_reconstruction_update(
             ReconstructionUpdate(
@@ -141,6 +200,40 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
                 data,
             )
         )
+
+    def handle_shape_root_period_changed(self, value: int) -> None:
+        """Moves the period the shape in front of the panel rests at on the noise channel."""
+        shape = self.shape_edit
+        if shape is None:
+            return
+
+        self._editor.write_roots(pitch=shape.root_pitch, period=value)
+        self.update_display()
+
+    def handle_shape_loop_point_changed(self, loop_point: Optional[int]) -> None:
+        """Sets the tick the shape in front of the panel repeats from."""
+        if self.shape_edit is None:
+            return
+
+        self._editor.write_loop_point(loop_point)
+        self.update_display()
+
+    def _write_shape_envelope(
+        self,
+        feature_key: FeatureKey,
+        data: np.ndarray,
+    ) -> bool:
+        """Writes one dimension of the shape in front of the panel, reporting whether it did.
+
+        A shape stands on no audio, so an edit reaches it at once rather than through the
+        regeneration a reconstruction's envelopes go back through.
+        """
+        if self.shape_edit is None:
+            return False
+
+        self._editor.write_envelope(feature_key, data)
+        self.update_display()
+        return True
 
     def _report_edited_size(
         self,
@@ -215,7 +308,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         )
 
     def _get_features(self, channel_name: ChannelName) -> Features:
-        current_features = self.reconstruction_manager.current_features
-        assert current_features is not None, "Current features should not be None"
+        channels = self._current_generators()
+        assert channels is not None, "A channel edit arrives only while a reconstruction is open"
 
-        return current_features[channel_name]
+        return channels[channel_name]

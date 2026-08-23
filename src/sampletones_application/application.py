@@ -158,6 +158,7 @@ from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.shape import Shape
 from sampletones_core.project.voices.voice import samples
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
@@ -418,6 +419,7 @@ class Application:
             session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,
             reconstruction_manager=self.reconstruction_manager,
+            project_controller=self.project_controller,
             browser_manager=self.browser_manager,
             export_service=self.export_service,
             export_backends=self.export_backends,
@@ -489,7 +491,7 @@ class Application:
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
-            on_edit_sample_requested=self._edit_project_sample,
+            on_edit_sample_requested=self._edit_project_voice,
             on_favorite_changed=self._repaint_reconstruction_favorites,
             on_sample_reconstruction_replaced=self._rebind_replaced_sample,
             on_tab_switch=self._set_current_tab,
@@ -1024,16 +1026,23 @@ class Application:
     def _navigate_to_reconstructions(self) -> None:
         self._set_current_tab(Tab.RECONSTRUCTIONS)
 
-    def _edit_project_sample(self, voice_id: str) -> None:
-        sample = self.project_manager.current.voice(voice_id)
-        if not isinstance(sample, Sample):
-            logger.warning(f"Cannot edit unknown project sample: {voice_id}")
-            return
+    def _edit_project_voice(self, voice_id: str) -> None:
+        """Opens the voice list's selection on the Reconstructions tab, in the terms of its kind.
 
-        self.reconstruction_manager.load_reconstruction_object(
-            sample.reconstruction,
-            name=sample.name,
-        )
+        A sample opens as the reconstruction behind it, waveform and stems and all; a shape stands
+        on no recording, so the tab shows its envelopes alone.
+        """
+        match self.project_manager.current.voice(voice_id):
+            case Sample() as sample:
+                self._reconstructions_tab.release_shape()
+                self.reconstruction_manager.load_reconstruction_object(
+                    sample.reconstruction,
+                    name=sample.name,
+                )
+            case Shape():
+                self._reconstructions_tab.edit_shape(voice_id)
+            case _:
+                logger.warning(f"Cannot edit unknown project voice: {voice_id}")
 
     def _rebind_replaced_sample(
         self,

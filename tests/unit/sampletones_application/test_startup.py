@@ -250,7 +250,7 @@ class TestReconstructionSaveAsDetachment:
         reconstruction = reconstruction_factory()
         with app.history.transaction(HistoryAction.ADD_SAMPLE):
             sample = app.project_controller.add_sample(reconstruction, "Lead")
-        app._edit_project_sample(sample.id)
+        app._edit_project_voice(sample.id)
         return sample
 
     def test_embedded_reconstruction_is_owned_and_not_saveable(

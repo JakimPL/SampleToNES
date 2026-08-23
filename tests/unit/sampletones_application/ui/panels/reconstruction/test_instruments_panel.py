@@ -110,8 +110,10 @@ def shown(monkeypatch: pytest.MonkeyPatch) -> Dict[str, bool]:
     """Records which items the panel shows, standing in for the DPG configuration."""
     flags: Dict[str, bool] = {}
 
-    def configure(tag: str, *, show: bool) -> None:
-        flags[tag] = show
+    def configure(tag: str, **kwargs: object) -> None:
+        show = kwargs.get("show")
+        if isinstance(show, bool):
+            flags[tag] = show
 
     monkeypatch.setattr(instruments_module, "dpg_configure_item", configure)
     return flags
