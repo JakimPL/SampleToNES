@@ -5,7 +5,9 @@ from sampletones_core.configs import Config
 from sampletones_core.parallelization import TaskProcessor
 from sampletones_shared.logger import LoggerProtocol
 from sampletones_shared.logger import logger as default_logger
+from sampletones_shared.utils.progress import silent_reporter
 
+from ..progress import ReconstructionReporter
 from ..reconstructor.reconstructor import Reconstructor
 from .conversion import reconstruct_job
 from .job import ConversionJob
@@ -43,11 +45,11 @@ class ReconstructionConverter(TaskProcessor[Path]):
     def _create_tasks(self) -> List[Any]:
         reconstructor = Reconstructor(self.config)
         self.jobs = self.plan.jobs(self.config)
-        return [(reconstructor, job) for job in self.jobs]
+        return [(reconstructor, job, silent_reporter) for job in self.jobs]
 
     def _get_task_function(
         self,
-    ) -> Callable[[Tuple[Reconstructor, ConversionJob]], Path]:
+    ) -> Callable[[Tuple[Reconstructor, ConversionJob, ReconstructionReporter]], Path]:
         return reconstruct_job
 
     def _process_results(self, results: List[Path]) -> Tuple[Path, ...]:

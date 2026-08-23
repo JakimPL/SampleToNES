@@ -4,7 +4,6 @@ from typing import Final, FrozenSet
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.progress import (
-    SILENT_REPORTER,
     ExportProgress,
     ExportReporter,
     announce,
@@ -23,6 +22,7 @@ from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.file import write_nsf
 from sampletones_player.nsf.information import NSFInformation
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
+from sampletones_shared.utils.progress import silent_reporter
 
 SUPPORTED_SCOPES: FrozenSet[ExportScope] = frozenset(
     {
@@ -132,7 +132,7 @@ class NSFBackend:
         self,
         destination: Path,
         request: InstrumentExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         """Writes a program playing one channel slice.
 
@@ -153,7 +153,7 @@ class NSFBackend:
         self,
         destination: Path,
         request: SampleExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         """Writes a program playing every channel slice of one reconstruction together.
 
@@ -188,7 +188,7 @@ class NSFBackend:
         self,
         destination: Path,
         request: ProjectExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         """Writes a program playing a whole composition.
 

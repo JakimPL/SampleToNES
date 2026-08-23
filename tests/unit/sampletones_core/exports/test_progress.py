@@ -3,12 +3,12 @@ from typing import Final
 import pytest
 
 from sampletones_core.exports.progress import (
-    SILENT_REPORTER,
     ExportProgress,
     announce,
 )
 from sampletones_core.exports.stage import ExportStage
 from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.utils.progress import silent_reporter
 from tests.suite.progress import FIRST_REPORT, RecordingReporter
 
 WRITTEN: Final[int] = 3
@@ -30,7 +30,7 @@ class TestWhatACallerHearsFromAnExport:
         assert reporter.last.total is None
 
     def test_a_caller_watching_nothing_lets_every_stage_through(self) -> None:
-        announce(SILENT_REPORTER, ExportStage.WALKING, WRITTEN, TO_WRITE)
+        announce(silent_reporter, ExportStage.WALKING, WRITTEN, TO_WRITE)
 
 
 class TestWithdrawingARun:

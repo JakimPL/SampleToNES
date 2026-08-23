@@ -4,10 +4,10 @@ import pytest
 
 from sampletones_player.compression.progress.monitor import CodecMonitor
 from sampletones_player.compression.progress.report import (
-    SILENT_REPORTER,
     CodecProgress,
 )
 from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.utils.progress import silent_reporter
 from tests.suite.progress import FIRST_REPORT, RecordingReporter
 
 PHRASES_FOUND: Final[int] = 4
@@ -37,7 +37,7 @@ class TestWhatARunSaysAboutItself:
         assert reporter.last == CodecProgress(phrases=PHRASES_FOUND, size=BYTES_LAID_DOWN)
 
     def test_what_the_run_last_reached_is_its_own_to_read(self) -> None:
-        monitor = CodecMonitor(SILENT_REPORTER)
+        monitor = CodecMonitor(silent_reporter)
         monitor.reached(PHRASES_FOUND, BYTES_LAID_DOWN)
         assert monitor.progress == CodecProgress(phrases=PHRASES_FOUND, size=BYTES_LAID_DOWN)
 

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Final, Optional
+from typing import Callable, Optional
 
 from sampletones_core.exports.stage import ExportStage
 from sampletones_shared.exceptions import OperationCancelled
@@ -22,14 +22,6 @@ class ExportProgress:
 
 
 ExportReporter = Callable[[ExportProgress], bool]
-
-
-def _carry_on(progress: ExportProgress) -> bool:  # pylint: disable=unused-argument
-    """Answers that the run goes on, which is what a caller watching nothing asks of a stage."""
-    return True
-
-
-SILENT_REPORTER: Final[ExportReporter] = _carry_on
 
 
 def announce(

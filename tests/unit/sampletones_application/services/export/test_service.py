@@ -20,7 +20,6 @@ from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.progress import (
-    SILENT_REPORTER,
     ExportReporter,
     announce,
 )
@@ -33,6 +32,7 @@ from sampletones_core.exports.scope import ExportScope
 from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.project import Project
 from sampletones_shared.music import Tuning
+from sampletones_shared.utils.progress import silent_reporter
 
 NES_FREQUENCY: Final[int] = 60
 NOTHING_WRITTEN: Final[int] = 0
@@ -76,7 +76,7 @@ class StubBackend:
         self,
         destination: Path,
         request: InstrumentExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         return self._write("instrument", destination, request, report)
 
@@ -84,7 +84,7 @@ class StubBackend:
         self,
         destination: Path,
         request: SampleExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         return self._write("sample", destination, request, report)
 
@@ -92,7 +92,7 @@ class StubBackend:
         self,
         destination: Path,
         request: ProjectExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         return self._write("project", destination, request, report)
 
@@ -553,7 +553,7 @@ class CancellingBackend:
         self,
         destination: Path,
         request: InstrumentExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         announce(report, ExportStage.WALKING, NOTHING_WRITTEN, None)
         self.stages.append(ExportStage.WALKING)
@@ -566,7 +566,7 @@ class CancellingBackend:
         self,
         destination: Path,
         request: SampleExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         raise NotImplementedError
 
@@ -574,7 +574,7 @@ class CancellingBackend:
         self,
         destination: Path,
         request: ProjectExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         raise NotImplementedError
 

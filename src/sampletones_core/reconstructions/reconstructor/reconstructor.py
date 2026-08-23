@@ -15,6 +15,12 @@ from sampletones_core.generators import (
 )
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibrary, InstructionLibraryData
+from sampletones_core.reconstructions.progress import (
+    STAGE_BEGUN,
+    WHOLE_STAGE,
+    ReconstructionReporter,
+    announce,
+)
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
@@ -24,8 +30,10 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.frame impor
 from sampletones_core.reconstructions.reconstructor.stems.assignment.track import TrackAssignment
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
+from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.exceptions import NoLibraryDataError
 from sampletones_shared.types.path import Pathlike
+from sampletones_shared.utils.progress import silent_reporter
 from sampletones_shared.utils.system.paths import to_path
 
 
@@ -90,6 +98,8 @@ class Reconstructor:
         self,
         paths: Sequence[Pathlike],
         stems_config: StemsConfig,
+        *,
+        report: ReconstructionReporter = silent_reporter,
     ) -> Optional[Reconstruction]:
         """Reconstructs one or more stem audio files into one reconstruction.
 
@@ -106,6 +116,7 @@ class Reconstructor:
             stems_config: The stems setup built for this process from the inputs:
                 the entries with their channels, the precedence hierarchy, and the
                 per-stem channel cap.
+            report: Hears each stage of the run and answers whether it is still wanted.
 
         Returns:
             Optional[Reconstruction]: The reconstruction built from the stems.
@@ -113,14 +124,17 @@ class Reconstructor:
         Raises:
             ValueError: If the entries count differently than ``paths``.
             TypeError: If a path is not a string or ``Path``.
+            OperationCancelled: If the run is withdrawn while it is under way.
         """
         checked_paths = self._check_stem_paths(paths, stems_config)
+        announce(report, ReconstructionStage.LOADING, STAGE_BEGUN, WHOLE_STAGE)
         recordings = self._load_stem_recordings(checked_paths)
         stem_frames, coefficient = self._prepare_stem_frames(recordings, stems_config)
         worker = self._build_worker(common_length(recordings))
-        assignment = self._assign_stem_frames(stem_frames, stems_config, worker)
+        assignment = self._assign_stem_frames(stem_frames, stems_config, worker, report)
         self._drop_resting_channels(assignment)
-        self._record_streams(worker.decoder.decode(assignment.lattices))
+        announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
+        self._record_streams(worker.decoder.decode(assignment.lattices), report)
         return Reconstruction.from_state(
             self.state,
             self.config,
@@ -206,6 +220,7 @@ class Reconstructor:
         stem_frames: Dict[int, FragmentedAudio],
         stems_config: StemsConfig,
         worker: ReconstructorWorker,
+        report: ReconstructionReporter,
     ) -> TrackAssignment:
         """Assigns every frame's channels to the stems and gathers the outcome per channel.
 
@@ -215,7 +230,9 @@ class Reconstructor:
         stay parallel to the frames, and stem id ``i`` names frame ``i`` of its channel.
         """
         assignment = TrackAssignment(self.state.channel_names)
-        for fragment_id in range(self._stem_frame_count(stem_frames)):
+        frames = self._stem_frame_count(stem_frames)
+        for fragment_id in range(frames):
+            announce(report, ReconstructionStage.MATCHING, fragment_id, frames)
             assignment.add(
                 assign_frame(
                     {stem_id: fragments[fragment_id] for stem_id, fragments in stem_frames.items()},
@@ -227,6 +244,7 @@ class Reconstructor:
                 )
             )
 
+        announce(report, ReconstructionStage.MATCHING, frames, frames)
         return assignment
 
     @staticmethod
@@ -245,16 +263,20 @@ class Reconstructor:
             self.state.drop(channel_name)
             assignment.drop(channel_name)
 
-    def _record_streams(self, streams: Streams) -> None:
+    def _record_streams(self, streams: Streams, report: ReconstructionReporter) -> None:
         """Folds the decoded streams into the state, one frame at a time.
 
         Frame order is what carries a generator's oscillator phase from one frame into the
         next, which is the continuity final regeneration renders against.
         """
-        for position in range(self._frame_count(streams)):
+        frames = self._frame_count(streams)
+        for position in range(frames):
+            announce(report, ReconstructionStage.RENDERING, position, frames)
             for channel_name in self.state.channel_names:
                 candidate = streams[channel_name][position]
                 self._record(channel_name, candidate.instruction, candidate.approximation.audio)
+
+        announce(report, ReconstructionStage.RENDERING, frames, frames)
 
     @staticmethod
     def _frame_count(streams: Streams) -> int:

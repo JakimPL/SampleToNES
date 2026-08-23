@@ -1,13 +1,10 @@
 from typing import Final, List
 
-from sampletones_application.services.progress import (
-    PROGRESS_STEPS,
-    UNMEASURED,
-    StageProgress,
-)
+from sampletones_application.services.progress import UNMEASURED, StageProgress
 from sampletones_application.services.render.result import RenderStage
 from sampletones_application.services.result import ServiceProgress
 from sampletones_core.exports.stage import ExportStage
+from sampletones_shared.utils.progress import PROGRESS_STEPS
 
 TOTAL_SAMPLES: Final[int] = PROGRESS_STEPS * 100
 STEP: Final[int] = TOTAL_SAMPLES // PROGRESS_STEPS

@@ -5,7 +5,6 @@ from sampletones_core.exporters.maps import CHANNEL_TO_EXPORTER_MAP
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.performance import (
-    SILENT_WALK_REPORTER,
     WalkReporter,
     song_instructions,
 )
@@ -16,11 +15,12 @@ from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.clock.schedule import PlaySchedule
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.pitch import PitchTable
-from sampletones_player.compression.progress.report import SILENT_REPORTER, CodecReporter
+from sampletones_player.compression.progress.report import CodecReporter
 from sampletones_player.compression.seeds import phrases_from_project
 from sampletones_player.registers.channel import channel_registers
 from sampletones_player.registers.streams import ChannelStreams
 from sampletones_player.song import Song
+from sampletones_shared.utils.progress import silent_reporter
 
 SONG_START: Final[int] = 0
 NO_SEEDS: Final[Tuple[Phrase, ...]] = ()
@@ -56,7 +56,7 @@ def streams_from_instructions(
 def song_from_reconstruction(
     reconstruction: Reconstruction,
     loop_tick: Optional[int],
-    report: CodecReporter = SILENT_REPORTER,
+    report: CodecReporter = silent_reporter,
 ) -> Song:
     """Builds the song the console plays a reconstruction as.
 
@@ -144,7 +144,7 @@ def loop_tick_from_instruments(instruments: Sequence[InstrumentExport]) -> Optio
 
 def song_from_sample(
     request: SampleExport,
-    report: CodecReporter = SILENT_REPORTER,
+    report: CodecReporter = silent_reporter,
 ) -> Song:
     """Builds the song the console plays an export request as.
 
@@ -184,8 +184,8 @@ def song_from_sample(
 def song_from_project(
     project: Project,
     loop_tick: Optional[int],
-    report: CodecReporter = SILENT_REPORTER,
-    walk: WalkReporter = SILENT_WALK_REPORTER,
+    report: CodecReporter = silent_reporter,
+    walk: WalkReporter = silent_reporter,
 ) -> Song:
     """Builds the song the console plays a whole project as.
 

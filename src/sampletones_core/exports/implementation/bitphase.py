@@ -3,7 +3,7 @@ from typing import Final, FrozenSet, List
 
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.format import ExportFormat
-from sampletones_core.exports.progress import SILENT_REPORTER, ExportReporter, announce
+from sampletones_core.exports.progress import ExportReporter, announce
 from sampletones_core.exports.request import (
     InstrumentExport,
     ProjectExport,
@@ -19,6 +19,7 @@ from sampletones_core.formats.bitphase.builder import (
 )
 from sampletones_core.formats.bitphase.preset import instrument_to_preset, write_preset
 from sampletones_shared.paths.extensions import EXT_FILE_BITPHASE, EXT_FILE_JSON
+from sampletones_shared.utils.progress import silent_reporter
 from sampletones_shared.utils.system.paths import get_filename
 
 DOCUMENT_SCOPES: FrozenSet[ExportScope] = frozenset(ExportScope)
@@ -53,7 +54,7 @@ class BitphaseBackend:
         self,
         destination: Path,
         request: InstrumentExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
         write_btp(destination, instrument_to_bitphase(request))
@@ -65,7 +66,7 @@ class BitphaseBackend:
         self,
         destination: Path,
         request: SampleExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
         write_btp(destination, sample_to_bitphase(request))
@@ -77,7 +78,7 @@ class BitphaseBackend:
         self,
         destination: Path,
         request: ProjectExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
         write_btp(destination, project_to_bitphase(request.project))
@@ -110,7 +111,7 @@ class BitphasePresetBackend:
         self,
         destination: Path,
         request: InstrumentExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
         write_preset(destination, instrument_to_preset(request))
@@ -122,7 +123,7 @@ class BitphasePresetBackend:
         self,
         destination: Path,
         request: SampleExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         destination.parent.mkdir(parents=True, exist_ok=True)
 
@@ -137,7 +138,7 @@ class BitphasePresetBackend:
                     EXT_FILE_JSON,
                 )
             )
-            paths.extend(self.write_instrument(filepath, instrument, SILENT_REPORTER).paths)
+            paths.extend(self.write_instrument(filepath, instrument, silent_reporter).paths)
             announce(report, ExportStage.WRITING, index, written)
 
         return ExportArtifact(paths=tuple(paths), truncation=WHOLE_ENVELOPE)
@@ -146,7 +147,7 @@ class BitphasePresetBackend:
         self,
         destination: Path,
         request: ProjectExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         """Reports that a preset holds one instrument.
 
