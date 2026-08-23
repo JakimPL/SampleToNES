@@ -136,6 +136,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         self.on_duplicate_requested: Optional[StringCallback] = None
         self.on_new_instrument_requested: Optional[VoidCallback] = None
         self.on_add_sample_requested: Optional[VoidCallback] = None
+        self.on_import_instrument_requested: Optional[VoidCallback] = None
 
         super().__init__(
             tag=TAG_SEQUENCER_VOICES_PANEL,
@@ -739,10 +740,10 @@ class GUISequencerVoicesPanel(GUIPanel):
     def add_pool_items(self) -> None:
         """Builds the ways a voice comes into the pool, in the order each menu prints them.
 
-        A voice is written by hand or converted from a recording, and both stand apart from the
-        actions a listed voice offers, since each answers with an entry the list did not hold.
-        Every door onto the list prints this section, so a reader reaches it from the list and
-        from a row alike.
+        A voice is written by hand, converted from a recording, or brought from a tracker, and
+        the three stand apart from the actions a listed voice offers, since each answers with an
+        entry the list did not hold. Every door onto the list prints this section, so a reader
+        reaches it from the list and from a row alike.
         """
         dpg.add_menu_item(
             label=self._label(
@@ -759,6 +760,14 @@ class GUISequencerVoicesPanel(GUIPanel):
             ),
             shortcut=self._shortcuts.display(ShortcutId.ADD_SAMPLE_FROM_FILE),
             callback=lambda: self.call(self.on_add_sample_requested),
+        )
+        dpg.add_menu_item(
+            label=self._label(
+                self._language_manager,
+                SequencerVoicesElements.IMPORT_INSTRUMENT,
+            ),
+            shortcut=self._shortcuts.display(ShortcutId.IMPORT_INSTRUMENT),
+            callback=lambda: self.call(self.on_import_instrument_requested),
         )
 
     def add_action_items(self, target: VoiceSelection) -> None:

@@ -48,6 +48,7 @@ class KeybindingActionElements(AbstractElement):
     ADD_RECONSTRUCTION_TO_SEQUENCER = "add_reconstruction_to_sequencer"
     NEW_INSTRUMENT = "new_instrument"
     ADD_SAMPLE_FROM_FILE = "add_sample_from_file"
+    IMPORT_INSTRUMENT = "import_instrument"
     OPEN_RECONSTRUCTION_IN_EXPLORER = "open_reconstruction_in_explorer"
     LOCATE_ORIGINAL_AUDIO = "locate_original_audio"
     PLAY = "play"

@@ -604,6 +604,7 @@ class TestVoiceMenu:
         assert shortcuts.labels == [
             "New instrument",
             "Add sample from file...",
+            "Import instrument...",
             "Add to Sequencer",
         ]
 
@@ -617,6 +618,7 @@ class TestVoiceMenu:
         assert [item["shortcut_id"] for item in shortcuts.items] == [
             ShortcutId.NEW_INSTRUMENT,
             ShortcutId.ADD_SAMPLE_FROM_FILE,
+            ShortcutId.IMPORT_INSTRUMENT,
             ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER,
         ]
 
@@ -629,6 +631,7 @@ class TestVoiceMenu:
 
         assert shortcuts.item("New instrument")["enabled"] is False
         assert shortcuts.item("Add sample from file...")["enabled"] is False
+        assert shortcuts.item("Import instrument...")["enabled"] is False
 
     def test_bringing_the_open_reconstruction_in_waits_for_one_to_be_open(
         self,

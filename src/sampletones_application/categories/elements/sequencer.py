@@ -72,6 +72,7 @@ class SequencerVoicesElements(AbstractElement):
     VOICES_TEXT = "voices_text"
     NEW_INSTRUMENT = "new_instrument"
     ADD_SAMPLE = "add_sample"
+    IMPORT_INSTRUMENT = "import_instrument"
     KIND_SAMPLE = "kind_sample"
     KIND_INSTRUMENT = "kind_instrument"
     COLUMN_KIND = "column_kind"
@@ -86,6 +87,11 @@ class SequencerVoicesElements(AbstractElement):
     CONTEXT_MOVE_DOWN = "context_move_down"
     CONTEXT_MOVE_TOP = "context_move_top"
     CONTEXT_MOVE_BOTTOM = "context_move_bottom"
+    OMISSION_PITCH = "omission_pitch"
+    OMISSION_HI_PITCH = "omission_hi_pitch"
+    OMISSION_RELEASE_POINT = "omission_release_point"
+    OMISSION_ARPEGGIO_MODE = "omission_arpeggio_mode"
+    OMISSION_SEQUENCE_LOOP_POINTS = "omission_sequence_loop_points"
 
 
 class SequencerHistoryElements(AbstractElement):

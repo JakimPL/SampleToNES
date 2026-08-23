@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Callable, Final, Optional
 
 import numpy as np
@@ -22,6 +23,8 @@ from sampletones_core.formats.famitracker.footprint import (
     features_footprint,
     reconstruction_footprints,
 )
+from sampletones_core.formats.famitracker.instrument import read_fti
+from sampletones_core.formats.famitracker.voice import ImportedVoice, instrument_to_voice
 from sampletones_core.generators.render import render_instructions
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.instrument import Instrument
@@ -86,8 +89,35 @@ class SequencerVoicesLogic(CallbackMixin):
     def add_sample(self, reconstruction: Reconstruction, name: str) -> Sample:
         return self._controller.add_sample(reconstruction, name)
 
-    def add_instrument(self, name: str) -> Instrument:
-        return self._controller.add_instrument(new_instrument(name))
+    def add_new_instrument(self, name: str) -> Instrument:
+        """Writes a fresh instrument into the pool, sustaining until its envelopes are edited."""
+        return self.add_instrument(new_instrument(name))
+
+    def add_instrument(self, instrument: Instrument) -> Instrument:
+        """Takes a whole instrument voice into the pool, whichever route made it."""
+        return self._controller.add_instrument(instrument)
+
+    def read_instrument(self, filepath: Path) -> ImportedVoice:
+        """Reads a FamiTracker instrument file as a voice, leaving the pool as it stands.
+
+        The file states the name the voice takes, and a file naming nothing leaves the voice
+        named after the file itself, so the list states where every voice came from.
+
+        Args:
+            filepath: The ``.fti`` file the voice is read from.
+
+        Returns:
+            ImportedVoice: The voice the file describes, beside what the file stated past it.
+
+        Raises:
+            FileNotFoundError: If no file stands at ``filepath``.
+            LoadInstrumentError: If the file departs from the instrument layout.
+        """
+        imported = instrument_to_voice(read_fti(filepath))
+        if not imported.voice.name:
+            imported.voice.name = filepath.stem
+
+        return imported
 
     def rename_voice(self, voice_id: str, name: str) -> None:
         self._controller.rename_voice(voice_id, name)

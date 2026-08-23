@@ -500,6 +500,12 @@ TAG_GLOBAL_DIALOG_PROJECT_UNSAVED = TagName(
     Widget.DIALOG,
     "project_unsaved",
 )
+TAG_GLOBAL_DIALOG_INSTRUMENT_IMPORTED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "instrument_imported",
+)
 TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -571,6 +577,12 @@ TAG_GLOBAL_MENU_ITEM_VOICE_ADD_SAMPLE = TagName(
     Panel.IMPLICIT,
     Widget.MENU,
     "item_voice_add_sample",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_IMPORT_INSTRUMENT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_import_instrument",
 )
 TAG_GLOBAL_MENU_ITEM_VOICE_ADD_TO_SEQUENCER = TagName(
     Page.GLOBAL,

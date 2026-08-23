@@ -659,6 +659,7 @@ class Application:
             add_reconstruction_to_sequencer=self._add_current_reconstruction_to_sequencer,
             new_instrument=self._add_instrument,
             add_sample_from_file=self._add_sample_from_file,
+            import_instrument=self._import_instrument,
             open_reconstruction_in_explorer=self._open_reconstruction_in_explorer,
             locate_original_audio=self._locate_original_audio,
             play=self._play,
@@ -1479,6 +1480,10 @@ class Application:
     def _add_sample_from_file(self) -> None:
         """Brings a reconstruction saved anywhere on disk into the pool as a sample."""
         self._sequencer_tab.add_sample_from_file()
+
+    def _import_instrument(self) -> None:
+        """Brings a FamiTracker instrument file into the pool as an instrument voice."""
+        self._sequencer_tab.import_instrument()
 
     def _play_from_start(self) -> None:
         self._playback_router.play_from_start()

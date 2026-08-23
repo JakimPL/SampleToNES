@@ -7,6 +7,7 @@ from sampletones_application.categories.elements.sequencer import (
     SequencerHistoryElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
+from sampletones_application.categories.instrument import InstrumentImportMessages
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
@@ -61,6 +62,7 @@ from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
+    TAG_GLOBAL_DIALOG_INSTRUMENT_IMPORTED,
     TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
     TAG_GLOBAL_TAB_SEQUENCER,
     TAG_GLOBAL_TABS,
@@ -128,13 +130,17 @@ from sampletones_application.view_model.shared.history import (
 )
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.formats.famitracker.voice import ImportedVoice
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.utils.display import display_id
-from sampletones_shared.exceptions import SampleToNESError
+from sampletones_shared.exceptions import LoadInstrumentError, SampleToNESError
 from sampletones_shared.logger import logger
-from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
+from sampletones_shared.paths.extensions import (
+    EXT_FILE_INSTRUMENT,
+    EXT_FILE_RECONSTRUCTION,
+)
 from sampletones_shared.types.callback import StringCallback, VoidCallback
 
 _UndoableParams = ParamSpec("_UndoableParams")
@@ -182,6 +188,7 @@ class SequencerTabCoordinator:
         self._language_manager = language_manager
         self._dialogs = dialogs
 
+        self._import_messages = InstrumentImportMessages.build(language_manager)
         self._msg_no_project = language_manager["global.dialog.message.no_project_open"]
         self._ttl_no_project = language_manager["global.dialog.title.no_project_open"]
         self._nes_frequency_change_acknowledged: bool = False
@@ -643,6 +650,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_voices_panel.on_new_instrument_requested = self.add_instrument
         self._sequencer_voices_panel.on_add_sample_requested = self.add_sample_from_file
+        self._sequencer_voices_panel.on_import_instrument_requested = self.import_instrument
 
     def add_instrument(self) -> None:
         """Appends a hand-written voice, named for the position it takes in the list.
@@ -658,7 +666,7 @@ class SequencerTabCoordinator:
             HistoryAction.ADD_INSTRUMENT,
             detail=self._history_detail.add_instrument(name),
         ):
-            self._sequencer_voices_logic.add_instrument(name)
+            self._sequencer_voices_logic.add_new_instrument(name)
 
     def add_sample_from_file(self) -> None:
         """Brings a reconstruction saved anywhere on disk into the pool as a sample.
@@ -684,6 +692,85 @@ class SequencerTabCoordinator:
     def _import_located_reconstruction(self, filepath: Path) -> None:
         self._session_manager.set_reconstruction_path(filepath.parent)
         self.import_reconstruction(filepath)
+
+    def import_instrument(self) -> None:
+        """Brings a FamiTracker instrument file into the pool as an instrument voice.
+
+        The file arrives through the system's own browser, which opens on the folder the last
+        instrument was written to or read from, so an export and the import that follows it meet
+        in one place. A project is asked for first, since a voice needs a pool to land in.
+        """
+        if not self._project_controller.is_open:
+            self._dialogs.show_info(
+                TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
+                self._msg_no_project,
+                self._ttl_no_project,
+            )
+            return
+
+        filepath = open_file_dialog(
+            title=self._language_manager["sequencer.voices.title.import_instrument_dialog"],
+            initial_directory=self._session_manager.get_instrument_path(),
+            filters=(
+                FileFilter.for_extensions(
+                    self._language_manager["global.dialog.filter.famitracker_instrument"],
+                    [EXT_FILE_INSTRUMENT],
+                ),
+            ),
+        )
+
+        self._import_located_instrument(filepath)
+
+    @ignore_none_path
+    def _import_located_instrument(self, filepath: Path) -> None:
+        """Reads a located instrument file into the pool, then reports what it held.
+
+        The file is read before the pool is touched, so a file the reader cannot use leaves the
+        project as it stands and the history without an entry.
+        """
+        self._session_manager.set_instrument_path(filepath.parent)
+        imported = self._read_instrument(filepath)
+        if imported is None:
+            return
+
+        with self._history.transaction(
+            HistoryAction.ADD_INSTRUMENT,
+            detail=self._history_detail.add_instrument(imported.voice.name),
+        ):
+            self._sequencer_voices_logic.add_instrument(imported.voice)
+
+        self._report_import(imported)
+
+    def _read_instrument(self, filepath: Path) -> Optional[ImportedVoice]:
+        """Reads an instrument file, reporting a file the reader cannot take as a voice.
+
+        Returns:
+            Optional[ImportedVoice]: The voice the file describes, or ``None`` once the failure
+            has been shown.
+        """
+        try:
+            return self._sequencer_voices_logic.read_instrument(filepath)
+        except FileNotFoundError as exception:
+            logger.error_with_traceback(exception, f"No instrument file at {filepath}")
+            self._dialogs.show_file_not_found(
+                filepath,
+                self._language_manager["sequencer.voices.message.instrument_not_found"],
+            )
+        except (LoadInstrumentError, OSError) as exception:
+            logger.error_with_traceback(exception, f"Failed to read an instrument from {filepath}")
+            self._dialogs.show_error(exception)
+
+        return None
+
+    def _report_import(self, imported: ImportedVoice) -> None:
+        """Names what the instrument file carried beyond the voice the pool took from it."""
+        notice = self._import_messages.notice(imported.voice.name, imported.omissions)
+        if notice is not None:
+            self._dialogs.show_info(
+                TAG_GLOBAL_DIALOG_INSTRUMENT_IMPORTED,
+                notice,
+                self._import_messages.title,
+            )
 
     def _wire_browser_callbacks(self) -> None:
         self._sequencer_browser_panel.set_collapse_handler(self._on_browser_collapse_changed)

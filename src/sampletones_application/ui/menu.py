@@ -60,6 +60,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     TAG_GLOBAL_MENU_ITEM_VOICE_ADD_SAMPLE,
     TAG_GLOBAL_MENU_ITEM_VOICE_ADD_TO_SEQUENCER,
+    TAG_GLOBAL_MENU_ITEM_VOICE_IMPORT_INSTRUMENT,
     TAG_GLOBAL_MENU_ITEM_VOICE_NEW_INSTRUMENT,
     TAG_GLOBAL_PANEL_PLAYER,
     TAG_GLOBAL_TEXT_MENU_FPS,
@@ -404,10 +405,11 @@ class MenuBar:
     def _create_voice_menu(self, state: MenuBarViewModel) -> None:
         """Builds the Voice menu: the ways a voice comes in, then what the chosen one offers.
 
-        A voice is written by hand, converted from a recording, or brought in from the
-        reconstruction the Reconstructions tab holds, and the three stand together here so the bar
-        answers "how do I get a voice in" on its own. The chosen voice's actions are a
-        :class:`MenuSection` the voices panel builds, the same set its row menu prints.
+        A voice is written by hand, converted from a recording, brought from a tracker's own
+        instrument file, or taken from the reconstruction the Reconstructions tab holds, and the
+        four stand together here so the bar answers "how do I get a voice in" on its own. The
+        chosen voice's actions are a :class:`MenuSection` the voices panel builds, the same set
+        its row menu prints.
         """
         with dpg.menu(
             label=self._label(MenuElements.GROUP_VOICE),
@@ -424,6 +426,12 @@ class MenuBar:
                 ShortcutId.ADD_SAMPLE_FROM_FILE,
                 tag=TAG_GLOBAL_MENU_ITEM_VOICE_ADD_SAMPLE,
                 label=self._voices_label(SequencerVoicesElements.ADD_SAMPLE),
+                enabled=state.project_open,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.IMPORT_INSTRUMENT,
+                tag=TAG_GLOBAL_MENU_ITEM_VOICE_IMPORT_INSTRUMENT,
+                label=self._voices_label(SequencerVoicesElements.IMPORT_INSTRUMENT),
                 enabled=state.project_open,
             )
             self._shortcut_manager.add_menu_item(
@@ -663,6 +671,10 @@ class MenuBar:
         )
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_VOICE_ADD_SAMPLE,
+            enabled=state.project_open,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_VOICE_IMPORT_INSTRUMENT,
             enabled=state.project_open,
         )
         dpg_configure_item(

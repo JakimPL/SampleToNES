@@ -38,6 +38,7 @@ bindings:
   # voice
   NewInstrument: {combination: ~}
   AddSampleFromFile: {combination: ~}
+  ImportInstrument: {combination: ~}
 
   # playback
   Play: {combination: "Space"}

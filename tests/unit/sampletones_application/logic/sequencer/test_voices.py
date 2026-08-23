@@ -1,7 +1,9 @@
-from typing import Callable, Tuple
+from pathlib import Path
+from typing import Callable, Dict, Tuple
 from unittest.mock import MagicMock
 
 import numpy as np
+import pytest
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
@@ -14,10 +16,19 @@ from sampletones_core.formats.famitracker.footprint import (
     features_footprint,
     reconstruction_footprints,
 )
+from sampletones_core.formats.famitracker.instrument import write_fti
+from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
+from sampletones_core.formats.famitracker.model.sequence import InstrumentSequence
+from sampletones_core.formats.famitracker.specification.instruments import (
+    STANDALONE_INSTRUMENT_INDEX,
+)
+from sampletones_core.formats.famitracker.specification.sequences import SequenceKind
+from sampletones_core.formats.famitracker.voice import InstrumentOmission
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_shared.exceptions import LoadInstrumentError
 from tests.suite.sequencer import sample_reconstruction
 
 
@@ -324,7 +335,7 @@ class TestInstrumentsInTheVoiceList:
     ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="bass")
-        instrument = logic.add_instrument("lead")
+        instrument = logic.add_new_instrument("lead")
 
         entries = logic.build_voices().voices
 
@@ -335,7 +346,7 @@ class TestInstrumentsInTheVoiceList:
 
     def test_an_instrument_is_measured_as_the_one_export_it_writes(self) -> None:
         controller, logic = _logic()
-        instrument = logic.add_instrument("lead")
+        instrument = logic.add_new_instrument("lead")
         controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15, 12, 9))
 
         footprint = logic.build_voice_footprint(instrument.id)
@@ -352,7 +363,7 @@ class TestInstrumentsInTheVoiceList:
 
     def test_an_instrument_previews_through_the_pulse_channel(self) -> None:
         controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
-        instrument = logic.add_instrument("lead")
+        instrument = logic.add_new_instrument("lead")
         controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15, 12))
 
         logic.play_voice(instrument.id)
@@ -367,3 +378,140 @@ class TestInstrumentsInTheVoiceList:
         logic.play_voice(instrument.id)
 
         audio_device_manager.play.assert_not_called()
+
+
+def _tracker_instrument(
+    name: str,
+    *sequences: InstrumentSequence,
+) -> Instrument2A03:
+    """A 2A03 instrument as a ``.fti`` holds one: every sequence stated, most of them empty."""
+    written: Dict[SequenceKind, InstrumentSequence] = {kind: InstrumentSequence(kind=kind) for kind in SequenceKind}
+    for sequence in sequences:
+        written[sequence.kind] = sequence
+
+    return Instrument2A03(
+        index=STANDALONE_INSTRUMENT_INDEX,
+        name=name,
+        sequences=written,
+    )
+
+
+def _instrument_file(
+    directory: Path,
+    filename: str,
+    name: str,
+    *sequences: InstrumentSequence,
+) -> Path:
+    filepath = directory / filename
+    write_fti(filepath, _tracker_instrument(name, *sequences))
+    return filepath
+
+
+class TestReadingAnInstrumentFile:
+    """A ``.fti`` FamiTracker wrote arrives as a voice the pool holds like any other."""
+
+    def test_the_envelopes_the_file_states_reach_the_voice(self, tmp_path: Path) -> None:
+        filepath = _instrument_file(
+            tmp_path,
+            "Lead.fti",
+            "Lead",
+            InstrumentSequence(kind=SequenceKind.VOLUME, items=(15, 8, 0)),
+            InstrumentSequence(kind=SequenceKind.ARPEGGIO, items=(0, 3, 7)),
+        )
+        _, logic = _logic()
+
+        voice = logic.read_instrument(filepath).voice
+
+        assert voice.envelopes.volume == (15, 8, 0)
+        assert voice.envelopes.arpeggio == (0, 3, 7)
+
+    def test_the_file_names_the_voice(self, tmp_path: Path) -> None:
+        filepath = _instrument_file(
+            tmp_path,
+            "whatever.fti",
+            "Lead",
+            InstrumentSequence(kind=SequenceKind.VOLUME, items=(15,)),
+        )
+        _, logic = _logic()
+
+        assert logic.read_instrument(filepath).voice.name == "Lead"
+
+    def test_a_file_naming_nothing_leaves_the_voice_named_after_it(self, tmp_path: Path) -> None:
+        """A nameless entry reads as nothing in the list, so the file it came from names it."""
+        filepath = _instrument_file(
+            tmp_path,
+            "Bass Line.fti",
+            "",
+            InstrumentSequence(kind=SequenceKind.VOLUME, items=(15,)),
+        )
+        _, logic = _logic()
+
+        assert logic.read_instrument(filepath).voice.name == "Bass Line"
+
+    def test_what_the_file_states_past_the_voice_comes_back_with_it(self, tmp_path: Path) -> None:
+        filepath = _instrument_file(
+            tmp_path,
+            "Lead.fti",
+            "Lead",
+            InstrumentSequence(kind=SequenceKind.VOLUME, items=(15, 8)),
+            InstrumentSequence(kind=SequenceKind.PITCH, items=(1, -1)),
+        )
+        _, logic = _logic()
+
+        assert InstrumentOmission.PITCH in logic.read_instrument(filepath).omissions
+
+    def test_reading_leaves_the_pool_as_it_stands(self, tmp_path: Path) -> None:
+        """The pool is edited by the gesture that adds, so a read alone records no history entry."""
+        filepath = _instrument_file(
+            tmp_path,
+            "Lead.fti",
+            "Lead",
+            InstrumentSequence(kind=SequenceKind.VOLUME, items=(15,)),
+        )
+        controller, logic = _logic()
+
+        logic.read_instrument(filepath)
+
+        assert list(controller.project.voices) == []
+
+    def test_the_voice_the_file_made_joins_the_pool(self, tmp_path: Path) -> None:
+        filepath = _instrument_file(
+            tmp_path,
+            "Lead.fti",
+            "Lead",
+            InstrumentSequence(kind=SequenceKind.VOLUME, items=(15,)),
+        )
+        controller, logic = _logic()
+
+        voice = logic.add_instrument(logic.read_instrument(filepath).voice)
+
+        assert [entry.voice_id for entry in logic.build_voices().voices] == [voice.id]
+        assert controller.project.voices.get(voice.id) is voice
+
+    def test_a_file_of_another_kind_is_refused(self, tmp_path: Path) -> None:
+        filepath = tmp_path / "notes.fti"
+        filepath.write_bytes(b"not an instrument file at all")
+        _, logic = _logic()
+
+        with pytest.raises(LoadInstrumentError):
+            logic.read_instrument(filepath)
+
+    def test_a_file_that_ends_inside_its_own_layout_is_refused(self, tmp_path: Path) -> None:
+        whole = _instrument_file(
+            tmp_path,
+            "Lead.fti",
+            "Lead",
+            InstrumentSequence(kind=SequenceKind.VOLUME, items=(15, 8, 0)),
+        )
+        truncated = tmp_path / "Short.fti"
+        truncated.write_bytes(whole.read_bytes()[:12])
+        _, logic = _logic()
+
+        with pytest.raises(LoadInstrumentError):
+            logic.read_instrument(truncated)
+
+    def test_a_file_that_is_not_there_is_reported_as_missing(self, tmp_path: Path) -> None:
+        _, logic = _logic()
+
+        with pytest.raises(FileNotFoundError):
+            logic.read_instrument(tmp_path / "nowhere.fti")

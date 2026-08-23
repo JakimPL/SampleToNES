@@ -145,6 +145,7 @@ def _panel(
     panel.on_move_requested = lambda voice_id, target: requests.moved.append((voice_id, target))
     panel.on_new_instrument_requested = lambda: requests.pool.append(SequencerVoicesElements.NEW_INSTRUMENT.value)
     panel.on_add_sample_requested = lambda: requests.pool.append(SequencerVoicesElements.ADD_SAMPLE.value)
+    panel.on_import_instrument_requested = lambda: requests.pool.append(SequencerVoicesElements.IMPORT_INSTRUMENT.value)
     monkeypatch.setattr(panel, "_start_rename", requests.renamed.append)
     return VoicesPanelFixture(panel=panel, requests=requests)
 
@@ -452,6 +453,7 @@ class TestThePoolItems:
         assert [widget.text for widget in build_recorder.widgets] == [
             SequencerVoicesElements.NEW_INSTRUMENT.value,
             SequencerVoicesElements.ADD_SAMPLE.value,
+            SequencerVoicesElements.IMPORT_INSTRUMENT.value,
         ]
 
     def test_a_row_menu_carries_the_pool_section_below_the_voice_actions(
@@ -464,11 +466,27 @@ class TestThePoolItems:
 
         items = [widget.text for widget in build_recorder.widgets if widget.kind == "item"]
 
-        assert items[-2:] == [
+        assert items[-3:] == [
             SequencerVoicesElements.NEW_INSTRUMENT.value,
             SequencerVoicesElements.ADD_SAMPLE.value,
+            SequencerVoicesElements.IMPORT_INSTRUMENT.value,
         ]
         assert SequencerVoicesElements.CONTEXT_EDIT.value in items
+
+    def test_each_item_prints_the_key_it_answers_to(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+    ) -> None:
+        """Every way a voice comes in is rebindable, so each item names the press that fires it."""
+        shortcuts = shipped_source()
+        _panel(monkeypatch).panel.add_pool_items()
+
+        assert [item.shortcut for item in recorder.items] == [
+            shortcuts.display(ShortcutId.NEW_INSTRUMENT),
+            shortcuts.display(ShortcutId.ADD_SAMPLE_FROM_FILE),
+            shortcuts.display(ShortcutId.IMPORT_INSTRUMENT),
+        ]
 
     def test_the_items_ask_for_a_written_voice_and_for_a_located_one(
         self,
@@ -484,6 +502,7 @@ class TestThePoolItems:
         assert fixture.requests.pool == [
             SequencerVoicesElements.NEW_INSTRUMENT.value,
             SequencerVoicesElements.ADD_SAMPLE.value,
+            SequencerVoicesElements.IMPORT_INSTRUMENT.value,
         ]
 
 
