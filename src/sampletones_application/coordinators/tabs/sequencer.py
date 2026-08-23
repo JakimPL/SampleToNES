@@ -89,6 +89,9 @@ from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderP
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
 from sampletones_application.ui.panels.sequencer.voices import GUISequencerVoicesPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.utils.file_dialogs.api import open_file_dialog
+from sampletones_application.utils.file_dialogs.filter import FileFilter
+from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.clipboard import (
     SystemTextClipboard,
     TextClipboard,
@@ -131,6 +134,7 @@ from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.utils.display import display_id
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from sampletones_shared.types.callback import StringCallback, VoidCallback
 
 _UndoableParams = ParamSpec("_UndoableParams")
@@ -638,12 +642,14 @@ class SequencerTabCoordinator:
             detail=self._history_detail.duplicate_voice,
         )
         self._sequencer_voices_panel.on_new_shape_requested = self._add_shape
+        self._sequencer_voices_panel.on_add_sample_requested = self._add_sample_from_file
 
     def _add_shape(self) -> None:
         """Appends a hand-written voice, named for the position it takes in the list.
 
-        A shape opens with no envelope, so it is the reader's to write; naming it by its position
-        gives the list a readable entry until they rename it.
+        A shape arrives sustaining at full volume, so it plays as soon as it is placed and the
+        envelopes stay the reader's to write; naming it by its position gives the list a readable
+        entry until they rename it.
         """
         name = self._language_manager["sequencer.voices.template.shape_name"].format(
             position=display_id(self._project_controller.voice_count),
@@ -653,6 +659,31 @@ class SequencerTabCoordinator:
             detail=self._history_detail.add_shape(name),
         ):
             self._sequencer_voices_logic.add_shape(name)
+
+    def _add_sample_from_file(self) -> None:
+        """Brings a reconstruction saved anywhere on disk into the pool as a sample.
+
+        The tree beside the list reaches the reconstructions folder, so a file kept elsewhere
+        arrives through the system's own browser, which opens on the folder the last one came
+        from.
+        """
+        filepath = open_file_dialog(
+            title=self._language_manager["sequencer.voices.title.add_sample_dialog"],
+            initial_directory=self._session_manager.get_reconstruction_path(),
+            filters=(
+                FileFilter.for_extensions(
+                    self._language_manager["global.dialog.filter.reconstruction"],
+                    [EXT_FILE_RECONSTRUCTION],
+                ),
+            ),
+        )
+
+        self._import_located_reconstruction(filepath)
+
+    @ignore_none_path
+    def _import_located_reconstruction(self, filepath: Path) -> None:
+        self._session_manager.set_reconstruction_path(filepath.parent)
+        self.import_reconstruction(filepath)
 
     def _wire_browser_callbacks(self) -> None:
         self._sequencer_browser_panel.set_collapse_handler(self._on_browser_collapse_changed)

@@ -17,6 +17,7 @@ from sampletones_application.view_model.shared.footprint import SampleFootprintV
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
 from sampletones_core.utils.display import display_voice_label
+from sampletones_shared.types.callback import VoidCallback
 from tests.suite.shortcuts import shipped_source
 
 ENTRIES: Tuple[VoiceEntryViewModel, ...] = (
@@ -43,6 +44,8 @@ FOOTPRINT = SampleFootprintViewModel.from_footprints(
         ChannelName.NOISE: NOISE_FOOTPRINT,
     }
 )
+
+RIGHT_BUTTON = 1
 
 EDIT_ITEM = 0
 RENAME_ITEM = 1
@@ -73,6 +76,7 @@ class Requests:
     duplicated: List[str] = field(default_factory=list)
     removed: List[str] = field(default_factory=list)
     moved: List[Tuple[str, Optional[int]]] = field(default_factory=list)
+    pool: List[str] = field(default_factory=list)
 
 
 class _MenuRecorder:
@@ -125,6 +129,7 @@ def _panel(
     panel._selected_voice_id = None if selected_row is None else SELECTED_ID
     panel._selected_row = selected_row
     panel._editing_voice_id = editing
+    panel._list_menu_pending = False
     panel._tab_active = lambda: tab_active
     panel._router = _Router(field_focused=field_focused)
     panel._detail_color = DETAIL_COLOR
@@ -138,6 +143,8 @@ def _panel(
     panel.on_duplicate_requested = requests.duplicated.append
     panel.on_remove_requested = requests.removed.append
     panel.on_move_requested = lambda voice_id, target: requests.moved.append((voice_id, target))
+    panel.on_new_shape_requested = lambda: requests.pool.append(SequencerVoicesElements.NEW_SHAPE.value)
+    panel.on_add_sample_requested = lambda: requests.pool.append(SequencerVoicesElements.ADD_SAMPLE.value)
     monkeypatch.setattr(panel, "_start_rename", requests.renamed.append)
     return VoicesPanelFixture(panel=panel, requests=requests)
 
@@ -194,6 +201,17 @@ class _MenuBuildRecorder:
 @contextlib.contextmanager
 def _null_menu() -> Iterator[None]:
     yield
+
+
+def _deferred_calls(monkeypatch: pytest.MonkeyPatch) -> List[VoidCallback]:
+    """The callbacks handed to the next frame, which is where the list's menu waits."""
+    deferred: List[VoidCallback] = []
+    monkeypatch.setattr(
+        voices_module.FrameCallbackManager,
+        "set_frame_callback",
+        lambda callback: deferred.append(callback),
+    )
+    return deferred
 
 
 @pytest.fixture
@@ -388,3 +406,101 @@ class TestEditActions:
         _panel(monkeypatch, selected_row=None).panel.build_edit_actions()
 
         assert recorder.items == []
+
+
+class TestThePoolItems:
+    """Every door onto the list offers the ways a voice comes in, so adding one is never hidden."""
+
+    def test_the_list_menu_prints_the_ways_a_voice_comes_in(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        build_recorder: _MenuBuildRecorder,
+    ) -> None:
+        fixture = _panel(monkeypatch)
+        fixture.panel._list_menu_pending = True
+
+        fixture.panel._show_list_menu()
+
+        assert [widget.text for widget in build_recorder.widgets] == [
+            SequencerVoicesElements.NEW_SHAPE.value,
+            SequencerVoicesElements.ADD_SAMPLE.value,
+        ]
+
+    def test_a_row_menu_carries_the_pool_section_below_the_voice_actions(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        build_recorder: _MenuBuildRecorder,
+    ) -> None:
+        """A row is where a reader already is, so the list's own offers stay within reach there."""
+        _panel(monkeypatch).panel._show_context_menu(SELECTED_ROW, SELECTED_ID)
+
+        items = [widget.text for widget in build_recorder.widgets if widget.kind == "item"]
+
+        assert items[-2:] == [
+            SequencerVoicesElements.NEW_SHAPE.value,
+            SequencerVoicesElements.ADD_SAMPLE.value,
+        ]
+        assert SequencerVoicesElements.CONTEXT_EDIT.value in items
+
+    def test_the_items_ask_for_a_written_voice_and_for_a_located_one(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+    ) -> None:
+        fixture = _panel(monkeypatch)
+        fixture.panel.add_pool_items()
+
+        for item in recorder.items:
+            item.callback()
+
+        assert fixture.requests.pool == [
+            SequencerVoicesElements.NEW_SHAPE.value,
+            SequencerVoicesElements.ADD_SAMPLE.value,
+        ]
+
+
+class TestWhichDoorAnswersAPress:
+    """The list and the row are offered the same press, the list first, so one of them answers it."""
+
+    def test_a_press_on_the_list_holds_its_menu_for_a_frame(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        fixture = _panel(monkeypatch)
+        deferred = _deferred_calls(monkeypatch)
+        monkeypatch.setattr(fixture.panel, "_pointer_within_list", lambda: True)
+
+        fixture.panel._on_list_right_clicked(0, RIGHT_BUTTON)
+
+        assert fixture.panel._list_menu_pending
+        assert deferred == [fixture.panel._show_list_menu]
+
+    def test_a_row_claiming_the_press_leaves_the_list_menu_unbuilt(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        build_recorder: _MenuBuildRecorder,
+    ) -> None:
+        fixture = _panel(monkeypatch)
+        _deferred_calls(monkeypatch)
+        monkeypatch.setattr(fixture.panel, "_pointer_within_list", lambda: True)
+        monkeypatch.setattr(fixture.panel, "_show_context_menu", lambda _position, _voice_id: None)
+        monkeypatch.setattr(voices_module.dpg, "get_item_user_data", lambda _item: (SELECTED_ROW, SELECTED_ID))
+
+        fixture.panel._on_list_right_clicked(0, RIGHT_BUTTON)
+        fixture.panel._on_sample_clicked(0, (RIGHT_BUTTON, 0))
+        fixture.panel._show_list_menu()
+
+        assert build_recorder.widgets == []
+
+    def test_a_press_beyond_the_list_asks_for_no_menu(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        fixture = _panel(monkeypatch)
+        deferred = _deferred_calls(monkeypatch)
+        monkeypatch.setattr(fixture.panel, "_pointer_within_list", lambda: False)
+
+        fixture.panel._on_list_right_clicked(0, RIGHT_BUTTON)
+
+        assert not fixture.panel._list_menu_pending
+        assert deferred == []

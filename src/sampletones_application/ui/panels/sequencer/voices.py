@@ -12,8 +12,9 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
+from sampletones_application.tags.general import SUF_HANDLER_LIST, SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
+    TAG_SEQUENCER_VOICES_BUTTON_NEW_SHAPE,
     TAG_SEQUENCER_VOICES_INPUT_RENAME,
     TAG_SEQUENCER_VOICES_PANEL,
     TAG_SEQUENCER_VOICES_TABLE,
@@ -29,7 +30,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import dpg_delete_children
+from sampletones_application.utils.gui.dpg import dpg_delete_children, dpg_pointer_within_window
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
@@ -112,6 +113,8 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._shortcuts = shortcut_source
         self._row_handler_tag = compose_tag(TAG_SEQUENCER_VOICES_TABLE, SUF_HANDLER_REGISTRY)
         self._rename_handler_tag = compose_tag(TAG_SEQUENCER_VOICES_INPUT_RENAME, SUF_HANDLER_REGISTRY)
+        self._list_handler_tag = compose_tag(TAG_SEQUENCER_VOICES_WINDOW, SUF_HANDLER_LIST)
+        self._list_menu_pending = False
         self._selected_voice_id: Optional[str] = None
         self._selected_row: Optional[int] = None
         self._editing_voice_id: Optional[str] = None
@@ -132,6 +135,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         self.on_rename_committed: Optional[Callable[[str, str], None]] = None
         self.on_duplicate_requested: Optional[StringCallback] = None
         self.on_new_shape_requested: Optional[VoidCallback] = None
+        self.on_add_sample_requested: Optional[VoidCallback] = None
 
         super().__init__(
             tag=TAG_SEQUENCER_VOICES_PANEL,
@@ -150,6 +154,7 @@ class GUISequencerVoicesPanel(GUIPanel):
             self._create_voices_table()
 
         self._create_row_handlers()
+        self._create_list_handler()
         self._create_rename_handler()
         self._create_key_handler()
 
@@ -157,6 +162,14 @@ class GUISequencerVoicesPanel(GUIPanel):
         with dpg.item_handler_registry(tag=self._row_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_sample_clicked)
             dpg.add_item_double_clicked_handler(callback=self._on_sample_double_clicked)
+
+    def _create_list_handler(self) -> None:
+        """Answers a press that lands on the list itself rather than on one of its rows."""
+        with dpg.handler_registry(tag=self._list_handler_tag):
+            dpg.add_mouse_click_handler(
+                button=dpg.mvMouseButton_Right,
+                callback=self._on_list_right_clicked,
+            )
 
     def _create_rename_handler(self) -> None:
         with dpg.item_handler_registry(tag=self._rename_handler_tag):
@@ -172,6 +185,7 @@ class GUISequencerVoicesPanel(GUIPanel):
     def _create_new_shape_button(self) -> None:
         """Offers a hand-written voice, which is the one kind no browser brings in."""
         button = dpg.add_button(
+            tag=TAG_SEQUENCER_VOICES_BUTTON_NEW_SHAPE,
             label=self._label(self._language_manager, SequencerVoicesElements.NEW_SHAPE),
             width=-1,
             callback=lambda: self.call(self.on_new_shape_requested),
@@ -592,7 +606,45 @@ class GUISequencerVoicesPanel(GUIPanel):
             return
 
         position, voice_id = user_data
+        self._list_menu_pending = False
         self._show_context_menu(position, voice_id)
+
+    def _on_list_right_clicked(
+        self,
+        _sender: Sender,
+        _app_data: int,
+    ) -> None:
+        """Raises the list's own menu a frame later, leaving a row that answers the press first.
+
+        Both doors are offered the same press, the list before the row, so the menu the list
+        would raise waits a frame: a row landed on claims the press in the meantime and states
+        the voice it holds, and an empty stretch of the list leaves the claim unmade.
+        """
+        if not self._pointer_within_list():
+            return
+
+        self._list_menu_pending = True
+        FrameCallbackManager.set_frame_callback(self._show_list_menu)
+
+    def _pointer_within_list(self) -> bool:
+        """Whether the pointer stands over the voice list.
+
+        The button above the list is laid out in the card that holds them both, so where the
+        button was drawn places the list on screen as well.
+        """
+        return dpg_pointer_within_window(
+            TAG_SEQUENCER_VOICES_WINDOW,
+            TAG_SEQUENCER_VOICES_BUTTON_NEW_SHAPE,
+        )
+
+    def _show_list_menu(self) -> None:
+        """Prints the ways a voice comes in, for a press the list answered."""
+        if not self._list_menu_pending:
+            return
+
+        self._list_menu_pending = False
+        with context_menu():
+            self.add_pool_items()
 
     def _entry_for(self, voice_id: str) -> Optional[VoiceEntryViewModel]:
         return next((entry for entry in self._entries if entry.voice_id == voice_id), None)
@@ -626,6 +678,8 @@ class GUISequencerVoicesPanel(GUIPanel):
             )
             dpg.add_separator()
             self.add_action_items(target)
+            dpg.add_separator()
+            self.add_pool_items()
 
     def _footprint_items(self, voice_id: str) -> List[Tuple[str, str]]:
         """The byte figures the menu prints for a sample: its total, then each channel that plays.
@@ -667,6 +721,29 @@ class GUISequencerVoicesPanel(GUIPanel):
         selection = self.selection
         if selection is not None:
             self.add_action_items(selection)
+
+    def add_pool_items(self) -> None:
+        """Builds the ways a voice comes into the pool, in the order each menu prints them.
+
+        A voice is written by hand or converted from a recording, and both stand apart from the
+        actions a listed voice offers, since each answers with an entry the list did not hold.
+        Every door onto the list prints this section, so a reader reaches it from the list and
+        from a row alike.
+        """
+        dpg.add_menu_item(
+            label=self._label(
+                self._language_manager,
+                SequencerVoicesElements.NEW_SHAPE,
+            ),
+            callback=lambda: self.call(self.on_new_shape_requested),
+        )
+        dpg.add_menu_item(
+            label=self._label(
+                self._language_manager,
+                SequencerVoicesElements.ADD_SAMPLE,
+            ),
+            callback=lambda: self.call(self.on_add_sample_requested),
+        )
 
     def add_action_items(self, target: VoiceSelection) -> None:
         """Builds every action a sample offers, in the order each menu prints them.

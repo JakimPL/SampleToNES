@@ -732,6 +732,7 @@ SUF_HANDLER_NODE = compose_tag("handler", "node")
 SUF_HANDLER_DETAIL_TOOLTIP = compose_tag("handler", "detail_tooltip")
 SUF_HANDLER_HEADER = compose_tag("handler", "header")
 SUF_HANDLER_DRAG = compose_tag("handler", "drag")
+SUF_HANDLER_LIST = compose_tag("handler", "list")
 SUF_LABEL = "label"
 SUF_PATH = "path"
 SUF_TEXT = "text"
