@@ -86,6 +86,28 @@ class TestSampleName:
         assert logic.voice_name(sample.id) == "lead"
 
 
+class TestWhichKindAVoiceIs:
+    def test_a_recording_answers_as_a_sample(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        controller, logic = _logic()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+
+        assert logic.voice_kind(sample.id) is VoiceKind.SAMPLE
+
+    def test_a_written_voice_answers_as_an_instrument(self) -> None:
+        controller, logic = _logic()
+        instrument = controller.add_instrument(Instrument(name="pad"))
+
+        assert logic.voice_kind(instrument.id) is VoiceKind.INSTRUMENT
+
+    def test_a_voice_the_pool_does_not_hold_answers_with_nothing(self) -> None:
+        _, logic = _logic()
+
+        assert logic.voice_kind("a-voice-no-project-holds") is None
+
+
 class TestIsSampleUsed:
     def test_false_for_unreferenced_sample(
         self,

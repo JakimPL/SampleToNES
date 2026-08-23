@@ -1478,10 +1478,7 @@ class SequencerTabCoordinator:
         """Applies an inline rename, ignoring a blank name so the sample keeps its current one."""
         stripped = name.strip()
         if stripped:
-            detail = self._history_detail.rename_voice(
-                self._sequencer_voices_logic.voice_name(voice_id),
-                stripped,
-            )
+            detail = self._history_detail.rename_voice(voice_id, stripped)
             with self._history.transaction(
                 HistoryAction.RENAME_SAMPLE,
                 detail=detail,

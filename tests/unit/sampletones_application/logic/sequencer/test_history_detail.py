@@ -26,7 +26,9 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetailWordSegment,
 )
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from tests.suite.sequencer import sample_reconstruction
+from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.utils.display import display_id
+from tests.suite.sequencer import UNKNOWN_SAMPLE_ID, sample_reconstruction
 
 Pair = Tuple[str, HistoryDetailRole]
 
@@ -305,11 +307,11 @@ class TestOrderDetails:
         ]
 
 
-class TestSampleDetails:
+class TestVoiceDetails:
     def test_add_sample_shows_the_name(self) -> None:
         formatter = _formatter(_controller())
 
-        assert _pairs(formatter.add_sample("Bass")) == [("Bass", HistoryDetailRole.NAME)]
+        assert _pairs(formatter.add_sample("Bass")) == [("Bass", HistoryDetailRole.SAMPLE)]
 
     def test_remove_sample_shows_position_and_name(self) -> None:
         controller = _controller()
@@ -318,7 +320,7 @@ class TestSampleDetails:
 
         assert _pairs(formatter.remove_voice(sample.id)) == [
             ("00:", HistoryDetailRole.SAMPLE),
-            ("Bass", HistoryDetailRole.NAME),
+            ("Bass", HistoryDetailRole.SAMPLE),
         ]
 
     def test_replace_sample_shows_position_and_both_names(self) -> None:
@@ -328,18 +330,20 @@ class TestSampleDetails:
 
         assert _pairs(formatter.replace_sample(sample.id, "Kick")) == [
             ("00:", HistoryDetailRole.SAMPLE),
-            ("Bass", HistoryDetailRole.NAME),
+            ("Bass", HistoryDetailRole.SAMPLE),
             (">", HistoryDetailRole.SEPARATOR),
-            ("Kick", HistoryDetailRole.NAME),
+            ("Kick", HistoryDetailRole.SAMPLE),
         ]
 
     def test_rename_sample_shows_old_and_new(self) -> None:
-        formatter = _formatter(_controller())
+        controller = _controller()
+        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
+        formatter = _formatter(controller)
 
-        assert _pairs(formatter.rename_voice("Bass", "Kick")) == [
-            ("Bass", HistoryDetailRole.NAME),
+        assert _pairs(formatter.rename_voice(sample.id, "Kick")) == [
+            ("Bass", HistoryDetailRole.SAMPLE),
             (">", HistoryDetailRole.SEPARATOR),
-            ("Kick", HistoryDetailRole.NAME),
+            ("Kick", HistoryDetailRole.SAMPLE),
         ]
 
     def test_move_sample_shows_source_position_and_destination(self) -> None:
@@ -375,6 +379,64 @@ class TestSampleDetails:
         formatter = _formatter(_controller())
 
         assert _pairs(formatter.value(150)) == [("150", HistoryDetailRole.VALUE)]
+
+
+class TestWhichKindADetailNames:
+    """A line about the pool reads in the colour of the kind of voice it is about."""
+
+    def test_a_written_voice_is_added_under_its_own_kind(self) -> None:
+        formatter = _formatter(_controller())
+
+        assert _pairs(formatter.add_instrument("Pad")) == [("Pad", HistoryDetailRole.INSTRUMENT)]
+
+    def test_a_written_voice_is_removed_under_its_own_kind(self) -> None:
+        controller = _controller()
+        controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        assert _pairs(formatter.remove_voice(instrument.id)) == [
+            ("01:", HistoryDetailRole.INSTRUMENT),
+            ("Pad", HistoryDetailRole.INSTRUMENT),
+        ]
+
+    def test_a_written_voice_is_renamed_under_its_own_kind(self) -> None:
+        controller = _controller()
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        assert _pairs(formatter.rename_voice(instrument.id, "Strings")) == [
+            ("Pad", HistoryDetailRole.INSTRUMENT),
+            (">", HistoryDetailRole.SEPARATOR),
+            ("Strings", HistoryDetailRole.INSTRUMENT),
+        ]
+
+    def test_the_kinds_read_apart_where_one_gesture_serves_both(self) -> None:
+        """Moving is one gesture over the whole pool, so its line says which kind moved."""
+        controller = _controller()
+        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        assert formatter.move_voice(sample.id, 1)[0].role is HistoryDetailRole.SAMPLE
+        assert formatter.move_voice(instrument.id, 0)[0].role is HistoryDetailRole.INSTRUMENT
+
+    def test_a_placed_voice_names_its_kind_in_the_tracker(self) -> None:
+        controller = _controller()
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        segments = formatter.edit_row(0, ChannelName.PULSE2, instrument.id, None, None)
+
+        assert _pairs(segments)[-1] == ("00", HistoryDetailRole.INSTRUMENT)
+
+    def test_a_voice_the_pool_no_longer_holds_keeps_the_plain_role(self) -> None:
+        """An id nothing answers for states no kind, so it reads as the voice slot itself does."""
+        formatter = _formatter(_controller())
+
+        segments = formatter.edit_row(0, ChannelName.PULSE1, UNKNOWN_SAMPLE_ID, None, None)
+
+        assert _pairs(segments)[-1] == (display_id(None), HistoryDetailRole.VOICE)
 
 
 class TestReconstructionDetails:

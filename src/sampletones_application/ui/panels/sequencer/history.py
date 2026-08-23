@@ -343,8 +343,10 @@ class GUISequencerHistoryPanel(GUIPanel):
                 return text.volume
             case HistoryDetailRole.VALUE:
                 return roles.value
-            case HistoryDetailRole.SAMPLE | HistoryDetailRole.NAME:
+            case HistoryDetailRole.SAMPLE:
                 return text.sample
+            case HistoryDetailRole.INSTRUMENT:
+                return text.instrument
             case HistoryDetailRole.FEATURE_VOLUME:
                 return self._feature_colors.volume
             case HistoryDetailRole.FEATURE_ARPEGGIO:

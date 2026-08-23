@@ -9,7 +9,10 @@ class HistoryDetailRole(StrEnum):
 
     A role is a semantic tag chosen by the logic layer; the panel maps it to a
     concrete colour, keeping the detail-producing code free of any visual
-    concern.
+    concern. Three of them read a voice: ``SAMPLE`` and ``INSTRUMENT`` name the
+    kind a line is about, so its position and its name wear that kind's colour,
+    and ``VOICE`` carries a voice reference the kind says nothing about — the
+    tracker's voice slot, and a voice the pool has stopped holding.
     """
 
     FRAME = "frame"
@@ -20,7 +23,7 @@ class HistoryDetailRole(StrEnum):
     VOLUME = "volume"
     VALUE = "value"
     SAMPLE = "sample"
-    NAME = "name"
+    INSTRUMENT = "instrument"
     FEATURE_VOLUME = "feature_volume"
     FEATURE_ARPEGGIO = "feature_arpeggio"
     FEATURE_PITCH = "feature_pitch"
