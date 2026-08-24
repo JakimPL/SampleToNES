@@ -29,7 +29,9 @@ from sampletones_application.logic.sequencer.clipboard import (
     SequencerClipboard,
     TrackerBlockText,
 )
-from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
+from sampletones_application.logic.sequencer.history_detail import (
+    SequencerHistoryDetail,
+)
 from sampletones_application.logic.sequencer.order import (
     OrderBlockReader,
     OrderBlockWriter,
@@ -56,7 +58,10 @@ from sampletones_application.view_model.sequencer.region import (
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_application.view_model.sequencer.voices import VoiceKind, VoiceSelection
+from sampletones_application.view_model.sequencer.voices import (
+    VoiceKind,
+    VoiceSelection,
+)
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
@@ -522,7 +527,7 @@ def _playhead(frame_index: int, row_index: int) -> SongPosition:
 
 
 def _player_view(*, follow_mode: FollowMode) -> SongPlayerViewModel:
-    """A stopped transport view, which is what the coordinator reads the follow behaviour from."""
+    """A stopped transport view, which is what the coordinator reads the follow behavior from."""
     return SongPlayerViewModel(
         is_loaded=True,
         is_playing=False,

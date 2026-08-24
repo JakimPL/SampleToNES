@@ -15,7 +15,7 @@ def collapse_single_child_containers(node: TreeNode) -> None:
     into groups as soon as a second configuration arrives.
 
     The row that survives keeps its node type, its path, its configuration and its children, so its
-    click behaviour, theme, context menu and favorite star carry over from before the fold. The two
+    click behavior, theme, context menu and favorite star carry over from before the fold. The two
     branch roots stay in place, since each names a way of reading the whole tree, and a folder the disk
     holds stays a folder of its own, since the configuration branch mirrors the disk.
     """

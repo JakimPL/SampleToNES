@@ -18,7 +18,7 @@ def pytest_ignore_collect(collection_path: Path) -> Optional[bool]:
     Keeps collection to the modules the running platform imports.
 
     ``jeepney`` is declared for Linux alone, so what speaks to the desktop portal is collected
-    where that library is installed. The behaviour those modules describe belongs to the Linux
+    where that library is installed. The behavior those modules describe belongs to the Linux
     desktop, and the Linux runs of the suite cover it.
 
     Args:

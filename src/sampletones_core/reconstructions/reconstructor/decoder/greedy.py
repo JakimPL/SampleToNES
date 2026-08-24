@@ -8,7 +8,7 @@ class GreedyDecoder(Decoder):
     Plays each frame's best candidate, so every frame stands on its own.
 
     Reading one candidate per frame makes the frame's own cost the whole decision, which is
-    the classic behaviour: what the matching ranked first is what the channel plays.
+    the classic behavior: what the matching ranked first is what the channel plays.
     """
 
     @property

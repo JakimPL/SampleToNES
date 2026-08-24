@@ -5,7 +5,10 @@ import pytest
 
 from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.input.target import TrackerTarget
-from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
+from sampletones_application.ui.panels.sequencer.input.tracker import (
+    TrackerCursor,
+    TrackerInputState,
+)
 from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.voices import (
@@ -33,7 +36,7 @@ def _panel() -> tracker_module.GUISequencerTrackerPanel:
 
     The menu-dispatch methods touch only their hook attributes, the context
     labels, the keys each item prints, and ``CallbackMixin.call``, so a fully
-    wired GUI context is unnecessary here. Labels carry no behaviour, so any
+    wired GUI context is unnecessary here. Labels carry no behavior, so any
     placeholder text serves.
     """
     panel = tracker_module.GUISequencerTrackerPanel.__new__(tracker_module.GUISequencerTrackerPanel)

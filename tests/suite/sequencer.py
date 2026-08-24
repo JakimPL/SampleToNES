@@ -79,7 +79,7 @@ def render_frame(tracker_logic: SequencerTrackerLogic) -> Tuple[str, ...]:
     """Every row of the frame shown, each read as the four channel cells the grid draws.
 
     A row is written the way it appears on screen, so an expectation and a screenshot read alike.
-    The sample column is left out because it holds nothing of its own: it summarises these four,
+    The sample column is left out because it holds nothing of its own: it summarizes these four,
     and stating it again would pin the summary rather than what a gesture wrote.
     """
     grid = tracker_logic.build_grid()
@@ -105,7 +105,7 @@ def render_order(order_logic: SequencerOrderLogic) -> Tuple[str, ...]:
     """Every channel's row of the order, each read as the pattern indices the table draws.
 
     A row is written the way it appears on screen, so an expectation and a screenshot read alike.
-    The master row is left out because it holds nothing of its own: it summarises these four, and
+    The master row is left out because it holds nothing of its own: it summarizes these four, and
     stating it again would pin the summary rather than what a gesture wrote.
     """
     view_model = order_logic.build_order()

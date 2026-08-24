@@ -31,7 +31,7 @@ reconstruction. It is written to be read without the source code.
 
 - [Reconstruction algorithms](concepts/reconstruction.md) — how a sample becomes a stream of NES instructions.
 - [Stems reconstruction](concepts/stems.md) — how one reconstruction is assigned across several stems.
-- [Instruction library](concepts/instruction-library.md) — the catalogue of NES sounds the search draws from.
+- [Instruction library](concepts/instruction-library.md) — the catalog of NES sounds the search draws from.
 - [Song compression](concepts/compression.md) — how a whole song is fitted into the space an NES program has for it.
 - [Project](concepts/project.md) — a whole composition: a song and the reconstructions it is built from.
 - [Calibration](concepts/calibration.md) — how the reconstruction's settings are tuned by experiment.
@@ -40,7 +40,7 @@ reconstruction. It is written to be read without the source code.
 
 The [**formats**](formats/) section documents the files _SampleToNES_ reads and writes.
 
-- [Instruction libraries](formats/instruction-libraries.md) — the `.ins` candidate catalogue.
+- [Instruction libraries](formats/instruction-libraries.md) — the `.ins` candidate catalog.
 - [Reconstructions](formats/reconstructions.md) — the `.stn` reconstruction data.
 - [Projects](formats/projects.md) — the `.stp` project bundle.
 - [FamiTracker export](formats/famitracker.md) — the `.fti` instrument and `.ftm` module formats.

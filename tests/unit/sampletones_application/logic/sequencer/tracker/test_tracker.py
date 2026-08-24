@@ -630,7 +630,7 @@ class TestWhatTheSampleColumnPlaces:
 
 
 class TestWhatTheSampleColumnReads:
-    """The column summarises what its own kind of voice put on the row."""
+    """The column summarizes what its own kind of voice put on the row."""
 
     def test_an_instrument_alone_leaves_the_column_empty(self) -> None:
         controller = _controller()

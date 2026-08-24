@@ -2,7 +2,7 @@
 
 _SampleToNES_ is one window: a menu bar at the top, four tabs, and a status bar
 at the bottom. Each tab works left to right — pick something on the left, set it
-up in the centre, refine it on the right.
+up in the center, refine it on the right.
 
 This page covers the **Main**, **Instructions**, and **Reconstructions** tabs
 and the menus around them. The **Sequencer** has [its own page](sequencer.md).
@@ -13,7 +13,7 @@ The **Main** tab turns an audio file into a
 [reconstruction](../concepts/reconstruction.md). Most sessions start here.
 
 Pick an audio file — or a whole folder — in the **Filesystem** browser on the
-left, set up the conversion in the centre, and click **Convert sample** (or
+left, set up the conversion in the center, and click **Convert sample** (or
 **Convert directory** for a folder). The browser reopens the folders you were
 last working in, and **Collapse all** folds them away again. The [instruction
 library](../concepts/instruction-library.md) your settings need is built the
@@ -41,7 +41,7 @@ inside it, as **Add folder as stems** does; if the folder holds more recordings
 than the list has room for, you pick which ones.
 
 Each row shows one recording and a checkbox per channel it may use. Untick them
-all and the row greys out: that recording sits out of the conversion, and stays
+all and the row grays out: that recording sits out of the conversion, and stays
 in the list so you can bring it back.
 
 Rows sit in **level** bands. A level is a turn to choose: every recording on
@@ -113,7 +113,7 @@ a box at the front that moves all of them at once. Untick one and those frames
 go silent everywhere: in the waveform, in playback, in the original audio, and
 in a WAV export. That is how you hear what each recording contributed, channel
 by channel. A channel you have switched off under the waveform shows its column
-greyed, and your ticks stay where you put them.
+grayed, and your ticks stay where you put them.
 
 Click a row to show its recording in your file browser, and tick **Collapse
 levels** to read the whole list as one table. These ticks last for the session:
@@ -122,7 +122,7 @@ saving records which recording owns which frame, not what you were listening to.
 **x** at the end of a row removes the recording from the reconstruction for
 good, so the app asks first. Its frames go silent and its row disappears, and
 the rest play as they did. One recording always stays, so the last row's **x**
-is greyed out.
+is grayed out.
 
 ### Exporting
 
@@ -171,7 +171,7 @@ can hear a single NES tone on its own.
 
 **Generate library** builds the library for the current settings; if one already
 exists, _SampleToNES_ asks **Regenerate library?** first. **Cancel generation**
-stops it, **Refresh instructions data** re-reads the catalogue, and selecting an
+stops it, **Refresh instructions data** re-reads the catalog, and selecting an
 entry in the **Libraries** tree loads it.
 
 ## Around the app
@@ -180,11 +180,17 @@ The menu bar and status bar sit outside the tabs.
 
 Each menu covers one kind of work: **File** for projects, **Edit** for undo,
 redo, and whatever your cursor is on, **Reconstruction** for the current
-reconstruction and its exports, **Playback** for playing and for muting the
-sequencer's channels, **View** for settings and the window, and **Help** for
-**About**. What **Edit** offers below undo and redo follows your cursor: the
-block actions of the sequencer grid you are in, or the actions of the sample you
+reconstruction and its exports, **Voice** for the ways a voice comes into the
+sequencer and what the one you picked offers, **Playback** for playing and for
+muting the sequencer's channels, **View** for settings and the window, and **Help**
+for **About**. What **Edit** offers below undo and redo follows your cursor: the
+block actions of the sequencer grid you are in, or the actions of the voice you
 have picked in the **Voices** list.
+
+**Voice** answers "how do I get a voice in" on its own: **New instrument**, **Add
+sample from file...**, **Import instrument...**, and **Add to Sequencer** stand
+together at the top, and the actions of the voice you picked follow — the same set the
+list's own right-click menu prints. See [voices](sequencer.md#voices-samples-and-instruments).
 
 Two items write audio you can play anywhere: **Reconstruction ▸ Export to
 WAV...** for the reconstruction you have open, and **File ▸ Render song...**

@@ -446,7 +446,7 @@ class TestClearingEveryEnvelope:
 
 
 class TestRegenerationServiceCancellationConstraints:
-    """Tests that document the non-preemptive cancellation behaviour.
+    """Tests that document the non-preemptive cancellation behavior.
 
     cancel() only prevents new tasks from starting. It does NOT interrupt
     synthesis that is already in progress.

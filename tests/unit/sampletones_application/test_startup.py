@@ -211,7 +211,7 @@ class TestKeybindingPreferences:
 class TestStartupRestoreDelegation:
     """Application only forwards the startup restore to the domain coordinators, which
     are the recovery boundary (docs/development/architecture.md § Error Handling Policy). The
-    recovery behaviour itself is covered by the coordinator tests.
+    recovery behavior itself is covered by the coordinator tests.
     """
 
     def test_project_restore_delegates_to_coordinator(self, app: Application) -> None:

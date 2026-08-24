@@ -14,6 +14,10 @@
 
 ### Tracker
 
+The first four entries are also what an imported `.fti` reports as left to the file
+(section C of `formats/famitracker.md`), so each one closed is a dimension the import
+starts carrying.
+
 * Pitch and hi-pitch envelopes: a per-tick period bend, where an instruction's pitch is a whole
   semitone. Sounding them needs a sub-semitone offset in the instruction model and raw timer values
   in the NSF planes, which reaches the reconstruction search space, the instruction library and the
@@ -26,6 +30,10 @@
 * A loop point per envelope: a voice states one point, applied to every populated sequence.
 * A sample's loop point is offered as a switch in the voice list, though the model carries the
   point for both kinds of voice.
+* A transpose or a volume typed in the sample column of a row holding no sample reaches every
+  channel. The column summarizes the channels its samples cover, and a row covering none falls
+  back to all four so a value typed there lands somewhere; the reference slot keeps the narrower
+  reading and stays empty.
 
 ### Workflow
 

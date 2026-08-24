@@ -85,7 +85,7 @@ however long it is held and whatever pitch it is played at.
 **The cheapest reading, not a greedy one.** A plane is parsed as a shortest path: every way
 of covering a tick is an edge priced in the bytes its token takes, and the cheapest path
 across the plane is its encoding. Costs are in the currency the program area is measured in,
-so the parse optimises the thing that actually has to fit.
+so the parse optimizes the thing that actually has to fit.
 
 **A phrase earns its entry.** Naming a phrase is not enough — an entry costs its own bytes.
 Each is weighed by what it spares the streams against a reading of the song that names no
@@ -135,7 +135,7 @@ The chain runs from the register values upward, and each link is held on its own
 | The codec is lossless | every encoding decodes to the planes it was written from, over a corpus |
 | The codec is safe | a plane the codec finds nothing in stays within its literal bound |
 | The ratio | `make compression-report` — bytes per tick and ticks that fit, per layer |
-| The byte layout | a hand-built song serialises to expected bytes |
+| The byte layout | a hand-built song serializes to expected bytes |
 | The assembly agrees with the specification | the include's equates are read and compared field by field |
 | The driver behaves | the assembled image on a 6502 emulator against `RegisterTrace.from_song`, over several rates and over songs that repeat |
 | The audio | a captured trace re-rendered against the reconstruction's own approximation |

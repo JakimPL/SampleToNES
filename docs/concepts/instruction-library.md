@@ -1,13 +1,13 @@
 # Instruction library
 
-An instruction library is the catalogue of NES sounds that _SampleToNES_
+An instruction library is the catalog of NES sounds that _SampleToNES_
 searches when it reconstructs audio. It holds every instruction a channel can
 play — each combination of pitch, volume, timbre and on/off state — together
 with the waveform that instruction produces and a description of its frequency
-content. Reconstruction is then a matter of searching this catalogue: for each
+content. Reconstruction is then a matter of searching this catalog: for each
 slice of the input, the engine looks for the library entries whose combined
 sound is closest to that slice. [Reconstruction algorithms](reconstruction.md)
-describes that search; this page describes the catalogue it searches.
+describes that search; this page describes the catalog it searches.
 
 ## Why the library is precomputed
 

@@ -1176,7 +1176,7 @@ class SequencerTabCoordinator:
         """Settles the marks the transport owns, and how far the grid chases the playhead.
 
         The player emits a view on every position update and on every change to the setting, so
-        reading the follow behaviour here keeps the grid in step both while a song sounds and the
+        reading the follow behavior here keeps the grid in step both while a song sounds and the
         moment the reader picks another mode.
         """
         self._sequencer_tracker_panel.set_row_following(view_model.follow_mode.follows_row)

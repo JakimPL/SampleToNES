@@ -8,7 +8,7 @@ class FakeLanguageManager:
 
     A test asserting on the text a widget or a callback receives then names the entry the code
     read, which holds the wiring in place while leaving the wording to the language file. Where
-    the behaviour under test formats the text — a template with placeholders — the test states
+    the behavior under test formats the text — a template with placeholders — the test states
     that text explicitly.
     """
 

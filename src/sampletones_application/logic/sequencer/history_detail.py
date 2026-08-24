@@ -424,7 +424,7 @@ class SequencerHistoryDetail:
     def _covered_channels(
         covered: Set[Optional[ChannelName]],
     ) -> List[ChannelName]:
-        """The channels a run of columns names, an aggregate one standing for all it summarises.
+        """The channels a run of columns names, an aggregate one standing for all it summarizes.
 
         Both grids carry a column that answers for every channel — the tracker's sample column and
         the order's master row — so a gesture reaching one of them reads as the whole set.

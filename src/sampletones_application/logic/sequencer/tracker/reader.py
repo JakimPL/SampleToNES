@@ -59,7 +59,12 @@ class TrackerBlockReader:
 
                 agreement = self._agree(row_index, slot.channel, select)
                 if agreement.is_unanimous:
-                    values[(row_offset, region.first_slot + position - base)] = agreement.value
+                    values[
+                        (
+                            row_offset,
+                            region.first_slot + position - base,
+                        )
+                    ] = agreement.value
 
         return values
 
@@ -72,14 +77,20 @@ class TrackerBlockReader:
         """What a column holds at a cell: a channel's own value, or the one its channels share.
 
         A channel column answers for itself, so it is a group of one and always agrees. The sample
-        column answers for the channels it governs, which is the group its display summarises too,
+        column answers for the channels it governs, which is the group its display summarizes too,
         so a block states about a cell exactly what the grid it came from shows there.
         """
         if channel is not None:
             return Agreement.collapse([select(self._tracker.row(channel, row_index))])
 
         return Agreement.collapse(
-            select(self._tracker.row(channel, row_index)) for channel in self._tracker.relevant_channels(row_index)
+            select(
+                self._tracker.row(
+                    channel,
+                    row_index,
+                )
+            )
+            for channel in self._tracker.relevant_channels(row_index)
         )
 
     @staticmethod
