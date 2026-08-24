@@ -57,7 +57,7 @@ class InstructionsLibraryManager(CallbackMixin):
         self.on_generation_progress: Optional[OnGenerationProgressCallback] = None
         self.on_generation_progress_extra: Optional[OnGenerationProgressCallback] = None
         self.on_generation_error: Optional[OnGenerationErrorCallback] = None
-        self.on_generation_cancelled: Optional[VoidCallback] = None
+        self.on_generation_canceled: Optional[VoidCallback] = None
 
     def set_library_directory(self, directory: Path) -> None:
         self._library = InstructionLibrary(directory=str(directory))
@@ -191,7 +191,7 @@ class InstructionsLibraryManager(CallbackMixin):
             on_start=self.on_generation_start,
             on_completed=self._complete_generation,
             on_error=self.on_generation_error,
-            on_cancelled=self.on_generation_cancelled,
+            on_canceled=self.on_generation_canceled,
             on_progress=_on_progress,
         )
 
@@ -248,7 +248,7 @@ class InstructionsLibraryManager(CallbackMixin):
         """Tears the library creator's process pool down synchronously for application exit.
 
         A conversion generates its library first, so this pool is the one still spawning
-        workers when a run is cancelled and the window is closed; this blocks until it has
+        workers when a run is canceled and the window is closed; this blocks until it has
         stopped so the process reaps its workers before releasing shared resources."""
         if self._creator:
             self._creator.shutdown()

@@ -6,7 +6,7 @@ from sampletones_core.parallelization.task import TaskStep
 from sampletones_core.reconstructions.converter.progress import JobReporter
 from sampletones_core.reconstructions.progress import ReconstructionProgress, announce
 from sampletones_core.reconstructions.stage import ReconstructionStage
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 from sampletones_shared.utils.progress import PROGRESS_STEPS
 from tests.suite.base import BaseTestSuite
 
@@ -111,7 +111,7 @@ class TestAWithdrawalReachingTheJob(BaseTestSuite):
         line = RecordingLine(withdraw_after=1)
         reporter = JobReporter(line)
 
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             for frame in range(FRAMES + 1):
                 announce(reporter, ReconstructionStage.MATCHING, frame, FRAMES)
 

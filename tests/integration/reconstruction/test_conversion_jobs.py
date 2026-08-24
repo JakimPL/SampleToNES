@@ -15,7 +15,7 @@ from sampletones_core.reconstructions.progress import (
 )
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.stage import ReconstructionStage
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 from sampletones_shared.utils.progress import silent_reporter
 from tests.integration.assets.reconstruction import (
     build_mini_library,
@@ -141,7 +141,7 @@ class TestAJobReportsItselfAsItRuns:
         jobs = GroupConversion(sources=(source,), stems=stems).jobs(config)
         reporter: RecordingReporter[ReconstructionProgress] = RecordingReporter(withdraw_at=FIRST_REPORT)
 
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             reconstruct_job((reconstructor, jobs[0], reporter))
 
         assert not jobs[0].output_path.exists()

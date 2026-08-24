@@ -421,7 +421,7 @@ class DialogsRenderer:
         """Modal save-or-proceed prompt for an unsaved document.
 
         ``on_save`` writes the document and reports whether it completed; the prompt runs
-        ``on_confirm`` and closes once the save reports success, so a cancelled save keeps the
+        ``on_confirm`` and closes once the save reports success, so a canceled save keeps the
         prompt open for another attempt. The middle button discards the pending changes and runs
         ``on_confirm`` to proceed, and Cancel — the initially focused button — dismisses the prompt.
         """

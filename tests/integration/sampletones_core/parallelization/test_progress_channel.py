@@ -128,7 +128,7 @@ class TestAWithdrawalReachesTheTasks:
     pool being torn down afterwards is the backstop rather than the mechanism.
     """
 
-    def test_a_withdrawn_run_ends_cancelled(self, release_path: Path) -> None:
+    def test_a_withdrawn_run_ends_canceled(self, release_path: Path) -> None:
         with counting_run(SEVERAL_TASKS, release_path, TWO_WORKERS) as (processor, recorder):
             assert recorder.wait_for(stands_partway, READING_TIMEOUT)
 

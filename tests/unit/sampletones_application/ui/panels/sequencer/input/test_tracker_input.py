@@ -119,10 +119,10 @@ class TestSelection:
         assert typed.region is None
 
     def test_cancel_drops_the_selection_and_the_partial_entry(self) -> None:
-        cancelled = _state(SubColumn.VOLUME, pending="5").extend_row(1, ROW_COUNT).cancel()
+        canceled = _state(SubColumn.VOLUME, pending="5").extend_row(1, ROW_COUNT).cancel()
 
-        assert cancelled.region is None
-        assert cancelled.pending == ""
+        assert canceled.region is None
+        assert canceled.pending == ""
 
     def test_collapse_keeps_the_cursor_where_it_stands(self) -> None:
         selected = _state(SubColumn.TRANSPOSE, row=4).extend_row(2, ROW_COUNT)

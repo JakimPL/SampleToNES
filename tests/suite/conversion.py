@@ -52,7 +52,7 @@ class FakeReconstructor:
         way a reconstruction does however that order comes to change.
 
         Raises:
-            OperationCancelled: If the walk is withdrawn while it is under way.
+            OperationCanceled: If the walk is withdrawn while it is under way.
         """
         for stage in ReconstructionStage:
             if stage not in COUNTED_STAGES:

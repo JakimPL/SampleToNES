@@ -45,7 +45,7 @@ def compress_song(
         CompressedPlanes: The dictionary, the eight token streams and the ticks the song lasts.
 
     Raises:
-        OperationCancelled: If ``report`` withdraws the run.
+        OperationCanceled: If ``report`` withdraws the run.
         ValueError: If a stream sounds a timer the pitch table states no index for.
     """
     return encode_planes(

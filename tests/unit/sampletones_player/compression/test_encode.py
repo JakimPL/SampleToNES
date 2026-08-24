@@ -17,7 +17,7 @@ from sampletones_player.specification.compression import (
     PHRASE_ID_ESCAPE,
     TokenTag,
 )
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 from tests.suite.progress import FIRST_REPORT, RecordingReporter
 
 EVERY_LAYER: Final[CodecOptions] = CodecOptions(
@@ -175,7 +175,7 @@ class TestWithdrawingAnEncoding:
     def test_a_withdrawn_run_unwinds(self) -> None:
         reporter: RecordingReporter[CodecProgress] = RecordingReporter(withdraw_at=FIRST_REPORT)
         planes = song_planes(TIMBRE * REPEATS, MOTIF * REPEATS)
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             encode_planes(
                 planes,
                 (),
@@ -187,7 +187,7 @@ class TestWithdrawingAnEncoding:
     def test_a_withdrawn_run_stops_where_it_was_told(self) -> None:
         reporter: RecordingReporter[CodecProgress] = RecordingReporter(withdraw_at=FIRST_REPORT)
         planes = song_planes(TIMBRE * REPEATS, MOTIF * REPEATS)
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             encode_planes(
                 planes,
                 (),

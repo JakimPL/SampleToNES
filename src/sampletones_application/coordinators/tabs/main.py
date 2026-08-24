@@ -107,7 +107,7 @@ class MainTabCoordinator:
         status_bar: GUIStatusBar,
         on_load_file: PathCallback,
         on_load_directory: VoidCallback,
-        on_cancelled: VoidCallback,
+        on_canceled: VoidCallback,
         on_refresh_trees: VoidCallback,
         on_generate_library: VoidCallback,
         stem_selection_window: GUIStemSelectionWindow,
@@ -259,7 +259,7 @@ class MainTabCoordinator:
         self._converter_logic.cancel_library_generation = library_manager.cancel_generation
         self._converter_logic.on_load_file = on_load_file
         self._converter_logic.on_load_directory = on_load_directory
-        self._converter_logic.on_cancelled = on_cancelled
+        self._converter_logic.on_canceled = on_canceled
         self._converter_logic.generate_library = on_generate_library
         config_manager.add_config_change_callback(self._converter_logic.refresh_view)
         library_manager.on_generation_progress_extra = conversion_service.forward_library_progress

@@ -6,7 +6,7 @@ from typing import Any, Callable, Final, FrozenSet, List, Optional, Tuple
 from sampletones_core.parallelization.channel.protocol import StepReporter
 from sampletones_core.parallelization.processor import TaskProcessor
 from sampletones_core.parallelization.task import TaskProgress, TaskStatus, TaskStep
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 from tests.suite.release import wait_for_release
 
 COUNTING_STAGE: Final[str] = "counting"
@@ -39,10 +39,10 @@ class CountingTask:
 def count_task(task: CountingTask) -> int:
     """Counts to ``STEP_COUNT``, reporting each count, and answers which task did the counting.
 
-    Runs in a pool worker, so the line it reports on travelled here with it.
+    Runs in a pool worker, so the line it reports on traveled here with it.
 
     Raises:
-        OperationCancelled: If the run is withdrawn while the counting is under way.
+        OperationCanceled: If the run is withdrawn while the counting is under way.
     """
     for completed in range(1, STEP_COUNT + 1):
         step = TaskStep(
@@ -52,7 +52,7 @@ def count_task(task: CountingTask) -> int:
             fraction=completed / STEP_COUNT,
         )
         if not task.report(step):
-            raise OperationCancelled(f"task {task.index} was withdrawn at {completed}")
+            raise OperationCanceled(f"task {task.index} was withdrawn at {completed}")
 
         if completed == HALFWAY:
             wait_for_release(task.release_path)

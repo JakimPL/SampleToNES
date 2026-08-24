@@ -22,7 +22,7 @@ def reconstruct_job(arguments: Tuple[Reconstructor, ConversionJob, Reconstructio
 
     Raises:
         KeyboardInterrupt: If the run is interrupted, so the pool stops.
-        OperationCancelled: If the run is withdrawn while the job is under way.
+        OperationCanceled: If the run is withdrawn while the job is under way.
     """
     reconstructor, job, report = arguments
     job.output_path.parent.mkdir(parents=True, exist_ok=True)

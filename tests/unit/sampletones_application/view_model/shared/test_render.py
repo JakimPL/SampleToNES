@@ -154,5 +154,5 @@ class TestWhatTheDialogDraws:
         assert not view.render_enabled
 
     def test_an_outcome_releases_the_application(self) -> None:
-        for phase in (RenderPhase.COMPLETED, RenderPhase.CANCELLED, RenderPhase.FAILED):
+        for phase in (RenderPhase.COMPLETED, RenderPhase.CANCELED, RenderPhase.FAILED):
             assert not view_model(wave_settings(), phase=phase).is_active

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Union
 
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
@@ -26,5 +26,5 @@ class RegeneratedInstrument:
 RegenerationResult = Union[
     ServiceSuccess[RegeneratedInstrument],
     ServiceError,
-    ServiceCancelled,
+    ServiceCanceled,
 ]

@@ -77,7 +77,7 @@ def song_from_reconstruction(
         Song: The streams, the clock and the loop point as the player holds them.
 
     Raises:
-        OperationCancelled: If ``report`` withdraws the compression.
+        OperationCanceled: If ``report`` withdraws the compression.
         TypeError: If a channel's stream holds an instruction another channel sounds.
         ValueError: If ``loop_tick`` lies outside the song's ticks.
     """
@@ -164,7 +164,7 @@ def song_from_sample(
         Song: The streams, the clock and the loop point as the player holds them.
 
     Raises:
-        OperationCancelled: If ``report`` withdraws the compression.
+        OperationCanceled: If ``report`` withdraws the compression.
         TypeError: If a channel's stream holds an instruction another channel sounds.
         ValueError: If two slices name the same channel.
     """
@@ -209,7 +209,7 @@ def song_from_project(
         Song: The streams, the clock and the loop point as the player holds them.
 
     Raises:
-        OperationCancelled: If ``report`` or ``walk`` withdraws the run.
+        OperationCanceled: If ``report`` or ``walk`` withdraws the run.
         TypeError: If a channel's stream holds an instruction another channel sounds.
         ValueError: If ``loop_tick`` lies outside the song's ticks, or the project's samples were
             reconstructed against tunings that differ.

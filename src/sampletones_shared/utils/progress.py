@@ -35,7 +35,7 @@ class ReportRate:
     What a stage counts moves by its own rules: a render's samples rise toward the song's length,
     while a compression's bytes fall as the dictionary earns its keep. A step is therefore a change
     of either sign, and a stage landing exactly on its total is always due, so a reading arrives at
-    the end of every stage however it travelled there.
+    the end of every stage however it traveled there.
 
     The first reading a stage offers is due whatever it says, since a stage announcing where it
     begins is news to whoever is watching for it.

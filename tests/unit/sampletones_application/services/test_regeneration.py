@@ -8,7 +8,7 @@ import pytest
 
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
@@ -86,7 +86,7 @@ def reconstruction() -> MockReconstruction:
 
 
 class TestRegenerationServiceStart:
-    def test_start_when_not_cancelled_returns_true(
+    def test_start_when_not_canceled_returns_true(
         self, synthesis_mocks: SynthesisMocks, reconstruction: MockReconstruction
     ) -> None:
         service = RegenerationService()
@@ -99,7 +99,7 @@ class TestRegenerationServiceStart:
         )
         assert result is True
 
-    def test_start_when_cancelled_returns_false(self) -> None:
+    def test_start_when_canceled_returns_false(self) -> None:
         service = RegenerationService()
         service.cancel()
 
@@ -107,7 +107,7 @@ class TestRegenerationServiceStart:
 
         assert result is False
 
-    def test_start_when_cancelled_does_not_emit(self) -> None:
+    def test_start_when_canceled_does_not_emit(self) -> None:
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
@@ -141,13 +141,13 @@ class TestRegenerationServiceStart:
 
         assert result is False
 
-    def test_cancel_sets_cancelled_flag(self) -> None:
+    def test_cancel_sets_canceled_flag(self) -> None:
         service = RegenerationService()
-        assert not service._cancelled
+        assert not service._canceled
 
         service.cancel()
 
-        assert service._cancelled
+        assert service._canceled
 
 
 class TestRegenerationServiceIsRunning:
@@ -163,11 +163,11 @@ class TestRegenerationServiceIsRunning:
 
 
 class TestRegenerationServiceRun:
-    def test_run_when_cancelled_emits_service_cancelled(self) -> None:
+    def test_run_when_canceled_emits_service_canceled(self) -> None:
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
-        service._cancelled = True
+        service._canceled = True
 
         service._run(
             MagicMock(),
@@ -178,7 +178,7 @@ class TestRegenerationServiceRun:
         )
 
         assert len(results) == 1
-        assert isinstance(results[0], ServiceCancelled)
+        assert isinstance(results[0], ServiceCanceled)
 
     def test_run_success_emits_service_success(
         self,

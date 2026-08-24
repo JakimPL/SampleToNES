@@ -62,7 +62,7 @@ def confirmed(monkeypatch: pytest.MonkeyPatch) -> List[Dict[str, object]]:
 
 
 @pytest.fixture
-def cancelled(monkeypatch: pytest.MonkeyPatch) -> None:
+def canceled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(instrument_module, "save_file_dialog", lambda **_kwargs: None)
 
 
@@ -187,11 +187,11 @@ class TestWritingWhatWasConfirmed:
 
         logic.export.assert_called_once_with(DESTINATION, source)
 
-    def test_a_cancelled_dialog_writes_nothing(
+    def test_a_canceled_dialog_writes_nothing(
         self,
         coordinator: InstrumentExportCoordinator,
         logic: MagicMock,
-        cancelled: None,
+        canceled: None,
     ) -> None:
         coordinator.request(_source(), SUGGESTED_NAME)
 

@@ -80,7 +80,7 @@ from sampletones_application.utils.gui.tooltip import (
 )
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.parallelization.thread import (
-    BackgroundWorkCancelled,
+    BackgroundWorkCanceled,
     SingleThreadExecutor,
 )
 from sampletones_core.configs.display import (
@@ -414,7 +414,7 @@ class GUITreePanel(GUIPanel, ABC):
         decision covers the whole subtree and the traversal walks on.
         """
         if SingleThreadExecutor.is_shutting_down():
-            raise BackgroundWorkCancelled
+            raise BackgroundWorkCanceled
 
         if not self._is_node_drawn(node):
             return

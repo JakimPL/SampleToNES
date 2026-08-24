@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Callable
 
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,7 @@ def announce(report: WalkReporter, ticks: int, total: int) -> None:
         total: The engine ticks the whole order lasts.
 
     Raises:
-        OperationCancelled: If the walk is no longer wanted.
+        OperationCanceled: If the walk is no longer wanted.
     """
     if not report(WalkProgress(ticks=ticks, total=total)):
-        raise OperationCancelled(f"the walk was withdrawn having sounded {ticks} of {total} ticks")
+        raise OperationCanceled(f"the walk was withdrawn having sounded {ticks} of {total} ticks")

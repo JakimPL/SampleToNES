@@ -279,7 +279,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         Called whenever a long operation starts or finishes. The button stays enabled only while the
         panel is unlocked and no conversion or library generation is running, leaving the rest of the
         panel usable during such an operation. The cancel button stays enabled so a generation can
-        always be cancelled."""
+        always be canceled."""
         self._apply_action_button_states()
 
     def _apply_action_button_states(self) -> None:

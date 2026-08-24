@@ -127,7 +127,7 @@ class Reconstructor:
         Raises:
             ValueError: If the entries count differently than ``paths``.
             TypeError: If a path is not a string or ``Path``.
-            OperationCancelled: If the run is withdrawn while it is under way.
+            OperationCanceled: If the run is withdrawn while it is under way.
         """
         checked_paths = self._check_stem_paths(paths, stems_config)
         announce(report, ReconstructionStage.LOADING, STAGE_BEGUN, PREPARATIONS)

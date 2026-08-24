@@ -16,7 +16,7 @@ from sampletones_application.services import (
     RegeneratedInstrument,
     RegenerationResult,
     RegenerationService,
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
@@ -333,8 +333,8 @@ class ReconstructionCoordinator:
             case ServiceError(exception=exception):
                 logger.error_with_traceback(exception, "Regeneration failed")
                 self._dialogs.show_error(exception)
-            case ServiceCancelled():
-                logger.info("Regeneration cancelled")
+            case ServiceCanceled():
+                logger.info("Regeneration canceled")
 
         self._set_reconstruction_dimmed(self._regeneration_service.is_running())
 

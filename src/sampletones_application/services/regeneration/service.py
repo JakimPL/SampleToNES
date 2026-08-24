@@ -8,7 +8,7 @@ from sampletones_application.services.regeneration.result import (
     RegenerationResult,
 )
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
@@ -38,7 +38,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
     def __init__(self, priority: int = 0) -> None:
         super().__init__(priority)
         self._executor = LatestWinsExecutor()
-        self._cancelled: bool = False
+        self._canceled: bool = False
 
     def start(
         self,
@@ -48,7 +48,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         feature_key: FeatureKey,
         value: FeatureValue,
     ) -> bool:
-        if self._cancelled:
+        if self._canceled:
             return False
 
         return self._executor.submit(
@@ -65,7 +65,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         return self._executor.is_running
 
     def cancel(self) -> None:
-        self._cancelled = True
+        self._canceled = True
 
     def _run(
         self,
@@ -75,8 +75,8 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         feature_key: FeatureKey,
         value: FeatureValue,
     ) -> None:
-        if self._cancelled:
-            self._emit(ServiceCancelled())
+        if self._canceled:
+            self._emit(ServiceCanceled())
             return
         try:
             exporter_class = CHANNEL_TO_EXPORTER_MAP[channel_name]

@@ -156,7 +156,7 @@ class InstructionsTabCoordinator:
         self._library_logic.on_view_changed = self._library_panel.update_view
         self._library_logic.on_generation_completed = self._on_generation_completed
         self._library_logic.on_generation_error = self._on_generation_error
-        self._library_logic.on_generation_cancelled = self._on_generation_cancelled
+        self._library_logic.on_generation_canceled = self._on_generation_canceled
         self._library_logic.on_load_file_not_found = self._on_library_file_not_found
         self._library_logic.on_load_error = self._on_library_load_error
 
@@ -288,10 +288,10 @@ class InstructionsTabCoordinator:
             self._language_manager["instructions.library.message.status_generation_failed"],
         )
 
-    def _on_generation_cancelled(self) -> None:
+    def _on_generation_canceled(self) -> None:
         self._dialogs.show_info(
             TAG_INSTRUCTIONS_LIBRARY_PANEL,
-            self._language_manager["instructions.library.message.status_generation_cancelled"],
+            self._language_manager["instructions.library.message.status_generation_canceled"],
             self._ttl_generation_status,
             modal=True,
         )

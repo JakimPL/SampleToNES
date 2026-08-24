@@ -29,7 +29,7 @@ class VoicesPanelFixture:
     removed: List[str] = field(default_factory=list)
     moved: List[Move] = field(default_factory=list)
     renamed: List[str] = field(default_factory=list)
-    cancelled: List[None] = field(default_factory=list)
+    canceled: List[None] = field(default_factory=list)
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ def voices(monkeypatch: pytest.MonkeyPatch) -> VoicesPanelFixture:
     panel.on_remove_requested = fixture.removed.append
     panel.on_move_requested = lambda voice_id, target: fixture.moved.append((voice_id, target))
     monkeypatch.setattr(panel, "start_rename", fixture.renamed.append)
-    monkeypatch.setattr(panel, "_cancel_rename", lambda: fixture.cancelled.append(None))
+    monkeypatch.setattr(panel, "_cancel_rename", lambda: fixture.canceled.append(None))
     return fixture
 
 
@@ -95,7 +95,7 @@ class TestRenameInProgress:
         voices.panel._editing_voice_id = SELECTED_ID
 
         assert voices.panel._on_key_pressed(_press("Esc")) is True
-        assert voices.cancelled == [None]
+        assert voices.canceled == [None]
 
     def test_every_other_key_stays_with_the_field(self, voices: VoicesPanelFixture) -> None:
         """A rename keeps the keyboard, so typing a name reaches the input rather than the list."""

@@ -18,7 +18,7 @@ class ServiceProgress(Generic[T]):
 
     An operation whose items report their own progress states what the one under way has covered
     as ``partial``, so the run reads as a whole while the counts keep naming the items a reader
-    recognises.
+    recognizes.
 
     Attributes:
         completed: The items the operation has finished.
@@ -54,7 +54,7 @@ class ServiceError:
 
 
 @dataclass(frozen=True)
-class ServiceCancelled:
+class ServiceCanceled:
     pass
 
 

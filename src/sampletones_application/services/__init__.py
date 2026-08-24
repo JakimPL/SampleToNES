@@ -21,7 +21,7 @@ from sampletones_application.services.render import (
     SongRenderService,
 )
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceIntermediate,
     ServiceProgress,
@@ -51,7 +51,7 @@ __all__ = [
     "RowSynthesizerProtocol",
     "SampleRetuneService",
     "ServiceBase",
-    "ServiceCancelled",
+    "ServiceCanceled",
     "ServiceError",
     "ServiceIntermediate",
     "ServiceProgress",

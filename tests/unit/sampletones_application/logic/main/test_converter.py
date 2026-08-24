@@ -90,9 +90,9 @@ class TestCancelDuringLibraryGeneration:
         converter_logic: ConverterLogic,
     ) -> None:
         cancel_generation = MagicMock()
-        on_cancelled = MagicMock()
+        on_canceled = MagicMock()
         converter_logic.cancel_library_generation = cancel_generation
-        converter_logic.on_cancelled = on_cancelled
+        converter_logic.on_canceled = on_canceled
 
         with patch("sampletones_application.logic.main.converter.CallbackQueue.add"):
             converter_logic.start_conversion()
@@ -101,8 +101,8 @@ class TestCancelDuringLibraryGeneration:
             converter_logic.cancel()
 
         cancel_generation.assert_called_once()
-        on_cancelled.assert_called_once()
-        assert converter_logic._phase == ConversionPhase.CANCELLED
+        on_canceled.assert_called_once()
+        assert converter_logic._phase == ConversionPhase.CANCELED
 
     def test_wait_loop_aborts_once_no_longer_waiting(
         self,
@@ -268,7 +268,7 @@ class TestActivePhases:
         [
             ConversionPhase.IDLE,
             ConversionPhase.COMPLETED,
-            ConversionPhase.CANCELLED,
+            ConversionPhase.CANCELED,
             ConversionPhase.FAILED,
         ],
     )

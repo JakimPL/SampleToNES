@@ -4,7 +4,7 @@ from typing import Optional, Tuple, Union
 from pydantic import BaseModel, ConfigDict
 
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceIntermediate,
     ServiceProgress,
@@ -50,5 +50,5 @@ ConversionResult = Union[
     ServiceIntermediate[TaskProgress],
     ServiceSuccess[Tuple[Path, ...]],
     ServiceError,
-    ServiceCancelled,
+    ServiceCanceled,
 ]

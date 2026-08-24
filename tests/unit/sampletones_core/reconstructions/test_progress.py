@@ -8,7 +8,7 @@ from sampletones_core.reconstructions.progress import (
     announce,
 )
 from sampletones_core.reconstructions.stage import STAGE_WEIGHTS, ReconstructionStage
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 from sampletones_shared.utils.progress import silent_reporter
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
@@ -124,7 +124,7 @@ class TestAnnounce(BaseTestSuite):
     def test_a_withdrawn_run_unwinds_where_it_stood(self) -> None:
         reporter: RecordingReporter[ReconstructionProgress] = RecordingReporter(withdraw_at=FIRST_REPORT)
 
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             announce(reporter, ReconstructionStage.MATCHING, 0, FRAMES)
 
     def test_a_caller_watching_nothing_hears_the_run_through(self) -> None:

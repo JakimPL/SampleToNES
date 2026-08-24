@@ -64,7 +64,7 @@ class Song(BaseModel):
             Song: The song as the console holds it.
 
         Raises:
-            OperationCancelled: If ``report`` withdraws the compression.
+            OperationCanceled: If ``report`` withdraws the compression.
             ValueError: If ``loop_tick`` lies outside the song's ticks, or a channel sounds a
                 timer the pitch table states no index for.
         """

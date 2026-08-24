@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Callable, Final
 
 from sampletones_core.reconstructions.stage import TOTAL_STAGE_WEIGHT, ReconstructionStage
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 from sampletones_shared.utils.arrays import clamp
 
 STAGE_BEGUN: Final[int] = 0
@@ -65,7 +65,7 @@ def announce(
         total: What the stage counts up to.
 
     Raises:
-        OperationCancelled: If the run is no longer wanted.
+        OperationCanceled: If the run is no longer wanted.
     """
     if not report(ReconstructionProgress(stage=stage, completed=completed, total=total)):
-        raise OperationCancelled(f"the reconstruction was withdrawn while {stage}")
+        raise OperationCanceled(f"the reconstruction was withdrawn while {stage}")

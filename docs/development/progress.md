@@ -26,7 +26,7 @@ ExportReporter = Callable[[ExportProgress], bool]
 
 Each domain names its own progress type — `ExportProgress`, `WalkProgress`, `CodecProgress`,
 `ReconstructionProgress` — and its own `announce`, which builds that type, offers it, and raises
-`OperationCancelled` where the answer is no. One reporter therefore carries both directions: an
+`OperationCanceled` where the answer is no. One reporter therefore carries both directions: an
 operation is watched and withdrawn over the same line, and a caller that wants neither passes
 `silent_reporter` (`sampletones_shared/utils/progress.py`) and hears the run through to its end.
 
@@ -65,7 +65,7 @@ of one for its whole length. Both layers therefore carry the same pair:
 | Core | `TaskProgress` | `completed` / `total` | `steps`, one per running task |
 | Application | `ServiceProgress` | `completed` / `total` | `partial`, in items |
 
-and both derive `fraction` from them. The counts keep naming the items a reader recognises — a
+and both derive `fraction` from them. The counts keep naming the items a reader recognizes — a
 status line still reads *Progress: 2/5 files* — while every bar in the application draws
 `fraction`, so one reading answers for a batch of files and for a single reconstruction alike.
 

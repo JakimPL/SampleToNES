@@ -141,7 +141,7 @@ def encode_planes(
         CompressedPlanes: The dictionary, the eight token streams and the ticks the song lasts.
 
     Raises:
-        OperationCancelled: If ``report`` withdraws the run.
+        OperationCanceled: If ``report`` withdraws the run.
     """
     cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes.planes)
     monitor = CodecMonitor(report)

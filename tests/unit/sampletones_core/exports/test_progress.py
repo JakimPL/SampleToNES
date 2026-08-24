@@ -7,7 +7,7 @@ from sampletones_core.exports.progress import (
     announce,
 )
 from sampletones_core.exports.stage import ExportStage
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 from sampletones_shared.utils.progress import silent_reporter
 from tests.suite.progress import FIRST_REPORT, RecordingReporter
 
@@ -38,10 +38,10 @@ class TestWithdrawingARun:
 
     def test_a_withdrawn_run_unwinds_where_it_was_told(self) -> None:
         reporter: RecordingReporter[ExportProgress] = RecordingReporter(withdraw_at=FIRST_REPORT)
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             announce(reporter, ExportStage.WRITING, WRITTEN, TO_WRITE)
 
     def test_a_withdrawal_names_the_stage_it_landed_on(self) -> None:
         reporter: RecordingReporter[ExportProgress] = RecordingReporter(withdraw_at=FIRST_REPORT)
-        with pytest.raises(OperationCancelled, match=ExportStage.WRITING.value):
+        with pytest.raises(OperationCanceled, match=ExportStage.WRITING.value):
             announce(reporter, ExportStage.WRITING, WRITTEN, TO_WRITE)

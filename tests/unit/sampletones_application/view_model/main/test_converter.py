@@ -116,7 +116,7 @@ class TestPrimaryAction:
             (ConversionPhase.RUNNING, ConverterAction.CANCEL),
             (ConversionPhase.CANCELLING, ConverterAction.CANCEL),
             (ConversionPhase.COMPLETED, ConverterAction.CONVERT),
-            (ConversionPhase.CANCELLED, ConverterAction.CONVERT),
+            (ConversionPhase.CANCELED, ConverterAction.CONVERT),
             (ConversionPhase.FAILED, ConverterAction.CONVERT),
         ],
     )
@@ -141,7 +141,7 @@ class TestPrimaryActionEnabled:
 
     @pytest.mark.parametrize(
         "phase",
-        [ConversionPhase.COMPLETED, ConversionPhase.CANCELLED, ConversionPhase.FAILED],
+        [ConversionPhase.COMPLETED, ConversionPhase.CANCELED, ConversionPhase.FAILED],
     )
     def test_convert_disabled_in_terminal_phases(self, phase: ConversionPhase) -> None:
         assert _view_model(phase=phase).primary_action_enabled is False

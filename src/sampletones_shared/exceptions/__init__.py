@@ -24,7 +24,7 @@ from .library import (
     NoLibraryDataError,
     UnhandledLibraryError,
 )
-from .operation import OperationCancelled
+from .operation import OperationCanceled
 from .player import (
     DriverBuildError,
     PlayerError,
@@ -95,7 +95,7 @@ __all__ = [
     "NoLibraryDataError",
     "NotAValidArchiveError",
     "NotAnInstrumentFileError",
-    "OperationCancelled",
+    "OperationCanceled",
     "PlaybackError",
     "PlayerError",
     "ReconstructionError",

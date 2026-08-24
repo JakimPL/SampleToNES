@@ -61,7 +61,7 @@ class ExportBackend(Protocol):
             ExportArtifact: The paths written and what the format's limits left out.
 
         Raises:
-            OperationCancelled: If ``report`` withdraws the write.
+            OperationCanceled: If ``report`` withdraws the write.
             OSError: If the destination cannot be written.
         """
 
@@ -84,7 +84,7 @@ class ExportBackend(Protocol):
             ExportArtifact: The paths written and what the format's limits left out.
 
         Raises:
-            OperationCancelled: If ``report`` withdraws the write.
+            OperationCanceled: If ``report`` withdraws the write.
             OSError: If the destination cannot be written.
         """
 
@@ -105,7 +105,7 @@ class ExportBackend(Protocol):
             ExportArtifact: The paths written and what the format's limits left out.
 
         Raises:
-            OperationCancelled: If ``report`` withdraws the write.
+            OperationCanceled: If ``report`` withdraws the write.
             OSError: If the destination cannot be written.
             ValueError: If the project holds more than the format has room for.
         """

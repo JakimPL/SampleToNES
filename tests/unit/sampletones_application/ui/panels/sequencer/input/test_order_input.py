@@ -103,10 +103,10 @@ class TestSelection:
         assert committed.region is None
 
     def test_cancel_drops_the_selection_and_the_partial_entry(self) -> None:
-        cancelled = _state(pending="5").extend_position(1, POSITION_COUNT).cancel()
+        canceled = _state(pending="5").extend_position(1, POSITION_COUNT).cancel()
 
-        assert cancelled.region is None
-        assert cancelled.pending == ""
+        assert canceled.region is None
+        assert canceled.pending == ""
 
 
 class TestTarget:
