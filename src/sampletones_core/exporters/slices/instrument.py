@@ -39,7 +39,6 @@ class InstrumentEntry:
         features: The envelopes written into it.
         channel: The channel ``features`` are stated for, or ``None`` where they are the one set
             every channel reads and belong to no channel in particular.
-        loop_point: The tick its envelopes repeat from, or ``None`` where they play once.
         slots: Per channel it answers for, the table position and the reference that channel reads.
     """
 
@@ -48,7 +47,6 @@ class InstrumentEntry:
     name: str
     features: Features
     channel: Optional[ChannelName]
-    loop_point: Optional[int]
     slots: Dict[ChannelName, InstrumentSlot]
 
 
@@ -80,9 +78,8 @@ def sample_instrument_entries(
             index=index,
             voice_id=sample.id,
             name=instrument_slice_name(sample.name, channel),
-            features=features,
+            features=features.repeating_from(sample.loop_point),
             channel=channel,
-            loop_point=sample.loop_point,
             slots={
                 channel: InstrumentSlot(
                     index=index,
@@ -120,7 +117,6 @@ def instrument_entries(
         name=instrument.name,
         features=instrument.instrument_features(),
         channel=None,
-        loop_point=instrument.loop_point,
         slots={
             channel: InstrumentSlot(
                 index=start_index,

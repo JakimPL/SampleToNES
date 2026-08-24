@@ -38,6 +38,7 @@ from sampletones_core.project.voices.creation import (
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.utils.display import display_voice
 from sampletones_shared.exceptions import PlaybackError
@@ -85,7 +86,7 @@ class SequencerVoicesLogic(CallbackMixin):
                 voice_id=voice.id,
                 name=voice.name,
                 kind=voice_kind(voice),
-                loop=voice.loops,
+                loop=_loops(voice),
             )
             for voice in self._controller.project.voices
         )
@@ -172,7 +173,6 @@ class SequencerVoicesLogic(CallbackMixin):
             voice_slice.instrument_name,
             voice_slice.features,
             channel_name,
-            loop_point=voice_slice.voice.loop_point,
         )
 
     def _channel_slices(self, voice_id: str) -> Tuple[VoiceSlice, ...]:
@@ -210,19 +210,9 @@ class SequencerVoicesLogic(CallbackMixin):
         """
         match self._controller.project.voices.get(voice_id):
             case Sample() as sample:
-                return SampleFootprintViewModel.from_footprints(
-                    reconstruction_footprints(
-                        sample.reconstruction,
-                        loop_point=sample.loop_point,
-                    )
-                )
+                return SampleFootprintViewModel.from_footprints(reconstruction_footprints(sample.reconstruction))
             case Instrument() as instrument:
-                return SampleFootprintViewModel.from_instrument(
-                    features_footprint(
-                        instrument.instrument_features(),
-                        loop_point=instrument.loop_point,
-                    )
-                )
+                return SampleFootprintViewModel.from_instrument(features_footprint(instrument.instrument_features()))
             case _:
                 return None
 
@@ -359,3 +349,15 @@ class SequencerVoicesLogic(CallbackMixin):
                 f"Failed to preview sample: {voice_id}",
             )
             self.call(self.on_autoplay_error, exception)
+
+
+def _loops(voice: VoiceUnion) -> bool:
+    """Whether the voice list marks this voice as repeating.
+
+    A recording states one point for the whole of it, while a hand-written voice repeats wherever
+    any of its dimensions circles.
+    """
+    if isinstance(voice, Sample):
+        return voice.loops
+
+    return any(envelope.loops for envelope in voice.envelopes.envelope_map.values())

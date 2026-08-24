@@ -3,6 +3,7 @@ from typing import Final, List, Tuple
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.builder import build_instrument_table, project_to_module
 from sampletones_core.formats.famitracker.model.pattern import PatternData
 from sampletones_core.formats.famitracker.notes import period_to_note_cell, pitch_to_note_cell
@@ -29,8 +30,11 @@ TRANSPOSE: Final[int] = 5
 def _instrument(loop_point: int | None = None) -> Instrument:
     return Instrument(
         name="Lead",
-        envelopes=InstrumentEnvelopes(volume=VOLUME, arpeggio=ARPEGGIO, duty_cycle=DUTY_CYCLE),
-        loop_point=loop_point,
+        envelopes=InstrumentEnvelopes(
+            volume=Envelope(items=VOLUME, loop_point=loop_point),
+            arpeggio=Envelope(items=ARPEGGIO, loop_point=loop_point),
+            duty_cycle=Envelope(items=DUTY_CYCLE, loop_point=None if loop_point is None else 0),
+        ),
     )
 
 
@@ -66,31 +70,36 @@ class TestAnInstrumentReachesTheModule:
         sequences = instruments[0].sequences
         assert sequences[SequenceKind.VOLUME].items == VOLUME
         assert sequences[SequenceKind.ARPEGGIO].items == ARPEGGIO
-        assert sequences[SequenceKind.DUTY].items == DUTY_CYCLE * len(VOLUME)
+        assert sequences[SequenceKind.DUTY].items == DUTY_CYCLE
 
     def test_a_one_shot_leaves_every_loop_point_unset(self) -> None:
         instruments, _ = build_instrument_table(_project(_instrument(), ChannelName.PULSE1))
 
         assert all(sequence.loop_point == NO_LOOP_POINT for sequence in instruments[0].sequences.values())
 
-    def test_a_loop_point_reaches_every_populated_sequence(self) -> None:
+    def test_each_populated_sequence_carries_the_point_its_dimension_states(self) -> None:
         instruments, _ = build_instrument_table(_project(_instrument(TAIL_LOOP_POINT), ChannelName.PULSE1))
 
-        populated = [sequence for sequence in instruments[0].sequences.values() if sequence.items]
-        assert [sequence.loop_point for sequence in populated] == [TAIL_LOOP_POINT] * len(populated)
+        sequences = instruments[0].sequences
 
-    def test_a_shorter_dimension_runs_the_length_of_the_longest(self) -> None:
-        """A tracker advances each sequence on its own counter, so they must share a length."""
+        assert sequences[SequenceKind.VOLUME].loop_point == TAIL_LOOP_POINT
+        assert sequences[SequenceKind.ARPEGGIO].loop_point == TAIL_LOOP_POINT
+        assert sequences[SequenceKind.DUTY].loop_point == LOOP_FROM_START
+
+    def test_a_shorter_dimension_stands_at_its_own_length(self) -> None:
+        """A tracker advances each sequence on its own counter, so each keeps the length it holds."""
         instrument = Instrument(
             name="Lead",
-            envelopes=InstrumentEnvelopes(volume=VOLUME, duty_cycle=DUTY_CYCLE),
-            loop_point=TAIL_LOOP_POINT,
+            envelopes=InstrumentEnvelopes(
+                volume=Envelope(items=VOLUME, loop_point=TAIL_LOOP_POINT),
+                duty_cycle=Envelope(items=DUTY_CYCLE),
+            ),
         )
         instruments, _ = build_instrument_table(_project(instrument, ChannelName.PULSE1))
 
         duty = instruments[0].sequences[SequenceKind.DUTY]
-        assert duty.items == DUTY_CYCLE * len(VOLUME)
-        assert duty.loop_point == TAIL_LOOP_POINT
+        assert duty.items == DUTY_CYCLE
+        assert duty.loop_point == NO_LOOP_POINT
 
     def test_a_looping_instrument_still_repeats_from_the_start(self) -> None:
         instruments, _ = build_instrument_table(_project(_instrument(LOOP_FROM_START), ChannelName.PULSE1))
@@ -108,7 +117,7 @@ class TestTheRowsNameTheInstrumentsRoot:
         instrument = _instrument()
         module = project_to_module(_project(instrument, channel, transpose=TRANSPOSE))
 
-        cell = pitch_to_note_cell(instrument.root_pitch + TRANSPOSE)
+        cell = pitch_to_note_cell(instrument.initial_pitch + TRANSPOSE)
         row = _rows(list(module.track.patterns), channel)[0]
         assert (row.note, row.octave) == (cell.note, cell.octave)
 
@@ -116,7 +125,7 @@ class TestTheRowsNameTheInstrumentsRoot:
         instrument = _instrument()
         module = project_to_module(_project(instrument, ChannelName.NOISE, transpose=TRANSPOSE))
 
-        cell = period_to_note_cell(instrument.root_period + TRANSPOSE)
+        cell = period_to_note_cell(instrument.initial_period + TRANSPOSE)
         row = _rows(list(module.track.patterns), ChannelName.NOISE)[0]
         assert (row.note, row.octave) == (cell.note, cell.octave)
 

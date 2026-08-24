@@ -1,20 +1,56 @@
 from abc import ABC, abstractmethod
-from typing import ClassVar, Dict, Generic, Iterable, List, Optional, Union, cast
-
-import numpy as np
+from typing import ClassVar, Dict, Generic, Iterable, List, Optional, Tuple, Union
 
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.generators import GeneratorTypeUnion
 from sampletones_core.instructions import (
     InstructionFields,
     InstructionT,
     InstructionTypeUnion,
 )
-from sampletones_core.types.feature import FeatureMap
-from sampletones_shared.utils.arrays import hold, trim
 
 from .feature import Features
+
+
+def _sounding_length(volume: Tuple[int, ...]) -> Optional[int]:
+    """How far every dimension is kept: one frame past the last the volume sounds at.
+
+    The frame past the last audible one is what releases a note, so a reconstruction that runs
+    out while still loud is kept together with the silence its generator wrote after it.
+
+    Args:
+        volume: The per-tick volume the channel wrote.
+
+    Returns:
+        Optional[int]: The item count to keep, or ``None`` where the channel never sounds and
+            every dimension stands as written.
+    """
+    audible = [index for index, level in enumerate(volume) if level]
+    if not audible:
+        return None
+
+    return audible[-1] + 2
+
+
+def _trimmed(items: Tuple[int, ...]) -> Tuple[int, ...]:
+    """One dimension with its repeated tail dropped, keeping one instance of its final value.
+
+    Args:
+        items: The values the dimension wrote.
+
+    Returns:
+        Tuple[int, ...]: The values up to and including the last one that changes.
+    """
+    if not items:
+        return items
+
+    length = len(items)
+    while length > 1 and items[length - 1] == items[length - 2]:
+        length -= 1
+
+    return items[:length]
 
 
 class Exporter(ABC, Generic[InstructionT]):
@@ -33,8 +69,9 @@ class Exporter(ABC, Generic[InstructionT]):
 
     _ATTRIBUTE_MAP: ClassVar[Dict[FeatureKey, InstructionFields]]
 
+    @classmethod
     def to_features(
-        self,
+        cls,
         instructions: List[InstructionT],
         initial_pitch: int,
         held_features: Iterable[FeatureKey],
@@ -43,7 +80,9 @@ class Exporter(ABC, Generic[InstructionT]):
 
         An instruction states every dimension of its frame, so the dimensions the instrument
         leaves to the channel are named alongside the sequence and come back with empty
-        envelopes: what the frames carry for them is the value the channel held.
+        envelopes: what the frames carry for them is the value the channel held. Every dimension
+        is trimmed to the span ending just after the last audible frame, which is what leaves a
+        reconstruction resting at silence once its volume runs out.
 
         Args:
             instructions: The channel's per-frame instructions.
@@ -53,50 +92,28 @@ class Exporter(ABC, Generic[InstructionT]):
         Returns:
             Features: The envelope representation of the sequence.
         """
-        feature_map = self.get_feature_map(instructions, initial_pitch)
-        features = self.from_feature_map_to_features(feature_map)
-        features.leave_to_channel(held_features)
-        return features
-
-    @staticmethod
-    def from_feature_map_to_features(feature_map: FeatureMap) -> Features:
-        """Builds trimmed :class:`Features` from a raw feature map.
-
-        Trims each envelope to the span ending just after the last audible frame, so
-        trailing silence is dropped from every dimension together.
-
-        Args:
-            feature_map: The raw per-dimension arrays.
-
-        Returns:
-            Features: The trimmed features.
-        """
-        features = Features.from_feature_map(feature_map)
-        last_nonzero_volume_index: Optional[int] = None
-        try:
-            last_nonzero_volume_index = features.volume.nonzero()[0][-1] + 2
-        except IndexError:
-            pass
-
-        for key, value in features.items():
-            if isinstance(value, np.ndarray):
-                array = value[:last_nonzero_volume_index]
-                trimmed_value = trim(array)
-                features[key] = trimmed_value
-
-        return features
+        written = cls.read_envelopes(instructions, initial_pitch)
+        sounding = _sounding_length(written.get(FeatureKey.VOLUME, ()))
+        envelopes = {
+            feature_key: Envelope[int](items=_trimmed(items[:sounding])) for feature_key, items in written.items()
+        }
+        return Features.of(initial_pitch, envelopes).leave_to_channel(held_features)
 
     @classmethod
     @abstractmethod
-    def get_feature_map(cls, instructions: List[InstructionT], initial_pitch: int) -> FeatureMap:
-        """Extracts the raw per-dimension feature arrays from an instruction sequence.
+    def read_envelopes(
+        cls,
+        instructions: List[InstructionT],
+        initial_pitch: int,
+    ) -> Dict[FeatureKey, Tuple[int, ...]]:
+        """The per-tick values each dimension this channel reads carries.
 
         Args:
             instructions: The channel's per-frame instructions.
-            initial_pitch: Reference pitch the arpeggio envelope is measured against.
+            initial_pitch: Reference pitch the arpeggio values are measured against.
 
         Returns:
-            FeatureMap: The per-dimension arrays for this channel.
+            Dict[FeatureKey, Tuple[int, ...]]: The values per dimension the generator offers.
         """
 
     @classmethod
@@ -134,28 +151,18 @@ class Exporter(ABC, Generic[InstructionT]):
             List[InstructionT]: The reconstructed per-frame instructions.
         """
         initial_pitch = features.initial_pitch
-        envelopes: Dict[FeatureKey, np.ndarray] = {
-            key: cast(np.ndarray, value)
-            for key, value in features.feature_map.items()
-            if key != FeatureKey.INITIAL_PITCH and value is not None
-        }
-        max_length = max((len(array) for array in envelopes.values()), default=0)
+        envelopes = features.envelopes
 
         instructions: List[InstructionT] = []
-        for index in range(max_length):
+        for index in range(features.frame_count):
             instruction_dictionary: Dict[str, Union[bool, int]] = {}
-            for key, array in envelopes.items():
-                attribute = cls._remap_feature_key(key)
+            for feature_key, envelope in envelopes.items():
+                attribute = cls._remap_feature_key(feature_key)
                 if not attribute:
                     continue
 
-                instruction_dictionary[attribute] = int(
-                    hold(
-                        array,
-                        index,
-                        default=CHANNEL_FEATURE_DEFAULTS[key],
-                    )
-                )
+                item = envelope.at(index)
+                instruction_dictionary[attribute] = item if item is not None else CHANNEL_FEATURE_DEFAULTS[feature_key]
 
             instructions.append(cls._features_dictionary_to_instruction(instruction_dictionary, initial_pitch))
 
@@ -186,10 +193,8 @@ class Exporter(ABC, Generic[InstructionT]):
         if not instruction.on:
             return {FeatureKey.VOLUME: 0}
 
-        feature_map = cls.get_feature_map([instruction], initial_pitch)
-        return {
-            key: int(value[0]) for key, value in feature_map.items() if isinstance(value, np.ndarray) and value.size
-        }
+        written = cls.read_envelopes([instruction], initial_pitch)
+        return {feature_key: items[0] for feature_key, items in written.items() if items}
 
     @classmethod
     def instruction_from_values(
@@ -248,9 +253,6 @@ class Exporter(ABC, Generic[InstructionT]):
 
     @classmethod
     def _remap_feature_key(cls, feature_key: FeatureKey) -> Optional[InstructionFields]:
-        if not hasattr(cls, "_ATTRIBUTE_MAP"):
-            raise NotImplementedError("Subclasses must define _ATTRIBUTE_MAP")
-
         return cls._ATTRIBUTE_MAP.get(feature_key)
 
     @classmethod

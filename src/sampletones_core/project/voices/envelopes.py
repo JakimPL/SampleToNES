@@ -1,4 +1,4 @@
-from typing import Annotated, Dict, Tuple
+from typing import Annotated, Dict
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,6 +10,7 @@ from sampletones_core.constants.general import (
     MAX_VOLUME,
     SILENT_VOLUME,
 )
+from sampletones_core.features.envelope import Envelope
 
 VolumeItem = Annotated[int, Field(ge=SILENT_VOLUME, le=MAX_VOLUME)]
 ArpeggioItem = Annotated[int, Field(ge=ARPEGGIO_MIN, le=ARPEGGIO_MAX)]
@@ -27,47 +28,47 @@ class InstrumentEnvelopes(BaseModel):
 
     Attributes:
         volume: Output level per tick.
-        arpeggio: Offset from the instrument's root per tick.
+        arpeggio: Offset from the instrument's initial pitch per tick.
         duty_cycle: Pulse waveform, or noise mode, per tick.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    volume: Tuple[VolumeItem, ...] = ()
-    arpeggio: Tuple[ArpeggioItem, ...] = ()
-    duty_cycle: Tuple[DutyCycleItem, ...] = ()
+    volume: Envelope[VolumeItem] = Envelope[VolumeItem]()
+    arpeggio: Envelope[ArpeggioItem] = Envelope[ArpeggioItem]()
+    duty_cycle: Envelope[DutyCycleItem] = Envelope[DutyCycleItem]()
 
     @property
-    def envelope_map(self) -> Dict[FeatureKey, Tuple[int, ...]]:
+    def envelope_map(self) -> Dict[FeatureKey, Envelope[int]]:
         return {
             FeatureKey.VOLUME: self.volume,
             FeatureKey.ARPEGGIO: self.arpeggio,
             FeatureKey.DUTY_CYCLE: self.duty_cycle,
         }
 
-    def envelope(self, feature_key: FeatureKey) -> Tuple[int, ...]:
-        """The items one dimension carries, empty where the instrument leaves it to the channel.
+    def envelope(self, feature_key: FeatureKey) -> Envelope[int]:
+        """The dimension one feature names, empty where the instrument leaves it to the channel.
 
         Args:
             feature_key: The dimension read.
 
         Returns:
-            Tuple[int, ...]: That dimension's items.
+            Envelope[int]: That dimension's items and loop point.
 
         Raises:
             KeyError: If ``feature_key`` names a dimension an instrument does not write.
         """
         return self.envelope_map[feature_key]
 
-    def with_envelope(self, feature_key: FeatureKey, items: Tuple[int, ...]) -> "InstrumentEnvelopes":
+    def with_envelope(self, feature_key: FeatureKey, envelope: Envelope[int]) -> "InstrumentEnvelopes":
         """The envelopes with one dimension replaced.
 
         Args:
             feature_key: The dimension written.
-            items: What that dimension now carries; empty leaves it to the channel.
+            envelope: What that dimension now carries; empty items leave it to the channel.
 
         Returns:
-            InstrumentEnvelopes: The envelopes carrying ``items`` for ``feature_key``.
+            InstrumentEnvelopes: The envelopes carrying ``envelope`` for ``feature_key``.
 
         Raises:
             KeyError: If ``feature_key`` names a dimension an instrument does not write.
@@ -75,9 +76,9 @@ class InstrumentEnvelopes(BaseModel):
         if feature_key not in self.envelope_map:
             raise KeyError(feature_key)
 
-        return self.model_copy(update={feature_key.value: items})
+        return self.model_copy(update={feature_key.value: envelope})
 
     @property
     def frame_count(self) -> int:
         """The ticks the envelopes describe, taken from the longest dimension."""
-        return max((len(items) for items in self.envelope_map.values()), default=0)
+        return max((len(envelope.items) for envelope in self.envelope_map.values()), default=0)

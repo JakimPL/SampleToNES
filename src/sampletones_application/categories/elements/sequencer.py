@@ -93,7 +93,6 @@ class SequencerVoicesElements(AbstractElement):
     OMISSION_HI_PITCH = "omission_hi_pitch"
     OMISSION_RELEASE_POINT = "omission_release_point"
     OMISSION_ARPEGGIO_MODE = "omission_arpeggio_mode"
-    OMISSION_SEQUENCE_LOOP_POINTS = "omission_sequence_loop_points"
 
 
 class SequencerHistoryElements(AbstractElement):

@@ -21,21 +21,26 @@ class VoiceReading:
     envelope in the instruments panel means once the voice is played in a song.
 
     Reading a voice on a channel answers all a channel needs of it — the frames, the reference its
-    arpeggio is measured against, the dimensions it leaves behind, and where it repeats from — so
-    the song walk and the sequencer's renderer read one voice the same way.
+    arpeggio is measured against, the dimensions it leaves behind, and what it sounds once the
+    written frames run out — so the song walk and the sequencer's renderer read one voice the same
+    way.
 
     Attributes:
         exporter: The reading that turns this channel's frames into envelope values and back.
         instructions: The frames the channel plays, one per tick.
         reference: The pitch the arpeggio values are measured against.
         held_features: The dimensions the voice leaves to the channel.
-        loop_point: The tick the frames repeat from, or ``None`` where they play once.
+        channel_name: The channel doing the reading.
+        sustaining: The instrument whose envelopes go on past the written frames, where one does.
+        loop_point: The frame a recording circles back to, or ``None`` where it plays through once.
     """
 
     exporter: ExporterTypeUnion
     instructions: Sequence[InstructionUnion]
     reference: int
     held_features: Tuple[FeatureKey, ...]
+    channel_name: ChannelName
+    sustaining: Optional[Instrument]
     loop_point: Optional[int]
 
     @classmethod
@@ -47,8 +52,8 @@ class VoiceReading:
         """The reading one channel plays ``voice`` through.
 
         A sample answers with the frames its reconstruction found for this channel and the
-        reference they were measured against; an instrument answers with the frames its envelopes make
-        of this channel and the root it states. Both kinds therefore reach a channel as one
+        reference they were measured against; an instrument answers with the frames its envelopes
+        make of this channel and the pitch it states. Both kinds therefore reach a channel as one
         reading.
 
         Args:
@@ -59,13 +64,17 @@ class VoiceReading:
             Optional[VoiceReading]: The reading of that channel's frames, or ``None`` where the
                 voice describes no frame there and the channel rests.
         """
+        sustaining: Optional[Instrument] = None
+        loop_point: Optional[int] = None
         match voice:
             case Sample():
                 instructions: Sequence[InstructionUnion] = voice.reconstruction.instructions[channel_name]
                 held_features = voice.reconstruction.held_features[channel_name]
+                loop_point = voice.loop_point
             case Instrument():
                 instructions = voice.instructions(channel_name)
                 held_features = voice.held_features(channel_name)
+                sustaining = voice
 
         if not instructions:
             return None
@@ -75,16 +84,19 @@ class VoiceReading:
             instructions=instructions,
             reference=voice_reference(voice, channel_name),
             held_features=held_features,
-            loop_point=voice.loop_point,
+            channel_name=channel_name,
+            sustaining=sustaining,
+            loop_point=loop_point,
         )
 
     def at(self, tick_index: int) -> Optional[InstructionUnion]:
         """The frame standing at ``tick_index`` of a sounding note.
 
-        A voice repeating from a loop point plays its opening once and then circles the frames from
-        that point on, so it sustains for as long as rows keep it sounding; one playing its frames
-        once falls silent past the last. A point beyond the frames this channel holds circles its
-        final frame, which is the value the channel would hold anyway.
+        An instrument goes on past its written frames: each dimension circles from its own loop
+        point or holds its last item, so a note sounds for as long as rows keep it sounding and a
+        volume envelope ending at silence is what releases it. A recording circles the frames its
+        conversion found from the point it states, and the channel rests past the last of them
+        where it states none.
 
         Args:
             tick_index: How many ticks of the voice the channel has played.
@@ -95,6 +107,9 @@ class VoiceReading:
         """
         if tick_index < len(self.instructions):
             return self.instructions[tick_index]
+
+        if self.sustaining is not None:
+            return self.sustaining.instruction_at(self.channel_name, tick_index)
 
         if self.loop_point is None:
             return None

@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.editing import (
@@ -8,8 +8,8 @@ from sampletones_application.logic.reconstruction.editing import (
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_core.constants.enums import FeatureKey
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.instrument import Instrument
-from sampletones_core.types.feature import FeatureValue
 
 
 class InstrumentEditor:
@@ -55,15 +55,14 @@ class InstrumentEditor:
                 voice_id=instrument.id,
                 name=instrument.name,
                 features=instrument.instrument_features(),
-                root_pitch=instrument.root_pitch,
-                root_period=instrument.root_period,
-                loop_point=instrument.loop_point,
+                initial_pitch=instrument.initial_pitch,
+                initial_period=instrument.initial_period,
             )
 
         feature_data = self._reconstruction_manager.current_features
         return None if feature_data is None else ReconstructionEdit(channels=feature_data.channels)
 
-    def write_envelope(self, feature_key: FeatureKey, data: FeatureValue) -> None:
+    def write_envelope(self, feature_key: FeatureKey, envelope: Envelope[int]) -> None:
         """Writes one dimension of the instrument in front of the tab.
 
         Raises:
@@ -73,36 +72,16 @@ class InstrumentEditor:
         if instrument is None:
             raise TypeError("The tab holds no instrument to write an envelope into")
 
-        self._controller.set_instrument_envelope(instrument.id, feature_key, _items(data))
+        self._controller.set_instrument_envelope(instrument.id, feature_key, envelope)
 
     def write_roots(self, *, pitch: int, period: int) -> None:
-        """Moves the roots the instrument in front of the tab is measured against.
+        """Moves the pitch the instrument in front of the tab is measured against.
 
         Raises:
             TypeError: If the tab holds no instrument to write into.
         """
         instrument = self.instrument
         if instrument is None:
-            raise TypeError("The tab holds no instrument to move the roots of")
+            raise TypeError("The tab holds no instrument to move the pitch of")
 
         self._controller.set_instrument_root(instrument.id, pitch=pitch, period=period)
-
-    def write_loop_point(self, loop_point: Optional[int]) -> None:
-        """Sets the tick the instrument in front of the tab repeats from.
-
-        Raises:
-            TypeError: If the tab holds no instrument to write into.
-        """
-        instrument = self.instrument
-        if instrument is None:
-            raise TypeError("The tab holds no instrument to set a loop point on")
-
-        self._controller.set_voice_loop_point(instrument.id, loop_point)
-
-
-def _items(data: FeatureValue) -> Tuple[int, ...]:
-    """The items an envelope edit carries, as the plain tuple an instrument stores."""
-    if isinstance(data, int):
-        return (data,)
-
-    return tuple(int(value) for value in data)

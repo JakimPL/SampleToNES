@@ -1,7 +1,9 @@
+# TODO: split into a subpackage - divide into logical units
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
@@ -17,8 +19,6 @@ class InstrumentExport:
         name: Name the written instrument carries.
         channel: The NES channel the slice was reconstructed for.
         features: The per-dimension envelopes describing the slice.
-        loop_point: The tick the instrument repeats from while its note is held, or ``None``
-            where it plays its envelopes once.
         nes_frequency: Rate in Hz the envelopes advance at, one item per tick.
         tuning: Where concert pitch sat for the reconstruction the slice came from.
     """
@@ -26,7 +26,6 @@ class InstrumentExport:
     name: str
     channel: ChannelName
     features: Features
-    loop_point: Optional[int]
     nes_frequency: int
     tuning: Tuning
 
@@ -44,15 +43,12 @@ class InstrumentSource:
         channel: The NES channel the envelopes are read for, which a backend sounding them on
             its own plays them through.
         features: The per-dimension envelopes describing the instrument.
-        loop_point: The tick the instrument repeats from while its note is held, or ``None``
-            where it plays its envelopes once.
         nes_frequency: Rate in Hz the envelopes advance at, one item per tick.
         tuning: Where concert pitch sits for the envelopes.
     """
 
     channel: ChannelName
     features: Features
-    loop_point: Optional[int]
     nes_frequency: int
     tuning: Tuning
 
@@ -69,7 +65,6 @@ class InstrumentSource:
             name=name,
             channel=self.channel,
             features=self.features,
-            loop_point=self.loop_point,
             nes_frequency=self.nes_frequency,
             tuning=self.tuning,
         )

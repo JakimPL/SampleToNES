@@ -13,6 +13,7 @@ from sampletones_core.exports.progress import ExportProgress
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.exports.stage import ExportStage
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
@@ -31,8 +32,8 @@ def build_features(frames: int, *, duty_cycle_frames: Optional[int] = None) -> F
     duty_cycle = None if duty_cycle_frames is None else np.zeros(duty_cycle_frames, dtype=int)
     return Features(
         initial_pitch=60,
-        volume=np.full(frames, 15, dtype=int),
-        arpeggio=np.zeros(frames, dtype=int),
+        volume=Envelope(items=(15,) * frames),
+        arpeggio=Envelope(items=(0,) * frames),
         pitch=None,
         hi_pitch=None,
         duty_cycle=duty_cycle,
@@ -44,7 +45,6 @@ def build_instrument(name: str, frames: int) -> InstrumentExport:
         name=name,
         channel=ChannelName.PULSE1,
         features=build_features(frames),
-        loop_point=None,
         nes_frequency=NES_FREQUENCY,
         tuning=Tuning(),
     )

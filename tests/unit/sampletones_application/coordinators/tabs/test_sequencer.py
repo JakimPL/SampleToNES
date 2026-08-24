@@ -69,6 +69,7 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetailWordSegment,
 )
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.voice import ImportedVoice, InstrumentOmission
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
@@ -118,8 +119,7 @@ INSTRUMENT_FILE: Final[Path] = Path("/instruments/Lead.fti")
 
 IMPORTED_VOICE: Final[Instrument] = Instrument(
     name="Lead",
-    envelopes=InstrumentEnvelopes(volume=(15, 8, 0)),
-    loop_point=0,
+    envelopes=InstrumentEnvelopes(volume=Envelope(items=(15, 8, 0), loop_point=0)),
 )
 
 
@@ -343,7 +343,7 @@ class TestTakingAChannelAsAnInstrument:
 
     @staticmethod
     def _taken(samples_coordinator: SequencerTabCoordinator) -> Instrument:
-        instrument = Instrument(name="Bass (triangle)", envelopes=InstrumentEnvelopes(volume=(15,)))
+        instrument = Instrument(name="Bass (triangle)", envelopes=InstrumentEnvelopes(volume=Envelope(items=(15,))))
         samples_coordinator._sequencer_voices_logic.instrument_from_channel.return_value = instrument
         return instrument
 

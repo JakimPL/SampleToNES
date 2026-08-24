@@ -9,6 +9,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import DUTY_CYCLES
 from sampletones_core.exporters import Features
 from sampletones_core.exports.request import InstrumentExport, SampleExport
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.reconstructions import Reconstruction
@@ -212,11 +213,11 @@ def player_features(
     """Envelopes sounding one pitch at full volume for ``frames`` ticks."""
     return Features(
         initial_pitch=pitch,
-        volume=np.full(frames, PLAYER_FULL_VOLUME, dtype=int),
-        arpeggio=np.zeros(frames, dtype=int),
+        volume=Envelope(items=(PLAYER_FULL_VOLUME,) * frames),
+        arpeggio=Envelope(items=(0,) * frames),
         pitch=None,
         hi_pitch=None,
-        duty_cycle=np.zeros(frames, dtype=int) if duty_cycle else None,
+        duty_cycle=Envelope(items=(0,) * frames) if duty_cycle else None,
     )
 
 
@@ -234,11 +235,13 @@ def varied_features(
     generator = np.random.default_rng(PLAYER_VARIED_SEED)
     return Features(
         initial_pitch=pitch,
-        volume=generator.integers(0, PLAYER_FULL_VOLUME + 1, frames),
-        arpeggio=generator.integers(-OCTAVE_SEMITONES, OCTAVE_SEMITONES + 1, frames),
+        volume=Envelope(items=tuple(generator.integers(0, PLAYER_FULL_VOLUME + 1, frames).tolist())),
+        arpeggio=Envelope(items=tuple(generator.integers(-OCTAVE_SEMITONES, OCTAVE_SEMITONES + 1, frames).tolist())),
         pitch=None,
         hi_pitch=None,
-        duty_cycle=generator.integers(0, len(DUTY_CYCLES), frames) if duty_cycle else None,
+        duty_cycle=(
+            Envelope(items=tuple(generator.integers(0, len(DUTY_CYCLES), frames).tolist())) if duty_cycle else None
+        ),
     )
 
 
@@ -255,11 +258,20 @@ def player_instrument(
     return InstrumentExport(
         name=name,
         channel=channel,
-        features=features,
-        loop_point=WHOLE_LOOP_POINT if loop else None,
+        features=looping_features(features) if loop else features,
         nes_frequency=nes_frequency,
         tuning=tuning,
     )
+
+
+def looping_features(features: Features) -> Features:
+    """The envelopes with every dimension they write circling from its first item."""
+    looping = features
+    for feature_key, envelope in features.envelopes.items():
+        if envelope.written:
+            looping = looping.with_envelope(feature_key, envelope.model_copy(update={"loop_point": WHOLE_LOOP_POINT}))
+
+    return looping
 
 
 def player_sample(

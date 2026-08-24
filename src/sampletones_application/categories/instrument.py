@@ -13,7 +13,6 @@ OMISSION_ELEMENTS: Final[Dict[InstrumentOmission, SequencerVoicesElements]] = {
     InstrumentOmission.HI_PITCH: SequencerVoicesElements.OMISSION_HI_PITCH,
     InstrumentOmission.RELEASE_POINT: SequencerVoicesElements.OMISSION_RELEASE_POINT,
     InstrumentOmission.ARPEGGIO_MODE: SequencerVoicesElements.OMISSION_ARPEGGIO_MODE,
-    InstrumentOmission.SEQUENCE_LOOP_POINTS: SequencerVoicesElements.OMISSION_SEQUENCE_LOOP_POINTS,
 }
 
 OMISSION_BULLET: Final[str] = "  - "

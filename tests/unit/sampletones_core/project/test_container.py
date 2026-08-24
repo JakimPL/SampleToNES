@@ -8,6 +8,7 @@ import pytest
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import Metadata
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.container import ProjectContainer
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
@@ -196,10 +197,13 @@ class TestInstrumentsRoundTrip:
         project = Project.create(title="Demo")
         instrument = Instrument(
             name="lead",
-            envelopes=InstrumentEnvelopes(volume=(15, 12), arpeggio=(0, 7), duty_cycle=(2,)),
-            root_pitch=55,
-            root_period=3,
-            loop_point=WHOLE_LOOP_POINT,
+            envelopes=InstrumentEnvelopes(
+                volume=Envelope(items=(15, 12), loop_point=WHOLE_LOOP_POINT),
+                arpeggio=Envelope(items=(0, 7)),
+                duty_cycle=Envelope(items=(2,)),
+            ),
+            initial_pitch=55,
+            initial_period=3,
         )
         project.voices.append(instrument)
         path = tmp_path / "demo.stp"
@@ -211,9 +215,9 @@ class TestInstrumentsRoundTrip:
         restored = loaded.voice(instrument.id)
         assert isinstance(restored, Instrument)
         assert restored.envelopes == instrument.envelopes
-        assert restored.root_pitch == instrument.root_pitch
-        assert restored.root_period == instrument.root_period
-        assert restored.loop_point == instrument.loop_point
+        assert restored.initial_pitch == instrument.initial_pitch
+        assert restored.initial_period == instrument.initial_period
+        assert restored.envelopes.volume.loop_point == instrument.envelopes.volume.loop_point
 
     def test_an_instrument_leaves_no_reconstruction_in_the_archive(self, tmp_path: Path) -> None:
         project = Project.create(title="Demo")
@@ -248,7 +252,7 @@ class TestInstrumentsRoundTrip:
         tmp_path: Path,
     ) -> None:
         project = Project.create(title="Demo")
-        instrument = Instrument(name="lead", envelopes=InstrumentEnvelopes(volume=(15,)))
+        instrument = Instrument(name="lead", envelopes=InstrumentEnvelopes(volume=Envelope(items=(15,))))
         project.voices.append(instrument)
         project.song[ChannelName.PULSE1].patterns[0].rows[0] = Row(command=NoteOn(voice_id=instrument.id))
         path = tmp_path / "demo.stp"

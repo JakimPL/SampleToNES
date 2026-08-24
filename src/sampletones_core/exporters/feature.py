@@ -1,113 +1,156 @@
 from __future__ import annotations
 
-from typing import Any, Dict, FrozenSet, Iterable, List, Mapping, Optional, Tuple, cast
+from typing import Dict, FrozenSet, Iterable, Mapping, Optional, Tuple
 
-import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_core.types.feature import FeatureMap, FeatureValue
+from sampletones_core.features.envelope import Envelope
+
+FeatureEnvelopes = Mapping[FeatureKey, Envelope[int]]
 
 
 class Features(BaseModel):
-    """
-    The per-dimension envelopes describing one FamiTracker instrument.
+    """The per-dimension envelopes describing one FamiTracker instrument.
 
-    Each field is the frame-by-frame envelope for one dimension — volume, arpeggio,
-    pitch, hi-pitch, and duty cycle — alongside the ``initial_pitch`` the arpeggio
-    envelope is relative to. A dimension the channel offers is an array, ``None`` for
-    one it lacks; an array of no items marks a dimension the instrument leaves to the
-    channel, which keeps the value it holds. The mapping interface (subscript, ``get``,
-    ``keys``/``items``/``values``, ``in``) exposes the envelopes keyed by
-    :class:`FeatureKey`, listing the dimensions the channel offers.
+    Each field is one dimension the channel reads — volume, arpeggio, pitch, hi-pitch and duty
+    cycle — carrying the values it writes per tick together with the item they repeat from, beside
+    the ``initial_pitch`` the arpeggio is measured against. A dimension the generator offers is an
+    envelope, ``None`` for one it lacks; an envelope of no items marks a dimension the instrument
+    leaves to the channel, which keeps the value it holds.
 
     Attributes:
         initial_pitch: Reference pitch the arpeggio envelope is measured against.
         volume: Volume envelope.
         arpeggio: Arpeggio (relative pitch) envelope.
-        pitch: Pitch envelope, or ``None`` when unused.
-        hi_pitch: Fine-pitch envelope, or ``None`` when unused.
-        duty_cycle: Duty-cycle envelope, or ``None`` when unused.
+        pitch: Pitch envelope, or ``None`` where the generator lacks the dimension.
+        hi_pitch: Fine-pitch envelope, or ``None`` where the generator lacks the dimension.
+        duty_cycle: Duty-cycle envelope, or ``None`` where the generator lacks the dimension.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(frozen=True)
 
     initial_pitch: int
-    volume: np.ndarray
-    arpeggio: np.ndarray
-    pitch: Optional[np.ndarray]
-    hi_pitch: Optional[np.ndarray]
-    duty_cycle: Optional[np.ndarray]
+    volume: Envelope[int]
+    arpeggio: Envelope[int]
+    pitch: Optional[Envelope[int]]
+    hi_pitch: Optional[Envelope[int]]
+    duty_cycle: Optional[Envelope[int]]
 
     @classmethod
-    def from_feature_map(
+    def of(
         cls,
-        feature_map: FeatureMap,
+        initial_pitch: int,
+        envelopes: FeatureEnvelopes,
     ) -> Features:
-        """Builds features from a raw feature map.
+        """The features a channel's dimensions describe, leaving out the ones it lacks.
 
         Args:
-            feature_map: The per-dimension arrays keyed by :class:`FeatureKey`.
+            initial_pitch: Reference pitch the arpeggio envelope is measured against.
+            envelopes: The dimensions the generator offers, keyed by the feature they carry.
 
         Returns:
-            Features: The features carrying those envelopes.
+            Features: Those dimensions, with the generator's missing ones absent.
         """
         return cls(
-            initial_pitch=cast(int, feature_map[FeatureKey.INITIAL_PITCH]),
-            volume=cast(np.ndarray, feature_map[FeatureKey.VOLUME]),
-            arpeggio=cast(np.ndarray, feature_map[FeatureKey.ARPEGGIO]),
-            pitch=cast(Optional[np.ndarray], feature_map.get(FeatureKey.PITCH)),
-            hi_pitch=cast(Optional[np.ndarray], feature_map.get(FeatureKey.HI_PITCH)),
-            duty_cycle=cast(Optional[np.ndarray], feature_map.get(FeatureKey.DUTY_CYCLE)),
+            initial_pitch=initial_pitch,
+            volume=envelopes.get(FeatureKey.VOLUME, Envelope[int]()),
+            arpeggio=envelopes.get(FeatureKey.ARPEGGIO, Envelope[int]()),
+            pitch=envelopes.get(FeatureKey.PITCH),
+            hi_pitch=envelopes.get(FeatureKey.HI_PITCH),
+            duty_cycle=envelopes.get(FeatureKey.DUTY_CYCLE),
         )
 
     @property
-    def feature_map(self) -> Dict[FeatureKey, Optional[FeatureValue]]:
-        return {
-            FeatureKey.INITIAL_PITCH: self.initial_pitch,
+    def envelopes(self) -> Dict[FeatureKey, Envelope[int]]:
+        """The dimensions this channel offers, keyed by the feature each carries."""
+        offered = {
             FeatureKey.VOLUME: self.volume,
             FeatureKey.ARPEGGIO: self.arpeggio,
             FeatureKey.PITCH: self.pitch,
             FeatureKey.HI_PITCH: self.hi_pitch,
             FeatureKey.DUTY_CYCLE: self.duty_cycle,
         }
+        return {feature_key: envelope for feature_key, envelope in offered.items() if envelope is not None}
 
-    def __getitem__(self, feature_key: FeatureKey) -> FeatureValue:
-        value = self.feature_map.get(feature_key)
-        if value is None:
+    def envelope(self, feature_key: FeatureKey) -> Envelope[int]:
+        """The dimension one feature names.
+
+        Args:
+            feature_key: The dimension read.
+
+        Returns:
+            Envelope[int]: Its values and the item they repeat from.
+
+        Raises:
+            KeyError: If the channel's generator lacks that dimension.
+        """
+        return self.envelopes[feature_key]
+
+    def offers(self, feature_key: FeatureKey) -> bool:
+        """Whether the channel's generator reads this dimension at all."""
+        return feature_key in self.envelopes
+
+    def with_envelope(self, feature_key: FeatureKey, envelope: Envelope[int]) -> Features:
+        """These features with one dimension replaced.
+
+        Args:
+            feature_key: The dimension written.
+            envelope: What that dimension now carries; empty items leave it to the channel.
+
+        Returns:
+            Features: The features carrying ``envelope`` for ``feature_key``.
+
+        Raises:
+            KeyError: If the channel's generator lacks that dimension.
+        """
+        if not self.offers(feature_key):
             raise KeyError(feature_key)
-        return value
 
-    def __setitem__(self, feature_key: FeatureKey, value: FeatureValue) -> None:
-        if feature_key == FeatureKey.INITIAL_PITCH:
-            if not isinstance(value, int):
-                raise TypeError(f"Expected int for {feature_key}, got {type(value)}")
-        else:
-            if not isinstance(value, np.ndarray):
-                raise TypeError(f"Expected np.ndarray for {feature_key}, got {type(value)}")
+        return self.model_copy(update={feature_key.value: envelope})
 
-        setattr(self, feature_key.name.lower(), value)
+    def leave_to_channel(self, feature_keys: Iterable[FeatureKey]) -> Features:
+        """These features with each named dimension emptied, so the channel governs it.
 
-    def __contains__(self, feature_key: FeatureKey) -> bool:
-        return feature_key in self.feature_map and self.feature_map[feature_key] is not None
+        The dimensions a channel offers are the ones it can hold a value for, so this acts on
+        those and leaves the shape of the features as the channel defines it.
 
-    def get(self, feature_key: FeatureKey, default: Optional[Any] = None) -> Optional[FeatureValue]:
-        return self.feature_map.get(feature_key, default)
+        Args:
+            feature_keys: The dimensions the instrument leaves to the channel.
 
-    def keys(self) -> List[FeatureKey]:
-        return [key for key, value in self.feature_map.items() if value is not None]
+        Returns:
+            Features: The features with those dimensions carrying no item.
+        """
+        emptied = {feature_key.value: Envelope[int]() for feature_key in feature_keys if self.offers(feature_key)}
+        return self.model_copy(update=emptied)
 
-    def items(self) -> List[Tuple[FeatureKey, FeatureValue]]:
-        return [(key, value) for key, value in self.feature_map.items() if value is not None]
+    def repeating_from(self, loop_point: Optional[int]) -> Features:
+        """These features with every dimension they write circling from one item.
 
-    def values(self) -> List[FeatureValue]:
-        return [value for value in self.feature_map.values() if value is not None]
+        A recording states one point for the whole of it, so an export of one gives every
+        dimension the same point; a point past what a dimension writes moves to its last item.
+
+        Args:
+            loop_point: The item to repeat from, or ``None`` to leave every dimension halting.
+
+        Returns:
+            Features: The features with those dimensions circling.
+        """
+        if loop_point is None:
+            return self
+
+        circling = self
+        for feature_key, envelope in self.envelopes.items():
+            if envelope.written:
+                point = min(loop_point, len(envelope.items) - 1)
+                circling = circling.with_envelope(feature_key, envelope.model_copy(update={"loop_point": point}))
+
+        return circling
 
     @property
     def frame_count(self) -> int:
         """The frame count the envelopes describe, taken from the longest populated dimension."""
-        arrays = (self.volume, self.arpeggio, self.pitch, self.hi_pitch, self.duty_cycle)
-        return max((len(array) for array in arrays if array is not None), default=0)
+        return max((len(envelope.items) for envelope in self.envelopes.values()), default=0)
 
     @property
     def has_frames(self) -> bool:
@@ -127,20 +170,7 @@ class Features(BaseModel):
         which keeps the value it already holds for as long as the instrument sounds. These
         are the dimensions it leaves, listed in the order the model declares them.
         """
-        return tuple(key for key, value in self.items() if isinstance(value, np.ndarray) and value.size == 0)
-
-    def leave_to_channel(self, feature_keys: Iterable[FeatureKey]) -> None:
-        """Empties the envelope of each named dimension the channel offers, so the channel governs it.
-
-        The dimensions a channel offers are the ones it can hold a value for, so the record acts
-        on those and leaves the shape of the features as the channel defines it.
-
-        Args:
-            feature_keys: The dimensions the instrument leaves to the channel.
-        """
-        for feature_key in feature_keys:
-            if feature_key in self:
-                self[feature_key] = np.array([], dtype=np.int8)
+        return tuple(feature_key for feature_key, envelope in self.envelopes.items() if not envelope.written)
 
 
 def playing_channels(channels: Mapping[ChannelName, Features]) -> FrozenSet[ChannelName]:

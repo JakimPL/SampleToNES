@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -35,9 +35,6 @@ from sampletones_application.tags.reconstructions import (
     SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE,
     SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT,
-    TAG_RECONSTRUCTIONS_INSTRUMENTS_CHECKBOX_LOOPS,
-    TAG_RECONSTRUCTIONS_INSTRUMENTS_GROUP_FIELDS,
-    TAG_RECONSTRUCTIONS_INSTRUMENTS_INPUT_LOOP_POINT,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_TEXT_SAMPLE_SIZE,
@@ -69,7 +66,6 @@ from sampletones_application.utils.gui.dpg import (
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.instruments import (
-    InstrumentViewModel,
     ReconstructionInstrumentsViewModel,
 )
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
@@ -81,7 +77,6 @@ from sampletones_core.constants.enums import (
 from sampletones_core.exporters import Features
 from sampletones_core.features import (
     CHANNEL_GENERATOR_KIND,
-    RESTING_REFERENCE_PERIOD,
     resting_reference,
     supported_features,
 )
@@ -119,7 +114,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         self.channel_plots: Dict[ChannelName, Dict[FeatureKey, GUIBarGraph]] = {}
         self._pitch_steppers: Dict[ChannelName, GUIPitchStepper] = {}
-        self._instrument_root_period: Optional[GUIPitchStepper] = None
         self._export_buttons: Dict[ChannelName, GUIButton] = {}
 
         self.tab_bar_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR
@@ -127,9 +121,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.mouse_item_handler_tag = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL, SUF_HANDLER_REGISTRY)
         self.sample_size_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TEXT_SAMPLE_SIZE
         self.sample_size_group_tag = compose_tag(self.sample_size_tag, SUF_GROUP)
-        self.instrument_fields_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_GROUP_FIELDS
-        self.instrument_loops_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_CHECKBOX_LOOPS
-        self.instrument_loop_point_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_INPUT_LOOP_POINT
 
         self._graphs: Dict[str, GUIBarGraph] = {}
         self._sequence_lengths: Dict[Tuple[ChannelName, FeatureKey], int] = {}
@@ -151,8 +142,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.on_pitch_value_changed: Optional[Callable[[ChannelName, int], None]] = None
         self.on_bar_data_changed: Optional[Callable[[ChannelName, FeatureKey, np.ndarray], None]] = None
         self.on_raw_data_changed: Optional[Callable[[ChannelName, FeatureKey, np.ndarray], None]] = None
-        self.on_instrument_root_period_changed: Optional[Callable[[int], None]] = None
-        self.on_instrument_loop_point_changed: Optional[Callable[[Optional[int]], None]] = None
 
         self._lbl_copy = language_manager["reconstructions.instruments.label.copy_button"]
         self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
@@ -363,73 +352,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             window_tag,
         )
         self._create_pitch_stepper(channel_name, initial_pitch, window_tag)
-        if channel_name is INSTRUMENT_CHANNEL:
-            self._create_instrument_fields(window_tag)
-
         self._create_generator_feature_displays(channel_name, window_tag)
-
-    def _create_instrument_fields(self, window_tag: str) -> None:
-        """Draws what an instrument states beyond its envelopes: its noise root and its loop point.
-
-        An instrument sounds on every channel, so it states a root for the tonal channels — the stepper
-        above these — and one for the noise channel's periods. The loop point is the tick its
-        envelopes repeat from while a note is held.
-        """
-        with dpg.group(tag=self.instrument_fields_tag, parent=window_tag, show=False):
-            self._instrument_root_period = GUIPitchStepper(
-                tag=self.instrument_fields_tag,
-                parent=self.instrument_fields_tag,
-                kind=PERIOD_VALUE_KIND,
-                initial_value=RESTING_REFERENCE_PERIOD,
-                label=self._language_manager["reconstructions.instruments.label.root_period"],
-                tooltip=self._pitch_tooltips.for_kind(PERIOD_VALUE_KIND),
-                status_message=self._language_manager["reconstructions.instruments.message.status_input_period"],
-                status_bar=self._status_bar,
-                layout=self._pitch_stepper_style.dimensions,
-                plus_minus_layout=self._pitch_stepper_style.plus_minus,
-                value_color=self._pitch_stepper_style.value_color,
-            )
-            self._instrument_root_period.on_value_changed = self._on_instrument_root_period_changed
-
-            with labeled_field(
-                self._language_manager["reconstructions.instruments.label.loop_point"],
-                self._pitch_stepper_style.dimensions.label_width,
-                parent=self.instrument_fields_tag,
-            ):
-                dpg.add_checkbox(
-                    tag=self.instrument_loops_tag,
-                    default_value=False,
-                    callback=self._on_instrument_loops_toggled,
-                )
-                dpg.add_input_int(
-                    tag=self.instrument_loop_point_tag,
-                    default_value=0,
-                    min_value=0,
-                    min_clamped=True,
-                    width=self._pitch_stepper_style.dimensions.value_width,
-                    step=1,
-                    callback=self._on_instrument_loop_point_typed,
-                )
-
-    def _on_instrument_root_period_changed(self, value: int) -> None:
-        self.call(self.on_instrument_root_period_changed, value)
-
-    def _on_instrument_loops_toggled(self, _sender: Sender, app_data: bool) -> None:
-        point = dpg.get_value(self.instrument_loop_point_tag) if app_data else None
-        self.call(self.on_instrument_loop_point_changed, point)
-
-    def _on_instrument_loop_point_typed(self, _sender: Sender, app_data: int) -> None:
-        if dpg.get_value(self.instrument_loops_tag):
-            self.call(self.on_instrument_loop_point_changed, max(0, app_data))
-
-    def _apply_instrument_fields(self, instrument: InstrumentViewModel) -> None:
-        """Writes what an instrument states into the fields that show it."""
-        if self._instrument_root_period is not None:
-            self._instrument_root_period.set_value(instrument.root_period)
-
-        dpg_set_value(self.instrument_loops_tag, instrument.loops)
-        dpg_set_value(self.instrument_loop_point_tag, instrument.loop_point if instrument.loop_point is not None else 0)
-        dpg_configure_item(self.instrument_loop_point_tag, enabled=instrument.loops)
 
     def _default_initial_pitch(self, channel_name: ChannelName) -> int:
         return resting_reference(channel_name)
@@ -534,7 +457,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         dpg_configure_item(self.no_data_message_tag, show=not is_open)
         dpg_configure_item(self.tab_bar_tag, show=is_open)
         dpg_configure_item(self.sample_size_group_tag, show=is_open)
-        dpg_configure_item(self.instrument_fields_tag, show=instrument is not None)
         self._update_sizes(view_model.footprint, shows_one_instrument=instrument is not None)
 
         for channel_name in ChannelName.items():
@@ -550,9 +472,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 channel_name,
                 channel_name in view_model.playing_channels,
             )
-
-        if instrument is not None:
-            self._apply_instrument_fields(instrument)
 
     def _apply_playing_state(
         self,
@@ -622,7 +541,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         channel_name: ChannelName,
         generator_features: Features,
     ) -> None:
-        initial_pitch = cast(int, generator_features[FeatureKey.INITIAL_PITCH])
+        initial_pitch = generator_features.initial_pitch
         self._apply_pitch_display(channel_name, initial_pitch)
 
         for feature_key in self._generator_features(channel_name):
@@ -647,10 +566,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         generator_features: Features,
         feature_key: FeatureKey,
     ) -> np.ndarray:
-        feature = cast(Optional[np.ndarray], generator_features.get(feature_key))
-        if feature is None:
-            return np.array([], dtype=np.int8)
-        return feature
+        envelope = generator_features.envelopes.get(feature_key)
+        items = envelope.items if envelope is not None else ()
+        return np.array(items, dtype=np.int8)
 
     def _pitch_kind(self, channel_name: ChannelName) -> PitchValueKind:
         return PERIOD_VALUE_KIND if channel_name == ChannelName.NOISE else PITCH_VALUE_KIND

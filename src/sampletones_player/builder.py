@@ -128,7 +128,7 @@ def loop_tick_from_instruments(instruments: Sequence[InstrumentExport]) -> Optio
     """The tick a request's song returns to once it ends.
 
     A song repeats from its first tick where every slice it carries repeats, and ends at its
-    last tick where any slice plays its envelopes once.
+    last tick where any slice holds its envelopes out instead.
 
     Args:
         instruments: The slices the song carries.
@@ -136,10 +136,15 @@ def loop_tick_from_instruments(instruments: Sequence[InstrumentExport]) -> Optio
     Returns:
         Optional[int]: The tick to return to, or ``None`` where the song stops at its end.
     """
-    if instruments and all(instrument.loop_point is not None for instrument in instruments):
+    if instruments and all(_repeats(instrument) for instrument in instruments):
         return SONG_START
 
     return None
+
+
+def _repeats(instrument: InstrumentExport) -> bool:
+    """Whether a slice circles rather than holding its envelopes out."""
+    return any(envelope.loops for envelope in instrument.features.envelopes.values())
 
 
 def song_from_sample(

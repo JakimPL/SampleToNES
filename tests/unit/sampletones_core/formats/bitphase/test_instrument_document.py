@@ -1,6 +1,7 @@
 from typing import Final, Tuple
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.bitphase.builder import project_to_bitphase
 from sampletones_core.formats.bitphase.specification.instruments import LOOP_FROM_START
 from sampletones_core.project.patterns.row import Row
@@ -17,8 +18,11 @@ ARPEGGIO: Final[Tuple[int, ...]] = (0, 4, 7)
 def _project(*channels: ChannelName, loop_point: int | None = None) -> Tuple[Project, Instrument]:
     instrument = Instrument(
         name="Lead",
-        envelopes=InstrumentEnvelopes(volume=VOLUME, arpeggio=ARPEGGIO, duty_cycle=(1,)),
-        loop_point=loop_point,
+        envelopes=InstrumentEnvelopes(
+            volume=Envelope(items=VOLUME, loop_point=loop_point),
+            arpeggio=Envelope(items=ARPEGGIO, loop_point=loop_point),
+            duty_cycle=Envelope(items=(1,)),
+        ),
     )
     project = Project.create(title="Demo", rows_per_pattern=ROWS_PER_PATTERN)
     project.voices.append(instrument)

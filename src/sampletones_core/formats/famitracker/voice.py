@@ -4,6 +4,7 @@ from typing import Dict, Optional, Tuple
 
 from pydantic import ValidationError
 
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.model.sequence import InstrumentSequence
 from sampletones_core.formats.famitracker.specification.sequences import (
@@ -20,13 +21,12 @@ Sequences = Dict[SequenceKind, InstrumentSequence]
 
 
 class InstrumentOmission(StrEnum):
-    """What a tracker instrument states beyond the envelopes and the one loop point a voice holds."""
+    """What a tracker instrument states beyond the envelopes and loop points a voice holds."""
 
     PITCH = "pitch"
     HI_PITCH = "hi_pitch"
     RELEASE_POINT = "release_point"
     ARPEGGIO_MODE = "arpeggio_mode"
-    SEQUENCE_LOOP_POINTS = "sequence_loop_points"
 
 
 @dataclass(frozen=True)
@@ -64,24 +64,22 @@ def instrument_to_voice(instrument: Instrument2A03) -> ImportedVoice:
             dimension it feeds holds.
     """
     sequences = instrument.sequences
-    governing = _governing_sequence(sequences)
 
     return ImportedVoice(
-        voice=_voice(instrument.name, sequences, _loop_point(governing)),
-        omissions=_omissions(sequences, governing),
+        voice=_voice(instrument.name, sequences),
+        omissions=_omissions(sequences),
     )
 
 
 def _voice(
     name: str,
     sequences: Sequences,
-    loop_point: Optional[int],
 ) -> Instrument:
     try:
         envelopes = InstrumentEnvelopes(
-            volume=sequences[SequenceKind.VOLUME].items,
-            arpeggio=sequences[SequenceKind.ARPEGGIO].items,
-            duty_cycle=sequences[SequenceKind.DUTY].items,
+            volume=_envelope(sequences[SequenceKind.VOLUME]),
+            arpeggio=_envelope(sequences[SequenceKind.ARPEGGIO]),
+            duty_cycle=_envelope(sequences[SequenceKind.DUTY]),
         )
     except ValidationError as exception:
         raise InvalidInstrumentValuesError(
@@ -92,48 +90,38 @@ def _voice(
     return Instrument(
         name=name,
         envelopes=envelopes,
-        loop_point=loop_point,
     )
 
 
-def _governing_sequence(sequences: Sequences) -> Optional[InstrumentSequence]:
-    """The sequence whose loop point the whole voice adopts.
+def _envelope(sequence: InstrumentSequence) -> Envelope[int]:
+    """One dimension as the voice holds it, carrying the point that sequence repeats from.
 
-    A voice repeats every dimension from one tick, so one sequence states the point the rest
-    follow. The volume sequence governs wherever it is written, since it is the one that shapes
-    a held note; otherwise the first sequence the instrument writes does.
+    Args:
+        sequence: The sequence the file states for this dimension.
+
+    Returns:
+        Envelope[int]: Its items and its own loop point, empty where the file writes nothing.
     """
-    volume = sequences[SequenceKind.VOLUME]
-    if volume.enabled:
-        return volume
-
-    return next(
-        (sequence for sequence in sequences.values() if sequence.enabled),
-        None,
+    return Envelope[int](
+        items=sequence.items,
+        loop_point=_loop_point(sequence),
     )
 
 
-def _loop_point(governing: Optional[InstrumentSequence]) -> Optional[int]:
-    if governing is None or governing.loop_point < LOOP_FROM_START:
+def _loop_point(sequence: InstrumentSequence) -> Optional[int]:
+    if sequence.loop_point < LOOP_FROM_START or sequence.loop_point >= len(sequence.items):
         return None
 
-    return governing.loop_point
+    return sequence.loop_point
 
 
-def _omissions(
-    sequences: Sequences,
-    governing: Optional[InstrumentSequence],
-) -> Tuple[InstrumentOmission, ...]:
+def _omissions(sequences: Sequences) -> Tuple[InstrumentOmission, ...]:
     arpeggio = sequences[SequenceKind.ARPEGGIO]
     held = {
         InstrumentOmission.PITCH: sequences[SequenceKind.PITCH].enabled,
         InstrumentOmission.HI_PITCH: sequences[SequenceKind.HI_PITCH].enabled,
         InstrumentOmission.RELEASE_POINT: _holds_release_point(sequences),
         InstrumentOmission.ARPEGGIO_MODE: arpeggio.enabled and arpeggio.setting != DEFAULT_SEQUENCE_SETTING,
-        InstrumentOmission.SEQUENCE_LOOP_POINTS: _holds_separate_loop_points(
-            sequences,
-            governing,
-        ),
     }
 
     return tuple(omission for omission, stated in held.items() if stated)
@@ -141,13 +129,3 @@ def _omissions(
 
 def _holds_release_point(sequences: Sequences) -> bool:
     return any(sequence.enabled and sequence.release_point != NO_RELEASE_POINT for sequence in sequences.values())
-
-
-def _holds_separate_loop_points(
-    sequences: Sequences,
-    governing: Optional[InstrumentSequence],
-) -> bool:
-    if governing is None:
-        return False
-
-    return any(sequence.enabled and sequence.loop_point != governing.loop_point for sequence in sequences.values())

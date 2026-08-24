@@ -482,7 +482,7 @@ class TestInitialPitchReference:
         features = reconstruction.export()[ChannelName.PULSE1]
 
         assert features.initial_pitch == _BASE_PITCH
-        assert features.arpeggio.tolist() == [_OCTAVE, 0]
+        assert list(features.arpeggio.items) == [_OCTAVE, 0]
 
     def test_update_generator_data_replaces_the_reference(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
@@ -531,8 +531,8 @@ class TestHeldFeatures:
         )
 
         features = reconstruction.export()[ChannelName.PULSE1]
-        assert features.arpeggio.size == 0
-        assert features.volume.size > 0
+        assert not features.arpeggio.written
+        assert features.volume.written
 
     def test_the_written_dimensions_export_their_items(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
@@ -547,7 +547,7 @@ class TestHeldFeatures:
 
         features = reconstruction.export()[ChannelName.PULSE1]
         assert features.duty_cycle is not None
-        assert features.duty_cycle.size > 0
+        assert features.duty_cycle.written
 
     def test_the_record_reads_back_off_the_exported_envelopes(self) -> None:
         """What a reconstruction says it holds is what its export shows, on every channel.
@@ -637,8 +637,8 @@ class TestChannelSet:
         features = _reconstruction([_pulse(_BASE_PITCH)]).export()[ChannelName.PULSE2]
 
         assert not features.has_frames
-        assert features.volume.size == 0
-        assert features.arpeggio.size == 0
+        assert not features.volume.written
+        assert not features.arpeggio.written
 
     def test_a_channel_standing_by_renders_no_audio(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])

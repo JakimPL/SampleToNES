@@ -1,7 +1,6 @@
 from typing import Final, Tuple
 from unittest.mock import MagicMock
 
-import numpy as np
 import pytest
 
 from sampletones_application.logic.project.controller import ProjectController
@@ -11,6 +10,7 @@ from sampletones_application.logic.reconstruction.editor import InstrumentEditor
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 
@@ -22,8 +22,8 @@ VOLUME: Final[Tuple[int, ...]] = (15, 12, 9)
 def _features() -> Features:
     return Features(
         initial_pitch=ROOT_PITCH,
-        volume=np.array([15], dtype=np.int8),
-        arpeggio=np.array([0], dtype=np.int8),
+        volume=Envelope(items=(15,)),
+        arpeggio=Envelope(items=(0,)),
         pitch=None,
         hi_pitch=None,
         duty_cycle=None,
@@ -76,7 +76,7 @@ class TestWhatTheTabHasInFront:
         edit = editor.edited_instrument()
         assert isinstance(edit, InstrumentEdit)
         assert (edit.voice_id, edit.name) == (instrument.id, "lead")
-        assert (edit.root_pitch, edit.root_period) == (ROOT_PITCH, ROOT_PERIOD)
+        assert (edit.initial_pitch, edit.initial_period) == (ROOT_PITCH, ROOT_PERIOD)
 
     def test_opening_an_instrument_closes_the_reconstruction_the_tab_held(
         self,
@@ -127,9 +127,9 @@ class TestWritingIntoTheInstrument:
         instrument = controller.add_instrument(new_instrument("lead"))
         editor.edit_instrument(instrument.id)
 
-        editor.write_envelope(FeatureKey.VOLUME, np.array(VOLUME, dtype=np.int8))
+        editor.write_envelope(FeatureKey.VOLUME, Envelope(items=VOLUME))
 
-        assert instrument.envelopes.volume == VOLUME
+        assert instrument.envelopes.volume.items == VOLUME
 
     def test_the_roots_reach_the_instrument(
         self,
@@ -141,20 +141,22 @@ class TestWritingIntoTheInstrument:
 
         editor.write_roots(pitch=ROOT_PITCH, period=ROOT_PERIOD)
 
-        assert (instrument.root_pitch, instrument.root_period) == (ROOT_PITCH, ROOT_PERIOD)
+        assert (instrument.initial_pitch, instrument.initial_period) == (ROOT_PITCH, ROOT_PERIOD)
 
-    def test_the_loop_point_reaches_the_instrument(
+    def test_a_point_written_on_an_envelope_reaches_the_instrument(
         self,
         editor: InstrumentEditor,
         controller: ProjectController,
     ) -> None:
+        """A dimension carries the item it repeats from, so an edit writes both at once."""
         instrument = controller.add_instrument(new_instrument("lead"))
         editor.edit_instrument(instrument.id)
 
-        editor.write_loop_point(WHOLE_LOOP_POINT)
+        editor.write_envelope(FeatureKey.VOLUME, Envelope(items=(15, 8), loop_point=WHOLE_LOOP_POINT))
 
-        assert instrument.loop_point == WHOLE_LOOP_POINT
+        assert instrument.envelopes.volume.items == (15, 8)
+        assert instrument.envelopes.volume.loop_point == WHOLE_LOOP_POINT
 
     def test_a_write_with_no_instrument_in_front_is_refused(self, editor: InstrumentEditor) -> None:
         with pytest.raises(TypeError):
-            editor.write_envelope(FeatureKey.VOLUME, np.array(VOLUME, dtype=np.int8))
+            editor.write_envelope(FeatureKey.VOLUME, Envelope(items=VOLUME))

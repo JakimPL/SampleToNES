@@ -13,6 +13,7 @@ from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters.naming import instrument_slice_name
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import (
     features_footprint,
     reconstruction_footprints,
@@ -229,15 +230,13 @@ class TestBuildSampleFootprint:
 
         footprint = logic.build_voice_footprint(sample.id)
 
-        assert footprint == SampleFootprintViewModel.from_footprints(
-            reconstruction_footprints(sample.reconstruction, loop_point=WHOLE_LOOP_POINT)
-        )
+        assert footprint == SampleFootprintViewModel.from_footprints(reconstruction_footprints(sample.reconstruction))
 
-    def test_a_looping_sample_costs_less_than_a_one_shot(
+    def test_a_looping_sample_costs_what_a_one_shot_costs(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        """A looping instrument shares the shortest dimension's length, so it stores fewer items."""
+        """Each dimension keeps the length it was written at, so circling costs a sample nothing."""
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
         one_shot = logic.build_voice_footprint(sample.id)
@@ -246,7 +245,7 @@ class TestBuildSampleFootprint:
         looping = logic.build_voice_footprint(sample.id)
 
         assert one_shot is not None and looping is not None
-        assert looping.total_bytes < one_shot.total_bytes
+        assert looping.total_bytes == one_shot.total_bytes
 
     def test_each_channel_is_measured_as_the_instrument_it_sounds(self) -> None:
         """A channel's figure is the cost of its own instrument, and the channels differ.
@@ -299,8 +298,8 @@ class TestTakingAChannelAsAnInstrument:
         instrument = logic.instrument_from_channel(sample.id, ChannelName.TRIANGLE)
 
         assert instrument is not None
-        assert instrument.envelopes.volume == tuple(int(item) for item in played.volume)
-        assert instrument.envelopes.arpeggio == tuple(int(item) for item in played.arpeggio)
+        assert instrument.envelopes.volume == played.volume
+        assert instrument.envelopes.arpeggio == played.arpeggio
 
     def test_the_instrument_is_measured_against_the_reference_that_channel_read(self) -> None:
         controller, logic = _logic()
@@ -322,15 +321,15 @@ class TestTakingAChannelAsAnInstrument:
         assert instrument is not None
         assert instrument.name == instrument_slice_name("bell", ChannelName.NOISE)
 
-    def test_the_instrument_repeats_the_way_the_sample_does(self) -> None:
+    def test_the_instrument_holds_each_dimension_out_past_its_items(self) -> None:
+        """A recorded channel rests on the value it last played, which is what a halt states."""
         controller, logic = _logic()
         sample = controller.add_sample(sample_reconstruction({ChannelName.PULSE1}), name="bell")
-        controller.set_voice_loop_point(sample.id, WHOLE_LOOP_POINT)
 
         instrument = logic.instrument_from_channel(sample.id, ChannelName.PULSE1)
 
         assert instrument is not None
-        assert instrument.loop_point == WHOLE_LOOP_POINT
+        assert all(envelope.loop_point is None for envelope in instrument.envelopes.envelope_map.values())
 
     def test_taking_a_channel_leaves_the_pool_as_it_stands(self) -> None:
         """The instrument is written here and added by whoever asked, inside a history entry."""
@@ -454,24 +453,18 @@ class TestInstrumentsInTheVoiceList:
     def test_an_instrument_is_measured_as_the_one_export_it_writes(self) -> None:
         controller, logic = _logic()
         instrument = logic.add_new_instrument("lead")
-        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15, 12, 9))
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=(15, 12, 9)))
 
         footprint = logic.build_voice_footprint(instrument.id)
 
         assert footprint is not None
-        assert (
-            footprint.total_bytes
-            == features_footprint(
-                instrument.instrument_features(),
-                loop_point=instrument.loop_point,
-            ).total_bytes
-        )
+        assert footprint.total_bytes == features_footprint(instrument.instrument_features()).total_bytes
         assert [instrument.channel for instrument in footprint.instruments] == [None]
 
     def test_an_instrument_previews_through_the_pulse_channel(self) -> None:
         controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
         instrument = logic.add_new_instrument("lead")
-        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15, 12))
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=(15, 12)))
 
         logic.play_voice(instrument.id)
 
@@ -529,8 +522,8 @@ class TestReadingAnInstrumentFile:
 
         voice = logic.read_instrument(filepath).voice
 
-        assert voice.envelopes.volume == (15, 8, 0)
-        assert voice.envelopes.arpeggio == (0, 3, 7)
+        assert voice.envelopes.volume.items == (15, 8, 0)
+        assert voice.envelopes.arpeggio.items == (0, 3, 7)
 
     def test_the_file_names_the_voice(self, tmp_path: Path) -> None:
         filepath = _instrument_file(

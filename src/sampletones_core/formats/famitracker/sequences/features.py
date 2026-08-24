@@ -1,84 +1,44 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict
 
-import numpy as np
-
-from sampletones_core.exporters.lengths import equalize_lengths, limit_lengths
+from sampletones_core.exporters.feature import Features
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.model.sequence import InstrumentSequence
 from sampletones_core.formats.famitracker.specification.sequences import (
-    LOOP_FROM_START,
+    FEATURE_KEY_TO_SEQUENCE_KIND,
     MAX_SEQUENCE_ITEMS,
     NO_LOOP_POINT,
     SequenceKind,
 )
 
 
-def _to_items(array: Optional[np.ndarray]) -> Tuple[int, ...]:
-    if array is None:
-        return ()
-    return tuple(int(value) for value in array)
+def features_to_instrument_sequences(features: Features) -> Dict[SequenceKind, InstrumentSequence]:
+    """Builds the five 2A03 sequences from a channel slice's envelopes.
 
+    Each dimension becomes an :class:`InstrumentSequence`; one the generator lacks, or one left
+    to the channel, becomes a disabled sequence the instrument stores nothing for. Item counts
+    stay within the ``MAX_SEQUENCE_ITEMS`` items FamiTracker holds, so a longer reconstruction
+    exports its opening frames and the shortening is logged. Every dimension keeps the length it
+    was written at and the item it repeats from, which is how FamiTracker advances each sequence
+    on a counter of its own.
 
-def _sequence_items(
-    arrays: Dict[SequenceKind, Optional[np.ndarray]],
-    loops: bool,
-) -> Dict[SequenceKind, Tuple[int, ...]]:
-    """Reads the dimensions as the item tuples an instrument stores.
+    Args:
+        features: The per-dimension envelopes describing the slice.
 
-    A looping instrument brings every populated dimension to one length, so its envelopes
-    repeat in step cycle after cycle. A one-shot carries each dimension at the length it
-    was written: a FamiTracker sequence that runs out halts and leaves its final value
-    applied for as long as the note sounds, so the shorter dimensions govern the whole
-    instrument on their own.
+    Returns:
+        Dict[SequenceKind, InstrumentSequence]: The sequences, one per dimension FamiTracker holds.
     """
-    items_by_kind = {kind: _to_items(array) for kind, array in arrays.items()}
-    if loops:
-        return equalize_lengths(items_by_kind, loops, limit=MAX_SEQUENCE_ITEMS)
-
-    return limit_lengths(items_by_kind, limit=MAX_SEQUENCE_ITEMS)
-
-
-def features_to_instrument_sequences(
-    *,
-    volume: np.ndarray,
-    arpeggio: np.ndarray,
-    pitch: Optional[np.ndarray],
-    hi_pitch: Optional[np.ndarray],
-    duty_cycle: Optional[np.ndarray],
-    loop_point: Optional[int],
-) -> Dict[SequenceKind, InstrumentSequence]:
-    """Builds the five 2A03 sequences from per-dimension envelope arrays.
-
-    Each dimension becomes an :class:`InstrumentSequence`; a dimension passed as ``None``
-    or as an empty envelope becomes a disabled sequence the instrument stores nothing for.
-    Item counts stay within the ``MAX_SEQUENCE_ITEMS`` items FamiTracker holds, so a longer
-    reconstruction exports its opening frames and the shortening is logged. A ``loop_point``
-    sets every populated sequence to repeat from that item so the instrument sustains on a held
-    note, and the populated dimensions share one length to repeat in step; a point beyond a
-    sequence's own items repeats its final item, which is the value it would hold anyway.
-    """
-    arrays: Dict[SequenceKind, Optional[np.ndarray]] = {
-        SequenceKind.VOLUME: volume,
-        SequenceKind.ARPEGGIO: arpeggio,
-        SequenceKind.PITCH: pitch,
-        SequenceKind.HI_PITCH: hi_pitch,
-        SequenceKind.DUTY: duty_cycle,
+    written = {
+        FEATURE_KEY_TO_SEQUENCE_KIND[feature_key]: envelope.limited(MAX_SEQUENCE_ITEMS)
+        for feature_key, envelope in features.envelopes.items()
     }
 
-    items_by_kind = _sequence_items(arrays, loop_point is not None)
-
-    sequences: Dict[SequenceKind, InstrumentSequence] = {}
-    for kind, items in items_by_kind.items():
-        sequences[kind] = InstrumentSequence(
-            kind=kind,
-            items=items,
-            loop_point=_loop_item(loop_point, len(items)),
-        )
-
-    return sequences
+    return {kind: _sequence(kind, written.get(kind, Envelope[int]())) for kind in SequenceKind}
 
 
-def _loop_item(loop_point: Optional[int], length: int) -> int:
-    if loop_point is None or not length:
-        return NO_LOOP_POINT
-
-    return max(LOOP_FROM_START, min(loop_point, length - 1))
+def _sequence(kind: SequenceKind, envelope: Envelope[int]) -> InstrumentSequence:
+    """One sequence as the file states it, with the item the dimension repeats from."""
+    return InstrumentSequence(
+        kind=kind,
+        items=envelope.items,
+        loop_point=envelope.loop_point if envelope.loop_point is not None else NO_LOOP_POINT,
+    )

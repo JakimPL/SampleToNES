@@ -279,7 +279,6 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
             features_to_envelopes(
                 instrument.features,
                 instrument.channel,
-                loop_point=instrument.loop_point,
             ),
             maximum_table_id=MAX_TABLE_ID,
         )
@@ -336,7 +335,6 @@ def _build_voice_table(
         envelopes = features_to_envelopes(
             voice_slice.features,
             voice_slice.channel,
-            loop_point=voice_slice.voice.loop_point,
         )
         voice = _build_slice_voice(
             index,

@@ -298,12 +298,6 @@ class ReconstructionTabCoordinator:
         self._reconstruction_instruments_panel.on_raw_data_changed = (
             self._reconstruction_instruments_logic.handle_raw_data_changed
         )
-        self._reconstruction_instruments_panel.on_instrument_root_period_changed = (
-            self._reconstruction_instruments_logic.handle_instrument_root_period_changed
-        )
-        self._reconstruction_instruments_panel.on_instrument_loop_point_changed = (
-            self._reconstruction_instruments_logic.handle_instrument_loop_point_changed
-        )
 
     def _on_export_result(self, result: ExportResult) -> None:
         """Reports a finished export in the words of the artefact it produced.

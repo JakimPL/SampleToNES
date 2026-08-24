@@ -673,7 +673,7 @@ class TestReconstructionPanelLogicExportInstrument:
         exportable = panel_logic.exportable_instrument(ChannelName.PULSE1)
 
         assert exportable is not None
-        assert exportable.source.loop_point is None
+        assert all(not envelope.loops for envelope in exportable.source.features.envelopes.values())
 
     def test_the_slice_carries_the_reconstructions_tuning(
         self,

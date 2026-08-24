@@ -1,6 +1,7 @@
 from typing import Final, Tuple
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
@@ -16,7 +17,9 @@ VOLUME_NIBBLE: Final[int] = 0x0F
 def _project() -> Project:
     instrument = Instrument(
         name="Lead",
-        envelopes=InstrumentEnvelopes(volume=VOLUME, arpeggio=(0, 4, 7), duty_cycle=(1,)),
+        envelopes=InstrumentEnvelopes(
+            volume=Envelope(items=VOLUME), arpeggio=Envelope(items=(0, 4, 7)), duty_cycle=Envelope(items=(1,))
+        ),
     )
     project = Project.create(title="Demo", rows_per_pattern=ROWS_PER_PATTERN)
     project.voices.append(instrument)

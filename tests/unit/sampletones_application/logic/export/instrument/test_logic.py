@@ -144,10 +144,9 @@ class TestWritingOneInstrument:
         logic.export(tmp_path / f"instrument{EXT_FILE_INSTRUMENT}", source)
 
         request = export_service.export_instrument.call_args.args[2]
-        assert (request.channel, request.features, request.loop_point) == (
+        assert (request.channel, request.features) == (
             source.channel,
             source.features,
-            source.loop_point,
         )
         assert (request.nes_frequency, request.tuning) == (source.nes_frequency, source.tuning)
 

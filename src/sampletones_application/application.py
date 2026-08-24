@@ -166,7 +166,6 @@ from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.voice import samples
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
-from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
     SAMPLETONES_GROUP,
@@ -1091,16 +1090,10 @@ class Application:
     def _regenerate_instrument(
         self,
         channel_name: ChannelName,
-        features: Features,
         feature_key: FeatureKey,
-        feature_value: FeatureValue,
+        features: Features,
     ) -> None:
-        self._reconstruction_coordinator.regenerate_instrument(
-            channel_name,
-            features,
-            feature_key,
-            feature_value,
-        )
+        self._reconstruction_coordinator.regenerate_instrument(channel_name, feature_key, features)
 
     def _on_reconstruction_updated(
         self,

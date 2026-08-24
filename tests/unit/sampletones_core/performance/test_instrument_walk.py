@@ -5,6 +5,7 @@ import pytest
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.performance import song_instructions
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
@@ -20,10 +21,14 @@ ARPEGGIO: Tuple[int, ...] = (0, 5)
 
 
 def _instrument(loop: bool = False) -> Instrument:
+    point = WHOLE_LOOP_POINT if loop else None
     return Instrument(
         name="lead",
-        envelopes=InstrumentEnvelopes(volume=VOLUME, arpeggio=ARPEGGIO, duty_cycle=(1,)),
-        loop_point=WHOLE_LOOP_POINT if loop else None,
+        envelopes=InstrumentEnvelopes(
+            volume=Envelope(items=VOLUME, loop_point=point),
+            arpeggio=Envelope(items=ARPEGGIO, loop_point=point),
+            duty_cycle=Envelope(items=(1,), loop_point=point),
+        ),
     )
 
 
@@ -81,14 +86,30 @@ class TestAnInstrumentSoundsOnEveryChannel(BaseTestSuite):
 
 
 class TestAnInstrumentInASong:
-    def test_a_one_shot_falls_silent_past_its_envelopes(self) -> None:
+    def test_an_instrument_holds_its_final_values_past_its_envelopes(self) -> None:
+        """Every dimension halts on the value it wrote, which the note goes on sounding."""
         instrument = _instrument()
         project = project_with_instrument(instrument, rows_per_pattern=ROWS_PER_PATTERN)
         place_instrument(project, channel_name=ChannelName.PULSE1, row_index=0, sample=instrument)
 
         stream = song_instructions(project)[ChannelName.PULSE1]
 
-        assert stream[len(VOLUME) :] == [_resting(ChannelName.PULSE1)] * (len(stream) - len(VOLUME))
+        held = stream[len(VOLUME)]
+        assert held is not None and held.volume == VOLUME[-1]
+        assert stream[len(VOLUME) :] == [held] * (len(stream) - len(VOLUME))
+
+    def test_a_volume_envelope_ending_at_silence_releases_the_note(self) -> None:
+        """A trailing zero is what stops a note, the way a tracker's own sequences end one."""
+        instrument = Instrument(
+            name="lead",
+            envelopes=InstrumentEnvelopes(volume=Envelope(items=(15, 10, 0))),
+        )
+        project = project_with_instrument(instrument, rows_per_pattern=ROWS_PER_PATTERN)
+        place_instrument(project, channel_name=ChannelName.PULSE1, row_index=0, sample=instrument)
+
+        stream = song_instructions(project)[ChannelName.PULSE1]
+
+        assert all(instruction is None or not instruction.on for instruction in stream[2:])
 
     def test_a_looping_instrument_keeps_sounding(self) -> None:
         instrument = _instrument(loop=True)
@@ -113,4 +134,4 @@ class TestAnInstrumentInASong:
         first = song_instructions(project)[ChannelName.PULSE1][0]
 
         assert isinstance(first, PulseInstruction)
-        assert first.pitch == instrument.root_pitch + ARPEGGIO[0] + 7
+        assert first.pitch == instrument.initial_pitch + ARPEGGIO[0] + 7

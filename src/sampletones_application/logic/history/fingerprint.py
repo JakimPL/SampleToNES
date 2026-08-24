@@ -31,9 +31,9 @@ def fingerprint_project(
     for voice in project.voices:
         parts.append(voice.id)
         parts.append(voice.name)
-        parts.append(str(voice.loop_point))
         match voice:
             case Sample():
+                parts.append(str(voice.loop_point))
                 parts.append(reconstruction_hash(voice.reconstruction))
             case Instrument():
                 parts.append(voice.model_dump_json())

@@ -1,10 +1,12 @@
 from pathlib import Path
-from typing import Optional
+from typing import Final, Optional
 
 import numpy as np
 import pytest
 
 from sampletones_core.constants.general import MAX_VOLUME
+from sampletones_core.exporters.feature import Features
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.binary import BinaryWriter
 from sampletones_core.formats.famitracker.instrument import (
     fti_bytes_to_instrument,
@@ -85,6 +87,9 @@ def fti_stating_volume_items(count: int) -> bytes:
     return writer.data
 
 
+REFERENCE_PITCH: Final[int] = 60
+
+
 def build_instrument(
     name: str,
     *,
@@ -96,13 +101,19 @@ def build_instrument(
     loop_point: Optional[int] = None,
     index: int = 0,
 ) -> Instrument2A03:
+    def envelope(items: Optional[np.ndarray]) -> Envelope[int]:
+        values = () if items is None else tuple(int(item) for item in items)
+        return Envelope[int](items=values, loop_point=loop_point if values else None)
+
     sequences = features_to_instrument_sequences(
-        volume=volume,
-        arpeggio=arpeggio if arpeggio is not None else np.array([], dtype=int),
-        pitch=pitch,
-        hi_pitch=hi_pitch,
-        duty_cycle=duty_cycle,
-        loop_point=loop_point,
+        Features(
+            initial_pitch=REFERENCE_PITCH,
+            volume=envelope(volume),
+            arpeggio=envelope(arpeggio),
+            pitch=None if pitch is None else envelope(pitch),
+            hi_pitch=None if hi_pitch is None else envelope(hi_pitch),
+            duty_cycle=None if duty_cycle is None else envelope(duty_cycle),
+        )
     )
     return Instrument2A03(index=index, name=name, sequences=sequences)
 

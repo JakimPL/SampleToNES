@@ -31,6 +31,7 @@ from sampletones_core.exports.request import (
 )
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.exports.stage import ExportStage
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.project import Project
 from sampletones_shared.music import Tuning
 
@@ -121,13 +122,12 @@ def build_instrument(name: str = "Lead") -> InstrumentExport:
         channel=ChannelName.PULSE1,
         features=Features(
             initial_pitch=60,
-            volume=np.full(8, 15, dtype=int),
-            arpeggio=np.zeros(8, dtype=int),
+            volume=Envelope(items=(15,) * 8),
+            arpeggio=Envelope(items=(0,) * 8),
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
         ),
-        loop_point=None,
         nes_frequency=NES_FREQUENCY,
         tuning=Tuning(),
     )

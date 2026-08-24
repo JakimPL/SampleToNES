@@ -8,6 +8,7 @@ import pytest
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.project import ProjectContainer
 from sampletones_core.project.voices.creation import new_instrument
@@ -517,24 +518,24 @@ class TestInstruments:
         controller = _controller()
         instrument = controller.add_instrument(new_instrument("lead"))
 
-        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15, 10))
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=(15, 10)))
 
-        assert instrument.envelopes.volume == (15, 10)
+        assert instrument.envelopes.volume.items == (15, 10)
         assert len(instrument.instructions(ChannelName.PULSE1)) == 2
 
     def test_emptying_an_envelope_leaves_the_dimension_to_the_channel(self) -> None:
         controller = _controller()
         instrument = controller.add_instrument(new_instrument("lead"))
-        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15,))
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=(15,)))
 
-        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, ())
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=()))
 
         assert FeatureKey.VOLUME in instrument.held_features(ChannelName.PULSE1)
 
     def test_moving_the_roots_reaches_the_frames(self) -> None:
         controller = _controller()
         instrument = controller.add_instrument(new_instrument("lead"))
-        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15,))
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=(15,)))
 
         controller.set_instrument_root(instrument.id, pitch=48, period=3)
 
@@ -552,7 +553,7 @@ class TestInstruments:
         sample = controller.add_sample(reconstruction_factory(), name="bass")
 
         with pytest.raises(TypeError):
-            controller.set_instrument_envelope(sample.id, FeatureKey.VOLUME, (15,))
+            controller.set_instrument_envelope(sample.id, FeatureKey.VOLUME, Envelope(items=(15,)))
 
     def test_an_instrument_takes_no_reconstruction(self) -> None:
         controller = _controller()
@@ -564,7 +565,7 @@ class TestInstruments:
     def test_an_instrument_duplicates_into_a_voice_of_its_own(self) -> None:
         controller = _controller()
         instrument = controller.add_instrument(new_instrument("lead"))
-        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15,))
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=(15,)))
 
         clone = controller.duplicate_voice(instrument.id)
 

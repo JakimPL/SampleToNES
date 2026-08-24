@@ -4,6 +4,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.note_off import NoteOff
@@ -40,7 +41,7 @@ class TestATypedNoteIsStatedAsAStepFromTheVoice:
         controller, logic = _logic()
         instrument = controller.add_instrument(new_instrument("lead"))
         controller.set_instrument_root(instrument.id, pitch=ROOT_PITCH, period=8)
-        instrument.envelopes = InstrumentEnvelopes(volume=(15,))
+        instrument.envelopes = InstrumentEnvelopes(volume=Envelope(items=(15,)))
         instrument.invalidate()
         _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=instrument.id))
 

@@ -65,8 +65,6 @@ def build_instrument(
     index: int,
     name: str,
     features: Features,
-    *,
-    loop_point: Optional[int],
 ) -> Instrument2A03:
     """Builds one FamiTracker instrument from a set of envelopes.
 
@@ -77,20 +75,11 @@ def build_instrument(
         index: The slot the instrument is numbered under.
         name: The name FamiTracker lists the instrument by.
         features: The per-dimension envelopes the sequences are read from.
-        loop_point: The item every populated sequence repeats from, sustaining a held note, or
-            ``None`` where the instrument plays its envelopes once.
 
     Returns:
         The instrument the envelopes describe.
     """
-    sequences = features_to_instrument_sequences(
-        volume=features.volume,
-        arpeggio=features.arpeggio,
-        pitch=features.pitch,
-        hi_pitch=features.hi_pitch,
-        duty_cycle=features.duty_cycle,
-        loop_point=loop_point,
-    )
+    sequences = features_to_instrument_sequences(features)
 
     return Instrument2A03(
         index=index,
@@ -121,7 +110,6 @@ def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], Inst
                 entry.index,
                 entry.name,
                 entry.features,
-                loop_point=entry.loop_point,
             )
         )
         for channel, slot in entry.slots.items():

@@ -19,6 +19,7 @@ from sampletones_application.view_model.reconstruction.instruments import (
 )
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import (
     features_footprint,
     total_footprint,
@@ -158,9 +159,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         footprint = received[0].footprint
         assert footprint is not None
         expected = total_footprint(
-            features_footprint(features, loop_point=None)
-            for features in feature_data.channels.values()
-            if features.has_frames
+            features_footprint(features) for features in feature_data.channels.values() if features.has_frames
         )
         assert footprint.total_bytes == expected.total_bytes
 
@@ -184,10 +183,10 @@ class TestReconstructionInstrumentsLogicFootprint:
         )
 
         edited = feature_data.channels[ChannelName.PULSE1].model_copy(deep=True)
-        edited[FeatureKey.VOLUME] = volume
+        edited = edited.with_envelope(FeatureKey.VOLUME, Envelope(items=tuple(int(item) for item in volume)))
         footprint = received[0].footprint
         assert footprint is not None
-        assert footprint.bytes_for(ChannelName.PULSE1) == features_footprint(edited, loop_point=None).total_bytes
+        assert footprint.bytes_for(ChannelName.PULSE1) == features_footprint(edited).total_bytes
 
     def test_a_bar_edit_is_measured_as_it_arrives(
         self,
@@ -266,10 +265,12 @@ class TestReconstructionInstrumentsLogicHandlePitchValueChanged:
         callback = MagicMock()
         instruments_logic.on_reconstruction_instrument_updated = callback
         instruments_logic.handle_pitch_value_changed(ChannelName.PULSE1, 61)
-        channel_name, _features, feature_key, value = callback.call_args.args
+        channel_name, feature_key, _ = callback.call_args.args
+        channel_features = mock_reconstruction_manager.current_features.channels[ChannelName.PULSE1]
+
         assert channel_name == ChannelName.PULSE1
         assert feature_key == FeatureKey.INITIAL_PITCH
-        assert value == 61
+        channel_features.model_copy.assert_called_once_with(update={"initial_pitch": 61})
 
 
 class TestReconstructionInstrumentsLogicHandleBarPoint:
@@ -333,7 +334,7 @@ class TestTheInstrumentsPanelShowsAnInstrument:
         mock_reconstruction_manager.current_features = None
         editor = InstrumentEditor(mock_reconstruction_manager, project_controller)
         instrument = project_controller.add_instrument(new_instrument("lead"))
-        project_controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15, 12))
+        project_controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=(15, 12)))
         editor.edit_instrument(instrument.id)
         return ReconstructionInstrumentsLogic(editor, scheduling=scheduling)
 
@@ -369,7 +370,7 @@ class TestTheInstrumentsPanelShowsAnInstrument:
     ) -> None:
         """An export writes what has frames, so a voice holding none is offered no export."""
         instrument = project_controller.project.voices[0]
-        project_controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, ())
+        project_controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=()))
         received: List[ReconstructionInstrumentsViewModel] = []
         instrument_logic.on_view_changed = received.append
 
@@ -404,7 +405,7 @@ class TestTheInstrumentsPanelShowsAnInstrument:
         )
 
         instrument = project_controller.project.voices[project_controller.project.voices[0].id]
-        assert instrument.envelopes.arpeggio == (0, 7)
+        assert instrument.envelopes.arpeggio.items == (0, 7)
         assert regenerated == []
 
     def test_the_pitch_stepper_moves_the_instruments_tonal_root(
@@ -414,16 +415,7 @@ class TestTheInstrumentsPanelShowsAnInstrument:
     ) -> None:
         instrument_logic.handle_pitch_value_changed(INSTRUMENT_CHANNEL, 48)
 
-        assert project_controller.project.voices[0].root_pitch == 48
-
-    def test_the_loop_point_reaches_the_instrument(
-        self,
-        instrument_logic: ReconstructionInstrumentsLogic,
-        project_controller: ProjectController,
-    ) -> None:
-        instrument_logic.handle_instrument_loop_point_changed(WHOLE_LOOP_POINT)
-
-        assert project_controller.project.voices[0].loop_point == WHOLE_LOOP_POINT
+        assert project_controller.project.voices[0].initial_pitch == 48
 
     def test_the_figure_measures_the_one_instrument_it_exports(
         self,
@@ -437,10 +429,4 @@ class TestTheInstrumentsPanelShowsAnInstrument:
 
         instrument = project_controller.project.voices[0]
         assert received[-1].footprint is not None
-        assert (
-            received[-1].footprint.total_bytes
-            == features_footprint(
-                instrument.instrument_features(),
-                loop_point=instrument.loop_point,
-            ).total_bytes
-        )
+        assert received[-1].footprint.total_bytes == features_footprint(instrument.instrument_features()).total_bytes

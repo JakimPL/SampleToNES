@@ -15,7 +15,6 @@ from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP, Features
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.types.feature import FeatureValue
 
 
 @dataclass(frozen=True)
@@ -57,9 +56,8 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         self,
         reconstruction: Reconstruction,
         channel_name: ChannelName,
-        features: Features,
         feature_key: FeatureKey,
-        value: FeatureValue,
+        features: Features,
     ) -> bool:
         if self._canceled:
             return False
@@ -68,9 +66,8 @@ class RegenerationService(ServiceBase[RegenerationResult]):
             lambda: self._run(
                 reconstruction,
                 channel_name,
-                features,
                 feature_key,
-                value,
+                features,
             )
         )
 
@@ -84,9 +81,8 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         self,
         reconstruction: Reconstruction,
         channel_name: ChannelName,
-        features: Features,
         feature_key: FeatureKey,
-        value: FeatureValue,
+        features: Features,
     ) -> None:
         if self._canceled:
             self._emit(ServiceCanceled())
@@ -94,8 +90,6 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         try:
             exporter_class = CHANNEL_TO_EXPORTER_MAP[channel_name]
             generator_class = exporter_class.get_generator_type()
-            features[feature_key] = value
-
             instructions = cast(
                 List[InstructionUnion],
                 exporter_class.from_features(features),

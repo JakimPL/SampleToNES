@@ -12,6 +12,7 @@ from sampletones_core.features import (
     supported_features,
     supports,
 )
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.features.spec import CHANNEL_GENERATOR_KIND
 from sampletones_core.instructions import NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
@@ -28,7 +29,9 @@ DUTY_CYCLE: Tuple[int, ...] = (2,)
 def _instrument(**overrides: object) -> Instrument:
     fields: dict = {
         "name": "lead",
-        "envelopes": InstrumentEnvelopes(volume=VOLUME, arpeggio=ARPEGGIO, duty_cycle=DUTY_CYCLE),
+        "envelopes": InstrumentEnvelopes(
+            volume=Envelope(items=VOLUME), arpeggio=Envelope(items=ARPEGGIO), duty_cycle=Envelope(items=DUTY_CYCLE)
+        ),
     }
     fields.update(overrides)
     return Instrument(**fields)
@@ -39,26 +42,25 @@ class TestInstrumentIdentity:
         assert _instrument().id != _instrument().id
 
     def test_clone_gets_a_fresh_id_and_carries_the_rest(self) -> None:
-        instrument = _instrument(root_pitch=48, root_period=3, loop_point=WHOLE_LOOP_POINT)
+        instrument = _instrument(initial_pitch=48, initial_period=3)
         clone = instrument.clone()
 
         assert clone.id != instrument.id
         assert clone.name == instrument.name
         assert clone.envelopes == instrument.envelopes
-        assert clone.root_pitch == instrument.root_pitch
-        assert clone.root_period == instrument.root_period
-        assert clone.loop_point == instrument.loop_point
+        assert clone.initial_pitch == instrument.initial_pitch
+        assert clone.initial_period == instrument.initial_period
 
 
 class TestInstrumentRoots:
     def test_an_instrument_rests_where_a_channel_added_by_hand_rests(self) -> None:
         instrument = Instrument(name="lead")
 
-        assert instrument.root_pitch == RESTING_REFERENCE_PITCH
-        assert instrument.root_period == RESTING_REFERENCE_PERIOD
+        assert instrument.initial_pitch == RESTING_REFERENCE_PITCH
+        assert instrument.initial_period == RESTING_REFERENCE_PERIOD
 
     def test_the_tonal_channels_read_the_pitch_and_noise_reads_the_period(self) -> None:
-        instrument = _instrument(root_pitch=55, root_period=3)
+        instrument = _instrument(initial_pitch=55, initial_period=3)
 
         assert instrument.reference(ChannelName.PULSE1) == 55
         assert instrument.reference(ChannelName.PULSE2) == 55
@@ -85,7 +87,7 @@ class TestInstrumentFeatures(BaseTestSuite):
         features = _instrument().features(test_case.channel_name)
         kind = CHANNEL_GENERATOR_KIND[test_case.channel_name]
 
-        assert set(features.keys()) >= set(supported_features(kind))
+        assert set(features.envelopes) >= set(supported_features(kind))
         assert (features.duty_cycle is not None) is supports(kind, FeatureKey.DUTY_CYCLE)
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
@@ -143,7 +145,7 @@ class TestInstrumentInstructions:
         instrument = _instrument()
         before = instrument.instructions(ChannelName.PULSE1)
 
-        instrument.envelopes = instrument.envelopes.with_envelope(FeatureKey.ARPEGGIO, (7,))
+        instrument.envelopes = instrument.envelopes.with_envelope(FeatureKey.ARPEGGIO, Envelope(items=(7,)))
         instrument.invalidate()
 
         after = instrument.instructions(ChannelName.PULSE1)
@@ -154,7 +156,7 @@ class TestInstrumentInstructions:
 
 class TestHeldDimensions:
     def test_an_empty_envelope_is_left_to_the_channel(self) -> None:
-        instrument = Instrument(name="lead", envelopes=InstrumentEnvelopes(arpeggio=ARPEGGIO))
+        instrument = Instrument(name="lead", envelopes=InstrumentEnvelopes(arpeggio=Envelope(items=ARPEGGIO)))
 
         held = instrument.held_features(ChannelName.PULSE1)
 
@@ -163,7 +165,7 @@ class TestHeldDimensions:
         assert FeatureKey.ARPEGGIO not in held
 
     def test_a_channel_is_told_of_the_dimensions_it_offers_alone(self) -> None:
-        instrument = Instrument(name="lead", envelopes=InstrumentEnvelopes(arpeggio=ARPEGGIO))
+        instrument = Instrument(name="lead", envelopes=InstrumentEnvelopes(arpeggio=Envelope(items=ARPEGGIO)))
 
         assert FeatureKey.DUTY_CYCLE not in instrument.held_features(ChannelName.TRIANGLE)
 
@@ -171,13 +173,13 @@ class TestHeldDimensions:
 class TestEnvelopeBounds:
     def test_a_volume_past_the_range_is_refused(self) -> None:
         with pytest.raises(ValidationError):
-            InstrumentEnvelopes(volume=(MAX_VOLUME + 1,))
+            InstrumentEnvelopes(volume=Envelope(items=(MAX_VOLUME + 1,)))
 
     def test_a_dimension_an_instrument_writes_none_of_is_refused(self) -> None:
         with pytest.raises(KeyError):
-            InstrumentEnvelopes().with_envelope(FeatureKey.PITCH, (1,))
+            InstrumentEnvelopes().with_envelope(FeatureKey.PITCH, Envelope(items=(1,)))
 
     def test_the_frame_count_is_the_longest_dimension(self) -> None:
-        envelopes = InstrumentEnvelopes(volume=VOLUME, duty_cycle=DUTY_CYCLE)
+        envelopes = InstrumentEnvelopes(volume=Envelope(items=VOLUME), duty_cycle=Envelope(items=DUTY_CYCLE))
 
         assert envelopes.frame_count == len(VOLUME)

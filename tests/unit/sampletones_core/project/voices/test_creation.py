@@ -6,6 +6,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.exporters import Features
 from sampletones_core.features import RESTING_REFERENCE_PERIOD, RESTING_REFERENCE_PITCH
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.creation import instrument_from_features, new_instrument
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 
@@ -25,11 +26,11 @@ def _features(
     """What one channel plays, as its exporter states it."""
     return Features(
         initial_pitch=reference,
-        volume=np.array(volume, dtype=np.int8),
-        arpeggio=np.array(ARPEGGIO, dtype=np.int8),
+        volume=Envelope(items=tuple(volume)),
+        arpeggio=Envelope(items=tuple(ARPEGGIO)),
         pitch=None,
         hi_pitch=None,
-        duty_cycle=None if duty_cycle is None else np.array(duty_cycle, dtype=np.int8),
+        duty_cycle=None if duty_cycle is None else Envelope(items=tuple(duty_cycle)),
     )
 
 
@@ -43,22 +44,22 @@ class TestNewInstrument:
     def test_a_new_instrument_sounds_at_full_volume(self) -> None:
         instrument = new_instrument("lead")
 
-        assert instrument.envelopes.volume == (MAX_VOLUME,)
+        assert instrument.envelopes.volume.items == (MAX_VOLUME,)
 
-    def test_a_new_instrument_repeats_its_envelopes_while_the_note_is_held(self) -> None:
-        assert new_instrument("lead").loop_point == WHOLE_LOOP_POINT
+    def test_a_new_instrument_repeats_its_volume_while_the_note_is_held(self) -> None:
+        assert new_instrument("lead").envelopes.volume.loop_point == WHOLE_LOOP_POINT
 
     def test_a_new_instrument_leaves_the_arpeggio_and_the_duty_cycle_to_the_channel(self) -> None:
         instrument = new_instrument("lead")
 
-        assert instrument.envelopes.arpeggio == ()
-        assert instrument.envelopes.duty_cycle == ()
+        assert not instrument.envelopes.arpeggio.written
+        assert not instrument.envelopes.duty_cycle.written
 
     def test_a_new_instrument_rests_where_a_channel_added_by_hand_rests(self) -> None:
         instrument = new_instrument("lead")
 
-        assert instrument.root_pitch == RESTING_REFERENCE_PITCH
-        assert instrument.root_period == RESTING_REFERENCE_PERIOD
+        assert instrument.initial_pitch == RESTING_REFERENCE_PITCH
+        assert instrument.initial_period == RESTING_REFERENCE_PERIOD
 
     def test_each_new_instrument_is_a_voice_of_its_own(self) -> None:
         assert new_instrument("lead").id != new_instrument("lead").id
@@ -72,12 +73,11 @@ class TestAnInstrumentTakenFromAChannel:
             "Bass (pulse1)",
             _features(TONAL_REFERENCE),
             ChannelName.PULSE1,
-            loop_point=None,
         )
 
-        assert instrument.envelopes.volume == VOLUME
-        assert instrument.envelopes.arpeggio == ARPEGGIO
-        assert instrument.envelopes.duty_cycle == DUTY_CYCLE
+        assert instrument.envelopes.volume.items == VOLUME
+        assert instrument.envelopes.arpeggio.items == ARPEGGIO
+        assert instrument.envelopes.duty_cycle.items == DUTY_CYCLE
 
     def test_a_dimension_the_channel_governs_stays_the_channels(self) -> None:
         """An empty envelope means the channel keeps the value it holds, on either side of this."""
@@ -85,10 +85,9 @@ class TestAnInstrumentTakenFromAChannel:
             "Bass (pulse1)",
             _features(TONAL_REFERENCE, volume=()),
             ChannelName.PULSE1,
-            loop_point=None,
         )
 
-        assert instrument.envelopes.volume == ()
+        assert instrument.envelopes.volume.items == ()
 
     def test_a_dimension_the_channel_lacks_is_left_unwritten(self) -> None:
         """The triangle channel offers no duty cycle, so the voice writes none for it."""
@@ -96,38 +95,35 @@ class TestAnInstrumentTakenFromAChannel:
             "Bass (triangle)",
             _features(TONAL_REFERENCE, duty_cycle=None),
             ChannelName.TRIANGLE,
-            loop_point=None,
         )
 
-        assert instrument.envelopes.duty_cycle == ()
+        assert instrument.envelopes.duty_cycle.items == ()
 
     def test_a_tonal_channels_reference_becomes_the_note_the_arpeggio_is_measured_against(self) -> None:
         instrument = instrument_from_features(
             "Bass (pulse1)",
             _features(TONAL_REFERENCE),
             ChannelName.PULSE1,
-            loop_point=None,
         )
 
-        assert instrument.root_pitch == TONAL_REFERENCE
-        assert instrument.root_period == RESTING_REFERENCE_PERIOD
+        assert instrument.initial_pitch == TONAL_REFERENCE
+        assert instrument.initial_period == RESTING_REFERENCE_PERIOD
 
     def test_the_noise_channels_reference_becomes_the_period_the_arpeggio_is_measured_against(self) -> None:
         instrument = instrument_from_features(
             "Bass (noise)",
             _features(NOISE_REFERENCE),
             ChannelName.NOISE,
-            loop_point=None,
         )
 
-        assert instrument.root_period == NOISE_REFERENCE
-        assert instrument.root_pitch == RESTING_REFERENCE_PITCH
+        assert instrument.initial_period == NOISE_REFERENCE
+        assert instrument.initial_pitch == RESTING_REFERENCE_PITCH
 
     def test_the_voice_reads_on_its_own_channel_what_that_channel_stated(self) -> None:
         """The reference travels with the envelopes, so the two agree where they came from."""
         features = _features(TONAL_REFERENCE)
 
-        instrument = instrument_from_features("Bass (pulse1)", features, ChannelName.PULSE1, loop_point=None)
+        instrument = instrument_from_features("Bass (pulse1)", features, ChannelName.PULSE1)
 
         assert instrument.features(ChannelName.PULSE1).initial_pitch == features.initial_pitch
 
@@ -136,27 +132,24 @@ class TestAnInstrumentTakenFromAChannel:
             "Bass (pulse1)",
             _features(TONAL_REFERENCE),
             ChannelName.PULSE1,
-            loop_point=None,
         )
 
         assert len(instrument.instructions(ChannelName.PULSE1)) == len(VOLUME)
 
-    def test_the_voice_repeats_from_the_tick_it_was_given(self) -> None:
+    def test_the_voice_holds_each_dimension_out_past_its_items(self) -> None:
         instrument = instrument_from_features(
             "Bass (pulse1)",
             _features(TONAL_REFERENCE),
             ChannelName.PULSE1,
-            loop_point=WHOLE_LOOP_POINT,
         )
 
-        assert instrument.loop_point == WHOLE_LOOP_POINT
+        assert all(envelope.loop_point is None for envelope in instrument.envelopes.envelope_map.values())
 
     def test_the_voice_carries_the_name_it_was_given(self) -> None:
         instrument = instrument_from_features(
             "Bass (pulse1)",
             _features(TONAL_REFERENCE),
             ChannelName.PULSE1,
-            loop_point=None,
         )
 
         assert instrument.name == "Bass (pulse1)"

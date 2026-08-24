@@ -10,6 +10,7 @@ from sampletones_core.exporters.slices import (
     iterate_voice_slices,
     voice_instrument_entries,
 )
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
@@ -35,7 +36,9 @@ def _sample(name: str, channels: Sequence[ChannelName]) -> Sample:
 
 
 def _instrument(name: str) -> Instrument:
-    return Instrument(name=name, envelopes=InstrumentEnvelopes(volume=(15, 10), arpeggio=(0, 5)))
+    return Instrument(
+        name=name, envelopes=InstrumentEnvelopes(volume=Envelope(items=(15, 10)), arpeggio=Envelope(items=(0, 5)))
+    )
 
 
 def _stand_by(sample: Sample, channel: ChannelName) -> None:

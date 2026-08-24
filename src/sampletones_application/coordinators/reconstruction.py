@@ -34,7 +34,6 @@ from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
-from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
@@ -271,9 +270,8 @@ class ReconstructionCoordinator:
     def regenerate_instrument(
         self,
         channel_name: ChannelName,
-        features: Features,
         feature_key: FeatureKey,
-        data: FeatureValue,
+        features: Features,
     ) -> None:
         reconstruction_data = self._reconstruction_manager.current_reconstruction
         if reconstruction_data is None:
@@ -282,9 +280,8 @@ class ReconstructionCoordinator:
         accepted = self._regeneration_service.start(
             reconstruction_data.reconstruction,
             channel_name,
-            features,
             feature_key,
-            data,
+            features,
         )
         if accepted:
             self._set_reconstruction_dimmed(True)

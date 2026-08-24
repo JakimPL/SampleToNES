@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional, cast
+from typing import Dict
 
-import numpy as np
-
-from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.reconstructions import Reconstruction
 
@@ -25,20 +23,16 @@ class FeatureData:
 
     @classmethod
     def load(cls, reconstruction: Reconstruction) -> FeatureData:
-        exported_features = reconstruction.export()
+        """The envelopes each of a reconstruction's channels plays, keyed by channel.
 
-        channels = {}
-        for generator_name_str, features in exported_features.items():
-            channel_name = ChannelName(generator_name_str)
-            feature = Features(
-                initial_pitch=cast(int, features.get(FeatureKey.INITIAL_PITCH)),
-                volume=cast(np.ndarray, features.get(FeatureKey.VOLUME)),
-                arpeggio=cast(np.ndarray, features.get(FeatureKey.ARPEGGIO)),
-                pitch=cast(Optional[np.ndarray], features.get(FeatureKey.PITCH)),
-                hi_pitch=cast(Optional[np.ndarray], features.get(FeatureKey.HI_PITCH)),
-                duty_cycle=cast(Optional[np.ndarray], features.get(FeatureKey.DUTY_CYCLE)),
-            )
+        Args:
+            reconstruction: The reconstruction being read.
 
-            channels[channel_name] = feature
-
-        return cls(channels=channels)
+        Returns:
+            FeatureData: One entry per channel the reconstruction exports.
+        """
+        return cls(
+            channels={
+                ChannelName(generator_name): features for generator_name, features in reconstruction.export().items()
+            }
+        )

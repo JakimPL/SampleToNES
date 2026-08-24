@@ -420,7 +420,6 @@ class ReconstructionPanelLogic(CallbackMixin):
             source=InstrumentSource(
                 channel=channel_name,
                 features=reconstruction_data.feature_data[channel_name],
-                loop_point=None,
                 nes_frequency=self._nes_frequency(),
                 tuning=self._tuning(),
             ),
@@ -517,14 +516,13 @@ class ReconstructionPanelLogic(CallbackMixin):
     ) -> InstrumentExport:
         """Packages one channel slice under ``name`` for an export backend.
 
-        A reconstruction has no loop flag of its own — that belongs to a sample placed in
-        a project — so the instrument plays its envelopes once.
+        A reconstruction's envelopes state no repeat of their own, so each dimension holds its
+        final value once it runs out and the trailing silence releases the note.
         """
         return InstrumentExport(
             name=name,
             channel=channel_name,
             features=feature,
-            loop_point=None,
             nes_frequency=self._nes_frequency(),
             tuning=self._tuning(),
         )

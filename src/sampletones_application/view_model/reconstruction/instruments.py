@@ -7,21 +7,13 @@ from sampletones_core.constants.enums import ChannelName
 
 
 class InstrumentViewModel(BaseModel, frozen=True):
-    """What the instruments panel shows of an instrument: its name and the values it states.
+    """What the instruments panel shows of an instrument, which is the name it is titled by.
 
-    An instrument is its envelopes and the roots they are measured against, so the panel renders one
-    instrument rather than a tab per channel.
+    An instrument is one set of envelopes every channel reads, so the panel renders one instrument
+    rather than a tab per channel, and each dimension states the item it repeats from itself.
     """
 
     name: str
-    root_pitch: int
-    root_period: int
-    loop_point: Optional[int]
-
-    @property
-    def loops(self) -> bool:
-        """Whether the instrument repeats its envelopes rather than playing them once."""
-        return self.loop_point is not None
 
 
 class ReconstructionInstrumentsViewModel(BaseModel, frozen=True):

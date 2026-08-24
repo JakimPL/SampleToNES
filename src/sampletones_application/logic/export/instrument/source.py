@@ -87,7 +87,6 @@ def instrument_source(
     return InstrumentSource(
         channel=sounding_channel(entry),
         features=entry.features,
-        loop_point=entry.loop_point,
         nes_frequency=project.settings.nes_frequency,
         tuning=tuning_from_project(project),
     )

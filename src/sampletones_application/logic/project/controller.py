@@ -1,10 +1,11 @@
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Optional, Tuple
+from typing import Iterator, Optional
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME, MIN_TRANSPOSE
 from sampletones_core.exports.request import ProjectExport
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.project import Project
 from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.project.song import Song
@@ -218,7 +219,7 @@ class ProjectController(CallbackMixin):
         self,
         voice_id: str,
         feature_key: FeatureKey,
-        items: Tuple[int, ...],
+        envelope: Envelope[int],
     ) -> None:
         """Writes one dimension of an instrument's envelopes, emptying it to leave it to the channel.
 
@@ -226,7 +227,7 @@ class ProjectController(CallbackMixin):
             TypeError: If ``voice_id`` names a voice that writes no envelopes of its own.
         """
         instrument = self._instrument(voice_id)
-        instrument.envelopes = instrument.envelopes.with_envelope(feature_key, items)
+        instrument.envelopes = instrument.envelopes.with_envelope(feature_key, envelope)
         instrument.invalidate()
         self._touch()
         self._announce(self.on_voices_changed)
@@ -239,14 +240,14 @@ class ProjectController(CallbackMixin):
         pitch: int,
         period: int,
     ) -> None:
-        """Moves the roots an instrument's arpeggio is measured against, on the tonal channels and on noise.
+        """Moves the pitch an instrument's arpeggio is measured against, on the tonal channels and on noise.
 
         Raises:
-            TypeError: If ``voice_id`` names a voice that states no root of its own.
+            TypeError: If ``voice_id`` names a voice that states no pitch of its own.
         """
         instrument = self._instrument(voice_id)
-        instrument.root_pitch = pitch
-        instrument.root_period = period
+        instrument.initial_pitch = pitch
+        instrument.initial_period = period
         instrument.invalidate()
         self._touch()
         self._announce(self.on_voices_changed)
@@ -256,6 +257,13 @@ class ProjectController(CallbackMixin):
         voice = self.project.voices[voice_id]
         if not isinstance(voice, Instrument):
             raise TypeError(f"Voice '{voice_id}' is no instrument")
+
+        return voice
+
+    def _sample(self, voice_id: str) -> Sample:
+        voice = self.project.voices[voice_id]
+        if not isinstance(voice, Sample):
+            raise TypeError(f"Voice '{voice_id}' is no sample")
 
         return voice
 
@@ -283,8 +291,12 @@ class ProjectController(CallbackMixin):
         self._announce(self.on_song_changed)
 
     def set_voice_loop_point(self, voice_id: str, loop_point: Optional[int]) -> None:
-        """Sets the tick a voice's instructions repeat from, or ``None`` where it plays once."""
-        self.project.voices[voice_id].loop_point = loop_point
+        """Sets the tick a recording's instructions repeat from, or ``None`` where it plays once.
+
+        Raises:
+            TypeError: If ``voice_id`` names a voice that is no recording.
+        """
+        self._sample(voice_id).loop_point = loop_point
         self._touch()
         self._announce(self.on_voices_changed)
 

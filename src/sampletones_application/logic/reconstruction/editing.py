@@ -3,7 +3,7 @@ from typing import Dict, Optional, Protocol, Union
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
-from sampletones_core.types.feature import FeatureValue
+from sampletones_core.features.envelope import Envelope
 
 
 @dataclass(frozen=True)
@@ -15,23 +15,21 @@ class ReconstructionEdit:
 
 @dataclass(frozen=True)
 class InstrumentEdit:
-    """The one envelope set an instrument carries, with the roots and the loop point it states.
+    """The one envelope set an instrument carries, with the pitch its arpeggio is measured from.
 
     Attributes:
         voice_id: The instrument an edit is written back into.
         name: The name the panel titles it by.
         features: The envelopes, read as the channel offering every dimension an instrument writes.
-        root_pitch: The note the tonal channels measure the arpeggio against.
-        root_period: The period the noise channel measures the arpeggio against.
-        loop_point: The tick the envelopes repeat from, or ``None`` where they play once.
+        initial_pitch: The note the tonal channels measure the arpeggio against.
+        initial_period: The period the noise channel measures the arpeggio against.
     """
 
     voice_id: str
     name: str
     features: Features
-    root_pitch: int
-    root_period: int
-    loop_point: Optional[int]
+    initial_pitch: int
+    initial_period: int
 
 
 EditedVoice = Union[ReconstructionEdit, InstrumentEdit]
@@ -49,11 +47,8 @@ class InstrumentEditingProtocol(Protocol):
     def edited_instrument(self) -> Optional[EditedVoice]:
         """What the panel is editing, or ``None`` while it holds nothing."""
 
-    def write_envelope(self, feature_key: FeatureKey, data: FeatureValue) -> None:
+    def write_envelope(self, feature_key: FeatureKey, envelope: Envelope[int]) -> None:
         """Writes one dimension of the instrument in front of the panel."""
 
     def write_roots(self, *, pitch: int, period: int) -> None:
         """Moves the roots the instrument in front of the panel is measured against."""
-
-    def write_loop_point(self, loop_point: Optional[int]) -> None:
-        """Sets the tick the instrument in front of the panel repeats from."""
