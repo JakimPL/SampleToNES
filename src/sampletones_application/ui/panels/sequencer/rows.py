@@ -22,7 +22,7 @@ def group_color(
     settings: SequencerSettingsViewModel,
     colors: SequencerColors,
 ) -> Optional[BaseColor]:
-    """The emphasis a row takes from the group the project's metre opens on it.
+    """The emphasis a row takes from the group the project's meter opens on it.
 
     The second highlight marks the bar and the first the beat, so a row opening a bar takes
     the stronger of the two shades even where a beat opens there as well. A row inside a beat

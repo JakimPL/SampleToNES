@@ -24,8 +24,8 @@ The data package must not import a schema, and a schema package must not inline 
 | `keybindings/` | The key combinations each named action answers | `ShortcutScheme` |
 | `lang/` | Interface strings (i18n) | `LanguageManager` |
 | `layout/` | UI geometry, dimensions, fonts | `LayoutConfig` |
-| `palettes/` | The colour sets layout and theme resolve against | `Palette` |
-| `theme/` | DearPyGui theme/colour styling | `ThemeSpec` |
+| `palettes/` | The color sets layout and theme resolve against | `Palette` |
+| `theme/` | DearPyGui theme/color styling | `ThemeSpec` |
 
 The rules for where a value belongs, how the directories nest, and how each domain is
 loaded are prescriptive and documented in

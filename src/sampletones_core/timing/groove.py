@@ -7,7 +7,7 @@ from sampletones_core.timing.distribution import (
     distribute_by_halving,
     distribute_proportionally,
 )
-from sampletones_core.timing.metre import Metre
+from sampletones_core.timing.meter import Meter
 from sampletones_core.timing.rate import RowRate
 
 HALF: Final[Fraction] = Fraction(1, 2)
@@ -19,7 +19,7 @@ class Groove:
 
     An engine that takes one speed value per row reaches a fractional row rate by varying
     that value from row to row, which is how a tempo its speed column alone cannot state
-    still comes out right on average. The variation is placed by metre, so the longer rows
+    still comes out right on average. The variation is placed by meter, so the longer rows
     land on the bar, then the beat, then the subdivisions inside a beat.
 
     Attributes:
@@ -54,7 +54,7 @@ def _pattern_ticks(
     """Rounds a pattern's exact tick count to the nearest integer within the engine's speed range.
 
     Rounding once, on the pattern, is what makes the pattern's duration the closest the
-    engine reaches; the metre then decides which rows carry the difference. Bounding the
+    engine reaches; the meter then decides which rows carry the difference. Bounding the
     pattern total rather than each row keeps every row inside the range as a consequence,
     since a proportional split yields only the floor and the ceiling of the average.
 
@@ -76,7 +76,7 @@ def _pattern_ticks(
 
 def calculate_groove(
     rate: RowRate,
-    metre: Metre,
+    meter: Meter,
     *,
     minimum_ticks: int,
     maximum_ticks: int,
@@ -89,7 +89,7 @@ def calculate_groove(
 
     Args:
         rate: The exact ticks one row lasts.
-        metre: The pattern's length and its beat and bar grouping.
+        meter: The pattern's length and its beat and bar grouping.
         minimum_ticks: The fewest ticks the engine holds a row for.
         maximum_ticks: The most ticks the engine holds a row for.
 
@@ -98,11 +98,11 @@ def calculate_groove(
     """
     total = _pattern_ticks(
         rate,
-        metre.rows,
+        meter.rows,
         minimum_ticks=minimum_ticks,
         maximum_ticks=maximum_ticks,
     )
-    bars = metre.spans
+    bars = meter.spans
     bar_lengths = tuple(sum(beats) for beats in bars)
 
     ticks: List[int] = []

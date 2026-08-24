@@ -66,7 +66,7 @@ from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
-from sampletones_core.timing import Groove, Metre, RowRate, calculate_groove
+from sampletones_core.timing import Groove, Meter, RowRate, calculate_groove
 from sampletones_shared.constants.project import DEFAULT_ROWS_PER_PATTERN, DEFAULT_SPEED
 
 PREVIEW_SPEED = DEFAULT_SPEED
@@ -426,13 +426,13 @@ def _project_groove(project: Project) -> Groove:
 
     A Bitphase song holds a speed alone, so the fractional row rate a tempo asks for is
     carried by a groove: whole tick counts that vary from row to row and average out to the
-    rate, placed by the metre so the longer rows fall on the bar and the beat. The engine's
+    rate, placed by the meter so the longer rows fall on the bar and the beat. The engine's
     own speed range bounds them, and the groove's mean states the rate it reached.
     """
     settings = project.settings
     return calculate_groove(
         RowRate.from_settings(settings),
-        Metre.from_settings(settings, rows=project.song.rows_per_pattern),
+        Meter.from_settings(settings, rows=project.song.rows_per_pattern),
         minimum_ticks=MIN_INITIAL_SPEED,
         maximum_ticks=MAX_INITIAL_SPEED,
     )

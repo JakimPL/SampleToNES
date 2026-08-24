@@ -1017,7 +1017,7 @@ class SequencerTabCoordinator:
     ) -> None:
         """Hands the project's song settings to the two panels that read them.
 
-        The module panel shows the timing fields themselves; the tracker reads the metre out of
+        The module panel shows the timing fields themselves; the tracker reads the meter out of
         the same view model, so a highlight edited in the project properties retints the grid as
         soon as the dialog commits.
         """

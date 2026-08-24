@@ -7,7 +7,7 @@ from typing import Final, Tuple
 import pytest
 
 from sampletones_core.timing.groove import Groove, calculate_groove
-from sampletones_core.timing.metre import Metre
+from sampletones_core.timing.meter import Meter
 from sampletones_core.timing.rate import RowRate
 from sampletones_shared.constants.project import REFERENCE_NES_FREQUENCY, REFERENCE_TEMPO
 from tests.suite.base import BaseTestSuite
@@ -43,8 +43,8 @@ class TestGroove(BaseTestSuite):
             )
 
         @property
-        def metre(self) -> Metre:
-            return Metre(
+        def meter(self) -> Meter:
+            return Meter(
                 rows=self.rows,
                 first_highlight=self.first_highlight,
                 second_highlight=self.second_highlight,
@@ -58,7 +58,7 @@ class TestGroove(BaseTestSuite):
                     speed=self.speed,
                     nes_frequency=self.nes_frequency,
                 ),
-                self.metre,
+                self.meter,
                 minimum_ticks=MINIMUM_TICKS,
                 maximum_ticks=MAXIMUM_TICKS,
             )
@@ -775,7 +775,7 @@ class TestGroove(BaseTestSuite):
     def test_each_beat_opens_on_its_longest_row(self, test_case: TestCase) -> None:
         ticks = test_case.groove.ticks
         start = 0
-        for beats in test_case.metre.spans:
+        for beats in test_case.meter.spans:
             for beat_rows in beats:
                 beat = ticks[start : start + beat_rows]
                 assert beat[0] == max(beat)
@@ -794,7 +794,7 @@ class TestReferenceCalibration(BaseTestSuite):
                 speed=speed,
                 nes_frequency=REFERENCE_NES_FREQUENCY,
             ),
-            Metre(
+            Meter(
                 rows=rows,
                 first_highlight=COMMON_TIME_BEAT,
                 second_highlight=COMMON_TIME_BAR,
@@ -817,7 +817,7 @@ class TestSecondHighlight(BaseTestSuite):
                 speed=REFERENCE_SPEED,
                 nes_frequency=60,
             ),
-            Metre(
+            Meter(
                 rows=rows,
                 first_highlight=first_highlight,
                 second_highlight=second_highlight,

@@ -260,7 +260,7 @@ checklist.
 | Title / author | 32 bytes each | 64 characters | truncates to 32 bytes |
 | Comment | free text (COMMENTS block) | 65536 characters | carried in full |
 | Tempo / speed | engine-dependent (split at row `speed_split_point`) | tempo 32–255, speed 1–31 | written verbatim from settings |
-| DPCM samples | 64 | not modelled | always empty by design |
+| DPCM samples | 64 | not modeled | always empty by design |
 
 The exporter also reserves a per-channel empty pattern index (`max used index + 1`)
 for order slots the song leaves unset; a channel that already fills indices up to

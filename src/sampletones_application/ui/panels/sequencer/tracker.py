@@ -670,7 +670,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._update_cursor()
 
     def update_settings(self, view_model: SequencerSettingsViewModel) -> None:
-        """Takes the metre the project states, retinting the rows its highlights now open."""
+        """Takes the meter the project states, retinting the rows its highlights now open."""
         self._settings = view_model
         self._apply_row_backgrounds()
 
