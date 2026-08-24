@@ -292,11 +292,8 @@ class ReconstructionTabCoordinator:
         self._reconstruction_instruments_panel.on_pitch_value_changed = (
             self._reconstruction_instruments_logic.handle_pitch_value_changed
         )
-        self._reconstruction_instruments_panel.on_bar_data_changed = (
-            self._reconstruction_instruments_logic.handle_bar_point_clicked
-        )
-        self._reconstruction_instruments_panel.on_raw_data_changed = (
-            self._reconstruction_instruments_logic.handle_raw_data_changed
+        self._reconstruction_instruments_panel.on_envelope_changed = (
+            self._reconstruction_instruments_logic.handle_envelope_changed
         )
 
     def _on_export_result(self, result: ExportResult) -> None:

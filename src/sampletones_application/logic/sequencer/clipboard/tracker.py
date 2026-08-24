@@ -25,7 +25,7 @@ from sampletones_core.utils.display import (
     display_transpose,
     display_volume,
 )
-from sampletones_shared.constants.symbols import PLUS, SIGNS
+from sampletones_shared.constants.symbols import PIPE, PLUS, SIGNS
 
 from .fields import (
     FieldReading,
@@ -39,7 +39,7 @@ from .samples import SampleDirectory
 
 TRACKER_GRID: Final[str] = "tracker"
 SLOT_KEY: Final[str] = "slots"
-COLUMN_SEPARATOR: Final[str] = "|"
+COLUMN_SEPARATOR: Final[str] = PIPE
 NOTE_WIDTH: Final[int] = len(display_id(None))
 TRANSPOSE_WIDTH: Final[int] = len(display_transpose(None))
 VOLUME_WIDTH: Final[int] = len(display_volume(None))

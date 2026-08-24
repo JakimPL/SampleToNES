@@ -1,7 +1,6 @@
 from typing import Callable, Dict, List, Optional
 from unittest.mock import MagicMock
 
-import numpy as np
 import pytest
 
 from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
@@ -175,37 +174,17 @@ class TestReconstructionInstrumentsLogicFootprint:
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
 
-        volume = np.array([15, 12, 8, 4, 0], dtype=np.int8)
-        instruments_logic.handle_raw_data_changed(
+        volume = Envelope[int](items=(15, 12, 8, 4, 0))
+        instruments_logic.handle_envelope_changed(
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             volume,
         )
 
-        edited = feature_data.channels[ChannelName.PULSE1].model_copy(deep=True)
-        edited = edited.with_envelope(FeatureKey.VOLUME, Envelope(items=tuple(int(item) for item in volume)))
+        edited = feature_data.channels[ChannelName.PULSE1].with_envelope(FeatureKey.VOLUME, volume)
         footprint = received[0].footprint
         assert footprint is not None
         assert footprint.bytes_for(ChannelName.PULSE1) == features_footprint(edited).total_bytes
-
-    def test_a_bar_edit_is_measured_as_it_arrives(
-        self,
-        instruments_logic: ReconstructionInstrumentsLogic,
-        mock_reconstruction_manager: MagicMock,
-        reconstruction_factory: Callable[[], Reconstruction],
-    ) -> None:
-        feature_data = FeatureData.load(reconstruction_factory())
-        mock_reconstruction_manager.current_features = feature_data
-        received: List[ReconstructionInstrumentsViewModel] = []
-        instruments_logic.on_view_changed = received.append
-
-        instruments_logic.handle_bar_point_clicked(
-            ChannelName.PULSE1,
-            FeatureKey.ARPEGGIO,
-            np.zeros(6, dtype=np.int8),
-        )
-
-        assert received[0].footprint is not None
 
     def test_measuring_an_edit_leaves_the_loaded_envelopes_as_they_are(
         self,
@@ -213,18 +192,18 @@ class TestReconstructionInstrumentsLogicFootprint:
         mock_reconstruction_manager: MagicMock,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        """The regeneration owns the loaded envelopes, so the measurement reads a copy."""
+        """The regeneration owns the loaded envelopes, so the measurement reads them without writing."""
         feature_data = FeatureData.load(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
-        loaded_volume = feature_data.channels[ChannelName.PULSE1].volume.copy()
+        loaded_volume = feature_data.channels[ChannelName.PULSE1].volume
 
-        instruments_logic.handle_raw_data_changed(
+        instruments_logic.handle_envelope_changed(
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
-            np.array([15, 12, 8, 4, 0], dtype=np.int8),
+            Envelope[int](items=(15, 12, 8, 4, 0)),
         )
 
-        assert np.array_equal(feature_data.channels[ChannelName.PULSE1].volume, loaded_volume)
+        assert feature_data.channels[ChannelName.PULSE1].volume == loaded_volume
 
     def test_a_refresh_reports_the_view_alone(
         self,
@@ -273,36 +252,42 @@ class TestReconstructionInstrumentsLogicHandlePitchValueChanged:
         channel_features.model_copy.assert_called_once_with(update={"initial_pitch": 61})
 
 
-class TestReconstructionInstrumentsLogicHandleBarPoint:
-    def test_handle_bar_point_clicked_schedules_update(
+class TestReconstructionInstrumentsLogicHandleEnvelope:
+    def test_an_edited_envelope_schedules_an_update(
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
     ) -> None:
         callback = MagicMock()
         instruments_logic.on_reconstruction_instrument_updated = callback
-        instruments_logic.handle_bar_point_clicked(
+        instruments_logic.handle_envelope_changed(
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
-            np.zeros(4, dtype=np.float32),
+            Envelope[int](items=(0, 0, 0, 0)),
         )
         callback.assert_called_once()
 
-
-class TestReconstructionInstrumentsLogicHandleRawData:
-    def test_handle_raw_data_changed_schedules_update(
+    def test_an_edited_envelope_keeps_the_point_it_was_given(
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        callback = MagicMock()
-        instruments_logic.on_reconstruction_instrument_updated = callback
-        instruments_logic.handle_raw_data_changed(
+        """The panel states values and loop point together, so the update carries both."""
+        mock_reconstruction_manager.current_features = FeatureData.load(reconstruction_factory())
+        received: List[Features] = []
+        instruments_logic.on_reconstruction_instrument_updated = lambda _channel, _key, features: received.append(
+            features
+        )
+        arpeggio = Envelope[int](items=(0, 4, 7), loop_point=1)
+
+        instruments_logic.handle_envelope_changed(
             ChannelName.PULSE1,
             FeatureKey.ARPEGGIO,
-            np.zeros(4, dtype=np.float32),
+            arpeggio,
         )
-        callback.assert_called_once()
+
+        assert received[0].arpeggio == arpeggio
 
 
 class TestReconstructionInstrumentsLogicOnUpdateScheduled:
@@ -398,10 +383,10 @@ class TestTheInstrumentsPanelShowsAnInstrument:
         regenerated: List[object] = []
         instrument_logic.on_reconstruction_instrument_updated = lambda *args: regenerated.append(args)
 
-        instrument_logic.handle_raw_data_changed(
+        instrument_logic.handle_envelope_changed(
             INSTRUMENT_CHANNEL,
             FeatureKey.ARPEGGIO,
-            np.array([0, 7], dtype=np.int8),
+            Envelope[int](items=(0, 7)),
         )
 
         instrument = project_controller.project.voices[project_controller.project.voices[0].id]

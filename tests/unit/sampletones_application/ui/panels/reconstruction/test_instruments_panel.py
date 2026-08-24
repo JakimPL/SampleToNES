@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, Final, List, cast
 from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
@@ -14,12 +15,14 @@ from sampletones_application.paths import (
     PALETTES_DIRECTORY,
     THEME_DIRECTORY,
 )
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_INPUT_WARNING,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
 )
+from sampletones_application.tags.graphs import SUF_GRAPH_RAW_DATA
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import PitchStepperStyle
@@ -36,6 +39,7 @@ from sampletones_application.view_model.reconstruction.instruments import (
 )
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
@@ -55,6 +59,11 @@ NOT_LOADED: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrument
     playing_channels=frozenset(),
     footprint=None,
 )
+
+
+def sequence(item_count: int) -> Envelope[int]:
+    """A dimension of a given length, which is all the length warning reads of it."""
+    return Envelope[int](items=(0,) * item_count)
 
 
 def build_view_model(
@@ -143,7 +152,7 @@ class TestSequenceLengthWarning:
         bound_themes: List[str],
         item_count: int,
     ) -> None:
-        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.VOLUME, item_count)
+        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(item_count))
         assert bound_themes == [TAG_GLOBAL_THEME_DEFAULT]
 
     def test_a_sequence_beyond_the_limit_takes_the_warning_theme(
@@ -151,7 +160,7 @@ class TestSequenceLengthWarning:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 1)
+        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 1))
         assert bound_themes == [TAG_GLOBAL_THEME_INPUT_WARNING]
 
     def test_a_shortened_sequence_returns_to_the_default_theme(
@@ -159,8 +168,8 @@ class TestSequenceLengthWarning:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(ChannelName.NOISE, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 40)
-        panel._apply_input_theme(ChannelName.NOISE, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS)
+        panel._show_sequence(ChannelName.NOISE, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 40))
+        panel._show_sequence(ChannelName.NOISE, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS))
         assert bound_themes == [
             TAG_GLOBAL_THEME_INPUT_WARNING,
             TAG_GLOBAL_THEME_DEFAULT,
@@ -171,12 +180,108 @@ class TestSequenceLengthWarning:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 1)
-        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.ARPEGGIO, 8)
+        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 1))
+        panel._show_sequence(ChannelName.PULSE1, FeatureKey.ARPEGGIO, sequence(8))
         assert bound_themes == [
             TAG_GLOBAL_THEME_INPUT_WARNING,
             TAG_GLOBAL_THEME_DEFAULT,
         ]
+
+
+class TestEditingASequence:
+    """A bar redrawn on the plot restates the values; the item the dimension repeats from is its own."""
+
+    def test_a_redrawn_bar_states_the_values_it_leaves(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        edited: List[Envelope[int]] = []
+        panel.on_envelope_changed = lambda _channel, _key, envelope: edited.append(envelope)
+        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, Envelope[int](items=(15, 12, 8)))
+
+        panel._on_bar_point_clicked(
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            np.array([15, 4, 8], dtype=np.int8),
+            "plot",
+        )
+
+        assert edited == [Envelope[int](items=(15, 4, 8))]
+
+    def test_a_redrawn_bar_keeps_the_item_the_dimension_repeats_from(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        edited: List[Envelope[int]] = []
+        panel.on_envelope_changed = lambda _channel, _key, envelope: edited.append(envelope)
+        panel._show_sequence(
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            Envelope[int](items=(15, 12, 8), loop_point=1),
+        )
+
+        panel._on_bar_point_clicked(
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            np.array([15, 4, 8], dtype=np.int8),
+            "plot",
+        )
+
+        assert edited == [Envelope[int](items=(15, 4, 8), loop_point=1)]
+
+    def test_a_redrawn_bar_writes_the_dimension_out_with_its_point(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        written: Dict[str, str],
+    ) -> None:
+        panel._show_sequence(
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            Envelope[int](items=(15, 12, 8), loop_point=1),
+        )
+
+        panel._on_bar_point_clicked(
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            np.array([15, 4, 8], dtype=np.int8),
+            "plot",
+        )
+
+        assert written[compose_tag("plot", SUF_GRAPH_RAW_DATA)] == "15 | 4 8"
+
+
+class TestCopyingASequence:
+    def test_the_copy_button_hands_over_the_dimension_the_input_shows(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The button is built while every dimension is still empty, so the press reads the input."""
+        copied: List[str] = []
+        monkeypatch.setattr(
+            GUIReconstructionInstrumentsPanel,
+            "_on_copy_button_clicked",
+            lambda _self, text, _tag: copied.append(text),
+        )
+        callback = panel._copy_callback(ChannelName.PULSE1, FeatureKey.VOLUME, "button")
+        panel._show_sequence(
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            Envelope[int](items=(15, 12, 8), loop_point=1),
+        )
+
+        callback()
+
+        assert copied == ["15 | 12 8"]
+
+    def test_the_handler_is_one_the_framework_can_dispatch(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        """DearPyGui reads a callback's ``__code__`` to decide how many arguments to pass it."""
+        callback = panel._copy_callback(ChannelName.PULSE1, FeatureKey.VOLUME, "button")
+
+        assert callback.__code__.co_argcount == 0
 
 
 class TestInstrumentExport:
@@ -224,10 +329,10 @@ class TestSequenceStatusMessage:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(
+        panel._show_sequence(
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
-            HEXADECIMAL_BASE,
+            sequence(HEXADECIMAL_BASE),
         )
         message = panel._sequence_status_message(
             ChannelName.PULSE1,
@@ -242,7 +347,7 @@ class TestSequenceStatusMessage:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.VOLUME, 300)
+        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(300))
         message = panel._sequence_status_message(ChannelName.PULSE1, FeatureKey.VOLUME)
         assert "300" in message
         assert str(MAX_SEQUENCE_ITEMS) in message

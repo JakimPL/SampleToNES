@@ -80,6 +80,8 @@ from sampletones_core.features import (
     resting_reference,
     supported_features,
 )
+from sampletones_core.features.envelope import Envelope
+from sampletones_core.features.text import format_envelope, parse_envelope
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
@@ -95,6 +97,11 @@ from sampletones_shared.utils.arrays import clamp
 
 OnInstrumentExportCallback = Callable[[ChannelName], None]
 OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
+
+
+def _plotted_items(envelope: Envelope[int]) -> np.ndarray:
+    """The values a dimension writes, as the bar plot draws them."""
+    return np.array(envelope.items, dtype=np.int8)
 
 
 class GUIReconstructionInstrumentsPanel(GUIPanel):
@@ -123,7 +130,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.sample_size_group_tag = compose_tag(self.sample_size_tag, SUF_GROUP)
 
         self._graphs: Dict[str, GUIBarGraph] = {}
-        self._sequence_lengths: Dict[Tuple[ChannelName, FeatureKey], int] = {}
+        self._sequences: Dict[Tuple[ChannelName, FeatureKey], Envelope[int]] = {}
         self._pitch_stepper_style = pitch_stepper_style
         self._copy_width = copy_width
         self._layout_graphs = layout_graphs
@@ -140,8 +147,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None
 
         self.on_pitch_value_changed: Optional[Callable[[ChannelName, int], None]] = None
-        self.on_bar_data_changed: Optional[Callable[[ChannelName, FeatureKey, np.ndarray], None]] = None
-        self.on_raw_data_changed: Optional[Callable[[ChannelName, FeatureKey, np.ndarray], None]] = None
+        self.on_envelope_changed: Optional[Callable[[ChannelName, FeatureKey, Envelope[int]], None]] = None
 
         self._lbl_copy = language_manager["reconstructions.instruments.label.copy_button"]
         self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
@@ -384,11 +390,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             parent=window_tag,
         ):
             dpg.add_separator(parent=window_tag)
-            feature_data_array = np.empty(0, dtype=np.int8)
             plot = self._create_feature_display(
                 channel_name,
                 feature_key,
-                feature_data_array,
+                Envelope[int](),
                 feature_group_tag,
             )
             self.channel_plots[channel_name][feature_key] = plot
@@ -429,16 +434,15 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self,
         channel_name: ChannelName,
         feature_key: FeatureKey,
-        data: np.ndarray,
+        envelope: Envelope[int],
     ) -> None:
         text_group_tag = self._get_feature_text_group_tag(
             channel_name,
             feature_key,
         )
         raw_data_tag = self._get_feature_text_tag(text_group_tag)
-        raw_data_text = self._format_data(data)
-        dpg_set_value(raw_data_tag, raw_data_text)
-        self._apply_input_theme(channel_name, feature_key, len(data))
+        dpg_set_value(raw_data_tag, format_envelope(envelope))
+        self._show_sequence(channel_name, feature_key, envelope)
 
     def update_view(
         self,
@@ -557,18 +561,17 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         generator_features: Features,
         feature_key: FeatureKey,
     ) -> None:
-        feature = self._feature_array(generator_features, feature_key)
-        self._update_generator_plot(channel_name, feature_key, feature)
-        self._update_raw_data_text(channel_name, feature_key, feature)
+        envelope = self._feature_envelope(generator_features, feature_key)
+        self._update_generator_plot(channel_name, feature_key, _plotted_items(envelope))
+        self._update_raw_data_text(channel_name, feature_key, envelope)
 
-    def _feature_array(
+    def _feature_envelope(
         self,
         generator_features: Features,
         feature_key: FeatureKey,
-    ) -> np.ndarray:
+    ) -> Envelope[int]:
         envelope = generator_features.envelopes.get(feature_key)
-        items = envelope.items if envelope is not None else ()
-        return np.array(items, dtype=np.int8)
+        return envelope if envelope is not None else Envelope[int]()
 
     def _pitch_kind(self, channel_name: ChannelName) -> PitchValueKind:
         return PERIOD_VALUE_KIND if channel_name == ChannelName.NOISE else PITCH_VALUE_KIND
@@ -630,14 +633,14 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self,
         channel_name: ChannelName,
         feature_key: FeatureKey,
-        data: np.ndarray,
+        envelope: Envelope[int],
         parent: str,
     ) -> GUIBarGraph:
         config = self._feature_plot_config(channel_name, feature_key)
         plot = self._add_bar_plot(
             parent,
             config,
-            data,
+            _plotted_items(envelope),
             channel_name,
             feature_key,
         )
@@ -647,7 +650,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             feature_key,
             config,
             plot,
-            data,
+            envelope,
         )
         return plot
 
@@ -731,9 +734,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         data: np.ndarray,
         plot_tag: str,
     ) -> None:
+        envelope = self._standing_sequence(channel_name, feature_key).with_items(tuple(int(value) for value in data))
         raw_data_tag = compose_tag(plot_tag, SUF_GRAPH_RAW_DATA)
-        dpg_set_value(raw_data_tag, self._format_data(data))
-        self.call(self.on_bar_data_changed, channel_name, feature_key, data)
+        dpg_set_value(raw_data_tag, format_envelope(envelope))
+        self._show_sequence(channel_name, feature_key, envelope)
+        self.call(self.on_envelope_changed, channel_name, feature_key, envelope)
 
     def _on_bar_point_hovered(
         self,
@@ -755,13 +760,13 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         feature_key: FeatureKey,
         config: FeaturePlotConfig,
         plot: GUIBarGraph,
-        data: np.ndarray,
+        envelope: Envelope[int],
     ) -> None:
         text_group_tag = self._get_feature_text_group_tag(
             channel_name,
             feature_key,
         )
-        raw_data_text = self._format_data(data)
+        raw_data_text = format_envelope(envelope)
         raw_data_tag = self._get_feature_text_tag(text_group_tag)
         copy_button_tag = compose_tag(text_group_tag, SUF_BUTTON_COPY)
 
@@ -770,8 +775,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 tag=copy_button_tag,
                 label=self._lbl_copy,
                 width=self._copy_width,
-                callback=lambda: self._on_copy_button_clicked(
-                    raw_data_text,
+                callback=self._copy_callback(
+                    channel_name,
+                    feature_key,
                     copy_button_tag,
                 ),
             )
@@ -810,7 +816,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         **_kwargs: Any,
     ) -> str:
         """Describes the sequence input, naming the export limit once a sequence passes it."""
-        item_count = self._sequence_lengths.get((channel_name, feature_key), 0)
+        item_count = len(self._standing_sequence(channel_name, feature_key).items)
         if item_count > MAX_SEQUENCE_ITEMS:
             return self._language_manager["reconstructions.instruments.message.status_sequence_too_long"].format(
                 instrument_feature=feature_key.capitalized,
@@ -822,22 +828,30 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             instrument_feature=feature_key.capitalized
         )
 
-    def _apply_input_theme(
+    def _standing_sequence(
         self,
         channel_name: ChannelName,
         feature_key: FeatureKey,
-        item_count: int,
+    ) -> Envelope[int]:
+        """The dimension this input shows, which is what an edit of its values starts from."""
+        return self._sequences.get((channel_name, feature_key), Envelope[int]())
+
+    def _show_sequence(
+        self,
+        channel_name: ChannelName,
+        feature_key: FeatureKey,
+        envelope: Envelope[int],
     ) -> None:
-        """Colors the sequence input by how a FamiTracker export treats its length.
+        """Holds the dimension the input now shows, colored by how a FamiTracker export treats its length.
 
         A sequence longer than ``MAX_SEQUENCE_ITEMS`` exports its opening items, so the
         input carries the warning color to show which part of the envelope reaches a
         FamiTracker file.
         """
-        self._sequence_lengths[(channel_name, feature_key)] = item_count
+        self._sequences[(channel_name, feature_key)] = envelope
         text_group_tag = self._get_feature_text_group_tag(channel_name, feature_key)
         raw_data_tag = self._get_feature_text_tag(text_group_tag)
-        theme = self.warning_input_theme if item_count > MAX_SEQUENCE_ITEMS else self.theme
+        theme = self.warning_input_theme if len(envelope.items) > MAX_SEQUENCE_ITEMS else self.theme
         theme.bind_to_item(raw_data_tag)
 
     def _parse_raw_data_input(
@@ -847,27 +861,18 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         user_data: Tuple[ChannelName, FeatureKey, FeaturePlotConfig, GUIBarGraph],
     ) -> None:
         channel_name, feature_key, config, plot = user_data
-        data_range = config.data_range if config.data_range is not None else (-128, 127)
-
         try:
-            raw_data_items = app_data.strip().split()
-            raw_data = np.array(
-                [clamp(int(value), *data_range) for value in raw_data_items],
-                dtype=np.int8,
-            )
+            typed = parse_envelope(app_data)
         except ValueError:
             logger.error(f"Invalid {channel_name.name} data input for {feature_key.name}: {app_data}")
             self.invalid_input_theme.bind_to_item(sender)
             return
 
-        self._apply_input_theme(channel_name, feature_key, len(raw_data))
-        dpg.set_value(sender, self._format_data(raw_data))
-        self.call(self.on_raw_data_changed, channel_name, feature_key, raw_data)
-        self._load_plot_data(plot, channel_name, feature_key, config, raw_data)
-
-    def _format_data(self, data: np.ndarray) -> str:
-        string_data = [str(clamp(int(value), -128, 127)) for value in data]
-        return " ".join(string_data)
+        envelope = typed.with_items(tuple(clamp(item, *config.data_range) for item in typed.items))
+        self._show_sequence(channel_name, feature_key, envelope)
+        dpg.set_value(sender, format_envelope(envelope))
+        self.call(self.on_envelope_changed, channel_name, feature_key, envelope)
+        self._load_plot_data(plot, channel_name, feature_key, config, _plotted_items(envelope))
 
     def _load_plot_data(
         self,
@@ -884,6 +889,22 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             name=name,
             color=config.color,
             y_ticks=y_ticks,
+        )
+
+    def _copy_callback(
+        self,
+        channel_name: ChannelName,
+        feature_key: FeatureKey,
+        button_tag: str,
+    ) -> VoidCallback:
+        """The press handler for one dimension's copy button.
+
+        The button stands beside its input from the moment the tab is built, so the press reads
+        the dimension the input shows then, written out as a reader would type it.
+        """
+        return lambda: self._on_copy_button_clicked(
+            format_envelope(self._standing_sequence(channel_name, feature_key)),
+            button_tag,
         )
 
     def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:

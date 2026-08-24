@@ -1,7 +1,5 @@
 from typing import Callable, Dict, Optional
 
-import numpy as np
-
 from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
@@ -180,49 +178,23 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
             )
         )
 
-    def handle_bar_point_clicked(
+    def handle_envelope_changed(
         self,
         channel_name: ChannelName,
         feature_key: FeatureKey,
-        data: np.ndarray,
+        envelope: Envelope[int],
     ) -> None:
-        envelope = self._edited_envelope(channel_name, feature_key, data)
+        """Takes one dimension as an edit leaves it, values and loop point together.
+
+        The panel states the whole dimension, so a bar redrawn on the plot and a sequence typed
+        into the text field arrive the same way and are written the same way.
+        """
         if self._write_instrument_envelope(feature_key, envelope):
             return
 
         features = self._get_features(channel_name).with_envelope(feature_key, envelope)
         self._report_edited_size(channel_name, features)
         self._schedule_reconstruction_update(ReconstructionUpdate(channel_name, feature_key, features))
-
-    def handle_raw_data_changed(
-        self,
-        channel_name: ChannelName,
-        feature_key: FeatureKey,
-        data: np.ndarray,
-    ) -> None:
-        envelope = self._edited_envelope(channel_name, feature_key, data)
-        if self._write_instrument_envelope(feature_key, envelope):
-            return
-
-        features = self._get_features(channel_name).with_envelope(feature_key, envelope)
-        self._report_edited_size(channel_name, features)
-        self._schedule_reconstruction_update(ReconstructionUpdate(channel_name, feature_key, features))
-
-    def _edited_envelope(
-        self,
-        channel_name: ChannelName,
-        feature_key: FeatureKey,
-        data: np.ndarray,
-    ) -> Envelope[int]:
-        """The dimension as the edit leaves it, repeating from the point it already held."""
-        items = tuple(int(value) for value in data)
-        instrument = self.instrument_edit
-        standing = (
-            instrument.features.envelopes.get(feature_key)
-            if instrument is not None
-            else self._get_features(channel_name).envelopes.get(feature_key)
-        )
-        return standing.with_items(items) if standing is not None else Envelope[int](items=items)
 
     def _write_instrument_envelope(
         self,
