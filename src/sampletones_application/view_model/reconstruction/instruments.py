@@ -2,7 +2,7 @@ from typing import FrozenSet, Optional
 
 from pydantic import BaseModel
 
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName
 
 
@@ -27,7 +27,7 @@ class ReconstructionInstrumentsViewModel(BaseModel, frozen=True):
 
     reconstruction_loaded: bool
     playing_channels: FrozenSet[ChannelName]
-    footprint: Optional[SampleFootprintViewModel]
+    footprint: Optional[VoiceFootprintViewModel]
     instrument: Optional[InstrumentViewModel] = None
 
     @property

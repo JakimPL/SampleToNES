@@ -94,10 +94,10 @@ class SequencerHistoryDetail:
     def __init__(
         self,
         tracker_logic: SequencerTrackerLogic,
-        samples_logic: SequencerVoicesLogic,
+        voices_logic: SequencerVoicesLogic,
     ) -> None:
         self._tracker_logic = tracker_logic
-        self._samples_logic = samples_logic
+        self._voices_logic = voices_logic
 
     def edit_row(
         self,
@@ -289,7 +289,7 @@ class SequencerHistoryDetail:
         return (
             self._voice_name(voice_id),
             self._arrow(),
-            self._name(name, self._samples_logic.voice_kind(voice_id)),
+            self._name(name, self._voices_logic.voice_kind(voice_id)),
         )
 
     def move_voice(self, voice_id: str, to_index: int) -> Segments:
@@ -343,7 +343,7 @@ class SequencerHistoryDetail:
         """Describes a recording taken out of a sample's reconstruction: its position and name."""
         return (
             self._voice(voice_id, colon=True),
-            self._name(stem_name, self._samples_logic.voice_kind(voice_id)),
+            self._name(stem_name, self._voices_logic.voice_kind(voice_id)),
         )
 
     def value(self, number: int) -> Segments:
@@ -470,8 +470,8 @@ class SequencerHistoryDetail:
     def _voice_name(self, voice_id: str) -> HistoryDetailSegment:
         """The name a voice in the pool carries, read in the color of the kind it is."""
         return self._name(
-            self._samples_logic.voice_name(voice_id),
-            self._samples_logic.voice_kind(voice_id),
+            self._voices_logic.voice_name(voice_id),
+            self._voices_logic.voice_kind(voice_id),
         )
 
     def _voice(
@@ -480,11 +480,11 @@ class SequencerHistoryDetail:
         *,
         colon: bool = False,
     ) -> HistoryDetailSegment:
-        position = self._samples_logic.voice_position(voice_id)
+        position = self._voices_logic.voice_position(voice_id)
         text = f"{position}:" if colon else position
         return HistoryDetailSegment(
             text=text,
-            role=_kind_role(self._samples_logic.voice_kind(voice_id)),
+            role=_kind_role(self._voices_logic.voice_kind(voice_id)),
         )
 
     def _arrow(self) -> HistoryDetailSegment:

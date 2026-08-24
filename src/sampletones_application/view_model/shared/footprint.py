@@ -27,7 +27,7 @@ class InstrumentSizeViewModel(BaseModel, frozen=True):
         return self.footprint.total_bytes
 
 
-class SampleFootprintViewModel(BaseModel, frozen=True):
+class VoiceFootprintViewModel(BaseModel, frozen=True):
     """The byte sizes a voice's instruments occupy.
 
     A sample exports one instrument per channel its reconstruction covers, so a display reads

@@ -41,7 +41,7 @@ from sampletones_application.view_model.reconstruction.instruments import (
     InstrumentViewModel,
     ReconstructionInstrumentsViewModel,
 )
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName, FeatureKey, GeneratorName
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
@@ -67,7 +67,7 @@ NOT_LOADED: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrument
 ONE_INSTRUMENT: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
     reconstruction_loaded=False,
     playing_channels=frozenset((ChannelName.PULSE1,)),
-    footprint=SampleFootprintViewModel.from_instrument(LARGEST_PULSE),
+    footprint=VoiceFootprintViewModel.from_instrument(LARGEST_PULSE),
     instrument=InstrumentViewModel(name="lead"),
 )
 
@@ -84,7 +84,7 @@ def build_view_model(
     return ReconstructionInstrumentsViewModel(
         reconstruction_loaded=True,
         playing_channels=frozenset(channel_footprints),
-        footprint=SampleFootprintViewModel.from_footprints(channel_footprints),
+        footprint=VoiceFootprintViewModel.from_footprints(channel_footprints),
     )
 
 

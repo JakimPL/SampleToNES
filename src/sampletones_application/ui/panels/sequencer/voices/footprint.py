@@ -8,7 +8,7 @@ from sampletones_application.categories.context import (
 from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.hierarchy import TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName
 
 
@@ -31,7 +31,7 @@ class VoiceFootprintText:
 
     def items(
         self,
-        footprint: Optional[SampleFootprintViewModel],
+        footprint: Optional[VoiceFootprintViewModel],
     ) -> List[Tuple[str, str]]:
         """The byte figures a menu prints: the voice's total, then each channel that plays.
 
@@ -60,7 +60,7 @@ class VoiceFootprintText:
 
         return items
 
-    def channels(self, footprint: SampleFootprintViewModel) -> List[str]:
+    def channels(self, footprint: VoiceFootprintViewModel) -> List[str]:
         """The channels a voice plays, each named as every display naming a channel names it."""
         return [
             channel_label(self._language_manager, instrument.channel)

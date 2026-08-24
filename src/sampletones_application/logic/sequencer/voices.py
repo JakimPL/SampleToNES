@@ -16,7 +16,7 @@ from sampletones_application.view_model.sequencer.voices import (
     VoiceEntryViewModel,
     VoiceKind,
 )
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
@@ -48,16 +48,16 @@ PREVIEW_CHANNEL: Final[ChannelName] = ChannelName.PULSE1
 
 
 class SequencerVoicesLogic(CallbackMixin):
-    """Drives the samples panel: lists the pool, edits it, and previews samples.
+    """Drives the voices panel: lists the pool, edits it, and previews what it holds.
 
-    Every pool edit goes through the controller so the project stays the single
-    source of truth. ``on_edit_sample_requested`` hands a sample id to the
-    application, which opens that sample's reconstruction in the Reconstruction
-    tab for live-linked editing.
+    Every pool edit goes through the controller so the project stays the single source of truth.
+    ``on_edit_voice_requested`` hands a voice id to the application, which opens that voice in the
+    Reconstructions tab — a recording as the reconstruction behind it, a hand-written one as its
+    envelopes.
 
-    Previewing mirrors the reconstruction browser: a single click schedules a
-    debounced autoplay that fires only when the session's autoplay flag is on, and
-    a double-click (edit) cancels the pending preview before it plays.
+    Previewing mirrors the reconstruction browser: a single click schedules a debounced autoplay
+    that fires only when the session's autoplay flag is on, and a double-click (edit) cancels the
+    pending preview before it plays.
     """
 
     def __init__(
@@ -72,10 +72,10 @@ class SequencerVoicesLogic(CallbackMixin):
         self._session_manager = session_manager
         self._audio_device_manager = audio_device_manager
         self._scheduling = scheduling
-        self._pending_autoplay_sample: Optional[str] = None
+        self._pending_autoplay_voice: Optional[str] = None
 
         self.on_voices_changed: Optional[Callable[[SequencerVoicesViewModel], None]] = None
-        self.on_edit_sample_requested: Optional[StringCallback] = None
+        self.on_edit_voice_requested: Optional[StringCallback] = None
         self.on_autoplay_error: Optional[Callable[[Exception], None]] = None
 
     def build_voices(self) -> SequencerVoicesViewModel:
@@ -189,7 +189,7 @@ class SequencerVoicesLogic(CallbackMixin):
     def build_voice_footprint(
         self,
         voice_id: str,
-    ) -> Optional[SampleFootprintViewModel]:
+    ) -> Optional[VoiceFootprintViewModel]:
         """Measures one voice's instruments as the module export writes them.
 
         A sample yields a figure per channel its reconstruction covers; an instrument yields one,
@@ -200,14 +200,14 @@ class SequencerVoicesLogic(CallbackMixin):
             voice_id: The voice to measure.
 
         Returns:
-            Optional[SampleFootprintViewModel]: The voice's byte figures, or ``None`` while the
+            Optional[VoiceFootprintViewModel]: The voice's byte figures, or ``None`` while the
             pool holds no such voice.
         """
         match self._controller.project.voices.get(voice_id):
             case Sample() as sample:
-                return SampleFootprintViewModel.from_footprints(reconstruction_footprints(sample.reconstruction))
+                return VoiceFootprintViewModel.from_footprints(reconstruction_footprints(sample.reconstruction))
             case Instrument() as instrument:
-                return SampleFootprintViewModel.from_instrument(features_footprint(instrument.instrument_features()))
+                return VoiceFootprintViewModel.from_instrument(features_footprint(instrument.instrument_features()))
             case _:
                 return None
 
@@ -215,7 +215,7 @@ class SequencerVoicesLogic(CallbackMixin):
         return self._controller.project.voices[voice_id].name
 
     def voice_position(self, voice_id: str) -> str:
-        """Returns the sample's hex list position, matching how the tracker labels it."""
+        """Returns the voice's hex list position, matching how the tracker labels it."""
         return display_voice(
             voices=self._controller.project.voices,
             voice_id=voice_id,
@@ -248,10 +248,10 @@ class SequencerVoicesLogic(CallbackMixin):
 
     def request_edit(self, voice_id: str) -> None:
         self.cancel_autoplay()
-        self.call(self.on_edit_sample_requested, voice_id)
+        self.call(self.on_edit_voice_requested, voice_id)
 
     def play_voice(self, voice_id: str) -> None:
-        """Plays a sample on demand, regardless of the autoplay setting.
+        """Plays a voice on demand, regardless of the autoplay setting.
 
         Explicit playback is intentional, so it uses ``NORMAL`` priority and thereby
         preempts the sequencer song / reconstruction players.
@@ -260,7 +260,7 @@ class SequencerVoicesLogic(CallbackMixin):
 
     def request_autoplay(self, voice_id: str) -> None:
         """Schedules a debounced preview that a following double-click can cancel."""
-        self._pending_autoplay_sample = voice_id
+        self._pending_autoplay_voice = voice_id
         CallbackQueue.add(
             self._execute_autoplay,
             priority=self._scheduling.priorities.schedule,
@@ -268,14 +268,14 @@ class SequencerVoicesLogic(CallbackMixin):
         )
 
     def cancel_autoplay(self) -> None:
-        self._pending_autoplay_sample = None
+        self._pending_autoplay_voice = None
 
     def _execute_autoplay(self) -> None:
-        if self._pending_autoplay_sample is None:
+        if self._pending_autoplay_voice is None:
             return
 
-        voice_id = self._pending_autoplay_sample
-        self._pending_autoplay_sample = None
+        voice_id = self._pending_autoplay_voice
+        self._pending_autoplay_voice = None
         if self._session_manager.autoplay:
             self._play_voice(voice_id, priority=PlaybackPriority.PREVIEW)
 
@@ -332,6 +332,6 @@ class SequencerVoicesLogic(CallbackMixin):
         except (PlaybackError, ValueError) as exception:
             logger.error_with_traceback(
                 exception,
-                f"Failed to preview sample: {voice_id}",
+                f"Failed to preview voice: {voice_id}",
             )
             self.call(self.on_autoplay_error, exception)

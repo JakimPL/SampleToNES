@@ -37,13 +37,13 @@ def _controller() -> ProjectController:
 
 def _formatter(controller: ProjectController) -> SequencerHistoryDetail:
     tracker_logic = SequencerTrackerLogic(controller)
-    samples_logic = SequencerVoicesLogic(
+    voices_logic = SequencerVoicesLogic(
         controller,
         MagicMock(),
         MagicMock(),
         scheduling=MagicMock(),
     )
-    return SequencerHistoryDetail(tracker_logic, samples_logic)
+    return SequencerHistoryDetail(tracker_logic, voices_logic)
 
 
 def _pairs(segments: Tuple[HistoryDetailSegment, ...]) -> List[Pair]:
@@ -389,6 +389,16 @@ class TestWhichKindADetailNames:
             ("Pad", HistoryDetailRole.INSTRUMENT),
             (">", HistoryDetailRole.SEPARATOR),
             ("Strings", HistoryDetailRole.INSTRUMENT),
+        ]
+
+    def test_a_written_voice_is_duplicated_under_its_own_kind(self) -> None:
+        controller = _controller()
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        assert _pairs(formatter.duplicate_voice(instrument.id)) == [
+            ("00:", HistoryDetailRole.INSTRUMENT),
+            ("Pad", HistoryDetailRole.INSTRUMENT),
         ]
 
     def test_the_kinds_read_apart_where_one_gesture_serves_both(self) -> None:

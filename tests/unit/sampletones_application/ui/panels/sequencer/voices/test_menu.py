@@ -16,7 +16,7 @@ from sampletones_application.ui.panels.sequencer.voices.panel import GUISequence
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.palette.colors.literal import LiteralColor
 from sampletones_application.view_model.sequencer.voices import VoiceEntryViewModel, VoiceKind
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
 from sampletones_core.utils.display import display_voice_label
@@ -41,7 +41,7 @@ PULSE_1_FOOTPRINT = InstrumentFootprint(instrument_bytes=9, sequence_bytes=32)
 NOISE_FOOTPRINT = InstrumentFootprint(instrument_bytes=7, sequence_bytes=12)
 PULSE_1_BYTES = PULSE_1_FOOTPRINT.total_bytes
 NOISE_BYTES = NOISE_FOOTPRINT.total_bytes
-FOOTPRINT = SampleFootprintViewModel.from_footprints(
+FOOTPRINT = VoiceFootprintViewModel.from_footprints(
     {
         ChannelName.PULSE1: PULSE_1_FOOTPRINT,
         ChannelName.NOISE: NOISE_FOOTPRINT,
@@ -145,7 +145,7 @@ def _panel(
     tab_active: bool = True,
     editing: Optional[str] = None,
     field_focused: bool = False,
-    footprint: Optional[SampleFootprintViewModel] = FOOTPRINT,
+    footprint: Optional[VoiceFootprintViewModel] = FOOTPRINT,
     footprint_wired: bool = True,
     instruments: Tuple[Optional[ChannelName], ...] = ONE_INSTRUMENT,
     channels: Tuple[ChannelName, ...] = NO_CHANNELS,
@@ -165,12 +165,12 @@ def _panel(
     panel._list_menu_pending = False
     panel._tab_active = lambda: tab_active
     panel._router = _Router(field_focused=field_focused)
-    panel.sample_footprint = (lambda _voice_id: footprint) if footprint_wired else None
+    panel.voice_footprint = (lambda _voice_id: footprint) if footprint_wired else None
     panel.voice_instruments = lambda _voice_id: instruments
     panel.instrument_channels = lambda _voice_id: channels
 
     requests = Requests()
-    panel.on_sample_edit_requested = requests.edited.append
+    panel.on_voice_edit_requested = requests.edited.append
     panel.on_duplicate_requested = requests.duplicated.append
     panel.on_remove_requested = requests.removed.append
     panel.on_move_requested = lambda voice_id, target: requests.moved.append((voice_id, target))
@@ -504,12 +504,12 @@ class TestTheSizeRows:
         """The figures are asked for as the menu opens, so they answer for the row right-clicked."""
         measured: List[str] = []
 
-        def _measure(voice_id: str) -> SampleFootprintViewModel:
+        def _measure(voice_id: str) -> VoiceFootprintViewModel:
             measured.append(voice_id)
             return FOOTPRINT
 
         fixture = _panel(monkeypatch)
-        fixture.panel.sample_footprint = _measure
+        fixture.panel.voice_footprint = _measure
 
         fixture.menu._footprint_items("lead-id")
 
@@ -718,7 +718,7 @@ class TestWhichDoorAnswersAPress:
         monkeypatch.setattr(panel_module.dpg, "get_item_user_data", lambda _item: (SELECTED_ROW, SELECTED_ID))
 
         fixture.panel._on_list_right_clicked(0, RIGHT_BUTTON)
-        fixture.panel._on_sample_clicked(0, (RIGHT_BUTTON, 0))
+        fixture.panel._on_voice_clicked(0, (RIGHT_BUTTON, 0))
         fixture.panel._show_list_menu()
 
         assert build_recorder.widgets == []

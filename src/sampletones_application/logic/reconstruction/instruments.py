@@ -17,7 +17,7 @@ from sampletones_application.view_model.reconstruction.instruments import (
 from sampletones_application.view_model.reconstruction.update import (
     ReconstructionUpdate,
 )
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features, playing_channels
 from sampletones_core.features.envelope import Envelope
@@ -140,21 +140,21 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         return ReconstructionInstrumentsViewModel(
             reconstruction_loaded=False,
             playing_channels=playing_channels(self._instrument_channels(instrument)),
-            footprint=SampleFootprintViewModel.from_instrument(features_footprint(instrument.features)),
+            footprint=VoiceFootprintViewModel.from_instrument(features_footprint(instrument.features)),
             instrument=InstrumentViewModel(name=instrument.name),
         )
 
     def _build_footprint(
         self,
         channels: Dict[ChannelName, Features],
-    ) -> SampleFootprintViewModel:
+    ) -> VoiceFootprintViewModel:
         """Measures each playing channel's instrument as the size its own export writes.
 
         Each instrument is measured at the lengths its own envelopes state, matching what
         **Export instrument...** produces. A channel standing by is written nowhere, so it is
         measured nowhere and the sample's total names what the export costs.
         """
-        return SampleFootprintViewModel.from_footprints(
+        return VoiceFootprintViewModel.from_footprints(
             {
                 channel_name: features_footprint(features)
                 for channel_name, features in channels.items()

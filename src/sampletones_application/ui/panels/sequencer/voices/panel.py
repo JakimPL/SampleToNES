@@ -47,7 +47,7 @@ from sampletones_application.view_model.sequencer.voices import (
     VoiceKind,
     VoiceSelection,
 )
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.utils.display import display_id
 from sampletones_shared.types.application import Sender
@@ -90,11 +90,11 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._tpl_status_sample = language_manager["sequencer.voices.template.status_sample"]
         self._tpl_status_instrument = language_manager["sequencer.voices.template.status_instrument"]
         self._channel_separator = language_manager["sequencer.voices.template.status_channel_separator"]
-        self.sample_footprint: Optional[Callable[[str], Optional[SampleFootprintViewModel]]] = None
+        self.voice_footprint: Optional[Callable[[str], Optional[VoiceFootprintViewModel]]] = None
         self.voice_instruments: Optional[Callable[[str], Tuple[Optional[ChannelName], ...]]] = None
         self.instrument_channels: Optional[Callable[[str], Tuple[ChannelName, ...]]] = None
-        self.on_sample_selected: Optional[StringCallback] = None
-        self.on_sample_edit_requested: Optional[StringCallback] = None
+        self.on_voice_selected: Optional[StringCallback] = None
+        self.on_voice_edit_requested: Optional[StringCallback] = None
         self.on_remove_requested: Optional[StringCallback] = None
         self.on_play_requested: Optional[StringCallback] = None
         self.on_move_requested: Optional[Callable[[str, int], None]] = None
@@ -135,8 +135,8 @@ class GUISequencerVoicesPanel(GUIPanel):
 
     def _create_row_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._row_handler_tag):
-            dpg.add_item_clicked_handler(callback=self._on_sample_clicked)
-            dpg.add_item_double_clicked_handler(callback=self._on_sample_double_clicked)
+            dpg.add_item_clicked_handler(callback=self._on_voice_clicked)
+            dpg.add_item_double_clicked_handler(callback=self._on_voice_double_clicked)
             dpg.add_item_hover_handler(callback=self._on_row_hovered)
 
     def _on_row_hovered(self, _sender: Sender, app_data: int) -> None:
@@ -160,7 +160,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         channel and carries a single figure.
         """
         entry = self._entry_for(voice_id)
-        footprint = self.query(self.sample_footprint, voice_id, default=None)
+        footprint = self.query(self.voice_footprint, voice_id, default=None)
         if entry is None or footprint is None:
             return ""
 
@@ -261,7 +261,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._rebuild()
 
     def _rebuild(self) -> None:
-        """Rebuilds the samples table from the cached entries with explicit parents.
+        """Rebuilds the voices table from the cached entries with explicit parents.
 
         Items pass an explicit ``parent`` so each widget binds directly: the browser
         tree builds on a worker thread and the DearPyGui container stack is
@@ -271,11 +271,11 @@ class GUISequencerVoicesPanel(GUIPanel):
         dpg_delete_children(TAG_SEQUENCER_VOICES_TABLE, slot=1)
         self._selected_row = None
         for position, entry in enumerate(self._entries):
-            self._build_sample_row(position, entry)
+            self._build_voice_row(position, entry)
         if self._selected_row is None:
             self._selected_voice_id = None
 
-    def _build_sample_row(
+    def _build_voice_row(
         self,
         position: int,
         entry: VoiceEntryViewModel,
@@ -358,7 +358,7 @@ class GUISequencerVoicesPanel(GUIPanel):
             parent=id_cell,
             label=display_id(position),
             user_data=(position, entry.voice_id),
-            callback=self._on_sample_selected,
+            callback=self._on_voice_selected,
         )
         FontRegistry.bind_to_item(id_selectable, Font.MONO_SMALL)
         dpg.bind_item_handler_registry(id_selectable, self._row_handler_tag)
@@ -385,7 +385,7 @@ class GUISequencerVoicesPanel(GUIPanel):
             parent=name_cell,
             label=entry.name,
             user_data=(position, entry.voice_id),
-            callback=self._on_sample_selected,
+            callback=self._on_voice_selected,
         )
         FontRegistry.bind_to_item(name_selectable, Font.MONO_SMALL)
         dpg.bind_item_handler_registry(name_selectable, self._row_handler_tag)
@@ -406,7 +406,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         FontRegistry.bind_to_item(name_input, Font.MONO_SMALL)
         dpg.bind_item_handler_registry(name_input, self._rename_handler_tag)
 
-    def _on_sample_selected(
+    def _on_voice_selected(
         self,
         sender: Sender,
         _app_data: bool,
@@ -423,11 +423,11 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._selected_row = position
         self._selected_voice_id = voice_id
         self._highlight_selected_row(position)
-        self.call(self.on_sample_selected, voice_id)
+        self.call(self.on_voice_selected, voice_id)
 
     @property
     def selection(self) -> Optional[VoiceSelection]:
-        """The selected sample, or ``None`` while the panel holds no selection.
+        """The selected voice, or ``None`` while the panel holds no selection.
 
         Derived from the highlighted row and the cached entries on each read, so it reports
         whatever the table currently shows. Lets an operation hosted by another panel of the tab
@@ -448,7 +448,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         )
 
     def deselect(self) -> None:
-        """Drops the sample selection so the panel stops consuming keystrokes.
+        """Drops the voice selection so the panel stops consuming keystrokes.
 
         Mirrors the grid and order panels: each registers a key-router scope that is active only
         while it holds a selection, so a single selection across the three decides which one acts
@@ -464,11 +464,11 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._selected_voice_id = None
 
     def _keys_active(self) -> bool:
-        """Whether the samples panel owns the next key.
+        """Whether the voices panel owns the next key.
 
         The panel answers only while its tab is in front, since a selection outlives a move to
         another tab. There, a name being edited keeps the keyboard so Escape can cancel the rename;
-        otherwise the panel acts when a sample is selected and no field holds the keyboard. A modal
+        otherwise the panel acts when a voice is selected and no field holds the keyboard. A modal
         dialog claims keys at a higher priority in the router, so the panel needs no modal check.
         """
         if not self._tab_active():
@@ -480,9 +480,9 @@ class GUISequencerVoicesPanel(GUIPanel):
         return self._selected_voice_id is not None and not self._router.is_field_focused
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
-        """Applies a samples key to the selected sample, reporting whether the panel consumed it.
+        """Applies a voices key to the selected voice, reporting whether the panel consumed it.
 
-        The scheme says which press each samples action answers to; a press the samples category
+        The scheme says which press each voices action answers to; a press the voices category
         leaves unnamed goes to the application's global shortcuts.
         """
         shortcut_id = self._shortcuts.action(ShortcutCategory.VOICES, event)
@@ -519,7 +519,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         return True
 
     def _move_voice(self, shortcut_id: ShortcutId) -> bool:
-        """Moves the selected sample up, down, to the top or to the bottom of the list.
+        """Moves the selected voice up, down, to the top or to the bottom of the list.
 
         Returns whether the action was one of the moves, so a boundary with nowhere to go still
         counts as consumed and stays out of the global shortcuts.
@@ -535,7 +535,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         return True
 
     def start_rename(self, voice_id: str) -> None:
-        """Turns the sample's name cell into a focused text input."""
+        """Turns the voice's name cell into a focused text input."""
         if self._entry_for(voice_id) is None:
             return
 
@@ -571,7 +571,7 @@ class GUISequencerVoicesPanel(GUIPanel):
     def _on_rename_deactivated(self, _sender: Sender, _app_data: int) -> None:
         self._commit_rename()
 
-    def _on_sample_double_clicked(
+    def _on_voice_double_clicked(
         self,
         _sender: Sender,
         app_data: List[int],
@@ -580,9 +580,9 @@ class GUISequencerVoicesPanel(GUIPanel):
         user_data = dpg.get_item_user_data(clicked_item)
         if user_data is not None:
             _, voice_id = user_data
-            self.call(self.on_sample_edit_requested, voice_id)
+            self.call(self.on_voice_edit_requested, voice_id)
 
-    def _on_sample_clicked(
+    def _on_voice_clicked(
         self,
         _sender: Sender,
         app_data: Tuple[int, int],
@@ -659,7 +659,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         return len(self._entries)
 
     def owns_edit_actions(self) -> bool:
-        """Whether the Edit menu states this panel's actions, which it does while it holds a sample.
+        """Whether the Edit menu states this panel's actions, which it does while it holds a voice.
 
         The menu offers what the next press would reach, so the key scope decides it, and the
         selection those keys act on is the one the actions are built for.

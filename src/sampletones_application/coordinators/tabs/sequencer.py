@@ -167,7 +167,7 @@ class SequencerTabCoordinator:
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
-        on_edit_sample_requested: StringCallback,
+        on_edit_voice_requested: StringCallback,
         on_favorite_changed: Callable[[FileSystemNode], None],
         on_sample_reconstruction_replaced: Callable[[str, Reconstruction], None],
         on_tab_switch: Callable[[Tab], None],
@@ -179,7 +179,7 @@ class SequencerTabCoordinator:
         self._history = history
         self._original_audio_locator = original_audio_locator
         self._instrument_exports = instrument_exports
-        self._on_edit_sample_requested = on_edit_sample_requested
+        self._on_edit_voice_requested = on_edit_voice_requested
         self._on_favorite_changed = on_favorite_changed
         self._on_sample_reconstruction_replaced = on_sample_reconstruction_replaced
         self._on_tab_switch = on_tab_switch
@@ -326,7 +326,7 @@ class SequencerTabCoordinator:
         self._wire_channels_callbacks()
         self._wire_order_callbacks()
         self._wire_block_callbacks()
-        self._wire_samples_callbacks()
+        self._wire_voices_callbacks()
         self._wire_browser_callbacks()
         self._wire_playback_callbacks()
         self._wire_project_callbacks()
@@ -626,13 +626,13 @@ class SequencerTabCoordinator:
         if block is not None:
             self._order_block_writer.write(block, cell)
 
-    def _wire_samples_callbacks(self) -> None:
+    def _wire_voices_callbacks(self) -> None:
         self._sequencer_voices_logic.on_voices_changed = self._on_voices_changed
-        self._sequencer_voices_logic.on_edit_sample_requested = self._dispatch_edit_sample
+        self._sequencer_voices_logic.on_edit_voice_requested = self._dispatch_edit_voice
         self._sequencer_voices_logic.on_autoplay_error = self._on_preview_error
-        self._sequencer_voices_panel.sample_footprint = self._sequencer_voices_logic.build_voice_footprint
-        self._sequencer_voices_panel.on_sample_selected = self._on_sample_selected
-        self._sequencer_voices_panel.on_sample_edit_requested = self._sequencer_voices_logic.request_edit
+        self._sequencer_voices_panel.voice_footprint = self._sequencer_voices_logic.build_voice_footprint
+        self._sequencer_voices_panel.on_voice_selected = self._on_voice_selected
+        self._sequencer_voices_panel.on_voice_edit_requested = self._sequencer_voices_logic.request_edit
         self._sequencer_voices_panel.on_remove_requested = self._remove_voice
         self._sequencer_voices_panel.on_play_requested = self._sequencer_voices_logic.play_voice
         self._sequencer_voices_panel.on_move_requested = self._undoable(
@@ -831,7 +831,7 @@ class SequencerTabCoordinator:
         """Persists a card's collapsed state so it restores on the next launch."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         if card_tag == TAG_SEQUENCER_HISTORY_PANEL:
-            self._sync_samples_height()
+            self._sync_voices_height()
 
     def _on_browser_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
         """Persists the browser panel's collapse, then docks or restores the width of the column it fills."""
@@ -876,7 +876,7 @@ class SequencerTabCoordinator:
         spacing_y = int(spacing[1]) if spacing is not None else 0
         return self._geometry.panel_gap + 2 * spacing_y
 
-    def _sync_samples_height(self) -> None:
+    def _sync_voices_height(self) -> None:
         """Reserves the bottom space the history card and its inter-card gap occupy, so samples fills the rest.
 
         The samples card fills the right column above the history card by reserving that footprint below
@@ -1412,8 +1412,8 @@ class SequencerTabCoordinator:
 
         return selection.label
 
-    def _dispatch_edit_sample(self, voice_id: str) -> None:
-        self._on_edit_sample_requested(voice_id)
+    def _dispatch_edit_voice(self, voice_id: str) -> None:
+        self._on_edit_voice_requested(voice_id)
 
     def _on_tracker_play_from_row(self, row_index: int) -> None:
         """Starts playback from the right-clicked row of the frame the tracker is showing."""
@@ -1429,7 +1429,7 @@ class SequencerTabCoordinator:
         self._sequencer_voices_panel.update_view(view_model)
         self._sequencer_tracker_panel.update_samples(view_model)
 
-    def _on_sample_selected(self, voice_id: str) -> None:
+    def _on_voice_selected(self, voice_id: str) -> None:
         self._sequencer_tracker_panel.deselect_cell()
         self._sequencer_order_panel.deselect_cell()
         self._sequencer_voices_logic.request_autoplay(voice_id)
@@ -1682,7 +1682,7 @@ class SequencerTabCoordinator:
         self._sequencer_voices_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap)
         self._sequencer_history_panel.create_panel(parent)
-        self._sync_samples_height()
+        self._sync_voices_height()
 
     @property
     def player(self) -> AudioPlayerProtocol:

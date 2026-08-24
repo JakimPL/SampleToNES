@@ -31,7 +31,7 @@ from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.view_model.sequencer.voices import VoiceSelection
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.callback import StringCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -48,10 +48,10 @@ class VoicesMenuHost(Protocol):
     a menu reads whichever answer stands at the moment it opens.
     """
 
-    sample_footprint: Optional[Callable[[str], Optional[SampleFootprintViewModel]]]
+    voice_footprint: Optional[Callable[[str], Optional[VoiceFootprintViewModel]]]
     voice_instruments: Optional[Callable[[str], Tuple[Optional[ChannelName], ...]]]
     instrument_channels: Optional[Callable[[str], Tuple[ChannelName, ...]]]
-    on_sample_edit_requested: Optional[StringCallback]
+    on_voice_edit_requested: Optional[StringCallback]
     on_duplicate_requested: Optional[StringCallback]
     on_remove_requested: Optional[StringCallback]
     on_play_requested: Optional[StringCallback]
@@ -162,7 +162,7 @@ class VoicesMenu(CallbackMixin):
         """
         dpg.add_menu_item(
             label=self._label(SequencerVoicesElements.CONTEXT_EDIT),
-            callback=lambda: self.call(self._panel.on_sample_edit_requested, target.voice_id),
+            callback=lambda: self.call(self._panel.on_voice_edit_requested, target.voice_id),
         )
         dpg.add_menu_item(
             label=self._label(SequencerVoicesElements.CONTEXT_RENAME),
@@ -315,7 +315,7 @@ class VoicesMenu(CallbackMixin):
         """
         return self._footprint_text.items(
             self.query(
-                self._panel.sample_footprint,
+                self._panel.voice_footprint,
                 voice_id,
                 default=None,
             )

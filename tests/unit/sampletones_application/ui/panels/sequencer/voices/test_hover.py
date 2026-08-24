@@ -14,7 +14,7 @@ from sampletones_application.view_model.sequencer.voices import (
     VoiceEntryViewModel,
     VoiceKind,
 )
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
 
@@ -29,16 +29,16 @@ ENTRIES: Final[Tuple[VoiceEntryViewModel, ...]] = (
 
 PULSE_1_FOOTPRINT: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=9, sequence_bytes=32)
 NOISE_FOOTPRINT: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=7, sequence_bytes=12)
-SAMPLE_FOOTPRINT: Final[SampleFootprintViewModel] = SampleFootprintViewModel.from_footprints(
+SAMPLE_FOOTPRINT: Final[VoiceFootprintViewModel] = VoiceFootprintViewModel.from_footprints(
     {
         ChannelName.PULSE1: PULSE_1_FOOTPRINT,
         ChannelName.NOISE: NOISE_FOOTPRINT,
     }
 )
-INSTRUMENT_FOOTPRINT: Final[SampleFootprintViewModel] = SampleFootprintViewModel.from_instrument(PULSE_1_FOOTPRINT)
+INSTRUMENT_FOOTPRINT: Final[VoiceFootprintViewModel] = VoiceFootprintViewModel.from_instrument(PULSE_1_FOOTPRINT)
 
 
-def _panel(footprint: Optional[SampleFootprintViewModel]) -> GUISequencerVoicesPanel:
+def _panel(footprint: Optional[VoiceFootprintViewModel]) -> GUISequencerVoicesPanel:
     """The panel over the facts a hovered row reads, with no DearPyGui context behind it."""
     language_manager = LanguageManager(LANG_EN)
     panel = GUISequencerVoicesPanel.__new__(GUISequencerVoicesPanel)
@@ -47,7 +47,7 @@ def _panel(footprint: Optional[SampleFootprintViewModel]) -> GUISequencerVoicesP
     panel._tpl_status_sample = language_manager["sequencer.voices.template.status_sample"]
     panel._tpl_status_instrument = language_manager["sequencer.voices.template.status_instrument"]
     panel._channel_separator = language_manager["sequencer.voices.template.status_channel_separator"]
-    panel.sample_footprint = lambda _voice_id: footprint
+    panel.voice_footprint = lambda _voice_id: footprint
     return panel
 
 
@@ -89,6 +89,6 @@ class TestWhatARowSaysAboutItsVoice:
     def test_a_voice_with_nothing_to_state_says_nothing(
         self,
         voice_id: str,
-        footprint: Optional[SampleFootprintViewModel],
+        footprint: Optional[VoiceFootprintViewModel],
     ) -> None:
         assert _panel(footprint)._voice_status_message(voice_id) == ""

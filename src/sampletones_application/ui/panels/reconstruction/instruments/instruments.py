@@ -84,7 +84,7 @@ from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import (
     ChannelName,
     FeatureKey,
@@ -612,7 +612,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _update_sizes(
         self,
-        footprint: Optional[SampleFootprintViewModel],
+        footprint: Optional[VoiceFootprintViewModel],
         *,
         shows_one_instrument: bool,
     ) -> None:

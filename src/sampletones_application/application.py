@@ -511,7 +511,7 @@ class Application:
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
-            on_edit_sample_requested=self._edit_project_voice,
+            on_edit_voice_requested=self._edit_project_voice,
             on_favorite_changed=self._repaint_reconstruction_favorites,
             on_sample_reconstruction_replaced=self._rebind_replaced_sample,
             on_tab_switch=self._set_current_tab,

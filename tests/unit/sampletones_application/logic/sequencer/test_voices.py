@@ -10,7 +10,7 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.view_model.sequencer.voices import VoiceKind
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters.naming import instrument_slice_name
 from sampletones_core.features.envelope import Envelope
@@ -228,7 +228,7 @@ class TestBuildSampleFootprint:
 
         footprint = logic.build_voice_footprint(sample.id)
 
-        assert footprint == SampleFootprintViewModel.from_footprints(reconstruction_footprints(sample.reconstruction))
+        assert footprint == VoiceFootprintViewModel.from_footprints(reconstruction_footprints(sample.reconstruction))
 
     def test_each_channel_is_measured_as_the_instrument_it_sounds(self) -> None:
         """A channel's figure is the cost of its own instrument, and the channels differ.
@@ -366,7 +366,7 @@ class TestAutoplay:
         controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
         session_manager.autoplay = True
         sample = controller.add_sample(reconstruction_factory(), name="lead")
-        logic._pending_autoplay_sample = sample.id
+        logic._pending_autoplay_voice = sample.id
 
         logic._execute_autoplay()
 
@@ -380,7 +380,7 @@ class TestAutoplay:
         controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
         session_manager.autoplay = False
         sample = controller.add_sample(reconstruction_factory(), name="lead")
-        logic._pending_autoplay_sample = sample.id
+        logic._pending_autoplay_voice = sample.id
 
         logic._execute_autoplay()
 
@@ -393,7 +393,7 @@ class TestAutoplay:
         controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
         session_manager.autoplay = True
         sample = controller.add_sample(reconstruction_factory(), name="lead")
-        logic._pending_autoplay_sample = sample.id
+        logic._pending_autoplay_voice = sample.id
 
         logic.cancel_autoplay()
         logic._execute_autoplay()
@@ -407,7 +407,7 @@ class TestAutoplay:
         controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
         session_manager.autoplay = True
         sample = controller.add_sample(reconstruction_factory(), name="lead")
-        logic._pending_autoplay_sample = sample.id
+        logic._pending_autoplay_voice = sample.id
 
         logic.request_edit(sample.id)
         logic._execute_autoplay()
