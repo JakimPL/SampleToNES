@@ -233,26 +233,6 @@ class ProjectController(CallbackMixin):
         self._announce(self.on_voices_changed)
         self._announce(self.on_song_changed)
 
-    def set_instrument_root(
-        self,
-        voice_id: str,
-        *,
-        pitch: int,
-        period: int,
-    ) -> None:
-        """Moves the pitch an instrument's arpeggio is measured against, on the tonal channels and on noise.
-
-        Raises:
-            TypeError: If ``voice_id`` names a voice that states no pitch of its own.
-        """
-        instrument = self._instrument(voice_id)
-        instrument.initial_pitch = pitch
-        instrument.initial_period = period
-        instrument.invalidate()
-        self._touch()
-        self._announce(self.on_voices_changed)
-        self._announce(self.on_song_changed)
-
     def _instrument(self, voice_id: str) -> Instrument:
         voice = self.project.voices[voice_id]
         if not isinstance(voice, Instrument):

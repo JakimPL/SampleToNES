@@ -245,18 +245,20 @@ plays. See [The sequencer](guide/sequencer.md) and
 [FamiTracker export](formats/famitracker.md). Bitphase takes the same envelopes as a
 `.json` instrument preset. See [Bitphase export](formats/bitphase.md).
 
-### Root
+### Initial pitch
 
-The note an instrument's arpeggio is measured against, which a row's step moves it
-from. An instrument written by hand states one for the tonal channels and one for the
-noise channel's periods, so the same envelopes sound on any of the four. The matching
-value on a sample is its per-channel
-[reference pitch](formats/reconstructions.md#contents).
+The value an instrument's frames are built at, and the note an exported preset is
+tuned to. An instrument written by hand states one for the tonal channels and a period
+for the noise channel, so the same envelopes sound on any of the four; the note it
+actually sounds at comes from the row that places it. The matching value on a sample is
+its per-channel [reference pitch](formats/reconstructions.md#contents).
 
 ### Loop point
 
-The tick a voice's envelopes repeat from while a note is held, which lets an attack
-be followed by a sustained tail. A voice without one plays its envelopes once.
+The item a single envelope repeats from while a note is held, which lets an attack be
+followed by a sustained tail. Each envelope states its own, so a two-item duty cycle
+circles on its own period beside a longer volume envelope. An envelope without one
+holds its last item for as long as the note sounds.
 
 ## File types
 

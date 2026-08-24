@@ -11,10 +11,10 @@ from sampletones_application.logic.reconstruction.manager import ReconstructionM
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
-from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.project.voices.creation import SUSTAINING_ENVELOPES, new_instrument
+from sampletones_core.project.voices.instrument import Instrument
 
 ROOT_PITCH: Final[int] = 55
-ROOT_PERIOD: Final[int] = 3
 VOLUME: Final[Tuple[int, ...]] = (15, 12, 9)
 
 
@@ -67,15 +67,17 @@ class TestWhatTheTabHasInFront:
         editor: InstrumentEditor,
         controller: ProjectController,
     ) -> None:
-        instrument = controller.add_instrument(new_instrument("lead"))
-        controller.set_instrument_root(instrument.id, pitch=ROOT_PITCH, period=ROOT_PERIOD)
+        """The pitch an export reads travels inside the envelopes the tab has in front of it."""
+        instrument = controller.add_instrument(
+            Instrument(name="lead", envelopes=SUSTAINING_ENVELOPES, initial_pitch=ROOT_PITCH)
+        )
 
         editor.edit_instrument(instrument.id)
 
         edit = editor.edited_instrument()
         assert isinstance(edit, InstrumentEdit)
         assert (edit.voice_id, edit.name) == (instrument.id, "lead")
-        assert (edit.initial_pitch, edit.initial_period) == (ROOT_PITCH, ROOT_PERIOD)
+        assert edit.features.initial_pitch == ROOT_PITCH
 
     def test_opening_an_instrument_closes_the_reconstruction_the_tab_held(
         self,
@@ -129,18 +131,6 @@ class TestWritingIntoTheInstrument:
         editor.write_envelope(FeatureKey.VOLUME, Envelope(items=VOLUME))
 
         assert instrument.envelopes.volume.items == VOLUME
-
-    def test_the_roots_reach_the_instrument(
-        self,
-        editor: InstrumentEditor,
-        controller: ProjectController,
-    ) -> None:
-        instrument = controller.add_instrument(new_instrument("lead"))
-        editor.edit_instrument(instrument.id)
-
-        editor.write_roots(pitch=ROOT_PITCH, period=ROOT_PERIOD)
-
-        assert (instrument.initial_pitch, instrument.initial_period) == (ROOT_PITCH, ROOT_PERIOD)
 
     def test_a_point_written_on_an_envelope_reaches_the_instrument(
         self,

@@ -55,8 +55,6 @@ class InstrumentEditor:
                 voice_id=instrument.id,
                 name=instrument.name,
                 features=instrument.instrument_features(),
-                initial_pitch=instrument.initial_pitch,
-                initial_period=instrument.initial_period,
             )
 
         feature_data = self._reconstruction_manager.current_features
@@ -73,15 +71,3 @@ class InstrumentEditor:
             raise TypeError("The tab holds no instrument to write an envelope into")
 
         self._controller.set_instrument_envelope(instrument.id, feature_key, envelope)
-
-    def write_roots(self, *, pitch: int, period: int) -> None:
-        """Moves the pitch the instrument in front of the tab is measured against.
-
-        Raises:
-            TypeError: If the tab holds no instrument to write into.
-        """
-        instrument = self.instrument
-        if instrument is None:
-            raise TypeError("The tab holds no instrument to move the pitch of")
-
-        self._controller.set_instrument_root(instrument.id, pitch=pitch, period=period)

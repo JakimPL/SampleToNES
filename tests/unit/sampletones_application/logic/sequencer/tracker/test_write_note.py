@@ -7,6 +7,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.voice import voice_reference
@@ -39,10 +40,13 @@ def _transpose(logic: SequencerTrackerLogic, channel: ChannelName, row_index: in
 class TestATypedNoteIsStatedAsAStepFromTheVoice:
     def test_an_instrument_takes_the_step_that_reaches_the_note(self) -> None:
         controller, logic = _logic()
-        instrument = controller.add_instrument(new_instrument("lead"))
-        controller.set_instrument_root(instrument.id, pitch=ROOT_PITCH, period=8)
-        instrument.envelopes = InstrumentEnvelopes(volume=Envelope(items=(15,)))
-        instrument.invalidate()
+        instrument = controller.add_instrument(
+            Instrument(
+                name="lead",
+                envelopes=InstrumentEnvelopes(volume=Envelope(items=(15,))),
+                initial_pitch=ROOT_PITCH,
+            )
+        )
         _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=instrument.id))
 
         logic.write_note(0, ChannelName.PULSE1, TYPED_PITCH)
@@ -61,8 +65,7 @@ class TestATypedNoteIsStatedAsAStepFromTheVoice:
 
     def test_a_row_below_the_note_is_measured_against_the_voice_it_carries(self) -> None:
         controller, logic = _logic()
-        instrument = controller.add_instrument(new_instrument("lead"))
-        controller.set_instrument_root(instrument.id, pitch=ROOT_PITCH, period=8)
+        instrument = controller.add_instrument(Instrument(name="lead", initial_pitch=ROOT_PITCH))
         _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=instrument.id))
 
         logic.write_note(2, ChannelName.PULSE1, TYPED_PITCH)

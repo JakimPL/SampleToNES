@@ -392,15 +392,6 @@ class TestTheInstrumentsPanelShowsAnInstrument:
         assert instrument.envelopes.arpeggio.items == (0, 7)
         assert regenerated == []
 
-    def test_the_pitch_stepper_moves_the_instruments_tonal_root(
-        self,
-        instrument_logic: ReconstructionInstrumentsLogic,
-        project_controller: ProjectController,
-    ) -> None:
-        instrument_logic.handle_pitch_value_changed(INSTRUMENT_CHANNEL, 48)
-
-        assert project_controller.project.voices[0].initial_pitch == 48
-
     def test_the_figure_measures_the_one_instrument_it_exports(
         self,
         instrument_logic: ReconstructionInstrumentsLogic,

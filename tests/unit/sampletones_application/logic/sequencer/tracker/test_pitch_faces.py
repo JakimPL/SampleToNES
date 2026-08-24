@@ -26,11 +26,14 @@ def _logic() -> Tuple[ProjectController, SequencerTrackerLogic]:
 
 
 def _instrument(controller: ProjectController) -> Instrument:
-    instrument = controller.add_instrument(new_instrument("lead"))
-    controller.set_instrument_root(instrument.id, pitch=ROOT_PITCH, period=ROOT_PERIOD)
-    instrument.envelopes = InstrumentEnvelopes(volume=Envelope(items=(15,)))
-    instrument.invalidate()
-    return instrument
+    return controller.add_instrument(
+        Instrument(
+            name="lead",
+            envelopes=InstrumentEnvelopes(volume=Envelope(items=(15,))),
+            initial_pitch=ROOT_PITCH,
+            initial_period=ROOT_PERIOD,
+        )
+    )
 
 
 def _write(

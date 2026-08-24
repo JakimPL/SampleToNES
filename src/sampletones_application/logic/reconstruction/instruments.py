@@ -160,15 +160,11 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         channel_name: ChannelName,
         value: int,
     ) -> None:
-        instrument = self.instrument_edit
-        if instrument is not None:
-            self._editor.write_roots(
-                pitch=value,
-                period=instrument.initial_period,
-            )
-            self.update_display()
-            return
+        """Moves the pitch one channel of a reconstruction has its frames measured against.
 
+        A conversion states the value it found, and moving it rebuilds the channel's frames around
+        the new origin, so the edit travels back out through the regeneration.
+        """
         features = self._get_features(channel_name)
         self._schedule_reconstruction_update(
             ReconstructionUpdate(

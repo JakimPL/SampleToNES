@@ -15,21 +15,20 @@ class ReconstructionEdit:
 
 @dataclass(frozen=True)
 class InstrumentEdit:
-    """The one envelope set an instrument carries, with the pitch its arpeggio is measured from.
+    """The one envelope set an instrument carries, as the panel has it in front of a reader.
+
+    The pitch an instrument's arpeggio is measured from travels inside :attr:`features`, where
+    an export reads it; a row states the note the voice sounds at, so nothing here edits it.
 
     Attributes:
         voice_id: The instrument an edit is written back into.
         name: The name the panel titles it by.
         features: The envelopes, read as the channel offering every dimension an instrument writes.
-        initial_pitch: The note the tonal channels measure the arpeggio against.
-        initial_period: The period the noise channel measures the arpeggio against.
     """
 
     voice_id: str
     name: str
     features: Features
-    initial_pitch: int
-    initial_period: int
 
 
 EditedVoice = Union[ReconstructionEdit, InstrumentEdit]
@@ -49,6 +48,3 @@ class InstrumentEditingProtocol(Protocol):
 
     def write_envelope(self, feature_key: FeatureKey, envelope: Envelope[int]) -> None:
         """Writes one dimension of the instrument in front of the panel."""
-
-    def write_roots(self, *, pitch: int, period: int) -> None:
-        """Moves the roots the instrument in front of the panel is measured against."""

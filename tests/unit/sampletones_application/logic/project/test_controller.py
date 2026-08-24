@@ -12,6 +12,7 @@ from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.project import ProjectContainer
 from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.reconstructions import Reconstruction
@@ -520,12 +521,17 @@ class TestInstruments:
 
         assert FeatureKey.VOLUME in instrument.held_features(ChannelName.PULSE1)
 
-    def test_moving_the_roots_reaches_the_frames(self) -> None:
+    def test_the_pitch_an_instrument_states_is_the_one_its_frames_are_built_at(self) -> None:
+        """The stored value is the origin an export reads; a row moves the voice off it."""
         controller = _controller()
-        instrument = controller.add_instrument(new_instrument("lead"))
-        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=(15,)))
-
-        controller.set_instrument_root(instrument.id, pitch=48, period=3)
+        instrument = controller.add_instrument(
+            Instrument(
+                name="lead",
+                envelopes=InstrumentEnvelopes(volume=Envelope(items=(15,))),
+                initial_pitch=48,
+                initial_period=3,
+            )
+        )
 
         assert instrument.reference(ChannelName.PULSE1) == 48
         assert instrument.reference(ChannelName.NOISE) == 3

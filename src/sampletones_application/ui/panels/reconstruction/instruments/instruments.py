@@ -453,8 +453,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         A reconstruction shows a tab per channel, and every channel is editable for as long as it
         is open, so writing an envelope into a channel standing by is what puts it in play; a
         muted tab label and a withheld export say which channels are there. An instrument is one
-        instrument every channel reads, so it shows a single tab under its own name, carrying the
-        roots and the loop point it states.
+        set every channel reads, so it shows a single tab under its own name, and the pitch
+        stepper stands down: a row states the note a hand-written voice sounds at.
         """
         instrument = view_model.instrument
         is_open = view_model.is_open
@@ -462,6 +462,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         dpg_configure_item(self.tab_bar_tag, show=is_open)
         dpg_configure_item(self.sample_size_group_tag, show=is_open)
         self._update_sizes(view_model.footprint, shows_one_instrument=instrument is not None)
+        self._show_pitch_steppers(shown=instrument is None)
 
         for channel_name in ChannelName.items():
             tab_tag = self._get_generator_tab_tag(channel_name)
@@ -476,6 +477,16 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 channel_name,
                 channel_name in view_model.playing_channels,
             )
+
+    def _show_pitch_steppers(self, *, shown: bool) -> None:
+        """Offers the pitch a channel measures its arpeggio against, where a reader may move it.
+
+        A conversion states the value it found for each channel and moving it rebuilds that
+        channel's frames. An instrument is placed by a row that states the note itself, so the
+        value it stores for an export stands as it is and the stepper stays out of the way.
+        """
+        for stepper in self._pitch_steppers.values():
+            stepper.set_shown(shown)
 
     def _apply_playing_state(
         self,
