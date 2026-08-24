@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Generic, Optional, Tuple, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -31,7 +33,7 @@ class Envelope(BaseModel, Generic[ItemT]):
     )
 
     @model_validator(mode="after")
-    def _check_loop_point(self) -> "Envelope[ItemT]":
+    def _check_loop_point(self) -> Envelope[ItemT]:
         if self.loop_point is not None and self.loop_point >= len(self.items):
             raise ValueError(f"loop point {self.loop_point} stands past the {len(self.items)} items written")
 
@@ -68,7 +70,7 @@ class Envelope(BaseModel, Generic[ItemT]):
         cycle = len(self.items) - self.loop_point
         return self.items[self.loop_point + (tick - self.loop_point) % cycle]
 
-    def limited(self, limit: int) -> "Envelope[ItemT]":
+    def limited(self, limit: int) -> Envelope[ItemT]:
         """This dimension's opening items, at most ``limit`` of them.
 
         A point standing past what survives moves to the last item kept, which is the value the
@@ -86,7 +88,7 @@ class Envelope(BaseModel, Generic[ItemT]):
 
         return self._holding(self.items[:limit])
 
-    def resized(self, length: int) -> "Envelope[ItemT]":
+    def resized(self, length: int) -> Envelope[ItemT]:
         """This dimension brought to a length, holding its final value where it falls short.
 
         A format storing one row per tick reads every dimension out of the same row, so a
@@ -103,7 +105,7 @@ class Envelope(BaseModel, Generic[ItemT]):
 
         return self._holding(self.items[:length] + self.items[-1:] * (length - len(self.items)))
 
-    def with_items(self, items: Tuple[ItemT, ...]) -> "Envelope[ItemT]":
+    def with_items(self, items: Tuple[ItemT, ...]) -> Envelope[ItemT]:
         """This dimension carrying different values, repeating from a point inside them.
 
         A reader redrawing a dimension states the values alone, so the point it already repeats
@@ -117,7 +119,7 @@ class Envelope(BaseModel, Generic[ItemT]):
         """
         return self._holding(items)
 
-    def _holding(self, items: Tuple[ItemT, ...]) -> "Envelope[ItemT]":
+    def _holding(self, items: Tuple[ItemT, ...]) -> Envelope[ItemT]:
         """This dimension carrying ``items``, with the loop point held inside them."""
         loop_point = min(self.loop_point, len(items) - 1) if self.loop_point is not None and items else None
         return type(self)(items=items, loop_point=loop_point)

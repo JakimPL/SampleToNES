@@ -14,7 +14,7 @@ class ExportStage(StrEnum):
     Walking arrives at the song's last tick and writing at its last file, so how far each has come
     is how far it has to go. Compressing ends when the song offers no further phrase that pays for
     itself, so its bytes are measured against the room the console has and reach it only by
-    overflowing; :data:`TRAVELLING_STAGES` is what separates the two.
+    overflowing; :data:`TRAVELING_STAGES` is what separates the two.
     """
 
     WALKING = "walking"
@@ -22,7 +22,7 @@ class ExportStage(StrEnum):
     WRITING = "writing"
 
 
-TRAVELLING_STAGES: Final[FrozenSet[ExportStage]] = frozenset(
+TRAVELING_STAGES: Final[FrozenSet[ExportStage]] = frozenset(
     {
         ExportStage.WALKING,
         ExportStage.WRITING,

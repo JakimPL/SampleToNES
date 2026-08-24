@@ -38,7 +38,7 @@ class StageProgress(Generic[StageT]):
                 bounds it.
             emit: Carries a report to the service's subscribers.
             estimates: Whether the count reaches ``total`` at a rate a remaining time can be read
-                from. A stage measured against a limit it is not travelling toward states no
+                from. A stage measured against a limit it is not traveling toward states no
                 estimate, since one taken from that would be a guess wearing the clothes of a fact.
         """
         self._stage = stage

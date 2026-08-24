@@ -16,7 +16,7 @@ from sampletones_application.view_model.shared.export import (
     ExportPhase,
     SongExportViewModel,
 )
-from sampletones_core.exports.stage import TRAVELLING_STAGES, ExportStage
+from sampletones_core.exports.stage import TRAVELING_STAGES, ExportStage
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -116,7 +116,7 @@ class SongExportLogic(CallbackMixin):
             return
 
         self._reach(stage)
-        self._travelling = stage in TRAVELLING_STAGES
+        self._travelling = stage in TRAVELING_STAGES
         self._progress = progress.fraction
         self._figure = self._figure_text(progress)
         self._emit_view()
@@ -154,5 +154,5 @@ class SongExportLogic(CallbackMixin):
             stages=tuple(self._stages),
             figure=self._figure,
             progress=self._progress,
-            travelling=self._travelling,
+            traveling=self._travelling,
         )

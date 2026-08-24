@@ -148,7 +148,7 @@ class TestFollowingARun:
 
 
 class TestHowEachStageReads:
-    """A stage travelling to an end is a fraction; one measured against a limit is a figure."""
+    """A stage traveling to an end is a fraction; one measured against a limit is a figure."""
 
     def test_a_travelling_stage_carries_its_share(
         self,
@@ -188,7 +188,7 @@ class TestHowEachStageReads:
     ) -> None:
         service.deliver(ServiceStarted(total=NOTHING_MEASURED))
         service.deliver(progress(ExportStage.COMPRESSING, REACHED_SIZE, PROGRAM_AREA))
-        assert views[-1].travelling is False
+        assert views[-1].traveling is False
 
     def test_a_stage_with_nothing_to_measure_against_stands_at_the_start(
         self,

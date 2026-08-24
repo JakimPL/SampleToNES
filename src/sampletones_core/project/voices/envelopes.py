@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Annotated, Dict
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -60,7 +62,11 @@ class InstrumentEnvelopes(BaseModel):
         """
         return self.envelope_map[feature_key]
 
-    def with_envelope(self, feature_key: FeatureKey, envelope: Envelope[int]) -> "InstrumentEnvelopes":
+    def with_envelope(
+        self,
+        feature_key: FeatureKey,
+        envelope: Envelope[int],
+    ) -> InstrumentEnvelopes:
         """The envelopes with one dimension replaced.
 
         Args:

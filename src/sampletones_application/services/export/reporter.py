@@ -3,7 +3,7 @@ from typing import Callable, Optional
 from sampletones_application.services.progress import UNMEASURED, StageProgress
 from sampletones_application.services.result import ServiceProgress
 from sampletones_core.exports.progress import ExportProgress
-from sampletones_core.exports.stage import TRAVELLING_STAGES, ExportStage
+from sampletones_core.exports.stage import TRAVELING_STAGES, ExportStage
 
 
 class ExportProgressReporter:
@@ -49,7 +49,7 @@ class ExportProgressReporter:
                 progress.stage,
                 UNMEASURED if progress.total is None else progress.total,
                 emit=self._emit,
-                estimates=progress.stage in TRAVELLING_STAGES,
+                estimates=progress.stage in TRAVELING_STAGES,
             )
 
         return self._progress

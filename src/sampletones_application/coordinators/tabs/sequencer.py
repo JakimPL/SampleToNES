@@ -636,13 +636,13 @@ class SequencerTabCoordinator:
         self._sequencer_voices_panel.on_remove_requested = self._remove_voice
         self._sequencer_voices_panel.on_play_requested = self._sequencer_voices_logic.play_voice
         self._sequencer_voices_panel.on_move_requested = self._undoable(
-            HistoryAction.MOVE_SAMPLE,
+            HistoryAction.MOVE_VOICE,
             self._sequencer_voices_logic.move_voice,
             detail=self._history_detail.move_voice,
         )
         self._sequencer_voices_panel.on_rename_committed = self._submit_rename
         self._sequencer_voices_panel.on_duplicate_requested = self._undoable(
-            HistoryAction.DUPLICATE_SAMPLE,
+            HistoryAction.DUPLICATE_VOICE,
             self._sequencer_voices_logic.duplicate_voice,
             detail=self._history_detail.duplicate_voice,
         )
@@ -1436,9 +1436,9 @@ class SequencerTabCoordinator:
         logger.debug(f"Sequencer sample selected: {voice_id}")
 
     def _remove_voice(self, voice_id: str) -> None:
-        """Removes a sample, confirming first only when a pattern still references it.
+        """Removes a voice, confirming first only when a pattern still references it.
 
-        An unused sample is dropped silently; a referenced one would clear every row
+        An unused voice is dropped silently; a referenced one would clear every row
         that points at it, so the user confirms that loss first.
         """
         if not self._sequencer_voices_logic.is_voice_used(voice_id):
@@ -1448,8 +1448,8 @@ class SequencerTabCoordinator:
         name = self._sequencer_voices_logic.voice_name(voice_id)
         self._dialogs.show_confirmation(
             tag=TAG_SEQUENCER_VOICES_DIALOG_REMOVE,
-            title=self._language_manager["global.dialog.title.remove_sample"],
-            message=self._language_manager["global.dialog.message.remove_sample"].format(name=name),
+            title=self._language_manager["global.dialog.title.remove_voice"],
+            message=self._language_manager["global.dialog.message.remove_voice"].format(name=name),
             on_confirm=lambda: self._perform_remove_voice(voice_id),
             ok_label=self._language_manager["global.dialog.label.remove"],
         )
@@ -1457,18 +1457,18 @@ class SequencerTabCoordinator:
     def _perform_remove_voice(self, voice_id: str) -> None:
         detail = self._history_detail.remove_voice(voice_id)
         with self._history.transaction(
-            HistoryAction.REMOVE_SAMPLE,
+            HistoryAction.REMOVE_VOICE,
             detail=detail,
         ):
             self._sequencer_voices_logic.remove_voice(voice_id)
 
     def _submit_rename(self, voice_id: str, name: str) -> None:
-        """Applies an inline rename, ignoring a blank name so the sample keeps its current one."""
+        """Applies an inline rename, ignoring a blank name so the voice keeps its current one."""
         stripped = name.strip()
         if stripped:
             detail = self._history_detail.rename_voice(voice_id, stripped)
             with self._history.transaction(
-                HistoryAction.RENAME_SAMPLE,
+                HistoryAction.RENAME_VOICE,
                 detail=detail,
             ):
                 self._sequencer_voices_logic.rename_voice(voice_id, stripped)

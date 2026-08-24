@@ -79,11 +79,11 @@ from sampletones_shared.exceptions import (
 from tests.suite.language import FakeLanguageManager
 
 FREQUENCY_MISMATCH_MESSAGE_KEY: Final[str] = "global.dialog.message.frequency_mismatch"
-REMOVE_SAMPLE_MESSAGE_KEY: Final[str] = "global.dialog.message.remove_sample"
+REMOVE_VOICE_MESSAGE_KEY: Final[str] = "global.dialog.message.remove_voice"
 
 TEXTS: Final[Dict[str, str]] = {
     FREQUENCY_MISMATCH_MESSAGE_KEY: "recon {reconstruction} vs project {project}",
-    REMOVE_SAMPLE_MESSAGE_KEY: "Remove {name}?",
+    REMOVE_VOICE_MESSAGE_KEY: "Remove {name}?",
 }
 
 
@@ -417,7 +417,7 @@ class TestSubmitRename:
     ) -> None:
         samples_coordinator._submit_rename("abc", "   ")
 
-        samples_coordinator._sequencer_voices_logic.rename_sample.assert_not_called()
+        samples_coordinator._sequencer_voices_logic.rename_voice.assert_not_called()
 
 
 @pytest.fixture
@@ -921,7 +921,7 @@ class TestReplaceReconstruction:
 
         replace_coordinator._dialogs.show_error.assert_called_once()
         replace_coordinator._sequencer_browser_logic.replace_reconstruction.assert_not_called()
-        replace_coordinator._sequencer_voices_logic.rename_sample.assert_not_called()
+        replace_coordinator._sequencer_voices_logic.rename_voice.assert_not_called()
         replace_coordinator._on_sample_reconstruction_replaced.assert_not_called()
 
     def test_selected_sample_is_renamed_and_substituted(
@@ -1546,7 +1546,7 @@ def view_coordinator() -> SequencerTabCoordinator:
 def _detail_entry(value: str) -> HistoryEntry:
     return HistoryEntry(
         project=MagicMock(),
-        action=HistoryAction.MOVE_SAMPLE,
+        action=HistoryAction.MOVE_VOICE,
         created=datetime.now(tz=UTC),
         detail=(
             HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE),
