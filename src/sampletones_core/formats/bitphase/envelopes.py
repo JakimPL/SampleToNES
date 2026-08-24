@@ -148,7 +148,7 @@ def _loop_row(envelopes: Iterable[Envelope[int]], rows: int) -> int:
         rows: How many rows the instrument holds.
 
     Returns:
-        int: The row to return to, the last one where every dimension halts.
+        int: The row to return to, held inside the rows the instrument carries.
     """
     points = [envelope.loop_point for envelope in envelopes if envelope.loop_point is not None]
     if not points:

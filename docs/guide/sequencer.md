@@ -84,8 +84,9 @@ those colors, so a muted column stays as readable as the rest.
 
 A pitch cell holds one number, and it reads in the terms of the voice the channel is
 carrying. A sample was converted at a pitch of its own, so its cells read as steps
-from it — `+00` plays it as recorded, `+0C` an octave up. An instrument was written
-against a root you chose, so its cells read as the notes they sound — `C-4`, `A#3`.
+from it — `+00` plays it as recorded, `+0C` an octave up. An instrument sounds at
+whatever note a row names it with, so its cells read as the notes they sound — `C-4`,
+`A#3`.
 A row that only bends a note reads the same way as the row that started it.
 
 Type a note into an instrument's cell piano-style: the bottom two rows of the keyboard are

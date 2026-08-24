@@ -179,17 +179,17 @@ key-assignment table is empty by design.
 
 An [instrument](../glossary.md#instrument) written by hand is one set of envelopes
 every channel reads, which is the instrument model FamiTracker itself uses, so it
-becomes a single instrument however many channels play it. Its dimensions are written
-at one length, each holding its final value where it is the shorter, so a tracker
-advancing every sequence on a counter of its own sounds it the way the engine here
-plays it. Every channel that names it reaches that one instrument, each against the
-root it reads — its note on the tonal channels, its period on noise.
+becomes a single instrument however many channels play it. Each dimension is written at
+the length it was typed at, and each states its own loop point, so a tracker advancing
+every sequence on a counter of its own sounds it the way the engine here plays it. Every
+channel that names it reaches that one instrument, each against the initial pitch it
+reads — its note on the tonal channels, its period on noise.
 
 **Where a row's note comes from.** A voice states where its zero is and a row states
 the step from it, so a pattern cell holds `reference + transpose`, held inside the
 range a tonal channel plays and wrapped into the sixteen periods on noise. A sample's
 reference is the offset origin its conversion chose; a hand-written instrument's is the
-root it states.
+initial pitch it states.
 
 That origin is chosen once, when the reconstruction is built, and stored with it as
 that channel's reference pitch (see [Reconstructions](reconstructions.md#contents)).
