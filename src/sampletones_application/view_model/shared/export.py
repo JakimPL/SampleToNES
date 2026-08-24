@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import StrEnum
 from typing import Final, FrozenSet, Optional, Tuple
 
@@ -47,7 +49,7 @@ class SongExportViewModel(BaseModel, frozen=True):
     travelling: bool
 
     @classmethod
-    def idle(cls) -> "SongExportViewModel":
+    def idle(cls) -> SongExportViewModel:
         """The dialog with no run behind it, which is what the window opens on."""
         return cls(
             phase=ExportPhase.IDLE,

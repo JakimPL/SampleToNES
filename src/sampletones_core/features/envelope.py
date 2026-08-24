@@ -2,8 +2,6 @@ from typing import Generic, Optional, Tuple, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from sampletones_shared.logger import logger
-
 ItemT = TypeVar("ItemT")
 
 
@@ -71,13 +69,14 @@ class Envelope(BaseModel, Generic[ItemT]):
         return self.items[self.loop_point + (tick - self.loop_point) % cycle]
 
     def limited(self, limit: int) -> "Envelope[ItemT]":
-        """This dimension's opening items, as many as a target format stores.
+        """This dimension's opening items, at most ``limit`` of them.
 
         A point standing past what survives moves to the last item kept, which is the value the
-        dimension would hold there anyway.
+        dimension would hold there anyway. Whoever states the limit is where it comes from, so a
+        dimension carries whatever length it was written at until a target asks for less.
 
         Args:
-            limit: The most items the target format stores.
+            limit: The most items to keep.
 
         Returns:
             Envelope[ItemT]: The dimension within that limit, with its point kept inside it.
@@ -85,9 +84,6 @@ class Envelope(BaseModel, Generic[ItemT]):
         if len(self.items) <= limit:
             return self
 
-        logger.debug(
-            f"Instrument envelope of {len(self.items)} items keeps its first {limit}, the most the format holds"
-        )
         return self._holding(self.items[:limit])
 
     def resized(self, length: int) -> "Envelope[ItemT]":

@@ -1,4 +1,3 @@
-import logging
 from dataclasses import dataclass
 from typing import Final, Optional, Tuple
 
@@ -6,7 +5,6 @@ import pytest
 from pydantic import ValidationError
 
 from sampletones_core.features.envelope import Envelope
-from sampletones_shared.application import SAMPLETONES_NAME
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -80,7 +78,9 @@ class TestWhatADimensionStates:
             Envelope[int](items=(), loop_point=0)
 
 
-class TestADimensionWithinAFormatsLimit:
+class TestADimensionWithinALimit:
+    """``limited`` states no limit of its own: whoever asks for one is where it comes from."""
+
     def test_a_dimension_within_the_limit_stands_as_written(self) -> None:
         envelope = Envelope[int](items=(15, 12, 9, 0))
 
@@ -100,18 +100,6 @@ class TestADimensionWithinAFormatsLimit:
         limited = Envelope[int](items=items_of(ITEM_LIMIT + 48), loop_point=4).limited(ITEM_LIMIT)
 
         assert limited.loop_point == 4
-
-    def test_an_over_long_dimension_is_reported(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level(logging.DEBUG, logger=SAMPLETONES_NAME):
-            Envelope[int](items=items_of(ITEM_LIMIT + 1)).limited(ITEM_LIMIT)
-
-        assert str(ITEM_LIMIT) in caplog.text
-
-    def test_a_dimension_within_the_limit_is_quiet(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level(logging.DEBUG, logger=SAMPLETONES_NAME):
-            Envelope[int](items=items_of(ITEM_LIMIT)).limited(ITEM_LIMIT)
-
-        assert caplog.text == ""
 
 
 class TestADimensionBroughtToALength:

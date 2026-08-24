@@ -62,7 +62,14 @@ starts carrying.
   and the panels beside them. The language-keys check expands such a helper over the whole enum, so
   a member no call names is reached all the same and stands unnoticed. Spelling those keys literally
   at the call site would make each entry exactly checkable and retire the enums that remain.
-* Respecting FamiTracker limitations
+* Respecting FamiTracker limitations at the writers. A target format's ceilings belong to the
+  code that writes that format: an envelope carries whatever length a reader wrote, and meets a
+  limit where a file is built. `formats/famitracker/sequences/features.py` is where the 252-item
+  sequence ceiling applies today, and it is the one place that decides what a file holds, which
+  both the export's report and the instruments panel's warning read. What is still owed is the
+  same treatment for the ceilings a module carries — the instrument, sequence and pattern counts
+  in `specification/` — so a project past one of them is reported to the reader rather than
+  refused by the writer.
 * Per-tab undo routing
 * In-application console
 * Improve performance of browser favorite scan of the entire tree per click

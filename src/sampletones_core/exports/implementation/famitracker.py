@@ -15,11 +15,9 @@ from sampletones_core.exports.stage import ExportStage
 from sampletones_core.formats.famitracker.builder import build_instrument
 from sampletones_core.formats.famitracker.export import write_ftm
 from sampletones_core.formats.famitracker.instrument import write_fti
+from sampletones_core.formats.famitracker.sequences.features import features_truncation
 from sampletones_core.formats.famitracker.specification.instruments import (
     STANDALONE_INSTRUMENT_INDEX,
-)
-from sampletones_core.formats.famitracker.specification.sequences import (
-    MAX_SEQUENCE_ITEMS,
 )
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 from sampletones_shared.utils.progress import silent_reporter
@@ -67,10 +65,7 @@ class FamiTrackerBackend:
 
         return ExportArtifact(
             paths=(destination,),
-            truncation=EnvelopeTruncation.measure(
-                request.features.frame_count,
-                MAX_SEQUENCE_ITEMS,
-            ),
+            truncation=features_truncation(request.features),
         )
 
     def write_sample(

@@ -98,8 +98,9 @@ from sampletones_core.features import (
 )
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.features.text import format_envelope, parse_envelope
-from sampletones_core.formats.famitracker.specification.sequences import (
-    MAX_SEQUENCE_ITEMS,
+from sampletones_core.formats.famitracker.sequences.features import (
+    is_shortened,
+    stored_envelope,
 )
 from sampletones_core.utils.pitch_kind import (
     PERIOD_VALUE_KIND,
@@ -930,13 +931,13 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         *_args: Any,
         **_kwargs: Any,
     ) -> str:
-        """Describes the sequence input, naming the export limit once a sequence passes it."""
-        item_count = len(self._standing_sequence(channel_name, feature_key).items)
-        if item_count > MAX_SEQUENCE_ITEMS:
+        """Describes the sequence input, naming what a FamiTracker file holds of an over-long one."""
+        envelope = self._standing_sequence(channel_name, feature_key)
+        if is_shortened(feature_key, envelope):
             return self._language_manager["reconstructions.instruments.message.status_sequence_too_long"].format(
                 instrument_feature=feature_key.capitalized,
-                items=item_count,
-                limit=MAX_SEQUENCE_ITEMS,
+                items=len(envelope.items),
+                limit=len(stored_envelope(feature_key, envelope).items),
             )
 
         return self._language_manager["reconstructions.instruments.message.status_sequence"].format(
@@ -959,14 +960,13 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     ) -> None:
         """Holds the dimension the input now shows, colored by how a FamiTracker export treats its length.
 
-        A sequence longer than ``MAX_SEQUENCE_ITEMS`` exports its opening items, so the
-        input carries the warning color to show which part of the envelope reaches a
-        FamiTracker file.
+        A sequence a FamiTracker file holds only part of carries the warning color, so which
+        dimensions reach that file whole is visible before an export.
         """
         self._sequences[(channel_name, feature_key)] = envelope
         text_group_tag = self._get_feature_text_group_tag(channel_name, feature_key)
         raw_data_tag = self._get_feature_text_tag(text_group_tag)
-        theme = self.warning_input_theme if len(envelope.items) > MAX_SEQUENCE_ITEMS else self.theme
+        theme = self.warning_input_theme if is_shortened(feature_key, envelope) else self.theme
         theme.bind_to_item(raw_data_tag)
 
     def _parse_raw_data_input(

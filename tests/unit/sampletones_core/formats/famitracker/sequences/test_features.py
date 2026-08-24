@@ -1,9 +1,13 @@
 from typing import Final, Optional, Sequence
 
+from sampletones_core.constants.enums import FeatureKey
+from sampletones_core.constants.general import MAX_VOLUME, SILENT_VOLUME
 from sampletones_core.exporters.feature import Features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.sequences.features import (
     features_to_instrument_sequences,
+    features_truncation,
+    is_shortened,
 )
 from sampletones_core.formats.famitracker.specification.sequences import (
     LOOP_FROM_START,
@@ -13,6 +17,17 @@ from sampletones_core.formats.famitracker.specification.sequences import (
 )
 
 REFERENCE_PITCH: Final[int] = 60
+RELEASE: Final[int] = SILENT_VOLUME
+
+
+def sounding(length: int) -> Sequence[int]:
+    """A volume dimension of ``length`` items that never falls silent."""
+    return [MAX_VOLUME - index % MAX_VOLUME for index in range(length)]
+
+
+def released(length: int) -> Sequence[int]:
+    """A volume dimension of ``length`` items whose last one releases the note."""
+    return list(sounding(length - 1)) + [RELEASE]
 
 
 def envelope(items: Sequence[int], loop_point: Optional[int] = None) -> Envelope[int]:
@@ -133,3 +148,72 @@ class TestSequenceLengths:
         sequences = features_to_instrument_sequences(build([index % 16 for index in range(length)], [0] * length))
 
         assert all(len(sequence.items) <= MAX_SEQUENCE_ITEMS for sequence in sequences.values())
+
+
+class TestTheReleaseAnExportKeeps:
+    """A volume dimension ending at silence is what releases a note, so the file keeps that item.
+
+    FamiTracker halts a sequence on its last item and holds the value there for as long as the
+    note sounds, so a shortened volume dimension that dropped its silence would sound forever.
+    """
+
+    def test_a_released_dimension_at_the_limit_is_written_whole(self) -> None:
+        sequences = features_to_instrument_sequences(build(released(MAX_SEQUENCE_ITEMS), []))
+        volume = sequences[SequenceKind.VOLUME]
+        assert len(volume.items) == MAX_SEQUENCE_ITEMS
+        assert volume.items[-1] == RELEASE
+
+    def test_a_released_dimension_past_the_limit_still_ends_at_its_release(self) -> None:
+        sequences = features_to_instrument_sequences(build(released(MAX_SEQUENCE_ITEMS + 1), []))
+        volume = sequences[SequenceKind.VOLUME]
+        assert len(volume.items) == MAX_SEQUENCE_ITEMS
+        assert volume.items[-1] == RELEASE
+
+    def test_the_release_displaces_the_last_item_that_would_not_fit(self) -> None:
+        source = released(MAX_SEQUENCE_ITEMS + 1)
+        volume = features_to_instrument_sequences(build(source, []))[SequenceKind.VOLUME]
+        assert volume.items == tuple(source[: MAX_SEQUENCE_ITEMS - 1]) + (RELEASE,)
+
+    def test_a_dimension_that_goes_on_sounding_keeps_its_opening_items(self) -> None:
+        source = sounding(MAX_SEQUENCE_ITEMS + 8)
+        volume = features_to_instrument_sequences(build(source, []))[SequenceKind.VOLUME]
+        assert volume.items == tuple(source[:MAX_SEQUENCE_ITEMS])
+
+    def test_a_circling_dimension_reads_its_final_silence_as_part_of_the_cycle(self) -> None:
+        """A dimension repeating from a point never halts, so its last item releases nothing."""
+        source = released(MAX_SEQUENCE_ITEMS + 1)
+        volume = features_to_instrument_sequences(build(source, [], loop_point=0))[SequenceKind.VOLUME]
+        assert volume.items == tuple(source[:MAX_SEQUENCE_ITEMS])
+
+    def test_a_dimension_other_than_volume_keeps_its_opening_items(self) -> None:
+        """Only a volume dimension releases a note; the rest are read at whatever they last stated."""
+        source = [index % 8 for index in range(MAX_SEQUENCE_ITEMS + 8)]
+        source[-1] = 0
+        arpeggio = features_to_instrument_sequences(build(released(4), source))[SequenceKind.ARPEGGIO]
+        assert arpeggio.items == tuple(source[:MAX_SEQUENCE_ITEMS])
+
+
+class TestWhetherAnExportShortensADimension:
+    def test_a_dimension_within_the_limit_is_written_whole(self) -> None:
+        assert is_shortened(FeatureKey.VOLUME, envelope(released(MAX_SEQUENCE_ITEMS))) is False
+
+    def test_a_dimension_past_the_limit_is_shortened(self) -> None:
+        assert is_shortened(FeatureKey.VOLUME, envelope(released(MAX_SEQUENCE_ITEMS + 1))) is True
+
+    def test_keeping_the_release_still_counts_as_shortening(self) -> None:
+        """The release survives, so one sounding item is what the file leaves out."""
+        source = envelope(released(MAX_SEQUENCE_ITEMS + 1))
+        assert is_shortened(FeatureKey.VOLUME, source) is True
+
+
+class TestWhatAnExportReportsLeavingOut:
+    def test_features_within_the_limit_report_nothing(self) -> None:
+        assert features_truncation(build(released(MAX_SEQUENCE_ITEMS), [0])) is None
+
+    def test_features_past_the_limit_report_both_counts(self) -> None:
+        source_frames = MAX_SEQUENCE_ITEMS + 48
+        truncation = features_truncation(build(released(source_frames), []))
+        assert truncation is not None
+        assert truncation.source_frames == source_frames
+        assert truncation.frames == MAX_SEQUENCE_ITEMS
+        assert truncation.instruments == 1

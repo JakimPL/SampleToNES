@@ -155,10 +155,20 @@ dimension therefore carries the length it was written at: a two-item volume enve
 beside a one-item duty envelope plays exactly as a padded pair would, and costs the
 padding less.
 
-Every length stays within the 252 items a FamiTracker sequence holds, so a reconstruction
-longer than 252 frames — 8.4 s at the default 30 fps — exports its opening 252 frames and
-logs the shortening. The instruments panel colors a sequence input warning orange once it
-passes that length, so the limit is visible before an export.
+**The release.** A volume envelope whose frames end audible carries one silent item past
+them, and that item is what stops the note: the driver holds a halted sequence's last value
+for as long as a row keeps the note sounding, so a volume envelope ending audible would sound
+to the end of the song. Every generator writes that item, so a volume dimension runs one item
+longer than the frames it describes.
+
+**The item limit.** A FamiTracker sequence holds 252 items, and that ceiling belongs to this
+writer: an envelope carries whatever length it was written at, and meets the limit only here.
+A dimension over it is written as its opening items, and a volume dimension keeps its release
+as the last of them — the note has to end, so the release displaces the sounding item that
+would not fit. A reconstruction therefore reaches the limit at 252 frames, since its volume
+carries the release past them; that is 8.4 s at the default 30 fps. The export reports what it
+left out, and the instruments panel colors a sequence input warning orange while a file would
+hold only part of it, so the limit is visible before an export.
 
 An empty dimension is written as a disabled sequence, which is a different instrument from
 one carrying a single zero: the disabled slot leaves that dimension to the channel, while a
@@ -237,18 +247,19 @@ the reader cannot take leaves the project as it stood and the history without an
 
 ## D. FamiTracker capacity limits
 
-FamiTracker bounds several quantities that the _SampleToNES_ `Project` currently
-leaves looser. The exporter guards these limits, so every file it writes loads: it
-raises on a project structure FamiTracker has no room for, and shortens an envelope
-that outruns a sequence. Enforcing them on the domain model — so the editor prevents
-reaching an unexportable state — is planned as a follow-up phase; this table is that
-checklist.
+FamiTracker bounds several quantities, and those bounds belong to this writer. A project
+holds what a reader wrote — an envelope of any length, a pool of any size — and meets a
+limit where a file is built, so the editor stays free of a format it may never export to.
+The writer guards each limit, so every file it writes loads: it raises on a project
+structure FamiTracker has no room for, and shortens an envelope that outruns a sequence
+while keeping the release that ends its note. What each limit costs is reported to the
+reader; this table is where those answers are stated.
 
 | Quantity | FamiTracker limit | Project bound today | Exporter behavior |
 | --- | --- | --- | --- |
 | Instruments | 64 total | unbounded (1–4 per sample, one per hand-written instrument) | raises when the instruments exceed 64 |
 | Sequences per kind | 128 | unbounded | raises when a kind's pool exceeds 128 |
-| Items per sequence | 252 | one item per reconstruction frame, unbounded | keeps the opening 252 items and logs a warning |
+| Items per sequence | 252 | one item per frame, plus the volume's release; unbounded | keeps the opening items, a volume dimension ending at its release, and reports what it left out |
 | Patterns per channel | 128 (indices 0–127) | pool keyed by arbitrary ints | raises when a pattern index exceeds 127 |
 | Order frames | 128 | unbounded | raises when the order exceeds 128 frames |
 | Pattern length (rows) | 256 | 1–256 (`rows_per_pattern`) | matches; no guard needed |
