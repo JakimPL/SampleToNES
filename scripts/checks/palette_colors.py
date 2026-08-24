@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 """
-Checks that a colour stays a palette token until the moment it is drawn with.
+Checks that a color stays a palette token until the moment it is drawn with.
 
 `BaseColor.rgba` answers with the palette active right now, so a consumer that holds the
 token follows a palette swap and one that stores the answer keeps the shade it read at
 construction. The check reports the three ways that contract is lost: an attribute assigned the
-resolved value, a theme colour filled outside the palette bindings that record it, and a colour
+resolved value, a theme color filled outside the palette bindings that record it, and a color
 written into the shipped configuration as a literal instead of a palette token.
 
 Usage:
@@ -45,7 +45,7 @@ Assignment = Union[ast.Assign, ast.AnnAssign]
 
 
 class ColorFinding(NamedTuple):
-    """One place a colour stops following the palette, and what to do about it."""
+    """One place a color stops following the palette, and what to do about it."""
 
     location: str
     message: str
@@ -73,7 +73,7 @@ def _resolves_a_color(value: ast.expr) -> bool:
 
 
 def stored_colors(module: SourceModule) -> Iterator[ColorFinding]:
-    """Every attribute a module assigns the resolved value of a palette colour.
+    """Every attribute a module assigns the resolved value of a palette color.
 
     Args:
         module: Module to read.
@@ -91,13 +91,13 @@ def stored_colors(module: SourceModule) -> Iterator[ColorFinding]:
                     location=module.location(statement),
                     message=(
                         f"stores .{COLOR_PROPERTY}; hold the BaseColor and read "
-                        f".{COLOR_PROPERTY} where the colour reaches DearPyGui"
+                        f".{COLOR_PROPERTY} where the color reaches DearPyGui"
                     ),
                 )
 
 
 def dpg_module_helper() -> Tuple[Path, str]:
-    """The module allowed to fill a theme colour, and the helper every other module calls.
+    """The module allowed to fill a theme color, and the helper every other module calls.
 
     Returns:
         Tuple[Path, str]: The resolved path of the bindings module, and the helper's name.
@@ -113,7 +113,7 @@ def unregistered_theme_colors(
     bindings_module: Path,
     theme_color_helper: str,
 ) -> Iterator[ColorFinding]:
-    """Every theme colour a module fills without recording the token behind it.
+    """Every theme color a module fills without recording the token behind it.
 
     Args:
         module: Module to read.
@@ -121,7 +121,7 @@ def unregistered_theme_colors(
         theme_color_helper: Name of the helper a report points at.
 
     Yields:
-        ColorFinding: One per call, naming the theme colour that stays at the shade it was
+        ColorFinding: One per call, naming the theme color that stays at the shade it was
             built with.
     """
     if module.path.resolve() == bindings_module:
@@ -131,12 +131,12 @@ def unregistered_theme_colors(
         if isinstance(node, ast.Call) and terminal_name(node.func) == THEME_COLOR_CALL:
             yield ColorFinding(
                 location=module.location(node),
-                message=f"fills a theme colour directly; call {theme_color_helper} so a swap repaints it",
+                message=f"fills a theme color directly; call {theme_color_helper} so a swap repaints it",
             )
 
 
 def literal_colors(path: Path) -> Iterator[ColorFinding]:
-    """Every hex colour a shipped configuration file writes out in place of a palette token.
+    """Every hex color a shipped configuration file writes out in place of a palette token.
 
     Args:
         path: Configuration file to read.
@@ -151,7 +151,7 @@ def literal_colors(path: Path) -> Iterator[ColorFinding]:
         for match in HEX_COLOR.finditer(line):
             yield ColorFinding(
                 location=f"{path}:{number}",
-                message=f"writes the colour {match.group()} directly; name a palette token instead",
+                message=f"writes the color {match.group()} directly; name a palette token instead",
             )
 
 
@@ -176,11 +176,11 @@ def find_detached_colors(
 
 
 def find_literal_colors(package: Path, palettes: Path) -> List[ColorFinding]:
-    """Every hex colour the shipped configuration writes out, outside the palettes that carry values.
+    """Every hex color the shipped configuration writes out, outside the palettes that carry values.
 
     Args:
         package: Configuration package to sweep.
-        palettes: Directory holding the palettes, where a colour value belongs.
+        palettes: Directory holding the palettes, where a color value belongs.
 
     Returns:
         List[ColorFinding]: One finding per literal, in file order.
@@ -196,31 +196,31 @@ def find_literal_colors(package: Path, palettes: Path) -> List[ColorFinding]:
 
 
 def main(argv: Sequence[str]) -> int:
-    """Report every colour the application stores resolved or the configuration writes out."""
+    """Report every color the application stores resolved or the configuration writes out."""
 
     logger.set_level(level=logging.ERROR)
     bindings_module, theme_color_helper = dpg_module_helper()
 
     parser = argparse.ArgumentParser(
-        description="Check that a colour stays a palette token until it is drawn with.",
+        description="Check that a color stays a palette token until it is drawn with.",
     )
     parser.add_argument(
         "--package",
         type=Path,
         default=APPLICATION_PACKAGE,
-        help="package whose colour reads to check",
+        help="package whose color reads to check",
     )
     parser.add_argument(
         "--config",
         type=Path,
         default=CONFIG_DIRECTORY,
-        help="shipped configuration package whose colours must name palette tokens",
+        help="shipped configuration package whose colors must name palette tokens",
     )
     parser.add_argument(
         "--palettes",
         type=Path,
         default=PALETTES_DIRECTORY,
-        help="directory holding the palettes, where colour values belong",
+        help="directory holding the palettes, where color values belong",
     )
     arguments = parser.parse_args(list(argv))
 
@@ -240,14 +240,14 @@ def main(argv: Sequence[str]) -> int:
         return 0
 
     print(
-        "Colour(s) that stop following the active palette:",
+        "Color(s) that stop following the active palette:",
         file=sys.stderr,
     )
     for location, message in findings:
         print(f"  {location}: {message}", file=sys.stderr)
 
     print(
-        f"\nFound {len(findings)} colour(s) detached from the palette.",
+        f"\nFound {len(findings)} color(s) detached from the palette.",
         file=sys.stderr,
     )
     return 1

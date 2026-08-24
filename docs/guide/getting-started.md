@@ -35,11 +35,11 @@ tabs in full.
    left, right-click a reconstruction and choose **Add to Sequencer**. If its NES
    frequency differs from the project's, confirm with **Add anyway**.
 4. In the **Tracker** grid, click a cell and type notes on your keyboard; assign a
-   sample to a channel with the cell's right-click **Set instrument**.
+   sample to a channel with the cell's right-click **Set voice**.
 5. Arrange the piece in the **Order** grid, and set **Rows**, **Tempo**, **Speed**,
    and **NES frequency** under **Module options**.
 6. Choose **File ▸ Export ▸ FamiTracker module...** and pick a path for the `.ftm`
    file. **Bitphase project...** beside it writes the same song as a `.btp`.
 
-The [sequencer guide](sequencer.md) covers the tracker grid, the order, samples,
+The [sequencer guide](sequencer.md) covers the tracker grid, the order, voices,
 and undo history in full.

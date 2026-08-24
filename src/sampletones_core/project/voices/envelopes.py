@@ -16,8 +16,8 @@ ArpeggioItem = Annotated[int, Field(ge=ARPEGGIO_MIN, le=ARPEGGIO_MAX)]
 DutyCycleItem = Annotated[int, Field(ge=0, le=MAX_DUTY_CYCLE)]
 
 
-class ShapeEnvelopes(BaseModel):
-    """The per-tick envelopes a shape writes, in the terms every channel reads them in.
+class InstrumentEnvelopes(BaseModel):
+    """The per-tick envelopes an instrument writes, in the terms every channel reads them in.
 
     Each dimension carries the widest range the four channels offer, and a channel takes what it
     reads: an arpeggio item is a semitone offset on the tonal channels and a period offset on
@@ -27,7 +27,7 @@ class ShapeEnvelopes(BaseModel):
 
     Attributes:
         volume: Output level per tick.
-        arpeggio: Offset from the shape's root per tick.
+        arpeggio: Offset from the instrument's root per tick.
         duty_cycle: Pulse waveform, or noise mode, per tick.
     """
 
@@ -46,7 +46,7 @@ class ShapeEnvelopes(BaseModel):
         }
 
     def envelope(self, feature_key: FeatureKey) -> Tuple[int, ...]:
-        """The items one dimension carries, empty where the shape leaves it to the channel.
+        """The items one dimension carries, empty where the instrument leaves it to the channel.
 
         Args:
             feature_key: The dimension read.
@@ -55,11 +55,11 @@ class ShapeEnvelopes(BaseModel):
             Tuple[int, ...]: That dimension's items.
 
         Raises:
-            KeyError: If ``feature_key`` names a dimension a shape does not write.
+            KeyError: If ``feature_key`` names a dimension an instrument does not write.
         """
         return self.envelope_map[feature_key]
 
-    def with_envelope(self, feature_key: FeatureKey, items: Tuple[int, ...]) -> "ShapeEnvelopes":
+    def with_envelope(self, feature_key: FeatureKey, items: Tuple[int, ...]) -> "InstrumentEnvelopes":
         """The envelopes with one dimension replaced.
 
         Args:
@@ -67,10 +67,10 @@ class ShapeEnvelopes(BaseModel):
             items: What that dimension now carries; empty leaves it to the channel.
 
         Returns:
-            ShapeEnvelopes: The envelopes carrying ``items`` for ``feature_key``.
+            InstrumentEnvelopes: The envelopes carrying ``items`` for ``feature_key``.
 
         Raises:
-            KeyError: If ``feature_key`` names a dimension a shape does not write.
+            KeyError: If ``feature_key`` names a dimension an instrument does not write.
         """
         if feature_key not in self.envelope_map:
             raise KeyError(feature_key)

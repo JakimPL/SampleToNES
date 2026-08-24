@@ -33,7 +33,7 @@ def parse_planes(
         Tuple[Parse, ...]: One parse per plane, in the order the planes were given.
 
     Raises:
-        OperationCancelled: If the run is no longer wanted.
+        OperationCanceled: If the run is no longer wanted.
     """
     parses: List[Parse] = []
     for plane in range(len(cache.indices)):
@@ -73,7 +73,7 @@ def parse_planes_offered(
         Tuple[Parse, ...]: One parse per plane, in the order the planes were given.
 
     Raises:
-        OperationCancelled: If the run is no longer wanted.
+        OperationCanceled: If the run is no longer wanted.
     """
     trial: List[Parse] = []
     for plane in range(len(cache.indices)):

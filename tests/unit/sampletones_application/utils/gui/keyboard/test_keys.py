@@ -241,7 +241,7 @@ class TestWrittenKeys(BaseTestSuite):
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_a_written_key_seats_between_the_keys_it_neighbours(self, test_case: TestCase) -> None:
+    def test_a_written_key_seats_between_the_keys_it_neighbors(self, test_case: TestCase) -> None:
         assert test_case.key == test_case.preceding + 1
         assert test_case.following == test_case.key + 1
 

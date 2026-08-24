@@ -31,7 +31,7 @@ class ServiceError:
 
 
 @dataclass(frozen=True)
-class ServiceCancelled:
+class ServiceCanceled:
     pass
 
 
@@ -46,5 +46,5 @@ ConversionResult = Union[
     ServiceIntermediate[TaskProgress],
     ServiceSuccess[Tuple[Path, ...]],
     ServiceError,
-    ServiceCancelled,
+    ServiceCanceled,
 ]

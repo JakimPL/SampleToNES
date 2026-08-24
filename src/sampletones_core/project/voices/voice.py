@@ -1,10 +1,10 @@
 from typing import Iterable, Iterator, Tuple, Union
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.shape import Shape
 
-VoiceUnion = Union[Sample, Shape]
+VoiceUnion = Union[Sample, Instrument]
 
 
 def samples(voices: Iterable[VoiceUnion]) -> Iterator[Sample]:
@@ -25,7 +25,7 @@ def samples(voices: Iterable[VoiceUnion]) -> Iterator[Sample]:
 def voice_channels(voice: VoiceUnion) -> Tuple[ChannelName, ...]:
     """The channels a voice sounds on.
 
-    A sample sounds on the channels its reconstruction found frames for; a shape sounds wherever
+    A sample sounds on the channels its reconstruction found frames for; an instrument sounds wherever
     its envelopes make a frame, which is every channel once it writes one.
 
     Args:
@@ -37,14 +37,14 @@ def voice_channels(voice: VoiceUnion) -> Tuple[ChannelName, ...]:
     match voice:
         case Sample():
             return voice.reconstruction.playing_channels
-        case Shape():
+        case Instrument():
             return tuple(channel for channel in ChannelName.items() if voice.instructions(channel))
 
 
 def voice_reference(voice: VoiceUnion, channel_name: ChannelName) -> int:
     """The value a voice's arpeggio is measured against on one channel.
 
-    A sample carries the reference its conversion chose for that channel; a shape states the root
+    A sample carries the reference its conversion chose for that channel; an instrument states the root
     the reader gave it. A row's transpose is the step from this, whichever kind it names.
 
     Args:
@@ -57,5 +57,5 @@ def voice_reference(voice: VoiceUnion, channel_name: ChannelName) -> int:
     match voice:
         case Sample():
             return voice.reconstruction.initial_pitches[channel_name]
-        case Shape():
+        case Instrument():
             return voice.reference(channel_name)

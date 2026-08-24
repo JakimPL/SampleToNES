@@ -256,13 +256,13 @@ class GUIKeybindingsWindow(GUIDialogWindow):
         )
 
     def _install_capture(self) -> None:
-        """Readies the capture that reads a press, cancelled by whatever a dialog is cancelled by."""
+        """Readies the capture that reads a press, canceled by whatever a dialog is canceled by."""
         self._capture = KeyCapture(
             key_router=self._router,
             cancel=self._shortcuts.shortcut(ShortcutId.DIALOG_CANCEL).combinations(),
         )
         self._capture.on_captured = self._report_captured
-        self._capture.on_cancelled = self._render
+        self._capture.on_canceled = self._render
 
     def _teardown(self) -> None:
         """Stops the capture this appearance armed before the keyboard claim is released."""

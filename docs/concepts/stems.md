@@ -214,7 +214,7 @@ directory holding them.
 The reconstruction tab's Stems card turns the recorded assignment into a
 listener the user can steer. It draws the same list the converter's card draws:
 each row carries one stem under the level it was picked on, named by its
-recording, with a leading master box and a coloured box on every channel the
+recording, with a leading master box and a colored box on every channel the
 stem holds frames on. A setup line above the rows names the assignment's
 hierarchy mode and channel cap, and a **Collapse levels** toggle draws every row
 in one table where the banding is in the way. Ticking a box admits that stem's

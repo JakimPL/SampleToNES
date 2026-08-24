@@ -1,6 +1,10 @@
 from typing import Callable, Dict, FrozenSet, List, Optional, Set
 
 from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.view_model.sequencer.kind import (
+    places_across_channels,
+    voice_kind,
+)
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
 )
@@ -10,14 +14,15 @@ from sampletones_application.view_model.sequencer.tracker import (
     SequencerRowViewModel,
     SequencerTrackerViewModel,
 )
+from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import NoteCommand, Row
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.project.voices.voice import VoiceUnion, voice_channels, voice_reference
 from sampletones_core.utils.display import (
     display_command,
@@ -29,9 +34,10 @@ from sampletones_core.utils.display import (
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 _EMPTY_CELL = SequencerCellViewModel(
-    instrument=display_id(None),
+    voice=display_id(None),
     transpose=display_transpose(None),
     volume=display_volume(None),
+    kind=None,
 )
 
 
@@ -163,23 +169,23 @@ class SequencerTrackerLogic(CallbackMixin):
     ) -> None:
         """Empties one subcolumn of a cell.
 
-        From the sample column an instrument reaches every channel, since the sample
+        From the sample column the voice slot reaches every channel, since the sample
         it names is the row's whole note, while transpose and volume follow the
         channels that column governs.
         """
-        instrument = subcolumn is SubColumn.INSTRUMENT
+        voice = subcolumn is SubColumn.VOICE
         transpose = subcolumn is SubColumn.TRANSPOSE
         volume = subcolumn is SubColumn.VOLUME
         if channel is not None:
             self.clear_subcolumn(
                 channel,
                 row_index,
-                instrument=instrument,
+                voice=voice,
                 transpose=transpose,
                 volume=volume,
             )
-        elif instrument:
-            self.clear_subcolumn_all_generators(row_index, instrument=True)
+        elif voice:
+            self.clear_subcolumn_all_generators(row_index, voice=True)
         else:
             self.clear_sample_subcolumn(
                 row_index,
@@ -216,14 +222,32 @@ class SequencerTrackerLogic(CallbackMixin):
         channel: Optional[ChannelName],
         voice_id: str,
     ) -> None:
+        """Places a voice on the cell a column and a row name, where that column takes it.
+
+        Every route that names a voice for a cell arrives here — a typed number, a menu item and a
+        pasted block alike — so the sample column's rule is asked once and each of them follows it.
+        """
         if channel is None:
-            self.set_sample_instrument(row_index, voice_id)
+            if self.places_in_sample_column(voice_id):
+                self.set_row_sample(row_index, voice_id)
         else:
             self.set_row(
                 channel,
                 row_index,
                 command=NoteOn(voice_id=voice_id),
             )
+
+    def places_in_sample_column(self, voice_id: str) -> bool:
+        """Whether the sample column takes the voice an id names.
+
+        The column spreads a voice over the channels it covers, which a recording states for
+        itself, so it answers for a sample the project holds and stands by for anything else.
+        """
+        voice = self._controller.project.voices.get(voice_id)
+        if voice is None:
+            return False
+
+        return places_across_channels(voice_kind(voice))
 
     def cut_note(
         self,
@@ -294,7 +318,7 @@ class SequencerTrackerLogic(CallbackMixin):
         channel: ChannelName,
         row_index: int,
         *,
-        instrument: bool = False,
+        voice: bool = False,
         transpose: bool = False,
         volume: bool = False,
     ) -> None:
@@ -306,7 +330,7 @@ class SequencerTrackerLogic(CallbackMixin):
             channel,
             pattern_index,
             row_index,
-            instrument=instrument,
+            voice=voice,
             transpose=transpose,
             volume=volume,
         )
@@ -319,7 +343,7 @@ class SequencerTrackerLogic(CallbackMixin):
         self,
         row_index: int,
         *,
-        instrument: bool = False,
+        voice: bool = False,
         transpose: bool = False,
         volume: bool = False,
     ) -> None:
@@ -327,26 +351,25 @@ class SequencerTrackerLogic(CallbackMixin):
             self.clear_subcolumn(
                 channel,
                 row_index,
-                instrument=instrument,
+                voice=voice,
                 transpose=transpose,
                 volume=volume,
             )
 
-    def set_sample_instrument(
+    def set_row_sample(
         self,
         row_index: int,
         voice_id: Optional[str],
     ) -> None:
         """Places a sample across the channels its reconstruction uses.
 
-        The sample column is authoritative: the instrument is written to every
-        channel the sample covers, and the remaining channels on that row are
-        cleared so the row reflects exactly that sample. Clearing an empty sample
-        id wipes the whole row.
+        The sample column is authoritative: the sample is written to every channel it covers, and
+        the remaining channels on that row are cleared so the row plays exactly that sample.
+        An empty voice id wipes the whole row.
 
-        The column speaks for samples, which carry a slice per channel; a shape carries one
-        instrument the reader places on the channel they want it on, so it is named in a channel
-        column and this one leaves the row as it stands.
+        The column speaks for samples, which carry a slice per channel. A hand-written voice sounds
+        on whichever channel the reader names it in, so it is placed in a channel column and this
+        one leaves the row as it stands.
         """
         if voice_id is None:
             self.clear_all_channels(row_index)
@@ -433,9 +456,9 @@ class SequencerTrackerLogic(CallbackMixin):
         transpose: Optional[int] = None,
         volume: Optional[int] = None,
     ) -> None:
-        """Synchronises a subcolumn across the row's relevant channels.
+        """Synchronizes a subcolumn across the row's relevant channels.
 
-        Transpose and volume exist independently of an instrument: they follow the
+        Transpose and volume exist independently of the voice slot: they follow the
         sample's channels when one is present, and otherwise reach every channel, so
         a value typed in the sample column always lands somewhere.
         """
@@ -538,8 +561,8 @@ class SequencerTrackerLogic(CallbackMixin):
         self._frame_index = frame_index
         self.push_tracker()
 
-    def holds_sample(self, voice_id: str) -> bool:
-        """Whether the project holds the sample a note names, which is what makes the note placeable."""
+    def holds_voice(self, voice_id: str) -> bool:
+        """Whether the project holds the voice a note names, which is what makes the note placeable."""
         return self._controller.project.voices.get(voice_id) is not None
 
     def used_generators(self, voice_id: str) -> List[ChannelName]:
@@ -628,12 +651,13 @@ class SequencerTrackerLogic(CallbackMixin):
         self,
         rows: Dict[ChannelName, Optional[Row]],
     ) -> FrozenSet[ChannelName]:
-        """The channels spanned by the voices referenced on a row.
+        """The channels spanned by the samples a row names.
 
-        Each referenced voice contributes the channels its reconstruction covers, so the sample
-        column reasons about a voice's whole channel span, including channels whose cells are
-        empty. A row naming a voice the project no longer holds contributes the channel it sits
-        on, which keeps that cell reachable while the reference stands.
+        A sample contributes the channels its reconstruction covers, so the sample column reasons
+        about its whole span including channels whose cells stand empty. A hand-written instrument
+        sounds on the one channel it is named in, so it contributes none and leaves the column
+        speaking for samples alone. A row naming a voice the project no longer holds contributes
+        the channel it sits on, which keeps that cell reachable while the reference stands.
         """
         relevant: Set[ChannelName] = set()
         resolved: Set[str] = set()
@@ -647,11 +671,11 @@ class SequencerTrackerLogic(CallbackMixin):
                 continue
 
             resolved.add(voice_id)
-            sample = self._controller.project.voices.get(voice_id)
-            if sample is None:
+            voice = self._controller.project.voices.get(voice_id)
+            if voice is None:
                 relevant.add(channel)
-            else:
-                relevant.update(self._used_generators(sample))
+            elif places_across_channels(voice_kind(voice)):
+                relevant.update(self._used_generators(voice))
 
         return frozenset(relevant)
 
@@ -682,7 +706,7 @@ class SequencerTrackerLogic(CallbackMixin):
         return SequencerRowViewModel(
             index=index,
             cells=cells,
-            relevant_channels=self._referenced_generators_from_rows(rows),
+            sample_channels=self._referenced_generators_from_rows(rows),
         )
 
     def _carried_voice(
@@ -711,17 +735,32 @@ class SequencerTrackerLogic(CallbackMixin):
     ) -> SequencerCellViewModel:
         """One cell's three readings, the pitch stated in the terms its voice is written in.
 
-        A sample was converted at a pitch of its own, so its rows read as steps from it; a shape
+        A sample was converted at a pitch of its own, so its rows read as steps from it; an instrument
         was written against a root the reader chose, so its rows read as the notes they sound.
         """
         return SequencerCellViewModel(
-            instrument=display_command(
+            voice=display_command(
                 self._controller.project.voices,
                 row.command,
             ),
             transpose=self._display_pitch(row.transpose, channel, voice),
             volume=display_volume(row.volume),
+            kind=self._named_kind(row.command),
         )
+
+    def _named_kind(self, command: Optional[NoteCommand]) -> Optional[VoiceKind]:
+        """The kind of the voice a row names, absent where it names none the project holds.
+
+        The cell states the voice it starts, so the kind is read from that command rather than from
+        whatever the channel carries into the row: a line that only bends a note names nothing and
+        takes the kind of nothing.
+        """
+        match command:
+            case NoteOn() as note_on:
+                voice = self._controller.project.voices.get(note_on.voice_id)
+                return voice_kind(voice) if voice is not None else None
+            case _:
+                return None
 
     @staticmethod
     def _display_pitch(
@@ -730,7 +769,7 @@ class SequencerTrackerLogic(CallbackMixin):
         voice: Optional[VoiceUnion],
     ) -> str:
         match voice:
-            case Shape():
+            case Instrument():
                 return display_note(
                     transpose,
                     channel_name=channel,

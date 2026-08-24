@@ -10,7 +10,7 @@ from sampletones_application.ui.panels.sequencer.input.order import (
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
-from sampletones_application.ui.panels.sequencer.voices import GUISequencerVoicesPanel
+from sampletones_application.ui.panels.sequencer.voices.panel import GUISequencerVoicesPanel
 from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter, focus
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from tests.suite.base import BaseTestSuite
@@ -36,7 +36,7 @@ def _tracker(tab_active: ActivePredicate) -> GUISequencerTrackerPanel:
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._router = KeyRouter()
     panel._tab_active = tab_active
-    panel._input_state = TrackerInputState(cursor=TrackerCursor(0, None, SubColumn.INSTRUMENT))
+    panel._input_state = TrackerInputState(cursor=TrackerCursor(0, None, SubColumn.VOICE))
     return panel
 
 

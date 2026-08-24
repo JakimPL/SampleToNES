@@ -4,7 +4,8 @@ from typing import Tuple
 
 import pytest
 
-from sampletones_core.formats.binary import BinaryWriter
+from sampletones_core.formats.binary import BinaryReader, BinaryWriter
+from sampletones_shared.exceptions import TruncatedDataError
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 
@@ -92,3 +93,122 @@ class TestStringPrimitives:
         writer = BinaryWriter()
         writer.write_terminated_string("note")
         assert writer.data == b"note\x00"
+
+
+class TestReadIntegerPrimitives(BaseTestSuite):
+    """Each named read takes the width and signedness its name states, back off the writer."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseAutolabelTestCase):
+        expected: int
+        method: str
+
+        @property
+        def label(self) -> str:
+            return f"{self.method}-{self.expected}"
+
+    test_cases: Tuple[TestCase, ...] = (
+        TestCase(method="uint8", expected=0),
+        TestCase(method="uint8", expected=255),
+        TestCase(method="int8", expected=-128),
+        TestCase(method="int8", expected=127),
+        TestCase(method="uint32", expected=0x0440),
+        TestCase(method="uint32", expected=4294967295),
+        TestCase(method="int32", expected=-1),
+        TestCase(method="int32", expected=2147483647),
+    )
+
+    @staticmethod
+    def written(test_case: TestCase) -> bytes:
+        writer = BinaryWriter()
+        {
+            "uint8": writer.write_uint8,
+            "int8": writer.write_int8,
+            "uint32": writer.write_uint32,
+            "int32": writer.write_int32,
+        }[test_case.method](test_case.expected)
+        return writer.data
+
+    @staticmethod
+    def read(reader: BinaryReader, method: str) -> int:
+        return {
+            "uint8": reader.read_uint8,
+            "int8": reader.read_int8,
+            "uint32": reader.read_uint32,
+            "int32": reader.read_int32,
+        }[method]()
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_value_comes_back_off_the_bytes(self, test_case: TestCase) -> None:
+        reader = BinaryReader(self.written(test_case))
+        assert self.read(reader, test_case.method) == test_case.expected
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_field_leaves_the_reader_at_the_end(self, test_case: TestCase) -> None:
+        reader = BinaryReader(self.written(test_case))
+        self.read(reader, test_case.method)
+        assert reader.remaining == 0
+
+
+class TestReadingAdvances:
+    def test_each_read_takes_the_next_field(self) -> None:
+        writer = BinaryWriter()
+        writer.write_uint8(1)
+        writer.write_uint32(2)
+        writer.write_int32(-3)
+
+        reader = BinaryReader(writer.data)
+        assert (reader.read_uint8(), reader.read_uint32(), reader.read_int32()) == (1, 2, -3)
+
+    def test_the_remainder_counts_down(self) -> None:
+        reader = BinaryReader(b"\x01\x02\x03\x04")
+        reader.read_uint8()
+        assert reader.remaining == 3
+
+    def test_read_bytes_takes_the_count_asked_for(self) -> None:
+        reader = BinaryReader(b"abcdef")
+        assert reader.read_bytes(3) == b"abc"
+        assert reader.read_bytes(3) == b"def"
+
+    def test_counted_string_round_trips(self) -> None:
+        writer = BinaryWriter()
+        writer.write_counted_string("Bass Line")
+        assert BinaryReader(writer.data).read_counted_string() == "Bass Line"
+
+    def test_counted_string_leaves_what_follows_it(self) -> None:
+        writer = BinaryWriter()
+        writer.write_counted_string("hi")
+        writer.write_uint8(7)
+
+        reader = BinaryReader(writer.data)
+        reader.read_counted_string()
+        assert reader.read_uint8() == 7
+
+
+class TestReadingPastTheEnd:
+    def test_a_field_wider_than_the_remainder_raises(self) -> None:
+        reader = BinaryReader(b"\x01\x02")
+        with pytest.raises(TruncatedDataError):
+            reader.read_uint32()
+
+    def test_more_bytes_than_held_raises(self) -> None:
+        reader = BinaryReader(b"abc")
+        with pytest.raises(TruncatedDataError):
+            reader.read_bytes(4)
+
+    def test_an_empty_buffer_raises_on_the_first_read(self) -> None:
+        with pytest.raises(TruncatedDataError):
+            BinaryReader(b"").read_uint8()
+
+    def test_a_counted_string_longer_than_the_remainder_raises(self) -> None:
+        writer = BinaryWriter()
+        writer.write_uint32(10)
+        writer.write_bytes(b"hi")
+        with pytest.raises(TruncatedDataError):
+            BinaryReader(writer.data).read_counted_string()
+
+    def test_the_message_names_the_width_and_the_offset(self) -> None:
+        reader = BinaryReader(b"\x01\x02")
+        reader.read_uint8()
+        with pytest.raises(TruncatedDataError, match="4 bytes at offset 1"):
+            reader.read_uint32()

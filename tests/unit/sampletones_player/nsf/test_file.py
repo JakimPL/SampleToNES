@@ -149,7 +149,7 @@ class TestSongsBeyondTheProgramArea:
 class TestWriteNSF:
     """The bytes reaching a file on disk."""
 
-    def test_the_file_holds_the_bytes_the_song_serialises_to(
+    def test_the_file_holds_the_bytes_the_song_serializes_to(
         self,
         song: Song,
         image: DriverImage,

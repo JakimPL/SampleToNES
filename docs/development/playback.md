@@ -22,7 +22,7 @@ a control over what is heard. The contracts here bind every tab and every player
    given screen every time.
 4. **Surfaces describe the target; the transport decides.** The menu, the toolbar, and the keyboard
    reach identical verbs and report identical state, so a new surface adds another way in to the
-   same behaviour.
+   same behavior.
 5. **Listening choices stay out of the document.** What the user chooses to hear is session state;
    what the project holds is the whole song. Saving, export, rendering, and history read the
    document, so each of them works on the full song whatever the user is listening to. A render
@@ -32,10 +32,10 @@ a control over what is heard. The contracts here bind every tab and every player
    sound as it renders, so a change is heard as the render-ahead buffer drains. This is what lets a
    listening control take effect inside the sound already playing.
 7. **A row's duration belongs to the song, not to the player.** How long a row lasts follows from
-   the project's tempo and metre together with the row's place in the pattern, so it is a function
+   the project's tempo and meter together with the row's place in the pattern, so it is a function
    of position: the same row lasts the same time however playback reached it, and a module exported
    from the song can state the same figures. The integer tick counts the groove places *are* the
-   tempo, so a render realises them exactly at every rate it offers.
+   tempo, so a render realizes them exactly at every rate it offers.
 
 ## Two kinds of sound
 
@@ -79,7 +79,7 @@ sounding preview whenever the active tab has a source of its own, so a preview a
 
 The transport's verbs are reached identically from the Playback menu, the toolbar, and the keyboard:
 
-| Key | Command | Behaviour |
+| Key | Command | Behavior |
 |-----|---------|-----------|
 | `Space` | Play / Pause | Acts on the target: pauses or resumes it while it is engaged, and starts it from the beginning otherwise. With no target, it does nothing. |
 | `Shift+Space` | Play from start | Starts the active tab's source from the beginning. |
@@ -141,18 +141,18 @@ keeps the gestures consistent: any way of reaching "silence the rest" leaves the
 other.
 
 Every surface shows that one set and switches it. In the tracker a channel recedes down its column;
-in the order table it recedes along its row; both take their shades from one pair of colours, so a
+in the order table it recedes along its row; both take their shades from one pair of colors, so a
 silenced channel looks the same wherever it appears. A channel's name is the switch in both tables —
 click to silence, modified click to solo, the master name for the whole mix — and both tables hand
 the gesture and its right-click menu to one object, so both offer the same wording and the same
-behaviour. The Playback menu's **Channels** submenu carries the same set as a check per channel, plus
+behavior. The Playback menu's **Channels** submenu carries the same set as a check per channel, plus
 one item that returns the whole mix. Each of those items is registered as an action whether or not a
 key is bound to it, so the keybinding scheme can give it one and the menu prints what the scheme
 says (architecture principle 12).
 
 The mask is pulled per rendered row, which is principle 6 for this control: a channel drops in or
 out as the render-ahead buffer drains, with the immediacy every other live edit has. A silenced
-channel still takes each row's instrument, transpose, and volume, so returning it to the mix resumes
+channel still takes each row's voice, transpose, and volume, so returning it to the mix resumes
 on the state its pattern has reached.
 
 Muting is monitoring, and principle 5 governs what follows. The project holds every channel, so
@@ -207,10 +207,10 @@ the moment its dialog opens until that dialog closes, and it joins the same busy
 conversion and library generation, so each of the three holds the others off and every surface
 offering one reads a single answer.
 
-The write itself takes one pass, or two where the user asks for a normalised peak: the first pass
+The write itself takes one pass, or two where the user asks for a normalized peak: the first pass
 spills raw samples and discovers the peak, the second reads them back and encodes at the scale that
 peak sets. Each pass names itself, so the bar crosses one axis — samples — twice, holding a single
-unit across both. A cancel is honoured between rows and between encoded blocks, and a render that
+unit across both. A cancel is honored between rows and between encoded blocks, and a render that
 is stopped or fails clears the destination and the spill, so a result names a path where a finished
 file stands.
 
@@ -256,7 +256,7 @@ terminating would reclaim.
 | The document a kernel reads, live or captured | `ProjectSource` / `ProjectSnapshot` (`logic/shared/project_source.py`) |
 | The ticks the order lasts and the samples they span | `SongLength` (`logic/sequencer/playback/synthesizer/length.py`) |
 | Rendering the song to a file, its passes and its progress | `SongRenderService` (`services/render/`) |
-| Where a rendered file's samples go, normalised or direct | `RenderSink` (`services/render/sink.py`) |
+| Where a rendered file's samples go, normalized or direct | `RenderSink` (`services/render/sink.py`) |
 | The choices a render is made under, and the phase it is in | `SongRenderLogic` (`logic/render/`) |
 | The formats a file may be written in, and what each accepts | `sampletones_core/audio/writers/` |
 

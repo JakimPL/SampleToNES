@@ -85,7 +85,7 @@ class ThemeLoader:
         the base theme, so every theme carries the shared base's complete component
         set and states only its own overrides. The base theme itself stands alone.
         This makes inheritance the default: a bound item theme always resolves to
-        the global base plus its overrides, so every colour it omits keeps the
+        the global base plus its overrides, so every color it omits keeps the
         base's value.
         """
         if spec.extends is not None:
@@ -188,7 +188,7 @@ class ThemeLoader:
         item's enabled state, and it classifies many presentation items (menus,
         text labels, tree headers) as disabled; when the matching component is
         missing it re-applies its built-in palette, and the palette of the last
-        themed item drawn bleeds into the global style, recolouring the entire
+        themed item drawn bleeds into the global style, recoloring the entire
         application. Mirroring keeps every theme complete for both states, so items
         render with the theme's own values whichever state DearPyGui assigns them
         and the global style stays intact. Disabled-state entries stated explicitly
@@ -225,8 +225,8 @@ class ThemeLoader:
     def _entries_to_items(entries: ThemeEntries) -> ThemeItems:
         """Gathers the entries into the components a theme is built from, broadest first.
 
-        DearPyGui fills an item's colours by walking a theme's components in the order they were
-        created, so the last one covering a colour is the one the item wears. A component naming a
+        DearPyGui fills an item's colors by walking a theme's components in the order they were
+        created, so the last one covering a color is the one the item wears. A component naming a
         single item type states what that type is meant to look like, and one naming every type
         states the ground it stands on, so the ground is laid first and the item type paints over
         it. Ordering them here keeps that true whichever order a theme and the theme it extends

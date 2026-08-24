@@ -18,7 +18,7 @@ def labeled_field(
     """Lay out a widget as ``label [ widget ]`` with the label in a fixed-width column.
 
     Opens a horizontal group holding the label text, pads it to ``label_width`` so the
-    widget aligns with its neighbours, and yields inside the group for the caller to
+    widget aligns with its neighbors, and yields inside the group for the caller to
     create the widget. The caller's widget omits its own ``label``.
 
     A ``font`` binds the label to that weight; leaving it unset keeps the default weight.
@@ -39,8 +39,8 @@ def labeled_field(
 def subheader(label: str, *, parent: Union[int, str] = 0) -> None:
     """Render a bold subheader that groups the fields beneath it within a card.
 
-    Uses the default body colour at bold weight, sitting a level below the card's section
-    header so related fields read as one labelled group under a clear caption.
+    Uses the default body color at bold weight, sitting a level below the card's section
+    header so related fields read as one labeled group under a clear caption.
     """
     label_id = dpg.add_text(label, parent=parent)
     FontRegistry.bind_to_item(label_id, Font.BOLD)

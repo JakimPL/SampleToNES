@@ -6,7 +6,7 @@ from sampletones_application.services.export.result import (
     ExportSuccess,
 )
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceProgress,
     ServiceStarted,
 )
@@ -94,7 +94,7 @@ class SongExportLogic(CallbackMixin):
                 self._on_started()
             case ServiceProgress() as progress:
                 self._on_progress(progress)
-            case ExportSuccess() | ExportError() | ServiceCancelled():
+            case ExportSuccess() | ExportError() | ServiceCanceled():
                 self._on_finished()
 
     def _on_started(self) -> None:

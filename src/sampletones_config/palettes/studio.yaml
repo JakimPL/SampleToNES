@@ -188,9 +188,11 @@ colors:
   history_value: "#d0d0d0ff"
   history_separator: "#707070ff"
 
-  tracker_reference: "#e0c860ff"
   tracker_transpose: "#c0c0c0ff"
   tracker_volume: "#64dc64ff"
   tracker_frame: "#22ccffff"
   tracker_row: "#a0a0a0ff"
   tracker_order: "#c8d0e0ff"
+
+  voice_sample: "#e0c860ff"
+  voice_instrument: "#ff70dfff"

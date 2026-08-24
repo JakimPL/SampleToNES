@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from sampletones_application.constants.instruments import SHAPE_CHANNEL
+from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
@@ -23,6 +23,7 @@ from sampletones_core.formats.famitracker.footprint import (
     features_footprint,
     total_footprint,
 )
+from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.reconstructions import Reconstruction
 
@@ -315,15 +316,15 @@ class TestReconstructionInstrumentsLogicOnUpdateScheduled:
         callback.assert_not_called()
 
 
-class TestTheInstrumentsPanelShowsAShape:
-    """A shape stands on no audio, so the panel shows one instrument and writes edits at once."""
+class TestTheInstrumentsPanelShowsAnInstrument:
+    """An instrument stands on no audio, so the panel shows one instrument and writes edits at once."""
 
     @pytest.fixture
     def project_controller(self) -> ProjectController:
         return ProjectController(ProjectManager())
 
     @pytest.fixture
-    def shape_logic(
+    def instrument_logic(
         self,
         mock_reconstruction_manager: MagicMock,
         project_controller: ProjectController,
@@ -331,88 +332,115 @@ class TestTheInstrumentsPanelShowsAShape:
     ) -> ReconstructionInstrumentsLogic:
         mock_reconstruction_manager.current_features = None
         editor = InstrumentEditor(mock_reconstruction_manager, project_controller)
-        shape = project_controller.add_shape("lead")
-        project_controller.set_shape_envelope(shape.id, FeatureKey.VOLUME, (15, 12))
-        editor.edit_shape(shape.id)
+        instrument = project_controller.add_instrument(new_instrument("lead"))
+        project_controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, (15, 12))
+        editor.edit_instrument(instrument.id)
         return ReconstructionInstrumentsLogic(editor, scheduling=scheduling)
 
-    def test_the_view_names_the_shape_it_shows(
+    def test_the_view_names_the_instrument_it_shows(
         self,
-        shape_logic: ReconstructionInstrumentsLogic,
+        instrument_logic: ReconstructionInstrumentsLogic,
     ) -> None:
         received: List[ReconstructionInstrumentsViewModel] = []
-        shape_logic.on_view_changed = received.append
+        instrument_logic.on_view_changed = received.append
 
-        shape_logic.update_display()
+        instrument_logic.update_display()
 
-        assert received[-1].edits_a_shape is True
-        assert received[-1].shape is not None
-        assert received[-1].shape.name == "lead"
+        assert received[-1].edits_an_instrument is True
+        assert received[-1].instrument is not None
+        assert received[-1].instrument.name == "lead"
+
+    def test_the_tab_it_is_shown_under_plays_it(
+        self,
+        instrument_logic: ReconstructionInstrumentsLogic,
+    ) -> None:
+        """The tab that plays is the tab an export is offered from, so the button is reachable."""
+        received: List[ReconstructionInstrumentsViewModel] = []
+        instrument_logic.on_view_changed = received.append
+
+        instrument_logic.update_display()
+
+        assert received[-1].playing_channels == frozenset({INSTRUMENT_CHANNEL})
+
+    def test_an_instrument_with_nothing_written_stands_by(
+        self,
+        instrument_logic: ReconstructionInstrumentsLogic,
+        project_controller: ProjectController,
+    ) -> None:
+        """An export writes what has frames, so a voice holding none is offered no export."""
+        instrument = project_controller.project.voices[0]
+        project_controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, ())
+        received: List[ReconstructionInstrumentsViewModel] = []
+        instrument_logic.on_view_changed = received.append
+
+        instrument_logic.update_display()
+
+        assert received[-1].playing_channels == frozenset()
 
     def test_the_envelopes_are_drawn_under_the_channel_that_reads_them_all(
         self,
-        shape_logic: ReconstructionInstrumentsLogic,
+        instrument_logic: ReconstructionInstrumentsLogic,
     ) -> None:
         received: List[Optional[Dict[ChannelName, Features]]] = []
-        shape_logic.on_feature_data_changed = received.append
+        instrument_logic.on_feature_data_changed = received.append
 
-        shape_logic.update_display()
+        instrument_logic.update_display()
 
         assert received[-1] is not None
-        assert list(received[-1]) == [SHAPE_CHANNEL]
+        assert list(received[-1]) == [INSTRUMENT_CHANNEL]
 
-    def test_an_envelope_edit_reaches_the_shape_without_a_regeneration(
+    def test_an_envelope_edit_reaches_the_instrument_without_a_regeneration(
         self,
-        shape_logic: ReconstructionInstrumentsLogic,
+        instrument_logic: ReconstructionInstrumentsLogic,
         project_controller: ProjectController,
     ) -> None:
         regenerated: List[object] = []
-        shape_logic.on_reconstruction_instrument_updated = lambda *args: regenerated.append(args)
+        instrument_logic.on_reconstruction_instrument_updated = lambda *args: regenerated.append(args)
 
-        shape_logic.handle_raw_data_changed(
-            SHAPE_CHANNEL,
+        instrument_logic.handle_raw_data_changed(
+            INSTRUMENT_CHANNEL,
             FeatureKey.ARPEGGIO,
             np.array([0, 7], dtype=np.int8),
         )
 
-        shape = project_controller.project.voices[project_controller.project.voices[0].id]
-        assert shape.envelopes.arpeggio == (0, 7)
+        instrument = project_controller.project.voices[project_controller.project.voices[0].id]
+        assert instrument.envelopes.arpeggio == (0, 7)
         assert regenerated == []
 
-    def test_the_pitch_stepper_moves_the_shapes_tonal_root(
+    def test_the_pitch_stepper_moves_the_instruments_tonal_root(
         self,
-        shape_logic: ReconstructionInstrumentsLogic,
+        instrument_logic: ReconstructionInstrumentsLogic,
         project_controller: ProjectController,
     ) -> None:
-        shape_logic.handle_pitch_value_changed(SHAPE_CHANNEL, 48)
+        instrument_logic.handle_pitch_value_changed(INSTRUMENT_CHANNEL, 48)
 
         assert project_controller.project.voices[0].root_pitch == 48
 
-    def test_the_loop_point_reaches_the_shape(
+    def test_the_loop_point_reaches_the_instrument(
         self,
-        shape_logic: ReconstructionInstrumentsLogic,
+        instrument_logic: ReconstructionInstrumentsLogic,
         project_controller: ProjectController,
     ) -> None:
-        shape_logic.handle_shape_loop_point_changed(WHOLE_LOOP_POINT)
+        instrument_logic.handle_instrument_loop_point_changed(WHOLE_LOOP_POINT)
 
         assert project_controller.project.voices[0].loop_point == WHOLE_LOOP_POINT
 
     def test_the_figure_measures_the_one_instrument_it_exports(
         self,
-        shape_logic: ReconstructionInstrumentsLogic,
+        instrument_logic: ReconstructionInstrumentsLogic,
         project_controller: ProjectController,
     ) -> None:
         received: List[ReconstructionInstrumentsViewModel] = []
-        shape_logic.on_view_changed = received.append
+        instrument_logic.on_view_changed = received.append
 
-        shape_logic.update_display()
+        instrument_logic.update_display()
 
-        shape = project_controller.project.voices[0]
+        instrument = project_controller.project.voices[0]
         assert received[-1].footprint is not None
         assert (
             received[-1].footprint.total_bytes
             == features_footprint(
-                shape.instrument_features(),
-                loop_point=shape.loop_point,
+                instrument.instrument_features(),
+                loop_point=instrument.loop_point,
             ).total_bytes
         )

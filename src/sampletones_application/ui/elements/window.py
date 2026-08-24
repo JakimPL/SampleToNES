@@ -92,9 +92,9 @@ class GUIWindow(GUIPanel, ABC):
             yield
 
     def show(self, *args: Any, **kwargs: Any) -> None:
-        """Builds this appearance's tree and centres it once the layout has measured it.
+        """Builds this appearance's tree and centers it once the layout has measured it.
 
-        A window's size is known to DearPyGui only after a frame has drawn it, so the centre
+        A window's size is known to DearPyGui only after a frame has drawn it, so the center
         waits for that frame to arrive on its own. Waiting for it in place would hold the render
         thread, and a window is raised from wherever a result reaches the screen — including the
         callback drain that runs between frames, where the frame being waited for is the one this

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceIntermediate,
     ServiceProgress,
@@ -102,18 +102,18 @@ class TestServiceError:
         assert error == error  # noqa: PLR0124
 
 
-class TestServiceCancelled:
+class TestServiceCanceled:
     def test_instantiates(self) -> None:
-        cancelled = ServiceCancelled()
-        assert isinstance(cancelled, ServiceCancelled)
+        canceled = ServiceCanceled()
+        assert isinstance(canceled, ServiceCanceled)
 
     def test_frozen(self) -> None:
-        cancelled = ServiceCancelled()
+        canceled = ServiceCanceled()
         with pytest.raises(FrozenInstanceError):
-            cancelled.x = 1  # type: ignore[attr-defined]
+            canceled.x = 1  # type: ignore[attr-defined]
 
     def test_equality(self) -> None:
-        assert ServiceCancelled() == ServiceCancelled()
+        assert ServiceCanceled() == ServiceCanceled()
 
 
 class TestServiceIntermediate:

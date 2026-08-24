@@ -10,7 +10,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.render.logic import SongRenderLogic
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
@@ -331,7 +331,7 @@ class TestReportingTheOutcome:
         render.start()
         render.stop()
 
-        render.service.emit(ServiceCancelled())
+        render.service.emit(ServiceCanceled())
         render.advance_frame()
 
         assert render.window.hides == 1
@@ -343,9 +343,9 @@ class TestReportingTheOutcome:
         [
             ServiceSuccess(value=CHOSEN),
             ServiceError(exception=OSError("no room on the device")),
-            ServiceCancelled(),
+            ServiceCanceled(),
         ],
-        ids=["completed", "failed", "cancelled"],
+        ids=["completed", "failed", "canceled"],
     )
     def test_every_outcome_hands_the_application_back(
         self,

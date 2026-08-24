@@ -206,7 +206,7 @@ class GUIAudioSettingsWindow(GUIDialogWindow):
         )
 
     def _clip_warning_color(self, clip_fraction: float) -> ColorRGBA:
-        """Reddens the readout colour along the layout gradient by the projected boost fraction."""
+        """Reddens the readout color along the layout gradient by the projected boost fraction."""
         colors = self._layout.audio.master_gain
         return blend(colors.label_color.rgba, colors.clip_color.rgba, clip_fraction)
 

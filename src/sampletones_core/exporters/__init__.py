@@ -1,5 +1,5 @@
 from .exporter import Exporter
-from .feature import Features
+from .feature import Features, playing_channels
 from .implementation.noise import NoiseExporter
 from .implementation.pulse import PulseExporter
 from .implementation.triangle import TriangleExporter
@@ -18,4 +18,5 @@ __all__ = [
     "NoiseExporter",
     "PulseExporter",
     "TriangleExporter",
+    "playing_channels",
 ]

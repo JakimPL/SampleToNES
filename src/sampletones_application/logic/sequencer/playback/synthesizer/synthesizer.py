@@ -147,7 +147,7 @@ class RowSynthesizer:
         )
 
     def _ensure_groove(self, project: Project) -> None:
-        """Rebuilds the groove when the row rate or the metre it is spread over changes.
+        """Rebuilds the groove when the row rate or the meter it is spread over changes.
 
         An engine that holds a row for a whole number of ticks reaches a fractional row rate by
         varying that number from row to row, and the groove is where those counts are decided.

@@ -1,27 +1,27 @@
-from typing import Callable, Dict, FrozenSet, Optional
+from typing import Callable, Dict, Optional
 
 import numpy as np
 
-from sampletones_application.constants.instruments import SHAPE_CHANNEL
+from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
 )
 from sampletones_application.logic.reconstruction.editing import (
+    InstrumentEdit,
     InstrumentEditingProtocol,
     ReconstructionEdit,
-    ShapeEdit,
 )
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.reconstruction.instruments import (
+    InstrumentViewModel,
     ReconstructionInstrumentsViewModel,
-    ShapeInstrumentViewModel,
 )
 from sampletones_application.view_model.reconstruction.update import (
     ReconstructionUpdate,
 )
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_core.exporters import Features
+from sampletones_core.exporters import Features, playing_channels
 from sampletones_core.formats.famitracker.footprint import features_footprint
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -54,16 +54,23 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self.call(self.on_feature_data_changed, self._displayed_features())
 
     def _displayed_features(self) -> Optional[Dict[ChannelName, Features]]:
-        """The envelopes the panel draws: a reconstruction's channels, or a shape's own set.
+        """The envelopes the panel draws: a reconstruction's channels, or an instrument's own set.
 
-        A shape is drawn on the tab the panel shows it under, which is the channel offering every
-        dimension a shape writes.
+        An instrument is drawn on the tab the panel shows it under, which is the channel offering every
+        dimension an instrument writes.
         """
-        shape = self.shape_edit
-        if shape is not None:
-            return {SHAPE_CHANNEL: shape.features}
+        instrument = self.instrument_edit
+        if instrument is not None:
+            return self._instrument_channels(instrument)
 
         return self._current_generators()
+
+    @staticmethod
+    def _instrument_channels(
+        instrument: InstrumentEdit,
+    ) -> Dict[ChannelName, Features]:
+        """An instrument's envelopes under the channel the panel shows it on."""
+        return {INSTRUMENT_CHANNEL: instrument.features}
 
     def refresh_view(self) -> None:
         """Reports which channels play and the sizes they occupy, leaving the displayed envelopes as they are.
@@ -72,7 +79,10 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         channels settle on it. The envelopes themselves are left to the edit that started the
         regeneration, so a field the user is still typing in keeps what they wrote.
         """
-        self.call(self.on_view_changed, self._build_view_model(self._current_generators()))
+        self.call(
+            self.on_view_changed,
+            self._build_view_model(self._current_generators()),
+        )
 
     def _current_generators(self) -> Optional[Dict[ChannelName, Features]]:
         """The channels of the reconstruction in front of the panel, where one is."""
@@ -83,10 +93,10 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
                 return None
 
     @property
-    def shape_edit(self) -> Optional[ShapeEdit]:
-        """The shape in front of the panel, where one is."""
+    def instrument_edit(self) -> Optional[InstrumentEdit]:
+        """The instrument in front of the panel, where one is."""
         match self._editor.edited_instrument():
-            case ShapeEdit() as edit:
+            case InstrumentEdit() as edit:
                 return edit
             case _:
                 return None
@@ -95,21 +105,9 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self,
         channels: Optional[Dict[ChannelName, Features]],
     ) -> ReconstructionInstrumentsViewModel:
-        shape = self.shape_edit
-        if shape is not None:
-            return ReconstructionInstrumentsViewModel(
-                reconstruction_loaded=False,
-                playing_channels=frozenset({SHAPE_CHANNEL}),
-                footprint=SampleFootprintViewModel.from_instrument(
-                    features_footprint(shape.features, loop_point=shape.loop_point)
-                ),
-                shape=ShapeInstrumentViewModel(
-                    name=shape.name,
-                    root_pitch=shape.root_pitch,
-                    root_period=shape.root_period,
-                    loop_point=shape.loop_point,
-                ),
-            )
+        instrument = self.instrument_edit
+        if instrument is not None:
+            return self._instrument_view_model(instrument)
 
         if channels is None:
             return ReconstructionInstrumentsViewModel(
@@ -118,13 +116,37 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
                 footprint=None,
             )
 
-        playing_channels: FrozenSet[ChannelName] = frozenset(
-            channel_name for channel_name, features in channels.items() if features.has_frames
-        )
         return ReconstructionInstrumentsViewModel(
             reconstruction_loaded=True,
-            playing_channels=playing_channels,
+            playing_channels=playing_channels(channels),
             footprint=self._build_footprint(channels),
+        )
+
+    def _instrument_view_model(
+        self,
+        instrument: InstrumentEdit,
+    ) -> ReconstructionInstrumentsViewModel:
+        """What the panel shows of an instrument: its envelopes, its roots and what it costs.
+
+        An instrument is shown under one channel, and it plays there once its envelopes describe a
+        frame, so it stands by the way a reconstruction's silent channel does until the reader
+        writes one.
+        """
+        return ReconstructionInstrumentsViewModel(
+            reconstruction_loaded=False,
+            playing_channels=playing_channels(self._instrument_channels(instrument)),
+            footprint=SampleFootprintViewModel.from_instrument(
+                features_footprint(
+                    instrument.features,
+                    loop_point=instrument.loop_point,
+                )
+            ),
+            instrument=InstrumentViewModel(
+                name=instrument.name,
+                root_pitch=instrument.root_pitch,
+                root_period=instrument.root_period,
+                loop_point=instrument.loop_point,
+            ),
         )
 
     def _build_footprint(
@@ -151,9 +173,12 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         channel_name: ChannelName,
         value: int,
     ) -> None:
-        shape = self.shape_edit
-        if shape is not None:
-            self._editor.write_roots(pitch=value, period=shape.root_period)
+        instrument = self.instrument_edit
+        if instrument is not None:
+            self._editor.write_roots(
+                pitch=value,
+                period=instrument.root_period,
+            )
             self.update_display()
             return
 
@@ -171,7 +196,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
-        if self._write_shape_envelope(feature_key, data):
+        if self._write_instrument_envelope(feature_key, data):
             return
 
         self._report_edited_size(channel_name, feature_key, data)
@@ -189,7 +214,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
-        if self._write_shape_envelope(feature_key, data):
+        if self._write_instrument_envelope(feature_key, data):
             return
 
         self._report_edited_size(channel_name, feature_key, data)
@@ -201,34 +226,37 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
             )
         )
 
-    def handle_shape_root_period_changed(self, value: int) -> None:
-        """Moves the period the shape in front of the panel rests at on the noise channel."""
-        shape = self.shape_edit
-        if shape is None:
+    def handle_instrument_root_period_changed(self, value: int) -> None:
+        """Moves the period the instrument in front of the panel rests at on the noise channel."""
+        instrument = self.instrument_edit
+        if instrument is None:
             return
 
-        self._editor.write_roots(pitch=shape.root_pitch, period=value)
+        self._editor.write_roots(pitch=instrument.root_pitch, period=value)
         self.update_display()
 
-    def handle_shape_loop_point_changed(self, loop_point: Optional[int]) -> None:
-        """Sets the tick the shape in front of the panel repeats from."""
-        if self.shape_edit is None:
+    def handle_instrument_loop_point_changed(
+        self,
+        loop_point: Optional[int],
+    ) -> None:
+        """Sets the tick the instrument in front of the panel repeats from."""
+        if self.instrument_edit is None:
             return
 
         self._editor.write_loop_point(loop_point)
         self.update_display()
 
-    def _write_shape_envelope(
+    def _write_instrument_envelope(
         self,
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> bool:
-        """Writes one dimension of the shape in front of the panel, reporting whether it did.
+        """Writes one dimension of the instrument in front of the panel, reporting whether it did.
 
-        A shape stands on no audio, so an edit reaches it at once rather than through the
+        An instrument stands on no audio, so an edit reaches it at once rather than through the
         regeneration a reconstruction's envelopes go back through.
         """
-        if self.shape_edit is None:
+        if self.instrument_edit is None:
             return False
 
         self._editor.write_envelope(feature_key, data)

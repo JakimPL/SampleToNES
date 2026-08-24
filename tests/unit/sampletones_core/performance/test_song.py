@@ -8,7 +8,7 @@ from sampletones_core.performance import WalkProgress, song_instructions
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.timing import SongTiming
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 from tests.suite.performance import (
     make_pulse_reconstruction,
     place_instrument,
@@ -115,5 +115,5 @@ class TestWhatAWalkSaysAboutItself:
         assert counted == sorted(counted)
 
     def test_a_withdrawn_walk_stops_where_it_was_told(self) -> None:
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             song_instructions(_project(), lambda progress: False)

@@ -9,7 +9,7 @@ from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.hierarchy import TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import PitchTooltips
-from sampletones_application.constants.instruments import SHAPE_CHANNEL
+from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
 from sampletones_application.layout.general.colors.feature import FeatureColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
@@ -36,7 +36,7 @@ from sampletones_application.tags.reconstructions import (
     SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_CHECKBOX_LOOPS,
-    TAG_RECONSTRUCTIONS_INSTRUMENTS_GROUP_SHAPE,
+    TAG_RECONSTRUCTIONS_INSTRUMENTS_GROUP_FIELDS,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_INPUT_LOOP_POINT,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
@@ -69,8 +69,8 @@ from sampletones_application.utils.gui.dpg import (
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.instruments import (
+    InstrumentViewModel,
     ReconstructionInstrumentsViewModel,
-    ShapeInstrumentViewModel,
 )
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.constants.enums import (
@@ -119,7 +119,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         self.channel_plots: Dict[ChannelName, Dict[FeatureKey, GUIBarGraph]] = {}
         self._pitch_steppers: Dict[ChannelName, GUIPitchStepper] = {}
-        self._shape_root_period: Optional[GUIPitchStepper] = None
+        self._instrument_root_period: Optional[GUIPitchStepper] = None
         self._export_buttons: Dict[ChannelName, GUIButton] = {}
 
         self.tab_bar_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR
@@ -127,9 +127,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.mouse_item_handler_tag = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL, SUF_HANDLER_REGISTRY)
         self.sample_size_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TEXT_SAMPLE_SIZE
         self.sample_size_group_tag = compose_tag(self.sample_size_tag, SUF_GROUP)
-        self.shape_group_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_GROUP_SHAPE
-        self.shape_loops_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_CHECKBOX_LOOPS
-        self.shape_loop_point_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_INPUT_LOOP_POINT
+        self.instrument_fields_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_GROUP_FIELDS
+        self.instrument_loops_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_CHECKBOX_LOOPS
+        self.instrument_loop_point_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_INPUT_LOOP_POINT
 
         self._graphs: Dict[str, GUIBarGraph] = {}
         self._sequence_lengths: Dict[Tuple[ChannelName, FeatureKey], int] = {}
@@ -151,8 +151,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.on_pitch_value_changed: Optional[Callable[[ChannelName, int], None]] = None
         self.on_bar_data_changed: Optional[Callable[[ChannelName, FeatureKey, np.ndarray], None]] = None
         self.on_raw_data_changed: Optional[Callable[[ChannelName, FeatureKey, np.ndarray], None]] = None
-        self.on_shape_root_period_changed: Optional[Callable[[int], None]] = None
-        self.on_shape_loop_point_changed: Optional[Callable[[Optional[int]], None]] = None
+        self.on_instrument_root_period_changed: Optional[Callable[[int], None]] = None
+        self.on_instrument_loop_point_changed: Optional[Callable[[Optional[int]], None]] = None
 
         self._lbl_copy = language_manager["reconstructions.instruments.label.copy_button"]
         self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
@@ -230,7 +230,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         The figure names how much of the NES data area an export spends, so it reads as
         information beside the fields that change: the label column aligns with the stepper
-        below it, and the value carries the stepper's own read-only colour and font. A tooltip
+        below it, and the value carries the stepper's own read-only color and font. A tooltip
         names the export the figure measures, since the formats spend differently.
         """
         with labeled_field(
@@ -363,22 +363,22 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             window_tag,
         )
         self._create_pitch_stepper(channel_name, initial_pitch, window_tag)
-        if channel_name is SHAPE_CHANNEL:
-            self._create_shape_fields(window_tag)
+        if channel_name is INSTRUMENT_CHANNEL:
+            self._create_instrument_fields(window_tag)
 
         self._create_generator_feature_displays(channel_name, window_tag)
 
-    def _create_shape_fields(self, window_tag: str) -> None:
-        """Draws what a shape states beyond its envelopes: its noise root and its loop point.
+    def _create_instrument_fields(self, window_tag: str) -> None:
+        """Draws what an instrument states beyond its envelopes: its noise root and its loop point.
 
-        A shape sounds on every channel, so it states a root for the tonal channels — the stepper
+        An instrument sounds on every channel, so it states a root for the tonal channels — the stepper
         above these — and one for the noise channel's periods. The loop point is the tick its
         envelopes repeat from while a note is held.
         """
-        with dpg.group(tag=self.shape_group_tag, parent=window_tag, show=False):
-            self._shape_root_period = GUIPitchStepper(
-                tag=self.shape_group_tag,
-                parent=self.shape_group_tag,
+        with dpg.group(tag=self.instrument_fields_tag, parent=window_tag, show=False):
+            self._instrument_root_period = GUIPitchStepper(
+                tag=self.instrument_fields_tag,
+                parent=self.instrument_fields_tag,
                 kind=PERIOD_VALUE_KIND,
                 initial_value=RESTING_REFERENCE_PERIOD,
                 label=self._language_manager["reconstructions.instruments.label.root_period"],
@@ -389,47 +389,47 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 plus_minus_layout=self._pitch_stepper_style.plus_minus,
                 value_color=self._pitch_stepper_style.value_color,
             )
-            self._shape_root_period.on_value_changed = self._on_shape_root_period_changed
+            self._instrument_root_period.on_value_changed = self._on_instrument_root_period_changed
 
             with labeled_field(
                 self._language_manager["reconstructions.instruments.label.loop_point"],
                 self._pitch_stepper_style.dimensions.label_width,
-                parent=self.shape_group_tag,
+                parent=self.instrument_fields_tag,
             ):
                 dpg.add_checkbox(
-                    tag=self.shape_loops_tag,
+                    tag=self.instrument_loops_tag,
                     default_value=False,
-                    callback=self._on_shape_loops_toggled,
+                    callback=self._on_instrument_loops_toggled,
                 )
                 dpg.add_input_int(
-                    tag=self.shape_loop_point_tag,
+                    tag=self.instrument_loop_point_tag,
                     default_value=0,
                     min_value=0,
                     min_clamped=True,
                     width=self._pitch_stepper_style.dimensions.value_width,
                     step=1,
-                    callback=self._on_shape_loop_point_typed,
+                    callback=self._on_instrument_loop_point_typed,
                 )
 
-    def _on_shape_root_period_changed(self, value: int) -> None:
-        self.call(self.on_shape_root_period_changed, value)
+    def _on_instrument_root_period_changed(self, value: int) -> None:
+        self.call(self.on_instrument_root_period_changed, value)
 
-    def _on_shape_loops_toggled(self, _sender: Sender, app_data: bool) -> None:
-        point = dpg.get_value(self.shape_loop_point_tag) if app_data else None
-        self.call(self.on_shape_loop_point_changed, point)
+    def _on_instrument_loops_toggled(self, _sender: Sender, app_data: bool) -> None:
+        point = dpg.get_value(self.instrument_loop_point_tag) if app_data else None
+        self.call(self.on_instrument_loop_point_changed, point)
 
-    def _on_shape_loop_point_typed(self, _sender: Sender, app_data: int) -> None:
-        if dpg.get_value(self.shape_loops_tag):
-            self.call(self.on_shape_loop_point_changed, max(0, app_data))
+    def _on_instrument_loop_point_typed(self, _sender: Sender, app_data: int) -> None:
+        if dpg.get_value(self.instrument_loops_tag):
+            self.call(self.on_instrument_loop_point_changed, max(0, app_data))
 
-    def _apply_shape_fields(self, shape: ShapeInstrumentViewModel) -> None:
-        """Writes what a shape states into the fields that show it."""
-        if self._shape_root_period is not None:
-            self._shape_root_period.set_value(shape.root_period)
+    def _apply_instrument_fields(self, instrument: InstrumentViewModel) -> None:
+        """Writes what an instrument states into the fields that show it."""
+        if self._instrument_root_period is not None:
+            self._instrument_root_period.set_value(instrument.root_period)
 
-        dpg_set_value(self.shape_loops_tag, shape.loops)
-        dpg_set_value(self.shape_loop_point_tag, shape.loop_point if shape.loop_point is not None else 0)
-        dpg_configure_item(self.shape_loop_point_tag, enabled=shape.loops)
+        dpg_set_value(self.instrument_loops_tag, instrument.loops)
+        dpg_set_value(self.instrument_loop_point_tag, instrument.loop_point if instrument.loop_point is not None else 0)
+        dpg_configure_item(self.instrument_loop_point_tag, enabled=instrument.loops)
 
     def _default_initial_pitch(self, channel_name: ChannelName) -> int:
         return resting_reference(channel_name)
@@ -525,24 +525,24 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         A reconstruction shows a tab per channel, and every channel is editable for as long as it
         is open, so writing an envelope into a channel standing by is what puts it in play; a
-        muted tab label and a withheld export say which channels are there. A shape is one
+        muted tab label and a withheld export say which channels are there. An instrument is one
         instrument every channel reads, so it shows a single tab under its own name, carrying the
         roots and the loop point it states.
         """
-        shape = view_model.shape
+        instrument = view_model.instrument
         is_open = view_model.is_open
         dpg_configure_item(self.no_data_message_tag, show=not is_open)
         dpg_configure_item(self.tab_bar_tag, show=is_open)
         dpg_configure_item(self.sample_size_group_tag, show=is_open)
-        dpg_configure_item(self.shape_group_tag, show=shape is not None)
-        self._update_sizes(view_model.footprint, shows_one_instrument=shape is not None)
+        dpg_configure_item(self.instrument_fields_tag, show=instrument is not None)
+        self._update_sizes(view_model.footprint, shows_one_instrument=instrument is not None)
 
         for channel_name in ChannelName.items():
             tab_tag = self._get_generator_tab_tag(channel_name)
-            shown = channel_name is SHAPE_CHANNEL if shape is not None else view_model.reconstruction_loaded
+            shown = channel_name is INSTRUMENT_CHANNEL if instrument is not None else view_model.reconstruction_loaded
             dpg_configure_item(tab_tag, show=shown)
-            if shape is not None and channel_name is SHAPE_CHANNEL:
-                dpg_configure_item(tab_tag, label=shape.name)
+            if instrument is not None and channel_name is INSTRUMENT_CHANNEL:
+                dpg_configure_item(tab_tag, label=instrument.name)
             else:
                 dpg_configure_item(tab_tag, label=self._channel_labels[channel_name])
 
@@ -551,12 +551,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 channel_name in view_model.playing_channels,
             )
 
-        export_button = self._export_buttons.get(SHAPE_CHANNEL)
-        if export_button is not None and shape is not None:
-            export_button.set_enabled(False)
-
-        if shape is not None:
-            self._apply_shape_fields(shape)
+        if instrument is not None:
+            self._apply_instrument_fields(instrument)
 
     def _apply_playing_state(
         self,
@@ -565,7 +561,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     ) -> None:
         """Marks one channel's tab as playing or standing by.
 
-        The muted theme reaches the tab label alone; the tab's body carries its own text colour,
+        The muted theme reaches the tab label alone; the tab's body carries its own text color,
         so a channel standing by stays as readable to edit as one that plays.
         """
         theme_tag = TAG_GLOBAL_THEME_INSTRUMENT_TABS if is_playing else TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED
@@ -584,8 +580,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         """Writes the byte figures the voice in front of the panel occupies.
 
         A reconstruction states its own total and a figure per channel, and a channel standing by
-        is written by no export, so it reads as the nothing it costs. A shape is one instrument
-        every channel reaches, so the tab it is shown under carries the whole figure.
+        is written by no export, so it reads as the nothing it costs. Every channel reaches the same
+        instrument, so the tab it is shown under carries the whole figure.
         """
         if footprint is None:
             return
@@ -593,7 +589,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         dpg_set_value(self.sample_size_tag, self._format_size(footprint.total_bytes))
         for channel_name in ChannelName.items():
             instrument_bytes = footprint.bytes_for(channel_name)
-            if shows_one_instrument and channel_name is SHAPE_CHANNEL:
+            if shows_one_instrument and channel_name is INSTRUMENT_CHANNEL:
                 instrument_bytes = footprint.total_bytes
 
             dpg_set_value(
@@ -914,10 +910,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         feature_key: FeatureKey,
         item_count: int,
     ) -> None:
-        """Colours the sequence input by how a FamiTracker export treats its length.
+        """Colors the sequence input by how a FamiTracker export treats its length.
 
         A sequence longer than ``MAX_SEQUENCE_ITEMS`` exports its opening items, so the
-        input carries the warning colour to show which part of the envelope reaches a
+        input carries the warning color to show which part of the envelope reaches a
         FamiTracker file.
         """
         self._sequence_lengths[(channel_name, feature_key)] = item_count

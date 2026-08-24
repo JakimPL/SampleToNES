@@ -2,8 +2,8 @@ from typing import Optional
 
 import numpy as np
 
-from sampletones_core.constants.enums import FeatureKey
-from sampletones_core.exporters import Features
+from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.exporters import Features, playing_channels
 
 
 def build_features(frames: int, *, duty_cycle_frames: Optional[int] = None) -> Features:
@@ -57,3 +57,29 @@ class TestHeldFeatures:
         features.leave_to_channel((FeatureKey.VOLUME, FeatureKey.DUTY_CYCLE))
         assert features.duty_cycle is None
         assert features.held_features == (FeatureKey.VOLUME,)
+
+
+class TestWhichChannelsSound:
+    """Describing a frame is what puts a channel in play, and every reader asks the same way."""
+
+    def test_a_channel_describing_frames_sounds(self) -> None:
+        channels = {ChannelName.PULSE1: build_features(8)}
+
+        assert playing_channels(channels) == frozenset({ChannelName.PULSE1})
+
+    def test_a_channel_describing_nothing_stands_by(self) -> None:
+        channels = {ChannelName.TRIANGLE: build_features(0)}
+
+        assert playing_channels(channels) == frozenset()
+
+    def test_the_channels_that_sound_are_told_from_the_ones_that_stand_by(self) -> None:
+        channels = {
+            ChannelName.PULSE1: build_features(8),
+            ChannelName.PULSE2: build_features(0),
+            ChannelName.NOISE: build_features(4),
+        }
+
+        assert playing_channels(channels) == frozenset({ChannelName.PULSE1, ChannelName.NOISE})
+
+    def test_nothing_offered_sounds_nowhere(self) -> None:
+        assert playing_channels({}) == frozenset()

@@ -32,7 +32,7 @@ def _press(text: str) -> KeyEvent:
 
 def _tracker(
     channel: Optional[ChannelName] = ChannelName.PULSE1,
-    subcolumn: SubColumn = SubColumn.INSTRUMENT,
+    subcolumn: SubColumn = SubColumn.VOICE,
 ) -> GUISequencerTrackerPanel:
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._shortcuts = shipped_source()
@@ -101,7 +101,7 @@ class TestTrackerSelectionKeys:
         region = states[-1].region
         assert region is not None
         assert region.slots == (
-            TrackerSlot(ChannelName.PULSE1, SubColumn.INSTRUMENT),
+            TrackerSlot(ChannelName.PULSE1, SubColumn.VOICE),
             TrackerSlot(ChannelName.PULSE1, SubColumn.TRANSPOSE),
         )
 

@@ -4,7 +4,7 @@ from typing import Tuple
 import pytest
 
 from sampletones_core.project.settings import ProjectSettings
-from sampletones_core.timing.metre import Metre
+from sampletones_core.timing.meter import Meter
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 
@@ -90,12 +90,12 @@ class TestSpans(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_spans_match(self, test_case: TestCase) -> None:
-        metre = Metre(
+        meter = Meter(
             rows=test_case.rows,
             first_highlight=test_case.first_highlight,
             second_highlight=test_case.second_highlight,
         )
-        assert metre.spans == test_case.expected
+        assert meter.spans == test_case.expected
 
     @pytest.mark.parametrize(
         "test_case",
@@ -103,12 +103,12 @@ class TestSpans(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_spans_cover_the_pattern(self, test_case: TestCase) -> None:
-        metre = Metre(
+        meter = Meter(
             rows=test_case.rows,
             first_highlight=test_case.first_highlight,
             second_highlight=test_case.second_highlight,
         )
-        assert sum(sum(beats) for beats in metre.spans) == test_case.rows
+        assert sum(sum(beats) for beats in meter.spans) == test_case.rows
 
 
 class TestBounds(BaseTestSuite):
@@ -144,18 +144,18 @@ class TestBounds(BaseTestSuite):
     def test_field_below_one_is_rejected(self, test_case: TestCase) -> None:
         fields = {"rows": 16, "first_highlight": 4, "second_highlight": 16, test_case.field: 0}
         with pytest.raises(ValueError, match=test_case.expected):
-            Metre(**fields)
+            Meter(**fields)
 
 
 class TestProjectSettings:
     def test_settings_state_the_highlights(self) -> None:
         settings = ProjectSettings(first_highlight=3, second_highlight=12)
-        assert Metre.from_settings(settings, rows=24) == Metre(
+        assert Meter.from_settings(settings, rows=24) == Meter(
             rows=24,
             first_highlight=3,
             second_highlight=12,
         )
 
     def test_the_default_settings_state_common_time(self) -> None:
-        metre = Metre.from_settings(ProjectSettings(), rows=16)
-        assert metre.spans == ((4, 4, 4, 4),)
+        meter = Meter.from_settings(ProjectSettings(), rows=16)
+        assert meter.spans == ((4, 4, 4, 4),)

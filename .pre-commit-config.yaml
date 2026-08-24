@@ -73,6 +73,14 @@ repos:
         pass_filenames: false
         verbose: true
 
+      - id: shortcut-actions
+        name: shortcut actions
+        entry: uv run scripts/checks/shortcut_actions.py
+        language: system
+        files: (\.py|^src/sampletones_config/keybindings/.*\.yaml)$
+        pass_filenames: false
+        verbose: true
+
       - id: mypy
         name: mypy
         entry: uv run mypy

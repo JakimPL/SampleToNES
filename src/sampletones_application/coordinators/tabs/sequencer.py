@@ -7,11 +7,13 @@ from sampletones_application.categories.elements.sequencer import (
     SequencerHistoryElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
+from sampletones_application.categories.instrument import InstrumentImportMessages
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.edit.protocol import EditSurfaceProtocol
+from sampletones_application.coordinators.export import InstrumentExportCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -61,6 +63,7 @@ from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
+    TAG_GLOBAL_DIALOG_INSTRUMENT_IMPORTED,
     TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
     TAG_GLOBAL_TAB_SEQUENCER,
     TAG_GLOBAL_TABS,
@@ -87,8 +90,13 @@ from sampletones_application.ui.panels.sequencer.history import GUISequencerHist
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
-from sampletones_application.ui.panels.sequencer.voices import GUISequencerVoicesPanel
+from sampletones_application.ui.panels.sequencer.voices.panel import (
+    GUISequencerVoicesPanel,
+)
 from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.utils.file_dialogs.api import open_file_dialog
+from sampletones_application.utils.file_dialogs.filter import FileFilter
+from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.clipboard import (
     SystemTextClipboard,
     TextClipboard,
@@ -125,12 +133,17 @@ from sampletones_application.view_model.shared.history import (
 )
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.formats.famitracker.voice import ImportedVoice
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_core.utils.display import display_id
-from sampletones_shared.exceptions import SampleToNESError
+from sampletones_shared.exceptions import LoadInstrumentError, SampleToNESError
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import (
+    EXT_FILE_INSTRUMENT,
+    EXT_FILE_RECONSTRUCTION,
+)
 from sampletones_shared.types.callback import StringCallback, VoidCallback
 
 _UndoableParams = ParamSpec("_UndoableParams")
@@ -152,6 +165,7 @@ class SequencerTabCoordinator:
         project_controller: ProjectController,
         history: HistoryManager,
         original_audio_locator: OriginalAudioLocator,
+        instrument_exports: InstrumentExportCoordinator,
         *,
         tab_active: ActivePredicate,
         layout: SequencerTabParameters,
@@ -169,6 +183,7 @@ class SequencerTabCoordinator:
         self._session_manager = session_manager
         self._history = history
         self._original_audio_locator = original_audio_locator
+        self._instrument_exports = instrument_exports
         self._on_edit_sample_requested = on_edit_sample_requested
         self._on_favorite_changed = on_favorite_changed
         self._on_sample_reconstruction_replaced = on_sample_reconstruction_replaced
@@ -178,6 +193,7 @@ class SequencerTabCoordinator:
         self._language_manager = language_manager
         self._dialogs = dialogs
 
+        self._import_messages = InstrumentImportMessages.build(language_manager)
         self._msg_no_project = language_manager["global.dialog.message.no_project_open"]
         self._ttl_no_project = language_manager["global.dialog.title.no_project_open"]
         self._nes_frequency_change_acknowledged: bool = False
@@ -637,22 +653,161 @@ class SequencerTabCoordinator:
             self._sequencer_voices_logic.duplicate_voice,
             detail=self._history_detail.duplicate_voice,
         )
-        self._sequencer_voices_panel.on_new_shape_requested = self._add_shape
+        self._sequencer_voices_panel.on_new_instrument_requested = self.add_instrument
+        self._sequencer_voices_panel.on_add_sample_requested = self.add_sample_from_file
+        self._sequencer_voices_panel.on_import_instrument_requested = self.import_instrument
+        self._sequencer_voices_panel.voice_instruments = self._instrument_exports.voice_instruments
+        self._sequencer_voices_panel.on_export_instrument_requested = self._instrument_exports.request_voice
+        self._sequencer_voices_panel.instrument_channels = self._sequencer_voices_logic.instrument_channels
+        self._sequencer_voices_panel.on_instrument_from_channel_requested = self.add_instrument_from_channel
 
-    def _add_shape(self) -> None:
+    def add_instrument(self) -> None:
         """Appends a hand-written voice, named for the position it takes in the list.
 
-        A shape opens with no envelope, so it is the reader's to write; naming it by its position
-        gives the list a readable entry until they rename it.
+        An instrument arrives sustaining at full volume, so it plays as soon as it is placed and the
+        envelopes stay the reader's to write; naming it by its position gives the list a readable
+        entry until they rename it.
         """
-        name = self._language_manager["sequencer.voices.template.shape_name"].format(
+        name = self._language_manager["sequencer.voices.template.instrument_name"].format(
             position=display_id(self._project_controller.voice_count),
         )
         with self._history.transaction(
-            HistoryAction.ADD_SHAPE,
-            detail=self._history_detail.add_shape(name),
+            HistoryAction.ADD_INSTRUMENT,
+            detail=self._history_detail.add_instrument(name),
         ):
-            self._sequencer_voices_logic.add_shape(name)
+            self._sequencer_voices_logic.add_new_instrument(name)
+
+    def add_instrument_from_channel(
+        self,
+        voice_id: str,
+        channel_name: ChannelName,
+    ) -> None:
+        """Takes what one channel of a voice plays as an instrument of its own, then opens it.
+
+        A recording states its channels as frames, and this reads one of them back as envelopes,
+        so what the conversion found becomes a voice the reader edits by hand. The new voice is
+        brought up where it is edited, since seeing those envelopes is what taking the channel out
+        was for.
+
+        Args:
+            voice_id: The voice the channel belongs to.
+            channel_name: The channel whose envelopes the instrument takes.
+        """
+        instrument = self._sequencer_voices_logic.instrument_from_channel(voice_id, channel_name)
+        if instrument is None:
+            return
+
+        with self._history.transaction(
+            HistoryAction.ADD_INSTRUMENT,
+            detail=self._history_detail.add_instrument(instrument.name),
+        ):
+            self._sequencer_voices_logic.add_instrument(instrument)
+
+        self._sequencer_voices_logic.request_edit(instrument.id)
+
+    def add_sample_from_file(self) -> None:
+        """Brings a reconstruction saved anywhere on disk into the pool as a sample.
+
+        The tree beside the list reaches the reconstructions folder, so a file kept elsewhere
+        arrives through the system's own browser, which opens on the folder the last one came
+        from.
+        """
+        filepath = open_file_dialog(
+            title=self._language_manager["sequencer.voices.title.add_sample_dialog"],
+            initial_directory=self._session_manager.get_reconstruction_path(),
+            filters=(
+                FileFilter.for_extensions(
+                    self._language_manager["global.dialog.filter.reconstruction"],
+                    [EXT_FILE_RECONSTRUCTION],
+                ),
+            ),
+        )
+
+        self._import_located_reconstruction(filepath)
+
+    @ignore_none_path
+    def _import_located_reconstruction(self, filepath: Path) -> None:
+        self._session_manager.set_reconstruction_path(filepath.parent)
+        self.import_reconstruction(filepath)
+
+    def import_instrument(self) -> None:
+        """Brings a FamiTracker instrument file into the pool as an instrument voice.
+
+        The file arrives through the system's own browser, which opens on the folder the last
+        instrument was written to or read from, so an export and the import that follows it meet
+        in one place. A project is asked for first, since a voice needs a pool to land in.
+        """
+        if not self._project_controller.is_open:
+            self._dialogs.show_info(
+                TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
+                self._msg_no_project,
+                self._ttl_no_project,
+            )
+            return
+
+        filepath = open_file_dialog(
+            title=self._language_manager["sequencer.voices.title.import_instrument_dialog"],
+            initial_directory=self._session_manager.get_instrument_path(),
+            filters=(
+                FileFilter.for_extensions(
+                    self._language_manager["global.dialog.filter.famitracker_instrument"],
+                    [EXT_FILE_INSTRUMENT],
+                ),
+            ),
+        )
+
+        self._import_located_instrument(filepath)
+
+    @ignore_none_path
+    def _import_located_instrument(self, filepath: Path) -> None:
+        """Reads a located instrument file into the pool, then reports what it held.
+
+        The file is read before the pool is touched, so a file the reader cannot use leaves the
+        project as it stands and the history without an entry.
+        """
+        self._session_manager.set_instrument_path(filepath.parent)
+        imported = self._read_instrument(filepath)
+        if imported is None:
+            return
+
+        with self._history.transaction(
+            HistoryAction.ADD_INSTRUMENT,
+            detail=self._history_detail.add_instrument(imported.voice.name),
+        ):
+            self._sequencer_voices_logic.add_instrument(imported.voice)
+
+        self._report_import(imported)
+
+    def _read_instrument(self, filepath: Path) -> Optional[ImportedVoice]:
+        """Reads an instrument file, reporting a file the reader cannot take as a voice.
+
+        Returns:
+            Optional[ImportedVoice]: The voice the file describes, or ``None`` once the failure
+            has been shown.
+        """
+        try:
+            return self._sequencer_voices_logic.read_instrument(filepath)
+        except FileNotFoundError as exception:
+            logger.error_with_traceback(exception, f"No instrument file at {filepath}")
+            self._dialogs.show_file_not_found(
+                filepath,
+                self._language_manager["sequencer.voices.message.instrument_not_found"],
+            )
+        except (LoadInstrumentError, OSError) as exception:
+            logger.error_with_traceback(exception, f"Failed to read an instrument from {filepath}")
+            self._dialogs.show_error(exception)
+
+        return None
+
+    def _report_import(self, imported: ImportedVoice) -> None:
+        """Names what the instrument file carried beyond the voice the pool took from it."""
+        notice = self._import_messages.notice(imported.voice.name, imported.omissions)
+        if notice is not None:
+            self._dialogs.show_info(
+                TAG_GLOBAL_DIALOG_INSTRUMENT_IMPORTED,
+                notice,
+                self._import_messages.title,
+            )
 
     def _wire_browser_callbacks(self) -> None:
         self._sequencer_browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
@@ -761,7 +916,7 @@ class SequencerTabCoordinator:
 
         Every mutation the wrapped callback triggers is grouped under ``action``;
         a gesture that changes nothing records no entry. ``detail`` computes the
-        entry's coloured description segments from the same arguments the hook
+        entry's colored description segments from the same arguments the hook
         receives, and ``coalesce`` computes the gesture's target key from them:
         consecutive gestures sharing the same action and target collapse into a
         single entry.
@@ -862,7 +1017,7 @@ class SequencerTabCoordinator:
     ) -> None:
         """Hands the project's song settings to the two panels that read them.
 
-        The module panel shows the timing fields themselves; the tracker reads the metre out of
+        The module panel shows the timing fields themselves; the tracker reads the meter out of
         the same view model, so a highlight edited in the project properties retints the grid as
         soon as the dialog commits.
         """
@@ -989,7 +1144,7 @@ class SequencerTabCoordinator:
         """Draws every table again so its tints take the palette now in place.
 
         DearPyGui keeps a table's row, column and cell tints as state of the table rather than
-        as a property of an item, so they take a new colour by being issued again. Each panel
+        as a property of an item, so they take a new color by being issued again. Each panel
         answers for the tints it owns, and this is where the palette asks all three.
         """
         self._sequencer_tracker_panel.repaint()
@@ -1021,7 +1176,7 @@ class SequencerTabCoordinator:
         """Settles the marks the transport owns, and how far the grid chases the playhead.
 
         The player emits a view on every position update and on every change to the setting, so
-        reading the follow behaviour here keeps the grid in step both while a song sounds and the
+        reading the follow behavior here keeps the grid in step both while a song sounds and the
         moment the reader picks another mode.
         """
         self._sequencer_tracker_panel.set_row_following(view_model.follow_mode.follows_row)
@@ -1246,7 +1401,7 @@ class SequencerTabCoordinator:
 
         The detail is composed while the sample still holds the outgoing reconstruction, so it reads
         the name being replaced alongside the incoming one. The replacement is announced in the same
-        window, ahead of the substitution, because an editor holding the sample open recognises it by
+        window, ahead of the substitution, because an editor holding the sample open recognizes it by
         the identity of the reconstruction it is about to give up. The frequency adoption, the rename,
         and the substitution share a single history entry, so one undo restores the previous rate,
         name, and audio together.
@@ -1325,10 +1480,7 @@ class SequencerTabCoordinator:
         """Applies an inline rename, ignoring a blank name so the sample keeps its current one."""
         stripped = name.strip()
         if stripped:
-            detail = self._history_detail.rename_voice(
-                self._sequencer_voices_logic.voice_name(voice_id),
-                stripped,
-            )
+            detail = self._history_detail.rename_voice(voice_id, stripped)
             with self._history.transaction(
                 HistoryAction.RENAME_SAMPLE,
                 detail=detail,
@@ -1532,7 +1684,7 @@ class SequencerTabCoordinator:
         self._sync_browser_width()
 
     def _build_center_column(self, parent: str) -> None:
-        """Stacks the order table and tracker tracker down the centre column."""
+        """Stacks the order table and tracker tracker down the center column."""
         self._sequencer_order_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._sequencer_tracker_panel.create_panel(parent)
@@ -1549,6 +1701,10 @@ class SequencerTabCoordinator:
     @property
     def player(self) -> AudioPlayerProtocol:
         return self._guarded_player
+
+    def build_voice_actions(self) -> None:
+        """States the chosen voice's actions into the menu being built, for the bar's Voice group."""
+        self._sequencer_voices_panel.build_voice_actions()
 
     @property
     def edit_surfaces(self) -> Tuple[EditSurfaceProtocol, ...]:

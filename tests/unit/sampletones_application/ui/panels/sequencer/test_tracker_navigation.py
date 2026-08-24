@@ -32,7 +32,7 @@ def _panel() -> GUISequencerTrackerPanel:
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._shortcuts = shipped_source()
     panel._input_state = TrackerInputState(
-        cursor=TrackerCursor(CURSOR_ROW, None, SubColumn.INSTRUMENT),
+        cursor=TrackerCursor(CURSOR_ROW, None, SubColumn.VOICE),
         pending="",
     )
     panel._layout = SimpleNamespace(tracker=SimpleNamespace(page_size=PAGE_SIZE))

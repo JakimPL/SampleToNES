@@ -3,6 +3,15 @@ from .base import SampleToNESError
 from .callback import CallbackQueueStop
 from .cuda import CuPyNotInstalledWarning
 from .dialog import FileDialogUnavailableError
+from .instrument import (
+    IncompatibleInstrumentVersionError,
+    InstrumentError,
+    InvalidInstrumentValuesError,
+    LoadInstrumentError,
+    MalformedInstrumentError,
+    NotAnInstrumentFileError,
+    UnsupportedInstrumentTypeError,
+)
 from .language import LanguageError, MalformedTextKeyError, MissingTextError
 from .library import (
     IncompatibleLibraryDataVersionError,
@@ -15,7 +24,7 @@ from .library import (
     NoLibraryDataError,
     UnhandledLibraryError,
 )
-from .operation import OperationCancelled
+from .operation import OperationCanceled
 from .player import (
     DriverBuildError,
     PlayerError,
@@ -45,6 +54,7 @@ from .validation import (
     DeserializationError,
     InvalidMetadataError,
     SerializationError,
+    TruncatedDataError,
 )
 from .window import WindowError, WindowNotAvailableError
 
@@ -55,12 +65,15 @@ __all__ = [
     "DeserializationError",
     "DriverBuildError",
     "FileDialogUnavailableError",
+    "IncompatibleInstrumentVersionError",
     "IncompatibleLibraryDataVersionError",
     "IncompatibleProjectVersionError",
     "IncompatibleReconstructionVersionError",
     "IncompleteHistogramRebinningWarning",
     "IncorrectReconstructionDataError",
     "InstructionTypeMismatchError",
+    "InstrumentError",
+    "InvalidInstrumentValuesError",
     "InvalidLibraryDataError",
     "InvalidLibraryDataValuesError",
     "InvalidMetadataError",
@@ -70,16 +83,19 @@ __all__ = [
     "LanguageError",
     "LibraryDisplayError",
     "LibraryError",
+    "LoadInstrumentError",
     "LoadLibraryError",
     "LoadProjectError",
     "LoadReconstructionError",
+    "MalformedInstrumentError",
     "MalformedTextKeyError",
     "MissingProjectDataFileError",
     "MissingTextError",
     "NoFilesToProcessError",
     "NoLibraryDataError",
     "NotAValidArchiveError",
-    "OperationCancelled",
+    "NotAnInstrumentFileError",
+    "OperationCanceled",
     "PlaybackError",
     "PlayerError",
     "ReconstructionError",
@@ -87,10 +103,12 @@ __all__ = [
     "SerializationError",
     "SongTooLargeError",
     "ToolchainMissingError",
+    "TruncatedDataError",
     "UnhandledLibraryError",
     "UnhandledProjectError",
     "UnhandledReconstructionError",
     "UnsupportedAudioFormatError",
+    "UnsupportedInstrumentTypeError",
     "WindowError",
     "WindowNotAvailableError",
 ]

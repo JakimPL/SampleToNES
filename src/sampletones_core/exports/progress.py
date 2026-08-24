@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Callable, Final, Optional
 
 from sampletones_core.exports.stage import ExportStage
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 
 
 @dataclass(frozen=True)
@@ -47,7 +47,7 @@ def announce(
         total: What the stage counts up to, and ``None`` where only the data decides.
 
     Raises:
-        OperationCancelled: If the run is no longer wanted.
+        OperationCanceled: If the run is no longer wanted.
     """
     if not report(ExportProgress(stage=stage, completed=completed, total=total)):
-        raise OperationCancelled(f"the export was withdrawn while {stage}")
+        raise OperationCanceled(f"the export was withdrawn while {stage}")

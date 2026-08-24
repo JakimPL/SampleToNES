@@ -344,7 +344,7 @@ class GUIConverterPanel(GUIPanel):
         self.call(self.on_source_dropped_on_level, Path(key), position)
 
     def _show_row_menu(self, key: str) -> None:
-        """Names the moves the row can make, greying out the ones that would change nothing,
+        """Names the moves the row can make, graying out the ones that would change nothing,
         and offers the recording's own filesystem actions below them."""
         row = self._stems_list.row(key)
         if row is None:

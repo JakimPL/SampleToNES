@@ -7,7 +7,7 @@ from sampletones_core.reconstructions import Reconstruction
 
 
 @dataclass(frozen=True)
-class InstrumentEdit:
+class ChannelEdit:
     """A regenerated instrument paired with the channel and feature the reader moved.
 
     Carrying the request context alongside the fresh reconstruction lets the project history
@@ -35,4 +35,4 @@ class StemRemoval:
         return None
 
 
-ReconstructionEdit: TypeAlias = Union[InstrumentEdit, StemRemoval]
+ReconstructionEdit: TypeAlias = Union[ChannelEdit, StemRemoval]

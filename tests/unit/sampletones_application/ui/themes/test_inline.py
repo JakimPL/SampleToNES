@@ -34,7 +34,7 @@ def _item_types(theme: int) -> Set[int]:
 
 
 def _colors(theme: int, *, enabled_state: bool) -> Dict[int, ColorRGBA]:
-    """The colours one component carries, keyed by the DearPyGui colour they target."""
+    """The colors one component carries, keyed by the DearPyGui color they target."""
     component = _components(theme)[enabled_state]
     return {
         dpg.get_item_configuration(entry)["target"]: tuple(int(value) for value in dpg.get_value(entry))
@@ -52,14 +52,14 @@ def context() -> Generator[None, None, None]:
 
 
 class TestSelectableTextTheme:
-    def test_the_text_colour_is_the_theme_s_whole_claim(self, context: None) -> None:
+    def test_the_text_color_is_the_theme_s_whole_claim(self, context: None) -> None:
         """A cell keeps the hover and selection shades of the table it sits in."""
         theme = create_selectable_text_theme(TEXT_COLOR)
 
         assert _colors(theme, enabled_state=True) == {dpg.mvThemeCol_Text: TEXT_RGBA}
 
     @pytest.mark.parametrize("enabled_state", ENABLED_STATES, ids=["enabled", "disabled"])
-    def test_both_enabled_states_carry_the_colour(self, context: None, enabled_state: bool) -> None:
+    def test_both_enabled_states_carry_the_color(self, context: None, enabled_state: bool) -> None:
         theme = create_selectable_text_theme(TEXT_COLOR)
 
         assert _colors(theme, enabled_state=enabled_state)[dpg.mvThemeCol_Text] == TEXT_RGBA

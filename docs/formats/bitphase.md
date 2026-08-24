@@ -84,11 +84,11 @@ sets `loop = len - 1` and rests on the level that row carries — silence where 
 envelope ends on a note-off item, the channel's own level where the slice holds its
 volume. A voice's loop point drives this, the same point the FamiTracker exporter reads.
 
-**A shape's slices.** Bitphase bakes a channel's registers tick by tick, so a
-[shape](../glossary.md#shape) reaches a document as a slice per channel it sounds on,
-each reading the dimensions that channel offers and moving around the root it states.
-The envelopes are one set whatever the channel, so the slices differ only in what each
-channel reads of them.
+**A hand-written instrument's slices.** Bitphase bakes a channel's registers tick by
+tick, so an [instrument](../glossary.md#instrument) written by hand reaches a document
+as a slice per channel it sounds on, each reading the dimensions that channel offers
+and moving around the root it states. The envelopes are one set whatever the channel,
+so the slices differ only in what each channel reads of them.
 
 **A held volume.** A slice whose volume envelope carries no item leaves its level to the
 channel, so the exporter writes a full `volumeOrRate` for every frame the slice
@@ -233,7 +233,7 @@ you would see in the tracker either way.
 
 ## F. Bitphase capacity limits
 
-| Quantity | Bitphase limit | Exporter behaviour |
+| Quantity | Bitphase limit | Exporter behavior |
 | --- | --- | --- |
 | Items per instrument row list | unbounded | writes the envelope whole |
 | Rows per table | unbounded | writes the contour, or the groove, whole |

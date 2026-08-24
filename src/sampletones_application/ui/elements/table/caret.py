@@ -19,7 +19,7 @@ def _as_item_id(item: Sender) -> Sender:
     """Resolves an alias string to its numeric item id, passing ids through unchanged.
 
     ``get_active_window`` and ``get_item_parent`` report items by alias while stored tags
-    are also aliases, so both sides are normalised to ids before comparison.
+    are also aliases, so both sides are normalized to ids before comparison.
     """
     if isinstance(item, str):
         return int(dpg.get_alias_id(item))

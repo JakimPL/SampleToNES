@@ -1,7 +1,7 @@
 from typing import Final
 
 from sampletones_player.compression.progress.report import CodecProgress, CodecReporter
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 
 NOTHING_FOUND: Final[int] = 0
 NOTHING_LAID_DOWN: Final[int] = 0
@@ -35,7 +35,7 @@ class CodecMonitor:
             size: The bytes the dictionary and the eight streams now take together.
 
         Raises:
-            OperationCancelled: If the run is no longer wanted.
+            OperationCanceled: If the run is no longer wanted.
         """
         self._progress = CodecProgress(phrases=phrases, size=size)
         self.poll()
@@ -44,10 +44,10 @@ class CodecMonitor:
         """Offers what the run last reached, which is how a long stretch answers a withdrawal.
 
         Raises:
-            OperationCancelled: If the run is no longer wanted.
+            OperationCanceled: If the run is no longer wanted.
         """
         if not self._report(self._progress):
-            raise OperationCancelled(
+            raise OperationCanceled(
                 f"the encoding was withdrawn holding {self._progress.phrases} phrases "
                 f"and {self._progress.size} bytes"
             )

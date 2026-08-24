@@ -1,4 +1,3 @@
-import importlib.util
 import os
 from typing import Final, Optional
 
@@ -6,13 +5,12 @@ from sampletones_application.utils.file_dialogs.backends.kdialog import KDialogB
 from sampletones_application.utils.file_dialogs.backends.zenity import ZenityBackend
 from sampletones_application.utils.file_dialogs.protocol import FileDialogBackend
 from sampletones_shared.exceptions import FileDialogUnavailableError
+from sampletones_shared.utils.system.modules import JEEPNEY_MODULE, TKINTER_MODULE, module_available
 from sampletones_shared.utils.system.programs import locate_program
 from sampletones_shared.utils.system.system import System
 
 KDIALOG: Final[str] = "kdialog"
 ZENITY: Final[str] = "zenity"
-TKINTER_MODULE: Final[str] = "tkinter"
-JEEPNEY_MODULE: Final[str] = "jeepney"
 DESKTOP_ENVIRONMENT_VARIABLE: Final[str] = "XDG_CURRENT_DESKTOP"
 KDE_DESKTOP: Final[str] = "KDE"
 
@@ -78,7 +76,7 @@ def _portal_backend() -> Optional[FileDialogBackend]:
     ``jeepney`` is declared for Linux alone, so its presence is probed before the portal module
     is imported, which leaves application startup on every other platform independent of it.
     """
-    if importlib.util.find_spec(JEEPNEY_MODULE) is None:
+    if not module_available(JEEPNEY_MODULE):
         return None
 
     from sampletones_application.utils.file_dialogs.backends.portal.backend import portal_backend
@@ -94,7 +92,7 @@ def _tkinter_backend() -> Optional[FileDialogBackend]:
     probed before the backend module is imported. Keeping the import inside this function leaves
     application startup independent of Tk.
     """
-    if importlib.util.find_spec(TKINTER_MODULE) is None:
+    if not module_available(TKINTER_MODULE):
         return None
 
     from sampletones_application.utils.file_dialogs.backends.tkinter import TkinterBackend

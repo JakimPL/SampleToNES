@@ -8,8 +8,8 @@ from sampletones_core.exports.request import ProjectExport
 from sampletones_core.project import Project
 from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.project.song import Song
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.types.callback import VoidCallback
@@ -202,60 +202,60 @@ class ProjectController(CallbackMixin):
         self._announce(self.on_voices_changed)
         return sample
 
-    def add_shape(self, name: str) -> Shape:
-        """Appends a hand-written voice, resting at the roots a channel added by hand sounds on.
+    def add_instrument(self, instrument: Instrument) -> Instrument:
+        """Appends a hand-written voice, which the voice list holds and the tracker can name.
 
-        A shape opens with no envelope, so every dimension is the channel's until one is written;
-        the voice list holds it from this moment and the tracker can name it.
+        An instrument is its own record, so whoever made it — a reader asking for a new one, an
+        instrument file read from disk, a sample's channel frozen into envelopes — hands the
+        whole voice over and the pool takes it as it stands.
         """
-        shape = Shape(name=name)
-        self.project.voices.append(shape)
+        self.project.voices.append(instrument)
         self._touch()
         self._announce(self.on_voices_changed)
-        return shape
+        return instrument
 
-    def set_shape_envelope(
+    def set_instrument_envelope(
         self,
         voice_id: str,
         feature_key: FeatureKey,
         items: Tuple[int, ...],
     ) -> None:
-        """Writes one dimension of a shape's envelopes, emptying it to leave it to the channel.
+        """Writes one dimension of an instrument's envelopes, emptying it to leave it to the channel.
 
         Raises:
             TypeError: If ``voice_id`` names a voice that writes no envelopes of its own.
         """
-        shape = self._shape(voice_id)
-        shape.envelopes = shape.envelopes.with_envelope(feature_key, items)
-        shape.invalidate()
+        instrument = self._instrument(voice_id)
+        instrument.envelopes = instrument.envelopes.with_envelope(feature_key, items)
+        instrument.invalidate()
         self._touch()
         self._announce(self.on_voices_changed)
         self._announce(self.on_song_changed)
 
-    def set_shape_root(
+    def set_instrument_root(
         self,
         voice_id: str,
         *,
         pitch: int,
         period: int,
     ) -> None:
-        """Moves the roots a shape's arpeggio is measured against, on the tonal channels and on noise.
+        """Moves the roots an instrument's arpeggio is measured against, on the tonal channels and on noise.
 
         Raises:
             TypeError: If ``voice_id`` names a voice that states no root of its own.
         """
-        shape = self._shape(voice_id)
-        shape.root_pitch = pitch
-        shape.root_period = period
-        shape.invalidate()
+        instrument = self._instrument(voice_id)
+        instrument.root_pitch = pitch
+        instrument.root_period = period
+        instrument.invalidate()
         self._touch()
         self._announce(self.on_voices_changed)
         self._announce(self.on_song_changed)
 
-    def _shape(self, voice_id: str) -> Shape:
+    def _instrument(self, voice_id: str) -> Instrument:
         voice = self.project.voices[voice_id]
-        if not isinstance(voice, Shape):
-            raise TypeError(f"Voice '{voice_id}' is no shape")
+        if not isinstance(voice, Instrument):
+            raise TypeError(f"Voice '{voice_id}' is no instrument")
 
         return voice
 
@@ -442,7 +442,7 @@ class ProjectController(CallbackMixin):
         pattern_index: int,
         row_index: int,
         *,
-        instrument: bool = True,
+        voice: bool = True,
         transpose: bool = True,
         volume: bool = True,
     ) -> None:
@@ -457,7 +457,7 @@ class ProjectController(CallbackMixin):
             channel,
             pattern_index,
             row_index,
-            command=None if instrument else existing.command,
+            command=None if voice else existing.command,
             transpose=None if transpose else existing.transpose,
             volume=None if volume else existing.volume,
         )

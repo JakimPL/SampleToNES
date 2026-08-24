@@ -2,7 +2,7 @@ class UntrackedMutationError(RuntimeError):
     """Raised when a project mutation fires outside any history transaction.
 
     Under strict deployment the history refuses to guess a grouping for an
-    unlabelled mutation and surfaces the completeness gap immediately, so the
+    unlabeled mutation and surfaces the completeness gap immediately, so the
     call site can be wrapped in a transaction.
     """
 

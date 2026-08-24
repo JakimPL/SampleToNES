@@ -49,7 +49,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         self.on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None
         self.on_completed: Optional[Callable[[T], None]] = None
         self.on_error: Optional[Callable[[Exception], None]] = None
-        self.on_cancelled: Optional[VoidCallback] = None
+        self.on_canceled: Optional[VoidCallback] = None
 
     def start(self) -> None:
         self.monitor_thread = threading.Thread(
@@ -107,8 +107,8 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
     def is_completed(self) -> bool:
         return self.status == TaskStatus.COMPLETED
 
-    def is_cancelled(self) -> bool:
-        return self.status == TaskStatus.CANCELLED
+    def is_canceled(self) -> bool:
+        return self.status == TaskStatus.CANCELED
 
     def is_cancelling(self) -> bool:
         return self.status == TaskStatus.CANCELLING
@@ -206,12 +206,12 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         if not self.cancelling:
             return
 
-        self.logger.info("Task processing was cancelled.")
-        self.status = TaskStatus.CANCELLED
+        self.logger.info("Task processing was canceled.")
+        self.status = TaskStatus.CANCELED
         self.cancelling = False
         self.running = False
         self._notify_progress()
-        self.call(self.on_cancelled)
+        self.call(self.on_canceled)
 
     def _finalize_completion(self, results: List[T]) -> None:
         self.logger.info("Conversion completed successfully")

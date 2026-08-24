@@ -15,7 +15,7 @@ from sampletones_application.logic.main.stems import (
 )
 from sampletones_application.services.result import (
     ConversionResult,
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceIntermediate,
     ServiceProgress,
@@ -126,7 +126,7 @@ class ConverterLogic(CallbackMixin):
         self.on_target_exists: Optional[PathCallback] = None
         self.on_load_file: Optional[PathCallback] = None
         self.on_load_directory: Optional[VoidCallback] = None
-        self.on_cancelled: Optional[VoidCallback] = None
+        self.on_canceled: Optional[VoidCallback] = None
         self.generate_library: Optional[VoidCallback] = None
         self.cancel_library_generation: Optional[VoidCallback] = None
         self.is_library_available: Optional[Callable[[], bool]] = None
@@ -220,7 +220,7 @@ class ConverterLogic(CallbackMixin):
         )
 
     def move_source_within_level(self, path: Path, offset: int) -> None:
-        """Moves a recording past the neighbour it shares a level with."""
+        """Moves a recording past the neighbor it shares a level with."""
         self._apply(self._levels.move_within_level(path, offset))
 
     def join_source_level(self, path: Path, offset: int) -> None:
@@ -333,7 +333,7 @@ class ConverterLogic(CallbackMixin):
                 self._on_conversion_complete(written)
             case ServiceError(exception=exception):
                 self._on_conversion_error(exception)
-            case ServiceCancelled():
+            case ServiceCanceled():
                 self._on_cancellation_complete()
 
     def _handle_progress_result(self, progress: ServiceProgress[Path]) -> None:
@@ -561,10 +561,10 @@ class ConverterLogic(CallbackMixin):
             self.call(self.on_error, exception)
 
     def _on_cancellation_complete(self) -> None:
-        self._phase = ConversionPhase.CANCELLED
-        self._emit_view_model(self._language_manager["main.converter.message.status_cancelled"], 0.0)
+        self._phase = ConversionPhase.CANCELED
+        self._emit_view_model(self._language_manager["main.converter.message.status_canceled"], 0.0)
         self._schedule_return_to_idle()
-        self.call(self.on_cancelled)
+        self.call(self.on_canceled)
 
     def _schedule_return_to_idle(self) -> None:
         CallbackQueue.add(

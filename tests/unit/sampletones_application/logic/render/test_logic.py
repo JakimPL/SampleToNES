@@ -13,7 +13,7 @@ from sampletones_application.logic.sequencer.playback.synthesizer import (
 )
 from sampletones_application.services.render.result import RenderStage
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceProgress,
     ServiceSuccess,
@@ -275,14 +275,14 @@ class TestReportingTheRender:
     def test_a_stopped_render_reports_the_cancellation(self, render: RenderFixture) -> None:
         render.configure()
         render.logic.start()
-        on_cancelled = MagicMock()
-        render.logic.on_cancelled = on_cancelled
+        on_canceled = MagicMock()
+        render.logic.on_canceled = on_canceled
 
         render.logic.cancel()
-        render.service.emit(ServiceCancelled())
+        render.service.emit(ServiceCanceled())
 
-        on_cancelled.assert_called_once()
-        assert render.view.phase == RenderPhase.CANCELLED
+        on_canceled.assert_called_once()
+        assert render.view.phase == RenderPhase.CANCELED
         assert not render.logic.is_active
 
     def test_a_failed_render_reports_what_went_wrong(self, render: RenderFixture) -> None:

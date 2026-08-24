@@ -6,10 +6,12 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.categories.hierarchy import Tab
+from sampletones_application.categories.instrument import InstrumentImportMessages
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
+from sampletones_application.coordinators.tabs import sequencer as sequencer_module
 from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
@@ -27,7 +29,9 @@ from sampletones_application.logic.sequencer.clipboard import (
     SequencerClipboard,
     TrackerBlockText,
 )
-from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
+from sampletones_application.logic.sequencer.history_detail import (
+    SequencerHistoryDetail,
+)
 from sampletones_application.logic.sequencer.order import (
     OrderBlockReader,
     OrderBlockWriter,
@@ -54,7 +58,10 @@ from sampletones_application.view_model.sequencer.region import (
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_application.view_model.sequencer.voices import VoiceKind, VoiceSelection
+from sampletones_application.view_model.sequencer.voices import (
+    VoiceKind,
+    VoiceSelection,
+)
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
@@ -62,8 +69,14 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetailWordSegment,
 )
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.formats.famitracker.voice import ImportedVoice, InstrumentOmission
 from sampletones_core.project.song_position import SongPosition
-from sampletones_shared.exceptions import InvalidReconstructionValuesError
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_shared.exceptions import (
+    InvalidReconstructionValuesError,
+    MalformedInstrumentError,
+)
 from tests.suite.language import FakeLanguageManager
 
 FREQUENCY_MISMATCH_MESSAGE_KEY: Final[str] = "global.dialog.message.frequency_mismatch"
@@ -99,6 +112,186 @@ def coordinator() -> SequencerTabCoordinator:
     instance._msg_no_project = "no project"
     instance._ttl_no_project = "No project open"
     return instance
+
+
+INSTRUMENT_FILE: Final[Path] = Path("/instruments/Lead.fti")
+
+IMPORTED_VOICE: Final[Instrument] = Instrument(
+    name="Lead",
+    envelopes=InstrumentEnvelopes(volume=(15, 8, 0)),
+    loop_point=0,
+)
+
+
+def _imported(*omissions: InstrumentOmission) -> ImportedVoice:
+    return ImportedVoice(voice=IMPORTED_VOICE, omissions=omissions)
+
+
+@pytest.fixture
+def instrument_coordinator() -> SequencerTabCoordinator:
+    """A coordinator with only the collaborators ``import_instrument`` touches."""
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._history = MagicMock()
+    instance._history_detail = MagicMock()
+    instance._project_controller = MagicMock()
+    instance._project_controller.is_open = True
+    instance._sequencer_voices_logic = MagicMock()
+    instance._sequencer_voices_logic.read_instrument.return_value = _imported()
+    instance._session_manager = MagicMock()
+    instance._session_manager.get_instrument_path.return_value = INSTRUMENT_FILE.parent
+    instance._dialogs = MagicMock()
+    instance._language_manager = FakeLanguageManager(TEXTS)
+    instance._import_messages = InstrumentImportMessages.build(LanguageManager(LANG_EN))
+    instance._msg_no_project = "no project"
+    instance._ttl_no_project = "No project open"
+    return instance
+
+
+@pytest.fixture
+def located_file(monkeypatch: pytest.MonkeyPatch) -> List[Dict[str, object]]:
+    """The file dialog, answering with an instrument file and recording how it was opened."""
+    opened: List[Dict[str, object]] = []
+
+    def _open(**kwargs: object) -> Path:
+        opened.append(kwargs)
+        return INSTRUMENT_FILE
+
+    monkeypatch.setattr(sequencer_module, "open_file_dialog", _open)
+    return opened
+
+
+@pytest.fixture
+def canceled_dialog(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sequencer_module, "open_file_dialog", lambda **_kwargs: None)
+
+
+class TestImportInstrument:
+    """A FamiTracker instrument file arrives as a voice, and says what it held past one."""
+
+    def test_a_project_is_asked_for_before_a_file_is(
+        self,
+        instrument_coordinator: SequencerTabCoordinator,
+        located_file: List[Dict[str, object]],
+    ) -> None:
+        """A voice needs a pool to land in, so a closed project stops the gesture at the door."""
+        instrument_coordinator._project_controller.is_open = False
+
+        instrument_coordinator.import_instrument()
+
+        assert located_file == []
+        instrument_coordinator._dialogs.show_info.assert_called_once()
+
+    def test_the_dialog_opens_where_the_last_instrument_was(
+        self,
+        instrument_coordinator: SequencerTabCoordinator,
+        located_file: List[Dict[str, object]],
+    ) -> None:
+        instrument_coordinator.import_instrument()
+
+        assert located_file[0]["initial_directory"] == INSTRUMENT_FILE.parent
+
+    def test_the_folder_the_file_came_from_is_remembered(
+        self,
+        instrument_coordinator: SequencerTabCoordinator,
+        located_file: List[Dict[str, object]],
+    ) -> None:
+        instrument_coordinator.import_instrument()
+
+        instrument_coordinator._session_manager.set_instrument_path.assert_called_once_with(INSTRUMENT_FILE.parent)
+
+    def test_a_canceled_dialog_leaves_the_pool_as_it_stands(
+        self,
+        instrument_coordinator: SequencerTabCoordinator,
+        canceled_dialog: None,
+    ) -> None:
+        instrument_coordinator.import_instrument()
+
+        instrument_coordinator._sequencer_voices_logic.read_instrument.assert_not_called()
+        instrument_coordinator._sequencer_voices_logic.add_instrument.assert_not_called()
+
+    def test_the_voice_the_file_made_joins_the_pool(
+        self,
+        instrument_coordinator: SequencerTabCoordinator,
+        located_file: List[Dict[str, object]],
+    ) -> None:
+        instrument_coordinator.import_instrument()
+
+        logic = instrument_coordinator._sequencer_voices_logic
+        logic.read_instrument.assert_called_once_with(INSTRUMENT_FILE)
+        logic.add_instrument.assert_called_once_with(IMPORTED_VOICE)
+
+    def test_the_whole_gesture_is_one_history_entry(
+        self,
+        instrument_coordinator: SequencerTabCoordinator,
+        located_file: List[Dict[str, object]],
+    ) -> None:
+        instrument_coordinator.import_instrument()
+
+        action = instrument_coordinator._history.transaction.call_args.args[0]
+        assert action is HistoryAction.ADD_INSTRUMENT
+        instrument_coordinator._history_detail.add_instrument.assert_called_once_with(IMPORTED_VOICE.name)
+
+    def test_what_the_file_held_past_the_voice_is_reported(
+        self,
+        instrument_coordinator: SequencerTabCoordinator,
+        located_file: List[Dict[str, object]],
+    ) -> None:
+        logic = instrument_coordinator._sequencer_voices_logic
+        logic.read_instrument.return_value = _imported(InstrumentOmission.PITCH)
+
+        instrument_coordinator.import_instrument()
+
+        notice = instrument_coordinator._dialogs.show_info.call_args.args[1]
+        assert instrument_coordinator._import_messages.omissions[InstrumentOmission.PITCH] in notice
+
+    def test_a_file_holding_the_voice_alone_is_reported_nowhere(
+        self,
+        instrument_coordinator: SequencerTabCoordinator,
+        located_file: List[Dict[str, object]],
+    ) -> None:
+        """An import that lost nothing interrupts the reader with nothing."""
+        instrument_coordinator.import_instrument()
+
+        instrument_coordinator._dialogs.show_info.assert_not_called()
+
+    def test_a_file_that_is_not_there_is_reported_as_missing(
+        self,
+        instrument_coordinator: SequencerTabCoordinator,
+        located_file: List[Dict[str, object]],
+    ) -> None:
+        logic = instrument_coordinator._sequencer_voices_logic
+        logic.read_instrument.side_effect = FileNotFoundError(INSTRUMENT_FILE)
+
+        instrument_coordinator.import_instrument()
+
+        instrument_coordinator._dialogs.show_file_not_found.assert_called_once()
+        logic.add_instrument.assert_not_called()
+
+    def test_a_file_the_reader_cannot_take_is_reported(
+        self,
+        instrument_coordinator: SequencerTabCoordinator,
+        located_file: List[Dict[str, object]],
+    ) -> None:
+        logic = instrument_coordinator._sequencer_voices_logic
+        logic.read_instrument.side_effect = MalformedInstrumentError("truncated")
+
+        instrument_coordinator.import_instrument()
+
+        instrument_coordinator._dialogs.show_error.assert_called_once()
+        logic.add_instrument.assert_not_called()
+
+    def test_a_file_the_reader_cannot_take_records_no_history(
+        self,
+        instrument_coordinator: SequencerTabCoordinator,
+        located_file: List[Dict[str, object]],
+    ) -> None:
+        """The file is read before the pool is touched, so a refusal leaves the project as it was."""
+        logic = instrument_coordinator._sequencer_voices_logic
+        logic.read_instrument.side_effect = MalformedInstrumentError("truncated")
+
+        instrument_coordinator.import_instrument()
+
+        instrument_coordinator._history.transaction.assert_not_called()
 
 
 @pytest.fixture
@@ -143,6 +336,72 @@ class TestRemoveSample:
 
         confirmation["on_confirm"]()
         logic.remove_voice.assert_called_once_with("abc")
+
+
+class TestTakingAChannelAsAnInstrument:
+    """A channel of a recording becomes a voice of its own, recorded and brought up to edit."""
+
+    @staticmethod
+    def _taken(samples_coordinator: SequencerTabCoordinator) -> Instrument:
+        instrument = Instrument(name="Bass (triangle)", envelopes=InstrumentEnvelopes(volume=(15,)))
+        samples_coordinator._sequencer_voices_logic.instrument_from_channel.return_value = instrument
+        return instrument
+
+    def test_the_channel_named_is_the_one_taken(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        self._taken(samples_coordinator)
+
+        samples_coordinator.add_instrument_from_channel("bass-id", ChannelName.TRIANGLE)
+
+        samples_coordinator._sequencer_voices_logic.instrument_from_channel.assert_called_once_with(
+            "bass-id",
+            ChannelName.TRIANGLE,
+        )
+
+    def test_the_new_voice_lands_in_the_pool(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        instrument = self._taken(samples_coordinator)
+
+        samples_coordinator.add_instrument_from_channel("bass-id", ChannelName.TRIANGLE)
+
+        samples_coordinator._sequencer_voices_logic.add_instrument.assert_called_once_with(instrument)
+
+    def test_the_history_names_the_voice_that_arrived(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        instrument = self._taken(samples_coordinator)
+
+        samples_coordinator.add_instrument_from_channel("bass-id", ChannelName.TRIANGLE)
+
+        samples_coordinator._history_detail.add_instrument.assert_called_once_with(instrument.name)
+        assert samples_coordinator._history.transaction.call_args.args[0] is HistoryAction.ADD_INSTRUMENT
+
+    def test_the_new_voice_is_brought_up_where_it_is_edited(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """Seeing the envelopes that came across is what taking the channel out was for."""
+        instrument = self._taken(samples_coordinator)
+
+        samples_coordinator.add_instrument_from_channel("bass-id", ChannelName.TRIANGLE)
+
+        samples_coordinator._sequencer_voices_logic.request_edit.assert_called_once_with(instrument.id)
+
+    def test_a_channel_that_plays_nothing_leaves_the_pool_as_it_stands(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        samples_coordinator._sequencer_voices_logic.instrument_from_channel.return_value = None
+
+        samples_coordinator.add_instrument_from_channel("bass-id", ChannelName.NOISE)
+
+        samples_coordinator._sequencer_voices_logic.add_instrument.assert_not_called()
+        samples_coordinator._history.transaction.assert_not_called()
 
 
 class TestSubmitRename:
@@ -268,7 +527,7 @@ def _playhead(frame_index: int, row_index: int) -> SongPosition:
 
 
 def _player_view(*, follow_mode: FollowMode) -> SongPlayerViewModel:
-    """A stopped transport view, which is what the coordinator reads the follow behaviour from."""
+    """A stopped transport view, which is what the coordinator reads the follow behavior from."""
     return SongPlayerViewModel(
         is_loaded=True,
         is_playing=False,
@@ -941,7 +1200,7 @@ class TestChannelMuteLifetime:
 def channels_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCoordinator:
     """A coordinator joining the real channels logic to a real grid panel and a real order panel.
 
-    Each panel's colour cues reach DearPyGui, which holds no context here, so the tables are
+    Each panel's color cues reach DearPyGui, which holds no context here, so the tables are
     reported absent and a panel stops once it has recorded the mute set — which is what the
     wiring is read for. The menu bar above the tab is a recorder, so a test can read whether it
     was told. Modifiers are reported as held nowhere; a test that needs Ctrl says so.
@@ -1343,7 +1602,7 @@ class TestPlayerExposure:
 PULSE1_CELL: Final[TrackerRegion] = TrackerRegion(
     first_row=0,
     last_row=0,
-    first_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.INSTRUMENT).flat_index,
+    first_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.VOICE).flat_index,
     last_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.VOLUME).flat_index,
 )
 PULSE1_FRAME: Final[OrderRegion] = OrderRegion(

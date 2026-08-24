@@ -30,12 +30,12 @@ models live in `sampletones_core.generators` and the instruction value types in
 
 Reconstruction is a **search problem**. The input is cut into short, fixed-length
 frames, and within each frame at most one instruction per channel is in effect. For
-every frame the system must pick, from a large but finite catalogue of NES
+every frame the system must pick, from a large but finite catalog of NES
 waveforms, the combination of instructions whose mixed output best matches that
 slice of audio. Two ingredients define the system:
 
 - a **criterion** that scores how well a candidate matches the target (§4), and
-- a **selection strategy** that searches the catalogue efficiently (§5).
+- a **selection strategy** that searches the catalog efficiently (§5).
 
 Everything is compared in a perceptually-weighted **frequency** representation
 rather than raw samples, because two sounds that are perceptually identical can
@@ -72,7 +72,7 @@ and playback.
 
 ## 3. Representing a frame
 
-### 3.1 The candidate catalogue (library)
+### 3.1 The candidate catalog (library)
 
 Before any reconstruction, `sampletones_core.library` precomputes a **library**: for
 every possible instruction it renders the waveform its generator produces and stores
@@ -116,7 +116,7 @@ sharper frequency resolution requires a longer time window, and vice versa):
   milliseconds), so brief events are smeared in time at the low end. _SampleToNES_
   computes the CQT **once over the whole signal** with a hop of one frame
   (`calculate_cqt_spectrum_columns`), so each frame's energy is reported at its own
-  time position and the per-frame columns line up with the FFT path's frame centres.
+  time position and the per-frame columns line up with the FFT path's frame centers.
 
 The target and the library candidates are always described by the *same* method, so
 their features are directly comparable bin by bin. All three methods share one scale
@@ -303,7 +303,7 @@ Package map:
 | NES channel models              | `sampletones_core.generators`                        |
 | instruction value types         | `sampletones_core.instructions`                      |
 | windowing, spectra, features    | `sampletones_core.fft`                               |
-| candidate catalogue             | `sampletones_core.library`                           |
+| candidate catalog             | `sampletones_core.library`                           |
 | scoring                         | `sampletones_core.reconstructions.criterion`         |
 | selection + assembly            | `sampletones_core.reconstructions.reconstructor`     |
 | audio I/O and level             | `sampletones_core.audio`                             |

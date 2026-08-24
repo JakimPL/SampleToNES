@@ -6,7 +6,7 @@ from sampletones_application.layout.tabs.sequencer.tracker.subcolumn import Subc
 class TrackerLayout(BaseModel, extra="forbid", frozen=True):
     """The tracker's row counts, cell sizes and tint strengths.
 
-    The grouping the rows are tinted by is the project's own metre, read from its highlights,
+    The grouping the rows are tinted by is the project's own meter, read from its highlights,
     so this model carries the geometry alone.
 
     A row states its height rather than growing to the text in it, because the grid's tints are

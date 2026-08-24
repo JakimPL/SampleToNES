@@ -42,7 +42,7 @@ class OrderBlockReader:
         """What a row holds at a position: a channel's own index, or the one its channels share.
 
         A channel row answers for itself, so it is a group of one and always agrees. The master row
-        answers for every channel, which is the group its display summarises too, so a block states
+        answers for every channel, which is the group its display summarizes too, so a block states
         about a cell exactly what the table it came from shows there.
         """
         if channel is not None:

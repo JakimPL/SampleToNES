@@ -14,10 +14,10 @@ from sampletones_core.instructions import (
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.stems import single_entry_stems_data
@@ -130,15 +130,15 @@ def project_with_sample(
     return project, sample
 
 
-def project_with_shape(
-    shape: Shape,
+def project_with_instrument(
+    instrument: Instrument,
     *,
     rows_per_pattern: int,
     settings: Optional[ProjectSettings] = None,
 ) -> Project:
-    """A one-shape project, so a case can place a hand-written voice on any channel it likes."""
+    """A one-instrument project, so a case can place a hand-written voice on any channel it likes."""
     project = Project.create(rows_per_pattern=rows_per_pattern, settings=settings)
-    project.voices.append(shape)
+    project.voices.append(instrument)
     return project
 
 

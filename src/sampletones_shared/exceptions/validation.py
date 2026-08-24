@@ -27,3 +27,7 @@ class SerializationError(InvalidDataError):
 
 class DeserializationError(InvalidDataError):
     """Raised when deserialization fails."""
+
+
+class TruncatedDataError(InvalidDataError):
+    """Raised when a reader is asked for more bytes than the data holds from where it stands."""

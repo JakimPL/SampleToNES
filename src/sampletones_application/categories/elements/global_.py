@@ -18,20 +18,6 @@ class DialogElements(AbstractElement):
     ADD_ANYWAY = "add_anyway"
 
 
-class TracebackElements(AbstractElement):
-    COPY = "copy"
-    SHOW = "show"
-    HIDE = "hide"
-
-
-class TreeElements(AbstractElement):
-    ROOT = "root"
-    SEARCH = "search"
-    FILTER = "filter"
-    CLEAR_SEARCH = "clear_search"
-    FAVORITES_ONLY = "favorites_only"
-
-
 class ContextElements(AbstractElement):
     PLAY = "play"
     CUT = "cut"
@@ -53,33 +39,6 @@ class ContextElements(AbstractElement):
     SAMPLE_SIZE = "sample_size"
     INSTRUMENT_SIZE = "instrument_size"
     SIZE_BYTES = "size_bytes"
-
-
-class StemsElements(AbstractElement):
-    """The vocabulary of a stems list, shared by every card that draws one."""
-
-    LEVEL_CAPTION = "level_caption"
-    REMOVE = "remove"
-    DRAG_TOOLTIP = "drag_tooltip"
-    INERT_TOOLTIP = "inert_tooltip"
-    MISSING_TOOLTIP = "missing_tooltip"
-    UNOFFERED_TOOLTIP = "unoffered_tooltip"
-    STATUS_ROW_DRAG = "status_row_drag"
-    STATUS_ROW_REVEAL = "status_row_reveal"
-    STATUS_MASTER = "status_master"
-    STATUS_CHANNEL = "status_channel"
-    STATUS_CHANNEL_MUTED = "status_channel_muted"
-    STATUS_REMOVE = "status_remove"
-
-
-class NodeDetailElements(AbstractElement):
-    SAMPLE_RATE = "detail_sample_rate"
-    NES_FREQUENCY = "detail_nes_frequency"
-    CHANNELS = "detail_channels"
-    SPECTRUM_METHOD = "detail_spectrum_method"
-    TRANSFORMATION_GAMMA = "detail_transformation_gamma"
-    WINDOW_SIZE = "detail_window_size"
-    CONFIGURATION = "detail_configuration"
 
 
 class MenuElements(AbstractElement):
@@ -113,6 +72,7 @@ class MenuElements(AbstractElement):
     ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_FAMITRACKER = "item_reconstruction_export_instruments_famitracker"
     ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_BITPHASE_PRESET = "item_reconstruction_export_instruments_bitphase_preset"
     ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_NSF = "item_reconstruction_export_instruments_nsf"
+    GROUP_VOICE = "group_voice"
     GROUP_PLAYBACK = "group_playback"
     ITEM_PLAYBACK_PLAY = "item_playback_play"
     ITEM_PLAYBACK_PAUSE = "item_playback_pause"
@@ -143,43 +103,6 @@ class MenuElements(AbstractElement):
     TAB_INSTRUCTIONS = "tab_instructions"
     TAB_RECONSTRUCTION = "tab_reconstruction"
     TAB_SEQUENCER = "tab_sequencer"
-
-
-class StatusElements(AbstractElement):
-    PATH = "path"
-    NODE_RECONSTRUCTION_NO_AUTOPLAY = "node_reconstruction_no_autoplay"
-    NODE_RECONSTRUCTION = "node_reconstruction"
-    NODE_LIBRARY = "node_library"
-    TREE_SEARCH = "tree_search"
-    CLEAR_SEARCH = "clear_search"
-    FAVORITES_ONLY = "favorites_only"
-    INPUT = "input"
-    COMBO = "combo"
-    NODE_DIRECTORY = "node_directory"
-    RETUNING_SAMPLES = "retuning_samples"
-
-
-class PlayerElements(AbstractElement):
-    PLAY = "play"
-    PAUSE = "pause"
-    RESUME = "resume"
-    STOP = "stop"
-    AUDIO_PLAYBACK_ERROR = "audio_playback_error"
-
-
-class GraphElements(AbstractElement):
-    WAVEFORM_ORIGINAL = "waveform_original"
-    WAVEFORM_RECONSTRUCTION = "waveform_reconstruction"
-    WAVEFORM_TIME_AXIS = "waveform_time_axis"
-    WAVEFORM_AMPLITUDE_AXIS = "waveform_amplitude_axis"
-    WAVEFORM_SAMPLE_NAME = "waveform_sample_name"
-    SPECTRUM_X_AXIS = "spectrum_x_axis"
-    SPECTRUM_FREQUENCY_AXIS = "spectrum_frequency_axis"
-    SPECTRUM_NAME = "spectrum_name"
-    BAR_DISPLAY = "bar_display"
-    SPECTRUM_NAVIGATION = "spectrum_navigation"
-    WAVEFORM_NAVIGATION = "waveform_navigation"
-    WAVEFORM_REGENERATING = "waveform_regenerating"
 
 
 class GlobalMessageElements(AbstractElement):
@@ -268,21 +191,3 @@ class FileFilterElements(AbstractElement):
     CONFIG = "config"
     AUDIO = "audio"
     WAVE = "wave"
-
-
-class GlobalTemplateElements(AbstractElement):
-    TIME_ESTIMATION = "time_estimation"
-    CONFIGURATION_RECOVERY_INTRO = "configuration_recovery_intro"
-    FPS = "fps"
-    ABOUT_AUTHOR = "about_author"
-    EXPAND = "expand"
-    COLLAPSE = "collapse"
-    ON = "on"
-    OFF = "off"
-
-
-class GlobalPitchElements(AbstractElement):
-    PITCH_NAME = "pitch_name"
-    PERIOD_NAME = "period_name"
-    PITCH_EXAMPLE = "pitch_example"
-    PERIOD_EXAMPLE = "period_example"

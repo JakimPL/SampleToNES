@@ -9,12 +9,12 @@ from sampletones_core.utils.display import display_voice_label
 class VoiceKind(StrEnum):
     """Which of the two kinds a voice list entry carries.
 
-    A sample stands on a recording it was converted from; a shape was written by hand. The list
+    A sample stands on a recording it was converted from; an instrument was written by hand. The list
     marks each so a reader tells them apart, and the gestures a row offers follow from it.
     """
 
     SAMPLE = "sample"
-    SHAPE = "shape"
+    INSTRUMENT = "instrument"
 
 
 class VoiceEntryViewModel(BaseModel, frozen=True):

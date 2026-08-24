@@ -103,8 +103,8 @@ def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], Inst
     """Builds the module's instruments and the table a pattern row resolves through.
 
     A sample contributes one instrument for every channel its reconstruction covers, so it yields
-    one to four; a shape contributes one instrument every channel it sounds on reaches, each
-    against that channel's own root. Instruments are numbered in voice order, then channel order.
+    one to four; a hand-written voice contributes one instrument every channel it sounds on
+    reaches, each against that channel's own root. Instruments are numbered in voice order, then channel order.
 
     Raises:
         ValueError: If the project holds more instruments than FamiTracker has room for.

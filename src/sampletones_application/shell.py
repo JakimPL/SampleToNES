@@ -89,6 +89,9 @@ class ShortcutBindings:
     export_wav: Callback
     export_instruments: Callable[[ExportFormat], None]
     add_reconstruction_to_sequencer: Callback
+    new_instrument: Callback
+    add_sample_from_file: Callback
+    import_instrument: Callback
     open_reconstruction_in_explorer: Callback
     locate_original_audio: Callback
     play: Callback
@@ -119,7 +122,7 @@ class ApplicationShell:
 
     It serves two roles:
 
-    - *Lifecycle* — encodes the DPG initialisation sequence in ``setup()`` and
+    - *Lifecycle* — encodes the DPG initialization sequence in ``setup()`` and
       hides it behind a clean boundary.
     - *Runtime* — tab router, shortcut dispatcher, and per-frame UI driver.
 
@@ -241,6 +244,9 @@ class ApplicationShell:
             ShortcutId.CLOSE_RECONSTRUCTION: bindings.close_reconstruction,
             ShortcutId.EXPORT_RECONSTRUCTION_WAV: bindings.export_wav,
             ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER: bindings.add_reconstruction_to_sequencer,
+            ShortcutId.NEW_INSTRUMENT: bindings.new_instrument,
+            ShortcutId.ADD_SAMPLE_FROM_FILE: bindings.add_sample_from_file,
+            ShortcutId.IMPORT_INSTRUMENT: bindings.import_instrument,
             ShortcutId.OPEN_RECONSTRUCTION_IN_EXPLORER: bindings.open_reconstruction_in_explorer,
             ShortcutId.LOCATE_ORIGINAL_AUDIO: bindings.locate_original_audio,
             ShortcutId.PLAY: bindings.play,

@@ -97,8 +97,8 @@ TRACKER_LABELS = (
     "select_column",
     "select_subcolumn",
     "note_off",
-    "set_instrument",
-    "no_samples",
+    "set_voice",
+    "no_voices",
     "clear_subcolumn",
     "clear_cell",
     "clear_row",
@@ -206,7 +206,7 @@ def order_recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuRecorder:
 
 def _tracker_cell(channel: Optional[ChannelName]) -> TrackerCursor:
     """The clicked cell the tracker item tests raise their menu on."""
-    return TrackerCursor(CLICKED_ROW, channel, SubColumn.INSTRUMENT)
+    return TrackerCursor(CLICKED_ROW, channel, SubColumn.VOICE)
 
 
 def _order_cell(channel: Optional[ChannelName]) -> OrderCursor:
@@ -240,7 +240,7 @@ def _order_selections(
 
 def _selected_tracker_state() -> TrackerInputState:
     """A selection running from the clicked row down two rows, over Pulse 1's whole cell."""
-    state = TrackerInputState(cursor=TrackerCursor(CLICKED_ROW, ChannelName.PULSE1, SubColumn.INSTRUMENT))
+    state = TrackerInputState(cursor=TrackerCursor(CLICKED_ROW, ChannelName.PULSE1, SubColumn.VOICE))
     return state.extend_row(2, ROW_COUNT).extend_slot(2)
 
 
@@ -287,10 +287,10 @@ class TestTrackerTarget:
     def test_a_menu_raised_with_nothing_selected_acts_on_the_clicked_cell(self) -> None:
         panel = _tracker_panel(Gestures())
 
-        target = panel._surface.target_at(TrackerCursor(CLICKED_ROW, None, SubColumn.INSTRUMENT))
+        target = panel._surface.target_at(TrackerCursor(CLICKED_ROW, None, SubColumn.VOICE))
 
         assert target.region.rows == range(CLICKED_ROW, CLICKED_ROW + 1)
-        assert target.region.slots == (TrackerSlot(None, SubColumn.INSTRUMENT),)
+        assert target.region.slots == (TrackerSlot(None, SubColumn.VOICE),)
 
     def test_the_cursor_resolves_to_the_selection_it_ends(self) -> None:
         """The menu bar asks for the cursor's own target, which is the standing selection."""

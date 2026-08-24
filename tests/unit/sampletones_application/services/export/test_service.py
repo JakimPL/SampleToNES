@@ -10,7 +10,7 @@ from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.service import ExportService
 from sampletones_application.services.export.success import ExportSuccess
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceProgress,
     ServiceStarted,
 )
@@ -601,18 +601,18 @@ class TestWhatARunSaysAboutItself:
 
 
 class TestWithdrawingARun:
-    """A cancelled export answers with a cancellation rather than a failure."""
+    """A canceled export answers with a cancellation rather than a failure."""
 
-    def test_a_cancelled_run_ends_cancelled(self, service, tmp_path) -> None:
+    def test_a_canceled_run_ends_canceled(self, service, tmp_path) -> None:
         export_service, results = service
         export_service.export_instrument(
             tmp_path / "instrument.nsf",
             CancellingBackend(export_service),
             build_instrument(),
         )
-        assert isinstance(outcome(results), ServiceCancelled)
+        assert isinstance(outcome(results), ServiceCanceled)
 
-    def test_a_cancelled_run_reports_no_failure(self, service, tmp_path) -> None:
+    def test_a_canceled_run_reports_no_failure(self, service, tmp_path) -> None:
         export_service, results = service
         export_service.export_instrument(
             tmp_path / "instrument.nsf",

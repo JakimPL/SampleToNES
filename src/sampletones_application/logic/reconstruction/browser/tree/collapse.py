@@ -15,7 +15,7 @@ def collapse_single_child_containers(node: TreeNode) -> None:
     into groups as soon as a second configuration arrives.
 
     The row that survives keeps its node type, its path, its configuration and its children, so its
-    click behaviour, theme, context menu and favorite star carry over from before the fold. The two
+    click behavior, theme, context menu and favorite star carry over from before the fold. The two
     branch roots stay in place, since each names a way of reading the whole tree, and a folder the disk
     holds stays a folder of its own, since the configuration branch mirrors the disk.
     """
@@ -34,16 +34,25 @@ def _can_fold(node: TreeNode) -> bool:
     if node.node_type not in ARTIFICIAL_CONTAINERS or len(node.children) != 1:
         return False
 
-    return not _siblings_hold(node, _joined_name(node, node.children[0]))
+    return not _siblings_hold(
+        node,
+        parent,
+        _joined_name(node, node.children[0]),
+    )
 
 
-def _siblings_hold(node: TreeNode, name: str) -> bool:
+def _siblings_hold(
+    node: TreeNode,
+    parent: TreeNode,
+    name: str,
+) -> bool:
     """Whether a row beside this heading already reads as the name the fold would produce.
 
     The folded row joins the siblings of the heading it replaces, and a browser row is addressed by
     the names leading to it, so a heading whose fold would repeat a name beside it stays as it is.
+    The heading's parent is passed in, since the caller establishes it before a fold is considered.
     """
-    return any(sibling.name == name for sibling in node.parent.children if sibling is not node)
+    return any(sibling.name == name for sibling in parent.children if sibling is not node)
 
 
 def _fold_into_child(node: TreeNode) -> None:

@@ -14,6 +14,10 @@
 
 ### Tracker
 
+The first four entries are also what an imported `.fti` reports as left to the file
+(section C of `formats/famitracker.md`), so each one closed is a dimension the import
+starts carrying.
+
 * Pitch and hi-pitch envelopes: a per-tick period bend, where an instruction's pitch is a whole
   semitone. Sounding them needs a sub-semitone offset in the instruction model and raw timer values
   in the NSF planes, which reaches the reconstruction search space, the instruction library and the
@@ -26,7 +30,10 @@
 * A loop point per envelope: a voice states one point, applied to every populated sequence.
 * A sample's loop point is offered as a switch in the voice list, though the model carries the
   point for both kinds of voice.
-* Exporting a shape as an instrument file from the Reconstructions tab.
+* A transpose or a volume typed in the sample column of a row holding no sample reaches every
+  channel. The column summarizes the channels its samples cover, and a row covering none falls
+  back to all four so a value typed there lands somewhere; the reference slot keeps the narrower
+  reading and stays empty.
 
 ### Workflow
 
@@ -43,7 +50,21 @@
 
 * API documentation
 * Code documentation
-* Backward compatibility: library/reconstruction upgrade scheme
+* A backward-compatibility corpus of files older builds actually wrote. Every upgrade step is
+  exercised against a payload the test builds itself — hand-written mappings for the step, and,
+  for projects, a current document rewritten backwards into the older shape — so a step is held
+  only to the fields it names. One archived `.stn`, `.ins` and `.stp` per shipped version, each
+  written by that version and exercising every feature it could store, would hold the whole
+  document to the chain and would catch a field that changed shape while no step named it.
+  Configuration and session state carry no version at all, so the same corpus would state what a
+  build is expected to make of a `state.yaml` an older one left behind. Reaches
+  `tests/unit/sampletones_core/compatibility/` and each format's load tests.
+* The element enums that outlived their keys. A lookup states its key literally, so an element
+  enum is named only where a `_label(element)` helper takes one — `ui/menu.py`,
+  `coordinators/project.py`, `coordinators/keybindings.py`, `ui/panels/dialogs/project_properties.py`
+  and the panels beside them. The language-keys check expands such a helper over the whole enum, so
+  a member no call names is reached all the same and stands unnoticed. Spelling those keys literally
+  at the call site would make each entry exactly checkable and retire the enums that remain.
 * Respecting FamiTracker limitations
 * Per-tab undo routing
 * In-application console

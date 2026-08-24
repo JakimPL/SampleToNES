@@ -13,19 +13,19 @@ MAX_CHANNEL_VALUE: Final[int] = 255
 def with_alpha_fraction(color: ColorRGBA, fraction: float) -> ColorRGBA:
     """Return ``color`` with its alpha set to ``fraction`` of full opacity.
 
-    ``fraction`` is a value in ``[0, 1]``; ``1`` keeps the colour fully opaque and
+    ``fraction`` is a value in ``[0, 1]``; ``1`` keeps the color fully opaque and
     ``0`` makes it fully transparent, letting callers express a tint strength as a
-    fraction while colours stay 8-bit RGBA tuples.
+    fraction while colors stay 8-bit RGBA tuples.
     """
     red, green, blue, _ = color
     return (red, green, blue, round(fraction * MAX_CHANNEL_VALUE))
 
 
 def blend(start: ColorRGBA, end: ColorRGBA, fraction: float) -> ColorRGBA:
-    """Linearly interpolate between two colours, channel by channel.
+    """Linearly interpolate between two colors, channel by channel.
 
     ``fraction`` is clamped to ``[0, 1]``: ``0`` returns ``start`` and ``1`` returns ``end``, with
-    every RGBA channel mixed in proportion so a scalar can drive a colour along a gradient.
+    every RGBA channel mixed in proportion so a scalar can drive a color along a gradient.
     """
     ratio = clamp(fraction, 0.0, 1.0)
     start_channels = np.array(start, dtype=np.float64)
@@ -35,9 +35,9 @@ def blend(start: ColorRGBA, end: ColorRGBA, fraction: float) -> ColorRGBA:
 
 
 def composite(base: ColorRGBA, overlay: ColorRGBA) -> ColorRGBA:
-    """Return the colour ``overlay`` makes when it is drawn over ``base``.
+    """Return the color ``overlay`` makes when it is drawn over ``base``.
 
-    Each colour carries its own alpha, and the result carries the coverage the two reach
+    Each color carries its own alpha, and the result carries the coverage the two reach
     together, so a pair of translucent washes bound for a single layer reads as it would if
     the layer held both. A fully transparent pair returns ``base``.
     """
@@ -56,7 +56,7 @@ def composite(base: ColorRGBA, overlay: ColorRGBA) -> ColorRGBA:
 def to_grayscale(color: ColorRGBA) -> ColorRGBA:
     """Return ``color`` desaturated to its luminance-preserving gray, keeping its alpha.
 
-    The RGB channels collapse to one perceptual-luminance value, so a coloured line reads
+    The RGB channels collapse to one perceptual-luminance value, so a colored line reads
     as an inactive gray while its alpha stays under the caller's separate control.
     """
     red, green, blue, alpha = color

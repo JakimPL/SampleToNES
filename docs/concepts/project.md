@@ -8,8 +8,8 @@ plays them all, so an entire piece lives as one file.
 
 ## What a project brings together
 
-- the **voices** — the reconstructions you have imported and the shapes you have
-  written by hand, each a playable instrument in the song;
+- the **voices** — the reconstructions you have imported and the instruments you have
+  written by hand, each of them something a row can play;
 - the **song** — the arrangement itself: the patterns written for each channel and
   the order they play in;
 - the **timing and details** — the tempo, speed, and NES frequency the song plays
@@ -21,7 +21,7 @@ export the finished piece as a FamiTracker [module](../formats/famitracker.md).
 ## Self-contained and portable
 
 A project embeds the reconstructions it uses rather than pointing at them elsewhere
-on disk, and writes each shape into the document itself, so moving or sharing the
+on disk, and writes each hand-written instrument into the document itself, so moving or sharing the
 file carries the whole composition — the arrangement and every sound it needs. The
 embedded reconstructions are
 [detached](../formats/reconstructions.md#detached-reconstructions) from their

@@ -70,7 +70,7 @@ class TestStoredColors:
     def test_the_report_names_the_assignment_line(self) -> None:
         assert locations(PANEL_SOURCE) == [f"{PANEL_MODULE}:4", f"{PANEL_MODULE}:6"]
 
-    def test_an_attribute_holding_the_palette_colour_passes(self) -> None:
+    def test_an_attribute_holding_the_palette_color_passes(self) -> None:
         source = "class GUIPanel:\n    def __init__(self, layout) -> None:\n        self._c = layout.colors\n"
 
         assert not messages(source)
@@ -86,7 +86,7 @@ class TestStoredColors:
 
 
 class TestUnregisteredThemeColors:
-    def test_a_theme_colour_filled_directly_is_reported(
+    def test_a_theme_color_filled_directly_is_reported(
         self,
         module_helpers: Tuple[Path, str],
     ) -> None:
@@ -135,14 +135,14 @@ class TestSweptRoots:
 
 
 class TestLiteralColors:
-    def test_a_hex_colour_outside_the_palettes_is_reported(self, tmp_path: Path) -> None:
+    def test_a_hex_color_outside_the_palettes_is_reported(self, tmp_path: Path) -> None:
         (tmp_path / "settings.yaml").write_text(LAYOUT_FILE)
 
         findings = check_palette_colors.find_literal_colors(tmp_path, tmp_path / "palettes")
 
         assert [finding.location for finding in findings] == [f"{tmp_path / 'settings.yaml'}:2"]
 
-    def test_a_palette_carries_its_colours_as_values(self, tmp_path: Path) -> None:
+    def test_a_palette_carries_its_colors_as_values(self, tmp_path: Path) -> None:
         palettes = tmp_path / "palettes"
         palettes.mkdir()
         (palettes / "studio.yaml").write_text(PALETTE_FILE)

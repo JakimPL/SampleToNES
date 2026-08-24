@@ -69,7 +69,7 @@ def read_string(data: bytes, offset: int) -> bytes:
 
 
 class TestHeaderBytes:
-    """The exact bytes an NSF header serialises to.
+    """The exact bytes an NSF header serializes to.
 
     The layout is what every console player reads a file through, so the literal states it in
     full: the identity, the three addresses, the three text fields, and the playback fields
@@ -90,7 +90,7 @@ class TestHeaderBytes:
         + bytes(NSF2_LENGTH_SIZE)
     )
 
-    def test_the_header_serialises_to_the_expected_bytes(self) -> None:
+    def test_the_header_serializes_to_the_expected_bytes(self) -> None:
         assert header() == self.EXPECTED
 
     def test_the_header_fills_the_program_area_it_precedes(self) -> None:

@@ -54,7 +54,7 @@ Dialogs open through the XDG desktop portal (`org.freedesktop.portal.FileChooser
 ## Application icon
 
 The icon suite in `src/sampletones_assets/icons` is generated from the mark declared beside it in
-`src/sampletones_assets/mark`: `mark.yaml` carries the geometry, colours and rasterization
+`src/sampletones_assets/mark`: `mark.yaml` carries the geometry, colors and rasterization
 settings, validated as a `Mark`, and `template.svg` is the vector the rendered geometry fills. The
 package writes the whole suite — the vector `sampletones.svg` and the rasters the application
 ships, `sampletones.png` and the multi-resolution `sampletones.ico` — and `scripts/assets/icons.py`
@@ -92,9 +92,9 @@ running `make player` again and committing what it writes; the driver's test sui
 sources and holds the committed image to them wherever cc65 is installed. The wheel carries the
 assembled image alone, which is all an installed copy reads.
 
-cc65 is distributed under the zlib licence, and the driver stays clear of it: the link line names
+cc65 is distributed under the zlib license, and the driver stays clear of it: the link line names
 our own object files and our own `nsf.cfg`, so nothing of cc65's start-up code or libraries reaches
-the committed image. That keeps the blob entirely ours to ship under the project's MIT licence.
+the committed image. That keeps the blob entirely ours to ship under the project's MIT license.
 
 ### Verifying the driver
 
@@ -104,7 +104,7 @@ watches the APU's address range, so each routine answers with the register write
 suite holds the whole run against `RegisterTrace.from_song`. Reading those writes back into
 instructions and rendering them through the project's own generators closes the loop on the sound
 as well: what the console plays stands against the very waveform the reconstruction carries. py65
-is a developer dependency, outside both the wheel and the bundles, and its BSD licence leaves the
+is a developer dependency, outside both the wheel and the bundles, and its BSD license leaves the
 project's own terms untouched.
 
 Listening to a real APU needs [ffmpeg](https://ffmpeg.org/) carrying the `libgme` demuxer, which

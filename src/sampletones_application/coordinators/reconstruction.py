@@ -8,7 +8,7 @@ from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
 from sampletones_application.logic.reconstruction.edit import (
-    InstrumentEdit,
+    ChannelEdit,
     ReconstructionEdit,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
@@ -16,7 +16,7 @@ from sampletones_application.services import (
     RegeneratedInstrument,
     RegenerationResult,
     RegenerationService,
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
@@ -329,19 +329,19 @@ class ReconstructionCoordinator:
     def _on_regeneration_result(self, result: RegenerationResult) -> None:
         match result:
             case ServiceSuccess(value=outcome):
-                self.apply_edit(self._instrument_edit(outcome))
+                self.apply_edit(self._channel_edit(outcome))
             case ServiceError(exception=exception):
                 logger.error_with_traceback(exception, "Regeneration failed")
                 self._dialogs.show_error(exception)
-            case ServiceCancelled():
-                logger.info("Regeneration cancelled")
+            case ServiceCanceled():
+                logger.info("Regeneration canceled")
 
         self._set_reconstruction_dimmed(self._regeneration_service.is_running())
 
     @staticmethod
-    def _instrument_edit(outcome: RegeneratedInstrument) -> InstrumentEdit:
+    def _channel_edit(outcome: RegeneratedInstrument) -> ChannelEdit:
         """Reads a regeneration result as the edit the project history records."""
-        return InstrumentEdit(
+        return ChannelEdit(
             reconstruction=outcome.reconstruction,
             channel_name=outcome.channel_name,
             feature_key=outcome.feature_key,

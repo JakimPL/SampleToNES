@@ -149,7 +149,7 @@ class TestWaveformReconstructionDim:
 
         assert graph._series_color(layer, graph._series_shade(layer)) == layer.color
 
-    def test_series_color_greys_the_reconstruction_when_dimmed(self) -> None:
+    def test_series_color_grays_the_reconstruction_when_dimmed(self) -> None:
         graph = _graph()
         _with_layout(graph, opacity=0.4)
         graph._reconstruction_dimmed = True

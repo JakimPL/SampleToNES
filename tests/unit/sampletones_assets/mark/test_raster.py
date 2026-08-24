@@ -26,20 +26,20 @@ class TestMarkRaster:
         image = MarkRaster(mark).render()
         assert image.getpixel(CORNER)[ALPHA] == 0
 
-    def test_the_frame_centre_carries_the_background(self, mark: Mark) -> None:
+    def test_the_frame_center_carries_the_background(self, mark: Mark) -> None:
         """The frame reaches the top edge between its rounded corners, so the ground there is opaque."""
         image = MarkRaster(mark).render()
-        centre = image.size[0] // 2
-        assert image.getpixel((centre, 1))[ALPHA] == 255
+        center = image.size[0] // 2
+        assert image.getpixel((center, 1))[ALPHA] == 255
 
-    def test_the_smooth_half_is_drawn_in_its_own_colour(self, mark: Mark) -> None:
+    def test_the_smooth_half_is_drawn_in_its_own_color(self, mark: Mark) -> None:
         image = MarkRaster(mark).render()
         scale = mark.render.supersample
         start = mark.waves.sine.start
         pixel = image.getpixel((round(start.x * scale), round(start.y * scale)))
         assert pixel[:CHANNELS] == parse_hex_color(mark.colors.sine)[:CHANNELS]
 
-    def test_the_stepped_half_is_drawn_in_its_own_colour(self, mark: Mark) -> None:
+    def test_the_stepped_half_is_drawn_in_its_own_color(self, mark: Mark) -> None:
         image = MarkRaster(mark).render()
         scale = mark.render.supersample
         corner = mark.waves.square.points[1]

@@ -1,23 +1,6 @@
 from sampletones_application.categories.abstract import AbstractElement
 
 
-class SequencerBrowserElements(AbstractElement):
-    REFRESH_BUTTON = "refresh_button"
-    STATUS_REFRESH = "status_refresh"
-    RECONSTRUCTIONS_TREE = "reconstructions_tree"
-    FILE_NOT_FOUND = "file_not_found"
-    LOAD_ERROR = "load_error"
-    LOAD_RECONSTRUCTION_DIALOG = "load_reconstruction_dialog"
-
-
-class SequencerModuleElements(AbstractElement):
-    MODULE_OPTIONS = "module_options"
-    NES_FREQUENCY = "nes_frequency"
-    ROWS = "rows"
-    TEMPO = "tempo"
-    SPEED = "speed"
-
-
 class SequencerTrackerElements(AbstractElement):
     TRACKER_TEXT = "tracker_text"
     OCTAVE = "octave"
@@ -35,8 +18,8 @@ class SequencerTrackerElements(AbstractElement):
     CONTEXT_SELECT_COLUMN = "context_select_column"
     CONTEXT_SELECT_SUBCOLUMN = "context_select_subcolumn"
     CONTEXT_NOTE_OFF = "context_note_off"
-    CONTEXT_SET_INSTRUMENT = "context_set_instrument"
-    CONTEXT_NO_SAMPLES = "context_no_samples"
+    CONTEXT_SET_VOICE = "context_set_voice"
+    CONTEXT_NO_VOICES = "context_no_voices"
     CONTEXT_CLEAR_SUBCOLUMN = "context_clear_subcolumn"
     CONTEXT_CLEAR_CELL = "context_clear_cell"
     CONTEXT_CLEAR_ROW = "context_clear_row"
@@ -87,9 +70,11 @@ class SequencerOrderElements(AbstractElement):
 
 class SequencerVoicesElements(AbstractElement):
     VOICES_TEXT = "voices_text"
-    NEW_SHAPE = "new_shape"
+    NEW_INSTRUMENT = "new_instrument"
+    ADD_SAMPLE = "add_sample"
+    IMPORT_INSTRUMENT = "import_instrument"
     KIND_SAMPLE = "kind_sample"
-    KIND_SHAPE = "kind_shape"
+    KIND_INSTRUMENT = "kind_instrument"
     COLUMN_KIND = "column_kind"
     COLUMN_ID = "column_id"
     COLUMN_NAME = "column_name"
@@ -102,6 +87,13 @@ class SequencerVoicesElements(AbstractElement):
     CONTEXT_MOVE_DOWN = "context_move_down"
     CONTEXT_MOVE_TOP = "context_move_top"
     CONTEXT_MOVE_BOTTOM = "context_move_bottom"
+    CONTEXT_INSTRUMENT_FROM = "context_instrument_from"
+    CONTEXT_EXPORT_INSTRUMENT = "context_export_instrument"
+    OMISSION_PITCH = "omission_pitch"
+    OMISSION_HI_PITCH = "omission_hi_pitch"
+    OMISSION_RELEASE_POINT = "omission_release_point"
+    OMISSION_ARPEGGIO_MODE = "omission_arpeggio_mode"
+    OMISSION_SEQUENCE_LOOP_POINTS = "omission_sequence_loop_points"
 
 
 class SequencerHistoryElements(AbstractElement):

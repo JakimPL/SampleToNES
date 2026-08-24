@@ -16,7 +16,7 @@ from sampletones_core.exports.stage import ExportStage
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 from tests.suite.progress import RecordingReporter
@@ -205,7 +205,7 @@ class TestWhatABatchSaysAboutItself:
             build_instrument("lead", ENVELOPE_FRAMES),
             build_instrument("bass", ENVELOPE_FRAMES),
         )
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             backend.write_sample(tmp_path / f"kit{EXT_FILE_INSTRUMENT}", sample, reporter)
 
         assert not (tmp_path / f"bass{EXT_FILE_INSTRUMENT}").exists()

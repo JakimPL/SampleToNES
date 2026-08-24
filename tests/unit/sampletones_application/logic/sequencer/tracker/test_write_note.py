@@ -4,7 +4,8 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.project.voices.envelopes import ShapeEnvelopes
+from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.voice import voice_reference
@@ -35,13 +36,13 @@ def _transpose(logic: SequencerTrackerLogic, channel: ChannelName, row_index: in
 
 
 class TestATypedNoteIsStatedAsAStepFromTheVoice:
-    def test_a_shape_takes_the_step_that_reaches_the_note(self) -> None:
+    def test_an_instrument_takes_the_step_that_reaches_the_note(self) -> None:
         controller, logic = _logic()
-        shape = controller.add_shape("lead")
-        controller.set_shape_root(shape.id, pitch=ROOT_PITCH, period=8)
-        shape.envelopes = ShapeEnvelopes(volume=(15,))
-        shape.invalidate()
-        _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=shape.id))
+        instrument = controller.add_instrument(new_instrument("lead"))
+        controller.set_instrument_root(instrument.id, pitch=ROOT_PITCH, period=8)
+        instrument.envelopes = InstrumentEnvelopes(volume=(15,))
+        instrument.invalidate()
+        _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=instrument.id))
 
         logic.write_note(0, ChannelName.PULSE1, TYPED_PITCH)
 
@@ -59,9 +60,9 @@ class TestATypedNoteIsStatedAsAStepFromTheVoice:
 
     def test_a_row_below_the_note_is_measured_against_the_voice_it_carries(self) -> None:
         controller, logic = _logic()
-        shape = controller.add_shape("lead")
-        controller.set_shape_root(shape.id, pitch=ROOT_PITCH, period=8)
-        _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=shape.id))
+        instrument = controller.add_instrument(new_instrument("lead"))
+        controller.set_instrument_root(instrument.id, pitch=ROOT_PITCH, period=8)
+        _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=instrument.id))
 
         logic.write_note(2, ChannelName.PULSE1, TYPED_PITCH)
 
@@ -76,8 +77,8 @@ class TestATypedNoteIsStatedAsAStepFromTheVoice:
 
     def test_a_row_past_a_note_off_carries_no_voice(self) -> None:
         controller, logic = _logic()
-        shape = controller.add_shape("lead")
-        _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=shape.id))
+        instrument = controller.add_instrument(new_instrument("lead"))
+        _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=instrument.id))
         _write(controller, ChannelName.PULSE1, 1, NoteOff())
 
         logic.write_note(2, ChannelName.PULSE1, TYPED_PITCH)

@@ -26,7 +26,7 @@ class SequencerOrderViewModel(BaseModel, frozen=True):
 class SequencerOrderTrackerViewModel(BaseModel, frozen=True):
     """The whole arrangement: order positions (columns) across channels (rows).
 
-    The master row summarises each position across channels — the horizontal analog
+    The master row summarizes each position across channels — the horizontal analog
     of the tracker's sample column — showing the shared pattern index or ``?`` when
     the channels disagree.
     """

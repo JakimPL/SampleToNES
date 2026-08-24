@@ -73,7 +73,7 @@ class LibraryLogic(CallbackMixin):
         self.on_apply_library_config: Optional[OnApplyLibraryConfigCallback] = None
         self.on_generation_completed: Optional[VoidCallback] = None
         self.on_generation_error: Optional[Callable[[Exception], None]] = None
-        self.on_generation_cancelled: Optional[VoidCallback] = None
+        self.on_generation_canceled: Optional[VoidCallback] = None
         self.on_load_file_not_found: Optional[Callable[[Path, str], None]] = None
         self.on_load_error: Optional[Callable[[Exception, str], None]] = None
 
@@ -85,7 +85,7 @@ class LibraryLogic(CallbackMixin):
             on_generation_progress=self._on_generation_progress,
             on_generation_completed=self._on_generation_completed,
             on_generation_error=self._on_generation_error,
-            on_generation_cancelled=self._on_generation_cancelled,
+            on_generation_canceled=self._on_generation_canceled,
         )
 
     def configure_lock(
@@ -373,8 +373,8 @@ class LibraryLogic(CallbackMixin):
                     self._emit_view(self._language_manager["instructions.library.message.status_saving"], progress=1.0)
                 case TaskStatus.FAILED:
                     self._emit_view(self._language_manager["instructions.library.message.status_generation_failed"])
-                case TaskStatus.CANCELLED:
-                    self._emit_view(self._language_manager["instructions.library.message.status_generation_cancelled"])
+                case TaskStatus.CANCELED:
+                    self._emit_view(self._language_manager["instructions.library.message.status_generation_canceled"])
                 case TaskStatus.RUNNING:
                     self._update_progress_state(task_progress)
 
@@ -405,8 +405,8 @@ class LibraryLogic(CallbackMixin):
         self.call(self.on_generation_error, exception)
         self._finalize_generation_error()
 
-    def _on_generation_cancelled(self) -> None:
-        self.call(self.on_generation_cancelled)
+    def _on_generation_canceled(self) -> None:
+        self.call(self.on_generation_canceled)
         self._finalize_generation()
 
     def _finalize_generation(self) -> None:

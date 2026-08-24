@@ -1,9 +1,10 @@
 # FamiTracker export format
 
-This document is the reference for how _SampleToNES_ writes FamiTracker files. It
-describes the two binary formats the `sampletones_core.formats.famitracker` package
-produces — the `.fti` instrument file and the `.ftm` module file — and lists the
-FamiTracker capacity limits that the project domain model will grow to respect.
+This document is the reference for how _SampleToNES_ writes and reads FamiTracker
+files. It describes the two binary formats the `sampletones_core.formats.famitracker`
+package produces — the `.fti` instrument file and the `.ftm` module file — states what
+a voice takes from an `.fti` it reads back, and lists the FamiTracker capacity limits
+that the project domain model will grow to respect.
 
 The target is **vanilla FamiTracker 0.4.6** (`FILE_VER = 0x0440`). Files written to
 this specification load in stock FamiTracker as well as the 0CC, Dn-FamiTracker and
@@ -157,7 +158,7 @@ releases the note is dropped from the cycle.
 
 Every length stays within the 252 items a FamiTracker sequence holds, so a reconstruction
 longer than 252 frames — 8.4 s at the default 30 fps — exports its opening 252 frames and
-logs the shortening. The instruments panel colours a sequence input warning orange once it
+logs the shortening. The instruments panel colors a sequence input warning orange once it
 passes that length, so the limit is visible before an export.
 
 An empty dimension is written as a disabled sequence, which is a different instrument from
@@ -177,18 +178,19 @@ and triggering the instrument at `initial_pitch` replays that contour. Volume, d
 (or noise mode) and any pitch sequences carry across directly. The DPCM
 key-assignment table is empty by design.
 
-A [shape](../glossary.md#shape) is one set of envelopes every channel reads, which is
-the instrument model FamiTracker itself uses, so it becomes a single instrument
-however many channels play it. Its dimensions are written at one length, each holding
-its final value where it is the shorter, so a tracker advancing every sequence on a
-counter of its own sounds the shape the way the engine here plays it. Every channel
-that names the shape reaches that one instrument, each against the root it reads —
-the shape's note on the tonal channels, its period on noise.
+An [instrument](../glossary.md#instrument) written by hand is one set of envelopes
+every channel reads, which is the instrument model FamiTracker itself uses, so it
+becomes a single instrument however many channels play it. Its dimensions are written
+at one length, each holding its final value where it is the shorter, so a tracker
+advancing every sequence on a counter of its own sounds it the way the engine here
+plays it. Every channel that names it reaches that one instrument, each against the
+root it reads — its note on the tonal channels, its period on noise.
 
 **Where a row's note comes from.** A voice states where its zero is and a row states
 the step from it, so a pattern cell holds `reference + transpose`, held inside the
 range a tonal channel plays and wrapped into the sixteen periods on noise. A sample's
-reference is the offset origin its conversion chose; a shape's is the root it states.
+reference is the offset origin its conversion chose; a hand-written instrument's is the
+root it states.
 
 That origin is chosen once, when the reconstruction is built, and stored with it as
 that channel's reference pitch (see [Reconstructions](reconstructions.md#contents)).
@@ -199,7 +201,45 @@ later export reports that stored pitch as `initial_pitch` and writes each frame 
 straddle zero and stay compact around one note, and the pattern cell holds the
 contour's midpoint — a rising contour prints its middle note and opens below it.
 
-## C. FamiTracker capacity limits
+## C. Reading an instrument file
+
+An `.fti` is read as well as written: **Import instrument...** in the sequencer brings
+one into the voice pool as a hand-written [instrument](../glossary.md#instrument).
+`instrument.py::read_fti` parses the layout in section A.1, and
+`voice.py::instrument_to_voice` makes a voice of the 2A03 instrument it holds.
+
+A voice carries three of the five dimensions — volume, arpeggio and duty — and one loop
+point every dimension follows, so those come across as they stand. The voice takes the
+name the file states, and a file naming nothing leaves the voice named after the file
+itself. The arpeggio is read as offsets from the roots a hand-written voice rests on,
+since a tracker instrument sounds at whatever note a row names it with.
+
+**Which loop point the voice adopts.** One sequence governs and the rest follow it: the
+volume sequence wherever it is written, since that is the one shaping a held note, and
+otherwise the first sequence the instrument carries. A governing sequence looping from
+one of its items gives the voice that point; one halting at its end leaves the voice
+playing its envelopes once.
+
+**What the voice leaves to the file.** A tracker instrument states more than a voice
+holds, and each of those is reported once the import lands, so a reader learns what the
+file carried (`InstrumentOmission` in `voice.py`):
+
+| Stated in the file | What the voice holds |
+| --- | --- |
+| a pitch envelope | a note moved in whole semitones, which the arpeggio carries |
+| a hi-pitch envelope | the same |
+| a release point | a note the pattern cuts with a note-off |
+| an arpeggio in fixed, relative or scheme mode | absolute offsets |
+| a loop point per envelope | one point every dimension follows |
+
+Each of these is a dimension the project model will grow to hold; `bugs-and-todos.md`
+under **Tracker** owns that list.
+
+A sequence carrying an item outside the range its dimension holds raises
+`InvalidInstrumentValuesError`. The file is read before the pool is touched, so a file
+the reader cannot take leaves the project as it stood and the history without an entry.
+
+## D. FamiTracker capacity limits
 
 FamiTracker bounds several quantities that the _SampleToNES_ `Project` currently
 leaves looser. The exporter guards these limits, so every file it writes loads: it
@@ -208,9 +248,9 @@ that outruns a sequence. Enforcing them on the domain model — so the editor pr
 reaching an unexportable state — is planned as a follow-up phase; this table is that
 checklist.
 
-| Quantity | FamiTracker limit | Project bound today | Exporter behaviour |
+| Quantity | FamiTracker limit | Project bound today | Exporter behavior |
 | --- | --- | --- | --- |
-| Instruments | 64 total | unbounded (1–4 per sample, one per shape) | raises when the instruments exceed 64 |
+| Instruments | 64 total | unbounded (1–4 per sample, one per hand-written instrument) | raises when the instruments exceed 64 |
 | Sequences per kind | 128 | unbounded | raises when a kind's pool exceeds 128 |
 | Items per sequence | 252 | one item per reconstruction frame, unbounded | keeps the opening 252 items and logs a warning |
 | Patterns per channel | 128 (indices 0–127) | pool keyed by arbitrary ints | raises when a pattern index exceeds 127 |
@@ -220,7 +260,7 @@ checklist.
 | Title / author | 32 bytes each | 64 characters | truncates to 32 bytes |
 | Comment | free text (COMMENTS block) | 65536 characters | carried in full |
 | Tempo / speed | engine-dependent (split at row `speed_split_point`) | tempo 32–255, speed 1–31 | written verbatim from settings |
-| DPCM samples | 64 | not modelled | always empty by design |
+| DPCM samples | 64 | not modeled | always empty by design |
 
 The exporter also reserves a per-channel empty pattern index (`max used index + 1`)
 for order slots the song leaves unset; a channel that already fills indices up to
@@ -228,7 +268,7 @@ for order slots the song leaves unset; a channel that already fills indices up t
 order. When the domain model grows to enforce these limits, the editor can prevent
 reaching a state the exporter would reject.
 
-## D. Driver memory footprint
+## E. Driver memory footprint
 
 Compiling a module into an NSF lays each instrument out across two regions of the driver's
 data, and an instrument's sequences size both of them. `footprint.py` measures the two, and

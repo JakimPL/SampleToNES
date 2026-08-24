@@ -47,8 +47,8 @@ on their own terms.
 [Domains](#domains)). A new domain is a new top-level directory with its own schema owner
 and loader.
 
-Palettes are a domain of their own because two other domains resolve against them: a colour
-field in `layout/` and a colour entry in `theme/` both name a palette token, and the palette
+Palettes are a domain of their own because two other domains resolve against them: a color
+field in `layout/` and a color entry in `theme/` both name a palette token, and the palette
 is what turns that name into a value. A directory holds one file per palette, named after the
 palette it declares, and every palette answers the same token set — an entry names one token
 and each palette must have an answer for it.
@@ -114,7 +114,7 @@ receives a view built for it:
   `parameters/` package gathers exactly what one tab needs: the shared six-field
   `TabGeometry` core, the flat integers its primitive sinks consume, and the cohesive
   feature models it forwards whole (`SchedulingBehavior`, `GraphsLayout`, the tab's own
-  `<Tab>Layout`, the colour blocks). A small factory produces any narrowed slice a consumer
+  `<Tab>Layout`, the color blocks). A small factory produces any narrowed slice a consumer
   needs (`TreeColors.create`, `PitchStepperStyle.from_general`).
 
 The type signals which side of the boundary a value is on: a frozen Pydantic model with
@@ -141,7 +141,7 @@ each value sits in the tree stays in the factory.
 | Theme | `theme/` | `ThemeSpec` (`sampletones_application/ui/themes/spec.py`) | `ThemeLoader.load_all()` → `ThemeRegistry` |
 
 The palettes load first, and the source holding the active one is injected as validation
-**context**, so any colour field in layout or theme keeps the token it was written as and
+**context**, so any color field in layout or theme keeps the token it was written as and
 reads its value from the palette in place when it is drawn with. `PaletteCatalog` names the
 palette a preference selects and answers with the default (`studio`) for a name the build
 does not ship, so a preference outlives the build that wrote it.

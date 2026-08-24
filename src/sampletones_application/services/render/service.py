@@ -11,7 +11,7 @@ from sampletones_application.services.render.sink import (
     build_render_sink,
 )
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceStarted,
     ServiceSuccess,
@@ -31,8 +31,8 @@ class SongRenderService(ServiceBase[RenderResult]):
     written back at the level the whole render turned out to reach — so the service reports one
     pass or two without knowing which format waits on the other side.
 
-    A render is one at a time. Cancelling is honoured between rows and between encoded blocks,
-    and the file a cancelled or failed run was writing is removed, so a result names a path only
+    A render is one at a time. Cancelling is honored between rows and between encoded blocks,
+    and the file a canceled or failed run was writing is removed, so a result names a path only
     where a finished file stands.
     """
 
@@ -160,7 +160,7 @@ class SongRenderService(ServiceBase[RenderResult]):
     def _report_outcome(self, sink: RenderSink, completed: bool) -> None:
         if not completed:
             sink.discard()
-            self._emit(ServiceCancelled())
+            self._emit(ServiceCanceled())
             return
 
         logger.info(f"Rendered the song to: {logger.format_path(sink.destination)}")

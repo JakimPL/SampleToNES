@@ -210,7 +210,7 @@ class TestArpeggioReferenceStability(BaseTestSuite):
     def test_cleared_arpeggio_returns_every_frame_to_the_reference(self, test_case: TestCase) -> None:
         """Clearing an arpeggio envelope restores the pitch the channel started at.
 
-        This is the reported behaviour: typing ``12 0`` and then clearing it back to ``0``
+        This is the reported behavior: typing ``12 0`` and then clearing it back to ``0``
         sounds the sample at the note it was reconstructed at.
         """
         features = self._export(test_case, self._edited(test_case))

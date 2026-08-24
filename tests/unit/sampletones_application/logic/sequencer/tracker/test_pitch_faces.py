@@ -4,10 +4,11 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.project.voices.envelopes import ShapeEnvelopes
+from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
-from sampletones_core.project.voices.shape import Shape
 from sampletones_core.utils.display import NOTE_BLANK, display_transpose
 from sampletones_core.utils.frequencies import period_to_name, pitch_to_name
 from tests.suite.sequencer import sample_reconstruction
@@ -23,12 +24,12 @@ def _logic() -> Tuple[ProjectController, SequencerTrackerLogic]:
     return controller, SequencerTrackerLogic(controller)
 
 
-def _shape(controller: ProjectController) -> Shape:
-    shape = controller.add_shape("lead")
-    controller.set_shape_root(shape.id, pitch=ROOT_PITCH, period=ROOT_PERIOD)
-    shape.envelopes = ShapeEnvelopes(volume=(15,))
-    shape.invalidate()
-    return shape
+def _instrument(controller: ProjectController) -> Instrument:
+    instrument = controller.add_instrument(new_instrument("lead"))
+    controller.set_instrument_root(instrument.id, pitch=ROOT_PITCH, period=ROOT_PERIOD)
+    instrument.envelopes = InstrumentEnvelopes(volume=(15,))
+    instrument.invalidate()
+    return instrument
 
 
 def _write(
@@ -61,34 +62,34 @@ class TestACellReadsInTheTermsOfItsVoice:
 
         assert _pitch_cell(logic, ChannelName.PULSE1, 0) == display_transpose(TRANSPOSE)
 
-    def test_a_shape_reads_as_the_note_it_sounds(self) -> None:
+    def test_an_instrument_reads_as_the_note_it_sounds(self) -> None:
         controller, logic = _logic()
-        shape = _shape(controller)
-        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=shape.id), transpose=TRANSPOSE)
+        instrument = _instrument(controller)
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), transpose=TRANSPOSE)
 
         assert _pitch_cell(logic, ChannelName.PULSE1, 0) == pitch_to_name(ROOT_PITCH + TRANSPOSE)
 
-    def test_a_shape_on_noise_names_its_period(self) -> None:
+    def test_an_instrument_on_noise_names_its_period(self) -> None:
         controller, logic = _logic()
-        shape = _shape(controller)
-        _write(controller, ChannelName.NOISE, 0, command=NoteOn(voice_id=shape.id), transpose=TRANSPOSE)
+        instrument = _instrument(controller)
+        _write(controller, ChannelName.NOISE, 0, command=NoteOn(voice_id=instrument.id), transpose=TRANSPOSE)
 
         assert _pitch_cell(logic, ChannelName.NOISE, 0) == period_to_name(ROOT_PERIOD + TRANSPOSE)
 
     def test_an_empty_cell_reads_blank_whichever_voice_is_carried(self) -> None:
         controller, logic = _logic()
-        shape = _shape(controller)
-        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=shape.id), transpose=TRANSPOSE)
+        instrument = _instrument(controller)
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), transpose=TRANSPOSE)
 
         assert _pitch_cell(logic, ChannelName.PULSE1, 1) == NOTE_BLANK
 
 
 class TestTheFaceFollowsTheVoiceTheChannelCarries:
-    def test_a_bend_below_a_shape_still_reads_as_a_note(self) -> None:
+    def test_a_bend_below_an_instrument_still_reads_as_a_note(self) -> None:
         """A row bending a note it did not start reads in the terms of the voice in force."""
         controller, logic = _logic()
-        shape = _shape(controller)
-        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=shape.id), transpose=0)
+        instrument = _instrument(controller)
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), transpose=0)
         _write(controller, ChannelName.PULSE1, 1, transpose=BEND)
 
         assert _pitch_cell(logic, ChannelName.PULSE1, 1) == pitch_to_name(ROOT_PITCH + BEND)
@@ -103,8 +104,8 @@ class TestTheFaceFollowsTheVoiceTheChannelCarries:
 
     def test_a_note_off_hands_the_column_back_to_the_neutral_face(self) -> None:
         controller, logic = _logic()
-        shape = _shape(controller)
-        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=shape.id), transpose=0)
+        instrument = _instrument(controller)
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), transpose=0)
         _write(controller, ChannelName.PULSE1, 1, command=NoteOff())
         _write(controller, ChannelName.PULSE1, 2, transpose=BEND)
 
@@ -118,19 +119,19 @@ class TestTheFaceFollowsTheVoiceTheChannelCarries:
 
 
 class TestTheSampleColumnSpeaksForSamples:
-    def test_it_declines_a_shape(self) -> None:
+    def test_it_declines_an_instrument(self) -> None:
         controller, logic = _logic()
-        shape = _shape(controller)
+        instrument = _instrument(controller)
 
-        logic.set_sample_instrument(0, shape.id)
+        logic.set_row_sample(0, instrument.id)
 
         assert all(logic.row(channel, 0) is None or logic.row(channel, 0).is_empty() for channel in ChannelName.items())
 
     def test_it_reads_mixed_where_the_channels_disagree_on_the_face(self) -> None:
         controller, logic = _logic()
-        shape = _shape(controller)
+        instrument = _instrument(controller)
         sample = controller.add_sample(sample_reconstruction(list(ChannelName.items())), name="bass")
-        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=shape.id), transpose=0)
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), transpose=0)
         _write(controller, ChannelName.PULSE2, 0, command=NoteOn(voice_id=sample.id), transpose=0)
 
-        assert logic.build_grid().rows[0].sample_transpose == "?"
+        assert logic.build_grid().rows[0].transpose == "?"

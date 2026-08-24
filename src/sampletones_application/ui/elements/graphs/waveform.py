@@ -38,7 +38,7 @@ from sampletones_shared.types.application import Sender
 
 
 class SeriesShade(StrEnum):
-    """How strongly a waveform series is drawn, which decides the colour its theme carries."""
+    """How strongly a waveform series is drawn, which decides the color its theme carries."""
 
     FULL = "full"
     DIMMED = "dimmed"
@@ -260,12 +260,12 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self.add_layer(layer)
 
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:
-        """Greys the reconstruction line while its audio is being regenerated, restoring it when done.
+        """Grays the reconstruction line while its audio is being regenerated, restoring it when done.
 
-        Only the reconstruction series is greyed; the original-audio series and the axes keep full
+        Only the reconstruction series is grayed; the original-audio series and the axes keep full
         strength, so the fade reads as "this waveform is being recomputed", and the status bar shows a
         regenerating hint for the same span. The state is remembered so an async data update arriving
-        mid-regeneration redraws the reconstruction still greyed.
+        mid-regeneration redraws the reconstruction still grayed.
         """
         if self._reconstruction_dimmed == dimmed:
             return
@@ -370,7 +370,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         layer: Union[ArrayLayer, InstructionLayer],
         shade: SeriesShade,
     ) -> BaseColor:
-        """A layer's line colour in one of its two shades.
+        """A layer's line color in one of its two shades.
 
         The dimmed reconstruction is desaturated to gray and faded, so the drawn waveform — not just
         the legend swatch — clearly reads as inactive while its audio is recomputed.
@@ -423,11 +423,11 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         series_tag: str,
         layer: Union[ArrayLayer, InstructionLayer],
     ) -> None:
-        """Binds a line-colour theme to a series, holding one theme per shade the series takes.
+        """Binds a line-color theme to a series, holding one theme per shade the series takes.
 
-        A series switches between its full and dimmed shades — the reconstruction line greys while
+        A series switches between its full and dimmed shades — the reconstruction line grays while
         its audio is recomputed — by binding the theme built for that shade, and each theme carries
-        the colour token behind its shade, so both follow a palette swap.
+        the color token behind its shade, so both follow a palette swap.
         """
         shade = self._series_shade(layer)
         theme_tag = compose_tag(series_tag, SUF_GRAPH_THEME, shade)

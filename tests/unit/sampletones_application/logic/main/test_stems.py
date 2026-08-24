@@ -76,7 +76,7 @@ class TestGathering:
 class TestMovesWithinALevel:
     """Position among peers settles which of two equal-cost choices picks first."""
 
-    def test_a_recording_moves_past_its_neighbour(self) -> None:
+    def test_a_recording_moves_past_its_neighbor(self) -> None:
         assert _shape(_levels(["bass", "lead"]).move_within_level(_path("lead"), -1)) == [["lead", "bass"]]
 
     def test_a_move_off_the_end_of_a_level_changes_nothing(self) -> None:

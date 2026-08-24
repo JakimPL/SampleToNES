@@ -46,7 +46,7 @@ class BitphaseProject(BaseModel):
     )
     pattern_order_colors: Dict[int, str] = Field(
         default_factory=dict,
-        description="Highlight colour per order position.",
+        description="Highlight color per order position.",
     )
     instruments: Tuple[BitphaseInstrument, ...] = Field(
         ...,

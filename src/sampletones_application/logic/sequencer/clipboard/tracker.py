@@ -123,7 +123,7 @@ class TrackerBlockText:
         key: BlockKey,
     ) -> str:
         match subcolumn:
-            case SubColumn.INSTRUMENT:
+            case SubColumn.VOICE:
                 return self._state_note(block.notes, key)
             case SubColumn.TRANSPOSE:
                 return self._state_number(
@@ -193,7 +193,7 @@ class TrackerBlockText:
                 slot = slot_from_flat(shape.first + position)
                 key = (row_offset, shape.first + position - base)
                 match slot.subcolumn:
-                    case SubColumn.INSTRUMENT:
+                    case SubColumn.VOICE:
                         read = store_reading(
                             notes,
                             key,
