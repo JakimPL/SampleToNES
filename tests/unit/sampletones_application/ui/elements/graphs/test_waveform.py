@@ -103,6 +103,8 @@ def _graph() -> GUIWaveformGraph:
     graph._lbl_waveform_reconstruction = "Reconstruction"
     graph._status_bar = MagicMock()
     graph._msg_regenerating = "Regenerating reconstruction..."
+    graph.tag = "waveform"
+    graph._series_themes = {}
     return graph
 
 

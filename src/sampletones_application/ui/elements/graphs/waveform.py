@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -79,6 +79,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.overlay_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_OVERLAY)
 
         self.current_data: Optional[Union[InstructionLibraryFragment[Any], WaveformData]] = None
+        self._series_themes: Dict[BaseColor, str] = {}
         self.current_position: int = 0
 
         _min_x = layout.graph.min_x
@@ -462,23 +463,39 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         series_tag: str,
         layer: Union[ArrayLayer, InstructionLayer],
     ) -> None:
-        """Binds a line-color theme to a series, holding one theme per shade the series takes.
-
-        A series switches between its full and dimmed shades — the reconstruction line grays while
-        its audio is recomputed — by binding the theme built for that shade, and each theme carries
-        the color token behind its shade, so both follow a palette swap.
-        """
+        """Binds the theme drawing this layer in the shade it currently takes."""
         shade = self._series_shade(layer)
-        theme_tag = compose_tag(series_tag, SUF_GRAPH_THEME, shade)
-        if not dpg.does_item_exist(theme_tag):
-            with dpg.theme(tag=theme_tag), dpg.theme_component(dpg.mvLineSeries):
-                dpg_add_palette_theme_color(
-                    dpg.mvPlotCol_Line,
-                    self._series_color(layer, shade),
-                    category=dpg.mvThemeCat_Plots,
-                )
+        dpg_bind_item_theme(series_tag, self._series_theme(self._series_color(layer, shade)))
 
-        dpg_bind_item_theme(series_tag, theme_tag)
+    def _series_theme(self, color: BaseColor) -> str:
+        """The theme drawing a line in one color, built once per color the graph has shown.
+
+        A layer keeps its name across loads while its color follows what it draws — one
+        generator's fragment after another's, the reconstruction line graying as its audio is
+        recomputed — so the theme is held against the color rather than against the series that
+        carries it, and a layer arriving in a new color binds the theme built for that color. Each
+        theme holds the color token itself, so every color the graph has drawn follows a palette
+        swap.
+
+        Args:
+            color: The color the line is drawn in.
+
+        Returns:
+            str: The tag of the theme carrying it.
+        """
+        if color in self._series_themes:
+            return self._series_themes[color]
+
+        theme_tag = compose_tag(self.tag, SUF_GRAPH_THEME, str(len(self._series_themes)))
+        with dpg.theme(tag=theme_tag), dpg.theme_component(dpg.mvLineSeries):
+            dpg_add_palette_theme_color(
+                dpg.mvPlotCol_Line,
+                color,
+                category=dpg.mvThemeCat_Plots,
+            )
+
+        self._series_themes[color] = theme_tag
+        return theme_tag
 
     def _add_position_indicator(self) -> None:
         dpg_delete_item(self.position_indicator_tag)
