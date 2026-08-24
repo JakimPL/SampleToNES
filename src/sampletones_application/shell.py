@@ -17,7 +17,7 @@ from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
-from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
+from sampletones_application.coordinators.tabs.sequencer.coordinator import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig
 from sampletones_application.tags.general import (
     TAG_GLOBAL_STATUS_WINDOW,

@@ -13,6 +13,7 @@ from sampletones_application.ui.panels.sequencer.input.order import (
 from sampletones_application.ui.panels.sequencer.input.target import OrderTarget, TrackerTarget
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
+from sampletones_application.ui.panels.sequencer.tracker import adjust
 from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
@@ -265,7 +266,7 @@ class TestTrackerAdjustKeys:
         region, delta = gestures.volume_shifted[-1]
         assert region.rows == range(CURSOR_ROW, CURSOR_ROW + 1)
         assert region.slots == (TrackerSlot(ChannelName.PULSE1, SubColumn.VOLUME),)
-        assert delta == -tracker_module.VOLUME_FINE_STEP
+        assert delta == -adjust.VOLUME_FINE_STEP
 
     def test_shift_makes_the_step_the_bigger_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
         gestures = Gestures()
@@ -274,7 +275,7 @@ class TestTrackerAdjustKeys:
         assert panel._on_key_pressed(_press("Ctrl+Shift+Up")) is True
         assert panel._on_key_pressed(_press("Alt+Shift+Up")) is True
         assert gestures.transposed[-1][1] == OCTAVE_SEMITONES
-        assert gestures.volume_shifted[-1][1] == tracker_module.VOLUME_COARSE_STEP
+        assert gestures.volume_shifted[-1][1] == adjust.VOLUME_COARSE_STEP
 
     def test_a_grid_with_no_cursor_shifts_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         gestures = Gestures()

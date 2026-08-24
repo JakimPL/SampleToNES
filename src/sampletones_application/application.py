@@ -36,7 +36,7 @@ from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
-from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
+from sampletones_application.coordinators.tabs.sequencer.coordinator import SequencerTabCoordinator
 from sampletones_application.exports import build_export_backends
 from sampletones_application.layout import LayoutConfig, load_layout_config
 from sampletones_application.logic.export import SongExportLogic
