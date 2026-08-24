@@ -1,5 +1,7 @@
-from typing import Optional
+from typing import Callable, Optional
 
+from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.editing import (
     EditedVoice,
@@ -7,9 +9,12 @@ from sampletones_application.logic.reconstruction.editing import (
     ReconstructionEdit,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.view_model.shared.history import HistoryDetail
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.instrument import Instrument
+
+InstrumentEditDetail = Callable[[str, FeatureKey], HistoryDetail]
 
 
 class InstrumentEditor:
@@ -24,9 +29,13 @@ class InstrumentEditor:
         self,
         reconstruction_manager: ReconstructionManager,
         project_controller: ProjectController,
+        history: HistoryManager,
+        instrument_edit_detail: InstrumentEditDetail,
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
         self._controller = project_controller
+        self._history = history
+        self._instrument_edit_detail = instrument_edit_detail
         self._voice_id: Optional[str] = None
 
     def edit_instrument(self, voice_id: str) -> None:
@@ -61,7 +70,11 @@ class InstrumentEditor:
         return None if feature_data is None else ReconstructionEdit(channels=feature_data.channels)
 
     def write_envelope(self, feature_key: FeatureKey, envelope: Envelope[int]) -> None:
-        """Writes one dimension of the instrument in front of the tab.
+        """Writes one dimension of the instrument in front of the tab, as one history entry.
+
+        The entry names the voice and the dimension it moved, and consecutive writes of that same
+        pair run together, so a bar dragged across a plot is undone in one step rather than in one
+        step per value it passed through.
 
         Raises:
             TypeError: If the tab holds no instrument to write into.
@@ -70,4 +83,9 @@ class InstrumentEditor:
         if instrument is None:
             raise TypeError("The tab holds no instrument to write an envelope into")
 
-        self._controller.set_instrument_envelope(instrument.id, feature_key, envelope)
+        with self._history.transaction(
+            HistoryAction.EDIT_INSTRUMENT,
+            detail=self._instrument_edit_detail(instrument.id, feature_key),
+            coalesce=(instrument.id, feature_key),
+        ):
+            self._controller.set_instrument_envelope(instrument.id, feature_key, envelope)

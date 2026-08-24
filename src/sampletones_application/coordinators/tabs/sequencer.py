@@ -1065,6 +1065,14 @@ class SequencerTabCoordinator:
             feature_key,
         )
 
+    def instrument_edit_detail(
+        self,
+        voice_id: str,
+        feature_key: FeatureKey,
+    ) -> HistoryDetail:
+        """Describes a hand-written voice's edited dimension for the project history."""
+        return self._history_detail.edit_instrument(voice_id, feature_key)
+
     def reconstruction_stem_detail(
         self,
         voice_id: str,

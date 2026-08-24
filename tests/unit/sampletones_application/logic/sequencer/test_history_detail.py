@@ -433,6 +433,44 @@ class TestReconstructionDetails:
             ("v", HistoryDetailRole.FEATURE_VOLUME),
         ]
 
+    def test_edit_instrument_names_position_and_feature(self) -> None:
+        """An instrument is one set every channel reads, so the line names no channel."""
+        controller = _controller()
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        segments = formatter.edit_instrument(instrument.id, FeatureKey.VOLUME)
+
+        assert _pairs(segments) == [
+            ("00:", HistoryDetailRole.INSTRUMENT),
+            ("v", HistoryDetailRole.FEATURE_VOLUME),
+        ]
+
+    @pytest.mark.parametrize(
+        ("feature_key", "letter", "role"),
+        [
+            (FeatureKey.INITIAL_PITCH, "i", HistoryDetailRole.FEATURE_PITCH),
+            (FeatureKey.VOLUME, "v", HistoryDetailRole.FEATURE_VOLUME),
+            (FeatureKey.ARPEGGIO, "a", HistoryDetailRole.FEATURE_ARPEGGIO),
+            (FeatureKey.PITCH, "p", HistoryDetailRole.FEATURE_PITCH),
+            (FeatureKey.HI_PITCH, "h", HistoryDetailRole.FEATURE_PITCH),
+            (FeatureKey.DUTY_CYCLE, "d", HistoryDetailRole.FEATURE_DUTY_CYCLE),
+        ],
+    )
+    def test_an_instrument_edit_names_its_dimension_by_the_same_letter(
+        self,
+        feature_key: FeatureKey,
+        letter: str,
+        role: HistoryDetailRole,
+    ) -> None:
+        controller = _controller()
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        segments = formatter.edit_instrument(instrument.id, feature_key)
+
+        assert (segments[-1].text, segments[-1].role) == (letter, role)
+
     @pytest.mark.parametrize(
         ("feature_key", "letter", "role"),
         [

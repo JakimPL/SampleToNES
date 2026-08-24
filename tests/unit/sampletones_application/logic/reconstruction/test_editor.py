@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.reconstruction.editing import InstrumentEdit, ReconstructionEdit
@@ -41,9 +42,22 @@ def reconstruction_manager() -> MagicMock:
     return manager
 
 
+HISTORY_BUDGET: Final[int] = 16
+
+
 @pytest.fixture
-def editor(reconstruction_manager: MagicMock, controller: ProjectController) -> InstrumentEditor:
-    return InstrumentEditor(reconstruction_manager, controller)
+def history(controller: ProjectController) -> HistoryManager:
+    """A strict history, so an edit landing outside a transaction is reported rather than healed."""
+    return HistoryManager(controller, budget=HISTORY_BUDGET, strict=True)
+
+
+@pytest.fixture
+def editor(
+    reconstruction_manager: MagicMock,
+    controller: ProjectController,
+    history: HistoryManager,
+) -> InstrumentEditor:
+    return InstrumentEditor(reconstruction_manager, controller, history, lambda _voice_id, _feature_key: ())
 
 
 class TestWhatTheTabHasInFront:

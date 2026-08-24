@@ -16,6 +16,7 @@ from sampletones_application.coordinators.export.instrument import (
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
+from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.audition import (
     InstrumentAuditionLogic,
@@ -23,7 +24,10 @@ from sampletones_application.logic.reconstruction.audition import (
 from sampletones_application.logic.reconstruction.browser.logic import BrowserLogic
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.logic.reconstruction.edit import StemRemoval
-from sampletones_application.logic.reconstruction.editor import InstrumentEditor
+from sampletones_application.logic.reconstruction.editor import (
+    InstrumentEditDetail,
+    InstrumentEditor,
+)
 from sampletones_application.logic.reconstruction.instruments import (
     OnReconstructionInstrumentUpdatedCallback,
     ReconstructionInstrumentsLogic,
@@ -134,6 +138,8 @@ class ReconstructionTabCoordinator:
         on_reconstruction_stem_removed: Callable[[StemRemoval], None],
         original_audio_locator: OriginalAudioLocator,
         instrument_exports: InstrumentExportCoordinator,
+        history: HistoryManager,
+        instrument_edit_detail: InstrumentEditDetail,
         *,
         key_router: KeyRouter,
         tab_active: ActivePredicate,
@@ -147,6 +153,8 @@ class ReconstructionTabCoordinator:
         self._instrument_editor: InstrumentEditor = InstrumentEditor(
             reconstruction_manager,
             project_controller,
+            history,
+            instrument_edit_detail,
         )
         self._session_manager = session_manager
         self._export_backends = export_backends

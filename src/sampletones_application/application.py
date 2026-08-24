@@ -444,6 +444,8 @@ class Application:
             on_reconstruction_stem_removed=self._reconstruction_coordinator.apply_edit,
             original_audio_locator=self._original_audio_locator,
             instrument_exports=self._instrument_exports,
+            history=self.history,
+            instrument_edit_detail=self._instrument_edit_detail,
             key_router=self.key_router,
             tab_active=self._is_reconstructions_tab_current,
             layout=ReconstructionTabParameters.from_config(self.layout),
@@ -1130,6 +1132,14 @@ class Application:
                 sample.id,
                 edit.reconstruction,
             )
+
+    def _instrument_edit_detail(
+        self,
+        voice_id: str,
+        feature_key: FeatureKey,
+    ) -> HistoryDetail:
+        """The history line an instrument edit reads as: the voice and the dimension it moved."""
+        return self._sequencer_tab.instrument_edit_detail(voice_id, feature_key)
 
     def _edit_detail(self, voice_id: str, edit: ReconstructionEdit) -> HistoryDetail:
         """The history line an edit reads as: the feature it moved, or the recording it took out."""

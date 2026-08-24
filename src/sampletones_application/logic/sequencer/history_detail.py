@@ -323,6 +323,22 @@ class SequencerHistoryDetail:
             self._segment(_FEATURE_LETTERS[feature_key], _FEATURE_ROLES[feature_key]),
         )
 
+    def edit_instrument(
+        self,
+        voice_id: str,
+        feature_key: FeatureKey,
+    ) -> Segments:
+        """Describes a hand-written voice's edited dimension: its position and the dimension.
+
+        An instrument is one set of envelopes every channel reads what it can of, so the line
+        names the dimension alone, as the feature's one-letter code in the color the details tab
+        plots it with.
+        """
+        return (
+            self._voice(voice_id, colon=True),
+            self._segment(_FEATURE_LETTERS[feature_key], _FEATURE_ROLES[feature_key]),
+        )
+
     def remove_stem(self, voice_id: str, stem_name: str) -> Segments:
         """Describes a recording taken out of a sample's reconstruction: its position and name."""
         return (

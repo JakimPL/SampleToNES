@@ -1,10 +1,11 @@
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, Final, List, Optional
 from unittest.mock import MagicMock
 
 import pytest
 
 from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
+from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.reconstruction.editor import InstrumentEditor
@@ -26,6 +27,21 @@ from sampletones_core.formats.famitracker.footprint import (
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.reconstructions import Reconstruction
 
+HISTORY_BUDGET: Final[int] = 16
+
+
+def _editor(
+    reconstruction_manager: MagicMock,
+    controller: ProjectController,
+) -> InstrumentEditor:
+    """The editor over a strict history, which is how the application builds it."""
+    return InstrumentEditor(
+        reconstruction_manager,
+        controller,
+        HistoryManager(controller, budget=HISTORY_BUDGET, strict=True),
+        lambda _voice_id, _feature_key: (),
+    )
+
 
 @pytest.fixture
 def mock_reconstruction_manager() -> MagicMock:
@@ -35,7 +51,7 @@ def mock_reconstruction_manager() -> MagicMock:
 @pytest.fixture
 def instrument_editor(mock_reconstruction_manager: MagicMock) -> InstrumentEditor:
     """The real source the panel reads, over a stand-in for the document it opens."""
-    return InstrumentEditor(mock_reconstruction_manager, ProjectController(ProjectManager()))
+    return _editor(mock_reconstruction_manager, ProjectController(ProjectManager()))
 
 
 @pytest.fixture
@@ -316,7 +332,7 @@ class TestTheInstrumentsPanelShowsAnInstrument:
         scheduling: SchedulingBehavior,
     ) -> ReconstructionInstrumentsLogic:
         mock_reconstruction_manager.current_features = None
-        editor = InstrumentEditor(mock_reconstruction_manager, project_controller)
+        editor = _editor(mock_reconstruction_manager, project_controller)
         instrument = project_controller.add_instrument(new_instrument("lead"))
         project_controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=(15, 12)))
         editor.edit_instrument(instrument.id)
