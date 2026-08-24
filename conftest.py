@@ -1,8 +1,7 @@
-import importlib.util
 from pathlib import Path
 from typing import Final, Optional, Tuple
 
-JEEPNEY_MODULE: Final[str] = "jeepney"
+from sampletones_shared.utils.system.modules import JEEPNEY_MODULE, module_available
 
 JEEPNEY_PATHS: Final[Tuple[str, ...]] = (
     "src/sampletones_application/utils/file_dialogs/backends/portal",
@@ -12,7 +11,7 @@ JEEPNEY_PATHS: Final[Tuple[str, ...]] = (
     "tests/unit/sampletones_shared/utils/system/reveal/test_file_manager1.py",
 )
 
-JEEPNEY_INSTALLED: Final[bool] = importlib.util.find_spec(JEEPNEY_MODULE) is not None
+JEEPNEY_INSTALLED: Final[bool] = module_available(JEEPNEY_MODULE)
 
 
 def pytest_ignore_collect(collection_path: Path) -> Optional[bool]:
