@@ -62,13 +62,6 @@ starts carrying.
   and the panels beside them. The language-keys check expands such a helper over the whole enum, so
   a member no call names is reached all the same and stands unnoticed. Spelling those keys literally
   at the call site would make each entry exactly checkable and retire the enums that remain.
-* An edit path reaching the project outside a transaction records itself as `UNTRACKED`: the
-  label reads "Edit", the detail line is empty and the entry coalesces with nothing, so a drag
-  becomes one entry per value. `HistoryManager.handle_mutation` names that gap the moment it
-  happens, but only where `strict_history` is on, and the shipped deployment leaves it off
-  (`sampletones_config/application/deployment.yaml`), so a new path ships self-healed and
-  silent. Turning it on for the test run — the suite builds the whole application — would hold
-  every path to a transaction at the point one is added.
 * Respecting FamiTracker limitations
 * Per-tab undo routing
 * In-application console
