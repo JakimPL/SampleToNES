@@ -163,6 +163,7 @@ class GUIConverterPanel(GUIPanel):
             self._create_controls()
             self._create_stems_list()
             self._create_summary()
+            dpg.add_separator()
             self._create_conversion_status()
 
     @property
