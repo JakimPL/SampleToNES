@@ -16,6 +16,9 @@ from sampletones_core.generators import (
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibrary, InstructionLibraryData
 from sampletones_core.reconstructions.progress import (
+    FRAMES_PREPARED,
+    PREPARATIONS,
+    RECORDINGS_LOADED,
     STAGE_BEGUN,
     WHOLE_STAGE,
     ReconstructionReporter,
@@ -127,9 +130,11 @@ class Reconstructor:
             OperationCancelled: If the run is withdrawn while it is under way.
         """
         checked_paths = self._check_stem_paths(paths, stems_config)
-        announce(report, ReconstructionStage.LOADING, STAGE_BEGUN, WHOLE_STAGE)
+        announce(report, ReconstructionStage.LOADING, STAGE_BEGUN, PREPARATIONS)
         recordings = self._load_stem_recordings(checked_paths)
+        announce(report, ReconstructionStage.LOADING, RECORDINGS_LOADED, PREPARATIONS)
         stem_frames, coefficient = self._prepare_stem_frames(recordings, stems_config)
+        announce(report, ReconstructionStage.LOADING, FRAMES_PREPARED, PREPARATIONS)
         worker = self._build_worker(common_length(recordings))
         assignment = self._assign_stem_frames(stem_frames, stems_config, worker, report)
         self._drop_resting_channels(assignment)

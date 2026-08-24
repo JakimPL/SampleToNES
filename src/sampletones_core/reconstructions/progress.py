@@ -1,12 +1,16 @@
 from dataclasses import dataclass
 from typing import Callable, Final
 
-from sampletones_core.reconstructions.stage import ReconstructionStage
+from sampletones_core.reconstructions.stage import TOTAL_STAGE_WEIGHT, ReconstructionStage
 from sampletones_shared.exceptions import OperationCancelled
 from sampletones_shared.utils.arrays import clamp
 
 STAGE_BEGUN: Final[int] = 0
 WHOLE_STAGE: Final[int] = 1
+
+PREPARATIONS: Final[int] = 3
+RECORDINGS_LOADED: Final[int] = 1
+FRAMES_PREPARED: Final[int] = 2
 
 NOTHING_DONE: Final[float] = 0.0
 WHOLE_RUN: Final[float] = 1.0
@@ -31,13 +35,15 @@ class ReconstructionProgress:
         """How much of the whole reconstruction stands finished, the stage weighed by its share.
 
         The stages a run passes through count in units of their own, so a reading that spans them
-        all is each stage's own progress taken through the share it holds of the run. The reading
-        stays within the run it describes, so whoever draws it is handed a fraction of one.
+        all is each stage's own progress taken through the weight it carries. The weights are
+        divided once, here, which is what lets the last stage of a run arrive exactly at its end,
+        and the reading stays within the run it describes.
         """
         if self.total <= 0:
             return self.stage.offset
 
-        reached = self.stage.offset + self.stage.share * (self.completed / self.total)
+        covered = self.completed / self.total
+        reached = (self.stage.preceding_weight + self.stage.weight * covered) / TOTAL_STAGE_WEIGHT
         return clamp(reached, NOTHING_DONE, WHOLE_RUN)
 
 

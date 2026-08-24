@@ -16,7 +16,7 @@ from sampletones_application.logic.main.converter import (
 from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.main import MainTabParameters
-from sampletones_application.services.conversion import ConversionService
+from sampletones_application.services.conversion.service import ConversionService
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,

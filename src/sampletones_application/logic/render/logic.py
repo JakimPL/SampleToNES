@@ -217,7 +217,7 @@ class SongRenderLogic(CallbackMixin):
         self._phase = RenderPhase.RENDERING
         stage = progress.current_item
         status_text = self._status_text if stage is None else self._stage_status(stage, progress.eta_seconds)
-        self._report(status_text, progress.completed / max(progress.total, 1))
+        self._report(status_text, progress.fraction)
 
     def _stage_status(self, stage: RenderStage, eta_seconds: Optional[float]) -> str:
         """What the pass is doing, and how long it has left where an estimate stands."""

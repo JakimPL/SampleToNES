@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Final, FrozenSet, Optional, Protocol, Sequence, Tuple
+from typing import Callable, Dict, Final, FrozenSet, Optional, Protocol, Sequence, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -13,8 +13,8 @@ from sampletones_application.logic.main.stems import (
     derive_conversion_setup,
     effective_channels,
 )
+from sampletones_application.services.conversion.result import ConversionItem, ConversionResult
 from sampletones_application.services.result import (
-    ConversionResult,
     ServiceCancelled,
     ServiceError,
     ServiceIntermediate,
@@ -42,13 +42,14 @@ from sampletones_core.reconstructions.converter import (
     group_output_path,
 )
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
-from sampletones_shared.utils.system.paths import to_path
 
 SINGLE_JOB: Final[int] = 1
+SYSTEM_PROGRESS_STEPS: Final[int] = 1000
 
 
 @dataclass(frozen=True)
@@ -104,6 +105,12 @@ class ConverterLogic(CallbackMixin):
         self._is_operation_active = is_operation_active
         self._msg_idle = language_manager["main.converter.message.status_idle"]
         self._msg_cancelling = language_manager["main.converter.message.status_cancelling"]
+        self._stage_messages: Dict[ReconstructionStage, str] = {
+            ReconstructionStage.LOADING: language_manager["main.converter.message.stage_loading"],
+            ReconstructionStage.MATCHING: language_manager["main.converter.message.stage_matching"],
+            ReconstructionStage.DECODING: language_manager["main.converter.message.stage_decoding"],
+            ReconstructionStage.RENDERING: language_manager["main.converter.message.stage_rendering"],
+        }
 
         self._phase: ConversionPhase = ConversionPhase.IDLE
         self._input_path: Optional[Path] = None
@@ -336,40 +343,39 @@ class ConverterLogic(CallbackMixin):
             case ServiceCancelled():
                 self._on_cancellation_complete()
 
-    def _handle_progress_result(self, progress: ServiceProgress[Path]) -> None:
+    def _handle_progress_result(self, progress: ServiceProgress[ConversionItem]) -> None:
         if self._phase == ConversionPhase.CANCELLING:
-            total = max(progress.total, 1)
-            self._emit_view_model(
-                self._msg_cancelling,
-                progress.completed / total,
-            )
+            self._emit_view_model(self._msg_cancelling, progress.fraction)
             return
 
         self._phase = ConversionPhase.RUNNING
-        self._system_progress.set(progress.completed, progress.total)
-        eta_string = ETAEstimator.format_duration(progress.eta_seconds)
-        total = max(progress.total, 1)
-        status_text = self._compose_progress_text(progress)
-        if eta_string:
-            status_text += self._language_manager["global.dialog.template.time_estimation"].format(
-                eta_string=eta_string
-            )
-
-        display_input_path = (
-            to_path(str(progress.current_item)) if progress.current_item is not None else self._input_path
+        self._system_progress.set(
+            round(progress.fraction * SYSTEM_PROGRESS_STEPS),
+            SYSTEM_PROGRESS_STEPS,
         )
         self._emit_view_model(
-            status_text,
-            progress.completed / total,
-            input_path=display_input_path,
+            self._compose_progress_text(progress),
+            progress.fraction,
+            input_path=self._display_input_path(progress),
         )
 
-    def _compose_progress_text(self, progress: ServiceProgress[Path]) -> str:
-        """What the run is doing: the reconstruction being built, or how far a batch has come.
+    def _display_input_path(self, progress: ServiceProgress[ConversionItem]) -> Optional[Path]:
+        """The recording the run names itself by, or the one the reader chose."""
+        if progress.current_item is None:
+            return self._input_path
+
+        return progress.current_item.source
+
+    def _compose_progress_text(self, progress: ServiceProgress[ConversionItem]) -> str:
+        """What the run is doing, how far it has come, and how long it has left.
 
         A batch is many reconstructions and a count says where it stands; a single job counts to
-        one, so it names the document it is writing instead.
+        one, so it names the document it is writing instead. Either way the reconstruction under
+        way says which stage it is in, which is the whole of what a reader watching one job has.
         """
+        return self._run_text(progress) + self._stage_text(progress) + self._estimate_text(progress)
+
+    def _run_text(self, progress: ServiceProgress[ConversionItem]) -> str:
         if progress.total > SINGLE_JOB:
             return self._language_manager["main.converter.template.progress_template"].format(
                 progress.completed, progress.total
@@ -378,6 +384,24 @@ class ConverterLogic(CallbackMixin):
         return self._language_manager["main.converter.template.single_progress_template"].format(
             self._reconstruction_name()
         )
+
+    def _stage_text(self, progress: ServiceProgress[ConversionItem]) -> str:
+        step = progress.current_item.step if progress.current_item is not None else None
+        if step is None:
+            return ""
+
+        return self._language_manager["main.converter.template.stage_template"].format(
+            stage=self._stage_messages[step.stage],
+            completed=step.completed,
+            total=step.total,
+        )
+
+    def _estimate_text(self, progress: ServiceProgress[ConversionItem]) -> str:
+        eta_string = ETAEstimator.format_duration(progress.eta_seconds)
+        if not eta_string:
+            return ""
+
+        return self._language_manager["global.dialog.template.time_estimation"].format(eta_string=eta_string)
 
     def _reconstruction_name(self) -> str:
         """The document a single job writes, which is what a run of one is making."""

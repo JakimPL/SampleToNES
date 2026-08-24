@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from sampletones_application.services.regeneration import RegenerationService
+from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import (
     ServiceCancelled,
     ServiceError,
@@ -66,7 +66,7 @@ def synthesis_mocks() -> Iterator[SynthesisMocks]:
     channel_name = ChannelName.PULSE1
 
     with patch(
-        "sampletones_application.services.regeneration.CHANNEL_TO_EXPORTER_MAP",
+        "sampletones_application.services.regeneration.service.CHANNEL_TO_EXPORTER_MAP",
         {channel_name: mock_exporter},
     ):
         yield SimpleNamespace(
@@ -329,7 +329,7 @@ class TestRegenerationServiceRun:
         mock_exporter.get_generator_type.side_effect = exception
 
         with patch(
-            "sampletones_application.services.regeneration.CHANNEL_TO_EXPORTER_MAP",
+            "sampletones_application.services.regeneration.service.CHANNEL_TO_EXPORTER_MAP",
             {ChannelName.PULSE1: mock_exporter},
         ):
             service._run(
@@ -354,7 +354,7 @@ class TestRegenerationServiceRun:
         mock_exporter.get_generator_type.side_effect = RuntimeError("fail")
 
         with patch(
-            "sampletones_application.services.regeneration.CHANNEL_TO_EXPORTER_MAP",
+            "sampletones_application.services.regeneration.service.CHANNEL_TO_EXPORTER_MAP",
             {ChannelName.PULSE1: mock_exporter},
         ):
             service._run(

@@ -11,9 +11,15 @@ class ReconstructionStage(StrEnum):
     the stage it names.
 
     Matching visits the library once per frame per stem and is what a run spends its time on, which
-    is what :data:`STAGE_SHARES` states: the bulk of the reading belongs to matching so a bar tracks
+    is what :data:`STAGE_WEIGHTS` states: the bulk of a reading belongs to matching so a bar tracks
     the time a run actually takes, while the stages around it keep enough of it to move visibly as
-    they pass.
+    they pass. The weights are approximations measured over whole runs, and matching earns a larger
+    share the longer the recording is, so the stages around it are given what they hold on a short
+    one — where a bar standing still is noticed.
+
+    The weights are counts rather than fractions, so what a stage is worth is stated against the
+    others and a reading is one division at the point of use — which is what lets the last stage
+    arrive exactly at the whole run.
     """
 
     LOADING = "loading"
@@ -22,26 +28,38 @@ class ReconstructionStage(StrEnum):
     RENDERING = "rendering"
 
     @property
-    def share(self) -> float:
-        """How much of a whole reconstruction this stage stands for."""
-        return STAGE_SHARES[self]
+    def weight(self) -> int:
+        """What this stage costs, against the other stages of a run."""
+        return STAGE_WEIGHTS[self]
 
     @property
-    def offset(self) -> float:
-        """How much of a reconstruction stands finished when this stage begins."""
-        offset = 0.0
+    def preceding_weight(self) -> int:
+        """What the stages before this one cost together."""
+        preceding = 0
         for stage in ReconstructionStage:
             if stage is self:
                 break
 
-            offset += stage.share
+            preceding += stage.weight
 
-        return offset
+        return preceding
+
+    @property
+    def share(self) -> float:
+        """How much of a whole reconstruction this stage stands for."""
+        return self.weight / TOTAL_STAGE_WEIGHT
+
+    @property
+    def offset(self) -> float:
+        """How much of a reconstruction stands finished when this stage begins."""
+        return self.preceding_weight / TOTAL_STAGE_WEIGHT
 
 
-STAGE_SHARES: Final[Mapping[ReconstructionStage, float]] = {
-    ReconstructionStage.LOADING: 0.05,
-    ReconstructionStage.MATCHING: 0.80,
-    ReconstructionStage.DECODING: 0.05,
-    ReconstructionStage.RENDERING: 0.10,
+STAGE_WEIGHTS: Final[Mapping[ReconstructionStage, int]] = {
+    ReconstructionStage.LOADING: 8,
+    ReconstructionStage.MATCHING: 82,
+    ReconstructionStage.DECODING: 2,
+    ReconstructionStage.RENDERING: 8,
 }
+
+TOTAL_STAGE_WEIGHT: Final[int] = sum(STAGE_WEIGHTS.values())

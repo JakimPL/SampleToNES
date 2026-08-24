@@ -7,7 +7,7 @@ from sampletones_core.reconstructions.progress import (
     ReconstructionProgress,
     announce,
 )
-from sampletones_core.reconstructions.stage import STAGE_SHARES, ReconstructionStage
+from sampletones_core.reconstructions.stage import STAGE_WEIGHTS, ReconstructionStage
 from sampletones_shared.exceptions import OperationCancelled
 from sampletones_shared.utils.progress import silent_reporter
 from tests.suite.base import BaseTestSuite
@@ -18,19 +18,19 @@ WHOLE: float = 1.0
 FRAMES: int = 8
 
 
-class TestStageShares(BaseTestSuite):
-    """Every stage a reconstruction passes through holds a share, and the shares are the whole run.
+class TestStageWeights(BaseTestSuite):
+    """Every stage a reconstruction passes through carries a weight, and together they are the run.
 
-    A bar crossing the stages reads each one through its share, so a stage the shares forgot would
-    leave the bar standing still while that stage ran, and shares summing to anything other than
-    the whole would leave it short of its end or past it.
+    A bar crossing the stages reads each one through its weight, so a stage the weights forgot
+    would leave the bar standing still while that stage ran. What each weight is worth is a tuning
+    choice; that they divide the whole run between them is the contract.
     """
 
-    def test_every_stage_holds_a_share(self) -> None:
-        assert set(STAGE_SHARES) == set(ReconstructionStage)
+    def test_every_stage_carries_a_weight(self) -> None:
+        assert set(STAGE_WEIGHTS) == set(ReconstructionStage)
 
     def test_the_shares_are_the_whole_run(self) -> None:
-        assert sum(STAGE_SHARES.values()) == pytest.approx(WHOLE)
+        assert sum(stage.share for stage in ReconstructionStage) == pytest.approx(WHOLE)
 
     def test_a_stage_begins_where_the_stages_before_it_end(self) -> None:
         stages = list(ReconstructionStage)
@@ -40,9 +40,12 @@ class TestStageShares(BaseTestSuite):
         for stage, offset, following in zip(stages, offsets, offsets[1:]):
             assert following == pytest.approx(offset + stage.share)
 
-    def test_the_last_stage_ends_on_the_whole_run(self) -> None:
+    def test_a_finished_run_arrives_exactly_at_its_end(self) -> None:
+        """A bar drawn from this reads full only where the reading lands on the whole run."""
         last = list(ReconstructionStage)[-1]
-        assert last.offset + last.share == pytest.approx(WHOLE)
+        finished = ReconstructionProgress(stage=last, completed=FRAMES, total=FRAMES)
+
+        assert finished.fraction == WHOLE
 
 
 class TestReconstructionFraction(BaseTestSuite):
@@ -57,29 +60,36 @@ class TestReconstructionFraction(BaseTestSuite):
     class TestCase(BaseAutolabelTestCase):
         expected: float
         stage: ReconstructionStage
-        completed: int
-        total: int
+        covered: float
 
         @property
         def label(self) -> str:
-            return f"{self.stage}_{self.completed}_of_{self.total}"
+            return f"{self.stage}_{self.covered:.0%}_through"
 
     test_cases = (
-        TestCase(stage=ReconstructionStage.LOADING, completed=0, total=1, expected=0.0),
-        TestCase(stage=ReconstructionStage.MATCHING, completed=0, total=FRAMES, expected=0.05),
-        TestCase(stage=ReconstructionStage.MATCHING, completed=FRAMES, total=FRAMES, expected=0.85),
-        TestCase(stage=ReconstructionStage.RENDERING, completed=FRAMES, total=FRAMES, expected=WHOLE),
+        TestCase(stage=ReconstructionStage.LOADING, covered=0.0, expected=0.0),
+        TestCase(stage=ReconstructionStage.MATCHING, covered=0.0, expected=0.0),
+        TestCase(stage=ReconstructionStage.MATCHING, covered=0.5, expected=0.5),
+        TestCase(stage=ReconstructionStage.MATCHING, covered=WHOLE, expected=WHOLE),
+        TestCase(stage=ReconstructionStage.RENDERING, covered=WHOLE, expected=WHOLE),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_fraction_weighs_the_stage_by_its_share(self, test_case: TestCase) -> None:
+        """A stage part of the way through reads as that part of the share it holds.
+
+        The expectation is derived from the stage's own share rather than restating it, so tuning
+        what a stage is worth leaves the rule it must satisfy standing.
+        """
+        completed = round(test_case.covered * FRAMES)
         progress = ReconstructionProgress(
             stage=test_case.stage,
-            completed=test_case.completed,
-            total=test_case.total,
+            completed=completed,
+            total=FRAMES,
         )
+        expected = test_case.stage.offset + test_case.stage.share * test_case.expected
 
-        assert progress.fraction == pytest.approx(test_case.expected)
+        assert progress.fraction == pytest.approx(expected)
 
     def test_a_stage_measured_against_nothing_reads_as_its_own_beginning(self) -> None:
         progress = ReconstructionProgress(stage=ReconstructionStage.DECODING, completed=0, total=0)

@@ -251,6 +251,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         except KeyboardInterrupt as exception:
             raise CancelledError() from exception
         except OperationCancelled:
+            self.cancelling = True
             self._finalize_cancellation()
             return
         except CancelledError:

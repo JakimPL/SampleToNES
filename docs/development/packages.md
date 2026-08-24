@@ -7,7 +7,8 @@ tables in the form the import-boundary check runs on every commit, and a diverge
 document and that configuration is itself a defect.
 
 The layering of `sampletones_application` has its own document,
-[`architecture.md`](architecture.md), which the same check enforces.
+[`architecture.md`](architecture.md), which the same check enforces. How a long operation reports how far it
+has come — inside one process and across the pool's workers — is [`progress.md`](progress.md).
 
 ---
 

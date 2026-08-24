@@ -1,5 +1,4 @@
 import threading
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Final, FrozenSet, List, Optional, Tuple
@@ -8,12 +7,11 @@ from sampletones_core.parallelization.channel.protocol import StepReporter
 from sampletones_core.parallelization.processor import TaskProcessor
 from sampletones_core.parallelization.task import TaskProgress, TaskStatus, TaskStep
 from sampletones_shared.exceptions import OperationCancelled
+from tests.suite.release import wait_for_release
 
 COUNTING_STAGE: Final[str] = "counting"
 STEP_COUNT: Final[int] = 8
 HALFWAY: Final[int] = STEP_COUNT // 2
-RELEASE_POLL_SECONDS: Final[float] = 0.01
-RELEASE_TIMEOUT_SECONDS: Final[float] = 30.0
 NOTHING_COMPLETED: Final[int] = 0
 WHOLE_TASK: Final[float] = 1.0
 ONE_STEP: Final[int] = 1
@@ -30,9 +28,7 @@ class CountingTask:
     Counting stands in for the work, so what a test of the channel measures is the channel.
 
     The task waits at the halfway mark until the file at ``release_path`` appears, which is how a
-    test can assert that a partial report arrived while the task was provably still running. The
-    wait gives up after ``RELEASE_TIMEOUT_SECONDS`` so a test that never releases it fails on its
-    own assertion rather than holding the run open.
+    test can assert that a partial report arrived while the task was provably still running.
     """
 
     index: int
@@ -59,15 +55,9 @@ def count_task(task: CountingTask) -> int:
             raise OperationCancelled(f"task {task.index} was withdrawn at {completed}")
 
         if completed == HALFWAY:
-            _wait_for_release(task.release_path)
+            wait_for_release(task.release_path)
 
     return task.index
-
-
-def _wait_for_release(release_path: Path) -> None:
-    deadline = time.monotonic() + RELEASE_TIMEOUT_SECONDS
-    while not release_path.exists() and time.monotonic() < deadline:
-        time.sleep(RELEASE_POLL_SECONDS)
 
 
 class CountingProcessor(TaskProcessor[int]):
