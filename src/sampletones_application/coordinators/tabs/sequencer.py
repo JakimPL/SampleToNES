@@ -90,7 +90,9 @@ from sampletones_application.ui.panels.sequencer.history import GUISequencerHist
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
-from sampletones_application.ui.panels.sequencer.voices.panel import GUISequencerVoicesPanel
+from sampletones_application.ui.panels.sequencer.voices.panel import (
+    GUISequencerVoicesPanel,
+)
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.file_dialogs.api import open_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
@@ -914,7 +916,7 @@ class SequencerTabCoordinator:
 
         Every mutation the wrapped callback triggers is grouped under ``action``;
         a gesture that changes nothing records no entry. ``detail`` computes the
-        entry's coloured description segments from the same arguments the hook
+        entry's colored description segments from the same arguments the hook
         receives, and ``coalesce`` computes the gesture's target key from them:
         consecutive gestures sharing the same action and target collapse into a
         single entry.

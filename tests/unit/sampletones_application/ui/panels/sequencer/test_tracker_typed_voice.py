@@ -31,6 +31,7 @@ class Panel:
     def __init__(self) -> None:
         self.panel = tracker_module.GUISequencerTrackerPanel.__new__(tracker_module.GUISequencerTrackerPanel)
         self.panel._editable_cells = EditableCells()
+        self.panel._cell_kinds = {}
         self.panel._current_samples = SequencerVoicesViewModel(
             voices=(
                 VoiceEntryViewModel(
@@ -66,6 +67,10 @@ class Panel:
     def shown(self, channel: Optional[ChannelName]) -> str:
         """The label the cell cache holds, which is what the cell shows once the commit settles."""
         return self.panel._editable_cells.values.get((0, channel, SubColumn.VOICE), STORED_LABEL)
+
+    def kind(self, channel: Optional[ChannelName]) -> Optional[VoiceKind]:
+        """The kind the cell cache holds, which is the colour the slot takes with its number."""
+        return self.panel._cell_kinds.get((0, channel, SubColumn.VOICE))
 
 
 @pytest.fixture
@@ -121,3 +126,38 @@ class TestTypingAVoiceNumber:
 
         assert panel.writes == [(0, ChannelName.PULSE1, None)]
         assert panel.shown(ChannelName.PULSE1) == STORED_LABEL
+
+
+class TestWhatColourATypedVoiceTakes:
+    """The cell takes the kind with the number, so a typed voice reads whole before the project answers."""
+
+    def test_a_typed_sample_takes_the_sample_kind(self, panel: Panel) -> None:
+        panel.type_voice(SAMPLE_INDEX, ChannelName.PULSE1)
+
+        assert panel.kind(ChannelName.PULSE1) is VoiceKind.SAMPLE
+
+    def test_a_typed_instrument_takes_the_instrument_kind(self, panel: Panel) -> None:
+        panel.type_voice(INSTRUMENT_INDEX, ChannelName.NOISE)
+
+        assert panel.kind(ChannelName.NOISE) is VoiceKind.INSTRUMENT
+
+    def test_a_refused_voice_leaves_the_cell_its_own_kind(self, panel: Panel) -> None:
+        """Nothing is written, so the slot keeps the colour it already wore."""
+        panel.type_voice(INSTRUMENT_INDEX, None)
+
+        assert panel.kind(None) is None
+
+    def test_a_cut_cell_states_no_kind(self, panel: Panel) -> None:
+        panel.panel.on_set_note_off = lambda row, channel: None
+        panel.panel._handle_edit_action(
+            EditAction(
+                row=0,
+                channel=ChannelName.TRIANGLE,
+                sample_index=None,
+                transpose=None,
+                volume=None,
+                note_off=True,
+            )
+        )
+
+        assert panel.kind(ChannelName.TRIANGLE) is None

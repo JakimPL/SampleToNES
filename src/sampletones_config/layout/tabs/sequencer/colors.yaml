@@ -29,7 +29,7 @@ history:
     value: .history_value
     separator: .history_separator
 text:
-  voice: .tracker_reference
+  voice: .text_disabled
   transpose: .tracker_transpose
   volume: .tracker_volume
   sample: .voice_sample

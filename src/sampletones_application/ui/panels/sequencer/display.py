@@ -4,11 +4,13 @@ from sampletones_application.ui.elements.table.cells import pending_label
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.tracker import SequencerCellViewModel
+from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.utils.display import display_id, display_transpose, display_volume
 
 CellKey = Tuple[int, Optional[ChannelName], SubColumn]
 CellValues = Dict[CellKey, str]
+CellKinds = Dict[CellKey, Optional[VoiceKind]]
 
 CELL_TITLE_SEPARATOR: Final[str] = " | "
 

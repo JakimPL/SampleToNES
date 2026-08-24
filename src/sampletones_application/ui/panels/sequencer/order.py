@@ -571,7 +571,7 @@ class GUISequencerOrderPanel(GUIPanel):
 
         DearPyGui keeps a row, column or cell highlight on the table rather than on an item,
         so a colour reaches it only by being pushed again. Gathering the pushes here gives
-        the palette one call to make and keeps a rebuilt table and a recoloured one identical.
+        the palette one call to make and keeps a rebuilt table and a recolored one identical.
         """
         if not dpg.does_item_exist(TAG_SEQUENCER_ORDER_TABLE):
             return

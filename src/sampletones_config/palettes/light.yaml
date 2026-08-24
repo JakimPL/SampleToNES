@@ -188,7 +188,6 @@ colors:
   history_value: "#1d222aff"
   history_separator: "#8f97a4ff"
 
-  tracker_reference: "#7a5200ff"
   tracker_transpose: "#3d434dff"
   tracker_volume: "#16702eff"
   tracker_frame: "#0a5aa8ff"

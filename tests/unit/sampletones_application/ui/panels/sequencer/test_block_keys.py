@@ -86,6 +86,7 @@ def _panel(
     each gesture is read from what its hook receives.
     """
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
+    panel._cell_kinds = {}
     panel._shortcuts = shipped_source()
     panel._input_state = TrackerInputState(cursor=TrackerCursor(CURSOR_ROW, channel, subcolumn))
     panel._current_row_count = ROW_COUNT

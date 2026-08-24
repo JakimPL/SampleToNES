@@ -56,7 +56,7 @@ def composite(base: ColorRGBA, overlay: ColorRGBA) -> ColorRGBA:
 def to_grayscale(color: ColorRGBA) -> ColorRGBA:
     """Return ``color`` desaturated to its luminance-preserving gray, keeping its alpha.
 
-    The RGB channels collapse to one perceptual-luminance value, so a coloured line reads
+    The RGB channels collapse to one perceptual-luminance value, so a colored line reads
     as an inactive gray while its alpha stays under the caller's separate control.
     """
     red, green, blue, alpha = color

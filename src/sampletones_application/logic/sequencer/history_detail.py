@@ -81,7 +81,7 @@ def _kind_role(kind: Optional[VoiceKind]) -> HistoryDetailRole:
 
 
 class SequencerHistoryDetail:
-    """Builds the coloured detail line for each undoable sequencer gesture.
+    """Builds the colored detail line for each undoable sequencer gesture.
 
     Every method mirrors the signature of the coordinator hook it describes, so it
     can be handed straight to ``_undoable`` as the ``detail`` callable. Each returns

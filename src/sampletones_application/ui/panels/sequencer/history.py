@@ -270,7 +270,7 @@ class GUISequencerHistoryPanel(GUIPanel):
         *,
         before: int,
     ) -> None:
-        """Renders one entry as a full-width selectable with coloured text on top.
+        """Renders one entry as a full-width selectable with colored text on top.
 
         A ``span_columns`` selectable backs the whole row, so clicking anywhere
         jumps to that entry and the current entry keeps the native selected

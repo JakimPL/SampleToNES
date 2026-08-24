@@ -10,6 +10,7 @@ from sampletones_core.utils.display import (
     display_transpose,
     display_volume,
 )
+from sampletones_shared.utils.agreement import Agreement
 
 
 class SequencerCellViewModel(BaseModel, frozen=True):
@@ -74,6 +75,17 @@ class SequencerRowViewModel(BaseModel, frozen=True):
     @property
     def sample(self) -> str:
         return self._aggregate(_sample_reading, display_id(None))
+
+    @property
+    def sample_kind(self) -> Optional[VoiceKind]:
+        """The kind of voice the sample column's slot names, absent where its channels disagree.
+
+        The slot speaks for the channels the row's samples cover, so it states a kind where every
+        one of those channels names a voice of that kind. A row naming no sample covers none and
+        states none, which is what an empty slot and a cut row are.
+        """
+        kinds = Agreement.collapse(self.cells[channel].kind for channel in self.sample_channels)
+        return kinds.resolve(absent=None, mixed=None)
 
     @property
     def transpose(self) -> str:

@@ -108,7 +108,7 @@ A reconstruction mixed from several recordings has a **Stems** card. It lists
 each recording under the level it was picked on — the same list the converter
 showed you while you were gathering.
 
-Each row has a coloured box for every channel that recording actually took, and
+Each row has a colored box for every channel that recording actually took, and
 a box at the front that moves all of them at once. Untick one and those frames
 go silent everywhere: in the waveform, in playback, in the original audio, and
 in a WAV export. That is how you hear what each recording contributed, channel

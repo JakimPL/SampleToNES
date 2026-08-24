@@ -7,7 +7,11 @@ from sampletones_application.categories.elements.sequencer import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.tracker import DEFAULT_OCTAVE, MAX_OCTAVE, MIN_OCTAVE
+from sampletones_application.constants.tracker import (
+    DEFAULT_OCTAVE,
+    MAX_OCTAVE,
+    MIN_OCTAVE,
+)
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
@@ -49,7 +53,11 @@ from sampletones_application.ui.panels.sequencer.columns import (
     tracker_table_column,
     tracker_table_row,
 )
-from sampletones_application.ui.panels.sequencer.display import CellKey, CellValues
+from sampletones_application.ui.panels.sequencer.display import (
+    CellKey,
+    CellKinds,
+    CellValues,
+)
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
 from sampletones_application.ui.panels.sequencer.grid.scroll.axis import VerticalScroll
 from sampletones_application.ui.panels.sequencer.grid.scroll.band import TravelBand
@@ -58,13 +66,18 @@ from sampletones_application.ui.panels.sequencer.grid.surface.clipboard import (
     BlockShortcuts,
     ClipboardItems,
 )
-from sampletones_application.ui.panels.sequencer.grid.surface.edit import GridEditSurface
+from sampletones_application.ui.panels.sequencer.grid.surface.edit import (
+    GridEditSurface,
+)
 from sampletones_application.ui.panels.sequencer.input.edit import (
     ClearAction,
     EditAction,
 )
 from sampletones_application.ui.panels.sequencer.input.target import TrackerTarget
-from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
+from sampletones_application.ui.panels.sequencer.input.tracker import (
+    TrackerCursor,
+    TrackerInputState,
+)
 from sampletones_application.ui.panels.sequencer.rows import RowCues, row_background
 from sampletones_application.ui.themes.inline import (
     create_header_selectable_theme,
@@ -81,7 +94,10 @@ from sampletones_application.utils.gui.keyboard import (
     KeyRouter,
 )
 from sampletones_application.utils.gui.keyboard.keys import HEX_KEYS, SIGN_KEYS
-from sampletones_application.utils.gui.keyboard.modifiers import Modifier, capture_modifiers
+from sampletones_application.utils.gui.keyboard.modifiers import (
+    Modifier,
+    capture_modifiers,
+)
 from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
@@ -93,7 +109,10 @@ from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
 from sampletones_application.view_model.sequencer.kind import places_across_channels
-from sampletones_application.view_model.sequencer.region import TrackerCell, TrackerRegion
+from sampletones_application.view_model.sequencer.region import (
+    TrackerCell,
+    TrackerRegion,
+)
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
 )
@@ -110,13 +129,18 @@ from sampletones_application.view_model.sequencer.tracker import (
 from sampletones_application.view_model.sequencer.voices import (
     SequencerVoicesViewModel,
     VoiceEntryViewModel,
+    VoiceKind,
 )
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.features import speaks_in_periods
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.utils.display import NOTE_OFF, display_id
-from sampletones_shared.constants.music import OCTAVE_OFFSET, OCTAVE_SEMITONES, SEMITONE_STEP
+from sampletones_shared.constants.music import (
+    OCTAVE_OFFSET,
+    OCTAVE_SEMITONES,
+    SEMITONE_STEP,
+)
 from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
 
@@ -135,6 +159,7 @@ OnBlockRegionCallback = Callable[[TrackerRegion], None]
 OnPasteBlockCallback = Callable[[TrackerCell], None]
 CanPasteBlockQuery = Callable[[], bool]
 TrackerEditSurface = GridEditSurface[TrackerCursor, TrackerRegion, TrackerCell, TrackerTarget]
+ThemeKey = Tuple[SubColumn, Optional[VoiceKind]]
 
 
 VOLUME_FINE_STEP: Final[int] = 1
@@ -253,8 +278,9 @@ class GUISequencerTrackerPanel(GUIPanel):
             band=self._travel_band,
             elapsed=dpg.get_delta_time,
         )
-        self._subcolumn_themes: Dict[SubColumn, int] = {}
-        self._muted_subcolumn_themes: Dict[SubColumn, int] = {}
+        self._cell_kinds: CellKinds = {}
+        self._subcolumn_themes: Dict[ThemeKey, int] = {}
+        self._muted_subcolumn_themes: Dict[ThemeKey, int] = {}
         self._row_number_theme: int = 0
         self._header_theme: int = 0
         self._muted_header_theme: int = 0
@@ -435,21 +461,26 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._row_number_theme = create_selectable_text_theme(self._layout.colors.text.row)
 
     def _create_subcolumn_themes(self) -> None:
-        """Builds each subcolumn's text theme in its full and its dimmed colour.
+        """Builds every text theme a cell can wear, in its full and its dimmed colour.
 
-        The dimmed variant keeps the subcolumn's own hue at reduced alpha, so a silenced
-        channel's values stay readable and editable while the others are worked on.
+        The voice slot carries one theme per kind of voice it can name, beside the shade it takes
+        while it names none, so the colour of a cell reports what stands in it. Transpose and volume
+        speak for themselves and take one each. The dimmed variant keeps the same hue at reduced
+        alpha, so a silenced channel's values stay readable and editable while the others are
+        worked on.
         """
-        subcolumn_colors = self._layout.colors.text
-        theme_colors = {
-            SubColumn.VOICE: subcolumn_colors.voice,
-            SubColumn.TRANSPOSE: subcolumn_colors.transpose,
-            SubColumn.VOLUME: subcolumn_colors.volume,
+        text = self._layout.colors.text
+        theme_colors: Dict[ThemeKey, BaseColor] = {
+            (SubColumn.VOICE, None): text.voice,
+            (SubColumn.VOICE, VoiceKind.SAMPLE): text.sample,
+            (SubColumn.VOICE, VoiceKind.INSTRUMENT): text.instrument,
+            (SubColumn.TRANSPOSE, None): text.transpose,
+            (SubColumn.VOLUME, None): text.volume,
         }
         fraction = self._layout.tracker.muted_text_fraction
-        for subcolumn, color in theme_colors.items():
-            self._subcolumn_themes[subcolumn] = create_selectable_text_theme(color)
-            self._muted_subcolumn_themes[subcolumn] = create_selectable_text_theme(
+        for theme_key, color in theme_colors.items():
+            self._subcolumn_themes[theme_key] = create_selectable_text_theme(color)
+            self._muted_subcolumn_themes[theme_key] = create_selectable_text_theme(
                 FadedColor(
                     color=color,
                     fraction=fraction,
@@ -577,10 +608,12 @@ class GUISequencerTrackerPanel(GUIPanel):
         the edit cursor that a full rebuild would otherwise discard.
         """
         cell_values = self._compute_cell_values(view_model)
+        cell_kinds = self._compute_cell_kinds(view_model)
         self._show_frame(view_model.frame_index)
         if len(view_model.rows) != self._current_row_count:
-            self._rebuild_table(view_model, cell_values)
+            self._rebuild_table(view_model, cell_values, cell_kinds)
         else:
+            self._reconcile_cell_kinds(cell_kinds)
             self._editable_cells.reconcile(cell_values, self._render_cell)
 
     def _show_frame(self, frame_index: int) -> None:
@@ -600,6 +633,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self,
         view_model: SequencerTrackerViewModel,
         cell_values: CellValues,
+        cell_kinds: CellKinds,
     ) -> None:
         """Replaces the table body, and re-reveals the sounding row once the new body has laid out.
 
@@ -614,6 +648,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._selection.reset()
         self._travel.rest()
         self._editable_cells.reset(cell_values)
+        self._cell_kinds = dict(cell_kinds)
         self._build_table(view_model)
         self.repaint()
         FrameCallbackManager.set_frame_callback(self._reveal_playing_row)
@@ -623,7 +658,7 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         DearPyGui keeps a row, column or cell highlight on the table rather than on an item,
         so a colour reaches it only by being pushed again. Gathering the pushes here gives
-        the palette one call to make and keeps a rebuilt table and a recoloured one identical.
+        the palette one call to make and keeps a rebuilt table and a recolored one identical.
         """
         if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
             return
@@ -791,6 +826,36 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         return cell_values
 
+    def _compute_cell_kinds(
+        self,
+        view_model: SequencerTrackerViewModel,
+    ) -> CellKinds:
+        """Which kind of voice each voice slot names, which is the colour that slot wears.
+
+        Only the voice slot reports a kind, so the map covers those cells alone and a refresh
+        re-themes as many of them as the edit touched.
+        """
+        cell_kinds: CellKinds = {}
+        for row in view_model.rows:
+            cell_kinds[(row.index, None, SubColumn.VOICE)] = row.sample_kind
+            for channel in ChannelName.items():
+                cell_kinds[(row.index, channel, SubColumn.VOICE)] = row.cells[channel].kind
+
+        return cell_kinds
+
+    def _reconcile_cell_kinds(self, cell_kinds: CellKinds) -> None:
+        """Re-themes the voice slots whose kind changed, leaving the rest of the grid bound.
+
+        The labels are diffed the same way, so a refresh costs what the edit did rather than what
+        the grid holds.
+        """
+        for key, kind in cell_kinds.items():
+            if self._cell_kinds.get(key) == kind:
+                continue
+
+            self._cell_kinds[key] = kind
+            self._bind_cell_theme(key)
+
     def _build_table(self, view_model: SequencerTrackerViewModel) -> None:
         self._rows = {}
         self._current_row_count = len(view_model.rows)
@@ -931,7 +996,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             callback=self._on_cell_clicked,
         )
         FontRegistry.bind_to_item(selectable, font)
-        dpg.bind_item_theme(selectable, self._subcolumn_themes[subcolumn])
+        dpg.bind_item_theme(selectable, self._cell_theme(key))
         dpg.bind_item_handler_registry(selectable, self._cell_handler_tag)
         self._editable_cells.register(key, selectable)
 
@@ -1017,12 +1082,31 @@ class GUISequencerTrackerPanel(GUIPanel):
             )
 
     def _bind_channel_cell_themes(self, channel: ChannelName) -> None:
-        themes = self._muted_subcolumn_themes if self._is_muted(channel) else self._subcolumn_themes
         for row_index in range(self._current_row_count):
             for subcolumn in SubColumn:
-                cell_id = self._editable_cells.widget((row_index, channel, subcolumn))
-                if cell_id is not None:
-                    dpg.bind_item_theme(cell_id, themes[subcolumn])
+                self._bind_cell_theme((row_index, channel, subcolumn))
+
+    def _bind_cell_theme(self, key: CellKey) -> None:
+        """Gives one cell the theme it currently answers to, where the grid holds that cell."""
+        cell_id = self._editable_cells.widget(key)
+        if cell_id is not None:
+            dpg.bind_item_theme(cell_id, self._cell_theme(key))
+
+    def _cell_theme(self, key: CellKey) -> int:
+        """The theme a cell wears: its slot's colour, dimmed while its channel is silenced.
+
+        A voice slot takes the colour of the kind of voice standing in it, so a reader tells a
+        recording from a hand-written one across the whole grid; a slot naming none takes the
+        neutral shade the other slots' colours are read against.
+        """
+        _, channel, subcolumn = key
+        kind = self._cell_kinds.get(key)
+        themes = self._muted_subcolumn_themes if self._is_muted_cell(channel) else self._subcolumn_themes
+        return themes[(subcolumn, kind)]
+
+    def _is_muted_cell(self, channel: Optional[ChannelName]) -> bool:
+        """Whether a cell's channel is silenced, the sample column speaking for every channel."""
+        return channel is not None and self._is_muted(channel)
 
     def _is_muted(self, channel: ChannelName) -> bool:
         return self._current_channels is not None and self._current_channels.is_muted(channel)
@@ -1058,16 +1142,17 @@ class GUISequencerTrackerPanel(GUIPanel):
             clip_widget=TAG_SEQUENCER_TRACKER_WINDOW,
         )
 
-    def _resolve_voice_id(
+    def _resolve_voice(
         self,
         sample_index: int,
         channel: Optional[ChannelName],
-    ) -> Optional[Tuple[int, str]]:
+    ) -> Optional[Tuple[int, VoiceEntryViewModel]]:
         """The voice a typed number names, where the column it was typed in takes that voice.
 
         A number past the end of the pool reads as the last voice, so a reader typing freely lands
         on something. The sample column stands by for a voice it cannot spread over channels, and
-        answering nothing here is what leaves the cell showing the value it already held.
+        answering nothing here is what leaves the cell showing the value it already held. The whole
+        entry comes back, so the cell takes the voice's kind along with its number.
         """
         if not self._current_samples or not self._current_samples.voices:
             return None
@@ -1078,7 +1163,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if not self._column_takes(channel, voice):
             return None
 
-        return sample_index, voice.voice_id
+        return sample_index, voice
 
     def _handle_edit_action(self, action: EditAction) -> None:
         """Commits a single-subcolumn edit.
@@ -1090,19 +1175,22 @@ class GUISequencerTrackerPanel(GUIPanel):
         row, channel = action.row, action.channel
 
         if action.note_off:
-            self._editable_cells.values[(row, channel, SubColumn.VOICE)] = NOTE_OFF
+            self._show_voice(row, channel, NOTE_OFF, None)
             self.call(self.on_set_note_off, row, channel)
             return
 
         voice_id: Optional[str] = None
 
         if action.sample_index is not None:
-            resolved = self._resolve_voice_id(action.sample_index, channel)
+            resolved = self._resolve_voice(action.sample_index, channel)
             if resolved is not None:
-                sample_index, voice_id = resolved
-                self._editable_cells.values[(row, channel, SubColumn.VOICE)] = tracker_display.format_committed(
-                    SubColumn.VOICE,
-                    sample_index,
+                sample_index, voice = resolved
+                voice_id = voice.voice_id
+                self._show_voice(
+                    row,
+                    channel,
+                    tracker_display.format_committed(SubColumn.VOICE, sample_index),
+                    voice.kind,
                 )
 
         if action.transpose is not None:
@@ -1126,6 +1214,30 @@ class GUISequencerTrackerPanel(GUIPanel):
             action.volume,
         )
 
+    def _show_voice(
+        self,
+        row: int,
+        channel: Optional[ChannelName],
+        label: str,
+        kind: Optional[VoiceKind],
+    ) -> None:
+        """Shows a voice slot's new reading before the project answers, colour and number together.
+
+        The panel holds both caches, so an edit that the logic goes on to refuse leaves the cell
+        reading exactly what it held.
+        """
+        key = (row, channel, SubColumn.VOICE)
+        self._editable_cells.values[key] = label
+        self._cell_kinds[key] = kind
+        self._bind_cell_theme(key)
+
+    def _forget_voice(self, row: int, channel: Optional[ChannelName]) -> None:
+        """Empties a voice slot's caches, so a cleared cell drops its number and its colour as one."""
+        key = (row, channel, SubColumn.VOICE)
+        self._editable_cells.values.pop(key, None)
+        self._cell_kinds[key] = None
+        self._bind_cell_theme(key)
+
     def _handle_clear_action(self, action: ClearAction) -> None:
         if action.subcolumn is None:
             for subcolumn in SubColumn:
@@ -1133,12 +1245,17 @@ class GUISequencerTrackerPanel(GUIPanel):
                     (action.row, action.channel, subcolumn),
                     None,
                 )
+            self._forget_voice(action.row, action.channel)
             self.call(self.on_clear_row, action.row, action.channel)
         else:
-            self._editable_cells.values.pop(
-                (action.row, action.channel, action.subcolumn),
-                None,
-            )
+            if action.subcolumn is SubColumn.VOICE:
+                self._forget_voice(action.row, action.channel)
+            else:
+                self._editable_cells.values.pop(
+                    (action.row, action.channel, action.subcolumn),
+                    None,
+                )
+
             self.call(
                 self.on_clear_subcolumn,
                 action.row,

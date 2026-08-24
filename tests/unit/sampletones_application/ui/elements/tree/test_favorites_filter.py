@@ -643,7 +643,7 @@ class TestStarColor:
         panel = build_browser_panel(corpus, set(), favorites_only=False)
         assert panel._favorites_glyph_color() == TREE_COLORS.muted
 
-    def test_the_star_is_coloured_with_the_token_the_mode_names(
+    def test_the_star_is_colored_with_the_token_the_mode_names(
         self,
         corpus: BrowserCorpus,
         monkeypatch: pytest.MonkeyPatch,
@@ -651,16 +651,16 @@ class TestStarColor:
         """The colour reaches the star as a token, so the star follows a palette swapped in place."""
         panel = build_browser_panel(corpus, set(), favorites_only=True)
         panel._favorites_glyph_tag = GLYPH_TAG
-        coloured: List[Tuple[str, BaseColor]] = []
+        colored: List[Tuple[str, BaseColor]] = []
         monkeypatch.setattr(
             tree_module,
             "dpg_set_palette_color",
-            lambda item, color: coloured.append((item, color)),
+            lambda item, color: colored.append((item, color)),
         )
 
         panel._apply_favorites_glyph_color()
 
-        assert coloured == [(GLYPH_TAG, TREE_COLORS.favorite)]
+        assert colored == [(GLYPH_TAG, TREE_COLORS.favorite)]
 
 
 class TestControlLock:

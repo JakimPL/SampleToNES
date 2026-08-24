@@ -10,7 +10,7 @@ from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer import channels as channels_module
 from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.columns import tracker_table_column
-from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel, ThemeKey
 from sampletones_application.utils.gui.keyboard.modifiers import (
     CTRL,
     NO_MODIFIERS,
@@ -41,15 +41,15 @@ CHANNEL_COLORS = ChannelColors(
 
 HEADER_THEME = 1
 MUTED_HEADER_THEME = 2
-SUBCOLUMN_THEMES: Dict[SubColumn, int] = {
-    SubColumn.VOICE: 10,
-    SubColumn.TRANSPOSE: 11,
-    SubColumn.VOLUME: 12,
+SUBCOLUMN_THEMES: Dict[ThemeKey, int] = {
+    (SubColumn.VOICE, None): 10,
+    (SubColumn.TRANSPOSE, None): 11,
+    (SubColumn.VOLUME, None): 12,
 }
-MUTED_SUBCOLUMN_THEMES: Dict[SubColumn, int] = {
-    SubColumn.VOICE: 20,
-    SubColumn.TRANSPOSE: 21,
-    SubColumn.VOLUME: 22,
+MUTED_SUBCOLUMN_THEMES: Dict[ThemeKey, int] = {
+    (SubColumn.VOICE, None): 20,
+    (SubColumn.TRANSPOSE, None): 21,
+    (SubColumn.VOLUME, None): 22,
 }
 
 
@@ -106,6 +106,7 @@ def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerTrackerPanel:
     )
     panel._current_channels = SequencerChannelsViewModel(muted=muted)
     panel._current_row_count = ROW_COUNT
+    panel._cell_kinds = {}
     panel._header_theme = HEADER_THEME
     panel._muted_header_theme = MUTED_HEADER_THEME
     panel._subcolumn_themes = dict(SUBCOLUMN_THEMES)
@@ -315,7 +316,7 @@ class TestCellTextShade:
 
         for subcolumn in SubColumn:
             widget = _cell_widget(ChannelName.NOISE, 0, subcolumn)
-            assert recorder.bound_themes[widget] == MUTED_SUBCOLUMN_THEMES[subcolumn]
+            assert recorder.bound_themes[widget] == MUTED_SUBCOLUMN_THEMES[(subcolumn, None)]
 
     def test_unmuting_restores_the_full_theme(self, recorder: _DearPyGuiRecorder) -> None:
         panel = _panel(frozenset({ChannelName.NOISE}))
@@ -324,7 +325,7 @@ class TestCellTextShade:
         panel.update_channels(SequencerChannelsViewModel(muted=frozenset()))
 
         widget = _cell_widget(ChannelName.NOISE, 1, SubColumn.VOLUME)
-        assert recorder.bound_themes[widget] == SUBCOLUMN_THEMES[SubColumn.VOLUME]
+        assert recorder.bound_themes[widget] == SUBCOLUMN_THEMES[(SubColumn.VOLUME, None)]
 
 
 class TestCuesAwaitTheTable:

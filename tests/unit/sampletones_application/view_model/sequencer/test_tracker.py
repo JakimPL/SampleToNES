@@ -222,3 +222,69 @@ class TestSampleColumnAggregate(BaseTestSuite):
         assert row.sample == case.expected_sample
         assert row.transpose == case.expected_transpose
         assert row.volume == case.expected_volume
+
+
+class TestWhichKindTheSampleColumnNames:
+    """The slot's kind is what colours it, so it states one only where its channels agree."""
+
+    @staticmethod
+    def _row(
+        cells: Dict[ChannelName, SequencerCellViewModel],
+        sample_channels: FrozenSet[ChannelName],
+    ) -> SequencerRowViewModel:
+        return SequencerRowViewModel(
+            index=0,
+            cells=cells,
+            sample_channels=sample_channels,
+        )
+
+    def test_a_row_naming_nothing_states_no_kind(self) -> None:
+        row = self._row(_row_cells(), frozenset())
+
+        assert row.sample_kind is None
+
+    def test_a_sample_across_its_channels_states_the_sample_kind(self) -> None:
+        row = self._row(
+            _row_cells(pulse1=_OCCUPIED, triangle=_OCCUPIED),
+            frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE}),
+        )
+
+        assert row.sample_kind is VoiceKind.SAMPLE
+
+    def test_a_sample_missing_from_one_of_its_channels_states_no_kind(self) -> None:
+        """The reading is mixed there, and a mixed cell speaks for no one voice."""
+        row = self._row(
+            _row_cells(pulse1=_OCCUPIED),
+            frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE}),
+        )
+
+        assert row.sample_kind is None
+
+    def test_an_instrument_alone_on_a_row_states_no_kind(self) -> None:
+        """It is placed in its own channel column, so the sample column speaks for none of it."""
+        row = self._row(
+            _row_cells(pulse1=_cell(voice=display_id(3), kind=VoiceKind.INSTRUMENT)),
+            frozenset(),
+        )
+
+        assert row.sample_kind is None
+
+    def test_an_instrument_beside_a_sample_leaves_the_sample_kind_standing(self) -> None:
+        row = self._row(
+            _row_cells(
+                pulse1=_OCCUPIED,
+                noise=_cell(voice=display_id(3), kind=VoiceKind.INSTRUMENT),
+            ),
+            frozenset({ChannelName.PULSE1}),
+        )
+
+        assert row.sample_kind is VoiceKind.SAMPLE
+
+    def test_a_cut_row_states_no_kind(self) -> None:
+        """A cut names no voice, so the slot reads it in the shade an empty one takes."""
+        row = self._row(
+            {channel: _cell(voice=NOTE_OFF) for channel in ChannelName.items()},
+            frozenset(),
+        )
+
+        assert row.sample_kind is None

@@ -107,7 +107,7 @@ class TestArgumentBinding:
         context: None,
         accent: BaseColor,
     ) -> None:
-        """A hovered item is recoloured on every frame it is under the pointer."""
+        """A hovered item is recolored on every frame it is under the pointer."""
         item = _add_text()
 
         for _ in range(5):
