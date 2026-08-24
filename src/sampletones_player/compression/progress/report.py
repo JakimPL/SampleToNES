@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Final
+from typing import Callable
 
 
 @dataclass(frozen=True)
@@ -17,11 +17,3 @@ class CodecProgress:
 
 
 CodecReporter = Callable[[CodecProgress], bool]
-
-
-def _carry_on(progress: CodecProgress) -> bool:  # pylint: disable=unused-argument
-    """Answers that the run goes on, which is what a caller watching nothing asks of it."""
-    return True
-
-
-SILENT_REPORTER: Final[CodecReporter] = _carry_on

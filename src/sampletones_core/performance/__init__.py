@@ -1,7 +1,6 @@
 from .audition import audition_audio
 from .modifiers import apply_modifiers
 from .progress import (
-    SILENT_WALK_REPORTER,
     WalkProgress,
     WalkReporter,
     announce,
@@ -13,7 +12,6 @@ from .ticks import sound_tick
 from .voice import VoiceReading
 
 __all__ = [
-    "SILENT_WALK_REPORTER",
     "ChannelPerformance",
     "VoiceReading",
     "WalkProgress",

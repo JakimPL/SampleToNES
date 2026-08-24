@@ -3,13 +3,14 @@ from typing import FrozenSet, Protocol
 
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.format import ExportFormat
-from sampletones_core.exports.progress import SILENT_REPORTER, ExportReporter
+from sampletones_core.exports.progress import ExportReporter
 from sampletones_core.exports.request import (
     InstrumentExport,
     ProjectExport,
     SampleExport,
 )
 from sampletones_core.exports.scope import ExportScope
+from sampletones_shared.utils.progress import silent_reporter
 
 
 class ExportBackend(Protocol):
@@ -22,7 +23,7 @@ class ExportBackend(Protocol):
 
     A write reports itself as it runs and asks its reporter whether the answer is still
     wanted, which is what lets a caller watch a long format and withdraw one. A caller with
-    nothing to tell passes :data:`SILENT_REPORTER` and hears back the file alone.
+    nothing to tell passes :func:`silent_reporter` and hears back the file alone.
     """
 
     @property
@@ -47,7 +48,7 @@ class ExportBackend(Protocol):
         self,
         destination: Path,
         request: InstrumentExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         """Writes one channel slice.
 
@@ -68,7 +69,7 @@ class ExportBackend(Protocol):
         self,
         destination: Path,
         request: SampleExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         """Writes every channel slice of one reconstruction.
 
@@ -91,7 +92,7 @@ class ExportBackend(Protocol):
         self,
         destination: Path,
         request: ProjectExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         """Writes a whole composition.
 

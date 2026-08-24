@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Final
+from typing import Callable
 
 from sampletones_shared.exceptions import OperationCanceled
 
@@ -19,14 +19,6 @@ class WalkProgress:
 
 
 WalkReporter = Callable[[WalkProgress], bool]
-
-
-def _carry_on(progress: WalkProgress) -> bool:  # pylint: disable=unused-argument
-    """Answers that the walk goes on, which is what a caller watching nothing asks of it."""
-    return True
-
-
-SILENT_WALK_REPORTER: Final[WalkReporter] = _carry_on
 
 
 def announce(report: WalkReporter, ticks: int, total: int) -> None:

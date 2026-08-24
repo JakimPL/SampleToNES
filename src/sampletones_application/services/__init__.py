@@ -1,22 +1,26 @@
 from sampletones_application.services.base import ServiceBase
-from sampletones_application.services.conversion import ConversionService
+from sampletones_application.services.conversion.result import (
+    ConversionItem,
+    ConversionResult,
+    ReconstructionStep,
+)
+from sampletones_application.services.conversion.service import ConversionService
 from sampletones_application.services.export.error import ExportError
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.result import ExportResult
 from sampletones_application.services.export.service import ExportService
 from sampletones_application.services.export.success import ExportSuccess
-from sampletones_application.services.regeneration import (
+from sampletones_application.services.regeneration.result import (
     RegeneratedInstrument,
     RegenerationResult,
-    RegenerationService,
 )
+from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.render import (
     RenderResult,
     RenderStage,
     SongRenderService,
 )
 from sampletones_application.services.result import (
-    ConversionResult,
     ServiceCanceled,
     ServiceError,
     ServiceIntermediate,
@@ -28,6 +32,7 @@ from sampletones_application.services.retune import RetunedSample, RetuneResult,
 from sampletones_application.services.synthesis import RowSynthesizerProtocol
 
 __all__ = [
+    "ConversionItem",
     "ConversionResult",
     "ConversionService",
     "ExportError",
@@ -35,6 +40,7 @@ __all__ = [
     "ExportResult",
     "ExportService",
     "ExportSuccess",
+    "ReconstructionStep",
     "RegeneratedInstrument",
     "RegenerationResult",
     "RegenerationService",

@@ -4,7 +4,7 @@ from typing import Final, FrozenSet, List, Optional
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.format import ExportFormat
-from sampletones_core.exports.progress import SILENT_REPORTER, ExportReporter, announce
+from sampletones_core.exports.progress import ExportReporter, announce
 from sampletones_core.exports.request import (
     InstrumentExport,
     ProjectExport,
@@ -22,6 +22,7 @@ from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
+from sampletones_shared.utils.progress import silent_reporter
 from sampletones_shared.utils.system.paths import get_filename
 
 SUPPORTED_SCOPES: FrozenSet[ExportScope] = frozenset(ExportScope)
@@ -53,7 +54,7 @@ class FamiTrackerBackend:
         self,
         destination: Path,
         request: InstrumentExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
         instrument = build_instrument(
@@ -76,7 +77,7 @@ class FamiTrackerBackend:
         self,
         destination: Path,
         request: SampleExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         destination.parent.mkdir(parents=True, exist_ok=True)
 
@@ -92,7 +93,7 @@ class FamiTrackerBackend:
                     EXT_FILE_INSTRUMENT,
                 )
             )
-            artifact = self.write_instrument(filepath, instrument, SILENT_REPORTER)
+            artifact = self.write_instrument(filepath, instrument, silent_reporter)
             paths.extend(artifact.paths)
             truncations.append(artifact.truncation)
             announce(report, ExportStage.WRITING, index, written)
@@ -106,7 +107,7 @@ class FamiTrackerBackend:
         self,
         destination: Path,
         request: ProjectExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
         write_ftm(destination, request.project)

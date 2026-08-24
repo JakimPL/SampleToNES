@@ -4,7 +4,6 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.maps import CHANNEL_TO_EXPORTER_MAP
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.performance.progress import (
-    SILENT_WALK_REPORTER,
     WalkReporter,
     announce,
 )
@@ -16,11 +15,12 @@ from sampletones_core.project.project import Project
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.timing.song import SongTiming
+from sampletones_shared.utils.progress import silent_reporter
 
 
 def song_instructions(
     project: Project,
-    report: WalkReporter = SILENT_WALK_REPORTER,
+    report: WalkReporter = silent_reporter,
 ) -> Dict[ChannelName, List[InstructionUnion]]:
     """Plays a whole song out as the instructions each channel sounds, one per engine tick.
 

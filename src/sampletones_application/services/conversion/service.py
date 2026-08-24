@@ -2,8 +2,12 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 from sampletones_application.services.base import ServiceBase
-from sampletones_application.services.result import (
+from sampletones_application.services.conversion.result import (
+    ConversionItem,
     ConversionResult,
+    ReconstructionStep,
+)
+from sampletones_application.services.result import (
     ServiceCanceled,
     ServiceError,
     ServiceIntermediate,
@@ -13,7 +17,9 @@ from sampletones_application.services.result import (
 )
 from sampletones_core.configs import Config
 from sampletones_core.parallelization import ETAEstimator, TaskProgress, TaskStatus
+from sampletones_core.parallelization.task import TaskStep
 from sampletones_core.reconstructions.converter import ConversionPlan, ReconstructionConverter
+from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.system.paths import to_path
 
@@ -86,23 +92,58 @@ class ConversionService(ServiceBase[ConversionResult]):
         task_status: TaskStatus,
         task_progress: TaskProgress,
     ) -> None:
-        current_item: Optional[Path] = None
-        if task_progress.current_item is not None:
-            current_item = to_path(task_progress.current_item)
-
         match task_status:
             case TaskStatus.RUNNING | TaskStatus.CANCELLING:
-                eta_seconds = self._eta_estimator.update(task_progress.completed) if self._eta_estimator else None
                 self._emit(
                     ServiceProgress(
                         completed=task_progress.completed,
                         total=task_progress.total,
-                        current_item=current_item,
-                        eta_seconds=eta_seconds,
+                        current_item=self._item(task_progress),
+                        eta_seconds=self._estimate(task_progress),
+                        partial=task_progress.partial,
                     )
                 )
             case _:
                 pass
+
+    def _estimate(self, task_progress: TaskProgress) -> Optional[float]:
+        """How long the run has left, read from the whole of what it has covered.
+
+        The run's own reading counts the reconstruction under way, so an estimate taken from it
+        moves while a single conversion runs rather than waiting for the file to be written.
+        """
+        if self._eta_estimator is None:
+            return None
+
+        return self._eta_estimator.update(task_progress.completed + task_progress.partial)
+
+    @classmethod
+    def _item(cls, task_progress: TaskProgress) -> Optional[ConversionItem]:
+        """The reconstruction the run is building, where it has a recording to name.
+
+        A run works on as many reconstructions as it has workers and names the one it has been at
+        longest, whose step it carries; the reading a bar draws counts them all.
+        """
+        if task_progress.current_item is None:
+            return None
+
+        return ConversionItem(
+            source=to_path(task_progress.current_item),
+            step=cls._step(task_progress),
+        )
+
+    @staticmethod
+    def _step(task_progress: TaskProgress) -> Optional[ReconstructionStep]:
+        """What that reconstruction is doing, once it has said something about itself."""
+        if not task_progress.steps:
+            return None
+
+        step: TaskStep = task_progress.steps[0]
+        return ReconstructionStep(
+            stage=ReconstructionStage(step.stage),
+            completed=step.completed,
+            total=step.total,
+        )
 
     def _on_completed(self, written: Tuple[Path, ...]) -> None:
         self._emit(ServiceSuccess(value=written))

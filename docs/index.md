@@ -62,6 +62,7 @@ The [**development**](development/) section is for contributors.
 - [Undo engine](development/undo.md) — the design of the undo/redo subsystem.
 - [Sequencer blocks](development/sequencer-blocks.md) — the rules copy, cut, paste and delete follow on both grids.
 - [Playback](development/playback.md) — the audio transport shared by every view, and rendering the song to a file.
+- [Progress](development/progress.md) — how a long operation says how far it has come, in one process and across the pool's workers.
 - [Console player](development/player.md) — the 6502 driver an `.nsf` carries, the codec that fits a song beside it, and how both are verified.
 - [Reconstruction browser](development/browser.md) — how a reconstructions directory becomes the tree both browser tabs render, and what narrows it.
 - [Configuration](development/config-organization.md) — how the YAML configuration package is laid out.

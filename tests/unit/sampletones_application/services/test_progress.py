@@ -1,16 +1,14 @@
 from typing import Final, List
 
-from sampletones_application.services.progress import (
-    PROGRESS_STEPS,
-    UNMEASURED,
-    StageProgress,
-)
+from sampletones_application.services.progress import UNMEASURED, StageProgress
 from sampletones_application.services.render.result import RenderStage
 from sampletones_application.services.result import ServiceProgress
 from sampletones_core.exports.stage import ExportStage
+from sampletones_shared.utils.progress import PROGRESS_STEPS
 
 TOTAL_SAMPLES: Final[int] = PROGRESS_STEPS * 100
 STEP: Final[int] = TOTAL_SAMPLES // PROGRESS_STEPS
+NOTHING_COVERED: Final[int] = 0
 PROGRAM_AREA: Final[int] = 32429
 FIRST_SIZE: Final[int] = 12689
 SMALLER_SIZE: Final[int] = FIRST_SIZE - PROGRAM_AREA // PROGRESS_STEPS - 1
@@ -28,8 +26,15 @@ class TestReportingAtABoundedRate:
     def test_a_move_short_of_a_step_is_held_back(self) -> None:
         reports: List[ServiceProgress[RenderStage]] = []
         progress = StageProgress(RenderStage.SYNTHESIS, TOTAL_SAMPLES, emit=reports.append, estimates=True)
-        progress.advance(STEP - 1)
-        assert reports == []
+        progress.advance(STEP)
+        progress.advance(STEP + STEP - 1)
+        assert [report.completed for report in reports] == [STEP]
+
+    def test_a_stage_says_where_it_begins(self) -> None:
+        reports: List[ServiceProgress[RenderStage]] = []
+        progress = StageProgress(RenderStage.SYNTHESIS, TOTAL_SAMPLES, emit=reports.append, estimates=True)
+        progress.advance(NOTHING_COVERED)
+        assert [report.completed for report in reports] == [NOTHING_COVERED]
 
     def test_a_stage_landing_on_its_total_is_always_reported(self) -> None:
         reports: List[ServiceProgress[RenderStage]] = []

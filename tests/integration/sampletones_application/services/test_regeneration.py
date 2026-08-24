@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from sampletones_application.logic.reconstruction.feature import FeatureData
-from sampletones_application.services.regeneration import RegenerationService
+from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import ServiceError, ServiceSuccess
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.enums import ChannelName, FeatureKey

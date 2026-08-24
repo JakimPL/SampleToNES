@@ -8,8 +8,9 @@ from sampletones_player.compression.options import EVERY_LAYER
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.rebuild import streams_from_planes
 from sampletones_player.compression.planes.separate import planes_from_streams
-from sampletones_player.compression.progress.report import SILENT_REPORTER, CodecReporter
+from sampletones_player.compression.progress.report import CodecReporter
 from sampletones_player.registers.streams import ChannelStreams
+from sampletones_shared.utils.progress import silent_reporter
 
 
 def _entries(loop_tick: Optional[int]) -> FrozenSet[int]:
@@ -25,7 +26,7 @@ def compress_song(
     *,
     seeds: Sequence[Phrase],
     loop_tick: Optional[int] = None,
-    report: CodecReporter = SILENT_REPORTER,
+    report: CodecReporter = silent_reporter,
 ) -> CompressedPlanes:
     """Compresses a song's four register streams into the dictionary and streams a file carries.
 

@@ -117,19 +117,13 @@ class SongExportLogic(CallbackMixin):
 
         self._reach(stage)
         self._travelling = stage in TRAVELLING_STAGES
-        self._progress = self._fraction(progress)
+        self._progress = progress.fraction
         self._figure = self._figure_text(progress)
         self._emit_view()
 
     def _reach(self, stage: ExportStage) -> None:
         if stage not in self._stages:
             self._stages.append(stage)
-
-    def _fraction(self, progress: ServiceProgress[ExportStage]) -> float:
-        if progress.total <= NOTHING_MEASURED:
-            return NO_PROGRESS
-
-        return progress.completed / progress.total
 
     def _figure_text(self, progress: ServiceProgress[ExportStage]) -> str:
         """What the stage under way has covered, stated where the stage travels toward no end.

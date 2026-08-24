@@ -15,7 +15,6 @@ from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.compression.progress.monitor import CodecMonitor
 from sampletones_player.compression.progress.report import (
-    SILENT_REPORTER,
     CodecReporter,
 )
 from sampletones_player.compression.search import search_phrases
@@ -24,6 +23,7 @@ from sampletones_player.compression.tokens.literal import LiteralToken
 from sampletones_player.compression.tokens.phrase import PhraseToken
 from sampletones_player.compression.tokens.types import TokenUnion
 from sampletones_player.specification.compression import PHRASE_ID_ESCAPE, TokenTag
+from sampletones_shared.utils.progress import silent_reporter
 
 STREAM_START: Final[int] = 0
 SETTLING_ROUNDS: Final[int] = 3
@@ -119,7 +119,7 @@ def encode_planes(
     *,
     options: CodecOptions,
     boundaries: FrozenSet[int],
-    report: CodecReporter = SILENT_REPORTER,
+    report: CodecReporter = silent_reporter,
 ) -> CompressedPlanes:
     """Compresses a song's eight planes into the dictionary and streams the driver reads.
 

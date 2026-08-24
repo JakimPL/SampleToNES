@@ -145,12 +145,14 @@ class TestReconstructionConverterProcessResults:
 
 
 class TestReconstructionConverterNotifyProgress:
-    def test_current_file_names_the_job_that_completed(
-        self,
+    """A run names the recording it is working on, which is what a reader watching it wants."""
+
+    @staticmethod
+    def _converter_over_two_recordings(
         config: Config,
         stems: StemsConfig,
         tmp_path: Path,
-    ) -> None:
+    ) -> ReconstructionConverter:
         (tmp_path / "a.wav").touch()
         (tmp_path / "b.wav").touch()
         converter = ReconstructionConverter(config, DirectoryConversion(directory=tmp_path, stems=stems))
@@ -158,6 +160,34 @@ class TestReconstructionConverterNotifyProgress:
             converter._create_tasks()
 
         converter.total_tasks = len(converter.jobs)
-        converter.completed_tasks = 1
-        converter._notify_progress()
-        assert converter.current_file == str(converter.jobs[0].sources[0])
+        return converter
+
+    def test_the_run_names_the_job_it_is_working_on(
+        self,
+        config: Config,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        converter = self._converter_over_two_recordings(config, stems, tmp_path)
+        try:
+            converter.completed_tasks = 1
+            converter._notify_progress()
+
+            assert converter.current_item == str(converter.jobs[1].sources[0])
+        finally:
+            converter.shutdown()
+
+    def test_a_finished_run_names_the_job_it_ended_on(
+        self,
+        config: Config,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        converter = self._converter_over_two_recordings(config, stems, tmp_path)
+        try:
+            converter.completed_tasks = len(converter.jobs)
+            converter._notify_progress()
+
+            assert converter.current_item == str(converter.jobs[-1].sources[0])
+        finally:
+            converter.shutdown()

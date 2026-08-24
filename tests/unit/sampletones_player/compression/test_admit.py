@@ -13,8 +13,8 @@ from sampletones_player.compression.options import EVERY_LAYER
 from sampletones_player.compression.parse.result import Parse
 from sampletones_player.compression.parse.song import parse_planes
 from sampletones_player.compression.progress.monitor import CodecMonitor
-from sampletones_player.compression.progress.report import SILENT_REPORTER
 from sampletones_player.specification.compression import BYTE_VALUES, MAX_PHRASE_IDS
+from sampletones_shared.utils.progress import silent_reporter
 
 STREAM_START: Final[frozenset] = frozenset({0})
 LEANED_ON: Final[bytes] = b"\x10\x18\x14\x22\x1c\x30\x11\x19\x15\x23\x1d\x31\x12\x1a\x16\x24"
@@ -62,7 +62,7 @@ def baseline_fixture(cache: MatchCache) -> Tuple[Parse, ...]:
         phrase_table(()),
         replace(EVERY_LAYER, phrases=False),
         STREAM_START,
-        CodecMonitor(SILENT_REPORTER),
+        CodecMonitor(silent_reporter),
     )
 
 

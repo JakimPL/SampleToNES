@@ -2,7 +2,7 @@
 
 This document describes the design of `sampletones_application` — the GUI front-end of _SampleToNES_. It is prescriptive: it states the contracts each layer must honor, in the form they are enforced, and the rationale behind them. Use it as the reference when deciding where new code belongs.
 
-Concrete classes and modules appear throughout as **examples** that anchor a rule; the rules bind every instance, named or not. Known deviations from these contracts are tracked in `docs/development/bugs-and-todos.md`. Coding-level rules live in `docs/development/guidelines.md`; the undo subsystem has its own design document, `docs/development/undo.md`, the audio transport has `docs/development/playback.md`, the reconstruction browser has `docs/development/browser.md`, the YAML configuration package has `docs/development/config-organization.md`, and the packages the repository divides into have `docs/development/packages.md`.
+Concrete classes and modules appear throughout as **examples** that anchor a rule; the rules bind every instance, named or not. Known deviations from these contracts are tracked in `docs/development/bugs-and-todos.md`. Coding-level rules live in `docs/development/guidelines.md`; the undo subsystem has its own design document, `docs/development/undo.md`, the audio transport has `docs/development/playback.md`, the reconstruction browser has `docs/development/browser.md`, the YAML configuration package has `docs/development/config-organization.md`, how a long operation says how far it has come has `docs/development/progress.md`, and the packages the repository divides into have `docs/development/packages.md`.
 
 ---
 
@@ -303,6 +303,7 @@ They read the source as an AST through the shared layer in `sampletones_shared/m
 - Every service inherits `ServiceBase[ResultType]`, which provides `subscribe(handler)`, `unsubscribe(handler)`, and `_emit(result)`.
 - `_emit` always posts the result to `CallbackQueue`; it never calls a handler directly from the background thread.
 - Result types are a tagged union of `ServiceStarted`, `ServiceProgress`, `ServiceIntermediate`, `ServiceSuccess`, `ServiceError`, `ServiceCanceled`, enabling exhaustive `match` handling by subscribers.
+- A service is one subpackage holding `service.py` and `result.py`, so its implementation and the contract its subscribers type against are reached separately; the generic contracts every service reports through are `services/result.py`. `ServiceProgress.fraction` is the one reading a bar draws, counting the item under way for the part of it that is done — see `docs/development/progress.md`.
 - Services hold no references to panels, view models, or logic objects.
 
 **May import:** `sampletones_core`, `sampletones_shared`, `utils/callbacks/`.

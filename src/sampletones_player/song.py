@@ -9,9 +9,10 @@ from sampletones_player.clock.schedule import PlaySchedule
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.pitch import PitchTable
-from sampletones_player.compression.progress.report import SILENT_REPORTER, CodecReporter
+from sampletones_player.compression.progress.report import CodecReporter
 from sampletones_player.compression.song import compress_song, decompress_song
 from sampletones_player.registers.streams import ChannelStreams
+from sampletones_shared.utils.progress import silent_reporter
 
 
 class Song(BaseModel):
@@ -45,7 +46,7 @@ class Song(BaseModel):
         schedule: PlaySchedule,
         loop_tick: Optional[int],
         seeds: Sequence[Phrase],
-        report: CodecReporter = SILENT_REPORTER,
+        report: CodecReporter = silent_reporter,
     ) -> Song:
         """Compresses the register values a song plays into the song the console holds.
 

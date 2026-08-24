@@ -4,15 +4,15 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-from sampletones_application.services.song_player.player import (
-    SongPlayerService,
-    _RenderedRow,
-)
 from sampletones_application.services.song_player.result import (
     SongPlaybackError,
     SongPlaybackStopped,
     SongPlayerResult,
     SongPositionUpdate,
+)
+from sampletones_application.services.song_player.service import (
+    SongPlayerService,
+    _RenderedRow,
 )
 from sampletones_core.project.song_position import SongPosition
 
@@ -21,7 +21,7 @@ WRITE_BLOCK: Final[int] = 64
 WAIT_TIMEOUT: Final[float] = 5.0
 SHORT_JOIN_TIMEOUT: Final[float] = 0.05
 WRITE_RELEASE_DELAY: Final[float] = 0.05
-JOIN_TIMEOUT_TARGET: Final[str] = "sampletones_application.services.song_player.player.STOP_JOIN_TIMEOUT"
+JOIN_TIMEOUT_TARGET: Final[str] = "sampletones_application.services.song_player.service.STOP_JOIN_TIMEOUT"
 
 
 def _make_service(

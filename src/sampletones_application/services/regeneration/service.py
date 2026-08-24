@@ -1,9 +1,12 @@
-from dataclasses import dataclass
 from typing import List, cast
 
 import numpy as np
 
 from sampletones_application.services.base import ServiceBase
+from sampletones_application.services.regeneration.result import (
+    RegeneratedInstrument,
+    RegenerationResult,
+)
 from sampletones_application.services.result import (
     ServiceCanceled,
     ServiceError,
@@ -15,22 +18,6 @@ from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP, Features
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
-
-
-@dataclass(frozen=True)
-class RegeneratedInstrument:
-    """A regeneration result paired with the generator and feature that changed.
-
-    Carrying the request context alongside the fresh reconstruction lets the
-    history record which channel and feature an edit touched.
-    """
-
-    reconstruction: Reconstruction
-    channel_name: ChannelName
-    feature_key: FeatureKey
-
-
-RegenerationResult = ServiceSuccess[RegeneratedInstrument] | ServiceError | ServiceCanceled
 
 
 class RegenerationService(ServiceBase[RegenerationResult]):

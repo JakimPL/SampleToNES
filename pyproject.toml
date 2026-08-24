@@ -134,6 +134,7 @@ known_first_party = [
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
+pythonpath = ["."]
 
 [tool.coverage.run]
 source = [

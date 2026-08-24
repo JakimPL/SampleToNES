@@ -54,7 +54,7 @@ from sampletones_application.logic.sequencer.tracker import (
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
-from sampletones_application.services.song_player.player import SongPlayerService
+from sampletones_application.services.song_player.service import SongPlayerService
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,

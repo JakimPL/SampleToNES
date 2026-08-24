@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sampletones_application.services.conversion import ConversionService
+from sampletones_application.services.conversion.service import ConversionService
 from sampletones_application.services.result import (
     ServiceCanceled,
     ServiceError,
@@ -22,7 +22,7 @@ Service: TypeAlias = Tuple[ConversionService, MagicMock, Dict[str, Callable[...,
 
 @pytest.fixture
 def mock_converter_class() -> Iterator[MockConverterClass]:
-    with patch("sampletones_application.services.conversion.ReconstructionConverter") as cls:
+    with patch("sampletones_application.services.conversion.service.ReconstructionConverter") as cls:
         instance = MagicMock()
         instance.is_running.return_value = False
         instance.status = TaskStatus.COMPLETED
@@ -122,7 +122,8 @@ class TestConversionServiceEmissions:
         assert isinstance(result, ServiceProgress)
         assert result.completed == 2
         assert result.total == 5
-        assert result.current_item == Path("/some/file.wav")
+        assert result.current_item is not None
+        assert result.current_item.source == Path("/some/file.wav")
 
     def test_on_progress_cancelling_emits_service_progress(
         self,
