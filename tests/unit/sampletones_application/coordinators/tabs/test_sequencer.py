@@ -65,8 +65,6 @@ from sampletones_application.view_model.sequencer.voices import (
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
-    HistoryDetailWord,
-    HistoryDetailWordSegment,
 )
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.features.envelope import Envelope
@@ -1545,37 +1543,31 @@ def view_coordinator() -> SequencerTabCoordinator:
     return instance
 
 
-def _loop_entry(loop: bool) -> HistoryEntry:
-    word = HistoryDetailWord.LOOP_ON if loop else HistoryDetailWord.LOOP_OFF
+def _detail_entry(value: str) -> HistoryEntry:
     return HistoryEntry(
         project=MagicMock(),
-        action=HistoryAction.SET_SAMPLE_LOOP,
+        action=HistoryAction.MOVE_SAMPLE,
         created=datetime.now(tz=UTC),
         detail=(
             HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE),
-            HistoryDetailWordSegment(word=word, role=HistoryDetailRole.VALUE),
+            HistoryDetailSegment(text=value, role=HistoryDetailRole.VALUE),
         ),
     )
 
 
 class TestHistoryViewModelBuild:
-    def test_word_segments_resolve_to_language_text(
+    def test_an_entry_reaches_the_view_with_the_detail_it_was_committed_with(
         self,
         view_coordinator: SequencerTabCoordinator,
     ) -> None:
+        """A detail is built in the words it is read in, so the view shows what was stored."""
         view_coordinator._history.cursor = 1
-        view_coordinator._history.entries = (_loop_entry(True), _loop_entry(False))
+        entries = (_detail_entry("01"), _detail_entry("02"))
+        view_coordinator._history.entries = entries
 
         view_model = view_coordinator._build_history_view_model()
 
-        assert view_model.entries[0].detail_segments == (
-            HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE),
-            HistoryDetailSegment(text="on", role=HistoryDetailRole.VALUE),
-        )
-        assert view_model.entries[1].detail_segments == (
-            HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE),
-            HistoryDetailSegment(text="off", role=HistoryDetailRole.VALUE),
-        )
+        assert [entry.detail_segments for entry in view_model.entries] == [entry.detail for entry in entries]
 
 
 @pytest.fixture

@@ -78,7 +78,6 @@ class SequencerVoicesElements(AbstractElement):
     COLUMN_KIND = "column_kind"
     COLUMN_ID = "column_id"
     COLUMN_NAME = "column_name"
-    COLUMN_LOOP = "column_loop"
     CONTEXT_EDIT = "context_edit"
     CONTEXT_RENAME = "context_rename"
     CONTEXT_DUPLICATE = "context_duplicate"
@@ -102,5 +101,3 @@ class SequencerHistoryElements(AbstractElement):
     STATUS_UNDO = "status_undo"
     STATUS_REDO = "status_redo"
     EMPTY = "empty"
-    LOOP_ON = "loop_on"
-    LOOP_OFF = "loop_off"

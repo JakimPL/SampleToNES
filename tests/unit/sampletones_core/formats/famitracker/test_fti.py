@@ -35,7 +35,6 @@ from sampletones_core.formats.famitracker.specification.sequences import (
     SEQUENCE_ENABLED,
     SequenceKind,
 )
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_shared.exceptions import (
     IncompatibleInstrumentVersionError,
     InvalidInstrumentValuesError,
@@ -182,9 +181,9 @@ class TestFtiRoundTrip:
         assert not instrument.sequences[SequenceKind.DUTY].enabled
 
     def test_the_loop_point_round_trips(self) -> None:
-        instrument = build_instrument("Pad", volume=np.array([15, 10, 5]), loop_point=WHOLE_LOOP_POINT)
+        instrument = build_instrument("Pad", volume=np.array([15, 10, 5]), loop_point=0)
         read = fti_bytes_to_instrument(instrument_to_fti_bytes(instrument))
-        assert read.sequences[SequenceKind.VOLUME].loop_point == WHOLE_LOOP_POINT
+        assert read.sequences[SequenceKind.VOLUME].loop_point == 0
 
     def test_a_written_file_reads_back(self, tmp_path: Path) -> None:
         path = tmp_path / "instrument.fti"

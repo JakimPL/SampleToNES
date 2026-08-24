@@ -24,9 +24,9 @@ from sampletones_shared.types.callback import VoidCallback
 from tests.suite.shortcuts import shipped_source
 
 ENTRIES: Tuple[VoiceEntryViewModel, ...] = (
-    VoiceEntryViewModel(voice_id="kick-id", name="Kick", kind=VoiceKind.SAMPLE, loop=False),
-    VoiceEntryViewModel(voice_id="bass-id", name="Bass", kind=VoiceKind.SAMPLE, loop=True),
-    VoiceEntryViewModel(voice_id="lead-id", name="Lead", kind=VoiceKind.SAMPLE, loop=False),
+    VoiceEntryViewModel(voice_id="kick-id", name="Kick", kind=VoiceKind.SAMPLE),
+    VoiceEntryViewModel(voice_id="bass-id", name="Bass", kind=VoiceKind.SAMPLE),
+    VoiceEntryViewModel(voice_id="lead-id", name="Lead", kind=VoiceKind.SAMPLE),
 )
 
 SELECTED_ID = "bass-id"

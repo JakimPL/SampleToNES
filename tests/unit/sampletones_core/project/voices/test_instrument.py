@@ -17,7 +17,6 @@ from sampletones_core.features.spec import CHANNEL_GENERATOR_KIND
 from sampletones_core.instructions import NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 

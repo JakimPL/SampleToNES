@@ -36,9 +36,7 @@ from sampletones_core.project.voices.creation import (
     new_instrument,
 )
 from sampletones_core.project.voices.instrument import Instrument
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.utils.display import display_voice
 from sampletones_shared.exceptions import PlaybackError
@@ -86,7 +84,6 @@ class SequencerVoicesLogic(CallbackMixin):
                 voice_id=voice.id,
                 name=voice.name,
                 kind=voice_kind(voice),
-                loop=_loops(voice),
             )
             for voice in self._controller.project.voices
         )
@@ -195,11 +192,9 @@ class SequencerVoicesLogic(CallbackMixin):
     ) -> Optional[SampleFootprintViewModel]:
         """Measures one voice's instruments as the module export writes them.
 
-        A voice carries its own loop point, and a looping instrument is compiled to one shared
-        length, so it is measured the way it is placed. A sample yields a figure per channel its
-        reconstruction covers; an instrument yields one, since every channel reaches the same
-        envelopes. Measuring a single voice on demand keeps a pool edit clear of an export it was
-        not asked for.
+        A sample yields a figure per channel its reconstruction covers; an instrument yields one,
+        since every channel reaches the same envelopes. Measuring a single voice on demand keeps a
+        pool edit clear of an export it was not asked for.
 
         Args:
             voice_id: The voice to measure.
@@ -250,14 +245,6 @@ class SequencerVoicesLogic(CallbackMixin):
 
     def duplicate_voice(self, voice_id: str) -> None:
         self._controller.duplicate_voice(voice_id)
-
-    def set_sample_loop(self, voice_id: str, loop: bool) -> None:
-        """Turns the list's loop tick into the point the voice repeats from.
-
-        The list offers looping as a switch, and a voice that loops repeats the whole of its
-        instructions, which is the point at their start.
-        """
-        self._controller.set_voice_loop_point(voice_id, WHOLE_LOOP_POINT if loop else None)
 
     def request_edit(self, voice_id: str) -> None:
         self.cancel_autoplay()
@@ -349,15 +336,3 @@ class SequencerVoicesLogic(CallbackMixin):
                 f"Failed to preview sample: {voice_id}",
             )
             self.call(self.on_autoplay_error, exception)
-
-
-def _loops(voice: VoiceUnion) -> bool:
-    """Whether the voice list marks this voice as repeating.
-
-    A recording states one point for the whole of it, while a hand-written voice repeats wherever
-    any of its dimensions circles.
-    """
-    if isinstance(voice, Sample):
-        return voice.loops
-
-    return any(envelope.loops for envelope in voice.envelopes.envelope_map.values())

@@ -10,7 +10,6 @@ from sampletones_core.instructions import PulseInstruction
 from sampletones_core.performance import song_instructions
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.performance import place_instrument, project_with_instrument
@@ -21,7 +20,7 @@ ARPEGGIO: Tuple[int, ...] = (0, 5)
 
 
 def _instrument(loop: bool = False) -> Instrument:
-    point = WHOLE_LOOP_POINT if loop else None
+    point = 0 if loop else None
     return Instrument(
         name="lead",
         envelopes=InstrumentEnvelopes(

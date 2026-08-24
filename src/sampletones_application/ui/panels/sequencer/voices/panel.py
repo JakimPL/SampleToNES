@@ -85,7 +85,6 @@ class GUISequencerVoicesPanel(GUIPanel):
         self.instrument_channels: Optional[Callable[[str], Tuple[ChannelName, ...]]] = None
         self.on_sample_selected: Optional[StringCallback] = None
         self.on_sample_edit_requested: Optional[StringCallback] = None
-        self.on_loop_changed: Optional[Callable[[str, bool], None]] = None
         self.on_remove_requested: Optional[StringCallback] = None
         self.on_play_requested: Optional[StringCallback] = None
         self.on_move_requested: Optional[Callable[[str, int], None]] = None
@@ -207,14 +206,6 @@ class GUISequencerVoicesPanel(GUIPanel):
                 width_stretch=True,
                 init_width_or_weight=self._layout.table_cells.voice.name,
             )
-            dpg.add_table_column(
-                label=self._label(
-                    self._language_manager,
-                    SequencerVoicesElements.COLUMN_LOOP,
-                ),
-                width_fixed=True,
-                init_width_or_weight=self._layout.table_cells.voice.loop,
-            )
         ThemeRegistry.get(TAG_SEQUENCER_VOICES_THEME_ROW).bind_to_item(TAG_SEQUENCER_VOICES_TABLE)
 
     def update_view(self, view_model: SequencerVoicesViewModel) -> None:
@@ -246,7 +237,6 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._build_kind_cell(row_id, entry)
         self._build_id_cell(row_id, position, entry)
         self._build_name_cell(row_id, position, entry)
-        self._build_loop_cell(row_id, entry)
         if entry.voice_id == self._selected_voice_id:
             self._selected_row = position
             self._highlight_selected_row(position)
@@ -368,20 +358,6 @@ class GUISequencerVoicesPanel(GUIPanel):
         )
         FontRegistry.bind_to_item(name_input, Font.MONO_SMALL)
         dpg.bind_item_handler_registry(name_input, self._rename_handler_tag)
-
-    def _build_loop_cell(
-        self,
-        row_id: int | str,
-        entry: VoiceEntryViewModel,
-    ) -> None:
-        loop_cell = dpg.add_table_cell(parent=row_id)
-        loop_checkbox = dpg.add_checkbox(
-            parent=loop_cell,
-            default_value=entry.loop,
-            user_data=entry.voice_id,
-            callback=self._on_loop_toggled,
-        )
-        FontRegistry.bind_to_item(loop_checkbox, Font.REGULAR_SMALL)
 
     def _on_sample_selected(
         self,
@@ -547,18 +523,6 @@ class GUISequencerVoicesPanel(GUIPanel):
 
     def _on_rename_deactivated(self, _sender: Sender, _app_data: int) -> None:
         self._commit_rename()
-
-    def _on_loop_toggled(
-        self,
-        _sender: Sender,
-        app_data: bool,
-        user_data: str,
-    ) -> None:
-        self.call(
-            self.on_loop_changed,
-            user_data,
-            app_data,
-        )
 
     def _on_sample_double_clicked(
         self,

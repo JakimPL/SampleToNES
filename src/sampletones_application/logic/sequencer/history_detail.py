@@ -14,8 +14,6 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetail,
     HistoryDetailRole,
     HistoryDetailSegment,
-    HistoryDetailWord,
-    HistoryDetailWordSegment,
 )
 from sampletones_core.constants.enums import (
     ChannelName,
@@ -88,11 +86,8 @@ class SequencerHistoryDetail:
     an ordered tuple of :class:`HistoryDetailSegment`, tagging each token with a
     semantic role that the panel later paints. Positions, rows and pattern indices
     read as two-digit hex; channels use the ``P``/``p``/``T``/``N`` abbreviations,
-    concatenated when a sample-column gesture spans several channels.
-    Language-managed words — the loop on/off states — are emitted as
-    :class:`HistoryDetailWordSegment` keys and translated when the history view is
-    built, keeping committed entries language-independent. A gesture on the voice
-    pool names its voice in the color of the kind that voice is, so a recording
+    concatenated when a sample-column gesture spans several channels. A gesture on the
+    voice pool names its voice in the color of the kind that voice is, so a recording
     and a hand-written one read apart down the list of entries.
     """
 
@@ -308,13 +303,6 @@ class SequencerHistoryDetail:
         return (
             self._voice(voice_id, colon=True),
             self._voice_name(voice_id),
-        )
-
-    def set_sample_loop(self, voice_id: str, loop: bool) -> Segments:
-        word = HistoryDetailWord.LOOP_ON if loop else HistoryDetailWord.LOOP_OFF
-        return (
-            self._voice(voice_id, colon=True),
-            HistoryDetailWordSegment(word=word, role=HistoryDetailRole.VALUE),
         )
 
     def edit_reconstruction(

@@ -147,7 +147,6 @@ class ProjectContainer:
                     id=voice.id,
                     name=voice.name,
                     reconstruction_id=voice.reconstruction.id,
-                    loop_point=voice.loop_point,
                 )
             case Instrument():
                 return voice
@@ -167,7 +166,6 @@ class ProjectContainer:
                 sample = Sample(
                     name=record.name,
                     reconstruction=reconstructions[record.reconstruction_id],
-                    loop_point=record.loop_point,
                 )
                 sample.id = record.id
                 return sample

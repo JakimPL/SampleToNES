@@ -24,7 +24,6 @@ from sampletones_core.formats.famitracker.footprint import (
     total_footprint,
 )
 from sampletones_core.project.voices.creation import new_instrument
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.reconstructions import Reconstruction
 
 

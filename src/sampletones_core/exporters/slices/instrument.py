@@ -78,7 +78,7 @@ def sample_instrument_entries(
             index=index,
             voice_id=sample.id,
             name=instrument_slice_name(sample.name, channel),
-            features=features.repeating_from(sample.loop_point),
+            features=features,
             channel=channel,
             slots={
                 channel: InstrumentSlot(

@@ -4,8 +4,8 @@ from sampletones_application.ui.panels.sequencer.voices.panel import GUISequence
 from sampletones_application.view_model.sequencer.voices import VoiceEntryViewModel, VoiceKind
 
 ENTRIES: Tuple[VoiceEntryViewModel, ...] = (
-    VoiceEntryViewModel(voice_id="kick-id", name="Kick", kind=VoiceKind.SAMPLE, loop=False),
-    VoiceEntryViewModel(voice_id="bass-id", name="Bass", kind=VoiceKind.SAMPLE, loop=True),
+    VoiceEntryViewModel(voice_id="kick-id", name="Kick", kind=VoiceKind.SAMPLE),
+    VoiceEntryViewModel(voice_id="bass-id", name="Bass", kind=VoiceKind.SAMPLE),
 )
 
 
@@ -48,7 +48,7 @@ class TestSelectionAccessor:
 
     def test_follows_a_renamed_sample(self) -> None:
         panel = _panel("kick-id", 0)
-        panel._entries = (VoiceEntryViewModel(voice_id="kick-id", name="Thump", kind=VoiceKind.SAMPLE, loop=False),)
+        panel._entries = (VoiceEntryViewModel(voice_id="kick-id", name="Thump", kind=VoiceKind.SAMPLE),)
 
         selection = panel.selection
 

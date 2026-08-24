@@ -27,7 +27,6 @@ from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
     SequenceKind,
 )
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -72,7 +71,7 @@ class TestFeaturesFootprint(BaseTestSuite):
             label="pulse_one_shot",
         ),
         TestCase(
-            features=build_features([15, 12, 9, 0], [0, 2, 4], [1, 1, 2], loop_point=WHOLE_LOOP_POINT),
+            features=build_features([15, 12, 9, 0], [0, 2, 4], [1, 1, 2], loop_point=0),
             expected=InstrumentFootprint(instrument_bytes=9, sequence_bytes=22),
             label="pulse_loop",
         ),

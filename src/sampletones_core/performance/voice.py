@@ -32,7 +32,6 @@ class VoiceReading:
         held_features: The dimensions the voice leaves to the channel.
         channel_name: The channel doing the reading.
         sustaining: The instrument whose envelopes go on past the written frames, where one does.
-        loop_point: The frame a recording circles back to, or ``None`` where it plays through once.
     """
 
     exporter: ExporterTypeUnion
@@ -41,7 +40,6 @@ class VoiceReading:
     held_features: Tuple[FeatureKey, ...]
     channel_name: ChannelName
     sustaining: Optional[Instrument]
-    loop_point: Optional[int]
 
     @classmethod
     def read(
@@ -65,12 +63,10 @@ class VoiceReading:
                 voice describes no frame there and the channel rests.
         """
         sustaining: Optional[Instrument] = None
-        loop_point: Optional[int] = None
         match voice:
             case Sample():
                 instructions: Sequence[InstructionUnion] = voice.reconstruction.instructions[channel_name]
                 held_features = voice.reconstruction.held_features[channel_name]
-                loop_point = voice.loop_point
             case Instrument():
                 instructions = voice.instructions(channel_name)
                 held_features = voice.held_features(channel_name)
@@ -86,7 +82,6 @@ class VoiceReading:
             held_features=held_features,
             channel_name=channel_name,
             sustaining=sustaining,
-            loop_point=loop_point,
         )
 
     def at(self, tick_index: int) -> Optional[InstructionUnion]:
@@ -94,9 +89,8 @@ class VoiceReading:
 
         An instrument goes on past its written frames: each dimension circles from its own loop
         point or holds its last item, so a note sounds for as long as rows keep it sounding and a
-        volume envelope ending at silence is what releases it. A recording circles the frames its
-        conversion found from the point it states, and the channel rests past the last of them
-        where it states none.
+        volume envelope ending at silence is what releases it. A recording plays the frames its
+        conversion found, and the channel rests once they run out.
 
         Args:
             tick_index: How many ticks of the voice the channel has played.
@@ -111,12 +105,7 @@ class VoiceReading:
         if self.sustaining is not None:
             return self.sustaining.instruction_at(self.channel_name, tick_index)
 
-        if self.loop_point is None:
-            return None
-
-        point = min(self.loop_point, len(self.instructions) - 1)
-        cycle = len(self.instructions) - point
-        return self.instructions[point + (tick_index - point) % cycle]
+        return None
 
     def sound(
         self,

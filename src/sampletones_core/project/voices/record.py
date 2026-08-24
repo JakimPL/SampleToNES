@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Optional, Union
+from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field
 
@@ -15,11 +15,6 @@ class SampleRecord(BaseModel):
     reconstruction_id: str = Field(
         ...,
         description="Id of the reconstruction stored in the archive.",
-    )
-    loop_point: Optional[int] = Field(
-        default=None,
-        ge=0,
-        description="Tick the sample's instructions repeat from, or None where it plays once.",
     )
 
 

@@ -17,7 +17,6 @@ from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.song import Song
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
@@ -43,7 +42,7 @@ def build_reconstruction(
     )
 
 
-def pulse_sample(name: str, pitch: int, *, loop: bool = False) -> Sample:
+def pulse_sample(name: str, pitch: int) -> Sample:
     instructions = [
         PulseInstruction(on=True, pitch=pitch, volume=15, duty_cycle=0),
         PulseInstruction(on=True, pitch=pitch, volume=8, duty_cycle=0),
@@ -51,7 +50,6 @@ def pulse_sample(name: str, pitch: int, *, loop: bool = False) -> Sample:
     return Sample(
         name=name,
         reconstruction=build_reconstruction({ChannelName.PULSE1: instructions}),
-        loop_point=WHOLE_LOOP_POINT if loop else None,
     )
 
 
@@ -83,7 +81,7 @@ class ProjectFixture:
 @pytest.fixture
 def project_fixture() -> ProjectFixture:
     lead = pulse_sample("lead", pitch=60)
-    pad = pulse_sample("pad", pitch=48, loop=True)
+    pad = pulse_sample("pad", pitch=48)
     drum = noise_sample("drum", period=4)
     bell = dual_generator_sample("bell", pulse_pitch=72, triangle_pitch=36)
 

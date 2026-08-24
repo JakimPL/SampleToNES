@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Tuple, Union
+from typing import Tuple
 
 from pydantic import BaseModel
 
@@ -31,18 +31,6 @@ class HistoryDetailRole(StrEnum):
     SEPARATOR = "separator"
 
 
-class HistoryDetailWord(StrEnum):
-    """A language-managed detail token, stored by key and translated at render time.
-
-    Values mirror the ``SequencerHistoryElements`` members carrying the words, so
-    a coordinator resolves a token exactly the way it resolves an entry's action
-    label — committed entries stay language-independent.
-    """
-
-    LOOP_ON = "loop_on"
-    LOOP_OFF = "loop_off"
-
-
 class HistoryDetailSegment(BaseModel, frozen=True):
     """One colored token of a history entry's detail line."""
 
@@ -50,11 +38,4 @@ class HistoryDetailSegment(BaseModel, frozen=True):
     role: HistoryDetailRole
 
 
-class HistoryDetailWordSegment(BaseModel, frozen=True):
-    """One colored token whose text is looked up from the language manager when rendered."""
-
-    word: HistoryDetailWord
-    role: HistoryDetailRole
-
-
-HistoryDetail = Tuple[Union[HistoryDetailSegment, HistoryDetailWordSegment], ...]
+HistoryDetail = Tuple[HistoryDetailSegment, ...]

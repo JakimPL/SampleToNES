@@ -11,7 +11,6 @@ from sampletones_core.formats.famitracker.specification.sequences import (
     NO_LOOP_POINT,
     SequenceKind,
 )
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 
 REFERENCE_PITCH: Final[int] = 60
 
@@ -63,7 +62,7 @@ class TestFeaturesToInstrumentSequences:
 
 class TestTheLoopPointEachSequenceCarries:
     def test_a_dimension_carries_the_point_it_states(self) -> None:
-        sequences = features_to_instrument_sequences(build([15, 10], [0, 2], loop_point=WHOLE_LOOP_POINT))
+        sequences = features_to_instrument_sequences(build([15, 10], [0, 2], loop_point=0))
         assert sequences[SequenceKind.VOLUME].loop_point == LOOP_FROM_START
         assert sequences[SequenceKind.ARPEGGIO].loop_point == LOOP_FROM_START
 
@@ -85,7 +84,7 @@ class TestTheLoopPointEachSequenceCarries:
         assert sequences[SequenceKind.DUTY].loop_point == NO_LOOP_POINT
 
     def test_a_dimension_the_instrument_leaves_out_states_no_point(self) -> None:
-        sequences = features_to_instrument_sequences(build([15, 0], [], loop_point=WHOLE_LOOP_POINT))
+        sequences = features_to_instrument_sequences(build([15, 0], [], loop_point=0))
         assert sequences[SequenceKind.PITCH].loop_point == NO_LOOP_POINT
 
     def test_a_dimension_that_halts_states_no_point(self) -> None:
@@ -104,7 +103,7 @@ class TestSequenceLengths:
     def test_circling_costs_a_dimension_none_of_its_items(self) -> None:
         """Each dimension repeats on its own period, so a loop leaves every length as written."""
         sequences = features_to_instrument_sequences(
-            build([15, 12, 9, 0], [0, 2, 4], duty_cycle=[1, 1, 2], loop_point=WHOLE_LOOP_POINT)
+            build([15, 12, 9, 0], [0, 2, 4], duty_cycle=[1, 1, 2], loop_point=0)
         )
         assert sequences[SequenceKind.VOLUME].items == (15, 12, 9, 0)
         assert sequences[SequenceKind.ARPEGGIO].items == (0, 2, 4)
@@ -125,7 +124,7 @@ class TestSequenceLengths:
         assert zeroed[SequenceKind.ARPEGGIO].items == (0,)
 
     def test_all_dimensions_empty_stays_empty(self) -> None:
-        sequences = features_to_instrument_sequences(build([], [], loop_point=WHOLE_LOOP_POINT))
+        sequences = features_to_instrument_sequences(build([], [], loop_point=0))
         assert all(not sequence.enabled for sequence in sequences.values())
 
     def test_an_over_long_envelope_builds_sequences_famitracker_accepts(self) -> None:

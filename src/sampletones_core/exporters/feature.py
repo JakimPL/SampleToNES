@@ -124,29 +124,6 @@ class Features(BaseModel):
         emptied = {feature_key.value: Envelope[int]() for feature_key in feature_keys if self.offers(feature_key)}
         return self.model_copy(update=emptied)
 
-    def repeating_from(self, loop_point: Optional[int]) -> Features:
-        """These features with every dimension they write circling from one item.
-
-        A recording states one point for the whole of it, so an export of one gives every
-        dimension the same point; a point past what a dimension writes moves to its last item.
-
-        Args:
-            loop_point: The item to repeat from, or ``None`` to leave every dimension halting.
-
-        Returns:
-            Features: The features with those dimensions circling.
-        """
-        if loop_point is None:
-            return self
-
-        circling = self
-        for feature_key, envelope in self.envelopes.items():
-            if envelope.written:
-                point = min(loop_point, len(envelope.items) - 1)
-                circling = circling.with_envelope(feature_key, envelope.model_copy(update={"loop_point": point}))
-
-        return circling
-
     @property
     def frame_count(self) -> int:
         """The frame count the envelopes describe, taken from the longest populated dimension."""

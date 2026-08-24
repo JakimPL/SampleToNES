@@ -23,7 +23,6 @@ from sampletones_core.formats.famitracker.specification.patterns import (
     NoteValue,
 )
 from sampletones_core.formats.famitracker.specification.sequences import (
-    LOOP_FROM_START,
     NO_LOOP_POINT,
     SequenceKind,
 )
@@ -78,16 +77,14 @@ class TestBuildInstrumentTable:
         assert slot.initial_pitch == LEAD_PITCH
         assert list(instruments[slot.index].sequences[SequenceKind.ARPEGGIO].items)[0] == OCTAVE
 
-    def test_looping_sample_loops_populated_sequences(self, project_fixture: ProjectFixture) -> None:
+    def test_a_recordings_sequences_state_no_loop_point(self, project_fixture: ProjectFixture) -> None:
+        """A recording is the fixed run of frames its conversion found, so nothing in it circles."""
         instruments, slots = build_instrument_table(project_fixture.project)
-        pad_index = slots[(project_fixture.pad.id, ChannelName.PULSE1)].index
-        pad = instruments[pad_index]
-        assert pad.sequences[SequenceKind.VOLUME].loop_point == LOOP_FROM_START
+        indices = [slots[(voice.id, ChannelName.PULSE1)].index for voice in (project_fixture.lead, project_fixture.pad)]
 
-    def test_non_looping_sample_leaves_loop_disabled(self, project_fixture: ProjectFixture) -> None:
-        instruments, slots = build_instrument_table(project_fixture.project)
-        lead_index = slots[(project_fixture.lead.id, ChannelName.PULSE1)].index
-        assert instruments[lead_index].sequences[SequenceKind.VOLUME].loop_point == NO_LOOP_POINT
+        points = [instruments[index].sequences[SequenceKind.VOLUME].loop_point for index in indices]
+
+        assert points == [NO_LOOP_POINT, NO_LOOP_POINT]
 
     def test_exceeding_max_instruments_raises(self) -> None:
         project = Project.create()

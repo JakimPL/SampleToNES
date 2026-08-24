@@ -21,7 +21,6 @@ class VoiceEntryViewModel(BaseModel, frozen=True):
     voice_id: str
     name: str
     kind: VoiceKind
-    loop: bool
 
 
 class VoiceSelection(BaseModel, frozen=True):

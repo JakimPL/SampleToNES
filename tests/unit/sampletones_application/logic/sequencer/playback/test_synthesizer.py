@@ -28,6 +28,8 @@ from tests.suite.performance import (
 )
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
+    SOUNDING_FRAMES,
+    add_instrument,
     add_sample,
     make_controller,
     make_synthesizer,
@@ -370,9 +372,9 @@ class TestChannelMask:
         pitch and volume the pattern has reached rather than retriggering.
         """
 
-        def place_looping_pulse_sample(context: SynthesizerContext) -> None:
-            recon = make_pulse_reconstruction(count=4)
-            sample = add_sample(_controller(context), recon, loop=True)
+        def place_sounding_pulse_sample(context: SynthesizerContext) -> None:
+            recon = make_pulse_reconstruction(count=SOUNDING_FRAMES)
+            sample = add_sample(_controller(context), recon)
             place_row(
                 _controller(context),
                 channel=ChannelName.PULSE1,
@@ -394,8 +396,8 @@ class TestChannelMask:
             build=_make_context,
             steps=[
                 ScenarioStep(
-                    label="place looping pulse sample on row 0",
-                    action=place_looping_pulse_sample,
+                    label="place sounding pulse sample on row 0",
+                    action=place_sounding_pulse_sample,
                 ),
                 ScenarioStep(
                     label="mute PULSE1, render row 0 — silence",
@@ -492,10 +494,10 @@ class TestPositionAdvance:
 
 
 class TestNoteOff:
-    def test_note_off_cuts_a_sounding_looped_voice(self) -> None:
-        def place_looped_sample_then_note_off(context: SynthesizerContext) -> None:
-            recon = make_pulse_reconstruction(count=2)
-            sample = add_sample(_controller(context), recon, loop=True)
+    def test_note_off_cuts_a_sounding_voice(self) -> None:
+        def place_sounding_sample_then_note_off(context: SynthesizerContext) -> None:
+            recon = make_pulse_reconstruction(count=SOUNDING_FRAMES)
+            sample = add_sample(_controller(context), recon)
             place_row(
                 _controller(context),
                 channel=ChannelName.PULSE1,
@@ -513,12 +515,12 @@ class TestNoteOff:
             assert _performance(context).voice_id is None
 
         BaseTestScenario(
-            label="note-off silences a looped voice and clears channel state",
+            label="note-off silences a sounding voice and clears channel state",
             build=_make_context,
             steps=[
                 ScenarioStep(
-                    label="place looped sample on row 0, note-off on row 1",
-                    action=place_looped_sample_then_note_off,
+                    label="place sounding sample on row 0, note-off on row 1",
+                    action=place_sounding_sample_then_note_off,
                 ),
                 ScenarioStep(
                     label="render row 0 — audible",
@@ -532,16 +534,17 @@ class TestNoteOff:
         ).run()
 
 
-class TestLoopBehavior:
-    def test_loop_true_keeps_playing_after_instruction_list_exhausted(self) -> None:
-        def place_two_instruction_loop_sample(context: SynthesizerContext) -> None:
-            recon = make_pulse_reconstruction(count=2)
-            sample = add_sample(_controller(context), recon, loop=True)
+class TestWhenAVoiceRunsOut:
+    """A recording sounds the frames its conversion found; an instrument goes on past them."""
+
+    def test_an_instrument_keeps_sounding_past_the_frames_it_writes(self) -> None:
+        def place_instrument(context: SynthesizerContext) -> None:
+            instrument = add_instrument(_controller(context))
             place_row(
                 _controller(context),
                 channel=ChannelName.PULSE1,
                 row_index=0,
-                voice_id=sample.id,
+                voice_id=instrument.id,
             )
 
         def render_row_0_and_assert_non_silence(context: SynthesizerContext) -> None:
@@ -556,12 +559,12 @@ class TestLoopBehavior:
             assert _performance(context).tick_index > 2
 
         BaseTestScenario(
-            label="loop=True wraps instruction index",
+            label="an instrument sounds on past its envelopes",
             build=_make_context,
             steps=[
                 ScenarioStep(
-                    label="place 2-instruction looping sample on row 0",
-                    action=place_two_instruction_loop_sample,
+                    label="place a sustaining instrument on row 0",
+                    action=place_instrument,
                 ),
                 ScenarioStep(
                     label="render row 0 — has audio",
@@ -574,13 +577,13 @@ class TestLoopBehavior:
             ],
         ).run()
 
-    def test_loop_false_produces_silence_after_instructions_end(self) -> None:
+    def test_a_sample_falls_silent_once_its_frames_run_out(self) -> None:
         settings = make_controller().project.settings
         frame_length = settings.sample_rate // settings.nes_frequency
 
-        def place_one_instruction_non_loop_sample(context: SynthesizerContext) -> None:
+        def place_one_frame_sample(context: SynthesizerContext) -> None:
             recon = make_pulse_reconstruction(count=1)
-            sample = add_sample(_controller(context), recon, loop=False)
+            sample = add_sample(_controller(context), recon)
             place_row(
                 _controller(context),
                 channel=ChannelName.PULSE1,
@@ -598,12 +601,12 @@ class TestLoopBehavior:
             assert np.all(remaining == 0.0), "ticks after instruction exhaustion should be silent"
 
         BaseTestScenario(
-            label="loop=False silences after instruction list exhausted",
+            label="a sample rests once its frames run out",
             build=_make_context,
             steps=[
                 ScenarioStep(
-                    label="place 1-instruction non-looping sample",
-                    action=place_one_instruction_non_loop_sample,
+                    label="place a one-frame sample",
+                    action=place_one_frame_sample,
                 ),
                 ScenarioStep(
                     label="render row 0 — first tick audible, rest silent",
@@ -612,16 +615,15 @@ class TestLoopBehavior:
             ],
         ).run()
 
-    def test_looped_voice_sustains_across_an_empty_next_frame(self) -> None:
-        def place_loop_then_append_empty_frame(context: SynthesizerContext) -> None:
+    def test_a_sustaining_voice_carries_into_an_empty_next_frame(self) -> None:
+        def place_instrument_then_append_empty_frame(context: SynthesizerContext) -> None:
             controller = _controller(context)
-            recon = make_pulse_reconstruction(count=2)
-            sample = add_sample(controller, recon, loop=True)
+            instrument = add_instrument(controller)
             place_row(
                 controller,
                 channel=ChannelName.PULSE1,
                 row_index=0,
-                voice_id=sample.id,
+                voice_id=instrument.id,
             )
             controller.append_frame()
 
@@ -638,12 +640,12 @@ class TestLoopBehavior:
             assert _performance(context).voice_id is not None
 
         BaseTestScenario(
-            label="looped voice carries across an empty (None-slot) next frame",
+            label="a sustaining voice carries across an empty (None-slot) next frame",
             build=_make_context,
             steps=[
                 ScenarioStep(
-                    label="loop on frame 0, append all-None frame 1",
-                    action=place_loop_then_append_empty_frame,
+                    label="instrument on frame 0, append all-None frame 1",
+                    action=place_instrument_then_append_empty_frame,
                 ),
                 ScenarioStep(
                     label="render into frame 1 — voice still sounding",

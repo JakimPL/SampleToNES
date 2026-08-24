@@ -22,8 +22,6 @@ from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
-    HistoryDetailWord,
-    HistoryDetailWordSegment,
 )
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.project.voices.creation import new_instrument
@@ -356,24 +354,6 @@ class TestVoiceDetails:
             (">", HistoryDetailRole.SEPARATOR),
             ("05", HistoryDetailRole.VALUE),
         ]
-
-    def test_set_sample_loop_stores_the_state_as_a_word_key(self) -> None:
-        controller = _controller()
-        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
-        formatter = _formatter(controller)
-
-        on_segments = formatter.set_sample_loop(sample.id, True)
-        off_segments = formatter.set_sample_loop(sample.id, False)
-
-        assert on_segments[0] == HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE)
-        assert on_segments[1] == HistoryDetailWordSegment(
-            word=HistoryDetailWord.LOOP_ON,
-            role=HistoryDetailRole.VALUE,
-        )
-        assert off_segments[1] == HistoryDetailWordSegment(
-            word=HistoryDetailWord.LOOP_OFF,
-            role=HistoryDetailRole.VALUE,
-        )
 
     def test_value_wraps_a_number(self) -> None:
         formatter = _formatter(_controller())

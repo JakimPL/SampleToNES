@@ -19,7 +19,6 @@ from sampletones_core.formats.bitphase.specification.instruments import (
     MIN_TONE_ADD,
     NO_TONE_OFFSET,
 )
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_shared.paths.extensions import EXT_FILE_JSON
 
 from .conftest import REFERENCE_PITCH, build_features, build_instrument
@@ -56,7 +55,7 @@ class TestThePresetCarriesTheSlice:
 
     def test_a_looping_slice_returns_to_its_first_row(self) -> None:
         preset = instrument_to_preset(
-            build_instrument("Pad", build_features(VOLUME_ENVELOPE), loop_point=WHOLE_LOOP_POINT),
+            build_instrument("Pad", build_features(VOLUME_ENVELOPE), loop_point=0),
         )
         assert preset.loop == LOOP_FROM_START
 

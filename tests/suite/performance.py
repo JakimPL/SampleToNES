@@ -15,7 +15,6 @@ from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.voices.instrument import Instrument
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.voice import VoiceUnion
@@ -121,11 +120,7 @@ def project_with_sample(
     reaching back into the collection for an id it already knows.
     """
     project = Project.create(rows_per_pattern=rows_per_pattern, settings=settings)
-    sample = Sample(
-        name=name,
-        reconstruction=reconstruction,
-        loop_point=WHOLE_LOOP_POINT if loop else None,
-    )
+    sample = Sample(name=name, reconstruction=reconstruction)
     project.voices.append(sample)
     return project, sample
 

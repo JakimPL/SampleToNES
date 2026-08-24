@@ -275,10 +275,7 @@ class ProjectController(CallbackMixin):
         reconstruction, the project stays a self-contained, shareable artifact.
         """
         reconstruction.detach_source()
-        voice = self.project.voices[voice_id]
-        if not isinstance(voice, Sample):
-            raise TypeError(f"Voice '{voice_id}' carries no reconstruction to substitute")
-
+        voice = self._sample(voice_id)
         voice.reconstruction = reconstruction
         self._touch()
         self._announce(self.on_voices_changed)
@@ -289,16 +286,6 @@ class ProjectController(CallbackMixin):
         self._touch()
         self._announce(self.on_voices_changed)
         self._announce(self.on_song_changed)
-
-    def set_voice_loop_point(self, voice_id: str, loop_point: Optional[int]) -> None:
-        """Sets the tick a recording's instructions repeat from, or ``None`` where it plays once.
-
-        Raises:
-            TypeError: If ``voice_id`` names a voice that is no recording.
-        """
-        self._sample(voice_id).loop_point = loop_point
-        self._touch()
-        self._announce(self.on_voices_changed)
 
     def is_voice_used(self, voice_id: str) -> bool:
         return self.song.references_voice(voice_id)

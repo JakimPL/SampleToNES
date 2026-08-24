@@ -12,7 +12,6 @@ from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.creation import new_instrument
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 
 ROOT_PITCH: Final[int] = 55
 ROOT_PERIOD: Final[int] = 3
@@ -152,10 +151,10 @@ class TestWritingIntoTheInstrument:
         instrument = controller.add_instrument(new_instrument("lead"))
         editor.edit_instrument(instrument.id)
 
-        editor.write_envelope(FeatureKey.VOLUME, Envelope(items=(15, 8), loop_point=WHOLE_LOOP_POINT))
+        editor.write_envelope(FeatureKey.VOLUME, Envelope(items=(15, 8), loop_point=0))
 
         assert instrument.envelopes.volume.items == (15, 8)
-        assert instrument.envelopes.volume.loop_point == WHOLE_LOOP_POINT
+        assert instrument.envelopes.volume.loop_point == 0
 
     def test_a_write_with_no_instrument_in_front_is_refused(self, editor: InstrumentEditor) -> None:
         with pytest.raises(TypeError):

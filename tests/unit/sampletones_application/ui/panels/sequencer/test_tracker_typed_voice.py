@@ -38,13 +38,11 @@ class Panel:
                     voice_id="lead-id",
                     name="lead",
                     kind=VoiceKind.SAMPLE,
-                    loop=False,
                 ),
                 VoiceEntryViewModel(
                     voice_id="pad-id",
                     name="pad",
                     kind=VoiceKind.INSTRUMENT,
-                    loop=False,
                 ),
             ),
         )

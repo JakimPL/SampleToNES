@@ -8,7 +8,6 @@ from sampletones_core.exporters import Features
 from sampletones_core.features import RESTING_REFERENCE_PERIOD, RESTING_REFERENCE_PITCH
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.creation import instrument_from_features, new_instrument
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 
 TONAL_REFERENCE = 64
 NOISE_REFERENCE = 5
@@ -47,7 +46,7 @@ class TestNewInstrument:
         assert instrument.envelopes.volume.items == (MAX_VOLUME,)
 
     def test_a_new_instrument_repeats_its_volume_while_the_note_is_held(self) -> None:
-        assert new_instrument("lead").envelopes.volume.loop_point == WHOLE_LOOP_POINT
+        assert new_instrument("lead").envelopes.volume.loop_point == 0
 
     def test_a_new_instrument_leaves_the_arpeggio_and_the_duty_cycle_to_the_channel(self) -> None:
         instrument = new_instrument("lead")

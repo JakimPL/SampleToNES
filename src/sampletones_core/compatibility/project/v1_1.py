@@ -6,6 +6,7 @@ from sampletones_core.compatibility.fields import (
     GENERATOR,
     KIND,
     KIND_SAMPLE,
+    LOOP_POINT,
     NAME,
     PATTERNS,
     ROWS,
@@ -25,23 +26,32 @@ def update(data: SerializedData) -> SerializedData:
     """Gathers a project's samples into its voices, and names each channel once.
 
     Project format 1.0 held the pool under ``samples``, stored a channel pool's channel under
-    ``generator``, and wrote a row's note command as a sample id beside the channel slice it named.
-    Project format 1.1 holds the pool under ``voices``, each record stating the ``kind`` of voice
-    it carries; a channel pool names its channel under ``name``; and a note command names the voice
-    alone, since the channel a voice sounds on is the one whose pattern holds the row.
+    ``generator``, wrote a row's note command as a sample id beside the channel slice it named, and
+    let a sample state a tick its frames repeated from. Project format 1.1 holds the pool under
+    ``voices``, each record stating the ``kind`` of voice it carries; a channel pool names its
+    channel under ``name``; a note command names the voice alone, since the channel a voice sounds
+    on is the one whose pattern holds the row; and a sample plays the frames its conversion found,
+    which leaves the repeat to the envelopes an instrument writes.
     """
     updated = dict(data)
 
     samples = data.get(SAMPLES)
     if isinstance(samples, list):
         updated.pop(SAMPLES, None)
-        updated[VOICES] = [{KIND: KIND_SAMPLE, **sample} if isinstance(sample, dict) else sample for sample in samples]
+        updated[VOICES] = [_updated_sample(sample) if isinstance(sample, dict) else sample for sample in samples]
 
     song = data.get(SONG)
     if isinstance(song, dict):
         updated[SONG] = _updated_song(song)
 
     return updated
+
+
+def _updated_sample(sample: SerializedData) -> SerializedData:
+    """A 1.0 sample as a voice record, leaving behind the tick its frames repeated from."""
+    record = {KIND: KIND_SAMPLE, **sample}
+    record.pop(LOOP_POINT, None)
+    return record
 
 
 def _updated_song(song: SerializedData) -> SerializedData:

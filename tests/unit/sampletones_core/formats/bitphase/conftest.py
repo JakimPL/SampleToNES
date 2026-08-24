@@ -6,7 +6,6 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.features.envelope import Envelope
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_shared.music import Tuning
 
 NES_FREQUENCY: Final[int] = 60

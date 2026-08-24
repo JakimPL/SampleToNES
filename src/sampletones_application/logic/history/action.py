@@ -31,7 +31,6 @@ class HistoryAction(AbstractElement):
     RENAME_SAMPLE = "rename_sample"
     MOVE_SAMPLE = "move_sample"
     DUPLICATE_SAMPLE = "duplicate_sample"
-    SET_SAMPLE_LOOP = "set_sample_loop"
     ADD_INSTRUMENT = "add_instrument"
     EDIT_INSTRUMENT = "edit_instrument"
     SET_TEMPO = "set_tempo"

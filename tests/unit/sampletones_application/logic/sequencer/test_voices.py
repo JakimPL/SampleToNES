@@ -27,7 +27,6 @@ from sampletones_core.formats.famitracker.specification.instruments import (
 from sampletones_core.formats.famitracker.specification.sequences import SequenceKind
 from sampletones_core.formats.famitracker.voice import InstrumentOmission
 from sampletones_core.project.voices.instrument import Instrument
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import LoadInstrumentError
@@ -220,32 +219,16 @@ class TestBuildSampleFootprint:
         assert footprint is not None
         assert [instrument.channel for instrument in footprint.instruments] == list(channels)
 
-    def test_it_measures_the_sample_under_its_own_loop_flag(
+    def test_it_measures_the_sample_as_its_own_export_writes_it(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(reconstruction_factory(), name="lead")
-        controller.set_voice_loop_point(sample.id, WHOLE_LOOP_POINT)
 
         footprint = logic.build_voice_footprint(sample.id)
 
         assert footprint == SampleFootprintViewModel.from_footprints(reconstruction_footprints(sample.reconstruction))
-
-    def test_a_looping_sample_costs_what_a_one_shot_costs(
-        self,
-        reconstruction_factory: Callable[[], Reconstruction],
-    ) -> None:
-        """Each dimension keeps the length it was written at, so circling costs a sample nothing."""
-        controller, logic = _logic()
-        sample = controller.add_sample(reconstruction_factory(), name="lead")
-        one_shot = logic.build_voice_footprint(sample.id)
-
-        controller.set_voice_loop_point(sample.id, WHOLE_LOOP_POINT)
-        looping = logic.build_voice_footprint(sample.id)
-
-        assert one_shot is not None and looping is not None
-        assert looping.total_bytes == one_shot.total_bytes
 
     def test_each_channel_is_measured_as_the_instrument_it_sounds(self) -> None:
         """A channel's figure is the cost of its own instrument, and the channels differ.

@@ -14,7 +14,6 @@ from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
 from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
@@ -198,7 +197,7 @@ class TestInstrumentsRoundTrip:
         instrument = Instrument(
             name="lead",
             envelopes=InstrumentEnvelopes(
-                volume=Envelope(items=(15, 12), loop_point=WHOLE_LOOP_POINT),
+                volume=Envelope(items=(15, 12), loop_point=0),
                 arpeggio=Envelope(items=(0, 7)),
                 duty_cycle=Envelope(items=(2,)),
             ),

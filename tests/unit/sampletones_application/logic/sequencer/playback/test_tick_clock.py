@@ -12,6 +12,7 @@ from sampletones_core.timing import MAX_TICKS_PER_ROW, MIN_TICKS_PER_ROW, Meter,
 from tests.suite.base import BaseTestSuite
 from tests.suite.performance import make_pulse_reconstruction
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
+    SOUNDING_FRAMES,
     add_sample,
     all_channels,
     make_controller,
@@ -222,8 +223,8 @@ class TestChannelsFillTheRow(BaseTestSuite):
 
     def test_a_sounding_channel_fills_every_tick(self) -> None:
         controller = make_controller()
-        reconstruction = make_pulse_reconstruction(count=1)
-        sample = add_sample(controller, reconstruction, loop=True)
+        reconstruction = make_pulse_reconstruction(count=SOUNDING_FRAMES)
+        sample = add_sample(controller, reconstruction)
         place_row(controller, channel=ChannelName.PULSE1, row_index=0, voice_id=sample.id)
         synthesizer = make_synthesizer(controller, Config(), sample_rate=UNEVEN_SAMPLE_RATE)
 
@@ -235,8 +236,8 @@ class TestChannelsFillTheRow(BaseTestSuite):
     def test_a_sounding_note_stays_continuous_across_a_tick_length_change(self) -> None:
         """A tick of a different length resumes the oscillator where the last one ended."""
         controller = make_controller()
-        reconstruction = make_pulse_reconstruction(count=1)
-        sample = add_sample(controller, reconstruction, loop=True)
+        reconstruction = make_pulse_reconstruction(count=SOUNDING_FRAMES)
+        sample = add_sample(controller, reconstruction)
         place_row(controller, channel=ChannelName.PULSE1, row_index=0, voice_id=sample.id)
         synthesizer = make_synthesizer(controller, Config(), sample_rate=UNEVEN_SAMPLE_RATE)
 

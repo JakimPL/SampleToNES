@@ -13,7 +13,6 @@ from sampletones_core.instructions import PulseInstruction
 from sampletones_core.project import ProjectContainer
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.instrument import Instrument
-from sampletones_core.project.voices.loop import WHOLE_LOOP_POINT
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.reconstructions import Reconstruction
 
@@ -491,17 +490,6 @@ class TestInfoAndSettingsCallbacks:
         controller.set_sample_rate(44100)
         assert controller.project.settings.sample_rate == 44100
         assert fired == ["settings"]
-
-
-class TestSampleLoop:
-    def test_set_sample_loop_toggles_loop_flag(
-        self,
-        reconstruction_factory: Callable[[], Reconstruction],
-    ) -> None:
-        controller = _controller()
-        sample = controller.add_sample(reconstruction_factory(), name="lead")
-        controller.set_voice_loop_point(sample.id, WHOLE_LOOP_POINT)
-        assert controller.project.voice(sample.id).loop_point == WHOLE_LOOP_POINT
 
 
 class TestInstruments:

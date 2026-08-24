@@ -1,11 +1,8 @@
 from pathlib import Path
-from typing import Callable, Optional, ParamSpec, Sequence, Tuple, Union
+from typing import Callable, Optional, ParamSpec, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.sequencer import (
-    SequencerHistoryElements,
-)
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.instrument import InstrumentImportMessages
 from sampletones_application.categories.manager import LanguageManager
@@ -128,8 +125,6 @@ from sampletones_application.view_model.sequencer.voices import (
 )
 from sampletones_application.view_model.shared.history import (
     HistoryDetail,
-    HistoryDetailSegment,
-    HistoryDetailWordSegment,
 )
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
@@ -635,11 +630,6 @@ class SequencerTabCoordinator:
         self._sequencer_voices_panel.sample_footprint = self._sequencer_voices_logic.build_voice_footprint
         self._sequencer_voices_panel.on_sample_selected = self._on_sample_selected
         self._sequencer_voices_panel.on_sample_edit_requested = self._sequencer_voices_logic.request_edit
-        self._sequencer_voices_panel.on_loop_changed = self._undoable(
-            HistoryAction.SET_SAMPLE_LOOP,
-            self._sequencer_voices_logic.set_sample_loop,
-            detail=self._history_detail.set_sample_loop,
-        )
         self._sequencer_voices_panel.on_remove_requested = self._remove_voice
         self._sequencer_voices_panel.on_play_requested = self._sequencer_voices_logic.play_voice
         self._sequencer_voices_panel.on_move_requested = self._undoable(
@@ -1087,7 +1077,7 @@ class SequencerTabCoordinator:
             HistoryEntryViewModel(
                 index=index,
                 label=self._history_action_label(entry.action),
-                detail_segments=tuple(self._resolve_detail_segment(segment) for segment in entry.detail),
+                detail_segments=entry.detail,
                 is_current=index == cursor,
                 is_future=index > cursor,
             )
@@ -1102,21 +1092,6 @@ class SequencerTabCoordinator:
             TextType.LABEL,
             action,
         ]
-
-    def _resolve_detail_segment(
-        self,
-        segment: Union[HistoryDetailSegment, HistoryDetailWordSegment],
-    ) -> HistoryDetailSegment:
-        if isinstance(segment, HistoryDetailWordSegment):
-            text = self._language_manager[
-                Page.SEQUENCER,
-                Panel.HISTORY,
-                TextType.LABEL,
-                SequencerHistoryElements(segment.word.value),
-            ]
-            return HistoryDetailSegment(text=text, role=segment.role)
-
-        return segment
 
     def initialize(self) -> None:
         """Pushes the current project into every sequencer panel.
