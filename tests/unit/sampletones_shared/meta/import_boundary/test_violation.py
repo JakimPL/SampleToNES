@@ -7,9 +7,10 @@ class TestViolationLocation:
     """Where a report sends a reader to see what a rule caught."""
 
     def test_the_location_reads_as_path_and_line(self) -> None:
+        """The location states the module, the line number and the line, in the platform's own separator."""
         violation = Violation.at("other_package", Path("package/logic/direct.py"), 2, "import other_package")
 
-        assert violation.location == "package/logic/direct.py:2: import other_package"
+        assert violation.location.replace("\\", "/") == "package/logic/direct.py:2: import other_package"
 
     def test_the_quoted_line_stands_clear_of_its_indentation(self) -> None:
         violation = Violation.at("other_package", Path("direct.py"), 1, "    import other_package")

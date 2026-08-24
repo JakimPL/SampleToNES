@@ -4,6 +4,7 @@ from typing import Dict, Final, Tuple
 import pytest
 
 from sampletones_core.exporters.lengths import equalize_lengths, limit_lengths
+from sampletones_shared.application import SAMPLETONES_NAME
 
 VOLUME: Final[str] = "volume"
 ARPEGGIO: Final[str] = "arpeggio"
@@ -60,13 +61,13 @@ class TestLimitLengths:
         assert len(limited[ARPEGGIO]) == ITEM_LIMIT
 
     def test_an_over_long_envelope_is_reported(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level(logging.DEBUG):
+        with caplog.at_level(logging.DEBUG, logger=SAMPLETONES_NAME):
             limit_lengths(volume_and_arpeggio(ITEM_LIMIT + 1), limit=ITEM_LIMIT)
 
         assert str(ITEM_LIMIT) in caplog.text
 
     def test_an_envelope_within_the_limit_is_quiet(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level(logging.DEBUG):
+        with caplog.at_level(logging.DEBUG, logger=SAMPLETONES_NAME):
             limit_lengths(volume_and_arpeggio(ITEM_LIMIT), limit=ITEM_LIMIT)
 
         assert caplog.text == ""
@@ -83,13 +84,13 @@ class TestItemLimit:
         assert len(equalized[ARPEGGIO]) == ITEM_LIMIT
 
     def test_an_over_long_envelope_is_reported(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level(logging.DEBUG):
+        with caplog.at_level(logging.DEBUG, logger=SAMPLETONES_NAME):
             equalize_lengths(volume_and_arpeggio(ITEM_LIMIT + 1), loop=False, limit=ITEM_LIMIT)
 
         assert str(ITEM_LIMIT) in caplog.text
 
     def test_an_envelope_within_the_limit_is_quiet(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level(logging.DEBUG):
+        with caplog.at_level(logging.DEBUG, logger=SAMPLETONES_NAME):
             equalize_lengths(volume_and_arpeggio(ITEM_LIMIT), loop=False, limit=ITEM_LIMIT)
 
         assert caplog.text == ""
@@ -105,7 +106,7 @@ class TestUnboundedFormat:
         assert len(equalized[ARPEGGIO]) == length
 
     def test_an_absent_limit_is_quiet(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level(logging.DEBUG):
+        with caplog.at_level(logging.DEBUG, logger=SAMPLETONES_NAME):
             equalize_lengths(volume_and_arpeggio(ITEM_LIMIT + 1), loop=False)
 
         assert caplog.text == ""
