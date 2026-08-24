@@ -217,6 +217,7 @@ class ReconstructionTabCoordinator:
         )
         self._reconstruction_plot_panel: GUIReconstructionPlotPanel = GUIReconstructionPlotPanel(
             layout_graphs=layout.graphs,
+            channel_colors=layout.channel_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -310,7 +311,12 @@ class ReconstructionTabCoordinator:
             self._reconstruction_instruments_logic.handle_envelope_changed
         )
         self._reconstruction_instruments_panel.on_audition_requested = self._instrument_audition_logic.sound
+        self._reconstruction_instruments_panel.on_audition_generator_changed = (
+            self._instrument_audition_logic.set_generator
+        )
         self._instrument_audition_logic.on_audition_error = self._on_preview_error
+        self._instrument_audition_logic.on_waveform_changed = self._reconstruction_plot_panel.update_instrument_view
+        self._reconstruction_instruments_logic.on_display_refreshed = self._instrument_audition_logic.refresh
 
     def _on_export_result(self, result: ExportResult) -> None:
         """Reports a finished export in the words of the artefact it produced.

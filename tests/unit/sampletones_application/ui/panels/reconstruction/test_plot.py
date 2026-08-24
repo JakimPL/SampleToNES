@@ -1,12 +1,18 @@
 from dataclasses import dataclass
 from typing import Dict, FrozenSet, List
 
+import numpy as np
 import pytest
 
+from sampletones_application.layout.general.colors.channel import ChannelColors
+from sampletones_application.tags.reconstructions import (
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS,
+)
 from sampletones_application.ui.panels.reconstruction import plot as plot_module
 from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
 )
+from sampletones_application.utils.palette.colors.written import LiteralColor
 from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
 )
@@ -15,6 +21,9 @@ from sampletones_application.view_model.reconstruction.paths.state import (
 )
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
+)
+from sampletones_application.view_model.reconstruction.waveform import (
+    InstrumentWaveformViewModel,
 )
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
@@ -252,3 +261,113 @@ class TestToggleChannel(BaseTestSuite):
         harness.panel.toggle_channel(ChannelName.PULSE2)
 
         assert harness.selected() == ALL_CHANNELS
+
+
+CHANNEL_COLORS = ChannelColors(
+    pulse1=LiteralColor((240, 146, 86, 255)),
+    pulse2=LiteralColor((242, 209, 95, 255)),
+    triangle=LiteralColor((140, 193, 237, 255)),
+    noise=LiteralColor((187, 184, 194, 255)),
+)
+
+AUTOSCALE_TAG = "autoscale"
+FRAME_LENGTH = 735
+
+
+class _WaveformRecorder:
+    """Stands in for the waveform graph, recording the one voice line it is asked to draw."""
+
+    def __init__(self) -> None:
+        self.drawn: List[Dict[str, object]] = []
+
+    def load_voice_waveform(self, audio: np.ndarray, *, name: str, color: object) -> None:
+        self.drawn.append({"audio": audio, "name": name, "color": color})
+
+
+class InstrumentHarness:
+    """The panel over the card an instrument is drawn on, with the recording controls it hides."""
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.shown: Dict[str, bool] = {}
+        monkeypatch.setattr(plot_module, "dpg_configure_item", self._configure)
+
+        self.waveform = _WaveformRecorder()
+        self.panel = GUIReconstructionPlotPanel.__new__(GUIReconstructionPlotPanel)
+        self.panel._channel_colors = CHANNEL_COLORS
+        self.panel.autoscale_tag = AUTOSCALE_TAG
+        self.panel._frame_length = None
+        self.panel.waveform_display = self.waveform
+
+    def _configure(self, tag: str, **kwargs: object) -> None:
+        show = kwargs.get("show")
+        if isinstance(show, bool):
+            self.shown[tag] = show
+
+
+def _waveform(channel_name: ChannelName) -> InstrumentWaveformViewModel:
+    return InstrumentWaveformViewModel(
+        name="lead",
+        channel_name=channel_name,
+        audio=np.zeros(2 * FRAME_LENGTH),
+        frame_length=FRAME_LENGTH,
+    )
+
+
+class TestTheCardAnInstrumentIsDrawnOn:
+    def test_an_instrument_is_drawn_under_its_own_name(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        harness = InstrumentHarness(monkeypatch)
+
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        assert harness.waveform.drawn[-1]["name"] == "lead"
+
+    def test_an_instrument_is_drawn_in_the_color_of_the_channel_it_sounds_on(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        harness = InstrumentHarness(monkeypatch)
+
+        harness.panel.update_instrument_view(_waveform(ChannelName.NOISE))
+
+        assert harness.waveform.drawn[-1]["color"] == CHANNEL_COLORS.noise
+
+    def test_the_frame_length_reaches_the_overlay_the_bars_move(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        harness = InstrumentHarness(monkeypatch)
+
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        assert harness.panel._frame_length == FRAME_LENGTH
+
+    def test_the_controls_that_read_a_recording_stand_down(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        harness = InstrumentHarness(monkeypatch)
+
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        assert harness.shown == {
+            AUTOSCALE_TAG: False,
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS: False,
+        }
+
+    def test_a_recording_takes_the_card_and_its_controls_back(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        harness = InstrumentHarness(monkeypatch)
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        harness.panel.update_instrument_view(None)
+
+        assert harness.shown == {
+            AUTOSCALE_TAG: True,
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS: True,
+        }
+        assert len(harness.waveform.drawn) == 1

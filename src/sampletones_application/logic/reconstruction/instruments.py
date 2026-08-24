@@ -22,6 +22,7 @@ from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features, playing_channels
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import features_footprint
+from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 OnReconstructionInstrumentUpdatedCallback = Callable[
@@ -45,11 +46,17 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self.on_view_changed: Optional[Callable[[ReconstructionInstrumentsViewModel], None]] = None
         self.on_feature_data_changed: Optional[Callable[[Optional[Dict[ChannelName, Features]]], None]] = None
         self.on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
+        self.on_display_refreshed: Optional[VoidCallback] = None
 
     def update_display(self) -> None:
-        """Renders whatever the panel has in front of it, envelopes and figures together."""
+        """Renders whatever the panel has in front of it, envelopes and figures together.
+
+        The cards beside the panel describe the same voice, so the render is reported once it has
+        been made and they settle on it: an edit to an instrument redraws its waveform here.
+        """
         self.call(self.on_view_changed, self._build_view_model(self._current_generators()))
         self.call(self.on_feature_data_changed, self._displayed_features())
+        self.call(self.on_display_refreshed)
 
     def _displayed_features(self) -> Optional[Dict[ChannelName, Features]]:
         """The envelopes the panel draws: a reconstruction's channels, or an instrument's own set.

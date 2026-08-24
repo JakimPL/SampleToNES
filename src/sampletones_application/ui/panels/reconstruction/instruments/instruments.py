@@ -112,7 +112,7 @@ from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 
 OnInstrumentExportCallback = Callable[[ChannelName], None]
-OnAuditionCallback = Callable[[GeneratorName, int], None]
+OnAuditionCallback = Callable[[int], None]
 OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
 
 
@@ -154,7 +154,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         self._graphs: Dict[str, GUIBarGraph] = {}
         self._sequences: Dict[Tuple[ChannelName, FeatureKey], Envelope[int]] = {}
-        self._audition_generator: GeneratorName = AUDITION_GENERATOR
         self._audition_open: bool = False
         self._pitch_stepper_style = pitch_stepper_style
         self._copy_width = copy_width
@@ -173,6 +172,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         self.on_pitch_value_changed: Optional[Callable[[ChannelName, int], None]] = None
         self.on_audition_requested: Optional[OnAuditionCallback] = None
+        self.on_audition_generator_changed: Optional[Callable[[GeneratorName], None]] = None
         self.on_envelope_changed: Optional[Callable[[ChannelName, FeatureKey, Envelope[int]], None]] = None
 
         self._lbl_copy = language_manager["reconstructions.instruments.label.copy_button"]
@@ -547,7 +547,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 dpg.add_radio_button(
                     items=[self._generator_labels[generator_name] for generator_name in GeneratorName],
                     tag=self.audition_tag,
-                    default_value=self._generator_labels[self._audition_generator],
+                    default_value=self._generator_labels[AUDITION_GENERATOR],
                     callback=self._on_audition_generator_changed,
                     horizontal=True,
                 )
@@ -564,8 +564,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
 
     def _on_audition_generator_changed(self, _sender: Sender, app_data: str) -> None:
-        self._audition_generator = next(
-            generator_name for generator_name, label in self._generator_labels.items() if label == app_data
+        self.call(
+            self.on_audition_generator_changed,
+            next(generator_name for generator_name, label in self._generator_labels.items() if label == app_data),
         )
 
     def _show_audition_selector(self, *, shown: bool) -> None:
@@ -588,7 +589,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         if semitone is None:
             return False
 
-        self.call(self.on_audition_requested, self._audition_generator, semitone)
+        self.call(self.on_audition_requested, semitone)
         return True
 
     def _apply_playing_state(

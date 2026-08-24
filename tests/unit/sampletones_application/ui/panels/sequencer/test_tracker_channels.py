@@ -4,7 +4,7 @@ from typing import Dict, FrozenSet, List, Optional, Tuple
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.tabs.sequencer.colors.channel import ChannelColors
+from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.paths import LANG_EN
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer import channels as channels_module
@@ -96,7 +96,6 @@ def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerTrackerPanel:
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._layout = SimpleNamespace(
         colors=SimpleNamespace(
-            channels=CHANNEL_COLORS,
             muted=SimpleNamespace(background=LiteralColor(MUTED_BACKGROUND)),
         ),
         tracker=SimpleNamespace(
@@ -104,6 +103,7 @@ def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerTrackerPanel:
             muted_text_fraction=MUTED_TEXT_FRACTION,
         ),
     )
+    panel._channel_colors = CHANNEL_COLORS
     panel._current_channels = SequencerChannelsViewModel(muted=muted)
     panel._current_row_count = ROW_COUNT
     panel._cell_kinds = {}

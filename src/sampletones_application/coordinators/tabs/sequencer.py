@@ -268,6 +268,7 @@ class SequencerTabCoordinator:
         self._sequencer_tracker_panel: GUISequencerTrackerPanel = GUISequencerTrackerPanel(
             self._sequencer_tracker_logic.settings,
             layout=layout.sequencer,
+            channel_colors=layout.channel_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_TRACKER_PANEL),
             initial_octave=session_manager.octave,
             language_manager=language_manager,
@@ -285,6 +286,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
             layout=layout.sequencer,
+            channel_colors=layout.channel_colors,
             plus_minus_layout=layout.plus_minus,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD),
             language_manager=language_manager,

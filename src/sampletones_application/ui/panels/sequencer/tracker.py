@@ -12,6 +12,7 @@ from sampletones_application.constants.tracker import (
     MAX_OCTAVE,
     MIN_OCTAVE,
 )
+from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
@@ -49,7 +50,6 @@ from sampletones_application.ui.panels.sequencer.columns import (
     HEADER_TABLE_ROWS,
     SAMPLE_TABLE_COLUMN,
     TRACKER_TABLE_COLUMNS,
-    channel_color,
     tracker_table_column,
     tracker_table_row,
 )
@@ -230,6 +230,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         initial_settings: SequencerSettingsViewModel,
         *,
         layout: SequencerLayout,
+        channel_colors: ChannelColors,
         language_manager: LanguageManager,
         key_router: KeyRouter,
         tab_active: ActivePredicate,
@@ -238,6 +239,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
+        self._channel_colors = channel_colors
         self._octave = initial_octave
         self._settings = initial_settings
         self._language_manager = language_manager
@@ -795,7 +797,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if self._is_muted(channel):
             return self._layout.colors.muted.background.rgba
 
-        tint_color = channel_color(self._layout.colors.channels, channel)
+        tint_color = self._channel_colors.for_channel(channel)
         return FadedColor(
             color=tint_color,
             fraction=self._layout.tracker.channel_column_tint,

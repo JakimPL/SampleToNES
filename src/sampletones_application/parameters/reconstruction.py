@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.layout.config import LayoutConfig
+from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.layout.general.colors.feature import FeatureColors
 from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.general.stems import StemsListLayout
@@ -30,6 +31,7 @@ class ReconstructionTabParameters:
     pitch_stepper_style: PitchStepperStyle
     copy_width: int
     feature_colors: FeatureColors
+    channel_colors: ChannelColors
     path_colors: PathColors
     path_status_color: BaseColor
     tree_colors: TreeColors
@@ -47,6 +49,7 @@ class ReconstructionTabParameters:
             pitch_stepper_style=PitchStepperStyle.from_general(general),
             copy_width=general.buttons.copy_width,
             feature_colors=general.colors.features,
+            channel_colors=general.colors.channels,
             path_colors=general.colors.paths,
             path_status_color=general.colors.text.disabled,
             tree_colors=TreeColors.create(

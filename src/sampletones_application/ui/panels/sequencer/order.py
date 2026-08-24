@@ -6,6 +6,7 @@ from sampletones_application.categories.elements.sequencer import SequencerOrder
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
+from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.layout.general.plus_minus_buttons import (
     PlusMinusButtonsLayout,
 )
@@ -43,7 +44,6 @@ from sampletones_application.ui.panels.sequencer.channels import (
     ChannelSwitch,
     channel_tooltip,
 )
-from sampletones_application.ui.panels.sequencer.columns import channel_color
 from sampletones_application.ui.panels.sequencer.display import cell_title
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
 from sampletones_application.ui.panels.sequencer.grid.scroll.axis import (
@@ -141,6 +141,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self,
         *,
         layout: SequencerLayout,
+        channel_colors: ChannelColors,
         plus_minus_layout: PlusMinusButtonsLayout,
         language_manager: LanguageManager,
         key_router: KeyRouter,
@@ -149,6 +150,7 @@ class GUISequencerOrderPanel(GUIPanel):
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
+        self._channel_colors = channel_colors
         self._plus_minus_layout = plus_minus_layout
         self._router = key_router
         self._tab_active = tab_active
@@ -647,7 +649,7 @@ class GUISequencerOrderPanel(GUIPanel):
         if self._is_muted(channel):
             return self._layout.colors.muted.background.rgba
 
-        tint_color = channel_color(self._layout.colors.channels, channel)
+        tint_color = self._channel_colors.for_channel(channel)
         return FadedColor(
             color=tint_color,
             fraction=self._layout.tracker.channel_column_tint,

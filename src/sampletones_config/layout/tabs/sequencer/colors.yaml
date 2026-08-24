@@ -37,8 +37,3 @@ text:
   frame: .tracker_frame
   row: .tracker_row
   order: .tracker_order
-channels:
-  pulse1: .channel_pulse1
-  pulse2: .channel_pulse2
-  triangle: .channel_triangle
-  noise: .channel_noise

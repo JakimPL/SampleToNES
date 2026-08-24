@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.layout.general.colors.favorite import FavoriteColors
 from sampletones_application.layout.general.colors.feature import FeatureColors
 from sampletones_application.layout.general.colors.header import HeaderColors
@@ -15,3 +16,4 @@ class GeneralColors(BaseModel, extra="forbid", frozen=True):
     paths: PathColors
     headers: HeaderColors
     features: FeatureColors
+    channels: ChannelColors

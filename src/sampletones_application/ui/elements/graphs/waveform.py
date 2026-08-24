@@ -188,6 +188,35 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._update_axes_limits()
         self._update_position_indicator()
 
+    def load_voice_waveform(
+        self,
+        audio: np.ndarray,
+        *,
+        name: str,
+        color: BaseColor,
+    ) -> None:
+        """Draws one voice's own audio as a single series, in the color its generator is named by.
+
+        A hand-written voice stands on no recording, so there is nothing to hold it against: the
+        card shows what its envelopes make, labeled with the voice's own name. The series is the
+        whole of what is drawn, so the controls that read a recording apply to nothing here.
+
+        Args:
+            audio: The waveform to draw.
+            name: The name the series is labeled by.
+            color: The color the line is drawn in.
+        """
+        self._reconstruction_dimmed = False
+        self.clear_layers()
+        self.add_layer(
+            ArrayLayer(
+                data=audio,
+                name=name,
+                color=color,
+                max_display_points=self._layout.waveform.max_display_points,
+            )
+        )
+
     def _extract_reconstruction_layer_data(
         self,
         waveform_data: WaveformData,

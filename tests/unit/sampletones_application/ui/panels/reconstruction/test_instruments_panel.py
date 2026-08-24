@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Final, List, Tuple, cast
+from typing import Dict, Final, List, cast
 from unittest.mock import MagicMock
 
 import dearpygui.dearpygui as dpg
@@ -541,43 +541,39 @@ class TestTheAuditionSelector:
         panel.update_view(build_view_model({ChannelName.PULSE1: LARGEST_PULSE}))
         assert shown[panel.audition_group_tag] is False
 
-    def test_the_pulse_is_the_generator_a_voice_is_first_heard_on(
+    def test_choosing_a_generator_reports_the_one_its_name_stands_for(
         self,
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
-        assert panel._audition_generator is GeneratorName.PULSE
+        chosen: List[GeneratorName] = []
+        panel.on_audition_generator_changed = chosen.append
 
-    def test_choosing_a_generator_by_its_name_is_what_the_keys_then_sound(
-        self,
-        panel: GUIReconstructionInstrumentsPanel,
-    ) -> None:
-        panel._on_audition_generator_changed(
-            "sender",
-            panel._generator_labels[GeneratorName.NOISE],
-        )
-        assert panel._audition_generator is GeneratorName.NOISE
+        for generator_name in GeneratorName:
+            panel._on_audition_generator_changed("sender", panel._generator_labels[generator_name])
+
+        assert chosen == list(GeneratorName)
 
 
 class TestTheNoteKeys:
     """A note key sounds the instrument in front of the panel, and claims the press it used."""
 
-    def test_a_note_key_sounds_the_open_instrument_on_the_chosen_generator(
+    def test_a_note_key_asks_for_the_note_it_names(
         self,
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
-        sounded: List[Tuple[GeneratorName, int]] = []
-        panel.on_audition_requested = lambda generator, semitone: sounded.append((generator, semitone))
+        sounded: List[int] = []
+        panel.on_audition_requested = sounded.append
         panel.update_view(ONE_INSTRUMENT)
 
         assert panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Z, modifiers=frozenset())) is True
-        assert sounded == [(GeneratorName.PULSE, PIANO_KEYS[dpg.mvKey_Z])]
+        assert sounded == [PIANO_KEYS[dpg.mvKey_Z]]
 
     def test_a_key_naming_no_note_is_left_to_the_shortcuts(
         self,
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
-        sounded: List[Tuple[GeneratorName, int]] = []
-        panel.on_audition_requested = lambda generator, semitone: sounded.append((generator, semitone))
+        sounded: List[int] = []
+        panel.on_audition_requested = sounded.append
         panel.update_view(ONE_INSTRUMENT)
 
         assert panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Spacebar, modifiers=frozenset())) is False

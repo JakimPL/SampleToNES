@@ -5,10 +5,14 @@ import numpy as np
 import pytest
 
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.constants.instruments import AUDITION_GENERATOR
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.reconstruction.audition import InstrumentAuditionLogic
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.view_model.reconstruction.waveform import (
+    InstrumentWaveformViewModel,
+)
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, GeneratorName
@@ -75,6 +79,20 @@ def _logic(
     return InstrumentAuditionLogic(_Editor(instrument), controller, session, device)
 
 
+def _sounded(
+    instrument: Optional[Instrument],
+    controller: ProjectController,
+    session: MagicMock,
+    device: MagicMock,
+    generator_name: GeneratorName,
+    semitone: int,
+) -> None:
+    """Sounds one key of a voice on one generator, which is a choice and then a press."""
+    logic = _logic(instrument, controller, session, device)
+    logic.set_generator(generator_name)
+    logic.sound(semitone)
+
+
 def _played(device: MagicMock) -> np.ndarray:
     audio = device.play.call_args.args[0]
     assert isinstance(audio, np.ndarray)
@@ -106,7 +124,7 @@ class TestWhatAKeySounds:
     ) -> None:
         instrument = _instrument()
 
-        _logic(instrument, controller, session, device).sound(GeneratorName.PULSE, SEMITONE_G)
+        _sounded(instrument, controller, session, device, GeneratorName.PULSE, SEMITONE_G)
 
         expected = _expected(instrument, controller, ChannelName.PULSE1, MIDDLE_C + SEMITONE_G)
         assert np.array_equal(_played(device), expected)
@@ -120,7 +138,7 @@ class TestWhatAKeySounds:
         instrument = _instrument()
         session.octave = OCTAVE + 1
 
-        _logic(instrument, controller, session, device).sound(GeneratorName.PULSE, SEMITONE_G)
+        _sounded(instrument, controller, session, device, GeneratorName.PULSE, SEMITONE_G)
 
         expected = _expected(instrument, controller, ChannelName.PULSE1, MIDDLE_C + 12 + SEMITONE_G)
         assert np.array_equal(_played(device), expected)
@@ -133,7 +151,7 @@ class TestWhatAKeySounds:
     ) -> None:
         instrument = _instrument()
 
-        _logic(instrument, controller, session, device).sound(GeneratorName.TRIANGLE, SEMITONE_G)
+        _sounded(instrument, controller, session, device, GeneratorName.TRIANGLE, SEMITONE_G)
 
         expected = _expected(instrument, controller, ChannelName.TRIANGLE, MIDDLE_C + SEMITONE_G)
         assert np.array_equal(_played(device), expected)
@@ -147,10 +165,11 @@ class TestWhatAKeySounds:
         """The noise channel selects one of sixteen periods, so a key there names no note."""
         instrument = _instrument()
         logic = _logic(instrument, controller, session, device)
+        logic.set_generator(GeneratorName.NOISE)
 
-        logic.sound(GeneratorName.NOISE, SEMITONE_G)
+        logic.sound(SEMITONE_G)
         first = _played(device)
-        logic.sound(GeneratorName.NOISE, 0)
+        logic.sound(0)
         second = _played(device)
 
         expected = _expected(instrument, controller, ChannelName.NOISE, REFERENCE_PERIOD)
@@ -163,7 +182,7 @@ class TestWhatAKeySounds:
         session: MagicMock,
         device: MagicMock,
     ) -> None:
-        _logic(_instrument(), controller, session, device).sound(GeneratorName.PULSE, SEMITONE_G)
+        _sounded(_instrument(), controller, session, device, GeneratorName.PULSE, SEMITONE_G)
 
         assert device.play.call_args.kwargs["priority"] is PlaybackPriority.PREVIEW
 
@@ -175,7 +194,7 @@ class TestWhenNothingSounds:
         session: MagicMock,
         device: MagicMock,
     ) -> None:
-        _logic(None, controller, session, device).sound(GeneratorName.PULSE, SEMITONE_G)
+        _sounded(None, controller, session, device, GeneratorName.PULSE, SEMITONE_G)
 
         device.play.assert_not_called()
 
@@ -185,10 +204,7 @@ class TestWhenNothingSounds:
         session: MagicMock,
         device: MagicMock,
     ) -> None:
-        _logic(Instrument(name="silent"), controller, session, device).sound(
-            GeneratorName.PULSE,
-            SEMITONE_G,
-        )
+        _sounded(Instrument(name="silent"), controller, session, device, GeneratorName.PULSE, SEMITONE_G)
 
         device.play.assert_not_called()
 
@@ -204,6 +220,109 @@ class TestWhenNothingSounds:
         reported: List[Exception] = []
         logic.on_audition_error = reported.append
 
-        logic.sound(GeneratorName.PULSE, SEMITONE_G)
+        logic.sound(SEMITONE_G)
 
         assert reported == [refusal]
+
+
+class TestTheWaveformTheCardDraws:
+    def test_a_voice_is_first_heard_and_drawn_on_the_pulse(
+        self,
+        controller: ProjectController,
+        session: MagicMock,
+        device: MagicMock,
+    ) -> None:
+        assert AUDITION_GENERATOR is GeneratorName.PULSE
+
+        logic = _logic(_instrument(), controller, session, device)
+        drawn: List[Optional[InstrumentWaveformViewModel]] = []
+        logic.on_waveform_changed = drawn.append
+
+        logic.refresh()
+
+        assert drawn[-1] is not None
+        assert drawn[-1].channel_name is ChannelName.PULSE1
+
+    def test_the_open_voice_is_drawn_at_the_pitch_it_stands_at(
+        self,
+        controller: ProjectController,
+        session: MagicMock,
+        device: MagicMock,
+    ) -> None:
+        """The card shows the voice as it is, so no key just pressed moves what it draws."""
+        instrument = _instrument()
+        logic = _logic(instrument, controller, session, device)
+        drawn: List[Optional[InstrumentWaveformViewModel]] = []
+        logic.on_waveform_changed = drawn.append
+
+        logic.sound(SEMITONE_G)
+        logic.refresh()
+
+        expected = _expected(instrument, controller, ChannelName.PULSE1, REFERENCE_PITCH)
+        assert drawn[-1] is not None
+        assert np.array_equal(drawn[-1].audio, expected)
+
+    def test_choosing_a_generator_redraws_the_voice_as_that_one(
+        self,
+        controller: ProjectController,
+        session: MagicMock,
+        device: MagicMock,
+    ) -> None:
+        logic = _logic(_instrument(), controller, session, device)
+        drawn: List[Optional[InstrumentWaveformViewModel]] = []
+        logic.on_waveform_changed = drawn.append
+
+        logic.set_generator(GeneratorName.NOISE)
+
+        assert drawn[-1] is not None
+        assert drawn[-1].channel_name is ChannelName.NOISE
+
+    def test_the_voice_is_drawn_under_its_own_name_and_frame_length(
+        self,
+        controller: ProjectController,
+        session: MagicMock,
+        device: MagicMock,
+    ) -> None:
+        logic = _logic(_instrument(), controller, session, device)
+        drawn: List[Optional[InstrumentWaveformViewModel]] = []
+        logic.on_waveform_changed = drawn.append
+
+        logic.refresh()
+
+        settings = controller.project.settings
+        config = Config().with_library(
+            nes_frequency=settings.nes_frequency,
+            sample_rate=settings.sample_rate,
+        )
+        assert drawn[-1] is not None
+        assert drawn[-1].name == "lead"
+        assert drawn[-1].frame_length == config.frame_length
+        assert drawn[-1].audio.shape == (2 * config.frame_length,)
+
+    def test_a_tab_holding_a_recording_leaves_the_card_to_it(
+        self,
+        controller: ProjectController,
+        session: MagicMock,
+        device: MagicMock,
+    ) -> None:
+        logic = _logic(None, controller, session, device)
+        drawn: List[Optional[InstrumentWaveformViewModel]] = []
+        logic.on_waveform_changed = drawn.append
+
+        logic.refresh()
+
+        assert drawn == [None]
+
+    def test_a_voice_writing_no_envelope_draws_nothing(
+        self,
+        controller: ProjectController,
+        session: MagicMock,
+        device: MagicMock,
+    ) -> None:
+        logic = _logic(Instrument(name="silent"), controller, session, device)
+        drawn: List[Optional[InstrumentWaveformViewModel]] = []
+        logic.on_waveform_changed = drawn.append
+
+        logic.refresh()
+
+        assert drawn == [None]

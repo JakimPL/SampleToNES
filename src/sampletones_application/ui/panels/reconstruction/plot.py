@@ -4,6 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.reconstructions import (
@@ -25,6 +26,9 @@ from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
+from sampletones_application.view_model.reconstruction.waveform import (
+    InstrumentWaveformViewModel,
+)
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_shared.types.application import Sender
@@ -36,11 +40,13 @@ class GUIReconstructionPlotPanel(GUIPanel):
         self,
         *,
         layout_graphs: GraphsLayout,
+        channel_colors: ChannelColors,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout_graphs = layout_graphs
+        self._channel_colors = channel_colors
         self._status_bar = status_bar
         self._language_manager = language_manager
 
@@ -94,6 +100,35 @@ class GUIReconstructionPlotPanel(GUIPanel):
                 ThemeRegistry.get(CHANNEL_THEME_TAGS[channel_name]).bind_to_item(tag)
             else:
                 dpg.bind_item_theme(tag, 0)
+
+    def update_instrument_view(
+        self,
+        waveform: Optional[InstrumentWaveformViewModel],
+    ) -> None:
+        """Draws a hand-written voice's own audio, or hands the card back to the recording it shows.
+
+        An instrument writes one line and nothing to hold it against, so the controls that read a
+        recording — the autoscale switch and the per-channel boxes — stand down while one is open
+        and return with the recording that reads them.
+
+        Args:
+            waveform: The voice to draw, or ``None`` while the tab holds a recording or nothing.
+        """
+        self._show_recording_controls(shown=waveform is None)
+        if waveform is None:
+            return
+
+        self._frame_length = waveform.frame_length
+        self.waveform_display.load_voice_waveform(
+            waveform.audio,
+            name=waveform.name,
+            color=self._channel_colors.for_channel(waveform.channel_name),
+        )
+
+    def _show_recording_controls(self, *, shown: bool) -> None:
+        """Offers the switches that read a recording, which is what they have to describe."""
+        dpg_configure_item(self.autoscale_tag, show=shown)
+        dpg_configure_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS, show=shown)
 
     def load_waveform_data(
         self,
