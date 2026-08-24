@@ -57,7 +57,7 @@ class SongRenderCoordinator:
         self._logic.on_choose_destination = self._choose_destination
         self._logic.on_success = self._on_success
         self._logic.on_error = self._on_error
-        self._logic.on_cancelled = self._on_cancelled
+        self._logic.on_canceled = self._on_canceled
 
         self._window.on_settings_changed = self._logic.apply
         self._window.on_browse = self._logic.request_destination
@@ -138,7 +138,7 @@ class SongRenderCoordinator:
         self._close()
         self._present(partial(self._dialogs.show_error, exception, self._msg_failed))
 
-    def _on_cancelled(self) -> None:
+    def _on_canceled(self) -> None:
         """Closes the dialog of a render that was stopped, which leaves no file to report."""
         self._close()
 

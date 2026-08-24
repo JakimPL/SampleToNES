@@ -84,7 +84,7 @@ from sampletones_application.services import (
     RetunedSample,
     RetuneResult,
     SampleRetuneService,
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceProgress,
     ServiceSuccess,
@@ -486,7 +486,7 @@ class Application:
             status_bar=self.status_bar,
             on_load_file=self._on_converted_reconstruction_loaded,
             on_load_directory=self._navigate_to_reconstructions,
-            on_cancelled=self._refresh_reconstruction_trees,
+            on_canceled=self._refresh_reconstruction_trees,
             on_refresh_trees=self._refresh_reconstruction_trees,
             on_generate_library=self._instructions_tab.ensure_library_loaded,
             stem_selection_window=self.stem_selection_window,
@@ -1176,7 +1176,7 @@ class Application:
                 self._apply_retuned_sample(retuned)
             case ServiceError(exception=exception):
                 logger.error_with_traceback(exception, "Sample retune failed")
-            case ServiceCancelled():
+            case ServiceCanceled():
                 pass
 
         if not self.retune_service.is_running():

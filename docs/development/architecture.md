@@ -302,7 +302,7 @@ They read the source as an AST through the shared layer in `sampletones_shared/m
 **Contracts:**
 - Every service inherits `ServiceBase[ResultType]`, which provides `subscribe(handler)`, `unsubscribe(handler)`, and `_emit(result)`.
 - `_emit` always posts the result to `CallbackQueue`; it never calls a handler directly from the background thread.
-- Result types are a tagged union of `ServiceStarted`, `ServiceProgress`, `ServiceIntermediate`, `ServiceSuccess`, `ServiceError`, `ServiceCancelled`, enabling exhaustive `match` handling by subscribers.
+- Result types are a tagged union of `ServiceStarted`, `ServiceProgress`, `ServiceIntermediate`, `ServiceSuccess`, `ServiceError`, `ServiceCanceled`, enabling exhaustive `match` handling by subscribers.
 - Services hold no references to panels, view models, or logic objects.
 
 **May import:** `sampletones_core`, `sampletones_shared`, `utils/callbacks/`.

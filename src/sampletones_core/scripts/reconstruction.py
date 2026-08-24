@@ -89,13 +89,13 @@ def reconstruct_directory(
 
         if task_status in (
             TaskStatus.COMPLETED,
-            TaskStatus.CANCELLED,
+            TaskStatus.CANCELED,
             TaskStatus.FAILED,
         ):
             progress_bar.close()
 
-    def on_cancelled() -> None:
-        logger.info("Reconstruction cancelled by user")
+    def on_canceled() -> None:
+        logger.info("Reconstruction canceled by user")
         progress_bar.close()
 
     def on_error(_exception: Exception) -> None:
@@ -111,7 +111,7 @@ def reconstruct_directory(
         on_start=on_start,
         on_completed=on_completed,
         on_progress=on_progress,
-        on_cancelled=on_cancelled,
+        on_canceled=on_canceled,
         on_error=on_error,
     )
 

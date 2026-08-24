@@ -8,7 +8,7 @@ from sampletones_application.services.render.constants import SCRATCH_SUFFIX
 from sampletones_application.services.render.result import RenderResult, RenderStage
 from sampletones_application.services.render.service import SongRenderService
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceProgress,
     ServiceStarted,
@@ -148,12 +148,12 @@ class TestNormalizing(BaseTestSuite):
 
 
 class TestCancelling(BaseTestSuite):
-    """A cancelled render reports itself cancelled and names no file."""
+    """A canceled render reports itself canceled and names no file."""
 
     def _cancelling_synthesizer(self, service: SongRenderService) -> FakeSynthesizer:
         return FakeSynthesizer(on_row=lambda rendered: service.cancel() if rendered == 4 else None)
 
-    def test_a_cancelled_render_leaves_no_file(self, tmp_path: Path) -> None:
+    def test_a_canceled_render_leaves_no_file(self, tmp_path: Path) -> None:
         destination = tmp_path / "song.wav"
         service = SongRenderService()
         service.start(
@@ -166,7 +166,7 @@ class TestCancelling(BaseTestSuite):
 
         assert not destination.exists()
 
-    def test_a_cancelled_render_reports_itself_cancelled(self, tmp_path: Path) -> None:
+    def test_a_canceled_render_reports_itself_canceled(self, tmp_path: Path) -> None:
         service = SongRenderService()
         results: List[RenderResult] = []
         service.subscribe(results.append)
@@ -178,9 +178,9 @@ class TestCancelling(BaseTestSuite):
             total_samples=TOTAL_SAMPLES,
         )
 
-        assert results[-1] == ServiceCancelled()
+        assert results[-1] == ServiceCanceled()
 
-    def test_a_cancelled_normalized_render_leaves_no_spill(self, tmp_path: Path) -> None:
+    def test_a_canceled_normalized_render_leaves_no_spill(self, tmp_path: Path) -> None:
         service = SongRenderService()
         service.start(
             synthesizer=self._cancelling_synthesizer(service),

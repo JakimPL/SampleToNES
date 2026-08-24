@@ -11,7 +11,7 @@ from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.reporter import ExportProgressReporter
 from sampletones_application.services.export.result import ExportResult
 from sampletones_application.services.export.success import ExportSuccess
-from sampletones_application.services.result import ServiceCancelled, ServiceStarted
+from sampletones_application.services.result import ServiceCanceled, ServiceStarted
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.audio import write_wave
 from sampletones_core.exports.artifact import ExportArtifact
@@ -23,7 +23,7 @@ from sampletones_core.exports.request import (
     ProjectExport,
     SampleExport,
 )
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 from sampletones_shared.logger import logger
 
 NO_EXPORT_FORMAT: None = None
@@ -176,9 +176,9 @@ class ExportService(ServiceBase[ExportResult]):
         try:
             self._emit(ServiceStarted(total=UNMEASURED_AT_THE_START))
             self._report_written(kind, destination, export_format, write(self._reporter()))
-        except OperationCancelled:
-            logger.info(f"The export to {logger.format_path(destination)} was cancelled")
-            self._emit(ServiceCancelled())
+        except OperationCanceled:
+            logger.info(f"The export to {logger.format_path(destination)} was canceled")
+            self._emit(ServiceCanceled())
         except Exception as exception:  # pylint: disable=broad-exception-caught
             logger.error_with_traceback(exception, f"Failed to export to: {destination}")
             self._emit(

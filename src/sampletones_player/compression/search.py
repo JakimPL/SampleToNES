@@ -166,7 +166,7 @@ def search_phrases(
         PhraseTable: The seeded phrases alongside the ones the search earned.
 
     Raises:
-        OperationCancelled: If the run is no longer wanted.
+        OperationCanceled: If the run is no longer wanted.
     """
     indices = cache.indices
     parses = parse_planes(cache, table, options, boundaries, monitor)

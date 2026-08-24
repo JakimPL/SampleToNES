@@ -29,7 +29,7 @@ from sampletones_player.specification.nsf import (
     TITLE_OFFSET,
 )
 from sampletones_player.specification.song import LOOP_TICK_OFFSET
-from sampletones_shared.exceptions import OperationCancelled, SongTooLargeError
+from sampletones_shared.exceptions import OperationCanceled, SongTooLargeError
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 from tests.suite.performance import (
     make_pulse_reconstruction,
@@ -341,7 +341,7 @@ class TestWhatAProjectRunSaysAboutItself:
     ) -> None:
         destination = tmp_path / FILENAME
         reporter: RecordingReporter[ExportProgress] = RecordingReporter(withdraw_at=WITHDRAWN_WHILE_WALKING)
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             backend.write_project(destination, ProjectExport(project=drum_project()), reporter)
 
         assert reporter.last.stage == ExportStage.WALKING
@@ -394,7 +394,7 @@ class TestWithdrawingARun:
         destination = tmp_path / FILENAME
         reporter: RecordingReporter[ExportProgress] = RecordingReporter(withdraw_at=WITHDRAWN_WHILE_WALKING)
         request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             backend.write_sample(destination, request, reporter)
 
         assert not destination.exists()
@@ -407,7 +407,7 @@ class TestWithdrawingARun:
         destination = tmp_path / FILENAME
         reporter: RecordingReporter[ExportProgress] = RecordingReporter(withdraw_at=WITHDRAWN_WHILE_COMPRESSING)
         request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             backend.write_sample(destination, request, reporter)
 
         assert reporter.last.stage == ExportStage.COMPRESSING

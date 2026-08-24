@@ -37,10 +37,10 @@ class Harness:
     def __init__(self) -> None:
         self.router = KeyRouter()
         self.captured: List[KeyCombination] = []
-        self.cancelled = 0
+        self.canceled = 0
         self.capture = KeyCapture(key_router=self.router, cancel=CANCEL)
         self.capture.on_captured = self.captured.append
-        self.capture.on_cancelled = self._on_cancelled
+        self.capture.on_canceled = self._on_canceled
 
     def press(self, key: int, modifiers: ModifierSet = NO_MODIFIERS) -> None:
         self.router.route(KeyEvent(key=key, modifiers=modifiers))
@@ -49,8 +49,8 @@ class Harness:
         for event in events:
             self.press(event.key, event.modifiers)
 
-    def _on_cancelled(self) -> None:
-        self.cancelled += 1
+    def _on_canceled(self) -> None:
+        self.canceled += 1
 
 
 @pytest.fixture(name="harness")
@@ -234,16 +234,16 @@ class TestCapturedPress(BaseTestSuite):
         assert harness.captured == [KeyCombination(dpg.mvKey_D, CTRL)]
 
 
-class TestCancelledCapture:
+class TestCanceledCapture:
     def test_the_cancel_combination_ends_the_capture_without_assigning(self, harness: Harness) -> None:
         harness.press(dpg.mvKey_Escape)
 
         assert harness.captured == []
-        assert harness.cancelled == 1
+        assert harness.canceled == 1
         assert not harness.capture.is_listening
 
     def test_the_cancel_key_under_a_modifier_is_a_combination_like_any_other(self, harness: Harness) -> None:
         harness.press(dpg.mvKey_Escape, CTRL)
 
         assert harness.captured == [KeyCombination(dpg.mvKey_Escape, CTRL)]
-        assert harness.cancelled == 0
+        assert harness.canceled == 0

@@ -161,7 +161,7 @@ def located_file(monkeypatch: pytest.MonkeyPatch) -> List[Dict[str, object]]:
 
 
 @pytest.fixture
-def cancelled_dialog(monkeypatch: pytest.MonkeyPatch) -> None:
+def canceled_dialog(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sequencer_module, "open_file_dialog", lambda **_kwargs: None)
 
 
@@ -199,10 +199,10 @@ class TestImportInstrument:
 
         instrument_coordinator._session_manager.set_instrument_path.assert_called_once_with(INSTRUMENT_FILE.parent)
 
-    def test_a_cancelled_dialog_leaves_the_pool_as_it_stands(
+    def test_a_canceled_dialog_leaves_the_pool_as_it_stands(
         self,
         instrument_coordinator: SequencerTabCoordinator,
-        cancelled_dialog: None,
+        canceled_dialog: None,
     ) -> None:
         instrument_coordinator.import_instrument()
 

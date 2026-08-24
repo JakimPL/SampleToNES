@@ -18,7 +18,7 @@ class ConversionPhase(StrEnum):
     RUNNING = "running"
     CANCELLING = "cancelling"
     COMPLETED = "completed"
-    CANCELLED = "cancelled"
+    CANCELED = "canceled"
     FAILED = "failed"
 
 

@@ -40,7 +40,7 @@ def song_instructions(
         Dict[ChannelName, List[InstructionUnion]]: Each channel's stream, tick by tick.
 
     Raises:
-        OperationCancelled: If ``report`` withdraws the walk.
+        OperationCanceled: If ``report`` withdraws the walk.
     """
     song = project.song
     groove = SongTiming.from_project(project).groove()

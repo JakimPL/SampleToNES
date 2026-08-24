@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.result import (
     ConversionResult,
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceIntermediate,
     ServiceProgress,
@@ -44,7 +44,7 @@ class ConversionService(ServiceBase[ConversionResult]):
             on_progress=self._on_progress,
             on_completed=self._on_completed,
             on_error=self._on_error,
-            on_cancelled=self._on_cancelled,
+            on_canceled=self._on_canceled,
         )
         self._converter.start()
 
@@ -110,8 +110,8 @@ class ConversionService(ServiceBase[ConversionResult]):
     def _on_error(self, exception: Exception) -> None:
         self._emit(ServiceError(exception=exception))
 
-    def _on_cancelled(self) -> None:
-        self._emit(ServiceCancelled())
+    def _on_canceled(self) -> None:
+        self._emit(ServiceCanceled())
 
     def forward_library_progress(
         self,
