@@ -36,10 +36,11 @@ A run passes through stages counting in units of their own — a song's ticks, a
 a recording's frames, a batch's files. A report therefore names its stage, and what the counts mean
 is read from that name. `ExportStage` and `ReconstructionStage` are the two vocabularies today.
 
-Where the stages differ in what they cost, the enum states the share each holds of the whole run
-(`ReconstructionStage.share`), so one reading spans a run that changes what it is counting several
-times over. The shares are an arbitrary split justified by what they achieve: a bar that tracks the
-time a run actually takes.
+Where the stages differ in what they cost, the enum states what each is worth against the others
+(`STAGE_WEIGHTS`), so one reading spans a run that changes what it is counting several times over.
+The weights are approximations measured over whole runs, justified by what they achieve: a bar that
+tracks the time a run actually takes. They are counts rather than fractions, and a reading divides
+them once at the point of use, which is what lets a finished run arrive exactly at its end.
 
 ### 3. A report is filed as often as the run moves, and carried as often as it is worth reading
 
@@ -114,10 +115,10 @@ sequenceDiagram
     SVC->>SVC: ServiceProgress(partial=…, current_item=ConversionItem)
 ```
 
-A run's monitor thread waits on the results the pool hands back, so it cannot also read the
-channel: `ProgressPump` is the thread that does. It takes everything already waiting in one turn
-and announces once, which holds the announcements to the rate it reads at however many steps the
-tasks file in between.
+A run's monitor thread waits on the results the pool hands back, so reading the channel belongs
+to a thread of its own: `ProgressPump`. It takes everything already waiting in one turn and
+announces once, which holds the announcements to the rate it reads at however many steps the tasks
+file in between.
 
 ### Who owns what
 
