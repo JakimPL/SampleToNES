@@ -362,7 +362,7 @@ There are two coordinator kinds:
 | Package | Purpose |
 |---------|---------|
 | `config/` | `ConfigManager` (domain generation config), `SessionManager` (runtime session: last paths, audio device, window geometry). Presentation-free: it records load outcomes (`ConfigLoadOutcome`) as domain data for `ConfigCoordinator` to present. Must not import the visual packages, `coordinators/`, or `application.py` |
-| `categories/` | `LanguageManager`, the `Page / Panel / TextType / Widget` enum hierarchy, the `AbstractElement` base and the panel element enums under `categories/elements/`, and the key grammar under `categories/key/` |
+| `categories/` | `LanguageManager`, the `Page / Panel / TextType / Widget` enum hierarchy, the `AbstractElement` base and the panel element enums under `categories/elements/`, and the key grammar under `categories/key/`. It also holds the message bundles that resolve a whole conversation's words in one place — `export.py`, `exports.py`, `instrument.py`, `pitch.py` — so a coordinator reads its texts once and hands the bundle to whoever phrases the outcome |
 | `constants/` | Application-scope facts that carry no behavior, one module per subject — `keybindings.py` names the scheme a build ships, which both the shortcut catalog and the session config read, and `playback.py` names the follow mode, which the session config, the song player, the view models and the menu all state. A fact shared beyond the application belongs to `sampletones_shared/constants/` |
 | `layout/` | Pydantic models loaded from YAML at startup; injected into coordinators and panels as `LayoutConfig` |
 | `tags/` | DPG widget tags (`TAG_*`), the fragments composing into them (`SUF_*`, `PRE_*`), and `compose_tag` |

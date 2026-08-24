@@ -70,7 +70,8 @@ def _kind_role(kind: Optional[VoiceKind]) -> HistoryDetailRole:
     """The role a voice reads under, so its line wears the color of the kind it is about.
 
     A voice the pool has stopped holding keeps the plain voice role, the same one the tracker's
-    voice slot wears while it names nothing.
+    voice slot wears while it names nothing. A tracker cell naming a voice since removed is read
+    that way, the same as :func:`display_voice` reads its position.
     """
     if kind is None:
         return HistoryDetailRole.VOICE

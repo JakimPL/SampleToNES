@@ -2,7 +2,6 @@ from typing import Callable, Dict, FrozenSet, List, Optional, Set
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.view_model.sequencer.kind import (
-    places_across_channels,
     voice_kind,
 )
 from sampletones_application.view_model.sequencer.settings import (
@@ -247,7 +246,7 @@ class SequencerTrackerLogic(CallbackMixin):
         if voice is None:
             return False
 
-        return places_across_channels(voice_kind(voice))
+        return voice_kind(voice).places_across_channels
 
     def cut_note(
         self,
@@ -674,7 +673,7 @@ class SequencerTrackerLogic(CallbackMixin):
             voice = self._controller.project.voices.get(voice_id)
             if voice is None:
                 relevant.add(channel)
-            elif places_across_channels(voice_kind(voice)):
+            elif voice_kind(voice).places_across_channels:
                 relevant.update(self._used_generators(voice))
 
         return frozenset(relevant)

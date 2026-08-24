@@ -74,6 +74,32 @@ starts carrying.
 * In-application console
 * Improve performance of browser favorite scan of the entire tree per click
 
+## Architecture
+
+Where the codebase stands apart from `docs/development/architecture.md`. A deviation is recorded
+here once review has seen it and let it stand, so this section — rather than the code — is the
+memory of what is currently out of line, and an entry leaves when the code meets the contract
+again.
+
+* The two sequencer grids state the same machinery twice. `ui/panels/sequencer/order/` and
+  `ui/panels/sequencer/tracker/` each divide into a panel and its collaborators, and the panel
+  modules still declare the same block and channel hooks, build the same `ChannelSwitch`, tint a
+  channel the same way, and run the same held-pointer drag, right-click hit-test and key dispatch.
+  `ui/panels/sequencer/grid/` is where both already reach for what they share, and it is where
+  these belong; the `# TODO: to abstract` markers stand at the blocks themselves. Pylint's
+  duplicate-code report names each pair, so the work is enumerable rather than a matter of
+  reading.
+* `application.py` and `ui/elements/tree/tree.py` each hold several concerns in one module, past
+  the size at which the sequencer panels and the sequencer tab coordinator were divided into
+  subpackages. Each divides the same way: a module per concern, with the class that stays holding
+  the collaborators and the public surface.
+* Several directories under `ui/` carry modules without an `__init__.py`, which leaves each one a
+  namespace package. A tool reading the tree treats such a directory as a root it can import from,
+  so a module inside one answers for a standard-library name of the same word: `ui/elements/trace.py`
+  stands against `trace` this way, and `ui/elements/graphs/layers/array.py` did against `array`
+  until it was given a package of its own. Giving each directory an `__init__.py` closes the
+  whole class.
+
 ## Bugs
 
 * No refreshing after library generation

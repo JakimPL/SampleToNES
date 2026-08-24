@@ -38,7 +38,7 @@ class ServiceProgress(Generic[T]):
     def fraction(self) -> float:
         """How full the operation stands, the item under way counted for the part of it done."""
         if self.total == NOTHING_TO_DO:
-            return 0.0
+            return NOTHING_UNDER_WAY
 
         return (self.completed + self.partial) / self.total
 

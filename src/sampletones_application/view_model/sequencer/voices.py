@@ -16,6 +16,16 @@ class VoiceKind(StrEnum):
     SAMPLE = "sample"
     INSTRUMENT = "instrument"
 
+    @property
+    def places_across_channels(self) -> bool:
+        """Whether the tracker's sample column can place a voice of this kind.
+
+        The column writes a voice to every channel it covers and clears the rest, which a recording
+        states for itself. A hand-written instrument sounds wherever its envelopes make a frame, so
+        the channel it plays on is the reader's to name and it is placed in a channel column.
+        """
+        return self is VoiceKind.SAMPLE
+
 
 class VoiceEntryViewModel(BaseModel, frozen=True):
     voice_id: str

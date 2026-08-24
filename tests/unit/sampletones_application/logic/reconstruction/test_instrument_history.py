@@ -124,5 +124,5 @@ class TestAnInstrumentEditInTheHistory:
         assert [entry.action for entry in harness.history.entries[1:]].count(HistoryAction.EDIT_INSTRUMENT) == 2
 
     def test_writing_with_no_instrument_open_is_refused(self, harness: _Harness) -> None:
-        with pytest.raises(TypeError):
+        with pytest.raises(RuntimeError):
             harness.write(FeatureKey.VOLUME, 15)

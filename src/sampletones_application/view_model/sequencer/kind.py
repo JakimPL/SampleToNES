@@ -23,22 +23,6 @@ def voice_kind(voice: VoiceUnion) -> VoiceKind:
             return VoiceKind.INSTRUMENT
 
 
-def places_across_channels(kind: VoiceKind) -> bool:
-    """Whether the tracker's sample column can place a voice of this kind.
-
-    The column writes a voice to every channel it covers and clears the rest, which a recording
-    states for itself. A hand-written instrument sounds wherever its envelopes make a frame, so the
-    channel it plays on is the reader's to name and it is placed in a channel column.
-
-    Args:
-        kind: The kind of the voice being placed.
-
-    Returns:
-        bool: Whether the sample column takes it.
-    """
-    return kind is VoiceKind.SAMPLE
-
-
 def column_takes(channel: Optional[ChannelName], kind: VoiceKind) -> bool:
     """Whether the column a cell stands in places a voice of this kind.
 
@@ -56,4 +40,4 @@ def column_takes(channel: Optional[ChannelName], kind: VoiceKind) -> bool:
     if channel is not None:
         return True
 
-    return places_across_channels(kind)
+    return kind.places_across_channels

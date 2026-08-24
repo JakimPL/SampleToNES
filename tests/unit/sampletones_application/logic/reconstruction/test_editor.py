@@ -161,5 +161,5 @@ class TestWritingIntoTheInstrument:
         assert instrument.envelopes.volume.loop_point == 0
 
     def test_a_write_with_no_instrument_in_front_is_refused(self, editor: InstrumentEditor) -> None:
-        with pytest.raises(TypeError):
+        with pytest.raises(RuntimeError):
             editor.write_envelope(FeatureKey.VOLUME, Envelope(items=VOLUME))

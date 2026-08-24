@@ -158,7 +158,12 @@ class Instrument(BaseModel):
         return self._instructions[channel_name]
 
     def invalidate(self) -> None:
-        """Drops the memoized frames so they are made afresh from the envelopes they describe."""
+        """Drops the memoized frames so they are made afresh from the envelopes they describe.
+
+        The frames are read from the envelopes once and kept, so whoever writes ``envelopes``
+        calls this in the same breath. That pairing is what keeps what an instrument plays and
+        what it states the same thing.
+        """
         self.__dict__.pop("_instructions", None)
 
     def clone(self) -> Self:

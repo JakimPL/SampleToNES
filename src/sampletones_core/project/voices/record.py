@@ -19,8 +19,3 @@ class SampleRecord(BaseModel):
 
 
 VoiceRecord = Annotated[Union[SampleRecord, Instrument], Field(discriminator="kind")]
-"""The on-disk form of one voice, told apart by its ``kind``.
-
-A sample is written as a reference to the reconstruction stored beside the document, while an instrument
-carries only what it states and is written whole.
-"""

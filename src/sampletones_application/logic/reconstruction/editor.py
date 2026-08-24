@@ -77,11 +77,11 @@ class InstrumentEditor:
         step per value it passed through.
 
         Raises:
-            TypeError: If the tab holds no instrument to write into.
+            RuntimeError: If the tab holds no instrument to write into.
         """
         instrument = self.instrument
         if instrument is None:
-            raise TypeError("The tab holds no instrument to write an envelope into")
+            raise RuntimeError("The tab holds no instrument to write an envelope into")
 
         with self._history.transaction(
             HistoryAction.EDIT_INSTRUMENT,
