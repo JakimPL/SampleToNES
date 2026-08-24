@@ -4,6 +4,7 @@ from .implementation.pulse import PulseGenerator
 from .implementation.triangle import TriangleGenerator
 from .maps import (
     CHANNEL_CLASSES,
+    CLASS_NAME_TO_GENERATOR_MAP,
     GENERATOR_CLASS_MAP,
     GENERATOR_TO_CLASS_NAME_MAP,
     GENERATOR_TO_INSTRUCTION_MAP,
@@ -30,6 +31,7 @@ __all__ = [
     "GENERATOR_CLASS_MAP",
     "GENERATOR_TO_INSTRUCTION_MAP",
     "INSTRUCTION_TO_GENERATOR_MAP",
+    "CLASS_NAME_TO_GENERATOR_MAP",
     "GENERATOR_TO_CLASS_NAME_MAP",
     "MIXER_LEVELS",
     "Generator",

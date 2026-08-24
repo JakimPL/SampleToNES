@@ -172,7 +172,17 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
                 y2=[_max_y, _max_y],
             )
 
-    def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
+    def load_library_fragment(
+        self,
+        fragment: InstructionLibraryFragment[Any],
+        color: BaseColor,
+    ) -> None:
+        """Draws one library fragment, in the color the generator that made it is known by.
+
+        Args:
+            fragment: The fragment to draw.
+            color: The color the line is drawn in.
+        """
         self.clear_layers()
         self.current_data = fragment
         self.current_position = 0
@@ -181,7 +191,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             InstructionLayer(
                 data=fragment,
                 name=self._language_manager["global.graph.label.waveform_sample_name"],
-                color=self._layout.colors.waveform_sample,
+                color=color,
             )
         )
 

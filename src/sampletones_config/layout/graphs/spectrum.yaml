@@ -1,3 +1,2 @@
 max_display_bins: 512
 color_dim: .spectrum_dim
-color_bright: .contrast

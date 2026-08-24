@@ -29,6 +29,11 @@ GENERATOR_TO_CLASS_NAME_MAP: Final[Dict[GeneratorName, GeneratorClassName]] = {
 }
 
 
+CLASS_NAME_TO_GENERATOR_MAP: Final[Dict[GeneratorClassName, GeneratorName]] = {
+    class_name: generator_name for generator_name, class_name in GENERATOR_TO_CLASS_NAME_MAP.items()
+}
+
+
 CHANNEL_CLASSES: Final[Dict[ChannelName, GeneratorTypeUnion]] = {
     ChannelName.PULSE1: PulseGenerator,
     ChannelName.PULSE2: PulseGenerator,

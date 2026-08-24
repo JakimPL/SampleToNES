@@ -178,12 +178,14 @@ class InstructionsTabCoordinator:
         self._waveform_panel = GUIInstructionWaveformPanel(
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM),
             layout=layout.graphs,
+            channel_colors=layout.channel_colors,
             language_manager=language_manager,
             status_bar=status_bar,
         )
         self._spectrum_panel = GUIInstructionSpectrumPanel(
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM),
             layout=layout.graphs,
+            channel_colors=layout.channel_colors,
             language_manager=language_manager,
             status_bar=status_bar,
         )

@@ -1,6 +1,7 @@
 from typing import Any
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_WAVEFORM,
@@ -9,6 +10,7 @@ from sampletones_application.tags.instructions import (
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.panels.instruction.colors import fragment_color
 from sampletones_core.library import InstructionLibraryFragment
 
 
@@ -17,11 +19,13 @@ class GUIInstructionWaveformPanel(GUIPanel):
         self,
         *,
         layout: GraphsLayout,
+        channel_colors: ChannelColors,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout = layout
+        self._channel_colors = channel_colors
         self._language_manager = language_manager
         self._status_bar = status_bar
         self.display: GUIWaveformGraph
@@ -57,7 +61,11 @@ class GUIInstructionWaveformPanel(GUIPanel):
         self,
         fragment: InstructionLibraryFragment[Any],
     ) -> None:
-        self.display.load_library_fragment(fragment)
+        """Draws one fragment's waveform, in the color the generator that made it is known by."""
+        self.display.load_library_fragment(
+            fragment,
+            fragment_color(self._channel_colors, fragment),
+        )
 
     def clear_layers(self) -> None:
         self.display.clear_layers()
