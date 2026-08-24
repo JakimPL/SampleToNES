@@ -416,7 +416,7 @@ main.advanced.label.select_library_directory: "Select instruction library direct
 main.advanced.label.combo_spectrum_method: "Method"
 main.advanced.label.slider_transformation_gamma: "Feature scaling"
 main.advanced.label.input_max_workers: "Workers"
-main.advanced.tooltip.tooltip_spectrum_method: "Chooses how the sample is analysed into a spectrum:\n  • FFT uses evenly spaced frequency bins\n  • Log-spaced FFT regroups those bins onto a logarithmic frequency axis\n  • CQT spaces bins per musical octave"
+main.advanced.tooltip.tooltip_spectrum_method: "Chooses how the sample is analyzed into a spectrum:\n  • FFT uses evenly spaced frequency bins\n  • Log-spaced FFT regroups those bins onto a logarithmic frequency axis\n  • CQT spaces bins per musical octave"
 main.advanced.tooltip.tooltip_transformation_gamma: "Scales spectral magnitudes before matching:\n  • at 0 the raw linear spectrum is used\n  • at 100 a logarithmic scaling is applied\n  • and values in between blend the two"
 main.advanced.tooltip.tooltip_max_workers: "Set the number parallel workers for audio processing tasks."
 main.advanced.title.select_library_directory: "Select library directory"

@@ -220,7 +220,7 @@ class ConverterLogic(CallbackMixin):
         )
 
     def move_source_within_level(self, path: Path, offset: int) -> None:
-        """Moves a recording past the neighbour it shares a level with."""
+        """Moves a recording past the neighbor it shares a level with."""
         self._apply(self._levels.move_within_level(path, offset))
 
     def join_source_level(self, path: Path, offset: int) -> None:

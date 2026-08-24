@@ -55,7 +55,7 @@ class TabColumns:
         """Builds the ground wrapper and the column row from ``columns``, then binds their themes.
 
         Returns the number of fixed-width side columns — the ones that hold their width while the
-        centre stretches — which the responsive width sizing shares the viewport's surplus among.
+        center stretches — which the responsive width sizing shares the viewport's surplus among.
         """
         with dpg.child_window(
             width=-1,
@@ -94,7 +94,7 @@ class TabColumns:
 
         Where :meth:`build` frames a whole tab, ``row`` composes a side-by-side group inside a
         column a coordinator already owns: it drops the ground wrapper and the outer gaps, so the
-        columns sit flush to the container edges with a single gap between each neighbour. Each
+        columns sit flush to the container edges with a single gap between each neighbor. Each
         column's builder fills its cell directly, letting the hosted cards own their own surface.
         A ``height`` of ``0`` sizes the row to its content. A ``tag`` names the row table so a
         coordinator can resize it when its hosted cards collapse.
@@ -149,7 +149,7 @@ class TabColumns:
         panel_gap: int,
         columns: Sequence[ColumnSpec],
     ) -> None:
-        """Declares each content column with a fixed gap column between neighbours only."""
+        """Declares each content column with a fixed gap column between neighbors only."""
         for index, column in enumerate(columns):
             if index > 0:
                 dpg.add_table_column(

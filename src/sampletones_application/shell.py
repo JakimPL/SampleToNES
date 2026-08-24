@@ -122,7 +122,7 @@ class ApplicationShell:
 
     It serves two roles:
 
-    - *Lifecycle* — encodes the DPG initialisation sequence in ``setup()`` and
+    - *Lifecycle* — encodes the DPG initialization sequence in ``setup()`` and
       hides it behind a clean boundary.
     - *Runtime* — tab router, shortcut dispatcher, and per-frame UI driver.
 

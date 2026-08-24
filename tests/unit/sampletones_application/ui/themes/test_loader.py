@@ -69,7 +69,7 @@ class TestEffectiveParent:
 
 class TestLoadedInheritance:
     """The real theme set: every theme resolves to the base plus its own overrides,
-    so a bound item theme keeps the base's colours instead of dropping to DearPyGui
+    so a bound item theme keeps the base's colors instead of dropping to DearPyGui
     defaults for anything it omits.
     """
 
@@ -118,7 +118,7 @@ class TestLoadedInheritance:
 
         Every theme is completed for both states, so one stating only the tone it wears while it can
         be pressed would wear that same tone once it is held back and read as a button that simply
-        does nothing. The danger button states the greyed look itself, which is what the stems list
+        does nothing. The danger button states the grayed look itself, which is what the stems list
         relies on to show that its last row stays.
         """
         dpg.create_context()
@@ -157,7 +157,7 @@ class TestComponentOrder:
     """A theme lays its ground before it paints on it.
 
     DearPyGui fills an item from a theme's components in the order they were created, so the last
-    one covering a colour is the one the item wears. A component naming every item type is the
+    one covering a color is the one the item wears. A component naming every item type is the
     ground a theme stands on; one naming a single type states what that type is meant to look like,
     and it only reaches the item if it comes after the ground.
     """

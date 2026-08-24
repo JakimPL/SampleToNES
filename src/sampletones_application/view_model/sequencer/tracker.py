@@ -28,7 +28,7 @@ class SequencerCellViewModel(BaseModel, frozen=True):
     """The kind of the voice this cell names, absent where it names none.
 
     The cell reads its voice by list position, which says nothing about what that voice is. The
-    kind travels beside it so a reader of the cell — the sample column's summary, the colour the
+    kind travels beside it so a reader of the cell — the sample column's summary, the color the
     slot takes — knows which of the two it is looking at.
     """
 
@@ -67,7 +67,7 @@ class SequencerRowViewModel(BaseModel, frozen=True):
         """Channels every sample column summary spans.
 
         A sample governs the channels its reconstruction covers, so its subcolumns
-        summarise exactly those. Transpose and volume stand on their own, so a row
+        summarize exactly those. Transpose and volume stand on their own, so a row
         naming no sample spans every channel.
         """
         return self.sample_channels or frozenset(self.cells)
@@ -100,7 +100,7 @@ class SequencerRowViewModel(BaseModel, frozen=True):
         select: Callable[[SequencerCellViewModel], str],
         default: str,
     ) -> str:
-        """Summarise one subcolumn across the channels the sample column spans.
+        """Summarize one subcolumn across the channels the sample column spans.
 
         The summary holds a value only where every channel agrees on it, so
         :data:`MIXED` marks each way they can differ: a sample missing from one of

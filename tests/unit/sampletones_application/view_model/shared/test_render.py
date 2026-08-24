@@ -72,7 +72,7 @@ class TestChoicesFollowTheFormat:
         assert settings.spec.sample_rate == 8000
         assert settings.depth == AudioDepth.PCM_U8
 
-    def test_the_normalise_choice_stands_through_a_format_change(self) -> None:
+    def test_the_normalize_choice_stands_through_a_format_change(self) -> None:
         settings = wave_settings().with_normalize(True).with_format(AudioFormat.MP3)
 
         assert settings.normalize

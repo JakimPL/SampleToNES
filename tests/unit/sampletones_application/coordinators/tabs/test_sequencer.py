@@ -1200,7 +1200,7 @@ class TestChannelMuteLifetime:
 def channels_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCoordinator:
     """A coordinator joining the real channels logic to a real grid panel and a real order panel.
 
-    Each panel's colour cues reach DearPyGui, which holds no context here, so the tables are
+    Each panel's color cues reach DearPyGui, which holds no context here, so the tables are
     reported absent and a panel stops once it has recorded the mute set — which is what the
     wiring is read for. The menu bar above the tab is a recorder, so a test can read whether it
     was told. Modifiers are reported as held nowhere; a test that needs Ctrl says so.

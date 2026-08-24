@@ -7,10 +7,10 @@ def expanded_side_width(
 ) -> int:
     """Widens a fixed side column as the viewport grows past the design baseline.
 
-    A tab's centre column stretches while its side columns hold fixed widths, so the extra room a
-    viewport wider than ``baseline_viewport_width`` offers is shared out with the centre taking
+    A tab's center column stretches while its side columns hold fixed widths, so the extra room a
+    viewport wider than ``baseline_viewport_width`` offers is shared out with the center taking
     ``center_weight`` shares against each side's single share. Splitting the surplus
-    ``center_weight + side_panel_count`` ways and granting one share to each side keeps the centre the
+    ``center_weight + side_panel_count`` ways and granting one share to each side keeps the center the
     widest column while the sides breathe on large displays. At the baseline the column sits at its
     configured ``base_width`` and grows only as surplus appears above it.
     """

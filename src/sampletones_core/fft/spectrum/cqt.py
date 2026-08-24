@@ -83,7 +83,7 @@ def calculate_cqt_spectrum_columns(
 
     The signal is advanced by half a hop before transforming, so column ``i``
     represents the frame centered on ``(i + 0.5) * hop_length``. This aligns the
-    per-frame timing with the FFT path, which analyses a window centered on each frame.
+    per-frame timing with the FFT path, which analyzes a window centered on each frame.
 
     Args:
         audio: Input audio as a numpy array.

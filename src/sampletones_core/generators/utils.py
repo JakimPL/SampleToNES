@@ -39,7 +39,7 @@ def get_remaining_generator_classes(
     """
     Maps each remaining generator class to its representative channel generator.
 
-    Channels of one kind share a candidate catalogue, so one channel stands for the
+    Channels of one kind share a candidate catalog, so one channel stands for the
     kind while its candidates are scored. The lowest remaining channel of a kind is
     its representative, which resolves successive picks over same-kind channels to
     the lowest free channel deterministically.

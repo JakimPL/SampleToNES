@@ -158,7 +158,7 @@ class TestPaste(BaseTestSuite):
             ),
         ),
         TestCase(
-            label="a mixed cell leaves its target as it stands while its neighbours clear theirs",
+            label="a mixed cell leaves its target as it stands while its neighbors clear theirs",
             frame=("00 +03 7 | .. ... . | .. ... . | .. ... .",),
             block=(".. ? .",),
             first_subcolumn=SubColumn.VOICE,

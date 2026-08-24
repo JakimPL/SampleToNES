@@ -49,32 +49,32 @@ def addresses(writes: Tuple[RegisterWrite, ...]) -> Tuple[int, ...]:
     return tuple(write.address for write in writes)
 
 
-class TestInitialisation:
+class TestInitialization:
     """The init routine leaves a silent console enabled and sounding the song's first tick."""
 
     SONG: Final = player_song(resting_streams((SOUNDING, RESTING)), NTSC_FREQUENCY, loop_tick=None)
 
     @property
-    def initialisation(self) -> Tuple[RegisterWrite, ...]:
-        return RegisterTrace.from_song(self.SONG, play_calls=0).initialisation
+    def initialization(self) -> Tuple[RegisterWrite, ...]:
+        return RegisterTrace.from_song(self.SONG, play_calls=0).initialization
 
     def test_every_channel_register_is_cleared_first(self) -> None:
-        cleared = self.initialisation[: LAST_CHANNEL_REGISTER - FIRST_CHANNEL_REGISTER + 1]
+        cleared = self.initialization[: LAST_CHANNEL_REGISTER - FIRST_CHANNEL_REGISTER + 1]
         assert addresses(cleared) == tuple(range(FIRST_CHANNEL_REGISTER, LAST_CHANNEL_REGISTER + 1))
         assert all(write.value == SILENCED_REGISTER for write in cleared)
 
     def test_the_channels_are_enabled(self) -> None:
-        assert RegisterWrite(APU_STATUS, CHANNELS_ENABLED) in self.initialisation
+        assert RegisterWrite(APU_STATUS, CHANNELS_ENABLED) in self.initialization
 
     def test_the_frame_counter_runs_without_an_interrupt(self) -> None:
-        assert RegisterWrite(APU_FRAME_COUNTER, FRAME_COUNTER_SEQUENCE) in self.initialisation
+        assert RegisterWrite(APU_FRAME_COUNTER, FRAME_COUNTER_SEQUENCE) in self.initialization
 
     def test_both_sweep_units_are_disabled(self) -> None:
-        assert RegisterWrite(PULSE1_SWEEP, SWEEP_DISABLED) in self.initialisation
-        assert RegisterWrite(PULSE2_SWEEP, SWEEP_DISABLED) in self.initialisation
+        assert RegisterWrite(PULSE1_SWEEP, SWEEP_DISABLED) in self.initialization
+        assert RegisterWrite(PULSE2_SWEEP, SWEEP_DISABLED) in self.initialization
 
     def test_the_sweep_survives_the_clearing_pass(self) -> None:
-        sweeps = [write.value for write in self.initialisation if write.address == PULSE1_SWEEP]
+        sweeps = [write.value for write in self.initialization if write.address == PULSE1_SWEEP]
         assert sweeps[-1] == SWEEP_DISABLED
 
     def test_every_length_counter_loads_once_the_channels_are_enabled(self) -> None:
@@ -85,19 +85,19 @@ class TestInitialisation:
         :data:`APU_STATUS`. The noise channel's is written for that alone; the other three carry
         the first tick's timer high byte.
         """
-        writes = self.initialisation
+        writes = self.initialization
         enabled = writes.index(RegisterWrite(APU_STATUS, CHANNELS_ENABLED))
         for address in (PULSE1_TIMER_HIGH, PULSE2_TIMER_HIGH, TRIANGLE_TIMER_HIGH, NOISE_LENGTH_COUNTER):
             loaded = max(index for index, write in enumerate(writes) if write.address == address)
             assert loaded > enabled
 
-    def test_the_first_tick_sounds_from_initialisation(self) -> None:
-        first_tick = self.initialisation[-WRITES_PER_TICK:]
+    def test_the_first_tick_sounds_from_initialization(self) -> None:
+        first_tick = self.initialization[-WRITES_PER_TICK:]
         assert len(first_tick) == WRITES_PER_TICK
         assert first_tick[0] == RegisterWrite(PULSE1_CONTROL, self.SONG.streams.pulse1[0].control)
 
     def test_the_first_tick_writes_the_registers_that_reset_a_channel(self) -> None:
-        first_tick = self.initialisation[-WRITES_PER_TICK:]
+        first_tick = self.initialization[-WRITES_PER_TICK:]
         assert REGISTERS_WRITTEN_ON_CHANGE.issubset(set(addresses(first_tick)))
 
 

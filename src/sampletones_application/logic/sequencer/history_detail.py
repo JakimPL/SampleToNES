@@ -69,7 +69,7 @@ def _span(first: int, last: int) -> str:
 
 
 def _kind_role(kind: Optional[VoiceKind]) -> HistoryDetailRole:
-    """The role a voice reads under, so its line wears the colour of the kind it is about.
+    """The role a voice reads under, so its line wears the color of the kind it is about.
 
     A voice the pool has stopped holding keeps the plain voice role, the same one the tracker's
     voice slot wears while it names nothing.
@@ -92,7 +92,7 @@ class SequencerHistoryDetail:
     Language-managed words — the loop on/off states — are emitted as
     :class:`HistoryDetailWordSegment` keys and translated when the history view is
     built, keeping committed entries language-independent. A gesture on the voice
-    pool names its voice in the colour of the kind that voice is, so a recording
+    pool names its voice in the color of the kind that voice is, so a recording
     and a hand-written one read apart down the list of entries.
     """
 
@@ -326,7 +326,7 @@ class SequencerHistoryDetail:
         """Describes a regenerated sample: its position, channel, and edited feature.
 
         The channel and the feature both render abbreviated — the ``P``/``p``/``T``/``N``
-        channel letter and the feature's one-letter code in the same colour the details
+        channel letter and the feature's one-letter code in the same color the details
         tab plots it with — mirroring the tracker rows.
         """
         return (
@@ -464,7 +464,7 @@ class SequencerHistoryDetail:
         return HistoryDetailSegment(text=text, role=_kind_role(kind))
 
     def _voice_name(self, voice_id: str) -> HistoryDetailSegment:
-        """The name a voice in the pool carries, read in the colour of the kind it is."""
+        """The name a voice in the pool carries, read in the color of the kind it is."""
         return self._name(
             self._samples_logic.voice_name(voice_id),
             self._samples_logic.voice_kind(voice_id),

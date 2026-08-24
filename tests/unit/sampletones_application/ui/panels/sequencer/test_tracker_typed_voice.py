@@ -69,7 +69,7 @@ class Panel:
         return self.panel._editable_cells.values.get((0, channel, SubColumn.VOICE), STORED_LABEL)
 
     def kind(self, channel: Optional[ChannelName]) -> Optional[VoiceKind]:
-        """The kind the cell cache holds, which is the colour the slot takes with its number."""
+        """The kind the cell cache holds, which is the color the slot takes with its number."""
         return self.panel._cell_kinds.get((0, channel, SubColumn.VOICE))
 
 
@@ -128,7 +128,7 @@ class TestTypingAVoiceNumber:
         assert panel.shown(ChannelName.PULSE1) == STORED_LABEL
 
 
-class TestWhatColourATypedVoiceTakes:
+class TestWhatColorATypedVoiceTakes:
     """The cell takes the kind with the number, so a typed voice reads whole before the project answers."""
 
     def test_a_typed_sample_takes_the_sample_kind(self, panel: Panel) -> None:
@@ -142,7 +142,7 @@ class TestWhatColourATypedVoiceTakes:
         assert panel.kind(ChannelName.NOISE) is VoiceKind.INSTRUMENT
 
     def test_a_refused_voice_leaves_the_cell_its_own_kind(self, panel: Panel) -> None:
-        """Nothing is written, so the slot keeps the colour it already wore."""
+        """Nothing is written, so the slot keeps the color it already wore."""
         panel.type_voice(INSTRUMENT_INDEX, None)
 
         assert panel.kind(None) is None

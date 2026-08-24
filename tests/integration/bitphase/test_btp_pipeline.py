@@ -182,7 +182,7 @@ class TestTheLoaderReadsWhatWasWritten:
             for channel in pattern.channels
         )
 
-    def test_each_channel_is_labelled_as_its_position_names_it(self, document: LoadedProject) -> None:
+    def test_each_channel_is_labeled_as_its_position_names_it(self, document: LoadedProject) -> None:
         pattern = document.songs[0].patterns[0]
         assert [channel.label for channel in pattern.channels] == list(CHANNEL_LABELS)
 

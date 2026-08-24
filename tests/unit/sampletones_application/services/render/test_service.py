@@ -116,7 +116,7 @@ class TestProgressIsReported(BaseTestSuite):
 
 
 class TestNormalizing(BaseTestSuite):
-    """Normalising scales the whole render by what its loudest sample turned out to be."""
+    """Normalizing scales the whole render by what its loudest sample turned out to be."""
 
     def test_the_peak_reaches_full_scale(self, tmp_path: Path) -> None:
         destination = tmp_path / "song.wav"

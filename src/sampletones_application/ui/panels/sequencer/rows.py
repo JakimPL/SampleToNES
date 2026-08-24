@@ -62,7 +62,7 @@ def row_background(
     colors: SequencerColors,
     cues: RowCues,
 ) -> Optional[BaseColor]:
-    """The colour a pattern row's background carries, group and cue taken together.
+    """The color a pattern row's background carries, group and cue taken together.
 
     DearPyGui offers one row background above the zebra stripe, so the row's standing
     emphasis and whatever mark is passing over it arrive as a single shade: the cue is

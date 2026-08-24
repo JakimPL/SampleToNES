@@ -80,7 +80,7 @@ _RIGHT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_INSTRUCTIONS, SUF_PANEL_RIGHT)
 
 
 class _StackedGraphPanel(Protocol):
-    """A centre-column card whose graph display follows a viewport-driven height."""
+    """A center-column card whose graph display follows a viewport-driven height."""
 
     def set_display_height(self, height: int) -> None: ...
 
@@ -351,11 +351,11 @@ class InstructionsTabCoordinator:
         self._instruction_player_logic.clear_audio()
 
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
-        """Persists a centre-column card's collapsed state so it restores on the next launch."""
+        """Persists a center-column card's collapsed state so it restores on the next launch."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
 
     def _repaint_library_favorites(self, node: FileSystemNode) -> None:
-        """Repaints the row whose star was toggled: the catalogue lists a library once, so it is one row."""
+        """Repaints the row whose star was toggled: the catalog lists a library once, so it is one row."""
         self._library_panel.update_favorite_indicators((node,))
 
     def _on_library_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
@@ -450,7 +450,7 @@ class InstructionsTabCoordinator:
         self._sync_graph_heights()
 
     def _build_display_column(self, parent: str) -> None:
-        """Stacks the waveform and spectrum cards down the centre column."""
+        """Stacks the waveform and spectrum cards down the center column."""
         self._waveform_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._spectrum_panel.create_panel(parent)
@@ -487,7 +487,7 @@ class InstructionsTabCoordinator:
             logger.warning(f"Could not load library from {logger.format_path(filepath)}: {exception}")
 
     def save_browser_shape(self) -> None:
-        """Writes down the rows the catalogue stands open, so a later run brings them back."""
+        """Writes down the rows the catalog stands open, so a later run brings them back."""
         self._session_manager.set_expanded_rows(
             self._library_panel.tag,
             self._library_panel.expanded_rows,

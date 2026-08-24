@@ -295,8 +295,8 @@ class GUITreePanel(GUIPanel, ABC):
         """Builds the control showing the favorites alone, as a row of its own under the search box.
 
         The checkbox carries the label, so the words are part of what the reader clicks, and the star
-        beside it reads in the colour the mode it stands for is drawn in. The label reads in the pair
-        every checkbox reads — the text colour while the control is live, the muted one while a
+        beside it reads in the color the mode it stands for is drawn in. The label reads in the pair
+        every checkbox reads — the text color while the control is live, the muted one while a
         rebuild holds it — so the shade states whether the control can be acted on.
         """
         self._favorites_checkbox_tag = compose_tag(self.tag, SUF_CHECKBOX_FAVORITES)
@@ -341,14 +341,14 @@ class GUITreePanel(GUIPanel, ABC):
         self.redraw_tree()
 
     def _apply_favorites_glyph_color(self) -> None:
-        """Colours the star by the mode the control reads, wherever the browser offers one."""
+        """Colors the star by the mode the control reads, wherever the browser offers one."""
         if self._favorites_glyph_tag is None:
             return
 
         dpg_set_palette_color(self._favorites_glyph_tag, self._favorites_glyph_color())
 
     def _favorites_glyph_color(self) -> BaseColor:
-        """The colour the star takes: the favorite colour while the mode is on, muted while it is off."""
+        """The color the star takes: the favorite color while the mode is on, muted while it is off."""
         if self._filter.favorites_only:
             return self._colors.favorite
 
@@ -466,7 +466,7 @@ class GUITreePanel(GUIPanel, ABC):
 
         The emitter runs this once its last batch has attached. A filtered rebuild that drew no
         row fills the cleared tree with the message naming that outcome, so the filter's answer is
-        legible where the rows would be. Applying the filter here lets late-emitted nodes honour
+        legible where the rows would be. Applying the filter here lets late-emitted nodes honor
         an active search, and releasing the lock hands control back to interactive rebuilds.
         """
         if root_tag == self.tree_tag and self._filter.is_active and not drawn_rows:

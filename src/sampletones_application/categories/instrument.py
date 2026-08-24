@@ -55,7 +55,7 @@ class InstrumentImportMessages:
         """Resolves every word the import report prints.
 
         Args:
-            language_manager: The catalogue the words are read from.
+            language_manager: The catalog the words are read from.
 
         Returns:
             Self: The bundle the import handler reads.

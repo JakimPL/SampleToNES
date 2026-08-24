@@ -749,7 +749,7 @@ class TestGroove(BaseTestSuite):
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_every_row_neighbours_the_average(self, test_case: TestCase) -> None:
+    def test_every_row_neighbors_the_average(self, test_case: TestCase) -> None:
         groove = test_case.groove
         shorter, remainder = divmod(groove.total_ticks, test_case.rows)
         longer = shorter + 1 if remainder else shorter

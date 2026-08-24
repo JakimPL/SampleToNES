@@ -261,7 +261,7 @@ class GUISequencerVoicesPanel(GUIPanel):
     def repaint(self) -> None:
         """Issues the selected row's tint again so it takes the palette now in place.
 
-        DearPyGui keeps a row highlight on the table rather than on an item, so the colour
+        DearPyGui keeps a row highlight on the table rather than on an item, so the color
         reaches it only by being pushed again.
         """
         if self._selected_row is None or not dpg.does_item_exist(TAG_SEQUENCER_VOICES_TABLE):
@@ -276,7 +276,7 @@ class GUISequencerVoicesPanel(GUIPanel):
     ) -> None:
         """Marks which kind the row carries, so a converted voice reads apart from a written one.
 
-        The glyph names the kind and its colour repeats it, which is the same pair the tracker's
+        The glyph names the kind and its color repeats it, which is the same pair the tracker's
         voice slot wears — so a row and the cells naming it read as one thing across the two panels.
         """
         kind_cell = dpg.add_table_cell(parent=row_id)

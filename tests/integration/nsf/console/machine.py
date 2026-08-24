@@ -70,7 +70,7 @@ class Console:
 
         raise RuntimeError(f"the routine at {address:#06x} ran for {STEP_BUDGET} instructions without returning")
 
-    def initialise(self) -> Tuple[RegisterWrite, ...]:
+    def initialize(self) -> Tuple[RegisterWrite, ...]:
         """Runs the init routine, which readies the APU and sounds the song's first tick.
 
         Returns:
@@ -88,7 +88,7 @@ class Console:
         return self._call(self._addresses.play, FIRST_SONG_INDEX)
 
     def trace(self, play_calls: int) -> RegisterTrace:
-        """Runs a whole session: initialisation followed by ``play_calls`` play calls.
+        """Runs a whole session: initialization followed by ``play_calls`` play calls.
 
         Args:
             play_calls: How many play calls the run covers.
@@ -96,15 +96,15 @@ class Console:
         Returns:
             RegisterTrace: The writes the driver made, grouped the way the model states them.
         """
-        initialisation = self.initialise()
+        initialization = self.initialize()
         return RegisterTrace(
-            initialisation=initialisation,
+            initialization=initialization,
             play_calls=tuple(self.play() for _ in range(play_calls)),
         )
 
 
 def register_file(trace: RegisterTrace) -> List[Dict[int, int]]:
-    """The APU as the driver leaves it after initialisation and after every call that sounds.
+    """The APU as the driver leaves it after initialization and after every call that sounds.
 
     A tick reaches the hardware as the values standing in the registers once its writes land, and
     the three registers written only on change keep the value an earlier tick left there. Reading
@@ -120,7 +120,7 @@ def register_file(trace: RegisterTrace) -> List[Dict[int, int]]:
     registers: Dict[int, int] = {}
     ticks: List[Dict[int, int]] = []
 
-    for writes in (trace.initialisation, *trace.play_calls):
+    for writes in (trace.initialization, *trace.play_calls):
         if not writes:
             continue
 

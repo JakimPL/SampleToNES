@@ -125,8 +125,8 @@ def _row(
     return SequencerRowViewModel(index=index, cells=cells, sample_channels=sample_channels)
 
 
-class TestWhatColourAVoiceSlotWears:
-    """The slot takes the colour of the kind standing in it, so the grid reports what it holds."""
+class TestWhatColorAVoiceSlotWears:
+    """The slot takes the color of the kind standing in it, so the grid reports what it holds."""
 
     def test_a_slot_naming_nothing_takes_the_neutral_shade(self) -> None:
         panel = _panel()
@@ -140,7 +140,7 @@ class TestWhatColourAVoiceSlotWears:
         [VoiceKind.SAMPLE, VoiceKind.INSTRUMENT],
         ids=lambda kind: kind.value,
     )
-    def test_a_slot_naming_a_voice_takes_that_kinds_colour(self, kind: VoiceKind) -> None:
+    def test_a_slot_naming_a_voice_takes_that_kinds_color(self, kind: VoiceKind) -> None:
         key = (0, ChannelName.PULSE1, SubColumn.VOICE)
         panel = _panel(cell_kinds={key: kind})
 
@@ -157,7 +157,7 @@ class TestWhatColourAVoiceSlotWears:
         [SubColumn.TRANSPOSE, SubColumn.VOLUME],
         ids=lambda subcolumn: subcolumn.value,
     )
-    def test_the_other_slots_keep_their_own_colour(self, subcolumn: SubColumn) -> None:
+    def test_the_other_slots_keep_their_own_color(self, subcolumn: SubColumn) -> None:
         """A pitch and a volume mean the same whatever voice sounds them."""
         panel = _panel(cell_kinds={(0, ChannelName.PULSE1, SubColumn.VOICE): VoiceKind.INSTRUMENT})
 
@@ -260,9 +260,9 @@ class TestWhatARefreshRebinds:
 
 
 class TestWhatAnEditShowsAtOnce:
-    """The number and the colour are written together, so a typed voice reads whole in one frame."""
+    """The number and the color are written together, so a typed voice reads whole in one frame."""
 
-    def test_a_placed_voice_takes_its_colour_with_its_number(self, bound: Dict[Sender, int]) -> None:
+    def test_a_placed_voice_takes_its_color_with_its_number(self, bound: Dict[Sender, int]) -> None:
         panel = _panel()
         key = (0, ChannelName.PULSE1, SubColumn.VOICE)
 
@@ -271,7 +271,7 @@ class TestWhatAnEditShowsAtOnce:
         assert panel._editable_cells.values[key] == display_id(3)
         assert bound[_cell_widget(key)] == THEME_IDS[(SubColumn.VOICE, VoiceKind.INSTRUMENT)]
 
-    def test_a_cleared_slot_drops_its_number_and_its_colour(self, bound: Dict[Sender, int]) -> None:
+    def test_a_cleared_slot_drops_its_number_and_its_color(self, bound: Dict[Sender, int]) -> None:
         key = (0, ChannelName.PULSE1, SubColumn.VOICE)
         panel = _panel(cell_kinds={key: VoiceKind.SAMPLE})
         panel._editable_cells.values[key] = display_id(3)
@@ -298,7 +298,7 @@ class TestWhichThemesAreBuilt:
         panel._create_subcolumn_themes()
         return panel, colors
 
-    def test_the_voice_slot_is_built_in_a_colour_for_each_kind(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_the_voice_slot_is_built_in_a_color_for_each_kind(self, monkeypatch: pytest.MonkeyPatch) -> None:
         panel, _ = self._built(monkeypatch)
 
         voice_themes = {theme_key for theme_key in panel._subcolumn_themes if theme_key[0] is SubColumn.VOICE}
@@ -309,7 +309,7 @@ class TestWhichThemesAreBuilt:
             (SubColumn.VOICE, VoiceKind.INSTRUMENT),
         }
 
-    def test_each_kind_is_built_in_its_own_colour(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_each_kind_is_built_in_its_own_color(self, monkeypatch: pytest.MonkeyPatch) -> None:
         panel, colors = self._built(monkeypatch)
 
         sample = colors[panel._subcolumn_themes[(SubColumn.VOICE, VoiceKind.SAMPLE)] - 1]

@@ -117,14 +117,14 @@ class TestGUIStartup:
         SingleThreadExecutor.reset_shutdown()
         dpg.destroy_context()
 
-    def test_initialises_without_error(self, tmp_path: Path) -> None:
+    def test_initializes_without_error(self, tmp_path: Path) -> None:
         with ExitStack() as stack:
             for display_patch in _display_patches():
                 stack.enter_context(display_patch)
 
             Application(profile=_profile(tmp_path))
 
-    def test_initialises_where_nothing_can_play(self, tmp_path: Path) -> None:
+    def test_initializes_where_nothing_can_play(self, tmp_path: Path) -> None:
         """Editing a song, exporting a module and rendering to a file need no output device.
 
         The rate the audio is rendered at is the consumer's to state, so a machine offering no
@@ -537,7 +537,7 @@ class TestConverterStemsCard:
         converter_logic.set_stems_mode(False)
         assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE)["show"] is False
 
-    def test_a_recording_holding_no_channel_greys_out_but_stays_listed(
+    def test_a_recording_holding_no_channel_grays_out_but_stays_listed(
         self,
         app: Application,
         tmp_path: Path,

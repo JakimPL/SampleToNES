@@ -90,7 +90,7 @@ def _cell_widget(channel: ChannelName, row_index: int, subcolumn: SubColumn) -> 
 def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerTrackerPanel:
     """Builds a panel around the state the channel cues read, with no DearPyGui context.
 
-    The cues touch the layout colours, the theme ids, the header widgets, and the cell
+    The cues touch the layout colors, the theme ids, the header widgets, and the cell
     registry, so those are wired directly and the rest of the panel is left out.
     """
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
@@ -376,7 +376,7 @@ class TestMuteStateReading:
         assert not any(panel._is_muted(channel) for channel in ChannelName.items())
 
 
-class TestChannelTintColour:
+class TestChannelTintColor:
     @pytest.mark.parametrize(
         "channel, expected",
         [
@@ -387,7 +387,7 @@ class TestChannelTintColour:
         ],
         ids=lambda value: value.value if isinstance(value, ChannelName) else "",
     )
-    def test_audible_tint_is_the_identity_colour_at_the_configured_fraction(
+    def test_audible_tint_is_the_identity_color_at_the_configured_fraction(
         self,
         channel: ChannelName,
         expected: Tuple[int, int, int, int],

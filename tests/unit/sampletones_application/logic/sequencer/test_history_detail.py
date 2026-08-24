@@ -382,7 +382,7 @@ class TestVoiceDetails:
 
 
 class TestWhichKindADetailNames:
-    """A line about the pool reads in the colour of the kind of voice it is about."""
+    """A line about the pool reads in the color of the kind of voice it is about."""
 
     def test_a_written_voice_is_added_under_its_own_kind(self) -> None:
         formatter = _formatter(_controller())
@@ -464,7 +464,7 @@ class TestReconstructionDetails:
             (FeatureKey.DUTY_CYCLE, "d", HistoryDetailRole.FEATURE_DUTY_CYCLE),
         ],
     )
-    def test_every_feature_has_a_letter_and_a_colour_role(
+    def test_every_feature_has_a_letter_and_a_color_role(
         self,
         feature_key: FeatureKey,
         letter: str,

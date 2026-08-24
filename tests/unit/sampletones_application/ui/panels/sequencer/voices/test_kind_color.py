@@ -28,26 +28,26 @@ def sequencer_layout(layout_config: LayoutConfig) -> SequencerLayout:
 def _panel(sequencer_layout: SequencerLayout) -> GUISequencerVoicesPanel:
     """Builds a panel without its DearPyGui-dependent constructor.
 
-    The kind's colour is read from the layout alone, so a running GUI context is unnecessary here.
+    The kind's color is read from the layout alone, so a running GUI context is unnecessary here.
     """
     panel = GUISequencerVoicesPanel.__new__(GUISequencerVoicesPanel)
     panel._layout = sequencer_layout
     return panel
 
 
-class TestWhatColourAKindWears:
-    def test_a_sample_wears_the_sample_colour(self, sequencer_layout: SequencerLayout) -> None:
+class TestWhatColorAKindWears:
+    def test_a_sample_wears_the_sample_color(self, sequencer_layout: SequencerLayout) -> None:
         panel = _panel(sequencer_layout)
 
         assert panel._kind_color(VoiceKind.SAMPLE) is sequencer_layout.colors.text.sample
 
-    def test_an_instrument_wears_the_instrument_colour(self, sequencer_layout: SequencerLayout) -> None:
+    def test_an_instrument_wears_the_instrument_color(self, sequencer_layout: SequencerLayout) -> None:
         panel = _panel(sequencer_layout)
 
         assert panel._kind_color(VoiceKind.INSTRUMENT) is sequencer_layout.colors.text.instrument
 
     def test_the_two_kinds_are_told_apart(self, sequencer_layout: SequencerLayout) -> None:
-        """The colour carries the kind, so a list of one hue would say nothing the glyph does not."""
+        """The color carries the kind, so a list of one hue would say nothing the glyph does not."""
         panel = _panel(sequencer_layout)
 
         assert panel._kind_color(VoiceKind.SAMPLE).rgba != panel._kind_color(VoiceKind.INSTRUMENT).rgba

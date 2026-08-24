@@ -86,7 +86,7 @@ def _check_keybindings() -> str:
 
 
 def _check_layout_config() -> str:
-    """Resolves the layout against every shipped palette, since each answers the colour tokens itself."""
+    """Resolves the layout against every shipped palette, since each answers the color tokens itself."""
     from sampletones_application.layout import LayoutConfig, load_layout_config
     from sampletones_application.paths import BEHAVIOR_DIRECTORY, LAYOUT_DIRECTORY
 
@@ -97,7 +97,7 @@ def _check_layout_config() -> str:
 
 
 def _check_themes() -> str:
-    """Resolves the theme set against every shipped palette, since each answers the colour tokens itself."""
+    """Resolves the theme set against every shipped palette, since each answers the color tokens itself."""
     from sampletones_application.paths import THEME_DIRECTORY
     from sampletones_application.ui.themes.loader import ThemeLoader
 

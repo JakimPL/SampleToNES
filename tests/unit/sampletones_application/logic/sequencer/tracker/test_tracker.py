@@ -350,7 +350,7 @@ class TestSetSampleInstrument:
 
 
 class TestSampleSubcolumn:
-    def test_synchronises_across_relevant_channels_even_without_instrument(
+    def test_synchronizes_across_relevant_channels_even_without_instrument(
         self,
     ) -> None:
         controller = _controller()
@@ -379,7 +379,7 @@ class TestSampleSubcolumn:
             assert row.transpose is None
             assert row.volume is None
 
-    def test_synchronises_across_all_channels_when_no_sample_is_referenced(
+    def test_synchronizes_across_all_channels_when_no_sample_is_referenced(
         self,
     ) -> None:
         controller = _controller()

@@ -79,7 +79,7 @@ class TestPlaySchedule(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_only_the_floor_and_the_ceiling_appear(self, test_case: TestCase) -> None:
-        """Consecutive calls advance by one of two neighbouring amounts, so the stream moves evenly."""
+        """Consecutive calls advance by one of two neighboring amounts, so the stream moves evenly."""
         schedule = test_case.schedule
         advances = {schedule.advance_at(play_call) for play_call in range(LONG_RUN_PLAY_CALLS)}
         assert max(advances) - min(advances) <= 1

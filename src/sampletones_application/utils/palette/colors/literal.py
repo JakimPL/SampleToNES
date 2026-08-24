@@ -6,11 +6,11 @@ from sampletones_shared.types.application import ColorRGBA
 
 @dataclass(frozen=True)
 class LiteralColor(BaseColor):
-    """A colour written as a ``#rrggbb`` value, standing on its own."""
+    """A color written as a ``#rrggbb`` value, standing on its own."""
 
     value: ColorRGBA
 
     @property
     def rgba(self) -> ColorRGBA:
-        """The value the colour was written with."""
+        """The value the color was written with."""
         return self.value

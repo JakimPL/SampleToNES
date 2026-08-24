@@ -204,7 +204,7 @@ class TestStemsSection:
 
 
 class TestRowStanding:
-    """A row states where it stands, so the moves it offers grey themselves out from the row alone."""
+    """A row states where it stands, so the moves it offers gray themselves out from the row alone."""
 
     def test_the_only_row_of_the_only_level_can_go_nowhere(self) -> None:
         row = _row("bass")

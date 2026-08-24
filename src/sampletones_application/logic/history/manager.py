@@ -76,7 +76,7 @@ class HistoryManager(CallbackMixin):
 
         Every project transition reaches its handlers through the controller's single
         ``on_project_replaced`` signal, so a handler that keeps transient session state — a
-        listening mute set, an acknowledged prompt — reads this to recognise history
+        listening mute set, an acknowledged prompt — reads this to recognize history
         navigation and carry that state across it, while a new, opened, or closed document
         starts it fresh.
         """

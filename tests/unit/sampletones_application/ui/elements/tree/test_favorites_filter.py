@@ -633,7 +633,7 @@ class TestControl:
 
 
 class TestStarColor:
-    """The star beside the label reads in the colour of the mode it stands for."""
+    """The star beside the label reads in the color of the mode it stands for."""
 
     def test_the_star_reads_favorite_while_the_mode_is_on(self, corpus: BrowserCorpus) -> None:
         panel = build_browser_panel(corpus, set(), favorites_only=True)
@@ -648,7 +648,7 @@ class TestStarColor:
         corpus: BrowserCorpus,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """The colour reaches the star as a token, so the star follows a palette swapped in place."""
+        """The color reaches the star as a token, so the star follows a palette swapped in place."""
         panel = build_browser_panel(corpus, set(), favorites_only=True)
         panel._favorites_glyph_tag = GLYPH_TAG
         colored: List[Tuple[str, BaseColor]] = []

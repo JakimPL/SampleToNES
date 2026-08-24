@@ -4,7 +4,7 @@ from sampletones_application.utils.palette.colors.written import WrittenColor
 
 
 class HeaderColors(BaseModel, extra="forbid", frozen=True):
-    """Colours the tracker's clickable column header takes.
+    """Colors the tracker's clickable column header takes.
 
     ``background`` is the band the header row sits in, the shade a table header carries;
     ``hovered`` and ``active`` are the washes a header label takes under the pointer and while

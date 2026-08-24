@@ -1144,7 +1144,7 @@ class SequencerTabCoordinator:
         """Draws every table again so its tints take the palette now in place.
 
         DearPyGui keeps a table's row, column and cell tints as state of the table rather than
-        as a property of an item, so they take a new colour by being issued again. Each panel
+        as a property of an item, so they take a new color by being issued again. Each panel
         answers for the tints it owns, and this is where the palette asks all three.
         """
         self._sequencer_tracker_panel.repaint()
@@ -1401,7 +1401,7 @@ class SequencerTabCoordinator:
 
         The detail is composed while the sample still holds the outgoing reconstruction, so it reads
         the name being replaced alongside the incoming one. The replacement is announced in the same
-        window, ahead of the substitution, because an editor holding the sample open recognises it by
+        window, ahead of the substitution, because an editor holding the sample open recognizes it by
         the identity of the reconstruction it is about to give up. The frequency adoption, the rename,
         and the substitution share a single history entry, so one undo restores the previous rate,
         name, and audio together.
@@ -1684,7 +1684,7 @@ class SequencerTabCoordinator:
         self._sync_browser_width()
 
     def _build_center_column(self, parent: str) -> None:
-        """Stacks the order table and tracker tracker down the centre column."""
+        """Stacks the order table and tracker tracker down the center column."""
         self._sequencer_order_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._sequencer_tracker_panel.create_panel(parent)

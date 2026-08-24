@@ -22,7 +22,7 @@ class ConversionService(ServiceBase[ConversionResult]):
     """
     Translates raw ``ReconstructionConverter`` callbacks into a uniform result stream.
 
-    This normalises the impedance mismatch between the core converter's ad-hoc
+    This normalizes the impedance mismatch between the core converter's ad-hoc
     callback interface and the subscriber model used throughout the application.
     Library-generation progress is forwarded through the same stream so the
     converter panel has a single unified view.

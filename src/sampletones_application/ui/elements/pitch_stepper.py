@@ -36,7 +36,7 @@ class PitchStepperStyle:
     """The styling a pitch stepper draws itself with, narrowed from the general layout.
 
     A stepper needs only its own dimensions, the plus/minus button dimensions it embeds, and
-    the colour of its read-only value readout. Assembling this at the composition root lets a
+    the color of its read-only value readout. Assembling this at the composition root lets a
     panel that builds steppers receive just these three fields, mirroring the
     :meth:`TreeColors.create` narrowing.
     """

@@ -7,7 +7,7 @@ from sampletones_shared.utils.color import composite
 
 @dataclass(frozen=True)
 class LayeredColor(BaseColor):
-    """A colour carried as one wash drawn over another, kept as the two it was composed from.
+    """A color carried as one wash drawn over another, kept as the two it was composed from.
 
     A surface that offers a single tint takes both washes through this form: the pair keeps
     following the palette, and the value handed over is the shade the two make together.

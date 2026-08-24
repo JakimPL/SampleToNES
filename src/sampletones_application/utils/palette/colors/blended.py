@@ -7,7 +7,7 @@ from sampletones_shared.utils.color import blend
 
 @dataclass(frozen=True)
 class BlendedColor(BaseColor):
-    """A colour carried as a point on the gradient between two others, channel by channel."""
+    """A color carried as a point on the gradient between two others, channel by channel."""
 
     start: BaseColor
     end: BaseColor

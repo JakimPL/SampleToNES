@@ -25,12 +25,12 @@ def context_text(
     element comes from the same place.
 
     Args:
-        language_manager: The catalogue the words are read from.
+        language_manager: The catalog the words are read from.
         text_type: The voice the element is read in.
         element: The context element being read.
 
     Returns:
-        str: The words the catalogue holds for that element in that voice.
+        str: The words the catalog holds for that element in that voice.
     """
     return language_manager[
         Page.GLOBAL,

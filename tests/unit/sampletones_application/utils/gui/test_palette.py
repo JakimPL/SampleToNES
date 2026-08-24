@@ -48,7 +48,7 @@ def context() -> Generator[None, None, None]:
 
 
 def _text_color(item: Sender) -> ColorRGBA:
-    """The item's colour as eight-bit channels, which DearPyGui reports as fractions."""
+    """The item's color as eight-bit channels, which DearPyGui reports as fractions."""
     configuration: Dict[str, object] = dpg.get_item_configuration(item)
     color = configuration["color"]
     assert isinstance(color, (list, tuple))
@@ -62,7 +62,7 @@ def _add_text() -> Sender:
 
 
 class TestArgumentBinding:
-    def test_the_colour_reaches_the_item_as_it_is_bound(
+    def test_the_color_reaches_the_item_as_it_is_bound(
         self,
         context: None,
         accent: BaseColor,
@@ -88,7 +88,7 @@ class TestArgumentBinding:
 
         assert _text_color(item) == LIGHT_ACCENT
 
-    def test_a_literal_colour_stays_as_written(
+    def test_a_literal_color_stays_as_written(
         self,
         context: None,
         source: PaletteSource,
@@ -102,7 +102,7 @@ class TestArgumentBinding:
 
         assert _text_color(item) == LITERAL
 
-    def test_recolouring_one_argument_leaves_one_entry(
+    def test_recoloring_one_argument_leaves_one_entry(
         self,
         context: None,
         accent: BaseColor,
@@ -130,7 +130,7 @@ class TestArgumentBinding:
 
 
 class TestThemeColorBinding:
-    def test_the_theme_colour_takes_the_newly_activated_palette(
+    def test_the_theme_color_takes_the_newly_activated_palette(
         self,
         context: None,
         source: PaletteSource,
@@ -146,7 +146,7 @@ class TestThemeColorBinding:
 
         assert tuple(int(channel) for channel in dpg.get_value(item)) == LIGHT_ACCENT
 
-    def test_a_derived_colour_follows_the_colour_it_came_from(
+    def test_a_derived_color_follows_the_color_it_came_from(
         self,
         context: None,
         source: PaletteSource,

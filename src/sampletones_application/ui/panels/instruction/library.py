@@ -55,7 +55,7 @@ from sampletones_shared.types.callback import MessageCallback, VoidCallback
 
 
 class LibraryLogicProtocol(Protocol):
-    """The library-catalogue contract ``GUIInstructionsLibraryPanel`` drives.
+    """The library-catalog contract ``GUIInstructionsLibraryPanel`` drives.
 
     Typing the collaborator structurally keeps the panel bound to the queries
     its rendering needs — the current-library check runs per node, and the
@@ -78,7 +78,7 @@ class LibraryLogicProtocol(Protocol):
 
 
 class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
-    """The Instructions tab's catalogue of instruction libraries and the generators inside them."""
+    """The Instructions tab's catalog of instruction libraries and the generators inside them."""
 
     _NAME_FONT: Font = Font.REGULAR_SMALL
     _MONOSPACE_CONFIG_NODES: bool = True
@@ -166,9 +166,9 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         super()._setup_handlers()
 
     def _create_controls(self) -> None:
-        """Reads out what the catalogue holds, and offers what can be done to it.
+        """Reads out what the catalog holds, and offers what can be done to it.
 
-        The controls come in two sets: the ones a reader picks from while the catalogue sits still,
+        The controls come in two sets: the ones a reader picks from while the catalog sits still,
         and the progress bar and cancel button a generation replaces them with.
         """
         self._create_library_status()

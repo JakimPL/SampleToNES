@@ -76,7 +76,7 @@ def repeating_song() -> Song:
 
 
 class TestSongBytes:
-    """The exact bytes a hand-built song serialises to.
+    """The exact bytes a hand-built song serializes to.
 
     The layout is the contract the driver reads the song through, so the literal states it in
     full: the header, the timer every pitch sounds at, the dictionary the tokens name, and the
@@ -107,7 +107,7 @@ class TestSongBytes:
         b"\x40\x0a\x00"
     )
 
-    def test_the_song_serialises_to_the_expected_bytes(self) -> None:
+    def test_the_song_serializes_to_the_expected_bytes(self) -> None:
         song = two_tick_song(HALF_RATE_FREQUENCY)
         expected = self.EXPECTED_HEADER + song.pitches.data + self.EXPECTED_STREAMS
         assert song_to_bytes(song, PROGRAM_AREA_BYTES) == expected

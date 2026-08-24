@@ -55,7 +55,7 @@ class ChannelStreams(BaseModel):
 
     @property
     def padded(self) -> Tuple[Tuple[ChannelRegisters, ...], ...]:
-        """The four streams each carried to the song's full length, ready to serialise.
+        """The four streams each carried to the song's full length, ready to serialize.
 
         Every channel reaching the same tick count is what lets the driver read a record by
         multiplying the tick by the channel's record size.

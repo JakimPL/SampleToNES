@@ -45,12 +45,12 @@ def expected(song: Song) -> RegisterTrace:
 class TestTheDriverWritesWhatTheModelStates:
     """The assembled 6502 driver run on py65, held against `RegisterTrace.from_song`."""
 
-    def test_initialisation_readies_the_console_the_way_the_model_states(
+    def test_initialization_readies_the_console_the_way_the_model_states(
         self,
         trace: RegisterTrace,
         expected: RegisterTrace,
     ) -> None:
-        assert trace.initialisation == expected.initialisation
+        assert trace.initialization == expected.initialization
 
     def test_every_play_call_writes_what_the_model_states(
         self,

@@ -60,13 +60,13 @@ class TestLimitLengths:
         assert len(limited[ARPEGGIO]) == ITEM_LIMIT
 
     def test_an_over_long_envelope_is_reported(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             limit_lengths(volume_and_arpeggio(ITEM_LIMIT + 1), limit=ITEM_LIMIT)
 
         assert str(ITEM_LIMIT) in caplog.text
 
     def test_an_envelope_within_the_limit_is_quiet(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             limit_lengths(volume_and_arpeggio(ITEM_LIMIT), limit=ITEM_LIMIT)
 
         assert caplog.text == ""
@@ -83,13 +83,13 @@ class TestItemLimit:
         assert len(equalized[ARPEGGIO]) == ITEM_LIMIT
 
     def test_an_over_long_envelope_is_reported(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             equalize_lengths(volume_and_arpeggio(ITEM_LIMIT + 1), loop=False, limit=ITEM_LIMIT)
 
         assert str(ITEM_LIMIT) in caplog.text
 
     def test_an_envelope_within_the_limit_is_quiet(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             equalize_lengths(volume_and_arpeggio(ITEM_LIMIT), loop=False, limit=ITEM_LIMIT)
 
         assert caplog.text == ""
@@ -105,7 +105,7 @@ class TestUnboundedFormat:
         assert len(equalized[ARPEGGIO]) == length
 
     def test_an_absent_limit_is_quiet(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             equalize_lengths(volume_and_arpeggio(ITEM_LIMIT + 1), loop=False)
 
         assert caplog.text == ""

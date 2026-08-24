@@ -399,7 +399,7 @@ class TestRebindingToAnEditedReconstruction:
     ) -> ReconstructionData:
         """A document over three recordings, each carrying a shape of its own.
 
-        The shapes differ rather than the levels, since loading normalises each recording and
+        The shapes differ rather than the levels, since loading normalizes each recording and
         would read three levels of one shape as the same waveform.
         """
         sample_rate = Config().library.sample_rate

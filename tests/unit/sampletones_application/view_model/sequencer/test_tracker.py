@@ -225,7 +225,7 @@ class TestSampleColumnAggregate(BaseTestSuite):
 
 
 class TestWhichKindTheSampleColumnNames:
-    """The slot's kind is what colours it, so it states one only where its channels agree."""
+    """The slot's kind is what colors it, so it states one only where its channels agree."""
 
     @staticmethod
     def _row(

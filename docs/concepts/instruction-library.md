@@ -13,7 +13,7 @@ describes that search; this page describes the catalog it searches.
 
 The number of distinct instructions is large but fixed — a few thousand per
 channel — and the same candidates are compared against every frame of every
-sample. Rendering each candidate's waveform and analysing its spectrum once, up
+sample. Rendering each candidate's waveform and analyzing its spectrum once, up
 front, turns the per-frame work into a lookup instead of a re-synthesis. A
 library is therefore built once for a given configuration and reused across
 every reconstruction that shares it.

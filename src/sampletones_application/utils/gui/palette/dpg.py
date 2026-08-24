@@ -12,12 +12,12 @@ def dpg_set_palette_color(
     *,
     argument: str = COLOR_ARGUMENT,
 ) -> None:
-    """Colours an item so it follows the palette, in place of passing ``color=`` to DearPyGui.
+    """Colors an item so it follows the palette, in place of passing ``color=`` to DearPyGui.
 
     Args:
-        item: Item to colour.
-        color: Token the colour is read from, kept for the next palette in place.
-        argument: Name of the item's colour argument, for an item that carries more than one.
+        item: Item to color.
+        color: Token the color is read from, kept for the next palette in place.
+        argument: Name of the item's color argument, for an item that carries more than one.
     """
     PaletteBindings.bind(
         item,
@@ -32,15 +32,15 @@ def dpg_add_palette_theme_color(
     *,
     category: int = dpg.mvThemeCat_Core,
 ) -> Sender:
-    """Adds a theme colour that follows the palette, inside an open theme component.
+    """Adds a theme color that follows the palette, inside an open theme component.
 
     Args:
-        key: Theme colour constant the value fills, such as ``dpg.mvThemeCol_Text``.
-        color: Token the colour is read from, kept for the next palette in place.
+        key: Theme color constant the value fills, such as ``dpg.mvThemeCol_Text``.
+        color: Token the color is read from, kept for the next palette in place.
         category: Theme category the constant belongs to.
 
     Returns:
-        Sender: The theme colour item, which repaints every widget bound to the theme.
+        Sender: The theme color item, which repaints every widget bound to the theme.
     """
     item: Sender = dpg.add_theme_color(
         key,

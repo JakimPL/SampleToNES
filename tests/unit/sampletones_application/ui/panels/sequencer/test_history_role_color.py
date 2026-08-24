@@ -23,7 +23,7 @@ def layout_config() -> LayoutConfig:
 def panel(layout_config: LayoutConfig) -> GUISequencerHistoryPanel:
     """Builds a panel without its DearPyGui-dependent constructor.
 
-    A role's colour is read from the layout alone, so a running GUI context is unnecessary here.
+    A role's color is read from the layout alone, so a running GUI context is unnecessary here.
     """
     instance = GUISequencerHistoryPanel.__new__(GUISequencerHistoryPanel)
     instance._layout = layout_config.tabs.sequencer
@@ -31,10 +31,10 @@ def panel(layout_config: LayoutConfig) -> GUISequencerHistoryPanel:
     return instance
 
 
-class TestWhatColourAVoiceRoleWears:
-    """A history line names its voice in the colour of the kind that voice is."""
+class TestWhatColorAVoiceRoleWears:
+    """A history line names its voice in the color of the kind that voice is."""
 
-    def test_a_sample_wears_the_sample_colour(
+    def test_a_sample_wears_the_sample_color(
         self,
         panel: GUISequencerHistoryPanel,
         layout_config: LayoutConfig,
@@ -43,7 +43,7 @@ class TestWhatColourAVoiceRoleWears:
 
         assert panel._role_color(HistoryDetailRole.SAMPLE) is text.sample
 
-    def test_an_instrument_wears_the_instrument_colour(
+    def test_an_instrument_wears_the_instrument_color(
         self,
         panel: GUISequencerHistoryPanel,
         layout_config: LayoutConfig,
@@ -52,7 +52,7 @@ class TestWhatColourAVoiceRoleWears:
 
         assert panel._role_color(HistoryDetailRole.INSTRUMENT) is text.instrument
 
-    def test_a_voice_of_no_stated_kind_wears_the_slot_colour(
+    def test_a_voice_of_no_stated_kind_wears_the_slot_color(
         self,
         panel: GUISequencerHistoryPanel,
         layout_config: LayoutConfig,
@@ -68,7 +68,7 @@ class TestWhatColourAVoiceRoleWears:
 
         assert sample.rgba != instrument.rgba
 
-    def test_every_role_answers_with_a_colour(self, panel: GUISequencerHistoryPanel) -> None:
+    def test_every_role_answers_with_a_color(self, panel: GUISequencerHistoryPanel) -> None:
         """The panel paints whatever the logic tags, so each role states what it wears."""
         for role in HistoryDetailRole:
             assert panel._role_color(role) is not None

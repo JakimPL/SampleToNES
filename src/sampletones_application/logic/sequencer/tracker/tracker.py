@@ -456,7 +456,7 @@ class SequencerTrackerLogic(CallbackMixin):
         transpose: Optional[int] = None,
         volume: Optional[int] = None,
     ) -> None:
-        """Synchronises a subcolumn across the row's relevant channels.
+        """Synchronizes a subcolumn across the row's relevant channels.
 
         Transpose and volume exist independently of the voice slot: they follow the
         sample's channels when one is present, and otherwise reach every channel, so

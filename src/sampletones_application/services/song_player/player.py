@@ -256,7 +256,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
     def _write_chunk(self, stream: pyaudio.Stream, chunk: np.ndarray) -> bool:
         """Writes one row to the device in buffer-sized blocks; reports whether it completed.
 
-        Each block is a separate blocking write, so a stop reached mid-row is honoured within
+        Each block is a separate blocking write, so a stop reached mid-row is honored within
         roughly one buffer period rather than at the next row boundary. That bounds how long the
         writer holds its stream open after a stop, which is what keeps the audio backend safe to
         tear down on demand.

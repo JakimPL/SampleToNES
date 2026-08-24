@@ -21,7 +21,7 @@ def build_sample_branch(
     """Builds the branch listing each source audio with the configurations that reconstructed it.
 
     Every top-level configuration directory contributes its reconstructions under the source folders
-    they mirror, so one audio gathers its variants and each variant is labelled by its configuration.
+    they mirror, so one audio gathers its variants and each variant is labeled by its configuration.
     """
     branch = TreeNode(name, node_type=NodeType.GROUP, parent=parent)
     variants_by_source = collect_variants(scan)

@@ -523,7 +523,7 @@ class TestEditActionsSection:
     """The Edit menu carries the actions of the grid holding the cursor, and names them itself
     while no grid holds one."""
 
-    def test_the_clipboard_actions_are_named_greyed_out_with_no_grid_focused(
+    def test_the_clipboard_actions_are_named_grayed_out_with_no_grid_focused(
         self,
         framework: _DearPyGuiRecorder,
     ) -> None:

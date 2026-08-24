@@ -117,7 +117,7 @@ class TestPaste(BaseTestSuite):
             ),
         ),
         TestCase(
-            label="a mixed cell leaves its target as it stands while its neighbours take theirs",
+            label="a mixed cell leaves its target as it stands while its neighbors take theirs",
             order=(
                 "01 02 03",
                 SILENT,

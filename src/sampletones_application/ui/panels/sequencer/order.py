@@ -310,10 +310,10 @@ class GUISequencerOrderPanel(GUIPanel):
             self._register_handlers()
 
     def _create_entry_themes(self) -> None:
-        """Colours every pattern entry, in the shade its channel sounds and the shade it is silenced.
+        """Colors every pattern entry, in the shade its channel sounds and the shade it is silenced.
 
-        The entry themes target only the selectable text, so they leave every other colour to the
-        global theme; the dimmed variant keeps the entry colour at reduced alpha, so a silenced
+        The entry themes target only the selectable text, so they leave every other color to the
+        global theme; the dimmed variant keeps the entry color at reduced alpha, so a silenced
         channel's frames stay readable and editable while the others are worked on. A row label
         carries the header's hover and press washes instead, so it reads as the switch it is.
         """
@@ -570,7 +570,7 @@ class GUISequencerOrderPanel(GUIPanel):
         """Issues every tint the table holds as its own state.
 
         DearPyGui keeps a row, column or cell highlight on the table rather than on an item,
-        so a colour reaches it only by being pushed again. Gathering the pushes here gives
+        so a color reaches it only by being pushed again. Gathering the pushes here gives
         the palette one call to make and keeps a rebuilt table and a recolored one identical.
         """
         if not dpg.does_item_exist(TAG_SEQUENCER_ORDER_TABLE):
@@ -628,7 +628,7 @@ class GUISequencerOrderPanel(GUIPanel):
         )
 
     def _tint_channel_rows(self) -> None:
-        """Washes each channel row with a light tint of its identity colour.
+        """Washes each channel row with a light tint of its identity color.
 
         Uses a row highlight so it sits on a layer beneath the position and cursor
         highlights, which keep working; a cleared cursor cell falls back to the row
@@ -900,6 +900,7 @@ class GUISequencerOrderPanel(GUIPanel):
 
         self._apply_state(OrderInputState(cursor=cursor))
 
+    # TODO: to abstract
     def _on_cell_held(self, _sender: Sender, app_data: Sender) -> None:
         """Carries the selection to the cell under a held pointer, which is what drags a range out.
 
@@ -1086,15 +1087,18 @@ class GUISequencerOrderPanel(GUIPanel):
             dpg.add_separator()
             self.add_action_items(target)
 
+    # TODO: to abstract
     @property
     def edit_surface(self) -> OrderEditSurface:
         """This table as the menu bar's Edit menu reaches it."""
         return self._surface
 
+    # TODO: to abstract
     def input_state(self) -> OrderInputState:
         """Where the cursor stands and what it has selected, which a target is resolved from."""
         return self._input_state
 
+    # TODO: to abstract
     def owns_keys(self) -> bool:
         """Whether the table owns the next key, which is also what the Edit menu asks."""
         return self._keys_active()
@@ -1195,7 +1199,7 @@ class GUISequencerOrderPanel(GUIPanel):
         shortcut_id: ShortcutId,
         position: int,
     ) -> None:
-        """Adds a move item, greyed out (disabled) when the move would have no effect.
+        """Adds a move item, grayed out (disabled) when the move would have no effect.
 
         The action names both the direction it moves and the accelerator it prints, so the item a
         reader sees is the one the key press performs.
@@ -1226,6 +1230,7 @@ class GUISequencerOrderPanel(GUIPanel):
         """
         return self._tab_active() and self._input_state.cursor is not None and not self._router.is_field_focused
 
+    # TODO: to extract common parts [_on_key_pressed]
     def _on_key_pressed(self, event: KeyEvent) -> bool:
         """Applies an order key to the active cell, reporting whether the table consumed it.
 
@@ -1536,7 +1541,7 @@ class GUISequencerOrderPanel(GUIPanel):
         return None
 
     def _refresh_remove_enabled(self) -> None:
-        """Enables ``[-]`` while a press would remove a frame, so a greyed-out button tells the
+        """Enables ``[-]`` while a press would remove a frame, so a grayed-out button tells the
         user that removal awaits a selected frame.
         """
         if self._buttons is not None:
