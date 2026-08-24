@@ -3,7 +3,7 @@ from typing import List, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
-from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard import KeyEvent
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, CTRL_SHIFT
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn

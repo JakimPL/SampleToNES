@@ -4,9 +4,11 @@ from typing import Any, Dict, FrozenSet, List, Optional, Tuple
 import pytest
 
 from sampletones_application.ui.elements.table.cells import EditableCells
-from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.display import CellKey, CellKinds
-from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel, ThemeKey
+from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker.callbacks import ThemeKey
+from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.tracker.themes import TrackerThemes
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.written import LiteralColor
 from sampletones_application.view_model.sequencer.channels import (
@@ -60,6 +62,22 @@ def _keys() -> List[CellKey]:
     ]
 
 
+def _themes(
+    subcolumn: Dict[ThemeKey, int],
+    muted_subcolumn: Dict[ThemeKey, int],
+    *,
+    header: int = 0,
+    muted_header: int = 0,
+) -> TrackerThemes:
+    """A themes object holding the ids under test, standing in for ones DearPyGui built."""
+    themes = TrackerThemes.__new__(TrackerThemes)
+    themes._subcolumn = dict(subcolumn)
+    themes._muted_subcolumn = dict(muted_subcolumn)
+    themes._header = header
+    themes._muted_header = muted_header
+    return themes
+
+
 def _panel(
     *,
     cell_kinds: Optional[CellKinds] = None,
@@ -72,8 +90,7 @@ def _panel(
         tracker=SimpleNamespace(muted_text_fraction=MUTED_TEXT_FRACTION),
     )
     panel._cell_kinds = dict(cell_kinds or {})
-    panel._subcolumn_themes = dict(THEME_IDS)
-    panel._muted_subcolumn_themes = dict(MUTED_THEME_IDS)
+    panel._themes = _themes(THEME_IDS, MUTED_THEME_IDS)
     panel._current_channels = SequencerChannelsViewModel(muted=muted)
     panel._current_row_count = ROW_COUNT
     panel._editable_cells = EditableCells()
@@ -280,44 +297,3 @@ class TestWhatAnEditShowsAtOnce:
 
         assert key not in panel._editable_cells.values
         assert bound[_cell_widget(key)] == THEME_IDS[(SubColumn.VOICE, None)]
-
-
-class TestWhichThemesAreBuilt:
-    @staticmethod
-    def _built(monkeypatch: pytest.MonkeyPatch) -> Tuple[GUISequencerTrackerPanel, List[BaseColor]]:
-        colors: List[BaseColor] = []
-
-        def _record(color: BaseColor, *_arguments: Any) -> int:
-            colors.append(color)
-            return len(colors)
-
-        monkeypatch.setattr(tracker_module, "create_selectable_text_theme", _record)
-        panel = _panel()
-        panel._subcolumn_themes = {}
-        panel._muted_subcolumn_themes = {}
-        panel._create_subcolumn_themes()
-        return panel, colors
-
-    def test_the_voice_slot_is_built_in_a_color_for_each_kind(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        panel, _ = self._built(monkeypatch)
-
-        voice_themes = {theme_key for theme_key in panel._subcolumn_themes if theme_key[0] is SubColumn.VOICE}
-
-        assert voice_themes == {
-            (SubColumn.VOICE, None),
-            (SubColumn.VOICE, VoiceKind.SAMPLE),
-            (SubColumn.VOICE, VoiceKind.INSTRUMENT),
-        }
-
-    def test_each_kind_is_built_in_its_own_color(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        panel, colors = self._built(monkeypatch)
-
-        sample = colors[panel._subcolumn_themes[(SubColumn.VOICE, VoiceKind.SAMPLE)] - 1]
-        instrument = colors[panel._subcolumn_themes[(SubColumn.VOICE, VoiceKind.INSTRUMENT)] - 1]
-
-        assert (sample.rgba, instrument.rgba) == (TEXT_COLORS.sample.rgba, TEXT_COLORS.instrument.rgba)
-
-    def test_every_theme_has_a_dimmed_twin(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        panel, _ = self._built(monkeypatch)
-
-        assert set(panel._muted_subcolumn_themes) == set(panel._subcolumn_themes)

@@ -3,8 +3,8 @@ from typing import List, Optional, Tuple
 import pytest
 
 from sampletones_application.ui.elements.table.cells import EditableCells
-from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.input.edit import EditAction
+from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.voices import (
     SequencerVoicesViewModel,

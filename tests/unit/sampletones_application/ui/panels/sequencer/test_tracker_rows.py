@@ -3,14 +3,14 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import pytest
 
-from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.columns import (
     HEADER_TABLE_ROW,
     tracker_table_column,
     tracker_table_row,
 )
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
-from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.utils.palette.colors.written import LiteralColor
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,

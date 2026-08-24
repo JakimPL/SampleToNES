@@ -6,8 +6,10 @@ import pytest
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.paths import LANG_EN
-from sampletones_application.ui.panels.sequencer import tracker as tracker_module
-from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.tracker import menu as menu_module
+from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker.menu import TrackerMenu
+from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.modifiers import Modifier
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
@@ -15,6 +17,7 @@ from sampletones_application.view_model.sequencer.channels import (
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
+from tests.suite.shortcuts import shipped_source
 
 SENDER_WIDGET_ID: Sender = 8100
 """A stand-in for the handler-registry id DearPyGui passes as the callback's sender."""
@@ -92,27 +95,33 @@ def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerTrackerPanel:
     the menu is built the way the panel builds it, from the real language file, so the item labels
     under test are the ones a user reads.
     """
+    language_manager = LanguageManager(LANG_EN)
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._column_labels = dict(COLUMN_LABELS)
     panel._header_columns = {widget: column for column, widget in HEADER_WIDGETS.items()}
     panel._current_channels = SequencerChannelsViewModel(muted=muted)
-    panel._create_channel_switch(LanguageManager(LANG_EN))
+    panel._create_channel_switch(language_manager)
+    panel._menu = TrackerMenu(
+        panel,
+        language_manager=language_manager,
+        shortcut_source=shipped_source(),
+    )
     return panel
 
 
 @pytest.fixture
 def recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuRecorder:
     instance = _MenuRecorder()
-    monkeypatch.setattr(tracker_module.dpg, "add_menu_item", instance.add_menu_item)
-    monkeypatch.setattr(tracker_module.dpg, "add_text", instance.add_text)
-    monkeypatch.setattr(tracker_module.dpg, "add_separator", instance.add_separator)
-    monkeypatch.setattr(tracker_module.FontRegistry, "bind_to_item", lambda item, font: None)
+    monkeypatch.setattr(menu_module.dpg, "add_menu_item", instance.add_menu_item)
+    monkeypatch.setattr(menu_module.dpg, "add_text", instance.add_text)
+    monkeypatch.setattr(menu_module.dpg, "add_separator", instance.add_separator)
+    monkeypatch.setattr(menu_module.FontRegistry, "bind_to_item", lambda item, font: None)
 
     @contextlib.contextmanager
     def _popup() -> Iterator[None]:
         yield
 
-    monkeypatch.setattr(tracker_module, "context_menu", _popup)
+    monkeypatch.setattr(menu_module, "context_menu", _popup)
     return instance
 
 

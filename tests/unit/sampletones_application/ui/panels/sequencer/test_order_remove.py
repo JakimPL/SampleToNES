@@ -5,7 +5,7 @@ from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
     OrderInputState,
 )
-from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
+from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
 from sampletones_core.constants.enums import ChannelName
 
 POSITION_COUNT = 4

@@ -28,8 +28,8 @@ from sampletones_application.ui.panels.sequencer.input.order import (
     OrderInputState,
 )
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
-from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel, OrderKey
-from sampletones_application.ui.panels.sequencer.tracker import CellKey, GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel, OrderKey
+from sampletones_application.ui.panels.sequencer.tracker.panel import CellKey, GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.modifiers import Modifier
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
@@ -97,7 +97,7 @@ def _tracker(
     states: List[TrackerInputState] = []
     monkeypatch.setattr(panel, "_apply_state", states.append)
     monkeypatch.setattr(panel, "_cell_at", lambda: reached)
-    _hold_modifiers(monkeypatch, "tracker", shift)
+    _hold_modifiers(monkeypatch, "tracker.panel", shift)
     return panel, states
 
 
@@ -121,7 +121,7 @@ def _order(
     states: List[OrderInputState] = []
     monkeypatch.setattr(panel, "_apply_state", states.append)
     monkeypatch.setattr(panel, "_cell_at", lambda: reached)
-    _hold_modifiers(monkeypatch, "order", shift)
+    _hold_modifiers(monkeypatch, "order.panel", shift)
     return panel, states
 
 

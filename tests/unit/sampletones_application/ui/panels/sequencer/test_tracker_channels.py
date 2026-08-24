@@ -8,9 +8,10 @@ from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.paths import LANG_EN
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer import channels as channels_module
-from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.columns import tracker_table_column
-from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel, ThemeKey
+from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker.callbacks import ThemeKey
+from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.modifiers import (
     CTRL,
     NO_MODIFIERS,
@@ -23,6 +24,7 @@ from sampletones_application.view_model.sequencer.channels import (
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import ColorRGBA, Sender
+from tests.unit.sampletones_application.ui.panels.sequencer.test_tracker_cell_themes import _themes
 
 HEADER_WIDGET_ID = 7100
 """A stand-in for the header selectable id DearPyGui passes as the callback's sender."""
@@ -107,10 +109,12 @@ def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerTrackerPanel:
     panel._current_channels = SequencerChannelsViewModel(muted=muted)
     panel._current_row_count = ROW_COUNT
     panel._cell_kinds = {}
-    panel._header_theme = HEADER_THEME
-    panel._muted_header_theme = MUTED_HEADER_THEME
-    panel._subcolumn_themes = dict(SUBCOLUMN_THEMES)
-    panel._muted_subcolumn_themes = dict(MUTED_SUBCOLUMN_THEMES)
+    panel._themes = _themes(
+        SUBCOLUMN_THEMES,
+        MUTED_SUBCOLUMN_THEMES,
+        header=HEADER_THEME,
+        muted_header=MUTED_HEADER_THEME,
+    )
     panel._header_columns = {_header_widget(channel): channel for channel in HEADER_COLUMNS}
     panel._create_channel_switch(LanguageManager(LANG_EN))
     panel._editable_cells = EditableCells()
