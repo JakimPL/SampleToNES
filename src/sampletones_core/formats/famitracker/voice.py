@@ -45,12 +45,12 @@ class ImportedVoice:
 def instrument_to_voice(instrument: Instrument2A03) -> ImportedVoice:
     """Makes a voice from a FamiTracker instrument, and names what the instrument stated past it.
 
-    A voice carries a volume, an arpeggio and a duty-cycle envelope, and one loop point every
-    dimension follows, so those come across as they stand. A tracker instrument states more than
-    that — a pitch bend, a release segment, an arpeggio mode, a loop point of its own per
-    sequence — and each of those is reported, so a reader learns what the file held.
+    A voice carries a volume, an arpeggio and a duty-cycle envelope, each with the item it
+    repeats from, so those come across as they stand. A tracker instrument states more than that
+    — a pitch bend, a release segment, an arpeggio mode — and each of those is reported, so a
+    reader learns what the file held.
 
-    The voice measures its arpeggio against the roots a voice added by hand rests on, since a
+    The voice measures its arpeggio against the pitch a voice added by hand rests at, since a
     tracker instrument sounds at whatever note a row names it with.
 
     Args:

@@ -27,9 +27,6 @@ starts carrying.
   one.
 * Arpeggio modes: a sequence's `setting` byte states absolute. Fixed, relative and scheme need an
   enum of their own, and scheme needs the item bit-packing FamiTracker gives it.
-* A loop point per envelope: a voice states one point, applied to every populated sequence.
-* A sample's loop point is offered as a switch in the voice list, though the model carries the
-  point for both kinds of voice.
 * A transpose or a volume typed in the sample column of a row holding no sample reaches every
   channel. The column summarizes the channels its samples cover, and a row covering none falls
   back to all four so a value typed there lands somewhere; the reference slot keeps the narrower
@@ -65,6 +62,13 @@ starts carrying.
   and the panels beside them. The language-keys check expands such a helper over the whole enum, so
   a member no call names is reached all the same and stands unnoticed. Spelling those keys literally
   at the call site would make each entry exactly checkable and retire the enums that remain.
+* An edit path reaching the project outside a transaction records itself as `UNTRACKED`: the
+  label reads "Edit", the detail line is empty and the entry coalesces with nothing, so a drag
+  becomes one entry per value. `HistoryManager.handle_mutation` names that gap the moment it
+  happens, but only where `strict_history` is on, and the shipped deployment leaves it off
+  (`sampletones_config/application/deployment.yaml`), so a new path ships self-healed and
+  silent. Turning it on for the test run — the suite builds the whole application — would hold
+  every path to a transaction at the point one is added.
 * Respecting FamiTracker limitations
 * Per-tab undo routing
 * In-application console

@@ -32,14 +32,17 @@ while the larger audio data travels alongside it in the same archive. A
 
 ### `voices`
 
-Every voice carries an `id`, a `name`, and the `loop_point` its envelopes repeat
-from while a note is held, or `null` where they play once. The `kind` says what
-else it carries:
+Every voice carries an `id` and a `name`. The `kind` says what else it carries:
 
 | `kind` | Contents |
 | --- | --- |
 | `sample` | the `reconstruction_id` of its audio member |
-| `instrument` | its `envelopes` — the `volume`, `arpeggio` and `duty_cycle` values it writes, each a list of one item per tick — and the `root_pitch` and `root_period` those values are measured against |
+| `instrument` | its `envelopes` — `volume`, `arpeggio` and `duty_cycle` — and the `initial_pitch` and `initial_period` those values are measured against |
+
+Each envelope holds its `items`, one per tick, and the `loop_point` those items repeat
+from while a note is held, or `null` where they play once and the last item stands for as
+long as the note sounds. Every envelope states its own point, so a two-item duty cycle
+circles on its own period beside a longer volume envelope.
 
 ### `song`
 

@@ -65,7 +65,8 @@ reading answers for both kinds of voice: a sample plays the frames its conversio
 channel, a hand-written instrument the frames its envelopes make of it. The sequencer renders
 those instructions to audio and the player encodes them into register values, so what a listener
 hears and what the console plays are the same walk read two ways rather than two implementations of
-one rule.
+one rule. A voice sounded on its own — a preview, an audition at a note a key names — takes the
+same two steps a row takes, so it lives there too rather than beside whichever surface asked.
 
 **Equal temperament sits at the bottom.** The MIDI pitch limits and the A4 reference are
 `sampletones_shared/constants/music.py`, and the pitch-to-frequency conversion they govern is

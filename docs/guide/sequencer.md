@@ -47,15 +47,17 @@ file](../formats/famitracker.md#c-reading-an-instrument-file).
 plays into an instrument of its own, so a recorded part becomes envelopes you edit by
 hand.
 
-Right-click any voice to **Edit**, **Rename**, **Duplicate**, **Remove**, or reorder
-it, and toggle its **Loop** flag. **Export instrument...** writes the voice out as a
-`.fti` another tracker reads — a sample holds one instrument per channel it plays, so
-it asks which. The **Edit** menu carries the same actions for the voice you have
-picked. The right-click menu also names how much room the voice takes on the NES — a
-sample's total and then each channel it plays, and an instrument's single figure —
-measured as its **Loop** flag has it. The figures are in bytes, and they count what a
-FamiTracker export saves. Removing a voice that patterns still use asks first, because
-it clears every row that references it.
+Right-click any voice to **Edit**, **Rename**, **Duplicate**, **Remove**, or reorder it.
+**Export instrument...** writes the voice out as a `.fti` another tracker reads — a
+sample holds one instrument per channel it plays, so it asks which. The **Edit** menu
+carries the same actions for the voice you have picked. The right-click menu also names
+how much room the voice takes on the NES — a sample's total and then each channel it
+plays, and an instrument's single figure. The figures are in bytes, and they count what a
+FamiTracker export saves. Removing a voice that patterns still use asks first, because it
+clears every row that references it.
+
+Hovering a row says what that voice is in one line: its name, whether it is a sample or
+an instrument, the channels a sample plays, and the room it takes.
 
 ## Writing a pattern
 

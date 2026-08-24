@@ -39,10 +39,17 @@ a control over what is heard. The contracts here bind every tab and every player
 
 ## Two kinds of sound
 
-**Preview** — a quick audition fired by a click: a file or reconstruction in a browser tree, a
-sample in the sequencer. A preview is ephemeral. It sounds once, holds the device without claiming
+**Preview** — a quick audition fired by a click or a key: a file or reconstruction in a browser
+tree, a voice in the sequencer, or the instrument the Reconstructions tab has open, sounded at the
+note a piano key names. A preview is ephemeral. It sounds once, holds the device without claiming
 ownership of it, and is meant to be heard and forgotten. It yields the device to intentional
 playback, and it answers to Stop.
+
+An instrument's audition is a preview of that kind. It reads the generator chosen on the
+instruments card, takes the note from the keyboard's two octaves above the octave the tracker
+types in, and renders the voice through the same two steps a tracker row takes — the step from the
+instrument's own pitch to the note, at full volume. The plot card draws the same rendering at the
+pitch the instrument stands at, so what is seen and what is heard name one generator.
 
 **Intentional playback** — the audio a tab is built around: a reconstruction's audio, an
 instruction's audio, or the sequencer song. It is owned by the source that started it, and it is

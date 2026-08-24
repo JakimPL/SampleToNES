@@ -137,9 +137,12 @@ choose **Add to Sequencer** (see the [sequencer guide](sequencer.md)).
 
 For finer control, the **Instruments** panel on the right shows each channel's
 instrument — its pitch, volume, arpeggio, and duty sequences — which you can
-edit by dragging the bars or typing values. Clearing a sequence hands that
-dimension back to the channel, so an instrument with its volume sequence cleared
-plays at whatever volume the channel is set to.
+edit by dragging the bars or typing values. Typing `|` before an item marks where
+that sequence repeats from while a note is held, so `15 14 | 12 10` attacks and then
+circles the last two values. Each sequence keeps its own point, so a short duty cycle
+can circle beside a longer volume envelope. Clearing a sequence hands that dimension
+back to the channel, so an instrument with its volume sequence cleared plays at
+whatever volume the channel is set to.
 
 Beside each channel is the room its instrument takes on the NES, with the whole
 sample's above them, so you can see what an edit costs. The figures are in bytes
@@ -152,9 +155,11 @@ An **instrument** — a voice you wrote by hand rather than converted, see the
 [sequencer guide](sequencer.md#voices-samples-and-instruments) — opens here too, from
 the **Voices** list's right-click ▸ **Edit**. It stands on no recording, so the tab
 shows its envelopes alone: one set every channel reads, under the instrument's own
-name. **Root pitch** is the note its arpeggio is measured against on the melodic
-channels and **Root period** the one on **Noise**, and **Loop point** is the tick its
-envelopes repeat from while a note is held — an attack followed by a sustained tail.
+name. A row of the tracker states the note it sounds at, so the pitch steppers stand
+down and **Audition** takes their place: pick **Pulse**, **Triangle** or **Noise**, and
+the note keys — `Z` to `M` for one octave and `Q` to `U` for the one above it, at the
+octave the tracker types in — play the instrument on that generator. The waveform card
+draws what you would hear, in that generator's own color, and redraws as you edit.
 Editing an instrument puts away whatever reconstruction the tab held.
 
 ## Instructions

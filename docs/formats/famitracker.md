@@ -142,19 +142,18 @@ Each sequence carries:
 - **setting** — the sequence mode; for arpeggio, `0` selects absolute (the offsets
   are added to the played note).
 
-**Looping.** A voice's loop point sets every populated sequence to repeat from that
-item, so its envelopes sustain a held note from there on; a voice playing its
-envelopes once leaves every loop point at `-1`. A point beyond a sequence's own items
-repeats its final item, which is the value it would hold anyway.
+**Looping.** Each sequence states the item it repeats from, so a held note sustains from
+that item on. A dimension written without one leaves its loop point at `-1` and plays its
+items once. Every envelope carries its own point, so a two-item duty cycle circles on its
+own period beside a longer volume envelope. A point beyond a sequence's own items repeats
+its final item, which is the value it would hold anyway.
 
 **Lengths.** FamiTracker advances each sequence on its own per-tick counter. A sequence
 that reaches its last item halts and leaves the value it wrote applied, which the driver
-holds for as long as the note sounds (`CSeqInstHandler::UpdateInstrument`). A one-shot
-instrument therefore carries every dimension at the length it was written: a two-item
-volume envelope beside a one-item duty envelope plays exactly as a padded pair would, and
-costs the padding less. A looping instrument brings its populated dimensions to the
-shortest length instead, so the envelopes repeat in step and the trailing zero that
-releases the note is dropped from the cycle.
+holds for as long as the note sounds (`CSeqInstHandler::UpdateInstrument`). Every
+dimension therefore carries the length it was written at: a two-item volume envelope
+beside a one-item duty envelope plays exactly as a padded pair would, and costs the
+padding less.
 
 Every length stays within the 252 items a FamiTracker sequence holds, so a reconstruction
 longer than 252 frames — 8.4 s at the default 30 fps — exports its opening 252 frames and
@@ -208,17 +207,15 @@ one into the voice pool as a hand-written [instrument](../glossary.md#instrument
 `instrument.py::read_fti` parses the layout in section A.1, and
 `voice.py::instrument_to_voice` makes a voice of the 2A03 instrument it holds.
 
-A voice carries three of the five dimensions — volume, arpeggio and duty — and one loop
-point every dimension follows, so those come across as they stand. The voice takes the
-name the file states, and a file naming nothing leaves the voice named after the file
-itself. The arpeggio is read as offsets from the roots a hand-written voice rests on,
-since a tracker instrument sounds at whatever note a row names it with.
+A voice carries three of the five dimensions — volume, arpeggio and duty — each with the
+item it repeats from, so those come across as they stand. The voice takes the name the
+file states, and a file naming nothing leaves the voice named after the file itself. The
+arpeggio is read as offsets from the pitch a hand-written voice rests at, since a tracker
+instrument sounds at whatever note a row names it with.
 
-**Which loop point the voice adopts.** One sequence governs and the rest follow it: the
-volume sequence wherever it is written, since that is the one shaping a held note, and
-otherwise the first sequence the instrument carries. A governing sequence looping from
-one of its items gives the voice that point; one halting at its end leaves the voice
-playing its envelopes once.
+A sequence looping from one of its items gives that dimension the point; one halting at
+its end leaves the dimension playing its items once, holding the last of them for as long
+as the note sounds. A point outside the items the sequence carries is read as no point.
 
 **What the voice leaves to the file.** A tracker instrument states more than a voice
 holds, and each of those is reported once the import lands, so a reader learns what the
@@ -230,7 +227,6 @@ file carried (`InstrumentOmission` in `voice.py`):
 | a hi-pitch envelope | the same |
 | a release point | a note the pattern cuts with a note-off |
 | an arpeggio in fixed, relative or scheme mode | absolute offsets |
-| a loop point per envelope | one point every dimension follows |
 
 Each of these is a dimension the project model will grow to hold; `bugs-and-todos.md`
 under **Tracker** owns that list.
@@ -309,8 +305,7 @@ chunk once. A per-instrument or per-sample figure states that instrument's own c
 module total is therefore at most the sum of them. Within one instrument each kind appears
 once, so its own sequences are charged once each.
 
-**Looping levels the sequences.** A looping instrument brings its populated dimensions to the
-shortest length, while a one-shot keeps each dimension as written (section B), so the two forms
-of one set of envelopes cost differently. A voice carries the loop point that decides which
-applies; a reconstruction standing on its own is measured as a one-shot, matching the instrument
-its **Export instrument** writes.
+**Every dimension is charged at its own length.** A sequence is written at the length it holds
+(section B), so a figure counts each dimension as it stands and the loop point one of them
+carries adds a byte, not a padding. What a voice is measured at is therefore what its
+**Export instrument...** writes.
