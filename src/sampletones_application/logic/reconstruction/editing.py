@@ -4,6 +4,7 @@ from typing import Dict, Optional, Protocol, Union
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
+from sampletones_core.project.voices.instrument import Instrument
 
 
 @dataclass(frozen=True)
@@ -48,3 +49,16 @@ class InstrumentEditingProtocol(Protocol):
 
     def write_envelope(self, feature_key: FeatureKey, envelope: Envelope[int]) -> None:
         """Writes one dimension of the instrument in front of the panel."""
+
+
+class InstrumentAuditionProtocol(Protocol):
+    """Where the voice an audition sounds comes from.
+
+    An audition plays the instrument the tab is showing, at the note a key names, so it reads the
+    voice whole rather than the envelopes a panel draws: the frames it sounds are made from the
+    envelopes and the pitch they are measured against together.
+    """
+
+    @property
+    def instrument(self) -> Optional[Instrument]:
+        """The instrument in front of the tab, or ``None`` while it shows a recording or nothing."""

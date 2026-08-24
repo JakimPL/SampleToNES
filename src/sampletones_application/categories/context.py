@@ -3,13 +3,19 @@ from typing import Dict, Final
 from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, GeneratorName
 
 CHANNEL_ELEMENTS: Final[Dict[ChannelName, ContextElements]] = {
     ChannelName.PULSE1: ContextElements.PULSE_1,
     ChannelName.PULSE2: ContextElements.PULSE_2,
     ChannelName.TRIANGLE: ContextElements.TRIANGLE,
     ChannelName.NOISE: ContextElements.NOISE,
+}
+
+GENERATOR_ELEMENTS: Final[Dict[GeneratorName, ContextElements]] = {
+    GeneratorName.PULSE: ContextElements.PULSE,
+    GeneratorName.TRIANGLE: ContextElements.TRIANGLE,
+    GeneratorName.NOISE: ContextElements.NOISE,
 }
 
 
@@ -63,3 +69,16 @@ def channel_label(
     channel read it from one entry, so a reader meets the same name for the same channel.
     """
     return context_label(language_manager, CHANNEL_ELEMENTS[channel])
+
+
+def generator_label(
+    language_manager: LanguageManager,
+    generator_name: GeneratorName,
+) -> str:
+    """Resolves a generator's name, the words every display naming a generator prints.
+
+    A generator names the sound itself rather than one of the channels playing it, so the two
+    pulse channels share the one name. Reading it from a single entry keeps a generator called
+    the same thing wherever it is offered.
+    """
+    return context_label(language_manager, GENERATOR_ELEMENTS[generator_name])

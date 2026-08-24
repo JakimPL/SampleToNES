@@ -10,6 +10,7 @@ from sampletones_core.features import (
     CHANNEL_GENERATOR_KIND,
     FEATURE_DIMENSION_ORDER,
     feature_range,
+    generator_channel,
     supported_features,
     supports,
 )
@@ -66,3 +67,14 @@ def test_feature_dimension_order_matches_famitracker_sequence_slots() -> None:
         SequenceKind.DUTY,
     ]
     assert [FEATURE_KEY_TO_SEQUENCE_KIND[key] for key in FEATURE_DIMENSION_ORDER] == expected
+
+
+def test_a_generator_is_heard_on_the_first_channel_it_drives() -> None:
+    assert generator_channel(GeneratorName.PULSE) is ChannelName.PULSE1
+    assert generator_channel(GeneratorName.TRIANGLE) is ChannelName.TRIANGLE
+    assert generator_channel(GeneratorName.NOISE) is ChannelName.NOISE
+
+
+def test_every_generator_names_a_channel_that_reads_it_back() -> None:
+    for generator_name in GeneratorName:
+        assert CHANNEL_GENERATOR_KIND[generator_channel(generator_name)] is generator_name

@@ -444,6 +444,8 @@ class Application:
             on_reconstruction_stem_removed=self._reconstruction_coordinator.apply_edit,
             original_audio_locator=self._original_audio_locator,
             instrument_exports=self._instrument_exports,
+            key_router=self.key_router,
+            tab_active=self._is_reconstructions_tab_current,
             layout=ReconstructionTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -791,6 +793,14 @@ class Application:
             auto_expand_favorite_reconstructions=self.session_manager.auto_expand_favorite_reconstructions,
             auto_expand_favorite_directories=self.session_manager.auto_expand_favorite_directories,
         )
+
+    def _is_reconstructions_tab_current(self) -> bool:
+        """Whether the Reconstructions tab is in front, which is what puts its panels on the keyboard.
+
+        The instruments panel keeps the voice it is editing while another tab is worked on, so this
+        is what tells a note key meant to sound that voice from one meant for the song's grid.
+        """
+        return self._shell.get_current_tab() == Tab.RECONSTRUCTIONS
 
     def _is_sequencer_tab_current(self) -> bool:
         """Whether the Sequencer is the tab in front, which is what puts its panels on the keyboard.

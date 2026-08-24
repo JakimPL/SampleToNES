@@ -30,7 +30,7 @@ from sampletones_core.formats.famitracker.voice import (
     ImportedVoice,
     instrument_to_voice,
 )
-from sampletones_core.generators.render import render_instructions
+from sampletones_core.performance.audition import audition_audio
 from sampletones_core.project.voices.creation import (
     instrument_from_features,
     new_instrument,
@@ -280,10 +280,12 @@ class SequencerVoicesLogic(CallbackMixin):
             self._play_voice(voice_id, priority=PlaybackPriority.PREVIEW)
 
     def _preview_audio(self, voice_id: str) -> Optional[np.ndarray]:
-        """The audio a preview sounds: a sample's approximation, or an instrument rendered on the pulse.
+        """The audio a preview sounds: a sample's approximation, or an instrument on the pulse.
 
-        The pulse channel offers every dimension an instrument writes, so rendering the preview there
-        sounds the whole instrument rather than the part another channel would read.
+        The pulse channel offers every dimension an instrument writes, so sounding the preview
+        there sounds the whole instrument rather than the part another channel would read. The
+        pool states a voice rather than a note, so it sounds at the pitch the instrument itself is
+        measured against.
 
         Args:
             voice_id: The voice to preview.
@@ -295,14 +297,11 @@ class SequencerVoicesLogic(CallbackMixin):
             case Sample() as sample:
                 return sample.reconstruction.approximation
             case Instrument() as instrument:
-                instructions = instrument.instructions(PREVIEW_CHANNEL)
-                if not instructions:
-                    return None
-
-                return render_instructions(
-                    instructions,
+                return audition_audio(
+                    instrument,
                     PREVIEW_CHANNEL,
                     self._preview_config(),
+                    pitch=instrument.reference(PREVIEW_CHANNEL),
                 )
             case _:
                 return None

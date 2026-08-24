@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from typing import Dict, Final, List, cast
+from typing import Dict, Final, List, Tuple, cast
 from unittest.mock import MagicMock
 
+import dearpygui.dearpygui as dpg
 import numpy as np
 import pytest
 
@@ -32,13 +33,16 @@ from sampletones_application.ui.panels.reconstruction.instruments.instruments im
 )
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.ui.themes.theme import Theme
+from sampletones_application.utils.gui.keyboard import KeyEvent, KeyRouter
+from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.reconstruction.instruments import (
+    InstrumentViewModel,
     ReconstructionInstrumentsViewModel,
 )
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
-from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.constants.enums import ChannelName, FeatureKey, GeneratorName
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
 from sampletones_core.formats.famitracker.specification.sequences import (
@@ -58,6 +62,13 @@ NOT_LOADED: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrument
     reconstruction_loaded=False,
     playing_channels=frozenset(),
     footprint=None,
+)
+
+ONE_INSTRUMENT: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
+    reconstruction_loaded=False,
+    playing_channels=frozenset((ChannelName.PULSE1,)),
+    footprint=SampleFootprintViewModel.from_instrument(LARGEST_PULSE),
+    instrument=InstrumentViewModel(name="lead"),
 )
 
 
@@ -129,7 +140,17 @@ def shown(monkeypatch: pytest.MonkeyPatch) -> Dict[str, bool]:
 
 
 @pytest.fixture
-def panel(layout_config: LayoutConfig) -> GUIReconstructionInstrumentsPanel:
+def key_router() -> MagicMock:
+    router = MagicMock(spec=KeyRouter)
+    router.is_field_focused = False
+    return router
+
+
+@pytest.fixture
+def panel(
+    layout_config: LayoutConfig,
+    key_router: MagicMock,
+) -> GUIReconstructionInstrumentsPanel:
     return GUIReconstructionInstrumentsPanel(
         pitch_stepper_style=PitchStepperStyle.from_general(layout_config.general),
         copy_width=layout_config.general.buttons.copy_width,
@@ -137,6 +158,8 @@ def panel(layout_config: LayoutConfig) -> GUIReconstructionInstrumentsPanel:
         layout_graphs=layout_config.graphs,
         language_manager=LanguageManager(LANG_EN),
         status_bar=MagicMock(),
+        key_router=key_router,
+        tab_active=lambda: True,
     )
 
 
@@ -497,3 +520,106 @@ class TestSizeVisibility:
     ) -> None:
         panel.update_view(NOT_LOADED)
         assert written == {}
+
+
+class TestTheAuditionSelector:
+    """The generator a hand-written voice is heard on stands where the pitch stepper does."""
+
+    def test_an_open_instrument_offers_the_generator_to_hear_it_on(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        shown: Dict[str, bool],
+    ) -> None:
+        panel.update_view(ONE_INSTRUMENT)
+        assert shown[panel.audition_group_tag] is True
+
+    def test_a_loaded_reconstruction_offers_the_pitch_it_was_measured_against_instead(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        shown: Dict[str, bool],
+    ) -> None:
+        panel.update_view(build_view_model({ChannelName.PULSE1: LARGEST_PULSE}))
+        assert shown[panel.audition_group_tag] is False
+
+    def test_the_pulse_is_the_generator_a_voice_is_first_heard_on(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        assert panel._audition_generator is GeneratorName.PULSE
+
+    def test_choosing_a_generator_by_its_name_is_what_the_keys_then_sound(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        panel._on_audition_generator_changed(
+            "sender",
+            panel._generator_labels[GeneratorName.NOISE],
+        )
+        assert panel._audition_generator is GeneratorName.NOISE
+
+
+class TestTheNoteKeys:
+    """A note key sounds the instrument in front of the panel, and claims the press it used."""
+
+    def test_a_note_key_sounds_the_open_instrument_on_the_chosen_generator(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        sounded: List[Tuple[GeneratorName, int]] = []
+        panel.on_audition_requested = lambda generator, semitone: sounded.append((generator, semitone))
+        panel.update_view(ONE_INSTRUMENT)
+
+        assert panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Z, modifiers=frozenset())) is True
+        assert sounded == [(GeneratorName.PULSE, PIANO_KEYS[dpg.mvKey_Z])]
+
+    def test_a_key_naming_no_note_is_left_to_the_shortcuts(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        sounded: List[Tuple[GeneratorName, int]] = []
+        panel.on_audition_requested = lambda generator, semitone: sounded.append((generator, semitone))
+        panel.update_view(ONE_INSTRUMENT)
+
+        assert panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Spacebar, modifiers=frozenset())) is False
+        assert sounded == []
+
+    def test_the_keys_answer_while_an_instrument_is_open(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        panel.update_view(ONE_INSTRUMENT)
+        assert panel._audition_keys_active() is True
+
+    def test_a_loaded_reconstruction_keeps_the_keys_out_of_the_panel(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        panel.update_view(build_view_model({ChannelName.PULSE1: LARGEST_PULSE}))
+        assert panel._audition_keys_active() is False
+
+    def test_a_field_being_typed_into_keeps_its_own_characters(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        key_router: MagicMock,
+    ) -> None:
+        panel.update_view(ONE_INSTRUMENT)
+        key_router.is_field_focused = True
+        assert panel._audition_keys_active() is False
+
+    def test_another_tab_in_front_keeps_the_keys_from_the_panel(
+        self,
+        layout_config: LayoutConfig,
+        key_router: MagicMock,
+    ) -> None:
+        panel = GUIReconstructionInstrumentsPanel(
+            pitch_stepper_style=PitchStepperStyle.from_general(layout_config.general),
+            copy_width=layout_config.general.buttons.copy_width,
+            feature_colors=layout_config.general.colors.features,
+            layout_graphs=layout_config.graphs,
+            language_manager=LanguageManager(LANG_EN),
+            status_bar=MagicMock(),
+            key_router=key_router,
+            tab_active=lambda: False,
+        )
+        panel.update_view(ONE_INSTRUMENT)
+        assert panel._audition_keys_active() is False

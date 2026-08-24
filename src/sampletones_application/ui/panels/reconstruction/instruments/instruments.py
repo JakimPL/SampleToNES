@@ -4,12 +4,20 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones_application.categories.context import channel_label, context_label, context_text
+from sampletones_application.categories.context import (
+    channel_label,
+    context_label,
+    context_text,
+    generator_label,
+)
 from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.hierarchy import TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import PitchTooltips
-from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
+from sampletones_application.constants.instruments import (
+    AUDITION_GENERATOR,
+    INSTRUMENT_CHANNEL,
+)
 from sampletones_application.layout.general.colors.feature import FeatureColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
@@ -36,6 +44,7 @@ from sampletones_application.tags.reconstructions import (
     SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
+    TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_TEXT_SAMPLE_SIZE,
 )
@@ -63,6 +72,13 @@ from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_value,
 )
+from sampletones_application.utils.gui.keyboard import (
+    PRIORITY_PANEL,
+    ActivePredicate,
+    KeyEvent,
+    KeyRouter,
+)
+from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.instruments import (
@@ -96,6 +112,7 @@ from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 
 OnInstrumentExportCallback = Callable[[ChannelName], None]
+OnAuditionCallback = Callable[[GeneratorName, int], None]
 OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
 
 
@@ -114,10 +131,14 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         layout_graphs: GraphsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
+        key_router: KeyRouter,
+        tab_active: ActivePredicate,
         initial_collapsed: bool = False,
     ) -> None:
         self._language_manager = language_manager
         self._status_bar = status_bar
+        self._router = key_router
+        self._tab_active = tab_active
 
         self.channel_plots: Dict[ChannelName, Dict[FeatureKey, GUIBarGraph]] = {}
         self._pitch_steppers: Dict[ChannelName, GUIPitchStepper] = {}
@@ -128,9 +149,13 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.mouse_item_handler_tag = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL, SUF_HANDLER_REGISTRY)
         self.sample_size_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TEXT_SAMPLE_SIZE
         self.sample_size_group_tag = compose_tag(self.sample_size_tag, SUF_GROUP)
+        self.audition_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION
+        self.audition_group_tag = compose_tag(self.audition_tag, SUF_GROUP)
 
         self._graphs: Dict[str, GUIBarGraph] = {}
         self._sequences: Dict[Tuple[ChannelName, FeatureKey], Envelope[int]] = {}
+        self._audition_generator: GeneratorName = AUDITION_GENERATOR
+        self._audition_open: bool = False
         self._pitch_stepper_style = pitch_stepper_style
         self._copy_width = copy_width
         self._layout_graphs = layout_graphs
@@ -147,6 +172,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None
 
         self.on_pitch_value_changed: Optional[Callable[[ChannelName, int], None]] = None
+        self.on_audition_requested: Optional[OnAuditionCallback] = None
         self.on_envelope_changed: Optional[Callable[[ChannelName, FeatureKey, Envelope[int]], None]] = None
 
         self._lbl_copy = language_manager["reconstructions.instruments.label.copy_button"]
@@ -160,6 +186,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
         self._channel_labels: Dict[ChannelName, str] = {
             channel_name: channel_label(language_manager, channel_name) for channel_name in ChannelName.items()
+        }
+        self._generator_labels: Dict[GeneratorName, str] = {
+            generator_name: generator_label(language_manager, generator_name) for generator_name in GeneratorName
         }
 
         super().__init__(
@@ -188,6 +217,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             self._create_content()
 
         self._setup_mouse_event_handler()
+        self._router.register(
+            self._on_key_pressed,
+            priority=PRIORITY_PANEL,
+            active=self._audition_keys_active,
+        )
 
     def _create_content(self) -> None:
         dpg.add_text(
@@ -358,6 +392,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             window_tag,
         )
         self._create_pitch_stepper(channel_name, initial_pitch, window_tag)
+        if channel_name is INSTRUMENT_CHANNEL:
+            self._create_audition_selector(window_tag)
+
         self._create_generator_feature_displays(channel_name, window_tag)
 
     def _default_initial_pitch(self, channel_name: ChannelName) -> int:
@@ -453,8 +490,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         A reconstruction shows a tab per channel, and every channel is editable for as long as it
         is open, so writing an envelope into a channel standing by is what puts it in play; a
         muted tab label and a withheld export say which channels are there. An instrument is one
-        set every channel reads, so it shows a single tab under its own name, and the pitch
-        stepper stands down: a row states the note a hand-written voice sounds at.
+        set every channel reads, so it shows a single tab under its own name, and the audition
+        takes the pitch stepper's place: a row states the note a hand-written voice sounds at, and
+        what the panel offers instead is the generator to hear it on.
         """
         instrument = view_model.instrument
         is_open = view_model.is_open
@@ -463,6 +501,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         dpg_configure_item(self.sample_size_group_tag, show=is_open)
         self._update_sizes(view_model.footprint, shows_one_instrument=instrument is not None)
         self._show_pitch_steppers(shown=instrument is None)
+        self._show_audition_selector(shown=instrument is not None)
 
         for channel_name in ChannelName.items():
             tab_tag = self._get_generator_tab_tag(channel_name)
@@ -487,6 +526,70 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         """
         for stepper in self._pitch_steppers.values():
             stepper.set_shown(shown)
+
+    def _create_audition_selector(self, window_tag: str) -> None:
+        """Offers the generator a hand-written voice is heard on, in the pitch stepper's column.
+
+        An instrument is one set of envelopes every generator reads what it can of, so hearing it
+        means choosing which one reads it. The choice belongs to the reader listening rather than
+        to the voice, so it stays on the panel and reaches no document.
+        """
+        with dpg.group(
+            tag=self.audition_group_tag,
+            parent=window_tag,
+            show=False,
+        ):
+            with labeled_field(
+                self._language_manager["reconstructions.instruments.label.audition"],
+                self._pitch_stepper_style.dimensions.label_width,
+                parent=self.audition_group_tag,
+            ):
+                dpg.add_radio_button(
+                    items=[self._generator_labels[generator_name] for generator_name in GeneratorName],
+                    tag=self.audition_tag,
+                    default_value=self._generator_labels[self._audition_generator],
+                    callback=self._on_audition_generator_changed,
+                    horizontal=True,
+                )
+                FontRegistry.bind_to_item(self.audition_tag, Font.REGULAR_SMALL)
+
+        self._status_bar.bind_to_item(
+            self.audition_tag,
+            self._language_manager["reconstructions.instruments.message.status_audition"],
+        )
+        show_tooltip(
+            self.audition_tag,
+            self._language_manager["reconstructions.instruments.tooltip.audition"],
+            tag=compose_tag(self.audition_tag, SUF_TOOLTIP),
+        )
+
+    def _on_audition_generator_changed(self, _sender: Sender, app_data: str) -> None:
+        self._audition_generator = next(
+            generator_name for generator_name, label in self._generator_labels.items() if label == app_data
+        )
+
+    def _show_audition_selector(self, *, shown: bool) -> None:
+        """Offers the audition while a hand-written voice is open, which is the voice it sounds."""
+        self._audition_open = shown
+        dpg_configure_item(self.audition_group_tag, show=shown)
+
+    def _audition_keys_active(self) -> bool:
+        """Whether a note key sounds the instrument the panel has in front of it.
+
+        The keys reach an instrument alone, since a recording plays the audio it was made from,
+        and only while the Reconstructions tab is in front. A field being typed into keeps its own
+        characters, so a sequence entered by hand types letters rather than sounding notes.
+        """
+        return self._audition_open and self._tab_active() and not self._router.is_field_focused
+
+    def _on_key_pressed(self, event: KeyEvent) -> bool:
+        """Sounds the open instrument at the note a piano key names, reporting whether it did."""
+        semitone = PIANO_KEYS.get(event.key)
+        if semitone is None:
+            return False
+
+        self.call(self.on_audition_requested, self._audition_generator, semitone)
+        return True
 
     def _apply_playing_state(
         self,

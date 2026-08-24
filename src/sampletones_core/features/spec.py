@@ -74,6 +74,23 @@ GENERATOR_CHANNEL_KINDS: Final[Dict[GeneratorName, FrozenSet[ChannelName]]] = {
 }
 
 
+def generator_channel(generator_name: GeneratorName) -> ChannelName:
+    """The channel that stands for a generator, which is the first one it drives.
+
+    A generator drives one channel or two, and the two pulse channels read an instrument the same
+    way, so naming a generator names a channel to sound it on. Reading the channels in channel
+    order keeps the answer the same on every call.
+
+    Args:
+        generator_name: The generator being resolved.
+
+    Returns:
+        ChannelName: The channel that generator is heard on.
+    """
+    channels = GENERATOR_CHANNEL_KINDS[generator_name]
+    return next(channel_name for channel_name in ChannelName.items() if channel_name in channels)
+
+
 def speaks_in_periods(channel_name: ChannelName) -> bool:
     """Whether this channel reads a pitch-like value as a noise period rather than a semitone.
 

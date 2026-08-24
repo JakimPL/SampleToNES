@@ -17,6 +17,9 @@ from sampletones_application.coordinators.original_audio import OriginalAudioLoc
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.reconstruction.audition import (
+    InstrumentAuditionLogic,
+)
 from sampletones_application.logic.reconstruction.browser.logic import BrowserLogic
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.logic.reconstruction.edit import StemRemoval
@@ -83,6 +86,7 @@ from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
@@ -131,6 +135,8 @@ class ReconstructionTabCoordinator:
         original_audio_locator: OriginalAudioLocator,
         instrument_exports: InstrumentExportCoordinator,
         *,
+        key_router: KeyRouter,
+        tab_active: ActivePredicate,
         layout: ReconstructionTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
@@ -190,7 +196,7 @@ class ReconstructionTabCoordinator:
         self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
         self._browser_tree_logic.on_favorite_changed = on_favorite_changed
         self._browser_tree_logic.on_search_update_needed = self._browser_panel.update_tree_visibility
-        self._browser_tree_logic.on_autoplay_error = self._on_browser_autoplay_error
+        self._browser_tree_logic.on_autoplay_error = self._on_preview_error
         self._browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
         self._browser_panel.on_favorites_filter_changed = self._on_browser_favorites_filter_changed
         self._reconstruction_player_logic = PlayerLogic(
@@ -238,12 +244,20 @@ class ReconstructionTabCoordinator:
             layout_graphs=layout.graphs,
             language_manager=language_manager,
             status_bar=status_bar,
+            key_router=key_router,
+            tab_active=tab_active,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL),
         )
         self._reconstruction_instruments_panel.set_collapse_handler(self._on_instruments_collapse_changed)
         self._reconstruction_instruments_logic: ReconstructionInstrumentsLogic = ReconstructionInstrumentsLogic(
             self._instrument_editor,
             scheduling=layout.scheduling,
+        )
+        self._instrument_audition_logic: InstrumentAuditionLogic = InstrumentAuditionLogic(
+            self._instrument_editor,
+            project_controller,
+            session_manager,
+            audio_device_manager,
         )
 
         self._browser_panel.on_refresh_tree = self._browser_logic.refresh_tree
@@ -295,6 +309,8 @@ class ReconstructionTabCoordinator:
         self._reconstruction_instruments_panel.on_envelope_changed = (
             self._reconstruction_instruments_logic.handle_envelope_changed
         )
+        self._reconstruction_instruments_panel.on_audition_requested = self._instrument_audition_logic.sound
+        self._instrument_audition_logic.on_audition_error = self._on_preview_error
 
     def _on_export_result(self, result: ExportResult) -> None:
         """Reports a finished export in the words of the artefact it produced.
@@ -730,7 +746,13 @@ class ReconstructionTabCoordinator:
     ) -> None:
         self._reconstruction_panel_logic.request_export_instruments_dialog(export_format)
 
-    def _on_browser_autoplay_error(self, exception: Exception) -> None:
+    def _on_preview_error(self, exception: Exception) -> None:
+        """Reports a preview the audio device refused, whichever of the tab's previews asked for it.
+
+        A browser autoplay and an instrument audition both sound on demand, so both report the
+        same way: on the frame after the one that failed, which leaves the gesture that started it
+        finished before a dialog is raised.
+        """
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
 
     def _on_audio_data_changed(self, audio_data: Optional[AudioData]) -> None:

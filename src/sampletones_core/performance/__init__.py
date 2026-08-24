@@ -1,3 +1,4 @@
+from .audition import audition_audio
 from .modifiers import apply_modifiers
 from .progress import (
     SILENT_WALK_REPORTER,
@@ -20,6 +21,7 @@ __all__ = [
     "announce",
     "apply_modifiers",
     "apply_row",
+    "audition_audio",
     "resolve_row",
     "song_instructions",
     "sound_tick",

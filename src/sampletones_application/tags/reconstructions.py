@@ -164,6 +164,12 @@ TAG_RECONSTRUCTIONS_INSTRUMENTS_TEXT_SAMPLE_SIZE = TagName(
     Widget.TEXT,
     "sample_size",
 )
+TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION = TagName(
+    Page.RECONSTRUCTIONS,
+    Panel.INSTRUMENTS,
+    Widget.RADIO,
+    "audition",
+)
 
 PRE_RECONSTRUCTION_CHANNEL = compose_tag("reconstruction", "channel")
 PRE_RECONSTRUCTION_STEMS = compose_tag("reconstruction", "stems")

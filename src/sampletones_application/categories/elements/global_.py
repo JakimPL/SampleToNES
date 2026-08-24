@@ -33,6 +33,7 @@ class ContextElements(AbstractElement):
     REPLACE_SAMPLE = "replace_sample"
     LOCATE_ORIGINAL_AUDIO = "locate_original_audio"
     TRIANGLE = "triangle"
+    PULSE = "pulse"
     PULSE_1 = "pulse_1"
     PULSE_2 = "pulse_2"
     NOISE = "noise"
