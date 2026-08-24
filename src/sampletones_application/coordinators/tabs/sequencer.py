@@ -299,6 +299,7 @@ class SequencerTabCoordinator:
             detail_color=layout.muted_color,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_VOICES_PANEL),
             language_manager=language_manager,
+            status_bar=status_bar,
             key_router=key_router,
             tab_active=tab_active,
             shortcut_source=shortcut_source,

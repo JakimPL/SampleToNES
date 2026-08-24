@@ -187,8 +187,8 @@ def _panel(
         shortcut_source=shipped_source(),
         detail_color=DETAIL_COLOR,
     )
-    menu._lbl_sample_size = SAMPLE_SIZE_LABEL
-    menu._tpl_size_bytes = SIZE_TEMPLATE
+    menu._footprint_text._lbl_sample_size = SAMPLE_SIZE_LABEL
+    menu._footprint_text._tpl_size_bytes = SIZE_TEMPLATE
     menu._tip_size_bytes = SIZE_TOOLTIP
     panel._menu = menu
     return VoicesPanelFixture(panel=panel, menu=menu, requests=requests)

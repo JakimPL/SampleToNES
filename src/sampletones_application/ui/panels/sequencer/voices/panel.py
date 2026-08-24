@@ -21,6 +21,10 @@ from sampletones_application.tags.sequencer import (
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.panels.sequencer.voices.footprint import (
+    VoiceFootprintText,
+)
 from sampletones_application.ui.panels.sequencer.voices.menu import VoicesMenu
 from sampletones_application.ui.panels.sequencer.voices.moves import MOVE_DIRECTIONS
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -59,12 +63,14 @@ class GUISequencerVoicesPanel(GUIPanel):
         layout: SequencerLayout,
         detail_color: BaseColor,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
         key_router: KeyRouter,
         tab_active: ActivePredicate,
         shortcut_source: ShortcutSource,
         initial_collapsed: bool = False,
     ) -> None:
         self._language_manager = language_manager
+        self._status_bar = status_bar
         self._layout = layout
         self._router = key_router
         self._tab_active = tab_active
@@ -80,6 +86,10 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._tip_new_instrument = self._tooltip(language_manager, SequencerVoicesElements.NEW_INSTRUMENT)
         self._tip_kind_sample = self._tooltip(language_manager, SequencerVoicesElements.KIND_SAMPLE)
         self._tip_kind_instrument = self._tooltip(language_manager, SequencerVoicesElements.KIND_INSTRUMENT)
+        self._footprint_text = VoiceFootprintText(language_manager)
+        self._tpl_status_sample = language_manager["sequencer.voices.template.status_sample"]
+        self._tpl_status_instrument = language_manager["sequencer.voices.template.status_instrument"]
+        self._channel_separator = language_manager["sequencer.voices.template.status_channel_separator"]
         self.sample_footprint: Optional[Callable[[str], Optional[SampleFootprintViewModel]]] = None
         self.voice_instruments: Optional[Callable[[str], Tuple[Optional[ChannelName], ...]]] = None
         self.instrument_channels: Optional[Callable[[str], Tuple[ChannelName, ...]]] = None
@@ -127,6 +137,43 @@ class GUISequencerVoicesPanel(GUIPanel):
         with dpg.item_handler_registry(tag=self._row_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_sample_clicked)
             dpg.add_item_double_clicked_handler(callback=self._on_sample_double_clicked)
+            dpg.add_item_hover_handler(callback=self._on_row_hovered)
+
+    def _on_row_hovered(self, _sender: Sender, app_data: int) -> None:
+        """Says what the hovered row holds, which the id cell and the name cell both address.
+
+        Both cells carry the row's position and its voice, so one handler covers the whole row and
+        a reader reads the same line wherever the pointer rests on it.
+        """
+        user_data = dpg.get_item_user_data(app_data)
+        if not isinstance(user_data, tuple):
+            return
+
+        _position, voice_id = user_data
+        self._status_bar.set(self._voice_status_message(voice_id))
+
+    def _voice_status_message(self, voice_id: str) -> str:
+        """What a voice is, what it plays and what it costs, as one sentence a reader reads.
+
+        A recording plays the channels its conversion found and exports an instrument for each of
+        them; a hand-written voice is one set of envelopes every channel reads, so it names no
+        channel and carries a single figure.
+        """
+        entry = self._entry_for(voice_id)
+        footprint = self.query(self.sample_footprint, voice_id, default=None)
+        if entry is None or footprint is None:
+            return ""
+
+        size = self._footprint_text.size(footprint.total_bytes)
+        match entry.kind:
+            case VoiceKind.SAMPLE:
+                return self._tpl_status_sample.format(
+                    name=entry.name,
+                    channels=self._channel_separator.join(self._footprint_text.channels(footprint)),
+                    bytes=size,
+                )
+            case VoiceKind.INSTRUMENT:
+                return self._tpl_status_instrument.format(name=entry.name, bytes=size)
 
     def _create_list_handler(self) -> None:
         """Answers a press that lands on the list itself rather than on one of its rows."""

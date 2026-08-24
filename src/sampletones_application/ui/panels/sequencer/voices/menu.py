@@ -20,6 +20,9 @@ from sampletones_application.ui.elements.context_menu import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.panels.sequencer.voices.footprint import (
+    VoiceFootprintText,
+)
 from sampletones_application.ui.panels.sequencer.voices.moves import (
     VOICE_MOVES,
     VoiceMove,
@@ -91,8 +94,7 @@ class VoicesMenu(CallbackMixin):
         self._language_manager = language_manager
         self._shortcuts = shortcut_source
         self._detail_color = detail_color
-        self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
-        self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
+        self._footprint_text = VoiceFootprintText(language_manager)
         self._tip_size_bytes = context_text(language_manager, TextType.TOOLTIP, ContextElements.SIZE_BYTES)
 
     def show_for(self, target: VoiceSelection) -> None:
@@ -306,35 +308,18 @@ class VoicesMenu(CallbackMixin):
         self,
         voice_id: str,
     ) -> List[Tuple[str, str]]:
-        """The byte figures the menu prints for a sample: its total, then each channel that plays.
+        """The byte figures the menu prints for a voice, asked for as the menu opens.
 
-        The figures are asked for as the menu opens, so they name what the sample occupies at the
-        moment a reader looks. A channel standing by is written by no export, so it costs nothing
-        and the menu names the channels that do.
+        Reading them at that moment keeps them naming what the voice occupies while a reader is
+        looking at it.
         """
-        footprint = self.query(
-            self._panel.sample_footprint,
-            voice_id,
-            default=None,
+        return self._footprint_text.items(
+            self.query(
+                self._panel.sample_footprint,
+                voice_id,
+                default=None,
+            )
         )
-        if footprint is None:
-            return []
-
-        items = [(self._lbl_sample_size, self._format_size(footprint.total_bytes))]
-        for channel_name in ChannelName.items():
-            instrument_bytes = footprint.bytes_for(channel_name)
-            if instrument_bytes is not None:
-                items.append(
-                    (
-                        channel_label(self._language_manager, channel_name),
-                        self._format_size(instrument_bytes),
-                    )
-                )
-
-        return items
-
-    def _format_size(self, byte_count: int) -> str:
-        return self._tpl_size_bytes.format(bytes=byte_count)
 
     def _label(self, element: SequencerVoicesElements) -> str:
         return self._language_manager[
