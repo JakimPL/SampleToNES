@@ -18,7 +18,7 @@ class TestRenderVector:
     def test_the_template_is_filled_throughout(self) -> None:
         assert PLACEHOLDER_PREFIX not in render_vector(Mark.load())
 
-    def test_every_colour_reaches_the_document(self) -> None:
+    def test_every_color_reaches_the_document(self) -> None:
         mark = Mark.load()
         document = render_vector(mark)
         colors = (
@@ -33,7 +33,7 @@ class TestRenderVector:
             assert color in document
 
     def test_the_document_follows_the_definition(self) -> None:
-        """A colour changed in the definition is the colour the vector is drawn with."""
+        """A color changed in the definition is the color the vector is drawn with."""
         mark = Mark.load()
         recolored = mark.model_copy(update={"colors": mark.colors.model_copy(update={"sine": REPLACEMENT_COLOR})})
         document = render_vector(recolored)

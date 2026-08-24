@@ -35,7 +35,7 @@ class TestFlatIndex:
         assert indices == set(range(SLOT_COUNT))
 
     def test_the_sample_columns_instrument_opens_the_axis(self) -> None:
-        assert TrackerSlot(None, SubColumn.INSTRUMENT).flat_index == 0
+        assert TrackerSlot(None, SubColumn.VOICE).flat_index == 0
 
 
 class TestColumnBase:

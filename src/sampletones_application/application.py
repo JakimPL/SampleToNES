@@ -84,7 +84,7 @@ from sampletones_application.services import (
     RetunedSample,
     RetuneResult,
     SampleRetuneService,
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceProgress,
     ServiceSuccess,
@@ -486,7 +486,7 @@ class Application:
             status_bar=self.status_bar,
             on_load_file=self._on_converted_reconstruction_loaded,
             on_load_directory=self._navigate_to_reconstructions,
-            on_cancelled=self._refresh_reconstruction_trees,
+            on_canceled=self._refresh_reconstruction_trees,
             on_refresh_trees=self._refresh_reconstruction_trees,
             on_generate_library=self._instructions_tab.ensure_library_loaded,
             stem_selection_window=self.stem_selection_window,
@@ -746,11 +746,11 @@ class Application:
         self.shortcut_manager.rebind()
 
     def _on_palette_changed(self, _palette: Palette) -> None:
-        """Repaints what holds a colour DearPyGui has copied, once another palette is in place.
+        """Repaints what holds a color DearPyGui has copied, once another palette is in place.
 
-        Every layout and theme colour already answers with the new palette, so the work left is
-        handing those values to the copies DearPyGui keeps: the registered theme colours and item
-        arguments, the viewport clear colour, and the sequencer tables, whose tints belong to the
+        Every layout and theme color already answers with the new palette, so the work left is
+        handing those values to the copies DearPyGui keeps: the registered theme colors and item
+        arguments, the viewport clear color, and the sequencer tables, whose tints belong to the
         table rather than to an item.
         """
         PaletteBindings.apply()
@@ -963,7 +963,7 @@ class Application:
         generation or render starts or finishes, keeping the long operations mutually exclusive. Each
         panel reads the live ``_is_operation_active`` state for itself; this only nudges them to
         re-apply, so the busy truth lives in one place. The menu follows the same edge, since what
-        greys an entry offering another such operation is one already running."""
+        grays an entry offering another such operation is one already running."""
         self._instructions_tab.refresh_generate_button()
         self._update_menu()
 
@@ -1176,7 +1176,7 @@ class Application:
                 self._apply_retuned_sample(retuned)
             case ServiceError(exception=exception):
                 logger.error_with_traceback(exception, "Sample retune failed")
-            case ServiceCancelled():
+            case ServiceCanceled():
                 pass
 
         if not self.retune_service.is_running():

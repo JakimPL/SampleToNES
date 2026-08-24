@@ -134,7 +134,7 @@ class _MenuRecorder:
 def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerOrderPanel:
     """Builds a panel around the state the channel cues read, with no DearPyGui context.
 
-    The cues touch the layout colours, the theme ids, the row labels, and the entry registry, so
+    The cues touch the layout colors, the theme ids, the row labels, and the entry registry, so
     those are wired directly and the rest of the panel is left out. The switch behind the label is
     built the way the panel builds it, from the real language file, so the item labels under test
     are the ones a user reads.
@@ -307,7 +307,7 @@ class TestRowWash:
         assert set(recorder.row_tints) == set(CHANNEL_TABLE_ROWS.values())
 
     def test_the_wash_matches_the_shade_the_tracker_column_takes(self, recorder: _DearPyGuiRecorder) -> None:
-        """Both tables read the same colour, so a silenced channel looks the same in each."""
+        """Both tables read the same color, so a silenced channel looks the same in each."""
         panel = _panel(frozenset({ChannelName.NOISE}))
 
         assert panel._channel_row_tint(ChannelName.NOISE) == MUTED_BACKGROUND

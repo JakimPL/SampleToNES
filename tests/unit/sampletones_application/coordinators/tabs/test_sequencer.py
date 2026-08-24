@@ -29,7 +29,9 @@ from sampletones_application.logic.sequencer.clipboard import (
     SequencerClipboard,
     TrackerBlockText,
 )
-from sampletones_application.logic.sequencer.history_detail import SequencerHistoryDetail
+from sampletones_application.logic.sequencer.history_detail import (
+    SequencerHistoryDetail,
+)
 from sampletones_application.logic.sequencer.order import (
     OrderBlockReader,
     OrderBlockWriter,
@@ -56,7 +58,10 @@ from sampletones_application.view_model.sequencer.region import (
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_application.view_model.sequencer.voices import VoiceKind, VoiceSelection
+from sampletones_application.view_model.sequencer.voices import (
+    VoiceKind,
+    VoiceSelection,
+)
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
@@ -156,7 +161,7 @@ def located_file(monkeypatch: pytest.MonkeyPatch) -> List[Dict[str, object]]:
 
 
 @pytest.fixture
-def cancelled_dialog(monkeypatch: pytest.MonkeyPatch) -> None:
+def canceled_dialog(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sequencer_module, "open_file_dialog", lambda **_kwargs: None)
 
 
@@ -194,10 +199,10 @@ class TestImportInstrument:
 
         instrument_coordinator._session_manager.set_instrument_path.assert_called_once_with(INSTRUMENT_FILE.parent)
 
-    def test_a_cancelled_dialog_leaves_the_pool_as_it_stands(
+    def test_a_canceled_dialog_leaves_the_pool_as_it_stands(
         self,
         instrument_coordinator: SequencerTabCoordinator,
-        cancelled_dialog: None,
+        canceled_dialog: None,
     ) -> None:
         instrument_coordinator.import_instrument()
 
@@ -522,7 +527,7 @@ def _playhead(frame_index: int, row_index: int) -> SongPosition:
 
 
 def _player_view(*, follow_mode: FollowMode) -> SongPlayerViewModel:
-    """A stopped transport view, which is what the coordinator reads the follow behaviour from."""
+    """A stopped transport view, which is what the coordinator reads the follow behavior from."""
     return SongPlayerViewModel(
         is_loaded=True,
         is_playing=False,
@@ -1195,7 +1200,7 @@ class TestChannelMuteLifetime:
 def channels_coordinator(monkeypatch: pytest.MonkeyPatch) -> SequencerTabCoordinator:
     """A coordinator joining the real channels logic to a real grid panel and a real order panel.
 
-    Each panel's colour cues reach DearPyGui, which holds no context here, so the tables are
+    Each panel's color cues reach DearPyGui, which holds no context here, so the tables are
     reported absent and a panel stops once it has recorded the mute set — which is what the
     wiring is read for. The menu bar above the tab is a recorder, so a test can read whether it
     was told. Modifiers are reported as held nowhere; a test that needs Ctrl says so.
@@ -1597,7 +1602,7 @@ class TestPlayerExposure:
 PULSE1_CELL: Final[TrackerRegion] = TrackerRegion(
     first_row=0,
     last_row=0,
-    first_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.INSTRUMENT).flat_index,
+    first_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.VOICE).flat_index,
     last_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.VOLUME).flat_index,
 )
 PULSE1_FRAME: Final[OrderRegion] = OrderRegion(

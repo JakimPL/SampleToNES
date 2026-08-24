@@ -146,9 +146,9 @@ class GUIPathText(CallbackMixin):
             dpg.set_value(self.tooltip, self.path_text)
 
     def set_status(self, text: str, color: BaseColor) -> None:
-        """Displays a non-path status (missing or not applicable) in a muted colour.
+        """Displays a non-path status (missing or not applicable) in a muted color.
 
-        The path is cleared so the row is inert: hovering holds the muted colour and a
+        The path is cleared so the row is inert: hovering holds the muted color and a
         click has nothing to open.
         """
         self.path = Path()

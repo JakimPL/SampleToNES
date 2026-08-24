@@ -7,7 +7,7 @@ import pytest
 
 from sampletones_application.services.conversion import ConversionService
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceIntermediate,
     ServiceProgress,
@@ -76,7 +76,7 @@ class TestConversionServiceStart:
             "on_progress",
             "on_completed",
             "on_error",
-            "on_cancelled",
+            "on_canceled",
         }
 
     def test_start_while_running_does_not_create_second_converter(
@@ -202,15 +202,15 @@ class TestConversionServiceEmissions:
         assert isinstance(result, ServiceError)
         assert result.exception is exception
 
-    def test_on_cancelled_emits_service_cancelled(
+    def test_on_canceled_emits_service_canceled(
         self,
         service: Service,
     ) -> None:
         _, _, callbacks, results = service
-        callbacks["on_cancelled"]()
+        callbacks["on_canceled"]()
 
         assert len(results) == 1
-        assert isinstance(results[0], ServiceCancelled)
+        assert isinstance(results[0], ServiceCanceled)
 
     def test_forward_library_progress_emits_service_intermediate(
         self,

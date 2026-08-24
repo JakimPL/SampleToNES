@@ -512,7 +512,7 @@ class ReconstructionTabCoordinator:
         self._sync_instruments_width()
 
     def _build_reconstruction_column(self, parent: str) -> None:
-        """Stacks the audio, plot, and stems cards down the centre column."""
+        """Stacks the audio, plot, and stems cards down the center column."""
         self._reconstruction_audio_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._reconstruction_plot_panel.create_panel(parent)

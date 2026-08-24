@@ -44,7 +44,7 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NoteName,
 )
 from sampletones_core.project.project import Project
-from sampletones_core.timing import Metre, RowRate, calculate_groove
+from sampletones_core.timing import Meter, RowRate, calculate_groove
 from tests.suite.bitphase import (
     BITPHASE_NO_EFFECTS,
     LoadedEffect,
@@ -182,7 +182,7 @@ class TestTheLoaderReadsWhatWasWritten:
             for channel in pattern.channels
         )
 
-    def test_each_channel_is_labelled_as_its_position_names_it(self, document: LoadedProject) -> None:
+    def test_each_channel_is_labeled_as_its_position_names_it(self, document: LoadedProject) -> None:
         pattern = document.songs[0].patterns[0]
         assert [channel.label for channel in pattern.channels] == list(CHANNEL_LABELS)
 
@@ -263,7 +263,7 @@ class TestTheGrooveReachesTheFile:
         project = at_tempo(integration_project, GROOVE_TEMPO)
         groove = calculate_groove(
             RowRate.from_settings(project.settings),
-            Metre.from_settings(project.settings, rows=project.song.rows_per_pattern),
+            Meter.from_settings(project.settings, rows=project.song.rows_per_pattern),
             minimum_ticks=MIN_INITIAL_SPEED,
             maximum_ticks=MAX_INITIAL_SPEED,
         )

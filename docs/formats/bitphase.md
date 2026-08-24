@@ -233,7 +233,7 @@ you would see in the tracker either way.
 
 ## F. Bitphase capacity limits
 
-| Quantity | Bitphase limit | Exporter behaviour |
+| Quantity | Bitphase limit | Exporter behavior |
 | --- | --- | --- |
 | Items per instrument row list | unbounded | writes the envelope whole |
 | Rows per table | unbounded | writes the contour, or the groove, whole |

@@ -166,7 +166,7 @@ class TestRows:
         assert dpg.get_value(channel_tag(bass, ChannelName.PULSE1))
         assert not dpg.get_value(channel_tag(bass, ChannelName.TRIANGLE))
 
-    def test_a_row_holding_no_channel_greys_out_and_still_answers(
+    def test_a_row_holding_no_channel_grays_out_and_still_answers(
         self,
         dpg_context: None,
         layout_config,
@@ -388,7 +388,7 @@ class TestVanishedWidgets:
         dpg_context: None,
         layout_config,
     ) -> None:
-        """Greying a row is drawn onto the widgets it stands as, so the pointer keeps its box."""
+        """Graying a row is drawn onto the widgets it stands as, so the pointer keeps its box."""
         stems_list = build(layout_config)
         bass = row("bass")
         stems_list.update_view(view(bass))
@@ -409,7 +409,7 @@ class TestOfferedChannels:
         assert dpg.does_item_exist(channel_tag(bass, ChannelName.PULSE1))
         assert not dpg.does_item_exist(channel_tag(bass, ChannelName.TRIANGLE))
 
-    def test_a_recording_missing_from_disk_greys_out(self, dpg_context: None, layout_config) -> None:
+    def test_a_recording_missing_from_disk_grays_out(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config)
         bass = row("bass", available=False)
 
@@ -508,7 +508,7 @@ class TestMutedChannels:
             assert dpg.get_value(channel_tag(bass, channel_name))
             assert dpg.is_item_enabled(channel_tag(bass, channel_name))
 
-    def test_a_channel_switched_back_on_takes_its_own_colour_again(self, dpg_context: None, layout_config) -> None:
+    def test_a_channel_switched_back_on_takes_its_own_color_again(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config)
         bass = row("bass")
         stems_list.update_view(view(bass, muted_channels=frozenset({ChannelName.TRIANGLE})))

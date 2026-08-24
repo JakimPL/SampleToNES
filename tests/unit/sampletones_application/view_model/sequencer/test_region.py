@@ -30,7 +30,7 @@ class TestTrackerRegion:
 
         assert region.slots == (
             TrackerSlot(None, SubColumn.VOLUME),
-            TrackerSlot(ChannelName.PULSE1, SubColumn.INSTRUMENT),
+            TrackerSlot(ChannelName.PULSE1, SubColumn.VOICE),
         )
 
     def test_a_region_spans_the_whole_axis(self) -> None:

@@ -44,7 +44,7 @@ class TestWhereACallIsFound:
         assert check_shortcut_actions.mapping_keys(_module(SHELL_SOURCE)) == {"NEW_PROJECT", "OPEN_PROJECT"}
 
     def test_a_family_declares_the_actions_it_dispatches(self) -> None:
-        """A family is declared rather than recognised, so what counts as one is never guessed."""
+        """A family is declared rather than recognized, so what counts as one is never guessed."""
         assert FAMILY_ACTION in FAMILY_SHORTCUT_IDS
 
     def test_the_lookup_of_every_action_by_name_is_no_family(self) -> None:

@@ -71,7 +71,7 @@ NO_CHANNELS: Tuple[ChannelName, ...] = ()
 
 
 def _unreachable() -> None:
-    """Stands where a greyed-out item would carry a callback, which a reader never fires."""
+    """Stands where a grayed-out item would carry a callback, which a reader never fires."""
 
 
 @dataclass
@@ -346,7 +346,7 @@ class TestActionItems:
         ]
         assert fixture.requests.exported == [(SELECTED_ID, ChannelName.PULSE1)]
 
-    def test_a_move_with_nowhere_to_go_is_greyed_out(
+    def test_a_move_with_nowhere_to_go_is_grayed_out(
         self,
         monkeypatch: pytest.MonkeyPatch,
         recorder: _MenuRecorder,

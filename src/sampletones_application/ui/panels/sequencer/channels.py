@@ -77,7 +77,7 @@ class ChannelSwitch:
         switches every channel at once.
 
         The selectable is released as the click is handled, so a name behaves as a button that
-        reports the mix through its colour, and the edit cursor stays where it is.
+        reports the mix through its color, and the edit cursor stays where it is.
         """
         dpg.set_value(sender, False)
         if channel is None:

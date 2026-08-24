@@ -116,7 +116,7 @@ class TestPrimaryAction:
             (ConversionPhase.RUNNING, ConverterAction.CANCEL),
             (ConversionPhase.CANCELLING, ConverterAction.CANCEL),
             (ConversionPhase.COMPLETED, ConverterAction.CONVERT),
-            (ConversionPhase.CANCELLED, ConverterAction.CONVERT),
+            (ConversionPhase.CANCELED, ConverterAction.CONVERT),
             (ConversionPhase.FAILED, ConverterAction.CONVERT),
         ],
     )
@@ -141,7 +141,7 @@ class TestPrimaryActionEnabled:
 
     @pytest.mark.parametrize(
         "phase",
-        [ConversionPhase.COMPLETED, ConversionPhase.CANCELLED, ConversionPhase.FAILED],
+        [ConversionPhase.COMPLETED, ConversionPhase.CANCELED, ConversionPhase.FAILED],
     )
     def test_convert_disabled_in_terminal_phases(self, phase: ConversionPhase) -> None:
         assert _view_model(phase=phase).primary_action_enabled is False
@@ -204,7 +204,7 @@ class TestStemsSection:
 
 
 class TestRowStanding:
-    """A row states where it stands, so the moves it offers grey themselves out from the row alone."""
+    """A row states where it stands, so the moves it offers gray themselves out from the row alone."""
 
     def test_the_only_row_of_the_only_level_can_go_nowhere(self) -> None:
         row = _row("bass")

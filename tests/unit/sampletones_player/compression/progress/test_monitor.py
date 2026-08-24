@@ -7,7 +7,7 @@ from sampletones_player.compression.progress.report import (
     SILENT_REPORTER,
     CodecProgress,
 )
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 from tests.suite.progress import FIRST_REPORT, RecordingReporter
 
 PHRASES_FOUND: Final[int] = 4
@@ -47,15 +47,15 @@ class TestWithdrawingARun:
 
     def test_a_withdrawn_reading_unwinds_the_run(self) -> None:
         reporter: RecordingReporter[CodecProgress] = RecordingReporter(withdraw_at=FIRST_REPORT)
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             CodecMonitor(reporter).reached(PHRASES_FOUND, BYTES_LAID_DOWN)
 
     def test_a_withdrawn_poll_unwinds_the_run(self) -> None:
         reporter: RecordingReporter[CodecProgress] = RecordingReporter(withdraw_at=FIRST_REPORT)
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             CodecMonitor(reporter).poll()
 
     def test_a_withdrawal_names_what_the_run_was_holding(self) -> None:
         reporter: RecordingReporter[CodecProgress] = RecordingReporter(withdraw_at=FIRST_REPORT)
-        with pytest.raises(OperationCancelled, match=str(BYTES_LAID_DOWN)):
+        with pytest.raises(OperationCanceled, match=str(BYTES_LAID_DOWN)):
             CodecMonitor(reporter).reached(PHRASES_FOUND, BYTES_LAID_DOWN)

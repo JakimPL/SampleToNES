@@ -16,7 +16,7 @@ def _limited_length(length: int, limit: Optional[int]) -> int:
     if limit is None or length <= limit:
         return length
 
-    logger.warning(f"Instrument envelope of {length} items keeps its first {limit}, the most the format holds")
+    logger.debug(f"Instrument envelope of {length} items keeps its first {limit}, the most the format holds")
     return limit
 
 

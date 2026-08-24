@@ -23,7 +23,7 @@ def create_stage() -> Sender:
 def staged_container(stage: Sender) -> Iterator[None]:
     """Push ``stage`` as the active container so parentless items land in it.
 
-    Items created with an explicit parent still honour that parent; the stage
+    Items created with an explicit parent still honor that parent; the stage
     captures the parentless ones.
     """
     with dpg_container(stage):

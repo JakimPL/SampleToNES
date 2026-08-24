@@ -33,7 +33,7 @@ class PlaySchedule(BaseModel):
     spread the fractional part across consecutive units so the running total tracks the exact
     clock. There it is audio samples per engine tick; here it is engine ticks per play call.
 
-    Initialisation leaves the stream on tick 0, and the play call at index ``play_call`` leaves it
+    Initialization leaves the stream on tick 0, and the play call at index ``play_call`` leaves it
     on tick ``ticks_at(play_call + 1)``.
 
     Attributes:
@@ -50,7 +50,7 @@ class PlaySchedule(BaseModel):
 
         The console calls the play routine once a video frame, so the rate a stream is read at
         is its own rate measured against `NTSC_FRAME_RATE`. The header states that same rate as
-        the period it asks for, so a player honouring the field and one driving from the frame
+        the period it asks for, so a player honoring the field and one driving from the frame
         itself run the stream at the speed it was built at.
 
         Args:

@@ -22,7 +22,7 @@ def group_color(
     settings: SequencerSettingsViewModel,
     colors: SequencerColors,
 ) -> Optional[BaseColor]:
-    """The emphasis a row takes from the group the project's metre opens on it.
+    """The emphasis a row takes from the group the project's meter opens on it.
 
     The second highlight marks the bar and the first the beat, so a row opening a bar takes
     the stronger of the two shades even where a beat opens there as well. A row inside a beat
@@ -62,7 +62,7 @@ def row_background(
     colors: SequencerColors,
     cues: RowCues,
 ) -> Optional[BaseColor]:
-    """The colour a pattern row's background carries, group and cue taken together.
+    """The color a pattern row's background carries, group and cue taken together.
 
     DearPyGui offers one row background above the zebra stripe, so the row's standing
     emphasis and whatever mark is passing over it arrive as a single shade: the cue is

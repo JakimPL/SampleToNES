@@ -6,7 +6,7 @@ from sampletones_application.logic.export import SongExportLogic
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.result import ExportResult, ExportSuccess
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceProgress,
     ServiceStarted,
 )
@@ -266,7 +266,7 @@ class TestTheOutcomeThatCloses:
         service.deliver(finished())
         assert closed == [True]
 
-    def test_a_cancelled_run_takes_the_dialog_off_screen(
+    def test_a_canceled_run_takes_the_dialog_off_screen(
         self,
         logic: SongExportLogic,
         service: FakeExportService,
@@ -274,7 +274,7 @@ class TestTheOutcomeThatCloses:
         closed: List[bool] = []
         logic.on_finished = lambda: closed.append(True)
         service.deliver(ServiceStarted(total=NOTHING_MEASURED))
-        service.deliver(ServiceCancelled())
+        service.deliver(ServiceCanceled())
         assert closed == [True]
 
     def test_a_run_that_ended_holds_the_screen_no_longer(

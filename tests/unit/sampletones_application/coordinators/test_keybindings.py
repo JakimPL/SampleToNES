@@ -187,9 +187,9 @@ class TestOpening:
         assert listed == editable
 
     def test_every_row_carries_a_label_a_reader_sees(self, harness: Harness) -> None:
-        unlabelled = [row.action for group in harness.window.view_model.groups for row in group.rows if not row.label]
+        unlabeled = [row.action for group in harness.window.view_model.groups for row in group.rows if not row.label]
 
-        assert unlabelled == []
+        assert unlabeled == []
 
     def test_every_shipped_scheme_is_offered(self, harness: Harness) -> None:
         assert harness.window.view_model.schemes == shipped_catalog().names

@@ -55,8 +55,8 @@ about reaches nothing.
 
 A tracker block carries subcolumn offsets measured from `column_slot_base(column)`, and
 every base is a multiple of the subcolumn count. An offset therefore addresses the same
-kind of subcolumn at whichever column it is replayed against: an instrument value cannot
-reach a volume slot. The paste hook takes a `TrackerCell` — a row and a column, with no
+kind of subcolumn at whichever column it is replayed against: a voice reference reaches only
+another voice slot. The paste hook takes a `TrackerCell` — a row and a column, with no
 subcolumn — so the type states the rule: the anchor decides *where* a block lands and the
 block decides *which kind* goes where.
 
@@ -122,7 +122,7 @@ SampleToNES/1 order rows=1 positions=0..1
 
 The form and its reading live in `logic/sequencer/clipboard/`, which deals in blocks and
 strings alone; the desktop's clipboard is reached through
-`utils/gui/clipboard.py::TextClipboard`, one more piece of external behaviour standing behind
+`utils/gui/clipboard.py::TextClipboard`, one more piece of external behavior standing behind
 a protocol ([Architecture](architecture.md), principle 11). The sequencer coordinator wires
 the two.
 
@@ -180,7 +180,7 @@ moment — the same predicate its key scope answers with, so the menu offers wha
 press would reach — and the router asks the one that does to build its items into the menu
 the bar has opened. It holds no state, resolving the surface on each call, so the menu
 states the actions of whoever holds the cursor at the moment it is opened. The bar names the
-clipboard four greyed out when no grid answers, which is how a reader working from the menus
+clipboard four grayed out when no grid answers, which is how a reader working from the menus
 learns the commands exist.
 
 **`Del`** carries two meanings, resolved by whether a selection stands. Two ids cannot share
@@ -201,7 +201,7 @@ volume count separately, each carrying its own action.
 
 ## A shape selects to the grid's own edges
 
-`Ctrl+A` and its neighbours select a whole shape at once. Each shape is stated on the input
+`Ctrl+A` and its neighbors select a whole shape at once. Each shape is stated on the input
 state as a run of bounds along one axis — slots in the tracker, rows in the order — handed to a
 single builder that spans the other axis to the grid's full extent and lands the cursor on the
 far corner. The whole frame, a column and a subcolumn are therefore three namings of one
@@ -222,7 +222,7 @@ Both grids compose one `TableSelection` (`ui/elements/table/selection.py`), whic
 stands painted and the drag gesture that draws it. The grid states which of its cells the
 selection covers, in its own coordinates; the repaint that follows reaches the cells whose
 membership changed, marking each through the selectable's own selected state, which the
-table's theme colours. A rebuilt table asks for a reset, since the cells a selection stood on
+table's theme colors. A rebuilt table asks for a reset, since the cells a selection stood on
 belong to the body that was replaced.
 
 Both panels read the cell under a held pointer off their own geometry, because DearPyGui

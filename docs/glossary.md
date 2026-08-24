@@ -86,7 +86,7 @@ frequency.
 
 ### Instruction library
 
-A precomputed catalogue holding, for every possible instruction, the waveform
+A precomputed catalog holding, for every possible instruction, the waveform
 its channel produces and that waveform's spectrum. The search draws its
 candidates from the library. Saved as an `.ins` file. See
 [Instruction libraries](formats/instruction-libraries.md).
@@ -195,7 +195,7 @@ The tracker tints the row that opens each, and the beat is what a tempo counts:
 
 The engine ticks each row of a pattern lasts. An engine holds a row for a whole
 number of ticks, so a tempo landing between two counts is played by varying the
-count from row to row, and the metre places the longer rows on the bar, then the
+count from row to row, and the meter places the longer rows on the bar, then the
 beat, then inside the beat. Playback reads the groove by the row's position in the
 pattern, so the pattern's first row starts it afresh.
 
@@ -228,6 +228,14 @@ voices in one list, and a row states which one to start and the step it plays at
 A reconstruction added to the sequencer as a playable voice, carrying the
 instruction stream its conversion found for each channel.
 
+### Sample column
+
+The tracker's leftmost data column. It places a sample across every channel that
+sample's reconstruction covers and clears the rest of the row, which is why it takes
+samples alone: an instrument sounds on the one channel that names it. It summarizes
+what those channels hold, reading `?` where they disagree. See
+[The sequencer](guide/sequencer.md#writing-a-pattern).
+
 ### Instrument
 
 One set of envelopes a channel reads while a note sounds, saved as an `.fti` file. A
@@ -254,7 +262,7 @@ be followed by a sustained tail. A voice without one plays its envelopes once.
 
 | Extension | Contents |
 | --- | --- |
-| `.ins` | [Instruction library](formats/instruction-libraries.md) — the candidate catalogue. |
+| `.ins` | [Instruction library](formats/instruction-libraries.md) — the candidate catalog. |
 | `.stn` | [Reconstruction](formats/reconstructions.md) — a converted sample. |
 | `.stp` | [Project](formats/projects.md) — a bundle of reconstructions with a song and settings. |
 | `.fti` | FamiTracker instrument ([export](formats/famitracker.md)). |

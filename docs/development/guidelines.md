@@ -34,8 +34,8 @@ These rules govern the Python in this repository. They complement
 1. If a module contains many class and function definitions, split into a subpackage divided by a single concern.
 1. If a private function (or public that does not have any external consumers) serves only a class in the module it lives, move it to the class as a static/class method or isolate helper functions into a separate utility module.
 1. Prefer subpackages over a flat directory structure.
-1. Isolate platform-, desktop-, or external-tool-specific behaviour behind a `Protocol` with one implementation per target, selected by a runtime factory that probes availability and environment. Callers depend only on the `Protocol` and stay platform-agnostic.
-1. Wrap a third-party library or OS tool whose behaviour differs across platforms behind our own typed interface, and encode each quirk inside the matching implementation. A comment naming the third-party behaviour is warranted there.
+1. Isolate platform-, desktop-, or external-tool-specific behavior behind a `Protocol` with one implementation per target, selected by a runtime factory that probes availability and environment. Callers depend only on the `Protocol` and stay platform-agnostic.
+1. Wrap a third-party library or OS tool whose behavior differs across platforms behind our own typed interface, and encode each quirk inside the matching implementation. A comment naming the third-party behavior is warranted there.
 
 ## Type Hints
 
@@ -64,7 +64,7 @@ These rules govern the Python in this repository. They complement
 ## Docstrings and Comments
 
 1. A docstring explains the intention of a class or function and the context of its use.
-1. State functionality in positive terms. Describe what a class or function *does* — not what it avoids, omits, skips, differs from, or no longer does. Reframe every negation ("does not", "rather than", "instead of", "without", "never", "cannot", "no longer") into the behaviour that actually happens. Do not contrast with rejected alternatives as justification; the positive statement carries the meaning.
+1. State functionality in positive terms. Describe what a class or function *does* — not what it avoids, omits, skips, differs from, or no longer does. Reframe every negation ("does not", "rather than", "instead of", "without", "never", "cannot", "no longer") into the behavior that actually happens. Do not contrast with rejected alternatives as justification; the positive statement carries the meaning.
 1. Negative phrasing is allowed only where the condition itself is the contract: exception triggers in `Raises:` clauses, precondition/postcondition bounds (prefer "must be at least X" over "cannot be less than X" where natural), and documented edge-case returns. Outside these concrete cases, negative descriptions are information noise and must be removed.
 1. Justify an arbitrary choice in the docstring rather than a code comment, and frame the justification by what the choice achieves.
 1. Let clear names carry the meaning, and skip comments or docstrings that restate the code.
@@ -82,6 +82,7 @@ These rules govern the Python in this repository. They complement
 1. Write for a reader who never saw the history. A document is not a changelog or a devlog: do not argue against past states, resolved problems, or rejected alternatives the reader never knew existed. The design as it stands carries its own justification; history belongs in commit messages and release notes.
 1. Reach for a negative example only when the contrast teaches something the positive statement cannot, and use it sparingly. One well-placed "what to avoid" illuminates; a document written mostly in negatives is noise.
 1. State each fact once, in the document that owns it, and cross-reference sibling documents rather than repeating them.
+1. Use American English.
 
 ## Tests
 
@@ -92,9 +93,9 @@ These rules govern the Python in this repository. They complement
 1. Test case classes and cases themselves should be defined inside the testing class, unless these objects are shared between test classes. A suite inherits from `BaseTestSuite` and names its case class `TestCase`, which inherits from `BaseRegularTestCase`, or from `BaseAutolabelTestCase` where the case derives its own label. The parametrized argument carries the case as `test_case`.
 1. For a multi-step scenario, use a test-scenario suite class — a series of functions with assertions.
 1. Prefer fixtures over factories, and define shared fixtures in an appropriate place.
-1. **A shipped value is a choice, not a contract.** Defaults, keybinding schemes, palettes, layouts, and the settings a build opens on are tuned freely, so a test that restates one turns every adjustment into a test edit. Assert behaviour instead: validation bounds, serialization round-trips, fallback and recovery paths, and the invariants a value satisfies — a default lies within the range offered, every palette declares the same tokens, every action the application names is answered.
-1. **Read a configured value; do not repeat it.** Where a case needs the keys an action answers, a palette's colour, a layout's dimension, or a default a model falls back to, it reads that value from the configuration under test and derives the rest of the case from it. A case that presses a key states which action it is pressing, resolves the combination from the scheme, and keeps passing once that action is rebound.
+1. **A shipped value is a choice, not a contract.** Defaults, keybinding schemes, palettes, layouts, and the settings a build opens on are tuned freely, so a test that restates one turns every adjustment into a test edit. Assert behavior instead: validation bounds, serialization round-trips, fallback and recovery paths, and the invariants a value satisfies — a default lies within the range offered, every palette declares the same tokens, every action the application names is answered.
+1. **Read a configured value; do not repeat it.** Where a case needs the keys an action answers, a palette's color, a layout's dimension, or a default a model falls back to, it reads that value from the configuration under test and derives the rest of the case from it. A case that presses a key states which action it is pressing, resolves the combination from the scheme, and keeps passing once that action is rebound.
 1. **A literal shipped value needs a stated reason.** Write one only where the value itself is the contract — a file format's constant, a value another system reads back, an interoperability requirement — and say so in the case. Asserting against the named constant that defines the value (`DEFAULT_MAX_FPS`, `DEFAULT_SCHEME_NAME`) states where the value comes from and is welcome; a bare literal standing for the same thing is the pin this rule forbids.
 1. Values that must match by contract are asserted to match, never hardcoded — e.g. project metadata at creation or after a save/load round-trip is held against its source, never against a version string.
 1. Unit tests may mock system boundaries (file I/O, external services, IPC channels), but must not mock the domain logic that is the subject of the test. Integration tests must exercise real computation pipelines against real (synthetically built) data.
-1. When a test expectation diverges from the production code's actual behaviour, determine which is wrong before acting. A failing test is evidence of a potential bug in the production code unless the test itself is demonstrably incorrect (wrong imports, misread API contract, incorrect fixture). Never silently delete or weaken a test to make it pass. If uncertain, flag the divergence explicitly and ask before changing either side.
+1. When a test expectation diverges from the production code's actual behavior, determine which is wrong before acting. A failing test is evidence of a potential bug in the production code unless the test itself is demonstrably incorrect (wrong imports, misread API contract, incorrect fixture). Never silently delete or weaken a test to make it pass. If uncertain, flag the divergence explicitly and ask before changing either side.

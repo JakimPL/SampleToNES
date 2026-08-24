@@ -24,7 +24,7 @@ from sampletones_shared.constants.general import HEXADECIMAL_BASE
 from sampletones_shared.constants.symbols import MINUS, PLUS, PLUS_MINUS, SIGNS
 
 DIGIT_COUNT: Final[Dict[SubColumn, int]] = {
-    SubColumn.INSTRUMENT: 2,
+    SubColumn.VOICE: 2,
     SubColumn.TRANSPOSE: 2,
     SubColumn.VOLUME: 1,
 }
@@ -40,7 +40,7 @@ class TrackerCursor:
 def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
     try:
         match cursor.subcolumn:
-            case SubColumn.INSTRUMENT:
+            case SubColumn.VOICE:
                 return EditAction(
                     row=cursor.row,
                     channel=cursor.channel,
@@ -212,7 +212,7 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         """Steps the cursor along the flattened slot axis, wrapping at either end.
 
         Wrapping is a navigation policy the cursor owns: walking right off the last
-        volume slot lands on the sample column's instrument, so a held arrow key
+        volume slot lands on the sample column's voice slot, so a held arrow key
         tours the whole row.
         """
         if self.cursor is None:
@@ -265,7 +265,7 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         if self.cursor is None:
             return self, None
 
-        if self.cursor.subcolumn is SubColumn.INSTRUMENT and char == MINUS:
+        if self.cursor.subcolumn is SubColumn.VOICE and char == MINUS:
             return self._after_entry(), self._note_off_action(self.cursor)
 
         if self.cursor.subcolumn is SubColumn.TRANSPOSE:

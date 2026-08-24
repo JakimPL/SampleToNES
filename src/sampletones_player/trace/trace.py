@@ -30,26 +30,26 @@ FIRST_TICK: Final[int] = 0
 class RegisterTrace:
     """Every APU register write a run of the driver makes, grouped by the call that makes it.
 
-    This is the contract the assembly is written against: initialisation clears the channels,
+    This is the contract the assembly is written against: initialization clears the channels,
     enables them and sounds the song's first tick, and each play call afterwards either advances
     the streams and writes the tick it lands on, or leaves the console alone. The three registers
     that reset a running channel are written only where their value changes, which is what keeps
     a pulse waveform's phase running across a rest the way a rendered channel does.
 
     A channel sounds only while its length counter stands above zero, and the counter loads from a
-    write to the register carrying the length index once the channel is enabled. Initialisation
+    write to the register carrying the length index once the channel is enabled. Initialization
     therefore reaches those registers after :data:`APU_STATUS`: the noise channel's directly, and
     the three that carry a timer through the first tick's high byte. Halting every counter is what
     holds them there for the rest of the song.
 
     Attributes:
-        initialisation: The writes the init routine makes, leaving the console on the song's
+        initialization: The writes the init routine makes, leaving the console on the song's
             first tick.
         play_calls: The writes each play call makes, one entry per call, and an empty one for a
             call the streams hold their tick through.
     """
 
-    initialisation: Tuple[RegisterWrite, ...]
+    initialization: Tuple[RegisterWrite, ...]
     play_calls: Tuple[Tuple[RegisterWrite, ...], ...]
 
     @staticmethod
@@ -72,7 +72,7 @@ class RegisterTrace:
         return tuple(writes)
 
     @classmethod
-    def _initialisation_writes(cls, song: Song, shadows: Dict[int, int]) -> Tuple[RegisterWrite, ...]:
+    def _initialization_writes(cls, song: Song, shadows: Dict[int, int]) -> Tuple[RegisterWrite, ...]:
         writes = [
             RegisterWrite(address, SILENCED_REGISTER)
             for address in range(FIRST_CHANNEL_REGISTER, LAST_CHANNEL_REGISTER + 1)
@@ -94,7 +94,7 @@ class RegisterTrace:
             play_calls: How many play calls the run covers, at least 0.
 
         Returns:
-            RegisterTrace: The initialisation writes and the writes of every call in the run.
+            RegisterTrace: The initialization writes and the writes of every call in the run.
 
         Raises:
             ValueError: If ``play_calls`` is negative.
@@ -103,7 +103,7 @@ class RegisterTrace:
             raise ValueError(f"play_calls must be at least 0, got {play_calls}")
 
         shadows: Dict[int, int] = {}
-        initialisation = cls._initialisation_writes(song, shadows)
+        initialization = cls._initialization_writes(song, shadows)
 
         calls: List[Tuple[RegisterWrite, ...]] = []
         for play_call in range(play_calls):
@@ -115,6 +115,6 @@ class RegisterTrace:
             calls.append(cls._tick_writes(song, tick, shadows))
 
         return cls(
-            initialisation=initialisation,
+            initialization=initialization,
             play_calls=tuple(calls),
         )

@@ -11,7 +11,7 @@ from sampletones_shared.types.callback import CallbackT, VoidCallback
 CONCURRENT_EXECUTOR_NAME: Final[str] = "_concurrent_executor"
 
 
-class BackgroundWorkCancelled(Exception):
+class BackgroundWorkCanceled(Exception):
     """Unwinds a background task promptly once shutdown has been requested.
 
     Long-running tasks poll :meth:`SingleThreadExecutor.is_shutting_down` at their
@@ -64,7 +64,7 @@ class SingleThreadExecutor:
         """Signal running background tasks to wind down at their next cancellation point.
 
         Set before :meth:`join_all` at teardown so an in-flight task raises
-        :class:`BackgroundWorkCancelled` and finishes promptly, letting the join
+        :class:`BackgroundWorkCanceled` and finishes promptly, letting the join
         return quickly.
         """
         cls._shutdown.set()
@@ -140,7 +140,7 @@ def concurrent(
 
                 try:
                     function(self, *args, **kwargs)
-                except BackgroundWorkCancelled:
+                except BackgroundWorkCanceled:
                     return
                 except Exception as exception:  # pylint: disable=broad-exception-caught
                     logger.error_with_traceback(

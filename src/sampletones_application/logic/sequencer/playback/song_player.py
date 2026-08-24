@@ -114,7 +114,7 @@ class SongPlayerLogic(CallbackMixin):
     def seek(self, order_position: int) -> None:
         """Moves the live playhead to another order, preserving sounding voices.
 
-        Drives the follow-playback behaviour: selecting a different order while the song plays
+        Drives the follow-playback behavior: selecting a different order while the song plays
         relocates the playhead in place. The service stays idle when nothing is playing.
 
         The worker emits each row's position only after its blocking write, so one in-flight update

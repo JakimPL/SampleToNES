@@ -70,7 +70,7 @@ def _column(
     return TrackerRegion(
         first_row=0,
         last_row=last_row,
-        first_slot=_slot(channel, SubColumn.INSTRUMENT),
+        first_slot=_slot(channel, SubColumn.VOICE),
         last_slot=_slot(channel, SubColumn.VOLUME),
     )
 
@@ -93,7 +93,7 @@ class TestChannelColumn:
 
         block = reader.read(_column(ChannelName.PULSE1))
 
-        assert block.notes[_key(SubColumn.INSTRUMENT)] == sample.id
+        assert block.notes[_key(SubColumn.VOICE)] == sample.id
         assert block.transposes[_key(SubColumn.TRANSPOSE)] == 5
         assert block.volumes[_key(SubColumn.VOLUME)] == 3
 
@@ -104,7 +104,7 @@ class TestChannelColumn:
         """An untouched channel holds no pattern at all, which reads as the empty cell it shows."""
         block = reader.read(_column(ChannelName.NOISE))
 
-        assert block.notes[_key(SubColumn.INSTRUMENT)] is None
+        assert block.notes[_key(SubColumn.VOICE)] is None
         assert block.transposes[_key(SubColumn.TRANSPOSE)] is None
         assert block.volumes[_key(SubColumn.VOLUME)] is None
 
@@ -115,9 +115,9 @@ class TestChannelColumn:
     ) -> None:
         logic.cut_note(0, ChannelName.PULSE1)
 
-        block = reader.read(_cell(0, ChannelName.PULSE1, SubColumn.INSTRUMENT))
+        block = reader.read(_cell(0, ChannelName.PULSE1, SubColumn.VOICE))
 
-        assert block.notes[_key(SubColumn.INSTRUMENT)] == NoteOff()
+        assert block.notes[_key(SubColumn.VOICE)] == NoteOff()
 
     def test_a_zero_transpose_carries_as_the_value_it_is(
         self,
@@ -165,7 +165,7 @@ class TestSampleColumn:
 
         block = reader.read(_column(None))
 
-        assert block.notes[_key(SubColumn.INSTRUMENT)] == sample.id
+        assert block.notes[_key(SubColumn.VOICE)] == sample.id
         assert block.transposes[_key(SubColumn.TRANSPOSE)] == 7
 
     def test_a_note_carries_as_the_sample_it_names(
@@ -181,9 +181,9 @@ class TestSampleColumn:
         )
         logic.place_note(0, None, sample.id)
 
-        block = reader.read(_cell(0, None, SubColumn.INSTRUMENT))
+        block = reader.read(_cell(0, None, SubColumn.VOICE))
 
-        assert block.notes[_key(SubColumn.INSTRUMENT)] == sample.id
+        assert block.notes[_key(SubColumn.VOICE)] == sample.id
 
     def test_a_column_its_channels_disagree_over_leaves_its_key_out(
         self,
@@ -204,9 +204,9 @@ class TestSampleColumn:
     ) -> None:
         logic.cut_note(0, ChannelName.PULSE1)
 
-        block = reader.read(_cell(0, None, SubColumn.INSTRUMENT))
+        block = reader.read(_cell(0, None, SubColumn.VOICE))
 
-        assert _key(SubColumn.INSTRUMENT) not in block.notes
+        assert _key(SubColumn.VOICE) not in block.notes
 
     def test_a_wholly_cut_row_carries_the_cut(
         self,
@@ -215,9 +215,9 @@ class TestSampleColumn:
     ) -> None:
         logic.cut_note(0, None)
 
-        block = reader.read(_cell(0, None, SubColumn.INSTRUMENT))
+        block = reader.read(_cell(0, None, SubColumn.VOICE))
 
-        assert block.notes[_key(SubColumn.INSTRUMENT)] == NoteOff()
+        assert block.notes[_key(SubColumn.VOICE)] == NoteOff()
 
     def test_an_untouched_row_carries_its_emptiness(
         self,
@@ -226,7 +226,7 @@ class TestSampleColumn:
         """Every channel is equally empty, which is a reading they agree on."""
         block = reader.read(_column(None))
 
-        assert block.notes[_key(SubColumn.INSTRUMENT)] is None
+        assert block.notes[_key(SubColumn.VOICE)] is None
         assert block.transposes[_key(SubColumn.TRANSPOSE)] is None
         assert block.volumes[_key(SubColumn.VOLUME)] is None
 
@@ -246,12 +246,12 @@ class TestOffsets:
             TrackerRegion(
                 first_row=0,
                 last_row=0,
-                first_slot=_slot(None, SubColumn.INSTRUMENT),
+                first_slot=_slot(None, SubColumn.VOICE),
                 last_slot=_slot(None, SubColumn.VOLUME),
             )
         )
 
-        assert set(block.notes) == {_key(SubColumn.INSTRUMENT)}
+        assert set(block.notes) == {_key(SubColumn.VOICE)}
         assert set(block.transposes) == {_key(SubColumn.TRANSPOSE)}
         assert _key(SubColumn.VOLUME) not in block.volumes
 
@@ -269,7 +269,7 @@ class TestOffsets:
                 first_row=0,
                 last_row=0,
                 first_slot=_slot(ChannelName.PULSE2, SubColumn.TRANSPOSE),
-                last_slot=_slot(ChannelName.TRIANGLE, SubColumn.INSTRUMENT),
+                last_slot=_slot(ChannelName.TRIANGLE, SubColumn.VOICE),
             )
         )
 

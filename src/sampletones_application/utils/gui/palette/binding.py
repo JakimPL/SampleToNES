@@ -13,7 +13,7 @@ COLOR_ARGUMENT: Final[str] = "color"
 
 @dataclass(frozen=True)
 class ArgumentBinding:
-    """A colour DearPyGui copied into one of an item's arguments."""
+    """A color DearPyGui copied into one of an item's arguments."""
 
     item: Sender
     color: BaseColor
@@ -25,7 +25,7 @@ class ArgumentBinding:
 
 @dataclass(frozen=True)
 class ThemeColorBinding:
-    """A colour DearPyGui copied into a theme colour item."""
+    """A color DearPyGui copied into a theme color item."""
 
     item: Sender
     color: BaseColor

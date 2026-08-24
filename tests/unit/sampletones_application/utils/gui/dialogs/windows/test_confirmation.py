@@ -23,7 +23,7 @@ from tests.suite.shortcuts import shipped_source
 
 WINDOW_TAG: Final[str] = get_dialog_tag(TAG_GLOBAL_DIALOG_PATH_MESSAGE)
 CONFIRMED: Final[str] = "confirmed"
-CANCELLED: Final[str] = "cancelled"
+CANCELED: Final[str] = "canceled"
 OPTED_OUT: Final[str] = "opted_out"
 
 
@@ -60,7 +60,7 @@ def render(
         path=path,
         opt_out_label=opt_out_label,
         on_opt_out=lambda: answers.append(OPTED_OUT) if answers is not None else None,
-        on_cancel=lambda: answers.append(CANCELLED) if answers is not None else None,
+        on_cancel=lambda: answers.append(CANCELED) if answers is not None else None,
     )
     window.create_window()
 
@@ -85,7 +85,7 @@ class TestConfirmationWindow:
 
         press(compose_tag(WINDOW_TAG, SUF_BUTTON_CANCEL))
 
-        assert answers == [CANCELLED]
+        assert answers == [CANCELED]
         assert not dpg.does_item_exist(WINDOW_TAG)
 
     def test_a_ticked_opt_out_rides_the_confirmation(self, window: GUIConfirmationWindow) -> None:

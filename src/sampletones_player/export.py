@@ -137,7 +137,7 @@ class NSFBackend:
         """Writes a program playing one channel slice.
 
         Raises:
-            OperationCancelled: If ``report`` withdraws the write.
+            OperationCanceled: If ``report`` withdraws the write.
             SongTooLargeError: If the slice runs longer than the program area holds.
             OSError: If the destination cannot be written.
         """
@@ -162,7 +162,7 @@ class NSFBackend:
         seconds reads as the work it is doing.
 
         Raises:
-            OperationCancelled: If ``report`` withdraws the write.
+            OperationCanceled: If ``report`` withdraws the write.
             SongTooLargeError: If the reconstruction runs longer than the program area holds.
             OSError: If the destination cannot be written.
         """
@@ -200,7 +200,7 @@ class NSFBackend:
         what an NSF player expects of a song that has reached its end.
 
         Raises:
-            OperationCancelled: If ``report`` withdraws the write.
+            OperationCanceled: If ``report`` withdraws the write.
             SongTooLargeError: If the song holds more than the program area has room for.
             OSError: If the destination cannot be written.
             ValueError: If the project's samples were reconstructed against tunings that differ.

@@ -50,13 +50,13 @@ def generate_library(config: Config) -> None:
 
         if task_status in (
             TaskStatus.COMPLETED,
-            TaskStatus.CANCELLED,
+            TaskStatus.CANCELED,
             TaskStatus.FAILED,
         ):
             progress_bar.close()
 
-    def on_cancelled() -> None:
-        logger.info("Library generation cancelled by user")
+    def on_canceled() -> None:
+        logger.info("Library generation canceled by user")
         progress_bar.close()
 
     def on_error(_exception: Exception) -> None:
@@ -66,7 +66,7 @@ def generate_library(config: Config) -> None:
         on_start=on_start,
         on_completed=on_completed,
         on_progress=on_progress,
-        on_cancelled=on_cancelled,
+        on_canceled=on_canceled,
         on_error=on_error,
     )
 

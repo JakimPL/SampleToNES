@@ -11,7 +11,7 @@ class StemRowViewModel(BaseModel, frozen=True):
 
     A row states where it stands — the level it picks on, the place it takes among the
     recordings sharing that level, and how many of each the list holds — so the moves a list
-    offers grey themselves out from the row alone. ``key`` is the identity the list reports a
+    offers gray themselves out from the row alone. ``key`` is the identity the list reports a
     gesture under: the recording's path where the list gathers files, the stem id where it
     describes a recorded assignment. ``offered_channels`` names the boxes the row draws and
     ``channels`` the ones ticked among them.

@@ -7,7 +7,7 @@ from sampletones_core.project.settings import ProjectSettings
 
 
 @dataclass(frozen=True)
-class Metre:
+class Meter:
     """The row grouping a pattern is felt in: its length, its beat, and the bar above it.
 
     ``first_highlight`` is the beat, the unit an actual tempo is read from, and
@@ -41,8 +41,8 @@ class Metre:
             raise ValueError(f"second_highlight must be at least 1, got {self.second_highlight}")
 
     @classmethod
-    def from_settings(cls, settings: ProjectSettings, *, rows: int) -> Metre:
-        """Reads the metre a project states, over a pattern of ``rows`` rows.
+    def from_settings(cls, settings: ProjectSettings, *, rows: int) -> Meter:
+        """Reads the meter a project states, over a pattern of ``rows`` rows.
 
         The project holds the two highlights while the song holds the pattern length, so
         the row count arrives beside the settings.

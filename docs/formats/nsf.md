@@ -38,7 +38,7 @@ directly, which is the one address a build decides — `driver/addresses.py` rea
 out of the linker's own labels.
 
 The console calls `init` once and then `play` once a video frame. The header asks for the
-NTSC frame period, so a player honouring the field and one driving from the frame itself
+NTSC frame period, so a player honoring the field and one driving from the frame itself
 run a song at the speed it was built at.
 
 **The program area is 32 KB**, from `$8000` upward, and the song block has whatever the

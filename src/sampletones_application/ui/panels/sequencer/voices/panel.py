@@ -32,6 +32,7 @@ from sampletones_application.utils.gui.keyboard import (
     KeyEvent,
     KeyRouter,
 )
+from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -260,7 +261,7 @@ class GUISequencerVoicesPanel(GUIPanel):
     def repaint(self) -> None:
         """Issues the selected row's tint again so it takes the palette now in place.
 
-        DearPyGui keeps a row highlight on the table rather than on an item, so the colour
+        DearPyGui keeps a row highlight on the table rather than on an item, so the color
         reaches it only by being pushed again.
         """
         if self._selected_row is None or not dpg.does_item_exist(TAG_SEQUENCER_VOICES_TABLE):
@@ -273,13 +274,18 @@ class GUISequencerVoicesPanel(GUIPanel):
         row_id: int | str,
         entry: VoiceEntryViewModel,
     ) -> None:
-        """Marks which kind the row carries, so a converted voice reads apart from a written one."""
+        """Marks which kind the row carries, so a converted voice reads apart from a written one.
+
+        The glyph names the kind and its color repeats it, which is the same pair the tracker's
+        voice slot wears — so a row and the cells naming it read as one thing across the two panels.
+        """
         kind_cell = dpg.add_table_cell(parent=row_id)
         mark = dpg.add_text(
             parent=kind_cell,
             default_value=self._kind_glyph(entry.kind),
         )
         FontRegistry.bind_to_item(mark, Font.ICON)
+        dpg_set_palette_color(mark, self._kind_color(entry.kind))
         show_tooltip(mark, self._kind_tooltip(entry.kind))
 
     def _kind_glyph(self, kind: VoiceKind) -> str:
@@ -288,6 +294,14 @@ class GUISequencerVoicesPanel(GUIPanel):
                 return self._glyphs.voices.sample
             case VoiceKind.INSTRUMENT:
                 return self._glyphs.voices.instrument
+
+    def _kind_color(self, kind: VoiceKind) -> BaseColor:
+        text = self._layout.colors.text
+        match kind:
+            case VoiceKind.SAMPLE:
+                return text.sample
+            case VoiceKind.INSTRUMENT:
+                return text.instrument
 
     def _kind_tooltip(self, kind: VoiceKind) -> str:
         match kind:

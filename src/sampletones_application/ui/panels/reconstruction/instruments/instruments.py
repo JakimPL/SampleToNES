@@ -230,7 +230,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         The figure names how much of the NES data area an export spends, so it reads as
         information beside the fields that change: the label column aligns with the stepper
-        below it, and the value carries the stepper's own read-only colour and font. A tooltip
+        below it, and the value carries the stepper's own read-only color and font. A tooltip
         names the export the figure measures, since the formats spend differently.
         """
         with labeled_field(
@@ -561,7 +561,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     ) -> None:
         """Marks one channel's tab as playing or standing by.
 
-        The muted theme reaches the tab label alone; the tab's body carries its own text colour,
+        The muted theme reaches the tab label alone; the tab's body carries its own text color,
         so a channel standing by stays as readable to edit as one that plays.
         """
         theme_tag = TAG_GLOBAL_THEME_INSTRUMENT_TABS if is_playing else TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED
@@ -910,10 +910,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         feature_key: FeatureKey,
         item_count: int,
     ) -> None:
-        """Colours the sequence input by how a FamiTracker export treats its length.
+        """Colors the sequence input by how a FamiTracker export treats its length.
 
         A sequence longer than ``MAX_SEQUENCE_ITEMS`` exports its opening items, so the
-        input carries the warning colour to show which part of the envelope reaches a
+        input carries the warning color to show which part of the envelope reaches a
         FamiTracker file.
         """
         self._sequence_lengths[(channel_name, feature_key)] = item_count

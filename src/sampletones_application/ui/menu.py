@@ -299,12 +299,12 @@ class MenuBar:
         self._edit_section.watch()
 
     def _add_edit_action_items(self) -> None:
-        """States the focused surface's actions, or the clipboard four greyed out while none is."""
+        """States the focused surface's actions, or the clipboard four grayed out while none is."""
         if not self._build_edit_actions():
             self._add_unfocused_clipboard_items()
 
     def _add_unfocused_clipboard_items(self) -> None:
-        """Names the clipboard actions greyed out, the Edit menu with no grid holding a cursor."""
+        """Names the clipboard actions grayed out, the Edit menu with no grid holding a cursor."""
         for element in UNFOCUSED_CLIPBOARD_ELEMENTS:
             dpg.add_menu_item(
                 label=self._context_label(element),

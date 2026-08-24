@@ -90,7 +90,9 @@ from sampletones_application.ui.panels.sequencer.history import GUISequencerHist
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
-from sampletones_application.ui.panels.sequencer.voices.panel import GUISequencerVoicesPanel
+from sampletones_application.ui.panels.sequencer.voices.panel import (
+    GUISequencerVoicesPanel,
+)
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.file_dialogs.api import open_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
@@ -914,7 +916,7 @@ class SequencerTabCoordinator:
 
         Every mutation the wrapped callback triggers is grouped under ``action``;
         a gesture that changes nothing records no entry. ``detail`` computes the
-        entry's coloured description segments from the same arguments the hook
+        entry's colored description segments from the same arguments the hook
         receives, and ``coalesce`` computes the gesture's target key from them:
         consecutive gestures sharing the same action and target collapse into a
         single entry.
@@ -1015,7 +1017,7 @@ class SequencerTabCoordinator:
     ) -> None:
         """Hands the project's song settings to the two panels that read them.
 
-        The module panel shows the timing fields themselves; the tracker reads the metre out of
+        The module panel shows the timing fields themselves; the tracker reads the meter out of
         the same view model, so a highlight edited in the project properties retints the grid as
         soon as the dialog commits.
         """
@@ -1142,7 +1144,7 @@ class SequencerTabCoordinator:
         """Draws every table again so its tints take the palette now in place.
 
         DearPyGui keeps a table's row, column and cell tints as state of the table rather than
-        as a property of an item, so they take a new colour by being issued again. Each panel
+        as a property of an item, so they take a new color by being issued again. Each panel
         answers for the tints it owns, and this is where the palette asks all three.
         """
         self._sequencer_tracker_panel.repaint()
@@ -1174,7 +1176,7 @@ class SequencerTabCoordinator:
         """Settles the marks the transport owns, and how far the grid chases the playhead.
 
         The player emits a view on every position update and on every change to the setting, so
-        reading the follow behaviour here keeps the grid in step both while a song sounds and the
+        reading the follow behavior here keeps the grid in step both while a song sounds and the
         moment the reader picks another mode.
         """
         self._sequencer_tracker_panel.set_row_following(view_model.follow_mode.follows_row)
@@ -1399,7 +1401,7 @@ class SequencerTabCoordinator:
 
         The detail is composed while the sample still holds the outgoing reconstruction, so it reads
         the name being replaced alongside the incoming one. The replacement is announced in the same
-        window, ahead of the substitution, because an editor holding the sample open recognises it by
+        window, ahead of the substitution, because an editor holding the sample open recognizes it by
         the identity of the reconstruction it is about to give up. The frequency adoption, the rename,
         and the substitution share a single history entry, so one undo restores the previous rate,
         name, and audio together.
@@ -1478,10 +1480,7 @@ class SequencerTabCoordinator:
         """Applies an inline rename, ignoring a blank name so the sample keeps its current one."""
         stripped = name.strip()
         if stripped:
-            detail = self._history_detail.rename_voice(
-                self._sequencer_voices_logic.voice_name(voice_id),
-                stripped,
-            )
+            detail = self._history_detail.rename_voice(voice_id, stripped)
             with self._history.transaction(
                 HistoryAction.RENAME_SAMPLE,
                 detail=detail,
@@ -1685,7 +1684,7 @@ class SequencerTabCoordinator:
         self._sync_browser_width()
 
     def _build_center_column(self, parent: str) -> None:
-        """Stacks the order table and tracker tracker down the centre column."""
+        """Stacks the order table and tracker tracker down the center column."""
         self._sequencer_order_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._sequencer_tracker_panel.create_panel(parent)

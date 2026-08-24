@@ -17,7 +17,7 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.timing import (
     MAX_TICKS_PER_ROW,
     MIN_TICKS_PER_ROW,
-    Metre,
+    Meter,
     RowRate,
     calculate_groove,
 )
@@ -98,7 +98,7 @@ def _groove_ticks(controller: ProjectController) -> Tuple[int, ...]:
     settings = controller.project.settings
     return calculate_groove(
         RowRate.from_settings(settings),
-        Metre.from_settings(settings, rows=controller.project.song.rows_per_pattern),
+        Meter.from_settings(settings, rows=controller.project.song.rows_per_pattern),
         minimum_ticks=MIN_TICKS_PER_ROW,
         maximum_ticks=MAX_TICKS_PER_ROW,
     ).ticks
@@ -723,7 +723,7 @@ class TestFrameCount:
 
 
 class TestGroove:
-    def test_a_pattern_plays_the_groove_the_metre_yields(
+    def test_a_pattern_plays_the_groove_the_meter_yields(
         self,
         controller: ProjectController,
         synthesizer: RowSynthesizer,

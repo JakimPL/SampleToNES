@@ -4,7 +4,7 @@ from typing import Self
 from sampletones_core.project import Project
 from sampletones_core.timing.bounds import MAX_TICKS_PER_ROW, MIN_TICKS_PER_ROW
 from sampletones_core.timing.groove import Groove, calculate_groove
-from sampletones_core.timing.metre import Metre
+from sampletones_core.timing.meter import Meter
 from sampletones_core.timing.rate import RowRate
 
 
@@ -14,18 +14,18 @@ class SongTiming:
 
     Attributes:
         rate: The exact ticks one row lasts under the project's tempo, speed and tick rate.
-        metre: The pattern length and the beat and bar grouping the ticks are spread over.
+        meter: The pattern length and the beat and bar grouping the ticks are spread over.
     """
 
     rate: RowRate
-    metre: Metre
+    meter: Meter
 
     @classmethod
     def from_project(cls, project: Project) -> Self:
         """Reads the timing a project plays at, taking the pattern length from its song."""
         return cls(
             rate=RowRate.from_settings(project.settings),
-            metre=Metre.from_settings(
+            meter=Meter.from_settings(
                 project.settings,
                 rows=project.song.rows_per_pattern,
             ),
@@ -40,7 +40,7 @@ class SongTiming:
         """
         return calculate_groove(
             self.rate,
-            self.metre,
+            self.meter,
             minimum_ticks=MIN_TICKS_PER_ROW,
             maximum_ticks=MAX_TICKS_PER_ROW,
         )

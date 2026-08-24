@@ -26,7 +26,7 @@ OK_FOCUS_STOP: Final[int] = 1
 class GUIErrorDialogWindow(GUIDialogWindow):
     """A modal reporting an exception with its message and an optional traceback.
 
-    The exception's name and text are drawn in the error colour, the traceback starts
+    The exception's name and text are drawn in the error color, the traceback starts
     hidden behind its toggle, and OK — the initially focused button — dismisses the
     prompt. The title-bar close reads the same way.
     """

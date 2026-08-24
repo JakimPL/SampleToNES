@@ -65,7 +65,7 @@ def captured_file_trace(data: bytes, song: Song) -> RegisterTrace:
         song: The song the file plays, which states how far the run reaches.
 
     Returns:
-        RegisterTrace: The writes of the initialisation and of every play call in the run.
+        RegisterTrace: The writes of the initialization and of every play call in the run.
     """
     return captured_run(data, play_calls_covering(song))
 
@@ -78,7 +78,7 @@ def captured_run(data: bytes, play_calls: int) -> RegisterTrace:
         play_calls: How many play calls the run covers.
 
     Returns:
-        RegisterTrace: The writes of the initialisation and of every play call in the run.
+        RegisterTrace: The writes of the initialization and of every play call in the run.
     """
     image = DriverImage.load()
     console = Console(data, image.addresses)
@@ -93,7 +93,7 @@ def captured_trace(song: Song, information: NSFInformation) -> RegisterTrace:
         information: The text the exported header carries.
 
     Returns:
-        RegisterTrace: The writes of the initialisation and of every play call in the run.
+        RegisterTrace: The writes of the initialization and of every play call in the run.
     """
     return captured_file_trace(nsf_to_bytes(song, information, DriverImage.load()), song)
 
@@ -111,6 +111,6 @@ def captured_trace_over(
         play_calls: How many play calls the run covers.
 
     Returns:
-        RegisterTrace: The writes of the initialisation and of every play call in the run.
+        RegisterTrace: The writes of the initialization and of every play call in the run.
     """
     return captured_run(nsf_to_bytes(song, information, DriverImage.load()), play_calls)

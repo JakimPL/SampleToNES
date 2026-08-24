@@ -29,10 +29,11 @@ history:
     value: .history_value
     separator: .history_separator
 text:
-  instrument: .tracker_reference
+  voice: .text_disabled
   transpose: .tracker_transpose
   volume: .tracker_volume
-  sample: .tracker_reference
+  sample: .voice_sample
+  instrument: .voice_instrument
   frame: .tracker_frame
   row: .tracker_row
   order: .tracker_order

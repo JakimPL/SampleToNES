@@ -23,7 +23,7 @@ class InstructionsLibraryElements(AbstractElement):
     STATUS_SAVING = "status_saving"
     STATUS_GENERATION_SUCCESS = "status_generation_success"
     STATUS_WINDOW_NOT_AVAILABLE = "status_window_not_available"
-    STATUS_GENERATION_CANCELLED = "status_generation_cancelled"
+    STATUS_GENERATION_CANCELED = "status_generation_canceled"
     STATUS_GENERATION_FAILED = "status_generation_failed"
     STATUS_FILE_NOT_FOUND = "status_file_not_found"
     STATUS_FILE_LOAD_ERROR = "status_file_load_error"

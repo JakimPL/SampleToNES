@@ -14,6 +14,7 @@ from sampletones_application.view_model.sequencer.kind import voice_kind
 from sampletones_application.view_model.sequencer.voices import (
     SequencerVoicesViewModel,
     VoiceEntryViewModel,
+    VoiceKind,
 )
 from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
 from sampletones_core.audio import AudioDeviceManager
@@ -234,6 +235,22 @@ class SequencerVoicesLogic(CallbackMixin):
             voices=self._controller.project.voices,
             voice_id=voice_id,
         )
+
+    def voice_kind(self, voice_id: str) -> Optional[VoiceKind]:
+        """Which of the two kinds a voice in the pool is, telling a recording from a written one.
+
+        Args:
+            voice_id: The voice being asked about.
+
+        Returns:
+            Optional[VoiceKind]: The kind the pool holds it as, or ``None`` while the pool holds
+            no such voice.
+        """
+        voice = self._controller.project.voices.get(voice_id)
+        if voice is None:
+            return None
+
+        return voice_kind(voice)
 
     def remove_voice(self, voice_id: str) -> None:
         self._controller.remove_voice(voice_id)

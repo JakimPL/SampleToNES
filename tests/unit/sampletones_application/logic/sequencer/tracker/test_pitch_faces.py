@@ -123,7 +123,7 @@ class TestTheSampleColumnSpeaksForSamples:
         controller, logic = _logic()
         instrument = _instrument(controller)
 
-        logic.set_row_voice(0, instrument.id)
+        logic.set_row_sample(0, instrument.id)
 
         assert all(logic.row(channel, 0) is None or logic.row(channel, 0).is_empty() for channel in ChannelName.items())
 

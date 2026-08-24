@@ -112,7 +112,7 @@ So the encoder does not pick a reading by rules of thumb; it searches for the ch
 one. The plane becomes a graph: each tick is a node, each token that could start there
 is an edge to the tick after the ones it covers, and the edge's weight is the bytes
 that token takes. **The cheapest path across the plane is its encoding** — and because
-the weights are bytes, the search optimises the very quantity that has to fit in the
+the weights are bytes, the search optimizes the very quantity that has to fit in the
 program area.
 
 ### 4.1 The edges

@@ -33,7 +33,7 @@ class TrackerBlockReader:
         """Takes the values a region covers, keeping each kind of subcolumn in a map of its own."""
         base = column_slot_base(slot_from_flat(region.first_slot).channel)
         return TrackerBlock(
-            notes=self._read_subcolumn(region, base, SubColumn.INSTRUMENT, self._note_of),
+            notes=self._read_subcolumn(region, base, SubColumn.VOICE, self._note_of),
             transposes=self._read_subcolumn(region, base, SubColumn.TRANSPOSE, self._transpose_of),
             volumes=self._read_subcolumn(region, base, SubColumn.VOLUME, self._volume_of),
         )
@@ -59,7 +59,12 @@ class TrackerBlockReader:
 
                 agreement = self._agree(row_index, slot.channel, select)
                 if agreement.is_unanimous:
-                    values[(row_offset, region.first_slot + position - base)] = agreement.value
+                    values[
+                        (
+                            row_offset,
+                            region.first_slot + position - base,
+                        )
+                    ] = agreement.value
 
         return values
 
@@ -72,14 +77,20 @@ class TrackerBlockReader:
         """What a column holds at a cell: a channel's own value, or the one its channels share.
 
         A channel column answers for itself, so it is a group of one and always agrees. The sample
-        column answers for the channels it governs, which is the group its display summarises too,
+        column answers for the channels it governs, which is the group its display summarizes too,
         so a block states about a cell exactly what the grid it came from shows there.
         """
         if channel is not None:
             return Agreement.collapse([select(self._tracker.row(channel, row_index))])
 
         return Agreement.collapse(
-            select(self._tracker.row(channel, row_index)) for channel in self._tracker.relevant_channels(row_index)
+            select(
+                self._tracker.row(
+                    channel,
+                    row_index,
+                )
+            )
+            for channel in self._tracker.relevant_channels(row_index)
         )
 
     @staticmethod
@@ -90,8 +101,8 @@ class TrackerBlockReader:
         column it is written into.
         """
         match row.command if row is not None else None:
-            case NoteOn() as instrument:
-                return instrument.voice_id
+            case NoteOn() as note_on:
+                return note_on.voice_id
             case NoteOff() as note_off:
                 return note_off
             case None:

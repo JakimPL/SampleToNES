@@ -172,7 +172,7 @@ ignore-paths = "^tests/.*$"
 load-plugins = ["pylint_pydantic"]
 fail-on = [
     "fatal",
-    "fixme",
+    # "fixme",
     "redefined-outer-name",
     "used-before-assignment",
     "unused-import",

@@ -78,7 +78,7 @@ def _settings(
     first_highlight: int = ROWS_PER_BEAT,
     second_highlight: int = ROWS_PER_BAR,
 ) -> SequencerSettingsViewModel:
-    """The module settings the panel reads its metre out of."""
+    """The module settings the panel reads its meter out of."""
     return SequencerSettingsViewModel(
         nes_frequency=60,
         tempo=150,
@@ -128,7 +128,7 @@ def _place_cursor(
 ) -> None:
     """Puts the cursor where the panel's own state keeps it, the way an edit action does."""
     panel._input_state = TrackerInputState(
-        cursor=TrackerCursor(row_index, channel, SubColumn.INSTRUMENT),
+        cursor=TrackerCursor(row_index, channel, SubColumn.VOICE),
         pending="",
     )
 
@@ -190,7 +190,7 @@ class TestRowGrouping:
         assert HEADER_TABLE_ROW not in recorder.highlighted_rows
         assert HEADER_TABLE_ROW not in recorder.unhighlighted_rows
 
-    def test_an_edited_metre_retints_the_rows_at_once(self, recorder: _TableRecorder) -> None:
+    def test_an_edited_meter_retints_the_rows_at_once(self, recorder: _TableRecorder) -> None:
         """The highlights are the project's, so a change to them reaches the grid as a repaint."""
         panel = _panel()
         panel._apply_row_backgrounds()

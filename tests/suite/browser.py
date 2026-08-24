@@ -218,7 +218,7 @@ def _rows_nested_under(rows: Sequence[_Row], index: int) -> Set[int]:
 def _assert_rows_named(rows: Sequence[_Row], labels: AbstractSet[str]) -> None:
     """Holds a derived view to the rows the view it varies reads, so a label naming none is stated."""
     missing = labels - {row.label for row in rows}
-    assert not missing, f"the view holds no row labelled {sorted(missing)}"
+    assert not missing, f"the view holds no row labeled {sorted(missing)}"
 
 
 def config_fields(

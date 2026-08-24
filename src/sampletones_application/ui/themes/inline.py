@@ -8,7 +8,7 @@ from sampletones_application.utils.palette.colors.faded import FadedColor
 
 
 def create_selectable_text_theme(color: BaseColor) -> int:
-    """Builds a theme colouring selectable text, leaving its other colours to the global theme."""
+    """Builds a theme coloring selectable text, leaving its other colors to the global theme."""
     return _create_selectable_theme({dpg.mvThemeCol_Text: color})
 
 
@@ -19,8 +19,8 @@ def create_header_selectable_theme(
 ) -> int:
     """Builds a theme for a selectable that carries a table column's label.
 
-    A selectable takes the ``Header`` colours under the pointer, so naming those alongside the
-    text colour gives a header label the pointer feedback a table header has, in place of the
+    A selectable takes the ``Header`` colors under the pointer, so naming those alongside the
+    text color gives a header label the pointer feedback a table header has, in place of the
     selection shade a cell takes.
     """
     return _create_selectable_theme(
@@ -35,7 +35,7 @@ def create_header_selectable_theme(
 def create_label_selectable_theme(color: BaseColor) -> int:
     """Builds a theme for a selectable that carries a label rather than a gesture.
 
-    Every header wash takes the label's own colour at zero alpha, so the cell reads as plain
+    Every header wash takes the label's own color at zero alpha, so the cell reads as plain
     text while it keeps the layout a selectable lays out with, which is what lets it line up
     with the clickable labels beside it.
     """
@@ -54,7 +54,7 @@ def _create_selectable_theme(colors: Dict[int, BaseColor]) -> int:
     """Builds a theme carrying ``colors`` for a selectable in both enabled states.
 
     DearPyGui resolves an item against the theme component that matches the
-    item's enabled state. Carrying the colour in both components keeps the theme
+    item's enabled state. Carrying the color in both components keeps the theme
     authoritative for the selectable in every state — including frames where its
     container is disabled — matching the loader's policy that a theme fully
     describes both item states.

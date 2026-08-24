@@ -40,7 +40,7 @@ class ApplicationConfig(BaseModel):
     )
     playback: PlaybackConfig = Field(
         default_factory=PlaybackConfig,
-        description="Playback behaviour preferences.",
+        description="Playback behavior preferences.",
     )
     shortcuts: ShortcutsConfig = Field(
         default_factory=ShortcutsConfig,

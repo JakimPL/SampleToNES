@@ -33,7 +33,7 @@ from sampletones_shared.types.callback import VoidCallback
 class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
     """Shared skeleton of the reconstructions browser in the Sequencer and Reconstruction tabs.
 
-    Reads the tree both tabs share into rows, colours the ones the browser invents, and routes node
+    Reads the tree both tabs share into rows, colors the ones the browser invents, and routes node
     clicks to the subclass through :meth:`_open_reconstruction`. The subclass names its widgets and
     its refresh control, and adds the items its context menus offer.
 
@@ -163,10 +163,10 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
         state.parent = node_tag
 
     def _resolve_other_theme_tag(self, node: TreeNode) -> str:
-        """Selects the colour of a row the browser invents: a plain group, or a sample in wave colour.
+        """Selects the color of a row the browser invents: a plain group, or a sample in wave color.
 
         A sample row names the audio a set of reconstructions was made from, so it reads in the
-        colour audio files carry elsewhere in the application.
+        color audio files carry elsewhere in the application.
         """
         match node.node_type:
             case NodeType.GROUP:

@@ -1,11 +1,14 @@
 import contextlib
-from typing import Any, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import pytest
 
 from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.input.target import TrackerTarget
-from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
+from sampletones_application.ui.panels.sequencer.input.tracker import (
+    TrackerCursor,
+    TrackerInputState,
+)
 from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.voices import (
@@ -33,7 +36,7 @@ def _panel() -> tracker_module.GUISequencerTrackerPanel:
 
     The menu-dispatch methods touch only their hook attributes, the context
     labels, the keys each item prints, and ``CallbackMixin.call``, so a fully
-    wired GUI context is unnecessary here. Labels carry no behaviour, so any
+    wired GUI context is unnecessary here. Labels carry no behavior, so any
     placeholder text serves.
     """
     panel = tracker_module.GUISequencerTrackerPanel.__new__(tracker_module.GUISequencerTrackerPanel)
@@ -56,11 +59,19 @@ class _MenuItemRecorder:
 
     def __init__(self) -> None:
         self.items: List[Tuple[Any, Any]] = []
+        self.entries: List[Dict[str, Any]] = []
 
     def add_menu_item(self, **kwargs: Any) -> int:
+        self.entries.append(kwargs)
         if "callback" in kwargs and "user_data" in kwargs:
             self.items.append((kwargs["user_data"], kwargs["callback"]))
         return 0
+
+    def reachable(self, label: str) -> bool:
+        """Whether the one item carrying ``label`` was offered enabled."""
+        entries = [entry for entry in self.entries if entry["label"] == label]
+        assert len(entries) == 1, f"{label!r} appears {len(entries)} times"
+        return bool(entries[0]["enabled"])
 
     def dispatch_as_dpg(self) -> None:
         """Fires each recorded callback the way DearPyGui does: sender first."""
@@ -81,9 +92,9 @@ def recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuItemRecorder:
     return instance
 
 
-def _cell(row: int, channel: ChannelName) -> TrackerCursor:
+def _cell(row: int, channel: Optional[ChannelName]) -> TrackerCursor:
     """The cell a menu was raised on, which the items carry as their payload."""
-    return TrackerCursor(row, channel, SubColumn.INSTRUMENT)
+    return TrackerCursor(row, channel, SubColumn.VOICE)
 
 
 def _target(row: int, channel: ChannelName) -> TrackerTarget:
@@ -149,7 +160,73 @@ class TestMenuDispatchPreservesPayload:
         chosen: List[str] = []
         panel.on_set_row = lambda row, channel, voice_id, transpose, volume: chosen.append(voice_id)
 
-        panel._add_instrument_submenu(_cell(0, ChannelName.PULSE2))
+        panel._add_voice_submenu(_cell(0, ChannelName.PULSE2))
         recorder.dispatch_as_dpg()
 
         assert chosen == ["lead-id"]
+
+
+class TestWhichVoicesAColumnOffers:
+    """The whole pool is listed wherever the menu is raised; the column decides what is reachable."""
+
+    SAMPLE_LABEL = "00 lead"
+    INSTRUMENT_LABEL = "01 pad"
+
+    @staticmethod
+    def _panel_with_both_kinds() -> tracker_module.GUISequencerTrackerPanel:
+        panel = _panel()
+        panel._current_samples = SequencerVoicesViewModel(
+            voices=(
+                VoiceEntryViewModel(
+                    voice_id="lead-id",
+                    name="lead",
+                    kind=VoiceKind.SAMPLE,
+                    loop=False,
+                ),
+                VoiceEntryViewModel(
+                    voice_id="pad-id",
+                    name="pad",
+                    kind=VoiceKind.INSTRUMENT,
+                    loop=False,
+                ),
+            ),
+        )
+        return panel
+
+    def test_a_channel_column_reaches_both_kinds(self, recorder: _MenuItemRecorder) -> None:
+        panel = self._panel_with_both_kinds()
+
+        panel._add_voice_submenu(_cell(0, ChannelName.PULSE2))
+
+        assert recorder.reachable(self.SAMPLE_LABEL) is True
+        assert recorder.reachable(self.INSTRUMENT_LABEL) is True
+
+    def test_the_sample_column_reaches_a_sample_alone(self, recorder: _MenuItemRecorder) -> None:
+        panel = self._panel_with_both_kinds()
+
+        panel._add_voice_submenu(_cell(0, None))
+
+        assert recorder.reachable(self.SAMPLE_LABEL) is True
+        assert recorder.reachable(self.INSTRUMENT_LABEL) is False
+
+    def test_the_sample_column_still_names_the_instrument_it_stands_by_for(
+        self,
+        recorder: _MenuItemRecorder,
+    ) -> None:
+        """An unreachable item says the voice exists while leaving it where it belongs."""
+        panel = self._panel_with_both_kinds()
+
+        panel._add_voice_submenu(_cell(0, None))
+
+        assert [entry["label"] for entry in recorder.entries] == [
+            self.SAMPLE_LABEL,
+            self.INSTRUMENT_LABEL,
+        ]
+
+    def test_an_empty_pool_offers_one_unreachable_item(self, recorder: _MenuItemRecorder) -> None:
+        panel = _panel()
+        panel._current_samples = SequencerVoicesViewModel(voices=())
+
+        panel._add_voice_submenu(_cell(0, None))
+
+        assert [entry["enabled"] for entry in recorder.entries] == [False]

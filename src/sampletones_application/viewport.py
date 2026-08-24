@@ -85,9 +85,9 @@ class ViewportManager:
         return self._monitor_area(int(viewport_x), int(viewport_y), width, height)
 
     def refresh_clear_color(self) -> None:
-        """Paints the area around the windows in the main theme's background colour.
+        """Paints the area around the windows in the main theme's background color.
 
-        DearPyGui holds the clear colour outside the theme system, so it is issued again
+        DearPyGui holds the clear color outside the theme system, so it is issued again
         whenever the theme's background answers with a new value.
         """
         color = self._theme.get_color(dpg.mvAll, dpg.mvThemeCol_WindowBg)

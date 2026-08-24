@@ -104,7 +104,7 @@ class TestHowTheStageUnderWayReads:
         render(window, travelling=True, progress=HALFWAY)
         assert dpg.get_value(TAG_SETTINGS_EXPORT_PROGRESS) == pytest.approx(HALFWAY)
 
-    def test_a_bar_is_labelled_with_the_share_it_has_covered(self, window: GUIExportWindow) -> None:
+    def test_a_bar_is_labeled_with_the_share_it_has_covered(self, window: GUIExportWindow) -> None:
         render(window, travelling=True, progress=HALFWAY)
         assert dpg.get_item_configuration(TAG_SETTINGS_EXPORT_PROGRESS)["overlay"] == "50%"
 

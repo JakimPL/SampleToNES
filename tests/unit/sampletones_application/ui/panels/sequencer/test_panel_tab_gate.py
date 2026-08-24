@@ -36,7 +36,7 @@ def _tracker(tab_active: ActivePredicate) -> GUISequencerTrackerPanel:
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._router = KeyRouter()
     panel._tab_active = tab_active
-    panel._input_state = TrackerInputState(cursor=TrackerCursor(0, None, SubColumn.INSTRUMENT))
+    panel._input_state = TrackerInputState(cursor=TrackerCursor(0, None, SubColumn.VOICE))
     return panel
 
 

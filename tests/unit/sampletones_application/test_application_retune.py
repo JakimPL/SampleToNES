@@ -2,7 +2,7 @@ from typing import List, Optional
 from unittest.mock import MagicMock
 
 from sampletones_application.application import Application
-from sampletones_application.services.result import ServiceCancelled
+from sampletones_application.services.result import ServiceCanceled
 from sampletones_application.services.retune import RetunedSample
 from sampletones_core.project.voices.sample import Sample
 
@@ -144,13 +144,13 @@ class TestRetuneDim:
     def test_restores_the_dim_when_the_batch_finishes(self) -> None:
         app = _app_for_rate([], open_reconstruction=None, running=False)
 
-        app._on_retune_result(ServiceCancelled())
+        app._on_retune_result(ServiceCanceled())
 
         app._reconstructions_tab.set_reconstruction_dimmed.assert_called_once_with(False)
 
     def test_keeps_the_dim_while_the_batch_is_running(self) -> None:
         app = _app_for_rate([], open_reconstruction=None, running=True)
 
-        app._on_retune_result(ServiceCancelled())
+        app._on_retune_result(ServiceCanceled())
 
         app._reconstructions_tab.set_reconstruction_dimmed.assert_not_called()
