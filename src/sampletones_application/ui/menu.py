@@ -8,7 +8,9 @@ from sampletones_application.categories.elements.global_ import (
     ContextElements,
     MenuElements,
 )
-from sampletones_application.categories.elements.sequencer import SequencerVoicesElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerVoicesElements,
+)
 from sampletones_application.categories.exports import (
     EXPORT_PROJECT_MENU_LABELS,
     EXPORT_SAMPLE_MENU_LABELS,
@@ -434,6 +436,7 @@ class MenuBar:
                 label=self._voices_label(SequencerVoicesElements.IMPORT_INSTRUMENT),
                 enabled=state.project_open,
             )
+            dpg.add_separator()
             self._shortcut_manager.add_menu_item(
                 ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER,
                 tag=TAG_GLOBAL_MENU_ITEM_VOICE_ADD_TO_SEQUENCER,
