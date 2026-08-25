@@ -16,15 +16,20 @@ from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.clock.schedule import PlaySchedule
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.table import PhraseTable
-from sampletones_player.compression.encode import emit
+from sampletones_player.compression.encode import emit, encode_planes
+from sampletones_player.compression.options import EVERY_LAYER
 from sampletones_player.compression.pitch import PITCH_COUNT, PitchTable
+from sampletones_player.compression.planes.channel import TonePlanes
 from sampletones_player.compression.planes.order import PlaneOrder
+from sampletones_player.compression.planes.separate import planes_from_streams
+from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.compression.tokens.literal import LiteralToken
 from sampletones_player.registers.noise import NoiseRegisters
 from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.registers.streams import ChannelStreams
 from sampletones_player.registers.triangle import TriangleRegisters
 from sampletones_player.song import Song
+from sampletones_player.specification.binary import unsigned_byte
 from sampletones_player.specification.compression import (
     MAX_LITERAL_BYTES,
     PLANE_COUNT,
@@ -127,6 +132,45 @@ def player_song(
         schedule=PlaySchedule.from_parameters(nes_frequency),
         loop_tick=loop_tick,
         seeds=(),
+    )
+
+
+def bent_song(
+    pitch_index: int,
+    bends: Sequence[int],
+    nes_frequency: int,
+) -> Song:
+    """A song holding one note on a pulse channel while its bend plane moves the divider.
+
+    A bend reaches the console on a plane of its own, and only the plane can put one there while
+    the encoders still leave the dimension to the note. Stating one outright is therefore what
+    holds the driver's own arithmetic to the divider each tick is meant to sound at.
+
+    Args:
+        pitch_index: The pitch the value plane names, counted from the lowest the table holds.
+        bends: The divider steps each tick stands away from that pitch.
+        nes_frequency: The rate the streams were written at.
+
+    Returns:
+        Song: The song, its other channels resting throughout.
+    """
+    sounding = pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_PITCHES.timers[pitch_index])
+    planes = planes_from_streams(resting_streams((sounding,) * len(bends)), PLAYER_PITCHES)
+    bent = SongPlanes(
+        pulse1=TonePlanes(
+            control=planes.pulse1.control,
+            value=planes.pulse1.value,
+            bend=bytes(unsigned_byte(bend) for bend in bends),
+        ),
+        pulse2=planes.pulse2,
+        triangle=planes.triangle,
+        noise=planes.noise,
+    )
+    return Song(
+        planes=encode_planes(bent, (), options=EVERY_LAYER, boundaries=frozenset()),
+        pitches=PLAYER_PITCHES,
+        schedule=PlaySchedule.from_parameters(nes_frequency),
+        loop_tick=None,
     )
 
 

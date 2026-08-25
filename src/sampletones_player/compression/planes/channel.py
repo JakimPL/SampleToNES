@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class ChannelPlanes(BaseModel):
-    """One channel's ticks separated into the two byte series it writes.
+    """One channel's ticks separated into the byte series it writes.
 
     A channel writes two things each tick: how it sounds and what it sounds. Read tick by tick
     those two braid together, and each turns over at its own pace — a volume envelope decays
@@ -25,12 +25,10 @@ class ChannelPlanes(BaseModel):
     value: bytes
 
     @model_validator(mode="after")
-    def _validate_both_planes_cover_the_same_ticks(self) -> ChannelPlanes:
-        if len(self.control) != len(self.value):
-            raise ValueError(
-                f"a channel's planes cover the same ticks, and these cover "
-                f"{len(self.control)} and {len(self.value)}"
-            )
+    def _validate_every_plane_covers_the_same_ticks(self) -> ChannelPlanes:
+        lengths = {len(plane) for plane in self.ordered}
+        if len(lengths) > 1:
+            raise ValueError(f"a channel's planes cover the same ticks, and these cover {sorted(lengths)}")
 
         if not self.control:
             raise ValueError("a channel's planes cover at least one tick")
@@ -39,10 +37,30 @@ class ChannelPlanes(BaseModel):
 
     @property
     def ticks(self) -> int:
-        """The ticks both planes cover."""
+        """The ticks the channel's planes cover."""
         return len(self.control)
 
     @property
     def ordered(self) -> Tuple[bytes, ...]:
-        """Both planes, in the order the song block writes them."""
+        """The channel's planes, in the order the song block writes them."""
         return (self.control, self.value)
+
+
+class TonePlanes(ChannelPlanes):
+    """A tone channel's ticks, the divider each one sounds at named in two parts.
+
+    A tone channel reaches its divider through the pitch table, and a frame may stand away from
+    the note it names. The value plane holds the note, which is what lets a phrase be transposed
+    by adding to it, and the bend plane holds how far the frame stands from it — so the divider
+    the hardware takes is the sum, and each half repeats on its own terms.
+
+    Attributes:
+        bend: The divider steps each tick stands away from its note, held as a signed byte.
+    """
+
+    bend: bytes
+
+    @property
+    def ordered(self) -> Tuple[bytes, ...]:
+        """The channel's planes, in the order the song block writes them."""
+        return (self.control, self.value, self.bend)

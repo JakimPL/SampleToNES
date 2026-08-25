@@ -68,7 +68,7 @@ def song_to_bytes(song: Song, available_bytes: int) -> bytes:
 
     The header states the clock, the length and where each of the song's parts begins, so the
     whole block plays from wherever the file loads it: the timer every pitch sounds at, the
-    dictionary the tokens name, and the eight token streams the channels decode a tick at a
+    dictionary the tokens name, and one token stream per plane, which the channels decode a tick at a
     time. A song that repeats also states the byte each stream is re-entered at, which is the
     whole of what a loop restores.
 
@@ -77,7 +77,7 @@ def song_to_bytes(song: Song, available_bytes: int) -> bytes:
         available_bytes: The space the song has to fit in.
 
     Returns:
-        bytes: The song header, the timer table, the dictionary and the eight token streams.
+        bytes: The song header, the timer table, the dictionary and every plane's token stream.
 
     Raises:
         SongTooLargeError: If the song takes more than ``available_bytes``, or reaches further

@@ -19,9 +19,12 @@ def phrases_from_project(
     """The phrases a project's own instruments offer the dictionary.
 
     A song is built by playing sample slices at rows, so the shapes its planes repeat are the
-    slices themselves: each one reaches the dictionary as the two planes it writes, at the pitch
-    and level it was reconstructed at, and every row playing it names those entries at the shift
-    the row asks for.
+    slices themselves: each one reaches the dictionary as the planes it writes, at the pitch and
+    level it was reconstructed at, and every row playing it names those entries at the shift the
+    row asks for.
+
+    A plane holding one value throughout offers the dictionary nothing a hold covers more
+    cheaply, so the slices seed the planes that turn over.
 
     Args:
         project: The project whose samples the song plays.
@@ -41,6 +44,11 @@ def phrases_from_project(
             channel_registers(channel, played, timer_table),
             pitches,
         )
-        phrases.extend(Phrase(body=plane[:MAX_PHRASE_LENGTH]) for plane in planes.ordered)
+        phrases.extend(Phrase(body=plane[:MAX_PHRASE_LENGTH]) for plane in planes.ordered if _turns_over(plane))
 
     return tuple(phrases)
+
+
+def _turns_over(plane: bytes) -> bool:
+    """Whether a plane reaches more than one value over the ticks it covers."""
+    return len(set(plane)) > 1

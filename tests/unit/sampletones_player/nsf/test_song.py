@@ -79,8 +79,8 @@ class TestSongBytes:
     """The exact bytes a hand-built song serializes to.
 
     The layout is the contract the driver reads the song through, so the literal states it in
-    full: the header, the timer every pitch sounds at, the dictionary the tokens name, and the
-    eight token streams. The timer table is named rather than transcribed, since it is the
+    full: the header, the timer every pitch sounds at, the dictionary the tokens name, and one
+    token stream per plane. The timer table is named rather than transcribed, since it is the
     tuning's own table and the block carries whatever that table holds.
     """
 
@@ -89,20 +89,29 @@ class TestSongBytes:
         b"\xca\x7f"
         b"\x02\x00"
         b"\xff\xff"
-        b"\x2b\x00"
-        b"\xfb\x00"
-        b"\xfc\x00\xff\x00\x02\x01\x05\x01\x08\x01\x0b\x01\x0e\x01\x11\x01"
-        b"\xfc\x00\xff\x00\x02\x01\x05\x01\x08\x01\x0b\x01\x0e\x01\x11\x01"
+        b"\x37\x00"
+        b"\x07\x01"
+        b"\x08\x01\x0b\x01\x0e\x01"
+        b"\x11\x01\x14\x01\x17\x01"
+        b"\x1a\x01\x1d\x01\x20\x01"
+        b"\x23\x01\x26\x01"
+        b"\x08\x01\x0b\x01\x0e\x01"
+        b"\x11\x01\x14\x01\x17\x01"
+        b"\x1a\x01\x1d\x01\x20\x01"
+        b"\x23\x01\x26\x01"
     )
 
     EXPECTED_STREAMS: Final[bytes] = (
         b"\x00"
         b"\x41\x3f\x30"
         b"\x40\x21\x00"
+        b"\x40\x00\x00"
         b"\x40\x30\x00"
         b"\x40\x21\x00"
+        b"\x40\x00\x00"
         b"\x40\x80\x00"
         b"\x40\x21\x00"
+        b"\x40\x00\x00"
         b"\x40\x30\x00"
         b"\x40\x0a\x00"
     )

@@ -18,13 +18,13 @@ from sampletones_shared.utils.progress import silent_reporter
 class Song(BaseModel):
     """A song as the console holds it: compressed channel planes, a timer table and a clock.
 
-    A file carries a song as eight token streams over one dictionary, and this is that song, so
+    A file carries a song as one token stream per plane over one dictionary, and this is that song, so
     what the player holds and what the console reads are the same value. The register values each
     channel writes are read back out of the streams, the timer table turning a plane's pitch index
     into the divider the hardware takes.
 
     Attributes:
-        planes: The dictionary and the eight token streams the channels play.
+        planes: The dictionary and the token stream every plane plays.
         pitches: The timer each pitch sounds at.
         schedule: The engine ticks each play call advances the streams by.
         loop_tick: The tick the song returns to once it ends, or ``None`` where it stops there.

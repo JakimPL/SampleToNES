@@ -5,7 +5,7 @@ from sampletones_player.compression.planes.channel import ChannelPlanes
 
 
 class TestAChannelWritesTwoPlanesOfEqualLength:
-    """The two planes are read tick for tick, so a channel states both across the same ticks."""
+    """The planes are read tick for tick, so a channel states them all across the same ticks."""
 
     def test_both_planes_reach_the_ticks_the_channel_covers(self) -> None:
         planes = ChannelPlanes(control=bytes(4), value=bytes(4))

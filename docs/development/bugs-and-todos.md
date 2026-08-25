@@ -23,11 +23,12 @@ starts carrying.
   one.
 * Arpeggio modes: a sequence's `setting` byte states absolute. Fixed, relative and scheme need an
   enum of their own, and scheme needs the item bit-packing FamiTracker gives it.
-* The bend in the NSF planes. A channel's value plane names a pitch as a semitone index, which is
-  what makes `TRANSPOSED_PHRASE` work, so a divider offset needs a plane of its own: `PLANE_COUNT`
-  8 → 12, a wider song header, another `PLANE_STATE_SIZE` block per channel, another
-  `plane_advance` per channel per tick and a sixteen-bit add before the timer registers are
-  written. Until it lands, an NSF renders a bent note at the note's own divider.
+* The bend reaching the NSF planes. Each tone channel carries a bend plane and the driver adds
+  what it holds to the divider, but the encoders still leave the dimension to the note:
+  `registers/playable.py::playable` states that once, and every encoder below reads frames
+  carrying no bend. Filling the plane means the register encoders holding the bent divider and
+  `PitchTable` naming a divider as the nearest pitch beside a signed residual. Until it lands, an
+  NSF renders a bent note at the note's own divider.
 * The bend in a Bitphase export. `formats/bitphase/envelopes.py` states the three dimensions it
   writes; `NesInstrumentRow` already carries `tone_add` and `tone_accumulation`, so the mapping is
   confined to that module.

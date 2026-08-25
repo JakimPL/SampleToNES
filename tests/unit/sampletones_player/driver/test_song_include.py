@@ -5,6 +5,7 @@ from typing import Dict, Final
 import pytest
 
 from sampletones_player.compression.pitch import PITCH_COUNT
+from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.driver.assembler.layout import INCLUDE_DIRECTORY
 from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.compression import (
@@ -133,15 +134,7 @@ class TestTheDriverReadsTheBlockTheExporterWrites:
         assert max(offsets) < equates["PLANE_STATE_SIZE"]
 
     def test_every_plane_is_named_at_its_own_state_block(self, equates: Dict[str, int]) -> None:
-        planes = (
-            "PULSE1_CONTROL_PLANE",
-            "PULSE1_VALUE_PLANE",
-            "PULSE2_CONTROL_PLANE",
-            "PULSE2_VALUE_PLANE",
-            "TRIANGLE_CONTROL_PLANE",
-            "TRIANGLE_VALUE_PLANE",
-            "NOISE_CONTROL_PLANE",
-            "NOISE_VALUE_PLANE",
-        )
+        """The assembly holds a state block per plane, named and ordered as the song block is."""
+        planes = [f"{name.upper()}_PLANE" for name in PlaneOrder.names()]
         expected = [plane * equates["PLANE_STATE_SIZE"] for plane in range(PLANE_COUNT)]
         assert [equates[plane] for plane in planes] == expected

@@ -2,7 +2,7 @@ from typing import Dict, Final, Sequence
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.compression.pitch import PitchTable
-from sampletones_player.compression.planes.channel import ChannelPlanes
+from sampletones_player.compression.planes.channel import ChannelPlanes, TonePlanes
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.registers.base import ChannelRegisters
 from sampletones_player.registers.streams import ChannelStreams
@@ -30,11 +30,12 @@ def _pitch_indices(
 def _tone_planes(
     registers: Sequence[ChannelRegisters],
     indices: Dict[int, int],
-) -> ChannelPlanes:
+) -> TonePlanes:
     control = bytes(tick.values[CONTROL_VALUE_INDEX] for tick in registers)
-    return ChannelPlanes(
+    return TonePlanes(
         control=control,
         value=_pitch_indices(registers, indices),
+        bend=bytes(len(registers)),
     )
 
 
@@ -49,7 +50,7 @@ def channel_planes(
     registers: Sequence[ChannelRegisters],
     pitches: PitchTable,
 ) -> ChannelPlanes:
-    """Separates one channel's ticks into the two planes the codec reads.
+    """Separates one channel's ticks into the planes the codec reads.
 
     Args:
         channel: The channel the registers belong to.
@@ -57,7 +58,7 @@ def channel_planes(
         pitches: The timer each pitch sounds at.
 
     Returns:
-        ChannelPlanes: The channel's control and value planes.
+        ChannelPlanes: The channel's own planes.
 
     Raises:
         ValueError: If a tone channel sounds a timer the pitch table states no index for.
@@ -72,9 +73,9 @@ def planes_from_streams(
     streams: ChannelStreams,
     pitches: PitchTable,
 ) -> SongPlanes:
-    """Separates a song's four streams into the eight planes the codec compresses.
+    """Separates a song's four streams into the planes the codec compresses.
 
-    Every channel is carried to the song's full length first, so the eight planes cover the same
+    Every channel is carried to the song's full length first, so every plane covers the same
     ticks and the decoder advances them together.
 
     Args:
@@ -82,7 +83,7 @@ def planes_from_streams(
         pitches: The timer each pitch sounds at.
 
     Returns:
-        SongPlanes: The eight planes, two per channel.
+        SongPlanes: The planes under the channel each belongs to.
 
     Raises:
         ValueError: If a tone channel sounds a timer the pitch table states no index for.

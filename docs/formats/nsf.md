@@ -47,17 +47,18 @@ rather than written short.
 
 ## B. The song block
 
-A song reaches the console as eight **token streams** — one per plane, two planes per
-channel — decoded a tick at a time against a **dictionary** of phrases and a **timer
-table** of pitches. Every offset below is a `uint16` counted from the block's own first
-byte, so the whole block plays from wherever the file loads it.
+A song reaches the console as one **token stream** per plane, decoded a tick at a time
+against a **dictionary** of phrases and a **timer table** of pitches. Every channel writes
+a control plane and a value plane, and a tone channel writes a bend plane besides. Every
+offset below is a `uint16` counted from the block's own first byte, so the whole block
+plays from wherever the file loads it.
 
 ```
 +0      header
-+43     timer table
++55     timer table
         phrase table:  count, then one offset per phrase
         phrase bodies: each a length byte, then its values
-        eight token streams, in plane order
+        one token stream per plane, in plane order
 ```
 
 ### B.1 The header
@@ -70,8 +71,8 @@ byte, so the whole block plays from wherever the file loads it.
 | +5 | 2 | the tick the song returns to, or `$FFFF` where it stops there |
 | +7 | 2 | where the timer table begins |
 | +9 | 2 | where the phrase table begins |
-| +11 | 8×2 | where each plane's stream begins |
-| +27 | 8×2 | where each plane's stream is re-entered once the song comes round |
+| +11 | `PLANE_COUNT`×2 | where each plane's stream begins |
+| +33 | `PLANE_COUNT`×2 | where each plane's stream is re-entered once the song comes round |
 
 All fields are little-endian, and the header runs to `SONG_HEADER_SIZE` bytes.
 
@@ -141,34 +142,44 @@ plane at the byte the header states and clearing what it was playing.
 
 ## C. What the planes hold
 
-The planes are written in this order, and each pair belongs to one channel:
+The planes are written in this order, and each group belongs to one channel:
 
 | Plane | Carries | Reaches |
 |---|---|---|
 | pulse 1 control | duty cycle and volume | `$4000` |
 | pulse 1 value | pitch index | `$4002`, `$4003` |
+| pulse 1 bend | divider offset | `$4002`, `$4003` |
 | pulse 2 control | duty cycle and volume | `$4004` |
 | pulse 2 value | pitch index | `$4006`, `$4007` |
+| pulse 2 bend | divider offset | `$4006`, `$4007` |
 | triangle control | linear counter | `$4008` |
 | triangle value | pitch index | `$400A`, `$400B` |
+| triangle bend | divider offset | `$400A`, `$400B` |
 | noise control | volume | `$400C` |
 | noise value | period and mode | `$400E` |
 
 Splitting a channel's registers apart is what gives each plane something to repeat: a
 volume envelope and a pitch line are separate series that turn over at their own rates.
 
+**The noise channel reads no bend.** It selects one of sixteen fixed periods, so there is
+no finer grid for a bend to reach, and the plane it would hold is left out of the block.
+
 **A timer's high half reaches the register only where it differs from the last one
 written.** Storing it restarts a pulse waveform and reloads the triangle's counter, so a
 channel holding one pitch across a rest keeps its phase running the way a rendered channel
 does.
 
-**A value plane names a pitch, not a divider.** Stating a note as its distance above the lowest
-one the song reaches is what lets `TRANSPOSED_PHRASE` move a whole phrase by adding to it, and a
-divider offset added to an index means nothing. So a frame carrying a **bend** — the pitch and
-hi-pitch dimensions an instrument writes — reaches the driver at its note's own divider:
-`registers/playable.py::playable` states that once, and every encoder below reads frames that
-carry no bend. Carrying one would mean a third plane per channel; `docs/development/bugs-and-todos.md`
-under **Tracker** owns that work.
+**A value plane names a pitch, not a divider.** Stating a note as its distance above the
+lowest one the song reaches is what lets `TRANSPOSED_PHRASE` move a whole phrase by adding
+to it, and a divider offset added to an index means nothing. A tone channel's **bend**
+plane is where the offset goes: one signed byte a tick, in two's complement, added to the
+divider the value plane's note resolves to.
+
+The driver sign-extends that byte and adds it across both halves of the timer, which is the
+only arithmetic it performs on a song's behalf. Everything that makes the sum land in
+range is settled in Python: the divider stays within `[MIN_TIMER, MAX_TIMER]`, so the
+timer's high half never exceeds three bits, never reaches the length-counter field beside
+them, and never collides with the `$FF` the driver marks an unwritten shadow by.
 
 ## D. Limits
 

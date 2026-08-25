@@ -43,7 +43,7 @@ songs. The format's constants are settled from that report rather than from argu
 
 ## The song a file carries
 
-`Song` is the compressed song: the dictionary, the eight token streams, the timer table,
+`Song` is the compressed song: the dictionary, one token stream per plane, the timer table,
 the clock and the loop point. The register values every channel writes are read back out of
 the streams on demand, so a trace, a writer and a test all speak to the compressed song
 without knowing it is one.
@@ -60,7 +60,7 @@ than sounded half in tune.
 
 ## The codec
 
-The codec turns the four channels' per-tick register values into the eight token streams the
+The codec turns the four channels' per-tick register values into the token streams the
 driver reads, and back again. `compression/decode.py` is the golden model: every encoding is
 held against it, so what the console plays and what the encoder meant are the same values.
 The scheme itself, with the measurements each layer is settled on, is
@@ -105,7 +105,7 @@ true fraction of the song.
 ## The driver
 
 The driver is three sources: the entry points and the play call in `driver.s`, the clock in
-`clock.s`, and the eight plane decoders in `channels.s`.
+`clock.s`, and the plane decoders in `channels.s`.
 
 **The clock steps a tick at a time.** A play call adds the header's step to an accumulator
 and reads the whole ticks off the top; the driver then moves the clock on by one tick at a
@@ -122,9 +122,15 @@ phrase whose bytes lie inline behind its opcode — so playing a tick is the sam
 instructions whichever token is standing.
 
 **The plane's own state block is the whole of the dispatch.** Which plane is being advanced
-is a base offset held in `X`, the way a channel's register base is, so eight decoders are
-one routine called eight times. The state lives in zero page, well inside what the driver
+is a base offset held in `X`, the way a channel's register base is, so every plane's decoder
+is one routine called again. The state lives in zero page, well inside what the driver
 leaves free, and the linker configuration keeps the two-segment memory model an NSF loads.
+
+**The one sum the driver performs is the bend.** A tone channel's value plane resolves to a
+divider through the timer table, and its bend plane states the steps the tick stands away
+from it — sign-extended and added across both halves of the timer, with the high half
+reaching the register only where it changed. Everything that keeps the sum in range is
+settled in Python, so what crosses into assembly stays a byte moved and a carry followed.
 
 ## How it is verified
 
@@ -138,6 +144,7 @@ The chain runs from the register values upward, and each link is held on its own
 | The byte layout | a hand-built song serializes to expected bytes |
 | The assembly agrees with the specification | the include's equates are read and compared field by field |
 | The driver behaves | the assembled image on a 6502 emulator against `RegisterTrace.from_song`, over several rates and over songs that repeat |
+| The driver's arithmetic | a song stating a bend outright, held to the divider each tick is meant to sound at |
 | The audio | a captured trace re-rendered against the reconstruction's own approximation |
 | The whole export | a project exported, played on the emulator, and read back as the instructions the sequencer sounds |
 | Listening | `make nsf-samples` then `make nsf-render`, or any NSF player |

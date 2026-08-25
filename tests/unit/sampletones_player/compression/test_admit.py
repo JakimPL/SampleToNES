@@ -13,7 +13,8 @@ from sampletones_player.compression.options import EVERY_LAYER
 from sampletones_player.compression.parse.result import Parse
 from sampletones_player.compression.parse.song import parse_planes
 from sampletones_player.compression.progress.monitor import CodecMonitor
-from sampletones_player.specification.compression import BYTE_VALUES, MAX_PHRASE_IDS
+from sampletones_player.specification.binary import BYTE_VALUES
+from sampletones_player.specification.compression import MAX_PHRASE_IDS
 from sampletones_shared.utils.progress import silent_reporter
 
 STREAM_START: Final[frozenset] = frozenset({0})

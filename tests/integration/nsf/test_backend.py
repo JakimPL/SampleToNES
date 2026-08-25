@@ -234,7 +234,7 @@ class TestTheBackendWritesAWholeSong:
         integration_project: Project,
     ) -> None:
         """This closes the loop a project export opens: the arrangement was played out row by
-        row, compressed to eight token streams, decoded by the 6502 and written to the APU, and
+        row, compressed to a token stream per plane, decoded by the 6502 and written to the APU, and
         what stood in those registers is the very song the sequencer sounds.
         """
         trace = captured_run(

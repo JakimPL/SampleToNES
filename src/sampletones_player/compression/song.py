@@ -42,7 +42,7 @@ def compress_song(
         report: Hears what the codec holds each time it looks up, and answers whether it goes on.
 
     Returns:
-        CompressedPlanes: The dictionary, the eight token streams and the ticks the song lasts.
+        CompressedPlanes: The dictionary, every plane's token stream and the ticks the song lasts.
 
     Raises:
         OperationCanceled: If ``report`` withdraws the run.
@@ -68,7 +68,7 @@ def decompress_song(
     same values.
 
     Args:
-        planes: The dictionary, the eight token streams and the ticks the song lasts.
+        planes: The dictionary, every plane's token stream and the ticks the song lasts.
         pitches: The timer each pitch sounds at, which is what turns an index back into a timer.
 
     Returns:
