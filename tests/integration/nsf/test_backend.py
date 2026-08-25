@@ -26,10 +26,11 @@ from sampletones_player.builder import (
     song_from_sample,
 )
 from sampletones_player.export import NSFBackend
+from sampletones_player.registers.playable import playable
 from sampletones_player.song import Song
 from sampletones_player.specification.nsf import NSF_MAGIC
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
-from tests.integration.nsf.console.instructions import instructions_from_trace
+from tests.integration.nsf.console.instructions import instructions_from_trace, sounded_approximation
 from tests.integration.nsf.console.session import (
     captured_file_trace,
     captured_run,
@@ -147,7 +148,11 @@ class TestTheBackendWritesAPlayableProgram:
 
 
 class TestTheConsoleSoundsTheRequest:
-    """The envelopes an export request carries, read back off the APU the file drives."""
+    """The envelopes an export request carries, read back off the APU the file drives.
+
+    A frame reaches the console through ``playable``, which states what its planes can carry of
+    one, so both sides are read in the terms the driver actually sounds.
+    """
 
     def test_every_slice_sounds_the_instructions_its_envelopes_describe(
         self,
@@ -158,7 +163,7 @@ class TestTheConsoleSoundsTheRequest:
             for channel, instructions in instructions_from_instruments(request.instruments).items():
                 sounded = played[name][channel][: len(instructions)]
                 assert [resting(instruction) for instruction in sounded] == [
-                    resting(instruction) for instruction in instructions
+                    resting(playable(instruction)) for instruction in instructions
                 ]
 
     def test_a_channel_the_request_leaves_out_rests_throughout(
@@ -181,7 +186,7 @@ class TestTheConsoleSoundsTheRequest:
         """
         for name, sample in instrument_catalog.items():
             rendered = mix(list(render_channels(played[name], sample.reconstruction.config).values()))
-            approximation = sample.reconstruction.approximation
+            approximation = sounded_approximation(sample.reconstruction)
             audible = min(len(rendered), len(approximation))
 
             assert np.array_equal(rendered[:audible], approximation[:audible])
@@ -240,7 +245,7 @@ class TestTheBackendWritesAWholeSong:
         for channel, instructions in song_instructions(integration_project).items():
             sounded = played[channel][: len(instructions)]
             assert [resting(instruction) for instruction in sounded] == [
-                resting(instruction) for instruction in instructions
+                resting(playable(instruction)) for instruction in instructions
             ]
 
     def test_the_song_comes_round_rather_than_falling_silent(

@@ -19,6 +19,7 @@ from .types import (
     GeneratorT,
     GeneratorTypeUnion,
     GeneratorUnion,
+    TonalGeneratorUnion,
 )
 from .utils import (
     get_generator_by_instruction,
@@ -44,6 +45,7 @@ __all__ = [
     "NoiseGenerator",
     "PulseGenerator",
     "TonalGenerator",
+    "TonalGeneratorUnion",
     "TriangleGenerator",
     "get_generator_by_instruction",
     "get_generators_by_channels",

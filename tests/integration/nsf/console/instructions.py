@@ -1,13 +1,19 @@
 from typing import Dict, Final, List, Mapping, Tuple
 
+import numpy as np
+
+from sampletones_core.audio.mixing import mix
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_PERIOD, MAX_VOLUME
+from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
     PulseInstruction,
     TriangleInstruction,
 )
+from sampletones_core.reconstructions import Reconstruction
+from sampletones_player.registers.playable import playable
 from sampletones_player.specification.channels import CHANNEL_REGISTER_ADDRESSES
 from sampletones_player.specification.registers import (
     DUTY_CYCLE_SHIFT,
@@ -153,3 +159,24 @@ def instructions_from_trace(
             streams[channel].append(instruction)
 
     return streams
+
+
+def sounded_approximation(reconstruction: Reconstruction) -> np.ndarray:
+    """A reconstruction's own waveform, rendered from the frames the console can sound.
+
+    A bend has nowhere to travel in a channel's planes, so ``playable`` states each frame as the
+    driver loads it and the reconstruction is rendered from those. Holding the console's output
+    against this waveform is what makes the comparison one about the driver rather than about the
+    divider offset it has yet to gain.
+
+    Args:
+        reconstruction: The reconstruction the console is playing.
+
+    Returns:
+        np.ndarray: The waveform its playable frames sound as.
+    """
+    streams = {
+        channel_name: [playable(instruction) for instruction in instructions]
+        for channel_name, instructions in reconstruction.instructions.items()
+    }
+    return mix(list(render_channels(streams, reconstruction.config).values()))

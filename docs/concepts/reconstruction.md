@@ -62,12 +62,13 @@ input through a fixed sequence of stages:
    criterion (§5 and §4).
 6. **Decode** each channel's stream, reading its candidates across the whole
    recording (§5).
-7. **Render** the chosen instructions back into audio through the generators,
+7. **Refine** each chosen note onto the divider the recording's own fundamental stands at (§6).
+8. **Render** the chosen instructions back into audio through the generators,
    keeping each oscillator continuous across frames.
-8. **Reassemble** the channels into the final approximation and package it, with the
+9. **Reassemble** the channels into the final approximation and package it, with the
    instruction streams, as a `Reconstruction`.
 
-Stages 3–6 are where the algorithms described below live; the rest is preparation
+Stages 3–7 are where the algorithms described below live; the rest is preparation
 and playback.
 
 A run says which of these it is in as it passes through them, so a reader watching a
@@ -263,7 +264,79 @@ A resting frame reaches the decoder as a column of one, so a channel that no sou
 took sits in the path as the off state it is, and coming back on costs what any other
 on/off change costs.
 
-## 6. Rendering and reassembly
+## 6. Refining the pitch
+
+The catalog is built on the equal-tempered grid, so the matching can place a frame no closer than
+the nearest semitone. The hardware is finer than that: a note reaches a channel as an 11-bit
+divider, and one step of that divider spans **0.85 cents at A-0, 4 cents at C-3, 16 cents at C-5**,
+reaching a whole semitone only around C-7, where the divider grid and the note grid meet. Everything
+below that is room the matching leaves unused, and material that was never in A=440 equal
+temperament — most recordings of most instruments — sits somewhere inside it.
+
+`sampletones_core.reconstructions.reconstructor.refinement` spends that room, after the decoder has
+settled which note each frame plays and before the frames are rendered.
+
+### 6.1 Reading rather than searching
+
+The refinement does not search. Two measurements settle why:
+
+- Against a **matched** candidate the criterion answers a detune smoothly and monotonically — a
+  25-cent error costs about 0.09 where a 50-cent error costs about 0.40. Against a **realistic**
+  target, where the candidate cannot match the timbre, that response is a small ripple on a
+  timbre-dominated floor with many local minima, and taking the lowest-cost divider over a sweep
+  lands 15–30 cents from the truth.
+- Searching also costs what the library exists to avoid. Scoring one extra candidate per frame
+  means rendering it and extracting its feature, which measures around **2.1 s per second of
+  audio** — more than a whole conversion of the same audio.
+
+So the answer is read out of the transform instead. `sampletones_core.fft.instantaneous` takes the
+**phase** the constant-Q transform already computes and `calculate_cqt_spectrum_columns` discards.
+A partial standing between two bin centers still advances its phase at its own rate, so comparing
+that advance across two columns against the rate the bin itself turns at states the partial's
+frequency far more finely than the bins are spaced. Reading the first few harmonics of the note the
+decoder chose, each weighted by the energy behind it and each settled against the fundamental the
+harmonics below it agreed on, places the note **within a tenth of a cent** across the whole range.
+
+The reading also states how much of the frame stands behind it — the share of the column's energy
+its harmonics hold. A pitched frame reads around 0.5, a frame sharing the channel with another tone
+around 0.3, and noise around 0.04, so one threshold separates the frames worth bending from the
+frames with no pitch to read.
+
+### 6.2 Landing the note, and holding it
+
+A reading becomes a bend through the generator, which owns the divider geometry: `bend_towards`
+answers with the divider steps that land the note nearest the frequency read, bounded by
+`bend_range` — **half the gap to each neighboring note**. That bound is what leaves the refined
+pitches gapless: note *n* covers `[(tₙ + tₙ₊₁) / 2, (tₙ + tₙ₋₁) / 2]`, and those windows tile the
+divider range exactly, so every divider the notes span is reachable and none is claimed twice.
+
+A bend that followed every reading exactly would jitter, and jitter is more audible than the tuning
+it chases. So the per-frame proposals are settled by a change-penalised walk, the same shape the
+Viterbi decoder settles a note contour with: the cost of a bend is how far it stands from that
+frame's reading, plus a toll on changing at all. The states a frame may take are the bends its
+neighborhood proposed together with no bend, which keeps the walk to a handful of states even where
+a note owns tens of dividers.
+
+### 6.3 What it costs, and what it leaves alone
+
+The refinement enumerates no candidate, rescores nothing, and leaves the library, the per-frame
+matching and the decoder's lattice exactly as they were. What it adds is one transform per
+recording and a small walk per channel: a conversion measures **around 2 % longer** with it than
+without.
+
+A frame makes no proposal where it rests, where its channel is not pitched — the noise channel's
+sixteen periods have no finer grid — or where its reading falls below the confidence threshold. A
+conversion that bent no note records both bend dimensions as ones the channel governs, so it writes
+the same instrument it wrote before the feature existed.
+
+| parameter | default | notes |
+|---|---|---|
+| `generation.refinement.enabled` | on | acts only where the run renders the chosen instructions |
+| `generation.refinement.confidence` | 0.15 | the share of a frame's energy its harmonics must hold |
+| `generation.refinement.change_weight` | 2.0 | divider steps of reading error worth avoiding one change |
+| `generation.refinement.window` | 4 | the frames on either side whose readings a frame may settle on |
+
+## 7. Rendering and reassembly
 
 Once instructions are chosen, each one is rendered back through its generator
 (`sampletones_core.generators`), which carries oscillator phase across frames so
@@ -274,7 +347,7 @@ per-channel instruction streams (which can be exported to a tracker format via
 `sampletones_core.exporters`). The coefficient from §3.4 is stored so the
 reconstruction and the original can be shown and played on a common scale.
 
-## 7. Limitations
+## 8. Limitations
 
 - **Dynamic range.** A single NES tonal channel spans roughly 25 dB from its
   quietest to its loudest note, and the coefficient is one global scalar. Material
@@ -287,6 +360,10 @@ reconstruction and the original can be shown and played on a common scale.
 - **Per-channel independence in Viterbi.** Channels are decoded independently once the
   assignment has settled their columns, which is fast but not jointly optimal across
   channels.
+- **Refinement needs a fundamental to read.** A frame carrying several pitches at once, or one
+  whose sound is unpitched, states no fundamental for its channel and keeps the note the matching
+  chose. The room a bend has also closes with pitch: a divider step is a whole semitone from around
+  C-7 up, so notes there sound where the grid puts them.
 
 ## Appendix — key parameters and where things live
 
@@ -301,6 +378,7 @@ noise):
 | spectral / temporal weight | 0.8 / 0.2 | criterion blend                                 |
 | spectral distance        | β-divergence | also `squared`, `absolute`                     |
 | selector                 | Viterbi | `greedy` / `viterbi`                                |
+| pitch refinement         | on      | bends each note onto the divider the source sounds  |
 | normalize / quantize     | on / off | input preprocessing                                |
 
 Package map:
@@ -315,5 +393,6 @@ Package map:
 | selection + assembly            | `sampletones_core.reconstructions.reconstructor`     |
 | audio I/O and level             | `sampletones_core.audio`                             |
 | tracker export                  | `sampletones_core.exporters`                         |
+| pitch refinement                | `sampletones_core.reconstructions.reconstructor.refinement` |
 | criterion calibration           | `sampletones_core.calibration`                       |
 | analytic waveform synthesis     | `sampletones_synthesis`                              |

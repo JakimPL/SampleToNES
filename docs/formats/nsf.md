@@ -162,6 +162,14 @@ written.** Storing it restarts a pulse waveform and reloads the triangle's count
 channel holding one pitch across a rest keeps its phase running the way a rendered channel
 does.
 
+**A value plane names a pitch, not a divider.** Stating a note as its distance above the lowest
+one the song reaches is what lets `TRANSPOSED_PHRASE` move a whole phrase by adding to it, and a
+divider offset added to an index means nothing. So a frame carrying a **bend** — the pitch and
+hi-pitch dimensions an instrument writes — reaches the driver at its note's own divider:
+`registers/playable.py::playable` states that once, and every encoder below reads frames that
+carry no bend. Carrying one would mean a third plane per channel; `docs/development/bugs-and-todos.md`
+under **Tracker** owns that work.
+
 ## D. Limits
 
 | Limit | Value |

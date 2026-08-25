@@ -46,6 +46,18 @@ starts carrying.
 
 * In-application guide/tutorial
 * Language selector
+* Verifying a bend against the criterion. The plan for the refinement carried a guard: render the
+  bent candidate, score it, and keep the bend only where the cost improves. It was measured and
+  left out. The criterion agreed with the reading on **every** bent frame of both a matched and a
+  mismatched target, so the guard rejects nothing; and one extra render-and-score per bent frame
+  measures around **2.1 s per second of audio**, against a whole conversion's ~1.2 s, so it would
+  nearly triple a run to change no decision. It is worth revisiting only against material where the
+  reading is shown to misfire.
+* Calibrating the pitch refinement. `generation.refinement`'s confidence threshold, change weight
+  and window are chosen by hand; `docs/concepts/calibration.md`'s experiment measures the criterion
+  blend and could measure these beside it. The change weight is the one with an audible trade-off:
+  it decides how large a one-frame excursion the walk follows rather than absorbs, which is
+  vibrato against jitter.
 
 ### Technical
 

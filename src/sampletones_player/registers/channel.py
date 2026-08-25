@@ -10,6 +10,7 @@ from sampletones_core.instructions import (
 )
 from sampletones_player.registers.base import ChannelRegisters
 from sampletones_player.registers.noise import NoiseRegisters
+from sampletones_player.registers.playable import playable
 from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.registers.triangle import TriangleRegisters
 
@@ -22,7 +23,8 @@ def channel_instructions(
 
     A reconstruction holds a stream for every channel, and a channel standing by holds one
     describing no frame. Such a channel reaches the player resting for a single tick, which is
-    the shortest stream a song lays its records out from.
+    the shortest stream a song lays its records out from. Each frame arrives as the driver can
+    sound it — see :func:`playable`.
 
     Args:
         instructions: The channel's stream, as the reconstruction holds it.
@@ -42,7 +44,9 @@ def channel_instructions(
                 f"{instruction.name}, which another channel sounds"
             )
 
-        typed.append(instruction)
+        sounded = playable(instruction)
+        assert isinstance(sounded, instruction_type)
+        typed.append(sounded)
 
     if typed:
         return typed
