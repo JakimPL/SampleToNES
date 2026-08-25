@@ -4,6 +4,7 @@ from .implementation.noise import NoiseExporter
 from .implementation.pulse import PulseExporter
 from .implementation.triangle import TriangleExporter
 from .maps import CHANNEL_TO_EXPORTER_MAP, INSTRUCTION_TO_EXPORTER_MAP
+from .tonal import TonalExporter
 from .types import ExporterClass, ExporterT, ExporterTypeUnion, ExporterUnion
 
 __all__ = [
@@ -17,6 +18,7 @@ __all__ = [
     "Features",
     "NoiseExporter",
     "PulseExporter",
+    "TonalExporter",
     "TriangleExporter",
     "playing_channels",
 ]

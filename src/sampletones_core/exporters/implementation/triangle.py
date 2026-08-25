@@ -11,13 +11,15 @@ from sampletones_core.instructions import (
 )
 from sampletones_core.utils.frequencies import is_pitch_valid
 
-from ..exporter import Exporter
+from ..tonal import TonalExporter
 
 
-class TriangleExporter(Exporter[TriangleInstruction]):
+class TriangleExporter(TonalExporter[TriangleInstruction]):
     _ATTRIBUTE_MAP: ClassVar[Dict[FeatureKey, InstructionFields]] = {
         FeatureKey.VOLUME: "volume",
         FeatureKey.ARPEGGIO: "pitch",
+        FeatureKey.PITCH: "detune",
+        FeatureKey.HI_PITCH: "coarse_detune",
     }
 
     @classmethod
@@ -69,6 +71,7 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         return {
             FeatureKey.VOLUME: tuple(volumes),
             FeatureKey.ARPEGGIO: tuple(pitch - initial_pitch for pitch in pitches),
+            **cls.read_bends(instructions),
         }
 
     @classmethod
@@ -84,6 +87,7 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         return TriangleInstruction(
             on=cls._infer_instruction_on(dictionary),
             pitch=pitch,
+            **cls.bend_fields(dictionary),
         )
 
     @classmethod

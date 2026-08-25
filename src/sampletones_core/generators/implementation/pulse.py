@@ -14,10 +14,10 @@ from sampletones_core.instructions import InstructionTypeUnion, PulseInstruction
 from sampletones_core.timers import PhaseTimer
 from sampletones_shared.types.data import Initials
 
-from ..generator import Generator
+from ..tonal import TonalGenerator
 
 
-class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
+class PulseGenerator(TonalGenerator[PulseInstruction]):
     def __init__(
         self,
         config: Config,
@@ -53,12 +53,6 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
         self.save_state(save, pulse_instruction)
 
         return output
-
-    def set_timer(self, instruction: PulseInstruction) -> None:
-        if instruction.on:
-            self.timer.frequency = self.get_frequency(instruction.pitch)
-        else:
-            self.timer.frequency = 0.0
 
     def apply(self, output: np.ndarray, instruction: PulseInstruction) -> np.ndarray:
         duty_cycle = DUTY_CYCLES[instruction.duty_cycle]

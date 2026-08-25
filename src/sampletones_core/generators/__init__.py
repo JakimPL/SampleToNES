@@ -12,6 +12,7 @@ from .maps import (
     MIXER_LEVELS,
 )
 from .render import render_channels, render_instructions
+from .tonal import TonalGenerator
 from .types import (
     GeneratorClass,
     GeneratorClassNames,
@@ -42,6 +43,7 @@ __all__ = [
     "GeneratorUnion",
     "NoiseGenerator",
     "PulseGenerator",
+    "TonalGenerator",
     "TriangleGenerator",
     "get_generator_by_instruction",
     "get_generators_by_channels",

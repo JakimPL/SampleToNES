@@ -10,12 +10,16 @@ from sampletones_core.constants.general import (
     ARPEGGIO_MIN,
     MAX_DUTY_CYCLE,
     MAX_VOLUME,
+    PITCH_BEND_MAX,
+    PITCH_BEND_MIN,
     SILENT_VOLUME,
 )
 from sampletones_core.features.envelope import Envelope
 
 VolumeItem = Annotated[int, Field(ge=SILENT_VOLUME, le=MAX_VOLUME)]
 ArpeggioItem = Annotated[int, Field(ge=ARPEGGIO_MIN, le=ARPEGGIO_MAX)]
+PitchItem = Annotated[int, Field(ge=PITCH_BEND_MIN, le=PITCH_BEND_MAX)]
+HiPitchItem = Annotated[int, Field(ge=PITCH_BEND_MIN, le=PITCH_BEND_MAX)]
 DutyCycleItem = Annotated[int, Field(ge=0, le=MAX_DUTY_CYCLE)]
 
 
@@ -31,6 +35,8 @@ class InstrumentEnvelopes(BaseModel):
     Attributes:
         volume: Output level per tick.
         arpeggio: Offset from the instrument's initial pitch per tick.
+        pitch: Divider steps the note is bent by per tick, one step per unit.
+        hi_pitch: Divider steps the note is bent by per tick, sixteen steps per unit.
         duty_cycle: Pulse waveform, or noise mode, per tick.
     """
 
@@ -38,6 +44,8 @@ class InstrumentEnvelopes(BaseModel):
 
     volume: Envelope[VolumeItem] = Envelope[VolumeItem]()
     arpeggio: Envelope[ArpeggioItem] = Envelope[ArpeggioItem]()
+    pitch: Envelope[PitchItem] = Envelope[PitchItem]()
+    hi_pitch: Envelope[HiPitchItem] = Envelope[HiPitchItem]()
     duty_cycle: Envelope[DutyCycleItem] = Envelope[DutyCycleItem]()
 
     @property
@@ -45,6 +53,8 @@ class InstrumentEnvelopes(BaseModel):
         return {
             FeatureKey.VOLUME: self.volume,
             FeatureKey.ARPEGGIO: self.arpeggio,
+            FeatureKey.PITCH: self.pitch,
+            FeatureKey.HI_PITCH: self.hi_pitch,
             FeatureKey.DUTY_CYCLE: self.duty_cycle,
         }
 

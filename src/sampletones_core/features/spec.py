@@ -10,6 +10,8 @@ from sampletones_core.constants.general import (
     MAX_PERIOD,
     MAX_VOLUME,
     NUM_PERIODS,
+    PITCH_BEND_MAX,
+    PITCH_BEND_MIN,
 )
 from sampletones_core.utils.frequencies import transpose_period, transpose_pitch
 
@@ -46,11 +48,15 @@ GENERATOR_FEATURE_RANGES: Final[Dict[GeneratorName, Dict[FeatureKey, FeatureRang
     GeneratorName.PULSE: {
         FeatureKey.VOLUME: FeatureRange(0, MAX_VOLUME),
         FeatureKey.ARPEGGIO: FeatureRange(ARPEGGIO_MIN, ARPEGGIO_MAX),
+        FeatureKey.PITCH: FeatureRange(PITCH_BEND_MIN, PITCH_BEND_MAX),
+        FeatureKey.HI_PITCH: FeatureRange(PITCH_BEND_MIN, PITCH_BEND_MAX),
         FeatureKey.DUTY_CYCLE: FeatureRange(0, MAX_DUTY_CYCLE),
     },
     GeneratorName.TRIANGLE: {
         FeatureKey.VOLUME: FeatureRange(0, MAX_VOLUME),
         FeatureKey.ARPEGGIO: FeatureRange(ARPEGGIO_MIN, ARPEGGIO_MAX),
+        FeatureKey.PITCH: FeatureRange(PITCH_BEND_MIN, PITCH_BEND_MAX),
+        FeatureKey.HI_PITCH: FeatureRange(PITCH_BEND_MIN, PITCH_BEND_MAX),
     },
     GeneratorName.NOISE: {
         FeatureKey.VOLUME: FeatureRange(0, MAX_VOLUME),

@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, Final, List, Optional, Sequence, Tuple
 import numpy as np
 import pytest
 
-from sampletones_core.constants.enums import FeatureKey
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.exporters import (
     ExporterTypeUnion,
@@ -12,6 +12,11 @@ from sampletones_core.exporters import (
     NoiseExporter,
     PulseExporter,
     TriangleExporter,
+)
+from sampletones_core.features import (
+    CHANNEL_FEATURE_DEFAULTS,
+    FEATURE_DIMENSION_ORDER,
+    supports,
 )
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import (
@@ -30,6 +35,7 @@ OCTAVE: Final[int] = 12
 PERIOD_STEP: Final[int] = 3
 PULSE_VOLUME: Final[int] = 8
 NOISE_VOLUME: Final[int] = 10
+UNREAD_VALUE: Final[int] = 3
 
 
 def _read_pitch(instruction: Any) -> int:
@@ -457,15 +463,22 @@ class TestSingleFrameReading(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
         exporter: ExporterTypeUnion
+        kind: GeneratorName
         instruction: InstructionUnion
         silent: InstructionUnion
         reference: int
         expected: Dict[FeatureKey, int]
 
+        @property
+        def unread(self) -> Tuple[FeatureKey, ...]:
+            """The dimensions this channel's generator reads nothing from."""
+            return tuple(feature_key for feature_key in FEATURE_DIMENSION_ORDER if not supports(self.kind, feature_key))
+
     test_cases = (
         TestCase(
             label="pulse",
             exporter=PulseExporter,
+            kind=GeneratorName.PULSE,
             instruction=PulseInstruction(
                 on=True,
                 pitch=REFERENCE_PITCH + OCTAVE,
@@ -477,23 +490,29 @@ class TestSingleFrameReading(BaseTestSuite):
             expected={
                 FeatureKey.VOLUME: PULSE_VOLUME,
                 FeatureKey.ARPEGGIO: OCTAVE,
+                FeatureKey.PITCH: CHANNEL_FEATURE_DEFAULTS[FeatureKey.PITCH],
+                FeatureKey.HI_PITCH: CHANNEL_FEATURE_DEFAULTS[FeatureKey.HI_PITCH],
                 FeatureKey.DUTY_CYCLE: 1,
             },
         ),
         TestCase(
             label="triangle",
             exporter=TriangleExporter,
+            kind=GeneratorName.TRIANGLE,
             instruction=TriangleInstruction(on=True, pitch=REFERENCE_PITCH - OCTAVE),
             silent=TriangleInstruction.null_instruction(),
             reference=REFERENCE_PITCH,
             expected={
                 FeatureKey.VOLUME: MAX_VOLUME,
                 FeatureKey.ARPEGGIO: -OCTAVE,
+                FeatureKey.PITCH: CHANNEL_FEATURE_DEFAULTS[FeatureKey.PITCH],
+                FeatureKey.HI_PITCH: CHANNEL_FEATURE_DEFAULTS[FeatureKey.HI_PITCH],
             },
         ),
         TestCase(
             label="noise",
             exporter=NoiseExporter,
+            kind=GeneratorName.NOISE,
             instruction=NoiseInstruction(
                 on=True,
                 period=REFERENCE_PERIOD + PERIOD_STEP,
@@ -543,12 +562,13 @@ class TestSingleFrameReading(BaseTestSuite):
 
     @pytest.mark.parametrize(
         "test_case",
-        test_cases,
+        tuple(test_case for test_case in test_cases if test_case.unread),
         ids=lambda test_case: test_case.label,
     )
     def test_a_dimension_the_channel_reads_nothing_from_is_passed_over(self, test_case: TestCase) -> None:
         """One set of channel values serves every channel, so each takes the dimensions it reads."""
         values = dict(test_case.expected)
-        values[FeatureKey.HI_PITCH] = 3
+        for feature_key in test_case.unread:
+            values[feature_key] = UNREAD_VALUE
 
         assert test_case.exporter.instruction_from_values(values, test_case.reference) == test_case.instruction

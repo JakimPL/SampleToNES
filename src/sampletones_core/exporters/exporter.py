@@ -101,6 +101,23 @@ class Exporter(ABC, Generic[InstructionT]):
 
     @classmethod
     @abstractmethod
+    def unstated_features(cls, instructions: List[InstructionT]) -> Tuple[FeatureKey, ...]:
+        """The dimensions this stream leaves to the channel rather than writing itself.
+
+        A stream states every dimension its frames carry a choice for. Where a dimension carries
+        nothing but the value a channel holds from the start of a song, the stream has made no
+        choice at all, and saying so leaves the dimension empty rather than pinning it to a value
+        it would sound at anyway.
+
+        Args:
+            instructions: The channel's per-frame instructions.
+
+        Returns:
+            Tuple[FeatureKey, ...]: The dimensions the channel governs, in dimension order.
+        """
+
+    @classmethod
+    @abstractmethod
     def read_envelopes(
         cls,
         instructions: List[InstructionT],

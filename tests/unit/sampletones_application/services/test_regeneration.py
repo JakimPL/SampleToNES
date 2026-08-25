@@ -14,6 +14,7 @@ from sampletones_application.services.result import (
 )
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
+from sampletones_core.features import CHANNEL_GENERATOR_KIND, supported_features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
 from tests.conftest import ReconstructionFactory
@@ -343,9 +344,8 @@ class TestClearingEveryEnvelope:
     @staticmethod
     def _regenerated(reconstruction: Reconstruction) -> Reconstruction:
         """The reconstruction the service returns once every dimension is left to the channel."""
-        features = reconstruction.export()[ChannelName.PULSE1].leave_to_channel(
-            [FeatureKey.VOLUME, FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE]
-        )
+        exported = reconstruction.export()[ChannelName.PULSE1]
+        features = exported.leave_to_channel(exported.envelopes)
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
@@ -391,10 +391,8 @@ class TestClearingEveryEnvelope:
 
         regenerated = self._regenerated(reconstruction)
 
-        assert regenerated.held_features[ChannelName.PULSE1] == (
-            FeatureKey.VOLUME,
-            FeatureKey.ARPEGGIO,
-            FeatureKey.DUTY_CYCLE,
+        assert regenerated.held_features[ChannelName.PULSE1] == tuple(
+            supported_features(CHANNEL_GENERATOR_KIND[ChannelName.PULSE1])
         )
         assert not regenerated.export()[ChannelName.PULSE1].has_frames
 

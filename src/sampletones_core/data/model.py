@@ -106,9 +106,27 @@ class DataModel(BaseModel, ABC):
         validation: Optional[Callback] = None,
         fast: bool = True,
     ) -> Self:
+        """The model a serialized payload describes, filling in what the payload leaves out.
+
+        A payload written before a field existed states nothing for it, and a field carrying a
+        default states what it means to say nothing, so the default is what the field takes. This
+        is what lets a model grow a field while every file already written keeps loading.
+
+        Args:
+            data: The serialized fields.
+            validation: A check run over each value as it is read.
+            fast: Whether to construct without re-running validation.
+
+        Returns:
+            Self: The model the payload describes.
+        """
         field_values: SerializedData = {}
         for field_name, field_info in cls.model_fields.items():
             annotation = field_info.annotation
+            if field_name not in data and not field_info.is_required():
+                field_values[field_name] = field_info.get_default(call_default_factory=True)
+                continue
+
             raw = data.get(field_name)
             value = cls._unpack_value(
                 raw,

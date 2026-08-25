@@ -4,6 +4,7 @@ from typing import Final, Tuple
 
 APU_CLOCK: Final[float] = 1789773.0
 TIMER_CYCLE_DIVIDER: Final[int] = 16
+MIN_TIMER: Final[int] = 1
 MAX_TIMER: Final[int] = 0x7FF
 MIN_PITCH: Final[int] = 33
 MAX_PITCH: Final[int] = 119
@@ -31,6 +32,10 @@ MAX_TRANSPOSE: Final[int] = PITCH_RANGE
 MIN_TRANSPOSE: Final[int] = -PITCH_RANGE
 ARPEGGIO_MIN: Final[int] = -128
 ARPEGGIO_MAX: Final[int] = 127
+
+PITCH_BEND_MIN: Final[int] = -128
+PITCH_BEND_MAX: Final[int] = 127
+HI_PITCH_FACTOR: Final[int] = 16
 
 # Instruction parameters ranges
 

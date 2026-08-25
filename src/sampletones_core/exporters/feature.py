@@ -23,8 +23,10 @@ class Features(BaseModel):
         initial_pitch: Reference pitch the arpeggio envelope is measured against.
         volume: Volume envelope.
         arpeggio: Arpeggio (relative pitch) envelope.
-        pitch: Pitch envelope, or ``None`` where the generator lacks the dimension.
-        hi_pitch: Fine-pitch envelope, or ``None`` where the generator lacks the dimension.
+        pitch: Divider-bend envelope at one step per unit, or ``None`` where the generator
+            lacks the dimension.
+        hi_pitch: Divider-bend envelope at sixteen steps per unit, or ``None`` where the
+            generator lacks the dimension.
         duty_cycle: Duty-cycle envelope, or ``None`` where the generator lacks the dimension.
     """
 
