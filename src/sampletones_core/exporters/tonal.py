@@ -2,7 +2,7 @@ from abc import ABC
 from typing import Dict, List, Tuple, TypeVar, Union
 
 from sampletones_core.constants.enums import FeatureKey
-from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
+from sampletones_core.features import BEND_FEATURES, CHANNEL_FEATURE_DEFAULTS
 from sampletones_core.instructions import TonalInstruction
 
 from .exporter import Exporter
@@ -85,5 +85,5 @@ class TonalExporter(Exporter[TonalInstructionT], ABC):
                     CHANNEL_FEATURE_DEFAULTS[feature_key],
                 )
             )
-            for feature_key in (FeatureKey.PITCH, FeatureKey.HI_PITCH)
+            for feature_key in BEND_FEATURES
         }

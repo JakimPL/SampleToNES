@@ -31,6 +31,12 @@ FEATURE_DIMENSION_ORDER: Final[Tuple[FeatureKey, ...]] = (
 )
 
 
+BEND_FEATURES: Final[Tuple[FeatureKey, ...]] = (
+    FeatureKey.PITCH,
+    FeatureKey.HI_PITCH,
+)
+
+
 CHANNEL_FEATURE_DEFAULTS: Final[Dict[FeatureKey, int]] = {
     FeatureKey.VOLUME: MAX_VOLUME,
     FeatureKey.ARPEGGIO: 0,

@@ -14,4 +14,5 @@ class FeatureColors(BaseModel, extra="forbid", frozen=True):
     volume: WrittenColor
     arpeggio: WrittenColor
     pitch: WrittenColor
+    hi_pitch: WrittenColor
     duty_cycle: WrittenColor
