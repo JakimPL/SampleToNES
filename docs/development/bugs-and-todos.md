@@ -54,6 +54,12 @@ starts carrying.
   measures around **2.1 s per second of audio**, against a whole conversion's ~1.2 s, so it would
   nearly triple a run to change no decision. It is worth revisiting only against material where the
   reading is shown to misfire.
+* Reading only the bins the refinement asks for. `InstantaneousPitch` transforms every bin the
+  spectrum covers and then reads five of them per frame, so it computes around twenty times the
+  work its reading uses. On a CUDA build that vanishes; on a CPU build one transform measures a
+  tenth or more of a short conversion, and a CI runner has measured it at a third. The kernel is a
+  matrix of one row per bin, so restricting it to the rows the chosen notes name is a slice — what
+  needs care is that the union of harmonic bins over a whole stream is wider than any one frame's.
 * Calibrating the pitch refinement. `generation.refinement`'s confidence threshold, change weight
   and window are chosen by hand; `docs/concepts/calibration.md`'s experiment measures the criterion
   blend and could measure these beside it. The change weight is the one with an audible trade-off:

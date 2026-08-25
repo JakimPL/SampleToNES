@@ -321,8 +321,13 @@ a note owns tens of dividers.
 
 The refinement enumerates no candidate, rescores nothing, and leaves the library, the per-frame
 matching and the decoder's lattice exactly as they were. What it adds is one transform per
-recording and a small walk per channel: a conversion measures **around 2 % longer** with it than
-without.
+recording and a small walk per channel.
+
+What that transform costs depends on the machine, and the spread is wide: on a CUDA build it
+disappears into the noise, while on a CPU build it is a measurable share of a short conversion —
+a tenth or more, since the reading needs a handful of bins per frame and the transform computes
+every bin the spectrum covers. Restricting it to the bins the chosen notes actually name is the
+work `docs/development/bugs-and-todos.md` records under **Features**.
 
 A frame makes no proposal where it rests, where its channel is not pitched — the noise channel's
 sixteen periods have no finer grid — or where its reading falls below the confidence threshold. A

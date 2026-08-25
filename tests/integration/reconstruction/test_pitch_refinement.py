@@ -8,10 +8,11 @@ import pytest
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
 from sampletones_core.configs.generation import GenerationConfig, RefinementConfig
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.fft import Window
 from sampletones_core.fft.features import get_feature_extractor
+from sampletones_core.fft.instantaneous import InstantaneousPitch
 from sampletones_core.generators import PulseGenerator, get_generators_by_channels
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.library import (
@@ -20,6 +21,7 @@ from sampletones_core.library import (
     InstructionLibraryFragment,
 )
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
+from sampletones_core.reconstructions.reconstructor.refinement import refiner
 
 PITCH: Final[int] = 60
 NEIGHBORHOOD: Final[range] = range(PITCH - 2, PITCH + 3)
@@ -62,13 +64,13 @@ def _library(config: Config) -> InstructionLibrary:
     return library
 
 
-def _square_path(path: Path, config: Config, cents: float) -> Path:
+def _square_path(path: Path, config: Config, cents: float, seconds: float = SECONDS) -> Path:
     """A steady square tone standing ``cents`` off the note the catalog holds."""
     sample_rate = config.library.sample_rate
     generator = PulseGenerator(config, ChannelName.PULSE1)
     frequency = generator.sounds_at(PITCH, 0) * 2 ** (cents / CENTS_PER_OCTAVE)
 
-    count = int(sample_rate * SECONDS)
+    count = int(sample_rate * seconds)
     phase = (np.arange(count) * frequency / sample_rate) % 1.0
     audio = np.where(phase < 0.5, 0.4, -0.4)
 
@@ -182,8 +184,6 @@ class TestWhatTheRefinementLeavesAlone:
         tmp_path: Path,
     ) -> None:
         """Nothing bent means nothing chosen, so both dimensions stay the channel's own."""
-        from sampletones_core.constants.enums import FeatureKey
-
         reconstruction = _reconstruct(plain, _square_path(tmp_path / "held.wav", plain, DETUNE_CENTS))
         held = reconstruction.held_features[ChannelName.PULSE1]
 
@@ -199,3 +199,64 @@ class TestWhatTheRefinementLeavesAlone:
         reconstruction = _reconstruct(refining, _noise_path(tmp_path / "noise.wav", refining))
 
         assert all(not frame.bent for frame in _sounding(reconstruction))
+
+
+class TestWhatTheRefinementReads:
+    """The refinement reads a recording rather than searching it.
+
+    What it adds to a conversion is one transform per stem and a walk over the frames: no
+    candidate is enumerated and nothing is rescored. Counting the readings holds that where a
+    clock cannot — what one transform costs is the machine's own, and a CUDA build and a CPU
+    build disagree about it by two orders of magnitude, so a reading per stem is the claim worth
+    pinning.
+    """
+
+    @staticmethod
+    def _counted(monkeypatch: pytest.MonkeyPatch) -> List[int]:
+        """The frames of each recording the refinement reads, in the order it reads them."""
+        readings: List[int] = []
+
+        def counting(recording: np.ndarray, sample_rate: int, hop_length: int) -> InstantaneousPitch:
+            readings.append(len(recording))
+            return InstantaneousPitch(recording, sample_rate, hop_length)
+
+        monkeypatch.setattr(refiner, "InstantaneousPitch", counting)
+        return readings
+
+    def test_a_refined_conversion_reads_each_recording_once(
+        self,
+        refining: Config,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        readings = self._counted(monkeypatch)
+        _reconstruct(refining, _square_path(tmp_path / "read.wav", refining, DETUNE_CENTS))
+
+        assert len(readings) == 1
+
+    def test_a_longer_source_is_read_no_more_often(
+        self,
+        refining: Config,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A reading per stem is what keeps the cost off the frame count and off the catalog."""
+        readings = self._counted(monkeypatch)
+        _reconstruct(refining, _square_path(tmp_path / "short.wav", refining, DETUNE_CENTS))
+        short = len(readings)
+
+        readings.clear()
+        _reconstruct(refining, _square_path(tmp_path / "long.wav", refining, DETUNE_CENTS, seconds=SECONDS * 3))
+
+        assert len(readings) == short
+
+    def test_a_conversion_with_the_refinement_off_reads_nothing(
+        self,
+        plain: Config,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        readings = self._counted(monkeypatch)
+        _reconstruct(plain, _square_path(tmp_path / "unread.wav", plain, DETUNE_CENTS))
+
+        assert not readings
