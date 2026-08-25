@@ -49,6 +49,7 @@ from sampletones_application.tags.instructions import (
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import (
     add_detail_items,
+    add_path_menu_items,
     add_play_menu_item,
 )
 from sampletones_application.ui.elements.fonts.font import Font
@@ -79,11 +80,11 @@ from sampletones_application.utils.gui.tooltip import (
 )
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.parallelization.thread import (
-    BackgroundWorkCancelled,
+    BackgroundWorkCanceled,
     SingleThreadExecutor,
 )
 from sampletones_core.configs.display import (
-    format_generators,
+    format_channels,
     format_nes_frequency,
     format_sample_rate,
     format_spectrum_method,
@@ -110,7 +111,6 @@ from sampletones_shared.types.callback import (
     PathCallback,
     VoidCallback,
 )
-from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 NO_EXPANDED_ROWS: Final[FrozenSet[str]] = frozenset()
 
@@ -173,7 +173,7 @@ class GUITreePanel(GUIPanel, ABC):
         self._lbl_detail_spectrum_method = language_manager["global.context.label.detail_spectrum_method"]
         self._lbl_detail_transformation_gamma = language_manager["global.context.label.detail_transformation_gamma"]
         self._lbl_detail_window_size = language_manager["global.context.label.detail_window_size"]
-        self._lbl_detail_generators = language_manager["global.context.label.detail_generators"]
+        self._lbl_detail_channels = language_manager["global.context.label.detail_channels"]
         self._lbl_detail_configuration = language_manager["global.context.label.detail_configuration"]
 
         self.on_favorites_filter_changed: Optional[Callable[[str, bool], None]] = None
@@ -295,8 +295,8 @@ class GUITreePanel(GUIPanel, ABC):
         """Builds the control showing the favorites alone, as a row of its own under the search box.
 
         The checkbox carries the label, so the words are part of what the reader clicks, and the star
-        beside it reads in the colour the mode it stands for is drawn in. The label reads in the pair
-        every checkbox reads — the text colour while the control is live, the muted one while a
+        beside it reads in the color the mode it stands for is drawn in. The label reads in the pair
+        every checkbox reads — the text color while the control is live, the muted one while a
         rebuild holds it — so the shade states whether the control can be acted on.
         """
         self._favorites_checkbox_tag = compose_tag(self.tag, SUF_CHECKBOX_FAVORITES)
@@ -341,14 +341,14 @@ class GUITreePanel(GUIPanel, ABC):
         self.redraw_tree()
 
     def _apply_favorites_glyph_color(self) -> None:
-        """Colours the star by the mode the control reads, wherever the browser offers one."""
+        """Colors the star by the mode the control reads, wherever the browser offers one."""
         if self._favorites_glyph_tag is None:
             return
 
         dpg_set_palette_color(self._favorites_glyph_tag, self._favorites_glyph_color())
 
     def _favorites_glyph_color(self) -> BaseColor:
-        """The colour the star takes: the favorite colour while the mode is on, muted while it is off."""
+        """The color the star takes: the favorite color while the mode is on, muted while it is off."""
         if self._filter.favorites_only:
             return self._colors.favorite
 
@@ -414,7 +414,7 @@ class GUITreePanel(GUIPanel, ABC):
         decision covers the whole subtree and the traversal walks on.
         """
         if SingleThreadExecutor.is_shutting_down():
-            raise BackgroundWorkCancelled
+            raise BackgroundWorkCanceled
 
         if not self._is_node_drawn(node):
             return
@@ -466,7 +466,7 @@ class GUITreePanel(GUIPanel, ABC):
 
         The emitter runs this once its last batch has attached. A filtered rebuild that drew no
         row fills the cleared tree with the message naming that outcome, so the filter's answer is
-        legible where the rows would be. Applying the filter here lets late-emitted nodes honour
+        legible where the rows would be. Applying the filter here lets late-emitted nodes honor
         an active search, and releasing the lock hands control back to interactive rebuilds.
         """
         if root_tag == self.tree_tag and self._filter.is_active and not drawn_rows:
@@ -811,7 +811,7 @@ class GUITreePanel(GUIPanel, ABC):
             (self._lbl_detail_nes_frequency, format_nes_frequency(fields.nf)),
             (self._lbl_detail_spectrum_method, format_spectrum_method(fields.sm)),
             (self._lbl_detail_transformation_gamma, str(fields.tg)),
-            (self._lbl_detail_generators, format_generators(fields.generators)),
+            (self._lbl_detail_channels, format_channels(fields.channels)),
             (self._lbl_detail_configuration, short_hash(fields.ch)),
         ]
 
@@ -832,19 +832,7 @@ class GUITreePanel(GUIPanel, ABC):
         )
 
     def _add_context_menu_path_items(self, path: Path) -> None:
-        dpg.add_separator()
-        dpg.add_menu_item(
-            label=self._language_manager["global.context.label.copy_filename"],
-            callback=lambda: dpg.set_clipboard_text(str(path.name)),
-        )
-        dpg.add_menu_item(
-            label=self._language_manager["global.context.label.copy_path"],
-            callback=lambda: dpg.set_clipboard_text(str(path)),
-        )
-        dpg.add_menu_item(
-            label=self._language_manager["global.context.label.open_in_explorer"],
-            callback=lambda: open_path_in_explorer(path),
-        )
+        add_path_menu_items(self._language_manager, path)
 
     def _add_context_menu_sequencer_items(self, node: FileSystemNode) -> None:
         """Add the send-to-sequencer item, live while its host reports the sequencer accepts one."""

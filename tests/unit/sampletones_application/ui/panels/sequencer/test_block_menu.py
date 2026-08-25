@@ -5,9 +5,11 @@ from typing import Any, Callable, Iterator, List, Optional, Tuple
 
 import pytest
 
+from sampletones_application.categories.elements.sequencer import SequencerOrderElements, SequencerTrackerElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
-from sampletones_application.ui.panels.sequencer import order as order_module
-from sampletones_application.ui.panels.sequencer import tracker as tracker_module
+from sampletones_application.paths import LANG_EN
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
 from sampletones_application.ui.panels.sequencer.grid.surface import clipboard as clipboard_module
 from sampletones_application.ui.panels.sequencer.input.order import (
@@ -16,6 +18,11 @@ from sampletones_application.ui.panels.sequencer.input.order import (
 )
 from sampletones_application.ui.panels.sequencer.input.target import OrderTarget, TrackerTarget
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
+from sampletones_application.ui.panels.sequencer.order import panel as order_module
+from sampletones_application.ui.panels.sequencer.order.menu import OrderMenu
+from sampletones_application.ui.panels.sequencer.tracker import adjust
+from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker.menu import TrackerMenu
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
     OrderRegion,
@@ -24,7 +31,7 @@ from sampletones_application.view_model.sequencer.region import (
 )
 from sampletones_application.view_model.sequencer.slot import SLOT_COUNT, TrackerSlot, slot_from_flat
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.grid import (
     ORDER_BLOCK_SHORTCUTS,
     TRACKER_BLOCK_SHORTCUTS,
@@ -47,7 +54,7 @@ SELECT_COLUMN_ITEM = 1
 SELECT_SUBCOLUMN_ITEM = 2
 SELECT_ROW_ITEM = 1
 
-PULSE1_ROW = CHANNEL_AXIS.index(GeneratorName.PULSE1)
+PULSE1_ROW = CHANNEL_AXIS.index(ChannelName.PULSE1)
 
 
 @dataclass
@@ -97,8 +104,8 @@ TRACKER_LABELS = (
     "select_column",
     "select_subcolumn",
     "note_off",
-    "set_instrument",
-    "no_samples",
+    "set_voice",
+    "no_voices",
     "clear_subcolumn",
     "clear_cell",
     "clear_row",
@@ -128,8 +135,20 @@ def _labels(panel: Any, names: Tuple[str, ...]) -> None:
 def _adjust_labels(panel: Any) -> None:
     """Gives the panel the words its transpose and volume items print, each reading as its element."""
     panel._lbl_adjust = {
-        element: element.value for element, _, _ in (*tracker_module.TRANSPOSE_ACTIONS, *tracker_module.VOLUME_ACTIONS)
+        element: element.value for element, _, _ in (*adjust.TRANSPOSE_ACTIONS, *adjust.VOLUME_ACTIONS)
     }
+
+
+def _order_words(*elements: SequencerOrderElements) -> List[str]:
+    """The words the order menu prints for these actions, read from the language file it reads."""
+    language_manager = LanguageManager(LANG_EN)
+    return [language_manager[Page.SEQUENCER, Panel.ORDER, TextType.LABEL, element] for element in elements]
+
+
+def _tracker_words(*elements: SequencerTrackerElements) -> List[str]:
+    """The words the tracker menu prints for these actions, read from the language file it reads."""
+    language_manager = LanguageManager(LANG_EN)
+    return [language_manager[Page.SEQUENCER, Panel.TRACKER, TextType.LABEL, element] for element in elements]
 
 
 def _tracker_panel(
@@ -151,6 +170,11 @@ def _tracker_panel(
     panel.can_paste_block = lambda: can_paste
     panel._blocks = BlockGestures(grid=panel)
     attach_edit_surface(panel, TRACKER_BLOCK_SHORTCUTS, TrackerTarget)
+    panel._menu = TrackerMenu(
+        panel,
+        language_manager=LanguageManager(LANG_EN),
+        shortcut_source=panel._shortcuts,
+    )
     return panel
 
 
@@ -172,6 +196,11 @@ def _order_panel(
     panel.can_paste_block = lambda: can_paste
     panel._blocks = BlockGestures(grid=panel)
     attach_edit_surface(panel, ORDER_BLOCK_SHORTCUTS, OrderTarget)
+    panel._menu = OrderMenu(
+        panel,
+        language_manager=LanguageManager(LANG_EN),
+        shortcut_source=panel._shortcuts,
+    )
     return panel
 
 
@@ -204,14 +233,14 @@ def order_recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuRecorder:
     return _record_into(monkeypatch, order_module)
 
 
-def _tracker_cell(generator: Optional[GeneratorName]) -> TrackerCursor:
+def _tracker_cell(channel: Optional[ChannelName]) -> TrackerCursor:
     """The clicked cell the tracker item tests raise their menu on."""
-    return TrackerCursor(CLICKED_ROW, generator, SubColumn.INSTRUMENT)
+    return TrackerCursor(CLICKED_ROW, channel, SubColumn.VOICE)
 
 
-def _order_cell(generator: Optional[GeneratorName]) -> OrderCursor:
+def _order_cell(channel: Optional[ChannelName]) -> OrderCursor:
     """The clicked cell the order item tests raise their menu on."""
-    return OrderCursor(generator, CLICKED_POSITION)
+    return OrderCursor(channel, CLICKED_POSITION)
 
 
 def _tracker_selections(
@@ -219,7 +248,7 @@ def _tracker_selections(
     panel: tracker_module.GUISequencerTrackerPanel,
 ) -> List[TrackerInputState]:
     """The states a select item applies, on a grid holding a cursor and the rows to reach."""
-    panel._input_state = TrackerInputState(cursor=_tracker_cell(GeneratorName.PULSE1))
+    panel._input_state = TrackerInputState(cursor=_tracker_cell(ChannelName.PULSE1))
     panel._current_row_count = ROW_COUNT
     states: List[TrackerInputState] = []
     monkeypatch.setattr(panel, "_apply_state", states.append)
@@ -232,7 +261,7 @@ def _order_selections(
     panel: order_module.GUISequencerOrderPanel,
 ) -> List[OrderInputState]:
     """The states a select item applies, on a table holding a cursor and the positions to reach."""
-    panel._input_state = OrderInputState(cursor=_order_cell(GeneratorName.PULSE1))
+    panel._input_state = OrderInputState(cursor=_order_cell(ChannelName.PULSE1))
     states: List[OrderInputState] = []
     monkeypatch.setattr(panel, "_apply_state", lambda state, notify=True: states.append(state))
     return states
@@ -240,13 +269,13 @@ def _order_selections(
 
 def _selected_tracker_state() -> TrackerInputState:
     """A selection running from the clicked row down two rows, over Pulse 1's whole cell."""
-    state = TrackerInputState(cursor=TrackerCursor(CLICKED_ROW, GeneratorName.PULSE1, SubColumn.INSTRUMENT))
+    state = TrackerInputState(cursor=TrackerCursor(CLICKED_ROW, ChannelName.PULSE1, SubColumn.VOICE))
     return state.extend_row(2, ROW_COUNT).extend_slot(2)
 
 
 def _selected_order_state() -> OrderInputState:
     """A selection running from the clicked position across two positions of Pulse 1's row."""
-    state = OrderInputState(cursor=OrderCursor(GeneratorName.PULSE1, CLICKED_POSITION))
+    state = OrderInputState(cursor=OrderCursor(ChannelName.PULSE1, CLICKED_POSITION))
     return state.extend_position(2, POSITION_COUNT)
 
 
@@ -258,7 +287,7 @@ class TestTrackerTarget:
         target = panel._surface.target_at(
             TrackerCursor(
                 CLICKED_ROW + 1,
-                GeneratorName.PULSE1,
+                ChannelName.PULSE1,
                 SubColumn.TRANSPOSE,
             )
         )
@@ -272,7 +301,7 @@ class TestTrackerTarget:
         target = panel._surface.target_at(
             TrackerCursor(
                 CLICKED_ROW,
-                GeneratorName.TRIANGLE,
+                ChannelName.TRIANGLE,
                 SubColumn.VOLUME,
             )
         )
@@ -280,17 +309,17 @@ class TestTrackerTarget:
         assert target.region == TrackerRegion(
             first_row=CLICKED_ROW,
             last_row=CLICKED_ROW,
-            first_slot=TrackerSlot(GeneratorName.TRIANGLE, SubColumn.VOLUME).flat_index,
-            last_slot=TrackerSlot(GeneratorName.TRIANGLE, SubColumn.VOLUME).flat_index,
+            first_slot=TrackerSlot(ChannelName.TRIANGLE, SubColumn.VOLUME).flat_index,
+            last_slot=TrackerSlot(ChannelName.TRIANGLE, SubColumn.VOLUME).flat_index,
         )
 
     def test_a_menu_raised_with_nothing_selected_acts_on_the_clicked_cell(self) -> None:
         panel = _tracker_panel(Gestures())
 
-        target = panel._surface.target_at(TrackerCursor(CLICKED_ROW, None, SubColumn.INSTRUMENT))
+        target = panel._surface.target_at(TrackerCursor(CLICKED_ROW, None, SubColumn.VOICE))
 
         assert target.region.rows == range(CLICKED_ROW, CLICKED_ROW + 1)
-        assert target.region.slots == (TrackerSlot(None, SubColumn.INSTRUMENT),)
+        assert target.region.slots == (TrackerSlot(None, SubColumn.VOICE),)
 
     def test_the_cursor_resolves_to_the_selection_it_ends(self) -> None:
         """The menu bar asks for the cursor's own target, which is the standing selection."""
@@ -307,7 +336,7 @@ class TestTrackerTarget:
 
     def test_the_cursor_resolves_to_its_own_cell_with_nothing_selected(self) -> None:
         panel = _tracker_panel(Gestures())
-        cursor = TrackerCursor(CLICKED_ROW, GeneratorName.NOISE, SubColumn.VOLUME)
+        cursor = TrackerCursor(CLICKED_ROW, ChannelName.NOISE, SubColumn.VOLUME)
         panel._input_state = TrackerInputState(cursor=cursor)
 
         target = panel._surface.cursor_target()
@@ -316,10 +345,10 @@ class TestTrackerTarget:
         assert target.region == TrackerRegion(
             first_row=CLICKED_ROW,
             last_row=CLICKED_ROW,
-            first_slot=TrackerSlot(GeneratorName.NOISE, SubColumn.VOLUME).flat_index,
-            last_slot=TrackerSlot(GeneratorName.NOISE, SubColumn.VOLUME).flat_index,
+            first_slot=TrackerSlot(ChannelName.NOISE, SubColumn.VOLUME).flat_index,
+            last_slot=TrackerSlot(ChannelName.NOISE, SubColumn.VOLUME).flat_index,
         )
-        assert target.anchor == TrackerCell(row=CLICKED_ROW, generator=GeneratorName.NOISE)
+        assert target.anchor == TrackerCell(row=CLICKED_ROW, channel=ChannelName.NOISE)
 
 
 class TestTrackerMenuItems:
@@ -332,7 +361,7 @@ class TestTrackerMenuItems:
         panel._input_state = _selected_tracker_state()
         selection = panel._input_state.region
 
-        panel._surface.add_block_items(panel._surface.target_at(_tracker_cell(GeneratorName.PULSE1)))
+        panel._surface.add_block_items(panel._surface.target_at(_tracker_cell(ChannelName.PULSE1)))
         for item in tracker_recorder.items:
             item.callback()
 
@@ -349,19 +378,19 @@ class TestTrackerMenuItems:
             panel._surface.target_at(
                 TrackerCursor(
                     CLICKED_ROW,
-                    GeneratorName.NOISE,
+                    ChannelName.NOISE,
                     SubColumn.VOLUME,
                 )
             )
         )
         tracker_recorder.items[PASTE_ITEM].callback()
 
-        assert gestures.pasted == [TrackerCell(row=CLICKED_ROW, generator=GeneratorName.NOISE)]
+        assert gestures.pasted == [TrackerCell(row=CLICKED_ROW, channel=ChannelName.NOISE)]
 
     def test_paste_awaits_a_copy(self, tracker_recorder: _MenuRecorder) -> None:
         panel = _tracker_panel(Gestures(), can_paste=False)
 
-        panel._surface.add_block_items(panel._surface.target_at(_tracker_cell(GeneratorName.PULSE1)))
+        panel._surface.add_block_items(panel._surface.target_at(_tracker_cell(ChannelName.PULSE1)))
 
         assert tracker_recorder.items[PASTE_ITEM].enabled is False
         assert [item.enabled for item in tracker_recorder.items] == [True, True, False, True]
@@ -372,7 +401,7 @@ class TestTrackerMenuItems:
     ) -> None:
         panel = _tracker_panel(Gestures())
 
-        panel._surface.add_block_items(panel._surface.target_at(_tracker_cell(GeneratorName.PULSE1)))
+        panel._surface.add_block_items(panel._surface.target_at(_tracker_cell(ChannelName.PULSE1)))
 
         assert [item.label for item in tracker_recorder.items] == ["Copy", "Cut", "Paste", "Delete"]
 
@@ -382,7 +411,7 @@ class TestOrderTarget:
         panel = _order_panel(Gestures())
         panel._input_state = _selected_order_state()
 
-        target = panel._surface.target_at(OrderCursor(GeneratorName.PULSE1, CLICKED_POSITION + 1))
+        target = panel._surface.target_at(OrderCursor(ChannelName.PULSE1, CLICKED_POSITION + 1))
 
         assert target.region == panel._input_state.region
 
@@ -402,7 +431,7 @@ class TestOrderTarget:
     def test_a_menu_raised_with_nothing_selected_acts_on_the_clicked_cell(self) -> None:
         panel = _order_panel(Gestures())
 
-        target = panel._surface.target_at(_order_cell(GeneratorName.PULSE1))
+        target = panel._surface.target_at(_order_cell(ChannelName.PULSE1))
 
         assert target.region == OrderRegion(
             first_row=PULSE1_ROW,
@@ -426,7 +455,7 @@ class TestOrderTarget:
 
     def test_the_cursor_resolves_to_its_own_cell_with_nothing_selected(self) -> None:
         panel = _order_panel(Gestures())
-        cursor = OrderCursor(GeneratorName.PULSE1, CLICKED_POSITION)
+        cursor = OrderCursor(ChannelName.PULSE1, CLICKED_POSITION)
         panel._input_state = OrderInputState(cursor=cursor)
 
         target = panel._surface.cursor_target()
@@ -438,7 +467,7 @@ class TestOrderTarget:
             first_position=CLICKED_POSITION,
             last_position=CLICKED_POSITION,
         )
-        assert target.anchor == OrderCell(generator=GeneratorName.PULSE1, position=CLICKED_POSITION)
+        assert target.anchor == OrderCell(channel=ChannelName.PULSE1, position=CLICKED_POSITION)
 
 
 class TestOrderMenuItems:
@@ -451,7 +480,7 @@ class TestOrderMenuItems:
         panel._input_state = _selected_order_state()
         selection = panel._input_state.region
 
-        panel._surface.add_block_items(panel._surface.target_at(_order_cell(GeneratorName.PULSE1)))
+        panel._surface.add_block_items(panel._surface.target_at(_order_cell(ChannelName.PULSE1)))
         for item in order_recorder.items:
             item.callback()
 
@@ -466,12 +495,12 @@ class TestOrderMenuItems:
         panel._surface.add_block_items(panel._surface.target_at(_order_cell(None)))
         order_recorder.items[PASTE_ITEM].callback()
 
-        assert gestures.pasted == [OrderCell(generator=None, position=CLICKED_POSITION)]
+        assert gestures.pasted == [OrderCell(channel=None, position=CLICKED_POSITION)]
 
     def test_paste_awaits_a_copy(self, order_recorder: _MenuRecorder) -> None:
         panel = _order_panel(Gestures(), can_paste=False)
 
-        panel._surface.add_block_items(panel._surface.target_at(_order_cell(GeneratorName.PULSE1)))
+        panel._surface.add_block_items(panel._surface.target_at(_order_cell(ChannelName.PULSE1)))
 
         assert order_recorder.items[PASTE_ITEM].enabled is False
         assert [item.enabled for item in order_recorder.items] == [True, True, False, True]
@@ -482,7 +511,7 @@ class TestOrderMenuItems:
     ) -> None:
         panel = _order_panel(Gestures())
 
-        panel._surface.add_block_items(panel._surface.target_at(_order_cell(GeneratorName.PULSE1)))
+        panel._surface.add_block_items(panel._surface.target_at(_order_cell(ChannelName.PULSE1)))
 
         assert [item.label for item in order_recorder.items] == ["Copy", "Cut", "Paste", "Delete"]
 
@@ -496,12 +525,16 @@ class TestActionSet:
     ) -> None:
         panel = _tracker_panel(Gestures())
 
-        panel.add_action_items(panel._surface.target_at(_tracker_cell(GeneratorName.PULSE1)))
+        panel.add_action_items(panel._surface.target_at(_tracker_cell(ChannelName.PULSE1)))
 
         labels = [item.label for item in tracker_recorder.items]
-        assert labels[:3] == ["select_all", "select_column", "select_subcolumn"]
+        assert labels[:3] == _tracker_words(
+            SequencerTrackerElements.CONTEXT_SELECT_ALL,
+            SequencerTrackerElements.CONTEXT_SELECT_COLUMN,
+            SequencerTrackerElements.CONTEXT_SELECT_SUBCOLUMN,
+        )
         assert labels[3:7] == ["Copy", "Cut", "Paste", "Delete"]
-        assert panel._lbl_context_clear_row in labels
+        assert _tracker_words(SequencerTrackerElements.CONTEXT_CLEAR_ROW)[0] in labels
 
     def test_the_order_action_set_leads_with_the_shapes_a_selection_takes(
         self,
@@ -509,12 +542,15 @@ class TestActionSet:
     ) -> None:
         panel = _order_panel(Gestures())
 
-        panel.add_action_items(panel._surface.target_at(_order_cell(GeneratorName.PULSE1)))
+        panel.add_action_items(panel._surface.target_at(_order_cell(ChannelName.PULSE1)))
 
         labels = [item.label for item in order_recorder.items]
-        assert labels[:2] == ["select_all", "select_row"]
+        assert labels[:2] == _order_words(
+            SequencerOrderElements.CONTEXT_SELECT_ALL,
+            SequencerOrderElements.CONTEXT_SELECT_ROW,
+        )
         assert labels[2:6] == ["Copy", "Cut", "Paste", "Delete"]
-        assert panel._lbl_context_move_end in labels
+        assert _order_words(SequencerOrderElements.CONTEXT_MOVE_END)[0] in labels
 
 
 class TestMenuItemOrder:
@@ -523,7 +559,7 @@ class TestMenuItemOrder:
     def test_the_indices_name_the_items_they_stand_for(self, tracker_recorder: _MenuRecorder) -> None:
         panel = _tracker_panel(Gestures())
 
-        panel._surface.add_block_items(panel._surface.target_at(_tracker_cell(GeneratorName.PULSE1)))
+        panel._surface.add_block_items(panel._surface.target_at(_tracker_cell(ChannelName.PULSE1)))
 
         labels = [item.label for item in tracker_recorder.items]
         assert labels[COPY_ITEM] == "Copy"
@@ -538,7 +574,7 @@ class TestSelectItems:
     def test_the_tracker_items_print_the_keys_they_answer(self, tracker_recorder: _MenuRecorder) -> None:
         panel = _tracker_panel(Gestures())
 
-        panel._add_select_items(_tracker_cell(GeneratorName.PULSE1))
+        panel._menu._add_select_items(_tracker_cell(ChannelName.PULSE1))
 
         assert [item.shortcut for item in tracker_recorder.items] == [
             "Ctrl+A",
@@ -555,12 +591,12 @@ class TestSelectItems:
         panel = _tracker_panel(Gestures())
         states = _tracker_selections(monkeypatch, panel)
 
-        panel._add_select_items(_tracker_cell(GeneratorName.TRIANGLE))
+        panel._menu._add_select_items(_tracker_cell(ChannelName.TRIANGLE))
         tracker_recorder.items[SELECT_COLUMN_ITEM].callback()
 
         region = states[-1].region
         assert region is not None
-        assert region.columns == (GeneratorName.TRIANGLE,)
+        assert region.columns == (ChannelName.TRIANGLE,)
         assert (region.first_row, region.last_row) == (0, ROW_COUNT - 1)
 
     def test_a_tracker_item_selects_the_whole_frame(
@@ -571,7 +607,7 @@ class TestSelectItems:
         panel = _tracker_panel(Gestures())
         states = _tracker_selections(monkeypatch, panel)
 
-        panel._add_select_items(_tracker_cell(GeneratorName.TRIANGLE))
+        panel._menu._add_select_items(_tracker_cell(ChannelName.TRIANGLE))
         tracker_recorder.items[SELECT_ALL_ITEM].callback()
 
         region = states[-1].region
@@ -581,7 +617,7 @@ class TestSelectItems:
     def test_the_order_items_print_the_keys_they_answer(self, order_recorder: _MenuRecorder) -> None:
         panel = _order_panel(Gestures())
 
-        panel._add_select_items(_order_cell(GeneratorName.PULSE1))
+        panel._menu._add_select_items(_order_cell(ChannelName.PULSE1))
 
         assert [item.shortcut for item in order_recorder.items] == ["Ctrl+A", "Ctrl+Shift+A"]
 
@@ -593,10 +629,10 @@ class TestSelectItems:
         panel = _order_panel(Gestures())
         states = _order_selections(monkeypatch, panel)
 
-        panel._add_select_items(_order_cell(None))
+        panel._menu._add_select_items(_order_cell(None))
         order_recorder.items[SELECT_ROW_ITEM].callback()
 
         region = states[-1].region
         assert region is not None
-        assert region.generators == (None,)
+        assert region.channels == (None,)
         assert (region.first_position, region.last_position) == (0, POSITION_COUNT - 1)

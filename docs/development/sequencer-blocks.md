@@ -25,8 +25,8 @@ coordinates, which is what lets it land anywhere it is anchored.
 
 Two axes underpin both grids:
 
-- **`constants/sequencer.py::CHANNEL_AXIS`** — `(None,) + GeneratorName.items()`. Index 0
-  is the aggregate column (the tracker's **Sample**, the order's **Master**) and 1 to 4
+- **`constants/sequencer.py::CHANNEL_AXIS`** — `(None,) + ChannelName.items()`. Index 0
+  is the aggregate column (the tracker's **Voice**, the order's **Master**) and 1 to 4
   are the channels. Both grids lay out along it, so a row index means the same thing in
   either.
 - **`view_model/sequencer/slot.py::TrackerSlot`** — a column paired with a subcolumn,
@@ -55,8 +55,8 @@ about reaches nothing.
 
 A tracker block carries subcolumn offsets measured from `column_slot_base(column)`, and
 every base is a multiple of the subcolumn count. An offset therefore addresses the same
-kind of subcolumn at whichever column it is replayed against: an instrument value cannot
-reach a volume slot. The paste hook takes a `TrackerCell` — a row and a column, with no
+kind of subcolumn at whichever column it is replayed against: a voice reference reaches only
+another voice slot. The paste hook takes a `TrackerCell` — a row and a column, with no
 subcolumn — so the type states the rule: the anchor decides *where* a block lands and the
 block decides *which kind* goes where.
 
@@ -75,7 +75,7 @@ Two consequences follow from the order the writes are taken in:
   channel cell in the same block overwrites what the aggregate settled. The more specific
   write wins.
 - In the tracker, notes land before the transposes and volumes sharing their row, because
-  placing a sample through the **Sample** column clears the channels of that row.
+  placing a sample through the **Voice** column clears the channels of that row.
 
 ## The order grows to what a paste reaches
 
@@ -122,7 +122,7 @@ SampleToNES/1 order rows=1 positions=0..1
 
 The form and its reading live in `logic/sequencer/clipboard/`, which deals in blocks and
 strings alone; the desktop's clipboard is reached through
-`utils/gui/clipboard.py::TextClipboard`, one more piece of external behaviour standing behind
+`utils/gui/clipboard.py::TextClipboard`, one more piece of external behavior standing behind
 a protocol ([Architecture](architecture.md), principle 11). The sequencer coordinator wires
 the two.
 
@@ -136,9 +136,9 @@ the span of slots or positions the block stands on, and a body whose lines or fi
 with it states no block. The span also carries the alignment a tracker block needs, since the
 first slot decides which subcolumn the block opens on.
 
-**A note names its sample by list position**, the figure the grid prints, so a block carried to
-another project plays whichever sample stands at that position there. A position the project's
-list falls short of reads as mixed, which is what the writer already makes of a sample it has
+**A note names its voice by list position**, the figure the grid prints, so a block carried to
+another project plays whichever voice stands at that position there. A position the project's
+list falls short of reads as mixed, which is what the writer already makes of a voice it has
 nothing to place.
 
 A field the form has no reading for refuses the whole text, so a parse answers with a block or
@@ -180,7 +180,7 @@ moment — the same predicate its key scope answers with, so the menu offers wha
 press would reach — and the router asks the one that does to build its items into the menu
 the bar has opened. It holds no state, resolving the surface on each call, so the menu
 states the actions of whoever holds the cursor at the moment it is opened. The bar names the
-clipboard four greyed out when no grid answers, which is how a reader working from the menus
+clipboard four grayed out when no grid answers, which is how a reader working from the menus
 learns the commands exist.
 
 **`Del`** carries two meanings, resolved by whether a selection stands. Two ids cannot share
@@ -201,14 +201,14 @@ volume count separately, each carrying its own action.
 
 ## A shape selects to the grid's own edges
 
-`Ctrl+A` and its neighbours select a whole shape at once. Each shape is stated on the input
+`Ctrl+A` and its neighbors select a whole shape at once. Each shape is stated on the input
 state as a run of bounds along one axis — slots in the tracker, rows in the order — handed to a
 single builder that spans the other axis to the grid's full extent and lands the cursor on the
 far corner. The whole frame, a column and a subcolumn are therefore three namings of one
 rectangle, as the whole order and a channel row are of the other, and a grid laying out nothing
 keeps the selection it had.
 
-The aggregate is an ordinary member of the axis here: selecting the **Sample** column selects a
+The aggregate is an ordinary member of the axis here: selecting the **Voice** column selects a
 column the way selecting a channel does, and the **Master** row a row.
 
 A press names its shape from the cell the cursor stands on, which is the cell the context menu's
@@ -222,7 +222,7 @@ Both grids compose one `TableSelection` (`ui/elements/table/selection.py`), whic
 stands painted and the drag gesture that draws it. The grid states which of its cells the
 selection covers, in its own coordinates; the repaint that follows reaches the cells whose
 membership changed, marking each through the selectable's own selected state, which the
-table's theme colours. A rebuilt table asks for a reset, since the cells a selection stood on
+table's theme colors. A rebuilt table asks for a reset, since the cells a selection stood on
 belong to the body that was replaced.
 
 Both panels read the cell under a held pointer off their own geometry, because DearPyGui
@@ -268,9 +268,9 @@ Three rules make the travel feel like one gesture:
 - **The selection stays put after a paste** rather than becoming the pasted footprint.
 - **A note crosses a project by whichever route it took.** The in-app slot survives a project
   close, because it must survive `on_project_replaced`, which fires on every undo, and it names
-  its sample by id: a note whose sample the project in place lacks is left out of the write, and
+  its voice by id: a note whose voice the project in place lacks is left out of the write, and
   the target keeps what it had. The clipboard's text names a list position instead, so the same
-  note pasted through it plays whichever sample stands at that position. Transpose and volume
+  note pasted through it plays whichever voice stands at that position. Transpose and volume
   are exact by either route.
 - **A drag past the edge and the followed playhead both write the scroll.** With **Follow rows**
   on during playback, `_reveal_playing_row` carries the sounding row to the head of the band

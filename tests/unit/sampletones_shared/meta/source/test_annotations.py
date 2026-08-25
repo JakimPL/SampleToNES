@@ -118,13 +118,13 @@ class TestAnnotationItemTypes(BaseTestSuite):
     test_cases = (
         TestCase(
             label="mapping_states_key_then_value",
-            annotation="Dict[TrackerFormat, FileFilterElements]",
-            expected=("TrackerFormat", "FileFilterElements"),
+            annotation="Dict[ExportFormat, FileFilterElements]",
+            expected=("ExportFormat", "FileFilterElements"),
         ),
         TestCase(
             label="wrapped_mapping",
-            annotation="Final[Dict[TrackerFormat, FileFilterElements]]",
-            expected=("TrackerFormat", "FileFilterElements"),
+            annotation="Final[Dict[ExportFormat, FileFilterElements]]",
+            expected=("ExportFormat", "FileFilterElements"),
         ),
         TestCase(
             label="homogeneous_tuple",

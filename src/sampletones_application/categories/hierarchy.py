@@ -62,6 +62,7 @@ class Panel(StrEnum):
     TRACEBACK = auto()
     CONTEXT = auto()
     STATUS = auto()
+    STEMS = auto()
     GRAPH = auto()
     PITCH = auto()
 
@@ -84,6 +85,7 @@ class Panel(StrEnum):
     TRACKER = auto()
     ORDER = auto()
     MODULE = auto()
+    VOICES = auto()
     INSTRUMENTS = auto()
     HISTORY = auto()
 
@@ -97,3 +99,4 @@ class Panel(StrEnum):
     KEYBINDINGS = auto()
     PROPERTIES = auto()
     RENDER = auto()
+    EXPORT = auto()

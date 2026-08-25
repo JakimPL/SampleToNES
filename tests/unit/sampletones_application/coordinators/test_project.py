@@ -24,7 +24,7 @@ def project_coordinator() -> ProjectCoordinator:
         MagicMock(),
         MagicMock(),
         MagicMock(),
-        tracker_backends={},
+        export_backends={},
         dialogs=MagicMock(),
         language_manager=MagicMock(),
         on_tab_switch=MagicMock(),

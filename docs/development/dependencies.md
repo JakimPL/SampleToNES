@@ -54,7 +54,7 @@ Dialogs open through the XDG desktop portal (`org.freedesktop.portal.FileChooser
 ## Application icon
 
 The icon suite in `src/sampletones_assets/icons` is generated from the mark declared beside it in
-`src/sampletones_assets/mark`: `mark.yaml` carries the geometry, colours and rasterization
+`src/sampletones_assets/mark`: `mark.yaml` carries the geometry, colors and rasterization
 settings, validated as a `Mark`, and `template.svg` is the vector the rendered geometry fills. The
 package writes the whole suite — the vector `sampletones.svg` and the rasters the application
 ships, `sampletones.png` and the multi-resolution `sampletones.ico` — and `scripts/assets/icons.py`
@@ -71,6 +71,65 @@ Pillow is a build-time tool, and the bundle scripts pass `--exclude-module PIL` 
 installed, and PyInstaller follows that import into the bundle. The application reads its icons as
 files, so the exclusion spares every bundle Pillow's extension modules and the imaging libraries
 that come with them. `scripts/ci/checks/bundle.py` holds the release bundles to it.
+
+## NES player driver
+
+The player that runs on the console is 6502 assembly, and `src/sampletones_player/driver` holds it
+in three parts: `assembly/` carries the sources, their includes and the linker configuration,
+`binary/` carries the assembled `driver.bin`, and `assembler/` carries the Python that turns one
+into the other. `make player` runs `scripts/player.py` over that package, so the build behaves the
+same on every system the project supports.
+
+Assembling needs `ca65` and `ld65` from [cc65](https://cc65.github.io/) — on Debian and Ubuntu,
+`sudo apt install cc65`, and a build names the equivalent for whichever system it runs on when the
+programs are absent. cc65 is a build-time tool for the driver alone.
+
+The assembled `driver.bin` is committed, so a checkout carries the player and exporting an NSF
+needs no assembler. A jump table leads the image, which fixes the addresses an NSF header names
+whatever the driver's length, so the exporter states them from `specification/driver.py` and a
+build holds the linker's own labels to them before it writes anything. Editing the assembly means
+running `make player` again and committing what it writes; the driver's test suite rebuilds the
+sources and holds the committed image to them wherever cc65 is installed. The wheel carries the
+assembled image alone, which is all an installed copy reads.
+
+cc65 is distributed under the zlib license, and the driver stays clear of it: the link line names
+our own object files and our own `nsf.cfg`, so nothing of cc65's start-up code or libraries reaches
+the committed image. That keeps the blob entirely ours to ship under the project's MIT license.
+
+### Verifying the driver
+
+`tests/integration/nsf` runs an exported file the way a console runs it. [py65](https://github.com/mnaberez/py65)
+— a 6502 emulator in the `dev` dependency group — executes the assembled driver against memory that
+watches the APU's address range, so each routine answers with the register writes it made and the
+suite holds the whole run against `RegisterTrace.from_song`. Reading those writes back into
+instructions and rendering them through the project's own generators closes the loop on the sound
+as well: what the console plays stands against the very waveform the reconstruction carries. py65
+is a developer dependency, outside both the wheel and the bundles, and its BSD license leaves the
+project's own terms untouched.
+
+Listening to a real APU needs [ffmpeg](https://ffmpeg.org/) carrying the `libgme` demuxer, which
+is a build option rather than a given: `make nsf-render` asks the installed ffmpeg which demuxers
+it holds and names this system's install command before it decodes anything. It exports the example
+files and renders each one to a wave beside it, its length read out of the song block the file
+carries. That is an ear rather than a gate: the register trace is what the driver answers to, and
+the wave is what a person listens to.
+
+### The player's tools
+
+Three tools serve the player, each reached by one command:
+
+| Tool | Run by | Installed with | Reaches |
+| --- | --- | --- | --- |
+| cc65 (`ca65`, `ld65`) | `make player` | the system's package manager | the machine assembling the driver |
+| py65 | `make test` | `uv sync --group dev` | the `dev` dependency group |
+| ffmpeg with `libgme` | `make nsf-render` | the system's package manager | the machine listening to an export |
+
+`scripts/linux/build/dependencies.sh` and its macOS counterpart carry what building and running the
+application needs, and the workflows install the `dev` group, so py65 is the one of the three CI
+reaches — the suite verifies the driver through it alone. cc65 and ffmpeg stay on the machine of
+whoever runs `make player` or `make nsf-render`, and a workflow that assembles the driver or renders
+a wave is what would put them in those scripts. The application itself calls neither: an export is
+written by the package's own code, from the committed `driver.bin`.
 
 ## Linux (standalone executable)
 

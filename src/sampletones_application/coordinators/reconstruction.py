@@ -7,12 +7,16 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
+from sampletones_application.logic.reconstruction.edit import (
+    ChannelEdit,
+    ReconstructionEdit,
+)
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services import (
     RegeneratedInstrument,
     RegenerationResult,
     RegenerationService,
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
@@ -28,14 +32,13 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
-from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from sampletones_shared.types.callback import Callback, VoidCallback
-from sampletones_shared.utils.system.paths import get_filename
+from sampletones_shared.utils.system.paths import first_missing, get_filename
 
 
 class ReconstructionCoordinator:
@@ -64,7 +67,7 @@ class ReconstructionCoordinator:
         language_manager: LanguageManager,
         on_tab_switch: Callback,
         on_session_state_changed: VoidCallback,
-        on_reconstruction_updated: Callable[[RegeneratedInstrument], None],
+        on_reconstruction_updated: Callable[[ReconstructionEdit], None],
         is_reconstruction_embedded: Callable[[], bool],
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
@@ -266,10 +269,9 @@ class ReconstructionCoordinator:
 
     def regenerate_instrument(
         self,
-        generator_name: GeneratorName,
-        features: Features,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
-        data: FeatureValue,
+        features: Features,
     ) -> None:
         reconstruction_data = self._reconstruction_manager.current_reconstruction
         if reconstruction_data is None:
@@ -277,10 +279,9 @@ class ReconstructionCoordinator:
 
         accepted = self._regeneration_service.start(
             reconstruction_data.reconstruction,
-            generator_name,
-            features,
+            channel_name,
             feature_key,
-            data,
+            features,
         )
         if accepted:
             self._set_reconstruction_dimmed(True)
@@ -291,10 +292,10 @@ class ReconstructionCoordinator:
             raise RuntimeError("No reconstruction is loaded after loading process")
 
         self._audio_device_manager.stop()
-        audio_filepath = reconstruction_data.reconstruction.audio_filepath
-        if audio_filepath is not None and not audio_filepath.exists():
+        missing_path = first_missing(reconstruction_data.reconstruction.audio_filepath)
+        if missing_path is not None:
             self._dialogs.show_file_not_found(
-                audio_filepath,
+                missing_path,
                 self._language_manager["reconstructions.browser.message.audio_file_not_found"],
             )
 
@@ -307,31 +308,41 @@ class ReconstructionCoordinator:
         self._tab.close_reconstruction()
         self._session_manager.set_current_reconstruction(None)
 
-    def _on_updated(self, outcome: RegeneratedInstrument) -> None:
-        """Applies a regenerated reconstruction across the open document and project.
+    def apply_edit(self, edit: ReconstructionEdit) -> None:
+        """Applies an edited reconstruction across the open document and project.
 
-        The owning-sample hook runs first, while the manager still holds the prior
-        reconstruction, so it can locate the owned sample by identity and record the
-        edit against the project history, tagged with the channel and feature the
-        ``outcome`` names. The open document then rebinds to the new reconstruction,
-        keeping the editor and any owned sample sharing one object.
+        Every edit of the open document arrives here, so one path answers a regenerated
+        instrument and a removed recording alike. The owning-sample hook runs first, while
+        the manager still holds the prior reconstruction, so it can locate the owned sample
+        by identity and record the edit against the project history as the ``edit``
+        describes itself. The open document then rebinds to the new reconstruction, keeping
+        the editor and any owned sample sharing one object.
         """
-        self._on_reconstruction_updated_callback(outcome)
-        self._reconstruction_manager.apply_regenerated(outcome.reconstruction)
+        self._on_reconstruction_updated_callback(edit)
+        self._reconstruction_manager.apply_edited(edit.reconstruction)
         self._tab.update_reconstruction()
         self._reconstruction_manager.mark_updated()
 
     def _on_regeneration_result(self, result: RegenerationResult) -> None:
         match result:
             case ServiceSuccess(value=outcome):
-                self._on_updated(outcome)
+                self.apply_edit(self._channel_edit(outcome))
             case ServiceError(exception=exception):
                 logger.error_with_traceback(exception, "Regeneration failed")
                 self._dialogs.show_error(exception)
-            case ServiceCancelled():
-                logger.info("Regeneration cancelled")
+            case ServiceCanceled():
+                logger.info("Regeneration canceled")
 
         self._set_reconstruction_dimmed(self._regeneration_service.is_running())
+
+    @staticmethod
+    def _channel_edit(outcome: RegeneratedInstrument) -> ChannelEdit:
+        """Reads a regeneration result as the edit the project history records."""
+        return ChannelEdit(
+            reconstruction=outcome.reconstruction,
+            channel_name=outcome.channel_name,
+            feature_key=outcome.feature_key,
+        )
 
     def _set_reconstruction_dimmed(self, dimmed: bool) -> None:
         """Fades the reconstruction waveform while the regeneration worker is busy.

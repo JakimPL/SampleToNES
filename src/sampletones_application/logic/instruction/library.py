@@ -10,11 +10,11 @@ from sampletones_application.logic.instruction.library_manager import (
 from sampletones_application.view_model.instruction.library import (
     LibraryPanelViewModel,
 )
-from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.generators import (
     GENERATOR_CLASS_MAP,
+    GENERATOR_TO_CLASS_NAME_MAP,
     GENERATOR_TO_INSTRUCTION_MAP,
-    LIBRARY_GENERATOR_CLASS_MAP,
 )
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import (
@@ -73,7 +73,7 @@ class LibraryLogic(CallbackMixin):
         self.on_apply_library_config: Optional[OnApplyLibraryConfigCallback] = None
         self.on_generation_completed: Optional[VoidCallback] = None
         self.on_generation_error: Optional[Callable[[Exception], None]] = None
-        self.on_generation_cancelled: Optional[VoidCallback] = None
+        self.on_generation_canceled: Optional[VoidCallback] = None
         self.on_load_file_not_found: Optional[Callable[[Path, str], None]] = None
         self.on_load_error: Optional[Callable[[Exception, str], None]] = None
 
@@ -85,7 +85,7 @@ class LibraryLogic(CallbackMixin):
             on_generation_progress=self._on_generation_progress,
             on_generation_completed=self._on_generation_completed,
             on_generation_error=self._on_generation_error,
-            on_generation_cancelled=self._on_generation_cancelled,
+            on_generation_canceled=self._on_generation_canceled,
         )
 
     def configure_lock(
@@ -185,11 +185,11 @@ class LibraryLogic(CallbackMixin):
         self.load_library_and_set_current(library_key)
         self.update_status()
 
-    def load_generator(self, library_generator_name: LibraryGeneratorName) -> None:
+    def load_generator(self, generator_name: GeneratorName) -> None:
         if self._is_locked:
             return
 
-        generator_class = GENERATOR_CLASS_MAP[LIBRARY_GENERATOR_CLASS_MAP[library_generator_name]]
+        generator_class = GENERATOR_CLASS_MAP[GENERATOR_TO_CLASS_NAME_MAP[generator_name]]
         instruction_class = GENERATOR_TO_INSTRUCTION_MAP[generator_class]
         instruction = instruction_class.default_instruction()
         self.load_instruction(instruction)
@@ -373,8 +373,8 @@ class LibraryLogic(CallbackMixin):
                     self._emit_view(self._language_manager["instructions.library.message.status_saving"], progress=1.0)
                 case TaskStatus.FAILED:
                     self._emit_view(self._language_manager["instructions.library.message.status_generation_failed"])
-                case TaskStatus.CANCELLED:
-                    self._emit_view(self._language_manager["instructions.library.message.status_generation_cancelled"])
+                case TaskStatus.CANCELED:
+                    self._emit_view(self._language_manager["instructions.library.message.status_generation_canceled"])
                 case TaskStatus.RUNNING:
                     self._update_progress_state(task_progress)
 
@@ -395,7 +395,7 @@ class LibraryLogic(CallbackMixin):
                 eta_string=eta_string
             )
 
-        self._emit_view(status_text, progress=task_progress.get_progress())
+        self._emit_view(status_text, progress=task_progress.fraction)
 
     def _on_generation_completed(self) -> None:
         self.call(self.on_generation_completed)
@@ -405,8 +405,8 @@ class LibraryLogic(CallbackMixin):
         self.call(self.on_generation_error, exception)
         self._finalize_generation_error()
 
-    def _on_generation_cancelled(self) -> None:
-        self.call(self.on_generation_cancelled)
+    def _on_generation_canceled(self) -> None:
+        self.call(self.on_generation_canceled)
         self._finalize_generation()
 
     def _finalize_generation(self) -> None:

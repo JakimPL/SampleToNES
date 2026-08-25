@@ -58,7 +58,7 @@ def annotation_type_name(annotation: Optional[ast.expr]) -> Optional[str]:
 def annotation_item_types(annotation: Optional[ast.expr]) -> Tuple[str, ...]:
     """The type names a container annotation states for what it holds.
 
-    `Dict[TrackerFormat, FileFilterElements]` states its key type and then its value type, and
+    `Dict[ExportFormat, FileFilterElements]` states its key type and then its value type, and
     `Tuple[MenuElements, ...]` states its item type.
 
     Args:

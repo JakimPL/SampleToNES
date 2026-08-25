@@ -6,7 +6,7 @@ from sampletones_core.fft import Window
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.array import xp
 
-from .spectral import calculate_spectral_loss
+from .spectral import calculate_spectral_loss, weighted_reference_energy
 from .temporal import calculate_temporal_loss
 from .weights import calculate_spectral_weights
 
@@ -53,6 +53,22 @@ class Criterion:
             self.weights,
             distance=self.spectral_distance,
             divergence_beta=self.divergence_beta,
+        )
+
+    def reference_energy(self, feature: Union[xp.ndarray, Histogram]) -> xp.ndarray:
+        """
+        Weighted energy the target feature holds, the scale its spectral loss is measured against.
+
+        Args:
+            feature: Target feature, as a histogram or its values.
+
+        Returns:
+            The target's weighted energy.
+        """
+        return weighted_reference_energy(
+            _feature_values(feature),
+            self.weights,
+            distance=self.spectral_distance,
         )
 
     def temporal_loss(

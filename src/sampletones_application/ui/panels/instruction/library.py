@@ -39,7 +39,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip
 from sampletones_application.view_model.instruction.library import LibraryPanelViewModel
-from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.structures.tree import (
     GeneratorNode,
@@ -55,7 +55,7 @@ from sampletones_shared.types.callback import MessageCallback, VoidCallback
 
 
 class LibraryLogicProtocol(Protocol):
-    """The library-catalogue contract ``GUIInstructionsLibraryPanel`` drives.
+    """The library-catalog contract ``GUIInstructionsLibraryPanel`` drives.
 
     Typing the collaborator structurally keeps the panel bound to the queries
     its rendering needs — the current-library check runs per node, and the
@@ -78,7 +78,7 @@ class LibraryLogicProtocol(Protocol):
 
 
 class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
-    """The Instructions tab's catalogue of instruction libraries and the generators inside them."""
+    """The Instructions tab's catalog of instruction libraries and the generators inside them."""
 
     _NAME_FONT: Font = Font.REGULAR_SMALL
     _MONOSPACE_CONFIG_NODES: bool = True
@@ -115,7 +115,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         self.on_generate_requested: Optional[VoidCallback] = None
         self.on_cancel_generation: Optional[VoidCallback] = None
         self.on_library_selected: Optional[Callable[[InstructionLibraryKey], None]] = None
-        self.on_generator_selected: Optional[Callable[[InstructionLibraryKey, LibraryGeneratorName], None]] = None
+        self.on_generator_selected: Optional[Callable[[InstructionLibraryKey, GeneratorName], None]] = None
         self.on_library_remove_requested: Optional[Callable[[InstructionLibraryKey], None]] = None
 
         super().__init__(
@@ -166,9 +166,9 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         super()._setup_handlers()
 
     def _create_controls(self) -> None:
-        """Reads out what the catalogue holds, and offers what can be done to it.
+        """Reads out what the catalog holds, and offers what can be done to it.
 
-        The controls come in two sets: the ones a reader picks from while the catalogue sits still,
+        The controls come in two sets: the ones a reader picks from while the catalog sits still,
         and the progress bar and cancel button a generation replaces them with.
         """
         self._create_library_status()
@@ -279,7 +279,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         Called whenever a long operation starts or finishes. The button stays enabled only while the
         panel is unlocked and no conversion or library generation is running, leaving the rest of the
         panel usable during such an operation. The cancel button stays enabled so a generation can
-        always be cancelled."""
+        always be canceled."""
         self._apply_action_button_states()
 
     def _apply_action_button_states(self) -> None:

@@ -2,13 +2,16 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_application.view_model.sequencer.voices import VoiceKind
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.utils.display import NOTE_OFF, display_id
 from sampletones_shared.constants.symbols import MIXED
-from tests.suite.sequencer import sample_reconstruction
+from tests.suite.sequencer import UNKNOWN_SAMPLE_ID, sample_reconstruction
 
 
 def _controller() -> ProjectController:
@@ -17,25 +20,25 @@ def _controller() -> ProjectController:
 
 def _row(
     controller: ProjectController,
-    generator: GeneratorName,
+    channel: ChannelName,
     row_index: int = 0,
 ) -> Row:
     song = controller.project.song
-    pattern_index = song.order[0][generator]
-    return song[generator].get_row(pattern_index, row_index)
+    pattern_index = song.order[0][channel]
+    return song[channel].get_row(pattern_index, row_index)
 
 
-def _place_instrument(
+def _place_voice(
     controller: ProjectController,
-    generator: GeneratorName,
-    sample_id: str,
+    channel: ChannelName,
+    voice_id: str,
 ) -> None:
-    pattern_index = controller.project.song.order[0][generator]
+    pattern_index = controller.project.song.order[0][channel]
     controller.set_row(
-        generator,
+        channel,
         pattern_index,
         0,
-        command=Instrument(sample_id=sample_id, generator_name=generator),
+        command=NoteOn(voice_id=voice_id),
     )
 
 
@@ -43,13 +46,13 @@ class TestClearCell:
     def test_a_channel_cell_clears_only_that_channel(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        logic.set_row(GeneratorName.PULSE1, 0, transpose=5)
-        logic.set_row(GeneratorName.PULSE2, 0, transpose=7)
+        logic.set_row(ChannelName.PULSE1, 0, transpose=5)
+        logic.set_row(ChannelName.PULSE2, 0, transpose=7)
 
-        logic.clear_cell(0, GeneratorName.PULSE1)
+        logic.clear_cell(0, ChannelName.PULSE1)
 
-        assert _row(controller, GeneratorName.PULSE1).transpose is None
-        assert _row(controller, GeneratorName.PULSE2).transpose == 7
+        assert _row(controller, ChannelName.PULSE1).transpose is None
+        assert _row(controller, ChannelName.PULSE2).transpose == 7
 
     def test_the_sample_column_clears_every_channel(self) -> None:
         controller = _controller()
@@ -58,55 +61,55 @@ class TestClearCell:
 
         logic.clear_cell(0, None)
 
-        for generator in GeneratorName.items():
-            assert _row(controller, generator).transpose is None
+        for channel in ChannelName.items():
+            assert _row(controller, channel).transpose is None
 
 
 class TestClearCellSubcolumn:
     def test_a_channel_cell_clears_one_subcolumn_of_its_own(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        logic.set_row(GeneratorName.PULSE1, 0, transpose=5, volume=10)
+        logic.set_row(ChannelName.PULSE1, 0, transpose=5, volume=10)
 
-        logic.clear_cell_subcolumn(0, GeneratorName.PULSE1, SubColumn.TRANSPOSE)
+        logic.clear_cell_subcolumn(0, ChannelName.PULSE1, SubColumn.TRANSPOSE)
 
-        row = _row(controller, GeneratorName.PULSE1)
+        row = _row(controller, ChannelName.PULSE1)
         assert row.transpose is None
         assert row.volume == 10
 
-    def test_the_sample_column_clears_instruments_from_every_channel(self) -> None:
+    def test_the_sample_column_clears_the_voice_from_every_channel(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
-        logic.set_note_off(GeneratorName.NOISE, 0)
+        logic.set_row_sample(0, sample.id)
+        logic.set_note_off(ChannelName.NOISE, 0)
 
-        logic.clear_cell_subcolumn(0, None, SubColumn.INSTRUMENT)
+        logic.clear_cell_subcolumn(0, None, SubColumn.VOICE)
 
-        for generator in GeneratorName.items():
-            assert _row(controller, generator).command is None
+        for channel in ChannelName.items():
+            assert _row(controller, channel).command is None
 
     def test_the_sample_column_clears_transpose_from_the_sample_channels(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
-        for generator in GeneratorName.items():
-            logic.set_row(generator, 0, transpose=5)
+        logic.set_row_sample(0, sample.id)
+        for channel in ChannelName.items():
+            logic.set_row(channel, 0, transpose=5)
 
         logic.clear_cell_subcolumn(0, None, SubColumn.TRANSPOSE)
 
-        for generator in (GeneratorName.PULSE1, GeneratorName.TRIANGLE):
-            assert _row(controller, generator).transpose is None
+        for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
+            assert _row(controller, channel).transpose is None
 
-        for generator in (GeneratorName.PULSE2, GeneratorName.NOISE):
-            assert _row(controller, generator).transpose == 5
+        for channel in (ChannelName.PULSE2, ChannelName.NOISE):
+            assert _row(controller, channel).transpose == 5
 
 
 class TestWriteCell:
@@ -114,34 +117,33 @@ class TestWriteCell:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
 
         logic.write_cell(0, None, sample.id, None, None)
 
-        for generator in (GeneratorName.PULSE1, GeneratorName.TRIANGLE):
-            assert isinstance(_row(controller, generator).command, Instrument)
+        for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
+            assert isinstance(_row(controller, channel).command, NoteOn)
 
-        for generator in (GeneratorName.PULSE2, GeneratorName.NOISE):
-            assert _row(controller, generator).command is None
+        for channel in (ChannelName.PULSE2, ChannelName.NOISE):
+            assert _row(controller, channel).command is None
 
-    def test_a_sample_in_a_channel_cell_is_named_for_that_channel(self) -> None:
-        """A cell re-targets the sample onto its own channel, whichever channels the sample covers."""
+    def test_a_sample_in_a_channel_cell_lands_on_that_channel(self) -> None:
+        """A cell writes the voice into its own channel's pattern, whichever channels the sample covers."""
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1]),
+            sample_reconstruction([ChannelName.PULSE1]),
             name="lead",
         )
 
-        logic.write_cell(0, GeneratorName.NOISE, sample.id, None, None)
+        logic.write_cell(0, ChannelName.NOISE, sample.id, None, None)
 
-        command = _row(controller, GeneratorName.NOISE).command
-        assert isinstance(command, Instrument)
-        assert command.sample_id == sample.id
-        assert command.generator_name == GeneratorName.NOISE
-        assert _row(controller, GeneratorName.PULSE1).command is None
+        command = _row(controller, ChannelName.NOISE).command
+        assert isinstance(command, NoteOn)
+        assert command.voice_id == sample.id
+        assert _row(controller, ChannelName.PULSE1).command is None
 
     def test_a_transpose_in_the_sample_column_reaches_every_channel(self) -> None:
         controller = _controller()
@@ -149,17 +151,17 @@ class TestWriteCell:
 
         logic.write_cell(0, None, None, 5, None)
 
-        for generator in GeneratorName.items():
-            assert _row(controller, generator).transpose == 5
+        for channel in ChannelName.items():
+            assert _row(controller, channel).transpose == 5
 
     def test_a_volume_in_a_channel_cell_leaves_the_rest_of_the_cell_standing(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        logic.set_row(GeneratorName.PULSE1, 0, transpose=5)
+        logic.set_row(ChannelName.PULSE1, 0, transpose=5)
 
-        logic.write_cell(0, GeneratorName.PULSE1, None, None, 10)
+        logic.write_cell(0, ChannelName.PULSE1, None, None, 10)
 
-        row = _row(controller, GeneratorName.PULSE1)
+        row = _row(controller, ChannelName.PULSE1)
         assert row.transpose == 5
         assert row.volume == 10
 
@@ -170,9 +172,9 @@ class TestWriteCell:
         controller.append_frame()
         logic.select_frame(1)
 
-        logic.write_cell(0, GeneratorName.PULSE1, None, None, None)
+        logic.write_cell(0, ChannelName.PULSE1, None, None, None)
 
-        assert controller.project.song.order[1][GeneratorName.PULSE1] is None
+        assert controller.project.song.order[1][ChannelName.PULSE1] is None
 
 
 class TestCutNote:
@@ -180,10 +182,10 @@ class TestCutNote:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
 
-        logic.cut_note(0, GeneratorName.PULSE1)
+        logic.cut_note(0, ChannelName.PULSE1)
 
-        assert isinstance(_row(controller, GeneratorName.PULSE1).command, NoteOff)
-        assert _row(controller, GeneratorName.PULSE2).command is None
+        assert isinstance(_row(controller, ChannelName.PULSE1).command, NoteOff)
+        assert _row(controller, ChannelName.PULSE2).command is None
 
     def test_the_sample_column_cuts_every_channel(self) -> None:
         controller = _controller()
@@ -191,8 +193,8 @@ class TestCutNote:
 
         logic.cut_note(0, None)
 
-        for generator in GeneratorName.items():
-            assert isinstance(_row(controller, generator).command, NoteOff)
+        for channel in ChannelName.items():
+            assert isinstance(_row(controller, channel).command, NoteOff)
 
 
 class TestFrameRowCount:
@@ -222,9 +224,9 @@ class TestRowAccess:
     def test_reads_the_stored_row(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        logic.set_row(GeneratorName.PULSE1, 0, transpose=5)
+        logic.set_row(ChannelName.PULSE1, 0, transpose=5)
 
-        row = logic.row(GeneratorName.PULSE1, 0)
+        row = logic.row(ChannelName.PULSE1, 0)
 
         assert row is not None
         assert row.transpose == 5
@@ -235,33 +237,33 @@ class TestRowAccess:
         controller.append_frame()
         logic.select_frame(1)
 
-        assert logic.row(GeneratorName.PULSE1, 0) is None
+        assert logic.row(ChannelName.PULSE1, 0) is None
 
 
-class TestReferencedGenerators:
+class TestReferencedChannels:
     def test_one_placement_reports_the_samples_whole_span(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        _place_instrument(controller, GeneratorName.PULSE1, sample.id)
+        _place_voice(controller, ChannelName.PULSE1, sample.id)
 
-        assert logic.referenced_generators(0) == frozenset(
+        assert logic.referenced_channels(0) == frozenset(
             {
-                GeneratorName.PULSE1,
-                GeneratorName.TRIANGLE,
+                ChannelName.PULSE1,
+                ChannelName.TRIANGLE,
             }
         )
 
     def test_a_row_naming_no_sample_references_no_channel(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        logic.set_note_off(GeneratorName.PULSE1, 0)
+        logic.set_note_off(ChannelName.PULSE1, 0)
 
-        assert logic.referenced_generators(0) == frozenset()
-        assert logic.relevant_generators(0) == GeneratorName.items()
+        assert logic.referenced_channels(0) == frozenset()
+        assert logic.relevant_channels(0) == ChannelName.items()
 
 
 class TestSetNoteOff:
@@ -269,10 +271,10 @@ class TestSetNoteOff:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
 
-        logic.set_note_off(GeneratorName.PULSE1, 0)
+        logic.set_note_off(ChannelName.PULSE1, 0)
 
         assert isinstance(
-            _row(controller, GeneratorName.PULSE1).command,
+            _row(controller, ChannelName.PULSE1).command,
             NoteOff,
         )
 
@@ -282,8 +284,8 @@ class TestSetNoteOff:
 
         logic.set_note_off_all_generators(0)
 
-        for generator in GeneratorName.items():
-            assert isinstance(_row(controller, generator).command, NoteOff)
+        for channel in ChannelName.items():
+            assert isinstance(_row(controller, channel).command, NoteOff)
 
 
 class TestSetSampleInstrument:
@@ -291,48 +293,44 @@ class TestSetSampleInstrument:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
 
-        logic.set_sample_instrument(0, sample.id)
+        logic.set_row_sample(0, sample.id)
 
-        for generator in (GeneratorName.PULSE1, GeneratorName.TRIANGLE):
-            command = _row(controller, generator).command
-            assert isinstance(command, Instrument)
-            assert command.sample_id == sample.id
-            assert command.generator_name == generator
+        for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
+            command = _row(controller, channel).command
+            assert isinstance(command, NoteOn)
+            assert command.voice_id == sample.id
 
-        for generator in (GeneratorName.PULSE2, GeneratorName.NOISE):
-            assert _row(controller, generator).command is None
+        for channel in (ChannelName.PULSE2, ChannelName.NOISE):
+            assert _row(controller, channel).command is None
 
     def test_clears_channels_the_new_sample_does_not_use(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         stale = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE2]),
+            sample_reconstruction([ChannelName.PULSE2]),
             name="bass",
         )
-        pattern_index = controller.project.song.order[0][GeneratorName.PULSE2]
+        pattern_index = controller.project.song.order[0][ChannelName.PULSE2]
         controller.set_row(
-            GeneratorName.PULSE2,
+            ChannelName.PULSE2,
             pattern_index,
             0,
-            command=Instrument(
-                sample_id=stale.id,
-                generator_name=GeneratorName.PULSE2,
-            ),
+            command=NoteOn(voice_id=stale.id),
             volume=15,
         )
 
         lead = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1]),
+            sample_reconstruction([ChannelName.PULSE1]),
             name="lead",
         )
-        logic.set_sample_instrument(0, lead.id)
+        logic.set_row_sample(0, lead.id)
 
-        assert _row(controller, GeneratorName.PULSE1).command is not None
-        cleared = _row(controller, GeneratorName.PULSE2)
+        assert _row(controller, ChannelName.PULSE1).command is not None
+        cleared = _row(controller, ChannelName.PULSE2)
         assert cleared.command is None
         assert cleared.volume is None
 
@@ -340,48 +338,48 @@ class TestSetSampleInstrument:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1]),
+            sample_reconstruction([ChannelName.PULSE1]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
+        logic.set_row_sample(0, sample.id)
 
-        logic.set_sample_instrument(0, None)
+        logic.set_row_sample(0, None)
 
-        for generator in GeneratorName.items():
-            assert _row(controller, generator).command is None
+        for channel in ChannelName.items():
+            assert _row(controller, channel).command is None
 
 
 class TestSampleSubcolumn:
-    def test_synchronises_across_relevant_channels_even_without_instrument(
+    def test_synchronizes_across_relevant_channels_even_without_instrument(
         self,
     ) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        _place_instrument(controller, GeneratorName.PULSE1, sample.id)
+        _place_voice(controller, ChannelName.PULSE1, sample.id)
 
         logic.set_sample_subcolumn(0, transpose=5)
         logic.set_sample_subcolumn(0, volume=10)
 
-        carrier = _row(controller, GeneratorName.PULSE1)
+        carrier = _row(controller, ChannelName.PULSE1)
         assert carrier.command is not None
         assert carrier.transpose == 5
         assert carrier.volume == 10
 
-        synced = _row(controller, GeneratorName.TRIANGLE)
+        synced = _row(controller, ChannelName.TRIANGLE)
         assert synced.command is None
         assert synced.transpose == 5
         assert synced.volume == 10
 
-        for generator in (GeneratorName.PULSE2, GeneratorName.NOISE):
-            row = _row(controller, generator)
+        for channel in (ChannelName.PULSE2, ChannelName.NOISE):
+            row = _row(controller, channel)
             assert row.transpose is None
             assert row.volume is None
 
-    def test_synchronises_across_all_channels_when_no_sample_is_referenced(
+    def test_synchronizes_across_all_channels_when_no_sample_is_referenced(
         self,
     ) -> None:
         controller = _controller()
@@ -389,8 +387,8 @@ class TestSampleSubcolumn:
 
         logic.set_sample_subcolumn(0, transpose=5, volume=10)
 
-        for generator in GeneratorName.items():
-            row = _row(controller, generator)
+        for channel in ChannelName.items():
+            row = _row(controller, channel)
             assert row.command is None
             assert row.transpose == 5
             assert row.volume == 10
@@ -399,17 +397,17 @@ class TestSampleSubcolumn:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
+        logic.set_row_sample(0, sample.id)
         logic.set_sample_subcolumn(0, transpose=5)
         logic.set_sample_subcolumn(0, volume=10)
 
         logic.clear_sample_subcolumn(0, transpose=True)
 
-        for generator in (GeneratorName.PULSE1, GeneratorName.TRIANGLE):
-            row = _row(controller, generator)
+        for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
+            row = _row(controller, channel)
             assert row.transpose is None
             assert row.volume == 10
             assert row.command is not None
@@ -420,38 +418,38 @@ class TestAdjustTranspose:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
 
-        logic.adjust_transpose(GeneratorName.PULSE1, 0, 1)
+        logic.adjust_transpose(ChannelName.PULSE1, 0, 1)
 
-        assert _row(controller, GeneratorName.PULSE1).transpose == 1
+        assert _row(controller, ChannelName.PULSE1).transpose == 1
 
     def test_repeated_nudges_accumulate(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
 
-        logic.adjust_transpose(GeneratorName.PULSE1, 0, 1)
-        logic.adjust_transpose(GeneratorName.PULSE1, 0, 12)
+        logic.adjust_transpose(ChannelName.PULSE1, 0, 1)
+        logic.adjust_transpose(ChannelName.PULSE1, 0, 12)
 
-        assert _row(controller, GeneratorName.PULSE1).transpose == 13
+        assert _row(controller, ChannelName.PULSE1).transpose == 13
 
     def test_clamps_to_max_transpose(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        logic.set_row(GeneratorName.PULSE1, 0, transpose=MAX_TRANSPOSE)
+        logic.set_row(ChannelName.PULSE1, 0, transpose=MAX_TRANSPOSE)
 
-        logic.adjust_transpose(GeneratorName.PULSE1, 0, 12)
+        logic.adjust_transpose(ChannelName.PULSE1, 0, 12)
 
-        assert _row(controller, GeneratorName.PULSE1).transpose == MAX_TRANSPOSE
+        assert _row(controller, ChannelName.PULSE1).transpose == MAX_TRANSPOSE
 
-    def test_preserves_instrument_and_volume(self) -> None:
+    def test_preserves_the_voice_and_the_volume(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        sample = controller.add_sample(sample_reconstruction([GeneratorName.PULSE1]), name="lead")
-        _place_instrument(controller, GeneratorName.PULSE1, sample.id)
-        logic.adjust_volume(GeneratorName.PULSE1, 0, -1)
+        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="lead")
+        _place_voice(controller, ChannelName.PULSE1, sample.id)
+        logic.adjust_volume(ChannelName.PULSE1, 0, -1)
 
-        logic.adjust_transpose(GeneratorName.PULSE1, 0, 2)
+        logic.adjust_transpose(ChannelName.PULSE1, 0, 2)
 
-        row = _row(controller, GeneratorName.PULSE1)
+        row = _row(controller, ChannelName.PULSE1)
         assert row.command is not None
         assert row.transpose == 2
         assert row.volume == MAX_VOLUME - 1
@@ -462,26 +460,26 @@ class TestAdjustVolume:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
 
-        logic.adjust_volume(GeneratorName.PULSE1, 0, -1)
+        logic.adjust_volume(ChannelName.PULSE1, 0, -1)
 
-        assert _row(controller, GeneratorName.PULSE1).volume == MAX_VOLUME - 1
+        assert _row(controller, ChannelName.PULSE1).volume == MAX_VOLUME - 1
 
     def test_unset_volume_up_stays_full(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
 
-        logic.adjust_volume(GeneratorName.PULSE1, 0, 1)
+        logic.adjust_volume(ChannelName.PULSE1, 0, 1)
 
-        assert _row(controller, GeneratorName.PULSE1).volume == MAX_VOLUME
+        assert _row(controller, ChannelName.PULSE1).volume == MAX_VOLUME
 
     def test_clamps_to_zero(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        logic.set_row(GeneratorName.PULSE1, 0, volume=1)
+        logic.set_row(ChannelName.PULSE1, 0, volume=1)
 
-        logic.adjust_volume(GeneratorName.PULSE1, 0, -4)
+        logic.adjust_volume(ChannelName.PULSE1, 0, -4)
 
-        assert _row(controller, GeneratorName.PULSE1).volume == 0
+        assert _row(controller, ChannelName.PULSE1).volume == 0
 
 
 class TestBuildTrackerAggregation:
@@ -489,57 +487,57 @@ class TestBuildTrackerAggregation:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        _place_instrument(controller, GeneratorName.PULSE1, sample.id)
+        _place_voice(controller, ChannelName.PULSE1, sample.id)
 
         row = logic.build_grid().rows[0]
 
-        assert row.sample_instrument == MIXED
+        assert row.sample == MIXED
 
     def test_full_placement_reads_as_the_sample(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
+        logic.set_row_sample(0, sample.id)
 
         row = logic.build_grid().rows[0]
 
-        assert row.sample_instrument == row.cells[GeneratorName.PULSE1].instrument
-        assert row.sample_instrument != MIXED
+        assert row.sample == row.cells[ChannelName.PULSE1].voice
+        assert row.sample != MIXED
 
     def test_diverging_transpose_renders_as_mixed(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
-        logic.set_row(GeneratorName.PULSE1, 0, transpose=5)
+        logic.set_row_sample(0, sample.id)
+        logic.set_row(ChannelName.PULSE1, 0, transpose=5)
 
         row = logic.build_grid().rows[0]
 
-        assert row.sample_transpose == MIXED
+        assert row.transpose == MIXED
 
     def test_shared_transpose_is_reflected_in_the_sample_column(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(
-            sample_reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
             name="lead",
         )
-        logic.set_sample_instrument(0, sample.id)
+        logic.set_row_sample(0, sample.id)
         logic.set_sample_subcolumn(0, transpose=5)
 
         row = logic.build_grid().rows[0]
 
-        assert row.sample_transpose == row.cells[GeneratorName.PULSE1].transpose
-        assert row.sample_transpose != MIXED
+        assert row.transpose == row.cells[ChannelName.PULSE1].transpose
+        assert row.transpose != MIXED
 
 
 class TestEmptyFrameAutoCreate:
@@ -552,13 +550,13 @@ class TestEmptyFrameAutoCreate:
         self._append_empty_frame(controller)
         logic.select_frame(1)
 
-        logic.set_row(GeneratorName.PULSE1, 0, transpose=5)
+        logic.set_row(ChannelName.PULSE1, 0, transpose=5)
 
         song = controller.project.song
-        new_index = song.order[1][GeneratorName.PULSE1]
+        new_index = song.order[1][ChannelName.PULSE1]
         assert new_index is not None
-        assert song[GeneratorName.PULSE1].get_row(new_index, 0).transpose == 5
-        assert song.order[1][GeneratorName.PULSE2] is None
+        assert song[ChannelName.PULSE1].get_row(new_index, 0).transpose == 5
+        assert song.order[1][ChannelName.PULSE2] is None
 
     def test_empty_frame_still_shows_editable_rows(self) -> None:
         controller = _controller()
@@ -569,3 +567,119 @@ class TestEmptyFrameAutoCreate:
         tracker = logic.build_grid()
 
         assert len(tracker.rows) == controller.project.song.rows_per_pattern
+
+
+class TestWhatTheSampleColumnPlaces:
+    """The column spreads a voice over the channels it covers, which a recording states for itself."""
+
+    def test_a_sample_is_placed_across_the_channels_it_covers(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
+            name="lead",
+        )
+
+        logic.place_note(0, None, sample.id)
+
+        for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
+            assert isinstance(_row(controller, channel).command, NoteOn)
+
+    def test_an_instrument_leaves_the_row_as_it_stands(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        instrument = controller.add_instrument(new_instrument("lead"))
+
+        logic.place_note(0, None, instrument.id)
+
+        for channel in ChannelName.items():
+            assert _row(controller, channel).command is None
+
+    def test_an_instrument_lands_on_the_channel_column_that_names_it(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        instrument = controller.add_instrument(new_instrument("lead"))
+
+        logic.place_note(0, ChannelName.NOISE, instrument.id)
+
+        command = _row(controller, ChannelName.NOISE).command
+        assert isinstance(command, NoteOn)
+        assert command.voice_id == instrument.id
+
+    def test_the_column_answers_for_a_sample(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1]),
+            name="lead",
+        )
+
+        assert logic.places_in_sample_column(sample.id) is True
+
+    def test_the_column_stands_by_for_an_instrument(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        instrument = controller.add_instrument(new_instrument("lead"))
+
+        assert logic.places_in_sample_column(instrument.id) is False
+
+    def test_the_column_stands_by_for_a_voice_the_project_lost(self) -> None:
+        logic = SequencerTrackerLogic(_controller())
+
+        assert logic.places_in_sample_column(UNKNOWN_SAMPLE_ID) is False
+
+
+class TestWhatTheSampleColumnReads:
+    """The column summarizes what its own kind of voice put on the row."""
+
+    def test_an_instrument_alone_leaves_the_column_empty(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        instrument = controller.add_instrument(new_instrument("lead"))
+        _place_voice(controller, ChannelName.PULSE1, instrument.id)
+
+        row = logic.build_grid().rows[0]
+
+        assert row.sample == display_id(None)
+        assert row.sample_channels == frozenset()
+
+    def test_a_sample_beside_an_instrument_reads_as_that_sample(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
+            name="lead",
+        )
+        instrument = controller.add_instrument(new_instrument("pad"))
+        logic.set_row_sample(0, sample.id)
+        _place_voice(controller, ChannelName.NOISE, instrument.id)
+
+        row = logic.build_grid().rows[0]
+
+        assert row.sample == row.cells[ChannelName.PULSE1].voice
+        assert row.sample != MIXED
+
+    def test_a_row_cut_on_every_channel_still_reads_as_a_cut(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+
+        logic.cut_note(0, None)
+
+        assert logic.build_grid().rows[0].sample == NOTE_OFF
+
+    def test_a_cell_names_the_kind_of_the_voice_it_starts(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1]),
+            name="lead",
+        )
+        instrument = controller.add_instrument(new_instrument("pad"))
+        _place_voice(controller, ChannelName.PULSE1, sample.id)
+        _place_voice(controller, ChannelName.NOISE, instrument.id)
+
+        cells = logic.build_grid().rows[0].cells
+
+        assert cells[ChannelName.PULSE1].kind is VoiceKind.SAMPLE
+        assert cells[ChannelName.NOISE].kind is VoiceKind.INSTRUMENT
+        assert cells[ChannelName.TRIANGLE].kind is None

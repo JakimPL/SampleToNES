@@ -85,7 +85,7 @@ class TestProjectPropertiesWindow:
         assert dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR) == "Composer"
         assert dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_COMMENT) == "A note to self"
 
-    def test_the_metre_shows_the_project_s_highlights(self, window: GUIProjectPropertiesWindow) -> None:
+    def test_the_meter_shows_the_project_s_highlights(self, window: GUIProjectPropertiesWindow) -> None:
         render(window)
 
         assert dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT) == FIRST_HIGHLIGHT
@@ -124,7 +124,7 @@ class TestCommit:
         render(window)
         return committed
 
-    def test_the_edited_metre_reaches_the_owner(
+    def test_the_edited_meter_reaches_the_owner(
         self,
         window: GUIProjectPropertiesWindow,
         committed: List[Committed],
@@ -149,7 +149,7 @@ class TestCommit:
 
         assert committed[-1][3:] == (MAX_HIGHLIGHT, MIN_HIGHLIGHT)
 
-    def test_the_metre_carries_the_info_with_it(
+    def test_the_meter_carries_the_info_with_it(
         self,
         window: GUIProjectPropertiesWindow,
         committed: List[Committed],

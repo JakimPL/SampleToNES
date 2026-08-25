@@ -2,14 +2,14 @@ from dataclasses import dataclass, field
 from typing import Dict
 from unittest.mock import Mock
 
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.song import Song
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 
 
@@ -27,48 +27,48 @@ class TestPattern:
 
 class TestChannel:
     def test_empty_channel(self) -> None:
-        channel = Channel.empty(GeneratorName.PULSE1, rows_per_pattern=16)
-        assert channel.generator == GeneratorName.PULSE1
+        channel = Channel.empty(ChannelName.PULSE1, rows_per_pattern=16)
+        assert channel.name == ChannelName.PULSE1
         assert len(channel.patterns) == 1
         assert 0 in channel.patterns
 
     def test_pattern_resolution(self) -> None:
-        channel = Channel.empty(GeneratorName.NOISE, rows_per_pattern=4)
+        channel = Channel.empty(ChannelName.NOISE, rows_per_pattern=4)
         assert channel.pattern(0) is channel.patterns[0]
 
     def test_unknown_pattern_returns_none(self) -> None:
-        channel = Channel.empty(GeneratorName.NOISE, rows_per_pattern=4)
+        channel = Channel.empty(ChannelName.NOISE, rows_per_pattern=4)
         assert channel.pattern(99) is None
 
 
 class TestSong:
     def test_empty_song_has_all_channels(self) -> None:
         song = Song.empty(rows_per_pattern=8)
-        assert set(song.channels) == set(GeneratorName.items())
-        for generator in GeneratorName.items():
-            assert song[generator].generator == generator
+        assert set(song.channels) == set(ChannelName.items())
+        for channel in ChannelName.items():
+            assert song[channel].name == channel
 
 
 class TestProject:
     def test_create(self) -> None:
         project = Project.create(title="Demo")
         assert project.info.title == "Demo"
-        assert len(project.samples) == 0
-        assert set(project.song.channels) == set(GeneratorName.items())
+        assert len(project.voices) == 0
+        assert set(project.song.channels) == set(ChannelName.items())
 
     def test_instrument_resolution(self) -> None:
         project = Project.create()
         sample = _sample("lead")
-        project.samples.append(sample)
-        assert project.sample(sample.id) is sample
-        assert project.sample("missing") is None
+        project.voices.append(sample)
+        assert project.voice(sample.id) is sample
+        assert project.voice("missing") is None
 
 
 @dataclass
 class SampleContext:
     project: Project
     sample: Sample
-    instrument: Instrument
+    instrument: NoteOn
     resolved: Dict[str, Sample] = field(default_factory=dict)
 
 
@@ -80,22 +80,22 @@ class TestReferenceIntegrity:
         project = Project.create()
         first = _sample("first")
         second = _sample("second")
-        project.samples.extend([first, second])
-        instrument = Instrument(sample_id=first.id, generator_name=GeneratorName.PULSE1)
+        project.voices.extend([first, second])
+        instrument = NoteOn(voice_id=first.id)
         return SampleContext(project=project, sample=first, instrument=instrument)
 
     def test_instrument_survives_instrument_reorder(self) -> None:
         def check_before(context: SampleContext) -> None:
-            assert context.project.samples.index(context.sample) == 0
-            context.resolved["before"] = context.project.sample(context.instrument.sample_id)
+            assert context.project.voices.index(context.sample) == 0
+            context.resolved["before"] = context.project.voice(context.instrument.voice_id)
 
         def reorder(context: SampleContext) -> None:
-            moved = context.project.samples.pop(0)
-            context.project.samples.append(moved)
-            assert context.project.samples.index(context.sample) == 1
+            moved = context.project.voices.pop(0)
+            context.project.voices.append(moved)
+            assert context.project.voices.index(context.sample) == 1
 
         def check_after(context: SampleContext) -> None:
-            resolved = context.project.sample(context.instrument.sample_id)
+            resolved = context.project.voice(context.instrument.voice_id)
             assert resolved is context.sample
             assert resolved is context.resolved["before"]
 

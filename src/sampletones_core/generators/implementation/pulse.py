@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.constants.general import (
     DUTY_CYCLES,
     MAX_VOLUME,
@@ -14,14 +14,14 @@ from sampletones_core.instructions import InstructionTypeUnion, PulseInstruction
 from sampletones_core.timers import PhaseTimer
 from sampletones_shared.types.data import Initials
 
-from ..generator import Generator
+from ..tonal import TonalGenerator
 
 
-class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
+class PulseGenerator(TonalGenerator[PulseInstruction]):
     def __init__(
         self,
         config: Config,
-        name: str = GeneratorName.PULSE1,
+        name: str = ChannelName.PULSE1,
     ) -> None:
         super().__init__(config, name)
         self.timer = PhaseTimer(
@@ -53,12 +53,6 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
         self.save_state(save, pulse_instruction)
 
         return output
-
-    def set_timer(self, instruction: PulseInstruction) -> None:
-        if instruction.on:
-            self.timer.frequency = self.get_frequency(instruction.pitch)
-        else:
-            self.timer.frequency = 0.0
 
     def apply(self, output: np.ndarray, instruction: PulseInstruction) -> np.ndarray:
         duty_cycle = DUTY_CYCLES[instruction.duty_cycle]

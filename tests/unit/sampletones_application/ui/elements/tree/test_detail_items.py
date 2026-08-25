@@ -28,7 +28,7 @@ DETAIL_LABELS: Final[List[str]] = [
     "spectrum_method",
     "transformation_gamma",
     "window_size",
-    "generators",
+    "channels",
     "configuration",
 ]
 

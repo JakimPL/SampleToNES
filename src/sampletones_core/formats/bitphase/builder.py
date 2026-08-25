@@ -2,9 +2,10 @@ import math
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import SILENT_VOLUME
-from sampletones_core.exporters.slices import iterate_sample_slices
+from sampletones_core.exporters.slices import iterate_voice_slices
+from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.formats.bitphase.envelopes import (
     ChannelEnvelopes,
     features_to_envelopes,
@@ -28,7 +29,7 @@ from sampletones_core.formats.bitphase.notes import (
 )
 from sampletones_core.formats.bitphase.specification.channels import (
     CHANNEL_LABELS,
-    GENERATOR_NAME_TO_CHANNEL_INDEX,
+    CHANNEL_TO_INDEX,
     ChannelIndex,
 )
 from sampletones_core.formats.bitphase.specification.chip import (
@@ -61,12 +62,11 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NoteName,
 )
 from sampletones_core.formats.bitphase.tuning import generate_tuning_table
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
-from sampletones_core.timing import Groove, Metre, RowRate, calculate_groove
-from sampletones_core.trackers.request import InstrumentExport, SampleExport
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.timing import Groove, Meter, RowRate, calculate_groove
 from sampletones_shared.constants.project import DEFAULT_ROWS_PER_PATTERN, DEFAULT_SPEED
 
 PREVIEW_SPEED = DEFAULT_SPEED
@@ -81,14 +81,14 @@ GROOVE_TABLE_COUNT = 1
 
 
 @dataclass(frozen=True)
-class Voice:
+class SliceVoice:
     """One built instrument together with the table and the note that triggers it.
 
     Attributes:
         number: Value a pattern's instrument column carries to play the instrument.
         instrument: The per-tick rows the channel takes on.
         table: The per-tick semitone contour that moves the note.
-        generator: The NES channel the slice was reconstructed for.
+        channel: The NES channel the slice was reconstructed for.
         initial_pitch: Pitch the slice's contour is measured against.
         ticks: How many ticks the instrument runs before it loops.
     """
@@ -96,24 +96,24 @@ class Voice:
     number: int
     instrument: BitphaseInstrument
     table: BitphaseTable
-    generator: GeneratorName
+    channel: ChannelName
     initial_pitch: int
     ticks: int
 
 
-VoiceTable = Dict[Tuple[str, GeneratorName], Voice]
+SliceVoiceTable = Dict[Tuple[str, ChannelName], SliceVoice]
 
 
-def _build_voice(
+def _build_slice_voice(
     index: int,
     name: str,
-    generator: GeneratorName,
+    channel: ChannelName,
     initial_pitch: int,
     envelopes: ChannelEnvelopes,
     *,
     maximum_table_id: int,
-) -> Voice:
-    """Numbers one generator slice and packages it as an instrument-and-table pair.
+) -> SliceVoice:
+    """Numbers one channel slice and packages it as an instrument-and-table pair.
 
     Instruments and tables are numbered alike, so a pattern cell names the same position
     in both columns. The document states how far the table numbering reaches, since a song
@@ -131,7 +131,7 @@ def _build_voice(
     if table_id > maximum_table_id:
         raise ValueError(f"Document holds room for {maximum_table_id + 1} slice tables")
 
-    return Voice(
+    return SliceVoice(
         number=number,
         instrument=BitphaseInstrument(
             id=format_instrument_id(number),
@@ -145,25 +145,25 @@ def _build_voice(
             loop=envelopes.loop,
             name=name,
         ),
-        generator=generator,
+        channel=channel,
         initial_pitch=initial_pitch,
         ticks=len(envelopes.rows),
     )
 
 
-def _note_cell(channel_generator: GeneratorName, pitch: int) -> NoteCell:
+def _note_cell(channel_generator: ChannelName, pitch: int) -> NoteCell:
     """Resolves a pitch to the note column of the channel the row sits on.
 
     The noise channel reads its note as a period selector, so its pitch takes the
     mapping that reproduces that period; every other channel reads the tuning table.
     """
-    if channel_generator == GeneratorName.NOISE:
+    if channel_generator == ChannelName.NOISE:
         return note_index_to_note_cell(noise_period_to_note_index(pitch))
 
     return note_index_to_note_cell(pitch_to_note_index(pitch))
 
 
-def _trigger_row(voice: Voice, note: NoteCell, volume: int) -> BitphaseRow:
+def _trigger_row(voice: SliceVoice, note: NoteCell, volume: int) -> BitphaseRow:
     return BitphaseRow(
         note=note,
         instrument=voice.number,
@@ -210,7 +210,7 @@ def _build_song(
     )
 
 
-def _preview_length(voices: Sequence[Voice]) -> int:
+def _preview_length(voices: Sequence[SliceVoice]) -> int:
     """Sizes the preview pattern so a full line of it covers the longest instrument."""
     rows = math.ceil(max((voice.ticks for voice in voices), default=0) / PREVIEW_SPEED)
     return max(
@@ -219,7 +219,7 @@ def _preview_length(voices: Sequence[Voice]) -> int:
     )
 
 
-def _preview_order(voices: Sequence[Voice], length: int) -> Tuple[int, ...]:
+def _preview_order(voices: Sequence[SliceVoice], length: int) -> Tuple[int, ...]:
     """Spaces the trigger far enough apart for the longest instrument to play through.
 
     Every order position past the first plays a resting pattern, so an instrument that
@@ -231,14 +231,14 @@ def _preview_order(voices: Sequence[Voice], length: int) -> Tuple[int, ...]:
 
 
 def _preview_patterns(
-    voices: Sequence[Voice],
+    voices: Sequence[SliceVoice],
     length: int,
     positions: int,
 ) -> Tuple[BitphasePattern, ...]:
     channel_rows = _empty_channels(length)
     for voice in voices:
-        channel = GENERATOR_NAME_TO_CHANNEL_INDEX[voice.generator]
-        note = _note_cell(voice.generator, voice.initial_pitch)
+        channel = CHANNEL_TO_INDEX[voice.channel]
+        note = _note_cell(voice.channel, voice.initial_pitch)
         channel_rows[channel][PREVIEW_TRIGGER_ROW] = _trigger_row(
             voice,
             note,
@@ -257,7 +257,7 @@ def _preview_patterns(
 def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
     """Builds a playable Bitphase document holding one reconstruction's instruments.
 
-    Every generator slice becomes an instrument and the table that carries its pitch
+    Every channel slice becomes an instrument and the table that carries its pitch
     contour, and one pattern triggers each slice on the channel it was reconstructed
     for, so opening the document and pressing play sounds the reconstruction.
 
@@ -271,15 +271,14 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
         ValueError: If the reconstruction holds more slices than Bitphase has room for.
     """
     voices = [
-        _build_voice(
+        _build_slice_voice(
             index,
             instrument.name,
-            instrument.generator,
+            instrument.channel,
             instrument.features.initial_pitch,
             features_to_envelopes(
                 instrument.features,
-                instrument.generator,
-                loop=instrument.loop,
+                instrument.channel,
             ),
             maximum_table_id=MAX_TABLE_ID,
         )
@@ -307,7 +306,7 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
 
 
 def instrument_to_bitphase(request: InstrumentExport) -> BitphaseProject:
-    """Builds a playable Bitphase document holding one generator slice.
+    """Builds a playable Bitphase document holding one channel slice.
 
     Args:
         request: The slice to write.
@@ -319,6 +318,7 @@ def instrument_to_bitphase(request: InstrumentExport) -> BitphaseProject:
         name=request.name,
         instruments=(request,),
         nes_frequency=request.nes_frequency,
+        tuning=request.tuning,
     )
     return sample_to_bitphase(sample)
 
@@ -327,37 +327,33 @@ def _build_voice_table(
     project: Project,
     *,
     maximum_table_id: int,
-) -> Tuple[List[Voice], VoiceTable]:
-    voices: List[Voice] = []
-    by_reference: VoiceTable = {}
+) -> Tuple[List[SliceVoice], SliceVoiceTable]:
+    voices: List[SliceVoice] = []
+    by_reference: SliceVoiceTable = {}
 
-    for sample_slice in iterate_sample_slices(project):
+    for index, voice_slice in enumerate(iterate_voice_slices(project)):
         envelopes = features_to_envelopes(
-            sample_slice.features,
-            sample_slice.generator,
-            loop=sample_slice.sample.loop,
+            voice_slice.features,
+            voice_slice.channel,
         )
-        voice = _build_voice(
-            sample_slice.index,
-            sample_slice.instrument_name,
-            sample_slice.generator,
-            sample_slice.features.initial_pitch,
+        voice = _build_slice_voice(
+            index,
+            voice_slice.instrument_name,
+            voice_slice.channel,
+            voice_slice.features.initial_pitch,
             envelopes,
             maximum_table_id=maximum_table_id,
         )
         voices.append(voice)
-        by_reference[sample_slice.key] = voice
+        by_reference[voice_slice.key] = voice
 
     return voices, by_reference
 
 
-def _resolve_voice(reference: Instrument, voices: VoiceTable) -> Voice:
-    voice = voices.get((reference.sample_id, reference.generator_name))
+def _resolve_slice_voice(reference: NoteOn, channel: ChannelName, voices: SliceVoiceTable) -> SliceVoice:
+    voice = voices.get((reference.voice_id, channel))
     if voice is None:
-        raise ValueError(
-            f"Row references sample '{reference.sample_id}' slice "
-            f"'{reference.generator_name}' that has no instrument"
-        )
+        raise ValueError(f"Row references voice '{reference.voice_id}' on channel '{channel}' with no instrument")
 
     return voice
 
@@ -381,13 +377,13 @@ def _volume_column(volume: Optional[int]) -> int:
 
 def _row_cell(
     row: Row,
-    channel_generator: GeneratorName,
-    voices: VoiceTable,
+    channel_generator: ChannelName,
+    voices: SliceVoiceTable,
 ) -> BitphaseRow:
     """Converts one tracker line to the Bitphase row that plays it.
 
     Raises:
-        ValueError: If the line references a sample slice that has no instrument.
+        ValueError: If the line references a voice that has no instrument on this channel.
     """
     volume = _volume_column(row.volume)
     cell = BitphaseRow(volume=volume)
@@ -398,8 +394,8 @@ def _row_cell(
                 note=NoteCell(name=int(NoteName.OFF)),
                 volume=volume,
             )
-        case Instrument() as reference:
-            voice = _resolve_voice(reference, voices)
+        case NoteOn() as reference:
+            voice = _resolve_slice_voice(reference, channel_generator, voices)
             pitch = voice.initial_pitch + (row.transpose or 0)
             cell = _trigger_row(
                 voice,
@@ -415,10 +411,10 @@ def _row_cell(
 def _channel_rows(
     rows: Sequence[Row],
     length: int,
-    generator: GeneratorName,
-    voices: VoiceTable,
+    channel: ChannelName,
+    voices: SliceVoiceTable,
 ) -> List[BitphaseRow]:
-    cells = [_row_cell(row, generator, voices) for row in rows[:length]]
+    cells = [_row_cell(row, channel, voices) for row in rows[:length]]
     cells.extend(BitphaseRow() for _ in range(length - len(cells)))
     return cells
 
@@ -428,13 +424,13 @@ def _project_groove(project: Project) -> Groove:
 
     A Bitphase song holds a speed alone, so the fractional row rate a tempo asks for is
     carried by a groove: whole tick counts that vary from row to row and average out to the
-    rate, placed by the metre so the longer rows fall on the bar and the beat. The engine's
+    rate, placed by the meter so the longer rows fall on the bar and the beat. The engine's
     own speed range bounds them, and the groove's mean states the rate it reached.
     """
     settings = project.settings
     return calculate_groove(
         RowRate.from_settings(settings),
-        Metre.from_settings(settings, rows=project.song.rows_per_pattern),
+        Meter.from_settings(settings, rows=project.song.rows_per_pattern),
         minimum_ticks=MIN_INITIAL_SPEED,
         maximum_ticks=MAX_INITIAL_SPEED,
     )
@@ -492,7 +488,7 @@ def _groove_channel_rows(length: int, table_id: int) -> List[BitphaseRow]:
 
 
 def _document_tables(
-    voices: Sequence[Voice],
+    voices: Sequence[SliceVoice],
     groove_table: Optional[BitphaseTable],
 ) -> Tuple[BitphaseTable, ...]:
     """Gathers the tables a document holds: one per slice, and the groove where it takes one."""
@@ -505,7 +501,7 @@ def _document_tables(
 
 def _project_patterns(
     project: Project,
-    voices: VoiceTable,
+    voices: SliceVoiceTable,
     groove_table: Optional[BitphaseTable],
 ) -> Tuple[BitphasePattern, ...]:
     """Flattens the song's per-channel arrangement into whole-pattern order positions.
@@ -527,20 +523,20 @@ def _project_patterns(
                 groove_table.id,
             )
 
-        for generator in GeneratorName.items():
-            index = frame.get(generator)
+        for channel_name in ChannelName.items():
+            index = frame.get(channel_name)
             if index is None:
                 continue
 
-            pattern = song.channels[generator].pattern(index)
+            pattern = song.channels[channel_name].pattern(index)
             if pattern is None:
                 continue
 
-            channel = GENERATOR_NAME_TO_CHANNEL_INDEX[generator]
-            channel_rows[channel] = _channel_rows(
+            channel_index = CHANNEL_TO_INDEX[channel_name]
+            channel_rows[channel_index] = _channel_rows(
                 pattern.rows,
                 length,
-                generator,
+                channel_name,
                 voices,
             )
 

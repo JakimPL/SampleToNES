@@ -4,7 +4,7 @@ from typing import Iterable, List
 
 from pydantic import ConfigDict, Field
 
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.data import DataModel
 from sampletones_core.features import resting_held_features, resting_reference
 from sampletones_core.instructions import InstructionData, InstructionUnion
@@ -13,33 +13,33 @@ from sampletones_core.instructions import InstructionData, InstructionUnion
 class InstructionsItem(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
-    generator_name: GeneratorName = Field(
+    channel_name: ChannelName = Field(
         ...,
-        description="Name of the generator",
+        description="Name of the channel",
     )
     instructions: List[InstructionData[InstructionUnion]] = Field(
         ...,
-        description="List of instruction data for the generator",
+        description="List of instruction data for the channel",
     )
     initial_pitch: int = Field(
         ...,
-        description="Reference pitch the generator's arpeggio envelope is measured against",
+        description="Reference pitch the channel's arpeggio envelope is measured against",
     )
     held_features: List[FeatureKey] = Field(
         ...,
-        description="Dimensions the channel governs, keeping the value it holds while the generator sounds",
+        description="Dimensions the channel governs, keeping the value it holds while the channel sounds",
     )
 
     @classmethod
     def create(
         cls,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         instructions: List[InstructionUnion],
         initial_pitch: int,
         held_features: Iterable[FeatureKey],
     ) -> InstructionsItem:
         return InstructionsItem(
-            generator_name=generator_name,
+            channel_name=channel_name,
             instructions=[
                 InstructionData(
                     instruction_class=instruction.class_name(),
@@ -52,7 +52,7 @@ class InstructionsItem(DataModel):
         )
 
     @classmethod
-    def resting(cls, generator_name: GeneratorName) -> InstructionsItem:
+    def resting(cls, channel_name: ChannelName) -> InstructionsItem:
         """The stream a channel carries while it stands by, describing no frame.
 
         A reconstruction holds one stream per channel, so a channel it leaves silent is
@@ -62,14 +62,14 @@ class InstructionsItem(DataModel):
         frame records and what an export of this stream reads back.
 
         Args:
-            generator_name: The channel the resting stream belongs to.
+            channel_name: The channel the resting stream belongs to.
 
         Returns:
             InstructionsItem: The stream of a channel that stands by.
         """
         return cls.create(
-            generator_name=generator_name,
+            channel_name=channel_name,
             instructions=[],
-            initial_pitch=resting_reference(generator_name),
-            held_features=resting_held_features(generator_name),
+            initial_pitch=resting_reference(channel_name),
+            held_features=resting_held_features(channel_name),
         )

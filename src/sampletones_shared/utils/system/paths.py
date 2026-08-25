@@ -1,7 +1,7 @@
 import os
 import subprocess
 from pathlib import Path
-from typing import Final, Optional
+from typing import Final, Optional, Sequence, Tuple, Union
 
 from sampletones_shared.types.path import GeneralPathlike, Pathlike
 
@@ -196,6 +196,52 @@ def get_directory(path: Pathlike) -> Path:
     """
     path = to_path(path)
     return path if path.is_dir() else path.parent
+
+
+def to_paths(
+    location: Optional[Union[Pathlike, Tuple[Pathlike, ...]]],
+) -> Tuple[Path, ...]:
+    """
+    Returns the recorded location as a tuple of paths.
+
+    One path becomes a one-tuple, several paths stay as they are, and an absent
+    location becomes an empty tuple — one shape for every form a recorded source
+    takes.
+
+    Args:
+        location: The recorded location, or ``None``.
+
+    Returns:
+        Tuple[Path, ...]: The paths in order, empty for an absent location.
+    """
+    if location is None:
+        return ()
+
+    if isinstance(location, (str, Path, os.PathLike)):
+        return (to_path(location),)
+
+    return tuple(to_path(path) for path in location)
+
+
+def first_missing(paths: Sequence[Pathlike]) -> Optional[Path]:
+    """
+    Returns the first path that names no file on disk, preserving the given order.
+
+    Answers ``None`` when every path stands. The order matters to callers that report
+    one missing location among several.
+
+    Args:
+        paths: The paths to check, in report order.
+
+    Returns:
+        Optional[Path]: The first absent path, or ``None`` when every path stands.
+    """
+    for path in paths:
+        normalized = to_path(path)
+        if not normalized.exists():
+            return normalized
+
+    return None
 
 
 def open_directory_in_explorer_linux(path: Path) -> None:

@@ -3,42 +3,40 @@ from dataclasses import dataclass
 import pytest
 from pydantic import ValidationError
 
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 
 
-def _instrument() -> Instrument:
-    return Instrument(
-        sample_id="abc123",
-        generator_name=GeneratorName.TRIANGLE,
-    )
+def _note_on() -> NoteOn:
+    return NoteOn(voice_id="abc123")
 
 
-class TestInstrument:
+class TestNoteOn:
     def test_is_frozen(self) -> None:
-        instrument = _instrument()
+        note_on = _note_on()
         with pytest.raises(ValidationError):
-            instrument.sample_id = "other"  # type: ignore[misc]
+            note_on.voice_id = "other"  # type: ignore[misc]
 
     def test_value_equality_and_hash(self) -> None:
-        first = _instrument()
-        second = _instrument()
+        first = _note_on()
+        second = _note_on()
         assert first == second
         assert hash(first) == hash(second)
 
-    def test_distinct_slices_differ(self) -> None:
-        triangle = Instrument(sample_id="abc", generator_name=GeneratorName.TRIANGLE)
-        noise = Instrument(sample_id="abc", generator_name=GeneratorName.NOISE)
-        assert triangle != noise
+    def test_distinct_voices_differ(self) -> None:
+        assert NoteOn(voice_id="abc") != NoteOn(voice_id="def")
+
+    def test_names_the_voice_alone(self) -> None:
+        with pytest.raises(ValidationError):
+            NoteOn.model_validate({"voice_id": "abc", "channel_name": "triangle"})
 
     def test_round_trip(self) -> None:
-        instrument = _instrument()
-        restored = Instrument.model_validate(instrument.model_dump())
-        assert restored == instrument
+        note_on = _note_on()
+        restored = NoteOn.model_validate(note_on.model_dump())
+        assert restored == note_on
 
 
 class TestRowDefaults:
@@ -66,7 +64,7 @@ class TestRowSerialization(BaseTestSuite):
     test_cases = (
         TestCase(expected=Row()),
         TestCase(expected=Row(transpose=0, volume=15)),
-        TestCase(expected=Row(transpose=12, command=_instrument(), volume=8)),
+        TestCase(expected=Row(transpose=12, command=_note_on(), volume=8)),
         TestCase(expected=Row(command=NoteOff())),
     )
 

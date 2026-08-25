@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+from typing import Tuple
+
+from pydantic import BaseModel, ConfigDict, model_validator
+
+from sampletones_player.compression.dictionary.table import PhraseTable
+from sampletones_player.compression.entries import stream_entry
+from sampletones_player.compression.planes.order import PlaneOrder
+
+
+class CompressedPlanes(BaseModel):
+    """A song's planes as the driver reads them: one dictionary and a token stream per plane.
+
+    Attributes:
+        phrases: The dictionary every stream's tokens name.
+        streams: The tokens each plane is written as, in the order the song block writes them.
+        ticks: The ticks the song lasts, which is where each stream stops being read.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    phrases: PhraseTable
+    streams: PlaneOrder
+    ticks: int
+
+    @model_validator(mode="after")
+    def _validate_the_song_lasts(self) -> CompressedPlanes:
+        if self.ticks < 1:
+            raise ValueError(f"a song lasts at least one tick, and this one lasts {self.ticks}")
+
+        return self
+
+    @property
+    def size(self) -> int:
+        """The bytes the dictionary and every plane's stream take together."""
+        return self.phrases.size + sum(len(stream) for stream in self.streams)
+
+    def entries(self, tick: int) -> Tuple[int, ...]:
+        """The byte each stream is re-entered at, for a song returning to ``tick``.
+
+        Args:
+            tick: The tick the song returns to.
+
+        Returns:
+            Tuple[int, ...]: One byte offset per plane, each counted from its own stream's start,
+                in the order the song block writes them.
+
+        Raises:
+            ValueError: If a stream spans ``tick`` rather than starting a token there.
+        """
+        return tuple(stream_entry(stream, tick) for stream in self.streams)

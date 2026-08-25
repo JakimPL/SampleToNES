@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Final, Optional, Tuple
 
 from tqdm import tqdm
 
@@ -8,12 +8,18 @@ from sampletones_core.library import InstructionLibrary
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_core.reconstructions import Reconstructor
 from sampletones_core.reconstructions.converter import (
+    ConversionJob,
+    DirectoryConversion,
     ReconstructionConverter,
     get_output_path,
+    reconstruct_job,
 )
-from sampletones_core.reconstructions.converter import reconstruct_file as _reconstruct_file
+from sampletones_core.reconstructions.progress import ReconstructionProgress
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.scripts.library import generate_library
 from sampletones_shared.logger import logger, null_logger
+
+BAR_STEPS: Final[int] = 1000
 
 
 def reconstruct_file(
@@ -32,8 +38,23 @@ def reconstruct_file(
         raise IsADirectoryError(f"Expected a file path, got directory path: {input_path}")
 
     logger.info(f"Starting reconstruction for file {input_path}")
-    reconstructor = Reconstructor(config)
-    _reconstruct_file((reconstructor, input_path, output_path))
+    job = ConversionJob(
+        sources=(input_path,),
+        stems=_classic_setup(config),
+        output_path=output_path,
+    )
+    progress_bar = tqdm(total=BAR_STEPS, desc=f"Reconstructing {input_path.name}", unit="step")
+
+    def on_progress(progress: ReconstructionProgress) -> bool:
+        progress_bar.set_postfix_str(progress.stage)
+        progress_bar.update(round(progress.fraction * BAR_STEPS) - progress_bar.n)
+        return True
+
+    try:
+        reconstruct_job((Reconstructor(config), job, on_progress))
+    finally:
+        progress_bar.close()
+
     logger.info(f"Reconstruction file saved to {output_path}")
 
 
@@ -59,7 +80,7 @@ def reconstruct_directory(
         progress_bar.disable = False
         logger.info(f"Starting reconstruction for directory {input_path}")
 
-    def on_completed(_path: Path) -> None:
+    def on_completed(_written: Tuple[Path, ...]) -> None:
         logger.info(f"Reconstruction directory saved to {output_path}")
         progress_bar.close()
 
@@ -82,13 +103,13 @@ def reconstruct_directory(
 
         if task_status in (
             TaskStatus.COMPLETED,
-            TaskStatus.CANCELLED,
+            TaskStatus.CANCELED,
             TaskStatus.FAILED,
         ):
             progress_bar.close()
 
-    def on_cancelled() -> None:
-        logger.info("Reconstruction cancelled by user")
+    def on_canceled() -> None:
+        logger.info("Reconstruction canceled by user")
         progress_bar.close()
 
     def on_error(_exception: Exception) -> None:
@@ -96,8 +117,7 @@ def reconstruct_directory(
 
     converter = ReconstructionConverter(
         config,
-        input_path=input_path,
-        is_file=False,
+        DirectoryConversion(directory=input_path, stems=_classic_setup(config)),
         logger=null_logger,
     )
 
@@ -105,7 +125,7 @@ def reconstruct_directory(
         on_start=on_start,
         on_completed=on_completed,
         on_progress=on_progress,
-        on_cancelled=on_cancelled,
+        on_canceled=on_canceled,
         on_error=on_error,
     )
 
@@ -116,3 +136,8 @@ def reconstruct_directory(
         logger.info("Reconstruction interrupted by user")
     finally:
         progress_bar.close()
+
+
+def _classic_setup(config: Config) -> StemsConfig:
+    """The setup a single-source conversion runs under: one stem over every enabled channel."""
+    return StemsConfig.single_entry(list(config.generation.channels))

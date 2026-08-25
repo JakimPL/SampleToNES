@@ -6,14 +6,16 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from sampletones_application.services.regeneration import RegenerationService
+from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
+from sampletones_core.features import CHANNEL_GENERATOR_KIND, supported_features
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
 from tests.conftest import ReconstructionFactory
 
@@ -24,32 +26,16 @@ SynthesisMocks: TypeAlias = SimpleNamespace
 ResultCallback: TypeAlias = Callable[[Any], None]
 
 
-class FakeFeatures(Dict[Any, Any]):
-    """Stands in for ``Features``: records the edited dimension and carries a reference pitch.
-
-    Assigning ``FeatureKey.INITIAL_PITCH`` moves the reference pitch, matching the real model,
-    so the pitch stepper's edit is observable through ``initial_pitch``. The dimensions left to
-    the channel are read the same way the real model reports them: those whose envelope is empty.
-    """
-
-    def __init__(self, initial_pitch: int) -> None:
-        super().__init__()
-        self.initial_pitch = initial_pitch
-
-    @property
-    def held_features(self) -> Tuple[FeatureKey, ...]:
-        return tuple(key for key, value in self.items() if isinstance(value, np.ndarray) and value.size == 0)
-
-    def __setitem__(self, feature_key: Any, value: Any) -> None:
-        if feature_key == FeatureKey.INITIAL_PITCH:
-            self.initial_pitch = value
-        else:
-            super().__setitem__(feature_key, value)
-
-
 @pytest.fixture
-def features() -> FakeFeatures:
-    return FakeFeatures(REFERENCE_PITCH)
+def features() -> Features:
+    return Features(
+        initial_pitch=REFERENCE_PITCH,
+        volume=Envelope[int](items=(15, 0)),
+        arpeggio=Envelope[int](items=(0, 0)),
+        pitch=None,
+        hi_pitch=None,
+        duty_cycle=Envelope[int](items=(0, 0)),
+    )
 
 
 @pytest.fixture
@@ -63,18 +49,18 @@ def synthesis_mocks() -> Iterator[SynthesisMocks]:
     mock_exporter.get_generator_type.return_value = mock_generator_class
     mock_exporter.from_features.return_value = [mock_instruction]
 
-    generator_name = GeneratorName.PULSE1
+    channel_name = ChannelName.PULSE1
 
     with patch(
-        "sampletones_application.services.regeneration.GENERATOR_NAME_TO_EXPORTER_MAP",
-        {generator_name: mock_exporter},
+        "sampletones_application.services.regeneration.service.CHANNEL_TO_EXPORTER_MAP",
+        {channel_name: mock_exporter},
     ):
         yield SimpleNamespace(
             exporter=mock_exporter,
             generator_class=mock_generator_class,
             generator=mock_generator,
             instruction=mock_instruction,
-            generator_name=generator_name,
+            channel_name=channel_name,
         )
 
 
@@ -86,28 +72,27 @@ def reconstruction() -> MockReconstruction:
 
 
 class TestRegenerationServiceStart:
-    def test_start_when_not_cancelled_returns_true(
+    def test_start_when_not_canceled_returns_true(
         self, synthesis_mocks: SynthesisMocks, reconstruction: MockReconstruction
     ) -> None:
         service = RegenerationService()
         result = service.start(
             reconstruction,
-            synthesis_mocks.generator_name,
-            cast(Features, {}),
+            synthesis_mocks.channel_name,
             FeatureKey.VOLUME,
-            1,
+            cast(Features, {}),
         )
         assert result is True
 
-    def test_start_when_cancelled_returns_false(self) -> None:
+    def test_start_when_canceled_returns_false(self) -> None:
         service = RegenerationService()
         service.cancel()
 
-        result = service.start(MagicMock(), MagicMock(), cast(Features, {}), MagicMock(), MagicMock())
+        result = service.start(MagicMock(), MagicMock(), FeatureKey.VOLUME, cast(Features, {}))
 
         assert result is False
 
-    def test_start_when_cancelled_does_not_emit(self) -> None:
+    def test_start_when_canceled_does_not_emit(self) -> None:
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
@@ -116,9 +101,8 @@ class TestRegenerationServiceStart:
         service.start(
             MagicMock(),
             MagicMock(),
+            MagicMock(),
             cast(Features, {}),
-            MagicMock(),
-            MagicMock(),
         )
 
         assert results == []
@@ -134,20 +118,19 @@ class TestRegenerationServiceStart:
             result = service.start(
                 MagicMock(),
                 MagicMock(),
+                MagicMock(),
                 cast(Features, {}),
-                MagicMock(),
-                MagicMock(),
             )
 
         assert result is False
 
-    def test_cancel_sets_cancelled_flag(self) -> None:
+    def test_cancel_sets_canceled_flag(self) -> None:
         service = RegenerationService()
-        assert not service._cancelled
+        assert not service._canceled
 
         service.cancel()
 
-        assert service._cancelled
+        assert service._canceled
 
 
 class TestRegenerationServiceIsRunning:
@@ -163,28 +146,27 @@ class TestRegenerationServiceIsRunning:
 
 
 class TestRegenerationServiceRun:
-    def test_run_when_cancelled_emits_service_cancelled(self) -> None:
+    def test_run_when_canceled_emits_service_canceled(self) -> None:
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
-        service._cancelled = True
+        service._canceled = True
 
         service._run(
             MagicMock(),
             MagicMock(),
+            MagicMock(),
             cast(Features, {}),
-            MagicMock(),
-            MagicMock(),
         )
 
         assert len(results) == 1
-        assert isinstance(results[0], ServiceCancelled)
+        assert isinstance(results[0], ServiceCanceled)
 
     def test_run_success_emits_service_success(
         self,
         synthesis_mocks: SynthesisMocks,
         reconstruction: MockReconstruction,
-        features: FakeFeatures,
+        features: Features,
     ) -> None:
         service = RegenerationService()
         results: List[Any] = []
@@ -192,10 +174,9 @@ class TestRegenerationServiceRun:
 
         service._run(
             reconstruction,
-            synthesis_mocks.generator_name,
-            cast(Features, features),
+            synthesis_mocks.channel_name,
             FeatureKey.VOLUME,
-            1,
+            features,
         )
 
         assert len(results) == 1
@@ -203,56 +184,50 @@ class TestRegenerationServiceRun:
         outcome = results[0].value
         assert outcome.reconstruction is reconstruction.model_copy.return_value
         assert outcome.reconstruction is not reconstruction
-        assert outcome.generator_name is synthesis_mocks.generator_name
+        assert outcome.channel_name is synthesis_mocks.channel_name
         assert outcome.feature_key is FeatureKey.VOLUME
 
-    def test_run_updates_feature_before_synthesis(
+    def test_run_regenerates_from_the_envelopes_it_is_handed(
         self,
         synthesis_mocks: SynthesisMocks,
         reconstruction: MockReconstruction,
-        features: FakeFeatures,
+        features: Features,
     ) -> None:
+        """The caller writes the edit into the envelopes, so the service renders what it is given."""
         service = RegenerationService()
-        feature_key = FeatureKey.VOLUME
-        new_value = 42
 
-        service._run(
-            reconstruction,
-            synthesis_mocks.generator_name,
-            cast(Features, features),
-            feature_key,
-            new_value,
-        )
+        service._run(reconstruction, synthesis_mocks.channel_name, FeatureKey.VOLUME, features)
 
-        assert features[feature_key] == new_value
+        _, _, _, initial_pitch, held = reconstruction.model_copy.return_value.update_channel_data.call_args.args
+        assert initial_pitch == features.initial_pitch
+        assert held == features.held_features
 
     def test_run_updates_reconstruction_copy(
         self,
         synthesis_mocks: SynthesisMocks,
         reconstruction: MockReconstruction,
-        features: FakeFeatures,
+        features: Features,
     ) -> None:
         service = RegenerationService()
 
         service._run(
             reconstruction,
-            synthesis_mocks.generator_name,
-            cast(Features, features),
+            synthesis_mocks.channel_name,
             FeatureKey.VOLUME,
-            1,
+            features,
         )
 
         updated = reconstruction.model_copy.return_value
-        updated.update_generator_data.assert_called_once()
-        reconstruction.update_generator_data.assert_not_called()
-        call_args = updated.update_generator_data.call_args
-        assert call_args.args[0] == synthesis_mocks.generator_name
+        updated.update_channel_data.assert_called_once()
+        reconstruction.update_channel_data.assert_not_called()
+        call_args = updated.update_channel_data.call_args
+        assert call_args.args[0] == synthesis_mocks.channel_name
 
     def test_run_carries_the_reference_pitch_through_an_arpeggio_edit(
         self,
         synthesis_mocks: SynthesisMocks,
         reconstruction: MockReconstruction,
-        features: FakeFeatures,
+        features: Features,
     ) -> None:
         """An arpeggio edit stores the reference pitch the edit was made from.
 
@@ -263,41 +238,34 @@ class TestRegenerationServiceRun:
 
         service._run(
             reconstruction,
-            synthesis_mocks.generator_name,
-            cast(Features, features),
+            synthesis_mocks.channel_name,
             FeatureKey.ARPEGGIO,
-            np.array([12, 0], dtype=np.int8),
+            features,
         )
 
-        call_args = reconstruction.model_copy.return_value.update_generator_data.call_args
+        call_args = reconstruction.model_copy.return_value.update_channel_data.call_args
         assert call_args.args[3] == REFERENCE_PITCH
 
     def test_run_carries_a_moved_reference_pitch(
         self,
         synthesis_mocks: SynthesisMocks,
         reconstruction: MockReconstruction,
-        features: FakeFeatures,
+        features: Features,
     ) -> None:
-        """The pitch stepper's edit stores the new reference pitch."""
-        moved_pitch = REFERENCE_PITCH + 12
+        """The pitch stepper's edit reaches the reconstruction as the reference it stores."""
+        moved = features.model_copy(update={"initial_pitch": REFERENCE_PITCH + 12})
         service = RegenerationService()
 
-        service._run(
-            reconstruction,
-            synthesis_mocks.generator_name,
-            cast(Features, features),
-            FeatureKey.INITIAL_PITCH,
-            moved_pitch,
-        )
+        service._run(reconstruction, synthesis_mocks.channel_name, FeatureKey.INITIAL_PITCH, moved)
 
-        call_args = reconstruction.model_copy.return_value.update_generator_data.call_args
-        assert call_args.args[3] == moved_pitch
+        _, _, _, initial_pitch, _ = reconstruction.model_copy.return_value.update_channel_data.call_args.args
+        assert initial_pitch == REFERENCE_PITCH + 12
 
     def test_run_calls_generator_for_each_instruction(
         self,
         synthesis_mocks: SynthesisMocks,
         reconstruction: MockReconstruction,
-        features: FakeFeatures,
+        features: Features,
     ) -> None:
         extra_instruction = MagicMock()
         synthesis_mocks.exporter.from_features.return_value = [
@@ -308,10 +276,9 @@ class TestRegenerationServiceRun:
 
         service._run(
             reconstruction,
-            synthesis_mocks.generator_name,
-            cast(Features, features),
+            synthesis_mocks.channel_name,
             FeatureKey.VOLUME,
-            1,
+            features,
         )
 
         assert synthesis_mocks.generator.call_count == 2
@@ -329,15 +296,14 @@ class TestRegenerationServiceRun:
         mock_exporter.get_generator_type.side_effect = exception
 
         with patch(
-            "sampletones_application.services.regeneration.GENERATOR_NAME_TO_EXPORTER_MAP",
-            {GeneratorName.PULSE1: mock_exporter},
+            "sampletones_application.services.regeneration.service.CHANNEL_TO_EXPORTER_MAP",
+            {ChannelName.PULSE1: mock_exporter},
         ):
             service._run(
                 reconstruction,
-                GeneratorName.PULSE1,
-                cast(Features, {}),
+                ChannelName.PULSE1,
                 FeatureKey.VOLUME,
-                1,
+                cast(Features, {}),
             )
 
         assert len(results) == 1
@@ -354,18 +320,17 @@ class TestRegenerationServiceRun:
         mock_exporter.get_generator_type.side_effect = RuntimeError("fail")
 
         with patch(
-            "sampletones_application.services.regeneration.GENERATOR_NAME_TO_EXPORTER_MAP",
-            {GeneratorName.PULSE1: mock_exporter},
+            "sampletones_application.services.regeneration.service.CHANNEL_TO_EXPORTER_MAP",
+            {ChannelName.PULSE1: mock_exporter},
         ):
             service._run(
                 reconstruction,
-                GeneratorName.PULSE1,
-                cast(Features, {}),
+                ChannelName.PULSE1,
                 FeatureKey.VOLUME,
-                1,
+                cast(Features, {}),
             )
 
-        reconstruction.update_generator_data.assert_not_called()
+        reconstruction.update_channel_data.assert_not_called()
 
 
 class TestClearingEveryEnvelope:
@@ -379,18 +344,17 @@ class TestClearingEveryEnvelope:
     @staticmethod
     def _regenerated(reconstruction: Reconstruction) -> Reconstruction:
         """The reconstruction the service returns once every dimension is left to the channel."""
-        features = reconstruction.export()[GeneratorName.PULSE1]
-        features.leave_to_channel([FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE])
+        exported = reconstruction.export()[ChannelName.PULSE1]
+        features = exported.leave_to_channel(exported.envelopes)
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
 
         service._run(
             reconstruction,
-            GeneratorName.PULSE1,
-            features,
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
-            np.array([], dtype=np.int8),
+            features,
         )
 
         assert isinstance(results[0], ServiceSuccess)
@@ -405,8 +369,8 @@ class TestClearingEveryEnvelope:
 
         regenerated = self._regenerated(reconstruction)
 
-        assert regenerated.instructions[GeneratorName.PULSE1] == []
-        assert regenerated.playing_generators == ()
+        assert regenerated.instructions[ChannelName.PULSE1] == []
+        assert regenerated.playing_channels == ()
 
     def test_a_cleared_instrument_sounds_as_an_empty_waveform(
         self,
@@ -427,12 +391,10 @@ class TestClearingEveryEnvelope:
 
         regenerated = self._regenerated(reconstruction)
 
-        assert regenerated.held_features[GeneratorName.PULSE1] == (
-            FeatureKey.VOLUME,
-            FeatureKey.ARPEGGIO,
-            FeatureKey.DUTY_CYCLE,
+        assert regenerated.held_features[ChannelName.PULSE1] == tuple(
+            supported_features(CHANNEL_GENERATOR_KIND[ChannelName.PULSE1])
         )
-        assert not regenerated.export()[GeneratorName.PULSE1].has_frames
+        assert not regenerated.export()[ChannelName.PULSE1].has_frames
 
     def test_the_reconstruction_the_edit_was_made_from_keeps_playing(
         self,
@@ -442,11 +404,11 @@ class TestClearingEveryEnvelope:
 
         self._regenerated(reconstruction)
 
-        assert reconstruction.playing_generators == (GeneratorName.PULSE1,)
+        assert reconstruction.playing_channels == (ChannelName.PULSE1,)
 
 
 class TestRegenerationServiceCancellationConstraints:
-    """Tests that document the non-preemptive cancellation behaviour.
+    """Tests that document the non-preemptive cancellation behavior.
 
     cancel() only prevents new tasks from starting. It does NOT interrupt
     synthesis that is already in progress.
@@ -455,7 +417,7 @@ class TestRegenerationServiceCancellationConstraints:
     def test_cancel_while_running_does_not_interrupt_synthesis(
         self,
         synthesis_mocks: SynthesisMocks,
-        features: FakeFeatures,
+        features: Features,
     ) -> None:
         service = RegenerationService()
         results: List[Any] = []
@@ -482,10 +444,9 @@ class TestRegenerationServiceCancellationConstraints:
         thread = threading.Thread(
             target=lambda: service._run(
                 reconstruction,
-                synthesis_mocks.generator_name,
-                cast(Features, features),
+                synthesis_mocks.channel_name,
                 FeatureKey.VOLUME,
-                1,
+                features,
             ),
         )
         thread.start()
@@ -511,19 +472,17 @@ class TestRegenerationServiceCancellationConstraints:
 
         service.start(
             reconstruction,
-            synthesis_mocks.generator_name,
-            cast(Features, {}),
+            synthesis_mocks.channel_name,
             FeatureKey.VOLUME,
-            1,
+            cast(Features, {}),
         )
 
         service.cancel()
         second_result = service.start(
             reconstruction,
-            synthesis_mocks.generator_name,
-            cast(Features, {}),
+            synthesis_mocks.channel_name,
             FeatureKey.VOLUME,
-            2,
+            cast(Features, {}),
         )
 
         assert second_result is False

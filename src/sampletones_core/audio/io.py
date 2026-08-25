@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 from scipy.io import wavfile
@@ -8,6 +8,7 @@ from soundfile import read as sf_read
 from sampletones_core.constants.algorithm import QUANTIZATION_LEVELS
 from sampletones_shared.types.path import Pathlike
 
+from .mixing import align, common_length, mix
 from .processing import clip_audio
 from .processing import normalize as normalize_audio
 from .processing import quantize as quantize_audio
@@ -118,3 +119,68 @@ def load_audio(
         audio = quantize_audio(audio, levels=quantization_levels)
 
     return audio
+
+
+def load_stems(
+    paths: Sequence[Pathlike],
+    *,
+    target_sample_rate: int,
+    normalize: bool,
+    quantize: bool,
+    quantization_levels: int,
+) -> Tuple[np.ndarray, ...]:
+    """
+    Load a set of recordings onto one shared scale and one shared length.
+
+    The recordings of one piece stand in a balance the piece was mixed at, so the whole
+    set is scaled by a single factor drawn from the peak of their sum. Each recording
+    then keeps the level it holds in the mix, which is what lets one of them be heard on
+    its own at the level it sounds there. Quantization follows the scaling, the order it
+    is defined against.
+
+    Scaling one recording by the peak of its own sum is normalizing it, so a set of one
+    reaches exactly what :func:`load_audio` answers for that path.
+
+    Args:
+        paths: Paths to the recordings, in the order they are returned.
+        target_sample_rate: Sample rate every recording is resampled to.
+        normalize: Whether the set is scaled to the peak of its mix.
+        quantize: Whether each scaled recording is quantized.
+        quantization_levels: Number of amplitude levels used when quantization is enabled.
+
+    Returns:
+        The recordings in the order given, each one the length of the longest.
+
+    Raises:
+        ValueError: If ``target_sample_rate`` is not in the allowed sample rates.
+        FileNotFoundError: If a path names no file.
+        IsADirectoryError: If a path points at a directory.
+    """
+    recordings = [
+        load_audio(
+            path,
+            target_sample_rate=target_sample_rate,
+            normalize=False,
+            quantize=False,
+        )
+        for path in paths
+    ]
+    aligned = align(recordings, common_length(recordings))
+    scaled = _scaled_to_mix(aligned) if normalize else aligned
+    if quantize:
+        return tuple(quantize_audio(recording, levels=quantization_levels) for recording in scaled)
+
+    return tuple(scaled)
+
+
+def _scaled_to_mix(recordings: List[np.ndarray]) -> List[np.ndarray]:
+    """The recordings divided by the peak their mix reaches, silence left as it is."""
+    finite = [np.nan_to_num(recording, nan=0.0, posinf=0.0, neginf=0.0) for recording in recordings]
+    if not finite:
+        return finite
+
+    peak = float(np.max(np.abs(mix(finite))))
+    if peak == 0.0:
+        return finite
+
+    return [(recording / peak).astype(np.float32) for recording in finite]

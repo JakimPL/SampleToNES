@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.constants.general import (
     MAX_VOLUME,
     MIXER_NOISE,
@@ -20,7 +20,7 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
     def __init__(
         self,
         config: Config,
-        name: str = GeneratorName.NOISE,
+        name: str = ChannelName.NOISE,
     ) -> None:
         super().__init__(config, name)
         self.timer = LFSRTimer(

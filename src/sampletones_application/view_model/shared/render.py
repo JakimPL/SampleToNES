@@ -28,7 +28,7 @@ class RenderPhase(StrEnum):
     RENDERING = "rendering"
     CANCELLING = "cancelling"
     COMPLETED = "completed"
-    CANCELLED = "cancelled"
+    CANCELED = "canceled"
     FAILED = "failed"
 
 

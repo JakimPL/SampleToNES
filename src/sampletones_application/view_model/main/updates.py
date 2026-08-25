@@ -3,7 +3,7 @@ from typing import List
 
 from pydantic import BaseModel
 
-from sampletones_core.constants.enums import GeneratorName, SpectrumMethod
+from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 
 
 class AudioSettingsUpdate(BaseModel, frozen=True):
@@ -18,7 +18,7 @@ class LibrarySettingsUpdate(BaseModel, frozen=True):
 
 class GenerationSettingsUpdate(BaseModel, frozen=True):
     drive: float
-    generators: List[GeneratorName]
+    channels: List[ChannelName]
 
 
 class AdvancedSettingsUpdate(BaseModel, frozen=True):

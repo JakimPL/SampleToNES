@@ -7,9 +7,9 @@ from sampletones_core.reconstructions import Reconstruction
 class RetunedSample:
     """A sample's reconstruction re-synthesized to a new NES frequency.
 
-    Carries the ``sample_id`` so the caller can swap the retuned reconstruction into
+    Carries the ``voice_id`` so the caller can swap the retuned reconstruction into
     the right project sample as each result arrives.
     """
 
-    sample_id: str
+    voice_id: str
     reconstruction: Reconstruction

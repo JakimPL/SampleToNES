@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Dict, Final, Optional, Tuple
+from typing import Callable, Dict, Final, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -8,20 +8,24 @@ from sampletones_application.categories.elements.global_ import (
     ContextElements,
     MenuElements,
 )
+from sampletones_application.categories.elements.sequencer import (
+    SequencerVoicesElements,
+)
+from sampletones_application.categories.exports import (
+    EXPORT_PROJECT_MENU_LABELS,
+    EXPORT_SAMPLE_MENU_LABELS,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.categories.trackers import (
-    TRACKER_PROJECT_MENU_LABELS,
-    TRACKER_SAMPLE_MENU_LABELS,
-)
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.layout.glyphs.player import PlayerGlyphs
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
-    SUF_HANDLER_REGISTRY,
     TAG_GLOBAL_MENU_GROUP_EDIT,
     TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
+    TAG_GLOBAL_MENU_GROUP_VOICE,
+    TAG_GLOBAL_MENU_GROUP_VOICE_MARKER,
     TAG_GLOBAL_MENU_ITEM_EDIT_REDO,
     TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
     TAG_GLOBAL_MENU_ITEM_FILE_CLOSE_PROJECT,
@@ -56,6 +60,10 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_VIEW_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS,
     TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN,
     TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
+    TAG_GLOBAL_MENU_ITEM_VOICE_ADD_SAMPLE,
+    TAG_GLOBAL_MENU_ITEM_VOICE_ADD_TO_SEQUENCER,
+    TAG_GLOBAL_MENU_ITEM_VOICE_IMPORT_INSTRUMENT,
+    TAG_GLOBAL_MENU_ITEM_VOICE_NEW_INSTRUMENT,
     TAG_GLOBAL_PANEL_PLAYER,
     TAG_GLOBAL_TEXT_MENU_FPS,
 )
@@ -67,14 +75,13 @@ from sampletones_application.tags.player import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.menu_section import MenuSection
 from sampletones_application.ui.panels.player.controls import (
     create_compact_transport_controls,
 )
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.dpg import (
-    dpg_append_items,
     dpg_configure_item,
-    dpg_delete_item,
     dpg_set_item_label,
     dpg_set_value,
 )
@@ -87,8 +94,7 @@ from sampletones_application.utils.gui.shortcuts.ids import (
 )
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_shared.types.application import Sender
+from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.callback import VoidCallback
 
 PROJECT_ITEM_TAGS: Final[Tuple[str, ...]] = (
@@ -129,10 +135,11 @@ class MenuBar:
         player_layout: PlayerLayout,
         language_manager: LanguageManager,
         build_edit_actions: Callable[[], bool],
+        build_voice_actions: VoidCallback,
         on_play_from_start: VoidCallback,
         on_pause_or_resume: VoidCallback,
         on_stop: VoidCallback,
-        on_channel_muted: Callable[[GeneratorName], None],
+        on_channel_muted: Callable[[ChannelName], None],
     ) -> None:
         self._shortcut_manager = shortcut_manager
         self._fps_theme = fps_theme
@@ -154,12 +161,16 @@ class MenuBar:
         self._pause_tooltip_tag = compose_tag(self._pause_button_tag, SUF_PLAYER_TOOLTIP)
         self._lbl_pause = language_manager["global.player.label.pause"]
 
-        self._edit_actions_handler_tag = compose_tag(
-            TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
-            SUF_HANDLER_REGISTRY,
+        self._edit_section = MenuSection(
+            menu_tag=TAG_GLOBAL_MENU_GROUP_EDIT,
+            marker_tag=TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
+            build=self._add_edit_action_items,
         )
-        self._edit_actions_frame: Optional[int] = None
-        self._edit_action_items: Tuple[Sender, ...] = ()
+        self._voice_section = MenuSection(
+            menu_tag=TAG_GLOBAL_MENU_GROUP_VOICE,
+            marker_tag=TAG_GLOBAL_MENU_GROUP_VOICE_MARKER,
+            build=build_voice_actions,
+        )
 
     def _label(self, element: MenuElements) -> str:
         return self._language_manager[
@@ -172,11 +183,21 @@ class MenuBar:
     def _context_label(self, element: ContextElements) -> str:
         return context_label(self._language_manager, element)
 
+    def _voices_label(self, element: SequencerVoicesElements) -> str:
+        """The word the voices panel states for an action, so every door onto it reads alike."""
+        return self._language_manager[
+            Page.SEQUENCER,
+            Panel.VOICES,
+            TextType.LABEL,
+            element,
+        ]
+
     def create(self, state: MenuBarViewModel) -> None:
         with dpg.menu_bar():
             self._create_file_menu(state)
             self._create_edit_menu(state)
             self._create_reconstruction_menu(state)
+            self._create_voice_menu(state)
             self._create_playback_menu(state)
             self._create_view_menu()
             self._create_help_menu()
@@ -236,7 +257,7 @@ class MenuBar:
             )
 
     def _create_project_export_menu(self, state: MenuBarViewModel) -> None:
-        """Builds the submenu that writes the open project for one tracker.
+        """Builds the submenu that writes the open project for one format.
 
         Each format reads its own kind of file, so the formats are listed side by side and
         the one chosen decides what the destination dialog offers. The submenu is open while
@@ -247,25 +268,22 @@ class MenuBar:
             label=self._label(MenuElements.GROUP_FILE_EXPORT),
             enabled=state.project_open,
         ):
-            for tracker_format, shortcut_id in PROJECT_EXPORT_SHORTCUT_IDS.items():
+            for export_format, shortcut_id in PROJECT_EXPORT_SHORTCUT_IDS.items():
                 self._shortcut_manager.add_menu_item(
                     shortcut_id,
-                    label=self._label(TRACKER_PROJECT_MENU_LABELS[tracker_format]),
+                    label=self._label(EXPORT_PROJECT_MENU_LABELS[export_format]),
                 )
 
     def _create_edit_menu(self, state: MenuBarViewModel) -> None:
         """Builds the Edit menu: the history steps, then the actions of whoever holds the cursor.
 
-        The actions are stated into the menu itself and taken away again on each opening, so they
-        follow the cursor. A marker leads the menu, holding nothing and reporting the popup drawn:
-        a container standing below a menu item takes the width those items span as its own, which
-        the popup then grows to fit on every frame it stays open.
+        The actions are a :class:`MenuSection`, restated on each opening so they follow the cursor.
         """
         with dpg.menu(
             label=self._label(MenuElements.GROUP_EDIT),
             tag=TAG_GLOBAL_MENU_GROUP_EDIT,
         ):
-            dpg.add_group(tag=TAG_GLOBAL_MENU_GROUP_EDIT_MARKER)
+            self._edit_section.add_marker()
             self._shortcut_manager.add_menu_item(
                 ShortcutId.UNDO,
                 tag=TAG_GLOBAL_MENU_ITEM_EDIT_UNDO,
@@ -280,55 +298,15 @@ class MenuBar:
             )
             dpg.add_separator()
 
-        with dpg.item_handler_registry(tag=self._edit_actions_handler_tag):
-            dpg.add_item_visible_handler(callback=self._on_edit_actions_drawn)
-
-        dpg.bind_item_handler_registry(
-            TAG_GLOBAL_MENU_GROUP_EDIT_MARKER,
-            self._edit_actions_handler_tag,
-        )
-        self._refresh_edit_actions()
-
-    def _on_edit_actions_drawn(
-        self,
-        _sender: Sender,
-        _app_data: Sender,
-    ) -> None:
-        """States the actions afresh each time the Edit menu is opened.
-
-        DearPyGui reports the marker drawn once a frame while the menu stands open, so a gap in
-        those reports marks a fresh opening. The actions stay standing between openings, which
-        gives the popup its full height on the frame it appears, and the rebuilt ones take over a
-        frame later — long before an item can be reached and chosen.
-        """
-        frame = dpg.get_frame_count()
-        reopened = self._edit_actions_frame is None or frame - self._edit_actions_frame > 1
-        self._edit_actions_frame = frame
-        if reopened:
-            self._refresh_edit_actions()
-
-    def _refresh_edit_actions(self) -> None:
-        """Takes the standing actions out of the Edit menu and asks the focused surface for its own.
-
-        A surface builds the same actions its own cell menu offers, so the two doors print one set
-        with the keys and the enablement each action carries. The history steps above them stand
-        where they are, since only what the last build stated is taken away.
-        """
-        for item in self._edit_action_items:
-            dpg_delete_item(item)
-
-        self._edit_action_items = dpg_append_items(
-            TAG_GLOBAL_MENU_GROUP_EDIT,
-            self._add_edit_action_items,
-        )
+        self._edit_section.watch()
 
     def _add_edit_action_items(self) -> None:
-        """States the focused surface's actions, or the clipboard four greyed out while none is."""
+        """States the focused surface's actions, or the clipboard four grayed out while none is."""
         if not self._build_edit_actions():
             self._add_unfocused_clipboard_items()
 
     def _add_unfocused_clipboard_items(self) -> None:
-        """Names the clipboard actions greyed out, the Edit menu with no grid holding a cursor."""
+        """Names the clipboard actions grayed out, the Edit menu with no grid holding a cursor."""
         for element in UNFOCUSED_CLIPBOARD_ELEMENTS:
             dpg.add_menu_item(
                 label=self._context_label(element),
@@ -410,21 +388,63 @@ class MenuBar:
             self._create_instruments_export_menu(state)
 
     def _create_instruments_export_menu(self, state: MenuBarViewModel) -> None:
-        """Builds the submenu that writes the loaded reconstruction's slices for one tracker.
+        """Builds the submenu that writes the loaded reconstruction's slices for one format.
 
-        Each format able to write a file per slice gets its own item, so choosing the tracker
-        is one click and the destination dialog then offers that tracker's file type alone.
+        Each format able to write a file per slice gets its own item, so choosing the format
+        is one click and the destination dialog then offers that format's file type alone.
         """
         with dpg.menu(
             tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS,
             label=self._label(MenuElements.GROUP_RECONSTRUCTION_EXPORT_INSTRUMENTS),
             enabled=state.reconstruction_loaded,
         ):
-            for tracker_format, shortcut_id in SAMPLE_EXPORT_SHORTCUT_IDS.items():
+            for export_format, shortcut_id in SAMPLE_EXPORT_SHORTCUT_IDS.items():
                 self._shortcut_manager.add_menu_item(
                     shortcut_id,
-                    label=self._label(TRACKER_SAMPLE_MENU_LABELS[tracker_format]),
+                    label=self._label(EXPORT_SAMPLE_MENU_LABELS[export_format]),
                 )
+
+    def _create_voice_menu(self, state: MenuBarViewModel) -> None:
+        """Builds the Voice menu: the ways a voice comes in, then what the chosen one offers.
+
+        A voice is written by hand, converted from a recording, brought from a tracker's own
+        instrument file, or taken from the reconstruction the Reconstructions tab holds, and the
+        four stand together here so the bar answers "how do I get a voice in" on its own. The
+        chosen voice's actions are a :class:`MenuSection` the voices panel builds, the same set
+        its row menu prints.
+        """
+        with dpg.menu(
+            label=self._label(MenuElements.GROUP_VOICE),
+            tag=TAG_GLOBAL_MENU_GROUP_VOICE,
+        ):
+            self._voice_section.add_marker()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.NEW_INSTRUMENT,
+                tag=TAG_GLOBAL_MENU_ITEM_VOICE_NEW_INSTRUMENT,
+                label=self._voices_label(SequencerVoicesElements.NEW_INSTRUMENT),
+                enabled=state.project_open,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.ADD_SAMPLE_FROM_FILE,
+                tag=TAG_GLOBAL_MENU_ITEM_VOICE_ADD_SAMPLE,
+                label=self._voices_label(SequencerVoicesElements.ADD_SAMPLE),
+                enabled=state.project_open,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.IMPORT_INSTRUMENT,
+                tag=TAG_GLOBAL_MENU_ITEM_VOICE_IMPORT_INSTRUMENT,
+                label=self._voices_label(SequencerVoicesElements.IMPORT_INSTRUMENT),
+                enabled=state.project_open,
+            )
+            dpg.add_separator()
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER,
+                tag=TAG_GLOBAL_MENU_ITEM_VOICE_ADD_TO_SEQUENCER,
+                label=self._context_label(ContextElements.ADD_TO_SEQUENCER),
+                enabled=state.add_to_sequencer_enabled,
+            )
+
+        self._voice_section.watch()
 
     def _create_playback_menu(self, state: MenuBarViewModel) -> None:
         with dpg.menu(label=self._label(MenuElements.GROUP_PLAYBACK)):
@@ -507,14 +527,14 @@ class MenuBar:
             tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS,
             label=self._label(MenuElements.GROUP_PLAYBACK_CHANNELS),
         ):
-            for generator, shortcut_id in CHANNEL_SHORTCUT_IDS.items():
+            for channel, shortcut_id in CHANNEL_SHORTCUT_IDS.items():
                 self._shortcut_manager.add_menu_item(
                     shortcut_id,
-                    callback=partial(self._on_channel_muted, generator),
-                    tag=self._channel_menu_item_tag(generator),
-                    label=channel_label(self._language_manager, generator),
+                    callback=partial(self._on_channel_muted, channel),
+                    tag=self._channel_menu_item_tag(channel),
+                    label=channel_label(self._language_manager, channel),
                     check=True,
-                    default_value=not state.channels.is_muted(generator),
+                    default_value=not state.channels.is_muted(channel),
                 )
             dpg.add_separator()
             self._shortcut_manager.add_menu_item(
@@ -649,6 +669,22 @@ class MenuBar:
             enabled=state.add_to_sequencer_enabled,
         )
         dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_VOICE_NEW_INSTRUMENT,
+            enabled=state.project_open,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_VOICE_ADD_SAMPLE,
+            enabled=state.project_open,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_VOICE_IMPORT_INSTRUMENT,
+            enabled=state.project_open,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_VOICE_ADD_TO_SEQUENCER,
+            enabled=state.add_to_sequencer_enabled,
+        )
+        dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_OPEN_IN_EXPLORER,
             enabled=state.open_in_explorer_enabled,
         )
@@ -705,8 +741,8 @@ class MenuBar:
 
     def _update_channels(self, state: MenuBarViewModel) -> None:
         """Shows the mute set the sequencer's tables show: a check on every channel that sounds."""
-        for generator in CHANNEL_SHORTCUT_IDS:
-            dpg_set_value(self._channel_menu_item_tag(generator), not state.channels.is_muted(generator))
+        for channel in CHANNEL_SHORTCUT_IDS:
+            dpg_set_value(self._channel_menu_item_tag(channel), not state.channels.is_muted(channel))
 
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS,
@@ -741,9 +777,9 @@ class MenuBar:
         )
 
     @staticmethod
-    def _channel_menu_item_tag(generator: GeneratorName) -> str:
-        """The tag of the Channels submenu item that switches ``generator``."""
-        return compose_tag(TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS, generator.value)
+    def _channel_menu_item_tag(channel: ChannelName) -> str:
+        """The tag of the Channels submenu item that switches ``channel``."""
+        return compose_tag(TAG_GLOBAL_MENU_ITEM_PLAYBACK_CHANNELS, channel.value)
 
     @staticmethod
     def _follow_menu_item_tag(mode: FollowMode) -> str:

@@ -6,14 +6,16 @@ import pytest
 
 from sampletones_application.categories.export import ExportMessages
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.coordinators.tabs import reconstruction as reconstruction_module
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
-from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.exports.format import ExportFormat
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -23,6 +25,7 @@ from sampletones_shared.exceptions import (
     LoadReconstructionError,
     UnhandledReconstructionError,
 )
+from sampletones_shared.types.callback import VoidCallback
 from tests.suite.language import FakeLanguageManager
 
 FILE_NOT_FOUND_KEY: Final[str] = "reconstructions.browser.message.file_not_found"
@@ -248,8 +251,18 @@ class TestRemoveTreeEntries:
 
 
 @pytest.fixture
-def export_coordinator() -> ReconstructionTabCoordinator:
-    """A coordinator with only the collaborators ``_on_export_result`` touches."""
+def export_coordinator(monkeypatch: pytest.MonkeyPatch) -> ReconstructionTabCoordinator:
+    """A coordinator with only the collaborators ``_on_export_result`` touches.
+
+    A report waits for the frame the export window leaves the screen in, so the wait is run
+    through at once and what the coordinator reports stays observable from the call that asks.
+    """
+
+    def run_now(callback: VoidCallback, frame_count: int = 1) -> None:
+        callback()
+
+    monkeypatch.setattr(reconstruction_module.FrameCallbackManager, "set_frame_callback", run_now)
+
     instance = object.__new__(ReconstructionTabCoordinator)
     instance._dialogs = MagicMock()
     instance._export_messages = ExportMessages.build(LanguageManager(LANG_EN))
@@ -261,6 +274,52 @@ def _shown_message(coordinator: ReconstructionTabCoordinator) -> str:
     return message
 
 
+class TestExportingTheInstrumentInFront:
+    """Whatever the tab holds reaches a file the same way, so a pool voice is written by voice."""
+
+    @staticmethod
+    def _coordinator(
+        instrument: object,
+        exportable: object,
+    ) -> ReconstructionTabCoordinator:
+        instance = object.__new__(ReconstructionTabCoordinator)
+        instance._instrument_editor = MagicMock()
+        instance._instrument_editor.instrument = instrument
+        instance._instrument_exports = MagicMock()
+        instance._reconstruction_panel_logic = MagicMock()
+        instance._reconstruction_panel_logic.exportable_instrument.return_value = exportable
+        return instance
+
+    def test_a_hand_written_voice_is_written_by_the_voice_it_is(self) -> None:
+        """The sequencer's menu and this button name the same voice, so they write the same file."""
+        instrument = MagicMock()
+        instrument.id = "lead-id"
+        coordinator = self._coordinator(instrument, MagicMock())
+
+        coordinator._export_instrument(ChannelName.PULSE1)
+
+        coordinator._instrument_exports.request_voice.assert_called_once_with("lead-id", None)
+        coordinator._reconstruction_panel_logic.exportable_instrument.assert_not_called()
+
+    def test_a_reconstructions_slice_is_written_as_the_tab_holds_it(self) -> None:
+        exportable = MagicMock()
+        coordinator = self._coordinator(None, exportable)
+
+        coordinator._export_instrument(ChannelName.TRIANGLE)
+
+        coordinator._instrument_exports.request.assert_called_once_with(
+            exportable.source,
+            exportable.name,
+        )
+
+    def test_a_channel_describing_no_frame_is_written_nowhere(self) -> None:
+        coordinator = self._coordinator(None, None)
+
+        coordinator._export_instrument(ChannelName.NOISE)
+
+        coordinator._instrument_exports.request.assert_not_called()
+
+
 class TestExportResultReportsTruncation:
     def test_a_complete_instrument_export_shows_the_success_message(
         self,
@@ -270,7 +329,7 @@ class TestExportResultReportsTruncation:
             ExportSuccess(
                 kind=ExportKind.INSTRUMENT,
                 filepath=Path("lead.fti"),
-                tracker_format=TrackerFormat.FAMITRACKER,
+                export_format=ExportFormat.FAMITRACKER,
                 truncation=None,
             )
         )
@@ -285,7 +344,7 @@ class TestExportResultReportsTruncation:
             ExportSuccess(
                 kind=ExportKind.INSTRUMENT,
                 filepath=Path("lead.fti"),
-                tracker_format=TrackerFormat.FAMITRACKER,
+                export_format=ExportFormat.FAMITRACKER,
                 truncation=EnvelopeTruncation(frames=252, source_frames=300, instruments=1),
             )
         )
@@ -303,7 +362,7 @@ class TestExportResultReportsTruncation:
             ExportSuccess(
                 kind=ExportKind.SAMPLE,
                 filepath=Path("instruments"),
-                tracker_format=TrackerFormat.FAMITRACKER,
+                export_format=ExportFormat.FAMITRACKER,
                 truncation=EnvelopeTruncation(
                     frames=252,
                     source_frames=410,
@@ -324,7 +383,7 @@ class TestExportResultReportsTruncation:
             ExportSuccess(
                 kind=ExportKind.WAV,
                 filepath=Path("track.wav"),
-                tracker_format=None,
+                export_format=None,
                 truncation=None,
             )
         )

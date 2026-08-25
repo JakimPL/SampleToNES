@@ -9,10 +9,10 @@ from sampletones_core.data import DataModel
 
 class Instruction(DataModel, ABC):
     """
-    A single-frame command that drives one generator channel.
+    A single-frame command that drives one NES channel.
 
     Each concrete instruction (pulse, triangle, noise) carries the parameters its
-    generator reads to synthesize one frame of audio — pitch, volume, and any timbre
+    channel reads to synthesize one frame of audio — pitch, volume, and any timbre
     controls — together with the ``on`` flag that decides whether the channel sounds.
     Instances are immutable and validated, so an instruction is a stable value safe to
     store, hash, and compare.

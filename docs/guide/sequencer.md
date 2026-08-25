@@ -1,40 +1,100 @@
 # The sequencer
 
-The **Sequencer** tab is a tracker: it arranges reconstructions into a song across
-the four NES channels and exports it as a FamiTracker
+The **Sequencer** tab is a tracker: it arranges voices into a song across the four
+NES channels and exports it as a FamiTracker
 [module](../formats/famitracker.md) (`.ftm`). It works on a
 [project](../formats/projects.md), so start one with **File ▸ New project** (or
-open an existing `.stp`). The pattern grid and order sit in the centre, a browser
-for pulling in reconstructions on the left, and the module settings, sample list,
+open an existing `.stp`). The pattern grid and order sit in the center, a browser
+for pulling in reconstructions on the left, and the module settings, voice list,
 and undo history on the right.
 
-## Adding samples
+## Voices: samples and instruments
 
-A song is built from **samples** — reconstructions imported as playable
-instruments. Add one from the **Reconstructions** browser on the left (right-click
-▸ **Add to Sequencer**), or with **Add to Sequencer** on the **Reconstructions**
-tab. If a reconstruction was made at a different NES frequency than the project and
-the project already has samples, _SampleToNES_ warns with **Different NES
-frequency**; **Add anyway** adds it regardless.
+A song is built from **voices**, and there are two kinds. A **sample** is a
+reconstruction brought in as something a row can play. An **instrument** is written by
+hand — envelopes with no recording behind them — for the melodies and basses you write
+yourself. Both sit in the **Voices** list on the right, numbered together, and a
+mark at the front of each row says which kind it is. The mark carries a color as well
+as a shape — amber for a sample, magenta for an instrument — and the same two colors
+name a voice in the pattern grid and in the history, so the two kinds read apart
+wherever one is named.
 
-Manage the imported samples in the **Samples** list on the right: right-click one
-to **Edit**, **Rename**, **Duplicate**, **Remove**, or reorder it, and toggle its
-**Loop** flag. The **Edit** menu carries the same actions for the sample you have
-picked. The right-click menu also names how much room the sample takes on the NES —
-its total, then each channel it plays — measured as its **Loop** flag has it. The
-figures are in bytes, and they count what a FamiTracker export saves.
-Removing a sample that patterns still use asks **Remove sample** first, because it
+Four ways bring a voice in, and the **Voice** menu holds all four:
+
+| Way in | What arrives |
+|--------|--------------|
+| **New instrument** | An instrument holding a note at full volume, ready to place and hear |
+| **Add sample from file...** | A reconstruction saved anywhere on disk, as a sample |
+| **Import instrument...** | A FamiTracker instrument file (`.fti`), as an instrument |
+| **Add to Sequencer** | The reconstruction the **Reconstructions** tab holds, as a sample |
+
+The first three also sit at the top of the **Voices** list, and on the list's own
+menu — right-click below the rows to reach it. **Add to Sequencer** is on the
+**Reconstructions** browser to the left (right-click a reconstruction) and on the
+**Reconstructions** tab. If a reconstruction was made at a different NES frequency
+than the project and the project already has voices, _SampleToNES_ warns with
+**Different NES frequency**; **Add anyway** adds it regardless.
+
+A new instrument starts out holding a note at full volume, so you can place it and
+hear it straight away; give it the sound you want on the **Reconstructions** tab
+(right-click ▸ **Edit**). See [editing instruments](interface.md#editing-instruments).
+An imported `.fti` arrives with the volume, arpeggio, and duty-cycle envelopes the
+file states, and **Instrument imported** names anything the file held on a tracker's
+own terms that the voice leaves behind — see [reading an instrument
+file](../formats/famitracker.md#c-reading-an-instrument-file).
+
+**New instrument from ▸ _channel_** on a sample's menu writes what one of its channels
+plays into an instrument of its own, so a recorded part becomes envelopes you edit by
+hand.
+
+Right-click any voice to **Edit**, **Rename**, **Duplicate**, **Remove**, or reorder it.
+**Export instrument...** writes the voice out as a `.fti` another tracker reads — a
+sample holds one instrument per channel it plays, so it asks which. The **Edit** menu
+carries the same actions for the voice you have picked. The right-click menu also names
+how much room the voice takes on the NES — a sample's total and then each channel it
+plays, and an instrument's single figure. The figures are in bytes, and they count what a
+FamiTracker export saves. Removing a voice that patterns still use asks first, because it
 clears every row that references it.
+
+Hovering a row says what that voice is in one line: its name, whether it is a sample or
+an instrument, the channels a sample plays, and the room it takes.
 
 ## Writing a pattern
 
 The **Tracker** grid is the pattern editor. Each row is one step in time; the
 columns are the **Sample** and the four channels — **Pulse 1**, **Pulse 2**,
-**Triangle**, **Noise** — each carrying a note, volume, and transpose. Click a cell
-and type on your keyboard to enter a note, piano-style. Right-clicking a cell opens
-the rest of the operations — **Set instrument**, **Note off**, **Clear cell** and
-**Clear row**, transpose and volume adjustments, **Play from here** to audition from
-the cursor row, and **Play from this frame** to start at the top of the shown frame.
+**Triangle**, **Noise** — each carrying a voice, a pitch, and a volume. Click a cell
+and type its value. Right-clicking a cell opens the rest of the operations — **Set
+voice**, **Note off**, **Clear cell** and **Clear row**, transpose and volume
+adjustments, **Play from here** to audition from the cursor row, and **Play from
+this frame** to start at the top of the shown frame.
+
+The **Sample** column places a sample across every channel its reconstruction
+covers, and clears the rest of the row. It takes samples alone: an instrument sounds
+on the one channel that names it, so **Set voice** lists instruments there grayed out,
+and a number typed over one leaves the cell reading what it held. Name an instrument
+in the channel column you want it on.
+
+A cell holding a voice wears that voice's color — amber for a sample, magenta for an
+instrument — while an empty cell, a cut, and a `?` where the **Sample** column's
+channels disagree read in a plain gray. Silencing a channel dims its cells and keeps
+those colors, so a muted column stays as readable as the rest.
+
+## Reading and typing a pitch
+
+A pitch cell holds one number, and it reads in the terms of the voice the channel is
+carrying. A sample was converted at a pitch of its own, so its cells read as steps
+from it — `+00` plays it as recorded, `+0C` an octave up. An instrument sounds at
+whatever note a row names it with, so its cells read as the notes they sound — `C-4`,
+`A#3`.
+A row that only bends a note reads the same way as the row that started it.
+
+Type a note into an instrument's cell piano-style: the bottom two rows of the keyboard are
+one octave (`Z` `S` `X` `D` `C` …) and the two above them the next (`Q` `2` `W` `3`
+`E` …). **Octave** above the grid says where the bottom row opens. The keys work on
+a sample's cell too, writing the step that reaches the note you pressed. The noise
+channel selects one of sixteen periods rather than a note, so its cells are typed as
+a signed value.
 
 ## Arranging the song
 
@@ -96,7 +156,7 @@ A copy also goes to your desktop's clipboard as plain text, so a block carries b
 two open windows of _SampleToNES_ — copy in one, paste in the other — and you can paste
 one into a message to show someone what you wrote. Anything else on the clipboard
 leaves you with the last block you copied here. Notes travel by their number in the
-**Samples** list, so a block pasted into another project plays whichever sample holds
+**Voices** list, so a block pasted into another project plays whichever voice holds
 that number there.
 
 ## Transposing and shading
@@ -154,7 +214,7 @@ the song runs.
 ## Listening to one channel at a time
 
 Channel names are switches. Click **Triangle** at the top of the tracker to silence
-that channel: its name greys, its column and its row in the **Order** grid go
+that channel: its name grays, its column and its row in the **Order** grid go
 neutral, and its notes dim — still readable, still editable, just not sounding.
 Click the name again to bring it back. The same click works on the channel's name
 in the **Order** grid, and both grids show every change, so a channel looks the same
@@ -182,22 +242,22 @@ audible.
 
 Set the song's timing in **Module options** on the right: **Rows** per pattern,
 **Tempo**, **Speed**, and the **NES frequency**. Changing the **NES frequency**
-after samples exist re-times how they all play back, so it asks **Change NES
+after voices exist re-times how they all play back, so it asks **Change NES
 frequency** first (with a **Don't ask again** option).
 
 The project's title, author, and comment — which carry into the exported module —
 are set in **Project properties**, from the button or **File ▸ Project
-properties...**, along with the metre the song is counted in.
+properties...**, along with the meter the song is counted in.
 
-**First highlight** and **Second highlight** are that metre: how many rows make a
+**First highlight** and **Second highlight** are that meter: how many rows make a
 beat, and how many make a bar. The tracker tints the row that opens each one. The
 bar divided by the beat is how many beats you hear in a bar, so the default 4 and
 16 give four beats of four rows — common time. Waltz time keeps the four-row beat
 and shortens the bar to 12, for three beats. The beat is what the tempo counts, so
 the two together say how fast the song is felt as well as how it looks.
 
-The metre also places the song's timing. Most tempos ask for a row length the engine
-can only reach on average, so the rows of a bar differ a little: the metre gives the
+The meter also places the song's timing. Most tempos ask for a row length the engine
+can only reach on average, so the rows of a bar differ a little: the meter gives the
 extra time to the row that opens the bar, then to the row that opens each beat, which
 keeps the beat audible where you expect it.
 
@@ -211,6 +271,14 @@ When the song is ready, **Export as FamiTracker module** (or **File ▸ Export
 FamiTracker module...**) writes the `.ftm`. See
 [FamiTracker export](../formats/famitracker.md) for what the module contains and
 the limits it respects.
+
+**File ▸ Export ▸ NSF program...** writes the song as an `.nsf` instead: a program
+the console itself plays, carrying its own player, so it needs no tracker to sound.
+The console holds one program in 32 KB, so a long song can outgrow it — the export
+says so rather than writing a file that plays part of itself. See
+[NSF export](../formats/nsf.md) for what the file holds, and
+[song compression](../concepts/compression.md) for how a song of minutes is fitted
+into that space.
 
 ## Rendering to audio
 

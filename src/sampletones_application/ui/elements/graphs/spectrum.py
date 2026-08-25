@@ -97,7 +97,16 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         fragment: InstructionLibraryFragment[Any],
         _sample_rate: int,
         _frame_length: int,
+        color: BaseColor,
     ) -> None:
+        """Draws one library fragment's bands, brightening toward the color of its generator.
+
+        Args:
+            fragment: The fragment to draw.
+            _sample_rate: The rate the fragment was sampled at.
+            _frame_length: The samples one frame spans.
+            color: The bright end of the gradient a band's shade sits on.
+        """
         self.clear_layers()
 
         self.add_layer(
@@ -106,7 +115,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
                 name=self._language_manager["global.graph.label.spectrum_name"],
                 max_display_bins=self._layout.spectrum.max_display_bins,
                 color_dim=self._layout.spectrum.color_dim,
-                color_bright=self._layout.spectrum.color_bright,
+                color_bright=color,
             )
         )
 

@@ -9,6 +9,8 @@ from sampletones_core.reconstructions.converter.paths import (
     get_audio_files,
     get_output_path,
     get_relative_path,
+    group_output_path,
+    top_level_audio_files,
 )
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 
@@ -115,3 +117,25 @@ class TestFilterFiles:
         output_file.touch()
         result = filter_files([audio_file], tmp_path, output_directory)
         assert result == []
+
+
+class TestTopLevelAudioFiles:
+    """Gathering the sources of one reconstruction stays with the folder that was pointed at."""
+
+    def test_reports_the_audio_files_the_folder_itself_holds(self, tmp_path: Path) -> None:
+        (tmp_path / "b.wav").touch()
+        (tmp_path / "a.wav").touch()
+        (tmp_path / "notes.txt").write_text("not audio")
+
+        assert [path.name for path in top_level_audio_files(tmp_path)] == ["a.wav", "b.wav"]
+
+    def test_a_nested_recording_stays_where_it_is(self, tmp_path: Path) -> None:
+        nested = tmp_path / "nested"
+        nested.mkdir()
+        (nested / "deep.wav").touch()
+        (tmp_path / "a.wav").touch()
+
+        assert [path.name for path in top_level_audio_files(tmp_path)] == ["a.wav"]
+
+    def test_a_folder_of_nothing_reports_nothing(self, tmp_path: Path) -> None:
+        assert top_level_audio_files(tmp_path) == []

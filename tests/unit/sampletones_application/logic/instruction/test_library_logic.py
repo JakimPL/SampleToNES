@@ -27,13 +27,13 @@ INVALID_DATA_VALUES_KEY: Final[str] = "instructions.library.message.status_inval
 INVALID_DATA_KEY: Final[str] = "instructions.library.message.status_invalid_data"
 DESERIALIZATION_ERROR_KEY: Final[str] = "instructions.library.message.status_deserialization_error"
 INCOMPATIBLE_VERSION_KEY: Final[str] = "instructions.library.template.incompatible_version_template"
-GENERATION_CANCELLED_KEY: Final[str] = "instructions.library.message.status_generation_cancelled"
+GENERATION_CANCELED_KEY: Final[str] = "instructions.library.message.status_generation_canceled"
 
 TEXTS: Final[Dict[str, str]] = {
     INCOMPATIBLE_VERSION_KEY: "got {} expected {}",
     "instructions.library.message.status_saving": "saving",
     "instructions.library.message.status_generation_failed": "failed",
-    GENERATION_CANCELLED_KEY: "cancelled",
+    GENERATION_CANCELED_KEY: "canceled",
     "instructions.library.label.generate_library_button": "Generate",
     "instructions.library.label.regenerate_library_button": "Regenerate",
     "instructions.library.template.library_loaded_template": "{} loaded.",
@@ -191,13 +191,13 @@ class TestGenerationEmits:
     """Every emit passes its status and progress explicitly, so the logic retains no
     presentation state between emissions and each view model is complete on its own."""
 
-    def test_cancelled_emits_the_language_managed_status(self) -> None:
+    def test_canceled_emits_the_language_managed_status(self) -> None:
         logic = _generation_logic()
 
-        logic._on_generation_progress(TaskStatus.CANCELLED, MagicMock())
+        logic._on_generation_progress(TaskStatus.CANCELED, MagicMock())
 
         view_model = logic.on_view_changed.call_args.args[0]
-        assert view_model.status_text == "cancelled"
+        assert view_model.status_text == "canceled"
 
     def test_completed_emits_saving_at_full_progress(self) -> None:
         logic = _generation_logic()
@@ -268,11 +268,11 @@ class TestGenerationEmits:
         assert view_model.generate_button_label == "Generate"
 
 
-class TestCancelledStatusLanguageKey:
-    """The cancelled status resolves through ``LanguageManager`` at construction, so the language
+class TestCanceledStatusLanguageKey:
+    """The canceled status resolves through ``LanguageManager`` at construction, so the language
     file must carry the key."""
 
-    def test_cancelled_status_resolves_from_the_language_file(self) -> None:
+    def test_canceled_status_resolves_from_the_language_file(self) -> None:
         language_manager = LanguageManager(LANG_EN)
 
-        assert language_manager[GENERATION_CANCELLED_KEY]
+        assert language_manager[GENERATION_CANCELED_KEY]

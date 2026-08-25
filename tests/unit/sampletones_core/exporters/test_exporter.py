@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, Final, List, Optional, Sequence, Tuple
 import numpy as np
 import pytest
 
-from sampletones_core.constants.enums import FeatureKey
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.exporters import (
     ExporterTypeUnion,
@@ -13,6 +13,12 @@ from sampletones_core.exporters import (
     PulseExporter,
     TriangleExporter,
 )
+from sampletones_core.features import (
+    CHANNEL_FEATURE_DEFAULTS,
+    FEATURE_DIMENSION_ORDER,
+    supports,
+)
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
@@ -29,6 +35,7 @@ OCTAVE: Final[int] = 12
 PERIOD_STEP: Final[int] = 3
 PULSE_VOLUME: Final[int] = 8
 NOISE_VOLUME: Final[int] = 10
+UNREAD_VALUE: Final[int] = 3
 
 
 def _read_pitch(instruction: Any) -> int:
@@ -64,11 +71,11 @@ def _features(
 ) -> Features:
     return Features(
         initial_pitch=initial_pitch,
-        volume=np.array(volume, dtype=np.int8),
-        arpeggio=np.array(arpeggio, dtype=np.int8),
+        volume=Envelope(items=tuple(volume)),
+        arpeggio=Envelope(items=tuple(arpeggio)),
         pitch=None,
         hi_pitch=None,
-        duty_cycle=None if duty_cycle is None else np.array(duty_cycle, dtype=np.int8),
+        duty_cycle=None if duty_cycle is None else Envelope(items=tuple(duty_cycle)),
     )
 
 
@@ -143,8 +150,10 @@ class TestArpeggioReferenceStability(BaseTestSuite):
 
     @classmethod
     def _edited(cls, test_case: TestCase) -> List[InstructionUnion]:
-        features = cls._export(test_case, test_case.instructions)
-        features[FeatureKey.ARPEGGIO] = test_case.arpeggio
+        features = cls._export(test_case, test_case.instructions).with_envelope(
+            FeatureKey.ARPEGGIO,
+            Envelope(items=tuple(int(offset) for offset in test_case.arpeggio)),
+        )
         return test_case.exporter.from_features(features)
 
     @pytest.mark.parametrize(
@@ -164,7 +173,7 @@ class TestArpeggioReferenceStability(BaseTestSuite):
         features = self._export(test_case, test_case.instructions)
 
         assert features.initial_pitch == test_case.expected
-        assert features.arpeggio.tolist() == [0]
+        assert list(features.arpeggio.items) == [0]
 
     @pytest.mark.parametrize(
         "test_case",
@@ -200,7 +209,7 @@ class TestArpeggioReferenceStability(BaseTestSuite):
     def test_re_export_reads_the_edited_arpeggio_back(self, test_case: TestCase) -> None:
         features = self._export(test_case, self._edited(test_case))
 
-        assert features.arpeggio.tolist() == test_case.arpeggio.tolist()
+        assert list(features.arpeggio.items) == test_case.arpeggio.tolist()
 
     @pytest.mark.parametrize(
         "test_case",
@@ -210,11 +219,13 @@ class TestArpeggioReferenceStability(BaseTestSuite):
     def test_cleared_arpeggio_returns_every_frame_to_the_reference(self, test_case: TestCase) -> None:
         """Clearing an arpeggio envelope restores the pitch the channel started at.
 
-        This is the reported behaviour: typing ``12 0`` and then clearing it back to ``0``
+        This is the reported behavior: typing ``12 0`` and then clearing it back to ``0``
         sounds the sample at the note it was reconstructed at.
         """
-        features = self._export(test_case, self._edited(test_case))
-        features[FeatureKey.ARPEGGIO] = np.zeros(len(test_case.arpeggio), dtype=np.int8)
+        features = self._export(test_case, self._edited(test_case)).with_envelope(
+            FeatureKey.ARPEGGIO,
+            Envelope(items=(0,) * len(test_case.arpeggio)),
+        )
 
         cleared = test_case.exporter.from_features(features)
 
@@ -239,11 +250,11 @@ class TestAbsentArpeggioEnvelope(BaseTestSuite):
             exporter=PulseExporter,
             features=Features(
                 initial_pitch=REFERENCE_PITCH,
-                volume=np.array([PULSE_VOLUME, PULSE_VOLUME, 0], dtype=np.int8),
-                arpeggio=np.array([], dtype=np.int8),
+                volume=Envelope(items=(PULSE_VOLUME, PULSE_VOLUME, 0)),
+                arpeggio=Envelope(items=()),
                 pitch=None,
                 hi_pitch=None,
-                duty_cycle=np.array([0], dtype=np.int8),
+                duty_cycle=Envelope(items=(0,)),
             ),
             read_pitch=_read_pitch,
             expected=REFERENCE_PITCH,
@@ -253,8 +264,8 @@ class TestAbsentArpeggioEnvelope(BaseTestSuite):
             exporter=TriangleExporter,
             features=Features(
                 initial_pitch=REFERENCE_PITCH,
-                volume=np.array([15, 15, 0], dtype=np.int8),
-                arpeggio=np.array([], dtype=np.int8),
+                volume=Envelope(items=(15, 15, 0)),
+                arpeggio=Envelope(items=()),
                 pitch=None,
                 hi_pitch=None,
                 duty_cycle=None,
@@ -267,11 +278,11 @@ class TestAbsentArpeggioEnvelope(BaseTestSuite):
             exporter=NoiseExporter,
             features=Features(
                 initial_pitch=REFERENCE_PERIOD,
-                volume=np.array([NOISE_VOLUME, NOISE_VOLUME, 0], dtype=np.int8),
-                arpeggio=np.array([], dtype=np.int8),
+                volume=Envelope(items=(NOISE_VOLUME, NOISE_VOLUME, 0)),
+                arpeggio=Envelope(items=()),
                 pitch=None,
                 hi_pitch=None,
-                duty_cycle=np.array([0], dtype=np.int8),
+                duty_cycle=Envelope(items=(0,)),
             ),
             read_pitch=_read_period,
             expected=REFERENCE_PERIOD,
@@ -287,7 +298,7 @@ class TestAbsentArpeggioEnvelope(BaseTestSuite):
         instructions = test_case.exporter.from_features(test_case.features)
 
         pitches = [test_case.read_pitch(instruction) for instruction in instructions]
-        assert pitches == [test_case.expected] * len(test_case.features.volume)
+        assert pitches == [test_case.expected] * len(test_case.features.volume.items)
 
     @pytest.mark.parametrize(
         "test_case",
@@ -408,7 +419,7 @@ class TestHeldDimensionRoundTrip:
             features.held_features,
         )
 
-        assert exported.arpeggio.size == 0
+        assert not exported.arpeggio.written
         assert exported.held_features == (FeatureKey.ARPEGGIO,)
 
     def test_a_written_dimension_comes_back_with_its_items(self) -> None:
@@ -426,9 +437,9 @@ class TestHeldDimensionRoundTrip:
             features.held_features,
         )
 
-        assert exported.volume.tolist() == [PULSE_VOLUME, PULSE_VOLUME, 0]
+        assert list(exported.volume.items) == [PULSE_VOLUME, PULSE_VOLUME, 0]
         assert exported.duty_cycle is not None
-        assert exported.duty_cycle.tolist() == [1]
+        assert list(exported.duty_cycle.items) == [1]
 
     def test_an_instrument_holding_every_dimension_describes_no_frame(self) -> None:
         features = _features(
@@ -452,15 +463,22 @@ class TestSingleFrameReading(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
         exporter: ExporterTypeUnion
+        kind: GeneratorName
         instruction: InstructionUnion
         silent: InstructionUnion
         reference: int
         expected: Dict[FeatureKey, int]
 
+        @property
+        def unread(self) -> Tuple[FeatureKey, ...]:
+            """The dimensions this channel's generator reads nothing from."""
+            return tuple(feature_key for feature_key in FEATURE_DIMENSION_ORDER if not supports(self.kind, feature_key))
+
     test_cases = (
         TestCase(
             label="pulse",
             exporter=PulseExporter,
+            kind=GeneratorName.PULSE,
             instruction=PulseInstruction(
                 on=True,
                 pitch=REFERENCE_PITCH + OCTAVE,
@@ -472,23 +490,29 @@ class TestSingleFrameReading(BaseTestSuite):
             expected={
                 FeatureKey.VOLUME: PULSE_VOLUME,
                 FeatureKey.ARPEGGIO: OCTAVE,
+                FeatureKey.PITCH: CHANNEL_FEATURE_DEFAULTS[FeatureKey.PITCH],
+                FeatureKey.HI_PITCH: CHANNEL_FEATURE_DEFAULTS[FeatureKey.HI_PITCH],
                 FeatureKey.DUTY_CYCLE: 1,
             },
         ),
         TestCase(
             label="triangle",
             exporter=TriangleExporter,
+            kind=GeneratorName.TRIANGLE,
             instruction=TriangleInstruction(on=True, pitch=REFERENCE_PITCH - OCTAVE),
             silent=TriangleInstruction.null_instruction(),
             reference=REFERENCE_PITCH,
             expected={
                 FeatureKey.VOLUME: MAX_VOLUME,
                 FeatureKey.ARPEGGIO: -OCTAVE,
+                FeatureKey.PITCH: CHANNEL_FEATURE_DEFAULTS[FeatureKey.PITCH],
+                FeatureKey.HI_PITCH: CHANNEL_FEATURE_DEFAULTS[FeatureKey.HI_PITCH],
             },
         ),
         TestCase(
             label="noise",
             exporter=NoiseExporter,
+            kind=GeneratorName.NOISE,
             instruction=NoiseInstruction(
                 on=True,
                 period=REFERENCE_PERIOD + PERIOD_STEP,
@@ -538,12 +562,13 @@ class TestSingleFrameReading(BaseTestSuite):
 
     @pytest.mark.parametrize(
         "test_case",
-        test_cases,
+        tuple(test_case for test_case in test_cases if test_case.unread),
         ids=lambda test_case: test_case.label,
     )
     def test_a_dimension_the_channel_reads_nothing_from_is_passed_over(self, test_case: TestCase) -> None:
         """One set of channel values serves every channel, so each takes the dimensions it reads."""
         values = dict(test_case.expected)
-        values[FeatureKey.HI_PITCH] = 3
+        for feature_key in test_case.unread:
+            values[feature_key] = UNREAD_VALUE
 
         assert test_case.exporter.instruction_from_values(values, test_case.reference) == test_case.instruction

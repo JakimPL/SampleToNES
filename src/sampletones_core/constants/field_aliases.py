@@ -6,6 +6,6 @@ ALIASES: Final[Dict[str, str]] = {
     "ws": "window_size",
     "tg": "transformation_gamma",
     "sm": "spectrum_method",
-    "gn": "generators",
+    "gn": "channels",
     "ch": "config_hash",
 }

@@ -78,4 +78,7 @@ jobs:
         run: uv run python -m pytest src/ --doctest-modules --no-cov
 
       - name: Run the unit and integration suites with coverage
-        run: uv run python -m pytest -n auto --cov
+        run: uv run python -m pytest -n auto --cov --ignore=tests/benchmarks
+
+      - name: Run the benchmarks
+        run: uv run python -m pytest tests/benchmarks --no-cov

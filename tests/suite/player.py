@@ -1,0 +1,333 @@
+import os
+from pathlib import Path
+from typing import Dict, Final, List, Optional, Sequence
+
+import numpy as np
+
+from sampletones_core.configs import Config
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.general import DUTY_CYCLES
+from sampletones_core.exporters import Features
+from sampletones_core.exports.request import InstrumentExport, SampleExport
+from sampletones_core.features.envelope import Envelope
+from sampletones_core.instructions import InstructionUnion, PulseInstruction
+from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.timers.utils import get_timer_table
+from sampletones_player.clock.schedule import PlaySchedule
+from sampletones_player.compression.compressed import CompressedPlanes
+from sampletones_player.compression.dictionary.table import PhraseTable
+from sampletones_player.compression.encode import emit, encode_planes
+from sampletones_player.compression.options import EVERY_LAYER
+from sampletones_player.compression.pitch import PITCH_COUNT, PitchTable
+from sampletones_player.compression.planes.channel import TonePlanes
+from sampletones_player.compression.planes.order import PlaneOrder
+from sampletones_player.compression.planes.separate import planes_from_streams
+from sampletones_player.compression.planes.song import SongPlanes
+from sampletones_player.compression.tokens.literal import LiteralToken
+from sampletones_player.registers.noise import NoiseRegisters
+from sampletones_player.registers.pulse import PulseRegisters
+from sampletones_player.registers.streams import ChannelStreams
+from sampletones_player.registers.triangle import TriangleRegisters
+from sampletones_player.song import Song
+from sampletones_player.specification.binary import unsigned_byte
+from sampletones_player.specification.compression import (
+    MAX_LITERAL_BYTES,
+    PLANE_COUNT,
+)
+from sampletones_player.specification.registers import (
+    DUTY_CYCLE_SHIFT,
+    MAX_REGISTER_VALUE,
+    NOISE_MODE_SHIFT,
+    SUSTAINED_LEVEL,
+    TIMER_HIGH_SHIFT,
+    TRIANGLE_COUNTER_CONTROL,
+    TRIANGLE_SILENT_RELOAD,
+    TRIANGLE_SOUNDING_RELOAD,
+)
+from sampletones_shared.constants.music import OCTAVE_SEMITONES
+from sampletones_shared.music import Tuning
+from tests.suite.stems import single_entry_stems_data
+
+PLAYER_TUNING: Final[Tuning] = Tuning()
+PLAYER_PITCHES: Final[PitchTable] = PitchTable.from_tuning(PLAYER_TUNING)
+PLAYER_TIMER_TABLE: Final[Dict[int, int]] = get_timer_table(PLAYER_TUNING)
+
+PLAYER_REFERENCE_PITCH: Final[int] = 57
+PLAYER_OCTAVE_UP_PITCH: Final[int] = PLAYER_REFERENCE_PITCH + OCTAVE_SEMITONES
+PLAYER_REFERENCE_TIMER: Final[int] = PLAYER_TIMER_TABLE[PLAYER_REFERENCE_PITCH]
+PLAYER_OCTAVE_UP_TIMER: Final[int] = PLAYER_TIMER_TABLE[PLAYER_OCTAVE_UP_PITCH]
+PLAYER_REFERENCE_PERIOD: Final[int] = 0x0A
+PLAYER_FULL_VOLUME: Final[int] = 15
+PLAYER_SILENT_VOLUME: Final[int] = 0
+
+
+def pulse_tick(
+    volume: int,
+    duty_cycle: int,
+    timer: int,
+) -> PulseRegisters:
+    """A pulse channel's registers for one tick, spelled the way the encoder spells them."""
+    return PulseRegisters(
+        control=(duty_cycle << DUTY_CYCLE_SHIFT) | SUSTAINED_LEVEL | volume,
+        timer_low=timer & MAX_REGISTER_VALUE,
+        timer_high=timer >> TIMER_HIGH_SHIFT,
+    )
+
+
+def triangle_tick(sounding: bool, timer: int) -> TriangleRegisters:
+    """A triangle channel's registers for one tick, spelled the way the encoder spells them."""
+    reload_value = TRIANGLE_SOUNDING_RELOAD if sounding else TRIANGLE_SILENT_RELOAD
+    return TriangleRegisters(
+        linear_counter=TRIANGLE_COUNTER_CONTROL | reload_value,
+        timer_low=timer & MAX_REGISTER_VALUE,
+        timer_high=timer >> TIMER_HIGH_SHIFT,
+    )
+
+
+def noise_tick(
+    volume: int,
+    mode: int,
+    register_period: int,
+) -> NoiseRegisters:
+    """A noise channel's registers for one tick, its period counted the way ``$400E`` counts it."""
+    return NoiseRegisters(
+        control=SUSTAINED_LEVEL | volume,
+        period=(mode << NOISE_MODE_SHIFT) | register_period,
+    )
+
+
+def player_streams(
+    pulse1: Sequence[PulseRegisters],
+    pulse2: Sequence[PulseRegisters],
+    triangle: Sequence[TriangleRegisters],
+    noise: Sequence[NoiseRegisters],
+) -> ChannelStreams:
+    return ChannelStreams(
+        pulse1=tuple(pulse1),
+        pulse2=tuple(pulse2),
+        triangle=tuple(triangle),
+        noise=tuple(noise),
+    )
+
+
+def resting_streams(pulse1: Sequence[PulseRegisters]) -> ChannelStreams:
+    """Streams where one pulse channel carries the song and the other three rest on a single tick."""
+    return player_streams(
+        pulse1=pulse1,
+        pulse2=(pulse_tick(PLAYER_SILENT_VOLUME, 0, PLAYER_REFERENCE_TIMER),),
+        triangle=(triangle_tick(False, PLAYER_REFERENCE_TIMER),),
+        noise=(noise_tick(PLAYER_SILENT_VOLUME, 0, PLAYER_REFERENCE_PERIOD),),
+    )
+
+
+def player_song(
+    streams: ChannelStreams,
+    nes_frequency: int,
+    loop_tick: Optional[int],
+) -> Song:
+    """A song the console plays those streams as, compressed the way an exported one is."""
+    return Song.from_streams(
+        streams=streams,
+        pitches=PLAYER_PITCHES,
+        schedule=PlaySchedule.from_parameters(nes_frequency),
+        loop_tick=loop_tick,
+        seeds=(),
+    )
+
+
+def bent_song(
+    pitch_index: int,
+    bends: Sequence[int],
+    nes_frequency: int,
+) -> Song:
+    """A song holding one note on a pulse channel while its bend plane moves the divider.
+
+    A bend reaches the console on a plane of its own, and only the plane can put one there while
+    the encoders still leave the dimension to the note. Stating one outright is therefore what
+    holds the driver's own arithmetic to the divider each tick is meant to sound at.
+
+    Args:
+        pitch_index: The pitch the value plane names, counted from the lowest the table holds.
+        bends: The divider steps each tick stands away from that pitch.
+        nes_frequency: The rate the streams were written at.
+
+    Returns:
+        Song: The song, its other channels resting throughout.
+    """
+    sounding = pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_PITCHES.timers[pitch_index])
+    planes = planes_from_streams(resting_streams((sounding,) * len(bends)), PLAYER_PITCHES)
+    bent = SongPlanes(
+        pulse1=TonePlanes(
+            control=planes.pulse1.control,
+            value=planes.pulse1.value,
+            bend=bytes(unsigned_byte(bend) for bend in bends),
+        ),
+        pulse2=planes.pulse2,
+        triangle=planes.triangle,
+        noise=planes.noise,
+    )
+    return Song(
+        planes=encode_planes(bent, (), options=EVERY_LAYER, boundaries=frozenset()),
+        pitches=PLAYER_PITCHES,
+        schedule=PlaySchedule.from_parameters(nes_frequency),
+        loop_tick=None,
+    )
+
+
+PLAYER_PULSE_TIMER_MUTE_FLOOR: Final[int] = 8
+
+
+def sounding_pulse(
+    pitch: int,
+    volume: int,
+    duty_cycle: int,
+) -> PulseInstruction:
+    return PulseInstruction(
+        on=True,
+        pitch=pitch,
+        volume=volume,
+        duty_cycle=duty_cycle,
+    )
+
+
+def silent_pulse() -> PulseInstruction:
+    return PulseInstruction.null_instruction()
+
+
+PLAYER_VARIED_SEED: Final[int] = 7
+
+
+def spelled_song(ticks: int, nes_frequency: int) -> Song:
+    """A song whose every plane spells its values out, which is the most room a song can take.
+
+    A block reaching past what the console holds is what a refusal is measured on, and a plane
+    the codec finds nothing in is where a song takes most room: one byte a tick and an opcode
+    every sixty-four. Building the streams outright states that shape exactly.
+    """
+    values = bytes(tick % PITCH_COUNT for tick in range(ticks))
+    stream = emit(
+        [
+            LiteralToken(values=values[start : start + MAX_LITERAL_BYTES])
+            for start in range(0, len(values), MAX_LITERAL_BYTES)
+        ]
+    )
+    return Song(
+        planes=CompressedPlanes(
+            phrases=PhraseTable(phrases=()),
+            streams=PlaneOrder.across((stream,) * PLANE_COUNT),
+            ticks=ticks,
+        ),
+        pitches=PLAYER_PITCHES,
+        schedule=PlaySchedule.from_parameters(nes_frequency),
+        loop_tick=None,
+    )
+
+
+PLAYER_APPROXIMATION_SAMPLES: Final[int] = 64
+
+
+def player_reconstruction(
+    instructions: Dict[ChannelName, List[InstructionUnion]],
+    nes_frequency: int,
+) -> Reconstruction:
+    """A reconstruction carrying the given channel streams, built at ``nes_frequency``.
+
+    The audio itself is silent, since what a player test reads off a reconstruction is the
+    instructions its channels carry and the rate they advance at.
+    """
+    config = Config().with_library(nes_frequency=nes_frequency)
+    return Reconstruction.create(
+        approximation=np.zeros(PLAYER_APPROXIMATION_SAMPLES, dtype=np.float32),
+        approximations={},
+        instructions=instructions,
+        config=config,
+        coefficient=1.0,
+        audio_filepath=(Path(os.devnull),),
+        stems_data=single_entry_stems_data(list(config.generation.channels), instructions),
+    )
+
+
+def player_features(
+    frames: int,
+    pitch: int,
+    *,
+    duty_cycle: bool,
+) -> Features:
+    """Envelopes sounding one pitch at full volume for ``frames`` ticks."""
+    return Features(
+        initial_pitch=pitch,
+        volume=Envelope(items=(PLAYER_FULL_VOLUME,) * frames),
+        arpeggio=Envelope(items=(0,) * frames),
+        pitch=None,
+        hi_pitch=None,
+        duty_cycle=Envelope(items=(0,) * frames) if duty_cycle else None,
+    )
+
+
+def varied_features(
+    frames: int,
+    pitch: int,
+    *,
+    duty_cycle: bool,
+) -> Features:
+    """Envelopes turning over at every tick, the shape a plane holds least to repeat.
+
+    A song outgrowing the console is a song the codec finds little in, so the envelopes are
+    drawn at random from a stated seed: the same shape every run, and one that repeats nowhere.
+    """
+    generator = np.random.default_rng(PLAYER_VARIED_SEED)
+    return Features(
+        initial_pitch=pitch,
+        volume=Envelope(items=tuple(generator.integers(0, PLAYER_FULL_VOLUME + 1, frames).tolist())),
+        arpeggio=Envelope(items=tuple(generator.integers(-OCTAVE_SEMITONES, OCTAVE_SEMITONES + 1, frames).tolist())),
+        pitch=None,
+        hi_pitch=None,
+        duty_cycle=(
+            Envelope(items=tuple(generator.integers(0, len(DUTY_CYCLES), frames).tolist())) if duty_cycle else None
+        ),
+    )
+
+
+def player_instrument(
+    name: str,
+    channel: ChannelName,
+    features: Features,
+    *,
+    nes_frequency: int,
+    loop: bool,
+    tuning: Tuning = PLAYER_TUNING,
+) -> InstrumentExport:
+    """One channel slice of an export request."""
+    return InstrumentExport(
+        name=name,
+        channel=channel,
+        features=looping_features(features) if loop else features,
+        nes_frequency=nes_frequency,
+        tuning=tuning,
+    )
+
+
+def looping_features(features: Features) -> Features:
+    """The envelopes with every dimension they write circling from its first item."""
+    looping = features
+    for feature_key, envelope in features.envelopes.items():
+        if envelope.written:
+            looping = looping.with_envelope(feature_key, envelope.model_copy(update={"loop_point": 0}))
+
+    return looping
+
+
+def player_sample(
+    name: str,
+    instruments: Sequence[InstrumentExport],
+    *,
+    nes_frequency: int,
+    tuning: Tuning = PLAYER_TUNING,
+) -> SampleExport:
+    """Every channel slice of one reconstruction, as an export request carries them."""
+    return SampleExport(
+        name=name,
+        instruments=tuple(instruments),
+        nes_frequency=nes_frequency,
+        tuning=tuning,
+    )

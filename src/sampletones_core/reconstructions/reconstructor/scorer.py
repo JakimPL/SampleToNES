@@ -49,6 +49,22 @@ class Scorer:
             if CUPY_AVAILABLE:
                 xp.get_default_memory_pool().free_all_blocks()
 
+    def reference_energy(self, target: Fragment) -> float:
+        """
+        How much sound a target holds, in the units its spectral loss is measured in.
+
+        A spectral cost is a fraction of this quantity, so multiplying the two states a covering
+        in absolute terms, which is what lets two targets of different loudness be compared.
+
+        Args:
+            target: Target fragment to measure.
+
+        Returns:
+            The target's weighted energy.
+        """
+        energy = self.criterion.reference_energy(xp.asarray(target.feature.values))
+        return float(to_numpy(energy).reshape(-1)[0])
+
     def aligned_cost(
         self,
         target: Fragment,

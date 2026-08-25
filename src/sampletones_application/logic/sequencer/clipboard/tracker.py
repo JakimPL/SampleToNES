@@ -18,14 +18,14 @@ from sampletones_core.constants.general import (
     MIN_TRANSPOSE,
     SILENT_VOLUME,
 )
-from sampletones_core.project.instruments.note_off import NoteOff
+from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.utils.display import (
     NOTE_OFF,
     display_id,
     display_transpose,
     display_volume,
 )
-from sampletones_shared.constants.symbols import PLUS, SIGNS
+from sampletones_shared.constants.symbols import PIPE, PLUS, SIGNS
 
 from .fields import (
     FieldReading,
@@ -39,7 +39,7 @@ from .samples import SampleDirectory
 
 TRACKER_GRID: Final[str] = "tracker"
 SLOT_KEY: Final[str] = "slots"
-COLUMN_SEPARATOR: Final[str] = "|"
+COLUMN_SEPARATOR: Final[str] = PIPE
 NOTE_WIDTH: Final[int] = len(display_id(None))
 TRANSPOSE_WIDTH: Final[int] = len(display_transpose(None))
 VOLUME_WIDTH: Final[int] = len(display_volume(None))
@@ -105,10 +105,10 @@ class TrackerBlockText:
         row_offset: int,
     ) -> str:
         """One row of the block, its fields in slot order and its columns held apart by a bar."""
-        base = column_slot_base(slot_from_flat(region.first_slot).generator)
+        base = column_slot_base(slot_from_flat(region.first_slot).channel)
         fields: List[str] = []
         for position, slot in enumerate(region.slots):
-            if position > 0 and slot.generator != region.slots[position - 1].generator:
+            if position > 0 and slot.channel != region.slots[position - 1].channel:
                 fields.append(COLUMN_SEPARATOR)
 
             key = (row_offset, region.first_slot + position - base)
@@ -123,7 +123,7 @@ class TrackerBlockText:
         key: BlockKey,
     ) -> str:
         match subcolumn:
-            case SubColumn.INSTRUMENT:
+            case SubColumn.VOICE:
                 return self._state_note(block.notes, key)
             case SubColumn.TRANSPOSE:
                 return self._state_number(
@@ -156,8 +156,8 @@ class TrackerBlockText:
         match notes[key]:
             case NoteOff():
                 return NOTE_OFF
-            case str() as sample_id:
-                position = self._samples.position_of(sample_id)
+            case str() as voice_id:
+                position = self._samples.position_of(voice_id)
                 return state_mixed(NOTE_WIDTH) if position is None else display_id(position)
             case _:
                 return display_id(None)
@@ -180,7 +180,7 @@ class TrackerBlockText:
         shape: BlockShape,
     ) -> Optional[TrackerBlock]:
         """The block a body states, each kind of subcolumn gathered into a map of its own."""
-        base = column_slot_base(slot_from_flat(shape.first).generator)
+        base = column_slot_base(slot_from_flat(shape.first).channel)
         notes: Dict[BlockKey, Optional[BlockNote]] = {}
         transposes: Dict[BlockKey, Optional[int]] = {}
         volumes: Dict[BlockKey, Optional[int]] = {}
@@ -193,7 +193,7 @@ class TrackerBlockText:
                 slot = slot_from_flat(shape.first + position)
                 key = (row_offset, shape.first + position - base)
                 match slot.subcolumn:
-                    case SubColumn.INSTRUMENT:
+                    case SubColumn.VOICE:
                         read = store_reading(
                             notes,
                             key,
@@ -238,8 +238,8 @@ class TrackerBlockText:
         if position is None:
             return None
 
-        sample_id = self._samples.sample_at(position)
-        return FieldReading.mixed() if sample_id is None else FieldReading.of(sample_id)
+        voice_id = self._samples.sample_at(position)
+        return FieldReading.mixed() if voice_id is None else FieldReading.of(voice_id)
 
     @staticmethod
     def _read_transpose(field: str) -> Optional[FieldReading[int]]:

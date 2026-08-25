@@ -1,0 +1,1904 @@
+from typing import Callable, Dict, Final, FrozenSet, Optional, Set, Tuple
+
+import dearpygui.dearpygui as dpg
+
+from sampletones_application.categories.elements.sequencer import (
+    SequencerTrackerElements,
+)
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.tracker import (
+    DEFAULT_OCTAVE,
+    MAX_OCTAVE,
+    MIN_OCTAVE,
+)
+from sampletones_application.layout.general.colors.channel import ChannelColors
+from sampletones_application.layout.tabs.sequencer import SequencerLayout
+from sampletones_application.tags.compose import compose_tag
+from sampletones_application.tags.general import (
+    SUF_HANDLER_DRAG,
+    SUF_HANDLER_HEADER,
+    SUF_HANDLER_REGISTRY,
+)
+from sampletones_application.tags.sequencer import (
+    TAG_SEQUENCER_THEME_TABLE_PATTERN,
+    TAG_SEQUENCER_TRACKER_GROUP,
+    TAG_SEQUENCER_TRACKER_INPUT_OCTAVE,
+    TAG_SEQUENCER_TRACKER_PANEL,
+    TAG_SEQUENCER_TRACKER_TABLE,
+    TAG_SEQUENCER_TRACKER_WINDOW,
+)
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.elements.table.caret import CaretOverlay
+from sampletones_application.ui.elements.table.cells import EditableCells
+from sampletones_application.ui.elements.table.selection import TableSelection
+from sampletones_application.ui.panels.sequencer import display as tracker_display
+from sampletones_application.ui.panels.sequencer.channels import (
+    ChannelMenuLabels,
+    ChannelSwitch,
+    channel_tooltip,
+)
+from sampletones_application.ui.panels.sequencer.columns import (
+    DIVIDER_TABLE_COLUMN,
+    HEADER_TABLE_ROW,
+    HEADER_TABLE_ROWS,
+    SAMPLE_TABLE_COLUMN,
+    TRACKER_TABLE_COLUMNS,
+    tracker_table_column,
+    tracker_table_row,
+)
+from sampletones_application.ui.panels.sequencer.display import (
+    CellKey,
+    CellKinds,
+    CellValues,
+)
+from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
+from sampletones_application.ui.panels.sequencer.grid.scroll.axis import VerticalScroll
+from sampletones_application.ui.panels.sequencer.grid.scroll.band import TravelBand
+from sampletones_application.ui.panels.sequencer.grid.scroll.travel import DragTravel
+from sampletones_application.ui.panels.sequencer.grid.surface.clipboard import (
+    BlockShortcuts,
+    ClipboardItems,
+)
+from sampletones_application.ui.panels.sequencer.grid.surface.edit import (
+    GridEditSurface,
+)
+from sampletones_application.ui.panels.sequencer.input.edit import (
+    ClearAction,
+    EditAction,
+)
+from sampletones_application.ui.panels.sequencer.input.target import TrackerTarget
+from sampletones_application.ui.panels.sequencer.input.tracker import (
+    TrackerCursor,
+    TrackerInputState,
+)
+from sampletones_application.ui.panels.sequencer.rows import RowCues, row_background
+from sampletones_application.ui.panels.sequencer.tracker.adjust import (
+    TRANSPOSE_STEPS,
+    VOLUME_STEPS,
+)
+from sampletones_application.ui.panels.sequencer.tracker.callbacks import (
+    CanPasteBlockQuery,
+    OnAdjustCallback,
+    OnBlockRegionCallback,
+    OnCellSelectedCallback,
+    OnChannelMuteToggledCallback,
+    OnChannelSoloedCallback,
+    OnClearRowCallback,
+    OnClearSubcolumnCallback,
+    OnNoteTypedCallback,
+    OnPasteBlockCallback,
+    OnPlayFromFrameCallback,
+    OnPlayFromRowCallback,
+    OnSetNoteOffCallback,
+    OnSetRowCallback,
+    TrackerEditSurface,
+)
+from sampletones_application.ui.panels.sequencer.tracker.menu import TrackerMenu
+from sampletones_application.ui.panels.sequencer.tracker.themes import TrackerThemes
+from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.utils.gui.dpg import dpg_delete_children
+from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.keyboard import (
+    PRIORITY_PANEL,
+    ActivePredicate,
+    KeyEvent,
+    KeyRouter,
+)
+from sampletones_application.utils.gui.keyboard.keys import HEX_KEYS, SIGN_KEYS
+from sampletones_application.utils.gui.keyboard.modifiers import (
+    Modifier,
+    capture_modifiers,
+)
+from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
+from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.utils.palette.colors.base import BaseColor
+from sampletones_application.utils.palette.colors.faded import FadedColor
+from sampletones_application.utils.palette.colors.layered import LayeredColor
+from sampletones_application.view_model.sequencer.channels import (
+    SequencerChannelsViewModel,
+)
+from sampletones_application.view_model.sequencer.kind import column_takes
+from sampletones_application.view_model.sequencer.region import (
+    TrackerCell,
+    TrackerRegion,
+)
+from sampletones_application.view_model.sequencer.settings import (
+    SequencerSettingsViewModel,
+)
+from sampletones_application.view_model.sequencer.slot import (
+    SLOT_COUNT,
+    TrackerSlot,
+    slot_from_flat,
+)
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import (
+    SequencerRowViewModel,
+    SequencerTrackerViewModel,
+)
+from sampletones_application.view_model.sequencer.voices import (
+    SequencerVoicesViewModel,
+    VoiceEntryViewModel,
+    VoiceKind,
+)
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.features import speaks_in_periods
+from sampletones_core.project.song_position import SongPosition
+from sampletones_core.utils.display import NOTE_OFF, display_id
+from sampletones_shared.constants.music import (
+    OCTAVE_OFFSET,
+    OCTAVE_SEMITONES,
+)
+from sampletones_shared.types.application import ColorRGBA, Sender
+from sampletones_shared.types.callback import VoidCallback
+
+PLAYHEAD_PAINT_FRAMES: Final[int] = 1
+
+
+class GUISequencerTrackerPanel(GUIPanel):
+    def __init__(
+        self,
+        initial_settings: SequencerSettingsViewModel,
+        *,
+        layout: SequencerLayout,
+        channel_colors: ChannelColors,
+        language_manager: LanguageManager,
+        key_router: KeyRouter,
+        tab_active: ActivePredicate,
+        shortcut_source: ShortcutSource,
+        initial_octave: int = DEFAULT_OCTAVE,
+        initial_collapsed: bool = False,
+    ) -> None:
+        self._layout = layout
+        self._channel_colors = channel_colors
+        self._octave = initial_octave
+        self._settings = initial_settings
+        self._language_manager = language_manager
+        self._router = key_router
+        self._tab_active = tab_active
+        self._shortcuts = shortcut_source
+
+        widths = layout.tracker.subcolumn_widths
+        self._subcolumn_widths: Dict[SubColumn, int] = {
+            SubColumn.VOICE: widths.voice,
+            SubColumn.TRANSPOSE: widths.transpose,
+            SubColumn.VOLUME: widths.volume,
+        }
+
+        self._item_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_PANEL, SUF_HANDLER_REGISTRY)
+        self._cell_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_TABLE, SUF_HANDLER_REGISTRY)
+        self._header_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_TABLE, SUF_HANDLER_HEADER)
+        self._drag_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_TABLE, SUF_HANDLER_DRAG)
+
+        self._rows: Dict[Optional[int], Sender] = {}
+        self._header_columns: Dict[Sender, Optional[ChannelName]] = {}
+        self._editable_cells: EditableCells[CellKey] = EditableCells()
+        self._current_row_count: int = 0
+        self._highlighted_row: Optional[int] = None
+        self._displayed_frame: Optional[int] = None
+        self._playing_frame: Optional[int] = None
+        self._playing_row: Optional[int] = None
+        self._painted_row: Optional[int] = None
+        self._follows_playing_row: bool = False
+        self._input_state: TrackerInputState = TrackerInputState()
+        self._selection: TableSelection[CellKey] = TableSelection(
+            cells=self._editable_cells,
+            cell_at=self._cell_at,
+            covered=self._selected_cells,
+        )
+        self._travel: DragTravel = DragTravel(
+            axis=VerticalScroll(table=TAG_SEQUENCER_TRACKER_TABLE),
+            band=self._travel_band,
+            elapsed=dpg.get_delta_time,
+        )
+        self._cell_kinds: CellKinds = {}
+        self._themes = TrackerThemes(layout)
+        self._current_samples: Optional[SequencerVoicesViewModel] = None
+        self._current_channels: Optional[SequencerChannelsViewModel] = None
+
+        self.on_clear_row: Optional[OnClearRowCallback] = None
+        self.on_clear_subcolumn: Optional[OnClearSubcolumnCallback] = None
+        self.on_set_row: Optional[OnSetRowCallback] = None
+        self.on_set_note_off: Optional[OnSetNoteOffCallback] = None
+        self.on_note_typed: Optional[OnNoteTypedCallback] = None
+        self.on_octave_changed: Optional[Callable[[int], None]] = None
+        self.on_cell_selected: Optional[OnCellSelectedCallback] = None
+        self.on_play_from_row: Optional[OnPlayFromRowCallback] = None
+        self.on_play_from_frame: Optional[OnPlayFromFrameCallback] = None
+        self.on_adjust_transpose: Optional[OnAdjustCallback] = None
+        self.on_adjust_volume: Optional[OnAdjustCallback] = None
+        self.on_copy_block: Optional[OnBlockRegionCallback] = None
+        self.on_cut_block: Optional[OnBlockRegionCallback] = None
+        self.on_delete_block: Optional[OnBlockRegionCallback] = None
+        self.on_paste_block: Optional[OnPasteBlockCallback] = None
+        self.can_paste_block: Optional[CanPasteBlockQuery] = None
+        self.on_channel_mute_toggled: Optional[OnChannelMuteToggledCallback] = None
+        self.on_channel_soloed: Optional[OnChannelSoloedCallback] = None
+        self.on_channels_toggled: Optional[VoidCallback] = None
+        self.on_channels_muted: Optional[VoidCallback] = None
+        self.on_channels_unmuted: Optional[VoidCallback] = None
+
+        self._blocks: BlockGestures[TrackerRegion, TrackerCell] = BlockGestures(grid=self)
+        self._surface: TrackerEditSurface = GridEditSurface.build(
+            grid=self,
+            blocks=self._blocks,
+            target=TrackerTarget,
+            shortcuts=shortcut_source,
+            block_shortcuts=BlockShortcuts(
+                copy=ShortcutId.TRACKER_COPY_BLOCK,
+                cut=ShortcutId.TRACKER_CUT_BLOCK,
+                paste=ShortcutId.TRACKER_PASTE_BLOCK,
+            ),
+            labels=ClipboardItems.labels(language_manager),
+        )
+        self.pattern_theme = ThemeRegistry.get(TAG_SEQUENCER_THEME_TABLE_PATTERN)
+
+        self._lbl_octave = self._label(
+            language_manager,
+            SequencerTrackerElements.OCTAVE,
+        )
+        self._tip_octave = language_manager[
+            Page.SEQUENCER,
+            Panel.TRACKER,
+            TextType.TOOLTIP,
+            SequencerTrackerElements.OCTAVE,
+        ]
+        self._lbl_tracker = self._label(
+            language_manager,
+            SequencerTrackerElements.TRACKER_TEXT,
+        )
+        self._load_column_labels(language_manager)
+        self._load_header_tooltips(language_manager)
+        self._create_channel_switch(language_manager)
+        self._menu = TrackerMenu(
+            self,
+            language_manager=language_manager,
+            shortcut_source=shortcut_source,
+        )
+
+        super().__init__(
+            tag=TAG_SEQUENCER_TRACKER_PANEL,
+            height=-1,
+        )
+        self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
+
+    def _load_column_labels(self, language_manager: LanguageManager) -> None:
+        """Reads the name each column carries, which its header label and its menu title show."""
+        self._lbl_col_row = self._label(language_manager, SequencerTrackerElements.COLUMN_ROW)
+        self._column_labels: Dict[Optional[ChannelName], str] = {
+            None: self._label(language_manager, SequencerTrackerElements.COLUMN_SAMPLE),
+            ChannelName.PULSE1: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_1),
+            ChannelName.PULSE2: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_2),
+            ChannelName.TRIANGLE: self._label(language_manager, SequencerTrackerElements.COLUMN_TRIANGLE),
+            ChannelName.NOISE: self._label(language_manager, SequencerTrackerElements.COLUMN_NOISE),
+        }
+
+    @staticmethod
+    def _label(
+        language_manager: LanguageManager,
+        element: SequencerTrackerElements,
+    ) -> str:
+        return language_manager[
+            Page.SEQUENCER,
+            Panel.TRACKER,
+            TextType.LABEL,
+            element,
+        ]
+
+    def _load_header_tooltips(self, language_manager: LanguageManager) -> None:
+        """Reads the header tooltips, which name the click gestures the labels carry."""
+
+        def tooltip(element: SequencerTrackerElements) -> str:
+            return language_manager[Page.SEQUENCER, Panel.TRACKER, TextType.TOOLTIP, element]
+
+        self._tooltip_header_channel = channel_tooltip(tooltip(SequencerTrackerElements.HEADER_CHANNEL))
+        self._tooltip_header_sample = tooltip(SequencerTrackerElements.HEADER_SAMPLE)
+
+    def _create_channel_switch(self, language_manager: LanguageManager) -> None:
+        """Builds the switch a column header's click and menu act through.
+
+        The hooks are read at call time, so the switch is built here while they are still unset and
+        the coordinator wires them once the panel exists.
+        """
+        labels = ChannelMenuLabels(
+            mute=self._label(language_manager, SequencerTrackerElements.CONTEXT_MUTE),
+            unmute=self._label(language_manager, SequencerTrackerElements.CONTEXT_UNMUTE),
+            solo=self._label(language_manager, SequencerTrackerElements.CONTEXT_SOLO),
+            unsolo=self._label(language_manager, SequencerTrackerElements.CONTEXT_UNSOLO),
+            mute_all=self._label(language_manager, SequencerTrackerElements.CONTEXT_MUTE_ALL),
+            unmute_all=self._label(language_manager, SequencerTrackerElements.CONTEXT_UNMUTE_ALL),
+        )
+        self._channel_switch = ChannelSwitch(
+            labels=labels,
+            on_mute_toggled=lambda channel: self.call(self.on_channel_mute_toggled, channel),
+            on_soloed=lambda channel: self.call(self.on_channel_soloed, channel),
+            on_toggled=lambda: self.call(self.on_channels_toggled),
+            on_muted=lambda: self.call(self.on_channels_muted),
+            on_unmuted=lambda: self.call(self.on_channels_unmuted),
+        )
+
+    def create_panel(self, parent: str) -> None:
+        self._setup_handlers()
+        self._create_themes()
+        self._create_tracker_view(parent)
+
+    def _setup_handlers(self) -> None:
+        with dpg.item_handler_registry(tag=self._item_handler_tag):
+            dpg.add_item_hover_handler(
+                parent=self._item_handler_tag,
+                callback=self._on_row_hovered,
+            )
+
+        with dpg.item_handler_registry(tag=self._cell_handler_tag):
+            dpg.add_item_clicked_handler(callback=self._on_cell_right_clicked)
+            dpg.add_item_active_handler(callback=self._on_cell_held)
+
+        with dpg.item_handler_registry(tag=self._header_handler_tag):
+            dpg.add_item_clicked_handler(callback=self._on_header_right_clicked)
+
+        with dpg.handler_registry(tag=self._drag_handler_tag):
+            dpg.add_mouse_click_handler(
+                button=dpg.mvMouseButton_Left,
+                callback=self._on_pointer_pressed,
+            )
+
+        self._router.register(
+            self._on_key_pressed,
+            priority=PRIORITY_PANEL,
+            active=self._keys_active,
+        )
+
+    def _create_themes(self) -> None:
+        self._themes.create()
+
+    def _create_octave_control(self) -> None:
+        """Offers the octave a note key types at, which is what turns one key row into a keyboard."""
+        with dpg.group(horizontal=True):
+            label = dpg.add_text(self._lbl_octave)
+            FontRegistry.bind_to_item(label, Font.REGULAR_SMALL)
+            octave_input = dpg.add_input_int(
+                tag=TAG_SEQUENCER_TRACKER_INPUT_OCTAVE,
+                default_value=self._octave,
+                min_value=MIN_OCTAVE,
+                max_value=MAX_OCTAVE,
+                min_clamped=True,
+                max_clamped=True,
+                width=self._layout.tracker.octave_width,
+                step=1,
+                callback=self._on_octave_typed,
+            )
+            FontRegistry.bind_to_item(octave_input, Font.MONO_SMALL)
+            show_tooltip(octave_input, self._tip_octave)
+
+    def _on_octave_typed(self, _sender: Sender, app_data: int) -> None:
+        self._octave = max(MIN_OCTAVE, min(MAX_OCTAVE, app_data))
+        self.call(self.on_octave_changed, self._octave)
+
+    def _create_tracker_view(self, parent: str) -> None:
+        """Builds the tracker card and the empty table its rows are filled into.
+
+        The column labels are carried by a row of widgets (see :meth:`_build_header_row`) that
+        ``freeze_rows`` pins at the top, which makes each channel's label a click target for
+        muting. ``no_clip`` lets a label wider than its column draw across the boundary the way
+        a table header does, so the header keeps the size and position it has always had.
+
+        The pattern stands on one even ground: the tracker's own theme
+        (``sequencer.theme.table_pattern``) gives ``TableRowBg`` and ``TableRowBgAlt`` the same
+        shade, leaving the row background free to carry the beat and bar grouping that tells a
+        tracker's rows apart (see :meth:`_row_background`).
+        """
+        with self._collapsible_card(
+            parent,
+            self._lbl_tracker,
+            glyph=self._glyphs.headers.tracker,
+        ):
+            self._create_octave_control()
+            dpg.add_group(tag=TAG_SEQUENCER_TRACKER_GROUP)
+            with (
+                dpg.child_window(
+                    tag=TAG_SEQUENCER_TRACKER_WINDOW,
+                    parent=TAG_SEQUENCER_TRACKER_GROUP,
+                    border=False,
+                    width=0,
+                    height=-1,
+                ),
+                dpg.table(
+                    tag=TAG_SEQUENCER_TRACKER_TABLE,
+                    width=0,
+                    header_row=False,
+                    resizable=False,
+                    borders_innerH=False,
+                    borders_innerV=True,
+                    borders_outerH=True,
+                    borders_outerV=True,
+                    scrollX=False,
+                    scrollY=True,
+                    freeze_rows=HEADER_TABLE_ROWS,
+                    row_background=True,
+                    policy=dpg.mvTable_SizingFixedFit,
+                ),
+            ):
+                FontRegistry.bind_to_item(dpg.last_item(), Font.MONO_BOLD)
+                dpg.add_table_column(width_stretch=True)
+                dpg.add_table_column(
+                    width_fixed=True,
+                    init_width_or_weight=self._layout.table_cells.row,
+                    no_clip=True,
+                )
+                dpg.add_table_column(
+                    width_fixed=True,
+                    init_width_or_weight=self._layout.table_cells.sample,
+                    no_clip=True,
+                )
+                dpg.add_table_column(
+                    width_fixed=True,
+                    init_width_or_weight=self._layout.table_cells.divider,
+                )
+                for _ in ChannelName.items():
+                    dpg.add_table_column(
+                        width_fixed=True,
+                        init_width_or_weight=self._layout.table_cells.channel,
+                        no_clip=True,
+                    )
+                dpg.add_table_column(width_stretch=True)
+
+        self.pattern_theme.bind_to_item(TAG_SEQUENCER_TRACKER_TABLE)
+
+    def update_tracker(self, view_model: SequencerTrackerViewModel) -> None:
+        """Reconciles the tracker body with the visible order frame.
+
+        The grid is only torn down and rebuilt when the row count changes; for the
+        common in-place edit the changed cell labels are reconfigured one by one.
+        Reusing the existing widgets preserves scroll position, the hover row, and
+        the edit cursor that a full rebuild would otherwise discard.
+        """
+        cell_values = self._compute_cell_values(view_model)
+        cell_kinds = self._compute_cell_kinds(view_model)
+        self._show_frame(view_model.frame_index)
+        if len(view_model.rows) != self._current_row_count:
+            self._rebuild_table(view_model, cell_values, cell_kinds)
+        else:
+            self._reconcile_cell_kinds(cell_kinds)
+            self._editable_cells.reconcile(cell_values, self._render_cell)
+
+    def _show_frame(self, frame_index: int) -> None:
+        """Records the order frame the grid stands on, and settles the playhead's mark for it.
+
+        The mark reads as the sounding row of the pattern on screen, so it belongs to the frame the
+        playhead sounds: a frame arriving at the grid takes the mark while playback stands on it,
+        and hands it back as the reader moves on to another frame.
+        """
+        if frame_index == self._displayed_frame:
+            return
+
+        self._displayed_frame = frame_index
+        self._paint_playhead()
+
+    def _rebuild_table(
+        self,
+        view_model: SequencerTrackerViewModel,
+        cell_values: CellValues,
+        cell_kinds: CellKinds,
+    ) -> None:
+        """Replaces the table body, and re-reveals the sounding row once the new body has laid out.
+
+        A table repopulated this frame reports the scroll extent of the body it replaced, so the
+        reveal is repeated a frame later, when DearPyGui has measured the rows now in it.
+
+        The frame the grid stands on has a row count of its own, so a selection is taken down to
+        its cursor: the cells it covered belong to the body being replaced.
+        """
+        dpg_delete_children(TAG_SEQUENCER_TRACKER_TABLE, slot=1)
+        self._input_state = self._input_state.collapse()
+        self._selection.reset()
+        self._travel.rest()
+        self._editable_cells.reset(cell_values)
+        self._cell_kinds = dict(cell_kinds)
+        self._build_table(view_model)
+        self.repaint()
+        FrameCallbackManager.set_frame_callback(self._reveal_playing_row)
+
+    def repaint(self) -> None:
+        """Issues every tint the table holds as its own state.
+
+        DearPyGui keeps a row, column or cell highlight on the table rather than on an item,
+        so a color reaches it only by being pushed again. Gathering the pushes here gives
+        the palette one call to make and keeps a rebuilt table and a recolored one identical.
+        """
+        if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
+            return
+
+        self._highlight_sample_column()
+        self._highlight_header_row()
+        self._apply_channel_cues()
+        self._apply_row_backgrounds()
+        self._update_cursor()
+
+    def update_settings(self, view_model: SequencerSettingsViewModel) -> None:
+        """Takes the meter the project states, retinting the rows its highlights now open."""
+        self._settings = view_model
+        self._apply_row_backgrounds()
+
+    def _row_background(self, row_index: int) -> Optional[BaseColor]:
+        """The color a pattern row's background carries under the marks standing on it now."""
+        cursor = self._input_state.cursor
+        return row_background(
+            row_index,
+            self._settings,
+            self._layout.colors,
+            RowCues(
+                cursor=cursor.row if cursor is not None else None,
+                playing=self._painted_row,
+            ),
+        )
+
+    def _draw_row(
+        self,
+        row_index: int,
+        color: Optional[BaseColor],
+    ) -> None:
+        """Gives one pattern row the background color it resolved to.
+
+        Position updates arrive on the callback-queue worker thread, so the table may be shorter
+        than the row asked for if the main thread shrank it (a rows-per-pattern change) in between;
+        checking the live row count keeps a stale index from reaching DearPyGui.
+        """
+        if not 0 <= row_index < self._live_row_count():
+            return
+
+        table_row = tracker_table_row(row_index)
+        if color is None:
+            dpg.unhighlight_table_row(
+                TAG_SEQUENCER_TRACKER_TABLE,
+                table_row,
+            )
+        else:
+            dpg.highlight_table_row(
+                TAG_SEQUENCER_TRACKER_TABLE,
+                table_row,
+                color=color.rgba,
+            )
+
+    def _paint_row(self, row_index: int) -> None:
+        """Draws a row in the color its group and the marks on it resolve to."""
+        self._draw_row(row_index, self._row_background(row_index))
+
+    def _paint_hovered_row(self, row_index: int) -> None:
+        """Draws a row with the hover shade over the background it already carries."""
+        background = self._row_background(row_index)
+        highlight = self._layout.colors.pattern_highlight
+        self._draw_row(
+            row_index,
+            highlight if background is None else LayeredColor(base=background, overlay=highlight),
+        )
+
+    def _apply_row_backgrounds(self) -> None:
+        """Draws every live pattern row, which is how the beat and bar grouping reaches the table."""
+        for row_index in range(self._live_row_count()):
+            self._paint_row(row_index)
+
+    def _render_cell(self, key: CellKey) -> str:
+        row, channel, subcolumn = key
+        return tracker_display.subcolumn_label(
+            row,
+            channel,
+            subcolumn,
+            cursor=self._input_state.cursor,
+            pending=self._input_state.pending,
+            cell_values=self._editable_cells.values,
+        )
+
+    def _highlight_sample_column(self) -> None:
+        """Tints the sample column and the rule that separates it from the channels.
+
+        These column highlights are static decoration, distinct from the cursor's
+        cell/row highlight; reapplying them after each rebuild keeps them in place
+        once the rows are replaced.
+        """
+        dpg.highlight_table_column(
+            TAG_SEQUENCER_TRACKER_TABLE,
+            SAMPLE_TABLE_COLUMN,
+            self._layout.colors.sample.column.rgba,
+        )
+        dpg.highlight_table_column(
+            TAG_SEQUENCER_TRACKER_TABLE,
+            DIVIDER_TABLE_COLUMN,
+            self._layout.colors.sample.divider.rgba,
+        )
+
+    def _highlight_header_row(self) -> None:
+        """Gives the widget header row the background a table header carries.
+
+        The shade is laid cell by cell so it covers the sample and channel column washes,
+        which DearPyGui draws over a row highlight; the header then reads as one band with
+        the column tints beginning below it.
+        """
+        for column in range(TRACKER_TABLE_COLUMNS):
+            dpg.highlight_table_cell(
+                TAG_SEQUENCER_TRACKER_TABLE,
+                HEADER_TABLE_ROW,
+                column,
+                color=self._layout.colors.header.background.rgba,
+            )
+
+    def _tint_channel_columns(self) -> None:
+        """Washes each channel's column with a faint tint of its identity color.
+
+        Reapplied after each rebuild alongside the sample column so the tint survives
+        row replacement, giving the tracker the same per-channel identity the order
+        table carries in its row labels. A silenced channel trades that identity for a
+        neutral dark shade, so its column recedes as a whole.
+        """
+        for channel in ChannelName.items():
+            dpg.highlight_table_column(
+                TAG_SEQUENCER_TRACKER_TABLE,
+                tracker_table_column(channel),
+                self._channel_column_tint(channel),
+            )
+
+    def _channel_column_tint(self, channel: ChannelName) -> ColorRGBA:
+        if self._is_muted(channel):
+            return self._layout.colors.muted.background.rgba
+
+        tint_color = self._channel_colors.for_channel(channel)
+        return FadedColor(
+            color=tint_color,
+            fraction=self._layout.tracker.channel_column_tint,
+        ).rgba
+
+    def _compute_cell_values(
+        self,
+        view_model: SequencerTrackerViewModel,
+    ) -> CellValues:
+        cell_values: CellValues = {}
+        for row in view_model.rows:
+            cell_values[(row.index, None, SubColumn.VOICE)] = row.sample
+            cell_values[(row.index, None, SubColumn.TRANSPOSE)] = row.transpose
+            cell_values[(row.index, None, SubColumn.VOLUME)] = row.volume
+            for channel in ChannelName.items():
+                cell = row.cells[channel]
+                for subcolumn in SubColumn:
+                    cell_values[
+                        (
+                            row.index,
+                            channel,
+                            subcolumn,
+                        )
+                    ] = tracker_display.cell_display(
+                        cell,
+                        subcolumn,
+                    )
+
+        return cell_values
+
+    def _compute_cell_kinds(
+        self,
+        view_model: SequencerTrackerViewModel,
+    ) -> CellKinds:
+        """Which kind of voice each voice slot names, which is the color that slot wears.
+
+        Only the voice slot reports a kind, so the map covers those cells alone and a refresh
+        re-themes as many of them as the edit touched.
+        """
+        cell_kinds: CellKinds = {}
+        for row in view_model.rows:
+            cell_kinds[(row.index, None, SubColumn.VOICE)] = row.sample_kind
+            for channel in ChannelName.items():
+                cell_kinds[(row.index, channel, SubColumn.VOICE)] = row.cells[channel].kind
+
+        return cell_kinds
+
+    def _reconcile_cell_kinds(self, cell_kinds: CellKinds) -> None:
+        """Re-themes the voice slots whose kind changed, leaving the rest of the grid bound.
+
+        The labels are diffed the same way, so a refresh costs what the edit did rather than what
+        the grid holds.
+        """
+        for key, kind in cell_kinds.items():
+            if self._cell_kinds.get(key) == kind:
+                continue
+
+            self._cell_kinds[key] = kind
+            self._bind_cell_theme(key)
+
+    def _build_table(self, view_model: SequencerTrackerViewModel) -> None:
+        self._rows = {}
+        self._current_row_count = len(view_model.rows)
+        self._build_header_row()
+        for row in view_model.rows:
+            self._build_table_row(row)
+
+    def _build_header_row(self) -> None:
+        """Builds the header as the table's first row, with each channel label a click target.
+
+        A rebuild replaces every row of the table, so the header is raised here, ahead of the
+        pattern rows, and lands on the row ``freeze_rows`` pins in place. The cells are
+        positional like a pattern row's, so the labels line up with the columns they name.
+        """
+        self._header_columns = {}
+        row_id = dpg.add_table_row(parent=TAG_SEQUENCER_TRACKER_TABLE)
+        self._add_empty_cell(row_id)
+        self._add_header_label_cell(row_id)
+        self._add_header_selectable(row_id, None)
+        self._add_empty_cell(row_id)
+        for channel in ChannelName.items():
+            self._add_header_selectable(row_id, channel)
+
+    def _add_header_label_cell(self, row_id: Sender) -> None:
+        """Places the row-number column's label, which names a column the user reads only.
+
+        It is laid out as a selectable like the labels beside it, so it takes the header's
+        height and sits on their line; its own theme leaves it reading as text.
+        """
+        label_cell = dpg.add_table_cell(parent=row_id)
+        label = dpg.add_selectable(
+            parent=label_cell,
+            label=self._lbl_col_row,
+            height=self._layout.tracker.header_height,
+        )
+        dpg.bind_item_theme(label, self._themes.column_label)
+
+    def _add_header_selectable(
+        self,
+        row_id: Sender,
+        channel: Optional[ChannelName],
+    ) -> None:
+        """Places one clickable column label: a channel's mute target, or the master target.
+
+        The selectable takes its width from its label, which is what lets a label wider than
+        its column draw in full, and it carries its channel so the click knows which column
+        it landed on. A tooltip names the gestures the label answers to, and the right-click
+        registry opens the same actions as a menu.
+        """
+        header_cell = dpg.add_table_cell(parent=row_id)
+        selectable = dpg.add_selectable(
+            parent=header_cell,
+            label=self._column_labels[channel],
+            height=self._layout.tracker.header_height,
+            user_data=channel,
+            callback=self._on_header_clicked,
+        )
+        dpg.bind_item_handler_registry(selectable, self._header_handler_tag)
+        show_tooltip(
+            selectable,
+            self._tooltip_header_sample if channel is None else self._tooltip_header_channel,
+        )
+        self._header_columns[selectable] = channel
+
+    def _build_table_row(self, row: SequencerRowViewModel) -> None:
+        """Builds one tracker row.
+
+        The cells are positional, so the empty divider cell after the sample column
+        keeps the channel cells aligned with their (shifted) table columns.
+        """
+        row_id = dpg.add_table_row(
+            parent=TAG_SEQUENCER_TRACKER_TABLE,
+            user_data=row.index,
+        )
+        self._add_empty_cell(row_id)
+        self._add_row_number_cell(row_id, row.index)
+        self._add_column_cell(row_id, row.index, None)
+        self._add_empty_cell(row_id)
+        for channel in ChannelName.items():
+            self._add_column_cell(row_id, row.index, channel)
+
+    def _add_empty_cell(self, row_id: Sender) -> None:
+        empty_cell = dpg.add_table_cell(parent=row_id)
+        if dpg.does_item_exist(empty_cell):
+            dpg.add_spacer(parent=empty_cell, width=0)
+
+    def _add_row_number_cell(self, row_id: Sender, row_index: int) -> None:
+        number_cell = dpg.add_table_cell(parent=row_id)
+        selectable = dpg.add_selectable(
+            parent=number_cell,
+            label=display_id(row_index),
+            height=self._layout.tracker.row_height,
+            user_data=row_index,
+            callback=self._on_row_number_clicked,
+        )
+        FontRegistry.bind_to_item(selectable, Font.MONO_SMALL)
+        dpg.bind_item_theme(selectable, self._themes.row_number)
+        dpg.bind_item_handler_registry(selectable, self._item_handler_tag)
+        self._rows[row_index] = selectable
+
+    def _add_column_cell(
+        self,
+        row_id: Sender,
+        row_index: int,
+        channel: Optional[ChannelName],
+    ) -> None:
+        font = Font.MONO_BOLD_SMALL if channel is None else Font.MONO_SMALL
+        cell = dpg.add_table_cell(parent=row_id)
+        group = dpg.add_group(
+            horizontal=True,
+            horizontal_spacing=0,
+            parent=cell,
+        )
+        for subcolumn in SubColumn:
+            self._add_subcolumn_selectable(
+                group,
+                row_index,
+                channel,
+                subcolumn,
+                font,
+            )
+
+    def _add_subcolumn_selectable(
+        self,
+        group: Sender,
+        row_index: int,
+        channel: Optional[ChannelName],
+        subcolumn: SubColumn,
+        font: Font,
+    ) -> None:
+        key = (row_index, channel, subcolumn)
+        selectable = dpg.add_selectable(
+            parent=group,
+            label=self._render_cell(key),
+            width=self._subcolumn_widths[subcolumn],
+            height=self._layout.tracker.row_height,
+            user_data=key,
+            callback=self._on_cell_clicked,
+        )
+        FontRegistry.bind_to_item(selectable, font)
+        dpg.bind_item_theme(selectable, self._cell_theme(key))
+        dpg.bind_item_handler_registry(selectable, self._cell_handler_tag)
+        self._editable_cells.register(key, selectable)
+
+    def _update_cursor(self) -> None:
+        cursor = self._input_state.cursor
+        if cursor is not None:
+            if cursor.row < self._current_row_count:
+                self._apply_cell_highlight(cursor.row, cursor.channel)
+            else:
+                self._input_state = TrackerInputState()
+
+        self._selection.repaint()
+        self._update_caret()
+
+    def deselect_cell(self) -> None:
+        cursor = self._input_state.cursor
+        if cursor is not None:
+            self._input_state = TrackerInputState()
+            self._remove_cell_highlight(cursor.row, cursor.channel)
+            self._selection.repaint()
+
+        self._update_caret()
+
+    def _apply_state(self, new_state: TrackerInputState) -> None:
+        old_cursor = self._input_state.cursor
+        new_cursor = new_state.cursor
+
+        old_pos = (old_cursor.row, old_cursor.channel) if old_cursor is not None else None
+        new_pos = (new_cursor.row, new_cursor.channel) if new_cursor is not None else None
+
+        self._input_state = new_state
+
+        if old_pos != new_pos and old_cursor is not None:
+            self._remove_cell_highlight(old_cursor.row, old_cursor.channel)
+
+        if old_cursor is not None:
+            self._update_cell_display(old_cursor.row, old_cursor.channel)
+
+        if new_cursor is not None:
+            if old_pos != new_pos:
+                self._apply_cell_highlight(new_cursor.row, new_cursor.channel)
+            self._update_cell_display(new_cursor.row, new_cursor.channel)
+
+        if new_pos != old_pos and new_cursor is not None:
+            self.call(self.on_cell_selected)
+
+        self._selection.repaint()
+        self._update_caret()
+
+    def update_samples(self, view_model: SequencerVoicesViewModel) -> None:
+        self._current_samples = view_model
+
+    def update_channels(self, view_model: SequencerChannelsViewModel) -> None:
+        """Shows which channels the song player silences.
+
+        The model is kept so a rebuilt table takes the cue again, the way the column tints do,
+        and so a table still waiting for its rows picks it up once they arrive.
+        """
+        self._current_channels = view_model
+        self._apply_channel_cues()
+
+    def _apply_channel_cues(self) -> None:
+        """Marks each silenced channel down its whole column: label, background, and cell text.
+
+        The three cues land together because they read as one: the column recedes as a unit
+        while its values stay legible, so the channel is visibly out of the mix and still open
+        for editing.
+        """
+        if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
+            return
+
+        self._tint_channel_columns()
+        self._bind_header_themes()
+        for channel in ChannelName.items():
+            self._bind_channel_cell_themes(channel)
+
+    def _bind_header_themes(self) -> None:
+        for selectable, channel in self._header_columns.items():
+            muted = channel is not None and self._is_muted(channel)
+            dpg.bind_item_theme(selectable, self._themes.header(muted=muted))
+
+    def _bind_channel_cell_themes(self, channel: ChannelName) -> None:
+        for row_index in range(self._current_row_count):
+            for subcolumn in SubColumn:
+                self._bind_cell_theme((row_index, channel, subcolumn))
+
+    def _bind_cell_theme(self, key: CellKey) -> None:
+        """Gives one cell the theme it currently answers to, where the grid holds that cell."""
+        cell_id = self._editable_cells.widget(key)
+        if cell_id is not None:
+            dpg.bind_item_theme(cell_id, self._cell_theme(key))
+
+    def _cell_theme(self, key: CellKey) -> int:
+        """The theme a cell wears: its slot's color, dimmed while its channel is silenced.
+
+        A voice slot takes the color of the kind of voice standing in it, so a reader tells a
+        recording from a hand-written one across the whole grid; a slot naming none takes the
+        neutral shade the other slots' colors are read against.
+        """
+        _, channel, subcolumn = key
+        return self._themes.cell(
+            subcolumn,
+            self._cell_kinds.get(key),
+            muted=self._is_muted_cell(channel),
+        )
+
+    def _is_muted_cell(self, channel: Optional[ChannelName]) -> bool:
+        """Whether a cell's channel is silenced, the sample column speaking for every channel."""
+        return channel is not None and self._is_muted(channel)
+
+    def _is_muted(self, channel: ChannelName) -> bool:
+        return self._current_channels is not None and self._current_channels.is_muted(channel)
+
+    def set_enabled(self, enabled: bool) -> None:
+        dpg.configure_item(TAG_SEQUENCER_TRACKER_GROUP, enabled=enabled)
+
+    def _update_cell_display(
+        self,
+        row: int,
+        channel: Optional[ChannelName],
+    ) -> None:
+        for subcolumn in SubColumn:
+            key = (row, channel, subcolumn)
+            cell_id = self._editable_cells.widget(key)
+            if cell_id is not None:
+                dpg.configure_item(cell_id, label=self._render_cell(key))
+
+    def _update_caret(self) -> None:
+        """Arms (or clears) the shared caret box on the active subcolumn cell."""
+        cursor = self._input_state.cursor
+        if cursor is None:
+            CaretOverlay.clear(TAG_SEQUENCER_TRACKER_TABLE)
+            return
+
+        key = (cursor.row, cursor.channel, cursor.subcolumn)
+        font = Font.MONO_BOLD_SMALL if cursor.channel is None else Font.MONO_SMALL
+        CaretOverlay.set_target(
+            owner=TAG_SEQUENCER_TRACKER_TABLE,
+            widget=self._editable_cells.widget(key),
+            caret_index=len(self._input_state.pending),
+            font=font,
+            clip_widget=TAG_SEQUENCER_TRACKER_WINDOW,
+        )
+
+    def _resolve_voice(
+        self,
+        sample_index: int,
+        channel: Optional[ChannelName],
+    ) -> Optional[Tuple[int, VoiceEntryViewModel]]:
+        """The voice a typed number names, where the column it was typed in takes that voice.
+
+        A number past the end of the pool reads as the last voice, so a reader typing freely lands
+        on something. The sample column stands by for a voice it cannot spread over channels, and
+        answering nothing here is what leaves the cell showing the value it already held. The whole
+        entry comes back, so the cell takes the voice's kind along with its number.
+        """
+        if not self._current_samples or not self._current_samples.voices:
+            return None
+
+        voices = self._current_samples.voices
+        sample_index = max(0, min(sample_index, len(voices) - 1))
+        voice = voices[sample_index]
+        if not column_takes(channel, voice.kind):
+            return None
+
+        return sample_index, voice
+
+    def _handle_edit_action(self, action: EditAction) -> None:
+        """Commits a single-subcolumn edit.
+
+        An :class:`EditAction` only ever carries the subcolumn under the cursor;
+        the others are ``None`` meaning "leave unchanged". Forwarding those ``None``
+        values lets the downstream partial update preserve the rest of the row.
+        """
+        row, channel = action.row, action.channel
+
+        if action.note_off:
+            self._show_voice(row, channel, NOTE_OFF, None)
+            self.call(self.on_set_note_off, row, channel)
+            return
+
+        voice_id: Optional[str] = None
+
+        if action.sample_index is not None:
+            resolved = self._resolve_voice(action.sample_index, channel)
+            if resolved is not None:
+                sample_index, voice = resolved
+                voice_id = voice.voice_id
+                self._show_voice(
+                    row,
+                    channel,
+                    tracker_display.format_committed(SubColumn.VOICE, sample_index),
+                    voice.kind,
+                )
+
+        if action.transpose is not None:
+            self._editable_cells.values[(row, channel, SubColumn.TRANSPOSE)] = tracker_display.format_committed(
+                SubColumn.TRANSPOSE,
+                action.transpose,
+            )
+
+        if action.volume is not None:
+            self._editable_cells.values[(row, channel, SubColumn.VOLUME)] = tracker_display.format_committed(
+                SubColumn.VOLUME,
+                action.volume,
+            )
+
+        self.call(
+            self.on_set_row,
+            row,
+            channel,
+            voice_id,
+            action.transpose,
+            action.volume,
+        )
+
+    def _show_voice(
+        self,
+        row: int,
+        channel: Optional[ChannelName],
+        label: str,
+        kind: Optional[VoiceKind],
+    ) -> None:
+        """Shows a voice slot's new reading before the project answers, color and number together.
+
+        The panel holds both caches, so an edit that the logic goes on to refuse leaves the cell
+        reading exactly what it held.
+        """
+        key = (row, channel, SubColumn.VOICE)
+        self._editable_cells.values[key] = label
+        self._cell_kinds[key] = kind
+        self._bind_cell_theme(key)
+
+    def _forget_voice(self, row: int, channel: Optional[ChannelName]) -> None:
+        """Empties a voice slot's caches, so a cleared cell drops its number and its color as one."""
+        key = (row, channel, SubColumn.VOICE)
+        self._editable_cells.values.pop(key, None)
+        self._cell_kinds[key] = None
+        self._bind_cell_theme(key)
+
+    def _handle_clear_action(self, action: ClearAction) -> None:
+        if action.subcolumn is None:
+            for subcolumn in SubColumn:
+                self._editable_cells.values.pop(
+                    (action.row, action.channel, subcolumn),
+                    None,
+                )
+            self._forget_voice(action.row, action.channel)
+            self.call(self.on_clear_row, action.row, action.channel)
+        else:
+            if action.subcolumn is SubColumn.VOICE:
+                self._forget_voice(action.row, action.channel)
+            else:
+                self._editable_cells.values.pop(
+                    (action.row, action.channel, action.subcolumn),
+                    None,
+                )
+
+            self.call(
+                self.on_clear_subcolumn,
+                action.row,
+                action.channel,
+                action.subcolumn,
+            )
+
+    def _apply_cell_highlight(
+        self,
+        row_index: int,
+        channel: Optional[ChannelName],
+    ) -> None:
+        """Marks the cursor: its cell on the cell layer, its row through the row background."""
+        self._paint_row(row_index)
+        dpg.highlight_table_cell(
+            TAG_SEQUENCER_TRACKER_TABLE,
+            tracker_table_row(row_index),
+            tracker_table_column(channel),
+            color=self._layout.colors.cell_cursor.rgba,
+        )
+
+    def _selected_cells(self) -> FrozenSet[CellKey]:
+        """Every cell the selection covers, clipped to the rows the shown frame holds.
+
+        A region names rows of the grid rather than widgets, so a row past the end of a shorter
+        frame is left out: the selection reaches as far as the pattern does.
+        """
+        region = self._input_state.region
+        if region is None:
+            return frozenset()
+
+        keys: Set[CellKey] = set()
+        for row_index in region.rows:
+            if row_index >= self._current_row_count:
+                continue
+
+            for slot in region.slots:
+                keys.add((row_index, slot.channel, slot.subcolumn))
+
+        return frozenset(keys)
+
+    def _remove_cell_highlight(
+        self,
+        row_index: int,
+        channel: Optional[ChannelName],
+    ) -> None:
+        """Clears the cursor cell and returns its row to the background the row itself carries.
+
+        The input state names the row the cursor stands on, so it is updated before this runs
+        and the row resolves to what it looks like once the cursor has left.
+        """
+        dpg.unhighlight_table_cell(
+            TAG_SEQUENCER_TRACKER_TABLE,
+            tracker_table_row(row_index),
+            tracker_table_column(channel),
+        )
+        self._paint_row(row_index)
+
+    def _on_cell_clicked(
+        self,
+        sender: Sender,
+        _app_data: bool,
+        user_data: Tuple[int, Optional[ChannelName], SubColumn],
+    ) -> None:
+        """Places the cursor on the clicked cell, or carries a selection out to it while Shift is held.
+
+        A drag that comes back to the cell it started from ends on a click, and the selection takes
+        that click as the end of the drag, so the range dragged out stands and the cursor with it.
+        """
+        if self._selection.claims_click(sender, user_data):
+            return
+
+        state = self._committed_state()
+        row_index, channel, subcolumn = user_data
+        cursor = TrackerCursor(row_index, channel, subcolumn)
+        if Modifier.SHIFT in capture_modifiers():
+            self._apply_state(state.extend_to(cursor))
+            return
+
+        self._apply_state(TrackerInputState(cursor=cursor, pending=""))
+
+    # TODO: to abstract [_on_cell_held]
+    def _on_cell_held(self, _sender: Sender, app_data: Sender) -> None:
+        """Carries the selection to the cell under a held pointer, which is what drags a range out.
+
+        The gesture states how far the pointer has carried: a plain drag anchors at the cell the
+        press landed on, and one whose press held Shift carries the selection already standing.
+
+        A pointer held past an edge travels the grid first, so the reach that follows reads the rows
+        the travel has brought into view.
+        """
+        self._travel.advance()
+        reach = self._selection.hold(app_data)
+        if reach is None:
+            return
+
+        state = self._committed_state()
+        if not reach.extends:
+            state = TrackerInputState(cursor=TrackerCursor(*reach.origin))
+
+        self._apply_state(state.extend_to(TrackerCursor(*reach.reached)))
+
+    def _on_pointer_pressed(self, _sender: Sender, _app_data: int) -> None:
+        """Drops the gesture a finished drag left behind, so this press selects on its own.
+
+        A press is where a gesture ends rather than the release before it, because the release
+        reaches this panel ahead of the click the cell itself reports: a drag that comes back to
+        the cell it started from would otherwise have its selection taken down by its own click.
+        """
+        self._selection.drop_gesture()
+        self._travel.rest()
+
+    def _travel_band(self) -> Optional[TravelBand]:
+        """Where the frame's rows stand, which is the band a drag held below them travels across."""
+        first = self._row_top(0)
+        if first is None or self._current_row_count == 0:
+            return None
+
+        return TravelBand(
+            first_edge=first,
+            cell_extent=self._layout.tracker.row_height,
+            cell_count=self._current_row_count,
+        )
+
+    def _cell_at(self) -> Optional[CellKey]:
+        """The cell the pointer stands on, clamped to the grid the shown frame lays out.
+
+        A drag that runs past an edge reads as the edge itself, so carrying the pointer beyond
+        the last row or the last column selects up to it rather than stopping where the grid ends.
+        """
+        left, top = dpg.get_mouse_pos(local=False)
+        row_index = self._row_at(top)
+        slot = self._slot_at(left)
+        if row_index is None or slot is None:
+            return None
+
+        return (row_index, slot.channel, slot.subcolumn)
+
+    def _row_at(self, top: float) -> Optional[int]:
+        """Which pattern row stands at a height, counted from the first row's top edge.
+
+        Every row is the height the layout states, so the count is arithmetic: the rows the
+        grid holds are evenly pitched whether or not they are scrolled into view.
+        """
+        first = self._row_top(0)
+        if first is None or self._current_row_count == 0:
+            return None
+
+        row_index = int((top - first) // self._layout.tracker.row_height)
+        return max(0, min(row_index, self._current_row_count - 1))
+
+    def _slot_at(self, left: float) -> Optional[TrackerSlot]:
+        """Which subcolumn stands at a width, taken from where the first row's cells are drawn.
+
+        The subcolumns differ in width and the columns stand apart, so the walk asks each cell
+        where it was drawn and takes the first one reaching past the pointer.
+        """
+        if self._current_row_count == 0:
+            return None
+
+        for index in range(SLOT_COUNT):
+            slot = slot_from_flat(index)
+            widget = self._editable_cells.widget((0, slot.channel, slot.subcolumn))
+            if widget is None:
+                return None
+
+            cell_left, _ = dpg.get_item_rect_min(widget)
+            cell_width, _ = dpg.get_item_rect_size(widget)
+            if left < cell_left + cell_width:
+                return slot
+
+        return slot_from_flat(SLOT_COUNT - 1)
+
+    def _on_header_clicked(
+        self,
+        sender: Sender,
+        _app_data: bool,
+        user_data: Optional[ChannelName],
+    ) -> None:
+        self._channel_switch.click(sender, user_data)
+
+    def _on_header_right_clicked(
+        self,
+        _sender: Sender,
+        app_data: Tuple[int, int],
+    ) -> None:
+        """Opens the channel menu for the right-clicked column header.
+
+        The registry reaches the header labels alone, so a click on one of them names its column
+        through the map the header row filled in; a label replaced by a rebuild is absent from it.
+        """
+        mouse_button, clicked_item = app_data
+        if mouse_button != dpg.mvMouseButton_Right:
+            return
+
+        if clicked_item not in self._header_columns:
+            return
+
+        self._menu.show_for_header(self._header_columns[clicked_item])
+
+    def _on_cell_right_clicked(
+        self,
+        _sender: Sender,
+        app_data: Tuple[int, int],
+    ) -> None:
+        """Opens the cell-operations menu for the right-clicked subcolumn.
+
+        The menu targets the clicked cell directly and leaves the edit cursor where it is,
+        so a right-click inspects a cell while the caret stays put.
+        """
+        mouse_button, clicked_item = app_data
+        if mouse_button != dpg.mvMouseButton_Right:
+            return
+
+        key = dpg.get_item_user_data(clicked_item)
+        if key is None:
+            return
+
+        row_index, channel, subcolumn = key
+        self._menu.show_for_cell(row_index, channel, subcolumn)
+
+    # TODO: to abstract
+    @property
+    def edit_surface(self) -> TrackerEditSurface:
+        """This grid as the menu bar's Edit menu reaches it."""
+        return self._surface
+
+    # TODO: to abstract
+    def input_state(self) -> TrackerInputState:
+        """Where the cursor stands and what it has selected, which a target is resolved from."""
+        return self._input_state
+
+    # TODO: to abstract
+    def owns_keys(self) -> bool:
+        """Whether the grid owns the next key, which is also what the Edit menu asks."""
+        return self._keys_active()
+
+    @property
+    def channel_switch(self) -> ChannelSwitch:
+        """The switch a column header's click and menu act through."""
+        return self._channel_switch
+
+    @property
+    def channels(self) -> Optional[SequencerChannelsViewModel]:
+        """Which channels stand silenced, as the last view the panel was given states it."""
+        return self._current_channels
+
+    @property
+    def voices(self) -> Tuple[VoiceEntryViewModel, ...]:
+        """The pool a cell picks a voice from, empty while the panel has been given none."""
+        return self._current_samples.voices if self._current_samples is not None else ()
+
+    def column_label(self, channel: Optional[ChannelName]) -> str:
+        """The name a column carries, which its header and its menu title show."""
+        return self._column_labels[channel]
+
+    def add_action_items(self, target: TrackerTarget) -> None:
+        """Builds every action a tracker cell offers, which is what the menu bar's Edit group asks for."""
+        self._menu.add_action_items(target)
+
+    def _keys_active(self) -> bool:
+        """Whether the grid owns the next key: its tab is in front, its cursor is set, and no
+        field holds the keyboard.
+
+        The grid keeps its cursor while another tab is worked on, so the tab in front is what
+        decides whether a press reaches it. A focused field keeps the keyboard, so the grid stands
+        down while the user types into an input. A modal dialog claims keys at a higher priority in
+        the router, so the grid carries no modal check of its own.
+        """
+        return self._tab_active() and self._input_state.cursor is not None and not self._router.is_field_focused
+
+    # TODO: to extract common parts [_on_key_pressed]
+    def _on_key_pressed(self, event: KeyEvent) -> bool:
+        """Applies a tracker key to the active cell, reporting whether the grid consumed it.
+
+        The scheme says which press each tracker action answers to; a press the tracker category
+        leaves unnamed goes to cell entry, which keeps the note and hex keys and hands the rest to
+        the application's global shortcuts.
+        """
+        cursor = self._input_state.cursor
+        if cursor is None:
+            return False
+
+        shortcut_id = self._shortcuts.action(ShortcutCategory.TRACKER, event)
+        if shortcut_id is None:
+            return self._type_character(event)
+
+        if shortcut_id is ShortcutId.TRACKER_PLAY_FROM_ROW:
+            self.call(self.on_play_from_row, cursor.row)
+            return True
+
+        if self._move_cursor(shortcut_id):
+            return True
+
+        if self._extend_selection(shortcut_id):
+            return True
+
+        if self.select_shape(shortcut_id, cursor):
+            return True
+
+        if self._block_action(shortcut_id):
+            return True
+
+        if self._adjust_action(shortcut_id):
+            return True
+
+        return self._edit_row(shortcut_id)
+
+    def _move_cursor(self, shortcut_id: ShortcutId) -> bool:
+        """Moves the edit cursor over the grid, reporting whether the action was one of its moves."""
+        match shortcut_id:
+            case ShortcutId.TRACKER_PREVIOUS_ROW:
+                self._move_row(-1)
+            case ShortcutId.TRACKER_NEXT_ROW:
+                self._move_row(1)
+            case ShortcutId.TRACKER_PREVIOUS_SUBCOLUMN:
+                self._move_subcolumn(-1)
+            case ShortcutId.TRACKER_NEXT_SUBCOLUMN:
+                self._move_subcolumn(1)
+            case ShortcutId.TRACKER_PREVIOUS_COLUMN:
+                self._move_column(-1)
+            case ShortcutId.TRACKER_NEXT_COLUMN:
+                self._move_column(1)
+            case ShortcutId.TRACKER_FIRST_ROW:
+                self._jump_to_row(0)
+            case ShortcutId.TRACKER_LAST_ROW:
+                self._jump_to_row(self._current_row_count - 1)
+            case ShortcutId.TRACKER_PAGE_UP:
+                self._page(-self._layout.tracker.page_size)
+            case ShortcutId.TRACKER_PAGE_DOWN:
+                self._page(self._layout.tracker.page_size)
+            case _:
+                return False
+
+        return True
+
+    def _extend_selection(self, shortcut_id: ShortcutId) -> bool:
+        """Grows or shrinks the selected block, reporting whether the action was one of its reaches.
+
+        Each reach moves the end the cursor holds while the anchor stays where the selection began,
+        so the same keys that move the cursor select with Shift held.
+        """
+        match shortcut_id:
+            case ShortcutId.TRACKER_EXTEND_SELECTION_UP:
+                self._extend_row(-1)
+            case ShortcutId.TRACKER_EXTEND_SELECTION_DOWN:
+                self._extend_row(1)
+            case ShortcutId.TRACKER_EXTEND_SELECTION_LEFT:
+                self._extend_slot(-1)
+            case ShortcutId.TRACKER_EXTEND_SELECTION_RIGHT:
+                self._extend_slot(1)
+            case ShortcutId.TRACKER_EXTEND_SELECTION_TO_FIRST_ROW:
+                self._extend_to_row(0)
+            case ShortcutId.TRACKER_EXTEND_SELECTION_TO_LAST_ROW:
+                self._extend_to_row(self._current_row_count - 1)
+            case _:
+                return False
+
+        return True
+
+    def select_shape(
+        self,
+        shortcut_id: ShortcutId,
+        cell: TrackerCursor,
+    ) -> bool:
+        """Selects a rectangle of the grid, reporting whether the action was one of its shapes.
+
+        A press names its shape from the cell the cursor stands on, which is the cell the menu
+        items name as well, so a key and an item select the same block.
+        """
+        match shortcut_id:
+            case ShortcutId.TRACKER_SELECT_ALL:
+                self._select_all()
+            case ShortcutId.TRACKER_SELECT_COLUMN:
+                self._select_column(cell)
+            case ShortcutId.TRACKER_SELECT_SUBCOLUMN:
+                self._select_subcolumn(cell)
+            case _:
+                return False
+
+        return True
+
+    def _select_all(self) -> None:
+        self._select(self._committed_state().select_all(self._current_row_count))
+
+    def _select_column(self, cell: TrackerCursor) -> None:
+        self._select(self._committed_state().select_column(cell, self._current_row_count))
+
+    def _select_subcolumn(self, cell: TrackerCursor) -> None:
+        self._select(self._committed_state().select_subcolumn(cell, self._current_row_count))
+
+    def _select(self, new_state: TrackerInputState) -> None:
+        """Stands a selected shape, revealing the row its cursor landed on.
+
+        A shape ends at the frame's last row, so the reveal carries the grid to the end the cursor
+        now holds — the same landing a Shift+End reach makes.
+        """
+        self._apply_state(new_state)
+        self._scroll_cursor_into_view()
+
+    def _block_action(self, shortcut_id: ShortcutId) -> bool:
+        """Acts on the selected block, reporting whether the action was one of its gestures.
+
+        Delete is a block gesture only while a selection stands: with one it empties what the
+        selection covers and keeps it, and with none it falls through to clearing the cell under
+        the cursor, the meaning that key already carries.
+        """
+        match shortcut_id:
+            case ShortcutId.TRACKER_COPY_BLOCK:
+                self._surface.copy()
+            case ShortcutId.TRACKER_CUT_BLOCK:
+                self._surface.cut()
+            case ShortcutId.TRACKER_CLEAR_ROW if self._input_state.region is not None:
+                self._surface.delete()
+            case ShortcutId.TRACKER_PASTE_BLOCK:
+                self._surface.paste()
+            case _:
+                return False
+
+        return True
+
+    def _adjust_action(self, shortcut_id: ShortcutId) -> bool:
+        """Shifts the covered cells' transpose or volume, reporting whether the action was one of
+        the two axes.
+
+        A press acts on the block the cursor stands in, which is the selection while one covers it
+        and the cursor's own cell otherwise — the target the menus resolve as well, so a key and a
+        menu item reach the same cells.
+        """
+        transpose_step = TRANSPOSE_STEPS.get(shortcut_id)
+        if transpose_step is not None:
+            self._adjust_at_cursor(self.on_adjust_transpose, transpose_step)
+            return True
+
+        volume_step = VOLUME_STEPS.get(shortcut_id)
+        if volume_step is not None:
+            self._adjust_at_cursor(self.on_adjust_volume, volume_step)
+            return True
+
+        return False
+
+    def _adjust_at_cursor(
+        self,
+        hook: Optional[OnAdjustCallback],
+        delta: int,
+    ) -> None:
+        """Raises an adjustment on the block the cursor stands in, the entry being typed landing first.
+
+        Committing ahead of the shift is what lets a nudge carry the value the reader has just
+        finished typing, the rule the block gestures follow as well.
+        """
+        self.commit_entry()
+        target = self._surface.cursor_target()
+        if target is not None:
+            self.call(hook, target.region, delta)
+
+    def _edit_row(self, shortcut_id: ShortcutId) -> bool:
+        """Empties the cell under the cursor or drops a partial entry, reporting whether the action
+        was one of the cell edits.
+
+        A cancel with nothing typed and nothing selected leaves the press to the application, so
+        Escape stops playback while the grid holds a cursor.
+        """
+        match shortcut_id:
+            case ShortcutId.TRACKER_CLEAR_ROW:
+                self._clear_row()
+                self._move_row(1)
+            case ShortcutId.TRACKER_CLEAR_PREVIOUS_ROW:
+                self._clear_row()
+                self._move_row(-1)
+            case ShortcutId.TRACKER_CANCEL_ENTRY:
+                if not self._input_state.pending and self._input_state.anchor is None:
+                    return False
+
+                self._apply_state(self._input_state.cancel())
+            case _:
+                return False
+
+        return True
+
+    def _move_row(self, delta: int) -> None:
+        self._apply_state(
+            self._committed_state().navigate_row(
+                delta,
+                self._current_row_count,
+            )
+        )
+
+    def _page(self, delta: int) -> None:
+        """Moves the cursor a page of rows, then scrolls it back into view."""
+        self._move_row(delta)
+        self._scroll_cursor_into_view()
+
+    def _jump_to_row(self, index: int) -> None:
+        self._apply_state(
+            self._committed_state().navigate_row(
+                index,
+                self._current_row_count,
+                absolute=True,
+            )
+        )
+        self._scroll_cursor_into_view()
+
+    def _extend_row(self, delta: int) -> None:
+        self._apply_state(
+            self._committed_state().extend_row(
+                delta,
+                self._current_row_count,
+            )
+        )
+
+    def _extend_to_row(self, index: int) -> None:
+        self._apply_state(
+            self._committed_state().extend_row(
+                index,
+                self._current_row_count,
+                absolute=True,
+            )
+        )
+        self._scroll_cursor_into_view()
+
+    def _extend_slot(self, delta: int) -> None:
+        self._apply_state(self._committed_state().extend_slot(delta))
+
+    def _move_subcolumn(self, delta: int) -> None:
+        self._apply_state(self._committed_state().navigate_subcolumn(delta))
+
+    def _move_column(self, delta: int) -> None:
+        self._apply_state(self._committed_state().navigate_column_by(delta))
+
+    def _scroll_cursor_into_view(self) -> None:
+        """Scrolls the tracker so the cursor's row stays on screen after a page or Home/End jump."""
+        cursor = self._input_state.cursor
+        if cursor is not None:
+            self._scroll_row_into_view(cursor.row)
+
+    def _scroll_row_into_view(self, row_index: int) -> None:
+        """Scrolls the tracker so the given row rests within the visible band.
+
+        The frame's rows all live in one scrolling table, so a row outside the band is reached by
+        setting the scroll from that row's position within the frame: the first row rests at the
+        top of the band, the last at the bottom, and the rows between drift across it. This is how
+        a jump of the edit cursor lands.
+        """
+        scroll_max = self._scroll_extent()
+        if scroll_max is None:
+            return
+
+        fraction = row_index / (self._current_row_count - 1)
+        dpg.set_y_scroll(TAG_SEQUENCER_TRACKER_TABLE, fraction * scroll_max)
+
+    def _scroll_row_to_band_top(self, row_index: int) -> None:
+        """Scrolls the tracker so the given row heads the visible band.
+
+        A playhead read from one place is a playhead that stays easy to read, so the sounding row
+        is carried to the top of the band by the height of the rows above it, and the rows it is
+        about to reach fill the band beneath it. The rows closing a frame have nothing behind them
+        left to scroll into place: there the grid rests at its end and the playhead walks down the
+        band to meet it.
+        """
+        scroll_max = self._scroll_extent()
+        offset = self._row_offset(row_index)
+        if scroll_max is None or offset is None:
+            return
+
+        dpg.set_y_scroll(TAG_SEQUENCER_TRACKER_TABLE, min(offset, scroll_max))
+
+    def _scroll_extent(self) -> Optional[float]:
+        """How far the grid scrolls, once there is a built table with a frame too tall to fit it."""
+        if self._current_row_count <= 1:
+            return None
+
+        if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
+            return None
+
+        scroll_max = dpg.get_y_scroll_max(TAG_SEQUENCER_TRACKER_TABLE)
+        return scroll_max if scroll_max > 0 else None
+
+    def _row_offset(self, row_index: int) -> Optional[float]:
+        """How far down the frame a row stands, measured from the first row to it.
+
+        The rows report where they were last drawn, so the distance between two of them is the
+        scroll that brings the lower one to where the upper one stands, and the distance from the
+        first row is the scroll that carries a row to the head of the band. Reading it off the rows
+        holds whatever height they take and however tall the header above them stands. A grid
+        awaiting its first layout measures nothing, and its rows are placed by the report that
+        follows.
+        """
+        first = self._row_top(0)
+        row = self._row_top(row_index)
+        if first is None or row is None:
+            return None
+
+        return row - first
+
+    def _row_top(self, row_index: int) -> Optional[float]:
+        """Where a pattern row's top edge stands, in the coordinates the viewport is drawn in."""
+        row = self._rows.get(row_index)
+        if row is None or not dpg.does_item_exist(row):
+            return None
+
+        _, top = dpg.get_item_rect_min(row)
+        return float(top)
+
+    def _clear_row(self) -> None:
+        state, clear_action = self._input_state.clear()
+        self._handle_clear_action(clear_action)
+        self._apply_state(state)
+
+    def _committed_state(self) -> TrackerInputState:
+        state, edit_action = self._input_state.commit_partial()
+        if edit_action is not None:
+            self._handle_edit_action(edit_action)
+
+        return state
+
+    def commit_entry(self) -> None:
+        """Writes the entry being typed into the cell the cursor stands on.
+
+        A block gesture takes this first, so what it lifts out carries the value the reader has
+        just finished typing.
+        """
+        self._apply_state(self._committed_state())
+
+    def _type_character(self, event: KeyEvent) -> bool:
+        """Types a note, digit or sign into the cell under the cursor, reporting whether the press
+        was one.
+
+        A press holding Ctrl or Alt is an application gesture, so cell entry reads the plain keys
+        and leaves the rest to the global shortcuts.
+        """
+        if Modifier.CTRL in event.modifiers or Modifier.ALT in event.modifiers:
+            return False
+
+        if self._type_note(event):
+            return True
+
+        char = HEX_KEYS.get(event.key) or SIGN_KEYS.get(event.key)
+        if char is None:
+            return False
+
+        new_state, edit_action = self._input_state.type_char(char)
+        if edit_action is not None:
+            self._handle_edit_action(edit_action)
+            new_state = new_state.navigate_row(1, self._current_row_count)
+
+        self._apply_state(new_state)
+        return True
+
+    def _type_note(self, event: KeyEvent) -> bool:
+        """Types the note a piano key names into the cell under the cursor.
+
+        The keys reach the pitch column of a channel that names notes: the sample column speaks
+        for a whole sample, whose channels rest at pitches of their own, and the noise channel
+        selects one of sixteen periods, which its own hex entry already writes.
+        """
+        cursor = self._input_state.cursor
+        if cursor is None or cursor.subcolumn is not SubColumn.TRANSPOSE or cursor.channel is None:
+            return False
+
+        if speaks_in_periods(cursor.channel):
+            return False
+
+        semitone = PIANO_KEYS.get(event.key)
+        if semitone is None:
+            return False
+
+        self.call(
+            self.on_note_typed,
+            cursor.row,
+            cursor.channel,
+            (self._octave + OCTAVE_OFFSET) * OCTAVE_SEMITONES + semitone,
+        )
+        self._apply_state(self._input_state.reset_pending().navigate_row(1, self._current_row_count))
+        return True
+
+    def _on_row_number_clicked(
+        self,
+        sender: Sender,
+        _app_data: bool,
+        user_data: int,
+    ) -> None:
+        dpg.set_value(sender, False)
+        existing = self._input_state.cursor
+        channel = existing.channel if existing is not None else None
+        subcolumn = existing.subcolumn if existing is not None else SubColumn.VOICE
+        self._apply_state(
+            TrackerInputState(
+                cursor=TrackerCursor(
+                    user_data,
+                    channel,
+                    subcolumn,
+                ),
+                pending="",
+            )
+        )
+
+    def _on_row_hovered(self, _sender: Sender, app_data: int) -> None:
+        if not dpg.does_item_exist(app_data):
+            return
+
+        row_index = dpg.get_item_user_data(app_data)
+        if row_index is not None:
+            self._highlighted_row = row_index
+
+    def highlight_row(self, row_index: Optional[int] = None) -> None:
+        """Marks the row the pointer rests on, over the background that row already carries."""
+        self.unhighlight_row(self._highlighted_row)
+        self._highlighted_row = row_index
+        if row_index is None:
+            return
+
+        self._paint_hovered_row(row_index)
+
+    def unhighlight_row(self, row_index: Optional[int] = None) -> None:
+        """Returns a hovered row to the background its group and the marks on it give it."""
+        if row_index is None:
+            return
+
+        self._highlighted_row = None
+        self._paint_row(row_index)
+
+    def set_row_following(self, following: bool) -> None:
+        """Whether the grid keeps the sounding row within the visible band as playback advances."""
+        self._follows_playing_row = following
+
+    def set_playing_position(self, position: Optional[SongPosition]) -> None:
+        """Moves the playhead to the position playback reached, mark and grid arriving together.
+
+        The position carries the order frame with the row, which is what tells the grid whether the
+        row it would mark belongs to the pattern it shows. A row's mark is drawn on the very next
+        frame while the grid answers a scroll on the frame after that, so a mark drawn as the row is
+        reported stands a row clear of the band's head until the grid catches up — a step down and
+        back on every row. Holding the mark until the frame its scroll lands on carries the two as
+        one.
+        """
+        self._playing_frame = position.order_position if position is not None else None
+        self._playing_row = position.row_index if position is not None else None
+        self._reveal_playing_row()
+        FrameCallbackManager.set_frame_callback(self._paint_playhead, PLAYHEAD_PAINT_FRAMES)
+
+    @property
+    def _playhead_row(self) -> Optional[int]:
+        """The row the mark stands on: the sounding row, while the grid shows the frame it sounds."""
+        if self._playing_frame == self._displayed_frame:
+            return self._playing_row
+
+        return None
+
+    def _paint_playhead(self) -> None:
+        """Draws the mark on the row the playhead has reached, clearing the row it came from."""
+        previous = self._painted_row
+        self._painted_row = self._playhead_row
+        if previous is not None and previous != self._painted_row:
+            self._paint_row(previous)
+
+        if self._painted_row is not None:
+            self._paint_row(self._painted_row)
+
+    def _reveal_playing_row(self) -> None:
+        """Carries the sounding row to the head of the band while the grid follows the playhead."""
+        row_index = self._playhead_row
+        if self._follows_playing_row and row_index is not None:
+            self._scroll_row_to_band_top(row_index)
+
+    def _live_row_count(self) -> int:
+        """The table's current pattern-row count, read live from DearPyGui.
+
+        The cached ``_current_row_count`` reflects the last build on this thread; a concurrent
+        rebuild on another thread can leave it stale, so row-index-bounded DearPyGui calls read the
+        actual children directly. The count covers the pattern rows that follow the header row,
+        so it compares against a pattern row index.
+        """
+        if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
+            return 0
+
+        rows = dpg.get_item_children(TAG_SEQUENCER_TRACKER_TABLE, slot=1)
+        return len(rows) - HEADER_TABLE_ROWS if rows else 0

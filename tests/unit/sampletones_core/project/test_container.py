@@ -1,17 +1,21 @@
 import json
 import zipfile
 from pathlib import Path
+from typing import Any, Callable, Dict, Final, Tuple
 from unittest.mock import patch
 
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import Metadata
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.container import ProjectContainer
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
 from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
@@ -28,6 +32,11 @@ from sampletones_shared.exceptions import (
 from tests.conftest import ReconstructionFactory
 from tests.suite.errors import DIRECTORY_READ_ERRORS
 
+Document = Dict[str, Any]
+DocumentRewrite = Callable[[Document], Document]
+
+FORMAT_1_0_SAMPLE_FIELDS: Final[Tuple[str, ...]] = ("id", "name", "reconstruction_id")
+
 
 def _rewrite_format_version(source: Path, target: Path, *, format_version: str) -> None:
     with zipfile.ZipFile(source, "r") as archive:
@@ -42,6 +51,64 @@ def _rewrite_format_version(source: Path, target: Path, *, format_version: str) 
             archive.writestr(name, data)
 
 
+def _rewrite_document(source: Path, target: Path, rewrite: DocumentRewrite) -> None:
+    with zipfile.ZipFile(source, "r") as archive:
+        members = {name: archive.read(name) for name in archive.namelist()}
+
+    document = json.loads(members[PROJECT_DOCUMENT_NAME].decode("utf-8"))
+    members[PROJECT_DOCUMENT_NAME] = json.dumps(rewrite(document)).encode("utf-8")
+
+    with zipfile.ZipFile(target, "w") as archive:
+        for name, data in members.items():
+            archive.writestr(name, data)
+
+
+def _as_format_1_0(document: Document) -> Document:
+    """The document as project format 1.0 wrote it, the shape the upgrade chain reads.
+
+    Format 1.0 held the pool under ``samples``, each record naming an id, a name and the
+    reconstruction it references; named a channel pool's channel ``generator``; and wrote a note
+    command as a sample id beside the channel slice it named.
+    """
+    samples = [{field: voice[field] for field in FORMAT_1_0_SAMPLE_FIELDS} for voice in document["voices"]]
+    channels = {name: _pool_as_format_1_0(name, pool) for name, pool in document["song"]["channels"].items()}
+    downgraded = {key: value for key, value in document.items() if key != "voices"}
+    return {
+        **downgraded,
+        "format_version": "1.0",
+        "samples": samples,
+        "song": {**document["song"], "channels": channels},
+    }
+
+
+def _pool_as_format_1_0(channel_name: str, pool: Document) -> Document:
+    patterns = {index: _pattern_as_format_1_0(channel_name, pattern) for index, pattern in pool["patterns"].items()}
+    return {
+        "generator": pool["name"],
+        **{key: value for key, value in pool.items() if key != "name"},
+        "patterns": patterns,
+    }
+
+
+def _pattern_as_format_1_0(channel_name: str, pattern: Document) -> Document:
+    rows = [_row_as_format_1_0(channel_name, row) for row in pattern["rows"]]
+    return {**pattern, "rows": rows}
+
+
+def _row_as_format_1_0(channel_name: str, row: Document) -> Document:
+    command = row.get("command")
+    if not isinstance(command, dict) or "voice_id" not in command:
+        return row
+
+    return {
+        **row,
+        "command": {
+            "sample_id": command["voice_id"],
+            "generator_name": channel_name,
+        },
+    }
+
+
 def _populated_project(
     reconstruction_factory: ReconstructionFactory,
     shared: bool = False,
@@ -52,26 +119,23 @@ def _populated_project(
     first = Sample(name="lead", reconstruction=reconstruction_factory())
     second_reconstruction = first.reconstruction if shared else reconstruction_factory()
     second = Sample(name="bass", reconstruction=second_reconstruction)
-    project.samples.extend([first, second])
+    project.voices.extend([first, second])
 
     song = project.song
-    channel = song[GeneratorName.PULSE1]
+    channel = song[ChannelName.PULSE1]
     pattern = channel.patterns[0]
     pattern.name = "intro"
     pattern.rows[0] = Row(
         transpose=0,
-        command=Instrument(
-            sample_id=first.id,
-            generator_name=GeneratorName.PULSE1,
-        ),
+        command=NoteOn(voice_id=first.id),
         volume=15,
     )
 
     extra_index = channel.add_pattern(song.rows_per_pattern, name="verse")
     song.append_frame()
-    song.set_order_entry(1, GeneratorName.PULSE1, extra_index)
+    song.set_order_entry(1, ChannelName.PULSE1, extra_index)
     song.append_frame()
-    song.set_order_entry(2, GeneratorName.PULSE1, 0)
+    song.set_order_entry(2, ChannelName.PULSE1, 0)
     return project
 
 
@@ -90,21 +154,21 @@ class TestRoundTrip:
         assert loaded.metadata == project.metadata
         assert loaded.info.title == project.info.title
         assert loaded.settings.tempo == 128
-        assert [sample.id for sample in loaded.samples] == [sample.id for sample in project.samples]
-        assert [sample.name for sample in loaded.samples] == ["lead", "bass"]
+        assert [sample.id for sample in loaded.voices] == [sample.id for sample in project.voices]
+        assert [sample.name for sample in loaded.voices] == ["lead", "bass"]
 
         loaded_song = loaded.song
         assert loaded_song.order == project.song.order
-        pulse1_index_at_0 = loaded_song.order[0].get(GeneratorName.PULSE1)
+        pulse1_index_at_0 = loaded_song.order[0].get(ChannelName.PULSE1)
         first_pattern = loaded_song.pattern(
-            GeneratorName.PULSE1,
+            ChannelName.PULSE1,
             pulse1_index_at_0,
         )
         assert first_pattern.name == "intro"
         row = first_pattern.rows[0]
         assert row.transpose == 0
         assert row.command is not None
-        assert row.command.sample_id == loaded.samples[0].id
+        assert row.command.voice_id == loaded.voices[0].id
 
     def test_references_resolve_after_load(
         self,
@@ -117,12 +181,87 @@ class TestRoundTrip:
 
         loaded = ProjectContainer.load(path)
         loaded_song = loaded.song
-        channel = loaded_song[GeneratorName.PULSE1]
-        index_at_0 = loaded_song.order[0].get(GeneratorName.PULSE1)
+        channel = loaded_song[ChannelName.PULSE1]
+        index_at_0 = loaded_song.order[0].get(ChannelName.PULSE1)
         row = channel.pattern(index_at_0).rows[0]
-        assert loaded.sample(row.command.sample_id) is loaded.samples[0]
-        index_at_2 = loaded_song.order[2].get(GeneratorName.PULSE1)
+        assert loaded.voice(row.command.voice_id) is loaded.voices[0]
+        index_at_2 = loaded_song.order[2].get(ChannelName.PULSE1)
         assert channel.pattern(index_at_0) is channel.pattern(index_at_2)
+
+
+class TestInstrumentsRoundTrip:
+    """An instrument carries no payload beside itself, so a project holds it whole in its document."""
+
+    def test_an_instrument_survives_a_round_trip(self, tmp_path: Path) -> None:
+        project = Project.create(title="Demo")
+        instrument = Instrument(
+            name="lead",
+            envelopes=InstrumentEnvelopes(
+                volume=Envelope(items=(15, 12), loop_point=0),
+                arpeggio=Envelope(items=(0, 7)),
+                duty_cycle=Envelope(items=(2,)),
+            ),
+            initial_pitch=55,
+            initial_period=3,
+        )
+        project.voices.append(instrument)
+        path = tmp_path / "demo.stp"
+
+        ProjectContainer.save(project, path)
+        loaded = ProjectContainer.load(path)
+
+        assert loaded.voices[0] == instrument
+        restored = loaded.voice(instrument.id)
+        assert isinstance(restored, Instrument)
+        assert restored.envelopes == instrument.envelopes
+        assert restored.initial_pitch == instrument.initial_pitch
+        assert restored.initial_period == instrument.initial_period
+        assert restored.envelopes.volume.loop_point == instrument.envelopes.volume.loop_point
+
+    def test_an_instrument_leaves_no_reconstruction_in_the_archive(self, tmp_path: Path) -> None:
+        project = Project.create(title="Demo")
+        project.voices.append(Instrument(name="lead"))
+        path = tmp_path / "demo.stp"
+
+        ProjectContainer.save(project, path)
+
+        with zipfile.ZipFile(path) as archive:
+            assert [name for name in archive.namelist() if name.startswith(RECONSTRUCTIONS_DIRECTORY)] == []
+
+    def test_both_kinds_share_one_pool_in_their_written_order(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        project = Project.create(title="Demo")
+        sample = Sample(name="bass", reconstruction=reconstruction_factory())
+        instrument = Instrument(name="lead")
+        project.voices.extend([sample, instrument])
+        path = tmp_path / "demo.stp"
+
+        ProjectContainer.save(project, path)
+        loaded = ProjectContainer.load(path)
+
+        assert [voice.id for voice in loaded.voices] == [sample.id, instrument.id]
+        assert isinstance(loaded.voices[0], Sample)
+        assert isinstance(loaded.voices[1], Instrument)
+
+    def test_a_row_naming_an_instrument_still_names_it_after_a_round_trip(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        project = Project.create(title="Demo")
+        instrument = Instrument(name="lead", envelopes=InstrumentEnvelopes(volume=Envelope(items=(15,))))
+        project.voices.append(instrument)
+        project.song[ChannelName.PULSE1].patterns[0].rows[0] = Row(command=NoteOn(voice_id=instrument.id))
+        path = tmp_path / "demo.stp"
+
+        ProjectContainer.save(project, path)
+        loaded = ProjectContainer.load(path)
+
+        row = loaded.song[ChannelName.PULSE1].patterns[0].rows[0]
+        assert row.command is not None
+        assert loaded.voice(row.command.voice_id) is loaded.voices[0]
 
 
 class TestArchiveLayout:
@@ -171,7 +310,7 @@ class TestArchiveLayout:
             document = json.loads(archive.read(PROJECT_DOCUMENT_NAME).decode("utf-8"))
 
         assert document["format_version"] == SAMPLETONES_PROJECT_DATA_VERSION
-        assert set(document["song"]["channels"]) == {generator.value for generator in GeneratorName.items()}
+        assert set(document["song"]["channels"]) == {channel.value for channel in ChannelName.items()}
 
 
 class TestEmptyProject:
@@ -182,8 +321,8 @@ class TestEmptyProject:
         ProjectContainer.save(project, path)
         loaded = ProjectContainer.load(path)
 
-        assert len(loaded.samples) == 0
-        assert set(loaded.song.channels) == set(GeneratorName.items())
+        assert len(loaded.voices) == 0
+        assert set(loaded.song.channels) == set(ChannelName.items())
 
         with zipfile.ZipFile(path, "r") as archive:
             assert all(not name.startswith(f"{RECONSTRUCTIONS_DIRECTORY}/") for name in archive.namelist())
@@ -286,6 +425,27 @@ class TestLoadRejectsInvalidArchives:
 
 
 class TestVersionCompatibility:
+    def test_project_written_at_format_1_0_loads(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        project = _populated_project(reconstruction_factory)
+        original = tmp_path / "demo.stp"
+        ProjectContainer.save(project, original)
+        legacy = tmp_path / "legacy.stp"
+        _rewrite_document(original, legacy, _as_format_1_0)
+
+        loaded = ProjectContainer.load(legacy)
+
+        assert [voice.id for voice in loaded.voices] == [voice.id for voice in project.voices]
+        assert [voice.name for voice in loaded.voices] == [voice.name for voice in project.voices]
+        assert set(loaded.song.channels) == set(project.song.channels)
+
+        pattern = loaded.song.pattern(ChannelName.PULSE1, loaded.song.order[0][ChannelName.PULSE1])
+        row = pattern.rows[0]
+        assert row.command == NoteOn(voice_id=project.voices[0].id)
+
     def test_incompatible_format_version_raises(
         self,
         tmp_path: Path,
@@ -310,7 +470,7 @@ class TestVersionCompatibility:
     ) -> None:
         """A project carrying a reconstruction from another build is refused as it opens."""
         project = _populated_project(reconstruction_factory)
-        project.samples[0].reconstruction = project.samples[0].reconstruction.model_copy(
+        project.voices[0].reconstruction = project.voices[0].reconstruction.model_copy(
             update={"metadata": Metadata(reconstruction_data_version="0.0")},
         )
         path = tmp_path / "demo.stp"

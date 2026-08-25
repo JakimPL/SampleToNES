@@ -5,7 +5,6 @@ import pytest
 
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.ui.elements.table.cells import EditableCells
-from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
 from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
@@ -13,8 +12,10 @@ from sampletones_application.ui.panels.sequencer.input.order import (
 )
 from sampletones_application.ui.panels.sequencer.input.target import OrderTarget, TrackerTarget
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
-from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
-from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
+from sampletones_application.ui.panels.sequencer.tracker import adjust
+from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.view_model.sequencer.region import (
@@ -25,7 +26,7 @@ from sampletones_application.view_model.sequencer.region import (
 )
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
 from tests.suite.grid import (
     ORDER_BLOCK_SHORTCUTS,
@@ -39,7 +40,7 @@ CURSOR_ROW = 4
 POSITION_COUNT = 8
 CURSOR_POSITION = 2
 MASTER_ROW = CHANNEL_AXIS.index(None)
-PULSE1_ROW = CHANNEL_AXIS.index(GeneratorName.PULSE1)
+PULSE1_ROW = CHANNEL_AXIS.index(ChannelName.PULSE1)
 
 
 @dataclass
@@ -51,7 +52,7 @@ class Gestures:
     cut: List[TrackerRegion] = field(default_factory=list)
     deleted: List[TrackerRegion] = field(default_factory=list)
     pasted: List[TrackerCell] = field(default_factory=list)
-    cleared: List[Tuple[int, Optional[GeneratorName]]] = field(default_factory=list)
+    cleared: List[Tuple[int, Optional[ChannelName]]] = field(default_factory=list)
     transposed: List[Tuple[TrackerRegion, int]] = field(default_factory=list)
     volume_shifted: List[Tuple[TrackerRegion, int]] = field(default_factory=list)
 
@@ -64,7 +65,7 @@ class OrderGestures:
     cut: List[OrderRegion] = field(default_factory=list)
     deleted: List[OrderRegion] = field(default_factory=list)
     pasted: List[OrderCell] = field(default_factory=list)
-    cleared: List[Tuple[GeneratorName, int, Optional[int]]] = field(default_factory=list)
+    cleared: List[Tuple[ChannelName, int, Optional[int]]] = field(default_factory=list)
 
 
 def _press(text: str) -> KeyEvent:
@@ -77,8 +78,8 @@ def _panel(
     monkeypatch: pytest.MonkeyPatch,
     gestures: Gestures,
     *,
-    generator: Optional[GeneratorName] = GeneratorName.PULSE1,
-    subcolumn: SubColumn = SubColumn.INSTRUMENT,
+    channel: Optional[ChannelName] = ChannelName.PULSE1,
+    subcolumn: SubColumn = SubColumn.VOICE,
 ) -> GUISequencerTrackerPanel:
     """A tracker panel reporting the gestures it fires, with its grid left unbuilt.
 
@@ -86,15 +87,16 @@ def _panel(
     each gesture is read from what its hook receives.
     """
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
+    panel._cell_kinds = {}
     panel._shortcuts = shipped_source()
-    panel._input_state = TrackerInputState(cursor=TrackerCursor(CURSOR_ROW, generator, subcolumn))
+    panel._input_state = TrackerInputState(cursor=TrackerCursor(CURSOR_ROW, channel, subcolumn))
     panel._current_row_count = ROW_COUNT
     panel._editable_cells = EditableCells()
     panel.on_copy_block = gestures.copied.append
     panel.on_cut_block = gestures.cut.append
     panel.on_delete_block = gestures.deleted.append
     panel.on_paste_block = gestures.pasted.append
-    panel.on_clear_row = lambda row, generator_name: gestures.cleared.append((row, generator_name))
+    panel.on_clear_row = lambda row, channel_name: gestures.cleared.append((row, channel_name))
     panel.on_adjust_transpose = lambda region, delta: gestures.transposed.append((region, delta))
     panel.on_adjust_volume = lambda region, delta: gestures.volume_shifted.append((region, delta))
     panel.can_paste_block = lambda: True
@@ -108,12 +110,12 @@ def _order_panel(
     monkeypatch: pytest.MonkeyPatch,
     gestures: OrderGestures,
     *,
-    generator: Optional[GeneratorName] = GeneratorName.PULSE1,
+    channel: Optional[ChannelName] = ChannelName.PULSE1,
 ) -> GUISequencerOrderPanel:
     """An order panel reporting the gestures it fires, with its table left unbuilt."""
     panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
     panel._shortcuts = shipped_source()
-    panel._input_state = OrderInputState(cursor=OrderCursor(generator, CURSOR_POSITION))
+    panel._input_state = OrderInputState(cursor=OrderCursor(channel, CURSOR_POSITION))
     panel._position_count = POSITION_COUNT
     panel.on_copy_block = gestures.copied.append
     panel.on_cut_block = gestures.cut.append
@@ -152,7 +154,7 @@ class TestTrackerCopyKey:
 
         assert panel._on_key_pressed(_press("Ctrl+C")) is True
         assert gestures.copied[-1].rows == range(CURSOR_ROW, CURSOR_ROW + 1)
-        assert gestures.copied[-1].slots == (TrackerSlot(GeneratorName.PULSE1, SubColumn.VOLUME),)
+        assert gestures.copied[-1].slots == (TrackerSlot(ChannelName.PULSE1, SubColumn.VOLUME),)
 
     def test_a_grid_with_no_cursor_copies_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         gestures = Gestures()
@@ -192,17 +194,17 @@ class TestTrackerPasteKey:
         panel = _panel(monkeypatch, gestures, subcolumn=SubColumn.VOLUME)
 
         assert panel._on_key_pressed(_press("Ctrl+V")) is True
-        assert gestures.pasted == [TrackerCell(row=CURSOR_ROW, generator=GeneratorName.PULSE1)]
+        assert gestures.pasted == [TrackerCell(row=CURSOR_ROW, channel=ChannelName.PULSE1)]
 
     def test_the_sample_column_is_a_cell_a_block_lands_on(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         gestures = Gestures()
-        panel = _panel(monkeypatch, gestures, generator=None)
+        panel = _panel(monkeypatch, gestures, channel=None)
 
         assert panel._on_key_pressed(_press("Ctrl+V")) is True
-        assert gestures.pasted == [TrackerCell(row=CURSOR_ROW, generator=None)]
+        assert gestures.pasted == [TrackerCell(row=CURSOR_ROW, channel=None)]
 
 
 class TestTrackerDeleteKey:
@@ -232,7 +234,7 @@ class TestTrackerDeleteKey:
 
         assert panel._on_key_pressed(_press("Del")) is True
         assert gestures.deleted == []
-        assert gestures.cleared == [(CURSOR_ROW, GeneratorName.PULSE1)]
+        assert gestures.cleared == [(CURSOR_ROW, ChannelName.PULSE1)]
 
 
 class TestTrackerAdjustKeys:
@@ -263,8 +265,8 @@ class TestTrackerAdjustKeys:
         assert panel._on_key_pressed(_press("Alt+Down")) is True
         region, delta = gestures.volume_shifted[-1]
         assert region.rows == range(CURSOR_ROW, CURSOR_ROW + 1)
-        assert region.slots == (TrackerSlot(GeneratorName.PULSE1, SubColumn.VOLUME),)
-        assert delta == -tracker_module.VOLUME_FINE_STEP
+        assert region.slots == (TrackerSlot(ChannelName.PULSE1, SubColumn.VOLUME),)
+        assert delta == -adjust.VOLUME_FINE_STEP
 
     def test_shift_makes_the_step_the_bigger_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
         gestures = Gestures()
@@ -273,7 +275,7 @@ class TestTrackerAdjustKeys:
         assert panel._on_key_pressed(_press("Ctrl+Shift+Up")) is True
         assert panel._on_key_pressed(_press("Alt+Shift+Up")) is True
         assert gestures.transposed[-1][1] == OCTAVE_SEMITONES
-        assert gestures.volume_shifted[-1][1] == tracker_module.VOLUME_COARSE_STEP
+        assert gestures.volume_shifted[-1][1] == adjust.VOLUME_COARSE_STEP
 
     def test_a_grid_with_no_cursor_shifts_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         gestures = Gestures()
@@ -305,7 +307,7 @@ class TestOrderCopyKey:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         gestures = OrderGestures()
-        panel = _order_panel(monkeypatch, gestures, generator=None)
+        panel = _order_panel(monkeypatch, gestures, channel=None)
 
         assert panel._on_key_pressed(_press("Ctrl+C")) is True
         assert gestures.copied == [
@@ -353,17 +355,17 @@ class TestOrderPasteKey:
         panel = _order_panel(monkeypatch, gestures)
 
         assert panel._on_key_pressed(_press("Ctrl+V")) is True
-        assert gestures.pasted == [OrderCell(generator=GeneratorName.PULSE1, position=CURSOR_POSITION)]
+        assert gestures.pasted == [OrderCell(channel=ChannelName.PULSE1, position=CURSOR_POSITION)]
 
     def test_the_master_row_is_a_cell_a_block_lands_on(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         gestures = OrderGestures()
-        panel = _order_panel(monkeypatch, gestures, generator=None)
+        panel = _order_panel(monkeypatch, gestures, channel=None)
 
         assert panel._on_key_pressed(_press("Ctrl+V")) is True
-        assert gestures.pasted == [OrderCell(generator=None, position=CURSOR_POSITION)]
+        assert gestures.pasted == [OrderCell(channel=None, position=CURSOR_POSITION)]
 
 
 class TestOrderDeleteKey:
@@ -393,4 +395,4 @@ class TestOrderDeleteKey:
 
         assert panel._on_key_pressed(_press("Del")) is True
         assert gestures.deleted == []
-        assert gestures.cleared == [(GeneratorName.PULSE1, CURSOR_POSITION, None)]
+        assert gestures.cleared == [(ChannelName.PULSE1, CURSOR_POSITION, None)]

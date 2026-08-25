@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.constants.general import DUTY_CYCLES, MAX_VOLUME, MIXER_PULSE
 from sampletones_core.generators.implementation.pulse import PulseGenerator
 from sampletones_core.instructions import NoiseInstruction, PulseInstruction
@@ -19,7 +19,7 @@ def config() -> Config:
 
 @pytest.fixture
 def generator(config: Config) -> PulseGenerator:
-    return PulseGenerator(config, GeneratorName.PULSE1)
+    return PulseGenerator(config, ChannelName.PULSE1)
 
 
 class TestPulseGeneratorCall:

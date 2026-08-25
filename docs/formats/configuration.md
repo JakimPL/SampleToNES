@@ -38,7 +38,8 @@ change any of these and a different library is selected or generated.
 | `sample_rate` | audio sample rate in Hz | 8000–192000 |
 | `spectrum_method` | how the spectrum is computed | `fft` / `logfft` / `cqt` |
 | `transformation_gamma` | feature-space scaling (0 keeps the power spectrum, 100 is logarithmic) | 0–100 |
-| `a4_frequency`, `a4_pitch` | tuning reference: the frequency of A4 and its pitch number | — |
+| `a4_frequency` | tuning reference: what A4 sounds at, in Hz | 311 < value < 623 |
+| `a4_pitch` | tuning reference: the pitch number A4 names | 24–127 |
 
 ## `generation`
 
@@ -48,7 +49,7 @@ top-level keys and groups the scoring controls into `calculation`, `weights`,
 
 | Key | Meaning | Values |
 | --- | --- | --- |
-| `generators` | channels used | list of `pulse1`, `pulse2`, `triangle`, `noise` |
+| `channels` | channels used | list of `pulse1`, `pulse2`, `triangle`, `noise` (legacy key `generators` loads too) |
 | `drive` | how hard the channels are pushed (alias: `mixer`) | 0 < value ≤ 5 |
 | `reset_phase` | reset oscillator phase within each instruction | `true` / `false` |
 | `final_regeneration` | re-render the chosen instructions at the end to keep oscillators continuous | `true` / `false` |

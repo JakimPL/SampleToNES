@@ -260,6 +260,30 @@ TAG_GLOBAL_THEME_PLUS_MINUS_BUTTONS = TagName(
     Widget.THEME,
     "plus_minus_buttons",
 )
+TAG_GLOBAL_THEME_CHANNEL_MUTED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_muted",
+)
+TAG_GLOBAL_THEME_STEMS_DROP_STRIP = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_drop_strip",
+)
+TAG_GLOBAL_THEME_STEMS_ROW = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_row",
+)
+TAG_GLOBAL_THEME_STEMS_ROW_INERT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_row_inert",
+)
 TAG_GLOBAL_THEME_TOOLTIP = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -476,6 +500,12 @@ TAG_GLOBAL_DIALOG_PROJECT_UNSAVED = TagName(
     Widget.DIALOG,
     "project_unsaved",
 )
+TAG_GLOBAL_DIALOG_INSTRUMENT_IMPORTED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "instrument_imported",
+)
 TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -523,6 +553,42 @@ TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS = TagName(
     Panel.IMPLICIT,
     Widget.MENU,
     "item_reconstruction_export_instruments",
+)
+TAG_GLOBAL_MENU_GROUP_VOICE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "group_voice",
+)
+TAG_GLOBAL_MENU_GROUP_VOICE_MARKER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "group_voice_marker",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_NEW_INSTRUMENT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_new_instrument",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_ADD_SAMPLE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_add_sample",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_IMPORT_INSTRUMENT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_import_instrument",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_ADD_TO_SEQUENCER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_add_to_sequencer",
 )
 TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER = TagName(
     Page.GLOBAL,
@@ -699,6 +765,7 @@ SUF_BUTTON_COLLAPSE_ALL = compose_tag(SUF_BUTTON, "collapse_all")
 SUF_BUTTON_SHOW_TRACEBACK = compose_tag(SUF_BUTTON, "show_traceback")
 SUF_BUTTON_DECREMENT = compose_tag(SUF_BUTTON, "decrement")
 SUF_BUTTON_INCREMENT = compose_tag(SUF_BUTTON, "increment")
+SUF_CHANNELS = "channels"
 SUF_GROUP = "group"
 SUF_GROUP_TRACEBACK = compose_tag(SUF_GROUP, "traceback")
 SUF_HANDLER_REGISTRY = compose_tag("handler", "registry")
@@ -707,6 +774,7 @@ SUF_HANDLER_NODE = compose_tag("handler", "node")
 SUF_HANDLER_DETAIL_TOOLTIP = compose_tag("handler", "detail_tooltip")
 SUF_HANDLER_HEADER = compose_tag("handler", "header")
 SUF_HANDLER_DRAG = compose_tag("handler", "drag")
+SUF_HANDLER_LIST = compose_tag("handler", "list")
 SUF_LABEL = "label"
 SUF_PATH = "path"
 SUF_TEXT = "text"
@@ -715,6 +783,7 @@ SUF_INPUT = "input"
 SUF_INPUT_SEARCH = compose_tag(SUF_INPUT, "search")
 SUF_CHECKBOX = "checkbox"
 SUF_CHECKBOX_FAVORITES = compose_tag(SUF_CHECKBOX, "favorites")
+SUF_STRIP = "strip"
 SUF_TABLE = "table"
 SUF_TOOLTIP = "tooltip"
 SUF_TOOLTIP_DETAIL = compose_tag(SUF_TOOLTIP, "detail")
@@ -726,3 +795,7 @@ SUF_COLLAPSE_STRIP = compose_tag("collapse", "strip")
 SUF_COLLAPSE_BODY = compose_tag("collapse", "body")
 SUF_COLLAPSE_RAIL = compose_tag("collapse", "rail")
 SUF_COLLAPSE_CHEVRON = compose_tag("collapse", "chevron")
+SUF_ROW = "row"
+SUF_LEVEL = "level"
+SUF_WELL = "well"
+SUF_PAYLOAD = "payload"

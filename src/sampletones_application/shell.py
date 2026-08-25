@@ -17,7 +17,7 @@ from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
-from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
+from sampletones_application.coordinators.tabs.sequencer.coordinator import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig
 from sampletones_application.tags.general import (
     TAG_GLOBAL_STATUS_WINDOW,
@@ -51,8 +51,8 @@ from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exports.format import ExportFormat
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback, PathCallback
 
@@ -72,7 +72,7 @@ class ShortcutBindings:
     save_project: Callback
     save_project_as: Callback
     project_properties: Callback
-    export_project: Callable[[TrackerFormat], None]
+    export_project: Callable[[ExportFormat], None]
     render_song: Callback
     close_project: Callback
     exit: Callback
@@ -87,8 +87,11 @@ class ShortcutBindings:
     save_reconstruction_as: Callback
     close_reconstruction: Callback
     export_wav: Callback
-    export_instruments: Callable[[TrackerFormat], None]
+    export_instruments: Callable[[ExportFormat], None]
     add_reconstruction_to_sequencer: Callback
+    new_instrument: Callback
+    add_sample_from_file: Callback
+    import_instrument: Callback
     open_reconstruction_in_explorer: Callback
     locate_original_audio: Callback
     play: Callback
@@ -98,7 +101,7 @@ class ShortcutBindings:
     toggle_autoplay: Callback
     set_follow_mode: Callable[[FollowMode], None]
     toggle_loop_song: Callback
-    toggle_channel: Callable[[GeneratorName], None]
+    toggle_channel: Callable[[ChannelName], None]
     unmute_all_channels: Callback
     audio_settings: Callback
     display_settings: Callback
@@ -119,7 +122,7 @@ class ApplicationShell:
 
     It serves two roles:
 
-    - *Lifecycle* — encodes the DPG initialisation sequence in ``setup()`` and
+    - *Lifecycle* — encodes the DPG initialization sequence in ``setup()`` and
       hides it behind a clean boundary.
     - *Runtime* — tab router, shortcut dispatcher, and per-frame UI driver.
 
@@ -241,6 +244,9 @@ class ApplicationShell:
             ShortcutId.CLOSE_RECONSTRUCTION: bindings.close_reconstruction,
             ShortcutId.EXPORT_RECONSTRUCTION_WAV: bindings.export_wav,
             ShortcutId.ADD_RECONSTRUCTION_TO_SEQUENCER: bindings.add_reconstruction_to_sequencer,
+            ShortcutId.NEW_INSTRUMENT: bindings.new_instrument,
+            ShortcutId.ADD_SAMPLE_FROM_FILE: bindings.add_sample_from_file,
+            ShortcutId.IMPORT_INSTRUMENT: bindings.import_instrument,
             ShortcutId.OPEN_RECONSTRUCTION_IN_EXPLORER: bindings.open_reconstruction_in_explorer,
             ShortcutId.LOCATE_ORIGINAL_AUDIO: bindings.locate_original_audio,
             ShortcutId.PLAY: bindings.play,
@@ -271,18 +277,18 @@ class ApplicationShell:
     def _export_callbacks(
         bindings: ShortcutBindings,
     ) -> Dict[ShortcutId, Callback]:
-        """One export action per tracker format, the entries the Export submenus list.
+        """One export action per format, the entries the Export submenus list.
 
         Each action carries the format it writes, so a menu entry and its key combination reach
         the same coordinator call.
         """
         project = {
-            shortcut_id: partial(bindings.export_project, tracker_format)
-            for tracker_format, shortcut_id in PROJECT_EXPORT_SHORTCUT_IDS.items()
+            shortcut_id: partial(bindings.export_project, export_format)
+            for export_format, shortcut_id in PROJECT_EXPORT_SHORTCUT_IDS.items()
         }
         instruments = {
-            shortcut_id: partial(bindings.export_instruments, tracker_format)
-            for tracker_format, shortcut_id in SAMPLE_EXPORT_SHORTCUT_IDS.items()
+            shortcut_id: partial(bindings.export_instruments, export_format)
+            for export_format, shortcut_id in SAMPLE_EXPORT_SHORTCUT_IDS.items()
         }
         return {**project, **instruments}
 

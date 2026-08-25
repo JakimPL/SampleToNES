@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-from pydantic import Field
-
 from sampletones_core.constants.enums import InstructionClassName
-from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH, PITCH_RANGE
+from sampletones_core.constants.general import MIN_PITCH, PITCH_RANGE
 from sampletones_core.utils.frequencies import pitch_to_name
 
 from ..instruction import Instruction
+from ..tonal import TonalInstruction
 
 
-class TriangleInstruction(Instruction):
-    pitch: int = Field(..., ge=MIN_PITCH, le=MAX_PITCH, description="MIDI pitch (0-120)")
-
+class TriangleInstruction(TonalInstruction):
     @property
     def name(self) -> str:
         pitch = pitch_to_name(self.pitch)

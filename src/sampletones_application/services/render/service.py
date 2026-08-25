@@ -3,7 +3,7 @@ from functools import partial
 from pathlib import Path
 
 from sampletones_application.services.base import ServiceBase
-from sampletones_application.services.render.progress import StageProgress
+from sampletones_application.services.progress import StageProgress
 from sampletones_application.services.render.result import RenderResult, RenderStage
 from sampletones_application.services.render.sink import (
     EncodeReporter,
@@ -11,7 +11,7 @@ from sampletones_application.services.render.sink import (
     build_render_sink,
 )
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceStarted,
     ServiceSuccess,
@@ -31,8 +31,8 @@ class SongRenderService(ServiceBase[RenderResult]):
     written back at the level the whole render turned out to reach — so the service reports one
     pass or two without knowing which format waits on the other side.
 
-    A render is one at a time. Cancelling is honoured between rows and between encoded blocks,
-    and the file a cancelled or failed run was writing is removed, so a result names a path only
+    A render is one at a time. Cancelling is honored between rows and between encoded blocks,
+    and the file a canceled or failed run was writing is removed, so a result names a path only
     where a finished file stands.
     """
 
@@ -133,7 +133,7 @@ class SongRenderService(ServiceBase[RenderResult]):
         The song is rendered as the document holds it, from the top: the position a listener left
         the playhead at is a listening choice, and a render describes the whole song.
         """
-        progress = StageProgress(RenderStage.SYNTHESIS, total_samples, emit=self._emit)
+        progress = StageProgress(RenderStage.SYNTHESIS, total_samples, emit=self._emit, estimates=True)
         synthesizer.set_position(0, 0)
         synthesizer.reset()
 
@@ -150,17 +150,17 @@ class SongRenderService(ServiceBase[RenderResult]):
         return not self._cancel_event.is_set()
 
     def _encode_reporter(self, total_samples: int) -> EncodeReporter:
-        progress = StageProgress(RenderStage.ENCODING, total_samples, emit=self._emit)
+        progress = StageProgress(RenderStage.ENCODING, total_samples, emit=self._emit, estimates=True)
         return partial(self._report_encoded, progress)
 
-    def _report_encoded(self, progress: StageProgress, encoded: int) -> bool:
+    def _report_encoded(self, progress: StageProgress[RenderStage], encoded: int) -> bool:
         progress.advance(encoded)
         return not self._cancel_event.is_set()
 
     def _report_outcome(self, sink: RenderSink, completed: bool) -> None:
         if not completed:
             sink.discard()
-            self._emit(ServiceCancelled())
+            self._emit(ServiceCanceled())
             return
 
         logger.info(f"Rendered the song to: {logger.format_path(sink.destination)}")

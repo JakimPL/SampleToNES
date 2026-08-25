@@ -160,8 +160,8 @@ class TestStrictManagerFingerprinting:
         with history.transaction(HistoryAction.ADD_SAMPLE):
             sample = controller.add_sample(reconstruction_factory(), name="lead")
 
-        with history.transaction(HistoryAction.REMOVE_SAMPLE):
-            controller.remove_sample(sample.id)
+        with history.transaction(HistoryAction.REMOVE_VOICE):
+            controller.remove_voice(sample.id)
 
         with history.transaction(HistoryAction.SET_TEMPO):
             controller.set_tempo(150)

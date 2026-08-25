@@ -1,14 +1,17 @@
 import contextlib
+from pathlib import Path
 from typing import Iterator, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 
 @contextlib.contextmanager
@@ -78,3 +81,28 @@ def add_detail_items(
         FontRegistry.bind_to_item(detail_text, Font.MONO_SMALL)
         if tooltip is not None:
             show_tooltip(detail_text, tooltip)
+
+
+def add_path_menu_items(
+    language_manager: LanguageManager,
+    path: Path,
+) -> None:
+    """Add the shared block of filesystem actions for ``path`` to the context menu being built.
+
+    Every menu naming something on disk offers the same three: the name and the full path to the
+    clipboard, and the file revealed in the file manager. Routing the file browsers and the
+    converter's gathered recordings through one builder keeps them reading alike.
+    """
+    dpg.add_separator()
+    dpg.add_menu_item(
+        label=language_manager["global.context.label.copy_filename"],
+        callback=lambda: dpg.set_clipboard_text(str(path.name)),
+    )
+    dpg.add_menu_item(
+        label=language_manager["global.context.label.copy_path"],
+        callback=lambda: dpg.set_clipboard_text(str(path)),
+    )
+    dpg.add_menu_item(
+        label=language_manager["global.context.label.open_in_explorer"],
+        callback=lambda: open_path_in_explorer(path),
+    )

@@ -3,20 +3,20 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import pytest
 
-from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.columns import (
     HEADER_TABLE_ROW,
     tracker_table_column,
     tracker_table_row,
 )
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
-from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.utils.palette.colors.written import LiteralColor
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.types.application import ColorRGBA
 
@@ -78,7 +78,7 @@ def _settings(
     first_highlight: int = ROWS_PER_BEAT,
     second_highlight: int = ROWS_PER_BAR,
 ) -> SequencerSettingsViewModel:
-    """The module settings the panel reads its metre out of."""
+    """The module settings the panel reads its meter out of."""
     return SequencerSettingsViewModel(
         nes_frequency=60,
         tempo=150,
@@ -124,11 +124,11 @@ def _playhead(frame_index: int, row_index: int) -> SongPosition:
 def _place_cursor(
     panel: GUISequencerTrackerPanel,
     row_index: int,
-    generator: Optional[GeneratorName],
+    channel: Optional[ChannelName],
 ) -> None:
     """Puts the cursor where the panel's own state keeps it, the way an edit action does."""
     panel._input_state = TrackerInputState(
-        cursor=TrackerCursor(row_index, generator, SubColumn.INSTRUMENT),
+        cursor=TrackerCursor(row_index, channel, SubColumn.VOICE),
         pending="",
     )
 
@@ -190,7 +190,7 @@ class TestRowGrouping:
         assert HEADER_TABLE_ROW not in recorder.highlighted_rows
         assert HEADER_TABLE_ROW not in recorder.unhighlighted_rows
 
-    def test_an_edited_metre_retints_the_rows_at_once(self, recorder: _TableRecorder) -> None:
+    def test_an_edited_meter_retints_the_rows_at_once(self, recorder: _TableRecorder) -> None:
         """The highlights are the project's, so a change to them reaches the grid as a repaint."""
         panel = _panel()
         panel._apply_row_backgrounds()
@@ -221,9 +221,9 @@ class TestCursorHighlight:
         row_index: int,
     ) -> None:
         panel = _panel()
-        _place_cursor(panel, row_index, GeneratorName.TRIANGLE)
+        _place_cursor(panel, row_index, ChannelName.TRIANGLE)
 
-        panel._apply_cell_highlight(row_index, GeneratorName.TRIANGLE)
+        panel._apply_cell_highlight(row_index, ChannelName.TRIANGLE)
 
         assert recorder.highlighted_rows == {tracker_table_row(row_index): CURSOR_ROW}
 
@@ -234,20 +234,20 @@ class TestCursorHighlight:
         row_index: int,
     ) -> None:
         panel = _panel()
-        _place_cursor(panel, row_index, GeneratorName.TRIANGLE)
+        _place_cursor(panel, row_index, ChannelName.TRIANGLE)
 
-        panel._apply_cell_highlight(row_index, GeneratorName.TRIANGLE)
+        panel._apply_cell_highlight(row_index, ChannelName.TRIANGLE)
 
         painted = recorder.highlighted_rows[tracker_table_row(row_index)]
         assert painted[3] > CURSOR_ROW[3]
 
     def test_the_cursor_cell_lands_on_the_mapped_row_and_column(self, recorder: _TableRecorder) -> None:
         panel = _panel()
-        _place_cursor(panel, 2, GeneratorName.NOISE)
+        _place_cursor(panel, 2, ChannelName.NOISE)
 
-        panel._apply_cell_highlight(2, GeneratorName.NOISE)
+        panel._apply_cell_highlight(2, ChannelName.NOISE)
 
-        key = (tracker_table_row(2), tracker_table_column(GeneratorName.NOISE))
+        key = (tracker_table_row(2), tracker_table_column(ChannelName.NOISE))
         assert recorder.highlighted_cells == {key: CELL_CURSOR}
 
     def test_no_cursor_ever_paints_the_header_row(self, recorder: _TableRecorder) -> None:
@@ -345,7 +345,7 @@ class TestPlayingRowHighlight:
 
     def test_the_playhead_outranks_the_cursor_on_the_same_row(self, recorder: _TableRecorder) -> None:
         panel = _panel()
-        _place_cursor(panel, 1, GeneratorName.PULSE1)
+        _place_cursor(panel, 1, ChannelName.PULSE1)
 
         panel.set_playing_position(_playhead(SHOWN_FRAME, 1))
 
@@ -421,7 +421,7 @@ class TestPlayheadFrame:
     def test_the_cursor_keeps_its_row_on_a_frame_the_playhead_left(self, recorder: _TableRecorder) -> None:
         """A frame the playhead is away from shows the reader's own cursor on the row it sits on."""
         panel = _panel()
-        _place_cursor(panel, 3, GeneratorName.PULSE1)
+        _place_cursor(panel, 3, ChannelName.PULSE1)
         panel.set_playing_position(_playhead(SHOWN_FRAME, 3))
 
         panel._show_frame(OTHER_FRAME)
@@ -459,7 +459,7 @@ class TestHeaderRowBackground:
 
         panel._highlight_header_row()
 
-        washed: List[Optional[GeneratorName]] = [None, *GeneratorName.items()]
-        for generator in washed:
-            key = (HEADER_TABLE_ROW, tracker_table_column(generator))
+        washed: List[Optional[ChannelName]] = [None, *ChannelName.items()]
+        for channel in washed:
+            key = (HEADER_TABLE_ROW, tracker_table_column(channel))
             assert recorder.highlighted_cells[key] == HEADER_SHADE

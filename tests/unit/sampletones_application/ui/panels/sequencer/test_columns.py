@@ -9,13 +9,13 @@ from sampletones_application.ui.panels.sequencer.columns import (
     tracker_table_column,
     tracker_table_row,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 _CHANNEL_COLUMNS = [
-    (GeneratorName.PULSE1, 4),
-    (GeneratorName.PULSE2, 5),
-    (GeneratorName.TRIANGLE, 6),
-    (GeneratorName.NOISE, 7),
+    (ChannelName.PULSE1, 4),
+    (ChannelName.PULSE2, 5),
+    (ChannelName.TRIANGLE, 6),
+    (ChannelName.NOISE, 7),
 ]
 
 _PATTERN_ROWS = [(0, 1), (1, 2), (5, 6), (63, 64)]
@@ -26,20 +26,20 @@ def test_sample_column_directly_precedes_the_divider() -> None:
     assert DIVIDER_TABLE_COLUMN == SAMPLE_TABLE_COLUMN + 1
 
 
-@pytest.mark.parametrize("generator, expected_column", _CHANNEL_COLUMNS)
-def test_channels_sit_one_slot_past_the_divider(generator: GeneratorName, expected_column: int) -> None:
-    assert tracker_table_column(generator) == expected_column
+@pytest.mark.parametrize("channel, expected_column", _CHANNEL_COLUMNS)
+def test_channels_sit_one_slot_past_the_divider(channel: ChannelName, expected_column: int) -> None:
+    assert tracker_table_column(channel) == expected_column
 
 
 def test_no_logical_column_lands_on_the_divider() -> None:
-    mapped = {tracker_table_column(None)} | {tracker_table_column(generator) for generator in GeneratorName.items()}
+    mapped = {tracker_table_column(None)} | {tracker_table_column(channel) for channel in ChannelName.items()}
 
     assert DIVIDER_TABLE_COLUMN not in mapped
-    assert len(mapped) == len(GeneratorName.items()) + 1
+    assert len(mapped) == len(ChannelName.items()) + 1
 
 
 def test_every_mapped_column_lies_within_the_table() -> None:
-    mapped = {tracker_table_column(None)} | {tracker_table_column(generator) for generator in GeneratorName.items()}
+    mapped = {tracker_table_column(None)} | {tracker_table_column(channel) for channel in ChannelName.items()}
 
     assert DIVIDER_TABLE_COLUMN < TRACKER_TABLE_COLUMNS
     assert max(mapped) < TRACKER_TABLE_COLUMNS

@@ -67,7 +67,7 @@ from sampletones_application.view_model.instruction.details import (
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.exceptions import LibraryDisplayError, SampleToNESError
@@ -80,7 +80,7 @@ _RIGHT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_INSTRUCTIONS, SUF_PANEL_RIGHT)
 
 
 class _StackedGraphPanel(Protocol):
-    """A centre-column card whose graph display follows a viewport-driven height."""
+    """A center-column card whose graph display follows a viewport-driven height."""
 
     def set_display_height(self, height: int) -> None: ...
 
@@ -156,7 +156,7 @@ class InstructionsTabCoordinator:
         self._library_logic.on_view_changed = self._library_panel.update_view
         self._library_logic.on_generation_completed = self._on_generation_completed
         self._library_logic.on_generation_error = self._on_generation_error
-        self._library_logic.on_generation_cancelled = self._on_generation_cancelled
+        self._library_logic.on_generation_canceled = self._on_generation_canceled
         self._library_logic.on_load_file_not_found = self._on_library_file_not_found
         self._library_logic.on_load_error = self._on_library_load_error
 
@@ -178,12 +178,14 @@ class InstructionsTabCoordinator:
         self._waveform_panel = GUIInstructionWaveformPanel(
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM),
             layout=layout.graphs,
+            channel_colors=layout.channel_colors,
             language_manager=language_manager,
             status_bar=status_bar,
         )
         self._spectrum_panel = GUIInstructionSpectrumPanel(
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM),
             layout=layout.graphs,
+            channel_colors=layout.channel_colors,
             language_manager=language_manager,
             status_bar=status_bar,
         )
@@ -241,7 +243,7 @@ class InstructionsTabCoordinator:
     def _on_generator_selected(
         self,
         library_key: InstructionLibraryKey,
-        generator_name: LibraryGeneratorName,
+        generator_name: GeneratorName,
     ) -> None:
         self._library_logic.load_library_and_set_current(library_key)
         self._library_logic.load_generator(generator_name)
@@ -288,10 +290,10 @@ class InstructionsTabCoordinator:
             self._language_manager["instructions.library.message.status_generation_failed"],
         )
 
-    def _on_generation_cancelled(self) -> None:
+    def _on_generation_canceled(self) -> None:
         self._dialogs.show_info(
             TAG_INSTRUCTIONS_LIBRARY_PANEL,
-            self._language_manager["instructions.library.message.status_generation_cancelled"],
+            self._language_manager["instructions.library.message.status_generation_canceled"],
             self._ttl_generation_status,
             modal=True,
         )
@@ -351,11 +353,11 @@ class InstructionsTabCoordinator:
         self._instruction_player_logic.clear_audio()
 
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
-        """Persists a centre-column card's collapsed state so it restores on the next launch."""
+        """Persists a center-column card's collapsed state so it restores on the next launch."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
 
     def _repaint_library_favorites(self, node: FileSystemNode) -> None:
-        """Repaints the row whose star was toggled: the catalogue lists a library once, so it is one row."""
+        """Repaints the row whose star was toggled: the catalog lists a library once, so it is one row."""
         self._library_panel.update_favorite_indicators((node,))
 
     def _on_library_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
@@ -450,7 +452,7 @@ class InstructionsTabCoordinator:
         self._sync_graph_heights()
 
     def _build_display_column(self, parent: str) -> None:
-        """Stacks the waveform and spectrum cards down the centre column."""
+        """Stacks the waveform and spectrum cards down the center column."""
         self._waveform_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._spectrum_panel.create_panel(parent)
@@ -487,7 +489,7 @@ class InstructionsTabCoordinator:
             logger.warning(f"Could not load library from {logger.format_path(filepath)}: {exception}")
 
     def save_browser_shape(self) -> None:
-        """Writes down the rows the catalogue stands open, so a later run brings them back."""
+        """Writes down the rows the catalog stands open, so a later run brings them back."""
         self._session_manager.set_expanded_rows(
             self._library_panel.tag,
             self._library_panel.expanded_rows,

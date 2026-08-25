@@ -37,9 +37,9 @@ class OrderBlockWriter:
         The order keeps its length, so emptying the frames at its end leaves them standing as
         silent ones rather than taking positions away from the arrangement.
         """
-        for generator in region.generators:
+        for channel in region.channels:
             for position in region.positions:
-                self._order.write_entry(generator, position, None)
+                self._order.write_entry(channel, position, None)
 
     def _resolve(self, block: OrderBlock, cell: OrderCell) -> List[OrderWrite]:
         """Where each of a block's entries lands, in the reading order they are written in.
@@ -49,7 +49,7 @@ class OrderBlockWriter:
         is left out, which clips a block at the bottom edge rather than wrapping it round to the
         master row.
         """
-        base_row = CHANNEL_AXIS.index(cell.generator)
+        base_row = CHANNEL_AXIS.index(cell.channel)
         return [
             (base_row + row_offset, cell.position + position_offset, pattern_index)
             for (row_offset, position_offset), pattern_index in sorted(block.entries.items())

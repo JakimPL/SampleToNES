@@ -63,7 +63,7 @@ def generator_directories(
 
 class TestTopLevelConfigDirectories:
     def test_config_directory_groups_by_frequencies_then_transformation(self) -> None:
-        fields = config_fields(generators="PpT")
+        fields = config_fields(channels="PpT")
         branch = build_branch(scan_of(config_entry(fields, "song")))
 
         frequencies = group_children(branch)
@@ -118,8 +118,8 @@ class TestTopLevelConfigDirectories:
         }
 
     def test_distinct_generators_share_a_transformation_group_under_their_own_names(self) -> None:
-        first = config_fields(generators="PTN")
-        second = config_fields(generators="TN")
+        first = config_fields(channels="PTN")
+        second = config_fields(channels="TN")
         branch = build_branch(scan_of(config_entry(first, "song"), config_entry(second, "song")))
 
         assert set(generator_directories(branch, first)) == {"PTN", "TN"}

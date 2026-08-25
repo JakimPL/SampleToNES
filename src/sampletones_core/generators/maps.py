@@ -1,9 +1,9 @@
 from typing import Dict, Final
 
 from sampletones_core.constants.enums import (
+    ChannelName,
     GeneratorClassName,
     GeneratorName,
-    LibraryGeneratorName,
 )
 from sampletones_core.constants.general import (
     MIXER_NOISE,
@@ -22,18 +22,23 @@ from .implementation.pulse import PulseGenerator
 from .implementation.triangle import TriangleGenerator
 from .types import GeneratorTypeUnion
 
-LIBRARY_GENERATOR_CLASS_MAP: Final[Dict[LibraryGeneratorName, GeneratorClassName]] = {
-    LibraryGeneratorName.PULSE: GeneratorClassName.PULSE_GENERATOR,
-    LibraryGeneratorName.TRIANGLE: GeneratorClassName.TRIANGLE_GENERATOR,
-    LibraryGeneratorName.NOISE: GeneratorClassName.NOISE_GENERATOR,
+GENERATOR_TO_CLASS_NAME_MAP: Final[Dict[GeneratorName, GeneratorClassName]] = {
+    GeneratorName.PULSE: GeneratorClassName.PULSE_GENERATOR,
+    GeneratorName.TRIANGLE: GeneratorClassName.TRIANGLE_GENERATOR,
+    GeneratorName.NOISE: GeneratorClassName.NOISE_GENERATOR,
 }
 
 
-GENERATOR_CLASSES: Final[Dict[GeneratorName, GeneratorTypeUnion]] = {
-    GeneratorName.PULSE1: PulseGenerator,
-    GeneratorName.PULSE2: PulseGenerator,
-    GeneratorName.TRIANGLE: TriangleGenerator,
-    GeneratorName.NOISE: NoiseGenerator,
+CLASS_NAME_TO_GENERATOR_MAP: Final[Dict[GeneratorClassName, GeneratorName]] = {
+    class_name: generator_name for generator_name, class_name in GENERATOR_TO_CLASS_NAME_MAP.items()
+}
+
+
+CHANNEL_CLASSES: Final[Dict[ChannelName, GeneratorTypeUnion]] = {
+    ChannelName.PULSE1: PulseGenerator,
+    ChannelName.PULSE2: PulseGenerator,
+    ChannelName.TRIANGLE: TriangleGenerator,
+    ChannelName.NOISE: NoiseGenerator,
 }
 
 

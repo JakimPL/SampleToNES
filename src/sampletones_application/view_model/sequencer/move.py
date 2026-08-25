@@ -5,7 +5,7 @@ from typing import Optional
 class MoveDirection(Enum):
     """A reorder action: move an item toward the start or end of its sequence.
 
-    Shared by the instruments list (vertical) and the order table (horizontal);
+    Shared by the voices list (vertical) and the order table (horizontal);
     the axis-neutral names map to up/left (``PREVIOUS``), down/right (``NEXT``),
     top/start (``FIRST``) and bottom/end (``LAST``) at each call site.
     """
@@ -18,7 +18,7 @@ class MoveDirection(Enum):
     def target(self, position: int, count: int) -> Optional[int]:
         """Resolve the destination index, or ``None`` when the move would keep the position where it is.
 
-        ``None`` is the grey-out signal: a move toward the start from the first
+        ``None`` is the gray-out signal: a move toward the start from the first
         position, or toward the end from the last, already sits at the boundary, so
         the menu disables that item.
         """

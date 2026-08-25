@@ -106,9 +106,27 @@ class DataModel(BaseModel, ABC):
         validation: Optional[Callback] = None,
         fast: bool = True,
     ) -> Self:
+        """The model a serialized payload describes, filling in what the payload leaves out.
+
+        A payload written before a field existed states nothing for it, and a field carrying a
+        default states what it means to say nothing, so the default is what the field takes. This
+        is what lets a model grow a field while every file already written keeps loading.
+
+        Args:
+            data: The serialized fields.
+            validation: A check run over each value as it is read.
+            fast: Whether to construct without re-running validation.
+
+        Returns:
+            Self: The model the payload describes.
+        """
         field_values: SerializedData = {}
         for field_name, field_info in cls.model_fields.items():
             annotation = field_info.annotation
+            if field_name not in data and not field_info.is_required():
+                field_values[field_name] = field_info.get_default(call_default_factory=True)
+                continue
+
             raw = data.get(field_name)
             value = cls._unpack_value(
                 raw,
@@ -146,6 +164,17 @@ class DataModel(BaseModel, ABC):
 
         if get_origin(annotation) is list:
             return self._pack_list(value, field_name)
+
+        if get_origin(annotation) is tuple:
+            item_class = get_args(annotation)[0]
+            return [
+                self._pack_value(
+                    item,
+                    item_class,
+                    field_name,
+                )
+                for item in value
+            ]
 
         if issubclass(annotation, DataModel):
             return value.serialize_inner()
@@ -205,6 +234,10 @@ class DataModel(BaseModel, ABC):
                 fast,
             )
 
+        if get_origin(annotation) is tuple:
+            item_class = get_args(annotation)[0]
+            return tuple(cls._unpack_value(item, item_class, field_name, validation, fast) for item in raw)
+
         if issubclass(annotation, DataModel):
             return annotation.deserialize_inner(raw, validation, fast=fast)
 
@@ -233,6 +266,12 @@ class DataModel(BaseModel, ABC):
         if all(isinstance(model, DataModel) for model in collection):
             return [model.serialize_inner() for model in collection]
 
+        if all(isinstance(value, (int, float, bool)) for value in collection):
+            return list(collection)
+
+        if all(isinstance(value, list) for value in collection):
+            return [self._pack_list(value, field_name) for value in collection]
+
         raise SerializationError(
             f"Unsupported list element type {type(collection[0])} or mixed types for field '{field_name}'"
         )
@@ -247,6 +286,19 @@ class DataModel(BaseModel, ABC):
         fast: bool = True,
     ) -> List[Any]:
         origin = get_origin(element_class)
+        if origin is list:
+            nested_element_class = get_args(element_class)[0]
+            return [
+                cls._unpack_list(
+                    item,
+                    field_name,
+                    nested_element_class,
+                    validation,
+                    fast,
+                )
+                for item in raw_list
+            ]
+
         if origin is not None:
             raise DeserializationError(f"Generics are not supported for field '{field_name}'")
 
@@ -265,6 +317,9 @@ class DataModel(BaseModel, ABC):
 
         if issubclass(element_class, (str, StrEnum)):
             return [cls._deserialize_string(item, element_class) for item in raw_list]
+
+        if issubclass(element_class, (int, float, bool)):
+            return [element_class(item) for item in raw_list]
 
         raise DeserializationError(f"Unsupported vector element type: {element_class} for field '{field_name}'")
 

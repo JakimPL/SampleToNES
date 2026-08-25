@@ -2,7 +2,7 @@ from typing import Final
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.playback.synthesizer import SongLength
-from sampletones_application.logic.sequencer.playback.synthesizer.timing import SongTiming
+from sampletones_core.timing import SongTiming
 
 FRACTIONAL_RATE: Final[int] = 22050
 EXACT_RATE: Final[int] = 44100

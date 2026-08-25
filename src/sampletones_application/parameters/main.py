@@ -6,6 +6,7 @@ from sampletones_application.layout.behavior.scheduling.scheduling import Schedu
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.general.inputs import InputsLayout
+from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.tabs.main import MainLayout
 from sampletones_application.parameters.geometry import TabGeometry
 from sampletones_application.ui.elements.tree.colors import TreeColors
@@ -24,6 +25,7 @@ class MainTabParameters:
     config_height: int
     main: MainLayout
     inputs: InputsLayout
+    stems: StemsListLayout
     path_colors: PathColors
     tree_colors: TreeColors
     scheduling: SchedulingBehavior
@@ -36,6 +38,7 @@ class MainTabParameters:
             config_height=config.tabs.main.config.height,
             main=config.tabs.main,
             inputs=general.inputs,
+            stems=general.stems,
             path_colors=general.colors.paths,
             tree_colors=TreeColors.create(
                 general.colors,

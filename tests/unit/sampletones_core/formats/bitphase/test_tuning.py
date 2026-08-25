@@ -52,7 +52,7 @@ def ntsc_table_fixture() -> Tuple[int, ...]:
 class TestTheTableMatchesBitphase:
     """The tuning table is the contract with Bitphase: the tracker derives its own from
     the same settings, so a document whose table differs plays at a different pitch than
-    the reconstruction it came from. These numbers come from Bitphase's own generator.
+    the reconstruction it came from. These numbers come from Bitphase's own channel.
     """
 
     def test_the_ntsc_table_equals_the_one_bitphase_derives(

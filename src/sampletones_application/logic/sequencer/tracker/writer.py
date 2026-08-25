@@ -11,8 +11,8 @@ from sampletones_application.view_model.sequencer.slot import (
     slot_from_flat,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.project.instruments.note_off import NoteOff
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.voices.note_off import NoteOff
 
 from .block import BlockKey, BlockNote, TrackerBlock
 from .tracker import SequencerTrackerLogic
@@ -38,7 +38,7 @@ class TrackerBlockWriter:
         sample column decides the whole row, so the transposes and volumes sharing that row land
         on top of the channels it settled.
         """
-        base = column_slot_base(cell.generator)
+        base = column_slot_base(cell.channel)
         self._write_pass(block.notes, cell, base, self._write_note)
         self._write_pass(block.transposes, cell, base, self._write_transpose)
         self._write_pass(block.volumes, cell, base, self._write_volume)
@@ -49,7 +49,7 @@ class TrackerBlockWriter:
             for slot in region.slots:
                 self._tracker.clear_cell_subcolumn(
                     row_index,
-                    slot.generator,
+                    slot.channel,
                     slot.subcolumn,
                 )
 
@@ -58,7 +58,7 @@ class TrackerBlockWriter:
         values: Dict[BlockKey, ValueT],
         cell: TrackerCell,
         base: int,
-        write: Callable[[int, Optional[GeneratorName], ValueT], None],
+        write: Callable[[int, Optional[ChannelName], ValueT], None],
     ) -> None:
         """Writes one kind of subcolumn across the block, dropping what falls outside the grid.
 
@@ -74,67 +74,68 @@ class TrackerBlockWriter:
             if row_index >= row_count or slot_index >= SLOT_COUNT:
                 continue
 
-            write(row_index, slot_from_flat(slot_index).generator, value)
+            write(row_index, slot_from_flat(slot_index).channel, value)
 
     def _write_note(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         note: Optional[BlockNote],
     ) -> None:
-        """Writes the note a cell carries: a sample by id, a cut, or the emptiness of neither.
+        """Writes the note a cell carries: a voice by id, a cut, or the emptiness of neither.
 
-        A sample the project no longer holds leaves the cell as it stands, so a block outliving
+        A voice the project no longer holds leaves the cell as it stands, so a block outliving
         the project it was read from writes the notes that still name something and passes over
-        the rest.
+        the rest. The column the note lands in decides whether it takes that voice, which
+        :meth:`SequencerTrackerLogic.place_note` answers for every route alike.
         """
         match note:
             case NoteOff():
-                self._tracker.cut_note(row_index, generator)
-            case str() as sample_id:
-                if self._tracker.holds_sample(sample_id):
-                    self._tracker.place_note(row_index, generator, sample_id)
+                self._tracker.cut_note(row_index, channel)
+            case str() as voice_id:
+                if self._tracker.holds_voice(voice_id):
+                    self._tracker.place_note(row_index, channel, voice_id)
             case None:
                 self._tracker.clear_cell_subcolumn(
                     row_index,
-                    generator,
-                    SubColumn.INSTRUMENT,
+                    channel,
+                    SubColumn.VOICE,
                 )
 
     def _write_transpose(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         transpose: Optional[int],
     ) -> None:
         if transpose is None:
             self._tracker.clear_cell_subcolumn(
                 row_index,
-                generator,
+                channel,
                 SubColumn.TRANSPOSE,
             )
         else:
             self._tracker.set_cell_subcolumn(
                 row_index,
-                generator,
+                channel,
                 transpose=transpose,
             )
 
     def _write_volume(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         volume: Optional[int],
     ) -> None:
         if volume is None:
             self._tracker.clear_cell_subcolumn(
                 row_index,
-                generator,
+                channel,
                 SubColumn.VOLUME,
             )
         else:
             self._tracker.set_cell_subcolumn(
                 row_index,
-                generator,
+                channel,
                 volume=volume,
             )

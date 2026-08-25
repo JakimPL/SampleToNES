@@ -17,6 +17,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.layers.type import LayerT
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.utils.gui.dpg import dpg_configure_item
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.types.application import Sender
 
 
@@ -145,7 +146,15 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
         dpg.set_axis_limits_constraints(self.y_axis_tag, *self.y_range)
 
     def _release_axes_limits(self) -> None:
-        dpg.split_frame()
+        """Hands the axes back to the data once the frame carrying the new locks has been drawn.
+
+        A lock reaches an axis when the frame stating it renders, so the release follows a frame
+        behind it. It is scheduled rather than waited for, which leaves the render thread free to
+        draw that frame.
+        """
+        FrameCallbackManager.set_frame_callback(self._set_axes_auto)
+
+    def _set_axes_auto(self) -> None:
         dpg.set_axis_limits_auto(self.x_axis_tag)
         dpg.set_axis_limits_auto(self.y_axis_tag)
 

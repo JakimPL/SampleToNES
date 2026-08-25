@@ -6,11 +6,12 @@ import numpy as np
 import pytest
 
 from sampletones_application.logic.reconstruction.feature import FeatureData
-from sampletones_application.services.regeneration import RegenerationService
+from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import ServiceError, ServiceSuccess
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 
@@ -29,7 +30,7 @@ OCTAVE = 12
 
 class TestRegenerationServicePipeline:
     """Full synthesis pipeline: real Config, Features (via PulseExporter), real PulseGenerator,
-    and real Reconstruction.update_generator_data. Nothing is mocked.
+    and real Reconstruction.update_channel_data. Nothing is mocked.
 
     Tests call _run() directly to bypass the executor; the synchronous_executor fixture
     from the parent conftest covers start() in the final test.
@@ -42,10 +43,9 @@ class TestRegenerationServicePipeline:
 
         service._run(
             reconstruction_data.reconstruction,
-            GeneratorName.PULSE1,
-            pulse_features,
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
-            pulse_features.volume,
+            pulse_features,
         )
 
         assert len(results) == 1
@@ -58,16 +58,15 @@ class TestRegenerationServicePipeline:
 
         service._run(
             reconstruction_data.reconstruction,
-            GeneratorName.PULSE1,
-            pulse_features,
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
-            pulse_features.volume,
+            pulse_features,
         )
 
         emitted = results[0].value
         assert emitted.reconstruction is not reconstruction_data.reconstruction
-        assert len(emitted.reconstruction.approximations.get(GeneratorName.PULSE1, np.array([], dtype=np.float32))) > 0
-        assert emitted.generator_name is GeneratorName.PULSE1
+        assert len(emitted.reconstruction.approximations.get(ChannelName.PULSE1, np.array([], dtype=np.float32))) > 0
+        assert emitted.channel_name is ChannelName.PULSE1
         assert emitted.feature_key is FeatureKey.VOLUME
 
     def test_run_updates_reconstruction_approximation(self, reconstruction_data, pulse_features) -> None:
@@ -75,14 +74,13 @@ class TestRegenerationServicePipeline:
 
         service._run(
             reconstruction_data.reconstruction,
-            GeneratorName.PULSE1,
-            pulse_features,
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
-            pulse_features.volume,
+            pulse_features,
         )
 
         approximation = reconstruction_data.reconstruction.approximations.get(
-            GeneratorName.PULSE1, np.array([], dtype=np.float32)
+            ChannelName.PULSE1, np.array([], dtype=np.float32)
         )
         assert len(approximation) > 0
 
@@ -91,28 +89,30 @@ class TestRegenerationServicePipeline:
 
         service._run(
             reconstruction_data.reconstruction,
-            GeneratorName.PULSE1,
-            pulse_features,
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
-            pulse_features.volume,
+            pulse_features,
         )
 
-        instructions = reconstruction_data.reconstruction.get_generator_instructions(GeneratorName.PULSE1)
+        instructions = reconstruction_data.reconstruction.get_channel_instructions(ChannelName.PULSE1)
         assert len(instructions) > 0
 
-    def test_run_feature_mutation_is_applied_before_synthesis(self, reconstruction_data, pulse_features) -> None:
-        new_volume = np.zeros(len(pulse_features.volume), dtype=np.int8)
-        service = RegenerationService()
-
-        service._run(
-            reconstruction_data.reconstruction,
-            GeneratorName.PULSE1,
-            pulse_features,
+    def test_run_regenerates_from_the_envelopes_it_is_handed(self, reconstruction_data, pulse_features) -> None:
+        """The caller writes the edit into the envelopes, so the service renders what it is given."""
+        silenced = pulse_features.with_envelope(
             FeatureKey.VOLUME,
-            new_volume,
+            Envelope(items=(0,) * len(pulse_features.volume.items)),
         )
+        service = RegenerationService()
+        results: List[Any] = []
+        service.subscribe(results.append)
 
-        assert (pulse_features.volume == new_volume).all()
+        service._run(reconstruction_data.reconstruction, ChannelName.PULSE1, FeatureKey.VOLUME, silenced)
+
+        assert isinstance(results[0], ServiceSuccess)
+        assert all(
+            not instruction.on for instruction in results[0].value.reconstruction.instructions[ChannelName.PULSE1]
+        )
 
     def test_run_emits_service_error_for_wrong_features_type(self, reconstruction_data) -> None:
         service = RegenerationService()
@@ -121,10 +121,9 @@ class TestRegenerationServicePipeline:
 
         service._run(
             reconstruction_data.reconstruction,
-            GeneratorName.PULSE1,
-            {},
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
-            np.zeros(4, dtype=np.int8),
+            {},
         )
 
         assert len(results) == 1
@@ -137,10 +136,9 @@ class TestRegenerationServicePipeline:
 
         service.start(
             reconstruction_data.reconstruction,
-            GeneratorName.PULSE1,
-            pulse_features,
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
-            pulse_features.volume,
+            pulse_features,
         )
 
         assert len(results) == 1
@@ -164,12 +162,15 @@ def _edit_arpeggio(context: ArpeggioEditContext, arpeggio: np.ndarray) -> None:
     results: List[Any] = []
     service.subscribe(results.append)
 
+    edited = context.features.with_envelope(
+        FeatureKey.ARPEGGIO,
+        Envelope(items=tuple(int(offset) for offset in arpeggio)),
+    )
     service._run(
         context.reconstruction,
-        GeneratorName.PULSE1,
-        context.features,
+        ChannelName.PULSE1,
         FeatureKey.ARPEGGIO,
-        arpeggio,
+        edited,
     )
 
     assert len(results) == 1
@@ -179,7 +180,7 @@ def _edit_arpeggio(context: ArpeggioEditContext, arpeggio: np.ndarray) -> None:
 
 
 def _pitches(context: ArpeggioEditContext) -> List[int]:
-    instructions = context.reconstruction.get_generator_instructions(GeneratorName.PULSE1)
+    instructions = context.reconstruction.get_channel_instructions(ChannelName.PULSE1)
     return [instruction.pitch for instruction in instructions]
 
 
@@ -196,30 +197,30 @@ class TestArpeggioEditKeepsTheSamplePitch:
             reconstruction = reconstruction_data.reconstruction
             return ArpeggioEditContext(
                 reconstruction=reconstruction,
-                features=FeatureData.load(reconstruction)[GeneratorName.PULSE1],
+                features=FeatureData.load(reconstruction)[ChannelName.PULSE1],
             )
 
         def check_the_starting_reference(context: ArpeggioEditContext) -> None:
             assert context.features.initial_pitch == BASE_PITCH
-            assert context.features.arpeggio.tolist() == [0]
+            assert list(context.features.arpeggio.items) == [0]
 
         def raise_the_first_frame_an_octave(context: ArpeggioEditContext) -> None:
             _edit_arpeggio(context, np.array([OCTAVE, 0, 0, 0], dtype=np.int8))
             assert _pitches(context) == [BASE_PITCH + OCTAVE] + [BASE_PITCH] * 3
 
         def reload_the_edited_features(context: ArpeggioEditContext) -> None:
-            context.features = FeatureData.load(context.reconstruction)[GeneratorName.PULSE1]
+            context.features = FeatureData.load(context.reconstruction)[ChannelName.PULSE1]
             assert context.features.initial_pitch == BASE_PITCH
-            assert context.features.arpeggio.tolist() == [OCTAVE, 0]
+            assert list(context.features.arpeggio.items) == [OCTAVE, 0]
 
         def clear_the_envelope(context: ArpeggioEditContext) -> None:
-            _edit_arpeggio(context, np.zeros(len(context.features.arpeggio), dtype=np.int8))
+            _edit_arpeggio(context, np.zeros(len(context.features.arpeggio.items), dtype=np.int8))
             assert _pitches(context) == [BASE_PITCH] * 4
 
         def check_the_reference_held(context: ArpeggioEditContext) -> None:
-            reloaded = FeatureData.load(context.reconstruction)[GeneratorName.PULSE1]
+            reloaded = FeatureData.load(context.reconstruction)[ChannelName.PULSE1]
             assert reloaded.initial_pitch == BASE_PITCH
-            assert reloaded.arpeggio.tolist() == [0]
+            assert list(reloaded.arpeggio.items) == [0]
 
         scenario = BaseTestScenario(
             label="arpeggio_edit_keeps_the_sample_pitch",
@@ -287,10 +288,9 @@ class TestRegenerationDeliveryThroughRealQueue:
         # The real synthesis emits its ServiceSuccess onto the real queue, due at the current frame.
         service._run(
             reconstruction_data.reconstruction,
-            GeneratorName.PULSE1,
-            pulse_features,
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
-            pulse_features.volume,
+            pulse_features,
         )
 
         # The real queue defers delivery until a frame is pumped; nothing has run yet. This also fails
@@ -315,13 +315,12 @@ class TestRegenerationDeliveryThroughRealQueue:
 
         CallbackQueue.add(lambda: None, priority=SETTLE_PRIORITY, delay=SETTLE_DELAY_FRAMES)
 
-        new_volume = np.zeros(len(pulse_features.volume), dtype=np.int8)
+        new_volume = np.zeros(len(pulse_features.volume.items), dtype=np.int8)
         service._run(
             reconstruction_data.reconstruction,
-            GeneratorName.PULSE1,
-            pulse_features,
+            ChannelName.PULSE1,
             FeatureKey.VOLUME,
-            new_volume,
+            pulse_features,
         )
 
         for _ in range(DELIVERY_BUDGET_FRAMES):
@@ -333,5 +332,5 @@ class TestRegenerationDeliveryThroughRealQueue:
         assert len(delivered) == 1
         regenerated = delivered[0].value
         assert regenerated.reconstruction is not reconstruction_data.reconstruction
-        assert regenerated.generator_name is GeneratorName.PULSE1
+        assert regenerated.channel_name is ChannelName.PULSE1
         assert regenerated.feature_key is FeatureKey.VOLUME

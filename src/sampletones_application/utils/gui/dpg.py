@@ -124,7 +124,7 @@ def dpg_get_item_parent(
     """
     try:
         parent: Optional[Sender] = dpg.get_item_parent(tag, *args, **kwargs)
-    except Exception:  # TODO: unsafe broad exception
+    except Exception:  # unsafe broad exception
         return None
 
     return parent
@@ -193,3 +193,57 @@ def dpg_is_item_hovered(
 ) -> Optional[bool]:
     is_hovered: Optional[bool] = dpg.is_item_hovered(tag, *args, **kwargs)
     return is_hovered
+
+
+def dpg_window_origin(
+    window: Sender,
+    anchor: Sender,
+) -> Tuple[float, float]:
+    """Where a child window's corner was drawn, in the coordinates a pointer is reported in.
+
+    A child window states where it sits within the container around it, while a widget states
+    where it was drawn on screen. A widget laid out in that same container therefore carries the
+    container's own origin, and the two readings of it together place the window on screen.
+
+    Args:
+        window: The child window whose corner is asked for.
+        anchor: A widget laid out in the same container as the window.
+
+    Returns:
+        Tuple[float, float]: The window's left and top edges on screen.
+    """
+    anchor_left, anchor_top = dpg.get_item_rect_min(anchor)
+    placed_left, placed_top = dpg.get_item_pos(anchor)
+    window_left, window_top = dpg.get_item_pos(window)
+    return (
+        float(anchor_left - placed_left + window_left),
+        float(anchor_top - placed_top + window_top),
+    )
+
+
+def dpg_pointer_within_window(
+    window: Sender,
+    anchor: Sender,
+) -> bool:
+    """Whether the pointer stands within a child window, measured against a widget beside it.
+
+    A scrolling table carries a window of its own, which takes the hover from the child window
+    holding it, so the rectangle answers where a hover state stays silent.
+
+    Args:
+        window: The child window the pointer is measured against.
+        anchor: A widget laid out in the same container as the window.
+
+    Returns:
+        bool: Whether the pointer stands within the window, which is False while either item
+            is yet to be built.
+    """
+    if not dpg.does_item_exist(window) or not dpg.does_item_exist(anchor):
+        return False
+
+    left, top = dpg_window_origin(window, anchor)
+    width, height = dpg.get_item_rect_size(window)
+    pointer_left, pointer_top = dpg.get_mouse_pos(local=False)
+    within_width: bool = left <= pointer_left <= left + width
+    within_height: bool = top <= pointer_top <= top + height
+    return within_width and within_height

@@ -1,18 +1,34 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 from anytree import Node
 
-from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 
 from .type import NodeType
 
 
-class TreeNode(Node):  # type: ignore[misc]
+class TreeNode(Node):
+    """A node of one of the application's trees, and the base every node kind derives from.
+
+    ``anytree`` lets a tree hold nodes of any type, so it states a node's relatives as untyped.
+    Every tree here is built from this class alone, which is what these declarations state: a
+    relative of a node is a node of ours, and the checker holds each reader to the attributes the
+    node kind it reached actually carries.
+    """
+
+    name: str
+    parent: Optional[TreeNode]
+    children: Tuple[TreeNode, ...]
+    path: Tuple[TreeNode, ...]
+    root: TreeNode
+    ancestors: Tuple[TreeNode, ...]
+    descendants: Tuple[TreeNode, ...]
+
     def __init__(
         self,
         name: str,
@@ -118,7 +134,7 @@ class GeneratorNode(TreeNode):
     def __init__(
         self,
         name: str,
-        generator_name: LibraryGeneratorName,
+        generator_name: GeneratorName,
         node_type: NodeType = NodeType.GENERATOR,
         parent: Optional[TreeNode] = None,
     ) -> None:

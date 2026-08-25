@@ -6,10 +6,11 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
+from sampletones_application.logic.reconstruction.edit import StemRemoval
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.services.regeneration import RegeneratedInstrument
+from sampletones_application.services.regeneration.service import RegeneratedInstrument
 from sampletones_application.services.result import ServiceSuccess
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import (
     InvalidMetadataError,
@@ -118,7 +119,7 @@ class TestRegenerationApplyOrdering:
         self,
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
-        """Pins the hook-before-apply order in ``_on_updated``.
+        """Pins the hook-before-apply order in ``apply_edit``.
 
         The hook locates the owning project sample by identity against the prior
         reconstruction, so it must observe the manager before the document rebinds
@@ -144,7 +145,7 @@ class TestRegenerationApplyOrdering:
         regenerated = reconstruction_factory()
         outcome = RegeneratedInstrument(
             reconstruction=regenerated,
-            generator_name=GeneratorName.PULSE1,
+            channel_name=ChannelName.PULSE1,
             feature_key=FeatureKey.VOLUME,
         )
 
@@ -153,6 +154,37 @@ class TestRegenerationApplyOrdering:
         assert len(observed) == 1
         assert observed[0] is prior
         assert manager.reconstruction is regenerated
+
+
+class TestStemRemovalApplyOrdering:
+    def test_a_removed_recording_travels_the_same_path_as_a_regenerated_instrument(
+        self,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        """Every edit of the open document is applied alike, so the history sees them alike."""
+        manager = ReconstructionManager(scheduling=MagicMock())
+        prior = reconstruction_factory()
+        manager.load_reconstruction_object(prior, name="lead")
+        observed: List[Optional[Reconstruction]] = []
+        coordinator = ReconstructionCoordinator(
+            manager,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            dialogs=MagicMock(),
+            language_manager=MagicMock(),
+            on_tab_switch=MagicMock(),
+            on_session_state_changed=MagicMock(),
+            on_reconstruction_updated=lambda _edit: observed.append(manager.reconstruction),
+            is_reconstruction_embedded=lambda: False,
+        )
+        coordinator.set_reconstructions_tab(MagicMock())
+        remaining = reconstruction_factory()
+
+        coordinator.apply_edit(StemRemoval(reconstruction=remaining, stem_name="kick"))
+
+        assert observed == [prior]
+        assert manager.reconstruction is remaining
 
 
 class TestReconstructionRestorePropagatesUnexpected:

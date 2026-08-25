@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from typing import Callable, Mapping
 
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MIN_PITCH
+from sampletones_core.features import speaks_in_periods
 from sampletones_core.utils.frequencies import (
     SANITIZED_NAME_TO_PERIOD,
     SANITIZED_NAME_TO_PITCH,
@@ -54,3 +56,15 @@ PERIOD_VALUE_KIND = PitchValueKind(
     sanitize=sanitize_period,
     sanitized_name_to_value=SANITIZED_NAME_TO_PERIOD,
 )
+
+
+def channel_pitch_kind(channel_name: ChannelName) -> PitchValueKind:
+    """The terms a channel states its pitch-like values in.
+
+    Args:
+        channel_name: The channel being read.
+
+    Returns:
+        PitchValueKind: The noise channel's periods, or the semitones the others name.
+    """
+    return PERIOD_VALUE_KIND if speaks_in_periods(channel_name) else PITCH_VALUE_KIND

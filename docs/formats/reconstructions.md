@@ -13,8 +13,10 @@ A `.stn` file holds:
 * **metadata** — the application name and version, and the reconstruction
   data-version used to check compatibility on load (see [Versioning](#versioning));
 * **id** — a unique identifier for the reconstruction;
-* **source audio** — the path to the original recording, or empty when the
-  reconstruction is [detached](#detached-reconstructions);
+* **source audio** — one path per source recording, in the order the stems setup
+  lists them: a single path for a conversion from one file, several for a stems
+  mix, and empty where the reconstruction is
+  [detached](#detached-reconstructions);
 * **configuration** — a frozen snapshot of the
   [generation configuration](../guide/configuration.md) used, so the file records
   exactly how it was made: sample rate, NES frequency, enabled channels, spectrum
@@ -44,7 +46,12 @@ A `.stn` file holds:
   is what says which of them the instrument itself writes; the rest are the
   channel's, and the player keeps the value it already holds for them. A channel
   in play writes them all as it is built, and clearing an envelope in the
-  instruments panel adds that dimension here.
+  instruments panel adds that dimension here;
+* **stems assignment** — the stems setup the reconstruction was built under and,
+  per channel, the source holding each frame (`stems_data`). Every reconstruction
+  carries one: a conversion from a single file records one stem covering every
+  channel it plays. A frame no source took records the resting stem id, `-1`,
+  which is what a channel sounds where a channel cap or a hierarchy left it free.
 
 A channel standing by rests at a reference pitch of its own, so the first envelope
 written into it sounds on a mid-range note, and it leaves every dimension it offers
@@ -64,8 +71,19 @@ reconstruction stays self-contained and a saved project stays portable.
 
 Each file records the reconstruction data-version it was written with. On load,
 _SampleToNES_ requires that version to match the one it supports and declines a
-file written by an incompatible version rather than misreading it. The
-application version is stored alongside it, for reference.
+file written by an incompatible version rather than misreading it. A file
+written at a version the upgrade chain reaches is migrated in memory to the
+current shape before deserialization (see
+[Data compatibility](../development/compatibility.md)); the application version
+is stored alongside the data version, for reference.
+
+The current data version is 2.2. Version 2.2 renamed the per-channel stream and
+approximation keys from `generator_name` to `channel_name` and the channel
+selection under the embedded config from `generators` to `channels`; the enum
+values stored inside (`pulse1`, `pulse2`, `triangle`, `noise`) never changed. It
+also records the source audio as one path per stem and carries the `stems_data`
+record on every reconstruction; a file written before either existed is read with
+its single path listed and a one-stem record synthesized from what it plays.
 
 ## Storage and export
 

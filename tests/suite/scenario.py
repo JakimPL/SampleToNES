@@ -26,7 +26,7 @@ class BaseTestScenario(Generic[ContextT]):
     Unlike a :class:`BaseTestCase`, which describes a single input/output pair, a
     scenario models a stateful sequence of operations: ``build`` produces the
     initial context, then :meth:`run` threads it through each step in turn. This
-    fits behaviours that only emerge over a sequence of mutations -- reordering a
+    fits behaviors that only emerge over a sequence of mutations -- reordering a
     collection, editing an item in place, and asserting that references survive.
     """
 

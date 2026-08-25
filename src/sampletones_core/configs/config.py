@@ -5,18 +5,18 @@ from typing import Dict, List, Optional, Self
 
 from pydantic import ConfigDict, Field
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.configs.general import GeneralConfig
+from sampletones_core.configs.generation import GenerationConfig
+from sampletones_core.configs.library import InstructionsLibraryConfig
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import DataModel
 from sampletones_core.data.metadata import Metadata
+from sampletones_shared.music import Tuning
 from sampletones_shared.paths.user import CONFIG_PATH
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_json, save_json
 from sampletones_shared.utils.system.paths import to_path
 from sampletones_shared.utils.validation import validate_with_recovery
-
-from .general import GeneralConfig
-from .generation import GenerationConfig
-from .library import InstructionsLibraryConfig
 
 
 class Config(DataModel):
@@ -111,8 +111,8 @@ class Config(DataModel):
         return self.generation.drive
 
     @property
-    def generators(self) -> List[GeneratorName]:
-        return self.generation.generators.copy()
+    def channels(self) -> List[ChannelName]:
+        return self.generation.channels.copy()
 
     @property
     def normalize(self) -> bool:
@@ -129,6 +129,10 @@ class Config(DataModel):
     @property
     def sample_rate(self) -> int:
         return self.library.sample_rate
+
+    @property
+    def tuning(self) -> Tuning:
+        return self.library.tuning
 
     @property
     def frame_length(self) -> int:

@@ -3,35 +3,35 @@ from typing import Any, Callable, List, Optional, Tuple
 
 from sampletones_core.configs import Config
 from sampletones_core.parallelization import TaskProcessor
-from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import LoggerProtocol
 from sampletones_shared.logger import logger as default_logger
 
+from ..progress import ReconstructionReporter
 from ..reconstructor.reconstructor import Reconstructor
-from .conversion import reconstruct_file
-from .paths import (
-    filter_files,
-    get_audio_files,
-    get_output_path,
-    get_relative_path,
-)
+from .conversion import reconstruct_job
+from .job import ConversionJob
+from .plan.protocol import ConversionPlan
+from .progress import JobReporter
 
 
 class ReconstructionConverter(TaskProcessor[Path]):
+    """Runs a conversion plan's jobs across a pool of worker processes.
+
+    The plan is resolved once the run starts, on the monitor thread, so a plan that scans a
+    directory does its reading there. Every job is then built by one worker, and the run
+    reports the reconstructions it wrote.
+    """
+
     def __init__(
         self,
         config: Config,
-        input_path: Path,
-        is_file: bool,
+        plan: ConversionPlan,
         logger: LoggerProtocol = default_logger,
     ) -> None:
         super().__init__(max_workers=config.general.max_workers, logger=logger)
         self.config = config.model_copy()
-        self.input_path: Path = input_path
-        self.is_file: bool = is_file
-        self.audio_files: List[Path] = []
-
-        self.current_file: Optional[str] = None
+        self.plan: ConversionPlan = plan
+        self.jobs: List[ConversionJob] = []
 
     def start(self) -> None:
         if self.running:
@@ -42,38 +42,31 @@ class ReconstructionConverter(TaskProcessor[Path]):
 
     def _create_tasks(self) -> List[Any]:
         reconstructor = Reconstructor(self.config)
-        output_path = get_output_path(self.config, self.input_path)
-
-        if self.is_file:
-            return [(reconstructor, self.input_path, output_path)]
-
-        self.audio_files = get_audio_files(self.input_path)
-        self.audio_files = filter_files(self.audio_files, self.input_path, output_path)
-
-        arguments: List[Tuple[Reconstructor, Path, Path]] = []
-        for audio_file in self.audio_files:
-            target_path = get_relative_path(self.input_path, audio_file, output_path)
-            arguments.append((reconstructor, audio_file, target_path))
-
-        if not arguments:
-            raise NoFilesToProcessError(f"No audio files found in {self.input_path}")
-
-        return arguments
+        self.jobs = self.plan.jobs(self.config)
+        return [(reconstructor, job, JobReporter(self._task_reporter(index))) for index, job in enumerate(self.jobs)]
 
     def _get_task_function(
         self,
-    ) -> Callable[[Tuple[Reconstructor, Path, Path]], Path]:
-        return reconstruct_file
+    ) -> Callable[[Tuple[Reconstructor, ConversionJob, ReconstructionReporter]], Path]:
+        return reconstruct_job
 
-    def _process_results(self, results: List[Path]) -> Path:
-        if self.is_file:
-            return results[0]
-
-        return self.input_path
+    def _process_results(self, results: List[Path]) -> Tuple[Path, ...]:
+        """The reconstructions the run wrote, in job order."""
+        return tuple(output_path for output_path in results if output_path.exists())
 
     def _notify_progress(self) -> None:
-        if self.completed_tasks > 0 and self.completed_tasks <= len(self.audio_files):
-            self.current_file = str(self.audio_files[self.completed_tasks - 1])
-            self.current_item = self.current_file
-
+        self.current_item = self._running_source()
         super()._notify_progress()
+
+    def _running_source(self) -> Optional[str]:
+        """The recording the job the run has been working on longest is reading.
+
+        Jobs are answered in the order they were handed out, so the first one the run has yet to
+        count is the earliest still under way — and once every job is counted, the last one is
+        what the run finished on.
+        """
+        if not self.jobs:
+            return None
+
+        index = min(self.completed_tasks, len(self.jobs) - 1)
+        return str(self.jobs[index].sources[0])

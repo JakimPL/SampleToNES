@@ -12,6 +12,19 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.tags.general import (
+    SUF_BUTTON,
+    SUF_GROUP,
+    SUF_STRIP,
+    SUF_TABLE,
+    SUF_TEXT,
+    TAG_GLOBAL_THEME_STEMS_ROW_INERT,
+)
+from sampletones_application.tags.main import (
+    TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE,
+    TAG_MAIN_CONVERTER_WINDOW_STEMS,
+)
+from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
@@ -22,10 +35,12 @@ from sampletones_application.utils.parallelization.background import (
     stop_background_workers,
 )
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_application.view_model.main.converter import ConversionPhase
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
+DRAG_PAYLOAD_SLOT: Final[int] = 3
 
 _DPG_DISPLAY_FUNCTIONS = [
     "create_context",
@@ -102,14 +117,14 @@ class TestGUIStartup:
         SingleThreadExecutor.reset_shutdown()
         dpg.destroy_context()
 
-    def test_initialises_without_error(self, tmp_path: Path) -> None:
+    def test_initializes_without_error(self, tmp_path: Path) -> None:
         with ExitStack() as stack:
             for display_patch in _display_patches():
                 stack.enter_context(display_patch)
 
             Application(profile=_profile(tmp_path))
 
-    def test_initialises_where_nothing_can_play(self, tmp_path: Path) -> None:
+    def test_initializes_where_nothing_can_play(self, tmp_path: Path) -> None:
         """Editing a song, exporting a module and rendering to a file need no output device.
 
         The rate the audio is rendered at is the consumer's to state, so a machine offering no
@@ -196,7 +211,7 @@ class TestKeybindingPreferences:
 class TestStartupRestoreDelegation:
     """Application only forwards the startup restore to the domain coordinators, which
     are the recovery boundary (docs/development/architecture.md § Error Handling Policy). The
-    recovery behaviour itself is covered by the coordinator tests.
+    recovery behavior itself is covered by the coordinator tests.
     """
 
     def test_project_restore_delegates_to_coordinator(self, app: Application) -> None:
@@ -235,7 +250,7 @@ class TestReconstructionSaveAsDetachment:
         reconstruction = reconstruction_factory()
         with app.history.transaction(HistoryAction.ADD_SAMPLE):
             sample = app.project_controller.add_sample(reconstruction, "Lead")
-        app._edit_project_sample(sample.id)
+        app._edit_project_voice(sample.id)
         return sample
 
     def test_embedded_reconstruction_is_owned_and_not_saveable(
@@ -276,7 +291,7 @@ class TestReconstructionSaveAsDetachment:
         assert app._build_menu_bar_viewmodel().reconstruction_saveable
         assert app.reconstruction_manager.reconstruction is not original
         assert sample.reconstruction is original
-        assert original in [sample.reconstruction for sample in app.project_manager.current.samples]
+        assert original in [sample.reconstruction for sample in app.project_manager.current.voices]
 
 
 class TestAddOpenReconstructionToSequencer:
@@ -306,12 +321,12 @@ class TestAddOpenReconstructionToSequencer:
     ) -> None:
         self._open_file_backed_reconstruction(app, reconstruction_factory, tmp_path)
         app.project_controller.new()
-        source_before = app.reconstruction_manager.audio_filepath
+        source_before = app.reconstruction_manager.source_paths
 
         app._add_current_reconstruction_to_sequencer()
 
-        assert source_before is not None
-        assert app.reconstruction_manager.audio_filepath == source_before
+        assert source_before
+        assert app.reconstruction_manager.source_paths == source_before
         assert app._build_menu_bar_viewmodel().locate_audio_enabled
 
     def test_embedded_sample_is_a_detached_copy(
@@ -325,9 +340,9 @@ class TestAddOpenReconstructionToSequencer:
 
         app._add_current_reconstruction_to_sequencer()
 
-        sample = app.project_manager.current.samples[0]
+        sample = app.project_manager.current.voices[0]
         assert sample.reconstruction is not app.reconstruction_manager.reconstruction
-        assert sample.reconstruction.audio_filepath is None
+        assert sample.reconstruction.audio_filepath == ()
         assert not app._editing_project_sample()
 
 
@@ -347,36 +362,36 @@ class TestChannelKeys:
     """
 
     @staticmethod
-    def _press(app: Application, generator: GeneratorName, tab: Tab) -> None:
+    def _press(app: Application, channel: ChannelName, tab: Tab) -> None:
         with patch.object(app._shell, "get_current_tab", return_value=tab):
-            _press_shortcut(app, CHANNEL_SHORTCUT_IDS[generator])
+            _press_shortcut(app, CHANNEL_SHORTCUT_IDS[channel])
 
     def test_the_main_tab_switches_the_generator_a_reconstruction_is_built_from(self, app: Application) -> None:
-        selected = frozenset(app.config_manager.config.generation.generators)
+        selected = frozenset(app.config_manager.config.generation.channels)
 
-        self._press(app, GeneratorName.TRIANGLE, Tab.MAIN)
+        self._press(app, ChannelName.TRIANGLE, Tab.MAIN)
 
-        assert frozenset(app.config_manager.config.generation.generators) == selected ^ {GeneratorName.TRIANGLE}
+        assert frozenset(app.config_manager.config.generation.channels) == selected ^ {ChannelName.TRIANGLE}
 
     def test_the_sequencer_switches_its_mix(self, app: Application) -> None:
-        self._press(app, GeneratorName.NOISE, Tab.SEQUENCER)
+        self._press(app, ChannelName.NOISE, Tab.SEQUENCER)
 
-        assert app._sequencer_tab.channels.is_muted(GeneratorName.NOISE)
+        assert app._sequencer_tab.channels.is_muted(ChannelName.NOISE)
 
     def test_a_second_press_returns_the_mix_it_started_from(self, app: Application) -> None:
-        self._press(app, GeneratorName.PULSE1, Tab.SEQUENCER)
-        self._press(app, GeneratorName.PULSE1, Tab.SEQUENCER)
+        self._press(app, ChannelName.PULSE1, Tab.SEQUENCER)
+        self._press(app, ChannelName.PULSE1, Tab.SEQUENCER)
 
         assert not app._sequencer_tab.channels.any_muted
 
     def test_the_reconstructions_tab_holding_nothing_leaves_the_mix_alone(self, app: Application) -> None:
         """With no reconstruction loaded every slice reads as unavailable, so the key rests there."""
-        self._press(app, GeneratorName.PULSE2, Tab.RECONSTRUCTIONS)
+        self._press(app, ChannelName.PULSE2, Tab.RECONSTRUCTIONS)
 
         assert not app._sequencer_tab.channels.any_muted
 
     def test_the_main_tab_leaves_the_sequencer_mix_alone(self, app: Application) -> None:
-        self._press(app, GeneratorName.PULSE1, Tab.MAIN)
+        self._press(app, ChannelName.PULSE1, Tab.MAIN)
 
         assert not app._sequencer_tab.channels.any_muted
 
@@ -399,3 +414,139 @@ class TestTabKeys:
     def test_the_key_answers_while_a_field_is_edited(self, app: Application, tab: Tab) -> None:
         """Naming a tab reaches it the way stepping to the next one does, typing included."""
         assert app._shortcut_source.shortcut(TAB_SHORTCUT_IDS[tab]).field_transparent
+
+
+def stems_list(app: Application) -> GUIStemsList:
+    """The converter card's stems list, which owns the tags its rows carry."""
+    return app._main_tab._converter_panel.stems_list
+
+
+def drop(tag: str, payload: str) -> None:
+    """Deliver ``payload`` to whatever ``tag`` accepts drops with, the way DearPyGui would."""
+    dpg.get_item_configuration(tag)["drop_callback"](dpg.get_alias_id(tag), payload)
+
+
+class TestConverterStemsCard:
+    """Gathering recordings paints the converter card: a row each, carrying what the reader set."""
+
+    def _gather(self, app: Application, tmp_path: Path, names: List[str]) -> List[Path]:
+        paths = []
+        for name in names:
+            path = tmp_path / name
+            path.touch()
+            paths.append(path)
+
+        converter_logic = app._main_tab._converter_logic
+        converter_logic.set_stems_mode(True)
+        converter_logic.add_sources(paths)
+        return paths
+
+    def test_a_row_is_built_for_every_recording(self, app: Application, tmp_path: Path) -> None:
+        paths = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+
+        for path in paths:
+            assert dpg.does_item_exist(stems_list(app).row_tag(str(path), SUF_GROUP))
+            assert dpg.does_item_exist(stems_list(app).row_tag(str(path), SUF_BUTTON))
+
+    def test_a_rows_channels_show_what_was_set(self, app: Application, tmp_path: Path) -> None:
+        """The row offers a checkbox per channel the configuration enables, ticked as the row holds it."""
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+        converter_logic = app._main_tab._converter_logic
+        enabled = list(converter_logic._config_manager.config.generation.channels)
+        kept, cleared = enabled[-1], enabled[0]
+
+        converter_logic.set_source_channels(path, frozenset({kept}))
+
+        assert dpg.get_value(stems_list(app).channel_tag(str(path), kept)) is True
+        assert dpg.get_value(stems_list(app).channel_tag(str(path), cleared)) is False
+
+    def test_removing_a_recording_takes_its_row_with_it(self, app: Application, tmp_path: Path) -> None:
+        first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+
+        app._main_tab._converter_logic.remove_source(first)
+
+        assert not dpg.does_item_exist(stems_list(app).row_tag(str(first), SUF_GROUP))
+        assert dpg.does_item_exist(stems_list(app).row_tag(str(second), SUF_GROUP))
+
+    def test_leaving_stems_mode_hides_the_list(self, app: Application, tmp_path: Path) -> None:
+        self._gather(app, tmp_path, ["a.wav"])
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is True
+
+        app._main_tab._converter_logic.set_stems_mode(False)
+
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is False
+
+    def test_the_list_stays_on_screen_while_a_conversion_runs(self, app: Application, tmp_path: Path) -> None:
+        """The setup is what a running conversion is making, so it keeps saying what that is."""
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+        converter_logic = app._main_tab._converter_logic
+
+        converter_logic._phase = ConversionPhase.RUNNING
+        converter_logic.refresh_view()
+        converter_logic._emit_view_model("running", 0.5)
+
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is True
+        assert dpg.get_item_configuration(stems_list(app).row_tag(str(path), SUF_BUTTON))["enabled"] is False
+
+    def test_a_level_draws_its_own_band(self, app: Application, tmp_path: Path) -> None:
+        first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+        converter_logic = app._main_tab._converter_logic
+
+        converter_logic.isolate_source(second)
+
+        assert dpg.does_item_exist(stems_list(app).level_tag(0, SUF_TABLE))
+        assert dpg.does_item_exist(stems_list(app).level_tag(1, SUF_TABLE))
+        assert dpg.does_item_exist(stems_list(app).level_tag(2, SUF_STRIP))
+        assert dpg.get_item_parent(stems_list(app).row_tag(str(first), SUF_GROUP)) == stems_list(app).level_tag(
+            0, SUF_TABLE
+        )
+        assert dpg.get_item_parent(stems_list(app).row_tag(str(second), SUF_GROUP)) == stems_list(app).level_tag(
+            1, SUF_TABLE
+        )
+
+    def test_a_row_is_the_thing_you_drag_it_by(self, app: Application, tmp_path: Path) -> None:
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+
+        assert dpg.get_item_children(stems_list(app).row_tag(str(path), SUF_TEXT), DRAG_PAYLOAD_SLOT)
+
+    def test_dropping_a_recording_on_a_row_joins_that_rows_level(self, app: Application, tmp_path: Path) -> None:
+        first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+        converter_logic = app._main_tab._converter_logic
+        converter_logic.isolate_source(second)
+
+        drop(stems_list(app).row_tag(str(second), SUF_TEXT), str(first))
+
+        assert converter_logic._levels.level_count == 1
+
+    def test_dropping_a_recording_in_a_gap_opens_a_level(self, app: Application, tmp_path: Path) -> None:
+        first, _second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+        converter_logic = app._main_tab._converter_logic
+
+        drop(stems_list(app).level_tag(1, SUF_STRIP), str(first))
+
+        assert converter_logic._levels.level_count == 2
+        assert converter_logic._levels.level_of(first) == 1
+
+    def test_the_order_explanation_leaves_with_the_control_it_belongs_to(self, app: Application) -> None:
+        """A tooltip left live over a hidden widget's rectangle explains whatever moved into it."""
+        converter_logic = app._main_tab._converter_logic
+
+        converter_logic.set_stems_mode(True)
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE)["show"] is True
+
+        converter_logic.set_stems_mode(False)
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE)["show"] is False
+
+    def test_a_recording_holding_no_channel_grays_out_but_stays_listed(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+
+        app._main_tab._converter_logic.set_source_channels(path, frozenset())
+
+        name_tag = stems_list(app).row_tag(str(path), SUF_TEXT)
+        assert dpg.does_item_exist(stems_list(app).row_tag(str(path), SUF_GROUP))
+        assert dpg.get_item_alias(dpg.get_item_theme(name_tag)) == TAG_GLOBAL_THEME_STEMS_ROW_INERT
+        assert dpg.get_item_configuration(name_tag)["enabled"] is True

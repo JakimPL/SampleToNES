@@ -5,7 +5,7 @@ from typing import Any, Dict, Final, List
 
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.bitphase.btp import project_to_bytes, write_btp
 from sampletones_core.formats.bitphase.builder import sample_to_bitphase
 from sampletones_core.formats.bitphase.model.project import BitphaseProject
@@ -68,7 +68,7 @@ def project_fixture() -> BitphaseProject:
             build_instrument(
                 "Kick (noise)",
                 build_features(VOLUME_ENVELOPE, duty_cycle=[1, 1, 0, 0]),
-                generator=GeneratorName.NOISE,
+                channel=ChannelName.NOISE,
             ),
         )
     )

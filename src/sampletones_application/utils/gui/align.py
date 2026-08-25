@@ -23,11 +23,11 @@ def center_item(tag: str) -> None:
 
 
 def center_when_settled(tag: str) -> None:
-    """Centres an autosizing window once its content has reached its final size.
+    """Centers an autosizing window once its content has reached its final size.
 
     An autosize window measures its content across the first couple of frames, so a stretch
     table or wrapped text reaches its final width and height only on the second layout pass.
-    Deferring the centre until then reads the settled size, so the window rests centred on its
+    Deferring the center until then reads the settled size, so the window rests centered on its
     first appearance the same way a reopened one does from its remembered size.
     """
     FrameCallbackManager.set_frame_callback(

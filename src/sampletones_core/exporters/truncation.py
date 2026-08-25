@@ -19,23 +19,6 @@ class EnvelopeTruncation:
     instruments: int
 
     @classmethod
-    def measure(cls, source_frames: int, limit: Optional[int]) -> Optional[EnvelopeTruncation]:
-        """Reports what an export of one instrument's envelopes keeps.
-
-        Args:
-            source_frames: The frame count the envelopes arrived with.
-            limit: The most items the target format stores, or ``None`` when it is unbounded.
-
-        Returns:
-            Optional[EnvelopeTruncation]: The shortening the limit imposes, and ``None``
-                when the envelopes fit whole.
-        """
-        if limit is None or source_frames <= limit:
-            return None
-
-        return cls(frames=limit, source_frames=source_frames, instruments=1)
-
-    @classmethod
     def summarize(
         cls,
         truncations: Sequence[Optional[EnvelopeTruncation]],

@@ -17,7 +17,7 @@ from sampletones_application.view_model.main.updates import (
     LibrarySettingsUpdate,
 )
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName, SpectrumMethod
+from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_core.library import InstructionLibraryKey
 
 
@@ -154,7 +154,7 @@ class TestConfigManagerApplySettings:
         manager = _manager(tmp_path / "missing.json")
         update = GenerationSettingsUpdate(
             drive=0.5,
-            generators=[GeneratorName.PULSE1],
+            channels=[ChannelName.PULSE1],
         )
         manager.apply_generation_settings(update)
         assert manager.config.generation.drive == pytest.approx(0.5)

@@ -132,7 +132,7 @@ def load_yaml_model(
         model_type (Type[ModelTypeT]): Model class validating the mapping.
         context (Optional[Mapping[str, Any]]): Validation context forwarded to
             ``model_validate``, letting field validators resolve against shared state
-            (e.g. a palette for colour references).
+            (e.g. a palette for color references).
 
     Returns:
         ModelTypeT: The validated model instance.
@@ -166,7 +166,7 @@ def load_yaml_model_dir(
         model_type (Type[ModelTypeT]): Model class validating the merged mapping.
         context (Optional[Mapping[str, Any]]): Validation context forwarded to
             ``model_validate``, letting field validators resolve against shared state
-            (e.g. a palette for colour references).
+            (e.g. a palette for color references).
 
     Returns:
         ModelTypeT: The validated model instance.

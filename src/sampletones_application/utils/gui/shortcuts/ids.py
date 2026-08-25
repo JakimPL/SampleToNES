@@ -1,10 +1,10 @@
 from enum import Enum, StrEnum
-from typing import Dict, Final, Self, Tuple
+from typing import Dict, Final, FrozenSet, Self, Tuple
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.constants.playback import FollowMode
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exports.format import ExportFormat
 
 
 class ShortcutCategory(StrEnum):
@@ -20,7 +20,7 @@ class ShortcutCategory(StrEnum):
     APPLICATION = "application"
     ORDER = "order"
     TRACKER = "tracker"
-    SAMPLES = "samples"
+    VOICES = "voices"
     DIALOG = "dialog"
 
 
@@ -48,6 +48,7 @@ class ShortcutId(Enum):
     PROJECT_PROPERTIES = ("ProjectProperties", ShortcutCategory.APPLICATION)
     EXPORT_PROJECT_FAMITRACKER = ("ExportProjectFamiTracker", ShortcutCategory.APPLICATION)
     EXPORT_PROJECT_BITPHASE = ("ExportProjectBitphase", ShortcutCategory.APPLICATION)
+    EXPORT_PROJECT_NSF = ("ExportProjectNSF", ShortcutCategory.APPLICATION)
     RENDER_SONG = ("RenderSong", ShortcutCategory.APPLICATION)
     CLOSE_PROJECT = ("CloseProject", ShortcutCategory.APPLICATION)
     EXIT = ("Exit", ShortcutCategory.APPLICATION)
@@ -64,6 +65,10 @@ class ShortcutId(Enum):
     EXPORT_RECONSTRUCTION_WAV = ("ExportReconstructionWav", ShortcutCategory.APPLICATION)
     EXPORT_INSTRUMENTS_FAMITRACKER = ("ExportInstrumentsFamiTracker", ShortcutCategory.APPLICATION)
     EXPORT_INSTRUMENTS_BITPHASE_PRESET = ("ExportInstrumentsBitphasePreset", ShortcutCategory.APPLICATION)
+    EXPORT_INSTRUMENTS_NSF = ("ExportInstrumentsNSF", ShortcutCategory.APPLICATION)
+    NEW_INSTRUMENT = ("NewInstrument", ShortcutCategory.APPLICATION)
+    ADD_SAMPLE_FROM_FILE = ("AddSampleFromFile", ShortcutCategory.APPLICATION)
+    IMPORT_INSTRUMENT = ("ImportInstrument", ShortcutCategory.APPLICATION)
     ADD_RECONSTRUCTION_TO_SEQUENCER = ("AddReconstructionToSequencer", ShortcutCategory.APPLICATION)
     OPEN_RECONSTRUCTION_IN_EXPLORER = ("OpenReconstructionInExplorer", ShortcutCategory.APPLICATION)
     LOCATE_ORIGINAL_AUDIO = ("LocateOriginalAudio", ShortcutCategory.APPLICATION)
@@ -180,13 +185,13 @@ class ShortcutId(Enum):
     TRACKER_CANCEL_ENTRY = ("TrackerCancelEntry", ShortcutCategory.TRACKER)
     TRACKER_PLAY_FROM_ROW = ("TrackerPlayFromRow", ShortcutCategory.TRACKER)
 
-    SAMPLES_RENAME_SAMPLE = ("SamplesRenameSample", ShortcutCategory.SAMPLES)
-    SAMPLES_REMOVE_SAMPLE = ("SamplesRemoveSample", ShortcutCategory.SAMPLES)
-    SAMPLES_MOVE_SAMPLE_UP = ("SamplesMoveSampleUp", ShortcutCategory.SAMPLES)
-    SAMPLES_MOVE_SAMPLE_DOWN = ("SamplesMoveSampleDown", ShortcutCategory.SAMPLES)
-    SAMPLES_MOVE_SAMPLE_TO_TOP = ("SamplesMoveSampleToTop", ShortcutCategory.SAMPLES)
-    SAMPLES_MOVE_SAMPLE_TO_BOTTOM = ("SamplesMoveSampleToBottom", ShortcutCategory.SAMPLES)
-    SAMPLES_CANCEL_RENAME = ("SamplesCancelRename", ShortcutCategory.SAMPLES)
+    VOICES_RENAME_VOICE = ("VoicesRenameVoice", ShortcutCategory.VOICES)
+    VOICES_REMOVE_VOICE = ("VoicesRemoveVoice", ShortcutCategory.VOICES)
+    VOICES_MOVE_VOICE_UP = ("VoicesMoveVoiceUp", ShortcutCategory.VOICES)
+    VOICES_MOVE_VOICE_DOWN = ("VoicesMoveVoiceDown", ShortcutCategory.VOICES)
+    VOICES_MOVE_VOICE_TO_TOP = ("VoicesMoveVoiceToTop", ShortcutCategory.VOICES)
+    VOICES_MOVE_VOICE_TO_BOTTOM = ("VoicesMoveVoiceToBottom", ShortcutCategory.VOICES)
+    VOICES_CANCEL_RENAME = ("VoicesCancelRename", ShortcutCategory.VOICES)
 
     DIALOG_NEXT_CONTROL = ("DialogNextControl", ShortcutCategory.DIALOG)
     DIALOG_PREVIOUS_CONTROL = ("DialogPreviousControl", ShortcutCategory.DIALOG)
@@ -213,19 +218,33 @@ TAB_SHORTCUT_IDS: Final[Dict[Tab, ShortcutId]] = {
     Tab.INSTRUCTIONS: ShortcutId.SELECT_TAB_INSTRUCTIONS,
 }
 
-CHANNEL_SHORTCUT_IDS: Final[Dict[GeneratorName, ShortcutId]] = {
-    GeneratorName.PULSE1: ShortcutId.TOGGLE_CHANNEL_PULSE_1,
-    GeneratorName.PULSE2: ShortcutId.TOGGLE_CHANNEL_PULSE_2,
-    GeneratorName.TRIANGLE: ShortcutId.TOGGLE_CHANNEL_TRIANGLE,
-    GeneratorName.NOISE: ShortcutId.TOGGLE_CHANNEL_NOISE,
+CHANNEL_SHORTCUT_IDS: Final[Dict[ChannelName, ShortcutId]] = {
+    ChannelName.PULSE1: ShortcutId.TOGGLE_CHANNEL_PULSE_1,
+    ChannelName.PULSE2: ShortcutId.TOGGLE_CHANNEL_PULSE_2,
+    ChannelName.TRIANGLE: ShortcutId.TOGGLE_CHANNEL_TRIANGLE,
+    ChannelName.NOISE: ShortcutId.TOGGLE_CHANNEL_NOISE,
 }
 
-PROJECT_EXPORT_SHORTCUT_IDS: Final[Dict[TrackerFormat, ShortcutId]] = {
-    TrackerFormat.FAMITRACKER: ShortcutId.EXPORT_PROJECT_FAMITRACKER,
-    TrackerFormat.BITPHASE: ShortcutId.EXPORT_PROJECT_BITPHASE,
+PROJECT_EXPORT_SHORTCUT_IDS: Final[Dict[ExportFormat, ShortcutId]] = {
+    ExportFormat.FAMITRACKER: ShortcutId.EXPORT_PROJECT_FAMITRACKER,
+    ExportFormat.BITPHASE: ShortcutId.EXPORT_PROJECT_BITPHASE,
+    ExportFormat.NSF: ShortcutId.EXPORT_PROJECT_NSF,
 }
 
-SAMPLE_EXPORT_SHORTCUT_IDS: Final[Dict[TrackerFormat, ShortcutId]] = {
-    TrackerFormat.FAMITRACKER: ShortcutId.EXPORT_INSTRUMENTS_FAMITRACKER,
-    TrackerFormat.BITPHASE_PRESET: ShortcutId.EXPORT_INSTRUMENTS_BITPHASE_PRESET,
+SAMPLE_EXPORT_SHORTCUT_IDS: Final[Dict[ExportFormat, ShortcutId]] = {
+    ExportFormat.FAMITRACKER: ShortcutId.EXPORT_INSTRUMENTS_FAMITRACKER,
+    ExportFormat.BITPHASE_PRESET: ShortcutId.EXPORT_INSTRUMENTS_BITPHASE_PRESET,
+    ExportFormat.NSF: ShortcutId.EXPORT_INSTRUMENTS_NSF,
 }
+
+FAMILY_SHORTCUT_IDS: Final[FrozenSet[ShortcutId]] = frozenset(
+    shortcut_id
+    for family in (
+        FOLLOW_MODE_SHORTCUT_IDS,
+        TAB_SHORTCUT_IDS,
+        CHANNEL_SHORTCUT_IDS,
+        PROJECT_EXPORT_SHORTCUT_IDS,
+        SAMPLE_EXPORT_SHORTCUT_IDS,
+    )
+    for shortcut_id in family.values()
+)

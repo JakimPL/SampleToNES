@@ -18,18 +18,38 @@ def show_tooltip(
     message: str,
     *,
     tag: Optional[str] = None,
+    text_tag: Optional[str] = None,
 ) -> Sender:
-    """Attaches a hover explanation to ``parent``, named by its tag or by the id it was created with."""
+    """Attaches a hover explanation to ``parent``, named by its tag or by the id it was created with.
+
+    ``text_tag`` names the message itself, which is what a caller gives it where the explanation
+    changes while the widget it explains stands.
+    """
     tooltip_kwargs: SerializedData = {"hide_on_activity": True}
     if tag is not None:
         tooltip_kwargs["tag"] = tag
 
+    text_kwargs: SerializedData = {}
+    if text_tag is not None:
+        text_kwargs["tag"] = text_tag
+
     with dpg.tooltip(parent, **tooltip_kwargs) as tooltip:
         ThemeRegistry.get(TAG_GLOBAL_THEME_TOOLTIP).bind_to_item(tooltip)
-        tooltip_text: Sender = dpg.add_text(message)
+        tooltip_text: Sender = dpg.add_text(message, **text_kwargs)
         FontRegistry.bind_to_item(tooltip_text, Font.REGULAR_SMALL)
 
     return tooltip_text
+
+
+def set_tooltip_visible(tag: str, visible: bool) -> None:
+    """Shows or hides a tooltip along with the widget it explains.
+
+    DearPyGui keeps a tooltip live over the rectangle its parent last drew at, so a tooltip left
+    showing while its widget is hidden explains whatever moved into that place. Toggling the two
+    together keeps an explanation on the control it belongs to.
+    """
+    if dpg.does_item_exist(tag):
+        dpg.configure_item(tag, show=visible)
 
 
 def attach_disabled_tooltip(

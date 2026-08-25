@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree.node import (
@@ -131,14 +131,14 @@ class TestLibraryNode:
 
 class TestGeneratorNode:
     def test_generator_name_is_stored(self) -> None:
-        node = GeneratorNode("gen", generator_name=LibraryGeneratorName.PULSE)
-        assert node.generator_name == LibraryGeneratorName.PULSE
+        node = GeneratorNode("gen", generator_name=GeneratorName.PULSE)
+        assert node.generator_name == GeneratorName.PULSE
 
     def test_copy_preserves_generator_name(self) -> None:
-        node = GeneratorNode("gen", generator_name=LibraryGeneratorName.PULSE)
+        node = GeneratorNode("gen", generator_name=GeneratorName.PULSE)
         copied = node.copy()
-        assert copied.generator_name == LibraryGeneratorName.PULSE
+        assert copied.generator_name == GeneratorName.PULSE
 
     def test_default_node_type_is_generator(self) -> None:
-        node = GeneratorNode("gen", generator_name=LibraryGeneratorName.PULSE)
+        node = GeneratorNode("gen", generator_name=GeneratorName.PULSE)
         assert node.node_type == NodeType.GENERATOR

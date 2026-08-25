@@ -12,13 +12,13 @@ and runs as a script:
 ```
 python scripts/calibration.py [--config <base>] [--methods fft,cqt]
     [--perceptual-exponents 0.5,1.0] [--temporal-weights 0.1,0.3]
-    [--generators pulse1,triangle,noise]
+    [--channels pulse1,triangle,noise]
 ```
 
 The base configuration comes from `--config` when given; otherwise the saved
 application configuration is used, so a run inherits the current app settings —
 sample rate, gamma, selector and the rest. The channel set is the exception:
-calibration pins the generators itself (`--generators`, by default pulse 1 +
+calibration pins the channels itself (`--channels`, by default pulse 1 +
 triangle + noise), so every run reconstructs with an explicitly chosen channel
 set and results stay comparable across machines.
 

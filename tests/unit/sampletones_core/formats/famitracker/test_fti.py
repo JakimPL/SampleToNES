@@ -1,14 +1,46 @@
-import struct
-from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Final, Optional
 
 import numpy as np
+import pytest
 
-from sampletones_core.formats.famitracker.instrument import write_fti
+from sampletones_core.constants.general import MAX_VOLUME
+from sampletones_core.exporters.feature import Features
+from sampletones_core.features.envelope import Envelope
+from sampletones_core.formats.binary import BinaryWriter
+from sampletones_core.formats.famitracker.instrument import (
+    fti_bytes_to_instrument,
+    instrument_to_fti_bytes,
+    read_fti,
+    write_fti,
+)
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.sequences.features import (
     features_to_instrument_sequences,
+)
+from sampletones_core.formats.famitracker.specification.file import FTI_MAGIC, FTI_VERSION
+from sampletones_core.formats.famitracker.specification.instruments import (
+    EMPTY_DPCM_ASSIGNMENTS,
+    EMPTY_DPCM_SAMPLES,
+    INSTRUMENT_TYPE_2A03,
+    STANDALONE_INSTRUMENT_INDEX,
+)
+from sampletones_core.formats.famitracker.specification.sequences import (
+    DEFAULT_SEQUENCE_SETTING,
+    MAX_SEQUENCE_ITEMS,
+    NO_LOOP_POINT,
+    NO_RELEASE_POINT,
+    SEQUENCE_COUNT_2A03,
+    SEQUENCE_DISABLED,
+    SEQUENCE_ENABLED,
+    SequenceKind,
+)
+from sampletones_shared.exceptions import (
+    IncompatibleInstrumentVersionError,
+    InvalidInstrumentValuesError,
+    MalformedInstrumentError,
+    NotAnInstrumentFileError,
+    UnsupportedInstrumentTypeError,
 )
 
 GOLDEN_INSTRUMENT_NAME = "Test Instrument"
@@ -25,6 +57,37 @@ GOLDEN_FTI_BYTES = (
     b"\x00\x00\x00\x00\x00\x00\x00\x00"
 )
 
+SEQUENCE_COUNT_OFFSET = 26
+TYPE_OFFSET = 6
+SIGNATURE_LENGTH = 3
+
+
+def fti_stating_volume_items(count: int) -> bytes:
+    """A file whose volume sequence states ``count`` items, written field by field."""
+    writer = BinaryWriter()
+    writer.write_bytes(FTI_MAGIC)
+    writer.write_bytes(FTI_VERSION)
+    writer.write_uint8(INSTRUMENT_TYPE_2A03)
+    writer.write_counted_string("Long")
+    writer.write_int8(SEQUENCE_COUNT_2A03)
+    writer.write_int8(SEQUENCE_ENABLED)
+    writer.write_uint32(count)
+    writer.write_int32(NO_LOOP_POINT)
+    writer.write_int32(NO_RELEASE_POINT)
+    writer.write_uint32(DEFAULT_SEQUENCE_SETTING)
+    for _ in range(count):
+        writer.write_int8(MAX_VOLUME)
+
+    for _ in range(SEQUENCE_COUNT_2A03 - 1):
+        writer.write_int8(SEQUENCE_DISABLED)
+
+    writer.write_uint32(EMPTY_DPCM_ASSIGNMENTS)
+    writer.write_uint32(EMPTY_DPCM_SAMPLES)
+    return writer.data
+
+
+REFERENCE_PITCH: Final[int] = 60
+
 
 def build_instrument(
     name: str,
@@ -34,86 +97,32 @@ def build_instrument(
     pitch: Optional[np.ndarray] = None,
     hi_pitch: Optional[np.ndarray] = None,
     duty_cycle: Optional[np.ndarray] = None,
-    loop: bool = False,
+    loop_point: Optional[int] = None,
     index: int = 0,
 ) -> Instrument2A03:
+    def envelope(items: Optional[np.ndarray]) -> Envelope[int]:
+        values = () if items is None else tuple(int(item) for item in items)
+        return Envelope[int](items=values, loop_point=loop_point if values else None)
+
     sequences = features_to_instrument_sequences(
-        volume=volume,
-        arpeggio=arpeggio if arpeggio is not None else np.array([], dtype=int),
-        pitch=pitch,
-        hi_pitch=hi_pitch,
-        duty_cycle=duty_cycle,
-        loop=loop,
+        Features(
+            initial_pitch=REFERENCE_PITCH,
+            volume=envelope(volume),
+            arpeggio=envelope(arpeggio),
+            pitch=None if pitch is None else envelope(pitch),
+            hi_pitch=None if hi_pitch is None else envelope(hi_pitch),
+            duty_cycle=None if duty_cycle is None else envelope(duty_cycle),
+        )
     )
     return Instrument2A03(index=index, name=name, sequences=sequences)
 
 
-@dataclass
-class ParsedSequence:
-    enabled: bool
-    loop_point: int
-    release_point: int
-    setting: int
-    items: List[int]
-
-
-@dataclass
-class ParsedFti:
-    magic: bytes
-    version: bytes
-    instrument_type: int
-    name: str
-    sequences: List[ParsedSequence]
-    dpcm_assignment_count: int
-    dpcm_sample_count: int
-
-
-def _read(data: bytes, offset: int, fmt: str) -> Tuple[int, int]:
-    size = struct.calcsize(fmt)
-    (value,) = struct.unpack_from(fmt, data, offset)
-    return value, offset + size
-
-
-def parse_fti(data: bytes) -> ParsedFti:
-    offset = 0
-    magic = data[offset : offset + 3]
-    version = data[offset + 3 : offset + 6]
-    offset += 6
-
-    instrument_type, offset = _read(data, offset, "<B")
-    name_length, offset = _read(data, offset, "<I")
-    name = data[offset : offset + name_length].decode("utf-8")
-    offset += name_length
-
-    sequence_count, offset = _read(data, offset, "<b")
-    sequences: List[ParsedSequence] = []
-    for _ in range(sequence_count):
-        enabled_flag, offset = _read(data, offset, "<b")
-        if not enabled_flag:
-            sequences.append(ParsedSequence(False, -1, -1, 0, []))
-            continue
-
-        length, offset = _read(data, offset, "<I")
-        loop_point, offset = _read(data, offset, "<i")
-        release_point, offset = _read(data, offset, "<i")
-        setting, offset = _read(data, offset, "<I")
-        items: List[int] = []
-        for _ in range(length):
-            item, offset = _read(data, offset, "<b")
-            items.append(item)
-        sequences.append(ParsedSequence(True, loop_point, release_point, setting, items))
-
-    dpcm_assignment_count, offset = _read(data, offset, "<I")
-    dpcm_sample_count, offset = _read(data, offset, "<I")
-
-    return ParsedFti(
-        magic=magic,
-        version=version,
-        instrument_type=instrument_type,
-        name=name,
-        sequences=sequences,
-        dpcm_assignment_count=dpcm_assignment_count,
-        dpcm_sample_count=dpcm_sample_count,
+def golden_instrument() -> Instrument2A03:
+    return build_instrument(
+        GOLDEN_INSTRUMENT_NAME,
+        volume=GOLDEN_VOLUME,
+        arpeggio=GOLDEN_ARPEGGIO,
+        duty_cycle=GOLDEN_DUTY_CYCLE,
     )
 
 
@@ -124,63 +133,112 @@ class TestWriteFtiGoldenBytes:
 
     def test_output_matches_golden(self, tmp_path: Path) -> None:
         path = tmp_path / "golden.fti"
-        instrument = build_instrument(
-            GOLDEN_INSTRUMENT_NAME,
-            volume=GOLDEN_VOLUME,
-            arpeggio=GOLDEN_ARPEGGIO,
-            duty_cycle=GOLDEN_DUTY_CYCLE,
-        )
-        write_fti(path, instrument)
+        write_fti(path, golden_instrument())
         assert path.read_bytes() == GOLDEN_FTI_BYTES
 
 
-class TestWriteFtiRoundTrip:
-    def test_header_and_type(self, tmp_path: Path) -> None:
-        path = tmp_path / "instrument.fti"
-        write_fti(path, build_instrument("Lead", volume=np.array([15, 0])))
-        parsed = parse_fti(path.read_bytes())
-        assert parsed.magic == b"FTI"
-        assert parsed.version == b"2.4"
-        assert parsed.instrument_type == 1
+class TestReadGoldenBytes:
+    """The reader takes the pinned bytes back into the instrument that wrote them."""
 
-    def test_name_round_trips(self, tmp_path: Path) -> None:
-        path = tmp_path / "instrument.fti"
-        write_fti(path, build_instrument("Bass Line", volume=np.array([15, 0])))
-        parsed = parse_fti(path.read_bytes())
-        assert parsed.name == "Bass Line"
+    def test_the_golden_bytes_read_back_as_the_instrument(self) -> None:
+        assert fti_bytes_to_instrument(GOLDEN_FTI_BYTES) == golden_instrument()
 
-    def test_all_five_sequence_slots_present(self, tmp_path: Path) -> None:
-        path = tmp_path / "instrument.fti"
-        write_fti(path, build_instrument("Lead", volume=np.array([15, 0])))
-        parsed = parse_fti(path.read_bytes())
-        assert len(parsed.sequences) == 5
+    def test_the_name_comes_back(self) -> None:
+        assert fti_bytes_to_instrument(GOLDEN_FTI_BYTES).name == GOLDEN_INSTRUMENT_NAME
 
-    def test_enabled_sequence_items_round_trip(self, tmp_path: Path) -> None:
-        path = tmp_path / "instrument.fti"
+    def test_a_standalone_file_holds_the_first_slot(self) -> None:
+        assert fti_bytes_to_instrument(GOLDEN_FTI_BYTES).index == STANDALONE_INSTRUMENT_INDEX
+
+
+class TestFtiRoundTrip:
+    def test_the_bytes_come_back_the_same(self) -> None:
+        instrument = golden_instrument()
+        data = instrument_to_fti_bytes(instrument)
+        assert instrument_to_fti_bytes(fti_bytes_to_instrument(data)) == data
+
+    def test_the_name_round_trips(self) -> None:
+        instrument = build_instrument("Bass Line", volume=np.array([15, 0]))
+        assert fti_bytes_to_instrument(instrument_to_fti_bytes(instrument)).name == "Bass Line"
+
+    def test_all_five_sequence_slots_are_present(self) -> None:
+        instrument = fti_bytes_to_instrument(
+            instrument_to_fti_bytes(build_instrument("Lead", volume=np.array([15, 0])))
+        )
+        assert set(instrument.sequences) == set(SequenceKind)
+
+    def test_enabled_sequence_items_round_trip(self) -> None:
         instrument = build_instrument("Lead", volume=np.array([15, 12, 8, 0]), arpeggio=np.array([0, 2, -3]))
+        read = fti_bytes_to_instrument(instrument_to_fti_bytes(instrument))
+        assert read.sequences[SequenceKind.VOLUME].items == (15, 12, 8, 0)
+        assert read.sequences[SequenceKind.ARPEGGIO].items == (0, 2, -3)
+
+    def test_missing_sequences_come_back_disabled(self) -> None:
+        instrument = fti_bytes_to_instrument(
+            instrument_to_fti_bytes(build_instrument("Lead", volume=np.array([15, 0])))
+        )
+        assert not instrument.sequences[SequenceKind.PITCH].enabled
+        assert not instrument.sequences[SequenceKind.HI_PITCH].enabled
+        assert not instrument.sequences[SequenceKind.DUTY].enabled
+
+    def test_the_loop_point_round_trips(self) -> None:
+        instrument = build_instrument("Pad", volume=np.array([15, 10, 5]), loop_point=0)
+        read = fti_bytes_to_instrument(instrument_to_fti_bytes(instrument))
+        assert read.sequences[SequenceKind.VOLUME].loop_point == 0
+
+    def test_a_written_file_reads_back(self, tmp_path: Path) -> None:
+        path = tmp_path / "instrument.fti"
+        instrument = golden_instrument()
         write_fti(path, instrument)
-        parsed = parse_fti(path.read_bytes())
-        assert parsed.sequences[0].enabled is True
-        assert parsed.sequences[0].items == [15, 12, 8, 0]
-        assert parsed.sequences[1].items == [0, 2, -3]
+        assert read_fti(path) == instrument
 
-    def test_missing_sequences_are_disabled(self, tmp_path: Path) -> None:
-        path = tmp_path / "instrument.fti"
-        write_fti(path, build_instrument("Lead", volume=np.array([15, 0])))
-        parsed = parse_fti(path.read_bytes())
-        assert parsed.sequences[2].enabled is False
-        assert parsed.sequences[3].enabled is False
-        assert parsed.sequences[4].enabled is False
+    def test_a_missing_file_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError):
+            read_fti(tmp_path / "absent.fti")
 
-    def test_loop_flag_sets_loop_point(self, tmp_path: Path) -> None:
-        path = tmp_path / "instrument.fti"
-        write_fti(path, build_instrument("Pad", volume=np.array([15, 10, 5]), loop=True))
-        parsed = parse_fti(path.read_bytes())
-        assert parsed.sequences[0].loop_point == 0
 
-    def test_dpcm_section_is_empty(self, tmp_path: Path) -> None:
-        path = tmp_path / "instrument.fti"
-        write_fti(path, build_instrument("Lead", volume=np.array([15, 0])))
-        parsed = parse_fti(path.read_bytes())
-        assert parsed.dpcm_assignment_count == 0
-        assert parsed.dpcm_sample_count == 0
+class TestReadFtiRefusals:
+    def test_other_data_is_not_an_instrument_file(self) -> None:
+        with pytest.raises(NotAnInstrumentFileError):
+            fti_bytes_to_instrument(b"XXX" + GOLDEN_FTI_BYTES[SIGNATURE_LENGTH:])
+
+    def test_another_layout_version_is_refused(self) -> None:
+        with pytest.raises(IncompatibleInstrumentVersionError):
+            fti_bytes_to_instrument(b"FTI9.9" + GOLDEN_FTI_BYTES[TYPE_OFFSET:])
+
+    def test_the_refused_version_is_named(self) -> None:
+        with pytest.raises(IncompatibleInstrumentVersionError) as raised:
+            fti_bytes_to_instrument(b"FTI9.9" + GOLDEN_FTI_BYTES[TYPE_OFFSET:])
+
+        assert raised.value.actual_version == "9.9"
+        assert raised.value.expected_version == "2.4"
+
+    def test_another_chip_is_refused(self) -> None:
+        data = GOLDEN_FTI_BYTES[:TYPE_OFFSET] + b"\x05" + GOLDEN_FTI_BYTES[TYPE_OFFSET + 1 :]
+        with pytest.raises(UnsupportedInstrumentTypeError):
+            fti_bytes_to_instrument(data)
+
+    def test_another_sequence_count_is_refused(self) -> None:
+        data = GOLDEN_FTI_BYTES[:SEQUENCE_COUNT_OFFSET] + b"\x03" + GOLDEN_FTI_BYTES[SEQUENCE_COUNT_OFFSET + 1 :]
+        with pytest.raises(MalformedInstrumentError):
+            fti_bytes_to_instrument(data)
+
+    def test_a_file_cut_short_is_refused(self) -> None:
+        with pytest.raises(MalformedInstrumentError):
+            fti_bytes_to_instrument(GOLDEN_FTI_BYTES[:20])
+
+    def test_empty_data_is_refused(self) -> None:
+        with pytest.raises(MalformedInstrumentError):
+            fti_bytes_to_instrument(b"")
+
+    def test_a_sequence_longer_than_one_holds_is_refused(self) -> None:
+        with pytest.raises(InvalidInstrumentValuesError):
+            fti_bytes_to_instrument(fti_stating_volume_items(MAX_SEQUENCE_ITEMS + 1))
+
+    def test_a_sequence_of_the_length_one_holds_is_read(self) -> None:
+        instrument = fti_bytes_to_instrument(fti_stating_volume_items(MAX_SEQUENCE_ITEMS))
+        assert len(instrument.sequences[SequenceKind.VOLUME].items) == MAX_SEQUENCE_ITEMS
+
+    def test_a_name_that_is_not_text_is_refused(self) -> None:
+        data = GOLDEN_FTI_BYTES[:11] + b"\xff" * 15 + GOLDEN_FTI_BYTES[SEQUENCE_COUNT_OFFSET:]
+        with pytest.raises(MalformedInstrumentError):
+            fti_bytes_to_instrument(data)

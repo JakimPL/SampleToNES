@@ -37,7 +37,7 @@ class TestSnapshotIndependence(BaseTestSuite):
 
         snapshot = snapshot_project(project_controller.project)
 
-        assert snapshot.samples[sample.id].reconstruction is sample.reconstruction
+        assert snapshot.voices[sample.id].reconstruction is sample.reconstruction
 
 
 class TestASnapshotIsASource(BaseTestSuite):

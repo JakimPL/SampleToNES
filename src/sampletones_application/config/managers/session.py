@@ -87,6 +87,9 @@ class SessionManager:
     def set_loop_song(self, value: bool) -> None:
         self._config_manager.set_loop_song(value)
 
+    def set_octave(self, value: int) -> None:
+        self._config_manager.set_octave(value)
+
     def toggle_favorite(self, path: Path) -> None:
         self._config_manager.toggle_favorite(path)
 
@@ -262,6 +265,10 @@ class SessionManager:
     @property
     def follow_mode(self) -> FollowMode:
         return self._config_manager.follow_mode
+
+    @property
+    def octave(self) -> int:
+        return self._config_manager.octave
 
     @property
     def loop_song(self) -> bool:

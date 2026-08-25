@@ -1,6 +1,6 @@
-.PHONY: help setup install build release system-deps run clean pre-commit test \
-	ftm-samples icons check-import-boundary check-tag-names check-unused-tags \
-	check-language-keys check-palette-colors calibration lint pylint mypy format
+.PHONY: help setup install build release system-deps run clean pre-commit test benchmarks \
+	ftm-samples nsf-samples nsf-render compression-report icons player check-import-boundary check-tag-names check-unused-tags \
+	check-language-keys check-palette-colors check-shortcut-actions calibration lint pylint mypy format
 
 ifeq ($(OS),Windows_NT)
 ifeq ($(MSYSTEM),)
@@ -66,11 +66,16 @@ help:
 	@echo $(Q)  make setup       - Set up development environment (uv); GPU auto-detected, GPU=0 forces CPU$(Q)
 	@echo $(Q)  make pre-commit  - Install pre-commit hooks$(Q)
 	@echo $(Q)  make system-deps - Install system packages required to build and run (Debian-based, or Homebrew on macOS)$(Q)
-	@echo $(Q)  make build       - Compile standalone executable (respects current deployment config)$(Q)
-	@echo $(Q)  make release     - Compile standalone executable with the release deployment config$(Q)
+	@echo $(Q)  make build       - Compile standalone executable (development deployment config: DEBUG, strict history)$(Q)
+	@echo $(Q)  make release     - Compile standalone executable with the release deployment config (INFO, self-healing history)$(Q)
 	@echo $(Q)  make test        - Run unit tests with coverage$(Q)
+	@echo $(Q)  make benchmarks  - Run the measured-duration suite on its own$(Q)
 	@echo $(Q)  make ftm-samples - Emit example .ftm files to build/ftm via the integration suite$(Q)
+	@echo $(Q)  make nsf-samples - Emit example .nsf files to build/nsf via the integration suite$(Q)
+	@echo $(Q)  make nsf-render  - Render the .nsf files in build/nsf to waves with ffmpeg$(Q)
+	@echo $(Q)  make compression-report - Measure the song codec into build/compression$(Q)
 	@echo $(Q)  make icons       - Generate the icon suite into src/sampletones_assets/icons$(Q)
+	@echo $(Q)  make player      - Assemble the NES player driver with cc65$(Q)
 	@echo $(Q)  make calibration - Score the reconstruction corpus; the report lands in Documents/SampleToNES/calibration$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
 	@echo $(Q)  make lint        - Run linting (pylint, mypy)$(Q)
@@ -107,12 +112,29 @@ pre-commit:
 test:
 	$(call script,dev/tests)
 
+benchmarks:
+	uv run python -m pytest tests/benchmarks --no-cov
+
 ftm-samples: export SAMPLETONES_FTM_OUTPUT_DIR := build/ftm
 ftm-samples:
 	uv run python -m pytest tests/integration/famitracker
 
+nsf-samples: export SAMPLETONES_NSF_OUTPUT_DIR := build/nsf
+nsf-samples:
+	uv run python -m pytest tests/integration/nsf
+
+nsf-render: nsf-samples
+	uv run scripts/nsf_render.py
+
+compression-report: export SAMPLETONES_COMPRESSION_OUTPUT_DIR := build/compression
+compression-report:
+	uv run python -m pytest tests/integration/nsf/test_compression_report.py
+
 icons:
 	uv run --group assets python scripts/assets/icons.py
+
+player:
+	uv run scripts/player.py
 
 check-import-boundary:
 	uv run scripts/checks/import_boundary.py --all
@@ -128,6 +150,9 @@ check-language-keys:
 
 check-palette-colors:
 	uv run scripts/checks/palette_colors.py
+
+check-shortcut-actions:
+	uv run scripts/checks/shortcut_actions.py
 
 calibration:
 	uv run scripts/calibration.py

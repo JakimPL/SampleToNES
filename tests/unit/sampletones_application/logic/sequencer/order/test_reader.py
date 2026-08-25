@@ -10,12 +10,12 @@ from sampletones_application.logic.sequencer.order import (
     SequencerOrderLogic,
 )
 from sampletones_application.view_model.sequencer.region import OrderRegion
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.sequencer import fill_order
 
 MASTER_ROW = CHANNEL_AXIS.index(None)
-PULSE1_ROW = CHANNEL_AXIS.index(GeneratorName.PULSE1)
-NOISE_ROW = CHANNEL_AXIS.index(GeneratorName.NOISE)
+PULSE1_ROW = CHANNEL_AXIS.index(ChannelName.PULSE1)
+NOISE_ROW = CHANNEL_AXIS.index(ChannelName.NOISE)
 
 
 @pytest.fixture
@@ -30,12 +30,12 @@ def reader(logic: SequencerOrderLogic) -> OrderBlockReader:
 
 
 def _row(
-    generator: Optional[GeneratorName],
+    channel: Optional[ChannelName],
     *,
     last_position: int = 0,
 ) -> OrderRegion:
     """The region one whole row covers, out to ``last_position``."""
-    row = CHANNEL_AXIS.index(generator)
+    row = CHANNEL_AXIS.index(channel)
     return OrderRegion(
         first_row=row,
         last_row=row,
@@ -62,7 +62,7 @@ class TestChannelRow:
             ),
         )
 
-        block = reader.read(_row(GeneratorName.PULSE1, last_position=2))
+        block = reader.read(_row(ChannelName.PULSE1, last_position=2))
 
         assert block.entries == {(0, 0): 0, (0, 1): 1, (0, 2): 2}
 
@@ -82,7 +82,7 @@ class TestChannelRow:
             ),
         )
 
-        block = reader.read(_row(GeneratorName.NOISE))
+        block = reader.read(_row(ChannelName.NOISE))
 
         assert block.entries == {(0, 0): None}
 
@@ -170,7 +170,7 @@ class TestOffsets:
         block = reader.read(
             OrderRegion(
                 first_row=PULSE1_ROW,
-                last_row=CHANNEL_AXIS.index(GeneratorName.PULSE2),
+                last_row=CHANNEL_AXIS.index(ChannelName.PULSE2),
                 first_position=2,
                 last_position=2,
             )

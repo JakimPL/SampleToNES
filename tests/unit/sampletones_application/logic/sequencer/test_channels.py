@@ -10,23 +10,23 @@ from sampletones_application.logic.sequencer.channels import (
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.case import BaseTestCase
 
 Gesture = Callable[[SequencerChannelsLogic], None]
 
-PULSE1 = GeneratorName.PULSE1
-PULSE2 = GeneratorName.PULSE2
-TRIANGLE = GeneratorName.TRIANGLE
-NOISE = GeneratorName.NOISE
+PULSE1 = ChannelName.PULSE1
+PULSE2 = ChannelName.PULSE2
+TRIANGLE = ChannelName.TRIANGLE
+NOISE = ChannelName.NOISE
 
 
-def toggle(generator: GeneratorName) -> Gesture:
-    return lambda logic: logic.toggle(generator)
+def toggle(channel: ChannelName) -> Gesture:
+    return lambda logic: logic.toggle(channel)
 
 
-def solo(generator: GeneratorName) -> Gesture:
-    return lambda logic: logic.solo(generator)
+def solo(channel: ChannelName) -> Gesture:
+    return lambda logic: logic.solo(channel)
 
 
 def toggle_all() -> Gesture:
@@ -49,7 +49,7 @@ def reset() -> Gesture:
 class GestureCase(BaseTestCase):
     label: str
     gestures: Tuple[Gesture, ...]
-    expected_muted: FrozenSet[GeneratorName]
+    expected_muted: FrozenSet[ChannelName]
 
 
 GESTURE_CASES = [

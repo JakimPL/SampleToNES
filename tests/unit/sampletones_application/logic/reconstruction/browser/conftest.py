@@ -37,7 +37,7 @@ def config_fields(
     nes_frequency: int = 30,
     spectrum_method: SpectrumMethod = SpectrumMethod.FFT,
     transformation_gamma: int = 0,
-    generators: str = "PTN",
+    channels: str = "PTN",
     config_hash: str = HASH_A,
 ) -> ConfigDirectoryFields:
     """Builds configuration fields, so a test states only the field whose effect it examines."""
@@ -46,7 +46,7 @@ def config_fields(
         nf=nes_frequency,
         sm=spectrum_method,
         tg=transformation_gamma,
-        gn=generators,
+        gn=channels,
         ch=config_hash,
     )
 

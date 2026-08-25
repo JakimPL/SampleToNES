@@ -1,6 +1,6 @@
 from sampletones_application.logic.reconstruction.browser.tree.configurations.naming import (
     assign_display_names,
-    disambiguate_generator_siblings,
+    disambiguate_channel_siblings,
 )
 from sampletones_application.logic.reconstruction.browser.tree.containers import (
     find_or_create_config_group,
@@ -32,7 +32,7 @@ def organize_top_level_config_directories(branch: TreeNode) -> None:
             case FileSystemNode() if child.node_type == NodeType.DIRECTORY:
                 assign_display_names(child)
 
-    disambiguate_generator_siblings(branch)
+    disambiguate_channel_siblings(branch)
 
 
 def _attach_config_directory_under_groups(

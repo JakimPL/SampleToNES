@@ -9,11 +9,11 @@ from sampletones_core.configs.display import (
     format_transformation,
 )
 from sampletones_core.constants.enums import (
-    GENERATOR_ABBREVIATION_PATTERN,
-    GENERATOR_ABBREVIATION_TO_NAME,
-    GeneratorName,
+    CHANNEL_ABBREVIATION_PATTERN,
+    CHANNEL_ABBREVIATION_TO_NAME,
+    ChannelName,
     SpectrumMethod,
-    abbreviate_generator_names,
+    abbreviate_channel_names,
 )
 from sampletones_core.constants.field_aliases import ALIASES
 from sampletones_shared.utils.serialization import HASH_PATTERN, hash_models
@@ -37,12 +37,12 @@ class ConfigDirectoryFields(BaseModel):
     nf: int = Field(gt=0, validation_alias=ALIASES["nf"])
     sm: SpectrumMethod = Field(validation_alias=ALIASES["sm"])
     tg: int = Field(ge=0, validation_alias=ALIASES["tg"])
-    gn: str = Field(pattern=GENERATOR_ABBREVIATION_PATTERN, validation_alias=ALIASES["gn"])
+    gn: str = Field(pattern=CHANNEL_ABBREVIATION_PATTERN, validation_alias=ALIASES["gn"])
     ch: str = Field(pattern=HASH_PATTERN, validation_alias=ALIASES["ch"])
 
     @property
-    def generators(self) -> Tuple[GeneratorName, ...]:
-        return tuple(GENERATOR_ABBREVIATION_TO_NAME[character] for character in self.gn)
+    def channels(self) -> Tuple[ChannelName, ...]:
+        return tuple(CHANNEL_ABBREVIATION_TO_NAME[character] for character in self.gn)
 
     @classmethod
     def from_config(cls, config: Config) -> Self:
@@ -51,7 +51,7 @@ class ConfigDirectoryFields(BaseModel):
             nf=config.library.nes_frequency,
             sm=config.library.spectrum_method,
             tg=config.library.transformation_gamma,
-            gn=abbreviate_generator_names(config.generation.generators),
+            gn=abbreviate_channel_names(config.generation.channels),
             ch=hash_models(config.library, config.generation),
         )
 

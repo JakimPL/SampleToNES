@@ -8,7 +8,7 @@ from sampletones_application.view_model.sequencer.order import (
     SequencerOrderTrackerViewModel,
     SequencerOrderViewModel,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.utils.display import display_id
 from sampletones_shared.constants.symbols import MIXED
 from tests.suite.base import BaseTestSuite
@@ -18,11 +18,11 @@ _EMPTY = display_id(None)
 
 
 def _tracker(
-    channels: Dict[GeneratorName, List[Optional[int]]],
+    channels: Dict[ChannelName, List[Optional[int]]],
 ) -> SequencerOrderTrackerViewModel:
     views = {
-        generator: SequencerOrderViewModel(
-            generator=generator,
+        channel: SequencerOrderViewModel(
+            channel=channel,
             entries=tuple(
                 OrderEntryViewModel(
                     position=position,
@@ -31,7 +31,7 @@ def _tracker(
                 for position, index in enumerate(indices)
             ),
         )
-        for generator, indices in channels.items()
+        for channel, indices in channels.items()
     }
     position_count = max(
         (len(view.entries) for view in views.values()),
@@ -43,22 +43,22 @@ def _tracker(
     )
 
 
-def _uniform(*indices: Optional[int]) -> Dict[GeneratorName, List[Optional[int]]]:
-    return {generator: list(indices) for generator in GeneratorName.items()}
+def _uniform(*indices: Optional[int]) -> Dict[ChannelName, List[Optional[int]]]:
+    return {channel: list(indices) for channel in ChannelName.items()}
 
 
 def test_entry_label_renders_index_and_empty_slot() -> None:
     tracker = _tracker(_uniform(5, None))
 
-    assert tracker.entry_label(GeneratorName.PULSE1, 0) == display_id(5)
-    assert tracker.entry_label(GeneratorName.PULSE1, 1) == _EMPTY
+    assert tracker.entry_label(ChannelName.PULSE1, 0) == display_id(5)
+    assert tracker.entry_label(ChannelName.PULSE1, 1) == _EMPTY
 
 
 class TestMasterLabel(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class MasterCase(BaseRegularTestCase):
         label: str
-        channels: Dict[GeneratorName, List[Optional[int]]]
+        channels: Dict[ChannelName, List[Optional[int]]]
         expected: str
 
     test_cases = (
@@ -75,20 +75,20 @@ class TestMasterLabel(BaseTestSuite):
         MasterCase(
             label="divergent_index",
             channels={
-                GeneratorName.PULSE1: [5],
-                GeneratorName.PULSE2: [5],
-                GeneratorName.TRIANGLE: [7],
-                GeneratorName.NOISE: [5],
+                ChannelName.PULSE1: [5],
+                ChannelName.PULSE2: [5],
+                ChannelName.TRIANGLE: [7],
+                ChannelName.NOISE: [5],
             },
             expected=MIXED,
         ),
         MasterCase(
             label="index_versus_empty",
             channels={
-                GeneratorName.PULSE1: [5],
-                GeneratorName.PULSE2: [5],
-                GeneratorName.TRIANGLE: [None],
-                GeneratorName.NOISE: [5],
+                ChannelName.PULSE1: [5],
+                ChannelName.PULSE2: [5],
+                ChannelName.TRIANGLE: [None],
+                ChannelName.NOISE: [5],
             },
             expected=MIXED,
         ),

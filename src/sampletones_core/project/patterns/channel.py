@@ -4,7 +4,7 @@ from typing import AbstractSet, Dict, Optional
 
 from pydantic import BaseModel, Field
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 
@@ -21,12 +21,12 @@ class Channel(BaseModel):
     position and how many positions exist.
     """
 
-    generator: GeneratorName = Field(..., description="The NES channel this pool drives.")
+    name: ChannelName = Field(..., description="The NES channel this pool drives.")
     patterns: Dict[int, Pattern] = Field(..., description="Pattern pool keyed by index.")
 
     @classmethod
-    def empty(cls, generator: GeneratorName, rows_per_pattern: int) -> Channel:
-        return cls(generator=generator, patterns={0: Pattern.empty(rows_per_pattern)})
+    def empty(cls, name: ChannelName, rows_per_pattern: int) -> Channel:
+        return cls(name=name, patterns={0: Pattern.empty(rows_per_pattern)})
 
     def pattern(self, index: int) -> Optional[Pattern]:
         return self.patterns.get(index)
@@ -84,4 +84,4 @@ class Channel(BaseModel):
         self.patterns[index].rows[row_index] = row
 
     def __repr__(self) -> str:
-        return f"Channel(generator={self.generator}, patterns={len(self.patterns)})"
+        return f"Channel(name={self.name}, patterns={len(self.patterns)})"

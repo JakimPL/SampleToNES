@@ -40,10 +40,19 @@ class Theme:
 
         return dictionary
 
-    def create(self) -> None:
-        """Builds the DearPyGui theme once, registering each colour item it fills.
+    @property
+    def components(self) -> Tuple[ThemeParameter, ...]:
+        """The components the theme is built from, in the order DearPyGui fills an item from them.
 
-        DearPyGui copies a colour into the item at the call that fills it, so each one is
+        A later component covering a color is the one the item wears, so the order states which
+        of two components naming the same color has the final say.
+        """
+        return tuple(self._items.items)
+
+    def create(self) -> None:
+        """Builds the DearPyGui theme once, registering each color item it fills.
+
+        DearPyGui copies a color into the item at the call that fills it, so each one is
         handed over through the palette bindings, which repaint the theme in place when
         another palette is activated.
         """
@@ -102,7 +111,7 @@ class Theme:
         enabled_state: bool = True,
         category: int = dpg.mvThemeCat_Core,
     ) -> Optional[ColorRGBA]:
-        """The value a theme colour carries under the active palette."""
+        """The value a theme color carries under the active palette."""
         theme_item = self.get(
             item_type,
             key,

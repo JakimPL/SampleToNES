@@ -3,7 +3,7 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import MIN_SAMPLE_LENGTH
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import CyclicArray
 from sampletones_core.generators.implementation.pulse import PulseGenerator
 from sampletones_core.instructions import PulseInstruction
@@ -16,13 +16,13 @@ def config() -> Config:
 
 @pytest.fixture
 def generator(config: Config) -> PulseGenerator:
-    return PulseGenerator(config, GeneratorName.PULSE1)
+    return PulseGenerator(config, ChannelName.PULSE1)
 
 
 class TestGeneratorInit:
     def test_non_config_raises(self) -> None:
         with pytest.raises(TypeError):
-            PulseGenerator("not_a_config", GeneratorName.PULSE1)
+            PulseGenerator("not_a_config", ChannelName.PULSE1)
 
     def test_non_str_name_raises(self, config: Config) -> None:
         with pytest.raises(TypeError):

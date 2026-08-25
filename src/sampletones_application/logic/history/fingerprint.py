@@ -2,6 +2,9 @@ import hashlib
 from typing import Callable, Dict, Iterable, List, Tuple
 
 from sampletones_core.project import Project
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import samples
 from sampletones_core.reconstructions import Reconstruction
 
 ReconstructionHash = Callable[[Reconstruction], str]
@@ -25,11 +28,14 @@ def fingerprint_project(
         project.settings.model_dump_json(),
         project.song.model_dump_json(),
     ]
-    for sample in project.samples:
-        parts.append(sample.id)
-        parts.append(sample.name)
-        parts.append(str(sample.loop))
-        parts.append(reconstruction_hash(sample.reconstruction))
+    for voice in project.voices:
+        parts.append(voice.id)
+        parts.append(voice.name)
+        match voice:
+            case Sample():
+                parts.append(reconstruction_hash(voice.reconstruction))
+            case Instrument():
+                parts.append(voice.model_dump_json())
 
     combined = "|".join(parts)
     return hashlib.sha256(combined.encode("utf-8")).hexdigest()
@@ -62,5 +68,5 @@ class ReconstructionHashCache:
         return cached[1]
 
     def prune(self, projects: Iterable[Project]) -> None:
-        live = {id(sample.reconstruction) for project in projects for sample in project.samples}
+        live = {id(sample.reconstruction) for project in projects for sample in samples(project.voices)}
         self._hashes = {key: value for key, value in self._hashes.items() if key in live}

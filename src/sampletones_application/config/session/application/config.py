@@ -7,6 +7,7 @@ from sampletones_application.config.session.application.favorites import Favorit
 from sampletones_application.config.session.application.history import HistoryConfig
 from sampletones_application.config.session.application.playback import PlaybackConfig
 from sampletones_application.config.session.application.shortcuts import ShortcutsConfig
+from sampletones_application.config.session.application.tracker import TrackerConfig
 from sampletones_core.data import Metadata
 
 
@@ -39,9 +40,13 @@ class ApplicationConfig(BaseModel):
     )
     playback: PlaybackConfig = Field(
         default_factory=PlaybackConfig,
-        description="Playback behaviour preferences.",
+        description="Playback behavior preferences.",
     )
     shortcuts: ShortcutsConfig = Field(
         default_factory=ShortcutsConfig,
         description="The keybinding scheme and the actions rebound on it.",
+    )
+    tracker: TrackerConfig = Field(
+        default_factory=TrackerConfig,
+        description="How the pattern grid is typed into.",
     )

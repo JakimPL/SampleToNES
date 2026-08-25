@@ -2,7 +2,7 @@
 
 An instruction library is stored as a single `.ins` file holding, for every
 possible instruction, the waveform its channel produces and that waveform's
-[spectrum](../glossary.md#spectrum-feature-histogram). It is the catalogue the
+[spectrum](../glossary.md#spectrum-feature-histogram). It is the catalog the
 reconstruction search draws its candidates from. For what a library is and how
 it is built, see [Instruction library](../concepts/instruction-library.md); this
 page documents the file.
@@ -19,8 +19,8 @@ instruction.
 
 Each entry contains:
 
-* **metadata** — the generator class (`pulse` / `triangle` / `noise`) and the
-  instruction values below;
+* **metadata** — the generator class (`PulseGenerator` / `TriangleGenerator` /
+  `NoiseGenerator`) and the instruction values below;
 * **instruction values** — the channel command:
     * **on** (0–1) — whether the channel sounds;
     * **pitch** (33–119) for pulse and triangle, or **period** (0–15) for noise;

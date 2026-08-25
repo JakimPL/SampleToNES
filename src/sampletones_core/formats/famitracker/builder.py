@@ -1,11 +1,11 @@
 from typing import List, Optional, Tuple
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.slices import (
     InstrumentSlot,
     InstrumentTable,
-    iterate_sample_slices,
+    iterate_instrument_entries,
 )
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.model.module import (
@@ -26,14 +26,13 @@ from sampletones_core.formats.famitracker.sequences.features import (
 )
 from sampletones_core.formats.famitracker.specification.channels import (
     CHANNEL_COUNT_2A03,
-    GENERATOR_NAME_TO_CHANNEL_ID,
+    CHANNEL_TO_ID,
     ChannelId,
 )
 from sampletones_core.formats.famitracker.specification.instruments import (
     MAX_INSTRUMENTS,
 )
 from sampletones_core.formats.famitracker.specification.parameters import (
-    DEFAULT_COPYRIGHT,
     DEFAULT_HIGHLIGHT_FIRST,
     DEFAULT_HIGHLIGHT_SECOND,
     DEFAULT_SPEED_SPLIT_POINT,
@@ -53,43 +52,34 @@ from sampletones_core.formats.famitracker.specification.patterns import (
     MIN_OCTAVE,
     NoteValue,
 )
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.song import Song
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_shared.application import SAMPLETONES_COPYRIGHT
 
 
 def build_instrument(
     index: int,
     name: str,
     features: Features,
-    *,
-    loop: bool,
 ) -> Instrument2A03:
-    """Builds one FamiTracker instrument from the envelopes of a generator slice.
+    """Builds one FamiTracker instrument from a set of envelopes.
 
-    The slice's envelopes become the instrument's five 2A03 sequences, so an instrument reaching a
+    The envelopes become the instrument's five 2A03 sequences, so an instrument reaching a
     ``.fti`` file on its own and one taking a slot in a module are built the same way.
 
     Args:
         index: The slot the instrument is numbered under.
         name: The name FamiTracker lists the instrument by.
         features: The per-dimension envelopes the sequences are read from.
-        loop: Whether every populated sequence loops from its first item, sustaining a held note.
 
     Returns:
         The instrument the envelopes describe.
     """
-    sequences = features_to_instrument_sequences(
-        volume=features.volume,
-        arpeggio=features.arpeggio,
-        pitch=features.pitch,
-        hi_pitch=features.hi_pitch,
-        duty_cycle=features.duty_cycle,
-        loop=loop,
-    )
+    sequences = features_to_instrument_sequences(features)
 
     return Instrument2A03(
         index=index,
@@ -99,39 +89,42 @@ def build_instrument(
 
 
 def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], InstrumentTable]:
-    """Builds one FamiTracker instrument per generator slice of every sample.
+    """Builds the module's instruments and the table a pattern row resolves through.
 
-    Each sample contributes one instrument for every channel its reconstruction
-    covers, so a sample yields one to four instruments. Instruments are numbered in
-    sample order, then channel order.
+    A sample contributes one instrument for every channel its reconstruction covers, so it yields
+    one to four; a hand-written voice contributes one instrument every channel it sounds on
+    reaches, each against that channel's own root. Instruments are numbered in voice order, then channel order.
+
+    Raises:
+        ValueError: If the project holds more instruments than FamiTracker has room for.
     """
     instruments: List[Instrument2A03] = []
     slots: InstrumentTable = {}
 
-    for sample_slice in iterate_sample_slices(project):
-        if sample_slice.index >= MAX_INSTRUMENTS:
+    for entry in iterate_instrument_entries(project):
+        if entry.index >= MAX_INSTRUMENTS:
             raise ValueError(f"Module exceeds the FamiTracker limit of {MAX_INSTRUMENTS} instruments")
 
         instruments.append(
             build_instrument(
-                sample_slice.index,
-                sample_slice.instrument_name,
-                sample_slice.features,
-                loop=sample_slice.sample.loop,
+                entry.index,
+                entry.name,
+                entry.features,
             )
         )
-        slots[sample_slice.key] = sample_slice.slot
+        for channel, slot in entry.slots.items():
+            slots[(entry.voice_id, channel)] = slot
 
     return instruments, slots
 
 
 def _note_and_octave(
     transpose: int,
-    channel_generator: GeneratorName,
+    channel_generator: ChannelName,
     slot: InstrumentSlot,
 ) -> Tuple[int, int]:
     base_pitch = slot.initial_pitch + transpose
-    if channel_generator == GeneratorName.NOISE:
+    if channel_generator == ChannelName.NOISE:
         cell = period_to_note_cell(base_pitch)
     else:
         cell = pitch_to_note_cell(base_pitch)
@@ -142,7 +135,7 @@ def _note_and_octave(
 def _row_cell(
     row: Row,
     row_number: int,
-    channel_generator: GeneratorName,
+    channel_generator: ChannelName,
     slots: InstrumentTable,
 ) -> Optional[RowCell]:
     note = EMPTY_NOTE
@@ -153,12 +146,12 @@ def _row_cell(
     match row.command:
         case NoteOff():
             note = int(NoteValue.HALT)
-        case Instrument() as reference:
-            slot = slots.get((reference.sample_id, reference.generator_name))
+        case NoteOn() as reference:
+            slot = slots.get((reference.voice_id, channel_generator))
             if slot is None:
                 raise ValueError(
-                    f"Row references sample '{reference.sample_id}' slice "
-                    f"'{reference.generator_name}' that has no instrument"
+                    f"Row references voice '{reference.voice_id}' on channel "
+                    f"'{channel_generator}' with no instrument"
                 )
             instrument = slot.index
             note, octave = _note_and_octave(
@@ -191,11 +184,11 @@ def _has_data(cell: RowCell) -> bool:
 
 
 def _channel_patterns(
-    generator: GeneratorName,
+    name: ChannelName,
     channel: Channel,
     slots: InstrumentTable,
 ) -> List[PatternData]:
-    channel_id = GENERATOR_NAME_TO_CHANNEL_ID[generator]
+    channel_id = CHANNEL_TO_ID[name]
     patterns: List[PatternData] = []
 
     for index in sorted(channel.patterns):
@@ -209,7 +202,7 @@ def _channel_patterns(
                 _row_cell(
                     row,
                     row_number,
-                    generator,
+                    name,
                     slots,
                 )
                 for row_number, row in enumerate(pattern.rows)
@@ -239,17 +232,17 @@ def _build_order(song: Song) -> Tuple[OrderFrame, ...]:
     if len(song.order) > MAX_FRAMES:
         raise ValueError(f"Order length {len(song.order)} exceeds the FamiTracker limit of {MAX_FRAMES} frames")
 
-    empty_indices = {generator: _reserved_empty_index(song.channels[generator]) for generator in GeneratorName.items()}
-    for generator, empty_index in empty_indices.items():
+    empty_indices = {channel: _reserved_empty_index(song.channels[channel]) for channel in ChannelName.items()}
+    for channel, empty_index in empty_indices.items():
         if empty_index > MAX_PATTERN_INDEX:
-            raise ValueError(f"Channel '{generator}' has no free pattern index for empty order slots")
+            raise ValueError(f"Channel '{channel}' has no free pattern index for empty order slots")
 
     frames: List[OrderFrame] = []
     for frame in song.order:
         entries: List[int] = []
-        for generator in GeneratorName.items():
-            index = frame.get(generator)
-            entries.append(index if index is not None else empty_indices[generator])
+        for channel in ChannelName.items():
+            index = frame.get(channel)
+            entries.append(index if index is not None else empty_indices[channel])
 
         entries.append(DPCM_EMPTY_PATTERN_INDEX)
         frames.append(tuple(entries))
@@ -278,15 +271,15 @@ def project_to_module(project: Project) -> FamiTrackerModule:
     information = ModuleInformation(
         title=info.title,
         author=info.author,
-        copyright=DEFAULT_COPYRIGHT,
+        copyright=SAMPLETONES_COPYRIGHT,
     )
 
     patterns: List[PatternData] = []
-    for generator in GeneratorName.items():
+    for channel in ChannelName.items():
         patterns.extend(
             _channel_patterns(
-                generator,
-                song.channels[generator],
+                channel,
+                song.channels[channel],
                 slots,
             ),
         )

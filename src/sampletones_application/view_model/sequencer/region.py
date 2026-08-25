@@ -8,7 +8,7 @@ from sampletones_application.view_model.sequencer.slot import (
     TrackerSlot,
     slot_from_flat,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 
 class TrackerCell(BaseModel, frozen=True):
@@ -20,13 +20,13 @@ class TrackerCell(BaseModel, frozen=True):
     """
 
     row: int = Field(ge=0)
-    generator: Optional[GeneratorName]
+    channel: Optional[ChannelName]
 
 
 class OrderCell(BaseModel, frozen=True):
     """The order cell a block is written from: a channel row, and the position it starts in."""
 
-    generator: Optional[GeneratorName]
+    channel: Optional[ChannelName]
     position: int = Field(ge=0)
 
 
@@ -81,14 +81,14 @@ class TrackerRegion(GridRegion, frozen=True):
         return tuple(slot_from_flat(index) for index in range(self.first_slot, self.last_slot + 1))
 
     @property
-    def columns(self) -> Tuple[Optional[GeneratorName], ...]:
+    def columns(self) -> Tuple[Optional[ChannelName], ...]:
         """The columns the region reaches, each named once and in the order the axis lays them out.
 
         A region names its edges as subcolumns, while a gesture acting on whole cells — a transpose
         or a volume shift — reaches the columns behind them. The sample column reads ``None``, as it
         does everywhere the axis is read.
         """
-        return tuple(dict.fromkeys(slot.generator for slot in self.slots))
+        return tuple(dict.fromkeys(slot.channel for slot in self.slots))
 
     def covers(self, row: int, slot: TrackerSlot) -> bool:
         """Whether a cell of the grid falls inside the rectangle.
@@ -125,13 +125,13 @@ class OrderRegion(GridRegion, frozen=True):
         return range(self.first_position, self.last_position + 1)
 
     @property
-    def generators(self) -> Tuple[Optional[GeneratorName], ...]:
+    def channels(self) -> Tuple[Optional[ChannelName], ...]:
         """The rows the region covers, each as the channel it addresses, master reading ``None``."""
         return tuple(CHANNEL_AXIS[row] for row in self.rows)
 
     def covers(
         self,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         position: int,
     ) -> bool:
         """Whether a cell of the table falls inside the rectangle.
@@ -139,4 +139,4 @@ class OrderRegion(GridRegion, frozen=True):
         This is what a gesture raised on a cell asks to learn which block it belongs to: one
         landing inside a selection acts on the whole of it, and one landing outside acts alone.
         """
-        return self.covers_row(CHANNEL_AXIS.index(generator)) and position in self.positions
+        return self.covers_row(CHANNEL_AXIS.index(channel)) and position in self.positions

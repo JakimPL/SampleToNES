@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, FrozenSet, Iterable
+from typing import Callable, Final, FrozenSet, Iterable
 
 import numpy as np
 import pytest
@@ -10,23 +10,22 @@ from sampletones_application.logic.sequencer.channels import ALL_CHANNELS
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.instructions import (
-    NoiseInstruction,
-    PulseInstruction,
-    TriangleInstruction,
-)
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
+
+SOUNDING_FRAMES: Final[int] = 16
 
 
 def make_controller() -> ProjectController:
     return ProjectController(ProjectManager())
 
 
-def all_channels() -> FrozenSet[GeneratorName]:
+def all_channels() -> FrozenSet[ChannelName]:
     """The fully audible mask a synthesiser renders under unless a test moves it."""
     return ALL_CHANNELS
 
@@ -36,7 +35,7 @@ def make_synthesizer(
     config: Config,
     *,
     sample_rate: int = DEFAULT_SAMPLE_RATE,
-    active_channels: Callable[[], FrozenSet[GeneratorName]] = all_channels,
+    active_channels: Callable[[], FrozenSet[ChannelName]] = all_channels,
 ) -> RowSynthesizer:
     """A synthesiser rendering at ``sample_rate``, standing in for the output a caller supplies."""
     return RowSynthesizer(
@@ -47,100 +46,39 @@ def make_synthesizer(
     )
 
 
-def make_pulse_reconstruction(
-    *,
-    pitch: int = 60,
-    volume: int = 15,
-    count: int = 1,
-    held_features: Iterable[FeatureKey] = (),
-) -> Reconstruction:
-    """Single-generator reconstruction with ``count`` identical PulseInstructions.
-
-    ``held_features`` names the dimensions the instrument leaves to the channel, which is what
-    an envelope cleared in the instruments panel produces.
-    """
-    instructions = [PulseInstruction(on=True, pitch=pitch, volume=volume, duty_cycle=0)] * count
-    reconstruction = Reconstruction.create(
-        approximation=np.zeros(64, dtype=np.float32),
-        approximations={GeneratorName.PULSE1: np.zeros(64, dtype=np.float32)},
-        instructions={GeneratorName.PULSE1: instructions},
-        config=Config(),
-        coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
-    )
-    if held_features:
-        reconstruction.update_generator_data(
-            GeneratorName.PULSE1,
-            list(instructions),
-            np.zeros(64, dtype=np.float32),
-            reconstruction.initial_pitches[GeneratorName.PULSE1],
-            held_features,
-        )
-
-    return reconstruction
-
-
-def make_triangle_reconstruction(
-    *,
-    pitch: int = 60,
-    count: int = 1,
-) -> Reconstruction:
-    instructions = [TriangleInstruction(on=True, pitch=pitch)] * count
-    return Reconstruction.create(
-        approximation=np.zeros(64, dtype=np.float32),
-        approximations={GeneratorName.TRIANGLE: np.zeros(64, dtype=np.float32)},
-        instructions={GeneratorName.TRIANGLE: instructions},
-        config=Config(),
-        coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
-    )
-
-
-def make_noise_reconstruction(
-    *,
-    period: int = 3,
-    volume: int = 15,
-    count: int = 1,
-) -> Reconstruction:
-    instructions = [NoiseInstruction(on=True, period=period, volume=volume, short=False)] * count
-    return Reconstruction.create(
-        approximation=np.zeros(64, dtype=np.float32),
-        approximations={GeneratorName.NOISE: np.zeros(64, dtype=np.float32)},
-        instructions={GeneratorName.NOISE: instructions},
-        config=Config(),
-        coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
-    )
-
-
 def add_sample(
     controller: ProjectController,
     reconstruction: Reconstruction,
     *,
-    loop: bool = False,
     name: str = "test",
 ) -> Sample:
-    sample = controller.add_sample(reconstruction, name)
-    if loop:
-        controller.set_sample_loop(sample.id, loop=True)
-    return sample
+    return controller.add_sample(reconstruction, name)
+
+
+def add_instrument(
+    controller: ProjectController,
+    *,
+    name: str = "test",
+) -> Instrument:
+    """A hand-written voice sustaining at full volume, sounding for as long as a row holds it."""
+    return controller.add_instrument(new_instrument(name))
 
 
 def place_row(
     controller: ProjectController,
     *,
-    generator: GeneratorName,
+    channel: ChannelName,
     row_index: int = 0,
-    sample_id: str,
+    voice_id: str,
     transpose: int | None = None,
     volume: int | None = None,
 ) -> None:
-    pattern_index = controller.project.song.order[0][generator]
+    pattern_index = controller.project.song.order[0][channel]
     controller.set_row(
-        generator,
+        channel,
         pattern_index,
         row_index,
-        command=Instrument(sample_id=sample_id, generator_name=generator),
+        command=NoteOn(voice_id=voice_id),
         transpose=transpose,
         volume=volume,
     )
@@ -149,26 +87,26 @@ def place_row(
 def place_note_off(
     controller: ProjectController,
     *,
-    generator: GeneratorName,
+    channel: ChannelName,
     row_index: int,
 ) -> None:
     """Place an explicit note-off command on a channel row."""
-    pattern_index = controller.project.song.order[0][generator]
-    controller.set_row(generator, pattern_index, row_index, command=NoteOff())
+    pattern_index = controller.project.song.order[0][channel]
+    controller.set_row(channel, pattern_index, row_index, command=NoteOff())
 
 
 def place_modifier_row(
     controller: ProjectController,
     *,
-    generator: GeneratorName,
+    channel: ChannelName,
     row_index: int,
     transpose: int | None = None,
     volume: int | None = None,
 ) -> None:
     """Place a row with only modifiers (no instrument)."""
-    pattern_index = controller.project.song.order[0][generator]
+    pattern_index = controller.project.song.order[0][channel]
     controller.update_row(
-        generator,
+        channel,
         pattern_index,
         row_index,
         transpose=transpose,

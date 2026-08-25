@@ -3,7 +3,7 @@ from typing import Callable, Iterator, TypeAlias
 import pytest
 
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.sequencer import sample_reconstruction
 
@@ -26,6 +26,6 @@ def palette_bindings() -> Iterator[None]:
 @pytest.fixture
 def reconstruction_factory() -> ReconstructionFactory:
     def build() -> Reconstruction:
-        return sample_reconstruction([GeneratorName.PULSE1])
+        return sample_reconstruction([ChannelName.PULSE1])
 
     return build

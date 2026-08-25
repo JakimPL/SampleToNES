@@ -190,7 +190,7 @@ class TestModifiersDisplay(BaseTestSuite):
 
 
 class TestSuperName(BaseTestSuite):
-    """One key wears three names, so a combination reads the way the keyboard is labelled."""
+    """One key wears three names, so a combination reads the way the keyboard is labeled."""
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):

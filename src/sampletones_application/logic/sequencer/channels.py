@@ -3,11 +3,11 @@ from typing import Callable, Final, FrozenSet, Optional
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.utils.callbacks import CallbackMixin
 
-ALL_CHANNELS: Final[FrozenSet[GeneratorName]] = frozenset(GeneratorName.items())
-_NO_CHANNELS: Final[FrozenSet[GeneratorName]] = frozenset()
+ALL_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
+_NO_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset()
 
 
 class SequencerChannelsLogic(CallbackMixin):
@@ -27,13 +27,13 @@ class SequencerChannelsLogic(CallbackMixin):
     """
 
     def __init__(self) -> None:
-        self._muted: FrozenSet[GeneratorName] = _NO_CHANNELS
-        self._muted_before_solo: Optional[FrozenSet[GeneratorName]] = None
+        self._muted: FrozenSet[ChannelName] = _NO_CHANNELS
+        self._muted_before_solo: Optional[FrozenSet[ChannelName]] = None
 
         self.on_channels_changed: Optional[Callable[[SequencerChannelsViewModel], None]] = None
 
     @property
-    def active_channels(self) -> FrozenSet[GeneratorName]:
+    def active_channels(self) -> FrozenSet[ChannelName]:
         """The channels that sound, the mask the synthesiser mixes."""
         return ALL_CHANNELS - self._muted
 
@@ -43,19 +43,19 @@ class SequencerChannelsLogic(CallbackMixin):
     def push_channels(self) -> None:
         self.call(self.on_channels_changed, self.build_channels())
 
-    def toggle(self, generator: GeneratorName) -> None:
+    def toggle(self, channel: ChannelName) -> None:
         """Flips one channel between audible and silent."""
         self._muted_before_solo = None
-        self._apply(self._muted ^ {generator})
+        self._apply(self._muted ^ {channel})
 
-    def solo(self, generator: GeneratorName) -> None:
-        """Silences every other channel, restoring the previous mix once ``generator`` plays alone.
+    def solo(self, channel: ChannelName) -> None:
+        """Silences every other channel, restoring the previous mix once ``channel`` plays alone.
 
         The mute set in force when the solo starts is remembered, so a second solo of the same
         channel returns to it. Editing the mute set by hand adopts that set as the state a later
         solo returns to.
         """
-        others = ALL_CHANNELS - {generator}
+        others = ALL_CHANNELS - {channel}
         if self._muted == others:
             restored = self._muted_before_solo if self._muted_before_solo is not None else _NO_CHANNELS
             self._muted_before_solo = None
@@ -92,6 +92,6 @@ class SequencerChannelsLogic(CallbackMixin):
         """Starts a fresh listening session, the state a newly opened document is heard in."""
         self.unmute_all()
 
-    def _apply(self, muted: FrozenSet[GeneratorName]) -> None:
+    def _apply(self, muted: FrozenSet[ChannelName]) -> None:
         self._muted = muted
         self.push_channels()

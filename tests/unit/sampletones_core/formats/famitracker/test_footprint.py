@@ -4,8 +4,9 @@ from typing import Final, Optional, Sequence
 import numpy as np
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.builder import build_instrument
 from sampletones_core.formats.famitracker.footprint import (
     InstrumentFootprint,
@@ -39,15 +40,21 @@ def build_features(
     volume: Sequence[int],
     arpeggio: Sequence[int],
     duty_cycle: Optional[Sequence[int]],
+    *,
+    loop_point: Optional[int] = None,
 ) -> Features:
-    """Builds the envelopes of one generator slice, leaving the pitch dimensions unused."""
+    """Builds the envelopes of one channel slice, leaving the pitch dimensions unused."""
+
+    def envelope(items: Sequence[int]) -> Envelope[int]:
+        return Envelope(items=tuple(items), loop_point=loop_point if items else None)
+
     return Features(
         initial_pitch=REFERENCE_PITCH,
-        volume=np.array(volume, dtype=int),
-        arpeggio=np.array(arpeggio, dtype=int),
+        volume=envelope(volume),
+        arpeggio=envelope(arpeggio),
         pitch=None,
         hi_pitch=None,
-        duty_cycle=None if duty_cycle is None else np.array(duty_cycle, dtype=int),
+        duty_cycle=None if duty_cycle is None else envelope(duty_cycle),
     )
 
 
@@ -55,37 +62,31 @@ class TestFeaturesFootprint(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
         features: Features
-        loop: bool
         expected: InstrumentFootprint
 
     test_cases = (
         TestCase(
             features=build_features([15, 12, 9, 0], [0, 2, 4], [1, 1, 2]),
-            loop=False,
             expected=InstrumentFootprint(instrument_bytes=9, sequence_bytes=22),
             label="pulse_one_shot",
         ),
         TestCase(
-            features=build_features([15, 12, 9, 0], [0, 2, 4], [1, 1, 2]),
-            loop=True,
-            expected=InstrumentFootprint(instrument_bytes=9, sequence_bytes=21),
+            features=build_features([15, 12, 9, 0], [0, 2, 4], [1, 1, 2], loop_point=0),
+            expected=InstrumentFootprint(instrument_bytes=9, sequence_bytes=22),
             label="pulse_loop",
         ),
         TestCase(
             features=build_features([15, 0], [0], [0]),
-            loop=False,
             expected=InstrumentFootprint(instrument_bytes=9, sequence_bytes=16),
             label="dimensions_of_differing_lengths",
         ),
         TestCase(
             features=build_features([15, 12, 0], [0, 1], None),
-            loop=False,
             expected=InstrumentFootprint(instrument_bytes=7, sequence_bytes=13),
             label="triangle",
         ),
         TestCase(
             features=build_features([], [], None),
-            loop=False,
             expected=InstrumentFootprint(instrument_bytes=3, sequence_bytes=0),
             label="silent",
         ),
@@ -95,7 +96,6 @@ class TestFeaturesFootprint(BaseTestSuite):
                 [0] * OVER_LONG_LENGTH,
                 None,
             ),
-            loop=False,
             expected=InstrumentFootprint(instrument_bytes=7, sequence_bytes=512),
             label="capped_at_the_sequence_limit",
         ),
@@ -105,7 +105,6 @@ class TestFeaturesFootprint(BaseTestSuite):
                 [0] * MAX_SEQUENCE_ITEMS,
                 [0] * MAX_SEQUENCE_ITEMS,
             ),
-            loop=False,
             expected=InstrumentFootprint(instrument_bytes=9, sequence_bytes=768),
             label="largest_instrument_famitracker_holds",
         ),
@@ -116,17 +115,17 @@ class TestFeaturesFootprint(BaseTestSuite):
         self,
         test_case: TestCase,
     ) -> None:
-        assert features_footprint(test_case.features, loop=test_case.loop) == test_case.expected
+        assert features_footprint(test_case.features) == test_case.expected
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_built_instrument_measures_the_same(self, test_case: TestCase) -> None:
         """Both entry points measure one export, so a slice reads the same either way."""
-        instrument = build_instrument(0, test_case.label, test_case.features, loop=test_case.loop)
+        instrument = build_instrument(0, test_case.label, test_case.features)
         assert instrument_footprint(instrument) == test_case.expected
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_total_sums_both_regions(self, test_case: TestCase) -> None:
-        footprint = features_footprint(test_case.features, loop=test_case.loop)
+        footprint = features_footprint(test_case.features)
         assert footprint.total_bytes == test_case.expected.instrument_bytes + test_case.expected.sequence_bytes
 
 
@@ -161,31 +160,23 @@ class TestReconstructionFootprints:
     def test_one_entry_per_playing_channel(self) -> None:
         """The sample holds every channel; the two that play are the two an export writes."""
         sample = dual_generator_sample("bell", pulse_pitch=72, triangle_pitch=36)
-        footprints = reconstruction_footprints(sample.reconstruction, loop=sample.loop)
-        assert set(footprints) == {GeneratorName.PULSE1, GeneratorName.TRIANGLE}
+        footprints = reconstruction_footprints(sample.reconstruction)
+        assert set(footprints) == {ChannelName.PULSE1, ChannelName.TRIANGLE}
 
     def test_a_triangle_slice_carries_one_sequence_less_than_a_pulse_slice(self) -> None:
         """Triangle exports volume and arpeggio; pulse adds duty, hence one more pointer."""
         sample = dual_generator_sample("bell", pulse_pitch=72, triangle_pitch=36)
-        footprints = reconstruction_footprints(sample.reconstruction, loop=sample.loop)
-        pulse = footprints[GeneratorName.PULSE1]
-        triangle = footprints[GeneratorName.TRIANGLE]
+        footprints = reconstruction_footprints(sample.reconstruction)
+        pulse = footprints[ChannelName.PULSE1]
+        triangle = footprints[ChannelName.TRIANGLE]
         assert pulse.instrument_bytes - triangle.instrument_bytes == SEQUENCE_POINTER_BYTES
 
-    def test_each_channel_is_measured_under_the_given_loop_flag(self) -> None:
+    def test_each_channel_is_measured_as_its_own_envelopes_state_them(self) -> None:
         sample = pulse_sample("lead", pitch=60)
         features = sample.reconstruction.export()
-        for loop in (False, True):
-            assert reconstruction_footprints(sample.reconstruction, loop=loop) == {
-                generator_name: features_footprint(feature, loop=loop)
-                for generator_name, feature in features.items()
-                if feature.has_frames
-            }
 
-    def test_looping_costs_the_shortest_dimensions_length(self) -> None:
-        """A looping instrument shares the shortest dimension's length, so it stores fewer items."""
-        sample = pulse_sample("lead", pitch=60)
-        one_shot = total_footprint(reconstruction_footprints(sample.reconstruction, loop=False).values())
-        looping = total_footprint(reconstruction_footprints(sample.reconstruction, loop=True).values())
-        assert one_shot.instrument_bytes == looping.instrument_bytes
-        assert looping.sequence_bytes < one_shot.sequence_bytes
+        assert reconstruction_footprints(sample.reconstruction) == {
+            channel_name: features_footprint(feature)
+            for channel_name, feature in features.items()
+            if feature.has_frames
+        }

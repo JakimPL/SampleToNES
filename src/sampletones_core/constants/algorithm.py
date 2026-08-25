@@ -1,7 +1,19 @@
 from typing import Final
 
-from .enums import PhaseAlignerName, SelectorName, SpectralDistance
-from .general import MAX_VOLUME, MIN_VOLUME
+from sampletones_core.constants.enums import (
+    ChannelName,
+    HierarchyMode,
+    PhaseAlignerName,
+    SelectorName,
+    SpectralDistance,
+)
+from sampletones_core.constants.general import (
+    MAX_VOLUME,
+    MIN_VOLUME,
+    MIXER_NOISE,
+    MIXER_PULSE,
+    MIXER_TRIANGLE,
+)
 
 # Matching floors
 
@@ -47,15 +59,32 @@ PERCEPTUAL_EXPONENT: Final[float] = 1.0
 
 SELECTOR: Final[SelectorName] = SelectorName.VITERBI
 DECODER_TOP_K: Final[int] = 8
+SINGLE_STATE_LATTICE_WIDTH: Final[int] = 1
 TRANSITION_PITCH_WEIGHT: Final[float] = 0.03
 TRANSITION_VOLUME_WEIGHT: Final[float] = 0.02
 TRANSITION_TIMBRE_WEIGHT: Final[float] = 0.10
 TRANSITION_ON_OFF_WEIGHT: Final[float] = 0.20
 
+# Pitch refinement
+
+REFINE_PITCH: Final[bool] = True
+REFINEMENT_CONFIDENCE: Final[float] = 0.15
+REFINEMENT_CHANGE_WEIGHT: Final[float] = 2.0
+REFINEMENT_WINDOW: Final[int] = 4
+
 # Mixer drive
 
 DRIVE: Final[float] = 1.0
 MAX_DRIVE: Final[float] = 5.0
+
+# Stems assignment
+
+ALL_STEMS_CHANNEL_CAP: Final[int] = len(ChannelName)
+DEFAULT_STEMS_CHANNEL_CAP: Final[int] = ALL_STEMS_CHANNEL_CAP
+DEFAULT_STEMS_HIERARCHY_MODE: Final[HierarchyMode] = HierarchyMode.ROUND_ROBIN
+RESTING_STEM_ID: Final[int] = -1
+RESTING_FRAME_COST: Final[float] = 0.0
+STEM_ACTIVITY_FLOOR: Final[float] = TEMPORAL_LEVEL_FLOOR * min(MIXER_PULSE, MIXER_TRIANGLE, MIXER_NOISE)
 
 # Execution
 

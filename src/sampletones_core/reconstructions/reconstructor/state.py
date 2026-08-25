@@ -3,11 +3,9 @@ from typing import Dict, List, Self
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import Fragment
 from sampletones_core.instructions import InstructionUnion
-
-from .approximation import ApproximationData
 
 
 class FragmentReconstructionState(BaseModel):
@@ -20,23 +18,30 @@ class FragmentReconstructionState(BaseModel):
 class ReconstructionState(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    generator_names: List[GeneratorName] = []
-    instructions: Dict[GeneratorName, List[InstructionUnion]] = {}
-    approximations: Dict[GeneratorName, List[np.ndarray]] = {}
+    channel_names: List[ChannelName] = []
+    instructions: Dict[ChannelName, List[InstructionUnion]] = {}
+    approximations: Dict[ChannelName, List[np.ndarray]] = {}
 
     @classmethod
-    def create(cls, generator_names: List[GeneratorName]) -> Self:
+    def create(cls, channel_names: List[ChannelName]) -> Self:
         return cls(
-            generator_names=generator_names,
-            instructions={name: [] for name in generator_names},
-            approximations={name: [] for name in generator_names},
+            channel_names=channel_names,
+            instructions={name: [] for name in channel_names},
+            approximations={name: [] for name in channel_names},
         )
 
     def append(
         self,
-        fragment_approximation: ApproximationData,
+        channel_name: ChannelName,
+        instruction: InstructionUnion,
         approximation: np.ndarray,
     ) -> None:
-        name = fragment_approximation.generator_name
-        self.instructions[name].append(fragment_approximation.instruction)
-        self.approximations[name].append(approximation)
+        """Records one frame of one channel: what it plays and how it sounds."""
+        self.instructions[channel_name].append(instruction)
+        self.approximations[channel_name].append(approximation)
+
+    def drop(self, channel_name: ChannelName) -> None:
+        """Releases a channel's stream, leaving it out of the reconstruction being assembled."""
+        self.channel_names.remove(channel_name)
+        del self.instructions[channel_name]
+        del self.approximations[channel_name]

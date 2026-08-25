@@ -1,7 +1,8 @@
 from .criterion import Criterion
 from .reconstruction.reconstruction import Reconstruction
-from .reconstructor.approximation import ApproximationData
 from .reconstructor.candidates import CandidateProvider
+from .reconstructor.decoder import Decoder, GreedyDecoder, ViterbiDecoder
+from .reconstructor.matching import FrameMatcher, ScoredCandidate
 from .reconstructor.phase import (
     CrossCorrelationPhaseAligner,
     PhaseAligner,
@@ -9,7 +10,6 @@ from .reconstructor.phase import (
 )
 from .reconstructor.reconstructor import Reconstructor
 from .reconstructor.scorer import Scorer
-from .reconstructor.selector import GreedySelector, Selector, ViterbiSelector
 from .reconstructor.state import (
     FragmentReconstructionState,
     ReconstructionState,
@@ -17,19 +17,20 @@ from .reconstructor.state import (
 from .reconstructor.worker import ReconstructorWorker
 
 __all__ = [
-    "ApproximationData",
     "CandidateProvider",
     "Criterion",
     "CrossCorrelationPhaseAligner",
+    "Decoder",
     "FragmentReconstructionState",
-    "GreedySelector",
+    "FrameMatcher",
+    "GreedyDecoder",
     "PhaseAligner",
     "Reconstruction",
     "ReconstructionState",
     "Reconstructor",
     "ReconstructorWorker",
+    "ScoredCandidate",
     "Scorer",
-    "Selector",
     "SlidingRmsePhaseAligner",
-    "ViterbiSelector",
+    "ViterbiDecoder",
 ]

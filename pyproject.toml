@@ -82,6 +82,7 @@ dev = [
     "isort==8.0.1",
     "mypy==2.1.0",
     "pre-commit==4.6.0",
+    "py65==1.2.0",
     "pylint==4.0.6",
     "pylint-pydantic==0.4.1",
     "pytest==9.1.1",
@@ -98,12 +99,17 @@ build-backend = "hatchling.build"
 conflicts = [[{ extra = "gpu" }, { extra = "gpu-cuda11" }]]
 
 [tool.hatch.build.targets.wheel]
+exclude = [
+    "src/sampletones_player/driver/assembler",
+    "src/sampletones_player/driver/assembly",
+]
 packages = [
     "src/sampletones",
     "src/sampletones_application",
     "src/sampletones_assets",
     "src/sampletones_config",
     "src/sampletones_core",
+    "src/sampletones_player",
     "src/sampletones_shared",
     "src/sampletones_synthesis",
 ]
@@ -121,33 +127,38 @@ known_first_party = [
     "sampletones_assets",
     "sampletones_config",
     "sampletones_core",
+    "sampletones_player",
     "sampletones_shared",
     "sampletones_synthesis",
 ]
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
+pythonpath = ["."]
 
 [tool.coverage.run]
 source = [
     "sampletones_application",
     "sampletones_assets",
     "sampletones_core",
+    "sampletones_player",
     "sampletones_shared",
     "sampletones_synthesis",
 ]
 
 [tool.coverage.report]
 show_missing = true
-fail_under = 80
+fail_under = 90
 
 [tool.mypy]
 python_version = "3.12"
+mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"
 files = [
     "src/sampletones",
     "src/sampletones_application",
     "src/sampletones_assets",
     "src/sampletones_core",
+    "src/sampletones_player",
     "src/sampletones_shared",
     "src/sampletones_synthesis",
 ]
@@ -160,6 +171,14 @@ strict = true
 fail-under = 9.9
 ignore-paths = "^tests/.*$"
 load-plugins = ["pylint_pydantic"]
+fail-on = [
+    "fatal",
+    # "fixme",
+    "redefined-outer-name",
+    "used-before-assignment",
+    "unused-import",
+    "unused-variable",
+]
 
 [tool.pylint.messages_control]
 disable = [

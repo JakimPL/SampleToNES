@@ -1,5 +1,6 @@
 import os
 from contextlib import AbstractContextManager
+from pathlib import Path
 from typing import Callable, Optional
 from unittest.mock import MagicMock, patch
 
@@ -24,11 +25,11 @@ MODULE = "sampletones_application.utils.file_dialogs.selection"
 PORTAL_MODULE = "sampletones_application.utils.file_dialogs.backends.portal.backend"
 
 
-def _which(*, kdialog: bool, zenity: bool) -> Callable[[str], Optional[str]]:
+def _located(*, kdialog: bool, zenity: bool) -> Callable[[str], Optional[Path]]:
     available = {"kdialog": kdialog, "zenity": zenity}
 
-    def resolver(tool: str) -> Optional[str]:
-        return f"/usr/bin/{tool}" if available.get(tool, False) else None
+    def resolver(tool: str) -> Optional[Path]:
+        return Path(f"/usr/bin/{tool}") if available.get(tool, False) else None
 
     return resolver
 
@@ -38,9 +39,9 @@ def _portal(backend: Optional[PortalBackend]) -> AbstractContextManager[MagicMoc
     return patch(f"{PORTAL_MODULE}.portal_backend", return_value=backend)
 
 
-def _find_spec(available: bool) -> Callable[[str], Optional[object]]:
-    def resolver(module: str) -> Optional[object]:
-        return object() if available else None
+def _available(installed: bool) -> Callable[[str], bool]:
+    def resolver(module: str) -> bool:
+        return installed
 
     return resolver
 
@@ -59,7 +60,7 @@ class TestSelectFileDialogBackend:
         portal = PortalBackend(FileChooserClient())
         with (
             patch(f"{MODULE}.System.current", return_value=System.LINUX),
-            patch(f"{MODULE}.shutil.which", side_effect=_which(kdialog=True, zenity=True)),
+            patch(f"{MODULE}.locate_program", side_effect=_located(kdialog=True, zenity=True)),
             _portal(portal),
             patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "KDE"}, clear=False),
         ):
@@ -68,7 +69,7 @@ class TestSelectFileDialogBackend:
     def test_kde_prefers_kdialog(self) -> None:
         with (
             patch(f"{MODULE}.System.current", return_value=System.LINUX),
-            patch(f"{MODULE}.shutil.which", side_effect=_which(kdialog=True, zenity=True)),
+            patch(f"{MODULE}.locate_program", side_effect=_located(kdialog=True, zenity=True)),
             _portal(None),
             patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "KDE"}, clear=False),
         ):
@@ -77,7 +78,7 @@ class TestSelectFileDialogBackend:
     def test_gnome_prefers_zenity(self) -> None:
         with (
             patch(f"{MODULE}.System.current", return_value=System.LINUX),
-            patch(f"{MODULE}.shutil.which", side_effect=_which(kdialog=True, zenity=True)),
+            patch(f"{MODULE}.locate_program", side_effect=_located(kdialog=True, zenity=True)),
             _portal(None),
             patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "GNOME"}, clear=False),
         ):
@@ -86,7 +87,7 @@ class TestSelectFileDialogBackend:
     def test_kde_without_kdialog_falls_back_to_zenity(self) -> None:
         with (
             patch(f"{MODULE}.System.current", return_value=System.LINUX),
-            patch(f"{MODULE}.shutil.which", side_effect=_which(kdialog=False, zenity=True)),
+            patch(f"{MODULE}.locate_program", side_effect=_located(kdialog=False, zenity=True)),
             _portal(None),
             patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "KDE"}, clear=False),
         ):
@@ -96,8 +97,8 @@ class TestSelectFileDialogBackend:
         with (
             patch(f"{MODULE}.System.current", return_value=System.LINUX),
             patch(
-                f"{MODULE}.shutil.which",
-                side_effect=_which(kdialog=False, zenity=False),
+                f"{MODULE}.locate_program",
+                side_effect=_located(kdialog=False, zenity=False),
             ),
             _portal(None),
             patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "GNOME"}, clear=False),
@@ -107,11 +108,8 @@ class TestSelectFileDialogBackend:
     def test_linux_tools_win_over_missing_tkinter(self) -> None:
         with (
             patch(f"{MODULE}.System.current", return_value=System.LINUX),
-            patch(f"{MODULE}.shutil.which", side_effect=_which(kdialog=True, zenity=True)),
-            patch(
-                f"{MODULE}.importlib.util.find_spec",
-                side_effect=_find_spec(available=False),
-            ),
+            patch(f"{MODULE}.locate_program", side_effect=_located(kdialog=True, zenity=True)),
+            patch(f"{MODULE}.module_available", side_effect=_available(installed=False)),
             patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "KDE"}, clear=False),
         ):
             assert isinstance(select_file_dialog_backend(), KDialogBackend)
@@ -120,13 +118,10 @@ class TestSelectFileDialogBackend:
         with (
             patch(f"{MODULE}.System.current", return_value=System.LINUX),
             patch(
-                f"{MODULE}.shutil.which",
-                side_effect=_which(kdialog=False, zenity=False),
+                f"{MODULE}.locate_program",
+                side_effect=_located(kdialog=False, zenity=False),
             ),
-            patch(
-                f"{MODULE}.importlib.util.find_spec",
-                side_effect=_find_spec(available=False),
-            ),
+            patch(f"{MODULE}.module_available", side_effect=_available(installed=False)),
             patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "GNOME"}, clear=False),
             pytest.raises(FileDialogUnavailableError),
         ):
@@ -135,10 +130,7 @@ class TestSelectFileDialogBackend:
     def test_windows_without_tkinter_raises(self) -> None:
         with (
             patch(f"{MODULE}.System.current", return_value=System.WINDOWS),
-            patch(
-                f"{MODULE}.importlib.util.find_spec",
-                side_effect=_find_spec(available=False),
-            ),
+            patch(f"{MODULE}.module_available", side_effect=_available(installed=False)),
             pytest.raises(FileDialogUnavailableError),
         ):
             select_file_dialog_backend()

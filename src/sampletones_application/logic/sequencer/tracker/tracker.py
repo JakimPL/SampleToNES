@@ -1,6 +1,9 @@
 from typing import Callable, Dict, FrozenSet, List, Optional, Set
 
 from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.view_model.sequencer.kind import (
+    voice_kind,
+)
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
 )
@@ -10,25 +13,30 @@ from sampletones_application.view_model.sequencer.tracker import (
     SequencerRowViewModel,
     SequencerTrackerViewModel,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_application.view_model.sequencer.voices import VoiceKind
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import NoteCommand, Row
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion, voice_channels, voice_reference
 from sampletones_core.utils.display import (
     display_command,
     display_id,
+    display_note,
     display_transpose,
     display_volume,
 )
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 _EMPTY_CELL = SequencerCellViewModel(
-    instrument=display_id(None),
+    voice=display_id(None),
     transpose=display_transpose(None),
     volume=display_volume(None),
+    kind=None,
 )
 
 
@@ -40,8 +48,8 @@ class SequencerTrackerLogic(CallbackMixin):
     controller's change events are wired (by the coordinator) back to the push
     methods here, so a single mutation round-trips into a refreshed view.
 
-    Cell-level edits take an ``Optional[GeneratorName]`` naming the column they
-    address: a generator reaches that channel alone, while ``None`` addresses the
+    Cell-level edits take an ``Optional[ChannelName]`` naming the column they
+    address: a channel reaches that channel alone, while ``None`` addresses the
     sample column and spreads the edit over the channels that column governs.
     """
 
@@ -72,7 +80,8 @@ class SequencerTrackerLogic(CallbackMixin):
         frame_index = self._clamp_frame(frame_count)
 
         patterns = self._frame_patterns()
-        rows = tuple(self._build_row(index, patterns) for index in range(self.frame_row_count()))
+        carried: Dict[ChannelName, Optional[VoiceUnion]] = {channel: None for channel in ChannelName.items()}
+        rows = tuple(self._build_row(index, patterns, carried) for index in range(self.frame_row_count()))
         return SequencerTrackerViewModel(
             frame_index=frame_index,
             frame_count=frame_count,
@@ -98,7 +107,7 @@ class SequencerTrackerLogic(CallbackMixin):
 
         return song.rows_per_pattern
 
-    def _frame_patterns(self) -> Dict[GeneratorName, Pattern]:
+    def _frame_patterns(self) -> Dict[ChannelName, Pattern]:
         """The patterns the current frame's channels point at.
 
         A channel contributes an entry once its slot names a pattern the song holds,
@@ -108,12 +117,12 @@ class SequencerTrackerLogic(CallbackMixin):
         if self._frame_index >= song.order_length():
             return {}
 
-        patterns: Dict[GeneratorName, Pattern] = {}
-        for generator in GeneratorName.items():
-            index = song.order[self._frame_index].get(generator)
-            pattern = song.pattern(generator, index) if index is not None else None
+        patterns: Dict[ChannelName, Pattern] = {}
+        for channel in ChannelName.items():
+            index = song.order[self._frame_index].get(channel)
+            pattern = song.pattern(channel, index) if index is not None else None
             if pattern is not None:
-                patterns[generator] = pattern
+                patterns[channel] = pattern
 
         return patterns
 
@@ -144,38 +153,38 @@ class SequencerTrackerLogic(CallbackMixin):
     def clear_cell(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
     ) -> None:
-        if generator is None:
-            self.clear_all_generators(row_index)
+        if channel is None:
+            self.clear_all_channels(row_index)
         else:
-            self.clear_row(generator, row_index)
+            self.clear_row(channel, row_index)
 
     def clear_cell_subcolumn(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         subcolumn: SubColumn,
     ) -> None:
         """Empties one subcolumn of a cell.
 
-        From the sample column an instrument reaches every channel, since the sample
+        From the sample column the voice slot reaches every channel, since the sample
         it names is the row's whole note, while transpose and volume follow the
         channels that column governs.
         """
-        instrument = subcolumn is SubColumn.INSTRUMENT
+        voice = subcolumn is SubColumn.VOICE
         transpose = subcolumn is SubColumn.TRANSPOSE
         volume = subcolumn is SubColumn.VOLUME
-        if generator is not None:
+        if channel is not None:
             self.clear_subcolumn(
-                generator,
+                channel,
                 row_index,
-                instrument=instrument,
+                voice=voice,
                 transpose=transpose,
                 volume=volume,
             )
-        elif instrument:
-            self.clear_subcolumn_all_generators(row_index, instrument=True)
+        elif voice:
+            self.clear_subcolumn_all_generators(row_index, voice=True)
         else:
             self.clear_sample_subcolumn(
                 row_index,
@@ -186,8 +195,8 @@ class SequencerTrackerLogic(CallbackMixin):
     def write_cell(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
-        sample_id: Optional[str],
+        channel: Optional[ChannelName],
+        voice_id: Optional[str],
         transpose: Optional[int],
         volume: Optional[int],
     ) -> None:
@@ -196,12 +205,12 @@ class SequencerTrackerLogic(CallbackMixin):
         An edit names one subcolumn, so a sample takes the write whenever one
         arrives, and an offset lands on its own otherwise.
         """
-        if sample_id is not None:
-            self.place_note(row_index, generator, sample_id)
+        if voice_id is not None:
+            self.place_note(row_index, channel, voice_id)
         elif transpose is not None or volume is not None:
             self.set_cell_subcolumn(
                 row_index,
-                generator,
+                channel,
                 transpose=transpose,
                 volume=volume,
             )
@@ -209,40 +218,55 @@ class SequencerTrackerLogic(CallbackMixin):
     def place_note(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
-        sample_id: str,
+        channel: Optional[ChannelName],
+        voice_id: str,
     ) -> None:
-        if generator is None:
-            self.set_sample_instrument(row_index, sample_id)
+        """Places a voice on the cell a column and a row name, where that column takes it.
+
+        Every route that names a voice for a cell arrives here — a typed number, a menu item and a
+        pasted block alike — so the sample column's rule is asked once and each of them follows it.
+        """
+        if channel is None:
+            if self.places_in_sample_column(voice_id):
+                self.set_row_sample(row_index, voice_id)
         else:
             self.set_row(
-                generator,
+                channel,
                 row_index,
-                command=Instrument(
-                    sample_id=sample_id,
-                    generator_name=generator,
-                ),
+                command=NoteOn(voice_id=voice_id),
             )
+
+    def places_in_sample_column(self, voice_id: str) -> bool:
+        """Whether the sample column takes the voice an id names.
+
+        The column spreads a voice over the channels it covers, which a recording states for
+        itself, so it answers for a sample the project holds and stands by for anything else.
+        """
+        voice = self._controller.project.voices.get(voice_id)
+        if voice is None:
+            return False
+
+        return voice_kind(voice).places_across_channels
 
     def cut_note(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
     ) -> None:
-        if generator is None:
+        if channel is None:
             self.set_note_off_all_generators(row_index)
         else:
-            self.set_note_off(generator, row_index)
+            self.set_note_off(channel, row_index)
 
     def set_cell_subcolumn(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         *,
         transpose: Optional[int] = None,
         volume: Optional[int] = None,
     ) -> None:
-        if generator is None:
+        if channel is None:
             self.set_sample_subcolumn(
                 row_index,
                 transpose=transpose,
@@ -250,7 +274,7 @@ class SequencerTrackerLogic(CallbackMixin):
             )
         else:
             self.set_row(
-                generator,
+                channel,
                 row_index,
                 transpose=transpose,
                 volume=volume,
@@ -258,22 +282,22 @@ class SequencerTrackerLogic(CallbackMixin):
 
     def set_row(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         row_index: int,
         *,
         command: Optional[NoteCommand] = None,
         transpose: Optional[int] = None,
         volume: Optional[int] = None,
     ) -> None:
-        pattern_index = self._pattern_index_at_frame(generator)
+        pattern_index = self._pattern_index_at_frame(channel)
         if pattern_index is None:
-            pattern_index = self._create_frame_pattern(generator)
+            pattern_index = self._create_frame_pattern(channel)
 
         if pattern_index is None:
             return
 
         self._controller.update_row(
-            generator,
+            channel,
             pattern_index,
             row_index,
             command=command,
@@ -281,98 +305,148 @@ class SequencerTrackerLogic(CallbackMixin):
             volume=volume,
         )
 
-    def clear_row(self, generator: GeneratorName, row_index: int) -> None:
-        pattern_index = self._pattern_index_at_frame(generator)
+    def clear_row(self, channel: ChannelName, row_index: int) -> None:
+        pattern_index = self._pattern_index_at_frame(channel)
         if pattern_index is None:
             return
 
-        self._controller.clear_row(generator, pattern_index, row_index)
+        self._controller.clear_row(channel, pattern_index, row_index)
 
     def clear_subcolumn(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         row_index: int,
         *,
-        instrument: bool = False,
+        voice: bool = False,
         transpose: bool = False,
         volume: bool = False,
     ) -> None:
-        pattern_index = self._pattern_index_at_frame(generator)
+        pattern_index = self._pattern_index_at_frame(channel)
         if pattern_index is None:
             return
 
         self._controller.clear_row(
-            generator,
+            channel,
             pattern_index,
             row_index,
-            instrument=instrument,
+            voice=voice,
             transpose=transpose,
             volume=volume,
         )
 
-    def clear_all_generators(self, row_index: int) -> None:
-        for generator in GeneratorName.items():
-            self.clear_row(generator, row_index)
+    def clear_all_channels(self, row_index: int) -> None:
+        for channel in ChannelName.items():
+            self.clear_row(channel, row_index)
 
     def clear_subcolumn_all_generators(
         self,
         row_index: int,
         *,
-        instrument: bool = False,
+        voice: bool = False,
         transpose: bool = False,
         volume: bool = False,
     ) -> None:
-        for generator in GeneratorName.items():
+        for channel in ChannelName.items():
             self.clear_subcolumn(
-                generator,
+                channel,
                 row_index,
-                instrument=instrument,
+                voice=voice,
                 transpose=transpose,
                 volume=volume,
             )
 
-    def set_sample_instrument(
+    def set_row_sample(
         self,
         row_index: int,
-        sample_id: Optional[str],
+        voice_id: Optional[str],
     ) -> None:
         """Places a sample across the channels its reconstruction uses.
 
-        The sample column is authoritative: the instrument is written to every
-        generator the sample covers, and the remaining channels on that row are
-        cleared so the row reflects exactly that sample. Clearing an empty sample
-        id wipes the whole row.
+        The sample column is authoritative: the sample is written to every channel it covers, and
+        the remaining channels on that row are cleared so the row plays exactly that sample.
+        An empty voice id wipes the whole row.
+
+        The column speaks for samples, which carry a slice per channel. A hand-written voice sounds
+        on whichever channel the reader names it in, so it is placed in a channel column and this
+        one leaves the row as it stands.
         """
-        if sample_id is None:
-            self.clear_all_generators(row_index)
+        if voice_id is None:
+            self.clear_all_channels(row_index)
             return
 
-        sample = self._controller.project.samples.get(sample_id)
-        if sample is None:
+        sample = self._controller.project.voices.get(voice_id)
+        if not isinstance(sample, Sample):
             return
 
         used = self._used_generators(sample)
-        for generator in GeneratorName.items():
-            if generator in used:
+        for channel in ChannelName.items():
+            if channel in used:
                 self.set_row(
-                    generator,
+                    channel,
                     row_index,
-                    command=Instrument(
-                        sample_id=sample_id,
-                        generator_name=generator,
-                    ),
+                    command=NoteOn(voice_id=voice_id),
                 )
             else:
-                self.clear_row(generator, row_index)
+                self.clear_row(channel, row_index)
 
-    def set_note_off(self, generator: GeneratorName, row_index: int) -> None:
+    def write_note(
+        self,
+        row_index: int,
+        channel: ChannelName,
+        pitch: int,
+    ) -> None:
+        """Writes the step that reaches ``pitch`` on the voice this channel is carrying.
+
+        A note key names the note the reader wants to hear; the row states it as the step from the
+        voice's own reference, which is the one number a pitch cell holds. A row carrying no voice
+        has nothing to measure the note against, so the press leaves it as it stands.
+
+        Args:
+            row_index: The row within the frame shown.
+            channel: The channel the note is typed into.
+            pitch: The note the key names, on the scale the channel reads.
+        """
+        voice = self.carried_voice(channel, row_index)
+        if voice is None:
+            return
+
+        self.write_cell(
+            row_index,
+            channel,
+            None,
+            pitch - voice_reference(voice, channel),
+            None,
+        )
+
+    def carried_voice(
+        self,
+        channel: ChannelName,
+        row_index: int,
+    ) -> Optional[VoiceUnion]:
+        """The voice a channel is carrying at a row of the frame shown.
+
+        A row may bend a note it did not start, so the answer is found by reading down the frame's
+        rows to this one, the way the grid reads its pitch column.
+        """
+        pattern_index = self._pattern_index_at_frame(channel)
+        pattern = self._controller.project.song.pattern(channel, pattern_index) if pattern_index is not None else None
+        if pattern is None:
+            return None
+
+        carried: Optional[VoiceUnion] = None
+        for row in pattern.rows[: row_index + 1]:
+            carried = self._carried_voice(row, carried)
+
+        return carried
+
+    def set_note_off(self, channel: ChannelName, row_index: int) -> None:
         """Writes a note-off into one channel's cell, materialising the pattern if needed."""
-        self.set_row(generator, row_index, command=NoteOff())
+        self.set_row(channel, row_index, command=NoteOff())
 
     def set_note_off_all_generators(self, row_index: int) -> None:
         """Cuts every channel at this row, the sample-column counterpart of :meth:`set_note_off`."""
-        for generator in GeneratorName.items():
-            self.set_note_off(generator, row_index)
+        for channel in ChannelName.items():
+            self.set_note_off(channel, row_index)
 
     def set_sample_subcolumn(
         self,
@@ -381,15 +455,15 @@ class SequencerTrackerLogic(CallbackMixin):
         transpose: Optional[int] = None,
         volume: Optional[int] = None,
     ) -> None:
-        """Synchronises a subcolumn across the row's relevant channels.
+        """Synchronizes a subcolumn across the row's relevant channels.
 
-        Transpose and volume exist independently of an instrument: they follow the
+        Transpose and volume exist independently of the voice slot: they follow the
         sample's channels when one is present, and otherwise reach every channel, so
         a value typed in the sample column always lands somewhere.
         """
-        for generator in self._subcolumn_generators(row_index):
+        for channel in self._subcolumn_generators(row_index):
             self.set_row(
-                generator,
+                channel,
                 row_index,
                 transpose=transpose,
                 volume=volume,
@@ -402,9 +476,9 @@ class SequencerTrackerLogic(CallbackMixin):
         transpose: bool = False,
         volume: bool = False,
     ) -> None:
-        for generator in self._subcolumn_generators(row_index):
+        for channel in self._subcolumn_generators(row_index):
             self.clear_subcolumn(
-                generator,
+                channel,
                 row_index,
                 transpose=transpose,
                 volume=volume,
@@ -412,7 +486,7 @@ class SequencerTrackerLogic(CallbackMixin):
 
     def adjust_transpose(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         row_index: int,
         delta: int,
     ) -> None:
@@ -422,14 +496,14 @@ class SequencerTrackerLogic(CallbackMixin):
         ``delta``; the controller clamps the result to the transpose range.
         """
         self.set_row(
-            generator,
+            channel,
             row_index,
-            transpose=self._current_transpose(generator, row_index) + delta,
+            transpose=self._current_transpose(channel, row_index) + delta,
         )
 
     def adjust_volume(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         row_index: int,
         delta: int,
     ) -> None:
@@ -439,22 +513,22 @@ class SequencerTrackerLogic(CallbackMixin):
         the first decrement steps down from the maximum.
         """
         self.set_row(
-            generator,
+            channel,
             row_index,
-            volume=self._current_volume(generator, row_index) + delta,
+            volume=self._current_volume(channel, row_index) + delta,
         )
 
     def row(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         row_index: int,
     ) -> Optional[Row]:
         """The row stored at a cell, present while its channel holds a pattern reaching that far."""
-        pattern_index = self._pattern_index_at_frame(generator)
+        pattern_index = self._pattern_index_at_frame(channel)
         if pattern_index is None:
             return None
 
-        pattern = self._controller.project.song.pattern(generator, pattern_index)
+        pattern = self._controller.project.song.pattern(channel, pattern_index)
         if pattern is None or row_index >= pattern.length:
             return None
 
@@ -462,17 +536,17 @@ class SequencerTrackerLogic(CallbackMixin):
 
     def _current_transpose(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         row_index: int,
     ) -> int:
-        row = self.row(generator, row_index)
+        row = self.row(channel, row_index)
         if row is None or row.transpose is None:
             return 0
 
         return row.transpose
 
-    def _current_volume(self, generator: GeneratorName, row_index: int) -> int:
-        row = self.row(generator, row_index)
+    def _current_volume(self, channel: ChannelName, row_index: int) -> int:
+        row = self.row(channel, row_index)
         if row is None or row.volume is None:
             return MAX_VOLUME
 
@@ -486,19 +560,19 @@ class SequencerTrackerLogic(CallbackMixin):
         self._frame_index = frame_index
         self.push_tracker()
 
-    def holds_sample(self, sample_id: str) -> bool:
-        """Whether the project holds the sample a note names, which is what makes the note placeable."""
-        return self._controller.project.samples.get(sample_id) is not None
+    def holds_voice(self, voice_id: str) -> bool:
+        """Whether the project holds the voice a note names, which is what makes the note placeable."""
+        return self._controller.project.voices.get(voice_id) is not None
 
-    def used_generators(self, sample_id: str) -> List[GeneratorName]:
+    def used_generators(self, voice_id: str) -> List[ChannelName]:
         """The channels a sample provides instructions for, empty when it is unknown."""
-        sample = self._controller.project.samples.get(sample_id)
+        sample = self._controller.project.voices.get(voice_id)
         if sample is None:
             return []
 
         return self._used_generators(sample)
 
-    def relevant_generators(self, row_index: int) -> List[GeneratorName]:
+    def relevant_channels(self, row_index: int) -> List[ChannelName]:
         """The channels a sample-column subcolumn edit reaches at ``row_index``.
 
         Follows the row's sample channels when one governs it, and otherwise every
@@ -506,14 +580,14 @@ class SequencerTrackerLogic(CallbackMixin):
         """
         return self._subcolumn_generators(row_index)
 
-    def _pattern_index_at_frame(self, generator: GeneratorName) -> Optional[int]:
+    def _pattern_index_at_frame(self, channel: ChannelName) -> Optional[int]:
         song = self._controller.project.song
         if self._frame_index < song.order_length():
-            return song.order[self._frame_index].get(generator)
+            return song.order[self._frame_index].get(channel)
 
         return None
 
-    def _create_frame_pattern(self, generator: GeneratorName) -> Optional[int]:
+    def _create_frame_pattern(self, channel: ChannelName) -> Optional[int]:
         """Materialises a pattern for an empty slot at the current frame, on first edit.
 
         Providing content to a channel whose current frame is an empty (None) slot
@@ -525,119 +599,183 @@ class SequencerTrackerLogic(CallbackMixin):
         if self._frame_index >= song.order_length():
             return None
 
-        pattern_index = self._controller.add_pattern(generator)
+        pattern_index = self._controller.add_pattern(channel)
         self._controller.set_order_entry(
-            generator,
+            channel,
             self._frame_index,
             pattern_index,
         )
         return pattern_index
 
-    def _used_generators(self, sample: Sample) -> List[GeneratorName]:
-        """The channels a sample's reconstruction provides instructions for."""
-        return [
-            generator
-            for generator in GeneratorName.items()
-            if sample.reconstruction.get_generator_instructions(generator)
-        ]
+    def _used_generators(self, voice: VoiceUnion) -> List[ChannelName]:
+        """The channels a voice sounds on."""
+        return list(voice_channels(voice))
 
-    def _subcolumn_generators(self, row_index: int) -> List[GeneratorName]:
+    def _subcolumn_generators(self, row_index: int) -> List[ChannelName]:
         """Channels a sample-column transpose/volume edit writes to.
 
         Falls back to every channel when no sample constrains the row, mirroring
-        :attr:`SequencerRowViewModel.subcolumn_generators`.
+        :attr:`SequencerRowViewModel.subcolumn_channels`.
         """
-        referenced = self.referenced_generators(row_index)
+        referenced = self.referenced_channels(row_index)
         if not referenced:
-            return GeneratorName.items()
+            return ChannelName.items()
 
-        return [generator for generator in GeneratorName.items() if generator in referenced]
+        return [channel for channel in ChannelName.items() if channel in referenced]
 
-    def referenced_generators(self, row_index: int) -> FrozenSet[GeneratorName]:
+    def referenced_channels(self, row_index: int) -> FrozenSet[ChannelName]:
         """The channels spanned by the samples a row names.
 
         Reads the row from every channel's pattern, so it reports a sample's whole
         span even where some of its cells stand empty. A row naming no sample
-        references no channel, which is what :meth:`relevant_generators` widens to
+        references no channel, which is what :meth:`relevant_channels` widens to
         every channel.
         """
-        rows: Dict[GeneratorName, Optional[Row]] = {}
-        for generator in GeneratorName.items():
-            pattern_index = self._pattern_index_at_frame(generator)
+        rows: Dict[ChannelName, Optional[Row]] = {}
+        for channel in ChannelName.items():
+            pattern_index = self._pattern_index_at_frame(channel)
             pattern = (
                 self._controller.project.song.pattern(
-                    generator,
+                    channel,
                     pattern_index,
                 )
                 if pattern_index is not None
                 else None
             )
-            rows[generator] = pattern.rows[row_index] if pattern is not None else None
+            rows[channel] = pattern.rows[row_index] if pattern is not None else None
 
         return self._referenced_generators_from_rows(rows)
 
     def _referenced_generators_from_rows(
         self,
-        rows: Dict[GeneratorName, Optional[Row]],
-    ) -> FrozenSet[GeneratorName]:
-        """The channels spanned by the samples referenced on a row.
+        rows: Dict[ChannelName, Optional[Row]],
+    ) -> FrozenSet[ChannelName]:
+        """The channels spanned by the samples a row names.
 
-        Each referenced sample contributes the channels its reconstruction covers,
-        so the sample column reasons about a sample's whole channel span, including
-        channels whose cells are empty.
+        A sample contributes the channels its reconstruction covers, so the sample column reasons
+        about its whole span including channels whose cells stand empty. A hand-written instrument
+        sounds on the one channel it is named in, so it contributes none and leaves the column
+        speaking for samples alone. A row naming a voice the project no longer holds contributes
+        the channel it sits on, which keeps that cell reachable while the reference stands.
         """
-        relevant: Set[GeneratorName] = set()
+        relevant: Set[ChannelName] = set()
         resolved: Set[str] = set()
-        for row in rows.values():
+        for channel, row in rows.items():
             command = row.command if row is not None else None
-            if not isinstance(command, Instrument):
+            if not isinstance(command, NoteOn):
                 continue
 
-            sample_id = command.sample_id
-            if sample_id in resolved:
+            voice_id = command.voice_id
+            if voice_id in resolved:
                 continue
 
-            resolved.add(sample_id)
-            sample = self._controller.project.samples.get(sample_id)
-            if sample is None:
-                relevant.add(command.generator_name)
-            else:
-                relevant.update(self._used_generators(sample))
+            resolved.add(voice_id)
+            voice = self._controller.project.voices.get(voice_id)
+            if voice is None:
+                relevant.add(channel)
+            elif voice_kind(voice).places_across_channels:
+                relevant.update(self._used_generators(voice))
 
         return frozenset(relevant)
 
     def _build_row(
         self,
         index: int,
-        patterns: Dict[GeneratorName, Pattern],
+        patterns: Dict[ChannelName, Pattern],
+        carried: Dict[ChannelName, Optional[VoiceUnion]],
     ) -> SequencerRowViewModel:
-        rows: Dict[GeneratorName, Optional[Row]] = {}
-        cells: Dict[GeneratorName, SequencerCellViewModel] = {}
-        for generator in GeneratorName.items():
-            pattern = patterns.get(generator)
+        """One grid line, with each channel read in the terms of the voice it is carrying.
+
+        ``carried`` walks down the frame with the rows, so a line bending a note it did not start
+        still reads in that voice's terms.
+        """
+        rows: Dict[ChannelName, Optional[Row]] = {}
+        cells: Dict[ChannelName, SequencerCellViewModel] = {}
+        for channel in ChannelName.items():
+            pattern = patterns.get(channel)
             if pattern is not None and index < pattern.length:
                 row = pattern.rows[index]
-                rows[generator] = row
-                cells[generator] = self._build_cell(row)
+                rows[channel] = row
+                carried[channel] = self._carried_voice(row, carried[channel])
+                cells[channel] = self._build_cell(row, channel, carried[channel])
             else:
-                rows[generator] = None
-                cells[generator] = _EMPTY_CELL
+                rows[channel] = None
+                cells[channel] = _EMPTY_CELL
 
         return SequencerRowViewModel(
             index=index,
             cells=cells,
-            relevant_generators=self._referenced_generators_from_rows(rows),
+            sample_channels=self._referenced_generators_from_rows(rows),
         )
 
-    def _build_cell(self, row: Row) -> SequencerCellViewModel:
+    def _carried_voice(
+        self,
+        row: Row,
+        carried: Optional[VoiceUnion],
+    ) -> Optional[VoiceUnion]:
+        """The voice a channel carries once it has reached ``row``.
+
+        A note column names the voice from that line on, a note-off leaves the channel carrying
+        none, and a line naming neither plays on with whatever it already had.
+        """
+        match row.command:
+            case NoteOn() as note_on:
+                return self._controller.project.voices.get(note_on.voice_id)
+            case NoteOff():
+                return None
+            case None:
+                return carried
+
+    def _build_cell(
+        self,
+        row: Row,
+        channel: ChannelName,
+        voice: Optional[VoiceUnion],
+    ) -> SequencerCellViewModel:
+        """One cell's three readings, the pitch stated in the terms its voice is written in.
+
+        A sample was converted at a pitch of its own, so its rows read as steps from it; an instrument
+        was written against a root the reader chose, so its rows read as the notes they sound.
+        """
         return SequencerCellViewModel(
-            instrument=display_command(
-                self._controller.project.samples,
+            voice=display_command(
+                self._controller.project.voices,
                 row.command,
             ),
-            transpose=display_transpose(row.transpose),
+            transpose=self._display_pitch(row.transpose, channel, voice),
             volume=display_volume(row.volume),
+            kind=self._named_kind(row.command),
         )
+
+    def _named_kind(self, command: Optional[NoteCommand]) -> Optional[VoiceKind]:
+        """The kind of the voice a row names, absent where it names none the project holds.
+
+        The cell states the voice it starts, so the kind is read from that command rather than from
+        whatever the channel carries into the row: a line that only bends a note names nothing and
+        takes the kind of nothing.
+        """
+        match command:
+            case NoteOn() as note_on:
+                voice = self._controller.project.voices.get(note_on.voice_id)
+                return voice_kind(voice) if voice is not None else None
+            case _:
+                return None
+
+    @staticmethod
+    def _display_pitch(
+        transpose: Optional[int],
+        channel: ChannelName,
+        voice: Optional[VoiceUnion],
+    ) -> str:
+        match voice:
+            case Instrument():
+                return display_note(
+                    transpose,
+                    channel_name=channel,
+                    reference=voice_reference(voice, channel),
+                )
+            case _:
+                return display_transpose(transpose)
 
     def _clamp_frame(self, frame_count: int) -> int:
         if frame_count == 0:

@@ -4,10 +4,14 @@ from typing import Dict
 
 from pydantic import ValidationError
 
+from sampletones_core.compatibility.kind import ObjectKind
+from sampletones_core.compatibility.upgrade import upgrade_json
 from sampletones_core.project.document import ProjectDocument
-from sampletones_core.project.instruments.record import SampleRecord
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.record import SampleRecord, VoiceRecord
+from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures import IdentifiedCollection
 from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
@@ -37,9 +41,9 @@ class ProjectContainer:
 
     The archive (``.stp``) is a zip holding a single ``project.json`` -- the
     validated :class:`ProjectDocument` -- plus one ``reconstructions/<id>.stn`` per
-    unique reconstruction in its existing binary format. Samples embed
-    reconstructions in memory but reference them by ``reconstruction_id`` on disk,
-    so a reconstruction shared by several samples is stored exactly once.
+    unique reconstruction in its existing binary format. A sample embeds its
+    reconstruction in memory but references it by ``reconstruction_id`` on disk,
+    so a reconstruction shared by several voices is stored exactly once.
 
     The entire JSON shape lives in :class:`ProjectDocument`; this class only maps
     the domain to and from it and manages the reconstruction archive. It is a
@@ -63,7 +67,12 @@ class ProjectContainer:
     def load(path: Pathlike) -> Project:
         try:
             with zipfile.ZipFile(path, "r") as archive:
-                document = ProjectDocument.model_validate_json(archive.read(PROJECT_DOCUMENT_NAME))
+                document = ProjectDocument.model_validate_json(
+                    upgrade_json(
+                        ObjectKind.PROJECT,
+                        archive.read(PROJECT_DOCUMENT_NAME),
+                    )
+                )
                 ProjectContainer._validate_document(document)
                 reconstructions = ProjectContainer._read_reconstructions(archive)
             return ProjectContainer._build_project(document, reconstructions)
@@ -108,14 +117,7 @@ class ProjectContainer:
             metadata=project.metadata,
             info=project.info,
             settings=project.settings,
-            samples=[
-                SampleRecord(
-                    id=sample.id,
-                    name=sample.name,
-                    reconstruction_id=sample.reconstruction.id,
-                )
-                for sample in project.samples
-            ],
+            voices=[ProjectContainer._voice_record(voice) for voice in project.voices],
             song=project.song,
         )
 
@@ -124,30 +126,58 @@ class ProjectContainer:
         document: ProjectDocument,
         reconstructions: Dict[str, Reconstruction],
     ) -> Project:
-        samples: IdentifiedCollection[Sample] = IdentifiedCollection()
-        for record in document.samples:
-            reconstruction = reconstructions[record.reconstruction_id]
-            samples.append(ProjectContainer._restore_sample(record, reconstruction))
+        voices: IdentifiedCollection[VoiceUnion] = IdentifiedCollection()
+        for record in document.voices:
+            voices.append(ProjectContainer._restore_voice(record, reconstructions))
 
         return Project(
             metadata=document.metadata,
             info=document.info,
             settings=document.settings,
-            samples=samples,
+            voices=voices,
             song=document.song,
         )
 
     @staticmethod
-    def _restore_sample(record: SampleRecord, reconstruction: Reconstruction) -> Sample:
-        sample = Sample(name=record.name, reconstruction=reconstruction)
-        sample.id = record.id
-        return sample
+    def _voice_record(voice: VoiceUnion) -> VoiceRecord:
+        """The record a voice is written as: a reference for a sample, the whole of it for an instrument."""
+        match voice:
+            case Sample():
+                return SampleRecord(
+                    id=voice.id,
+                    name=voice.name,
+                    reconstruction_id=voice.reconstruction.id,
+                )
+            case Instrument():
+                return voice
+
+    @staticmethod
+    def _restore_voice(
+        record: VoiceRecord,
+        reconstructions: Dict[str, Reconstruction],
+    ) -> VoiceUnion:
+        """The voice a record describes, resolving a sample's reconstruction from the archive.
+
+        Raises:
+            KeyError: If a sample record names a reconstruction the archive holds none of.
+        """
+        match record:
+            case SampleRecord():
+                sample = Sample(
+                    name=record.name,
+                    reconstruction=reconstructions[record.reconstruction_id],
+                )
+                sample.id = record.id
+                return sample
+            case Instrument():
+                return record
 
     @staticmethod
     def _unique_reconstructions(project: Project) -> Dict[str, Reconstruction]:
         reconstructions: Dict[str, Reconstruction] = {}
-        for sample in project.samples:
-            reconstructions[sample.reconstruction.id] = sample.reconstruction
+        for voice in project.voices:
+            if isinstance(voice, Sample):
+                reconstructions[voice.reconstruction.id] = voice.reconstruction
 
         return reconstructions
 

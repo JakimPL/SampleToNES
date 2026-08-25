@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, List, Optional, Protocol, Tuple
+from typing import Any, Callable, List, Optional, Protocol, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -24,6 +24,7 @@ from sampletones_application.ui.elements.tree.spec import NodeSpec
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tags import FileBrowserTags
 from sampletones_application.ui.elements.tree.tree import NO_EXPANDED_ROWS
+from sampletones_application.utils.gui.keyboard.modifiers import Modifier, capture_modifiers
 from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_core.structures.tree import (
     FileSystemNode,
@@ -93,6 +94,9 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
 
         self.on_wave_file_clicked: Optional[PathCallback] = None
         self.on_directory_clicked: Optional[PathCallback] = None
+        self.on_directory_add_requested: Optional[PathCallback] = None
+        self.on_file_add_requested: Optional[PathCallback] = None
+        self.can_add_stems: Optional[Callable[[], bool]] = None
         self.on_reconstruct_directory: Optional[PathCallback] = None
         self.on_reconstruct_file: Optional[PathCallback] = None
         self.on_load_reconstruction: Optional[PathCallback] = None
@@ -174,6 +178,7 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         self._pending_specs = []
         if self._explorer_logic.has_loaded_children(node.filepath):
             for child in node.children:
+                assert isinstance(child, FileSystemNode), "Explorer child is not a FileSystemNode"
                 self._build_tree_node(
                     child,
                     TreeNodeState(
@@ -271,13 +276,26 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
                 case extensions.EXT_FILE_RECONSTRUCTION:
                     return self._logic.request_autoplay(node)
                 case suffix if suffix in extensions.EXT_FILES_AUDIO:
-                    self.call(self.on_wave_file_clicked, node.filepath)
-                    return self._logic.request_autoplay(node)
+                    return self._audio_node_clicked(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
             return self._show_file_context_menu(node)
 
         return None
+
+    def _audio_node_clicked(self, node: FileSystemNode) -> None:
+        """Answers a click on a recording: Ctrl gathers it as a stem, else it becomes the selection.
+
+        Ctrl is the gathering gesture throughout the browser, so it reaches a recording the same
+        way it reaches a folder and does what **Add as stem** does, opening a stems conversion
+        where none is being built. A plain click hands the recording to the converter and plays it.
+        """
+        if Modifier.CTRL in capture_modifiers() and self.query(self.can_add_stems, default=False):
+            self.call(self.on_file_add_requested, node.filepath)
+            return
+
+        self.call(self.on_wave_file_clicked, node.filepath)
+        self._logic.request_autoplay(node)
 
     def _on_file_node_double_clicked(
         self,
@@ -331,8 +349,17 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         node: FileSystemNode,
         node_tag: str,
     ) -> None:
+        """Answers a click on a folder: Ctrl offers its recordings as stems, else it opens.
+
+        Ctrl does what **Add folder as stems** does, opening a stems conversion where none is
+        being built. While the converter is busy the folder opens the way a plain click opens it.
+        """
         has_content = self._explorer_logic.has_relevant_content(node.filepath)
         if not has_content:
+            return
+
+        if Modifier.CTRL in capture_modifiers() and self.query(self.can_add_stems, default=False):
+            self.call(self.on_directory_add_requested, node.filepath)
             return
 
         self._toggle_directory_expansion(node, node_tag)
@@ -403,6 +430,10 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
                     label=self._language_manager["main.explorer.label.context_reconstruct_file"],
                     callback=lambda: self._context_reconstruct_file(node),
                 )
+                dpg.add_menu_item(
+                    label=self._language_manager["main.explorer.label.context_add_stem"],
+                    callback=lambda: self.call(self.on_file_add_requested, node.filepath),
+                )
 
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
@@ -423,6 +454,10 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         dpg.add_menu_item(
             label=self._language_manager["main.explorer.label.context_reconstruct_directory"],
             callback=lambda: self._context_reconstruct_directory(node),
+        )
+        dpg.add_menu_item(
+            label=self._language_manager["main.explorer.label.context_add_folder_stems"],
+            callback=lambda: self.call(self.on_directory_add_requested, node.filepath),
         )
 
     def _add_context_menu_set_directory_items(self, node: FileSystemNode) -> None:

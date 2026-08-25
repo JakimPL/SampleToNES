@@ -9,7 +9,7 @@ from sampletones_application.layout.tabs.main.reconstructor import Reconstructor
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.main import (
-    PRE_MAIN_RECONSTRUCTOR_GENERATOR,
+    PRE_MAIN_RECONSTRUCTOR_CHANNEL,
     TAG_MAIN_RECONSTRUCTOR_PANEL,
     TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
 )
@@ -28,7 +28,7 @@ from sampletones_application.view_model.main.reconstructor import (
 )
 from sampletones_application.view_model.main.updates import GenerationSettingsUpdate
 from sampletones_core.constants.algorithm import MAX_DRIVE
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import Sender
 
 
@@ -78,27 +78,27 @@ class GUIReconstructorPanel(GUIPanel):
             dpg.add_item_edited_handler(callback=self._on_parameter_change)
 
     def _create_generator_selection(self) -> None:
-        subheader(self._language_manager["main.reconstructor.label.section_generators"])
+        subheader(self._language_manager["main.reconstructor.label.section_channels"])
 
         with dpg.group():
-            for generator, label, theme_tag in self._generator_chips():
-                checkbox_tag = self._get_generator_checkbox_tag(generator)
+            for channel, label, theme_tag in self._channel_chips():
+                checkbox_tag = self._get_generator_checkbox_tag(channel)
                 dpg.add_checkbox(
                     label=label,
-                    default_value=generator in self._view.generators,
+                    default_value=channel in self._view.channels,
                     tag=checkbox_tag,
                     callback=self._on_parameter_change,
                 )
                 ThemeRegistry.get(theme_tag).bind_to_item(checkbox_tag)
 
-    def _generator_chips(self) -> List[Tuple[GeneratorName, str, str]]:
+    def _channel_chips(self) -> List[Tuple[ChannelName, str, str]]:
         return [
             (
-                generator_name,
-                channel_label(self._language_manager, generator_name),
-                CHANNEL_THEME_TAGS[generator_name],
+                channel_name,
+                channel_label(self._language_manager, channel_name),
+                CHANNEL_THEME_TAGS[channel_name],
             )
-            for generator_name in GeneratorName.items()
+            for channel_name in ChannelName.items()
         ]
 
     def _create_drive_slider(self) -> None:
@@ -131,13 +131,13 @@ class GUIReconstructorPanel(GUIPanel):
             self._language_manager["main.reconstructor.tooltip.tooltip_drive"],
         )
 
-    def toggle_generator(self, generator: GeneratorName) -> None:
-        """Switches one generator in or out of the set a reconstruction is built from.
+    def toggle_channel(self, channel: ChannelName) -> None:
+        """Switches one channel in or out of the set a reconstruction is built from.
 
-        This is the gesture a click on the generator's checkbox makes, reached by the key the
+        This is the gesture a click on the channel's checkbox makes, reached by the key the
         channel answers to, so the panel reports the settings either way.
         """
-        checkbox_tag = self._get_generator_checkbox_tag(generator)
+        checkbox_tag = self._get_generator_checkbox_tag(channel)
         dpg_set_value(checkbox_tag, not dpg.get_value(checkbox_tag))
         self._report_generation_settings()
 
@@ -145,21 +145,19 @@ class GUIReconstructorPanel(GUIPanel):
         self._report_generation_settings()
 
     def _report_generation_settings(self) -> None:
-        generators = [
-            generator for generator in GeneratorName if dpg.get_value(self._get_generator_checkbox_tag(generator))
-        ]
+        channels = [channel for channel in ChannelName if dpg.get_value(self._get_generator_checkbox_tag(channel))]
         generation_update = GenerationSettingsUpdate(
             drive=float(clamp_widget_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE)),
-            generators=generators,
+            channels=channels,
         )
         self.call(self.on_generation_settings_changed, generation_update)
 
     def update_view(self, view_model: ReconstructorPanelViewModel) -> None:
         self._view = view_model
         dpg.set_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, view_model.drive)
-        for generator in GeneratorName:
-            dpg_set_value(self._get_generator_checkbox_tag(generator), generator in view_model.generators)
+        for channel in ChannelName:
+            dpg_set_value(self._get_generator_checkbox_tag(channel), channel in view_model.channels)
 
     @staticmethod
-    def _get_generator_checkbox_tag(generator: GeneratorName) -> str:
-        return compose_tag(PRE_MAIN_RECONSTRUCTOR_GENERATOR, generator.value)
+    def _get_generator_checkbox_tag(channel: ChannelName) -> str:
+        return compose_tag(PRE_MAIN_RECONSTRUCTOR_CHANNEL, channel.value)

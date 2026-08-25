@@ -10,7 +10,7 @@ instruments, and building a whole song. Both assume it is already
 2. In the **Filesystem** browser on the left, click an audio file (WAV, MP3,
    FLAC, OGG, AIFF, or AU) — or a folder, to reconstruct every audio file inside it.
 3. Optionally choose which channels to use under **Reconstructor settings** and
-   adjust **General settings**. At least one generator must be enabled.
+   adjust **General settings**. At least one channel must be enabled.
 4. Click **Convert sample** (or **Convert directory** for a folder). The first
    time you use a given set of settings, the
    [instruction library](../concepts/instruction-library.md) is built
@@ -35,11 +35,11 @@ tabs in full.
    left, right-click a reconstruction and choose **Add to Sequencer**. If its NES
    frequency differs from the project's, confirm with **Add anyway**.
 4. In the **Tracker** grid, click a cell and type notes on your keyboard; assign a
-   sample to a channel with the cell's right-click **Set instrument**.
+   sample to a channel with the cell's right-click **Set voice**.
 5. Arrange the piece in the **Order** grid, and set **Rows**, **Tempo**, **Speed**,
    and **NES frequency** under **Module options**.
 6. Choose **File ▸ Export ▸ FamiTracker module...** and pick a path for the `.ftm`
    file. **Bitphase project...** beside it writes the same song as a `.btp`.
 
-The [sequencer guide](sequencer.md) covers the tracker grid, the order, samples,
+The [sequencer guide](sequencer.md) covers the tracker grid, the order, voices,
 and undo history in full.

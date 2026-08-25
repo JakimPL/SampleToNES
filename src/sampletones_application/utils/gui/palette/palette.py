@@ -15,15 +15,15 @@ from sampletones_shared.types.application import Sender
 
 
 class PaletteBindings:
-    """Every colour DearPyGui holds a copy of, and the token each copy came from.
+    """Every color DearPyGui holds a copy of, and the token each copy came from.
 
-    DearPyGui reads an item's colour argument and a theme colour item once, at the call that
+    DearPyGui reads an item's color argument and a theme color item once, at the call that
     fills it, so those copies keep the shade of the palette that was active then. Handing a
-    colour over through this registry keeps the :class:`BaseColor` alongside the copy, and
+    color over through this registry keeps the :class:`BaseColor` alongside the copy, and
     :meth:`apply` hands DearPyGui the value each token carries now.
 
-    One argument of one item holds one colour, so binding it again replaces what is recorded
-    for it: an item recoloured on every hover stays a single entry.
+    One argument of one item holds one color, so binding it again replaces what is recorded
+    for it: an item recolored on every hover stays a single entry.
     """
 
     _arguments: ClassVar[Dict[ArgumentKey, ArgumentBinding]] = {}
@@ -37,7 +37,7 @@ class PaletteBindings:
         *,
         argument: str = COLOR_ARGUMENT,
     ) -> None:
-        """Colours one of an item's arguments now, and keeps the token behind it."""
+        """Colors one of an item's arguments now, and keeps the token behind it."""
         binding = ArgumentBinding(
             item=item,
             color=color,
@@ -48,7 +48,7 @@ class PaletteBindings:
 
     @classmethod
     def bind_theme_color(cls, item: Sender, color: BaseColor) -> None:
-        """Keeps the token behind a theme colour item the caller has just filled."""
+        """Keeps the token behind a theme color item the caller has just filled."""
         cls._theme_colors[item] = ThemeColorBinding(
             item=item,
             color=color,
@@ -69,7 +69,7 @@ class PaletteBindings:
 
     @classmethod
     def bindings(cls) -> Iterator[PaletteBinding]:
-        """Every colour copy the registry currently tracks."""
+        """Every color copy the registry currently tracks."""
         return chain(cls._arguments.values(), cls._theme_colors.values())
 
     @classmethod

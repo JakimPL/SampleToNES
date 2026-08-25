@@ -66,37 +66,24 @@ class TestPulseExporterDeriveInitialPitch:
         assert PulseExporter.derive_initial_pitch([]) == MIN_PITCH
 
 
-class TestPulseExporterGetFeatureMap:
-    def test_feature_map_contains_required_keys(self) -> None:
-        feature_map = PulseExporter.get_feature_map([_pulse(pitch=60)], 60)
-        assert FeatureKey.INITIAL_PITCH in feature_map
-        assert FeatureKey.VOLUME in feature_map
-        assert FeatureKey.ARPEGGIO in feature_map
-        assert FeatureKey.DUTY_CYCLE in feature_map
+class TestPulseExporterReadEnvelopes:
+    def test_it_reads_the_dimensions_its_generator_offers(self) -> None:
+        envelopes = PulseExporter.read_envelopes([_pulse()], 60)
+        assert FeatureKey.VOLUME in envelopes
+        assert FeatureKey.ARPEGGIO in envelopes
+        assert FeatureKey.DUTY_CYCLE in envelopes
+        assert FeatureKey.INITIAL_PITCH not in envelopes
 
     def test_arpeggio_is_relative_to_the_given_reference(self) -> None:
         instructions = [_pulse(pitch=60), _pulse(pitch=65)]
-        feature_map = PulseExporter.get_feature_map(instructions, 60)
-        arpeggio = feature_map[FeatureKey.ARPEGGIO]
+        envelopes = PulseExporter.read_envelopes(instructions, 60)
+        arpeggio = envelopes[FeatureKey.ARPEGGIO]
         assert int(arpeggio[0]) == 0
         assert int(arpeggio[1]) == 5
 
-    def test_initial_pitch_is_the_given_reference(self) -> None:
-        feature_map = PulseExporter.get_feature_map([_pulse(pitch=60)], 55)
-        assert feature_map[FeatureKey.INITIAL_PITCH] == 55
-        assert int(feature_map[FeatureKey.ARPEGGIO][0]) == 5
-
-    def test_volume_dtype_is_int8(self) -> None:
-        feature_map = PulseExporter.get_feature_map([_pulse()], 60)
-        assert feature_map[FeatureKey.VOLUME].dtype == np.int8
-
-    def test_arpeggio_dtype_is_int8(self) -> None:
-        feature_map = PulseExporter.get_feature_map([_pulse()], 60)
-        assert feature_map[FeatureKey.ARPEGGIO].dtype == np.int8
-
-    def test_duty_cycle_dtype_is_int8(self) -> None:
-        feature_map = PulseExporter.get_feature_map([_pulse()], 60)
-        assert feature_map[FeatureKey.DUTY_CYCLE].dtype == np.int8
+    def test_the_arpeggio_is_measured_from_the_reference_it_is_given(self) -> None:
+        envelopes = PulseExporter.read_envelopes([_pulse(pitch=60)], 55)
+        assert envelopes[FeatureKey.ARPEGGIO][0] == 5
 
 
 class TestPulseExporterReconstruction:

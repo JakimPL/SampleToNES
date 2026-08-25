@@ -4,7 +4,7 @@ from typing import Dict, List
 from unittest.mock import patch
 
 from sampletones_application.utils.parallelization.thread import (
-    BackgroundWorkCancelled,
+    BackgroundWorkCanceled,
     SingleThreadExecutor,
     concurrent,
 )
@@ -100,11 +100,11 @@ class TestShutdownCancellation:
 
         assert ran == []
 
-    def test_cancelled_exception_unwinds_without_logging_an_error(self) -> None:
+    def test_canceled_exception_unwinds_without_logging_an_error(self) -> None:
         class Worker:
             @concurrent(wait=True)
             def work(self) -> None:
-                raise BackgroundWorkCancelled
+                raise BackgroundWorkCanceled
 
         with patch("sampletones_application.utils.parallelization.thread.logger") as logger:
             Worker().work()
