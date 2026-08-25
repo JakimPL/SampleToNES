@@ -38,13 +38,13 @@ class TestTheNotice:
         assert messages.notice("Lead", ()) is None
 
     def test_the_voice_is_named_in_the_opening(self, messages: InstrumentImportMessages) -> None:
-        notice = messages.notice("Lead", (InstrumentOmission.PITCH,))
+        notice = messages.notice("Lead", (InstrumentOmission.CUMULATIVE_BEND,))
 
         assert notice is not None
         assert "Lead" in notice.splitlines()[0]
 
     def test_each_dimension_is_listed_on_its_own_line(self, messages: InstrumentImportMessages) -> None:
-        stated = (InstrumentOmission.PITCH, InstrumentOmission.RELEASE_POINT)
+        stated = (InstrumentOmission.CUMULATIVE_BEND, InstrumentOmission.RELEASE_POINT)
         notice = messages.notice("Lead", stated)
 
         assert notice is not None
@@ -56,7 +56,7 @@ class TestTheNotice:
         self,
         messages: InstrumentImportMessages,
     ) -> None:
-        notice = messages.notice("Lead", (InstrumentOmission.PITCH,))
+        notice = messages.notice("Lead", (InstrumentOmission.CUMULATIVE_BEND,))
 
         assert notice is not None
         assert messages.omissions[InstrumentOmission.RELEASE_POINT] not in notice
@@ -68,7 +68,7 @@ class TestTheNotice:
         assert all(words in notice for words in messages.omissions.values())
 
     def test_the_wording_holds_no_placeholder_open(self, messages: InstrumentImportMessages) -> None:
-        notice = messages.notice("Lead", (InstrumentOmission.PITCH,))
+        notice = messages.notice("Lead", (InstrumentOmission.CUMULATIVE_BEND,))
 
         assert notice is not None
         assert "{" not in notice

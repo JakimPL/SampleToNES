@@ -128,8 +128,8 @@ The five sequence kinds, in slot order (`SequenceKind` in `specification/sequenc
 | --- | --- | --- |
 | 0 | Volume | output volume per tick, 0–15 |
 | 1 | Arpeggio | semitone offsets added to the played note (absolute mode) |
-| 2 | Pitch | fine per-tick pitch bend, applied cumulatively |
-| 3 | Hi-pitch | coarse pitch bend |
+| 2 | Pitch | per-tick divider offset, one step per unit |
+| 3 | Hi-pitch | per-tick divider offset, sixteen steps per unit |
 | 4 | Duty / Noise | pulse duty cycle 0–3, or the noise short/long mode |
 
 Each sequence carries:
@@ -141,6 +141,18 @@ Each sequence carries:
   or `-1` for none;
 - **setting** — the sequence mode; for arpeggio, `0` selects absolute (the offsets
   are added to the played note).
+
+**The bend and the arpeggio that pins it.** FamiTracker walks an instrument's sequences in
+slot order, and an arpeggio in absolute mode reloads the period from the note before the two bend
+sequences add to it (`CSeqInstHandler::ProcessSequence`). While the arpeggio runs, a pitch item is
+therefore an *offset from the note* for that tick, and a hi-pitch item is the same offset counted
+sixteen dividers at a time; once the arpeggio halts, the same items start accumulating on the
+running period instead. _SampleToNES_ writes and reads a bend as the per-tick offset, so the writer
+guarantees the arpeggio that makes that reading hold: an instrument writing a bend and no arpeggio
+gains one holding a single zero at loop point 0, and a shorter arpeggio is brought to the bend's
+length holding its final note. What one step is worth follows the note it bends — under a cent at
+the lowest notes, widening to a whole semitone at the highest, where the divider grid is already
+coarser than the note grid.
 
 **Looping.** Each sequence states the item it repeats from, so a held note sustains from
 that item on. A dimension written without one leaves its loop point at `-1` and plays its
@@ -184,8 +196,9 @@ place in the instrument table, so the instruments an export writes are the chann
 that play.
 The arpeggio sequence carries the reconstruction's pitch contour as signed offsets,
 and triggering the instrument at `initial_pitch` replays that contour. Volume, duty
-(or noise mode) and any pitch sequences carry across directly. The DPCM
-key-assignment table is empty by design.
+(or noise mode) and the two bend sequences carry across directly; a conversion that bent no note
+records both bend dimensions as ones the channel governs, so they reach the file as disabled slots.
+The DPCM key-assignment table is empty by design.
 
 An [instrument](../glossary.md#instrument) written by hand is one set of envelopes
 every channel reads, which is the instrument model FamiTracker itself uses, so it
@@ -217,8 +230,8 @@ one into the voice pool as a hand-written [instrument](../glossary.md#instrument
 `instrument.py::read_fti` parses the layout in section A.1, and
 `voice.py::instrument_to_voice` makes a voice of the 2A03 instrument it holds.
 
-A voice carries three of the five dimensions — volume, arpeggio and duty — each with the
-item it repeats from, so those come across as they stand. The voice takes the name the
+A voice carries all five dimensions — volume, arpeggio, pitch, hi-pitch and duty — each with
+the item it repeats from, so those come across as they stand. The voice takes the name the
 file states, and a file naming nothing leaves the voice named after the file itself. The
 arpeggio is read as offsets from the pitch a hand-written voice rests at, since a tracker
 instrument sounds at whatever note a row names it with.
@@ -233,8 +246,7 @@ file carried (`InstrumentOmission` in `voice.py`):
 
 | Stated in the file | What the voice holds |
 | --- | --- |
-| a pitch envelope | a note moved in whole semitones, which the arpeggio carries |
-| a hi-pitch envelope | the same |
+| a bend outrunning its arpeggio | each item as the offset it states, where the tracker would accumulate it past the arpeggio's last tick (section B) |
 | a release point | a note the pattern cuts with a note-off |
 | an arpeggio in fixed, relative or scheme mode | absolute offsets |
 
@@ -298,7 +310,8 @@ each instrument's body: a sequence-enable bitmask, then one pointer per populate
 An instrument with `n` populated sequences carrying `s₁ … sₙ` items therefore occupies
 `3 + 2n` bytes of the instrument region and `Σ (4 + sᵢ)` of the sequence region. A dimension the
 channel leaves unused is written as a disabled slot, and the populated sequences alone are
-charged: `n` is 3 on the pulse and noise channels (volume, arpeggio, duty) and 2 on triangle.
+charged: a reconstruction that bent no note charges 3 sequences on the pulse and noise channels
+(volume, arpeggio, duty) and 2 on triangle, and each bend an instrument writes adds one more.
 Each sequence is charged at its own length (section B), so shortening any one dimension shows
 in the figure, and an instrument tops out at 777 bytes — three sequences at the 252-item limit.
 

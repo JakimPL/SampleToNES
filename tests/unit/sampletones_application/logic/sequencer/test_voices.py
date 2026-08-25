@@ -574,7 +574,7 @@ class TestReadingAnInstrumentFile:
         )
         _, logic = _logic()
 
-        assert InstrumentOmission.PITCH in logic.read_instrument(filepath).omissions
+        assert InstrumentOmission.CUMULATIVE_BEND in logic.read_instrument(filepath).omissions
 
     def test_reading_leaves_the_pool_as_it_stands(self, tmp_path: Path) -> None:
         """The pool is edited by the gesture that adds, so a read alone records no history entry."""

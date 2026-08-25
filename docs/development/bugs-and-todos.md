@@ -14,19 +14,23 @@
 
 ### Tracker
 
-The first four entries are also what an imported `.fti` reports as left to the file
+The first two entries are also what an imported `.fti` reports as left to the file
 (section C of `formats/famitracker.md`), so each one closed is a dimension the import
 starts carrying.
 
-* Pitch and hi-pitch envelopes: a per-tick period bend, where an instruction's pitch is a whole
-  semitone. Sounding them needs a sub-semitone offset in the instruction model and raw timer values
-  in the NSF planes, which reaches the reconstruction search space, the instruction library and the
-  compression pitch table. The two sequences reach a tracker file today and are written empty.
 * Release points: `NoteValue.RELEASE` stands in the FamiTracker specification while a note-off cuts
   the channel. A release segment would need the playback walk, the NSF driver and `NoteOff` to gain
   one.
 * Arpeggio modes: a sequence's `setting` byte states absolute. Fixed, relative and scheme need an
   enum of their own, and scheme needs the item bit-packing FamiTracker gives it.
+* The bend in the NSF planes. A channel's value plane names a pitch as a semitone index, which is
+  what makes `TRANSPOSED_PHRASE` work, so a divider offset needs a plane of its own: `PLANE_COUNT`
+  8 → 12, a wider song header, another `PLANE_STATE_SIZE` block per channel, another
+  `plane_advance` per channel per tick and a sixteen-bit add before the timer registers are
+  written. Until it lands, an NSF renders a bent note at the note's own divider.
+* The bend in a Bitphase export. `formats/bitphase/envelopes.py` states the three dimensions it
+  writes; `NesInstrumentRow` already carries `tone_add` and `tone_accumulation`, so the mapping is
+  confined to that module.
 * A transpose or a volume typed in the sample column of a row holding no sample reaches every
   channel. The column summarizes the channels its samples cover, and a row covering none falls
   back to all four so a value typed there lands somewhere; the reference slot keeps the narrower

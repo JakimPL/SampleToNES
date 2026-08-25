@@ -179,6 +179,15 @@ reconstructed samples into a song.
 In a FamiTracker instrument, a per-tick envelope for one dimension: volume,
 arpeggio, pitch, hi-pitch, or duty/noise mode.
 
+### Bend
+
+How far a frame sounds from the note it names, counted in steps of the divider the
+channel loads. The **pitch** dimension counts one step per item and the **hi-pitch**
+dimension sixteen, and the two add up. What a step is worth follows the note: well under
+a cent at the lowest notes, widening to a whole semitone at the highest, where the
+divider grid is already coarser than the note grid. Only the pulse and triangle channels
+read a bend; the noise channel's sixteen periods have no finer grid.
+
 ### Pattern
 
 A block of tracker rows spanning the channels. A song plays its patterns in an

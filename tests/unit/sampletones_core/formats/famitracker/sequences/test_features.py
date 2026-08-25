@@ -53,6 +53,45 @@ def build(
     )
 
 
+class TestTheArpeggioThatPinsABend:
+    """A bend travels with an arpeggio, because that is what makes each item an offset.
+
+    FamiTracker walks an instrument's sequences in slot order, and an absolute arpeggio reloads
+    the period from the note before a bend adds to it. A bend the arpeggio covers therefore sounds
+    in the tracker as the per-tick offset this project writes it as.
+    """
+
+    def test_a_bend_without_an_arpeggio_gains_a_repeating_one(self) -> None:
+        arpeggio = features_to_instrument_sequences(build([15, 0], [], pitch=[3, -3]))[SequenceKind.ARPEGGIO]
+
+        assert arpeggio.enabled is True
+        assert arpeggio.items == (0,)
+        assert arpeggio.loop_point == LOOP_FROM_START
+
+    def test_an_arpeggio_shorter_than_the_bend_reaches_its_length(self) -> None:
+        arpeggio = features_to_instrument_sequences(build([15, 0], [4, 7], pitch=[1, 2, 3, 4]))[SequenceKind.ARPEGGIO]
+
+        assert arpeggio.items == (4, 7, 7, 7)
+
+    def test_an_arpeggio_that_repeats_is_left_as_it_stands(self) -> None:
+        sequences = features_to_instrument_sequences(
+            build([15, 0], [0, 5], pitch=[1, 2, 3, 4], loop_point=LOOP_FROM_START)
+        )
+
+        assert sequences[SequenceKind.ARPEGGIO].items == (0, 5)
+        assert sequences[SequenceKind.ARPEGGIO].loop_point == LOOP_FROM_START
+
+    def test_an_arpeggio_already_covering_the_bend_is_left_as_it_stands(self) -> None:
+        arpeggio = features_to_instrument_sequences(build([15, 0], [4, 7, 9], pitch=[1, 2]))[SequenceKind.ARPEGGIO]
+
+        assert arpeggio.items == (4, 7, 9)
+
+    def test_an_instrument_writing_no_bend_gains_no_arpeggio(self) -> None:
+        arpeggio = features_to_instrument_sequences(build([15, 0], []))[SequenceKind.ARPEGGIO]
+
+        assert arpeggio.enabled is False
+
+
 class TestFeaturesToInstrumentSequences:
     def test_all_five_kinds_present(self) -> None:
         sequences = features_to_instrument_sequences(build([15, 0], [0]))
