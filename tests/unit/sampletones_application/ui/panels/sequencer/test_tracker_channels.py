@@ -4,13 +4,14 @@ from typing import Dict, FrozenSet, List, Optional, Tuple
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.tabs.sequencer.colors.channel import ChannelColors
+from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.paths import LANG_EN
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer import channels as channels_module
-from sampletones_application.ui.panels.sequencer import tracker as tracker_module
 from sampletones_application.ui.panels.sequencer.columns import tracker_table_column
-from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker.callbacks import ThemeKey
+from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.modifiers import (
     CTRL,
     NO_MODIFIERS,
@@ -23,6 +24,7 @@ from sampletones_application.view_model.sequencer.channels import (
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import ColorRGBA, Sender
+from tests.unit.sampletones_application.ui.panels.sequencer.test_tracker_cell_themes import _themes
 
 HEADER_WIDGET_ID = 7100
 """A stand-in for the header selectable id DearPyGui passes as the callback's sender."""
@@ -41,15 +43,15 @@ CHANNEL_COLORS = ChannelColors(
 
 HEADER_THEME = 1
 MUTED_HEADER_THEME = 2
-SUBCOLUMN_THEMES: Dict[SubColumn, int] = {
-    SubColumn.INSTRUMENT: 10,
-    SubColumn.TRANSPOSE: 11,
-    SubColumn.VOLUME: 12,
+SUBCOLUMN_THEMES: Dict[ThemeKey, int] = {
+    (SubColumn.VOICE, None): 10,
+    (SubColumn.TRANSPOSE, None): 11,
+    (SubColumn.VOLUME, None): 12,
 }
-MUTED_SUBCOLUMN_THEMES: Dict[SubColumn, int] = {
-    SubColumn.INSTRUMENT: 20,
-    SubColumn.TRANSPOSE: 21,
-    SubColumn.VOLUME: 22,
+MUTED_SUBCOLUMN_THEMES: Dict[ThemeKey, int] = {
+    (SubColumn.VOICE, None): 20,
+    (SubColumn.TRANSPOSE, None): 21,
+    (SubColumn.VOLUME, None): 22,
 }
 
 
@@ -90,13 +92,12 @@ def _cell_widget(channel: ChannelName, row_index: int, subcolumn: SubColumn) -> 
 def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerTrackerPanel:
     """Builds a panel around the state the channel cues read, with no DearPyGui context.
 
-    The cues touch the layout colours, the theme ids, the header widgets, and the cell
+    The cues touch the layout colors, the theme ids, the header widgets, and the cell
     registry, so those are wired directly and the rest of the panel is left out.
     """
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._layout = SimpleNamespace(
         colors=SimpleNamespace(
-            channels=CHANNEL_COLORS,
             muted=SimpleNamespace(background=LiteralColor(MUTED_BACKGROUND)),
         ),
         tracker=SimpleNamespace(
@@ -104,12 +105,16 @@ def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerTrackerPanel:
             muted_text_fraction=MUTED_TEXT_FRACTION,
         ),
     )
+    panel._channel_colors = CHANNEL_COLORS
     panel._current_channels = SequencerChannelsViewModel(muted=muted)
     panel._current_row_count = ROW_COUNT
-    panel._header_theme = HEADER_THEME
-    panel._muted_header_theme = MUTED_HEADER_THEME
-    panel._subcolumn_themes = dict(SUBCOLUMN_THEMES)
-    panel._muted_subcolumn_themes = dict(MUTED_SUBCOLUMN_THEMES)
+    panel._cell_kinds = {}
+    panel._themes = _themes(
+        SUBCOLUMN_THEMES,
+        MUTED_SUBCOLUMN_THEMES,
+        header=HEADER_THEME,
+        muted_header=MUTED_HEADER_THEME,
+    )
     panel._header_columns = {_header_widget(channel): channel for channel in HEADER_COLUMNS}
     panel._create_channel_switch(LanguageManager(LANG_EN))
     panel._editable_cells = EditableCells()
@@ -315,7 +320,7 @@ class TestCellTextShade:
 
         for subcolumn in SubColumn:
             widget = _cell_widget(ChannelName.NOISE, 0, subcolumn)
-            assert recorder.bound_themes[widget] == MUTED_SUBCOLUMN_THEMES[subcolumn]
+            assert recorder.bound_themes[widget] == MUTED_SUBCOLUMN_THEMES[(subcolumn, None)]
 
     def test_unmuting_restores_the_full_theme(self, recorder: _DearPyGuiRecorder) -> None:
         panel = _panel(frozenset({ChannelName.NOISE}))
@@ -324,7 +329,7 @@ class TestCellTextShade:
         panel.update_channels(SequencerChannelsViewModel(muted=frozenset()))
 
         widget = _cell_widget(ChannelName.NOISE, 1, SubColumn.VOLUME)
-        assert recorder.bound_themes[widget] == SUBCOLUMN_THEMES[SubColumn.VOLUME]
+        assert recorder.bound_themes[widget] == SUBCOLUMN_THEMES[(SubColumn.VOLUME, None)]
 
 
 class TestCuesAwaitTheTable:
@@ -375,7 +380,7 @@ class TestMuteStateReading:
         assert not any(panel._is_muted(channel) for channel in ChannelName.items())
 
 
-class TestChannelTintColour:
+class TestChannelTintColor:
     @pytest.mark.parametrize(
         "channel, expected",
         [
@@ -386,7 +391,7 @@ class TestChannelTintColour:
         ],
         ids=lambda value: value.value if isinstance(value, ChannelName) else "",
     )
-    def test_audible_tint_is_the_identity_colour_at_the_configured_fraction(
+    def test_audible_tint_is_the_identity_color_at_the_configured_fraction(
         self,
         channel: ChannelName,
         expected: Tuple[int, int, int, int],

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
-from sampletones_application.services.conversion import ConversionService
+from sampletones_application.services.conversion.service import ConversionService
 from sampletones_core.configs import Config
 from sampletones_core.reconstructions.converter import DirectoryConversion, GroupConversion
 from sampletones_core.reconstructions.converter.plan.protocol import ConversionPlan
@@ -22,7 +22,7 @@ class TestConversionServiceArgumentRouting:
     """
 
     def _start_with_captured_kwargs(self, config: Config, plan: ConversionPlan) -> Dict[str, Any]:
-        with patch("sampletones_application.services.conversion.ReconstructionConverter") as mock_class:
+        with patch("sampletones_application.services.conversion.service.ReconstructionConverter") as mock_class:
             mock_class.return_value = MagicMock()
             ConversionService().start(config, plan)
 

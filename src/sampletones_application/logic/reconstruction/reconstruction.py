@@ -1,9 +1,20 @@
 from pathlib import Path
-from typing import Callable, Dict, Final, FrozenSet, List, Optional, Protocol, Set, Tuple
+from typing import (
+    Callable,
+    Dict,
+    Final,
+    FrozenSet,
+    List,
+    Optional,
+    Protocol,
+    Set,
+    Tuple,
+)
 
 import numpy as np
 
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.logic.export.instrument.source import ExportableInstrument
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.view_model.reconstruction.paths.path import (
@@ -29,11 +40,16 @@ from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.naming import instrument_slice_name
 from sampletones_core.exports.backend import ExportBackend
-from sampletones_core.exports.extensions import format_for_extension
 from sampletones_core.exports.format import ExportFormat
-from sampletones_core.exports.request import InstrumentExport, SampleExport
+from sampletones_core.exports.request import (
+    InstrumentExport,
+    InstrumentSource,
+    SampleExport,
+)
 from sampletones_core.exports.scope import ExportScope
-from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
+from sampletones_core.reconstructions.reconstruction.stems.selection import (
+    StemSelection,
+)
 from sampletones_shared.logger import logger
 from sampletones_shared.music import Tuning
 from sampletones_shared.types.callback import PathCallback, VoidCallback
@@ -108,7 +124,6 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_waveform_cleared: Optional[VoidCallback] = None
         self.on_waveform_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
-        self.on_open_export_instrument_dialog: Optional[Callable[[str, str, ChannelName], None]] = None
         self.on_open_export_instruments_dialog: Optional[Callable[[str, str, ExportFormat], None]] = None
         self.on_open_export_wav_dialog: Optional[Callable[[str, str], None]] = None
 
@@ -192,6 +207,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             selected_channels=frozenset(self._selected_channels),
             reconstruction_file=reconstruction_file,
             original_audio=original_audio,
+            nes_frequency=reconstruction_data.config.nes_frequency,
         )
 
     def close_reconstruction(self) -> None:
@@ -221,6 +237,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                 selected_channels=frozenset(),
                 reconstruction_file=empty_path,
                 original_audio=empty_path,
+                nes_frequency=None,
             ),
         )
 
@@ -247,7 +264,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self._emit_audio_data()
 
-    def set_stem_channels(self, stem_id: int, channels: FrozenSet[ChannelName]) -> None:
+    def set_stem_channels(
+        self,
+        stem_id: int,
+        channels: FrozenSet[ChannelName],
+    ) -> None:
         """Adopts the channels one recording is heard on and re-answers playback and the waveform.
 
         The choice is listening state, so it filters what plays and what the waveform
@@ -269,7 +290,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self._emit_audio_data()
 
-    def _adopt_stem_channels(self, offered: Dict[int, FrozenSet[ChannelName]]) -> None:
+    def _adopt_stem_channels(
+        self,
+        offered: Dict[int, FrozenSet[ChannelName]],
+    ) -> None:
         """Carries the reader's per-channel stem choice across an edit.
 
         A channel a stem keeps holding frames on keeps whatever the reader chose for it, and
@@ -365,35 +389,40 @@ class ReconstructionPanelLogic(CallbackMixin):
             channel_cap=stems_data.config.channel_cap,
         )
 
-    def request_export_instrument_dialog(
+    def exportable_instrument(
         self,
         channel_name: ChannelName,
-    ) -> None:
-        """Asks for the destination one channel slice is written to.
+    ) -> Optional[ExportableInstrument]:
+        """The loaded reconstruction's ``channel_name`` slice, ready to be given a destination.
 
-        Every format able to write a single slice is offered at once, so the channel travels
-        with the request to the dialog and back. The suggestion is the instrument's name on its
-        own, leaving the format to the dialog's file-type selector and to any extension typed
-        over it.
+        A reconstruction has no loop flag of its own — that belongs to a sample placed in a
+        project — so the instrument plays its envelopes once.
 
         Args:
             channel_name: The channel whose slice is written.
+
+        Returns:
+            Optional[ExportableInstrument]: The slice and the name to suggest for it, or ``None``
+            where that channel describes no frame and is written nowhere.
+
+        Raises:
+            AssertionError: If no reconstruction is loaded.
         """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting an instrument")
 
         if channel_name not in reconstruction_data.reconstruction.playing_channels:
-            return
+            return None
 
-        instrument_name = self._get_instrument_name(channel_name)
-        default_path = str(self._session_manager.get_instrument_path())
-
-        self.call(
-            self.on_open_export_instrument_dialog,
-            instrument_name,
-            default_path,
-            channel_name,
+        return ExportableInstrument(
+            name=self._get_instrument_name(channel_name),
+            source=InstrumentSource(
+                channel=channel_name,
+                features=reconstruction_data.feature_data[channel_name],
+                nes_frequency=self._nes_frequency(),
+                tuning=self._tuning(),
+            ),
         )
 
     def request_export_instruments_dialog(
@@ -430,36 +459,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         default_filename = reconstruction_data.name
         default_path = str(self._session_manager.get_audio_path())
 
-        self.call(self.on_open_export_wav_dialog, default_filename, default_path)
-
-    def handle_export_instrument_confirmed(
-        self,
-        filepath: Path,
-        channel_name: ChannelName,
-    ) -> None:
-        """Writes the ``channel_name`` slice of the loaded reconstruction to ``filepath``.
-
-        The extension picks the format the slice is written in, and the instrument carries
-        the name the destination was saved under, so renaming the file in the dialog renames
-        the instrument the file carries.
-
-        Args:
-            filepath: The destination the dialog was confirmed with.
-            channel_name: The channel whose slice is written.
-        """
-        reconstruction_data = self._reconstruction_data
-        if not reconstruction_data:
-            logger.warning("No reconstruction data available for instrument export")
-            return
-
-        export_format = self._export_format(filepath, ExportScope.INSTRUMENT)
-        feature = reconstruction_data.feature_data[channel_name]
-
-        self._session_manager.set_instrument_path(filepath.parent)
-        self._export_service.export_instrument(
-            filepath,
-            self._export_backends[export_format],
-            self._instrument_export(channel_name, feature, filepath.stem),
+        self.call(
+            self.on_open_export_wav_dialog,
+            default_filename,
+            default_path,
         )
 
     def handle_export_instruments_confirmed(
@@ -505,32 +508,6 @@ class ReconstructionPanelLogic(CallbackMixin):
             request,
         )
 
-    def _export_format(
-        self,
-        destination: Path,
-        scope: ExportScope,
-    ) -> ExportFormat:
-        """Reads the export format out of the destination's extension.
-
-        A save dialog answers with one of the extensions it offered, and an export offers the
-        types its own formats write, so every destination reaching here names a format.
-
-        Args:
-            destination: The destination the export was confirmed with.
-            scope: The scope about to be written.
-
-        Returns:
-            ExportFormat: The format to write in.
-
-        Raises:
-            ValueError: If no format able to express ``scope`` claims the extension.
-        """
-        export_format = format_for_extension(self._export_backends, scope, destination.suffix)
-        if export_format is None:
-            raise ValueError(f"No export format writes '{destination.suffix}' for a {scope} export")
-
-        return export_format
-
     def _instrument_export(
         self,
         channel_name: ChannelName,
@@ -539,14 +516,13 @@ class ReconstructionPanelLogic(CallbackMixin):
     ) -> InstrumentExport:
         """Packages one channel slice under ``name`` for an export backend.
 
-        A reconstruction has no loop flag of its own — that belongs to a sample placed in
-        a project — so the instrument plays its envelopes once.
+        A reconstruction's envelopes state no repeat of their own, so each dimension holds its
+        final value once it runs out and the trailing silence releases the note.
         """
         return InstrumentExport(
             name=name,
             channel=channel_name,
             features=feature,
-            loop=False,
             nes_frequency=self._nes_frequency(),
             tuning=self._tuning(),
         )

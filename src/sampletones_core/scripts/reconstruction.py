@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Final, Optional, Tuple
 
 from tqdm import tqdm
 
@@ -14,9 +14,12 @@ from sampletones_core.reconstructions.converter import (
     get_output_path,
     reconstruct_job,
 )
+from sampletones_core.reconstructions.progress import ReconstructionProgress
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.scripts.library import generate_library
 from sampletones_shared.logger import logger, null_logger
+
+BAR_STEPS: Final[int] = 1000
 
 
 def reconstruct_file(
@@ -40,7 +43,18 @@ def reconstruct_file(
         stems=_classic_setup(config),
         output_path=output_path,
     )
-    reconstruct_job((Reconstructor(config), job))
+    progress_bar = tqdm(total=BAR_STEPS, desc=f"Reconstructing {input_path.name}", unit="step")
+
+    def on_progress(progress: ReconstructionProgress) -> bool:
+        progress_bar.set_postfix_str(progress.stage)
+        progress_bar.update(round(progress.fraction * BAR_STEPS) - progress_bar.n)
+        return True
+
+    try:
+        reconstruct_job((Reconstructor(config), job, on_progress))
+    finally:
+        progress_bar.close()
+
     logger.info(f"Reconstruction file saved to {output_path}")
 
 
@@ -89,13 +103,13 @@ def reconstruct_directory(
 
         if task_status in (
             TaskStatus.COMPLETED,
-            TaskStatus.CANCELLED,
+            TaskStatus.CANCELED,
             TaskStatus.FAILED,
         ):
             progress_bar.close()
 
-    def on_cancelled() -> None:
-        logger.info("Reconstruction cancelled by user")
+    def on_canceled() -> None:
+        logger.info("Reconstruction canceled by user")
         progress_bar.close()
 
     def on_error(_exception: Exception) -> None:
@@ -111,7 +125,7 @@ def reconstruct_directory(
         on_start=on_start,
         on_completed=on_completed,
         on_progress=on_progress,
-        on_cancelled=on_cancelled,
+        on_canceled=on_canceled,
         on_error=on_error,
     )
 

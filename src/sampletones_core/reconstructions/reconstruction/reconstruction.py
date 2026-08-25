@@ -218,12 +218,13 @@ class Reconstruction(DataModel):
                 instructions_data.append(InstructionsItem.resting(channel_name))
                 continue
 
+            exporter_class = cls._get_exporter_class(channel_instructions[0])
             instructions_data.append(
                 InstructionsItem.create(
                     channel_name=channel_name,
                     instructions=channel_instructions,
                     initial_pitch=cls._derive_initial_pitch(channel_instructions),
-                    held_features=(),
+                    held_features=exporter_class.unstated_features(channel_instructions),  # type: ignore[arg-type]
                 )
             )
 

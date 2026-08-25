@@ -8,7 +8,7 @@ import pytest
 from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
 from sampletones_application.logic.reconstruction.edit import StemRemoval
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.services.regeneration import RegeneratedInstrument
+from sampletones_application.services.regeneration.service import RegeneratedInstrument
 from sampletones_application.services.result import ServiceSuccess
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.reconstructions import Reconstruction

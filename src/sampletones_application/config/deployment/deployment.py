@@ -19,11 +19,16 @@ class DeploymentConfig(BaseModel, frozen=True):
     the history self-heals by recording the mutation as its own entry.
     ``log_level`` sets the verbosity of the application logger at startup.
 
-    Every field is required, and the shipped ``deployment.yaml`` supplies the
-    authoritative baseline for each one. The ``SAMPLETONES_LOG_LEVEL`` and
-    ``SAMPLETONES_STRICT_HISTORY`` environment variables override individual
-    fields when set, letting a development run raise verbosity or enable strict
-    history while the shipped file keeps user builds quiet and self-healing.
+    Every field is required, and ``deployment.yaml`` supplies the baseline. It carries the
+    development values — verbose logging, and strict history so a missing transaction is
+    reported the moment it happens rather than healed in silence — since the source tree is
+    where an edit is written and where that report is worth having. A release build injects the
+    user-facing values through ``scripts/release_env_hook.py``, so a shipped artifact is quiet
+    and self-healing whatever the tree it was built from said.
+
+    The ``SAMPLETONES_LOG_LEVEL`` and ``SAMPLETONES_STRICT_HISTORY`` environment variables set
+    either field, which is how the release hook states its values and how a run of either kind
+    takes the other's.
     """
 
     log_level: LogLevel

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import StrEnum
 from typing import Final, FrozenSet, Optional, Tuple
 
@@ -37,24 +39,24 @@ class SongExportViewModel(BaseModel, frozen=True):
         stages: The stages the run has reached, in the order it reached them.
         figure: What the stage under way has covered, in the words its own unit is stated in.
         progress: How far the stage under way has got, from 0 to 1, where it travels to an end.
-        travelling: Whether the stage under way arrives at what it is measured against.
+        traveling: Whether the stage under way arrives at what it is measured against.
     """
 
     phase: ExportPhase
     stages: Tuple[ExportStage, ...]
     figure: str
     progress: float
-    travelling: bool
+    traveling: bool
 
     @classmethod
-    def idle(cls) -> "SongExportViewModel":
+    def idle(cls) -> SongExportViewModel:
         """The dialog with no run behind it, which is what the window opens on."""
         return cls(
             phase=ExportPhase.IDLE,
             stages=(),
             figure="",
             progress=NO_PROGRESS,
-            travelling=False,
+            traveling=False,
         )
 
     @property
@@ -69,12 +71,12 @@ class SongExportViewModel(BaseModel, frozen=True):
     @property
     def progress_visible(self) -> bool:
         """Whether a bar stands, which a stage arriving at an end is what earns."""
-        return self.travelling
+        return self.traveling
 
     @property
     def working_visible(self) -> bool:
         """Whether the turning indicator stands, which is how a stage without an end reads."""
-        return not self.travelling
+        return not self.traveling
 
     @property
     def progress_overlay(self) -> str:

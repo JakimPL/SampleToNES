@@ -16,3 +16,18 @@ components:
       - type: color
         key: Text
         value: .on_danger
+  - item_type: Button
+    enabled: false
+    entries:
+      - type: color
+        key: Text
+        value: .text_disabled
+      - type: color
+        key: Button
+        value: .danger_disabled
+      - type: color
+        key: ButtonHovered
+        value: .danger_disabled
+      - type: color
+        key: ButtonActive
+        value: .danger_disabled

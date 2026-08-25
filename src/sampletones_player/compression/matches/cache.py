@@ -5,15 +5,14 @@ from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.matches.played import played_ticks
 from sampletones_player.compression.matches.reading import PhraseReading
-from sampletones_player.compression.matches.shift import translation
-from sampletones_player.specification.compression import BYTE_VALUES, MAX_PHRASE_TICKS
+from sampletones_player.compression.matches.shift import NO_SHIFT, asked_shift, translation
+from sampletones_player.specification.compression import MAX_PHRASE_TICKS
 
 KEY_LENGTH: Final[int] = 2
 TICKS_TYPECODE: Final[str] = "H"
 TICKS_ENTRY_SIZE: Final[int] = 2
 NO_MATCH: Final[int] = 0
 MIN_PHRASE_TICKS: Final[int] = 2
-NO_SHIFT: Final[int] = 0
 
 
 class MatchCache:
@@ -81,7 +80,7 @@ class MatchCache:
         shifted = False
         unshifted = False
         for position in self._offered(plane, phrase):
-            transpose = (index.plane[position] - origin) % BYTE_VALUES
+            transpose = asked_shift(index.plane[position], origin)
             ticks = played_ticks(
                 index,
                 position,

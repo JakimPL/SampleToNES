@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from typing import Dict, Final, List, cast
 from unittest.mock import MagicMock
 
+import dearpygui.dearpygui as dpg
+import numpy as np
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
@@ -14,12 +16,14 @@ from sampletones_application.paths import (
     PALETTES_DIRECTORY,
     THEME_DIRECTORY,
 )
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_INPUT_WARNING,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
 )
+from sampletones_application.tags.graphs import SUF_GRAPH_RAW_DATA
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import PitchStepperStyle
@@ -29,13 +33,19 @@ from sampletones_application.ui.panels.reconstruction.instruments.instruments im
 )
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.ui.themes.theme import Theme
+from sampletones_application.utils.gui.keyboard import KeyEvent, KeyRouter
+from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.reconstruction.instruments import (
+    InstrumentViewModel,
     ReconstructionInstrumentsViewModel,
 )
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
-from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
+from sampletones_core.constants.enums import ChannelName, FeatureKey, GeneratorName
+from sampletones_core.constants.general import PITCH_BEND_MAX, PITCH_BEND_MIN
+from sampletones_core.features import CHANNEL_GENERATOR_KIND, supported_features
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
@@ -56,6 +66,18 @@ NOT_LOADED: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrument
     footprint=None,
 )
 
+ONE_INSTRUMENT: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
+    reconstruction_loaded=False,
+    playing_channels=frozenset((ChannelName.PULSE1,)),
+    footprint=VoiceFootprintViewModel.from_instrument(LARGEST_PULSE),
+    instrument=InstrumentViewModel(name="lead"),
+)
+
+
+def sequence(item_count: int) -> Envelope[int]:
+    """A dimension of a given length, which is all the length warning reads of it."""
+    return Envelope[int](items=(0,) * item_count)
+
 
 def build_view_model(
     channel_footprints: Dict[ChannelName, InstrumentFootprint],
@@ -64,7 +86,7 @@ def build_view_model(
     return ReconstructionInstrumentsViewModel(
         reconstruction_loaded=True,
         playing_channels=frozenset(channel_footprints),
-        footprint=SampleFootprintViewModel.from_footprints(channel_footprints),
+        footprint=VoiceFootprintViewModel.from_footprints(channel_footprints),
     )
 
 
@@ -110,15 +132,27 @@ def shown(monkeypatch: pytest.MonkeyPatch) -> Dict[str, bool]:
     """Records which items the panel shows, standing in for the DPG configuration."""
     flags: Dict[str, bool] = {}
 
-    def configure(tag: str, *, show: bool) -> None:
-        flags[tag] = show
+    def configure(tag: str, **kwargs: object) -> None:
+        show = kwargs.get("show")
+        if isinstance(show, bool):
+            flags[tag] = show
 
     monkeypatch.setattr(instruments_module, "dpg_configure_item", configure)
     return flags
 
 
 @pytest.fixture
-def panel(layout_config: LayoutConfig) -> GUIReconstructionInstrumentsPanel:
+def key_router() -> MagicMock:
+    router = MagicMock(spec=KeyRouter)
+    router.is_field_focused = False
+    return router
+
+
+@pytest.fixture
+def panel(
+    layout_config: LayoutConfig,
+    key_router: MagicMock,
+) -> GUIReconstructionInstrumentsPanel:
     return GUIReconstructionInstrumentsPanel(
         pitch_stepper_style=PitchStepperStyle.from_general(layout_config.general),
         copy_width=layout_config.general.buttons.copy_width,
@@ -126,6 +160,8 @@ def panel(layout_config: LayoutConfig) -> GUIReconstructionInstrumentsPanel:
         layout_graphs=layout_config.graphs,
         language_manager=LanguageManager(LANG_EN),
         status_bar=MagicMock(),
+        key_router=key_router,
+        tab_active=lambda: True,
     )
 
 
@@ -141,7 +177,7 @@ class TestSequenceLengthWarning:
         bound_themes: List[str],
         item_count: int,
     ) -> None:
-        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.VOLUME, item_count)
+        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(item_count))
         assert bound_themes == [TAG_GLOBAL_THEME_DEFAULT]
 
     def test_a_sequence_beyond_the_limit_takes_the_warning_theme(
@@ -149,7 +185,7 @@ class TestSequenceLengthWarning:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 1)
+        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 1))
         assert bound_themes == [TAG_GLOBAL_THEME_INPUT_WARNING]
 
     def test_a_shortened_sequence_returns_to_the_default_theme(
@@ -157,8 +193,8 @@ class TestSequenceLengthWarning:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(ChannelName.NOISE, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 40)
-        panel._apply_input_theme(ChannelName.NOISE, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS)
+        panel._show_sequence(ChannelName.NOISE, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 40))
+        panel._show_sequence(ChannelName.NOISE, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS))
         assert bound_themes == [
             TAG_GLOBAL_THEME_INPUT_WARNING,
             TAG_GLOBAL_THEME_DEFAULT,
@@ -169,12 +205,108 @@ class TestSequenceLengthWarning:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.VOLUME, MAX_SEQUENCE_ITEMS + 1)
-        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.ARPEGGIO, 8)
+        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 1))
+        panel._show_sequence(ChannelName.PULSE1, FeatureKey.ARPEGGIO, sequence(8))
         assert bound_themes == [
             TAG_GLOBAL_THEME_INPUT_WARNING,
             TAG_GLOBAL_THEME_DEFAULT,
         ]
+
+
+class TestEditingASequence:
+    """A bar redrawn on the plot restates the values; the item the dimension repeats from is its own."""
+
+    def test_a_redrawn_bar_states_the_values_it_leaves(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        edited: List[Envelope[int]] = []
+        panel.on_envelope_changed = lambda _channel, _key, envelope: edited.append(envelope)
+        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, Envelope[int](items=(15, 12, 8)))
+
+        panel._on_bar_point_clicked(
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            np.array([15, 4, 8], dtype=np.int8),
+            "plot",
+        )
+
+        assert edited == [Envelope[int](items=(15, 4, 8))]
+
+    def test_a_redrawn_bar_keeps_the_item_the_dimension_repeats_from(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        edited: List[Envelope[int]] = []
+        panel.on_envelope_changed = lambda _channel, _key, envelope: edited.append(envelope)
+        panel._show_sequence(
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            Envelope[int](items=(15, 12, 8), loop_point=1),
+        )
+
+        panel._on_bar_point_clicked(
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            np.array([15, 4, 8], dtype=np.int8),
+            "plot",
+        )
+
+        assert edited == [Envelope[int](items=(15, 4, 8), loop_point=1)]
+
+    def test_a_redrawn_bar_writes_the_dimension_out_with_its_point(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        written: Dict[str, str],
+    ) -> None:
+        panel._show_sequence(
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            Envelope[int](items=(15, 12, 8), loop_point=1),
+        )
+
+        panel._on_bar_point_clicked(
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            np.array([15, 4, 8], dtype=np.int8),
+            "plot",
+        )
+
+        assert written[compose_tag("plot", SUF_GRAPH_RAW_DATA)] == "15 | 4 8"
+
+
+class TestCopyingASequence:
+    def test_the_copy_button_hands_over_the_dimension_the_input_shows(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The button is built while every dimension is still empty, so the press reads the input."""
+        copied: List[str] = []
+        monkeypatch.setattr(
+            GUIReconstructionInstrumentsPanel,
+            "_on_copy_button_clicked",
+            lambda _self, text, _tag: copied.append(text),
+        )
+        callback = panel._copy_callback(ChannelName.PULSE1, FeatureKey.VOLUME, "button")
+        panel._show_sequence(
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            Envelope[int](items=(15, 12, 8), loop_point=1),
+        )
+
+        callback()
+
+        assert copied == ["15 | 12 8"]
+
+    def test_the_handler_is_one_the_framework_can_dispatch(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        """DearPyGui reads a callback's ``__code__`` to decide how many arguments to pass it."""
+        callback = panel._copy_callback(ChannelName.PULSE1, FeatureKey.VOLUME, "button")
+
+        assert callback.__code__.co_argcount == 0
 
 
 class TestInstrumentExport:
@@ -222,10 +354,10 @@ class TestSequenceStatusMessage:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(
+        panel._show_sequence(
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
-            HEXADECIMAL_BASE,
+            sequence(HEXADECIMAL_BASE),
         )
         message = panel._sequence_status_message(
             ChannelName.PULSE1,
@@ -240,7 +372,7 @@ class TestSequenceStatusMessage:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._apply_input_theme(ChannelName.PULSE1, FeatureKey.VOLUME, 300)
+        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(300))
         message = panel._sequence_status_message(ChannelName.PULSE1, FeatureKey.VOLUME)
         assert "300" in message
         assert str(MAX_SEQUENCE_ITEMS) in message
@@ -366,6 +498,70 @@ class TestPlayingChannels:
         }
 
 
+class TestTheDimensionsAChannelShows:
+    """A channel plots the dimensions its generator offers, the bend among them where it reads one.
+
+    The panel builds one row per offered dimension, so what a channel shows follows the generator
+    spec rather than a list of its own.
+    """
+
+    @pytest.mark.parametrize(
+        "channel_name",
+        ChannelName.items(),
+        ids=lambda channel_name: str(channel_name),
+    )
+    def test_a_channel_plots_every_dimension_it_offers(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        channel_name: ChannelName,
+    ) -> None:
+        kind = CHANNEL_GENERATOR_KIND[channel_name]
+
+        assert list(panel._feature_plot_configs[kind]) == supported_features(kind)
+
+    @pytest.mark.parametrize(
+        "kind",
+        (GeneratorName.PULSE, GeneratorName.TRIANGLE),
+        ids=lambda kind: str(kind),
+    )
+    def test_a_tonal_channel_plots_both_bend_dimensions(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        kind: GeneratorName,
+    ) -> None:
+        plotted = panel._feature_plot_configs[kind]
+
+        assert FeatureKey.PITCH in plotted
+        assert FeatureKey.HI_PITCH in plotted
+
+    def test_the_noise_channel_plots_no_bend(self, panel: GUIReconstructionInstrumentsPanel) -> None:
+        plotted = panel._feature_plot_configs[GeneratorName.NOISE]
+
+        assert FeatureKey.PITCH not in plotted
+        assert FeatureKey.HI_PITCH not in plotted
+
+    def test_the_two_bend_dimensions_read_apart(self, panel: GUIReconstructionInstrumentsPanel) -> None:
+        """One counts a divider step and the other sixteen, so a reader tells them apart at a glance."""
+        plotted = panel._feature_plot_configs[GeneratorName.PULSE]
+
+        assert plotted[FeatureKey.PITCH].color != plotted[FeatureKey.HI_PITCH].color
+        assert plotted[FeatureKey.PITCH].label != plotted[FeatureKey.HI_PITCH].label
+
+    @pytest.mark.parametrize(
+        "feature_key",
+        (FeatureKey.PITCH, FeatureKey.HI_PITCH),
+        ids=lambda feature_key: str(feature_key),
+    )
+    def test_a_bend_plot_spans_the_range_a_sequence_stores(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        feature_key: FeatureKey,
+    ) -> None:
+        plotted = panel._feature_plot_configs[GeneratorName.PULSE][feature_key]
+
+        assert plotted.data_range == (PITCH_BEND_MIN, PITCH_BEND_MAX)
+
+
 class TestSizeVisibility:
     def test_a_loaded_reconstruction_shows_the_sample_size(
         self,
@@ -390,3 +586,102 @@ class TestSizeVisibility:
     ) -> None:
         panel.update_view(NOT_LOADED)
         assert written == {}
+
+
+class TestTheAuditionSelector:
+    """The generator a hand-written voice is heard on stands where the pitch stepper does."""
+
+    def test_an_open_instrument_offers_the_generator_to_hear_it_on(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        shown: Dict[str, bool],
+    ) -> None:
+        panel.update_view(ONE_INSTRUMENT)
+        assert shown[panel.audition_group_tag] is True
+
+    def test_a_loaded_reconstruction_offers_the_pitch_it_was_measured_against_instead(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        shown: Dict[str, bool],
+    ) -> None:
+        panel.update_view(build_view_model({ChannelName.PULSE1: LARGEST_PULSE}))
+        assert shown[panel.audition_group_tag] is False
+
+    def test_choosing_a_generator_reports_the_one_its_name_stands_for(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        chosen: List[GeneratorName] = []
+        panel.on_audition_generator_changed = chosen.append
+
+        for generator_name in GeneratorName:
+            panel._on_audition_generator_changed("sender", panel._generator_labels[generator_name])
+
+        assert chosen == list(GeneratorName)
+
+
+class TestTheNoteKeys:
+    """A note key sounds the instrument in front of the panel, and claims the press it used."""
+
+    def test_a_note_key_asks_for_the_note_it_names(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        sounded: List[int] = []
+        panel.on_audition_requested = sounded.append
+        panel.update_view(ONE_INSTRUMENT)
+
+        assert panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Z, modifiers=frozenset())) is True
+        assert sounded == [PIANO_KEYS[dpg.mvKey_Z]]
+
+    def test_a_key_naming_no_note_is_left_to_the_shortcuts(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        sounded: List[int] = []
+        panel.on_audition_requested = sounded.append
+        panel.update_view(ONE_INSTRUMENT)
+
+        assert panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Spacebar, modifiers=frozenset())) is False
+        assert sounded == []
+
+    def test_the_keys_answer_while_an_instrument_is_open(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        panel.update_view(ONE_INSTRUMENT)
+        assert panel._audition_keys_active() is True
+
+    def test_a_loaded_reconstruction_keeps_the_keys_out_of_the_panel(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        panel.update_view(build_view_model({ChannelName.PULSE1: LARGEST_PULSE}))
+        assert panel._audition_keys_active() is False
+
+    def test_a_field_being_typed_into_keeps_its_own_characters(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        key_router: MagicMock,
+    ) -> None:
+        panel.update_view(ONE_INSTRUMENT)
+        key_router.is_field_focused = True
+        assert panel._audition_keys_active() is False
+
+    def test_another_tab_in_front_keeps_the_keys_from_the_panel(
+        self,
+        layout_config: LayoutConfig,
+        key_router: MagicMock,
+    ) -> None:
+        panel = GUIReconstructionInstrumentsPanel(
+            pitch_stepper_style=PitchStepperStyle.from_general(layout_config.general),
+            copy_width=layout_config.general.buttons.copy_width,
+            feature_colors=layout_config.general.colors.features,
+            layout_graphs=layout_config.graphs,
+            language_manager=LanguageManager(LANG_EN),
+            status_bar=MagicMock(),
+            key_router=key_router,
+            tab_active=lambda: False,
+        )
+        panel.update_view(ONE_INSTRUMENT)
+        assert panel._audition_keys_active() is False

@@ -9,8 +9,8 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.history_detail import (
     SequencerHistoryDetail,
 )
-from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
+from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
     OrderRegion,
@@ -22,11 +22,11 @@ from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
-    HistoryDetailWord,
-    HistoryDetailWordSegment,
 )
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from tests.suite.sequencer import sample_reconstruction
+from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.utils.display import display_id
+from tests.suite.sequencer import UNKNOWN_SAMPLE_ID, sample_reconstruction
 
 Pair = Tuple[str, HistoryDetailRole]
 
@@ -37,13 +37,13 @@ def _controller() -> ProjectController:
 
 def _formatter(controller: ProjectController) -> SequencerHistoryDetail:
     tracker_logic = SequencerTrackerLogic(controller)
-    samples_logic = SequencerSamplesLogic(
+    voices_logic = SequencerVoicesLogic(
         controller,
         MagicMock(),
         MagicMock(),
         scheduling=MagicMock(),
     )
-    return SequencerHistoryDetail(tracker_logic, samples_logic)
+    return SequencerHistoryDetail(tracker_logic, voices_logic)
 
 
 def _pairs(segments: Tuple[HistoryDetailSegment, ...]) -> List[Pair]:
@@ -132,7 +132,7 @@ class TestTrackerDetails:
                 first_row=4,
                 last_row=11,
                 first_slot=TrackerSlot(ChannelName.PULSE1, SubColumn.TRANSPOSE).flat_index,
-                last_slot=TrackerSlot(ChannelName.PULSE2, SubColumn.INSTRUMENT).flat_index,
+                last_slot=TrackerSlot(ChannelName.PULSE2, SubColumn.VOICE).flat_index,
             )
         )
 
@@ -149,7 +149,7 @@ class TestTrackerDetails:
             TrackerRegion(
                 first_row=0,
                 last_row=0,
-                first_slot=TrackerSlot(None, SubColumn.INSTRUMENT).flat_index,
+                first_slot=TrackerSlot(None, SubColumn.VOICE).flat_index,
                 last_slot=TrackerSlot(None, SubColumn.VOLUME).flat_index,
             )
         )
@@ -179,7 +179,7 @@ class TestTrackerDetails:
             TrackerRegion(
                 first_row=0,
                 last_row=0,
-                first_slot=TrackerSlot(ChannelName.PULSE2, SubColumn.INSTRUMENT).flat_index,
+                first_slot=TrackerSlot(ChannelName.PULSE2, SubColumn.VOICE).flat_index,
                 last_slot=TrackerSlot(ChannelName.PULSE2, SubColumn.VOLUME).flat_index,
             ),
             -3,
@@ -305,20 +305,20 @@ class TestOrderDetails:
         ]
 
 
-class TestSampleDetails:
+class TestVoiceDetails:
     def test_add_sample_shows_the_name(self) -> None:
         formatter = _formatter(_controller())
 
-        assert _pairs(formatter.add_sample("Bass")) == [("Bass", HistoryDetailRole.NAME)]
+        assert _pairs(formatter.add_sample("Bass")) == [("Bass", HistoryDetailRole.SAMPLE)]
 
     def test_remove_sample_shows_position_and_name(self) -> None:
         controller = _controller()
         sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
         formatter = _formatter(controller)
 
-        assert _pairs(formatter.remove_sample(sample.id)) == [
+        assert _pairs(formatter.remove_voice(sample.id)) == [
             ("00:", HistoryDetailRole.SAMPLE),
-            ("Bass", HistoryDetailRole.NAME),
+            ("Bass", HistoryDetailRole.SAMPLE),
         ]
 
     def test_replace_sample_shows_position_and_both_names(self) -> None:
@@ -328,18 +328,20 @@ class TestSampleDetails:
 
         assert _pairs(formatter.replace_sample(sample.id, "Kick")) == [
             ("00:", HistoryDetailRole.SAMPLE),
-            ("Bass", HistoryDetailRole.NAME),
+            ("Bass", HistoryDetailRole.SAMPLE),
             (">", HistoryDetailRole.SEPARATOR),
-            ("Kick", HistoryDetailRole.NAME),
+            ("Kick", HistoryDetailRole.SAMPLE),
         ]
 
     def test_rename_sample_shows_old_and_new(self) -> None:
-        formatter = _formatter(_controller())
+        controller = _controller()
+        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
+        formatter = _formatter(controller)
 
-        assert _pairs(formatter.rename_sample("Bass", "Kick")) == [
-            ("Bass", HistoryDetailRole.NAME),
+        assert _pairs(formatter.rename_voice(sample.id, "Kick")) == [
+            ("Bass", HistoryDetailRole.SAMPLE),
             (">", HistoryDetailRole.SEPARATOR),
-            ("Kick", HistoryDetailRole.NAME),
+            ("Kick", HistoryDetailRole.SAMPLE),
         ]
 
     def test_move_sample_shows_source_position_and_destination(self) -> None:
@@ -347,34 +349,84 @@ class TestSampleDetails:
         sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
         formatter = _formatter(controller)
 
-        assert _pairs(formatter.move_sample(sample.id, 5)) == [
+        assert _pairs(formatter.move_voice(sample.id, 5)) == [
             ("00", HistoryDetailRole.SAMPLE),
             (">", HistoryDetailRole.SEPARATOR),
             ("05", HistoryDetailRole.VALUE),
         ]
 
-    def test_set_sample_loop_stores_the_state_as_a_word_key(self) -> None:
-        controller = _controller()
-        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
-        formatter = _formatter(controller)
-
-        on_segments = formatter.set_sample_loop(sample.id, True)
-        off_segments = formatter.set_sample_loop(sample.id, False)
-
-        assert on_segments[0] == HistoryDetailSegment(text="00:", role=HistoryDetailRole.SAMPLE)
-        assert on_segments[1] == HistoryDetailWordSegment(
-            word=HistoryDetailWord.LOOP_ON,
-            role=HistoryDetailRole.VALUE,
-        )
-        assert off_segments[1] == HistoryDetailWordSegment(
-            word=HistoryDetailWord.LOOP_OFF,
-            role=HistoryDetailRole.VALUE,
-        )
-
     def test_value_wraps_a_number(self) -> None:
         formatter = _formatter(_controller())
 
         assert _pairs(formatter.value(150)) == [("150", HistoryDetailRole.VALUE)]
+
+
+class TestWhichKindADetailNames:
+    """A line about the pool reads in the color of the kind of voice it is about."""
+
+    def test_a_written_voice_is_added_under_its_own_kind(self) -> None:
+        formatter = _formatter(_controller())
+
+        assert _pairs(formatter.add_instrument("Pad")) == [("Pad", HistoryDetailRole.INSTRUMENT)]
+
+    def test_a_written_voice_is_removed_under_its_own_kind(self) -> None:
+        controller = _controller()
+        controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        assert _pairs(formatter.remove_voice(instrument.id)) == [
+            ("01:", HistoryDetailRole.INSTRUMENT),
+            ("Pad", HistoryDetailRole.INSTRUMENT),
+        ]
+
+    def test_a_written_voice_is_renamed_under_its_own_kind(self) -> None:
+        controller = _controller()
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        assert _pairs(formatter.rename_voice(instrument.id, "Strings")) == [
+            ("Pad", HistoryDetailRole.INSTRUMENT),
+            (">", HistoryDetailRole.SEPARATOR),
+            ("Strings", HistoryDetailRole.INSTRUMENT),
+        ]
+
+    def test_a_written_voice_is_duplicated_under_its_own_kind(self) -> None:
+        controller = _controller()
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        assert _pairs(formatter.duplicate_voice(instrument.id)) == [
+            ("00:", HistoryDetailRole.INSTRUMENT),
+            ("Pad", HistoryDetailRole.INSTRUMENT),
+        ]
+
+    def test_the_kinds_read_apart_where_one_gesture_serves_both(self) -> None:
+        """Moving is one gesture over the whole pool, so its line says which kind moved."""
+        controller = _controller()
+        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        assert formatter.move_voice(sample.id, 1)[0].role is HistoryDetailRole.SAMPLE
+        assert formatter.move_voice(instrument.id, 0)[0].role is HistoryDetailRole.INSTRUMENT
+
+    def test_a_placed_voice_names_its_kind_in_the_tracker(self) -> None:
+        controller = _controller()
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        segments = formatter.edit_row(0, ChannelName.PULSE2, instrument.id, None, None)
+
+        assert _pairs(segments)[-1] == ("00", HistoryDetailRole.INSTRUMENT)
+
+    def test_a_voice_the_pool_no_longer_holds_keeps_the_plain_role(self) -> None:
+        """An id nothing answers for states no kind, so it reads as the voice slot itself does."""
+        formatter = _formatter(_controller())
+
+        segments = formatter.edit_row(0, ChannelName.PULSE1, UNKNOWN_SAMPLE_ID, None, None)
+
+        assert _pairs(segments)[-1] == (display_id(None), HistoryDetailRole.VOICE)
 
 
 class TestReconstructionDetails:
@@ -391,6 +443,19 @@ class TestReconstructionDetails:
             ("v", HistoryDetailRole.FEATURE_VOLUME),
         ]
 
+    def test_edit_instrument_names_position_and_feature(self) -> None:
+        """An instrument is one set every channel reads, so the line names no channel."""
+        controller = _controller()
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        segments = formatter.edit_instrument(instrument.id, FeatureKey.VOLUME)
+
+        assert _pairs(segments) == [
+            ("00:", HistoryDetailRole.INSTRUMENT),
+            ("v", HistoryDetailRole.FEATURE_VOLUME),
+        ]
+
     @pytest.mark.parametrize(
         ("feature_key", "letter", "role"),
         [
@@ -402,7 +467,32 @@ class TestReconstructionDetails:
             (FeatureKey.DUTY_CYCLE, "d", HistoryDetailRole.FEATURE_DUTY_CYCLE),
         ],
     )
-    def test_every_feature_has_a_letter_and_a_colour_role(
+    def test_an_instrument_edit_names_its_dimension_by_the_same_letter(
+        self,
+        feature_key: FeatureKey,
+        letter: str,
+        role: HistoryDetailRole,
+    ) -> None:
+        controller = _controller()
+        instrument = controller.add_instrument(new_instrument("Pad"))
+        formatter = _formatter(controller)
+
+        segments = formatter.edit_instrument(instrument.id, feature_key)
+
+        assert (segments[-1].text, segments[-1].role) == (letter, role)
+
+    @pytest.mark.parametrize(
+        ("feature_key", "letter", "role"),
+        [
+            (FeatureKey.INITIAL_PITCH, "i", HistoryDetailRole.FEATURE_PITCH),
+            (FeatureKey.VOLUME, "v", HistoryDetailRole.FEATURE_VOLUME),
+            (FeatureKey.ARPEGGIO, "a", HistoryDetailRole.FEATURE_ARPEGGIO),
+            (FeatureKey.PITCH, "p", HistoryDetailRole.FEATURE_PITCH),
+            (FeatureKey.HI_PITCH, "h", HistoryDetailRole.FEATURE_PITCH),
+            (FeatureKey.DUTY_CYCLE, "d", HistoryDetailRole.FEATURE_DUTY_CYCLE),
+        ],
+    )
+    def test_every_feature_has_a_letter_and_a_color_role(
         self,
         feature_key: FeatureKey,
         letter: str,

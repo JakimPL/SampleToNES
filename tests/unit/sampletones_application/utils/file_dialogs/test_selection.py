@@ -39,9 +39,9 @@ def _portal(backend: Optional[PortalBackend]) -> AbstractContextManager[MagicMoc
     return patch(f"{PORTAL_MODULE}.portal_backend", return_value=backend)
 
 
-def _find_spec(available: bool) -> Callable[[str], Optional[object]]:
-    def resolver(module: str) -> Optional[object]:
-        return object() if available else None
+def _available(installed: bool) -> Callable[[str], bool]:
+    def resolver(module: str) -> bool:
+        return installed
 
     return resolver
 
@@ -109,10 +109,7 @@ class TestSelectFileDialogBackend:
         with (
             patch(f"{MODULE}.System.current", return_value=System.LINUX),
             patch(f"{MODULE}.locate_program", side_effect=_located(kdialog=True, zenity=True)),
-            patch(
-                f"{MODULE}.importlib.util.find_spec",
-                side_effect=_find_spec(available=False),
-            ),
+            patch(f"{MODULE}.module_available", side_effect=_available(installed=False)),
             patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "KDE"}, clear=False),
         ):
             assert isinstance(select_file_dialog_backend(), KDialogBackend)
@@ -124,10 +121,7 @@ class TestSelectFileDialogBackend:
                 f"{MODULE}.locate_program",
                 side_effect=_located(kdialog=False, zenity=False),
             ),
-            patch(
-                f"{MODULE}.importlib.util.find_spec",
-                side_effect=_find_spec(available=False),
-            ),
+            patch(f"{MODULE}.module_available", side_effect=_available(installed=False)),
             patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "GNOME"}, clear=False),
             pytest.raises(FileDialogUnavailableError),
         ):
@@ -136,10 +130,7 @@ class TestSelectFileDialogBackend:
     def test_windows_without_tkinter_raises(self) -> None:
         with (
             patch(f"{MODULE}.System.current", return_value=System.WINDOWS),
-            patch(
-                f"{MODULE}.importlib.util.find_spec",
-                side_effect=_find_spec(available=False),
-            ),
+            patch(f"{MODULE}.module_available", side_effect=_available(installed=False)),
             pytest.raises(FileDialogUnavailableError),
         ):
             select_file_dialog_backend()

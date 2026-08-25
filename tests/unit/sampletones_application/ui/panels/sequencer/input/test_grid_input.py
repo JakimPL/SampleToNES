@@ -83,11 +83,11 @@ class TestSelection:
         assert held.pending == ""
 
     def test_cancel_drops_the_selection_and_the_partial_entry(self) -> None:
-        cancelled = _GridState(cursor=_Cell(2, 1), pending="5", anchor=_Cell(4, 3)).cancel()
+        canceled = _GridState(cursor=_Cell(2, 1), pending="5", anchor=_Cell(4, 3)).cancel()
 
-        assert cancelled.region is None
-        assert cancelled.pending == ""
-        assert cancelled.cursor == _Cell(2, 1)
+        assert canceled.region is None
+        assert canceled.pending == ""
+        assert canceled.cursor == _Cell(2, 1)
 
     def test_a_committed_entry_leaves_the_cursor_alone(self) -> None:
         settled = _GridState(cursor=_Cell(2, 1), pending="5", anchor=_Cell(4, 3))._after_entry()

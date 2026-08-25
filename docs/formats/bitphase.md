@@ -78,11 +78,18 @@ carries every register value the channel takes for that tick. From
 | `sweep` / `sweepRate` / `sweepShift` | bool / 0–7 / −7–7 | the square channel's hardware sweep | disabled |
 
 **Looping.** Playback returns to the instrument's `loop` row once it runs off the end,
-which is the only mode there is. A looping slice therefore sets `loop = 0` so its
-envelopes repeat from the start while the note is held; a one-shot sets `loop = len - 1`
-and rests on the level that row carries — silence where the volume envelope ends on a
-note-off item, the channel's own level where the slice holds its volume. A sample's
-`loop` flag drives this, the same flag the FamiTracker exporter reads.
+which is the only mode there is. Bitphase reads every dimension out of one row, so the
+instrument returns to the earliest row any dimension repeats from and each dimension goes
+on sounding what it would have sounded. A slice whose dimensions all halt sets
+`loop = len - 1` and rests on the level that row carries — silence where the volume
+envelope ends on a note-off item, the channel's own level where the slice holds its
+volume.
+
+**A hand-written instrument's slices.** Bitphase bakes a channel's registers tick by
+tick, so an [instrument](../glossary.md#instrument) written by hand reaches a document
+as a slice per channel it sounds on, each reading the dimensions that channel offers
+and moving around the pitch it states. The envelopes are one set whatever the channel,
+so the slices differ only in what each channel reads of them.
 
 **A held volume.** A slice whose volume envelope carries no item leaves its level to the
 channel, so the exporter writes a full `volumeOrRate` for every frame the slice
@@ -94,9 +101,9 @@ silent row, the smallest instrument Bitphase plays.
 
 **Equal lengths.** Instrument rows and table rows advance on independent per-tick
 counters, so they share a length and a loop point and stay in step for as long as the
-note sounds. `equalize_lengths` in `exporters/lengths.py` supplies that shared length —
-the same rule the FamiTracker exporter applies, with the item limit left unbounded
-here (section F).
+note sounds. The slice's longest dimension supplies that shared length, and every
+shorter one holds the value it ended on for the rest of it (`Envelope.resized`), which
+is what the sequences of a FamiTracker instrument each do on a counter of their own.
 
 ## C. Pitch
 
@@ -227,7 +234,7 @@ you would see in the tracker either way.
 
 ## F. Bitphase capacity limits
 
-| Quantity | Bitphase limit | Exporter behaviour |
+| Quantity | Bitphase limit | Exporter behavior |
 | --- | --- | --- |
 | Items per instrument row list | unbounded | writes the envelope whole |
 | Rows per table | unbounded | writes the contour, or the groove, whole |

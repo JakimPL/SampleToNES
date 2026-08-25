@@ -7,11 +7,11 @@ names, reveals, and plays the recorded stems. The single-sample pipeline this
 builds on is described in [Reconstruction](reconstruction.md), and the stored
 record in [Reconstructions](../formats/reconstructions.md).
 
-A stems reconstruction converts several audio stems at once. The stems are
-mixed and the mix is matched against the instruction library; within each frame,
-the channels are handed to the stems one pick at a time, following a precedence
-hierarchy. The result is one reconstruction whose `stems_data` records, per
-channel and frame, which stem's stream plays.
+A stems reconstruction converts several audio stems at once. Each stem is matched
+against the instruction library on its own; within each frame, the channels are
+handed to the stems one pick at a time, following a precedence hierarchy. The
+result is one reconstruction whose `stems_data` records, per channel and frame,
+which stem's stream plays.
 
 ## Principles
 
@@ -28,24 +28,38 @@ This is what lets a channel cap, a hierarchy and a per-source channel set reach
 every conversion alike, and what keeps the classic run from being a second path
 that has to be kept in step.
 
-### 2. The mix is the target
+### 2. A stem is matched against its own recording
 
-Every stem is loaded and normalized on its own, padded to the longest stem's
-length, and summed. Frames and residuals come from the mix; a stem's own audio
-takes no separate part in matching. The working-level coefficient is computed
-from the mix, exactly as for a single file.
+Every stem is loaded, padded to the longest stem's length, and framed on its own,
+so a stem's picks are scored against the sound that stem contributes and the
+channels it wins carry that recording. Ownership and content then say the same
+thing: a stem heard on its own plays what was recorded on it.
 
-### 3. One greedy pick at a time
+The mix keeps the two jobs it answers: the whole set is scaled by one factor drawn
+from the peak of its sum, which holds the stems at the balance they were captured
+in, and the working-level coefficient is measured on that mix, exactly as for a
+single file. The reconstruction the run assembles is the sum of the stems'
+approximations, which approximates the mix because each part approximates its part.
 
-A pick scores each eligible stem's candidates against the current residual with
-the same two-stage criterion the single-sample pipeline uses (`FrameMatcher`),
-takes the cheapest choice across the active level, subtracts its approximation
-from the residual, and consumes the channel. Picks continue until every stem
-channel is assigned, or caps and free channels are exhausted. Matching against
-the residual is what keeps later picks from re-approximating content earlier
-picks already cover.
+### 3. A stem sounds where its recording sounds
 
-### 4. A frame is answered whole
+A stem takes a channel in the frames its own recording reaches a level a channel
+can render, and stands aside in the rest. A channel a passing stem leaves free goes
+to a stem that does sound there, or rests. This is what keeps a recording quiet
+through a passage from sounding that passage on the channels it holds elsewhere.
+
+### 4. One greedy pick at a time
+
+A pick scores each eligible stem's candidates against what is left of that stem's
+own frame, with the same two-stage criterion the single-sample pipeline uses
+(`FrameMatcher`), takes the winning offer across the active level, subtracts its
+approximation from that stem's residual, and consumes the channel. Picks continue
+until every stem channel is assigned, or caps and free channels are exhausted.
+Each stem carrying a residual of its own is what keeps its later picks from
+re-approximating what its earlier picks already cover, while leaving what the other
+stems sound out of it.
+
+### 5. A frame is answered whole
 
 Every channel the setup covers leaves a frame either picked or **resting**. A
 resting channel holds its channel's null instruction over a silent frame and
@@ -59,7 +73,7 @@ cap left unclaimed would shorten that channel's streams and carry its later
 frames early, so what the channel plays would drift out of step with the
 recording it was matched against.
 
-### 5. Ownership and decoding compose
+### 6. Ownership and decoding compose
 
 The assignment answers *which stem owns which channel this frame*; the decoder
 answers *what that channel plays across frames*. Each pick leaves the channel it
@@ -70,7 +84,7 @@ decoder as a column of one, so a channel a cap left free sits in the path as the
 off state it is. See [Reconstruction §5](reconstruction.md) for the decoders
 themselves.
 
-### 6. Precedence orders, mode alternates
+### 7. Precedence orders, mode alternates
 
 The hierarchy groups stem ids into levels that pick in the listed order. In
 `strict` mode a level exhausts its stems' channel caps before the next level
@@ -78,13 +92,22 @@ picks; in `round_robin` mode the levels take turns, granting every level's stems
 one channel per round. Both modes let every stem hold at most `channel_cap`
 channels per frame.
 
-### 7. Ties resolve deterministically
+### 8. A level's channel goes to the stem with the most to render
 
-Equal-cost choices go to the stem earlier in level order. Channels of one kind
-resolve to the lowest free channel, so successive picks over one kind land on
-the lowest free channel and a rerun assigns the same way every time.
+A cost is a fraction of its own recording's energy, so two stems' costs stand on
+different scales and comparing them alone would hand a channel to whichever
+recording is easiest to approximate. Within a level, an offer is therefore ranked
+by the energy its candidate covers — the cost weighted by the energy behind it — so
+the channel reaches the stem with the most sound waiting. Precedence between levels
+stays the hierarchy's, which is what a reader arranges the levels to say.
 
-### 8. The single-sample case stays exact
+### 9. Ties resolve deterministically
+
+Equal offers go to the stem earlier in level order. Channels of one kind resolve to
+the lowest free channel, so successive picks over one kind land on the lowest free
+channel and a rerun assigns the same way every time.
+
+### 10. The single-sample case stays exact
 
 One stem covering every enabled channel, with a cap at the channel count,
 reproduces the classic greedy reconstruction pick for pick. Property tests hold
@@ -92,7 +115,7 @@ the assignment against an independent restatement of that reconstruction —
 identical choices, instructions, and approximations — so the one pipeline serves
 the single-sample case exactly as it stands.
 
-### 9. The working level follows the frame budget
+### 11. The working level follows the frame budget
 
 A frame reaches as loud as the channels that may sound in it, so the level the
 mix is scaled to is measured against the mixer weights of the loudest covered
@@ -124,19 +147,26 @@ neither built nor stored, and it derives the views the run reads (`entries_by_id
 
 The assignment lives in `reconstructor/stems/assignment/`:
 
-- `assign_frame` validates the setup against the run's channels and answers one
-  frame whole: the picks in the order they were made, each with its candidate
-  column, together with the channels left resting;
-- `AssignmentSession` carries one frame's progress — the residual, the free
-  channels, the per-stem counts — and runs the hierarchy's mode;
+- `assign_frame` takes this frame of every stem, keyed by stem id, validates the
+  setup against the run's channels, and answers the frame whole: the picks in the
+  order they were made, each with its candidate column, together with the channels
+  left resting;
+- `AssignmentSession` carries one frame's progress — each stem's residual, the free
+  channels, the per-stem counts, and the stems sounding in the frame — and runs the
+  hierarchy's mode. It ranks a level's offers by `StemOffer.bid`, the energy a
+  candidate covers, which the matcher measures through `reference_energy`;
 - `TrackAssignment` gathers the frames into what the rest of the run reads: the
   lattice each channel offers the decoder, and the stem owning each of its
   frames.
 
-`Reconstructor.reconstruct` loads the sources, mixes them, assigns every frame,
-releases the channels that rested throughout, decodes the remaining lattices,
-and folds the decoded streams into the state in frame order — the order each
-generator's oscillator phase is carried in.
+`Reconstructor.reconstruct` loads the sources through `load_stems`, which brings
+them to one length and one scale, measures the working level on their mix, frames
+each of them, assigns every frame, releases the channels that rested throughout,
+decodes the remaining lattices, and folds the decoded streams into the state in
+frame order — the order each generator's oscillator phase is carried in.
+
+`STEM_ACTIVITY_FLOOR` is the level a stem's frame reaches to take a channel: the
+quietest note any channel renders, measured against the working level.
 
 The record stored in a reconstruction (`stems_data`) holds the stems setup the
 assignment was made under and, per channel, the stem id holding each frame,
@@ -157,13 +187,13 @@ in entry order; the serialized form carries them in order. The application reads
 them through `source_paths`: empty once the reconstruction is detached from its
 origin, one path for a single source, the tuple for stems.
 
-Opening the document loads each recorded stem the way a single source loads
-(resampled, normalized and quantized as the configuration asks) and mixes them
-with `mix` — padded to the longest stem and summed. The mix is the
-original audio the source toggle and the waveform offer, computed fresh on every
-load. A recorded stem absent or unreadable on this machine follows the
-single-source rule: the whole original is unavailable, the approximation stands
-on its own, and the application names the first missing path in its dialog.
+Opening the document loads the recorded stems through `load_stems`, the same call
+the conversion loads them with, so each one carries the level it holds in the mix
+and a stem heard on its own sounds at that level. The mix of them is the original
+audio the source toggle and the waveform offer, computed fresh on every load. A
+recorded stem absent or unreadable on this machine follows the single-source rule:
+the whole original is unavailable, the approximation stands on its own, and the
+application names the first missing path in its dialog.
 
 The document's name follows the naming rules in
 `sampletones_core.reconstructions.naming`, applied to the recorded paths in
@@ -184,7 +214,7 @@ directory holding them.
 The reconstruction tab's Stems card turns the recorded assignment into a
 listener the user can steer. It draws the same list the converter's card draws:
 each row carries one stem under the level it was picked on, named by its
-recording, with a leading master box and a coloured box on every channel the
+recording, with a leading master box and a colored box on every channel the
 stem holds frames on. A setup line above the rows names the assignment's
 hierarchy mode and channel cap, and a **Collapse levels** toggle draws every row
 in one table where the banding is in the way. Ticking a box admits that stem's

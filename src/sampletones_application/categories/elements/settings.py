@@ -1,20 +1,6 @@
 from sampletones_application.categories.abstract import AbstractElement
 
 
-class AudioSettingsElements(AbstractElement):
-    OUTPUT_DEVICE = "output_device"
-    DEVICE_LABEL = "device_label"
-    SAMPLE_RATE = "sample_rate"
-    SAMPLE_RATE_LABEL = "sample_rate_label"
-    BUFFER_SIZE = "buffer_size"
-    MASTER_GAIN = "master_gain"
-    MASTER_GAIN_DB = "master_gain_db"
-    MASTER_GAIN_SILENT = "master_gain_silent"
-    APPLY_BUTTON = "apply_button"
-    REFRESH_DEVICES_BUTTON = "refresh_devices_button"
-    WINDOW_TITLE = "window_title"
-
-
 class ProjectPropertiesElements(AbstractElement):
     WINDOW_TITLE = "window_title"
     TITLE = "title"
@@ -41,6 +27,7 @@ class KeybindingActionElements(AbstractElement):
     PROJECT_PROPERTIES = "project_properties"
     EXPORT_PROJECT_FAMITRACKER = "export_project_famitracker"
     EXPORT_PROJECT_BITPHASE = "export_project_bitphase"
+    EXPORT_PROJECT_NSF = "export_project_nsf"
     RENDER_SONG = "render_song"
     CLOSE_PROJECT = "close_project"
     EXIT = "exit"
@@ -59,6 +46,9 @@ class KeybindingActionElements(AbstractElement):
     EXPORT_INSTRUMENTS_BITPHASE_PRESET = "export_instruments_bitphase_preset"
     EXPORT_INSTRUMENTS_NSF = "export_instruments_nsf"
     ADD_RECONSTRUCTION_TO_SEQUENCER = "add_reconstruction_to_sequencer"
+    NEW_INSTRUMENT = "new_instrument"
+    ADD_SAMPLE_FROM_FILE = "add_sample_from_file"
+    IMPORT_INSTRUMENT = "import_instrument"
     OPEN_RECONSTRUCTION_IN_EXPLORER = "open_reconstruction_in_explorer"
     LOCATE_ORIGINAL_AUDIO = "locate_original_audio"
     PLAY = "play"
@@ -156,13 +146,13 @@ class KeybindingActionElements(AbstractElement):
     TRACKER_CANCEL_ENTRY = "tracker_cancel_entry"
     TRACKER_PLAY_FROM_ROW = "tracker_play_from_row"
 
-    SAMPLES_RENAME_SAMPLE = "samples_rename_sample"
-    SAMPLES_REMOVE_SAMPLE = "samples_remove_sample"
-    SAMPLES_MOVE_SAMPLE_UP = "samples_move_sample_up"
-    SAMPLES_MOVE_SAMPLE_DOWN = "samples_move_sample_down"
-    SAMPLES_MOVE_SAMPLE_TO_TOP = "samples_move_sample_to_top"
-    SAMPLES_MOVE_SAMPLE_TO_BOTTOM = "samples_move_sample_to_bottom"
-    SAMPLES_CANCEL_RENAME = "samples_cancel_rename"
+    VOICES_RENAME_VOICE = "voices_rename_voice"
+    VOICES_REMOVE_VOICE = "voices_remove_voice"
+    VOICES_MOVE_VOICE_UP = "voices_move_voice_up"
+    VOICES_MOVE_VOICE_DOWN = "voices_move_voice_down"
+    VOICES_MOVE_VOICE_TO_TOP = "voices_move_voice_to_top"
+    VOICES_MOVE_VOICE_TO_BOTTOM = "voices_move_voice_to_bottom"
+    VOICES_CANCEL_RENAME = "voices_cancel_rename"
 
 
 class KeybindingCategoryElements(AbstractElement):
@@ -171,7 +161,7 @@ class KeybindingCategoryElements(AbstractElement):
     APPLICATION = "application"
     ORDER = "order"
     TRACKER = "tracker"
-    SAMPLES = "samples"
+    VOICES = "voices"
 
 
 class KeybindingsElements(AbstractElement):

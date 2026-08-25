@@ -13,10 +13,11 @@ from sampletones_core.exports.progress import ExportProgress
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.exports.stage import ExportStage
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
-from sampletones_shared.exceptions import OperationCancelled
+from sampletones_shared.exceptions import OperationCanceled
 from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 from tests.suite.progress import RecordingReporter
@@ -31,8 +32,8 @@ def build_features(frames: int, *, duty_cycle_frames: Optional[int] = None) -> F
     duty_cycle = None if duty_cycle_frames is None else np.zeros(duty_cycle_frames, dtype=int)
     return Features(
         initial_pitch=60,
-        volume=np.full(frames, 15, dtype=int),
-        arpeggio=np.zeros(frames, dtype=int),
+        volume=Envelope(items=(15,) * frames),
+        arpeggio=Envelope(items=(0,) * frames),
         pitch=None,
         hi_pitch=None,
         duty_cycle=duty_cycle,
@@ -44,7 +45,6 @@ def build_instrument(name: str, frames: int) -> InstrumentExport:
         name=name,
         channel=ChannelName.PULSE1,
         features=build_features(frames),
-        loop=False,
         nes_frequency=NES_FREQUENCY,
         tuning=Tuning(),
     )
@@ -205,7 +205,7 @@ class TestWhatABatchSaysAboutItself:
             build_instrument("lead", ENVELOPE_FRAMES),
             build_instrument("bass", ENVELOPE_FRAMES),
         )
-        with pytest.raises(OperationCancelled):
+        with pytest.raises(OperationCanceled):
             backend.write_sample(tmp_path / f"kit{EXT_FILE_INSTRUMENT}", sample, reporter)
 
         assert not (tmp_path / f"bass{EXT_FILE_INSTRUMENT}").exists()

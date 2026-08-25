@@ -34,13 +34,7 @@ class TestUpgradeJson:
                     "channels": {
                         "pulse1": {
                             "generator": "pulse1",
-                            "patterns": {
-                                "0": {
-                                    "rows": {
-                                        "0": {"command": {"sample_id": "s", "generator_name": "pulse1"}},
-                                    }
-                                }
-                            },
+                            "patterns": {"0": {"rows": [{"command": {"sample_id": "s", "generator_name": "pulse1"}}]}},
                         }
                     }
                 },
@@ -54,6 +48,5 @@ class TestUpgradeJson:
         channel = data["song"]["channels"]["pulse1"]
         assert channel["name"] == "pulse1"
         assert "generator" not in channel
-        command = channel["patterns"]["0"]["rows"]["0"]["command"]
-        assert command["channel_name"] == "pulse1"
-        assert "generator_name" not in command
+        command = channel["patterns"]["0"]["rows"][0]["command"]
+        assert command == {"voice_id": "s"}

@@ -17,14 +17,14 @@ def view_model(
     stages: Tuple[ExportStage, ...] = (ExportStage.WALKING,),
     figure: str = "",
     progress: float = HALFWAY,
-    travelling: bool = True,
+    traveling: bool = True,
 ) -> SongExportViewModel:
     return SongExportViewModel(
         phase=phase,
         stages=stages,
         figure=figure,
         progress=progress,
-        travelling=travelling,
+        traveling=traveling,
     )
 
 
@@ -67,15 +67,15 @@ class TestHowTheStageUnderWayReads:
     """A stage arriving at an end carries a bar; one that does not carries the turning symbol."""
 
     def test_a_travelling_stage_shows_its_bar(self) -> None:
-        assert view_model(travelling=True).progress_visible is True
+        assert view_model(traveling=True).progress_visible is True
 
     def test_a_travelling_stage_hides_the_turning_symbol(self) -> None:
-        assert view_model(travelling=True).working_visible is False
+        assert view_model(traveling=True).working_visible is False
 
     def test_a_stage_without_an_end_shows_the_turning_symbol(self) -> None:
-        assert view_model(travelling=False, figure=SIZE).working_visible is True
+        assert view_model(traveling=False, figure=SIZE).working_visible is True
 
-    def test_a_bar_is_labelled_with_the_share_it_has_covered(self) -> None:
+    def test_a_bar_is_labeled_with_the_share_it_has_covered(self) -> None:
         assert view_model(progress=HALFWAY).progress_overlay == "50%"
 
 

@@ -134,7 +134,7 @@ class TestRaisingAWindow:
 
         split_frame.assert_not_called()
 
-    def test_opening_centres_the_window_once_it_has_been_measured(self, dpg_context: None) -> None:
+    def test_opening_centers_the_window_once_it_has_been_measured(self, dpg_context: None) -> None:
         window = ProbeWindow(on_close=None)
 
         with (

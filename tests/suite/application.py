@@ -5,8 +5,12 @@ import pytest
 
 from sampletones_application.layout.behavior.scheduling.delays import SchedulingDelays
 from sampletones_application.layout.behavior.scheduling.emit import SchedulingEmit
-from sampletones_application.layout.behavior.scheduling.priorities import SchedulingPriorities
-from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
+from sampletones_application.layout.behavior.scheduling.priorities import (
+    SchedulingPriorities,
+)
+from sampletones_application.layout.behavior.scheduling.scheduling import (
+    SchedulingBehavior,
+)
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_shared.types.callback import VoidCallback
@@ -46,7 +50,7 @@ def synchronous_executor() -> Iterator[None]:
 
 @pytest.fixture
 def scheduling() -> SchedulingBehavior:
-    """Scheduling behaviour with every delay collapsed to zero for deterministic tests."""
+    """Scheduling behavior with every delay collapsed to zero for deterministic tests."""
     return SchedulingBehavior(
         delays=SchedulingDelays(
             schedule=0,

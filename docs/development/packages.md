@@ -7,7 +7,8 @@ tables in the form the import-boundary check runs on every commit, and a diverge
 document and that configuration is itself a defect.
 
 The layering of `sampletones_application` has its own document,
-[`architecture.md`](architecture.md), which the same check enforces.
+[`architecture.md`](architecture.md), which the same check enforces. How a long operation reports how far it
+has come — inside one process and across the pool's workers — is [`progress.md`](progress.md).
 
 ---
 
@@ -59,11 +60,14 @@ from above rather than from the engine's own registry.
 
 **A song is played out once, for every reader of it.** Turning an arrangement into the
 instruction each channel sounds on each engine tick — the order walked frame by frame, a row's note
-column starting a sample, its transpose and volume bending what the sample carries, a looping sample
-wrapping where a one-shot falls silent — is `sampletones_core/performance/`. The sequencer renders
+column starting a voice, its transpose and volume bending what that voice carries, a voice with a
+loop point circling where one without falls silent — is `sampletones_core/performance/`. One
+reading answers for both kinds of voice: a sample plays the frames its conversion found for the
+channel, a hand-written instrument the frames its envelopes make of it. The sequencer renders
 those instructions to audio and the player encodes them into register values, so what a listener
 hears and what the console plays are the same walk read two ways rather than two implementations of
-one rule.
+one rule. A voice sounded on its own — a preview, an audition at a note a key names — takes the
+same two steps a row takes, so it lives there too rather than beside whichever surface asked.
 
 **Equal temperament sits at the bottom.** The MIDI pitch limits and the A4 reference are
 `sampletones_shared/constants/music.py`, and the pitch-to-frequency conversion they govern is
@@ -88,7 +92,7 @@ them.
 | `song.py` | `Song` — the compressed planes, the timer table, the schedule and the loop point as one value | `clock/`, `registers/`, `compression/` |
 | `builder.py` | The song a reconstruction or an export request plays as, its instructions encoded, its planes compressed and its rate scheduled | `song.py`, `registers/`, `clock/`, `compression/` |
 | `trace/` | `RegisterTrace` — what the driver is expected to write, call by call | `song.py`, `specification/` |
-| `nsf/` | The song block, the header and the `.nsf` file the console loads | `song.py`, `registers/`, `specification/`, `driver/` |
+| `nsf/` | The song block, the header and the `.nsf` file the console loads | `song.py`, `specification/`, `compression/`, `driver/` |
 | `driver/` | The assembled 6502 driver and the addresses its build reports | `specification/` |
 | `driver/assembler/` | The cc65 build: the layout, the toolchain, the linker map reader and the builder | `driver/`, `specification/` |
 | `export.py` | `NSFBackend` — the export seam answered in `.nsf` files, holding the driver every one of them carries and saying which stage a run is in | `builder.py`, `nsf/`, `driver/`, `compression/` |

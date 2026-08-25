@@ -83,5 +83,13 @@ authoritative from YAML with no field defaults. The history panel renders a
 window of `layout.sequencer.history.max_rendered_entries` rows around the
 cursor and repaints rows in place via an index-keyed diff.
 
+**Strict checking is on where the code is written.** `deployment.yaml` carries the development
+values, so an edit path reaching the project outside a transaction raises
+`UntrackedMutationError` at once — in a development run and in the test suite alike, since
+several tests build the whole application and read that file. A user build takes the opposite
+values from `scripts/release_env_hook.py`, so a gap that reaches a release is healed into an
+`UNTRACKED` entry rather than shown to the user. The gap therefore surfaces where it can be
+fixed and stays quiet where it cannot.
+
 Standalone reconstruction documents (a reconstruction loaded from disk that is not
 a project sample) will gain their own history later, reusing the same engine.

@@ -1,11 +1,14 @@
-from typing import Final
+from typing import Final, List
+
+import pytest
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.maps import CHANNEL_TO_EXPORTER_MAP
-from sampletones_core.performance import song_instructions
+from sampletones_core.performance import WalkProgress, song_instructions
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.timing import SongTiming
+from sampletones_shared.exceptions import OperationCanceled
 from tests.suite.performance import (
     make_pulse_reconstruction,
     place_instrument,
@@ -79,3 +82,38 @@ class TestSongInstructions:
 
         frame_ticks = groove.total_ticks
         assert stream[:frame_ticks] == stream[frame_ticks : 2 * frame_ticks]
+
+
+class TestWhatAWalkSaysAboutItself:
+    """A song of minutes is played out row by row, so the walk says how far along it is."""
+
+    def test_the_walk_reports_each_row_it_sounds(self) -> None:
+        project = _project()
+        heard: List[WalkProgress] = []
+        song_instructions(project, lambda progress: heard.append(progress) is None)
+        assert len(heard) == project.song.order_length() * project.song.rows_per_pattern
+
+    def test_the_walk_states_the_ticks_the_order_lasts(self) -> None:
+        """The groove states the length before a row is played, so every report names the same."""
+        project = _project()
+        heard: List[WalkProgress] = []
+        song_instructions(project, lambda progress: heard.append(progress) is None)
+        expected = project.song.order_length() * SongTiming.from_project(project).groove().total_ticks
+        assert [progress.total for progress in heard] == [expected] * len(heard)
+
+    def test_the_walk_reaches_the_ticks_it_set_out_to_sound(self) -> None:
+        project = _project()
+        heard: List[WalkProgress] = []
+        song_instructions(project, lambda progress: heard.append(progress) is None)
+        assert heard[-1].ticks == heard[-1].total
+
+    def test_the_walk_counts_up_as_it_goes(self) -> None:
+        project = _project()
+        heard: List[WalkProgress] = []
+        song_instructions(project, lambda progress: heard.append(progress) is None)
+        counted = [progress.ticks for progress in heard]
+        assert counted == sorted(counted)
+
+    def test_a_withdrawn_walk_stops_where_it_was_told(self) -> None:
+        with pytest.raises(OperationCanceled):
+            song_instructions(_project(), lambda progress: False)

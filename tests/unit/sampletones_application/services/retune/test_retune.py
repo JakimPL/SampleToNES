@@ -21,7 +21,7 @@ class TestSampleRetuneServiceRun:
         service._run([("a", first), ("b", second)], 60)
 
         assert [type(result) for result in results] == [ServiceSuccess, ServiceSuccess]
-        assert [result.value.sample_id for result in results] == ["a", "b"]
+        assert [result.value.voice_id for result in results] == ["a", "b"]
         assert results[0].value.reconstruction is first.with_nes_frequency.return_value
 
     def test_retunes_each_target_to_the_requested_rate(self) -> None:
@@ -46,7 +46,7 @@ class TestSampleRetuneServiceRun:
         assert len(results) == 1
         assert isinstance(results[0], ServiceError)
 
-    def test_result_carries_the_sample_id_and_retuned_reconstruction(self) -> None:
+    def test_result_carries_the_voice_id_and_retuned_reconstruction(self) -> None:
         service = SampleRetuneService()
         results: List[Any] = []
         service.subscribe(results.append)
@@ -54,7 +54,7 @@ class TestSampleRetuneServiceRun:
 
         service._run([("lead", _reconstruction(retuned))], 60)
 
-        assert results[0].value == RetunedSample(sample_id="lead", reconstruction=retuned)
+        assert results[0].value == RetunedSample(voice_id="lead", reconstruction=retuned)
 
 
 class TestSampleRetuneServiceStart:

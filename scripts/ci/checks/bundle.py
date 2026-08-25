@@ -27,7 +27,7 @@ def launcher_path(bundle: Path, *, system: str) -> Path:
 
 
 def missing_notices(bundle: Path) -> List[str]:
-    """The licence and notice files a release bundle must ship that are absent from it."""
+    """The license and notice files a release bundle must ship that are absent from it."""
     return [name for name in REQUIRED_NOTICES if not (bundle / name).is_file()]
 
 

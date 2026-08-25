@@ -6,6 +6,10 @@ common:
   chevron_left: "◂"
   chevron_right: "▸"
 
+voices:
+  sample: "≈"
+  instrument: "∿"
+
 headers:
   waveform: "∿"
   spectrum: "⌇"
@@ -19,7 +23,7 @@ headers:
   parameters: "▦"
   source: "♪"
   instruments: "♬"
-  samples: "♫"
+  voices: "♫"
   tracker: "▦"
   order: "≣"
   history: "↺"

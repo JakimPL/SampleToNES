@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Final
+from typing import Dict, Final, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,6 +8,10 @@ from sampletones_application.constants.conversion import MAX_STEM_SOURCES, MIN_C
 from sampletones_application.logic.main.converter import (
     ConversionSuccess,
     ConverterLogic,
+)
+from sampletones_application.services.conversion.result import (
+    ConversionItem,
+    ReconstructionStep,
 )
 from sampletones_application.services.result import ServiceProgress
 from sampletones_application.view_model.main.converter import (
@@ -19,6 +23,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions.converter import DirectoryConversion, GroupConversion
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.stage import ReconstructionStage
 from tests.suite.language import FakeLanguageManager
 
 TEXTS: Final[Dict[str, str]] = {
@@ -28,8 +33,15 @@ TEXTS: Final[Dict[str, str]] = {
     "main.converter.template.convert_label_template": "{}: {}",
     "main.converter.template.progress_template": "Progress: {}/{} files",
     "main.converter.template.single_progress_template": "Reconstructing {}...",
+    "main.converter.template.stage_template": " - {stage} {completed}/{total}",
+    "main.converter.message.stage_loading": "reading",
+    "main.converter.message.stage_matching": "matching",
+    "main.converter.message.stage_decoding": "decoding",
+    "main.converter.message.stage_rendering": "rendering",
     "global.dialog.template.time_estimation": "",
 }
+
+FRAMES: Final[int] = 1100
 
 
 def _config_writing_under(reconstructions_directory: Path) -> Config:
@@ -78,9 +90,9 @@ class TestCancelDuringLibraryGeneration:
         converter_logic: ConverterLogic,
     ) -> None:
         cancel_generation = MagicMock()
-        on_cancelled = MagicMock()
+        on_canceled = MagicMock()
         converter_logic.cancel_library_generation = cancel_generation
-        converter_logic.on_cancelled = on_cancelled
+        converter_logic.on_canceled = on_canceled
 
         with patch("sampletones_application.logic.main.converter.CallbackQueue.add"):
             converter_logic.start_conversion()
@@ -89,8 +101,8 @@ class TestCancelDuringLibraryGeneration:
             converter_logic.cancel()
 
         cancel_generation.assert_called_once()
-        on_cancelled.assert_called_once()
-        assert converter_logic._phase == ConversionPhase.CANCELLED
+        on_canceled.assert_called_once()
+        assert converter_logic._phase == ConversionPhase.CANCELED
 
     def test_wait_loop_aborts_once_no_longer_waiting(
         self,
@@ -256,7 +268,7 @@ class TestActivePhases:
         [
             ConversionPhase.IDLE,
             ConversionPhase.COMPLETED,
-            ConversionPhase.CANCELLED,
+            ConversionPhase.CANCELED,
             ConversionPhase.FAILED,
         ],
     )
@@ -703,12 +715,30 @@ class TestStemsView:
 class TestProgressText:
     """A batch counts the files it has written; a single job names the reconstruction it is making."""
 
-    def _progress(self, completed: int, total: int) -> ServiceProgress[Path]:
-        return ServiceProgress(completed=completed, total=total, eta_seconds=None, current_item=None)
+    @staticmethod
+    def _progress(
+        completed: int,
+        total: int,
+        item: Optional[ConversionItem] = None,
+        partial: float = 0.0,
+    ) -> ServiceProgress[ConversionItem]:
+        return ServiceProgress(
+            completed=completed,
+            total=total,
+            eta_seconds=None,
+            current_item=item,
+            partial=partial,
+        )
 
-    def _status(self, converter_logic: ConverterLogic) -> str:
+    @staticmethod
+    def _status(converter_logic: ConverterLogic) -> str:
         view_model = converter_logic.on_view_changed.call_args.args[0]
         return str(view_model.status_text)
+
+    @staticmethod
+    def _bar(converter_logic: ConverterLogic) -> float:
+        view_model = converter_logic.on_view_changed.call_args.args[0]
+        return float(view_model.progress)
 
     def test_a_batch_counts_its_files(self, converter_logic: ConverterLogic) -> None:
         converter_logic._handle_progress_result(self._progress(2, 5))
@@ -729,3 +759,64 @@ class TestProgressText:
         converter_logic._handle_progress_result(self._progress(0, 1))
 
         assert self._status(converter_logic) == "Reconstructing kick..."
+
+
+class TestASingleJobShowsItsProgress:
+    """One reconstruction is one job, so what moves its bar is the reconstruction's own account.
+
+    Without this a whole conversion reads as nothing done out of one file until the moment it is
+    written, which tells a reader watching it nothing at all.
+    """
+
+    @staticmethod
+    def _item(stage: ReconstructionStage, completed: int) -> ConversionItem:
+        return ConversionItem(
+            source=Path("/audio/kick.wav"),
+            step=ReconstructionStep(stage=stage, completed=completed, total=FRAMES),
+        )
+
+    def test_the_bar_reads_the_work_under_way(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._handle_progress_result(
+            TestProgressText._progress(0, 1, item=self._item(ReconstructionStage.MATCHING, 412), partial=0.35)
+        )
+
+        assert TestProgressText._bar(converter_logic) == pytest.approx(0.35)
+
+    def test_the_status_names_the_stage_and_its_counts(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._input_path = Path("/audio/kick.wav")
+        converter_logic._output_path = None
+
+        converter_logic._handle_progress_result(
+            TestProgressText._progress(0, 1, item=self._item(ReconstructionStage.MATCHING, 412), partial=0.35)
+        )
+
+        assert TestProgressText._status(converter_logic) == "Reconstructing kick... - matching 412/1100"
+
+    def test_a_run_yet_to_say_anything_still_names_its_recording(
+        self,
+        converter_logic: ConverterLogic,
+    ) -> None:
+        converter_logic._output_path = None
+        converter_logic._input_path = Path("/audio/kick.wav")
+        item = ConversionItem(source=Path("/audio/kick.wav"))
+
+        converter_logic._handle_progress_result(TestProgressText._progress(0, 1, item=item))
+
+        assert TestProgressText._status(converter_logic) == "Reconstructing kick..."
+        assert TestProgressText._bar(converter_logic) == pytest.approx(0.0)
+
+    def test_a_batch_counts_the_reconstruction_under_way_toward_its_files(
+        self,
+        converter_logic: ConverterLogic,
+    ) -> None:
+        converter_logic._handle_progress_result(
+            TestProgressText._progress(
+                2,
+                5,
+                item=self._item(ReconstructionStage.RENDERING, FRAMES),
+                partial=0.5,
+            )
+        )
+
+        assert TestProgressText._bar(converter_logic) == pytest.approx(0.5)
+        assert TestProgressText._status(converter_logic) == "Progress: 2/5 files - rendering 1100/1100"

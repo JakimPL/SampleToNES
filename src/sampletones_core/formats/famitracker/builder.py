@@ -5,7 +5,7 @@ from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.slices import (
     InstrumentSlot,
     InstrumentTable,
-    iterate_sample_slices,
+    iterate_instrument_entries,
 )
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.model.module import (
@@ -52,12 +52,12 @@ from sampletones_core.formats.famitracker.specification.patterns import (
     MIN_OCTAVE,
     NoteValue,
 )
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.song import Song
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_shared.application import SAMPLETONES_COPYRIGHT
 
 
@@ -65,31 +65,21 @@ def build_instrument(
     index: int,
     name: str,
     features: Features,
-    *,
-    loop: bool,
 ) -> Instrument2A03:
-    """Builds one FamiTracker instrument from the envelopes of a channel slice.
+    """Builds one FamiTracker instrument from a set of envelopes.
 
-    The slice's envelopes become the instrument's five 2A03 sequences, so an instrument reaching a
+    The envelopes become the instrument's five 2A03 sequences, so an instrument reaching a
     ``.fti`` file on its own and one taking a slot in a module are built the same way.
 
     Args:
         index: The slot the instrument is numbered under.
         name: The name FamiTracker lists the instrument by.
         features: The per-dimension envelopes the sequences are read from.
-        loop: Whether every populated sequence loops from its first item, sustaining a held note.
 
     Returns:
         The instrument the envelopes describe.
     """
-    sequences = features_to_instrument_sequences(
-        volume=features.volume,
-        arpeggio=features.arpeggio,
-        pitch=features.pitch,
-        hi_pitch=features.hi_pitch,
-        duty_cycle=features.duty_cycle,
-        loop=loop,
-    )
+    sequences = features_to_instrument_sequences(features)
 
     return Instrument2A03(
         index=index,
@@ -99,28 +89,31 @@ def build_instrument(
 
 
 def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], InstrumentTable]:
-    """Builds one FamiTracker instrument per channel slice of every sample.
+    """Builds the module's instruments and the table a pattern row resolves through.
 
-    Each sample contributes one instrument for every channel its reconstruction
-    covers, so a sample yields one to four instruments. Instruments are numbered in
-    sample order, then channel order.
+    A sample contributes one instrument for every channel its reconstruction covers, so it yields
+    one to four; a hand-written voice contributes one instrument every channel it sounds on
+    reaches, each against that channel's own root. Instruments are numbered in voice order, then channel order.
+
+    Raises:
+        ValueError: If the project holds more instruments than FamiTracker has room for.
     """
     instruments: List[Instrument2A03] = []
     slots: InstrumentTable = {}
 
-    for sample_slice in iterate_sample_slices(project):
-        if sample_slice.index >= MAX_INSTRUMENTS:
+    for entry in iterate_instrument_entries(project):
+        if entry.index >= MAX_INSTRUMENTS:
             raise ValueError(f"Module exceeds the FamiTracker limit of {MAX_INSTRUMENTS} instruments")
 
         instruments.append(
             build_instrument(
-                sample_slice.index,
-                sample_slice.instrument_name,
-                sample_slice.features,
-                loop=sample_slice.sample.loop,
+                entry.index,
+                entry.name,
+                entry.features,
             )
         )
-        slots[sample_slice.key] = sample_slice.slot
+        for channel, slot in entry.slots.items():
+            slots[(entry.voice_id, channel)] = slot
 
     return instruments, slots
 
@@ -153,12 +146,12 @@ def _row_cell(
     match row.command:
         case NoteOff():
             note = int(NoteValue.HALT)
-        case Instrument() as reference:
-            slot = slots.get((reference.sample_id, reference.channel_name))
+        case NoteOn() as reference:
+            slot = slots.get((reference.voice_id, channel_generator))
             if slot is None:
                 raise ValueError(
-                    f"Row references sample '{reference.sample_id}' slice "
-                    f"'{reference.channel_name}' that has no instrument"
+                    f"Row references voice '{reference.voice_id}' on channel "
+                    f"'{channel_generator}' with no instrument"
                 )
             instrument = slot.index
             note, octave = _note_and_octave(

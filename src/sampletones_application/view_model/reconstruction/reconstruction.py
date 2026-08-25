@@ -1,4 +1,4 @@
-from typing import FrozenSet
+from typing import FrozenSet, Optional
 
 from pydantic import BaseModel
 
@@ -18,6 +18,9 @@ class ReconstructionViewModel(BaseModel, frozen=True):
     A channel plays once its instruction stream describes a frame, which is what makes its
     channel checkbox reachable; :attr:`selected_channels` is the subset the reader keeps
     switched on, so a channel switched off by hand stays off across an edit.
+
+    :attr:`nes_frequency` is the engine rate the open reconstruction runs at, and ``None``
+    while the tab holds no document.
     """
 
     reconstruction_loaded: bool
@@ -25,6 +28,7 @@ class ReconstructionViewModel(BaseModel, frozen=True):
     selected_channels: FrozenSet[ChannelName]
     reconstruction_file: ReconstructionPathViewModel
     original_audio: ReconstructionPathViewModel
+    nes_frequency: Optional[int]
 
     @property
     def audio_source_enabled(self) -> bool:

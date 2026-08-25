@@ -4,7 +4,7 @@ from typing import Callable
 import numpy as np
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_core.audio import load_audio, mix, write_wave
+from sampletones_core.audio import mix, write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import PulseInstruction
@@ -94,11 +94,16 @@ class TestFromReconstruction:
 
         assert data.original_audio is not None
 
-    def test_mixes_several_recorded_paths_into_the_original(
+    def test_mixes_several_recorded_paths_at_the_balance_they_were_captured_in(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
     ) -> None:
+        """The recordings are scaled together, so one heard alone sounds at its mix level.
+
+        The louder recording is written at twice the quieter one, and it stays twice as loud
+        once loaded, while their mix reaches the full range.
+        """
         config = Config()
         first = tmp_path / "kick.wav"
         second = tmp_path / "snare.wav"
@@ -108,19 +113,11 @@ class TestFromReconstruction:
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
-        load_options = {
-            "target_sample_rate": config.library.sample_rate,
-            "normalize": config.general.normalize,
-            "quantize": config.general.quantize,
-        }
-        expected = mix(
-            [
-                load_audio(path=first, **load_options),
-                load_audio(path=second, **load_options),
-            ]
-        )
         assert data.original_audio is not None
-        np.testing.assert_allclose(data.original_audio, expected)
+        louder, quieter = data.stem_audios
+        np.testing.assert_allclose(louder, 2.0 * quieter, rtol=1e-6)
+        np.testing.assert_allclose(data.original_audio, mix([louder, quieter]))
+        np.testing.assert_allclose(np.max(np.abs(data.original_audio)), 1.0, rtol=1e-6)
 
     def test_one_unreadable_stem_costs_the_whole_original(
         self,
@@ -402,7 +399,7 @@ class TestRebindingToAnEditedReconstruction:
     ) -> ReconstructionData:
         """A document over three recordings, each carrying a shape of its own.
 
-        The shapes differ rather than the levels, since loading normalises each recording and
+        The shapes differ rather than the levels, since loading normalizes each recording and
         would read three levels of one shape as the same waveform.
         """
         sample_rate = Config().library.sample_rate

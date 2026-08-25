@@ -5,12 +5,14 @@ from typing import Any, Dict, FrozenSet, Iterator, List, Optional, Tuple
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.layout.tabs.sequencer.colors.channel import ChannelColors
+from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.paths import LANG_EN
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer import channels as channels_module
-from sampletones_application.ui.panels.sequencer import order as order_module
-from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
+from sampletones_application.ui.panels.sequencer.order import menu as menu_module
+from sampletones_application.ui.panels.sequencer.order import panel as order_module
+from sampletones_application.ui.panels.sequencer.order.menu import OrderMenu
+from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
 from sampletones_application.utils.gui.keyboard.modifiers import (
     CTRL,
     NO_MODIFIERS,
@@ -23,6 +25,7 @@ from sampletones_application.view_model.sequencer.channels import (
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
+from tests.suite.shortcuts import shipped_source
 
 LABEL_WIDGET_ID: Sender = 9100
 """A stand-in for the row-label id DearPyGui passes as the callback's sender."""
@@ -134,7 +137,7 @@ class _MenuRecorder:
 def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerOrderPanel:
     """Builds a panel around the state the channel cues read, with no DearPyGui context.
 
-    The cues touch the layout colours, the theme ids, the row labels, and the entry registry, so
+    The cues touch the layout colors, the theme ids, the row labels, and the entry registry, so
     those are wired directly and the rest of the panel is left out. The switch behind the label is
     built the way the panel builds it, from the real language file, so the item labels under test
     are the ones a user reads.
@@ -142,7 +145,6 @@ def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerOrderPanel:
     panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
     panel._layout = SimpleNamespace(
         colors=SimpleNamespace(
-            channels=CHANNEL_COLORS,
             muted=SimpleNamespace(background=LiteralColor(MUTED_BACKGROUND)),
         ),
         tracker=SimpleNamespace(
@@ -150,6 +152,7 @@ def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerOrderPanel:
             muted_text_fraction=MUTED_TEXT_FRACTION,
         ),
     )
+    panel._channel_colors = CHANNEL_COLORS
     panel._current_channels = SequencerChannelsViewModel(muted=muted)
     panel._position_count = POSITION_COUNT
     panel._row_labels = dict(ROW_LABELS)
@@ -163,7 +166,13 @@ def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerOrderPanel:
         for position in range(POSITION_COUNT):
             panel._order.register((channel, position), _entry_widget(channel, position))
 
-    panel._create_channel_switch(LanguageManager(LANG_EN))
+    language_manager = LanguageManager(LANG_EN)
+    panel._create_channel_switch(language_manager)
+    panel._menu = OrderMenu(
+        panel,
+        language_manager=language_manager,
+        shortcut_source=shipped_source(),
+    )
     return panel
 
 
@@ -180,16 +189,16 @@ def recorder(monkeypatch: pytest.MonkeyPatch) -> _DearPyGuiRecorder:
 @pytest.fixture
 def menu(monkeypatch: pytest.MonkeyPatch) -> _MenuRecorder:
     instance = _MenuRecorder()
-    monkeypatch.setattr(order_module.dpg, "add_menu_item", instance.add_menu_item)
-    monkeypatch.setattr(order_module.dpg, "add_text", instance.add_text)
-    monkeypatch.setattr(order_module.dpg, "add_separator", instance.add_separator)
-    monkeypatch.setattr(order_module.FontRegistry, "bind_to_item", lambda item, font: None)
+    monkeypatch.setattr(menu_module.dpg, "add_menu_item", instance.add_menu_item)
+    monkeypatch.setattr(menu_module.dpg, "add_text", instance.add_text)
+    monkeypatch.setattr(menu_module.dpg, "add_separator", instance.add_separator)
+    monkeypatch.setattr(menu_module.FontRegistry, "bind_to_item", lambda item, font: None)
 
     @contextlib.contextmanager
     def _popup() -> Iterator[None]:
         yield
 
-    monkeypatch.setattr(order_module, "context_menu", _popup)
+    monkeypatch.setattr(menu_module, "context_menu", _popup)
     return instance
 
 
@@ -307,7 +316,7 @@ class TestRowWash:
         assert set(recorder.row_tints) == set(CHANNEL_TABLE_ROWS.values())
 
     def test_the_wash_matches_the_shade_the_tracker_column_takes(self, recorder: _DearPyGuiRecorder) -> None:
-        """Both tables read the same colour, so a silenced channel looks the same in each."""
+        """Both tables read the same color, so a silenced channel looks the same in each."""
         panel = _panel(frozenset({ChannelName.NOISE}))
 
         assert panel._channel_row_tint(ChannelName.NOISE) == MUTED_BACKGROUND

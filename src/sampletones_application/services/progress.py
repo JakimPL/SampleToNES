@@ -2,10 +2,10 @@ from typing import Callable, Final, Generic, Optional, TypeVar
 
 from sampletones_application.services.result import ServiceProgress
 from sampletones_core.parallelization import ETAEstimator
+from sampletones_shared.utils.progress import ReportRate
 
 StageT = TypeVar("StageT")
 
-PROGRESS_STEPS: Final[int] = 200
 UNMEASURED: Final[int] = 0
 
 
@@ -38,15 +38,14 @@ class StageProgress(Generic[StageT]):
                 bounds it.
             emit: Carries a report to the service's subscribers.
             estimates: Whether the count reaches ``total`` at a rate a remaining time can be read
-                from. A stage measured against a limit it is not travelling toward states no
+                from. A stage measured against a limit it is not traveling toward states no
                 estimate, since one taken from that would be a guess wearing the clothes of a fact.
         """
         self._stage = stage
         self._total = total
         self._emit = emit
         self._estimator = ETAEstimator(total=total) if estimates and total > UNMEASURED else None
-        self._interval = max(1, total // PROGRESS_STEPS)
-        self._reported: int = 0
+        self._rate = ReportRate(total)
 
     def advance(self, completed: int) -> None:
         """Reports the stage at ``completed`` where a step is due.
@@ -54,10 +53,9 @@ class StageProgress(Generic[StageT]):
         Args:
             completed: What the stage has covered so far, in the unit the stage counts in.
         """
-        if completed != self._total and abs(completed - self._reported) < self._interval:
+        if not self._rate.take(completed):
             return
 
-        self._reported = completed
         self._emit(
             ServiceProgress(
                 completed=completed,

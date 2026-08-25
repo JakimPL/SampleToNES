@@ -4,9 +4,9 @@ import pytest
 
 from sampletones_player.compression.tokens.phrase import PhraseToken
 from sampletones_player.compression.tokens.sizes import phrase_size
+from sampletones_player.specification.binary import MAX_BYTE_VALUE
 from sampletones_player.specification.compression import (
     CHEAP_PHRASE_IDS,
-    MAX_BYTE_VALUE,
     OPCODE_SIZE,
     PHRASE_COUNT_SIZE,
     PHRASE_ESCAPE_SIZE,

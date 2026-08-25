@@ -1,11 +1,9 @@
 from dataclasses import dataclass
-from typing import Dict, Final, Optional, Tuple
-
-import numpy as np
+from typing import Final, Iterable, Tuple
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters.feature import Features
-from sampletones_core.exporters.lengths import equalize_lengths
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.bitphase.model.instrument import NesInstrumentRow
 from sampletones_core.formats.bitphase.notes import noise_arpeggio_to_table_offset
 from sampletones_core.formats.bitphase.specification.instruments import (
@@ -41,12 +39,6 @@ class ChannelEnvelopes:
     rows: Tuple[NesInstrumentRow, ...]
     table_rows: Tuple[int, ...]
     loop: int
-
-
-def _to_items(array: Optional[np.ndarray]) -> Tuple[int, ...]:
-    if array is None:
-        return ()
-    return tuple(int(value) for value in array)
 
 
 def _pulse_width(channel: ChannelName, duty_cycle: int) -> int:
@@ -90,18 +82,16 @@ def _held_volume(frames: int) -> Tuple[int, ...]:
 def features_to_envelopes(
     features: Features,
     channel: ChannelName,
-    *,
-    loop: bool,
 ) -> ChannelEnvelopes:
     """Converts one channel slice's envelopes into Bitphase instrument and table rows.
 
     Volume becomes the instrument's per-tick level, the duty cycle becomes the channel's
     waveform field, and the arpeggio becomes the table contour that moves the note. A
     slice that leaves its volume to the channel takes a full level for every frame it
-    describes, so the channel governs how loud it sounds. A looping slice returns to its
-    first row so it sustains for as long as the note is held; a one-shot returns to its
-    last row, resting on the level its volume envelope ends with — silence where the
-    slice writes its own, the channel's level where it holds one.
+    describes, so the channel governs how loud it sounds. Bitphase reads every dimension out of
+    one row, so the instrument returns to the earliest row any dimension repeats from; one whose
+    dimensions all halt returns to its last row, resting on the level its volume envelope ends
+    with — silence where the slice writes its own, the channel's level where it holds one.
 
     A slice describing no frame comes back as the one silent row that is the smallest
     instrument Bitphase plays.
@@ -109,18 +99,15 @@ def features_to_envelopes(
     Args:
         features: The per-dimension envelopes describing the slice.
         channel: The NES channel the slice was reconstructed for.
-        loop: Whether the instrument repeats its envelopes while its note is held.
 
     Returns:
         ChannelEnvelopes: The rows, contour, and loop point describing the slice.
     """
-    arrays: Dict[FeatureKey, Optional[np.ndarray]] = {
-        FeatureKey.VOLUME: features.volume,
-        FeatureKey.ARPEGGIO: features.arpeggio,
-        FeatureKey.DUTY_CYCLE: features.duty_cycle,
+    frames = features.frame_count
+    envelopes = {
+        feature_key: features.envelopes.get(feature_key, Envelope[int]()).resized(frames)
+        for feature_key in (FeatureKey.VOLUME, FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE)
     }
-    items = equalize_lengths({key: _to_items(array) for key, array in arrays.items()}, loop)
-    frames = max(len(values) for values in items.values())
 
     if not frames:
         return ChannelEnvelopes(
@@ -129,9 +116,9 @@ def features_to_envelopes(
             loop=LOOP_FROM_START,
         )
 
-    volumes = items[FeatureKey.VOLUME] or _held_volume(frames)
-    arpeggios = items[FeatureKey.ARPEGGIO]
-    duty_cycles = items[FeatureKey.DUTY_CYCLE]
+    volumes = envelopes[FeatureKey.VOLUME].items or _held_volume(frames)
+    arpeggios = envelopes[FeatureKey.ARPEGGIO].items
+    duty_cycles = envelopes[FeatureKey.DUTY_CYCLE].items
 
     rows = tuple(
         NesInstrumentRow(
@@ -146,5 +133,25 @@ def features_to_envelopes(
     return ChannelEnvelopes(
         rows=rows,
         table_rows=table_rows,
-        loop=LOOP_FROM_START if loop else len(rows) - 1,
+        loop=_loop_row(envelopes.values(), len(rows)),
     )
+
+
+def _loop_row(envelopes: Iterable[Envelope[int]], rows: int) -> int:
+    """The row a Bitphase instrument returns to, which is the earliest any dimension repeats from.
+
+    Bitphase reads every dimension out of one row, so one point serves them all and the earliest
+    keeps each dimension sounding what it would have sounded.
+
+    Args:
+        envelopes: The dimensions the instrument writes.
+        rows: How many rows the instrument holds.
+
+    Returns:
+        int: The row to return to, held inside the rows the instrument carries.
+    """
+    points = [envelope.loop_point for envelope in envelopes if envelope.loop_point is not None]
+    if not points:
+        return rows - 1
+
+    return min(*points, rows - 1)

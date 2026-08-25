@@ -3,7 +3,7 @@ from typing import Final
 
 import pytest
 
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.voices.sample import Sample
 from sampletones_player.builder import song_from_reconstruction
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.song import song_to_bytes
@@ -15,7 +15,9 @@ from sampletones_player.trace.trace import RegisterTrace
 from tests.integration.nsf.console.session import (
     TRAILING_CALLS,
     captured_trace,
+    captured_trace_over,
     play_calls_covering,
+    play_calls_reaching,
 )
 from tests.integration.nsf.exports import exported_information
 from tests.suite.base import BaseTestSuite
@@ -23,6 +25,9 @@ from tests.suite.case import BaseAutolabelTestCase
 
 HALF_RATE: Final[int] = 30
 DOUBLE_RATE: Final[int] = 120
+NTSC_RATE: Final[int] = 60
+FAST_RATE: Final[int] = 300
+ROUNDS: Final[int] = 4
 
 
 @pytest.fixture
@@ -40,12 +45,12 @@ def expected(song: Song) -> RegisterTrace:
 class TestTheDriverWritesWhatTheModelStates:
     """The assembled 6502 driver run on py65, held against `RegisterTrace.from_song`."""
 
-    def test_initialisation_readies_the_console_the_way_the_model_states(
+    def test_initialization_readies_the_console_the_way_the_model_states(
         self,
         trace: RegisterTrace,
         expected: RegisterTrace,
     ) -> None:
-        assert trace.initialisation == expected.initialisation
+        assert trace.initialization == expected.initialization
 
     def test_every_play_call_writes_what_the_model_states(
         self,
@@ -115,3 +120,66 @@ class TestAReClockedStreamPlaysTheSameTicks(BaseTestSuite):
 
         assert block[STEP_FRACTION_OFFSET + WORD_SIZE :] == reclocked_block[STEP_FRACTION_OFFSET + WORD_SIZE :]
         assert block[:STEP_WHOLE_OFFSET] == reclocked_block[:STEP_WHOLE_OFFSET]
+
+
+class TestARepeatingSongComesRoundWhereTheModelSaysItDoes(BaseTestSuite):
+    """A song that repeats re-enters its streams partway through.
+
+    What the driver restores at the loop is the byte each plane resumes at, which
+    the header states, so a plane comes back holding nothing of the run that led up to it. The
+    tick the loop returns to therefore starts a token of its own on every plane.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseAutolabelTestCase):
+        expected: int
+        name: str
+        nes_frequency: int
+        remaining: int
+
+        @property
+        def label(self) -> str:
+            return self.name
+
+    test_cases = (
+        TestCase(name="half-the-song", nes_frequency=NTSC_RATE, remaining=0, expected=ROUNDS),
+        TestCase(name="one-tick-loop", nes_frequency=NTSC_RATE, remaining=1, expected=ROUNDS),
+        TestCase(name="one-tick-loop-fast", nes_frequency=FAST_RATE, remaining=1, expected=ROUNDS),
+        TestCase(name="half-the-song-fast", nes_frequency=FAST_RATE, remaining=0, expected=ROUNDS),
+    )
+
+    @staticmethod
+    def repeating(sample: Sample, test_case: "TestCase") -> Song:
+        reclocked = sample.reconstruction.with_nes_frequency(test_case.nes_frequency)
+        ticks = song_from_reconstruction(reclocked, loop_tick=None).ticks
+        loop_tick = ticks - test_case.remaining if test_case.remaining else ticks // 2
+        return song_from_reconstruction(reclocked, loop_tick=loop_tick)
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_the_driver_writes_what_the_model_states(
+        self,
+        test_case: TestCase,
+        sample: Sample,
+    ) -> None:
+        song = self.repeating(sample, test_case)
+        assert song.loop_tick is not None
+        covered = song.ticks + test_case.expected * (song.ticks - song.loop_tick)
+        calls = play_calls_reaching(song, covered)
+
+        trace = captured_trace_over(song, exported_information(sample.name), calls)
+        assert trace == RegisterTrace.from_song(song, calls)
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_the_run_keeps_sounding_past_the_songs_end(
+        self,
+        test_case: TestCase,
+        sample: Sample,
+    ) -> None:
+        """A song without a loop falls silent where it ends, and one with a loop plays on."""
+        song = self.repeating(sample, test_case)
+        assert song.loop_tick is not None
+        covered = song.ticks + test_case.expected * (song.ticks - song.loop_tick)
+        calls = play_calls_reaching(song, covered)
+
+        trace = captured_trace_over(song, exported_information(sample.name), calls)
+        assert any(writes for writes in trace.play_calls[-TRAILING_CALLS:])

@@ -13,12 +13,15 @@ from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.general import MAX_TRANSPOSE
+from sampletones_core.utils.display import display_transpose
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.sequencer import fill_frame, render_frame, sample_reconstruction
 
 FRAME_ROWS: Final[int] = 3
 EMPTY: Final[str] = ".. ... . | .. ... . | .. ... . | .. ... ."
+HIGHEST: Final[str] = display_transpose(MAX_TRANSPOSE)
 LEAD: Final[str] = "00"
 
 
@@ -29,7 +32,7 @@ class Grid:
     controller: ProjectController
     logic: SequencerTrackerLogic
     adjuster: TrackerRegionAdjuster
-    sample_ids: Tuple[str, ...]
+    voice_ids: Tuple[str, ...]
 
 
 @pytest.fixture
@@ -50,7 +53,7 @@ def grid() -> Grid:
         controller=controller,
         logic=logic,
         adjuster=TrackerRegionAdjuster(logic),
-        sample_ids=(lead.id,),
+        voice_ids=(lead.id,),
     )
 
 
@@ -88,8 +91,8 @@ class TestAdjustTranspose(BaseTestSuite):
         TestCase(
             label="a cell alone shifts its own channel",
             region=_region(
-                (ChannelName.PULSE1, SubColumn.INSTRUMENT),
-                (ChannelName.PULSE1, SubColumn.INSTRUMENT),
+                (ChannelName.PULSE1, SubColumn.VOICE),
+                (ChannelName.PULSE1, SubColumn.VOICE),
             ),
             delta=1,
             expected=(
@@ -129,7 +132,7 @@ class TestAdjustTranspose(BaseTestSuite):
             label="a region across columns shifts each of them",
             region=_region(
                 (ChannelName.PULSE2, SubColumn.VOLUME),
-                (ChannelName.NOISE, SubColumn.INSTRUMENT),
+                (ChannelName.NOISE, SubColumn.VOICE),
             ),
             delta=1,
             expected=(
@@ -141,8 +144,8 @@ class TestAdjustTranspose(BaseTestSuite):
         TestCase(
             label="a region across rows shifts each of them",
             region=_region(
-                (ChannelName.PULSE1, SubColumn.INSTRUMENT),
-                (ChannelName.PULSE1, SubColumn.INSTRUMENT),
+                (ChannelName.PULSE1, SubColumn.VOICE),
+                (ChannelName.PULSE1, SubColumn.VOICE),
                 first_row=1,
                 last_row=2,
             ),
@@ -156,7 +159,7 @@ class TestAdjustTranspose(BaseTestSuite):
         TestCase(
             label="an ungoverned sample column reaches every channel",
             region=_region(
-                (None, SubColumn.INSTRUMENT),
+                (None, SubColumn.VOICE),
                 (None, SubColumn.VOLUME),
             ),
             delta=3,
@@ -170,7 +173,7 @@ class TestAdjustTranspose(BaseTestSuite):
             label="a governed sample column reaches the channels its sample uses",
             frame=(f"{LEAD} ... . | {LEAD} ... . | .. ... . | .. ... .",),
             region=_region(
-                (None, SubColumn.INSTRUMENT),
+                (None, SubColumn.VOICE),
                 (None, SubColumn.VOLUME),
             ),
             delta=3,
@@ -184,7 +187,7 @@ class TestAdjustTranspose(BaseTestSuite):
             label="a channel covered beside the sample column moves a single step",
             frame=(f"{LEAD} ... . | {LEAD} ... . | .. ... . | .. ... .",),
             region=_region(
-                (None, SubColumn.INSTRUMENT),
+                (None, SubColumn.VOICE),
                 (ChannelName.PULSE1, SubColumn.VOLUME),
             ),
             delta=1,
@@ -196,14 +199,14 @@ class TestAdjustTranspose(BaseTestSuite):
         ),
         TestCase(
             label="a shift stops at the transpose range",
-            frame=(".. +20 . | .. ... . | .. ... . | .. ... .",),
+            frame=(f".. {HIGHEST} . | .. ... . | .. ... . | .. ... .",),
             region=_region(
                 (ChannelName.PULSE1, SubColumn.TRANSPOSE),
                 (ChannelName.PULSE1, SubColumn.TRANSPOSE),
             ),
             delta=12,
             expected=(
-                ".. +24 . | .. ... . | .. ... . | .. ... .",
+                f".. {HIGHEST} . | .. ... . | .. ... . | .. ... .",
                 EMPTY,
                 EMPTY,
             ),
@@ -220,7 +223,7 @@ class TestAdjustTranspose(BaseTestSuite):
         grid: Grid,
         test_case: TestCase,
     ) -> None:
-        fill_frame(grid.logic, test_case.frame, sample_ids=grid.sample_ids)
+        fill_frame(grid.logic, test_case.frame, voice_ids=grid.voice_ids)
 
         grid.adjuster.adjust_transpose(test_case.region, test_case.delta)
 
@@ -241,8 +244,8 @@ class TestAdjustVolume(BaseTestSuite):
         TestCase(
             label="an unset cell steps down from full",
             region=_region(
-                (ChannelName.PULSE1, SubColumn.INSTRUMENT),
-                (ChannelName.PULSE1, SubColumn.INSTRUMENT),
+                (ChannelName.PULSE1, SubColumn.VOICE),
+                (ChannelName.PULSE1, SubColumn.VOICE),
             ),
             delta=-1,
             expected=(
@@ -283,7 +286,7 @@ class TestAdjustVolume(BaseTestSuite):
             label="a channel covered beside the sample column moves a single step",
             frame=(f"{LEAD} ... 8 | {LEAD} ... 8 | .. ... . | .. ... .",),
             region=_region(
-                (None, SubColumn.INSTRUMENT),
+                (None, SubColumn.VOICE),
                 (ChannelName.PULSE1, SubColumn.VOLUME),
             ),
             delta=-1,
@@ -305,7 +308,7 @@ class TestAdjustVolume(BaseTestSuite):
         grid: Grid,
         test_case: TestCase,
     ) -> None:
-        fill_frame(grid.logic, test_case.frame, sample_ids=grid.sample_ids)
+        fill_frame(grid.logic, test_case.frame, voice_ids=grid.voice_ids)
 
         grid.adjuster.adjust_volume(test_case.region, test_case.delta)
 

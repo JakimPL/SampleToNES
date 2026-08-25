@@ -1,14 +1,12 @@
-import importlib.util
-from typing import Final, Sequence
+from typing import Sequence
 
 from sampletones_shared.types.path import Pathlike
+from sampletones_shared.utils.system.modules import JEEPNEY_MODULE, module_available
 from sampletones_shared.utils.system.paths import open_path_in_explorer, to_path
 from sampletones_shared.utils.system.system import System
 
 from .grouped import GroupedDirectoryBackend
 from .protocol import RevealBackend
-
-JEEPNEY_MODULE: Final[str] = "jeepney"
 
 
 def open_paths_in_explorer(paths: Sequence[Pathlike]) -> None:
@@ -46,7 +44,7 @@ def select_reveal_backend() -> RevealBackend:
     directory holding the paths. The service is probed at selection time, so the grouped
     backend serves sessions where it is absent.
     """
-    if System.current() == System.LINUX and importlib.util.find_spec(JEEPNEY_MODULE) is not None:
+    if System.current() == System.LINUX and module_available(JEEPNEY_MODULE):
         from .file_manager1 import FileManager1Backend
 
         if FileManager1Backend.answers():

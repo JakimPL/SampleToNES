@@ -12,7 +12,7 @@ from sampletones_application.view_model.sequencer.slot import (
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.project.instruments.note_off import NoteOff
+from sampletones_core.project.voices.note_off import NoteOff
 
 from .block import BlockKey, BlockNote, TrackerBlock
 from .tracker import SequencerTrackerLogic
@@ -82,23 +82,24 @@ class TrackerBlockWriter:
         channel: Optional[ChannelName],
         note: Optional[BlockNote],
     ) -> None:
-        """Writes the note a cell carries: a sample by id, a cut, or the emptiness of neither.
+        """Writes the note a cell carries: a voice by id, a cut, or the emptiness of neither.
 
-        A sample the project no longer holds leaves the cell as it stands, so a block outliving
+        A voice the project no longer holds leaves the cell as it stands, so a block outliving
         the project it was read from writes the notes that still name something and passes over
-        the rest.
+        the rest. The column the note lands in decides whether it takes that voice, which
+        :meth:`SequencerTrackerLogic.place_note` answers for every route alike.
         """
         match note:
             case NoteOff():
                 self._tracker.cut_note(row_index, channel)
-            case str() as sample_id:
-                if self._tracker.holds_sample(sample_id):
-                    self._tracker.place_note(row_index, channel, sample_id)
+            case str() as voice_id:
+                if self._tracker.holds_voice(voice_id):
+                    self._tracker.place_note(row_index, channel, voice_id)
             case None:
                 self._tracker.clear_cell_subcolumn(
                     row_index,
                     channel,
-                    SubColumn.INSTRUMENT,
+                    SubColumn.VOICE,
                 )
 
     def _write_transpose(

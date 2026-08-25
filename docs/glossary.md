@@ -86,7 +86,7 @@ frequency.
 
 ### Instruction library
 
-A precomputed catalogue holding, for every possible instruction, the waveform
+A precomputed catalog holding, for every possible instruction, the waveform
 its channel produces and that waveform's spectrum. The search draws its
 candidates from the library. Saved as an `.ins` file. See
 [Instruction libraries](formats/instruction-libraries.md).
@@ -179,6 +179,15 @@ reconstructed samples into a song.
 In a FamiTracker instrument, a per-tick envelope for one dimension: volume,
 arpeggio, pitch, hi-pitch, or duty/noise mode.
 
+### Bend
+
+How far a frame sounds from the note it names, counted in steps of the divider the
+channel loads. The **pitch** dimension counts one step per item and the **hi-pitch**
+dimension sixteen, and the two add up. What a step is worth follows the note: well under
+a cent at the lowest notes, widening to a whole semitone at the highest, where the
+divider grid is already coarser than the note grid. Only the pulse and triangle channels
+read a bend; the noise channel's sixteen periods have no finer grid.
+
 ### Pattern
 
 A block of tracker rows spanning the channels. A song plays its patterns in an
@@ -195,7 +204,7 @@ The tracker tints the row that opens each, and the beat is what a tempo counts:
 
 The engine ticks each row of a pattern lasts. An engine holds a row for a whole
 number of ticks, so a tempo landing between two counts is played by varying the
-count from row to row, and the metre places the longer rows on the bar, then the
+count from row to row, and the meter places the longer rows on the bar, then the
 beat, then inside the beat. Playback reads the groove by the row's position in the
 pattern, so the pattern's first row starts it afresh.
 
@@ -218,26 +227,57 @@ tables, patterns, and order together.
 In Bitphase, a per-tick list of semitone offsets a pattern cell attaches to a
 channel, which carries the pitch contour a FamiTracker arpeggio sequence would.
 
+### Voice
+
+Anything a tracker row can name: a **sample** or an **instrument**. A project holds its
+voices in one list, and a row states which one to start and the step it plays at.
+
 ### Sample (sequencer)
 
-A reconstruction added to the sequencer as a playable, placeable voice in the
-song.
+A reconstruction added to the sequencer as a playable voice, carrying the
+instruction stream its conversion found for each channel.
+
+### Sample column
+
+The tracker's leftmost data column. It places a sample across every channel that
+sample's reconstruction covers and clears the rest of the row, which is why it takes
+samples alone: an instrument sounds on the one channel that names it. It summarizes
+what those channels hold, reading `?` where they disagree. See
+[The sequencer](guide/sequencer.md#writing-a-pattern).
 
 ### Instrument
 
-A single FamiTracker instrument, saved as an `.fti` file, exported from one
-channel of a reconstruction. See [FamiTracker export](formats/famitracker.md).
-Bitphase takes the same slice as a `.json` instrument preset. See
-[Bitphase export](formats/bitphase.md).
+One set of envelopes a channel reads while a note sounds, saved as an `.fti` file. A
+voice written by hand is a single instrument, placed on whichever channel suits it —
+the way a FamiTracker instrument is; a sample carries one instrument per channel it
+plays. See [The sequencer](guide/sequencer.md) and
+[FamiTracker export](formats/famitracker.md). Bitphase takes the same envelopes as a
+`.json` instrument preset. See [Bitphase export](formats/bitphase.md).
+
+### Initial pitch
+
+The value an instrument's frames are built at, and the note an exported preset is
+tuned to. An instrument written by hand states one for the tonal channels and a period
+for the noise channel, so the same envelopes sound on any of the four; the note it
+actually sounds at comes from the row that places it. The matching value on a sample is
+its per-channel [reference pitch](formats/reconstructions.md#contents).
+
+### Loop point
+
+The item a single envelope repeats from while a note is held, which lets an attack be
+followed by a sustained tail. Each envelope states its own, so a two-item duty cycle
+circles on its own period beside a longer volume envelope. An envelope without one
+holds its last item for as long as the note sounds.
 
 ## File types
 
 | Extension | Contents |
 | --- | --- |
-| `.ins` | [Instruction library](formats/instruction-libraries.md) — the candidate catalogue. |
+| `.ins` | [Instruction library](formats/instruction-libraries.md) — the candidate catalog. |
 | `.stn` | [Reconstruction](formats/reconstructions.md) — a converted sample. |
 | `.stp` | [Project](formats/projects.md) — a bundle of reconstructions with a song and settings. |
 | `.fti` | FamiTracker instrument ([export](formats/famitracker.md)). |
 | `.ftm` | FamiTracker module ([export](formats/famitracker.md)). |
 | `.btp` | Bitphase document ([export](formats/bitphase.md)). |
+| `.nsf` | [NSF program](formats/nsf.md) — a song and the driver that plays it. |
 | `.json` | Bitphase instrument preset ([export](formats/bitphase.md)), or the [configuration file](formats/configuration.md). |

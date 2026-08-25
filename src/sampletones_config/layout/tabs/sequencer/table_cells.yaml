@@ -2,7 +2,7 @@ row: 30
 sample: 80
 divider: 4
 channel: 80
-instrument:
+voice:
+  kind: 44
   id: 40
   name: 1
-  loop: 40

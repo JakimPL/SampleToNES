@@ -103,6 +103,8 @@ def _graph() -> GUIWaveformGraph:
     graph._lbl_waveform_reconstruction = "Reconstruction"
     graph._status_bar = MagicMock()
     graph._msg_regenerating = "Regenerating reconstruction..."
+    graph.tag = "waveform"
+    graph._series_themes = {}
     return graph
 
 
@@ -149,7 +151,7 @@ class TestWaveformReconstructionDim:
 
         assert graph._series_color(layer, graph._series_shade(layer)) == layer.color
 
-    def test_series_color_greys_the_reconstruction_when_dimmed(self) -> None:
+    def test_series_color_grays_the_reconstruction_when_dimmed(self) -> None:
         graph = _graph()
         _with_layout(graph, opacity=0.4)
         graph._reconstruction_dimmed = True

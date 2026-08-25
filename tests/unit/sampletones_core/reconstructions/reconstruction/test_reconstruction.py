@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, FeatureKey, HierarchyMode
 from sampletones_core.data import Metadata
-from sampletones_core.features import resting_reference
+from sampletones_core.features import resting_held_features, resting_reference
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
@@ -482,7 +482,7 @@ class TestInitialPitchReference:
         features = reconstruction.export()[ChannelName.PULSE1]
 
         assert features.initial_pitch == _BASE_PITCH
-        assert features.arpeggio.tolist() == [_OCTAVE, 0]
+        assert list(features.arpeggio.items) == [_OCTAVE, 0]
 
     def test_update_generator_data_replaces_the_reference(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
@@ -514,10 +514,20 @@ class TestHeldFeatures:
     wrote from the reconstruction rather than from the frames.
     """
 
-    def test_a_fresh_reconstruction_writes_every_dimension(self) -> None:
+    def test_a_fresh_reconstruction_writes_every_dimension_it_chose(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
 
-        assert reconstruction.held_features[ChannelName.PULSE1] == ()
+        assert reconstruction.held_features[ChannelName.PULSE1] == (
+            FeatureKey.PITCH,
+            FeatureKey.HI_PITCH,
+        )
+
+    def test_a_conversion_that_bent_a_note_writes_the_bend_it_made(self) -> None:
+        """A bend is a choice the conversion made, so the dimension carrying it is written."""
+        reconstruction = _reconstruction([_pulse(_BASE_PITCH).model_copy(update={"detune": 4})])
+
+        assert FeatureKey.PITCH not in reconstruction.held_features[ChannelName.PULSE1]
+        assert FeatureKey.HI_PITCH in reconstruction.held_features[ChannelName.PULSE1]
 
     def test_a_held_dimension_exports_an_empty_envelope(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
@@ -531,8 +541,8 @@ class TestHeldFeatures:
         )
 
         features = reconstruction.export()[ChannelName.PULSE1]
-        assert features.arpeggio.size == 0
-        assert features.volume.size > 0
+        assert not features.arpeggio.written
+        assert features.volume.written
 
     def test_the_written_dimensions_export_their_items(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
@@ -547,7 +557,7 @@ class TestHeldFeatures:
 
         features = reconstruction.export()[ChannelName.PULSE1]
         assert features.duty_cycle is not None
-        assert features.duty_cycle.size > 0
+        assert features.duty_cycle.written
 
     def test_the_record_reads_back_off_the_exported_envelopes(self) -> None:
         """What a reconstruction says it holds is what its export shows, on every channel.
@@ -573,15 +583,8 @@ class TestHeldFeatures:
     def test_a_channel_standing_by_leaves_every_dimension_it_offers(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
 
-        assert reconstruction.held_features[ChannelName.TRIANGLE] == (
-            FeatureKey.VOLUME,
-            FeatureKey.ARPEGGIO,
-        )
-        assert reconstruction.held_features[ChannelName.NOISE] == (
-            FeatureKey.VOLUME,
-            FeatureKey.ARPEGGIO,
-            FeatureKey.DUTY_CYCLE,
-        )
+        for channel_name in (ChannelName.TRIANGLE, ChannelName.NOISE):
+            assert reconstruction.held_features[channel_name] == resting_held_features(channel_name)
 
     def test_clearing_the_last_frame_records_what_standing_by_records(self) -> None:
         """A channel edited out of play reads the same as one that never played."""
@@ -592,7 +595,7 @@ class TestHeldFeatures:
             [],
             np.zeros(0, dtype=np.float32),
             resting_reference(ChannelName.PULSE1),
-            (FeatureKey.VOLUME, FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE),
+            resting_held_features(ChannelName.PULSE1),
         )
 
         assert reconstruction.streams[ChannelName.PULSE1] == InstructionsItem.resting(ChannelName.PULSE1)
@@ -637,8 +640,8 @@ class TestChannelSet:
         features = _reconstruction([_pulse(_BASE_PITCH)]).export()[ChannelName.PULSE2]
 
         assert not features.has_frames
-        assert features.volume.size == 0
-        assert features.arpeggio.size == 0
+        assert not features.volume.written
+        assert not features.arpeggio.written
 
     def test_a_channel_standing_by_renders_no_audio(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])

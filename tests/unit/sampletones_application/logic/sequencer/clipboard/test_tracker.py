@@ -9,7 +9,8 @@ from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.project.instruments.note_off import NoteOff
+from sampletones_core.constants.general import MAX_TRANSPOSE, MIN_TRANSPOSE
+from sampletones_core.project.voices.note_off import NoteOff
 
 SAMPLE_IDS: List[str] = ["kick", "snare", "hat"]
 
@@ -17,18 +18,18 @@ SAMPLE_IDS: List[str] = ["kick", "snare", "hat"]
 class FakeSampleDirectory:
     """A list of samples, standing where the project's own list would."""
 
-    def __init__(self, sample_ids: List[str]) -> None:
-        self._sample_ids = sample_ids
+    def __init__(self, voice_ids: List[str]) -> None:
+        self._voice_ids = voice_ids
 
-    def position_of(self, sample_id: str) -> Optional[int]:
-        if sample_id not in self._sample_ids:
+    def position_of(self, voice_id: str) -> Optional[int]:
+        if voice_id not in self._voice_ids:
             return None
 
-        return self._sample_ids.index(sample_id)
+        return self._voice_ids.index(voice_id)
 
     def sample_at(self, position: int) -> Optional[str]:
-        if 0 <= position < len(self._sample_ids):
-            return self._sample_ids[position]
+        if 0 <= position < len(self._voice_ids):
+            return self._voice_ids[position]
 
         return None
 
@@ -57,7 +58,7 @@ def _region(
 
 
 PULSE1_CELL = _region(
-    first_slot=_slot(ChannelName.PULSE1, SubColumn.INSTRUMENT),
+    first_slot=_slot(ChannelName.PULSE1, SubColumn.VOICE),
     last_slot=_slot(ChannelName.PULSE1, SubColumn.VOLUME),
 )
 
@@ -104,7 +105,7 @@ class TestTheFormAFieldTakes:
 class TestTheShapeAStatementCovers:
     def test_a_header_opens_the_text_with_the_grid_and_the_slots(self, text: TrackerBlockText) -> None:
         region = _region(
-            first_slot=_slot(ChannelName.PULSE1, SubColumn.INSTRUMENT),
+            first_slot=_slot(ChannelName.PULSE1, SubColumn.VOICE),
             last_slot=_slot(ChannelName.PULSE2, SubColumn.VOLUME),
             rows=4,
         )
@@ -115,7 +116,7 @@ class TestTheShapeAStatementCovers:
 
     def test_a_bar_stands_between_the_columns_a_row_crosses(self, text: TrackerBlockText) -> None:
         region = _region(
-            first_slot=_slot(ChannelName.PULSE1, SubColumn.INSTRUMENT),
+            first_slot=_slot(ChannelName.PULSE1, SubColumn.VOICE),
             last_slot=_slot(ChannelName.PULSE2, SubColumn.VOLUME),
         )
 
@@ -124,7 +125,7 @@ class TestTheShapeAStatementCovers:
     def test_a_row_of_the_block_prints_a_line_of_its_own(self, text: TrackerBlockText) -> None:
         block = TrackerBlock(notes={}, transposes={(0, 1): 1, (2, 1): 3}, volumes={})
         region = _region(
-            first_slot=_slot(ChannelName.PULSE1, SubColumn.INSTRUMENT),
+            first_slot=_slot(ChannelName.PULSE1, SubColumn.VOICE),
             last_slot=_slot(ChannelName.PULSE1, SubColumn.VOLUME),
             rows=3,
         )
@@ -149,7 +150,7 @@ ROUND_TRIPS: List[RoundTripCase] = [
         "a cut and an empty note",
         TrackerBlock(notes={(0, 0): NoteOff(), (1, 0): None}, transposes={}, volumes={}),
         _region(
-            first_slot=_slot(ChannelName.PULSE1, SubColumn.INSTRUMENT),
+            first_slot=_slot(ChannelName.PULSE1, SubColumn.VOICE),
             last_slot=_slot(ChannelName.PULSE1, SubColumn.VOLUME),
             rows=2,
         ),
@@ -158,7 +159,7 @@ ROUND_TRIPS: List[RoundTripCase] = [
         "the whole transpose range",
         TrackerBlock(notes={}, transposes={(0, 1): -24, (1, 1): 36, (2, 1): 0}, volumes={}),
         _region(
-            first_slot=_slot(ChannelName.PULSE1, SubColumn.INSTRUMENT),
+            first_slot=_slot(ChannelName.PULSE1, SubColumn.VOICE),
             last_slot=_slot(ChannelName.PULSE1, SubColumn.VOLUME),
             rows=3,
         ),
@@ -167,7 +168,7 @@ ROUND_TRIPS: List[RoundTripCase] = [
         "the whole volume range",
         TrackerBlock(notes={}, transposes={}, volumes={(0, 2): 0, (1, 2): 15}),
         _region(
-            first_slot=_slot(ChannelName.PULSE1, SubColumn.INSTRUMENT),
+            first_slot=_slot(ChannelName.PULSE1, SubColumn.VOICE),
             last_slot=_slot(ChannelName.PULSE1, SubColumn.VOLUME),
             rows=2,
         ),
@@ -176,7 +177,7 @@ ROUND_TRIPS: List[RoundTripCase] = [
         "a block anchored at the sample column",
         TrackerBlock(notes={(0, 0): "hat"}, transposes={(0, 4): 2}, volumes={(0, 5): 9}),
         _region(
-            first_slot=_slot(None, SubColumn.INSTRUMENT),
+            first_slot=_slot(None, SubColumn.VOICE),
             last_slot=_slot(ChannelName.PULSE1, SubColumn.VOLUME),
         ),
     ),
@@ -192,7 +193,7 @@ ROUND_TRIPS: List[RoundTripCase] = [
         "the whole grid",
         TrackerBlock(notes={(0, 12): "kick"}, transposes={(1, 1): -1}, volumes={(1, 14): 4}),
         _region(
-            first_slot=_slot(None, SubColumn.INSTRUMENT),
+            first_slot=_slot(None, SubColumn.VOICE),
             last_slot=_slot(ChannelName.NOISE, SubColumn.VOLUME),
             rows=2,
         ),
@@ -270,8 +271,8 @@ REFUSALS: List[RefusalCase] = [
     RefusalCase("a slot past the grid", "SampleToNES/1 tracker rows=1 slots=13..15\n01 +00 F"),
     RefusalCase("a word in a note field", f"{HEADER}\nxx +00 F\n01 +00 F"),
     RefusalCase("an unsigned transpose", f"{HEADER}\n01 12 F\n01 +00 F"),
-    RefusalCase("a transpose past the range", f"{HEADER}\n01 +40 F\n01 +00 F"),
-    RefusalCase("a transpose below the range", f"{HEADER}\n01 -40 F\n01 +00 F"),
+    RefusalCase("a transpose past the range", f"{HEADER}\n01 +{MAX_TRANSPOSE + 1:02X} F\n01 +00 F"),
+    RefusalCase("a transpose below the range", f"{HEADER}\n01 -{abs(MIN_TRANSPOSE) + 1:02X} F\n01 +00 F"),
     RefusalCase("a volume past the range", f"{HEADER}\n01 +00 FF\n01 +00 F"),
     RefusalCase("dots and marks in one field", f"{HEADER}\n.? +00 F\n01 +00 F"),
 ]

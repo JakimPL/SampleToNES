@@ -1,5 +1,5 @@
 from dataclasses import replace
-from typing import Callable, FrozenSet, List, Optional, Tuple
+from typing import Callable, FrozenSet, Optional, Tuple
 
 import numpy as np
 
@@ -7,8 +7,7 @@ from sampletones_application.logic.shared.project_source import ProjectSource
 from sampletones_core.audio import clip_audio_inplace, silence
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.instructions import InstructionUnion
-from sampletones_core.performance import SampleVoice, apply_row, resolve_row, sound_tick
+from sampletones_core.performance import VoiceReading, apply_row, resolve_row, sound_tick
 from sampletones_core.project import Project
 from sampletones_core.project.song import Song
 from sampletones_core.project.song_position import SongPosition
@@ -148,7 +147,7 @@ class RowSynthesizer:
         )
 
     def _ensure_groove(self, project: Project) -> None:
-        """Rebuilds the groove when the row rate or the metre it is spread over changes.
+        """Rebuilds the groove when the row rate or the meter it is spread over changes.
 
         An engine that holds a row for a whole number of ticks reaches a fractional row rate by
         varying that number from row to row, and the groove is where those counts are decided.
@@ -196,13 +195,13 @@ class RowSynthesizer:
         if row is not None and apply_row(state.performance, row):
             state.generator.reset()
 
-        sample_id = state.performance.sample_id
-        if sample_id is None or channel_name not in self._active_channels():
+        voice_id = state.performance.voice_id
+        if voice_id is None or channel_name not in self._active_channels():
             return silence(frames.total)
 
         return self._synthesize_ticks(
             state,
-            sample_id,
+            voice_id,
             project,
             channel_name,
             frames,
@@ -211,31 +210,25 @@ class RowSynthesizer:
     def _synthesize_ticks(
         self,
         state: ChannelState,
-        sample_id: str,
+        voice_id: str,
         project: Project,
         channel_name: ChannelName,
         frames: RowFrames,
     ) -> np.ndarray:
-        sample = project.sample(sample_id)
-        if sample is None:
+        voice = project.voice(voice_id)
+        reading = VoiceReading.read(voice, channel_name) if voice is not None else None
+        if reading is None:
             return silence(frames.total)
 
-        instructions = sample.reconstruction.instructions[channel_name]
-        if not instructions:
-            return silence(frames.total)
-
-        voice = SampleVoice.read(sample.reconstruction, channel_name)
         output = silence(frames.total)
         silence_frame = silence(frames.longest)
 
         for tick, frame_length in enumerate(frames.lengths):
             frame = self._synthesize_tick(
                 state,
-                instructions,
+                reading,
                 silence_frame[:frame_length],
-                sample.loop,
                 frame_length,
-                voice,
             )
             output[frames.bounds[tick] : frames.bounds[tick + 1]] = frame
 
@@ -244,18 +237,11 @@ class RowSynthesizer:
     def _synthesize_tick(
         self,
         state: ChannelState,
-        instructions: List[InstructionUnion],
+        reading: VoiceReading,
         silence_frame: np.ndarray,
-        loop: bool,
         frame_length: int,
-        voice: SampleVoice,
     ) -> np.ndarray:
-        instruction = sound_tick(
-            state.performance,
-            instructions,
-            loop=loop,
-            voice=voice,
-        )
+        instruction = sound_tick(state.performance, reading)
         if instruction is None:
             return silence_frame
 

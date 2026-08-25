@@ -117,14 +117,14 @@ class TestGUIStartup:
         SingleThreadExecutor.reset_shutdown()
         dpg.destroy_context()
 
-    def test_initialises_without_error(self, tmp_path: Path) -> None:
+    def test_initializes_without_error(self, tmp_path: Path) -> None:
         with ExitStack() as stack:
             for display_patch in _display_patches():
                 stack.enter_context(display_patch)
 
             Application(profile=_profile(tmp_path))
 
-    def test_initialises_where_nothing_can_play(self, tmp_path: Path) -> None:
+    def test_initializes_where_nothing_can_play(self, tmp_path: Path) -> None:
         """Editing a song, exporting a module and rendering to a file need no output device.
 
         The rate the audio is rendered at is the consumer's to state, so a machine offering no
@@ -211,7 +211,7 @@ class TestKeybindingPreferences:
 class TestStartupRestoreDelegation:
     """Application only forwards the startup restore to the domain coordinators, which
     are the recovery boundary (docs/development/architecture.md § Error Handling Policy). The
-    recovery behaviour itself is covered by the coordinator tests.
+    recovery behavior itself is covered by the coordinator tests.
     """
 
     def test_project_restore_delegates_to_coordinator(self, app: Application) -> None:
@@ -250,7 +250,7 @@ class TestReconstructionSaveAsDetachment:
         reconstruction = reconstruction_factory()
         with app.history.transaction(HistoryAction.ADD_SAMPLE):
             sample = app.project_controller.add_sample(reconstruction, "Lead")
-        app._edit_project_sample(sample.id)
+        app._edit_project_voice(sample.id)
         return sample
 
     def test_embedded_reconstruction_is_owned_and_not_saveable(
@@ -291,7 +291,7 @@ class TestReconstructionSaveAsDetachment:
         assert app._build_menu_bar_viewmodel().reconstruction_saveable
         assert app.reconstruction_manager.reconstruction is not original
         assert sample.reconstruction is original
-        assert original in [sample.reconstruction for sample in app.project_manager.current.samples]
+        assert original in [sample.reconstruction for sample in app.project_manager.current.voices]
 
 
 class TestAddOpenReconstructionToSequencer:
@@ -340,7 +340,7 @@ class TestAddOpenReconstructionToSequencer:
 
         app._add_current_reconstruction_to_sequencer()
 
-        sample = app.project_manager.current.samples[0]
+        sample = app.project_manager.current.voices[0]
         assert sample.reconstruction is not app.reconstruction_manager.reconstruction
         assert sample.reconstruction.audio_filepath == ()
         assert not app._editing_project_sample()
@@ -537,7 +537,7 @@ class TestConverterStemsCard:
         converter_logic.set_stems_mode(False)
         assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE)["show"] is False
 
-    def test_a_recording_holding_no_channel_greys_out_but_stays_listed(
+    def test_a_recording_holding_no_channel_grays_out_but_stays_listed(
         self,
         app: Application,
         tmp_path: Path,

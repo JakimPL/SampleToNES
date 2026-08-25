@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -38,7 +38,7 @@ from sampletones_shared.types.application import Sender
 
 
 class SeriesShade(StrEnum):
-    """How strongly a waveform series is drawn, which decides the colour its theme carries."""
+    """How strongly a waveform series is drawn, which decides the color its theme carries."""
 
     FULL = "full"
     DIMMED = "dimmed"
@@ -79,6 +79,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.overlay_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_OVERLAY)
 
         self.current_data: Optional[Union[InstructionLibraryFragment[Any], WaveformData]] = None
+        self._series_themes: Dict[BaseColor, str] = {}
         self.current_position: int = 0
 
         _min_x = layout.graph.min_x
@@ -172,7 +173,17 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
                 y2=[_max_y, _max_y],
             )
 
-    def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
+    def load_library_fragment(
+        self,
+        fragment: InstructionLibraryFragment[Any],
+        color: BaseColor,
+    ) -> None:
+        """Draws one library fragment, in the color the generator that made it is known by.
+
+        Args:
+            fragment: The fragment to draw.
+            color: The color the line is drawn in.
+        """
         self.clear_layers()
         self.current_data = fragment
         self.current_position = 0
@@ -181,12 +192,41 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             InstructionLayer(
                 data=fragment,
                 name=self._language_manager["global.graph.label.waveform_sample_name"],
-                color=self._layout.colors.waveform_sample,
+                color=color,
             )
         )
 
         self._update_axes_limits()
         self._update_position_indicator()
+
+    def load_voice_waveform(
+        self,
+        audio: np.ndarray,
+        *,
+        name: str,
+        color: BaseColor,
+    ) -> None:
+        """Draws one voice's own audio as a single series, in the color its generator is named by.
+
+        A hand-written voice stands on no recording, so there is nothing to hold it against: the
+        card shows what its envelopes make, labeled with the voice's own name. The series is the
+        whole of what is drawn, so the controls that read a recording apply to nothing here.
+
+        Args:
+            audio: The waveform to draw.
+            name: The name the series is labeled by.
+            color: The color the line is drawn in.
+        """
+        self._reconstruction_dimmed = False
+        self.clear_layers()
+        self.add_layer(
+            ArrayLayer(
+                data=audio,
+                name=name,
+                color=color,
+                max_display_points=self._layout.waveform.max_display_points,
+            )
+        )
 
     def _extract_reconstruction_layer_data(
         self,
@@ -260,12 +300,12 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self.add_layer(layer)
 
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:
-        """Greys the reconstruction line while its audio is being regenerated, restoring it when done.
+        """Grays the reconstruction line while its audio is being regenerated, restoring it when done.
 
-        Only the reconstruction series is greyed; the original-audio series and the axes keep full
+        Only the reconstruction series is grayed; the original-audio series and the axes keep full
         strength, so the fade reads as "this waveform is being recomputed", and the status bar shows a
         regenerating hint for the same span. The state is remembered so an async data update arriving
-        mid-regeneration redraws the reconstruction still greyed.
+        mid-regeneration redraws the reconstruction still grayed.
         """
         if self._reconstruction_dimmed == dimmed:
             return
@@ -370,7 +410,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         layer: Union[ArrayLayer, InstructionLayer],
         shade: SeriesShade,
     ) -> BaseColor:
-        """A layer's line colour in one of its two shades.
+        """A layer's line color in one of its two shades.
 
         The dimmed reconstruction is desaturated to gray and faded, so the drawn waveform — not just
         the legend swatch — clearly reads as inactive while its audio is recomputed.
@@ -423,23 +463,39 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         series_tag: str,
         layer: Union[ArrayLayer, InstructionLayer],
     ) -> None:
-        """Binds a line-colour theme to a series, holding one theme per shade the series takes.
-
-        A series switches between its full and dimmed shades — the reconstruction line greys while
-        its audio is recomputed — by binding the theme built for that shade, and each theme carries
-        the colour token behind its shade, so both follow a palette swap.
-        """
+        """Binds the theme drawing this layer in the shade it currently takes."""
         shade = self._series_shade(layer)
-        theme_tag = compose_tag(series_tag, SUF_GRAPH_THEME, shade)
-        if not dpg.does_item_exist(theme_tag):
-            with dpg.theme(tag=theme_tag), dpg.theme_component(dpg.mvLineSeries):
-                dpg_add_palette_theme_color(
-                    dpg.mvPlotCol_Line,
-                    self._series_color(layer, shade),
-                    category=dpg.mvThemeCat_Plots,
-                )
+        dpg_bind_item_theme(series_tag, self._series_theme(self._series_color(layer, shade)))
 
-        dpg_bind_item_theme(series_tag, theme_tag)
+    def _series_theme(self, color: BaseColor) -> str:
+        """The theme drawing a line in one color, built once per color the graph has shown.
+
+        A layer keeps its name across loads while its color follows what it draws — one
+        generator's fragment after another's, the reconstruction line graying as its audio is
+        recomputed — so the theme is held against the color rather than against the series that
+        carries it, and a layer arriving in a new color binds the theme built for that color. Each
+        theme holds the color token itself, so every color the graph has drawn follows a palette
+        swap.
+
+        Args:
+            color: The color the line is drawn in.
+
+        Returns:
+            str: The tag of the theme carrying it.
+        """
+        if color in self._series_themes:
+            return self._series_themes[color]
+
+        theme_tag = compose_tag(self.tag, SUF_GRAPH_THEME, str(len(self._series_themes)))
+        with dpg.theme(tag=theme_tag), dpg.theme_component(dpg.mvLineSeries):
+            dpg_add_palette_theme_color(
+                dpg.mvPlotCol_Line,
+                color,
+                category=dpg.mvThemeCat_Plots,
+            )
+
+        self._series_themes[color] = theme_tag
+        return theme_tag
 
     def _add_position_indicator(self) -> None:
         dpg_delete_item(self.position_indicator_tag)

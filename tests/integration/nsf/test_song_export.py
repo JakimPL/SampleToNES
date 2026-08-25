@@ -1,3 +1,5 @@
+import struct
+
 import pytest
 
 from sampletones_core.project.project import Project
@@ -6,20 +8,22 @@ from sampletones_player.builder import song_from_project
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
-from sampletones_player.specification.song import SONG_HEADER_SIZE
-from sampletones_shared.exceptions import SongTooLargeError
-from sampletones_shared.music import Tuning
-from tests.integration.nsf.songs import (
-    RECORD_BYTES_PER_TICK,
-    available_bytes,
-    lengthened,
+from sampletones_player.specification.song import (
+    SONG_HEADER_SIZE,
+    TOTAL_TICKS_OFFSET,
 )
+from sampletones_shared.exceptions import SongTooLargeError
+from tests.integration.nsf.songs import RECORD_BYTES_PER_TICK, available_bytes
+
+
+def read_word(data: bytes, offset: int) -> int:
+    return int(struct.unpack_from("<H", data, offset)[0])
 
 
 @pytest.fixture
 def project_song(integration_project: Project) -> Song:
     """The song the console plays the integration project's arrangement as."""
-    return song_from_project(integration_project, Tuning(), loop_tick=None)
+    return song_from_project(integration_project, loop_tick=None)
 
 
 class TestTheProjectReachesTheConsole:
@@ -48,23 +52,22 @@ class TestTheProjectReachesTheConsole:
         project_song: Song,
         driver_image: DriverImage,
     ) -> None:
+        """The block states the whole arrangement, in less room than a record a tick would take."""
         block = song_to_bytes(project_song, available_bytes(driver_image))
-        assert len(block) == SONG_HEADER_SIZE + RECORD_BYTES_PER_TICK * project_song.ticks
+        assert read_word(block, TOTAL_TICKS_OFFSET) == project_song.ticks
+        assert len(block) < SONG_HEADER_SIZE + RECORD_BYTES_PER_TICK * project_song.ticks
 
 
 class TestTheProgramAreaBoundsTheSong:
-    """Where a record per tick stops fitting behind the driver."""
+    """A block outgrowing the room behind the driver is named rather than written short."""
 
-    def test_a_song_outgrowing_the_program_area_is_refused(
+    def test_a_song_the_space_cannot_hold_is_refused(
         self,
-        integration_project: Project,
+        project_song: Song,
         driver_image: DriverImage,
     ) -> None:
         """The exporter names the overflow rather than writing a file the console truncates."""
-        space = available_bytes(driver_image)
-        groove = SongTiming.from_project(integration_project).groove()
-        frames = space // (RECORD_BYTES_PER_TICK * groove.total_ticks) + 2
-        song = song_from_project(lengthened(integration_project, frames), Tuning(), loop_tick=None)
+        block = song_to_bytes(project_song, available_bytes(driver_image))
 
         with pytest.raises(SongTooLargeError):
-            song_to_bytes(song, space)
+            song_to_bytes(project_song, len(block) - 1)

@@ -66,40 +66,24 @@ def instrument_footprint(instrument: Instrument2A03) -> InstrumentFootprint:
     return sequences_footprint(instrument.sequences.values())
 
 
-def features_footprint(
-    features: Features,
-    *,
-    loop: bool,
-) -> InstrumentFootprint:
+def features_footprint(features: Features) -> InstrumentFootprint:
     """Measures the instrument a channel slice's envelopes export to.
 
     The envelopes pass through the same builder an export uses, so the measured item counts are
-    the ones a file carries: brought to one shared length and capped at what a FamiTracker
+    the ones a file carries: each at the length it was written, capped at what a FamiTracker
     sequence holds.
 
     Args:
         features: The per-dimension envelopes describing the slice.
-        loop: Whether the instrument loops while its note is held, which decides the shared length.
 
     Returns:
         InstrumentFootprint: The footprint of the instrument those envelopes describe.
     """
-    sequences = features_to_instrument_sequences(
-        volume=features.volume,
-        arpeggio=features.arpeggio,
-        pitch=features.pitch,
-        hi_pitch=features.hi_pitch,
-        duty_cycle=features.duty_cycle,
-        loop=loop,
-    )
+    sequences = features_to_instrument_sequences(features)
     return sequences_footprint(sequences.values())
 
 
-def reconstruction_footprints(
-    reconstruction: Reconstruction,
-    *,
-    loop: bool,
-) -> Dict[ChannelName, InstrumentFootprint]:
+def reconstruction_footprints(reconstruction: Reconstruction) -> Dict[ChannelName, InstrumentFootprint]:
     """Measures one instrument per channel a reconstruction plays.
 
     An export writes an instrument for each channel that plays, so the result holds an entry
@@ -108,13 +92,12 @@ def reconstruction_footprints(
 
     Args:
         reconstruction: The reconstruction whose channels are measured.
-        loop: Whether the sample carrying it loops while its note is held.
 
     Returns:
         Dict[ChannelName, InstrumentFootprint]: The footprint of each playing channel's instrument.
     """
     return {
-        channel_name: features_footprint(features, loop=loop)
+        channel_name: features_footprint(features)
         for channel_name, features in reconstruction.export().items()
         if features.has_frames
     }

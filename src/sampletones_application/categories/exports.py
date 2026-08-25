@@ -43,11 +43,18 @@ EXPORT_PROJECT_ELEMENTS: Final[Dict[ExportFormat, ExportProjectElements]] = {
         exported_message=GlobalMessageElements.BITPHASE_PROJECT_EXPORTED_SUCCESSFULLY,
         export_failed_message=GlobalMessageElements.BITPHASE_PROJECT_EXPORT_FAILED,
     ),
+    ExportFormat.NSF: ExportProjectElements(
+        dialog_title=GlobalDialogTitleElements.EXPORT_NSF_PROJECT,
+        filter_name=FileFilterElements.NSF,
+        exported_message=GlobalMessageElements.NSF_PROJECT_EXPORTED_SUCCESSFULLY,
+        export_failed_message=GlobalMessageElements.NSF_PROJECT_EXPORT_FAILED,
+    ),
 }
 
 EXPORT_PROJECT_MENU_LABELS: Final[Dict[ExportFormat, MenuElements]] = {
     ExportFormat.FAMITRACKER: MenuElements.ITEM_FILE_EXPORT_FAMITRACKER,
     ExportFormat.BITPHASE: MenuElements.ITEM_FILE_EXPORT_BITPHASE,
+    ExportFormat.NSF: MenuElements.ITEM_FILE_EXPORT_NSF,
 }
 
 INSTRUMENT_EXPORT_FORMATS: Final[Tuple[ExportFormat, ...]] = (

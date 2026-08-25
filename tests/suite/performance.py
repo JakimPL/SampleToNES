@@ -11,11 +11,13 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.stems import single_entry_stems_data
 
@@ -91,6 +93,19 @@ def make_noise_reconstruction(
     return _reconstruction(ChannelName.NOISE, instructions)
 
 
+def retuned_reconstruction(
+    reconstruction: Reconstruction,
+    a4_frequency: float,
+) -> Reconstruction:
+    """The same reconstruction read as though concert pitch had sat at ``a4_frequency``.
+
+    A tuning reaches a reconstruction through the library settings it was built with, so a case
+    needing two samples that disagree copies one of them onto another reference.
+    """
+    library = reconstruction.config.library.model_copy(update={"a4_frequency": a4_frequency})
+    return reconstruction.model_copy(update={"config": reconstruction.config.model_copy(update={"library": library})})
+
+
 def project_with_sample(
     reconstruction: Reconstruction,
     *,
@@ -105,9 +120,21 @@ def project_with_sample(
     reaching back into the collection for an id it already knows.
     """
     project = Project.create(rows_per_pattern=rows_per_pattern, settings=settings)
-    sample = Sample(name=name, reconstruction=reconstruction, loop=loop)
-    project.samples.append(sample)
+    sample = Sample(name=name, reconstruction=reconstruction)
+    project.voices.append(sample)
     return project, sample
+
+
+def project_with_instrument(
+    instrument: Instrument,
+    *,
+    rows_per_pattern: int,
+    settings: Optional[ProjectSettings] = None,
+) -> Project:
+    """A one-instrument project, so a case can place a hand-written voice on any channel it likes."""
+    project = Project.create(rows_per_pattern=rows_per_pattern, settings=settings)
+    project.voices.append(instrument)
+    return project
 
 
 def place_instrument(
@@ -115,7 +142,7 @@ def place_instrument(
     *,
     channel_name: ChannelName,
     row_index: int,
-    sample: Sample,
+    sample: VoiceUnion,
     transpose: Optional[int] = None,
     volume: Optional[int] = None,
     pattern_index: int = 0,
@@ -126,7 +153,7 @@ def place_instrument(
         project.song.rows_per_pattern,
     )
     pattern.rows[row_index] = Row(
-        command=Instrument(sample_id=sample.id, channel_name=channel_name),
+        command=NoteOn(voice_id=sample.id),
         transpose=transpose,
         volume=volume,
     )

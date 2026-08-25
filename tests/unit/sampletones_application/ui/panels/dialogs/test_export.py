@@ -48,7 +48,7 @@ def render(
     phase: ExportPhase = ExportPhase.EXPORTING,
     figure: str = "",
     progress: float = HALFWAY,
-    travelling: bool = True,
+    traveling: bool = True,
 ) -> None:
     """Builds the widget tree and draws the given state, the way an open window is kept up to date."""
     window.create_window()
@@ -58,7 +58,7 @@ def render(
             stages=stages,
             figure=figure,
             progress=progress,
-            travelling=travelling,
+            traveling=traveling,
         )
     )
 
@@ -96,25 +96,25 @@ class TestHowTheStageUnderWayReads:
     """A stage arriving at an end carries a bar; one measured against a limit carries a figure."""
 
     def test_a_travelling_stage_shows_its_bar(self, window: GUIExportWindow) -> None:
-        render(window, travelling=True)
+        render(window, traveling=True)
         assert shown(TAG_SETTINGS_EXPORT_GROUP_MEASURED)
         assert not shown(TAG_SETTINGS_EXPORT_GROUP_WORKING)
 
     def test_a_bar_stands_where_the_stage_has_reached(self, window: GUIExportWindow) -> None:
-        render(window, travelling=True, progress=HALFWAY)
+        render(window, traveling=True, progress=HALFWAY)
         assert dpg.get_value(TAG_SETTINGS_EXPORT_PROGRESS) == pytest.approx(HALFWAY)
 
-    def test_a_bar_is_labelled_with_the_share_it_has_covered(self, window: GUIExportWindow) -> None:
-        render(window, travelling=True, progress=HALFWAY)
+    def test_a_bar_is_labeled_with_the_share_it_has_covered(self, window: GUIExportWindow) -> None:
+        render(window, traveling=True, progress=HALFWAY)
         assert dpg.get_item_configuration(TAG_SETTINGS_EXPORT_PROGRESS)["overlay"] == "50%"
 
     def test_a_stage_without_an_end_shows_what_it_holds(self, window: GUIExportWindow) -> None:
-        render(window, travelling=False, figure=SIZE)
+        render(window, traveling=False, figure=SIZE)
         assert shown(TAG_SETTINGS_EXPORT_GROUP_WORKING)
         assert not shown(TAG_SETTINGS_EXPORT_GROUP_MEASURED)
 
     def test_the_figure_reaches_the_reader(self, window: GUIExportWindow) -> None:
-        render(window, travelling=False, figure=SIZE)
+        render(window, traveling=False, figure=SIZE)
         assert dpg.get_value(TAG_SETTINGS_EXPORT_TEXT_FIGURE) == SIZE
 
 

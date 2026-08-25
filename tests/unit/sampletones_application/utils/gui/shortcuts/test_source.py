@@ -45,10 +45,10 @@ class TestActivate:
         source: ShortcutSource,
         rebound: RebindScheme,
     ) -> None:
-        source.activate(rebound({ShortcutId.SAMPLES_RENAME_SAMPLE: WrittenShortcut(combination="F6")}))
+        source.activate(rebound({ShortcutId.VOICES_RENAME_VOICE: WrittenShortcut(combination="F6")}))
 
-        assert source.action(ShortcutCategory.SAMPLES, _press("F6")) is ShortcutId.SAMPLES_RENAME_SAMPLE
-        assert source.action(ShortcutCategory.SAMPLES, _press("F2")) is None
+        assert source.action(ShortcutCategory.VOICES, _press("F6")) is ShortcutId.VOICES_RENAME_VOICE
+        assert source.action(ShortcutCategory.VOICES, _press("F2")) is None
 
     def test_activating_announces_the_scheme_now_in_place(
         self,

@@ -20,7 +20,7 @@ def parse_planes(
     """Reads every plane of a song against one dictionary.
 
     A plane is where the run looks up: reading one is the longest stretch the codec spends
-    without a natural pause, so the monitor hears from it eight times over.
+    without a natural pause, so the monitor hears from it once per plane.
 
     Args:
         cache: The planes the song covers, alongside what each phrase plays against them.
@@ -33,7 +33,7 @@ def parse_planes(
         Tuple[Parse, ...]: One parse per plane, in the order the planes were given.
 
     Raises:
-        OperationCancelled: If the run is no longer wanted.
+        OperationCanceled: If the run is no longer wanted.
     """
     parses: List[Parse] = []
     for plane in range(len(cache.indices)):
@@ -73,7 +73,7 @@ def parse_planes_offered(
         Tuple[Parse, ...]: One parse per plane, in the order the planes were given.
 
     Raises:
-        OperationCancelled: If the run is no longer wanted.
+        OperationCanceled: If the run is no longer wanted.
     """
     trial: List[Parse] = []
     for plane in range(len(cache.indices)):

@@ -49,6 +49,7 @@ colors:
   danger_hover: "#b85850"
   danger_active: "#853830"
   on_danger: "#f2f2f4"
+  danger_disabled: "#4a3230"
 
   dialog_surface: "#2c2c30"
   dialog_title: "#333a44"
@@ -151,6 +152,7 @@ colors:
   feature_volume: "#7ee787"
   feature_arpeggio: "#f0a35e"
   feature_pitch: "#6fb8ff"
+  feature_hi_pitch: "#a99cff"
   feature_duty_cycle: "#e6c26a"
 
   caret_fill: "#4fa6ff55"
@@ -187,9 +189,11 @@ colors:
   history_value: "#d0d0d4ff"
   history_separator: "#6c6c74ff"
 
-  tracker_reference: "#e0c860ff"
   tracker_transpose: "#c0c0c4ff"
   tracker_volume: "#7ee787ff"
   tracker_frame: "#4fa6ffff"
   tracker_row: "#9a9aa2ff"
   tracker_order: "#c4d0e0ff"
+
+  voice_sample: "#e0c860ff"
+  voice_instrument: "#f476d8ff"

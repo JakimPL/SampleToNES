@@ -6,18 +6,34 @@ import numpy as np
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.general import DUTY_CYCLES
 from sampletones_core.exporters import Features
 from sampletones_core.exports.request import InstrumentExport, SampleExport
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.clock.schedule import PlaySchedule
-from sampletones_player.compression.pitch import PitchTable
+from sampletones_player.compression.compressed import CompressedPlanes
+from sampletones_player.compression.dictionary.table import PhraseTable
+from sampletones_player.compression.encode import emit, encode_planes
+from sampletones_player.compression.options import EVERY_LAYER
+from sampletones_player.compression.pitch import PITCH_COUNT, PitchTable
+from sampletones_player.compression.planes.channel import TonePlanes
+from sampletones_player.compression.planes.order import PlaneOrder
+from sampletones_player.compression.planes.separate import planes_from_streams
+from sampletones_player.compression.planes.song import SongPlanes
+from sampletones_player.compression.tokens.literal import LiteralToken
 from sampletones_player.registers.noise import NoiseRegisters
 from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.registers.streams import ChannelStreams
 from sampletones_player.registers.triangle import TriangleRegisters
 from sampletones_player.song import Song
+from sampletones_player.specification.binary import unsigned_byte
+from sampletones_player.specification.compression import (
+    MAX_LITERAL_BYTES,
+    PLANE_COUNT,
+)
 from sampletones_player.specification.registers import (
     DUTY_CYCLE_SHIFT,
     MAX_REGISTER_VALUE,
@@ -119,6 +135,45 @@ def player_song(
     )
 
 
+def bent_song(
+    pitch_index: int,
+    bends: Sequence[int],
+    nes_frequency: int,
+) -> Song:
+    """A song holding one note on a pulse channel while its bend plane moves the divider.
+
+    A bend reaches the console on a plane of its own, and only the plane can put one there while
+    the encoders still leave the dimension to the note. Stating one outright is therefore what
+    holds the driver's own arithmetic to the divider each tick is meant to sound at.
+
+    Args:
+        pitch_index: The pitch the value plane names, counted from the lowest the table holds.
+        bends: The divider steps each tick stands away from that pitch.
+        nes_frequency: The rate the streams were written at.
+
+    Returns:
+        Song: The song, its other channels resting throughout.
+    """
+    sounding = pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_PITCHES.timers[pitch_index])
+    planes = planes_from_streams(resting_streams((sounding,) * len(bends)), PLAYER_PITCHES)
+    bent = SongPlanes(
+        pulse1=TonePlanes(
+            control=planes.pulse1.control,
+            value=planes.pulse1.value,
+            bend=bytes(unsigned_byte(bend) for bend in bends),
+        ),
+        pulse2=planes.pulse2,
+        triangle=planes.triangle,
+        noise=planes.noise,
+    )
+    return Song(
+        planes=encode_planes(bent, (), options=EVERY_LAYER, boundaries=frozenset()),
+        pitches=PLAYER_PITCHES,
+        schedule=PlaySchedule.from_parameters(nes_frequency),
+        loop_tick=None,
+    )
+
+
 PLAYER_PULSE_TIMER_MUTE_FLOOR: Final[int] = 8
 
 
@@ -137,6 +192,35 @@ def sounding_pulse(
 
 def silent_pulse() -> PulseInstruction:
     return PulseInstruction.null_instruction()
+
+
+PLAYER_VARIED_SEED: Final[int] = 7
+
+
+def spelled_song(ticks: int, nes_frequency: int) -> Song:
+    """A song whose every plane spells its values out, which is the most room a song can take.
+
+    A block reaching past what the console holds is what a refusal is measured on, and a plane
+    the codec finds nothing in is where a song takes most room: one byte a tick and an opcode
+    every sixty-four. Building the streams outright states that shape exactly.
+    """
+    values = bytes(tick % PITCH_COUNT for tick in range(ticks))
+    stream = emit(
+        [
+            LiteralToken(values=values[start : start + MAX_LITERAL_BYTES])
+            for start in range(0, len(values), MAX_LITERAL_BYTES)
+        ]
+    )
+    return Song(
+        planes=CompressedPlanes(
+            phrases=PhraseTable(phrases=()),
+            streams=PlaneOrder.across((stream,) * PLANE_COUNT),
+            ticks=ticks,
+        ),
+        pitches=PLAYER_PITCHES,
+        schedule=PlaySchedule.from_parameters(nes_frequency),
+        loop_tick=None,
+    )
 
 
 PLAYER_APPROXIMATION_SAMPLES: Final[int] = 64
@@ -172,11 +256,35 @@ def player_features(
     """Envelopes sounding one pitch at full volume for ``frames`` ticks."""
     return Features(
         initial_pitch=pitch,
-        volume=np.full(frames, PLAYER_FULL_VOLUME, dtype=int),
-        arpeggio=np.zeros(frames, dtype=int),
+        volume=Envelope(items=(PLAYER_FULL_VOLUME,) * frames),
+        arpeggio=Envelope(items=(0,) * frames),
         pitch=None,
         hi_pitch=None,
-        duty_cycle=np.zeros(frames, dtype=int) if duty_cycle else None,
+        duty_cycle=Envelope(items=(0,) * frames) if duty_cycle else None,
+    )
+
+
+def varied_features(
+    frames: int,
+    pitch: int,
+    *,
+    duty_cycle: bool,
+) -> Features:
+    """Envelopes turning over at every tick, the shape a plane holds least to repeat.
+
+    A song outgrowing the console is a song the codec finds little in, so the envelopes are
+    drawn at random from a stated seed: the same shape every run, and one that repeats nowhere.
+    """
+    generator = np.random.default_rng(PLAYER_VARIED_SEED)
+    return Features(
+        initial_pitch=pitch,
+        volume=Envelope(items=tuple(generator.integers(0, PLAYER_FULL_VOLUME + 1, frames).tolist())),
+        arpeggio=Envelope(items=tuple(generator.integers(-OCTAVE_SEMITONES, OCTAVE_SEMITONES + 1, frames).tolist())),
+        pitch=None,
+        hi_pitch=None,
+        duty_cycle=(
+            Envelope(items=tuple(generator.integers(0, len(DUTY_CYCLES), frames).tolist())) if duty_cycle else None
+        ),
     )
 
 
@@ -193,11 +301,20 @@ def player_instrument(
     return InstrumentExport(
         name=name,
         channel=channel,
-        features=features,
-        loop=loop,
+        features=looping_features(features) if loop else features,
         nes_frequency=nes_frequency,
         tuning=tuning,
     )
+
+
+def looping_features(features: Features) -> Features:
+    """The envelopes with every dimension they write circling from its first item."""
+    looping = features
+    for feature_key, envelope in features.envelopes.items():
+        if envelope.written:
+            looping = looping.with_envelope(feature_key, envelope.model_copy(update={"loop_point": 0}))
+
+    return looping
 
 
 def player_sample(

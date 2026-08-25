@@ -4,7 +4,7 @@ from typing import Tuple
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from sampletones_player.compression.planes.channel import ChannelPlanes
+from sampletones_player.compression.planes.channel import ChannelPlanes, TonePlanes
 from sampletones_player.compression.planes.order import PlaneOrder
 
 
@@ -20,33 +20,36 @@ class SongPlanes(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    pulse1: ChannelPlanes
-    pulse2: ChannelPlanes
-    triangle: ChannelPlanes
+    pulse1: TonePlanes
+    pulse2: TonePlanes
+    triangle: TonePlanes
     noise: ChannelPlanes
 
     @classmethod
     def from_order(cls, planes: PlaneOrder) -> SongPlanes:
-        """Gathers eight planes back into the four channels that write them.
+        """Gathers a song block's planes back into the four channels that write them.
 
         Args:
-            planes: The eight planes, in the order the song block writes them.
+            planes: The planes, in the order the song block writes them.
 
         Returns:
-            SongPlanes: The planes under the channel each pair belongs to.
+            SongPlanes: The planes under the channel each belongs to.
         """
         return cls(
-            pulse1=ChannelPlanes(
+            pulse1=TonePlanes(
                 control=planes.pulse1_control,
                 value=planes.pulse1_value,
+                bend=planes.pulse1_bend,
             ),
-            pulse2=ChannelPlanes(
+            pulse2=TonePlanes(
                 control=planes.pulse2_control,
                 value=planes.pulse2_value,
+                bend=planes.pulse2_bend,
             ),
-            triangle=ChannelPlanes(
+            triangle=TonePlanes(
                 control=planes.triangle_control,
                 value=planes.triangle_value,
+                bend=planes.triangle_bend,
             ),
             noise=ChannelPlanes(
                 control=planes.noise_control,
@@ -69,14 +72,17 @@ class SongPlanes(BaseModel):
 
     @property
     def planes(self) -> PlaneOrder:
-        """The eight planes in the order the song block writes them."""
+        """Every plane in the order the song block writes them."""
         return PlaneOrder(
             pulse1_control=self.pulse1.control,
             pulse1_value=self.pulse1.value,
+            pulse1_bend=self.pulse1.bend,
             pulse2_control=self.pulse2.control,
             pulse2_value=self.pulse2.value,
+            pulse2_bend=self.pulse2.bend,
             triangle_control=self.triangle.control,
             triangle_value=self.triangle.value,
+            triangle_bend=self.triangle.bend,
             noise_control=self.noise.control,
             noise_value=self.noise.value,
         )

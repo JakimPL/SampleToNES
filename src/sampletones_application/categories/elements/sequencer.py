@@ -1,25 +1,9 @@
 from sampletones_application.categories.abstract import AbstractElement
 
 
-class SequencerBrowserElements(AbstractElement):
-    REFRESH_BUTTON = "refresh_button"
-    STATUS_REFRESH = "status_refresh"
-    RECONSTRUCTIONS_TREE = "reconstructions_tree"
-    FILE_NOT_FOUND = "file_not_found"
-    LOAD_ERROR = "load_error"
-    LOAD_RECONSTRUCTION_DIALOG = "load_reconstruction_dialog"
-
-
-class SequencerModuleElements(AbstractElement):
-    MODULE_OPTIONS = "module_options"
-    NES_FREQUENCY = "nes_frequency"
-    ROWS = "rows"
-    TEMPO = "tempo"
-    SPEED = "speed"
-
-
 class SequencerTrackerElements(AbstractElement):
     TRACKER_TEXT = "tracker_text"
+    OCTAVE = "octave"
     COLUMN_ROW = "column_row"
     COLUMN_SAMPLE = "column_sample"
     COLUMN_PULSE_1 = "column_pulse_1"
@@ -34,8 +18,8 @@ class SequencerTrackerElements(AbstractElement):
     CONTEXT_SELECT_COLUMN = "context_select_column"
     CONTEXT_SELECT_SUBCOLUMN = "context_select_subcolumn"
     CONTEXT_NOTE_OFF = "context_note_off"
-    CONTEXT_SET_INSTRUMENT = "context_set_instrument"
-    CONTEXT_NO_SAMPLES = "context_no_samples"
+    CONTEXT_SET_VOICE = "context_set_voice"
+    CONTEXT_NO_VOICES = "context_no_voices"
     CONTEXT_CLEAR_SUBCOLUMN = "context_clear_subcolumn"
     CONTEXT_CLEAR_CELL = "context_clear_cell"
     CONTEXT_CLEAR_ROW = "context_clear_row"
@@ -84,11 +68,16 @@ class SequencerOrderElements(AbstractElement):
     CONTEXT_UNMUTE_ALL = "context_unmute_all"
 
 
-class SequencerInstrumentsElements(AbstractElement):
-    INSTRUMENTS_TEXT = "instruments_text"
+class SequencerVoicesElements(AbstractElement):
+    VOICES_TEXT = "voices_text"
+    NEW_INSTRUMENT = "new_instrument"
+    ADD_SAMPLE = "add_sample"
+    IMPORT_INSTRUMENT = "import_instrument"
+    KIND_SAMPLE = "kind_sample"
+    KIND_INSTRUMENT = "kind_instrument"
+    COLUMN_KIND = "column_kind"
     COLUMN_ID = "column_id"
     COLUMN_NAME = "column_name"
-    COLUMN_LOOP = "column_loop"
     CONTEXT_EDIT = "context_edit"
     CONTEXT_RENAME = "context_rename"
     CONTEXT_DUPLICATE = "context_duplicate"
@@ -97,6 +86,11 @@ class SequencerInstrumentsElements(AbstractElement):
     CONTEXT_MOVE_DOWN = "context_move_down"
     CONTEXT_MOVE_TOP = "context_move_top"
     CONTEXT_MOVE_BOTTOM = "context_move_bottom"
+    CONTEXT_INSTRUMENT_FROM = "context_instrument_from"
+    CONTEXT_EXPORT_INSTRUMENT = "context_export_instrument"
+    OMISSION_CUMULATIVE_BEND = "omission_cumulative_bend"
+    OMISSION_RELEASE_POINT = "omission_release_point"
+    OMISSION_ARPEGGIO_MODE = "omission_arpeggio_mode"
 
 
 class SequencerHistoryElements(AbstractElement):
@@ -106,5 +100,3 @@ class SequencerHistoryElements(AbstractElement):
     STATUS_UNDO = "status_undo"
     STATUS_REDO = "status_redo"
     EMPTY = "empty"
-    LOOP_ON = "loop_on"
-    LOOP_OFF = "loop_off"

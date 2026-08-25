@@ -7,10 +7,15 @@ from typing import Any, Callable, Final, Generic, List, Optional, TypeVar, Union
 from pebble import ProcessMapFuture, ProcessPool
 
 from sampletones_core.constants.algorithm import MAX_WORKERS
+from sampletones_core.parallelization.channel.process import ProcessProgressChannel
+from sampletones_core.parallelization.channel.protocol import ProgressChannel, StepReporter
+from sampletones_core.parallelization.channel.pump import ProgressPump
+from sampletones_core.parallelization.steps import TaskSteps
 from sampletones_core.parallelization.task import (
     TaskProgress,
     TaskStatus,
 )
+from sampletones_shared.exceptions import OperationCanceled
 from sampletones_shared.logger import LoggerProtocol
 from sampletones_shared.logger import logger as default_logger
 from sampletones_shared.types.callback import Callback, VoidCallback
@@ -45,11 +50,16 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         self._pool_lock: threading.Lock = threading.Lock()
         self._exception: Optional[Exception] = None
 
+        self._steps: TaskSteps = TaskSteps()
+        self._channel_lock: threading.Lock = threading.Lock()
+        self._channel: Optional[ProgressChannel] = None
+        self._pump: Optional[ProgressPump] = None
+
         self.on_start: Optional[VoidCallback] = None
         self.on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None
         self.on_completed: Optional[Callable[[T], None]] = None
         self.on_error: Optional[Callable[[Exception], None]] = None
-        self.on_cancelled: Optional[VoidCallback] = None
+        self.on_canceled: Optional[VoidCallback] = None
 
     def start(self) -> None:
         self.monitor_thread = threading.Thread(
@@ -72,6 +82,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         self.running = False
         self.cancelling = True
 
+        self._withdraw()
         self._notify_progress()
         self._cleanup()
 
@@ -79,6 +90,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         self.status = TaskStatus.CANCELLING
         self.cancelling = True
 
+        self._withdraw()
         self._notify_progress()
         self._cleanup()
 
@@ -93,12 +105,14 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         self.running = False
         self.cancelling = True
 
+        self._withdraw()
         self._notify_progress()
         if self.future is not None:
             self.future.cancel()
 
         self._stop_pool()
         self._join_thread()
+        self._release_channel()
         self._reset_status()
 
     def is_running(self) -> bool:
@@ -107,8 +121,8 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
     def is_completed(self) -> bool:
         return self.status == TaskStatus.COMPLETED
 
-    def is_cancelled(self) -> bool:
-        return self.status == TaskStatus.CANCELLED
+    def is_canceled(self) -> bool:
+        return self.status == TaskStatus.CANCELED
 
     def is_cancelling(self) -> bool:
         return self.status == TaskStatus.CANCELLING
@@ -128,6 +142,56 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
     @abstractmethod
     def _process_results(self, results: List[T]) -> Any: ...
 
+    def _task_reporter(self, index: int) -> StepReporter:
+        """The line the task at ``index`` reports its own progress on.
+
+        A subclass whose tasks find their way through work the run cannot see asks for one per task
+        as it builds them. The channel those lines run through is opened on the first ask, so a run
+        whose tasks report nothing costs nothing to listen to.
+        """
+        with self._channel_lock:
+            if self._channel is None:
+                self._channel = ProcessProgressChannel()
+
+            return self._channel.reporter(index)
+
+    def _withdraw(self) -> None:
+        """Tells the running tasks the run has let go of the answer they were building."""
+        with self._channel_lock:
+            if self._channel is not None:
+                self._channel.withdraw()
+
+    def _start_pump(self) -> None:
+        with self._channel_lock:
+            if self._channel is None:
+                return
+
+            self._pump = ProgressPump(
+                self._channel,
+                record=self._steps.record,
+                announce=self._notify_progress,
+                logger=self.logger,
+            )
+
+        self._pump.start()
+
+    def _release_channel(self) -> None:
+        """Ends the reading and the channel, which the run does once its tasks are all heard from.
+
+        Every way a run can end reaches here, including one that built its tasks and never started,
+        since the channel is a process of its own to be reaped whatever became of the run.
+        """
+        with self._channel_lock:
+            if self._pump is not None:
+                self._pump.stop()
+                self._pump = None
+
+            if self._channel is not None:
+                self._channel.close()
+                self._channel = None
+
+        self._steps.clear()
+
     def _reset_status(self) -> None:
         self.status = TaskStatus.PENDING
         self.running = False
@@ -137,6 +201,13 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         self.current_item = None
 
     def _run_tasks(self) -> None:
+        """Runs the tasks and holds the progress channel for exactly as long as they do."""
+        try:
+            self._process_tasks()
+        finally:
+            self._release_channel()
+
+    def _process_tasks(self) -> None:
         self._reset_status()
 
         try:
@@ -156,6 +227,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         self.pool = ProcessPool(max_workers=workers, context=context)
         task_function = self._get_task_function()
         self.future = self.pool.map(task_function, tasks, timeout=None)
+        self._start_pump()
         self.call(self.on_start)
 
         results = []
@@ -171,12 +243,17 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
 
                 result = next(iterator)
                 results.append(result)
+                self._steps.complete(self.completed_tasks)
                 self.completed_tasks += 1
                 self._notify_progress()
         except StopIteration:
             pass
         except KeyboardInterrupt as exception:
             raise CancelledError() from exception
+        except OperationCanceled:
+            self.cancelling = True
+            self._finalize_cancellation()
+            return
         except CancelledError:
             self._finalize_cancellation()
             return
@@ -197,6 +274,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
                 total=self.total_tasks,
                 completed=self.completed_tasks,
                 current_item=self.current_item,
+                steps=self._steps.snapshot(),
             )
 
             self.call(self.on_progress, self.status, progress)
@@ -206,12 +284,12 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         if not self.cancelling:
             return
 
-        self.logger.info("Task processing was cancelled.")
-        self.status = TaskStatus.CANCELLED
+        self.logger.info("Task processing was canceled.")
+        self.status = TaskStatus.CANCELED
         self.cancelling = False
         self.running = False
         self._notify_progress()
-        self.call(self.on_cancelled)
+        self.call(self.on_canceled)
 
     def _finalize_completion(self, results: List[T]) -> None:
         self.logger.info("Conversion completed successfully")
@@ -254,6 +332,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
     def _wait_for_cleanup(self) -> None:
         self._stop_pool()
         self._join_thread()
+        self._release_channel()
         self._reset_status()
 
     def _complete_process(self, results: List[T]) -> None:

@@ -1,9 +1,9 @@
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.voices.note_on import NoteOn
 
 _LENGTH = 4
 
@@ -13,7 +13,7 @@ def _empty_pattern() -> Pattern:
 
 
 def _row_with_instrument() -> Row:
-    return Row(command=Instrument(sample_id="x", channel_name=ChannelName.PULSE1))
+    return Row(command=NoteOn(voice_id="x"))
 
 
 class TestRowIsEmpty:
@@ -21,7 +21,7 @@ class TestRowIsEmpty:
         assert Row().is_empty()
 
     def test_row_with_instrument_is_not_empty(self) -> None:
-        assert not Row(command=Instrument(sample_id="x", channel_name=ChannelName.PULSE1)).is_empty()
+        assert not Row(command=NoteOn(voice_id="x")).is_empty()
 
     def test_row_with_transpose_is_not_empty(self) -> None:
         assert not Row(transpose=0).is_empty()
@@ -32,13 +32,13 @@ class TestRowIsEmpty:
 
 class TestRowReferencesSample:
     def test_default_row_references_no_sample(self) -> None:
-        assert not Row().references_sample("x")
+        assert not Row().references_voice("x")
 
     def test_row_references_its_instrument_sample(self) -> None:
-        assert _row_with_instrument().references_sample("x")
+        assert _row_with_instrument().references_voice("x")
 
     def test_row_does_not_reference_a_different_sample(self) -> None:
-        assert not _row_with_instrument().references_sample("y")
+        assert not _row_with_instrument().references_voice("y")
 
 
 class TestPatternIsEmpty:

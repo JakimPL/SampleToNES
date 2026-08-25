@@ -8,8 +8,9 @@ from sampletones_player.compression.options import EVERY_LAYER
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.rebuild import streams_from_planes
 from sampletones_player.compression.planes.separate import planes_from_streams
-from sampletones_player.compression.progress.report import SILENT_REPORTER, CodecReporter
+from sampletones_player.compression.progress.report import CodecReporter
 from sampletones_player.registers.streams import ChannelStreams
+from sampletones_shared.utils.progress import silent_reporter
 
 
 def _entries(loop_tick: Optional[int]) -> FrozenSet[int]:
@@ -25,7 +26,7 @@ def compress_song(
     *,
     seeds: Sequence[Phrase],
     loop_tick: Optional[int] = None,
-    report: CodecReporter = SILENT_REPORTER,
+    report: CodecReporter = silent_reporter,
 ) -> CompressedPlanes:
     """Compresses a song's four register streams into the dictionary and streams a file carries.
 
@@ -41,10 +42,10 @@ def compress_song(
         report: Hears what the codec holds each time it looks up, and answers whether it goes on.
 
     Returns:
-        CompressedPlanes: The dictionary, the eight token streams and the ticks the song lasts.
+        CompressedPlanes: The dictionary, every plane's token stream and the ticks the song lasts.
 
     Raises:
-        OperationCancelled: If ``report`` withdraws the run.
+        OperationCanceled: If ``report`` withdraws the run.
         ValueError: If a stream sounds a timer the pitch table states no index for.
     """
     return encode_planes(
@@ -67,7 +68,7 @@ def decompress_song(
     same values.
 
     Args:
-        planes: The dictionary, the eight token streams and the ticks the song lasts.
+        planes: The dictionary, every plane's token stream and the ticks the song lasts.
         pitches: The timer each pitch sounds at, which is what turns an index back into a timer.
 
     Returns:

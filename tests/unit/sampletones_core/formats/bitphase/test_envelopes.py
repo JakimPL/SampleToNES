@@ -19,7 +19,7 @@ from sampletones_core.formats.bitphase.specification.instruments import (
     SILENT_VOLUME,
 )
 
-from .conftest import build_features
+from .conftest import build_features, looping
 
 
 @dataclass
@@ -46,7 +46,6 @@ class TestRowsCarryTheEnvelopes:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR),
             ChannelName.PULSE1,
-            loop=False,
         )
         assert [row.volume_or_rate for row in envelopes.rows] == VOLUME_ENVELOPE
 
@@ -54,7 +53,6 @@ class TestRowsCarryTheEnvelopes:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR),
             ChannelName.PULSE1,
-            loop=False,
         )
         assert list(envelopes.table_rows) == PITCH_CONTOUR
 
@@ -67,7 +65,6 @@ class TestRowsCarryTheEnvelopes:
         envelopes = features_to_envelopes(
             build_features([15], duty_cycle=[case.duty_cycle]),
             case.channel,
-            loop=False,
         )
         assert envelopes.rows[0].pulse_width == case.pulse_width
 
@@ -75,7 +72,6 @@ class TestRowsCarryTheEnvelopes:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE),
             ChannelName.TRIANGLE,
-            loop=False,
         )
         assert {row.pulse_width for row in envelopes.rows} == {FLAT_PULSE_WIDTH}
 
@@ -84,7 +80,6 @@ class TestRowsCarryTheEnvelopes:
         envelopes = features_to_envelopes(
             build_features([15] * len(steps), arpeggio=steps),
             ChannelName.NOISE,
-            loop=False,
         )
         assert list(envelopes.table_rows) == [(-step) % NUM_PERIODS for step in steps]
 
@@ -97,25 +92,23 @@ class TestTheDimensionsStayInStep:
     @pytest.mark.parametrize("loop", [True, False], ids=["looping", "one_shot"])
     def test_the_rows_and_the_table_share_a_length(self, loop: bool) -> None:
         envelopes = features_to_envelopes(
-            build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR[:3]),
+            looping(build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR[:3]), 0 if loop else None),
             ChannelName.PULSE1,
-            loop=loop,
         )
         assert len(envelopes.rows) == len(envelopes.table_rows)
 
-    def test_a_looping_slice_takes_the_shortest_dimension(self) -> None:
+    def test_a_looping_slice_stands_at_the_longest_dimension(self) -> None:
+        """Each dimension keeps its own length, so circling costs a slice none of its rows."""
         envelopes = features_to_envelopes(
-            build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR[:2]),
+            looping(build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR[:2]), 0),
             ChannelName.PULSE1,
-            loop=True,
         )
-        assert len(envelopes.rows) == 2
+        assert len(envelopes.rows) == len(VOLUME_ENVELOPE)
 
     def test_a_one_shot_holds_the_shorter_dimension_to_the_end(self) -> None:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR[:2]),
             ChannelName.PULSE1,
-            loop=False,
         )
         assert list(envelopes.table_rows) == [0, 2, 2, 2, 2]
 
@@ -123,7 +116,6 @@ class TestTheDimensionsStayInStep:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=[]),
             ChannelName.PULSE1,
-            loop=False,
         )
         assert list(envelopes.table_rows) == [NO_TABLE_OFFSET] * len(VOLUME_ENVELOPE)
 
@@ -131,9 +123,8 @@ class TestTheDimensionsStayInStep:
 class TestTheLoopPoint:
     def test_a_looping_slice_returns_to_its_first_row(self) -> None:
         envelopes = features_to_envelopes(
-            build_features(VOLUME_ENVELOPE),
+            looping(build_features(VOLUME_ENVELOPE), 0),
             ChannelName.PULSE1,
-            loop=True,
         )
         assert envelopes.loop == LOOP_FROM_START
 
@@ -141,7 +132,6 @@ class TestTheLoopPoint:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE),
             ChannelName.PULSE1,
-            loop=False,
         )
         assert envelopes.loop == len(envelopes.rows) - 1
 
@@ -152,16 +142,14 @@ class TestTheLoopPoint:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE),
             ChannelName.PULSE1,
-            loop=False,
         )
         assert envelopes.rows[envelopes.loop].volume_or_rate == SILENT_VOLUME
 
     @pytest.mark.parametrize("loop", [True, False], ids=["looping", "one_shot"])
     def test_the_loop_row_exists_in_both_lists(self, loop: bool) -> None:
         envelopes = features_to_envelopes(
-            build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR),
+            looping(build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR), 0 if loop else None),
             ChannelName.PULSE1,
-            loop=loop,
         )
         assert envelopes.loop < len(envelopes.rows)
         assert envelopes.loop < len(envelopes.table_rows)
@@ -176,7 +164,6 @@ class TestASliceThatLeavesItsVolumeToTheChannel:
         envelopes = features_to_envelopes(
             build_features([], arpeggio=PITCH_CONTOUR),
             ChannelName.PULSE1,
-            loop=False,
         )
         assert [row.volume_or_rate for row in envelopes.rows] == [MAX_VOLUME_OR_RATE] * len(PITCH_CONTOUR)
 
@@ -184,7 +171,6 @@ class TestASliceThatLeavesItsVolumeToTheChannel:
         envelopes = features_to_envelopes(
             build_features([], arpeggio=PITCH_CONTOUR),
             ChannelName.PULSE1,
-            loop=False,
         )
         assert list(envelopes.table_rows) == PITCH_CONTOUR
 
@@ -193,7 +179,6 @@ class TestASliceThatLeavesItsVolumeToTheChannel:
         envelopes = features_to_envelopes(
             build_features([], duty_cycle=duty_cycles),
             ChannelName.PULSE1,
-            loop=False,
         )
         assert [row.pulse_width for row in envelopes.rows] == duty_cycles
 
@@ -201,15 +186,13 @@ class TestASliceThatLeavesItsVolumeToTheChannel:
         envelopes = features_to_envelopes(
             build_features([], arpeggio=PITCH_CONTOUR),
             ChannelName.PULSE1,
-            loop=False,
         )
         assert envelopes.rows[envelopes.loop].volume_or_rate == MAX_VOLUME_OR_RATE
 
     def test_a_looping_slice_takes_the_length_its_contour_states(self) -> None:
         envelopes = features_to_envelopes(
-            build_features([], arpeggio=PITCH_CONTOUR),
+            looping(build_features([], arpeggio=PITCH_CONTOUR), 0),
             ChannelName.PULSE1,
-            loop=True,
         )
         assert len(envelopes.rows) == len(PITCH_CONTOUR)
         assert envelopes.loop == LOOP_FROM_START
@@ -222,7 +205,7 @@ class TestAnEmptySlice:
 
     @pytest.fixture(name="envelopes")
     def envelopes_fixture(self) -> ChannelEnvelopes:
-        return features_to_envelopes(build_features([]), ChannelName.PULSE1, loop=False)
+        return features_to_envelopes(build_features([]), ChannelName.PULSE1)
 
     def test_it_holds_one_silent_row(self, envelopes: ChannelEnvelopes) -> None:
         assert [row.volume_or_rate for row in envelopes.rows] == [SILENT_VOLUME]

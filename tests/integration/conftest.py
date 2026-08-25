@@ -3,9 +3,9 @@ from typing import Dict
 
 import pytest
 
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.structures import IdentifiedCollection
 from tests.integration.assets.module_config import ModuleConfig, load_module_config
 from tests.integration.assets.reconstruction import load_instrument_catalog
@@ -41,9 +41,9 @@ def instrument_catalog(audio_directory: Path, synth_config: SynthConfig) -> Dict
 
 @pytest.fixture(scope="session")
 def integration_project(instrument_catalog: Dict[str, Sample], module_config: ModuleConfig) -> Project:
-    samples: IdentifiedCollection[Sample] = IdentifiedCollection()
+    voices: IdentifiedCollection[Sample] = IdentifiedCollection()
     for sample in instrument_catalog.values():
-        samples.append(sample)
+        voices.append(sample)
 
     settings = ProjectSettings(
         tempo=module_config.tempo,
@@ -51,6 +51,6 @@ def integration_project(instrument_catalog: Dict[str, Sample], module_config: Mo
         nes_frequency=module_config.nes_frequency,
     )
     project = Project.create(title=module_config.title, author=module_config.author, settings=settings)
-    project.samples = samples
+    project.voices = voices
     project.song = load_song(SONG_PATH, instrument_catalog)
     return project

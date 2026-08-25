@@ -6,7 +6,6 @@ from sampletones_core.constants.enums import InstructionClassName
 from sampletones_core.constants.general import (
     DUTY_CYCLES,
     MAX_DUTY_CYCLE,
-    MAX_PITCH,
     MAX_VOLUME,
     MIN_PITCH,
     PITCH_RANGE,
@@ -14,10 +13,10 @@ from sampletones_core.constants.general import (
 from sampletones_core.utils.frequencies import pitch_to_name
 
 from ..instruction import Instruction
+from ..tonal import TonalInstruction
 
 
-class PulseInstruction(Instruction):
-    pitch: int = Field(..., ge=MIN_PITCH, le=MAX_PITCH, description="MIDI pitch (0-120)")
+class PulseInstruction(TonalInstruction):
     volume: int = Field(..., ge=0, le=MAX_VOLUME, description="Volume (0-15)")
     duty_cycle: int = Field(
         ...,

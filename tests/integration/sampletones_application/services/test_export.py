@@ -7,18 +7,33 @@ from sampletones_application.services.export.error import ExportError
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.service import ExportService
 from sampletones_application.services.export.success import ExportSuccess
+from sampletones_application.services.result import ServiceProgress
 from sampletones_core.audio import read_wave
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.exports.implementation.famitracker import FamiTrackerBackend
-from sampletones_core.exports.request import InstrumentExport, SampleExport
+from sampletones_core.exports.request import (
+    InstrumentExport,
+    ProjectExport,
+    SampleExport,
+)
+from sampletones_core.exports.stage import ExportStage
+from sampletones_core.project.project import Project
+from sampletones_core.timing import SongTiming
 from sampletones_player.export import NSFBackend
 from sampletones_player.specification.nsf import NSF_MAGIC, PROGRAM_SIZE
 from sampletones_shared.music import Tuning
+from tests.suite.performance import (
+    make_pulse_reconstruction,
+    place_instrument,
+    project_with_sample,
+)
+from tests.suite.player import varied_features
 
 NES_FREQUENCY: Final[int] = 60
 REFERENCE_PITCH: Final[int] = 60
-MAX_VOLUME: Final[int] = 15
+ROWS_PER_PATTERN: Final[int] = 4
+SOUNDING_TICKS: Final[int] = 8
 
 
 def outcome(results: List[Any]) -> Any:
@@ -37,15 +52,8 @@ def console_backend_fixture() -> NSFBackend:
 
 
 def overlong_features(initial_pitch: int) -> Features:
-    """Envelopes running longer than the console's program area has room for."""
-    return Features(
-        initial_pitch=initial_pitch,
-        volume=np.full(PROGRAM_SIZE, MAX_VOLUME, dtype=int),
-        arpeggio=np.zeros(PROGRAM_SIZE, dtype=int),
-        pitch=None,
-        hi_pitch=None,
-        duty_cycle=np.zeros(PROGRAM_SIZE, dtype=int),
-    )
+    """Envelopes turning over at every tick for longer than the program area has room for."""
+    return varied_features(PROGRAM_SIZE, initial_pitch, duty_cycle=True)
 
 
 def instrument_export(name: str, features: Features) -> InstrumentExport:
@@ -53,7 +61,6 @@ def instrument_export(name: str, features: Features) -> InstrumentExport:
         name=name,
         channel=ChannelName.PULSE1,
         features=features,
-        loop=False,
         nes_frequency=NES_FREQUENCY,
         tuning=Tuning(),
     )
@@ -242,3 +249,54 @@ class TestExportToTheConsoleIntegration:
 
         assert isinstance(outcome(results), ExportError)
         assert outcome(results).kind == ExportKind.SAMPLE
+
+
+def arranged_project() -> Project:
+    """A project whose song sounds one sample from its first row."""
+    project, sample = project_with_sample(
+        make_pulse_reconstruction(pitch=REFERENCE_PITCH, count=SOUNDING_TICKS),
+        rows_per_pattern=ROWS_PER_PATTERN,
+    )
+    place_instrument(
+        project,
+        channel_name=ChannelName.PULSE1,
+        row_index=0,
+        sample=sample,
+    )
+    return project
+
+
+class TestExportProjectToTheConsoleIntegration:
+    """A whole arrangement reaching the console through the service the application exports by."""
+
+    def test_the_song_is_written_as_one_program(self, tmp_path, console_backend) -> None:
+        export_service = ExportService()
+        results: List[Any] = []
+        export_service.subscribe(results.append)
+
+        filepath = tmp_path / "song.nsf"
+        export_service.export_project(filepath, console_backend, ProjectExport(project=arranged_project()))
+
+        assert isinstance(outcome(results), ExportSuccess)
+        assert outcome(results).kind == ExportKind.PROJECT
+        assert outcome(results).filepath == filepath
+        assert filepath.read_bytes()[: len(NSF_MAGIC)] == NSF_MAGIC
+
+    def test_the_walk_reads_as_a_fraction_of_the_song(self, tmp_path, console_backend) -> None:
+        """A song states the ticks it lasts before a row of it is played, so the stage that
+        plays it out travels toward a length the dialog can draw."""
+        project = arranged_project()
+        export_service = ExportService()
+        results: List[Any] = []
+        export_service.subscribe(results.append)
+
+        export_service.export_project(tmp_path / "song.nsf", console_backend, ProjectExport(project=project))
+
+        walked = [
+            result
+            for result in results
+            if isinstance(result, ServiceProgress) and result.current_item == ExportStage.WALKING
+        ]
+        groove = SongTiming.from_project(project).groove()
+        assert walked
+        assert walked[-1].total == project.song.order_length() * groove.total_ticks

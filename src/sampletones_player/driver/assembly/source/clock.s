@@ -4,7 +4,7 @@
 
 .export clock_reset
 .export clock_advance
-.exportzp current_tick
+.export clock_step
 
 .import song_data
 
@@ -25,12 +25,12 @@ clock_reset:
     sta finished
     rts
 
-; Advances the stream by one play call's worth of ticks.
-; Answers with A = 0 where the console is to be left alone, either because the stream holds its
-; tick through this call or because the song has ended.
+; Answers with the ticks this play call advances the streams by, which the accumulator reads off
+; the top of a step added once a call. A song standing still between its own ticks, and one that
+; has ended, both answer with none.
 clock_advance:
     lda finished
-    bne @hold
+    bne @none
 
     clc
     lda accumulator
@@ -41,62 +41,45 @@ clock_advance:
     sta accumulator + 1
     lda song_data + STEP_WHOLE_OFFSET
     adc #$00
-    beq @hold
-
-    clc
-    adc current_tick
-    sta current_tick
-    bcc @wrap
-    inc current_tick + 1
-@wrap:
-    jsr wrap_tick
-    lda finished
-    bne @hold
-
-    lda #$01
     rts
-@hold:
+@none:
     lda #$00
     rts
 
-; Brings a tick that has run past the song's end back to where the song repeats, or marks the song
-; finished where it has no loop. Each pass takes off the whole of the looping part, so a call that
-; advances by more ticks than the loop is long still lands inside it.
-wrap_tick:
+; Moves the clock on by a single tick and answers what the channels are to do with it: play it
+; where the song still runs, play it from the loop entry where the song has just come round, or
+; leave the console alone where the song has ended.
+clock_step:
+    inc current_tick
+    bne @reached
+    inc current_tick + 1
+@reached:
     lda current_tick + 1
     cmp song_data + TOTAL_TICKS_OFFSET + 1
-    bcc @within
-    bne @past
+    bcc @plays
+    bne @ended
     lda current_tick
     cmp song_data + TOTAL_TICKS_OFFSET
-    bcc @within
-@past:
+    bcc @plays
+@ended:
     lda song_data + LOOP_TICK_OFFSET
     cmp #<NO_LOOP
-    bne @rewind
+    bne @repeats
     lda song_data + LOOP_TICK_OFFSET + 1
     cmp #>NO_LOOP
-    bne @rewind
+    bne @repeats
 
     lda #$01
     sta finished
+    lda #TICK_FINISHED
     rts
-@rewind:
-    sec
-    lda current_tick
-    sbc song_data + TOTAL_TICKS_OFFSET
+@repeats:
+    lda song_data + LOOP_TICK_OFFSET
     sta current_tick
-    lda current_tick + 1
-    sbc song_data + TOTAL_TICKS_OFFSET + 1
+    lda song_data + LOOP_TICK_OFFSET + 1
     sta current_tick + 1
-
-    clc
-    lda current_tick
-    adc song_data + LOOP_TICK_OFFSET
-    sta current_tick
-    lda current_tick + 1
-    adc song_data + LOOP_TICK_OFFSET + 1
-    sta current_tick + 1
-    jmp wrap_tick
-@within:
+    lda #TICK_REPEATED
+    rts
+@plays:
+    lda #TICK_PLAYS
     rts

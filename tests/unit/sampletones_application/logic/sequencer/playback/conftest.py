@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, FrozenSet, Iterable
+from typing import Callable, Final, FrozenSet, Iterable
 
 import numpy as np
 import pytest
@@ -11,10 +11,14 @@ from sampletones_application.logic.sequencer.playback.synthesizer import RowSynt
 from sampletones_core.configs import Config
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
+
+SOUNDING_FRAMES: Final[int] = 16
 
 
 def make_controller() -> ProjectController:
@@ -46,13 +50,18 @@ def add_sample(
     controller: ProjectController,
     reconstruction: Reconstruction,
     *,
-    loop: bool = False,
     name: str = "test",
 ) -> Sample:
-    sample = controller.add_sample(reconstruction, name)
-    if loop:
-        controller.set_sample_loop(sample.id, loop=True)
-    return sample
+    return controller.add_sample(reconstruction, name)
+
+
+def add_instrument(
+    controller: ProjectController,
+    *,
+    name: str = "test",
+) -> Instrument:
+    """A hand-written voice sustaining at full volume, sounding for as long as a row holds it."""
+    return controller.add_instrument(new_instrument(name))
 
 
 def place_row(
@@ -60,7 +69,7 @@ def place_row(
     *,
     channel: ChannelName,
     row_index: int = 0,
-    sample_id: str,
+    voice_id: str,
     transpose: int | None = None,
     volume: int | None = None,
 ) -> None:
@@ -69,7 +78,7 @@ def place_row(
         channel,
         pattern_index,
         row_index,
-        command=Instrument(sample_id=sample_id, channel_name=channel),
+        command=NoteOn(voice_id=voice_id),
         transpose=transpose,
         volume=volume,
     )

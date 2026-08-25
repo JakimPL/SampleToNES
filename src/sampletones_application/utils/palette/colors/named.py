@@ -8,7 +8,7 @@ from sampletones_shared.types.application import ColorRGBA
 
 @dataclass(frozen=True)
 class NamedColor(BaseColor):
-    """A colour written as a palette reference, together with the source that answers it."""
+    """A color written as a palette reference, together with the source that answers it."""
 
     reference: PaletteReference
     source: PaletteSource

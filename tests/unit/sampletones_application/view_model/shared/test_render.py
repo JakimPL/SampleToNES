@@ -72,7 +72,7 @@ class TestChoicesFollowTheFormat:
         assert settings.spec.sample_rate == 8000
         assert settings.depth == AudioDepth.PCM_U8
 
-    def test_the_normalise_choice_stands_through_a_format_change(self) -> None:
+    def test_the_normalize_choice_stands_through_a_format_change(self) -> None:
         settings = wave_settings().with_normalize(True).with_format(AudioFormat.MP3)
 
         assert settings.normalize
@@ -154,5 +154,5 @@ class TestWhatTheDialogDraws:
         assert not view.render_enabled
 
     def test_an_outcome_releases_the_application(self) -> None:
-        for phase in (RenderPhase.COMPLETED, RenderPhase.CANCELLED, RenderPhase.FAILED):
+        for phase in (RenderPhase.COMPLETED, RenderPhase.CANCELED, RenderPhase.FAILED):
             assert not view_model(wave_settings(), phase=phase).is_active

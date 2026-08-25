@@ -13,7 +13,7 @@ from sampletones_application.logic.sequencer.playback.synthesizer import (
 from sampletones_application.logic.shared.project_source import ProjectSnapshot
 from sampletones_application.services.render.result import RenderResult, RenderStage
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceProgress,
     ServiceStarted,
@@ -69,7 +69,7 @@ class SongRenderLogic(CallbackMixin):
         self._service = render_service
         self._is_operation_active = is_operation_active
         self._msg_cancelling = language_manager["settings.render.message.status_cancelling"]
-        self._msg_cancelled = language_manager["settings.render.message.status_cancelled"]
+        self._msg_canceled = language_manager["settings.render.message.status_canceled"]
         self._msg_completed = language_manager["settings.render.message.status_completed"]
         self._msg_failed = language_manager["settings.render.message.status_failed"]
         self._eta_template = language_manager["global.dialog.template.time_estimation"]
@@ -91,7 +91,7 @@ class SongRenderLogic(CallbackMixin):
         self.on_choose_destination: Optional[Callable[[Path, AudioFormat], None]] = None
         self.on_success: Optional[PathCallback] = None
         self.on_error: Optional[Callable[[Exception], None]] = None
-        self.on_cancelled: Optional[VoidCallback] = None
+        self.on_canceled: Optional[VoidCallback] = None
 
     @property
     def is_active(self) -> bool:
@@ -206,7 +206,7 @@ class SongRenderLogic(CallbackMixin):
                 self._on_render_complete(destination)
             case ServiceError(exception=exception):
                 self._on_render_error(exception)
-            case ServiceCancelled():
+            case ServiceCanceled():
                 self._on_cancellation_complete()
 
     def _handle_progress(self, progress: ServiceProgress[RenderStage]) -> None:
@@ -217,7 +217,7 @@ class SongRenderLogic(CallbackMixin):
         self._phase = RenderPhase.RENDERING
         stage = progress.current_item
         status_text = self._status_text if stage is None else self._stage_status(stage, progress.eta_seconds)
-        self._report(status_text, progress.completed / max(progress.total, 1))
+        self._report(status_text, progress.fraction)
 
     def _stage_status(self, stage: RenderStage, eta_seconds: Optional[float]) -> str:
         """What the pass is doing, and how long it has left where an estimate stands."""
@@ -239,9 +239,9 @@ class SongRenderLogic(CallbackMixin):
         self.call(self.on_error, exception)
 
     def _on_cancellation_complete(self) -> None:
-        self._phase = RenderPhase.CANCELLED
-        self._report(self._msg_cancelled, 0.0)
-        self.call(self.on_cancelled)
+        self._phase = RenderPhase.CANCELED
+        self._report(self._msg_canceled, 0.0)
+        self.call(self.on_canceled)
 
     def _report(self, status_text: str, progress: float) -> None:
         self._status_text = status_text

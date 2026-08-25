@@ -1,5 +1,5 @@
 from .device import AudioDevice, CurrentDevice
-from .io import load_audio, read_wave, write_wave
+from .io import load_audio, load_stems, read_wave, write_wave
 from .manager import CHANNELS, FORMAT, AudioDeviceManager
 from .mixing import align, common_length, mix
 from .processing import (
@@ -35,6 +35,7 @@ __all__ = [
     "common_length",
     "interpolate",
     "load_audio",
+    "load_stems",
     "minmax_decimate",
     "mix",
     "normalize",

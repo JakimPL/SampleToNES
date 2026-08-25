@@ -32,3 +32,11 @@ COMMAND: Final = "command"
 
 CHANNEL_NAME: Final = "channel_name"
 GENERATOR_NAME: Final = "generator_name"
+
+SAMPLES: Final = "samples"
+VOICES: Final = "voices"
+KIND: Final = "kind"
+KIND_SAMPLE: Final = "sample"
+LOOP_POINT: Final = "loop_point"
+SAMPLE_ID: Final = "sample_id"
+VOICE_ID: Final = "voice_id"

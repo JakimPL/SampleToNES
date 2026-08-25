@@ -30,7 +30,7 @@ from sampletones_core.formats.famitracker.specification.patterns import (
     EMPTY_VOLUME,
     NoteValue,
 )
-from sampletones_core.formats.famitracker.specification.sequences import SequenceKind
+from sampletones_core.formats.famitracker.specification.sequences import NO_LOOP_POINT, SequenceKind
 from tests.suite.famitracker import ParsedModule, ParsedSequence, parse_ftm
 
 from .conftest import ProjectFixture
@@ -136,11 +136,18 @@ class TestInstrumentsBlock:
 
 
 class TestSequencesBlock:
-    def test_looping_instrument_sequence_loops_from_start(self, project_fixture: ProjectFixture) -> None:
+    def test_a_recordings_sequence_is_pooled_with_its_items_and_no_point(
+        self,
+        project_fixture: ProjectFixture,
+    ) -> None:
         parsed = _parsed(project_fixture)
         pad = next(instrument for instrument in parsed.instruments if instrument.name.startswith("pad"))
         _, index = pad.sequence_refs[int(SequenceKind.VOLUME)]
-        assert _pooled(parsed, SequenceKind.VOLUME, index).loop_point == 0
+
+        sequence = _pooled(parsed, SequenceKind.VOLUME, index)
+
+        assert sequence.items
+        assert sequence.loop_point == NO_LOOP_POINT
 
 
 class TestFramesBlock:

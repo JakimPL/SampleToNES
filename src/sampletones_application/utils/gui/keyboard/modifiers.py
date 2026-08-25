@@ -101,7 +101,7 @@ def modifier_display(modifier: Modifier) -> str:
     """The name a modifier reads under on the platform in use.
 
     One key wears three names across the platforms — Command on macOS, Windows on Windows, Super on
-    Linux — so a combination reads the way the keyboard in front of the reader is labelled. Every
+    Linux — so a combination reads the way the keyboard in front of the reader is labeled. Every
     spelling stays readable everywhere through :data:`MODIFIER_NAMES`, which lets a scheme written
     for one platform be read on another.
     """

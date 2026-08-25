@@ -7,7 +7,7 @@ from sampletones_core.reconstructions import Reconstruction
 
 
 @dataclass(frozen=True)
-class InstrumentEdit:
+class ChannelEdit:
     """A regenerated instrument paired with the channel and feature the reader moved.
 
     Carrying the request context alongside the fresh reconstruction lets the project history
@@ -18,9 +18,9 @@ class InstrumentEdit:
     channel_name: ChannelName
     feature_key: FeatureKey
 
-    def coalesce_key(self, sample_id: str) -> Optional[CoalesceKey]:
+    def coalesce_key(self, voice_id: str) -> Optional[CoalesceKey]:
         """Consecutive edits of one sample run together, so a graph movement records one entry."""
-        return (sample_id,)
+        return (voice_id,)
 
 
 @dataclass(frozen=True)
@@ -30,9 +30,9 @@ class StemRemoval:
     reconstruction: Reconstruction
     stem_name: str
 
-    def coalesce_key(self, _sample_id: str) -> Optional[CoalesceKey]:
+    def coalesce_key(self, _voice_id: str) -> Optional[CoalesceKey]:
         """Each removal stands on its own, so one undo puts one recording back."""
         return None
 
 
-ReconstructionEdit: TypeAlias = Union[InstrumentEdit, StemRemoval]
+ReconstructionEdit: TypeAlias = Union[ChannelEdit, StemRemoval]

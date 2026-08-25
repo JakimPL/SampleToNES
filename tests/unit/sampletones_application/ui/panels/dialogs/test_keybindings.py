@@ -312,7 +312,7 @@ class TestCapture:
 
         assert harness.label_of(shortcut_tag(SAVE_PROJECT)) == CAPTURING_MESSAGE
 
-    def test_a_cancelled_capture_leaves_the_cell_reading_its_keys(self, harness: Harness) -> None:
+    def test_a_canceled_capture_leaves_the_cell_reading_its_keys(self, harness: Harness) -> None:
         harness.render(view_model(selected=SAVE_PROJECT))
         harness.click_shortcut(SAVE_PROJECT)
         harness.press(dpg.mvKey_Escape)

@@ -21,7 +21,7 @@ class RowRate:
     The ratio is held exact, since a row rate is fractional for most tempi and the
     fraction is what a groove distributes across a pattern's rows.
 
-    A row rate reads as a tempo in beats per minute once a metre says how many rows one
+    A row rate reads as a tempo in beats per minute once a meter says how many rows one
     beat spans::
 
         beats_per_minute = 60 * nes_frequency / (ticks_per_row * first_highlight)

@@ -104,7 +104,7 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
     def create_panel(self, parent: str) -> None:
         """Builds the card, and fills the tree where the panel is the one reading its model.
 
-        A browser reading the filesystem shows its rows as it appears, while a catalogue filled by
+        A browser reading the filesystem shows its rows as it appears, while a catalog filled by
         the owner that gathers it waits for that reading to arrive.
         """
         self._setup_handlers()
@@ -204,7 +204,7 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
             pass
 
     def _create_tree_root_heading(self, label: str) -> None:
-        """Opens the root container as a labelled row the whole tree folds under."""
+        """Opens the root container as a labeled row the whole tree folds under."""
         with dpg.tree_node(
             label=label,
             tag=self.tree_tag,

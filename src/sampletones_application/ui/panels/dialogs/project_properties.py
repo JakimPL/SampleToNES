@@ -44,7 +44,7 @@ from sampletones_shared.constants.project import (
 
 
 class GUIProjectPropertiesWindow(GUIDialogWindow):
-    """Modal form to view and edit the project's title, author, comment, and metre.
+    """Modal form to view and edit the project's title, author, comment, and meter.
 
     Each appearance renders the view model handed to :meth:`open`, and the edited
     values reach the ``on_commit`` hook on confirmation, so the owner applies

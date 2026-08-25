@@ -6,10 +6,12 @@ from sampletones_core.parallelization import TaskProcessor
 from sampletones_shared.logger import LoggerProtocol
 from sampletones_shared.logger import logger as default_logger
 
+from ..progress import ReconstructionReporter
 from ..reconstructor.reconstructor import Reconstructor
 from .conversion import reconstruct_job
 from .job import ConversionJob
 from .plan.protocol import ConversionPlan
+from .progress import JobReporter
 
 
 class ReconstructionConverter(TaskProcessor[Path]):
@@ -31,8 +33,6 @@ class ReconstructionConverter(TaskProcessor[Path]):
         self.plan: ConversionPlan = plan
         self.jobs: List[ConversionJob] = []
 
-        self.current_file: Optional[str] = None
-
     def start(self) -> None:
         if self.running:
             self.logger.warning("Reconstruction is already running")
@@ -43,11 +43,11 @@ class ReconstructionConverter(TaskProcessor[Path]):
     def _create_tasks(self) -> List[Any]:
         reconstructor = Reconstructor(self.config)
         self.jobs = self.plan.jobs(self.config)
-        return [(reconstructor, job) for job in self.jobs]
+        return [(reconstructor, job, JobReporter(self._task_reporter(index))) for index, job in enumerate(self.jobs)]
 
     def _get_task_function(
         self,
-    ) -> Callable[[Tuple[Reconstructor, ConversionJob]], Path]:
+    ) -> Callable[[Tuple[Reconstructor, ConversionJob, ReconstructionReporter]], Path]:
         return reconstruct_job
 
     def _process_results(self, results: List[Path]) -> Tuple[Path, ...]:
@@ -55,8 +55,18 @@ class ReconstructionConverter(TaskProcessor[Path]):
         return tuple(output_path for output_path in results if output_path.exists())
 
     def _notify_progress(self) -> None:
-        if 0 < self.completed_tasks <= len(self.jobs):
-            self.current_file = str(self.jobs[self.completed_tasks - 1].sources[0])
-            self.current_item = self.current_file
-
+        self.current_item = self._running_source()
         super()._notify_progress()
+
+    def _running_source(self) -> Optional[str]:
+        """The recording the job the run has been working on longest is reading.
+
+        Jobs are answered in the order they were handed out, so the first one the run has yet to
+        count is the earliest still under way — and once every job is counted, the last one is
+        what the run finished on.
+        """
+        if not self.jobs:
+            return None
+
+        index = min(self.completed_tasks, len(self.jobs) - 1)
+        return str(self.jobs[index].sources[0])

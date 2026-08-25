@@ -55,7 +55,7 @@ from sampletones_shared.types.callback import MessageCallback, VoidCallback
 
 
 class LibraryLogicProtocol(Protocol):
-    """The library-catalogue contract ``GUIInstructionsLibraryPanel`` drives.
+    """The library-catalog contract ``GUIInstructionsLibraryPanel`` drives.
 
     Typing the collaborator structurally keeps the panel bound to the queries
     its rendering needs — the current-library check runs per node, and the
@@ -78,7 +78,7 @@ class LibraryLogicProtocol(Protocol):
 
 
 class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
-    """The Instructions tab's catalogue of instruction libraries and the generators inside them."""
+    """The Instructions tab's catalog of instruction libraries and the generators inside them."""
 
     _NAME_FONT: Font = Font.REGULAR_SMALL
     _MONOSPACE_CONFIG_NODES: bool = True
@@ -166,9 +166,9 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         super()._setup_handlers()
 
     def _create_controls(self) -> None:
-        """Reads out what the catalogue holds, and offers what can be done to it.
+        """Reads out what the catalog holds, and offers what can be done to it.
 
-        The controls come in two sets: the ones a reader picks from while the catalogue sits still,
+        The controls come in two sets: the ones a reader picks from while the catalog sits still,
         and the progress bar and cancel button a generation replaces them with.
         """
         self._create_library_status()
@@ -279,7 +279,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         Called whenever a long operation starts or finishes. The button stays enabled only while the
         panel is unlocked and no conversion or library generation is running, leaving the rest of the
         panel usable during such an operation. The cancel button stays enabled so a generation can
-        always be cancelled."""
+        always be canceled."""
         self._apply_action_button_states()
 
     def _apply_action_button_states(self) -> None:
@@ -347,7 +347,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
                     assert isinstance(node, GeneratorNode), "Node is not a GeneratorNode"
                     assert isinstance(parent, LibraryNode), "Generator node parent is not a LibraryNode"
                     message = self._language_manager["instructions.library.message.status_node_generator"].format(
-                        generator=node.channel_name,
+                        generator=node.generator_name,
                         library_key=parent.library_key.filename,
                     )
                 case _:
@@ -367,7 +367,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
             assert isinstance(node.parent, LibraryNode), "Generator node parent is not a LibraryNode"
-            self.call(self.on_generator_selected, node.parent.library_key, node.channel_name)
+            self.call(self.on_generator_selected, node.parent.library_key, node.generator_name)
 
         if mouse_button == dpg.mvMouseButton_Right:
             self._show_generator_context_menu(node)
@@ -450,5 +450,5 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         self.call(
             self.on_generator_selected,
             user_data.parent.library_key,
-            user_data.channel_name,
+            user_data.generator_name,
         )

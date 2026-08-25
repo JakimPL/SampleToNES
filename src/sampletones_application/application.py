@@ -16,7 +16,10 @@ from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.display import DisplayCoordinator
 from sampletones_application.coordinators.edit.router import EditRouter
-from sampletones_application.coordinators.export import SongExportCoordinator
+from sampletones_application.coordinators.export import (
+    InstrumentExportCoordinator,
+    SongExportCoordinator,
+)
 from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -33,10 +36,11 @@ from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
-from sampletones_application.coordinators.tabs.sequencer import SequencerTabCoordinator
+from sampletones_application.coordinators.tabs.sequencer.coordinator import SequencerTabCoordinator
 from sampletones_application.exports import build_export_backends
 from sampletones_application.layout import LayoutConfig, load_layout_config
 from sampletones_application.logic.export import SongExportLogic
+from sampletones_application.logic.export.instrument.logic import InstrumentExportLogic
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.instruction.library_manager import (
@@ -51,7 +55,7 @@ from sampletones_application.logic.project.title.document import (
 )
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.logic.reconstruction.edit import (
-    InstrumentEdit,
+    ChannelEdit,
     ReconstructionEdit,
     StemRemoval,
 )
@@ -80,7 +84,7 @@ from sampletones_application.services import (
     RetunedSample,
     RetuneResult,
     SampleRetuneService,
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceProgress,
     ServiceSuccess,
@@ -157,10 +161,11 @@ from sampletones_core.exporters import Features
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.stage import ExportStage
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import samples
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
-from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
     SAMPLETONES_GROUP,
@@ -346,6 +351,7 @@ class Application:
             player_layout=self.layout.player,
             language_manager=self.language_manager,
             build_edit_actions=self._build_edit_actions,
+            build_voice_actions=self._build_voice_actions,
             on_play_from_start=self._play_from_start,
             on_pause_or_resume=self._play,
             on_stop=self._stop,
@@ -412,11 +418,22 @@ class Application:
             language_manager=self.language_manager,
         )
 
+        self._instrument_exports = InstrumentExportCoordinator(
+            InstrumentExportLogic(
+                self.project_controller,
+                self.session_manager,
+                self.export_service,
+                self.export_backends,
+            ),
+            self.language_manager,
+        )
+
         self._reconstructions_tab = ReconstructionTabCoordinator(
             config_manager=self.config_manager,
             session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,
             reconstruction_manager=self.reconstruction_manager,
+            project_controller=self.project_controller,
             browser_manager=self.browser_manager,
             export_service=self.export_service,
             export_backends=self.export_backends,
@@ -426,6 +443,11 @@ class Application:
             on_reconstruction_instrument_updated=self._regenerate_instrument,
             on_reconstruction_stem_removed=self._reconstruction_coordinator.apply_edit,
             original_audio_locator=self._original_audio_locator,
+            instrument_exports=self._instrument_exports,
+            history=self.history,
+            instrument_edit_detail=self._instrument_edit_detail,
+            key_router=self.key_router,
+            tab_active=self._is_reconstructions_tab_current,
             layout=ReconstructionTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -467,7 +489,7 @@ class Application:
             status_bar=self.status_bar,
             on_load_file=self._on_converted_reconstruction_loaded,
             on_load_directory=self._navigate_to_reconstructions,
-            on_cancelled=self._refresh_reconstruction_trees,
+            on_canceled=self._refresh_reconstruction_trees,
             on_refresh_trees=self._refresh_reconstruction_trees,
             on_generate_library=self._instructions_tab.ensure_library_loaded,
             stem_selection_window=self.stem_selection_window,
@@ -483,12 +505,13 @@ class Application:
             project_controller=self.project_controller,
             history=self.history,
             original_audio_locator=self._original_audio_locator,
+            instrument_exports=self._instrument_exports,
             tab_active=self._is_sequencer_tab_current,
             layout=SequencerTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
-            on_edit_sample_requested=self._edit_project_sample,
+            on_edit_voice_requested=self._edit_project_voice,
             on_favorite_changed=self._repaint_reconstruction_favorites,
             on_sample_reconstruction_replaced=self._rebind_replaced_sample,
             on_tab_switch=self._set_current_tab,
@@ -653,6 +676,9 @@ class Application:
             export_wav=self._export_reconstruction_wav_dialog,
             export_instruments=self._export_reconstruction_instruments_dialog,
             add_reconstruction_to_sequencer=self._add_current_reconstruction_to_sequencer,
+            new_instrument=self._add_instrument,
+            add_sample_from_file=self._add_sample_from_file,
+            import_instrument=self._import_instrument,
             open_reconstruction_in_explorer=self._open_reconstruction_in_explorer,
             locate_original_audio=self._locate_original_audio,
             play=self._play,
@@ -723,11 +749,11 @@ class Application:
         self.shortcut_manager.rebind()
 
     def _on_palette_changed(self, _palette: Palette) -> None:
-        """Repaints what holds a colour DearPyGui has copied, once another palette is in place.
+        """Repaints what holds a color DearPyGui has copied, once another palette is in place.
 
-        Every layout and theme colour already answers with the new palette, so the work left is
-        handing those values to the copies DearPyGui keeps: the registered theme colours and item
-        arguments, the viewport clear colour, and the sequencer tables, whose tints belong to the
+        Every layout and theme color already answers with the new palette, so the work left is
+        handing those values to the copies DearPyGui keeps: the registered theme colors and item
+        arguments, the viewport clear color, and the sequencer tables, whose tints belong to the
         table rather than to an item.
         """
         PaletteBindings.apply()
@@ -769,6 +795,14 @@ class Application:
             auto_expand_favorite_reconstructions=self.session_manager.auto_expand_favorite_reconstructions,
             auto_expand_favorite_directories=self.session_manager.auto_expand_favorite_directories,
         )
+
+    def _is_reconstructions_tab_current(self) -> bool:
+        """Whether the Reconstructions tab is in front, which is what puts its panels on the keyboard.
+
+        The instruments panel keeps the voice it is editing while another tab is worked on, so this
+        is what tells a note key meant to sound that voice from one meant for the song's grid.
+        """
+        return self._shell.get_current_tab() == Tab.RECONSTRUCTIONS
 
     def _is_sequencer_tab_current(self) -> bool:
         """Whether the Sequencer is the tab in front, which is what puts its panels on the keyboard.
@@ -940,7 +974,7 @@ class Application:
         generation or render starts or finishes, keeping the long operations mutually exclusive. Each
         panel reads the live ``_is_operation_active`` state for itself; this only nudges them to
         re-apply, so the busy truth lives in one place. The menu follows the same edge, since what
-        greys an entry offering another such operation is one already running."""
+        grays an entry offering another such operation is one already running."""
         self._instructions_tab.refresh_generate_button()
         self._update_menu()
 
@@ -1023,20 +1057,29 @@ class Application:
     def _navigate_to_reconstructions(self) -> None:
         self._set_current_tab(Tab.RECONSTRUCTIONS)
 
-    def _edit_project_sample(self, sample_id: str) -> None:
-        sample = self.project_manager.current.sample(sample_id)
-        if sample is None:
-            logger.warning(f"Cannot edit unknown project sample: {sample_id}")
-            return
+    def _edit_project_voice(self, voice_id: str) -> None:
+        """Opens the voice list's selection on the Reconstructions tab, in the terms of its kind.
 
-        self.reconstruction_manager.load_reconstruction_object(
-            sample.reconstruction,
-            name=sample.name,
-        )
+        A sample opens as the reconstruction behind it, waveform and stems and all; an instrument stands
+        on no recording, so the tab shows its envelopes alone. Either kind brings that tab to the
+        front, so the voice a reader asked to edit is the one in view.
+        """
+        match self.project_manager.current.voice(voice_id):
+            case Sample() as sample:
+                self._reconstructions_tab.release_instrument()
+                self.reconstruction_manager.load_reconstruction_object(
+                    sample.reconstruction,
+                    name=sample.name,
+                )
+            case Instrument():
+                self._reconstructions_tab.edit_instrument(voice_id)
+                self._navigate_to_reconstructions()
+            case _:
+                logger.warning(f"Cannot edit unknown project voice: {voice_id}")
 
     def _rebind_replaced_sample(
         self,
-        sample_id: str,
+        voice_id: str,
         reconstruction: Reconstruction,
     ) -> None:
         """Points the open Reconstructions-tab document at the reconstruction replacing the one it edits.
@@ -1046,11 +1089,11 @@ class Application:
         reconstruction, which is what identifies the open document as belonging to it.
 
         Args:
-            sample_id: The sample receiving a new reconstruction.
+            voice_id: The sample receiving a new reconstruction.
             reconstruction: The reconstruction the sample is about to hold.
         """
-        sample = self.project_manager.current.sample(sample_id)
-        if sample is None or sample.reconstruction is not self.reconstruction_manager.reconstruction:
+        sample = self.project_manager.current.voice(voice_id)
+        if not isinstance(sample, Sample) or sample.reconstruction is not self.reconstruction_manager.reconstruction:
             return
 
         self.reconstruction_manager.apply_edited(reconstruction)
@@ -1059,16 +1102,10 @@ class Application:
     def _regenerate_instrument(
         self,
         channel_name: ChannelName,
-        features: Features,
         feature_key: FeatureKey,
-        feature_value: FeatureValue,
+        features: Features,
     ) -> None:
-        self._reconstruction_coordinator.regenerate_instrument(
-            channel_name,
-            features,
-            feature_key,
-            feature_value,
-        )
+        self._reconstruction_coordinator.regenerate_instrument(channel_name, feature_key, features)
 
     def _on_reconstruction_updated(
         self,
@@ -1096,18 +1133,26 @@ class Application:
                 edit.reconstruction,
             )
 
-    def _edit_detail(self, sample_id: str, edit: ReconstructionEdit) -> HistoryDetail:
+    def _instrument_edit_detail(
+        self,
+        voice_id: str,
+        feature_key: FeatureKey,
+    ) -> HistoryDetail:
+        """The history line an instrument edit reads as: the voice and the dimension it moved."""
+        return self._sequencer_tab.instrument_edit_detail(voice_id, feature_key)
+
+    def _edit_detail(self, voice_id: str, edit: ReconstructionEdit) -> HistoryDetail:
         """The history line an edit reads as: the feature it moved, or the recording it took out."""
         match edit:
-            case InstrumentEdit():
+            case ChannelEdit():
                 return self._sequencer_tab.reconstruction_edit_detail(
-                    sample_id,
+                    voice_id,
                     edit.channel_name,
                     edit.feature_key,
                 )
             case StemRemoval():
                 return self._sequencer_tab.reconstruction_stem_detail(
-                    sample_id,
+                    voice_id,
                     edit.stem_name,
                 )
 
@@ -1120,7 +1165,7 @@ class Application:
         """
         targets = [
             (sample.id, sample.reconstruction)
-            for sample in self.project_manager.current.samples
+            for sample in samples(self.project_manager.current.voices)
             if sample.reconstruction.config.nes_frequency != nes_frequency
         ]
         if not targets:
@@ -1144,7 +1189,7 @@ class Application:
                 self._apply_retuned_sample(retuned)
             case ServiceError(exception=exception):
                 logger.error_with_traceback(exception, "Sample retune failed")
-            case ServiceCancelled():
+            case ServiceCanceled():
                 pass
 
         if not self.retune_service.is_running():
@@ -1160,8 +1205,8 @@ class Application:
         open in the Reconstructions tab rebinds so its editor and the project sample stay one object.
         """
         project = self.project_manager.current
-        sample = project.samples.get(retuned.sample_id)
-        if sample is None:
+        sample = project.voices.get(retuned.voice_id)
+        if not isinstance(sample, Sample):
             return
 
         nes_frequency = retuned.reconstruction.config.nes_frequency
@@ -1175,7 +1220,7 @@ class Application:
             coalesce=(nes_frequency,),
         ):
             self.project_controller.replace_sample_reconstruction(
-                retuned.sample_id,
+                retuned.voice_id,
                 retuned.reconstruction,
             )
 
@@ -1319,7 +1364,7 @@ class Application:
         if reconstruction is None:
             return None
 
-        for sample in self.project_manager.current.samples:
+        for sample in samples(self.project_manager.current.voices):
             if sample.reconstruction is reconstruction:
                 return sample
 
@@ -1352,7 +1397,7 @@ class Application:
         unsaved_changes = self._reconstruction_coordinator.is_unsaved()
         sample = self._owning_project_sample()
         if sample is not None:
-            ordinal = self.project_manager.current.samples.get_index(sample.id)
+            ordinal = self.project_manager.current.voices.get_index(sample.id)
             name = SEQUENCER_SAMPLE_TITLE_FORMAT.format(
                 ordinal=format(ordinal, SEQUENCER_SAMPLE_ORDINAL_FORMAT),
                 name=sample.name,
@@ -1441,7 +1486,7 @@ class Application:
     def _save_browser_shapes(self) -> None:
         """Asks every tab holding a tree to write down which of its rows stand open.
 
-        The shape belongs to the browser showing it, and it is read the once here rather than followed
+        The instrument belongs to the browser showing it, and it is read the once here rather than followed
         row by row, a pass over the rows running on the tree worker.
         """
         self._main_tab.save_browser_shape()
@@ -1452,6 +1497,22 @@ class Application:
     def _build_edit_actions(self) -> bool:
         """States the actions of the grid holding the cursor into the Edit menu being built."""
         return self._edit_router.build_menu_actions()
+
+    def _build_voice_actions(self) -> None:
+        """States the chosen voice's actions into the Voice menu being built."""
+        self._sequencer_tab.build_voice_actions()
+
+    def _add_instrument(self) -> None:
+        """Writes a voice by hand into the open project's pool."""
+        self._sequencer_tab.add_instrument()
+
+    def _add_sample_from_file(self) -> None:
+        """Brings a reconstruction saved anywhere on disk into the pool as a sample."""
+        self._sequencer_tab.add_sample_from_file()
+
+    def _import_instrument(self) -> None:
+        """Brings a FamiTracker instrument file into the pool as an instrument voice."""
+        self._sequencer_tab.import_instrument()
 
     def _play_from_start(self) -> None:
         self._playback_router.play_from_start()

@@ -59,7 +59,7 @@ def press(tag: str) -> None:
 
 
 class TestSaveConfirmationWindow:
-    def test_a_cancelled_save_keeps_the_prompt_open(self, window: GUISaveConfirmationWindow) -> None:
+    def test_a_canceled_save_keeps_the_prompt_open(self, window: GUISaveConfirmationWindow) -> None:
         answers: List[str] = []
         render(window, save_succeeds=False, answers=answers)
 

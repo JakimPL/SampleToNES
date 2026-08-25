@@ -59,7 +59,7 @@ class GUIStemsList(CallbackMixin):
 
     Both the converter's gathered recordings and a reconstruction's recorded assignment are the
     same list, so one definition draws them and each owner turns on the affordances it can
-    honour: ``draggable`` makes a row itself the thing you drag and opens a drop strip between
+    honor: ``draggable`` makes a row itself the thing you drag and opens a drop strip between
     the bands, ``master_checkbox`` gives the row a leading box moving every channel at once,
     ``removable`` gives it the danger-toned button that takes it out, and ``retain_last_row``
     holds that button back once one row is all that stands. Rows are keyed by the
@@ -387,7 +387,7 @@ class GUIStemsList(CallbackMixin):
     def _render_row(self, row: StemRowViewModel) -> None:
         """Draw what the row currently holds onto the widgets it already stands as.
 
-        A row contributing nothing greys through its theme rather than through ``enabled``, so
+        A row contributing nothing grays through its theme rather than through ``enabled``, so
         it answers a drag and a right-click as readily as one in play. A box on a channel
         switched off elsewhere takes the muted tone and stays as clickable as any other.
         """
@@ -421,14 +421,14 @@ class GUIStemsList(CallbackMixin):
         return tuple(channel_name for channel_name in self._channels_in_play if channel_name in row.offered_channels)
 
     def _channel_theme(self, channel_name: ChannelName) -> str:
-        """The tone a channel's boxes take: its own colour, muted where the channel is off."""
+        """The tone a channel's boxes take: its own color, muted where the channel is off."""
         if channel_name in self._muted_channels:
             return TAG_GLOBAL_THEME_CHANNEL_MUTED
 
         return CHANNEL_THEME_TAGS[channel_name]
 
     def _row_explanation(self, row: StemRowViewModel) -> str:
-        """What the row's hover states: where the recording is, why it is greyed out where it
+        """What the row's hover states: where the recording is, why it is grayed out where it
         contributes nothing, and how it moves where the list lets it."""
         lines = [str(row.path)]
         if not row.available:

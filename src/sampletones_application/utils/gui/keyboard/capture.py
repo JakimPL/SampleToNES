@@ -38,7 +38,7 @@ class KeyCapture(CallbackMixin):
         self._listening = False
 
         self.on_captured: Optional[Callback] = None
-        self.on_cancelled: Optional[VoidCallback] = None
+        self.on_canceled: Optional[VoidCallback] = None
 
     @property
     def is_listening(self) -> bool:
@@ -69,7 +69,7 @@ class KeyCapture(CallbackMixin):
         combination = KeyCombination(event.key, event.modifiers)
         self.stop()
         if combination in self._cancel:
-            self.call(self.on_cancelled)
+            self.call(self.on_canceled)
             return
 
         self.call(self.on_captured, combination)

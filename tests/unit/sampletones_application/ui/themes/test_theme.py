@@ -45,14 +45,14 @@ LITERAL_BACKGROUND: ColorRGBA = (36, 36, 36, 255)
 
 
 class _Styled(NamedTuple):
-    """A created theme and the source whose palette its colours read."""
+    """A created theme and the source whose palette its colors read."""
 
     theme: Theme
     source: PaletteSource
 
 
 def _live_colors(theme: Theme) -> Dict[int, ColorRGBA]:
-    """The colours DearPyGui holds for the theme's enabled ``All`` component, keyed by target."""
+    """The colors DearPyGui holds for the theme's enabled ``All`` component, keyed by target."""
     component = dpg.get_item_children(theme.tag, slot=1)[0]
     return {
         dpg.get_item_configuration(entry)["target"]: tuple(int(channel) for channel in dpg.get_value(entry))
@@ -91,14 +91,14 @@ class TestCreate:
 
         assert dpg.get_item_children(styled.theme.tag, slot=1) == components
 
-    def test_a_referenced_colour_reaches_dearpygui_resolved(self, styled: _Styled) -> None:
+    def test_a_referenced_color_reaches_dearpygui_resolved(self, styled: _Styled) -> None:
         assert _live_colors(styled.theme)[dpg.mvThemeCol_Text] == STUDIO_TEXT
 
 
 class TestRestyle:
-    """A palette swap reaches themed widgets by rewriting the colour items already created."""
+    """A palette swap reaches themed widgets by rewriting the color items already created."""
 
-    def test_a_referenced_colour_takes_the_newly_activated_palette(
+    def test_a_referenced_color_takes_the_newly_activated_palette(
         self,
         styled: _Styled,
         light: Palette,
@@ -108,13 +108,13 @@ class TestRestyle:
 
         assert _live_colors(styled.theme)[dpg.mvThemeCol_Text] == LIGHT_TEXT
 
-    def test_a_literal_colour_stays_as_written(self, styled: _Styled, light: Palette) -> None:
+    def test_a_literal_color_stays_as_written(self, styled: _Styled, light: Palette) -> None:
         styled.source.activate(light)
         PaletteBindings.apply()
 
         assert _live_colors(styled.theme)[dpg.mvThemeCol_WindowBg] == LITERAL_BACKGROUND
 
-    def test_the_reported_colour_follows_the_palette_before_any_restyle(
+    def test_the_reported_color_follows_the_palette_before_any_restyle(
         self,
         styled: _Styled,
         light: Palette,

@@ -178,6 +178,7 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         self._pending_specs = []
         if self._explorer_logic.has_loaded_children(node.filepath):
             for child in node.children:
+                assert isinstance(child, FileSystemNode), "Explorer child is not a FileSystemNode"
                 self._build_tree_node(
                     child,
                     TreeNodeState(

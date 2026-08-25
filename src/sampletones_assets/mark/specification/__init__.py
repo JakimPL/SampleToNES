@@ -21,7 +21,7 @@ class Mark(BaseModel, extra="forbid", frozen=True):
     """
 
     frame: MarkFrame = Field(description="The rounded square the mark sits on.")
-    colors: MarkColors = Field(description="The colours the mark is drawn in.")
+    colors: MarkColors = Field(description="The colors the mark is drawn in.")
     waves: MarkWaves = Field(description="The wave crossing the frame.")
     render: MarkRender = Field(description="How the mark is rasterized.")
 

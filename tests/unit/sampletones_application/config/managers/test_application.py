@@ -132,7 +132,7 @@ class TestApplicationConfigManagerPlatformScheme:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """A reader who chose the Control keys keeps them on a machine labelled Command."""
+        """A reader who chose the Control keys keeps them on a machine labeled Command."""
         monkeypatch.setattr(platform, "system", lambda: "Darwin")
         path = tmp_path / "config.yaml"
         path.write_text(yaml.safe_dump({"shortcuts": {"scheme": DEFAULT_SCHEME_NAME}}))

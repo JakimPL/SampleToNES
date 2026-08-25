@@ -1,3 +1,7 @@
+# TODO: split into a subpackage - divide into logical units
+
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Tuple
 
@@ -15,7 +19,6 @@ class InstrumentExport:
         name: Name the written instrument carries.
         channel: The NES channel the slice was reconstructed for.
         features: The per-dimension envelopes describing the slice.
-        loop: Whether the instrument repeats its envelopes while its note is held.
         nes_frequency: Rate in Hz the envelopes advance at, one item per tick.
         tuning: Where concert pitch sat for the reconstruction the slice came from.
     """
@@ -23,9 +26,48 @@ class InstrumentExport:
     name: str
     channel: ChannelName
     features: Features
-    loop: bool
     nes_frequency: int
     tuning: Tuning
+
+
+@dataclass(frozen=True)
+class InstrumentSource:
+    """One instrument ready to be written, awaiting the name its destination gives it.
+
+    An instrument reaches a file the same way whatever produced it — a channel of the open
+    reconstruction, a channel of a project sample, or a voice written by hand — so each of those
+    answers with this, and one path carries it the rest of the way. The name is left out because
+    the destination states it: whoever saves the file names the instrument the file carries.
+
+    Attributes:
+        channel: The NES channel the envelopes are read for, which a backend sounding them on
+            its own plays them through.
+        features: The per-dimension envelopes describing the instrument.
+        nes_frequency: Rate in Hz the envelopes advance at, one item per tick.
+        tuning: Where concert pitch sits for the envelopes.
+    """
+
+    channel: ChannelName
+    features: Features
+    nes_frequency: int
+    tuning: Tuning
+
+    def named(self, name: str) -> InstrumentExport:
+        """The request a backend writes, under the name its destination gave it.
+
+        Args:
+            name: The name the written instrument carries.
+
+        Returns:
+            InstrumentExport: The instrument, ready for a backend.
+        """
+        return InstrumentExport(
+            name=name,
+            channel=self.channel,
+            features=self.features,
+            nes_frequency=self.nes_frequency,
+            tuning=self.tuning,
+        )
 
 
 @dataclass(frozen=True)

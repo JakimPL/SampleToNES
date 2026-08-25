@@ -500,6 +500,12 @@ TAG_GLOBAL_DIALOG_PROJECT_UNSAVED = TagName(
     Widget.DIALOG,
     "project_unsaved",
 )
+TAG_GLOBAL_DIALOG_INSTRUMENT_IMPORTED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "instrument_imported",
+)
 TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -547,6 +553,42 @@ TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS = TagName(
     Panel.IMPLICIT,
     Widget.MENU,
     "item_reconstruction_export_instruments",
+)
+TAG_GLOBAL_MENU_GROUP_VOICE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "group_voice",
+)
+TAG_GLOBAL_MENU_GROUP_VOICE_MARKER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "group_voice_marker",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_NEW_INSTRUMENT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_new_instrument",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_ADD_SAMPLE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_add_sample",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_IMPORT_INSTRUMENT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_import_instrument",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_ADD_TO_SEQUENCER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_add_to_sequencer",
 )
 TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER = TagName(
     Page.GLOBAL,
@@ -732,6 +774,7 @@ SUF_HANDLER_NODE = compose_tag("handler", "node")
 SUF_HANDLER_DETAIL_TOOLTIP = compose_tag("handler", "detail_tooltip")
 SUF_HANDLER_HEADER = compose_tag("handler", "header")
 SUF_HANDLER_DRAG = compose_tag("handler", "drag")
+SUF_HANDLER_LIST = compose_tag("handler", "list")
 SUF_LABEL = "label"
 SUF_PATH = "path"
 SUF_TEXT = "text"

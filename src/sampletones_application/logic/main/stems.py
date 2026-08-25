@@ -111,7 +111,7 @@ class StemLevels:
         return self.of([[sources[0]]]) if sources else self.of([])
 
     def move_within_level(self, path: Path, offset: int) -> Self:
-        """Moves a recording past the neighbour it shares a level with, changing which of them ties first."""
+        """Moves a recording past the neighbor it shares a level with, changing which of them ties first."""
         source = self._source(path)
         if source is None:
             return self
@@ -129,7 +129,7 @@ class StemLevels:
         return self.of(levels)
 
     def join_level(self, path: Path, offset: int) -> Self:
-        """Sends a recording to the neighbouring level, where it picks with that level's recordings."""
+        """Sends a recording to the neighboring level, where it picks with that level's recordings."""
         source = self._source(path)
         if source is None:
             return self

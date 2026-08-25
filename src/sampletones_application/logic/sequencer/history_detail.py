@@ -1,7 +1,7 @@
 from typing import Dict, Final, List, Optional, Set
 
-from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
+from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
     OrderRegion,
@@ -9,12 +9,11 @@ from sampletones_application.view_model.sequencer.region import (
     TrackerRegion,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_application.view_model.shared.history import (
     HistoryDetail,
     HistoryDetailRole,
     HistoryDetailSegment,
-    HistoryDetailWord,
-    HistoryDetailWordSegment,
 )
 from sampletones_core.constants.enums import (
     ChannelName,
@@ -22,6 +21,7 @@ from sampletones_core.constants.enums import (
     abbreviate_channel_names,
 )
 from sampletones_core.utils.display import display_id, display_transpose, display_volume
+from sampletones_core.utils.pitch_kind import channel_pitch_kind
 
 Segments = HistoryDetail
 
@@ -30,14 +30,18 @@ _RANGE: Final[str] = "-"
 
 
 _SUBCOLUMN_LETTERS: Final[Dict[SubColumn, str]] = {
-    SubColumn.INSTRUMENT: "i",
+    SubColumn.VOICE: "n",
     SubColumn.TRANSPOSE: "t",
     SubColumn.VOLUME: "v",
 }
 _SUBCOLUMN_ROLES: Final[Dict[SubColumn, HistoryDetailRole]] = {
-    SubColumn.INSTRUMENT: HistoryDetailRole.INSTRUMENT,
+    SubColumn.VOICE: HistoryDetailRole.VOICE,
     SubColumn.TRANSPOSE: HistoryDetailRole.TRANSPOSE,
     SubColumn.VOLUME: HistoryDetailRole.VOLUME,
+}
+_KIND_ROLES: Final[Dict[VoiceKind, HistoryDetailRole]] = {
+    VoiceKind.SAMPLE: HistoryDetailRole.SAMPLE,
+    VoiceKind.INSTRUMENT: HistoryDetailRole.INSTRUMENT,
 }
 _FEATURE_LETTERS: Final[Dict[FeatureKey, str]] = {
     FeatureKey.INITIAL_PITCH: "i",
@@ -62,41 +66,53 @@ def _span(first: int, last: int) -> str:
     return f"{display_id(first)}{_RANGE}{display_id(last)}"
 
 
+def _kind_role(kind: Optional[VoiceKind]) -> HistoryDetailRole:
+    """The role a voice reads under, so its line wears the color of the kind it is about.
+
+    A voice the pool has stopped holding keeps the plain voice role, the same one the tracker's
+    voice slot wears while it names nothing. A tracker cell naming a voice since removed is read
+    that way, the same as :func:`display_voice` reads its position.
+    """
+    if kind is None:
+        return HistoryDetailRole.VOICE
+
+    return _KIND_ROLES[kind]
+
+
 class SequencerHistoryDetail:
-    """Builds the coloured detail line for each undoable sequencer gesture.
+    """Builds the colored detail line for each undoable sequencer gesture.
 
     Every method mirrors the signature of the coordinator hook it describes, so it
     can be handed straight to ``_undoable`` as the ``detail`` callable. Each returns
     an ordered tuple of :class:`HistoryDetailSegment`, tagging each token with a
     semantic role that the panel later paints. Positions, rows and pattern indices
     read as two-digit hex; channels use the ``P``/``p``/``T``/``N`` abbreviations,
-    concatenated when a sample-column gesture spans several channels.
-    Language-managed words — the loop on/off states — are emitted as
-    :class:`HistoryDetailWordSegment` keys and translated when the history view is
-    built, keeping committed entries language-independent.
+    concatenated when a sample-column gesture spans several channels. A gesture on the
+    voice pool names its voice in the color of the kind that voice is, so a recording
+    and a hand-written one read apart down the list of entries.
     """
 
     def __init__(
         self,
         tracker_logic: SequencerTrackerLogic,
-        samples_logic: SequencerSamplesLogic,
+        voices_logic: SequencerVoicesLogic,
     ) -> None:
         self._tracker_logic = tracker_logic
-        self._samples_logic = samples_logic
+        self._voices_logic = voices_logic
 
     def edit_row(
         self,
         row_index: int,
         channel: Optional[ChannelName],
-        sample_id: Optional[str],
+        voice_id: Optional[str],
         transpose: Optional[int],
         volume: Optional[int],
     ) -> Segments:
-        affected = self._edit_row_channels(channel, sample_id, row_index)
+        affected = self._edit_row_channels(channel, voice_id, row_index)
         segments = list(self._location(row_index, channel, affected))
-        if sample_id is not None:
+        if voice_id is not None:
             segments.append(self._arrow())
-            segments.append(self._sample(sample_id))
+            segments.append(self._voice(voice_id))
 
         if transpose is not None:
             segments.append(self._subcolumn(SubColumn.TRANSPOSE))
@@ -113,6 +129,23 @@ class SequencerHistoryDetail:
                 self._segment(display_volume(volume), HistoryDetailRole.VOLUME),
             )
 
+        return tuple(segments)
+
+    def note_typed(
+        self,
+        row_index: int,
+        channel: ChannelName,
+        pitch: int,
+    ) -> Segments:
+        """Names a typed note by the cell it landed in and the note the key stood for."""
+        segments = list(self._location(row_index, channel, [channel]))
+        segments.append(self._subcolumn(SubColumn.TRANSPOSE))
+        segments.append(
+            self._segment(
+                channel_pitch_kind(channel).to_name(pitch),
+                HistoryDetailRole.TRANSPOSE,
+            ),
+        )
         return tuple(segments)
 
     def note_off(
@@ -136,9 +169,7 @@ class SequencerHistoryDetail:
         subcolumn: SubColumn,
     ) -> Segments:
         affected = (
-            ChannelName.items()
-            if subcolumn is SubColumn.INSTRUMENT
-            else self._tracker_logic.relevant_channels(row_index)
+            ChannelName.items() if subcolumn is SubColumn.VOICE else self._tracker_logic.relevant_channels(row_index)
         )
         segments = list(self._location(row_index, channel, affected))
         segments.append(self._subcolumn(subcolumn))
@@ -226,73 +257,94 @@ class SequencerHistoryDetail:
         )
 
     def add_sample(self, name: str) -> Segments:
-        return (self._name(name),)
+        return (self._name(name, VoiceKind.SAMPLE),)
 
-    def remove_sample(self, sample_id: str) -> Segments:
+    def add_instrument(self, name: str) -> Segments:
+        return (self._name(name, VoiceKind.INSTRUMENT),)
+
+    def remove_voice(self, voice_id: str) -> Segments:
         return (
-            self._sample(sample_id, colon=True),
-            self._name(self._samples_logic.sample_name(sample_id)),
+            self._voice(voice_id, colon=True),
+            self._voice_name(voice_id),
         )
 
-    def replace_sample(self, sample_id: str, name: str) -> Segments:
+    def replace_sample(self, voice_id: str, name: str) -> Segments:
         """Describes a reconstruction substitution as the sample's position and the two names.
 
         ``name`` is the incoming reconstruction's, read against the sample's current one, so the
         caller builds this detail while the sample still holds the reconstruction being replaced.
         """
         return (
-            self._sample(sample_id, colon=True),
-            self._name(self._samples_logic.sample_name(sample_id)),
+            self._voice(voice_id, colon=True),
+            self._voice_name(voice_id),
             self._arrow(),
-            self._name(name),
+            self._name(name, VoiceKind.SAMPLE),
         )
 
-    def rename_sample(self, old_name: str, new_name: str) -> Segments:
-        return (self._name(old_name), self._arrow(), self._name(new_name))
+    def rename_voice(self, voice_id: str, name: str) -> Segments:
+        """Describes a rename as the name the voice carries and the one it takes.
 
-    def move_sample(self, sample_id: str, to_index: int) -> Segments:
+        Both read in the voice's own kind, which the caller builds this detail under while the
+        pool still holds the name being left behind.
+        """
         return (
-            self._sample(sample_id),
+            self._voice_name(voice_id),
+            self._arrow(),
+            self._name(name, self._voices_logic.voice_kind(voice_id)),
+        )
+
+    def move_voice(self, voice_id: str, to_index: int) -> Segments:
+        return (
+            self._voice(voice_id),
             self._arrow(),
             self._value(display_id(to_index)),
         )
 
-    def duplicate_sample(self, sample_id: str) -> Segments:
+    def duplicate_voice(self, voice_id: str) -> Segments:
         return (
-            self._sample(sample_id, colon=True),
-            self._name(self._samples_logic.sample_name(sample_id)),
-        )
-
-    def set_sample_loop(self, sample_id: str, loop: bool) -> Segments:
-        word = HistoryDetailWord.LOOP_ON if loop else HistoryDetailWord.LOOP_OFF
-        return (
-            self._sample(sample_id, colon=True),
-            HistoryDetailWordSegment(word=word, role=HistoryDetailRole.VALUE),
+            self._voice(voice_id, colon=True),
+            self._voice_name(voice_id),
         )
 
     def edit_reconstruction(
         self,
-        sample_id: str,
+        voice_id: str,
         channel_name: ChannelName,
         feature_key: FeatureKey,
     ) -> Segments:
         """Describes a regenerated sample: its position, channel, and edited feature.
 
         The channel and the feature both render abbreviated — the ``P``/``p``/``T``/``N``
-        channel letter and the feature's one-letter code in the same colour the details
+        channel letter and the feature's one-letter code in the same color the details
         tab plots it with — mirroring the tracker rows.
         """
         return (
-            self._sample(sample_id, colon=True),
+            self._voice(voice_id, colon=True),
             self._channel([channel_name]),
             self._segment(_FEATURE_LETTERS[feature_key], _FEATURE_ROLES[feature_key]),
         )
 
-    def remove_stem(self, sample_id: str, stem_name: str) -> Segments:
+    def edit_instrument(
+        self,
+        voice_id: str,
+        feature_key: FeatureKey,
+    ) -> Segments:
+        """Describes a hand-written voice's edited dimension: its position and the dimension.
+
+        An instrument is one set of envelopes every channel reads what it can of, so the line
+        names the dimension alone, as the feature's one-letter code in the color the details tab
+        plots it with.
+        """
+        return (
+            self._voice(voice_id, colon=True),
+            self._segment(_FEATURE_LETTERS[feature_key], _FEATURE_ROLES[feature_key]),
+        )
+
+    def remove_stem(self, voice_id: str, stem_name: str) -> Segments:
         """Describes a recording taken out of a sample's reconstruction: its position and name."""
         return (
-            self._sample(sample_id, colon=True),
-            self._name(stem_name),
+            self._voice(voice_id, colon=True),
+            self._name(stem_name, self._voices_logic.voice_kind(voice_id)),
         )
 
     def value(self, number: int) -> Segments:
@@ -301,14 +353,14 @@ class SequencerHistoryDetail:
     def _edit_row_channels(
         self,
         channel: Optional[ChannelName],
-        sample_id: Optional[str],
+        voice_id: Optional[str],
         row_index: int,
     ) -> List[ChannelName]:
         if channel is not None:
             return [channel]
 
-        if sample_id is not None:
-            return self._tracker_logic.used_generators(sample_id)
+        if voice_id is not None:
+            return self._tracker_logic.used_generators(voice_id)
 
         return self._tracker_logic.relevant_channels(row_index)
 
@@ -377,7 +429,7 @@ class SequencerHistoryDetail:
     def _covered_channels(
         covered: Set[Optional[ChannelName]],
     ) -> List[ChannelName]:
-        """The channels a run of columns names, an aggregate one standing for all it summarises.
+        """The channels a run of columns names, an aggregate one standing for all it summarizes.
 
         Both grids carry a column that answers for every channel — the tracker's sample column and
         the order's master row — so a gesture reaching one of them reads as the whole set.
@@ -409,21 +461,32 @@ class SequencerHistoryDetail:
             _SUBCOLUMN_ROLES[subcolumn],
         )
 
-    def _name(self, text: str) -> HistoryDetailSegment:
-        return HistoryDetailSegment(
-            text=text,
-            role=HistoryDetailRole.NAME,
+    def _name(
+        self,
+        text: str,
+        kind: Optional[VoiceKind],
+    ) -> HistoryDetailSegment:
+        return HistoryDetailSegment(text=text, role=_kind_role(kind))
+
+    def _voice_name(self, voice_id: str) -> HistoryDetailSegment:
+        """The name a voice in the pool carries, read in the color of the kind it is."""
+        return self._name(
+            self._voices_logic.voice_name(voice_id),
+            self._voices_logic.voice_kind(voice_id),
         )
 
-    def _sample(
+    def _voice(
         self,
-        sample_id: str,
+        voice_id: str,
         *,
         colon: bool = False,
     ) -> HistoryDetailSegment:
-        position = self._samples_logic.sample_position(sample_id)
+        position = self._voices_logic.voice_position(voice_id)
         text = f"{position}:" if colon else position
-        return HistoryDetailSegment(text=text, role=HistoryDetailRole.SAMPLE)
+        return HistoryDetailSegment(
+            text=text,
+            role=_kind_role(self._voices_logic.voice_kind(voice_id)),
+        )
 
     def _arrow(self) -> HistoryDetailSegment:
         return HistoryDetailSegment(

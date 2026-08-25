@@ -47,7 +47,7 @@ class TestPropertiesCommitHistory:
         info = application.project_controller.project.info
         assert (info.title, info.author, info.comment) == ("Title", "Author", "Comment")
 
-    def test_the_metre_joins_the_same_entry_as_the_info(self) -> None:
+    def test_the_meter_joins_the_same_entry_as_the_info(self) -> None:
         """The highlights are project settings, and the dialog commits them beside the info."""
         application = _application()
 

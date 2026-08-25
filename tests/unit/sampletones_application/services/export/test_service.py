@@ -10,7 +10,7 @@ from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.service import ExportService
 from sampletones_application.services.export.success import ExportSuccess
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceProgress,
     ServiceStarted,
 )
@@ -20,7 +20,6 @@ from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.progress import (
-    SILENT_REPORTER,
     ExportReporter,
     announce,
 )
@@ -31,8 +30,10 @@ from sampletones_core.exports.request import (
 )
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.exports.stage import ExportStage
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.project import Project
 from sampletones_shared.music import Tuning
+from sampletones_shared.utils.progress import silent_reporter
 
 NES_FREQUENCY: Final[int] = 60
 NOTHING_WRITTEN: Final[int] = 0
@@ -76,7 +77,7 @@ class StubBackend:
         self,
         destination: Path,
         request: InstrumentExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         return self._write("instrument", destination, request, report)
 
@@ -84,7 +85,7 @@ class StubBackend:
         self,
         destination: Path,
         request: SampleExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         return self._write("sample", destination, request, report)
 
@@ -92,7 +93,7 @@ class StubBackend:
         self,
         destination: Path,
         request: ProjectExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         return self._write("project", destination, request, report)
 
@@ -121,13 +122,12 @@ def build_instrument(name: str = "Lead") -> InstrumentExport:
         channel=ChannelName.PULSE1,
         features=Features(
             initial_pitch=60,
-            volume=np.full(8, 15, dtype=int),
-            arpeggio=np.zeros(8, dtype=int),
+            volume=Envelope(items=(15,) * 8),
+            arpeggio=Envelope(items=(0,) * 8),
             pitch=None,
             hi_pitch=None,
             duty_cycle=None,
         ),
-        loop=False,
         nes_frequency=NES_FREQUENCY,
         tuning=Tuning(),
     )
@@ -553,7 +553,7 @@ class CancellingBackend:
         self,
         destination: Path,
         request: InstrumentExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         announce(report, ExportStage.WALKING, NOTHING_WRITTEN, None)
         self.stages.append(ExportStage.WALKING)
@@ -566,7 +566,7 @@ class CancellingBackend:
         self,
         destination: Path,
         request: SampleExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         raise NotImplementedError
 
@@ -574,7 +574,7 @@ class CancellingBackend:
         self,
         destination: Path,
         request: ProjectExport,
-        report: ExportReporter = SILENT_REPORTER,
+        report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         raise NotImplementedError
 
@@ -601,18 +601,18 @@ class TestWhatARunSaysAboutItself:
 
 
 class TestWithdrawingARun:
-    """A cancelled export answers with a cancellation rather than a failure."""
+    """A canceled export answers with a cancellation rather than a failure."""
 
-    def test_a_cancelled_run_ends_cancelled(self, service, tmp_path) -> None:
+    def test_a_canceled_run_ends_canceled(self, service, tmp_path) -> None:
         export_service, results = service
         export_service.export_instrument(
             tmp_path / "instrument.nsf",
             CancellingBackend(export_service),
             build_instrument(),
         )
-        assert isinstance(outcome(results), ServiceCancelled)
+        assert isinstance(outcome(results), ServiceCanceled)
 
-    def test_a_cancelled_run_reports_no_failure(self, service, tmp_path) -> None:
+    def test_a_canceled_run_reports_no_failure(self, service, tmp_path) -> None:
         export_service, results = service
         export_service.export_instrument(
             tmp_path / "instrument.nsf",

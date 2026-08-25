@@ -4,6 +4,7 @@ from .implementation.pulse import PulseGenerator
 from .implementation.triangle import TriangleGenerator
 from .maps import (
     CHANNEL_CLASSES,
+    CLASS_NAME_TO_GENERATOR_MAP,
     GENERATOR_CLASS_MAP,
     GENERATOR_TO_CLASS_NAME_MAP,
     GENERATOR_TO_INSTRUCTION_MAP,
@@ -11,12 +12,14 @@ from .maps import (
     MIXER_LEVELS,
 )
 from .render import render_channels, render_instructions
+from .tonal import TonalGenerator
 from .types import (
     GeneratorClass,
     GeneratorClassNames,
     GeneratorT,
     GeneratorTypeUnion,
     GeneratorUnion,
+    TonalGeneratorUnion,
 )
 from .utils import (
     get_generator_by_instruction,
@@ -30,6 +33,7 @@ __all__ = [
     "GENERATOR_CLASS_MAP",
     "GENERATOR_TO_INSTRUCTION_MAP",
     "INSTRUCTION_TO_GENERATOR_MAP",
+    "CLASS_NAME_TO_GENERATOR_MAP",
     "GENERATOR_TO_CLASS_NAME_MAP",
     "MIXER_LEVELS",
     "Generator",
@@ -40,6 +44,8 @@ __all__ = [
     "GeneratorUnion",
     "NoiseGenerator",
     "PulseGenerator",
+    "TonalGenerator",
+    "TonalGeneratorUnion",
     "TriangleGenerator",
     "get_generator_by_instruction",
     "get_generators_by_channels",

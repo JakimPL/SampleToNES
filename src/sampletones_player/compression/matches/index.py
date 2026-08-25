@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from itertools import pairwise
 from typing import List, Tuple
 
-from sampletones_player.specification.compression import BYTE_VALUES
+from sampletones_player.specification.binary import BYTE_VALUES
 
 
 @dataclass(frozen=True)

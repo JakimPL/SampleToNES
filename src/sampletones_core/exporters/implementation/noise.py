@@ -1,7 +1,5 @@
 from typing import ClassVar, Dict, List, Tuple, Union
 
-import numpy as np
-
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.constants.general import NUM_PERIODS
 from sampletones_core.generators import GeneratorTypeUnion, NoiseGenerator
@@ -10,7 +8,6 @@ from sampletones_core.instructions import (
     InstructionTypeUnion,
     NoiseInstruction,
 )
-from sampletones_core.types.feature import FeatureMap
 
 from ..exporter import Exporter
 
@@ -65,19 +62,29 @@ class NoiseExporter(Exporter[NoiseInstruction]):
         return initial_period
 
     @classmethod
-    def get_feature_map(
+    def unstated_features(cls, instructions: List[NoiseInstruction]) -> Tuple[FeatureKey, ...]:
+        """Every dimension the noise channel reads is one its frames choose, so it states them all.
+
+        Args:
+            instructions: The channel's per-frame instructions.
+
+        Returns:
+            Tuple[FeatureKey, ...]: No dimension, since the stream writes each one it offers.
+        """
+        return ()
+
+    @classmethod
+    def read_envelopes(
         cls,
         instructions: List[NoiseInstruction],
         initial_pitch: int,
-    ) -> FeatureMap:
+    ) -> Dict[FeatureKey, Tuple[int, ...]]:
         _, periods, volumes, duty_cycles = cls.extract_data(instructions)
-        arpeggio = (np.array(periods) - initial_pitch) % NUM_PERIODS
 
         return {
-            FeatureKey.INITIAL_PITCH: initial_pitch,
-            FeatureKey.VOLUME: np.array(volumes).astype(np.int8),
-            FeatureKey.ARPEGGIO: arpeggio.astype(np.int8),
-            FeatureKey.DUTY_CYCLE: np.array(duty_cycles).astype(np.int8),
+            FeatureKey.VOLUME: tuple(volumes),
+            FeatureKey.ARPEGGIO: tuple((period - initial_pitch) % NUM_PERIODS for period in periods),
+            FeatureKey.DUTY_CYCLE: tuple(duty_cycles),
         }
 
     @classmethod

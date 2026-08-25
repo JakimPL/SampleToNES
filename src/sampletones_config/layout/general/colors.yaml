@@ -19,4 +19,10 @@ features:
   volume: .feature_volume
   arpeggio: .feature_arpeggio
   pitch: .feature_pitch
+  hi_pitch: .feature_hi_pitch
   duty_cycle: .feature_duty_cycle
+channels:
+  pulse1: .channel_pulse1
+  pulse2: .channel_pulse2
+  triangle: .channel_triangle
+  noise: .channel_noise

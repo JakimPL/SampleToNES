@@ -7,7 +7,13 @@ from sampletones_core.constants.enums import (
     SelectorName,
     SpectralDistance,
 )
-from sampletones_core.constants.general import MAX_VOLUME, MIN_VOLUME
+from sampletones_core.constants.general import (
+    MAX_VOLUME,
+    MIN_VOLUME,
+    MIXER_NOISE,
+    MIXER_PULSE,
+    MIXER_TRIANGLE,
+)
 
 # Matching floors
 
@@ -59,6 +65,13 @@ TRANSITION_VOLUME_WEIGHT: Final[float] = 0.02
 TRANSITION_TIMBRE_WEIGHT: Final[float] = 0.10
 TRANSITION_ON_OFF_WEIGHT: Final[float] = 0.20
 
+# Pitch refinement
+
+REFINE_PITCH: Final[bool] = True
+REFINEMENT_CONFIDENCE: Final[float] = 0.15
+REFINEMENT_CHANGE_WEIGHT: Final[float] = 2.0
+REFINEMENT_WINDOW: Final[int] = 4
+
 # Mixer drive
 
 DRIVE: Final[float] = 1.0
@@ -71,6 +84,7 @@ DEFAULT_STEMS_CHANNEL_CAP: Final[int] = ALL_STEMS_CHANNEL_CAP
 DEFAULT_STEMS_HIERARCHY_MODE: Final[HierarchyMode] = HierarchyMode.ROUND_ROBIN
 RESTING_STEM_ID: Final[int] = -1
 RESTING_FRAME_COST: Final[float] = 0.0
+STEM_ACTIVITY_FLOOR: Final[float] = TEMPORAL_LEVEL_FLOOR * min(MIXER_PULSE, MIXER_TRIANGLE, MIXER_NOISE)
 
 # Execution
 

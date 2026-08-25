@@ -1,27 +1,32 @@
-from typing import Callable, Dict, FrozenSet, Optional
+from typing import Callable, Dict, Optional
 
-import numpy as np
-
+from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
 )
-from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.reconstruction.editing import (
+    InstrumentEdit,
+    InstrumentEditingProtocol,
+    ReconstructionEdit,
+)
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.reconstruction.instruments import (
+    InstrumentViewModel,
     ReconstructionInstrumentsViewModel,
 )
 from sampletones_application.view_model.reconstruction.update import (
     ReconstructionUpdate,
 )
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_core.exporters import Features
+from sampletones_core.exporters import Features, playing_channels
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import features_footprint
-from sampletones_core.types.feature import FeatureValue
+from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 OnReconstructionInstrumentUpdatedCallback = Callable[
-    [ChannelName, Features, FeatureKey, FeatureValue],
+    [ChannelName, FeatureKey, Features],
     None,
 ]
 
@@ -29,11 +34,11 @@ OnReconstructionInstrumentUpdatedCallback = Callable[
 class ReconstructionInstrumentsLogic(CallbackMixin):
     def __init__(
         self,
-        reconstruction_manager: ReconstructionManager,
+        editor: InstrumentEditingProtocol,
         *,
         scheduling: SchedulingBehavior,
     ) -> None:
-        self.reconstruction_manager = reconstruction_manager
+        self._editor = editor
         self._scheduling = scheduling
 
         self._pending_reconstruction_update: Optional[ReconstructionUpdate] = None
@@ -41,11 +46,36 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self.on_view_changed: Optional[Callable[[ReconstructionInstrumentsViewModel], None]] = None
         self.on_feature_data_changed: Optional[Callable[[Optional[Dict[ChannelName, Features]]], None]] = None
         self.on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
+        self.on_display_refreshed: Optional[VoidCallback] = None
 
     def update_display(self) -> None:
-        channels = self._current_generators()
-        self.call(self.on_view_changed, self._build_view_model(channels))
-        self.call(self.on_feature_data_changed, channels)
+        """Renders whatever the panel has in front of it, envelopes and figures together.
+
+        The cards beside the panel describe the same voice, so the render is reported once it has
+        been made and they settle on it: an edit to an instrument redraws its waveform here.
+        """
+        self.call(self.on_view_changed, self._build_view_model(self._current_generators()))
+        self.call(self.on_feature_data_changed, self._displayed_features())
+        self.call(self.on_display_refreshed)
+
+    def _displayed_features(self) -> Optional[Dict[ChannelName, Features]]:
+        """The envelopes the panel draws: a reconstruction's channels, or an instrument's own set.
+
+        An instrument is drawn on the tab the panel shows it under, which is the channel offering every
+        dimension an instrument writes.
+        """
+        instrument = self.instrument_edit
+        if instrument is not None:
+            return self._instrument_channels(instrument)
+
+        return self._current_generators()
+
+    @staticmethod
+    def _instrument_channels(
+        instrument: InstrumentEdit,
+    ) -> Dict[ChannelName, Features]:
+        """An instrument's envelopes under the channel the panel shows it on."""
+        return {INSTRUMENT_CHANNEL: instrument.features}
 
     def refresh_view(self) -> None:
         """Reports which channels play and the sizes they occupy, leaving the displayed envelopes as they are.
@@ -54,16 +84,36 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         channels settle on it. The envelopes themselves are left to the edit that started the
         regeneration, so a field the user is still typing in keeps what they wrote.
         """
-        self.call(self.on_view_changed, self._build_view_model(self._current_generators()))
+        self.call(
+            self.on_view_changed,
+            self._build_view_model(self._current_generators()),
+        )
 
     def _current_generators(self) -> Optional[Dict[ChannelName, Features]]:
-        feature_data = self.reconstruction_manager.current_features
-        return None if feature_data is None else feature_data.channels
+        """The channels of the reconstruction in front of the panel, where one is."""
+        match self._editor.edited_instrument():
+            case ReconstructionEdit() as edit:
+                return edit.channels
+            case _:
+                return None
+
+    @property
+    def instrument_edit(self) -> Optional[InstrumentEdit]:
+        """The instrument in front of the panel, where one is."""
+        match self._editor.edited_instrument():
+            case InstrumentEdit() as edit:
+                return edit
+            case _:
+                return None
 
     def _build_view_model(
         self,
         channels: Optional[Dict[ChannelName, Features]],
     ) -> ReconstructionInstrumentsViewModel:
+        instrument = self.instrument_edit
+        if instrument is not None:
+            return self._instrument_view_model(instrument)
+
         if channels is None:
             return ReconstructionInstrumentsViewModel(
                 reconstruction_loaded=False,
@@ -71,29 +121,42 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
                 footprint=None,
             )
 
-        playing_channels: FrozenSet[ChannelName] = frozenset(
-            channel_name for channel_name, features in channels.items() if features.has_frames
-        )
         return ReconstructionInstrumentsViewModel(
             reconstruction_loaded=True,
-            playing_channels=playing_channels,
+            playing_channels=playing_channels(channels),
             footprint=self._build_footprint(channels),
+        )
+
+    def _instrument_view_model(
+        self,
+        instrument: InstrumentEdit,
+    ) -> ReconstructionInstrumentsViewModel:
+        """What the panel shows of an instrument: its envelopes, its roots and what it costs.
+
+        An instrument is shown under one channel, and it plays there once its envelopes describe a
+        frame, so it stands by the way a reconstruction's silent channel does until the reader
+        writes one.
+        """
+        return ReconstructionInstrumentsViewModel(
+            reconstruction_loaded=False,
+            playing_channels=playing_channels(self._instrument_channels(instrument)),
+            footprint=VoiceFootprintViewModel.from_instrument(features_footprint(instrument.features)),
+            instrument=InstrumentViewModel(name=instrument.name),
         )
 
     def _build_footprint(
         self,
         channels: Dict[ChannelName, Features],
-    ) -> SampleFootprintViewModel:
+    ) -> VoiceFootprintViewModel:
         """Measures each playing channel's instrument as the size its own export writes.
 
-        A reconstruction has no loop flag of its own — that belongs to a sample placed in a
-        project — so each instrument is measured playing its envelopes once, matching what
+        Each instrument is measured at the lengths its own envelopes state, matching what
         **Export instrument...** produces. A channel standing by is written nowhere, so it is
         measured nowhere and the sample's total names what the export costs.
         """
-        return SampleFootprintViewModel.from_footprints(
+        return VoiceFootprintViewModel.from_footprints(
             {
-                channel_name: features_footprint(features, loop=False)
+                channel_name: features_footprint(features)
                 for channel_name, features in channels.items()
                 if features.has_frames
             }
@@ -104,49 +167,59 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         channel_name: ChannelName,
         value: int,
     ) -> None:
+        """Moves the pitch one channel of a reconstruction has its frames measured against.
+
+        A conversion states the value it found, and moving it rebuilds the channel's frames around
+        the new origin, so the edit travels back out through the regeneration.
+        """
+        features = self._get_features(channel_name)
         self._schedule_reconstruction_update(
             ReconstructionUpdate(
                 channel_name,
                 FeatureKey.INITIAL_PITCH,
-                value,
+                features.model_copy(update={"initial_pitch": value}),
             )
         )
 
-    def handle_bar_point_clicked(
+    def handle_envelope_changed(
         self,
         channel_name: ChannelName,
         feature_key: FeatureKey,
-        data: np.ndarray,
+        envelope: Envelope[int],
     ) -> None:
-        self._report_edited_size(channel_name, feature_key, data)
-        self._schedule_reconstruction_update(
-            ReconstructionUpdate(
-                channel_name,
-                feature_key,
-                data,
-            )
-        )
+        """Takes one dimension as an edit leaves it, values and loop point together.
 
-    def handle_raw_data_changed(
+        The panel states the whole dimension, so a bar redrawn on the plot and a sequence typed
+        into the text field arrive the same way and are written the same way.
+        """
+        if self._write_instrument_envelope(feature_key, envelope):
+            return
+
+        features = self._get_features(channel_name).with_envelope(feature_key, envelope)
+        self._report_edited_size(channel_name, features)
+        self._schedule_reconstruction_update(ReconstructionUpdate(channel_name, feature_key, features))
+
+    def _write_instrument_envelope(
         self,
-        channel_name: ChannelName,
         feature_key: FeatureKey,
-        data: np.ndarray,
-    ) -> None:
-        self._report_edited_size(channel_name, feature_key, data)
-        self._schedule_reconstruction_update(
-            ReconstructionUpdate(
-                channel_name,
-                feature_key,
-                data,
-            )
-        )
+        envelope: Envelope[int],
+    ) -> bool:
+        """Writes one dimension of the instrument in front of the panel, reporting whether it did.
+
+        An instrument stands on no audio, so an edit reaches it at once rather than through the
+        regeneration a reconstruction's envelopes go back through.
+        """
+        if self.instrument_edit is None:
+            return False
+
+        self._editor.write_envelope(feature_key, envelope)
+        self.update_display()
+        return True
 
     def _report_edited_size(
         self,
         channel_name: ChannelName,
-        feature_key: FeatureKey,
-        data: np.ndarray,
+        features: Features,
     ) -> None:
         """Reports what the edited envelope costs as the edit arrives, ahead of its regeneration.
 
@@ -160,27 +233,8 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
 
         self.call(
             self.on_view_changed,
-            self._build_view_model(
-                self._with_edit(
-                    channels,
-                    channel_name,
-                    feature_key,
-                    data,
-                )
-            ),
+            self._build_view_model({**channels, channel_name: features}),
         )
-
-    def _with_edit(
-        self,
-        channels: Dict[ChannelName, Features],
-        channel_name: ChannelName,
-        feature_key: FeatureKey,
-        data: np.ndarray,
-    ) -> Dict[ChannelName, Features]:
-        """The loaded channels with one envelope replaced, leaving the loaded ones as they are."""
-        edited = channels[channel_name].model_copy(deep=True)
-        edited[feature_key] = data
-        return {**channels, channel_name: edited}
 
     def _schedule_reconstruction_update(
         self,
@@ -204,18 +258,12 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         if self._pending_reconstruction_update is None:
             return
 
-        channel_name, feature_key, data = self._pending_reconstruction_update
+        channel_name, feature_key, features = self._pending_reconstruction_update
         self._pending_reconstruction_update = None
-        self.call(
-            self.on_reconstruction_instrument_updated,
-            channel_name,
-            self._get_features(channel_name),
-            feature_key,
-            data,
-        )
+        self.call(self.on_reconstruction_instrument_updated, channel_name, feature_key, features)
 
     def _get_features(self, channel_name: ChannelName) -> Features:
-        current_features = self.reconstruction_manager.current_features
-        assert current_features is not None, "Current features should not be None"
+        channels = self._current_generators()
+        assert channels is not None, "A channel edit arrives only while a reconstruction is open"
 
-        return current_features[channel_name]
+        return channels[channel_name]

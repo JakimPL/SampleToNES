@@ -51,7 +51,7 @@ class MarkRaster:
         return image
 
     def _background(self) -> Image.Image:
-        """The frame: a vertical gradient between the two background colours, rounded at its corners."""
+        """The frame: a vertical gradient between the two background colors, rounded at its corners."""
         size = (self.canvas, self.canvas)
         top = Image.new("RGB", size, self.mark.colors.background.top)
         bottom = Image.new("RGB", size, self.mark.colors.background.bottom)

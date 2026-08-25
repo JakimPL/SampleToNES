@@ -1,6 +1,7 @@
 from dataclasses import replace
 from typing import Dict, Final, FrozenSet, Iterable, Sequence, Tuple
 
+from sampletones_player.compression.admit import admit_seeds
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.dictionary.prune import prune
@@ -13,13 +14,16 @@ from sampletones_player.compression.parse.song import parse_planes
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.compression.progress.monitor import CodecMonitor
-from sampletones_player.compression.progress.report import SILENT_REPORTER, CodecReporter
+from sampletones_player.compression.progress.report import (
+    CodecReporter,
+)
 from sampletones_player.compression.search import search_phrases
 from sampletones_player.compression.tokens.hold import HoldToken
 from sampletones_player.compression.tokens.literal import LiteralToken
 from sampletones_player.compression.tokens.phrase import PhraseToken
 from sampletones_player.compression.tokens.types import TokenUnion
 from sampletones_player.specification.compression import PHRASE_ID_ESCAPE, TokenTag
+from sampletones_shared.utils.progress import silent_reporter
 
 STREAM_START: Final[int] = 0
 SETTLING_ROUNDS: Final[int] = 3
@@ -90,14 +94,8 @@ def _settle(
     options: CodecOptions,
     boundaries: FrozenSet[int],
     monitor: CodecMonitor,
+    baseline: Sequence[Parse],
 ) -> Tuple[PhraseTable, Tuple[Parse, ...]]:
-    baseline = parse_planes(
-        cache,
-        phrase_table(()),
-        replace(options, phrases=False),
-        boundaries,
-        monitor,
-    )
     parses = parse_planes(cache, table, options, boundaries, monitor)
     for _ in range(SETTLING_ROUNDS):
         pruned = prune(
@@ -121,36 +119,67 @@ def encode_planes(
     *,
     options: CodecOptions,
     boundaries: FrozenSet[int],
-    report: CodecReporter = SILENT_REPORTER,
+    report: CodecReporter = silent_reporter,
 ) -> CompressedPlanes:
-    """Compresses a song's eight planes into the dictionary and streams the driver reads.
+    """Compresses a song's planes into the dictionary and streams the driver reads.
 
-    The instruments seed the dictionary, the search fills what they leave behind, and the table
-    then settles: phrases the parse names keep their place in the order they are leaned on, and
-    the parse runs again over the ids that frees, which is what puts the busiest phrases inside
-    the opcodes that name them.
+    Every layer is weighed against one reading of the song naming no phrase at all: the seeds a
+    dictionary crowded past its ids keeps, and the bytes each phrase spares once the table
+    settles. The instruments seed the dictionary, the search fills what they leave behind, and
+    the table then settles — phrases the parse names keep their place in the order they are
+    leaned on, and the parse runs again over the ids that frees, which is what puts the busiest
+    phrases inside the opcodes that name them.
 
     Args:
-        planes: The eight planes, two per channel.
+        planes: The planes under the channel each belongs to.
         seeds: The phrases the song's instruments offer.
         options: Which of the codec's layers the encoding is built from.
         boundaries: The ticks a token starts on, beyond the first tick of the song.
         report: Hears what the run holds each time it looks up, and answers whether it goes on.
 
     Returns:
-        CompressedPlanes: The dictionary, the eight token streams and the ticks the song lasts.
+        CompressedPlanes: The dictionary, every plane's token stream and the ticks the song lasts.
 
     Raises:
-        OperationCancelled: If ``report`` withdraws the run.
+        OperationCanceled: If ``report`` withdraws the run.
     """
     cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes.planes)
     monitor = CodecMonitor(report)
     entries = boundaries | {STREAM_START}
-    table = phrase_table(seeds) if options.phrases else phrase_table(())
+    baseline = parse_planes(
+        cache,
+        phrase_table(()),
+        replace(options, phrases=False),
+        entries,
+        monitor,
+    )
+    table = (
+        admit_seeds(
+            cache,
+            seeds,
+            baseline,
+            options,
+        )
+        if options.phrases
+        else phrase_table(())
+    )
     if options.phrases and options.search:
-        table = search_phrases(cache, table, options, entries, monitor)
+        table = search_phrases(
+            cache,
+            table,
+            options,
+            entries,
+            monitor,
+        )
 
-    table, parses = _settle(cache, table, options, entries, monitor)
+    table, parses = _settle(
+        cache,
+        table,
+        options,
+        entries,
+        monitor,
+        baseline,
+    )
     compressed = CompressedPlanes(
         phrases=table,
         streams=PlaneOrder.across(emit(parse.tokens) for parse in parses),

@@ -47,10 +47,8 @@ def calculate_spectral_loss(
                     axis=-1,
                 )
             )
-            denominator = xp.sqrt(xp.sum(weights * reference**2, axis=-1))
         case SpectralDistance.ABSOLUTE:
             numerator = xp.sum(weights * xp.abs(candidates - reference), axis=-1)
-            denominator = xp.sum(weights * reference, axis=-1)
         case SpectralDistance.BETA_DIVERGENCE:
             numerator = xp.sum(
                 weights
@@ -61,11 +59,44 @@ def calculate_spectral_loss(
                 ),
                 axis=-1,
             )
-            denominator = xp.sum(weights * reference, axis=-1)
         case _:
             raise ValueError(f"Unsupported spectral distance: {distance}")
 
+    denominator = weighted_reference_energy(reference, weights, distance=distance)
     return numerator / (denominator + SPECTRUM_FLOOR)
+
+
+def weighted_reference_energy(
+    reference: xp.ndarray,
+    weights: xp.ndarray,
+    *,
+    distance: SpectralDistance,
+) -> xp.ndarray:
+    """
+    The target's own weighted energy, the scale its spectral distance is measured against.
+
+    Every distance family divides by this quantity, so a loss reads as a fraction of what the
+    target holds. Read on its own it says how much there is to cover, which is what separates a
+    loud target from a quiet one when two targets are compared.
+
+    Args:
+        reference: Target feature values.
+        weights: Per-bin weights of the configuration.
+        distance: Per-bin distance family the energy is measured for.
+
+    Returns:
+        The weighted energy, in the units the matching distance produces.
+
+    Raises:
+        ValueError: If the spectral distance is unsupported.
+    """
+    match distance:
+        case SpectralDistance.SQUARED:
+            return xp.sqrt(xp.sum(weights * reference**2, axis=-1))
+        case SpectralDistance.ABSOLUTE | SpectralDistance.BETA_DIVERGENCE:
+            return xp.sum(weights * reference, axis=-1)
+        case _:
+            raise ValueError(f"Unsupported spectral distance: {distance}")
 
 
 def _prepare(

@@ -6,7 +6,7 @@ from sampletones_application.services.export.result import (
     ExportSuccess,
 )
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceProgress,
     ServiceStarted,
 )
@@ -16,7 +16,7 @@ from sampletones_application.view_model.shared.export import (
     ExportPhase,
     SongExportViewModel,
 )
-from sampletones_core.exports.stage import TRAVELLING_STAGES, ExportStage
+from sampletones_core.exports.stage import TRAVELING_STAGES, ExportStage
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -94,7 +94,7 @@ class SongExportLogic(CallbackMixin):
                 self._on_started()
             case ServiceProgress() as progress:
                 self._on_progress(progress)
-            case ExportSuccess() | ExportError() | ServiceCancelled():
+            case ExportSuccess() | ExportError() | ServiceCanceled():
                 self._on_finished()
 
     def _on_started(self) -> None:
@@ -116,20 +116,14 @@ class SongExportLogic(CallbackMixin):
             return
 
         self._reach(stage)
-        self._travelling = stage in TRAVELLING_STAGES
-        self._progress = self._fraction(progress)
+        self._travelling = stage in TRAVELING_STAGES
+        self._progress = progress.fraction
         self._figure = self._figure_text(progress)
         self._emit_view()
 
     def _reach(self, stage: ExportStage) -> None:
         if stage not in self._stages:
             self._stages.append(stage)
-
-    def _fraction(self, progress: ServiceProgress[ExportStage]) -> float:
-        if progress.total <= NOTHING_MEASURED:
-            return NO_PROGRESS
-
-        return progress.completed / progress.total
 
     def _figure_text(self, progress: ServiceProgress[ExportStage]) -> str:
         """What the stage under way has covered, stated where the stage travels toward no end.
@@ -160,5 +154,5 @@ class SongExportLogic(CallbackMixin):
             stages=tuple(self._stages),
             figure=self._figure,
             progress=self._progress,
-            travelling=self._travelling,
+            traveling=self._travelling,
         )

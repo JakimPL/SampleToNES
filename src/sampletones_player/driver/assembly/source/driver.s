@@ -1,6 +1,7 @@
 .setcpu "6502"
 
 .include "nes.inc"
+.include "song.inc"
 
 .export nsf_init
 .export nsf_play
@@ -8,8 +9,15 @@
 
 .import clock_reset
 .import clock_advance
+.import clock_step
 .import channels_reset
-.import channels_write_tick
+.import channels_rewind
+.import channels_advance
+.import channels_write
+
+.segment "ZEROPAGE"
+
+pending_ticks:  .res 1
 
 .segment "CODE"
 
@@ -31,12 +39,27 @@ start_song:
     sta NOISE_LENGTH_COUNTER
     jsr clock_reset
     jsr channels_reset
-    jmp channels_write_tick
+    jsr channels_advance
+    jmp channels_write
 
+; Advances the streams by the ticks this call is due and writes the tick they land on. A call
+; crossing the song's end either brings the planes back to where the song repeats and plays on,
+; or leaves the console holding what the final tick wrote.
 advance_song:
     jsr clock_advance
     beq @held
-    jmp channels_write_tick
+    sta pending_ticks
+@next:
+    jsr clock_step
+    beq @held
+    cmp #TICK_REPEATED
+    bne @plays
+    jsr channels_rewind
+@plays:
+    jsr channels_advance
+    dec pending_ticks
+    bne @next
+    jmp channels_write
 @held:
     rts
 

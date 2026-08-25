@@ -56,7 +56,7 @@ class BitphaseSong(BaseModel):
     )
     a4_tuning_hz: float = Field(
         default=DEFAULT_A4_TUNING,
-        description="Concert pitch the tuning table centres on.",
+        description="Concert pitch the tuning table centers on.",
     )
     virtual_channel_map: Dict[int, int] = Field(
         default_factory=dict,

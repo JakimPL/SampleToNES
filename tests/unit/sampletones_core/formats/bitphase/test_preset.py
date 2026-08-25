@@ -55,7 +55,7 @@ class TestThePresetCarriesTheSlice:
 
     def test_a_looping_slice_returns_to_its_first_row(self) -> None:
         preset = instrument_to_preset(
-            build_instrument("Pad", build_features(VOLUME_ENVELOPE), loop=True),
+            build_instrument("Pad", build_features(VOLUME_ENVELOPE), loop_point=0),
         )
         assert preset.loop == LOOP_FROM_START
 

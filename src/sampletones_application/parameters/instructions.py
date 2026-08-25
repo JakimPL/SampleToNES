@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.layout.config import LayoutConfig
+from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.layout.general.colors.table import TableColors
 from sampletones_application.layout.general.tables import TablesLayout
 from sampletones_application.layout.graphs import GraphsLayout
@@ -34,6 +35,7 @@ class InstructionsTabParameters:
     graphs: GraphsLayout
     pitch_stepper_style: PitchStepperStyle
     table_colors: TableColors
+    channel_colors: ChannelColors
     tables: TablesLayout
     tree_colors: TreeColors
     scheduling: SchedulingBehavior
@@ -52,6 +54,7 @@ class InstructionsTabParameters:
             graphs=config.graphs,
             pitch_stepper_style=PitchStepperStyle.from_general(general),
             table_colors=general.colors.tables,
+            channel_colors=general.colors.channels,
             tables=general.tables,
             tree_colors=TreeColors.create(
                 general.colors,

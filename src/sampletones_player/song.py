@@ -9,21 +9,22 @@ from sampletones_player.clock.schedule import PlaySchedule
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.pitch import PitchTable
-from sampletones_player.compression.progress.report import SILENT_REPORTER, CodecReporter
+from sampletones_player.compression.progress.report import CodecReporter
 from sampletones_player.compression.song import compress_song, decompress_song
 from sampletones_player.registers.streams import ChannelStreams
+from sampletones_shared.utils.progress import silent_reporter
 
 
 class Song(BaseModel):
     """A song as the console holds it: compressed channel planes, a timer table and a clock.
 
-    A file carries a song as eight token streams over one dictionary, and this is that song, so
+    A file carries a song as one token stream per plane over one dictionary, and this is that song, so
     what the player holds and what the console reads are the same value. The register values each
     channel writes are read back out of the streams, the timer table turning a plane's pitch index
     into the divider the hardware takes.
 
     Attributes:
-        planes: The dictionary and the eight token streams the channels play.
+        planes: The dictionary and the token stream every plane plays.
         pitches: The timer each pitch sounds at.
         schedule: The engine ticks each play call advances the streams by.
         loop_tick: The tick the song returns to once it ends, or ``None`` where it stops there.
@@ -45,7 +46,7 @@ class Song(BaseModel):
         schedule: PlaySchedule,
         loop_tick: Optional[int],
         seeds: Sequence[Phrase],
-        report: CodecReporter = SILENT_REPORTER,
+        report: CodecReporter = silent_reporter,
     ) -> Song:
         """Compresses the register values a song plays into the song the console holds.
 
@@ -63,7 +64,7 @@ class Song(BaseModel):
             Song: The song as the console holds it.
 
         Raises:
-            OperationCancelled: If ``report`` withdraws the compression.
+            OperationCanceled: If ``report`` withdraws the compression.
             ValueError: If ``loop_tick`` lies outside the song's ticks, or a channel sounds a
                 timer the pitch table states no index for.
         """

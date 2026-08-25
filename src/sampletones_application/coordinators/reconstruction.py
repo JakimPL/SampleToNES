@@ -8,7 +8,7 @@ from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
 from sampletones_application.logic.reconstruction.edit import (
-    InstrumentEdit,
+    ChannelEdit,
     ReconstructionEdit,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
@@ -16,7 +16,7 @@ from sampletones_application.services import (
     RegeneratedInstrument,
     RegenerationResult,
     RegenerationService,
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
@@ -34,7 +34,6 @@ from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
-from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
@@ -271,9 +270,8 @@ class ReconstructionCoordinator:
     def regenerate_instrument(
         self,
         channel_name: ChannelName,
-        features: Features,
         feature_key: FeatureKey,
-        data: FeatureValue,
+        features: Features,
     ) -> None:
         reconstruction_data = self._reconstruction_manager.current_reconstruction
         if reconstruction_data is None:
@@ -282,9 +280,8 @@ class ReconstructionCoordinator:
         accepted = self._regeneration_service.start(
             reconstruction_data.reconstruction,
             channel_name,
-            features,
             feature_key,
-            data,
+            features,
         )
         if accepted:
             self._set_reconstruction_dimmed(True)
@@ -329,19 +326,19 @@ class ReconstructionCoordinator:
     def _on_regeneration_result(self, result: RegenerationResult) -> None:
         match result:
             case ServiceSuccess(value=outcome):
-                self.apply_edit(self._instrument_edit(outcome))
+                self.apply_edit(self._channel_edit(outcome))
             case ServiceError(exception=exception):
                 logger.error_with_traceback(exception, "Regeneration failed")
                 self._dialogs.show_error(exception)
-            case ServiceCancelled():
-                logger.info("Regeneration cancelled")
+            case ServiceCanceled():
+                logger.info("Regeneration canceled")
 
         self._set_reconstruction_dimmed(self._regeneration_service.is_running())
 
     @staticmethod
-    def _instrument_edit(outcome: RegeneratedInstrument) -> InstrumentEdit:
+    def _channel_edit(outcome: RegeneratedInstrument) -> ChannelEdit:
         """Reads a regeneration result as the edit the project history records."""
-        return InstrumentEdit(
+        return ChannelEdit(
             reconstruction=outcome.reconstruction,
             channel_name=outcome.channel_name,
             feature_key=outcome.feature_key,

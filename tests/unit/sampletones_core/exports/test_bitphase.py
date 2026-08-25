@@ -20,6 +20,7 @@ from sampletones_core.exports.request import (
     SampleExport,
 )
 from sampletones_core.exports.scope import ExportScope
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_shared.music import Tuning
@@ -39,8 +40,8 @@ def build_features(frames: int, *, duty_cycle_frames: Optional[int] = None) -> F
     duty_cycle = None if duty_cycle_frames is None else np.zeros(duty_cycle_frames, dtype=int)
     return Features(
         initial_pitch=REFERENCE_PITCH,
-        volume=np.full(frames, 15, dtype=int),
-        arpeggio=np.zeros(frames, dtype=int),
+        volume=Envelope(items=(15,) * frames),
+        arpeggio=Envelope(items=(0,) * frames),
         pitch=None,
         hi_pitch=None,
         duty_cycle=duty_cycle,
@@ -52,7 +53,6 @@ def build_instrument(name: str, frames: int) -> InstrumentExport:
         name=name,
         channel=ChannelName.PULSE1,
         features=build_features(frames),
-        loop=False,
         nes_frequency=NES_FREQUENCY,
         tuning=Tuning(),
     )

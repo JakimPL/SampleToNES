@@ -1,24 +1,33 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, Optional, Sequence, Tuple
+from typing import Callable, Dict, Optional, Sequence
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.export import ExportMessages
-from sampletones_application.categories.exports import (
-    EXPORT_INSTRUMENT_FILTERS,
-    INSTRUMENT_EXPORT_FORMATS,
-)
+from sampletones_application.categories.exports import EXPORT_INSTRUMENT_FILTERS
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.coordinators.export.instrument import (
+    InstrumentExportCoordinator,
+)
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
+from sampletones_application.logic.history.manager import HistoryManager
+from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.reconstruction.audition import (
+    InstrumentAuditionLogic,
+)
 from sampletones_application.logic.reconstruction.browser.logic import BrowserLogic
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.logic.reconstruction.edit import StemRemoval
+from sampletones_application.logic.reconstruction.editor import (
+    InstrumentEditDetail,
+    InstrumentEditor,
+)
 from sampletones_application.logic.reconstruction.instruments import (
     OnReconstructionInstrumentUpdatedCallback,
     ReconstructionInstrumentsLogic,
@@ -81,6 +90,7 @@ from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
@@ -117,6 +127,7 @@ class ReconstructionTabCoordinator:
         session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
         reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
         browser_manager: BrowserManager,
         export_service: ExportService,
         export_backends: Dict[ExportFormat, ExportBackend],
@@ -126,7 +137,12 @@ class ReconstructionTabCoordinator:
         on_reconstruction_instrument_updated: OnReconstructionInstrumentUpdatedCallback,
         on_reconstruction_stem_removed: Callable[[StemRemoval], None],
         original_audio_locator: OriginalAudioLocator,
+        instrument_exports: InstrumentExportCoordinator,
+        history: HistoryManager,
+        instrument_edit_detail: InstrumentEditDetail,
         *,
+        key_router: KeyRouter,
+        tab_active: ActivePredicate,
         layout: ReconstructionTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
@@ -134,8 +150,15 @@ class ReconstructionTabCoordinator:
     ) -> None:
         self._language_manager = language_manager
         self._reconstruction_manager = reconstruction_manager
+        self._instrument_editor: InstrumentEditor = InstrumentEditor(
+            reconstruction_manager,
+            project_controller,
+            history,
+            instrument_edit_detail,
+        )
         self._session_manager = session_manager
         self._export_backends = export_backends
+        self._instrument_exports = instrument_exports
         self._dialogs = dialogs
         self._original_audio_locator = original_audio_locator
         self._on_reconstruction_stem_removed = on_reconstruction_stem_removed
@@ -181,7 +204,7 @@ class ReconstructionTabCoordinator:
         self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
         self._browser_tree_logic.on_favorite_changed = on_favorite_changed
         self._browser_tree_logic.on_search_update_needed = self._browser_panel.update_tree_visibility
-        self._browser_tree_logic.on_autoplay_error = self._on_browser_autoplay_error
+        self._browser_tree_logic.on_autoplay_error = self._on_preview_error
         self._browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
         self._browser_panel.on_favorites_filter_changed = self._on_browser_favorites_filter_changed
         self._reconstruction_player_logic = PlayerLogic(
@@ -202,6 +225,7 @@ class ReconstructionTabCoordinator:
         )
         self._reconstruction_plot_panel: GUIReconstructionPlotPanel = GUIReconstructionPlotPanel(
             layout_graphs=layout.graphs,
+            channel_colors=layout.channel_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -229,12 +253,20 @@ class ReconstructionTabCoordinator:
             layout_graphs=layout.graphs,
             language_manager=language_manager,
             status_bar=status_bar,
+            key_router=key_router,
+            tab_active=tab_active,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL),
         )
         self._reconstruction_instruments_panel.set_collapse_handler(self._on_instruments_collapse_changed)
         self._reconstruction_instruments_logic: ReconstructionInstrumentsLogic = ReconstructionInstrumentsLogic(
-            reconstruction_manager,
+            self._instrument_editor,
             scheduling=layout.scheduling,
+        )
+        self._instrument_audition_logic: InstrumentAuditionLogic = InstrumentAuditionLogic(
+            self._instrument_editor,
+            project_controller,
+            session_manager,
+            audio_device_manager,
         )
 
         self._browser_panel.on_refresh_tree = self._browser_logic.refresh_tree
@@ -259,7 +291,6 @@ class ReconstructionTabCoordinator:
         self._reconstruction_panel_logic.on_waveform_source_changed = (
             self._reconstruction_plot_panel.set_waveform_top_source
         )
-        self._reconstruction_panel_logic.on_open_export_instrument_dialog = self._open_export_instrument_dialog
         self._reconstruction_panel_logic.on_open_export_instruments_dialog = self._open_export_instruments_dialog
         self._reconstruction_panel_logic.on_open_export_wav_dialog = self._open_export_wav_dialog
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
@@ -277,21 +308,24 @@ class ReconstructionTabCoordinator:
             on_reconstruction_instrument_updated
         )
 
-        self._reconstruction_instruments_panel.on_instrument_export = (
-            self._reconstruction_panel_logic.request_export_instrument_dialog
-        )
+        self._reconstruction_instruments_panel.on_instrument_export = self._export_instrument
         self._reconstruction_instruments_panel.on_reconstruction_instrument_hovered = (
             self._reconstruction_plot_panel.set_overlay
         )
         self._reconstruction_instruments_panel.on_pitch_value_changed = (
             self._reconstruction_instruments_logic.handle_pitch_value_changed
         )
-        self._reconstruction_instruments_panel.on_bar_data_changed = (
-            self._reconstruction_instruments_logic.handle_bar_point_clicked
+        self._reconstruction_instruments_panel.on_envelope_changed = (
+            self._reconstruction_instruments_logic.handle_envelope_changed
         )
-        self._reconstruction_instruments_panel.on_raw_data_changed = (
-            self._reconstruction_instruments_logic.handle_raw_data_changed
+        self._reconstruction_instruments_panel.on_audition_requested = self._instrument_audition_logic.sound
+        self._reconstruction_instruments_panel.on_audition_generator_changed = (
+            self._instrument_audition_logic.set_generator
         )
+        self._instrument_audition_logic.on_audition_error = self._on_preview_error
+        self._instrument_audition_logic.on_waveform_changed = self._reconstruction_plot_panel.update_instrument_view
+        self._instrument_audition_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
+        self._reconstruction_instruments_logic.on_display_refreshed = self._instrument_audition_logic.refresh
 
     def _on_export_result(self, result: ExportResult) -> None:
         """Reports a finished export in the words of the artefact it produced.
@@ -380,49 +414,22 @@ class ReconstructionTabCoordinator:
         self._reconstruction_audio_panel.update_view(view_model)
         self._reconstruction_plot_panel.update_view(view_model)
 
-    def _open_export_instrument_dialog(
-        self,
-        default_filename: str,
-        default_path: str,
-        channel_name: ChannelName,
-    ) -> None:
-        """Prompts for the file the ``channel_name`` slice is written to.
+    def _export_instrument(self, channel_name: ChannelName) -> None:
+        """Writes the instrument the tab's ``channel_name`` tab holds, wherever it is asked for.
 
-        Every format that writes a single slice is offered at once, so the type picked in the
-        dialog names the format the slice is written in.
+        An instrument reaches a file the same way whichever surface asked for it, so the whole
+        gesture from here on belongs to the shared exporter; what the tab contributes is which
+        instrument it has in front of it. A voice written by hand is one the pool holds, so it is
+        written by voice and the sequencer's voice menu writes the same file for it.
         """
-        filepath = save_file_dialog(
-            title=self._language_manager["reconstructions.instruments.title.export_instrument_dialog"],
-            initial_directory=default_path,
-            default_filename=default_filename,
-            filters=self._instrument_filters(),
-        )
-        self._handle_export_instrument(filepath, channel_name)
+        instrument = self._instrument_editor.instrument
+        if instrument is not None:
+            self._instrument_exports.request_voice(instrument.id, None)
+            return
 
-    def _instrument_filters(self) -> Tuple[FileFilter, ...]:
-        """The types a destination for one slice may be given, one per format offered.
-
-        Naming each format's own type puts the programs an export can reach in the dialog's
-        type selector, so the one that is picked there names the format.
-        """
-        return tuple(
-            self._export_filter(
-                export_format,
-                ExportScope.INSTRUMENT,
-            )
-            for export_format in INSTRUMENT_EXPORT_FORMATS
-        )
-
-    @ignore_none_path
-    def _handle_export_instrument(
-        self,
-        filepath: Path,
-        channel_name: ChannelName,
-    ) -> None:
-        self._reconstruction_panel_logic.handle_export_instrument_confirmed(
-            filepath,
-            channel_name,
-        )
+        exportable = self._reconstruction_panel_logic.exportable_instrument(channel_name)
+        if exportable is not None:
+            self._instrument_exports.request(exportable.source, exportable.name)
 
     def _open_export_instruments_dialog(
         self,
@@ -527,7 +534,7 @@ class ReconstructionTabCoordinator:
         self._sync_instruments_width()
 
     def _build_reconstruction_column(self, parent: str) -> None:
-        """Stacks the audio, plot, and stems cards down the centre column."""
+        """Stacks the audio, plot, and stems cards down the center column."""
         self._reconstruction_audio_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._reconstruction_plot_panel.create_panel(parent)
@@ -626,8 +633,22 @@ class ReconstructionTabCoordinator:
         self._browser_panel.update_favorite_indicators(nodes)
 
     def display_reconstruction(self) -> None:
+        self._instrument_editor.release_instrument()
         self._reconstruction_panel_logic.display_reconstruction()
         self._reconstruction_instruments_logic.update_display()
+
+    def edit_instrument(self, voice_id: str) -> None:
+        """Puts an instrument in front of the tab, closing whatever reconstruction it held.
+
+        The tab describes one voice at a time — an instrument stands on no recording, so the waveform,
+        the plot and the stems beside the instruments panel have nothing of it to draw.
+        """
+        self._instrument_editor.edit_instrument(voice_id)
+        self._reconstruction_instruments_logic.update_display()
+
+    def release_instrument(self) -> None:
+        """Lets go of the instrument the tab held, which is what opening a reconstruction does."""
+        self._instrument_editor.release_instrument()
 
     def close_reconstruction(self) -> None:
         self._reconstruction_panel_logic.close_reconstruction()
@@ -740,7 +761,13 @@ class ReconstructionTabCoordinator:
     ) -> None:
         self._reconstruction_panel_logic.request_export_instruments_dialog(export_format)
 
-    def _on_browser_autoplay_error(self, exception: Exception) -> None:
+    def _on_preview_error(self, exception: Exception) -> None:
+        """Reports a preview the audio device refused, whichever of the tab's previews asked for it.
+
+        A browser autoplay and an instrument audition both sound on demand, so both report the
+        same way: on the frame after the one that failed, which leaves the gesture that started it
+        finished before a dialog is raised.
+        """
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
 
     def _on_audio_data_changed(self, audio_data: Optional[AudioData]) -> None:

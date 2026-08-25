@@ -9,6 +9,7 @@ bindings:
   ProjectProperties: {combination: "Alt+P"}
   ExportProjectFamiTracker: {combination: "Ctrl+M"}
   ExportProjectBitphase: {combination: "Ctrl+B"}
+  ExportProjectNSF: {combination: ~}
   RenderSong: {combination: "Ctrl+Shift+E"}
   CloseProject: {combination: "Ctrl+W"}
   Exit: {combination: "Alt+F4"}
@@ -33,6 +34,11 @@ bindings:
   AddReconstructionToSequencer: {combination: ~}
   OpenReconstructionInExplorer: {combination: ~}
   LocateOriginalAudio: {combination: ~}
+
+  # voice
+  NewInstrument: {combination: ~}
+  AddSampleFromFile: {combination: ~}
+  ImportInstrument: {combination: ~}
 
   # playback
   Play: {combination: "Space"}
@@ -134,14 +140,14 @@ bindings:
   TrackerCancelEntry: {combination: "Esc"}
   TrackerPlayFromRow: {combination: "Ctrl+Shift+Space"}
 
-  # samples
-  SamplesRenameSample: {combination: "F2"}
-  SamplesRemoveSample: {combination: "Del"}
-  SamplesMoveSampleUp: {combination: "Alt+Up"}
-  SamplesMoveSampleDown: {combination: "Alt+Down"}
-  SamplesMoveSampleToTop: {combination: "Alt+Home"}
-  SamplesMoveSampleToBottom: {combination: "Alt+End"}
-  SamplesCancelRename: {combination: "Esc"}
+  # voices
+  VoicesRenameVoice: {combination: "F2"}
+  VoicesRemoveVoice: {combination: "Del"}
+  VoicesMoveVoiceUp: {combination: "Alt+Up"}
+  VoicesMoveVoiceDown: {combination: "Alt+Down"}
+  VoicesMoveVoiceToTop: {combination: "Alt+Home"}
+  VoicesMoveVoiceToBottom: {combination: "Alt+End"}
+  VoicesCancelRename: {combination: "Esc"}
 
   # dialogs
   DialogNextControl: {combination: "Tab"}

@@ -19,7 +19,7 @@ The [**guide**](guide/) walks through the application from installation onward.
 - [Installation](guide/installation.md) — the standalone build, running from source, and GPU acceleration.
 - [Getting started](guide/getting-started.md) — your first reconstruction and your first song.
 - [The interface](guide/interface.md) — the Main, Reconstructions, and Instructions tabs, and the menus.
-- [The sequencer](guide/sequencer.md) — the tracker: arranging samples into a song, exporting a module, and rendering it to audio.
+- [The sequencer](guide/sequencer.md) — the tracker: arranging samples and hand-written instruments into a song, exporting a module, and rendering it to audio.
 - [Command line](guide/command-line.md) — running without the graphical interface.
 - [Where your files live](guide/files.md) — the folders and file types _SampleToNES_ uses.
 - [Configuration](guide/configuration.md) — the settings you can change, and where.
@@ -31,7 +31,8 @@ reconstruction. It is written to be read without the source code.
 
 - [Reconstruction algorithms](concepts/reconstruction.md) — how a sample becomes a stream of NES instructions.
 - [Stems reconstruction](concepts/stems.md) — how one reconstruction is assigned across several stems.
-- [Instruction library](concepts/instruction-library.md) — the catalogue of NES sounds the search draws from.
+- [Instruction library](concepts/instruction-library.md) — the catalog of NES sounds the search draws from.
+- [Song compression](concepts/compression.md) — how a whole song is fitted into the space an NES program has for it.
 - [Project](concepts/project.md) — a whole composition: a song and the reconstructions it is built from.
 - [Calibration](concepts/calibration.md) — how the reconstruction's settings are tuned by experiment.
 
@@ -39,11 +40,12 @@ reconstruction. It is written to be read without the source code.
 
 The [**formats**](formats/) section documents the files _SampleToNES_ reads and writes.
 
-- [Instruction libraries](formats/instruction-libraries.md) — the `.ins` candidate catalogue.
+- [Instruction libraries](formats/instruction-libraries.md) — the `.ins` candidate catalog.
 - [Reconstructions](formats/reconstructions.md) — the `.stn` reconstruction data.
 - [Projects](formats/projects.md) — the `.stp` project bundle.
 - [FamiTracker export](formats/famitracker.md) — the `.fti` instrument and `.ftm` module formats.
 - [Bitphase export](formats/bitphase.md) — the `.btp` document and `.json` instrument preset formats.
+- [NSF export](formats/nsf.md) — the `.nsf` program the console plays, and the song block inside it.
 - [Configuration file](formats/configuration.md) — the `config.json` structure.
 
 ## Programming with SampleToNES
@@ -60,6 +62,8 @@ The [**development**](development/) section is for contributors.
 - [Undo engine](development/undo.md) — the design of the undo/redo subsystem.
 - [Sequencer blocks](development/sequencer-blocks.md) — the rules copy, cut, paste and delete follow on both grids.
 - [Playback](development/playback.md) — the audio transport shared by every view, and rendering the song to a file.
+- [Progress](development/progress.md) — how a long operation says how far it has come, in one process and across the pool's workers.
+- [Console player](development/player.md) — the 6502 driver an `.nsf` carries, the codec that fits a song beside it, and how both are verified.
 - [Reconstruction browser](development/browser.md) — how a reconstructions directory becomes the tree both browser tabs render, and what narrows it.
 - [Configuration](development/config-organization.md) — how the YAML configuration package is laid out.
 - [Coding guidelines](development/guidelines.md) — conventions for the codebase.

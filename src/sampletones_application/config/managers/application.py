@@ -154,6 +154,13 @@ class ApplicationConfigManager:
         self.config.playback.follow_mode = value
 
     @property
+    def octave(self) -> int:
+        return self.config.tracker.octave
+
+    def set_octave(self, value: int) -> None:
+        self.config.tracker.octave = value
+
+    @property
     def loop_song(self) -> bool:
         return self.config.playback.loop_song
 

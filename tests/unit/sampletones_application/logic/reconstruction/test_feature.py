@@ -44,7 +44,7 @@ class TestFeatureDataLoad:
         feature_data: FeatureData,
     ) -> None:
         for features in feature_data.channels.values():
-            assert features.get(FeatureKey.INITIAL_PITCH) is not None
+            assert features.initial_pitch is not None
 
 
 class TestFeatureDataQueries:

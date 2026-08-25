@@ -16,10 +16,10 @@ from sampletones_core.instructions import (
 from sampletones_core.timers import PhaseTimer
 from sampletones_shared.types.data import Initials
 
-from ..generator import Generator
+from ..tonal import TonalGenerator
 
 
-class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
+class TriangleGenerator(TonalGenerator[TriangleInstruction]):
     def __init__(
         self,
         config: Config,
@@ -55,12 +55,6 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
         self.save_state(save, triangle_instruction)
 
         return output
-
-    def set_timer(self, instruction: TriangleInstruction) -> None:
-        if instruction.on:
-            self.timer.frequency = self.get_frequency(instruction.pitch)
-        else:
-            self.timer.frequency = 0.0
 
     def apply(self, output: np.ndarray, instruction: TriangleInstruction) -> np.ndarray:
         triangle = 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5

@@ -41,7 +41,7 @@ class GUIPlusMinusButtons(CallbackMixin):
     sign occupies. With ``hold_repeat`` a held button repeats its press after an initial
     delay, matching the stepping feel of a numeric field; otherwise each button fires once
     per click. Either button can be enabled or disabled independently, so a control can
-    grey out a step that would have no effect.
+    gray out a step that would have no effect.
     """
 
     def __init__(

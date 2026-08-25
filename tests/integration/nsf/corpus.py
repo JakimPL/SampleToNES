@@ -11,9 +11,10 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
-from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
+from sampletones_core.project.tuning import tuning_from_project
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_core.timing import SongTiming
 from sampletones_player.builder import (
@@ -61,7 +62,7 @@ class CorpusEntry:
 
     @property
     def planes(self) -> SongPlanes:
-        """The eight planes the song separates into."""
+        """The planes the song separates into."""
         return planes_from_streams(self.song.streams, self.pitches)
 
     @property
@@ -75,7 +76,7 @@ def _sample_project(
     settings: ProjectSettings,
 ) -> Project:
     project = Project.create(settings=settings)
-    project.samples.append(sample)
+    project.voices.append(sample)
     return project
 
 
@@ -111,7 +112,7 @@ def arrangement_entry(
     name: str,
     project: Project,
 ) -> CorpusEntry:
-    """A whole project flattened into one song, at concert tuning.
+    """A whole project flattened into one song, at the tuning its samples were built at.
 
     Args:
         name: What the entry is called in a report.
@@ -120,10 +121,10 @@ def arrangement_entry(
     Returns:
         CorpusEntry: The song and the phrases the project's instruments offer.
     """
-    tuning = Tuning()
+    tuning = tuning_from_project(project)
     return CorpusEntry(
         name=name,
-        song=song_from_project(project, tuning, loop_tick=None),
+        song=song_from_project(project, loop_tick=None),
         seeds=phrases_from_project(project, tuning),
         tuning=tuning,
     )

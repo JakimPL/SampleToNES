@@ -2,6 +2,8 @@ from typing import Dict, Final
 
 import dearpygui.dearpygui as dpg
 
+EVERY_ITEM_TYPE: Final[int] = dpg.mvAll
+
 ITEM_TYPE_MAP: Final[Dict[str, int]] = {
     "All": dpg.mvAll,
     "Button": dpg.mvButton,

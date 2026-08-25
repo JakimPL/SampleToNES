@@ -9,6 +9,7 @@ from sampletones_core.reconstructions.converter.job import ConversionJob
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_shared.exceptions import UnsupportedAudioFormatError
+from sampletones_shared.utils.progress import silent_reporter
 
 
 @pytest.fixture
@@ -31,7 +32,7 @@ class TestReconstructJob:
         tmp_path: Path,
     ) -> None:
         output_path = tmp_path / "nested" / "dir" / "song.stn"
-        reconstruct_job((mock_reconstructor, _job(tmp_path, output_path)))
+        reconstruct_job((mock_reconstructor, _job(tmp_path, output_path), silent_reporter))
         assert output_path.parent.exists()
 
     def test_builds_the_reconstruction_from_the_jobs_sources_and_setup(
@@ -40,8 +41,12 @@ class TestReconstructJob:
         tmp_path: Path,
     ) -> None:
         job = _job(tmp_path, tmp_path / "song.stn")
-        reconstruct_job((mock_reconstructor, job))
-        mock_reconstructor.reconstruct.assert_called_once_with(job.sources, job.stems)
+        reconstruct_job((mock_reconstructor, job, silent_reporter))
+        mock_reconstructor.reconstruct.assert_called_once_with(
+            job.sources,
+            job.stems,
+            report=silent_reporter,
+        )
 
     def test_saves_reconstruction_to_output_path(
         self,
@@ -51,7 +56,7 @@ class TestReconstructJob:
         mock_reconstruction = MagicMock()
         mock_reconstructor.reconstruct.return_value = mock_reconstruction
         output_path = tmp_path / "song.stn"
-        reconstruct_job((mock_reconstructor, _job(tmp_path, output_path)))
+        reconstruct_job((mock_reconstructor, _job(tmp_path, output_path), silent_reporter))
         mock_reconstruction.save.assert_called_once_with(output_path)
 
     def test_reports_the_output_path_when_the_reconstruction_is_empty(
@@ -61,7 +66,8 @@ class TestReconstructJob:
     ) -> None:
         mock_reconstructor.reconstruct.return_value = None
         output_path = tmp_path / "song.stn"
-        assert reconstruct_job((mock_reconstructor, _job(tmp_path, output_path))) == output_path
+        job = _job(tmp_path, output_path)
+        assert reconstruct_job((mock_reconstructor, job, silent_reporter)) == output_path
 
     def test_always_returns_output_path(
         self,
@@ -69,7 +75,8 @@ class TestReconstructJob:
         tmp_path: Path,
     ) -> None:
         output_path = tmp_path / "song.stn"
-        assert reconstruct_job((mock_reconstructor, _job(tmp_path, output_path))) == output_path
+        job = _job(tmp_path, output_path)
+        assert reconstruct_job((mock_reconstructor, job, silent_reporter)) == output_path
 
     def test_unsupported_audio_format_error_is_swallowed(
         self,
@@ -78,7 +85,8 @@ class TestReconstructJob:
     ) -> None:
         mock_reconstructor.reconstruct.side_effect = UnsupportedAudioFormatError("bad format")
         output_path = tmp_path / "song.stn"
-        assert reconstruct_job((mock_reconstructor, _job(tmp_path, output_path))) == output_path
+        job = _job(tmp_path, output_path)
+        assert reconstruct_job((mock_reconstructor, job, silent_reporter)) == output_path
 
     def test_keyboard_interrupt_is_reraised(
         self,
@@ -87,4 +95,4 @@ class TestReconstructJob:
     ) -> None:
         mock_reconstructor.reconstruct.side_effect = KeyboardInterrupt
         with pytest.raises(KeyboardInterrupt):
-            reconstruct_job((mock_reconstructor, _job(tmp_path, tmp_path / "song.stn")))
+            reconstruct_job((mock_reconstructor, _job(tmp_path, tmp_path / "song.stn"), silent_reporter))

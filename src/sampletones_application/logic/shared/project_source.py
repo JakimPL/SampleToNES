@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, Protocol, Self
 
 from sampletones_core.project import Project
+from sampletones_core.project.voices.voice import samples
 
 
 def snapshot_project(project: Project) -> Project:
@@ -16,7 +17,7 @@ def snapshot_project(project: Project) -> Project:
     snapshot.
     """
     shared_reconstructions: Dict[int, object] = {
-        id(sample.reconstruction): sample.reconstruction for sample in project.samples
+        id(sample.reconstruction): sample.reconstruction for sample in samples(project.voices)
     }
     return copy.deepcopy(project, shared_reconstructions)
 

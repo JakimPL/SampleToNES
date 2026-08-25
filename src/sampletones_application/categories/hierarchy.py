@@ -85,6 +85,7 @@ class Panel(StrEnum):
     TRACKER = auto()
     ORDER = auto()
     MODULE = auto()
+    VOICES = auto()
     INSTRUMENTS = auto()
     HISTORY = auto()
 

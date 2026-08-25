@@ -2,7 +2,7 @@
 
 _SampleToNES_ reconstructs according to a **generation configuration** — the
 sample rate, the NES frequency, which channels are used, how the audio is
-analysed, and how candidates are scored. The settings you reach for most often are
+analyzed, and how candidates are scored. The settings you reach for most often are
 on the **Main** tab; the rest live in the configuration file, for when you want to
 go deeper.
 

@@ -1,7 +1,5 @@
 from typing import Final, Optional
 
-from sampletones_application.layout.tabs.sequencer.colors.channel import ChannelColors
-from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_core.constants.enums import ChannelName
 
 _LEADING_TABLE_COLUMNS: Final[int] = 2
@@ -13,18 +11,6 @@ TRACKER_TABLE_COLUMNS: Final[int] = _FIRST_CHANNEL_TABLE_COLUMN + len(ChannelNam
 
 HEADER_TABLE_ROW: Final[int] = 0
 HEADER_TABLE_ROWS: Final[int] = HEADER_TABLE_ROW + 1
-
-
-def channel_color(colors: ChannelColors, channel: ChannelName) -> BaseColor:
-    match channel:
-        case ChannelName.PULSE1:
-            return colors.pulse1
-        case ChannelName.PULSE2:
-            return colors.pulse2
-        case ChannelName.TRIANGLE:
-            return colors.triangle
-        case ChannelName.NOISE:
-            return colors.noise
 
 
 def tracker_table_column(channel: Optional[ChannelName]) -> int:

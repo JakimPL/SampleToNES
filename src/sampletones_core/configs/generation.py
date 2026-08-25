@@ -12,6 +12,10 @@ from sampletones_core.constants.algorithm import (
     MAX_DRIVE,
     PERCEPTUAL_EXPONENT,
     PHASE_ALIGNER,
+    REFINE_PITCH,
+    REFINEMENT_CHANGE_WEIGHT,
+    REFINEMENT_CONFIDENCE,
+    REFINEMENT_WINDOW,
     RESET_PHASE,
     SELECTOR,
     SPECTRAL_DISTANCE,
@@ -68,6 +72,29 @@ class DecoderConfig(DataModel):
     on_off_weight: float = Field(default=TRANSITION_ON_OFF_WEIGHT, ge=0.0)
 
 
+class RefinementConfig(DataModel):
+    """How far off the equal-tempered grid a conversion is allowed to place its notes.
+
+    A note reaches the hardware as a divider, and the divider grid is finer than the note grid
+    everywhere below the top of the range. The refinement reads where each frame's fundamental
+    actually stands and bends the note it landed on towards it, so material recorded off the grid
+    comes back in tune with itself.
+
+    Attributes:
+        enabled: Whether a conversion bends the notes it chose.
+        confidence: The share of a frame's energy its harmonics must hold for its reading to count.
+        change_weight: The divider steps of reading error worth avoiding one change of bend.
+        window: The frames on either side whose readings a frame may settle on.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    enabled: bool = Field(default=REFINE_PITCH)
+    confidence: float = Field(default=REFINEMENT_CONFIDENCE, ge=0.0, le=1.0)
+    change_weight: float = Field(default=REFINEMENT_CHANGE_WEIGHT, ge=0.0)
+    window: int = Field(default=REFINEMENT_WINDOW, ge=0)
+
+
 class GenerationConfig(DataModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -95,3 +122,4 @@ class GenerationConfig(DataModel):
     weights: WeightsConfig = Field(default_factory=WeightsConfig)
     metric: MetricConfig = Field(default_factory=MetricConfig)
     decoder: DecoderConfig = Field(default_factory=DecoderConfig)
+    refinement: RefinementConfig = Field(default_factory=RefinementConfig)

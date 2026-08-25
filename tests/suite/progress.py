@@ -1,9 +1,7 @@
-from typing import Final, Generic, List, Optional, Sequence, TypeVar
-
-from sampletones_core.exports.progress import ExportProgress
-from sampletones_core.exports.stage import ExportStage
+from typing import Final, Generic, List, Optional, Protocol, Sequence, TypeVar
 
 ProgressT = TypeVar("ProgressT")
+StageT = TypeVar("StageT", covariant=True)
 
 NEVER_WITHDRAWN: Final[Optional[int]] = None
 FIRST_REPORT: Final[int] = 1
@@ -31,16 +29,23 @@ class RecordingReporter(Generic[ProgressT]):
         return self.reports[-1]
 
 
-def reported_stages(reports: Sequence[ExportProgress]) -> List[ExportStage]:
+class StagedProgress(Protocol[StageT]):
+    """A report that names the work it comes from, whatever that work counts in."""
+
+    @property
+    def stage(self) -> StageT: ...
+
+
+def reported_stages(reports: Sequence[StagedProgress[StageT]]) -> List[StageT]:
     """The stages a run reached, in order, a stretch spent in one counted once.
 
     Args:
         reports: What the run said about itself, in the order it said it.
 
     Returns:
-        List[ExportStage]: The stages, each entry a stage the run moved into.
+        List[StageT]: The stages, each entry a stage the run moved into.
     """
-    reached: List[ExportStage] = []
+    reached: List[StageT] = []
     for report in reports:
         if not reached or reached[-1] != report.stage:
             reached.append(report.stage)
