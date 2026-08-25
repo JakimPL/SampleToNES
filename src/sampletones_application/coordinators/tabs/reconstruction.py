@@ -324,6 +324,7 @@ class ReconstructionTabCoordinator:
         )
         self._instrument_audition_logic.on_audition_error = self._on_preview_error
         self._instrument_audition_logic.on_waveform_changed = self._reconstruction_plot_panel.update_instrument_view
+        self._instrument_audition_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
         self._reconstruction_instruments_logic.on_display_refreshed = self._instrument_audition_logic.refresh
 
     def _on_export_result(self, result: ExportResult) -> None:

@@ -51,6 +51,21 @@ types in, and renders the voice through the same two steps a tracker row takes â
 instrument's own pitch to the note, at full volume. The plot card draws the same rendering at the
 pitch the instrument stands at, so what is seen and what is heard name one generator.
 
+**A voice sounded on its own runs to its release, or to the length it is offered.** A row holds a
+voice for as long as the pattern asks, while an audition and the voice list's preview have no row
+behind them, so each states a span of its own. A volume dimension ending at silence releases the
+voice, and that release is where the sound stops; one circling from a loop point never reaches a
+last item, so it sounds for the ticks `AUDITION_TICKS` offers it. Both spans are counted by
+`audition_ticks` (`sampletones_core/performance/audition.py`), so the plot card draws exactly the
+frames the keyboard sounds.
+
+**A sounding voice is marked where it has reached.** The device reports its position while it
+plays, and the plot card carries that mark along the voice it drew, the same mark a reconstruction's
+playback moves. A preview follows its own sound alone: `play` reports whether the request took the
+output, and the audition starts following only when it did, so one that yields to playback the
+reader asked for leaves that playback's mark where it is. The device reports a final zero as it
+winds down, which takes the mark off the card.
+
 **Intentional playback** â€” the audio a tab is built around: a reconstruction's audio, an
 instruction's audio, or the sequencer song. It is owned by the source that started it, and it is
 resumable, seekable, and stoppable. One intentional source at most is engaged at any moment.

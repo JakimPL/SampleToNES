@@ -4,6 +4,7 @@ from typing import Callable, Final, Optional, Tuple
 import numpy as np
 
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.constants.instruments import AUDITION_TICKS
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
 )
@@ -30,7 +31,7 @@ from sampletones_core.formats.famitracker.voice import (
     ImportedVoice,
     instrument_to_voice,
 )
-from sampletones_core.performance.audition import audition_audio
+from sampletones_core.performance.audition import audition_audio, audition_ticks
 from sampletones_core.project.voices.creation import (
     instrument_from_features,
     new_instrument,
@@ -302,6 +303,7 @@ class SequencerVoicesLogic(CallbackMixin):
                     PREVIEW_CHANNEL,
                     self._preview_config(),
                     pitch=instrument.reference(PREVIEW_CHANNEL),
+                    ticks=audition_ticks(instrument, cap=AUDITION_TICKS),
                 )
             case _:
                 return None

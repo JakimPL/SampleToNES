@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.instruments import AUDITION_GENERATOR
+from sampletones_application.constants.instruments import AUDITION_GENERATOR, AUDITION_TICKS
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.reconstruction.audition import InstrumentAuditionLogic
@@ -17,7 +17,7 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, GeneratorName
 from sampletones_core.features.envelope import Envelope
-from sampletones_core.performance.audition import audition_audio
+from sampletones_core.performance.audition import audition_audio, audition_ticks
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_shared.exceptions import PlaybackError
@@ -110,7 +110,13 @@ def _expected(
         nes_frequency=settings.nes_frequency,
         sample_rate=settings.sample_rate,
     )
-    audio = audition_audio(instrument, channel_name, config, pitch=pitch)
+    audio = audition_audio(
+        instrument,
+        channel_name,
+        config,
+        pitch=pitch,
+        ticks=audition_ticks(instrument, cap=AUDITION_TICKS),
+    )
     assert audio is not None
     return audio
 
@@ -185,6 +191,42 @@ class TestWhatAKeySounds:
         _sounded(_instrument(), controller, session, device, GeneratorName.PULSE, SEMITONE_G)
 
         assert device.play.call_args.kwargs["priority"] is PlaybackPriority.PREVIEW
+
+
+class TestTheCursorAnAuditionDraws:
+    """A voice being sounded carries a mark along the waveform the card draws."""
+
+    def test_an_audition_that_sounds_is_followed(
+        self,
+        controller: ProjectController,
+        session: MagicMock,
+        device: MagicMock,
+    ) -> None:
+        """The device reports where it has reached, which is what moves the mark."""
+        device.play.return_value = True
+        logic = _logic(_instrument(), controller, session, device)
+        marked: List[int] = []
+        logic.on_position_changed = marked.append
+
+        logic.sound(SEMITONE_G)
+        device.set_position_callback.call_args.args[0](512)
+
+        assert device.play.call_args.kwargs["update"] is True
+        assert marked == [512]
+
+    def test_an_audition_standing_aside_leaves_the_mark_where_it_is(
+        self,
+        controller: ProjectController,
+        session: MagicMock,
+        device: MagicMock,
+    ) -> None:
+        """A preview outranked by playback the reader asked for follows nothing."""
+        device.play.return_value = False
+        logic = _logic(_instrument(), controller, session, device)
+
+        logic.sound(SEMITONE_G)
+
+        device.set_position_callback.assert_not_called()
 
 
 class TestWhenNothingSounds:
@@ -283,7 +325,8 @@ class TestTheWaveformTheCardDraws:
         session: MagicMock,
         device: MagicMock,
     ) -> None:
-        logic = _logic(_instrument(), controller, session, device)
+        instrument = _instrument()
+        logic = _logic(instrument, controller, session, device)
         drawn: List[Optional[InstrumentWaveformViewModel]] = []
         logic.on_waveform_changed = drawn.append
 
@@ -297,7 +340,8 @@ class TestTheWaveformTheCardDraws:
         assert drawn[-1] is not None
         assert drawn[-1].name == "lead"
         assert drawn[-1].frame_length == config.frame_length
-        assert drawn[-1].audio.shape == (2 * config.frame_length,)
+        sounded = audition_ticks(instrument, cap=AUDITION_TICKS)
+        assert drawn[-1].audio.shape == (sounded * config.frame_length,)
 
     def test_a_tab_holding_a_recording_leaves_the_card_to_it(
         self,

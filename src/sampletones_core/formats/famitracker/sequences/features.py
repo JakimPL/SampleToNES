@@ -1,10 +1,9 @@
 from typing import Dict, Final, Optional
 
 from sampletones_core.constants.enums import FeatureKey
-from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.truncation import EnvelopeTruncation
-from sampletones_core.features.envelope import Envelope
+from sampletones_core.features.envelope import Envelope, releases
 from sampletones_core.formats.famitracker.model.sequence import InstrumentSequence
 from sampletones_core.formats.famitracker.specification.sequences import (
     FEATURE_KEY_TO_SEQUENCE_KIND,
@@ -53,7 +52,7 @@ def stored_envelope(
     Returns:
         Envelope[int]: The dimension within the items the file holds.
     """
-    if feature_key is FeatureKey.VOLUME and _releases(envelope):
+    if feature_key is FeatureKey.VOLUME and releases(envelope):
         return _keeping_release(envelope, MAX_SEQUENCE_ITEMS)
 
     return envelope.limited(MAX_SEQUENCE_ITEMS)
@@ -106,11 +105,6 @@ def _stored_envelopes(features: Features) -> Dict[SequenceKind, Envelope[int]]:
         FEATURE_KEY_TO_SEQUENCE_KIND[feature_key]: stored_envelope(feature_key, envelope)
         for feature_key, envelope in features.envelopes.items()
     }
-
-
-def _releases(envelope: Envelope[int]) -> bool:
-    """Whether a volume dimension ends by silencing the note, which is what releases it."""
-    return bool(envelope.items) and envelope.items[-1] == SILENT_VOLUME and not envelope.loops
 
 
 def _keeping_release(envelope: Envelope[int], limit: int) -> Envelope[int]:

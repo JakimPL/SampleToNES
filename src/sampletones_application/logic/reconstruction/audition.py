@@ -3,12 +3,13 @@ from typing import Callable, Optional
 import numpy as np
 
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.instruments import AUDITION_GENERATOR
+from sampletones_application.constants.instruments import AUDITION_GENERATOR, AUDITION_TICKS
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.editing import (
     InstrumentAuditionProtocol,
 )
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.reconstruction.waveform import (
     InstrumentWaveformViewModel,
 )
@@ -16,7 +17,7 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, GeneratorName
 from sampletones_core.features import generator_channel, speaks_in_periods
-from sampletones_core.performance.audition import audition_audio
+from sampletones_core.performance.audition import audition_audio, audition_ticks
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_shared.constants.music import OCTAVE_OFFSET, OCTAVE_SEMITONES
 from sampletones_shared.exceptions import PlaybackError
@@ -49,6 +50,7 @@ class InstrumentAuditionLogic(CallbackMixin):
 
         self.on_audition_error: Optional[Callable[[Exception], None]] = None
         self.on_waveform_changed: Optional[Callable[[Optional[InstrumentWaveformViewModel]], None]] = None
+        self.on_position_changed: Optional[Callable[[int], None]] = None
 
     def set_generator(self, generator_name: GeneratorName) -> None:
         """Takes the generator the voice is auditioned as, redrawing it as the one now chosen."""
@@ -79,6 +81,7 @@ class InstrumentAuditionLogic(CallbackMixin):
             channel_name,
             self._audition_config(),
             pitch=self._sounding_pitch(instrument, channel_name, semitone),
+            ticks=audition_ticks(instrument, cap=AUDITION_TICKS),
         )
         if audio is None:
             return
@@ -102,6 +105,7 @@ class InstrumentAuditionLogic(CallbackMixin):
             channel_name,
             config,
             pitch=instrument.reference(channel_name),
+            ticks=audition_ticks(instrument, cap=AUDITION_TICKS),
         )
         if audio is None:
             return None
@@ -138,11 +142,18 @@ class InstrumentAuditionLogic(CallbackMixin):
         )
 
     def _play(self, audio: np.ndarray, voice_id: str) -> None:
+        """Sounds the rendering, following it with a cursor while the audition holds the output.
+
+        A preview yields to playback the reader asked for, so the cursor is followed only once the
+        audition has the device: an audition that stands aside leaves the mark of whatever is
+        sounding where it is.
+        """
         try:
-            self._audio_device_manager.play(
+            sounding = self._audio_device_manager.play(
                 audio,
-                update=False,
+                update=True,
                 priority=PlaybackPriority.PREVIEW,
+                owner=self,
             )
         except (PlaybackError, ValueError) as exception:
             logger.error_with_traceback(
@@ -150,3 +161,16 @@ class InstrumentAuditionLogic(CallbackMixin):
                 f"Failed to audition instrument: {voice_id}",
             )
             self.call(self.on_audition_error, exception)
+            return
+
+        if sounding:
+            self._audio_device_manager.set_position_callback(self._on_device_position)
+
+    def _on_device_position(self, position: int) -> None:
+        """Carries the sounding position from the playback thread to the card that draws it.
+
+        The device reports from the thread writing the audio, and the mark is a widget, so the
+        report crosses to the render thread the way every other background result does. The device
+        reports a final zero as it winds down, which is what takes the mark off the card.
+        """
+        CallbackQueue.add(self.call, self.on_position_changed, position)
