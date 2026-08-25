@@ -20,7 +20,7 @@ def parse_planes(
     """Reads every plane of a song against one dictionary.
 
     A plane is where the run looks up: reading one is the longest stretch the codec spends
-    without a natural pause, so the monitor hears from it eight times over.
+    without a natural pause, so the monitor hears from it once per plane.
 
     Args:
         cache: The planes the song covers, alongside what each phrase plays against them.

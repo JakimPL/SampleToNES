@@ -4,8 +4,8 @@ from functools import cached_property
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from sampletones_player.specification.binary import BYTE_VALUES
 from sampletones_player.specification.compression import (
-    BYTE_VALUES,
     MAX_PHRASE_LENGTH,
     PHRASE_LENGTH_SIZE,
     PHRASE_TABLE_ENTRY_SIZE,

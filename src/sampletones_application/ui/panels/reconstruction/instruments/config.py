@@ -58,7 +58,7 @@ def _feature_colors(feature_colors: FeatureColors) -> Dict[FeatureKey, BaseColor
         FeatureKey.VOLUME: feature_colors.volume,
         FeatureKey.ARPEGGIO: feature_colors.arpeggio,
         FeatureKey.PITCH: feature_colors.pitch,
-        FeatureKey.HI_PITCH: feature_colors.pitch,
+        FeatureKey.HI_PITCH: feature_colors.hi_pitch,
         FeatureKey.DUTY_CYCLE: feature_colors.duty_cycle,
     }
 

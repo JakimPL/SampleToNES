@@ -121,7 +121,7 @@ def encode_planes(
     boundaries: FrozenSet[int],
     report: CodecReporter = silent_reporter,
 ) -> CompressedPlanes:
-    """Compresses a song's eight planes into the dictionary and streams the driver reads.
+    """Compresses a song's planes into the dictionary and streams the driver reads.
 
     Every layer is weighed against one reading of the song naming no phrase at all: the seeds a
     dictionary crowded past its ids keeps, and the bytes each phrase spares once the table
@@ -131,14 +131,14 @@ def encode_planes(
     phrases inside the opcodes that name them.
 
     Args:
-        planes: The eight planes, two per channel.
+        planes: The planes under the channel each belongs to.
         seeds: The phrases the song's instruments offer.
         options: Which of the codec's layers the encoding is built from.
         boundaries: The ticks a token starts on, beyond the first tick of the song.
         report: Hears what the run holds each time it looks up, and answers whether it goes on.
 
     Returns:
-        CompressedPlanes: The dictionary, the eight token streams and the ticks the song lasts.
+        CompressedPlanes: The dictionary, every plane's token stream and the ticks the song lasts.
 
     Raises:
         OperationCanceled: If ``report`` withdraws the run.

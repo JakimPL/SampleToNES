@@ -176,7 +176,7 @@ class TestEnvelopeBounds:
 
     def test_a_dimension_an_instrument_writes_none_of_is_refused(self) -> None:
         with pytest.raises(KeyError):
-            InstrumentEnvelopes().with_envelope(FeatureKey.PITCH, Envelope(items=(1,)))
+            InstrumentEnvelopes().with_envelope(FeatureKey.INITIAL_PITCH, Envelope(items=(1,)))
 
     def test_the_frame_count_is_the_longest_dimension(self) -> None:
         envelopes = InstrumentEnvelopes(volume=Envelope(items=VOLUME), duty_cycle=Envelope(items=DUTY_CYCLE))

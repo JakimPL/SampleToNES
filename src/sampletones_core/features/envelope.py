@@ -4,6 +4,8 @@ from typing import Generic, Optional, Tuple, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from sampletones_core.constants.general import SILENT_VOLUME
+
 ItemT = TypeVar("ItemT")
 
 
@@ -123,3 +125,19 @@ class Envelope(BaseModel, Generic[ItemT]):
         """This dimension carrying ``items``, with the loop point held inside them."""
         loop_point = min(self.loop_point, len(items) - 1) if self.loop_point is not None and items else None
         return type(self)(items=items, loop_point=loop_point)
+
+
+def releases(volume: Envelope[int]) -> bool:
+    """Whether a volume dimension ends by silencing the note, which is what releases it.
+
+    A dimension holds its last item for as long as a note sounds, so one ending at silence goes
+    quiet and stays quiet: that is where the note it belongs to ends. One circling from a loop
+    point never reaches a last item, so it sounds until whoever started it stops asking.
+
+    Args:
+        volume: The volume dimension of the voice being sounded.
+
+    Returns:
+        bool: Whether the note ends where the dimension runs out.
+    """
+    return bool(volume.items) and volume.items[-1] == SILENT_VOLUME and not volume.loops

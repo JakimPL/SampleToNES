@@ -1,5 +1,5 @@
 from sampletones_player.compression.matches.shift import translation
-from sampletones_player.specification.compression import BYTE_VALUES
+from sampletones_player.specification.binary import BYTE_VALUES
 
 MOTIF: bytes = bytes((40, 44, 47))
 

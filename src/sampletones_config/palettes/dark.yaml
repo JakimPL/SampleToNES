@@ -152,6 +152,7 @@ colors:
   feature_volume: "#7ee787"
   feature_arpeggio: "#f0a35e"
   feature_pitch: "#6fb8ff"
+  feature_hi_pitch: "#a99cff"
   feature_duty_cycle: "#e6c26a"
 
   caret_fill: "#4fa6ff55"

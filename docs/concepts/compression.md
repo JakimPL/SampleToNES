@@ -59,13 +59,15 @@ arrangement falls from 11 bytes a tick to about 1.7.
 A tone channel names a pitch by the **divider** the hardware counts down from, which
 takes two bytes and runs the opposite way to the note: higher notes have smaller
 dividers, and the steps between them are uneven. The encoder replaces the two
-divider planes with one **pitch index** — how far the note sits above the lowest
-pitch the table covers — and the song block carries a table the driver resolves it
-through. Every channel is then two planes, and a tick is eight bytes before any
-coding at all.
+divider planes with a **pitch index** — how far the note sits above the lowest
+pitch the table covers — and a **bend**, the divider steps the tick stands away from
+that note. The song block carries a table the driver resolves the index through and
+adds the bend to. A tone channel is therefore three planes, the same count as the
+registers it writes.
 
-Saving a byte a tick is the smaller half of why this matters. The larger half is
-that **a pitch index can be transposed and a divider cannot.** The same figure played
+Trading two dividers for an index and a bend is worth about a twentieth once the
+planes are coded, since a bend a song never uses is a plane of one value. The larger
+half is that **a pitch index can be transposed and a divider cannot.** The same figure played
 at five pitches is five unrelated byte sequences in divider space; in index space it
 is one sequence and five offsets. That is what turns a repeated sample into a single
 dictionary entry in §5.
@@ -241,14 +243,14 @@ above it:
 
 | what is stored | bytes per tick | ratio | ticks that fit |
 |---|---|---|---|
-| a record per tick per channel | 11.000 | 1.00 | 2925 |
-| planes, coded | 1.735 | 6.34 | 18544 |
-| planes with a pitch index | 1.598 | 6.88 | 20255 |
-| phrases from the instruments | 1.126 | 9.77 | 28994 |
-| phrases played transposed | 0.976 | 11.27 | 33567 |
-| phrases from the search as well | **0.811** | **13.56** | **40673** |
+| a record per tick per channel | 11.000 | 1.00 | 2923 |
+| planes, coded | 1.735 | 6.34 | 18527 |
+| planes with a pitch index and a bend | 1.645 | 6.69 | 19644 |
+| phrases from the instruments | 1.191 | 9.23 | 27302 |
+| phrases played transposed | 1.046 | 10.52 | 31194 |
+| phrases from the search as well | **0.880** | **12.49** | **37238** |
 
-The whole song is 8761 bytes of the roughly 32000 available, and **40673 ticks is 11.3
+The whole song is 9509 bytes of the roughly 32000 available, and **37238 ticks is 10.3
 minutes at 60 Hz**, against the 49 seconds a record per tick reaches. Encoding it costs
 about two seconds; decoding it costs the console around twenty instructions per plane
 per tick, comfortably inside a video frame.
@@ -257,7 +259,7 @@ per tick, comfortably inside a video frame.
 constants are settled from it. Two of them were settled against expectation: splitting
 the duty cycle out of the control byte into a plane of its own **costs** 14 %, because
 volume and duty turn over together and a split pays two opcodes for what one covers;
-and the pitch index earns its place twice, 8 % directly and a further 13 % through the
+and the pitch index earns its place twice, 5 % directly and a further 12 % through the
 transposition it makes possible.
 
 ## 7. Limitations
@@ -280,8 +282,8 @@ transposition it makes possible.
 
 | quantity | value |
 |---|---|
-| planes | 8 — control and value, for each of four channels |
-| bytes per tick before coding | 8 |
+| planes | control and value for every channel, and a bend for each tone channel |
+| bytes per tick before coding | 11 |
 | ticks one hold covers | 1 to 64 |
 | values one literal carries | 1 to 64 |
 | ticks one phrase token covers | 1 to 256 |
@@ -289,7 +291,7 @@ transposition it makes possible.
 | phrases in the dictionary | up to 255 |
 | values in a phrase | up to 255 |
 | candidate lengths the search gathers | 3 to 48 |
-| decoder state on the console | 64 bytes of zero page, 8 per plane |
+| decoder state on the console | 88 bytes of zero page, 8 per plane |
 
 Where things live:
 

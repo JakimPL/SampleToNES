@@ -92,6 +92,7 @@ from sampletones_core.constants.enums import (
 )
 from sampletones_core.exporters import Features
 from sampletones_core.features import (
+    BEND_FEATURES,
     CHANNEL_GENERATOR_KIND,
     resting_reference,
     supported_features,
@@ -922,6 +923,28 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._status_bar.bind_to_item(
             raw_data_tag,
             partial(self._sequence_status_message, channel_name, feature_key),
+        )
+        self._explain_bend(raw_data_tag, feature_key)
+
+    def _explain_bend(self, raw_data_tag: str, feature_key: FeatureKey) -> None:
+        """Says what one item of a bend dimension is worth, since that follows the note it bends.
+
+        A divider step spans well under a cent at the lowest notes and a whole semitone at the
+        highest, so the axis a bend is drawn on states the range a sequence stores rather than the
+        distance a value covers.
+        """
+        if feature_key not in BEND_FEATURES:
+            return
+
+        show_tooltip(
+            raw_data_tag,
+            self._language_manager[
+                (
+                    "reconstructions.instruments.tooltip.hi_pitch_bend"
+                    if feature_key is FeatureKey.HI_PITCH
+                    else "reconstructions.instruments.tooltip.pitch_bend"
+                )
+            ],
         )
 
     def _sequence_status_message(

@@ -14,19 +14,24 @@
 
 ### Tracker
 
-The first four entries are also what an imported `.fti` reports as left to the file
+The first two entries are also what an imported `.fti` reports as left to the file
 (section C of `formats/famitracker.md`), so each one closed is a dimension the import
 starts carrying.
 
-* Pitch and hi-pitch envelopes: a per-tick period bend, where an instruction's pitch is a whole
-  semitone. Sounding them needs a sub-semitone offset in the instruction model and raw timer values
-  in the NSF planes, which reaches the reconstruction search space, the instruction library and the
-  compression pitch table. The two sequences reach a tracker file today and are written empty.
 * Release points: `NoteValue.RELEASE` stands in the FamiTracker specification while a note-off cuts
   the channel. A release segment would need the playback walk, the NSF driver and `NoteOff` to gain
   one.
 * Arpeggio modes: a sequence's `setting` byte states absolute. Fixed, relative and scheme need an
   enum of their own, and scheme needs the item bit-packing FamiTracker gives it.
+* The bend reaching the NSF planes. Each tone channel carries a bend plane and the driver adds
+  what it holds to the divider, but the encoders still leave the dimension to the note:
+  `registers/playable.py::playable` states that once, and every encoder below reads frames
+  carrying no bend. Filling the plane means the register encoders holding the bent divider and
+  `PitchTable` naming a divider as the nearest pitch beside a signed residual. Until it lands, an
+  NSF renders a bent note at the note's own divider.
+* The bend in a Bitphase export. `formats/bitphase/envelopes.py` states the three dimensions it
+  writes; `NesInstrumentRow` already carries `tone_add` and `tone_accumulation`, so the mapping is
+  confined to that module.
 * A transpose or a volume typed in the sample column of a row holding no sample reaches every
   channel. The column summarizes the channels its samples cover, and a row covering none falls
   back to all four so a value typed there lands somewhere; the reference slot keeps the narrower
@@ -42,6 +47,24 @@ starts carrying.
 
 * In-application guide/tutorial
 * Language selector
+* Verifying a bend against the criterion. The plan for the refinement carried a guard: render the
+  bent candidate, score it, and keep the bend only where the cost improves. It was measured and
+  left out. The criterion agreed with the reading on **every** bent frame of both a matched and a
+  mismatched target, so the guard rejects nothing; and one extra render-and-score per bent frame
+  measures around **2.1 s per second of audio**, against a whole conversion's ~1.2 s, so it would
+  nearly triple a run to change no decision. It is worth revisiting only against material where the
+  reading is shown to misfire.
+* Reading only the bins the refinement asks for. `InstantaneousPitch` transforms every bin the
+  spectrum covers and then reads five of them per frame, so it computes around twenty times the
+  work its reading uses. On a CUDA build that vanishes; on a CPU build one transform measures a
+  tenth or more of a short conversion, and a CI runner has measured it at a third. The kernel is a
+  matrix of one row per bin, so restricting it to the rows the chosen notes name is a slice — what
+  needs care is that the union of harmonic bins over a whole stream is wider than any one frame's.
+* Calibrating the pitch refinement. `generation.refinement`'s confidence threshold, change weight
+  and window are chosen by hand; `docs/concepts/calibration.md`'s experiment measures the criterion
+  blend and could measure these beside it. The change weight is the one with an audible trade-off:
+  it decides how large a one-frame excursion the walk follows rather than absorbs, which is
+  vibrato against jitter.
 
 ### Technical
 

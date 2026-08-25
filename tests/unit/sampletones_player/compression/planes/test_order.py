@@ -9,7 +9,7 @@ def numbered(count: int) -> PlaneOrder:
 
 
 class TestThePlanesAreNamedRatherThanNumbered:
-    """The song block writes eight planes in one order, and each is reached by its own name."""
+    """The song block writes its planes in one order, and each is reached by its own name."""
 
     def test_the_planes_take_the_names_the_song_block_writes_them_by(self) -> None:
         planes = numbered(PLANE_COUNT)

@@ -18,7 +18,10 @@ pointer:                .res 2
 entry:                  .res 2
 opcode:                 .res 1
 phrase_table:           .res 2
-timer_table:            .res 2
+timer_low_table:        .res 2
+timer_high_table:       .res 2
+bend:                   .res 1
+bend_sign:              .res 1
 plane_state:            .res PLANE_STATE_BYTES
 timer_high_shadows:     .res TRIANGLE_REGISTERS + 1
 
@@ -28,7 +31,7 @@ timer_high_shadows:     .res TRIANGLE_REGISTERS + 1
 .assert PHRASE_TABLE_ENTRY_SIZE = 2, error, "a table entry is reached by one doubling"
 .assert PHRASE_LENGTH_SIZE = 1, error, "a phrase body follows its length by one byte"
 
-; Readies the tables the planes read through and points all eight at their own first token.
+; Readies the tables the planes read through and points every plane at its own first token.
 channels_reset:
     lda #SHADOW_UNWRITTEN
     sta timer_high_shadows + PULSE1_REGISTERS
@@ -38,10 +41,18 @@ channels_reset:
     clc
     lda song_data + TIMER_TABLE_OFFSET
     adc #<song_data
-    sta timer_table
+    sta timer_low_table
     lda song_data + TIMER_TABLE_OFFSET + 1
     adc #>song_data
-    sta timer_table + 1
+    sta timer_low_table + 1
+
+    clc
+    lda timer_low_table
+    adc #PITCH_COUNT
+    sta timer_high_table
+    lda timer_low_table + 1
+    adc #$00
+    sta timer_high_table + 1
 
     clc
     lda song_data + PHRASE_TABLE_OFFSET
@@ -270,18 +281,21 @@ channels_write:
     sta CHANNEL_CONTROL + PULSE1_REGISTERS
     ldx #PULSE1_REGISTERS
     ldy plane_state + PULSE1_VALUE_PLANE + PLANE_VALUE
+    lda plane_state + PULSE1_BEND_PLANE + PLANE_VALUE
     jsr write_timer
 
     lda plane_state + PULSE2_CONTROL_PLANE + PLANE_VALUE
     sta CHANNEL_CONTROL + PULSE2_REGISTERS
     ldx #PULSE2_REGISTERS
     ldy plane_state + PULSE2_VALUE_PLANE + PLANE_VALUE
+    lda plane_state + PULSE2_BEND_PLANE + PLANE_VALUE
     jsr write_timer
 
     lda plane_state + TRIANGLE_CONTROL_PLANE + PLANE_VALUE
     sta CHANNEL_CONTROL + TRIANGLE_REGISTERS
     ldx #TRIANGLE_REGISTERS
     ldy plane_state + TRIANGLE_VALUE_PLANE + PLANE_VALUE
+    lda plane_state + TRIANGLE_BEND_PLANE + PLANE_VALUE
     jsr write_timer
 
     lda plane_state + NOISE_CONTROL_PLANE + PLANE_VALUE
@@ -290,18 +304,26 @@ channels_write:
     sta CHANNEL_TIMER_LOW + NOISE_REGISTERS
     rts
 
-; Writes the timer the pitch at Y sounds at to the channel whose register base lies in X. The
-; table holds every low byte and then every high byte, so one pointer reaches both halves. A high
-; half reaches the register only where it differs from the last one written, since storing it
-; restarts a pulse waveform and reloads the triangle's counter.
+; Writes the timer the pitch at Y sounds at, moved by the bend in A, to the channel whose
+; register base lies in X. The bend states divider steps in two's complement, so it reaches the
+; timer's high half as $00 or $FF beside the carry the low half raised. A high half reaches the
+; register only where it differs from the last one written, since storing it restarts a pulse
+; waveform and reloads the triangle's counter.
 write_timer:
-    lda (timer_table),y
-    sta CHANNEL_TIMER_LOW,x
-    tya
+    sta bend
+    lda #$00
+    bit bend
+    bpl @extended
+    lda #$FF
+@extended:
+    sta bend_sign
+
+    lda (timer_low_table),y
     clc
-    adc #PITCH_COUNT
-    tay
-    lda (timer_table),y
+    adc bend
+    sta CHANNEL_TIMER_LOW,x
+    lda (timer_high_table),y
+    adc bend_sign
     cmp timer_high_shadows,x
     beq @held
     sta timer_high_shadows,x

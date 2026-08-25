@@ -63,6 +63,8 @@ def instrument_from_features(
         envelopes=InstrumentEnvelopes(
             volume=features.volume,
             arpeggio=features.arpeggio,
+            pitch=features.pitch if features.pitch is not None else Envelope[int](),
+            hi_pitch=features.hi_pitch if features.hi_pitch is not None else Envelope[int](),
             duty_cycle=features.duty_cycle if features.duty_cycle is not None else Envelope[int](),
         ),
         initial_pitch=_initial_pitch(channel_name, features.initial_pitch),

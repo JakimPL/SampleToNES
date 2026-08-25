@@ -32,7 +32,7 @@ class CodecMonitor:
 
         Args:
             phrases: The entries the dictionary now holds.
-            size: The bytes the dictionary and the eight streams now take together.
+            size: The bytes the dictionary and every plane's stream now take together.
 
         Raises:
             OperationCanceled: If the run is no longer wanted.

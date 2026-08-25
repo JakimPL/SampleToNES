@@ -43,6 +43,8 @@ from sampletones_application.view_model.reconstruction.instruments import (
 )
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName, FeatureKey, GeneratorName
+from sampletones_core.constants.general import PITCH_BEND_MAX, PITCH_BEND_MIN
+from sampletones_core.features import CHANNEL_GENERATOR_KIND, supported_features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
 from sampletones_core.formats.famitracker.specification.sequences import (
@@ -494,6 +496,70 @@ class TestPlayingChannels:
         assert {channel_name: button.set_enabled.call_args.args[0] for channel_name, button in buttons.items()} == {
             channel_name: channel_name is ChannelName.TRIANGLE for channel_name in ChannelName.items()
         }
+
+
+class TestTheDimensionsAChannelShows:
+    """A channel plots the dimensions its generator offers, the bend among them where it reads one.
+
+    The panel builds one row per offered dimension, so what a channel shows follows the generator
+    spec rather than a list of its own.
+    """
+
+    @pytest.mark.parametrize(
+        "channel_name",
+        ChannelName.items(),
+        ids=lambda channel_name: str(channel_name),
+    )
+    def test_a_channel_plots_every_dimension_it_offers(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        channel_name: ChannelName,
+    ) -> None:
+        kind = CHANNEL_GENERATOR_KIND[channel_name]
+
+        assert list(panel._feature_plot_configs[kind]) == supported_features(kind)
+
+    @pytest.mark.parametrize(
+        "kind",
+        (GeneratorName.PULSE, GeneratorName.TRIANGLE),
+        ids=lambda kind: str(kind),
+    )
+    def test_a_tonal_channel_plots_both_bend_dimensions(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        kind: GeneratorName,
+    ) -> None:
+        plotted = panel._feature_plot_configs[kind]
+
+        assert FeatureKey.PITCH in plotted
+        assert FeatureKey.HI_PITCH in plotted
+
+    def test_the_noise_channel_plots_no_bend(self, panel: GUIReconstructionInstrumentsPanel) -> None:
+        plotted = panel._feature_plot_configs[GeneratorName.NOISE]
+
+        assert FeatureKey.PITCH not in plotted
+        assert FeatureKey.HI_PITCH not in plotted
+
+    def test_the_two_bend_dimensions_read_apart(self, panel: GUIReconstructionInstrumentsPanel) -> None:
+        """One counts a divider step and the other sixteen, so a reader tells them apart at a glance."""
+        plotted = panel._feature_plot_configs[GeneratorName.PULSE]
+
+        assert plotted[FeatureKey.PITCH].color != plotted[FeatureKey.HI_PITCH].color
+        assert plotted[FeatureKey.PITCH].label != plotted[FeatureKey.HI_PITCH].label
+
+    @pytest.mark.parametrize(
+        "feature_key",
+        (FeatureKey.PITCH, FeatureKey.HI_PITCH),
+        ids=lambda feature_key: str(feature_key),
+    )
+    def test_a_bend_plot_spans_the_range_a_sequence_stores(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        feature_key: FeatureKey,
+    ) -> None:
+        plotted = panel._feature_plot_configs[GeneratorName.PULSE][feature_key]
+
+        assert plotted.data_range == (PITCH_BEND_MIN, PITCH_BEND_MAX)
 
 
 class TestSizeVisibility:

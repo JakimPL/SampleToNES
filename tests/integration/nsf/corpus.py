@@ -62,7 +62,7 @@ class CorpusEntry:
 
     @property
     def planes(self) -> SongPlanes:
-        """The eight planes the song separates into."""
+        """The planes the song separates into."""
         return planes_from_streams(self.song.streams, self.pitches)
 
     @property

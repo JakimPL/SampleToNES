@@ -1,4 +1,5 @@
 from .spec import (
+    BEND_FEATURES,
     CHANNEL_FEATURE_DEFAULTS,
     CHANNEL_GENERATOR_KIND,
     FEATURE_DIMENSION_ORDER,
@@ -19,6 +20,7 @@ from .spec import (
 )
 
 __all__ = [
+    "BEND_FEATURES",
     "CHANNEL_FEATURE_DEFAULTS",
     "FEATURE_DIMENSION_ORDER",
     "GENERATOR_CHANNEL_KINDS",

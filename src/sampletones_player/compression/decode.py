@@ -4,8 +4,8 @@ from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
+from sampletones_player.specification.binary import BYTE_VALUES
 from sampletones_player.specification.compression import (
-    BYTE_VALUES,
     INITIAL_PLANE_VALUE,
     PHRASE_ID_ESCAPE,
     TOKEN_OPERAND_MASK,
@@ -91,13 +91,13 @@ def decode_plane(data: bytes, table: PhraseTable, ticks: int) -> bytes:
 
 
 def decode_planes(compressed: CompressedPlanes) -> SongPlanes:
-    """Plays a song's eight token streams back into the planes they were written from.
+    """Plays a song's token streams back into the planes they were written from.
 
     Args:
         compressed: The dictionary, the streams and the ticks the song lasts.
 
     Returns:
-        SongPlanes: The eight planes, two per channel.
+        SongPlanes: The planes under the channel each belongs to.
     """
     played = PlaneOrder.across(
         decode_plane(

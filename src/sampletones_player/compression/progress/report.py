@@ -8,7 +8,7 @@ class CodecProgress:
 
     Attributes:
         phrases: The entries the dictionary has gathered.
-        size: The bytes the dictionary and the eight token streams take together, as of the last
+        size: The bytes the dictionary and every plane's token stream take together, as of the last
             reading of the whole song; a run that has yet to read one reports nothing laid down.
     """
 

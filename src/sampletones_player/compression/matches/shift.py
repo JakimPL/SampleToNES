@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Final
 
-from sampletones_player.specification.compression import BYTE_VALUES
+from sampletones_player.specification.binary import BYTE_VALUES
 
 NO_SHIFT: Final[int] = 0
 

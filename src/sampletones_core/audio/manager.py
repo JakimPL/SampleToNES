@@ -521,7 +521,7 @@ class AudioDeviceManager(CallbackMixin):
         update: bool = True,
         priority: int = 0,
         owner: Optional[Any] = None,
-    ) -> None:
+    ) -> bool:
         """
         Play audio data.
 
@@ -539,6 +539,10 @@ class AudioDeviceManager(CallbackMixin):
             priority: Output-request priority; higher wins. Callers assign the meaning.
             owner: Identity of the caller owning this playback, matched by :meth:`replace_audio`
                 to swap the live buffer only while its own audio is the one playing.
+
+        Returns:
+            bool: Whether this request took the output, which is what a caller following its own
+                playback — drawing a cursor along it — waits for before it starts following.
         """
         external_priority = self.call(self.external_output_priority)
         with self._lock:
@@ -548,7 +552,7 @@ class AudioDeviceManager(CallbackMixin):
             (priority for priority in (internal_priority, external_priority) if priority is not None), default=None
         )
         if held is not None and priority < held:
-            return
+            return False
 
         self.stop()
         if external_priority is not None:
@@ -572,6 +576,7 @@ class AudioDeviceManager(CallbackMixin):
         )
 
         self._playback_thread.start()
+        return True
 
     def replace_audio(
         self,

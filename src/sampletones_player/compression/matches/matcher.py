@@ -5,7 +5,7 @@ from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.matches.cache import KEY_LENGTH, MIN_PHRASE_TICKS, MatchCache
 from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.matches.match import PhraseMatch
-from sampletones_player.specification.compression import BYTE_VALUES
+from sampletones_player.specification.binary import BYTE_VALUES
 
 
 class PhraseMatcher:

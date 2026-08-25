@@ -65,6 +65,13 @@ TRANSITION_VOLUME_WEIGHT: Final[float] = 0.02
 TRANSITION_TIMBRE_WEIGHT: Final[float] = 0.10
 TRANSITION_ON_OFF_WEIGHT: Final[float] = 0.20
 
+# Pitch refinement
+
+REFINE_PITCH: Final[bool] = True
+REFINEMENT_CONFIDENCE: Final[float] = 0.15
+REFINEMENT_CHANGE_WEIGHT: Final[float] = 2.0
+REFINEMENT_WINDOW: Final[int] = 4
+
 # Mixer drive
 
 DRIVE: Final[float] = 1.0

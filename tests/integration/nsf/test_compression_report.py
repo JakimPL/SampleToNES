@@ -276,12 +276,21 @@ class TestTheProgramAreaHoldsAWholeSong:
         assert searched
         assert SONG_HEADER_SIZE + searched[0].size <= available_bytes(driver_image)
 
-    def test_every_variant_of_every_song_undercuts_a_record_per_tick(
+    def test_every_layer_undercuts_a_record_per_tick(
         self,
         encodings: Tuple[Encoding, ...],
     ) -> None:
-        """The pitch table is paid once, so what a song's own data is held against is the records."""
+        """The pitch table is paid once, so what a song's own data is held against is the records.
+
+        A tone channel writes three planes and three registers, and the noise channel two of
+        each, so spelling every plane out reaches a record per tick and the opcodes counting the
+        runs. The layers are what buy a song its room, and each of them undercuts the record by
+        several times over.
+        """
         for encoding in encodings:
+            if encoding.variant == LITERALS:
+                continue
+
             assert encoding.compressed.size < encoding.entry.records
 
 

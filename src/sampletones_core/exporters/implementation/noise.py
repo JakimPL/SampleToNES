@@ -62,6 +62,18 @@ class NoiseExporter(Exporter[NoiseInstruction]):
         return initial_period
 
     @classmethod
+    def unstated_features(cls, instructions: List[NoiseInstruction]) -> Tuple[FeatureKey, ...]:
+        """Every dimension the noise channel reads is one its frames choose, so it states them all.
+
+        Args:
+            instructions: The channel's per-frame instructions.
+
+        Returns:
+            Tuple[FeatureKey, ...]: No dimension, since the stream writes each one it offers.
+        """
+        return ()
+
+    @classmethod
     def read_envelopes(
         cls,
         instructions: List[NoiseInstruction],

@@ -279,12 +279,12 @@ class TestImportInstrument:
         located_file: List[Dict[str, object]],
     ) -> None:
         logic = instrument_voices._voices_logic
-        logic.read_instrument.return_value = _imported(InstrumentOmission.PITCH)
+        logic.read_instrument.return_value = _imported(InstrumentOmission.CUMULATIVE_BEND)
 
         instrument_voices.import_instrument()
 
         notice = instrument_voices._dialogs.show_info.call_args.args[1]
-        assert instrument_voices._import_messages.omissions[InstrumentOmission.PITCH] in notice
+        assert instrument_voices._import_messages.omissions[InstrumentOmission.CUMULATIVE_BEND] in notice
 
     def test_a_file_holding_the_voice_alone_is_reported_nowhere(
         self,

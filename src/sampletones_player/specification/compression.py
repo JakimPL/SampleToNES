@@ -3,7 +3,12 @@ from math import ceil
 from typing import Final
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_player.specification.binary import WORD_SIZE
+from sampletones_player.specification.binary import (
+    BYTE_VALUES,
+    MAX_BYTE_VALUE,
+    WORD_SIZE,
+)
+from sampletones_player.specification.channels import TONE_CHANNELS
 from sampletones_shared.constants.general import BITS_PER_BYTE
 
 
@@ -22,9 +27,6 @@ class TokenTag(IntEnum):
     PHRASE = 0x80
     TRANSPOSED_PHRASE = 0xC0
 
-
-BYTE_VALUES: Final[int] = 256
-MAX_BYTE_VALUE: Final[int] = BYTE_VALUES - 1
 
 TOKEN_TAG_MASK: Final[int] = 0xC0
 TOKEN_OPERAND_MASK: Final[int] = 0x3F
@@ -50,5 +52,8 @@ PHRASE_LENGTH_SIZE: Final[int] = 1
 INITIAL_PLANE_VALUE: Final[int] = 0
 
 PLANES_PER_CHANNEL: Final[int] = 2
-PLANE_COUNT: Final[int] = len(ChannelName.items()) * PLANES_PER_CHANNEL
+TONE_PLANES_PER_CHANNEL: Final[int] = PLANES_PER_CHANNEL + 1
+PLANE_COUNT: Final[int] = sum(
+    TONE_PLANES_PER_CHANNEL if channel in TONE_CHANNELS else PLANES_PER_CHANNEL for channel in ChannelName.items()
+)
 PLANE_STATE_SIZE: Final[int] = 8

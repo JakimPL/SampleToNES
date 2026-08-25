@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -28,6 +29,7 @@ from sampletones_core.reconstructions.reconstruction.reconstruction import Recon
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.decoder.base import Streams
+from sampletones_core.reconstructions.reconstructor.refinement import PitchRefiner
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
 from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
 from sampletones_core.reconstructions.reconstructor.stems.assignment.track import TrackAssignment
@@ -38,6 +40,24 @@ from sampletones_shared.exceptions import NoLibraryDataError
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.progress import silent_reporter
 from sampletones_shared.utils.system.paths import to_path
+
+
+@dataclass(frozen=True)
+class PreparedStems:
+    """Each stem's recording at the level the matching is made on, and the frames it was cut into.
+
+    The matching reads the frames and the refinement reads the recording they came from, so both
+    travel together from the one place that scales them.
+
+    Attributes:
+        recordings: Each stem's scaled recording, keyed by stem id.
+        frames: Each stem's frames, keyed by stem id.
+        coefficient: The factor the whole set was scaled by.
+    """
+
+    recordings: Dict[int, np.ndarray]
+    frames: Dict[int, FragmentedAudio]
+    coefficient: float
 
 
 class Reconstructor:
@@ -133,20 +153,26 @@ class Reconstructor:
         announce(report, ReconstructionStage.LOADING, STAGE_BEGUN, PREPARATIONS)
         recordings = self._load_stem_recordings(checked_paths)
         announce(report, ReconstructionStage.LOADING, RECORDINGS_LOADED, PREPARATIONS)
-        stem_frames, coefficient = self._prepare_stem_frames(recordings, stems_config)
+        prepared = self._prepare_stem_frames(recordings, stems_config)
         announce(report, ReconstructionStage.LOADING, FRAMES_PREPARED, PREPARATIONS)
         worker = self._build_worker(common_length(recordings))
-        assignment = self._assign_stem_frames(stem_frames, stems_config, worker, report)
+        assignment = self._assign_stem_frames(prepared.frames, stems_config, worker, report)
         self._drop_resting_channels(assignment)
         announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
-        self._record_streams(worker.decoder.decode(assignment.lattices), report)
+        streams = worker.decoder.decode(assignment.lattices)
+        streams = self._refiner().refine(streams, assignment.stem_ids, prepared.recordings)
+        self._record_streams(streams, report)
         return Reconstruction.from_state(
             self.state,
             self.config,
-            coefficient,
+            prepared.coefficient,
             tuple(checked_paths),
             stems_data=self._build_stems_data(stems_config, assignment.stem_ids),
         )
+
+    def _refiner(self) -> PitchRefiner:
+        """The pass that carries each chosen note towards the fundamental the recording sounds."""
+        return PitchRefiner(config=self.config, channels=self.channels)
 
     @staticmethod
     def _check_stem_paths(
@@ -189,7 +215,7 @@ class Reconstructor:
         self,
         recordings: Sequence[np.ndarray],
         stems_config: StemsConfig,
-    ) -> Tuple[Dict[int, FragmentedAudio], float]:
+    ) -> PreparedStems:
         """Scales the recordings to the working level and frames each of them.
 
         The level is measured on their mix, so one factor scales the whole set and a
@@ -197,18 +223,24 @@ class Reconstructor:
         Framing every recording on its own is what lets a stem's picks be scored against
         the sound that stem contributes.
 
-        Returns the framed recordings keyed by stem id, together with the coefficient they
-        were scaled by, so the assembled reconstruction records the level it was matched at.
+        Args:
+            recordings: The loaded stem recordings, in entry order.
+            stems_config: The stems setup the run is made under.
+
+        Returns:
+            PreparedStems: The scaled recordings and their frames, keyed by stem id, together
+                with the coefficient they were scaled by.
         """
         coefficient = self.get_coefficient(mix(list(recordings)), stems_config)
         self.reset_generators()
         covered = stems_config.covered_channels
         self.state = ReconstructionState.create([name for name in ChannelName.items() if name in covered])
-        stem_frames = {
-            entry.id: self.get_fragments(recording / coefficient)
-            for entry, recording in zip(stems_config.entries, recordings)
-        }
-        return stem_frames, coefficient
+        scaled = {entry.id: recording / coefficient for entry, recording in zip(stems_config.entries, recordings)}
+        return PreparedStems(
+            recordings=scaled,
+            frames={stem_id: self.get_fragments(recording) for stem_id, recording in scaled.items()},
+            coefficient=coefficient,
+        )
 
     def _build_worker(self, signal_length: int) -> ReconstructorWorker:
         """Builds the matching machinery and the decoder this recording runs through."""

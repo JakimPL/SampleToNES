@@ -125,7 +125,7 @@ class TestAReClockedStreamPlaysTheSameTicks(BaseTestSuite):
 class TestARepeatingSongComesRoundWhereTheModelSaysItDoes(BaseTestSuite):
     """A song that repeats re-enters its streams partway through.
 
-    What the driver restores at the loop is the byte each of the eight planes resumes at, which
+    What the driver restores at the loop is the byte each plane resumes at, which
     the header states, so a plane comes back holding nothing of the run that led up to it. The
     tick the loop returns to therefore starts a token of its own on every plane.
     """

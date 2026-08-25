@@ -5,12 +5,14 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
+from sampletones_application.constants.instruments import AUDITION_TICKS
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
+from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters.naming import instrument_slice_name
 from sampletones_core.features.envelope import Envelope
@@ -454,6 +456,28 @@ class TestInstrumentsInTheVoiceList:
         played = audio_device_manager.play.call_args.args[0]
         assert played.size > 0
 
+    def test_a_sustaining_instrument_previews_for_the_length_a_voice_is_offered(self) -> None:
+        """A voice that never releases would otherwise preview as the single frame it writes."""
+        controller, logic, _, audio_device_manager = _logic_with_mocks()
+        instrument = logic.add_new_instrument("lead")
+
+        logic.play_voice(instrument.id)
+
+        played = audio_device_manager.play.call_args.args[0]
+        frame_length = _preview_config(controller).frame_length
+        assert played.size == AUDITION_TICKS * frame_length
+
+    def test_an_instrument_releasing_itself_previews_only_that_far(self) -> None:
+        controller, logic, _, audio_device_manager = _logic_with_mocks()
+        instrument = logic.add_new_instrument("lead")
+        controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=(15, 8, 0)))
+
+        logic.play_voice(instrument.id)
+
+        played = audio_device_manager.play.call_args.args[0]
+        frame_length = _preview_config(controller).frame_length
+        assert played.size == 3 * frame_length
+
     def test_an_instrument_writing_nothing_sounds_no_preview(self) -> None:
         controller, logic, _, audio_device_manager = _logic_with_mocks()
         instrument = controller.add_instrument(Instrument(name="lead"))
@@ -461,6 +485,15 @@ class TestInstrumentsInTheVoiceList:
         logic.play_voice(instrument.id)
 
         audio_device_manager.play.assert_not_called()
+
+
+def _preview_config(controller: ProjectController) -> Config:
+    """The configuration a preview renders at, which is the project's own rate and sample rate."""
+    settings = controller.project.settings
+    return Config().with_library(
+        nes_frequency=settings.nes_frequency,
+        sample_rate=settings.sample_rate,
+    )
 
 
 def _tracker_instrument(
@@ -541,7 +574,7 @@ class TestReadingAnInstrumentFile:
         )
         _, logic = _logic()
 
-        assert InstrumentOmission.PITCH in logic.read_instrument(filepath).omissions
+        assert InstrumentOmission.CUMULATIVE_BEND in logic.read_instrument(filepath).omissions
 
     def test_reading_leaves_the_pool_as_it_stands(self, tmp_path: Path) -> None:
         """The pool is edited by the gesture that adds, so a read alone records no history entry."""

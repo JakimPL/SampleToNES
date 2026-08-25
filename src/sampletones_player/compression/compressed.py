@@ -10,7 +10,7 @@ from sampletones_player.compression.planes.order import PlaneOrder
 
 
 class CompressedPlanes(BaseModel):
-    """A song's planes as the driver reads them: one dictionary and eight token streams.
+    """A song's planes as the driver reads them: one dictionary and a token stream per plane.
 
     Attributes:
         phrases: The dictionary every stream's tokens name.
@@ -33,7 +33,7 @@ class CompressedPlanes(BaseModel):
 
     @property
     def size(self) -> int:
-        """The bytes the dictionary and the eight streams take together."""
+        """The bytes the dictionary and every plane's stream take together."""
         return self.phrases.size + sum(len(stream) for stream in self.streams)
 
     def entries(self, tick: int) -> Tuple[int, ...]:

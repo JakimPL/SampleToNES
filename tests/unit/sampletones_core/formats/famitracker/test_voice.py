@@ -122,11 +122,40 @@ class TestWhatTheInstrumentStatesPastTheVoice:
     def test_a_plain_instrument_leaves_nothing_behind(self) -> None:
         assert imported(written(SequenceKind.VOLUME, (15, 8, 0))).omissions == ()
 
-    def test_a_pitch_bend_is_reported(self) -> None:
-        assert self.omissions(written(SequenceKind.PITCH, (1, -1)))[InstrumentOmission.PITCH]
+    def test_a_bend_the_tracker_accumulates_is_reported(self) -> None:
+        """The tracker pins the period only while an arpeggio runs, and this file writes none."""
+        assert self.omissions(written(SequenceKind.PITCH, (1, -1)))[InstrumentOmission.CUMULATIVE_BEND]
 
-    def test_a_hi_pitch_bend_is_reported(self) -> None:
-        assert self.omissions(written(SequenceKind.HI_PITCH, (1,)))[InstrumentOmission.HI_PITCH]
+    def test_a_hi_pitch_bend_the_tracker_accumulates_is_reported(self) -> None:
+        assert self.omissions(written(SequenceKind.HI_PITCH, (1,)))[InstrumentOmission.CUMULATIVE_BEND]
+
+    def test_a_bend_an_arpeggio_covers_is_carried_rather_than_reported(self) -> None:
+        """An arpeggio reloading the note every tick is what makes each bend item an offset."""
+        assert not self.omissions(
+            written(SequenceKind.ARPEGGIO, (0, 0)),
+            written(SequenceKind.PITCH, (1, -1)),
+        )[InstrumentOmission.CUMULATIVE_BEND]
+
+    def test_a_bend_beside_a_looping_arpeggio_is_carried(self) -> None:
+        assert not self.omissions(
+            written(SequenceKind.ARPEGGIO, (0,), loop_point=0),
+            written(SequenceKind.PITCH, (1, -1, 2, 3)),
+        )[InstrumentOmission.CUMULATIVE_BEND]
+
+    def test_a_bend_outrunning_its_arpeggio_is_reported(self) -> None:
+        assert self.omissions(
+            written(SequenceKind.ARPEGGIO, (0, 0)),
+            written(SequenceKind.PITCH, (1, -1, 2)),
+        )[InstrumentOmission.CUMULATIVE_BEND]
+
+    def test_the_bend_a_file_states_reaches_the_voice(self) -> None:
+        envelopes = imported(
+            written(SequenceKind.PITCH, (1, -1)),
+            written(SequenceKind.HI_PITCH, (2,)),
+        ).voice.envelopes
+
+        assert envelopes.pitch.items == (1, -1)
+        assert envelopes.hi_pitch.items == (2,)
 
     def test_a_release_point_is_reported(self) -> None:
         volume = written(SequenceKind.VOLUME, (15, 8), release_point=1)
@@ -153,9 +182,8 @@ class TestWhatTheInstrumentStatesPastTheVoice:
     def test_every_dimension_past_the_voice_is_named_at_once(self) -> None:
         reported = imported(
             written(SequenceKind.VOLUME, (15, 8), loop_point=1),
-            written(SequenceKind.ARPEGGIO, (0, 3), setting=ARPEGGIO_SCHEME_SETTING),
+            written(SequenceKind.ARPEGGIO, (0,), setting=ARPEGGIO_SCHEME_SETTING),
             written(SequenceKind.PITCH, (1, -1), release_point=1),
-            written(SequenceKind.HI_PITCH, (0,)),
         ).omissions
 
         assert set(reported) == set(InstrumentOmission)
