@@ -34,20 +34,26 @@ class StemsConfig(DataModel):
     def single_entry(
         cls,
         channels: List[ChannelName],
+        bends: List[ChannelName],
         *,
         channel_cap: int = ALL_STEMS_CHANNEL_CAP,
     ) -> Self:
-        """The setup for one stem covering ``channels``, the classic run's shape.
+        """The setup for one stem covering ``channels`` and bending ``bends``, the classic run's shape.
 
         One entry holding every channel on a single precedence level reproduces the classic
         greedy pick when the cap equals the channel count, so this setup describes both a
         single-file conversion and the stems pipeline's simplest case.
         """
         return cls(
-            entries=[StemEntry(id=0, channels=channels)],
+            entries=[StemEntry(id=0, channels=channels, bends=bends)],
             hierarchy=StemsHierarchy(levels=[[0]]),
             channel_cap=channel_cap,
         )
+
+    @cached_property
+    def bent_channels(self) -> FrozenSet[ChannelName]:
+        """Every channel some stem carries towards its own recording."""
+        return frozenset(channel for entry in self.entries for channel in entry.bends)
 
     @cached_property
     def entries_by_id(self) -> Dict[int, StemEntry]:

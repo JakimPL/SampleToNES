@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, bending_channels
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.converter import (
     DirectoryConversion,
@@ -54,7 +54,8 @@ class TestGroupConversionEndToEnd:
         config = _writing_to(Config(), tmp_path / "out")
         reconstructor = Reconstructor(config, library=build_mini_library(config))
         source = write_three_stem_recordings(config, tmp_path)[0]
-        stems = StemsConfig.single_entry(list(config.generation.channels))
+        channels = list(config.generation.channels)
+        stems = StemsConfig.single_entry(channels, bending_channels(channels))
 
         jobs = GroupConversion(sources=(source,), stems=stems).jobs(config)
         written = reconstruct_job((reconstructor, jobs[0], silent_reporter))
@@ -74,7 +75,7 @@ class TestDirectoryConversionEndToEnd:
         recordings = tmp_path / "recordings"
         recordings.mkdir()
         sources = write_three_stem_recordings(config, recordings)
-        stems = StemsConfig.single_entry([ChannelName.PULSE1], channel_cap=1)
+        stems = StemsConfig.single_entry([ChannelName.PULSE1], bending_channels([ChannelName.PULSE1]), channel_cap=1)
 
         jobs = DirectoryConversion(directory=recordings, stems=stems).jobs(config)
 
@@ -109,7 +110,8 @@ class TestAJobReportsItselfAsItRuns:
         config = _writing_to(Config(), tmp_path / "out")
         reconstructor = Reconstructor(config, library=build_mini_library(config))
         source = write_three_stem_recordings(config, tmp_path)[0]
-        stems = StemsConfig.single_entry(list(config.generation.channels))
+        channels = list(config.generation.channels)
+        stems = StemsConfig.single_entry(channels, bending_channels(channels))
         jobs = GroupConversion(sources=(source,), stems=stems).jobs(config)
         reporter: RecordingReporter[ReconstructionProgress] = RecordingReporter()
 
@@ -124,7 +126,8 @@ class TestAJobReportsItselfAsItRuns:
         config = _writing_to(Config(), tmp_path / "out")
         reconstructor = Reconstructor(config, library=build_mini_library(config))
         source = write_three_stem_recordings(config, tmp_path)[0]
-        stems = StemsConfig.single_entry(list(config.generation.channels))
+        channels = list(config.generation.channels)
+        stems = StemsConfig.single_entry(channels, bending_channels(channels))
         jobs = GroupConversion(sources=(source,), stems=stems).jobs(config)
         reporter: RecordingReporter[ReconstructionProgress] = RecordingReporter()
 
@@ -137,7 +140,8 @@ class TestAJobReportsItselfAsItRuns:
         config = _writing_to(Config(), tmp_path / "out")
         reconstructor = Reconstructor(config, library=build_mini_library(config))
         source = write_three_stem_recordings(config, tmp_path)[0]
-        stems = StemsConfig.single_entry(list(config.generation.channels))
+        channels = list(config.generation.channels)
+        stems = StemsConfig.single_entry(channels, bending_channels(channels))
         jobs = GroupConversion(sources=(source,), stems=stems).jobs(config)
         reporter: RecordingReporter[ReconstructionProgress] = RecordingReporter(withdraw_at=FIRST_REPORT)
 

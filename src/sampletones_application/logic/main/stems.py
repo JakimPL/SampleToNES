@@ -2,7 +2,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable, FrozenSet, List, Optional, Self, Sequence, Tuple
 
-from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
@@ -232,7 +232,10 @@ def derive_conversion_setup(
     playing = [[pair for pair in level if pair[1]] for level in taking_part]
     ordered = [pair for level in playing if level for pair in level]
 
-    entries = [StemEntry(id=stem_id, channels=channels) for stem_id, (_source, channels) in enumerate(ordered)]
+    entries = [
+        StemEntry(id=stem_id, channels=channels, bends=bending_channels(channels))
+        for stem_id, (_source, channels) in enumerate(ordered)
+    ]
     return ConversionSetup(
         sources=tuple(source.path for source, _channels in ordered),
         stems=StemsConfig(

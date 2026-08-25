@@ -4,7 +4,7 @@ from typing import List
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, bending_channels
 from sampletones_core.reconstructions.converter.paths.utils import get_output_path, group_output_path
 from sampletones_core.reconstructions.converter.plan.directory import DirectoryConversion
 from sampletones_core.reconstructions.converter.plan.group import GroupConversion
@@ -19,7 +19,8 @@ def config() -> Config:
 
 @pytest.fixture(scope="module")
 def stems(config: Config) -> StemsConfig:
-    return StemsConfig.single_entry(list(config.generation.channels))
+    channels = list(config.generation.channels)
+    return StemsConfig.single_entry(channels, bending_channels(channels))
 
 
 def _write_audio_files(directory: Path, names: List[str]) -> List[Path]:
@@ -70,7 +71,7 @@ class TestGroupConversion:
         tmp_path: Path,
     ) -> None:
         sources = tuple(_write_audio_files(tmp_path, ["a.wav", "b.wav"]))
-        targeted = StemsConfig.single_entry([ChannelName.PULSE1], channel_cap=1)
+        targeted = StemsConfig.single_entry([ChannelName.PULSE1], bending_channels([ChannelName.PULSE1]), channel_cap=1)
 
         jobs = GroupConversion(sources=sources, stems=targeted).jobs(config)
 

@@ -2,7 +2,7 @@ from typing import Final, List, Tuple
 
 import numpy as np
 
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, bending_channels
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.filter import (
@@ -23,7 +23,10 @@ def _heard(*stem_ids: int) -> StemSelection:
 
 
 def _stems_data(*stem_lists: Tuple[ChannelName, List[int]]) -> StemsData:
-    entries = [StemEntry(id=stem_id, channels=[ChannelName.PULSE1]) for stem_id in range(3)]
+    entries = [
+        StemEntry(id=stem_id, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1]))
+        for stem_id in range(3)
+    ]
     return StemsData(
         config=StemsConfig(
             entries=entries,

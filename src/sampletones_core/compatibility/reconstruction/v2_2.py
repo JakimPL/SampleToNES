@@ -4,6 +4,7 @@ from sampletones_core.compatibility.fields import (
     APPROXIMATIONS_DATA,
     ASSIGNMENTS,
     AUDIO_FILEPATH,
+    BENDS,
     CHANNEL_CAP,
     CHANNEL_NAME,
     CHANNELS,
@@ -53,7 +54,7 @@ def _default_stems_data(data: SerializedData) -> SerializedData:
 
     One stem covers every enabled channel and owns every frame of each channel that plays,
     which is the classic run's shape, so the synthesized record states what the
-    reconstruction is.
+    reconstruction is. It bends nothing, which is what a build writing this shape did.
     """
     config = data.get(CONFIG)
     channels = config.get(GENERATION, {}).get(CHANNELS, []) if isinstance(config, dict) else []
@@ -69,7 +70,7 @@ def _default_stems_data(data: SerializedData) -> SerializedData:
     ]
     return {
         CONFIG: {
-            ENTRIES: [{ID: 0, CHANNELS: channels}],
+            ENTRIES: [{ID: 0, CHANNELS: channels, BENDS: []}],
             HIERARCHY: {LEVELS: [[0]], MODE: str(DEFAULT_STEMS_HIERARCHY_MODE)},
             CHANNEL_CAP: DEFAULT_STEMS_CHANNEL_CAP,
         },
@@ -138,7 +139,8 @@ def update(data: SerializedData) -> SerializedData:
     ``config.generation.generators``. Data version 2.2 names them ``channel_name``
     and ``config.generation.channels``, stamps the embedded config's metadata with the
     new data version, records the source audio as one path per stem, and carries the
-    single-entry stems record every reconstruction states.
+    single-entry stems record every reconstruction states, down to the channels each
+    stem carries towards its own recording.
     """
     updated = dict(data)
     updated = _renamed_stream_keys(updated)

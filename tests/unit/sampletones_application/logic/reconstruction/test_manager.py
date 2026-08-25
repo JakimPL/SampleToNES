@@ -8,7 +8,7 @@ import pytest
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
@@ -24,8 +24,8 @@ def _two_entry_stems_data() -> StemsData:
     return StemsData(
         config=StemsConfig(
             entries=[
-                StemEntry(id=0, channels=[ChannelName.PULSE1]),
-                StemEntry(id=1, channels=[ChannelName.PULSE1]),
+                StemEntry(id=0, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                StemEntry(id=1, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
             ],
             hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
             channel_cap=1,

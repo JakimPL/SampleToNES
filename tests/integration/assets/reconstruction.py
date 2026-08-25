@@ -7,7 +7,7 @@ from sampletones_core.audio import write_wave
 from sampletones_core.audio.processing import normalize
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.configs.generation import GenerationConfig
-from sampletones_core.constants.enums import ChannelName, HierarchyMode, SpectrumMethod
+from sampletones_core.constants.enums import ChannelName, HierarchyMode, SpectrumMethod, bending_channels
 from sampletones_core.fft import Window
 from sampletones_core.fft.features import get_feature_extractor
 from sampletones_core.generators import get_generators_by_channels
@@ -57,7 +57,10 @@ def three_stem_config() -> StemsConfig:
     hierarchy level, stem c (pulse 1, noise) on the second.
     """
     return StemsConfig(
-        entries=[StemEntry(id=stem_id, channels=channels) for stem_id, channels in THREE_STEM_ENTRY_CHANNELS.items()],
+        entries=[
+            StemEntry(id=stem_id, channels=channels, bends=bending_channels(channels))
+            for stem_id, channels in THREE_STEM_ENTRY_CHANNELS.items()
+        ],
         hierarchy=StemsHierarchy(
             levels=[[STEM_A_ID, STEM_B_ID], [STEM_C_ID]],
             mode=HierarchyMode.STRICT,

@@ -8,7 +8,7 @@ from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_core.audio import mix, write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_CHANNEL_CAP, RESTING_STEM_ID
-from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
@@ -34,6 +34,12 @@ _DISJOINT_TONES: Final[Tuple[float, ...]] = (220.0, 440.0, 880.0)
 _DISJOINT_AMPLITUDE: Final[float] = 0.5
 
 
+def _classic_stems(config: Config, *, channel_cap: int) -> StemsConfig:
+    """One stem over every configured channel, carrying each of them that reads a bend."""
+    channels = list(config.generation.channels)
+    return StemsConfig.single_entry(channels, bending_channels(channels), channel_cap=channel_cap)
+
+
 def _frame_count(config: Config, duration_seconds: float) -> int:
     return int(config.library.sample_rate * duration_seconds) // config.library.frame_length
 
@@ -41,8 +47,8 @@ def _frame_count(config: Config, duration_seconds: float) -> int:
 def _stems_config() -> StemsConfig:
     return StemsConfig(
         entries=[
-            StemEntry(id=0, channels=[ChannelName.PULSE1]),
-            StemEntry(id=1, channels=[ChannelName.NOISE]),
+            StemEntry(id=0, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+            StemEntry(id=1, channels=[ChannelName.NOISE], bends=bending_channels([ChannelName.NOISE])),
         ],
         hierarchy=StemsHierarchy(
             levels=[[0], [1]],
@@ -490,7 +496,7 @@ class TestClassicRunCarriesTheSingleEntryRecord:
 
         reconstruction = reconstructor.reconstruct(
             [tone_path],
-            StemsConfig.single_entry(list(config.generation.channels), channel_cap=1),
+            _classic_stems(config, channel_cap=1),
         )
 
         assert reconstruction is not None
@@ -539,7 +545,10 @@ class TestStemsCarryTheirOwnSound:
     def _stems_config(self, channels: Sequence[ChannelName]) -> StemsConfig:
         """Every stem may take every channel, each on a level of its own."""
         return StemsConfig(
-            entries=[StemEntry(id=index, channels=list(channels)) for index in range(len(_DISJOINT_TONES))],
+            entries=[
+                StemEntry(id=index, channels=list(channels), bends=bending_channels(list(channels)))
+                for index in range(len(_DISJOINT_TONES))
+            ],
             hierarchy=StemsHierarchy(
                 levels=[[index] for index in range(len(_DISJOINT_TONES))],
                 mode=HierarchyMode.ROUND_ROBIN,

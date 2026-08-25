@@ -20,7 +20,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import AudioSourceType, ChannelName
+from sampletones_core.constants.enums import AudioSourceType, ChannelName, bending_channels
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.instructions import TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction
@@ -921,8 +921,8 @@ class TestReconstructionPanelLogicStemSelection:
         frame_count = len(reconstruction.approximations[ChannelName.PULSE1]) // reconstruction.config.frame_length
         stems_config = StemsConfig(
             entries=[
-                StemEntry(id=0, channels=[ChannelName.PULSE1]),
-                StemEntry(id=1, channels=[ChannelName.PULSE1]),
+                StemEntry(id=0, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                StemEntry(id=1, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
             ],
             hierarchy=StemsHierarchy(levels=[[0, 1]]),
         )

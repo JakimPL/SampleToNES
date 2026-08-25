@@ -4,6 +4,7 @@ from typing import Final, Optional, Tuple
 from tqdm import tqdm
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import bending_channels
 from sampletones_core.library import InstructionLibrary
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_core.reconstructions import Reconstructor
@@ -140,4 +141,5 @@ def reconstruct_directory(
 
 def _classic_setup(config: Config) -> StemsConfig:
     """The setup a single-source conversion runs under: one stem over every enabled channel."""
-    return StemsConfig.single_entry(list(config.generation.channels))
+    channels = list(config.generation.channels)
+    return StemsConfig.single_entry(channels, bending_channels(channels))

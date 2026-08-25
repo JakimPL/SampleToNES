@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH
-from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.fft import Fragment
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
@@ -29,7 +29,10 @@ def _config(
     channel_cap: int,
 ) -> StemsConfig:
     return StemsConfig(
-        entries=[StemEntry(id=stem_id, channels=channels) for stem_id, channels in entries.items()],
+        entries=[
+            StemEntry(id=stem_id, channels=channels, bends=bending_channels(channels))
+            for stem_id, channels in entries.items()
+        ],
         hierarchy=StemsHierarchy(levels=levels, mode=mode),
         channel_cap=channel_cap,
     )

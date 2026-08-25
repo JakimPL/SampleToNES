@@ -32,7 +32,7 @@ from sampletones_application.view_model.main.converter import (
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
-from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.parallelization import ETAEstimator, TaskProgress
 from sampletones_core.reconstructions.converter import (
     ConversionPlan,
@@ -495,7 +495,11 @@ class ConverterLogic(CallbackMixin):
 
         return ConversionSetup(
             sources=(),
-            stems=StemsConfig.single_entry(enabled, channel_cap=self._effective_channel_cap),
+            stems=StemsConfig.single_entry(
+                enabled,
+                bending_channels(enabled),
+                channel_cap=self._effective_channel_cap,
+            ),
         )
 
     @property

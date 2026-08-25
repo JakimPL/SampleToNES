@@ -6,7 +6,7 @@ import numpy as np
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_core.audio import mix, write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, bending_channels
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -289,8 +289,8 @@ class TestStemFilteredProjections:
         approximation = np.arange(length, dtype=np.float32)
         stems_config = StemsConfig(
             entries=[
-                StemEntry(id=0, channels=[ChannelName.PULSE1]),
-                StemEntry(id=1, channels=[ChannelName.PULSE1]),
+                StemEntry(id=0, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                StemEntry(id=1, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
             ],
             hierarchy=StemsHierarchy(levels=[[0, 1]]),
         )
@@ -342,8 +342,8 @@ class TestStemFilteredProjections:
         write_wave(second, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.25)
         stems_config = StemsConfig(
             entries=[
-                StemEntry(id=0, channels=[ChannelName.PULSE1]),
-                StemEntry(id=1, channels=[ChannelName.PULSE1]),
+                StemEntry(id=0, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                StemEntry(id=1, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
             ],
             hierarchy=StemsHierarchy(levels=[[0, 1]]),
         )
@@ -419,7 +419,12 @@ class TestRebindingToAnEditedReconstruction:
                 "audio_filepath": tuple(paths),
                 "stems_data": StemsData(
                     config=StemsConfig(
-                        entries=[StemEntry(id=stem_id, channels=[ChannelName.PULSE1]) for stem_id in range(3)],
+                        entries=[
+                            StemEntry(
+                                id=stem_id, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])
+                            )
+                            for stem_id in range(3)
+                        ],
                         hierarchy=StemsHierarchy(levels=[[0], [1], [2]]),
                     ),
                     assignments=[

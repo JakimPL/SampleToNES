@@ -20,7 +20,7 @@ from sampletones_application.view_model.main.converter import (
     ConverterViewModel,
 )
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.reconstructions.converter import DirectoryConversion, GroupConversion
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.stage import ReconstructionStage
@@ -505,7 +505,7 @@ class TestConversionPlan:
 
         plan = converter_logic._conversion_plan(config, Path("/audio/kick.wav"))
 
-        assert plan.stems == StemsConfig.single_entry(channels, channel_cap=len(channels))
+        assert plan.stems == StemsConfig.single_entry(channels, bending_channels(channels), channel_cap=len(channels))
         assert plan.stems.covered_channels == frozenset(channels)
 
     def test_starting_hands_the_plan_to_the_service(self, converter_logic: ConverterLogic) -> None:

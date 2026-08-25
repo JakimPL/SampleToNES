@@ -28,14 +28,16 @@ class StemsData(DataModel):
     def single_entry(
         cls,
         channels: List[ChannelName],
+        bends: List[ChannelName],
         assignments: List[ChannelAssignment],
         *,
         channel_cap: int = ALL_STEMS_CHANNEL_CAP,
     ) -> StemsData:
-        """The record of one stem covering ``channels`` under ``channel_cap``."""
+        """The record of one stem covering ``channels``, bending ``bends``, under ``channel_cap``."""
         return cls(
             config=StemsConfig.single_entry(
                 channels,
+                bends,
                 channel_cap=channel_cap,
             ),
             assignments=assignments,

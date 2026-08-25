@@ -2,6 +2,7 @@ from typing import Any, Dict
 
 from sampletones_core.compatibility.fields import (
     AUDIO_FILEPATH,
+    BENDS,
     CHANNEL_NAME,
     CHANNELS,
     GENERATOR_NAME,
@@ -88,7 +89,7 @@ class TestReconstructionV2_2:
         upgraded = update(data)
 
         stems_data = upgraded[STEMS_DATA]
-        assert stems_data["config"]["entries"] == [{"id": 0, CHANNELS: ["pulse1", "noise"]}]
+        assert stems_data["config"]["entries"] == [{"id": 0, CHANNELS: ["pulse1", "noise"], BENDS: []}]
         assert stems_data["config"]["channel_cap"] == DEFAULT_STEMS_CHANNEL_CAP
         assert stems_data["assignments"] == [
             {CHANNEL_NAME: "pulse1", "stem_ids": [0, 0]},

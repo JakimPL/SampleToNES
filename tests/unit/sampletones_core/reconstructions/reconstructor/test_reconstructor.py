@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import bending_channels
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.generators import MIXER_LEVELS
 from sampletones_core.library import InstructionLibraryData
@@ -97,7 +98,8 @@ class TestReconstructorGetCoefficient:
     ) -> None:
         """One channel per frame reaches one channel's weight, so that is what the level is measured against."""
         reconstructor = _make_reconstructor(config, library_data)
-        capped = StemsConfig.single_entry(list(config.generation.channels), channel_cap=1)
+        channels = list(config.generation.channels)
+        capped = StemsConfig.single_entry(channels, bending_channels(channels), channel_cap=1)
         audio = np.ones(config.library.frame_length, dtype=np.float32) * 0.5
 
         loudest = max(MIXER_LEVELS[generator.class_name()] for generator in reconstructor.channels.values())
@@ -106,7 +108,8 @@ class TestReconstructorGetCoefficient:
 
 
 def _full_setup(config: Config) -> StemsConfig:
-    return StemsConfig.single_entry(list(config.generation.channels))
+    channels = list(config.generation.channels)
+    return StemsConfig.single_entry(channels, bending_channels(channels))
 
 
 def _total_mixer(reconstructor: Reconstructor) -> float:

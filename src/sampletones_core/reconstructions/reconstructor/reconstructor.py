@@ -7,7 +7,7 @@ import numpy as np
 from sampletones_core.audio import active_frame_level, common_length, load_audio, load_stems, mix
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, bending_channels
 from sampletones_core.fft import FragmentedAudio, Window
 from sampletones_core.generators import (
     MIXER_LEVELS,
@@ -114,7 +114,8 @@ class Reconstructor:
         Raises:
             TypeError: If ``path`` is not a string or ``Path``.
         """
-        stems_config = StemsConfig.single_entry(list(self.config.generation.channels))
+        channels = list(self.config.generation.channels)
+        stems_config = StemsConfig.single_entry(channels, bending_channels(channels))
         return self.reconstruct([path], stems_config)
 
     def reconstruct(
@@ -160,7 +161,7 @@ class Reconstructor:
         self._drop_resting_channels(assignment)
         announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
         streams = worker.decoder.decode(assignment.lattices)
-        streams = self._refiner().refine(streams, assignment.stem_ids, prepared.recordings)
+        streams = self._refiner(stems_config).refine(streams, assignment.stem_ids, prepared.recordings)
         self._record_streams(streams, report)
         return Reconstruction.from_state(
             self.state,
@@ -170,9 +171,9 @@ class Reconstructor:
             stems_data=self._build_stems_data(stems_config, assignment.stem_ids),
         )
 
-    def _refiner(self) -> PitchRefiner:
+    def _refiner(self, stems_config: StemsConfig) -> PitchRefiner:
         """The pass that carries each chosen note towards the fundamental the recording sounds."""
-        return PitchRefiner(config=self.config, channels=self.channels)
+        return PitchRefiner(config=self.config, channels=self.channels, stems=stems_config)
 
     @staticmethod
     def _check_stem_paths(

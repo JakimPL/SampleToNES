@@ -6,7 +6,7 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
-from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -41,9 +41,13 @@ def _noise() -> NoiseInstruction:
 def _stems_config() -> StemsConfig:
     return StemsConfig(
         entries=[
-            StemEntry(id=STEM_A, channels=[ChannelName.PULSE1]),
-            StemEntry(id=STEM_B, channels=[ChannelName.PULSE1, ChannelName.NOISE]),
-            StemEntry(id=STEM_C, channels=[ChannelName.PULSE1]),
+            StemEntry(id=STEM_A, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+            StemEntry(
+                id=STEM_B,
+                channels=[ChannelName.PULSE1, ChannelName.NOISE],
+                bends=bending_channels([ChannelName.PULSE1, ChannelName.NOISE]),
+            ),
+            StemEntry(id=STEM_C, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
         ],
         hierarchy=StemsHierarchy(
             levels=[[STEM_A], [STEM_B, STEM_C]],
@@ -304,6 +308,7 @@ class TestARefusedRemoval:
             coefficient=1.0,
             audio_filepath=(RECORDINGS[STEM_A],),
             stems_data=StemsData.single_entry(
+                [ChannelName.PULSE1],
                 [ChannelName.PULSE1],
                 [
                     ChannelAssignment(

@@ -1,12 +1,11 @@
 from typing import Dict, Final, Sequence
 
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.channel import ChannelPlanes, TonePlanes
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.registers.base import ChannelRegisters
 from sampletones_player.registers.streams import ChannelStreams
-from sampletones_player.specification.channels import TONE_CHANNELS
 from sampletones_player.specification.registers import TIMER_HIGH_SHIFT
 
 CONTROL_VALUE_INDEX: Final[int] = 0
