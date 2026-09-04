@@ -116,6 +116,27 @@ again.
   the size at which the sequencer panels and the sequencer tab coordinator were divided into
   subpackages. Each divides the same way: a module per concern, with the class that stays holding
   the collaborators and the public surface.
+* The Main tab is wired in one constructor. `coordinators/tabs/main.py::MainTabCoordinator.__init__`
+  builds the tab's panels, logic objects and services and then wires them hook by hook, which makes
+  it by far the longest body in the coordinator layer and leaves a reader tracing a panel's hook to
+  what answers it by eye. The wiring divides by collaborator — a method per panel, stating what that
+  panel offers and what answers each hook — the way a tab coordinator already divides into a
+  subpackage once it holds several concerns.
+* Several calls reach the Main tab's panels through wrappers of the coordinator's own, where the
+  Coordinators contract sanctions a wrapper only for an intent-level guard a contract requires. A
+  wrapper that renames a call or reorders its arguments is work the logic object behind the call
+  should be doing.
+* `logic/main/explorer.py::ExplorerLogic` forwards every member to the `ExplorerManager` it
+  constructs, declaring no state and no rule of its own. Either the logic object takes a job — the
+  explorer's own state machine — or its consumers hold the manager.
+* `utils/gui/dpg.py::dpg_get_item_parent` catches `Exception` where the Error Handling Policy leaves
+  the broad catch to a service's top-level task wrapper. The recovery it makes is real: a queued
+  callback can remove an item underneath the lookup. Naming the exception DearPyGui raises for an
+  absent item is what closes it, and the helper sits under every item lookup in the interface.
+* `MainTabCoordinator` is constructed by no test. Every fixture in
+  `tests/unit/sampletones_application/coordinators/tabs/test_main.py` builds the object through
+  `__new__` and populates its privates by hand, so the wiring the application actually runs is
+  exercised nowhere: a hook left unset or a call routed to the wrong object passes the suite.
 * Several directories under `ui/` carry modules without an `__init__.py`, which leaves each one a
   namespace package. A tool reading the tree treats such a directory as a root it can import from,
   so a module inside one answers for a standard-library name of the same word: `ui/elements/trace.py`
@@ -125,6 +146,13 @@ again.
 
 ## Bugs
 
+* The Main tab's browser stands as it was after a conversion. `MainTabCoordinator.refresh_browser()`
+  is reached by no caller, while `Application._refresh_reconstruction_trees` refreshes the
+  Reconstruction and Sequencer tabs, so a reconstruction just written appears in the two browsers it
+  was not started from.
+* A library directory chosen from the explorer's context menu lasts only for the session. The Browse
+  button's path stores the choice through `session_manager.set_library_path`; the menu's path reaches
+  `change_library_directory` on the panel alone, so the next start opens on the previous directory.
 * No refreshing after library generation
 * Misaligned dialog boxes sizes at initialization
 * Audible noise instructions when matching near-silent samples for FFT γ0

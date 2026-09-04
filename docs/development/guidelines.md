@@ -82,6 +82,7 @@ These rules govern the Python in this repository. They complement
 1. Write for a reader who never saw the history. A document is not a changelog or a devlog: do not argue against past states, resolved problems, or rejected alternatives the reader never knew existed. The design as it stands carries its own justification; history belongs in commit messages and release notes.
 1. Reach for a negative example only when the contrast teaches something the positive statement cannot, and use it sparingly. One well-placed "what to avoid" illuminates; a document written mostly in negatives is noise.
 1. State each fact once, in the document that owns it, and cross-reference sibling documents rather than repeating them.
+1. A document change is part of the change that motivates it. Code that alters a contract a document states lands together with the edit stating the new contract, and a deviation the change knowingly leaves behind lands with an entry in the ledger that document names. What a branch leaves behind is therefore the current contract, the recorded distance from it, or both.
 1. Use American English.
 
 ## Tests
