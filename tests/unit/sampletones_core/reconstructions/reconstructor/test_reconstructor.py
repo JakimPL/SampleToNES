@@ -7,7 +7,10 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import bending_channels
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    bending_channels,
+)
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.generators import MIXER_LEVELS
 from sampletones_core.library import InstructionLibraryData
@@ -21,7 +24,7 @@ def _make_reconstructor(config: Config, library_data: InstructionLibraryData) ->
     mock_library.get.return_value = library_data
     mock_library.create_key.return_value = MagicMock()
     mock_library.get_path.return_value = "test/path"
-    return Reconstructor(config, library=mock_library)
+    return Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=mock_library)
 
 
 class TestReconstructorInit:
@@ -31,7 +34,7 @@ class TestReconstructorInit:
         library_data: InstructionLibraryData,
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
-        expected_names = set(config.generation.channels)
+        expected_names = set(DEFAULT_CHANNELS)
         assert set(reconstructor.channels.keys()) == expected_names
 
     def test_window_created_from_config(
@@ -52,7 +55,7 @@ class TestReconstructorLoadLibraryError:
         mock_library.create_key.return_value = MagicMock()
         mock_library.get_path.return_value = "test/path"
         with pytest.raises(NoLibraryDataError):
-            Reconstructor(config, library=mock_library)
+            Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=mock_library)
 
 
 class TestReconstructorGetCoefficient:
@@ -98,7 +101,7 @@ class TestReconstructorGetCoefficient:
     ) -> None:
         """One channel per frame reaches one channel's weight, so that is what the level is measured against."""
         reconstructor = _make_reconstructor(config, library_data)
-        channels = list(config.generation.channels)
+        channels = list(DEFAULT_CHANNELS)
         capped = StemsConfig.single_entry(channels, bending_channels(channels), channel_cap=1)
         audio = np.ones(config.library.frame_length, dtype=np.float32) * 0.5
 
@@ -108,7 +111,7 @@ class TestReconstructorGetCoefficient:
 
 
 def _full_setup(config: Config) -> StemsConfig:
-    channels = list(config.generation.channels)
+    channels = list(DEFAULT_CHANNELS)
     return StemsConfig.single_entry(channels, bending_channels(channels))
 
 

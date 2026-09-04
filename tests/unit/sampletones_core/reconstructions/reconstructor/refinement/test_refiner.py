@@ -31,7 +31,7 @@ STEM_B: Final[int] = 1
 
 @pytest.fixture(scope="module")
 def config() -> Config:
-    return Config(generation=GenerationConfig(channels=TONES))
+    return Config()
 
 
 def _stems(*entries: StemEntry) -> StemsConfig:

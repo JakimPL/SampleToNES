@@ -1,7 +1,8 @@
 from pathlib import Path
-from typing import List, Tuple
+from typing import AbstractSet, List, Tuple
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.converter.paths.fields import (
     ConfigDirectoryFields,
 )
@@ -28,9 +29,15 @@ def get_relative_path(
 def get_output_path(
     config: Config,
     input_path: Path,
+    channels: AbstractSet[ChannelName],
     suffix: str = EXT_FILE_RECONSTRUCTION,
 ) -> Path:
-    config_directory = ConfigDirectoryFields.generate_config_directory_name(config)
+    """Where the reconstruction of one recording, or the folder of them, is written.
+
+    ``channels`` names what the run hands out, which the configuration's own directory is named
+    after alongside the settings that shaped the library.
+    """
+    config_directory = ConfigDirectoryFields.generate_config_directory_name(config, channels)
     output_directory = to_path(config.general.reconstructions_directory) / config_directory
     if input_path.is_dir():
         return output_directory / input_path.name
@@ -47,6 +54,7 @@ def get_output_path(
 def group_output_path(
     config: Config,
     sources: Tuple[Path, ...],
+    channels: AbstractSet[ChannelName],
     suffix: str = EXT_FILE_RECONSTRUCTION,
 ) -> Path:
     """Where the one reconstruction built from ``sources`` is written.
@@ -55,10 +63,13 @@ def group_output_path(
     one source names it after itself, and several after what they share
     (:func:`sampletones_core.reconstructions.naming.derive.derive_name`).
 
+    ``channels`` names what the run hands out, which the configuration's own directory is named
+    after.
+
     Raises:
         ValueError: If ``sources`` is empty.
     """
-    config_directory = ConfigDirectoryFields.generate_config_directory_name(config)
+    config_directory = ConfigDirectoryFields.generate_config_directory_name(config, channels)
     output_directory = to_path(config.general.reconstructions_directory) / config_directory
     return Path((output_directory / f"{derive_name(sources)}{suffix}").absolute())
 

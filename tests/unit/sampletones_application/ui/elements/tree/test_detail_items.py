@@ -7,6 +7,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_core.configs import Config
 from sampletones_core.configs.display import format_frequencies, format_sample_rate, short_hash
+from sampletones_core.constants.enums import DEFAULT_CHANNELS
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree.node import (
     ConfigGroupNode,
@@ -18,7 +19,7 @@ from sampletones_core.structures.tree.type import NodeType
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from tests.suite.language import FakeLanguageManager
 
-CONFIG_FIELDS: Final[ConfigDirectoryFields] = ConfigDirectoryFields.from_config(Config())
+CONFIG_FIELDS: Final[ConfigDirectoryFields] = ConfigDirectoryFields.from_config(Config(), frozenset(DEFAULT_CHANNELS))
 CONFIG_DIRECTORY: Final[Path] = Path("/reconstructions") / CONFIG_FIELDS.directory_name
 RECONSTRUCTION_PATH: Final[Path] = CONFIG_DIRECTORY / f"song{EXT_FILE_RECONSTRUCTION}"
 

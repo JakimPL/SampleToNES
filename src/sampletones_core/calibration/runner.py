@@ -1,11 +1,15 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Final, FrozenSet, List, Optional
 
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import SpectrumMethod
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    SpectrumMethod,
+)
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibrary
 from sampletones_core.reconstructions import Reconstructor
@@ -14,6 +18,8 @@ from sampletones_shared.logger import logger
 
 from .corpus.item import CorpusItem
 from .referee.protocol import Referee
+
+CALIBRATION_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(DEFAULT_CHANNELS)
 
 
 @dataclass(frozen=True)
@@ -138,7 +144,7 @@ def evaluate_variants(
     rows: List[CalibrationRow] = []
     for variant in variants:
         ensure_library(variant.config)
-        reconstructor = Reconstructor(variant.config)
+        reconstructor = Reconstructor(variant.config, CALIBRATION_CHANNELS)
         for item in items:
             path = item_paths[item.name]
             reconstruction = reconstructor(path)

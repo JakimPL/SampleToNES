@@ -4,6 +4,7 @@ from typing import List
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import DEFAULT_CHANNELS
 from sampletones_core.reconstructions.converter.paths import (
     filter_files,
     get_audio_files,
@@ -13,6 +14,8 @@ from sampletones_core.reconstructions.converter.paths import (
     top_level_audio_files,
 )
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
+
+CHANNELS = frozenset(DEFAULT_CHANNELS)
 
 
 @pytest.fixture(scope="module")
@@ -51,7 +54,7 @@ class TestGetOutputPath:
     ) -> None:
         audio_file = tmp_path / "song.wav"
         audio_file.touch()
-        result = get_output_path(config, audio_file)
+        result = get_output_path(config, audio_file, CHANNELS)
         assert result.suffix == EXT_FILE_RECONSTRUCTION
 
     def test_directory_input_returns_path_ending_with_directory_name(
@@ -59,7 +62,7 @@ class TestGetOutputPath:
         config: Config,
         tmp_path: Path,
     ) -> None:
-        result = get_output_path(config, tmp_path)
+        result = get_output_path(config, tmp_path, CHANNELS)
         assert result.name == tmp_path.name
 
     def test_non_existent_input_raises_file_not_found_error(
@@ -69,7 +72,7 @@ class TestGetOutputPath:
     ) -> None:
         missing = tmp_path / "does_not_exist"
         with pytest.raises(FileNotFoundError):
-            get_output_path(config, missing)
+            get_output_path(config, missing, CHANNELS)
 
 
 class TestGetAudioFiles:

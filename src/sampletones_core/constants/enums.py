@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
-from typing import Dict, Final, FrozenSet, List, Literal
+from typing import AbstractSet, Dict, Final, FrozenSet, List, Literal
 
 
 class GeneratorName(StrEnum):
@@ -119,6 +119,15 @@ DEFAULT_CHANNELS: Final[List[ChannelName]] = [
     ChannelName.TRIANGLE,
     ChannelName.NOISE,
 ]
+
+
+def ordered_channels(channel_names: AbstractSet[ChannelName]) -> List[ChannelName]:
+    """``channel_names`` in the order the application names the channels.
+
+    A set states which channels something reaches; a run hands them out in one settled order, so
+    everything built from a set is put back into that order here.
+    """
+    return [name for name in ChannelName.items() if name in channel_names]
 
 
 def bending_channels(channel_names: List[ChannelName]) -> List[ChannelName]:

@@ -32,7 +32,7 @@ class DirectoryConversion:
         Raises:
             NoFilesToProcessError: If the directory holds no audio file still to be converted.
         """
-        output_path = get_output_path(config, self.directory)
+        output_path = get_output_path(config, self.directory, self.stems.covered_channels)
         audio_files = filter_files(get_audio_files(self.directory), self.directory, output_path)
         if not audio_files:
             raise NoFilesToProcessError(f"No audio files found in {self.directory}")

@@ -9,7 +9,13 @@ import pytest
 from pydantic import ValidationError
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName, FeatureKey, HierarchyMode, bending_channels
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    FeatureKey,
+    HierarchyMode,
+    bending_channels,
+)
 from sampletones_core.data import Metadata
 from sampletones_core.features import resting_held_features, resting_reference
 from sampletones_core.instructions import PulseInstruction
@@ -64,7 +70,7 @@ def _reconstruction(instructions: List[PulseInstruction]) -> Reconstruction:
         coefficient=1.0,
         audio_filepath=(Path("/dev/null"),),
         stems_data=single_entry_stems_data(
-            list(Config().generation.channels),
+            list(DEFAULT_CHANNELS),
             {ChannelName.PULSE1: instructions},
         ),
     )
@@ -361,7 +367,9 @@ class TestVersionUpgradeOnLoad:
             item["generator_name"] = item.pop("channel_name")
 
         generation = data["config"]["generation"]
-        generation["generators"] = generation.pop("channels")
+        generation["generators"] = [
+            str(channel_name) for channel_name in reconstruction.stems_data.config.entries[0].channels
+        ]
         config_metadata = data["config"].get("metadata")
         if isinstance(config_metadata, dict):
             config_metadata["reconstruction_data_version"] = "2.1"
@@ -396,8 +404,9 @@ class TestVersionUpgradeOnLoad:
         for item in data["instructions_data"]:
             item["generator_name"] = item.pop("channel_name")
 
+        channels = list(reconstruction.stems_data.config.entries[0].channels)
         generation = data["config"]["generation"]
-        generation["generators"] = generation.pop("channels")
+        generation["generators"] = [str(channel_name) for channel_name in channels]
         config_metadata = data["config"].get("metadata")
         if isinstance(config_metadata, dict):
             config_metadata["reconstruction_data_version"] = "2.1"
@@ -408,7 +417,7 @@ class TestVersionUpgradeOnLoad:
 
         stems_data = loaded.stems_data
         assert stems_data.config.entries[0].id == 0
-        assert stems_data.config.entries[0].channels == list(loaded.config.generation.channels)
+        assert stems_data.config.entries[0].channels == channels
         assert loaded.audio_filepath == reconstruction.audio_filepath
         for channel, stem_ids in stems_data.assignments_by_channel.items():
             assert len(stem_ids) == len(loaded.instructions[channel])

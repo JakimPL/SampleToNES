@@ -6,7 +6,11 @@ import numpy as np
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
 from sampletones_core.configs.generation import GenerationConfig
-from sampletones_core.constants.enums import ChannelName, SelectorName
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    SelectorName,
+)
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from tests.integration.assets.reconstruction import build_mini_library
@@ -33,7 +37,7 @@ def _flickering_path(tmp_path: Path, config: Config) -> Path:
 
 def _reconstruct(selector_name: SelectorName, audio_path: Path) -> Reconstruction:
     config = Config(generation=GenerationConfig(decoder={"selector": selector_name}))
-    reconstruction = Reconstructor(config, library=build_mini_library(config))(audio_path)
+    reconstruction = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=build_mini_library(config))(audio_path)
     assert reconstruction is not None
     return reconstruction
 

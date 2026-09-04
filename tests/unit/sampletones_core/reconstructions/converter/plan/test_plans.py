@@ -4,7 +4,11 @@ from typing import List
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName, bending_channels
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    bending_channels,
+)
 from sampletones_core.reconstructions.converter.paths.utils import get_output_path, group_output_path
 from sampletones_core.reconstructions.converter.plan.directory import DirectoryConversion
 from sampletones_core.reconstructions.converter.plan.group import GroupConversion
@@ -17,9 +21,12 @@ def config() -> Config:
     return Config()
 
 
+CHANNELS = frozenset(DEFAULT_CHANNELS)
+
+
 @pytest.fixture(scope="module")
 def stems(config: Config) -> StemsConfig:
-    channels = list(config.generation.channels)
+    channels = list(DEFAULT_CHANNELS)
     return StemsConfig.single_entry(channels, bending_channels(channels))
 
 
@@ -48,7 +55,7 @@ class TestGroupConversion:
         assert len(jobs) == 1
         assert jobs[0].sources == (source,)
         assert jobs[0].stems == stems
-        assert jobs[0].output_path == get_output_path(config, source)
+        assert jobs[0].output_path == get_output_path(config, source, CHANNELS)
 
     def test_several_sources_make_one_job_over_all_of_them(
         self,
@@ -63,7 +70,7 @@ class TestGroupConversion:
 
         assert len(jobs) == 1
         assert jobs[0].sources == sources
-        assert jobs[0].output_path == group_output_path(config, sources)
+        assert jobs[0].output_path == group_output_path(config, sources, CHANNELS)
 
     def test_the_setup_travels_with_the_job(
         self,
@@ -100,7 +107,7 @@ class TestDirectoryConversion:
         tmp_path: Path,
     ) -> None:
         _write_audio_files(tmp_path, ["nested/deeper/b.wav"])
-        output_path = get_output_path(config, tmp_path)
+        output_path = get_output_path(config, tmp_path, CHANNELS)
 
         jobs = DirectoryConversion(directory=tmp_path, stems=stems).jobs(config)
 
@@ -195,8 +202,12 @@ class TestGroupOutputPath:
     def test_one_source_names_the_file_after_itself(self, config: Config, tmp_path: Path) -> None:
         source = tmp_path / "song.wav"
         source.touch()
-        assert group_output_path(config, (source,)) == get_output_path(config, source)
+        assert group_output_path(config, (source,), CHANNELS) == get_output_path(
+            config,
+            source,
+            CHANNELS,
+        )
 
     def test_sources_sharing_a_directory_name_the_file_after_it(self, config: Config, tmp_path: Path) -> None:
         sources = tuple(_write_audio_files(tmp_path / "session", ["a.wav", "b.wav"]))
-        assert group_output_path(config, sources).stem == "session"
+        assert group_output_path(config, sources, CHANNELS).stem == "session"

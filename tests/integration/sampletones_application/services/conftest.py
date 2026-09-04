@@ -6,7 +6,10 @@ import pytest
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+)
 from sampletones_core.constants.general import MIN_PITCH
 from sampletones_core.exporters import Features, PulseExporter
 from sampletones_core.instructions import PulseInstruction
@@ -52,7 +55,7 @@ def minimal_reconstruction(default_config, pulse_instructions) -> Reconstruction
         coefficient=1.0,
         audio_filepath=(Path("/dev/null"),),
         stems_data=single_entry_stems_data(
-            list(default_config.generation.channels),
+            list(DEFAULT_CHANNELS),
             {ChannelName.PULSE1: pulse_instructions},
         ),
     )

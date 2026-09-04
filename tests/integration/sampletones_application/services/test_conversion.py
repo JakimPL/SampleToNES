@@ -4,14 +4,17 @@ from unittest.mock import MagicMock, patch
 
 from sampletones_application.services.conversion.service import ConversionService
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import bending_channels
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    bending_channels,
+)
 from sampletones_core.reconstructions.converter import DirectoryConversion, GroupConversion
 from sampletones_core.reconstructions.converter.plan.protocol import ConversionPlan
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 
 
 def _stems(config: Config) -> StemsConfig:
-    channels = list(config.generation.channels)
+    channels = list(DEFAULT_CHANNELS)
     return StemsConfig.single_entry(channels, bending_channels(channels))
 
 

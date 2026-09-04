@@ -7,7 +7,10 @@ from unittest.mock import patch
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import bending_channels
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    bending_channels,
+)
 from sampletones_core.reconstructions.converter import GroupConversion, ReconstructionConverter
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.stage import ReconstructionStage
@@ -41,7 +44,7 @@ def conversion_run(tmp_path: Path) -> Iterator[Tuple[ReconstructionConverter, Pr
     config = _config(tmp_path)
     source = write_silent_recording(tmp_path / "kick.wav")
     release_path = tmp_path / RELEASE_NAME
-    channels = list(config.generation.channels)
+    channels = list(DEFAULT_CHANNELS)
     stems = StemsConfig.single_entry(channels, bending_channels(channels))
     plan = GroupConversion(sources=(source,), stems=stems)
 

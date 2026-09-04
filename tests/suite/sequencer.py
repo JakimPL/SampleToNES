@@ -18,7 +18,10 @@ from sampletones_application.logic.sequencer.tracker.block import BlockKey
 from sampletones_application.view_model.sequencer.slot import SUBCOLUMNS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+)
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
@@ -71,7 +74,7 @@ def sample_reconstruction(channels: Sequence[ChannelName]) -> Reconstruction:
         config=config,
         coefficient=1.0,
         audio_filepath=(Path("/dev/null"),),
-        stems_data=single_entry_stems_data(list(config.generation.channels), instructions),
+        stems_data=single_entry_stems_data(list(DEFAULT_CHANNELS), instructions),
     )
 
 

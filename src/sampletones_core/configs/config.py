@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Optional, Self
+from typing import Dict, Optional, Self
 
 from pydantic import ConfigDict, Field
 
 from sampletones_core.configs.general import GeneralConfig
 from sampletones_core.configs.generation import GenerationConfig
 from sampletones_core.configs.library import InstructionsLibraryConfig
-from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import DataModel
 from sampletones_core.data.metadata import Metadata
 from sampletones_shared.music import Tuning
@@ -109,10 +108,6 @@ class Config(DataModel):
     @property
     def drive(self) -> float:
         return self.generation.drive
-
-    @property
-    def channels(self) -> List[ChannelName]:
-        return self.generation.channels.copy()
 
     @property
     def normalize(self) -> bool:

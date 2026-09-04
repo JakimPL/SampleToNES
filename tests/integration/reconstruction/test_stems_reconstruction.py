@@ -8,7 +8,12 @@ from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_core.audio import mix, write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_CHANNEL_CAP, RESTING_STEM_ID
-from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    HierarchyMode,
+    bending_channels,
+)
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
@@ -20,6 +25,7 @@ from tests.integration.assets.reconstruction import (
     STEM_B_ID,
     STEM_C_ID,
     STEM_RECORDING_DURATION_SECONDS,
+    THREE_STEM_CHANNELS,
     build_mini_library,
     three_stem_config,
     three_stem_reconstruction_config,
@@ -36,7 +42,7 @@ _DISJOINT_AMPLITUDE: Final[float] = 0.5
 
 def _classic_stems(config: Config, *, channel_cap: int) -> StemsConfig:
     """One stem over every configured channel, carrying each of them that reads a bend."""
-    channels = list(config.generation.channels)
+    channels = list(DEFAULT_CHANNELS)
     return StemsConfig.single_entry(channels, bending_channels(channels), channel_cap=channel_cap)
 
 
@@ -62,7 +68,7 @@ class TestReconstructStems:
     def test_assigns_disjoint_stems_to_their_channels(self, tmp_path: Path) -> None:
         config = Config()
         library = build_mini_library(config)
-        reconstructor = Reconstructor(config, library=library)
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=library)
 
         sample_rate = config.library.sample_rate
         count = int(sample_rate * _DURATION_SECONDS)
@@ -105,7 +111,7 @@ class TestReconstructStems:
     def test_requires_one_path_per_entry(self, tmp_path: Path) -> None:
         config = Config()
         library = build_mini_library(config)
-        reconstructor = Reconstructor(config, library=library)
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=library)
 
         with pytest.raises(ValueError, match="stem paths"):
             reconstructor.reconstruct(
@@ -121,7 +127,7 @@ class TestThreeStemHierarchy:
     def test_builds_a_reconstruction_over_the_three_stems(self, tmp_path: Path) -> None:
         config = three_stem_reconstruction_config()
         library = build_mini_library(config)
-        reconstructor = Reconstructor(config, library=library)
+        reconstructor = Reconstructor(config, frozenset(THREE_STEM_CHANNELS), library=library)
         stems_config = three_stem_config()
         paths = write_three_stem_recordings(config, tmp_path)
 
@@ -155,7 +161,7 @@ class TestThreeStemHierarchy:
         """
         config = three_stem_reconstruction_config()
         library = build_mini_library(config)
-        reconstructor = Reconstructor(config, library=library)
+        reconstructor = Reconstructor(config, frozenset(THREE_STEM_CHANNELS), library=library)
         stems_config = three_stem_config()
         paths = write_three_stem_recordings(config, tmp_path)
 
@@ -179,7 +185,7 @@ class TestThreeStemHierarchy:
     def test_round_trips_through_the_file(self, tmp_path: Path) -> None:
         config = three_stem_reconstruction_config()
         library = build_mini_library(config)
-        reconstructor = Reconstructor(config, library=library)
+        reconstructor = Reconstructor(config, frozenset(THREE_STEM_CHANNELS), library=library)
         stems_config = three_stem_config()
         paths = write_three_stem_recordings(config, tmp_path)
         reconstruction = reconstructor.reconstruct(list(paths), stems_config)
@@ -204,7 +210,7 @@ class TestThreeStemHierarchy:
         """
         config = three_stem_reconstruction_config()
         library = build_mini_library(config)
-        reconstructor = Reconstructor(config, library=library)
+        reconstructor = Reconstructor(config, frozenset(THREE_STEM_CHANNELS), library=library)
         stems_config = three_stem_config()
         paths = write_three_stem_recordings(config, tmp_path)
         reconstruction = reconstructor.reconstruct(list(paths), stems_config)
@@ -288,7 +294,7 @@ class TestRemovingAStem:
     def _three_stems(self, tmp_path: Path) -> Tuple[Reconstruction, Tuple[Path, Path, Path], Config]:
         config = three_stem_reconstruction_config()
         library = build_mini_library(config)
-        reconstructor = Reconstructor(config, library=library)
+        reconstructor = Reconstructor(config, frozenset(THREE_STEM_CHANNELS), library=library)
         paths = write_three_stem_recordings(config, tmp_path)
         reconstruction = reconstructor.reconstruct(list(paths), three_stem_config())
         assert reconstruction is not None
@@ -385,7 +391,7 @@ class TestStemsOriginalAudio:
         """
         config = Config()
         library = build_mini_library(config)
-        reconstructor = Reconstructor(config, library=library)
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=library)
 
         sample_rate = config.library.sample_rate
         count = int(sample_rate * _DURATION_SECONDS)
@@ -438,7 +444,7 @@ class TestClassicRunCarriesTheSingleEntryRecord:
     def test_classic_conversion_records_one_stem_over_every_enabled_channel(self, tmp_path: Path) -> None:
         config = Config()
         library = build_mini_library(config)
-        reconstructor = Reconstructor(config, library=library)
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=library)
         tone_path = self._tone_path(tmp_path, config)
 
         reconstruction = reconstructor(tone_path)
@@ -447,7 +453,7 @@ class TestClassicRunCarriesTheSingleEntryRecord:
         assert reconstruction.audio_filepath == (tone_path,)
         stems_data = reconstruction.stems_data
         assert stems_data.config.entries[0].id == 0
-        assert stems_data.config.entries[0].channels == list(config.generation.channels)
+        assert stems_data.config.entries[0].channels == list(DEFAULT_CHANNELS)
         assert stems_data.config.channel_cap == DEFAULT_STEMS_CHANNEL_CAP
         for channel, stem_ids in stems_data.assignments_by_channel.items():
             assert set(stem_ids) <= {0}
@@ -461,7 +467,7 @@ class TestClassicRunCarriesTheSingleEntryRecord:
         """
         config = Config()
         library = build_mini_library(config)
-        reconstructor = Reconstructor(config, library=library)
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=library)
 
         sample_rate = config.library.sample_rate
         frame_length = config.library.frame_length
@@ -491,7 +497,7 @@ class TestClassicRunCarriesTheSingleEntryRecord:
         """One channel sounds per frame while the others rest, each keeping its place in the frame."""
         config = Config()
         library = build_mini_library(config)
-        reconstructor = Reconstructor(config, library=library)
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=library)
         tone_path = self._tone_path(tmp_path, config)
 
         reconstruction = reconstructor.reconstruct(
@@ -559,10 +565,10 @@ class TestStemsCarryTheirOwnSound:
     def _reconstruct(self, tmp_path: Path) -> Tuple[Reconstruction, List[range], Config]:
         config = Config()
         library = build_mini_library(config)
-        reconstructor = Reconstructor(config, library=library)
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=library)
         paths, spans = self._recordings(config, tmp_path)
 
-        reconstruction = reconstructor.reconstruct(list(paths), self._stems_config(config.generation.channels))
+        reconstruction = reconstructor.reconstruct(list(paths), self._stems_config(DEFAULT_CHANNELS))
 
         assert reconstruction is not None
         return reconstruction, spans, config

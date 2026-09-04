@@ -34,4 +34,4 @@ class GroupConversion:
         return (output_path,) if output_path.is_file() else ()
 
     def _output_path(self, config: Config) -> Path:
-        return group_output_path(config, self.sources)
+        return group_output_path(config, self.sources, self.stems.covered_channels)

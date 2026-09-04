@@ -8,7 +8,11 @@ import pytest
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
 from sampletones_core.configs.generation import GenerationConfig
-from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    FeatureKey,
+)
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.fft import Window
 from sampletones_core.fft.features import get_feature_extractor
@@ -39,7 +43,7 @@ UNBENT: Final[List[ChannelName]] = []
 
 
 def _config() -> Config:
-    return Config(generation=GenerationConfig(channels=PULSE_ONLY))
+    return Config()
 
 
 def _library(config: Config) -> InstructionLibrary:
@@ -92,7 +96,7 @@ def _noise_path(path: Path, config: Config) -> Path:
 
 def _reconstruct(config: Config, audio_path: Path, bends: List[ChannelName]) -> Reconstruction:
     """The conversion of one recording by a stem carrying the channels ``bends`` names."""
-    reconstructor = Reconstructor(config, library=_library(config))
+    reconstructor = Reconstructor(config, frozenset(PULSE_ONLY), library=_library(config))
     reconstruction = reconstructor.reconstruct(
         [audio_path],
         StemsConfig.single_entry(PULSE_ONLY, bends),

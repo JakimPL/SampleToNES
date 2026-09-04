@@ -5,7 +5,11 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName, bending_channels
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    bending_channels,
+)
 from sampletones_core.reconstructions.converter.conversion import reconstruct_job
 from sampletones_core.reconstructions.converter.job import ConversionJob
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
@@ -13,7 +17,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_shared.exceptions import UnsupportedAudioFormatError
 from sampletones_shared.utils.progress import silent_reporter
 
-CHANNELS: Final[List[ChannelName]] = list(Config().generation.channels)
+CHANNELS: Final[List[ChannelName]] = list(DEFAULT_CHANNELS)
 
 
 @pytest.fixture

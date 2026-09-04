@@ -8,7 +8,10 @@ from typing import TYPE_CHECKING, Optional
 from sampletones_shared.paths.extensions import EXT_FILES_AUDIO
 
 if TYPE_CHECKING:
+    from typing import List
+
     from sampletones_core.configs import Config
+    from sampletones_core.constants.enums import ChannelName
 
 HELP_PATH = """Path to either:
     * audio file path/directory to reconstruct
@@ -16,6 +19,9 @@ HELP_PATH = """Path to either:
     * instructions library .ins file to load a library"""
 
 HELP_OUTPUT = """Output path for reconstruction."""
+
+HELP_CHANNELS = """Channels the reconstruction may use, comma separated
+    (pulse1, pulse2, triangle, noise; default: pulse1,triangle,noise)"""
 
 HELP_CONFIG = """Path to a configuration .json file
     (if not provided, default configuration will be used)"""
@@ -36,6 +42,7 @@ class ProgramArguments:
     path: Optional[Path] = None
     output: Optional[Path] = None
     config: Optional[Path] = None
+    channels: Optional[str] = None
 
     help: bool = False
     version: bool = False
@@ -47,6 +54,24 @@ def _load_config(config_path: Optional[Path]) -> "Config":
     from sampletones_core.configs import Config
 
     return Config.load(config_path) if config_path else Config.default()
+
+
+def _channels(stated: Optional[str]) -> "List[ChannelName]":
+    """The channels a run hands out: the ones named on the command line, or the usual three.
+
+    Raises:
+        SystemExit: If a name is not one of the channels the hardware has.
+    """
+    from sampletones_core.constants.enums import DEFAULT_CHANNELS, ChannelName
+
+    if stated is None:
+        return list(DEFAULT_CHANNELS)
+
+    names = [name.strip() for name in stated.split(",") if name.strip()]
+    try:
+        return [ChannelName(name) for name in names]
+    except ValueError as exception:
+        raise SystemExit(f"Unknown channel in --channels: {exception}") from exception
 
 
 def main() -> None:
@@ -67,6 +92,12 @@ def main() -> None:
         type=Path,
         default=None,
         help=HELP_OUTPUT,
+    )
+    parser.add_argument(
+        "--channels",
+        type=str,
+        default=None,
+        help=HELP_CHANNELS,
     )
     parser.add_argument(
         "--config",
@@ -158,7 +189,7 @@ def main() -> None:
                 )
 
                 config = _load_config(config_path)
-                return reconstruct_file(path, config, output_path)
+                return reconstruct_file(path, config, _channels(args.channels), output_path)
 
             else:
                 raise RuntimeError(
@@ -173,7 +204,7 @@ def main() -> None:
             )
 
             config = _load_config(config_path)
-            return reconstruct_directory(path, config)
+            return reconstruct_directory(path, config, _channels(args.channels))
 
         else:
             raise RuntimeError("Unsupported path type or file extension.")

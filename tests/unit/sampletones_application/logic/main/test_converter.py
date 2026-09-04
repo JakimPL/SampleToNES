@@ -169,7 +169,8 @@ class TestOverwriteGuard:
         """Points the converter at ``path`` and answers where its run would write."""
         converter_logic.set_input_path(path)
         config = converter_logic._config_manager.config
-        return GroupConversion(sources=(path,), stems=StemsConfig()).jobs(config)[0].output_path
+        plan = converter_logic._conversion_plan(config, path)
+        return plan.jobs(config)[0].output_path
 
     @staticmethod
     def _standing(target: Path) -> None:

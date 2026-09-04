@@ -420,7 +420,7 @@ class ConverterLogic(CallbackMixin):
 
     def _assign_paths(self, input_path: Path, config: Config) -> bool:
         try:
-            self._output_path = get_output_path(config, input_path)
+            self._output_path = get_output_path(config, input_path, frozenset(config.generation.channels))
             self._input_path = input_path
             self._is_file = input_path.is_file()
         except FileNotFoundError as exception:
@@ -543,7 +543,8 @@ class ConverterLogic(CallbackMixin):
 
         sources = self._source_paths
         if sources:
-            self._output_path = group_output_path(self._config_manager.config, sources)
+            config = self._config_manager.config
+            self._output_path = group_output_path(config, sources, frozenset(config.generation.channels))
 
     def _stem_rows(self, config: Config) -> Tuple[StemRowViewModel, ...]:
         """The gathered recordings as the panel reads them, each stating where it stands.
