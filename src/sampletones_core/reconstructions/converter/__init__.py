@@ -10,9 +10,17 @@ from .paths.utils import (
     group_output_path,
     top_level_audio_files,
 )
-from .plan import ConversionPlan, DirectoryConversion, GroupConversion
+from .plan import (
+    BatchConversion,
+    BatchEntry,
+    ConversionPlan,
+    DirectoryConversion,
+    GroupConversion,
+)
 
 __all__ = [
+    "BatchConversion",
+    "BatchEntry",
     "ConfigDirectoryFields",
     "ConversionJob",
     "ConversionPlan",

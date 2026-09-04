@@ -26,6 +26,19 @@ def get_relative_path(
     return Path(output_path.absolute())
 
 
+def config_directory_path(
+    config: Config,
+    channels: AbstractSet[ChannelName],
+) -> Path:
+    """The directory a run writes its reconstructions into.
+
+    The directory is named after the settings that shaped the library and the channels the run
+    hands out, so runs that differ in either keep their results apart.
+    """
+    config_directory = ConfigDirectoryFields.generate_config_directory_name(config, channels)
+    return to_path(config.general.reconstructions_directory) / config_directory
+
+
 def get_output_path(
     config: Config,
     input_path: Path,
@@ -37,8 +50,7 @@ def get_output_path(
     ``channels`` names what the run hands out, which the configuration's own directory is named
     after alongside the settings that shaped the library.
     """
-    config_directory = ConfigDirectoryFields.generate_config_directory_name(config, channels)
-    output_directory = to_path(config.general.reconstructions_directory) / config_directory
+    output_directory = config_directory_path(config, channels)
     if input_path.is_dir():
         return output_directory / input_path.name
 
@@ -69,8 +81,7 @@ def group_output_path(
     Raises:
         ValueError: If ``sources`` is empty.
     """
-    config_directory = ConfigDirectoryFields.generate_config_directory_name(config, channels)
-    output_directory = to_path(config.general.reconstructions_directory) / config_directory
+    output_directory = config_directory_path(config, channels)
     return Path((output_directory / f"{derive_name(sources)}{suffix}").absolute())
 
 
@@ -84,6 +95,18 @@ def get_audio_files(
         audio_files.sort()
 
     return audio_files
+
+
+def holds_audio_files(
+    input_directory: Path,
+    extensions: Tuple[str, ...] = EXT_FILES_AUDIO,
+) -> bool:
+    """Whether a batch of this folder would find anything to convert.
+
+    A batch reaches every recording below the folder, so the walk goes as deep and stops at the
+    first one it meets, which is what makes the answer cheap enough for a gesture to ask for it.
+    """
+    return any(path.is_file() and path.suffix.lower() in extensions for path in input_directory.rglob("*"))
 
 
 def top_level_audio_files(
