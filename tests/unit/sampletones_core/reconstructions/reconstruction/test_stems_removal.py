@@ -15,6 +15,7 @@ from sampletones_core.reconstructions.reconstruction.stems.removal import withou
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 STEM_A: Final[int] = 0
 STEM_B: Final[int] = 1
@@ -41,13 +42,21 @@ def _noise() -> NoiseInstruction:
 def _stems_config() -> StemsConfig:
     return StemsConfig(
         entries=[
-            StemEntry(id=STEM_A, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+            StemEntry(
+                id=STEM_A,
+                settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+            ),
             StemEntry(
                 id=STEM_B,
-                channels=[ChannelName.PULSE1, ChannelName.NOISE],
-                bends=bending_channels([ChannelName.PULSE1, ChannelName.NOISE]),
+                settings=StemSettings(
+                    channels=[ChannelName.PULSE1, ChannelName.NOISE],
+                    bends=bending_channels([ChannelName.PULSE1, ChannelName.NOISE]),
+                ),
             ),
-            StemEntry(id=STEM_C, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+            StemEntry(
+                id=STEM_C,
+                settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+            ),
         ],
         hierarchy=StemsHierarchy(
             levels=[[STEM_A], [STEM_B, STEM_C]],

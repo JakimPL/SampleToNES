@@ -28,6 +28,7 @@ from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_yaml
 from tests.integration.assets.synth_config import SynthConfig
@@ -64,7 +65,7 @@ def three_stem_config() -> StemsConfig:
     """
     return StemsConfig(
         entries=[
-            StemEntry(id=stem_id, channels=channels, bends=bending_channels(channels))
+            StemEntry(id=stem_id, settings=StemSettings(channels=channels, bends=bending_channels(channels)))
             for stem_id, channels in THREE_STEM_ENTRY_CHANNELS.items()
         ],
         hierarchy=StemsHierarchy(

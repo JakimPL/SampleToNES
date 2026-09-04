@@ -20,6 +20,7 @@ from sampletones_core.reconstructions.reconstruction.stems.selection import Stem
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from tests.integration.assets.reconstruction import (
     STEM_A_ID,
     STEM_B_ID,
@@ -53,8 +54,12 @@ def _frame_count(config: Config, duration_seconds: float) -> int:
 def _stems_config() -> StemsConfig:
     return StemsConfig(
         entries=[
-            StemEntry(id=0, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
-            StemEntry(id=1, channels=[ChannelName.NOISE], bends=bending_channels([ChannelName.NOISE])),
+            StemEntry(
+                id=0, settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1]))
+            ),
+            StemEntry(
+                id=1, settings=StemSettings(channels=[ChannelName.NOISE], bends=bending_channels([ChannelName.NOISE]))
+            ),
         ],
         hierarchy=StemsHierarchy(
             levels=[[0], [1]],
@@ -453,7 +458,7 @@ class TestClassicRunCarriesTheSingleEntryRecord:
         assert reconstruction.audio_filepath == (tone_path,)
         stems_data = reconstruction.stems_data
         assert stems_data.config.entries[0].id == 0
-        assert stems_data.config.entries[0].channels == list(DEFAULT_CHANNELS)
+        assert stems_data.config.entries[0].settings.channels == list(DEFAULT_CHANNELS)
         assert stems_data.config.channel_cap == DEFAULT_STEMS_CHANNEL_CAP
         for channel, stem_ids in stems_data.assignments_by_channel.items():
             assert set(stem_ids) <= {0}
@@ -552,7 +557,9 @@ class TestStemsCarryTheirOwnSound:
         """Every stem may take every channel, each on a level of its own."""
         return StemsConfig(
             entries=[
-                StemEntry(id=index, channels=list(channels), bends=bending_channels(list(channels)))
+                StemEntry(
+                    id=index, settings=StemSettings(channels=list(channels), bends=bending_channels(list(channels)))
+                )
                 for index in range(len(_DISJOINT_TONES))
             ],
             hierarchy=StemsHierarchy(

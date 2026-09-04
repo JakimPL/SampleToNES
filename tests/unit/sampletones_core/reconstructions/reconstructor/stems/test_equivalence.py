@@ -15,6 +15,7 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.frame impor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 
@@ -31,7 +32,9 @@ def _config(
 ) -> StemsConfig:
     return StemsConfig(
         entries=[
-            StemEntry(id=stem_id, channels=list(channels), bends=bending_channels(list(channels)))
+            StemEntry(
+                id=stem_id, settings=StemSettings(channels=list(channels), bends=bending_channels(list(channels)))
+            )
             for stem_id, channels in entries.items()
         ],
         hierarchy=StemsHierarchy(levels=levels, mode=mode),
@@ -217,7 +220,7 @@ class TestRandomizedDifferential:
         counts: Dict[int, int] = {}
         for choice in assignment.choices:
             counts[choice.stem_id] = counts.get(choice.stem_id, 0) + 1
-            assert choice.channel_name in stems_config.entries_by_id[choice.stem_id].channel_set
+            assert choice.channel_name in stems_config.entries_by_id[choice.stem_id].settings.channel_set
         assert all(count <= stems_config.channel_cap for count in counts.values())
 
         if stems_config.hierarchy.mode == HierarchyMode.STRICT:

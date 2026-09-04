@@ -29,6 +29,7 @@ from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.constants.nes import PAL_FREQUENCY
 from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import (
@@ -921,8 +922,14 @@ class TestReconstructionPanelLogicStemSelection:
         frame_count = len(reconstruction.approximations[ChannelName.PULSE1]) // reconstruction.config.frame_length
         stems_config = StemsConfig(
             entries=[
-                StemEntry(id=0, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
-                StemEntry(id=1, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                StemEntry(
+                    id=0,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                ),
+                StemEntry(
+                    id=1,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                ),
             ],
             hierarchy=StemsHierarchy(levels=[[0, 1]]),
         )

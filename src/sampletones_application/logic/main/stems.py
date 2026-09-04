@@ -6,6 +6,7 @@ from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 Level = Tuple["StemSource", ...]
 
@@ -233,7 +234,7 @@ def derive_conversion_setup(
     ordered = [pair for level in playing if level for pair in level]
 
     entries = [
-        StemEntry(id=stem_id, channels=channels, bends=bending_channels(channels))
+        StemEntry(id=stem_id, settings=StemSettings(channels=channels, bends=bending_channels(channels)))
         for stem_id, (_source, channels) in enumerate(ordered)
     ]
     return ConversionSetup(

@@ -16,6 +16,7 @@ from sampletones_core.reconstructions.reconstructor.refinement.refiner import Pi
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -110,7 +111,7 @@ class TestWhichChannelsAStemCarries(BaseTestSuite):
         config: Config,
         test_case: "TestWhichChannelsAStemCarries.TestCase",
     ) -> None:
-        stems = _stems(StemEntry(id=STEM_A, channels=TONES, bends=list(test_case.bends)))
+        stems = _stems(StemEntry(id=STEM_A, settings=StemSettings(channels=TONES, bends=list(test_case.bends))))
         streams = _refine(config, stems, {channel_name: [STEM_A] * FRAMES for channel_name in TONES})
 
         for channel_name in TONES:
@@ -142,8 +143,8 @@ class TestWhatTheRefinementReadsPerStem:
     ) -> None:
         readings = self._counted(monkeypatch)
         stems = _stems(
-            StemEntry(id=STEM_A, channels=TONES, bends=[]),
-            StemEntry(id=STEM_B, channels=TONES, bends=list(TONES)),
+            StemEntry(id=STEM_A, settings=StemSettings(channels=TONES, bends=[])),
+            StemEntry(id=STEM_B, settings=StemSettings(channels=TONES, bends=list(TONES))),
         )
         _refine(config, stems, {channel_name: [STEM_A] * FRAMES for channel_name in TONES})
 
@@ -151,7 +152,7 @@ class TestWhatTheRefinementReadsPerStem:
 
     def test_a_frame_no_stem_took_is_left_at_its_note(self, config: Config) -> None:
         """A resting frame names no recording, so there is nothing to read a bend out of."""
-        stems = _stems(StemEntry(id=STEM_A, channels=TONES, bends=list(TONES)))
+        stems = _stems(StemEntry(id=STEM_A, settings=StemSettings(channels=TONES, bends=list(TONES))))
         resting = {channel_name: [RESTING_STEM_ID] * FRAMES for channel_name in TONES}
         streams = _refine(config, stems, resting)
 

@@ -99,7 +99,7 @@ class PitchRefiner:
         if entry is None:
             return frozenset()
 
-        return entry.bend_set
+        return entry.settings.bend_set
 
     def _reader(self, recording: np.ndarray) -> InstantaneousPitch:
         """The instantaneous-pitch reading of one stem, taken once for every channel that took it."""

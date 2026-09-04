@@ -138,9 +138,13 @@ into one job, and `DirectoryConversion` scans a folder into one single-source jo
 per audio file. `ReconstructionConverter` runs those jobs across its worker pool
 and reports the reconstructions written.
 
-`StemsConfig` (`reconstructor/stems/configs/`) is the setup: the entries with
-their ids and channels, the precedence hierarchy and its mode, and the channel
-cap. It validates its own consistency — unique ids, a hierarchy naming every
+`StemsConfig` (`reconstructor/stems/configs/`) is the setup: the entries, the
+precedence hierarchy and its mode, and the channel cap. An entry is an id and the
+`StemSettings` its recording is converted with — the channels it may occupy, and
+which of those it carries towards the divider it really sounds. A further
+per-recording choice is a field on those settings, which is what lets the list a
+reader sets a run up in, the entry the run records, and a later reader of that
+record all state the same thing. It validates its own consistency — unique ids, a hierarchy naming every
 entry exactly once, a cap of at least one — so an inconsistent setup can be
 neither built nor stored, and it derives the views the run reads (`entries_by_id`,
 `covered_channels`, `frame_budget`).

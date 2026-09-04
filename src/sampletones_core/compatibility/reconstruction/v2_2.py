@@ -21,6 +21,7 @@ from sampletones_core.compatibility.fields import (
     METADATA,
     MODE,
     RECONSTRUCTION_DATA_VERSION,
+    SETTINGS,
     STEM_IDS,
     STEMS_DATA,
 )
@@ -70,7 +71,7 @@ def _default_stems_data(data: SerializedData) -> SerializedData:
     ]
     return {
         CONFIG: {
-            ENTRIES: [{ID: 0, CHANNELS: channels, BENDS: []}],
+            ENTRIES: [{ID: 0, SETTINGS: {CHANNELS: channels, BENDS: []}}],
             HIERARCHY: {LEVELS: [[0]], MODE: str(DEFAULT_STEMS_HIERARCHY_MODE)},
             CHANNEL_CAP: DEFAULT_STEMS_CHANNEL_CAP,
         },
@@ -139,8 +140,9 @@ def update(data: SerializedData) -> SerializedData:
     ``config.generation.generators``. Data version 2.2 names them ``channel_name``
     and ``config.generation.channels``, stamps the embedded config's metadata with the
     new data version, records the source audio as one path per stem, and carries the
-    single-entry stems record every reconstruction states, down to the channels each
-    stem carries towards its own recording.
+    single-entry stems record every reconstruction states, down to the settings each
+    stem is converted with: the channels it takes, and the ones it carries towards its
+    own recording.
     """
     updated = dict(data)
     updated = _renamed_stream_keys(updated)

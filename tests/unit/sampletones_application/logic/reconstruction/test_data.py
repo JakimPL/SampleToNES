@@ -16,6 +16,7 @@ from sampletones_core.reconstructions.reconstruction.stems.selection import Stem
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 
 def _heard(*stem_ids: int) -> StemSelection:
@@ -289,8 +290,14 @@ class TestStemFilteredProjections:
         approximation = np.arange(length, dtype=np.float32)
         stems_config = StemsConfig(
             entries=[
-                StemEntry(id=0, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
-                StemEntry(id=1, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                StemEntry(
+                    id=0,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                ),
+                StemEntry(
+                    id=1,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                ),
             ],
             hierarchy=StemsHierarchy(levels=[[0, 1]]),
         )
@@ -342,8 +349,14 @@ class TestStemFilteredProjections:
         write_wave(second, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.25)
         stems_config = StemsConfig(
             entries=[
-                StemEntry(id=0, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
-                StemEntry(id=1, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                StemEntry(
+                    id=0,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                ),
+                StemEntry(
+                    id=1,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                ),
             ],
             hierarchy=StemsHierarchy(levels=[[0, 1]]),
         )
@@ -421,7 +434,10 @@ class TestRebindingToAnEditedReconstruction:
                     config=StemsConfig(
                         entries=[
                             StemEntry(
-                                id=stem_id, channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])
+                                id=stem_id,
+                                settings=StemSettings(
+                                    channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])
+                                ),
                             )
                             for stem_id in range(3)
                         ],

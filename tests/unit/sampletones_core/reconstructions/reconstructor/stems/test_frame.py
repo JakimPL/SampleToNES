@@ -18,6 +18,7 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.frame impor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 
@@ -35,7 +36,7 @@ def _config(
 ) -> StemsConfig:
     return StemsConfig(
         entries=[
-            StemEntry(id=stem_id, channels=channels, bends=bending_channels(channels))
+            StemEntry(id=stem_id, settings=StemSettings(channels=channels, bends=bending_channels(channels)))
             for stem_id, channels in entries.items()
         ],
         hierarchy=StemsHierarchy(levels=levels, mode=mode),

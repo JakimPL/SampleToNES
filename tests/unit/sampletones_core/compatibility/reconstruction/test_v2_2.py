@@ -7,6 +7,7 @@ from sampletones_core.compatibility.fields import (
     CHANNELS,
     GENERATOR_NAME,
     INSTRUCTIONS,
+    SETTINGS,
     STEMS_DATA,
 )
 from sampletones_core.compatibility.reconstruction.v2_2 import update
@@ -67,7 +68,7 @@ class TestReconstructionV2_2:
 
         assert upgraded["id"] == "abc"
         assert upgraded[AUDIO_FILEPATH] == []
-        assert upgraded[STEMS_DATA]["config"]["entries"][0]["channels"] == []
+        assert upgraded[STEMS_DATA]["config"]["entries"][0][SETTINGS][CHANNELS] == []
         assert upgraded[STEMS_DATA]["assignments"] == []
 
     def test_a_single_path_records_as_a_one_tuple(self) -> None:
@@ -89,7 +90,7 @@ class TestReconstructionV2_2:
         upgraded = update(data)
 
         stems_data = upgraded[STEMS_DATA]
-        assert stems_data["config"]["entries"] == [{"id": 0, CHANNELS: ["pulse1", "noise"], BENDS: []}]
+        assert stems_data["config"]["entries"] == [{"id": 0, SETTINGS: {CHANNELS: ["pulse1", "noise"], BENDS: []}}]
         assert stems_data["config"]["channel_cap"] == DEFAULT_STEMS_CHANNEL_CAP
         assert stems_data["assignments"] == [
             {CHANNEL_NAME: "pulse1", "stem_ids": [0, 0]},

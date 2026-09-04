@@ -20,6 +20,6 @@ def validate_stems_config(
     """
     enabled = set(channels)
     for entry in stems_config.entries:
-        foreign = entry.channel_set - enabled
+        foreign = entry.settings.channel_set - enabled
         if foreign:
             raise ValueError(f"Stem {entry.id} allows channels the run was not built for: {sorted(foreign)}")

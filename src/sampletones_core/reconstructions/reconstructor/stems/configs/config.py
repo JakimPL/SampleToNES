@@ -11,6 +11,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import DataModel
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 
 class StemsConfig(DataModel):
@@ -45,7 +46,7 @@ class StemsConfig(DataModel):
         single-file conversion and the stems pipeline's simplest case.
         """
         return cls(
-            entries=[StemEntry(id=0, channels=channels, bends=bends)],
+            entries=[StemEntry(id=0, settings=StemSettings(channels=channels, bends=bends))],
             hierarchy=StemsHierarchy(levels=[[0]]),
             channel_cap=channel_cap,
         )
@@ -53,7 +54,7 @@ class StemsConfig(DataModel):
     @cached_property
     def bent_channels(self) -> FrozenSet[ChannelName]:
         """Every channel some stem carries towards its own recording."""
-        return frozenset(channel for entry in self.entries for channel in entry.bends)
+        return frozenset(channel for entry in self.entries for channel in entry.settings.bends)
 
     @cached_property
     def entries_by_id(self) -> Dict[int, StemEntry]:
@@ -63,7 +64,7 @@ class StemsConfig(DataModel):
     @cached_property
     def covered_channels(self) -> FrozenSet[ChannelName]:
         """Every channel some stem may occupy, which is the set an assignment puts in play."""
-        return frozenset(channel for entry in self.entries for channel in entry.channels)
+        return frozenset(channel for entry in self.entries for channel in entry.settings.channels)
 
     @property
     def frame_budget(self) -> int:
