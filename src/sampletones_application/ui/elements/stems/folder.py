@@ -98,14 +98,24 @@ class FolderRenderer:
 
         self._fill(region, row, view_model)
 
-    def repaint(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
-        """Draw what the recordings in view currently hold onto the widgets they stand as."""
+    def repaint(
+        self,
+        row: StemRowViewModel,
+        view_model: StemsListViewModel,
+        *,
+        releasable: bool,
+    ) -> None:
+        """Draw what the recordings in view currently hold onto the widgets they stand as.
+
+        A recording inside a folder leaves the same way a loose one does, so it answers the same
+        rule about whether the list is holding on to what it has.
+        """
         region = self._regions.get(row.key)
         if region is None:
             return
 
         for held in self._reached(region, row):
-            self._rows.repaint(held, view_model, releasable=False)
+            self._rows.repaint(held, view_model, releasable=releasable)
 
     def _open(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
         """Sink the folder's region below its row and fill it with the rows it reaches."""
@@ -113,8 +123,9 @@ class FolderRenderer:
             tag=self._tags.region(row.key),
             geometry=self._geometry,
             ceiling=self._layout.folder_ceiling,
-            padding=self._layout.well_padding + self._layout.folder_indent,
+            padding=self._layout.well_padding,
             margin=self._layout.well_margin,
+            indent=self._layout.well_padding + self._layout.folder_indent,
         )
         region.create(self._tags.body)
         self._regions[row.key] = region

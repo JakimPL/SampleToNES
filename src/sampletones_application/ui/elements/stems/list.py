@@ -219,7 +219,7 @@ class GUIStemsList(CallbackMixin):
         """Draw what the rows in view currently hold onto the widgets they stand as."""
         for row in self._reached(view_model):
             self._rows.repaint(row, view_model, releasable=self._releasable)
-            self._folders.repaint(row, view_model)
+            self._folders.repaint(row, view_model, releasable=self._releasable)
 
     def _reached(self, view_model: StemsListViewModel) -> Tuple[StemRowViewModel, ...]:
         """The rows the well has widgets for, which are the ones a repaint reaches."""
@@ -272,7 +272,7 @@ class GUIStemsList(CallbackMixin):
             self._folders.redraw(key, self._view)
             row = self._view.row(key)
             if row is not None:
-                self._folders.repaint(row, self._view)
+                self._folders.repaint(row, self._view, releasable=self._releasable)
 
         if self._following:
             self._settle_soon()

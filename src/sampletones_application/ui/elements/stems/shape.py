@@ -8,12 +8,17 @@ from sampletones_core.constants.enums import ChannelName
 
 @dataclass(frozen=True)
 class RowPlacement:
-    """Where one row stands: what it is, which band holds it, and which boxes it draws."""
+    """Where one row stands: what it is, which band holds it, and which boxes it draws.
+
+    ``held`` names the recordings a folder stands for, so one of them leaving reshapes the list
+    the way a loose row leaving does and the region it stood in is drawn again.
+    """
 
     key: str
     level: int
     offered: FrozenSet[ChannelName]
     opened: bool
+    held: Tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -33,7 +38,8 @@ class ListShape:
         """The shape a view amounts to, which is what a list compares against what it drew.
 
         A folder opening or closing reshapes the list, since the region its recordings stand in
-        is built and taken down with it.
+        is built and taken down with it, and so does a recording leaving the folder, since the
+        region then holds a row for something the list no longer stands for.
         """
         return cls(
             columns=view_model.channels_in_play,
@@ -44,6 +50,7 @@ class ListShape:
                     level=row.level,
                     offered=row.offered_channels,
                     opened=open_folders.stands_open(row.key),
+                    held=tuple(recording.key for recording in row.held),
                 )
                 for row in view_model.rows
             ),

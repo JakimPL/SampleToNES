@@ -19,6 +19,8 @@ LeadBuilder = Callable[[str], None]
 NO_ROWS: Final[Window] = (0, 0)
 NO_LEAD: Final[float] = 0.0
 AUTO_HEIGHT: Final[int] = 0
+NO_SCROLL: Final[float] = 0.0
+SCROLL_TOLERANCE: Final[float] = 1.0
 
 
 class WindowedRegion:
@@ -42,6 +44,12 @@ class WindowedRegion:
     the widgets, since a region already held to its ceiling clips what it holds and would measure
     its own ceiling back. A reading is therefore taken only while the region stands at the height
     of what it holds, which :attr:`natural` reports.
+
+    Where the reader had scrolled to is held between a draw and the frame that renders it. A scroll
+    written while the rows it applies to are being rebuilt lands against the layout of the frame
+    before, so the region reads a position it never asked for and picks a different slice from it,
+    which asks for another rebuild. The offset is therefore remembered as the rows come down and
+    put back once the frame that placed them has been drawn.
     """
 
     def __init__(
@@ -52,12 +60,14 @@ class WindowedRegion:
         ceiling: int,
         padding: int,
         margin: int,
+        indent: Optional[int] = None,
     ) -> None:
         self._tag = tag
         self._geometry = geometry
         self._ceiling = ceiling
         self._padding = padding
         self._margin = margin
+        self._indent = indent
         self._above_tag = compose_tag(tag, SUF_SPACER_ABOVE)
         self._below_tag = compose_tag(tag, SUF_SPACER_BELOW)
         self._lead_tag = compose_tag(tag, SUF_LEAD)
@@ -68,6 +78,8 @@ class WindowedRegion:
         self._windowed = False
         self._natural = True
         self._drawn: Window = NO_ROWS
+        self._resting = NO_SCROLL
+        self._restoring = False
 
     @property
     def tag(self) -> str:
@@ -116,6 +128,7 @@ class WindowedRegion:
             self._tag,
             padding=self._padding,
             margin=self._margin,
+            indent=self._indent,
             show=show,
         )
 
@@ -124,14 +137,15 @@ class WindowedRegion:
 
         ``build`` is handed where the window opens and how many rows it holds, and adds them to
         :attr:`body` between the two reserves. ``lead`` builds the heading standing above them,
-        into the group it is handed. The scroll position is put back afterwards, so the rows a
-        reader was looking at are the rows they keep looking at.
+        into the group it is handed. Where the reader stands is taken up before the rows come down
+        and put back by :meth:`settle`, so the rows they were looking at are the rows they keep
+        looking at.
 
         Before a row has been measured the region builds a first slice at its natural height and
         reserves nothing, which is what gives :meth:`settle` a run of rows to read.
         """
-        offset = self.offset
-        start, count = self._slice(offset, total)
+        self._remember()
+        start, count = self._slice(self._resting, total)
         dpg_delete_children(self._body_tag)
         measuring = not self._geometry.measured
         self._build_lead(lead)
@@ -141,7 +155,6 @@ class WindowedRegion:
         self._total = total
         self._windowed = True
         self._drawn = (start, count)
-        dpg.set_y_scroll(self._tag, offset)
 
     def draw_whole(self, build: VoidCallback, *, lead: Optional[LeadBuilder], rows: int) -> None:
         """Build the region's contents entire, for content that is more than a run of rows.
@@ -153,6 +166,7 @@ class WindowedRegion:
         reading of a row is taken from; content standing anything else among its rows is a run of
         none.
         """
+        self._remember()
         dpg_delete_children(self._body_tag)
         self._build_lead(lead)
         build()
@@ -170,14 +184,38 @@ class WindowedRegion:
         if not self._windowed:
             self._take_reading()
             self._hold_content()
-            return False
+            return self._restore()
 
         if not self._geometry.measured:
             self._stand_at_natural_height()
             return self._take_reading()
 
         self._hold_rows()
+        if self._restore():
+            return False
+
         return self._slice(self.offset, self._total) != self._drawn
+
+    def _remember(self) -> None:
+        """Take up where the reader stands, which the rows about to be built are chosen for."""
+        self._resting = self.offset
+        self._restoring = True
+
+    def _restore(self) -> bool:
+        """Put the reader back where they stood, once the frame that placed the rows has drawn.
+
+        Answers whether a scroll was written, since the frame that carries it out is the one whose
+        position the window is chosen from.
+        """
+        if not self._restoring:
+            return False
+
+        self._restoring = False
+        if abs(self.offset - self._resting) <= SCROLL_TOLERANCE:
+            return False
+
+        dpg.set_y_scroll(self._tag, self._resting)
+        return True
 
     def _slice(self, offset: float, total: int) -> Window:
         """The rows the region's scroll position reaches, in the list it is a window onto."""

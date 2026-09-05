@@ -15,7 +15,13 @@ from sampletones_application.paths import (
     PALETTES_DIRECTORY,
     THEME_DIRECTORY,
 )
-from sampletones_application.tags.general import SUF_CHANNELS, SUF_CHECKBOX, SUF_TEXT, SUF_TWISTY
+from sampletones_application.tags.general import (
+    SUF_BUTTON,
+    SUF_CHANNELS,
+    SUF_CHECKBOX,
+    SUF_TEXT,
+    SUF_TWISTY,
+)
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.list import GUIStemsList
@@ -139,6 +145,12 @@ def name_of(row: StemRowViewModel) -> str:
 
 def box_of(row: StemRowViewModel, channel_name: ChannelName) -> str:
     return f"{PREFIX}.row.{row.key}.{SUF_CHANNELS}.{channel_name}.{SUF_CHECKBOX}"
+
+
+def folder_without(row: StemRowViewModel, leaving: StemRowViewModel) -> StemRowViewModel:
+    """The folder as the model leaves it once one of its recordings is taken out."""
+    held = tuple(standing for standing in row.held if standing.key != leaving.key)
+    return row.model_copy(update={"held": held})
 
 
 class TestAClosedFolder:
@@ -288,3 +300,40 @@ def double_click(tag: str) -> None:
             return
 
     raise AssertionError("the list registers no double-click handler")
+
+
+class TestARecordingInsideAFolder:
+    """A recording standing inside an open folder answers the same gestures a loose one does."""
+
+    @staticmethod
+    def _opened(stems_list: GUIStemsList, sources: StemRowViewModel) -> None:
+        stems_list.update_view(view(sources))
+        press(twisty_of(sources))
+
+    def test_its_remove_button_is_live(self, stems_list: GUIStemsList) -> None:
+        sources = folder("sources", holds=3)
+        self._opened(stems_list, sources)
+
+        button = f"{PREFIX}.row.{sources.held[0].key}.{SUF_BUTTON}"
+
+        assert dpg.get_item_configuration(button)["enabled"] is True
+
+    def test_one_of_them_leaving_draws_the_folder_again(self, stems_list: GUIStemsList) -> None:
+        """The region holds a row apiece, so it is built afresh once the folder holds one fewer."""
+        sources = folder("sources", holds=3)
+        self._opened(stems_list, sources)
+        leaving = sources.held[0]
+
+        stems_list.update_view(view(folder_without(sources, leaving)))
+
+        assert not dpg.does_item_exist(f"{PREFIX}.row.{leaving.key}.{SUF_TEXT}")
+
+    def test_the_ones_that_stay_are_still_drawn(self, stems_list: GUIStemsList) -> None:
+        sources = folder("sources", holds=3)
+        self._opened(stems_list, sources)
+        leaving = sources.held[0]
+
+        stems_list.update_view(view(folder_without(sources, leaving)))
+
+        for held in sources.held[1:]:
+            assert dpg.does_item_exist(f"{PREFIX}.row.{held.key}.{SUF_TEXT}")

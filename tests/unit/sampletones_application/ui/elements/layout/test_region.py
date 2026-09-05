@@ -1,4 +1,5 @@
 from typing import Iterator, List, Optional, Tuple
+from unittest.mock import patch
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -18,6 +19,8 @@ PITCH = 20.0
 OVERSCAN = 2
 CEILING = 100
 HEADING_TEXT = "channels"
+STANDING_OFFSET = 300.0
+NO_OFFSET = 0.0
 
 
 @pytest.fixture
@@ -208,3 +211,72 @@ class TestAWholeDraw(BaseTestSuite):
         first = dpg.get_item_children(region.body, 1)[0]
 
         assert dpg.get_item_type(first) == "mvAppItemType::mvGroup"
+
+
+class TestWhereTheReaderStands(BaseTestSuite):
+    """A rebuild leaves the reader where they were, and asks DearPyGui for nothing while it draws.
+
+    A scroll written while the rows it applies to are coming down lands against the layout of the
+    frame before, so the region reads back a position it never asked for. Every draw therefore
+    takes the offset up first and hands it back only once the rows have been placed.
+    """
+
+    def test_a_draw_writes_no_scroll(self, region: WindowedRegion) -> None:
+        with patch.object(dpg, "set_y_scroll") as set_y_scroll:
+            draw(region, 40)
+
+        set_y_scroll.assert_not_called()
+
+    def test_the_window_is_chosen_from_where_the_reader_stood(self, region: WindowedRegion) -> None:
+        """The offset is read once, so a position DearPyGui reports mid-rebuild reaches nothing."""
+        draw(region, 40)
+        region.settle()
+
+        with patch.object(dpg, "get_y_scroll", return_value=STANDING_OFFSET) as get_y_scroll:
+            asked = draw(region, 40)
+
+        assert get_y_scroll.call_count == 1
+        assert asked[0][0] > 0
+
+    def test_the_reader_is_put_back_once_the_rows_are_placed(self, region: WindowedRegion) -> None:
+        draw(region, 40)
+
+        with (
+            patch.object(dpg, "get_y_scroll", return_value=NO_OFFSET),
+            patch.object(dpg, "set_y_scroll") as set_y_scroll,
+        ):
+            region.settle()
+
+        set_y_scroll.assert_not_called()
+
+    def test_a_position_the_rebuild_moved_is_restored(self, region: WindowedRegion) -> None:
+        """Where the rows come down and go back changed height, the offset is handed back."""
+        with patch.object(dpg, "get_y_scroll", return_value=STANDING_OFFSET):
+            draw(region, 40)
+
+        with (
+            patch.object(dpg, "get_y_scroll", return_value=NO_OFFSET),
+            patch.object(dpg, "set_y_scroll") as set_y_scroll,
+        ):
+            region.settle()
+
+        set_y_scroll.assert_called_once_with(REGION_TAG, STANDING_OFFSET)
+
+    def test_it_is_handed_back_once(self, region: WindowedRegion) -> None:
+        """A restored position is where the reader stands, so the next frame writes nothing."""
+        with patch.object(dpg, "get_y_scroll", return_value=STANDING_OFFSET):
+            draw(region, 40)
+
+        with (
+            patch.object(dpg, "get_y_scroll", return_value=NO_OFFSET),
+            patch.object(dpg, "set_y_scroll"),
+        ):
+            region.settle()
+
+        with (
+            patch.object(dpg, "get_y_scroll", return_value=NO_OFFSET),
+            patch.object(dpg, "set_y_scroll") as set_y_scroll,
+        ):
+            region.settle()
+
+        set_y_scroll.assert_not_called()
