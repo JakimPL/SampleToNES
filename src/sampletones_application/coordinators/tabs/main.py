@@ -30,6 +30,7 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.tags.main import (
     TAG_MAIN_ADVANCED_PANEL,
+    TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL,
     TAG_MAIN_CONFIG_PANEL,
     TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
     TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
@@ -41,7 +42,6 @@ from sampletones_application.tags.main import (
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
     TAG_MAIN_EXPLORER_PANEL,
     TAG_MAIN_RECONSTRUCTOR_PANEL,
-    TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.layout.responsive import expanded_side_width
@@ -599,7 +599,12 @@ class MainTabCoordinator:
         self._sync_explorer_width()
 
     def _build_center(self, parent: str) -> None:
-        """Stacks the config and reconstructor cards side by side, then the advanced and converter cards below."""
+        """Stacks the settings cards side by side, then the converter and the card reading its list.
+
+        The reconstruction card names whichever row the converter's list stands on, so it follows
+        that list and the tab reads in one direction: what a run is set up with, what it gathers,
+        and what the gathered row takes.
+        """
         TabColumns.row(
             panel_gap=self._geometry.panel_gap,
             height=self._config_height,
@@ -610,23 +615,23 @@ class MainTabCoordinator:
                     build=self._config_panel.create_panel,
                 ),
                 ColumnSpec(
-                    tag=TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
-                    build=self._reconstructor_panel.create_panel,
+                    tag=TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL,
+                    build=self._advanced_settings_panel.create_panel,
                 ),
             ],
         )
         self._sync_config_row_height()
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
-        self._advanced_settings_panel.create_panel(parent)
-        dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._converter_panel.create_panel(parent)
+        dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
+        self._reconstructor_panel.create_panel(parent)
 
     def _wire_collapse_handlers(self) -> None:
         """Routes each Main card's collapse toggle to the handler that persists it and reflows the shared config row."""
         self._explorer_panel.set_collapse_handler(self._on_explorer_collapse_changed)
         self._config_panel.set_collapse_handler(self._on_config_row_collapse_changed)
-        self._reconstructor_panel.set_collapse_handler(self._on_config_row_collapse_changed)
-        self._advanced_settings_panel.set_collapse_handler(self._on_card_collapse_changed)
+        self._advanced_settings_panel.set_collapse_handler(self._on_config_row_collapse_changed)
+        self._reconstructor_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._converter_panel.set_collapse_handler(self._on_card_collapse_changed)
 
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
@@ -658,13 +663,13 @@ class MainTabCoordinator:
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
 
     def _on_config_row_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
-        """Persists the config or reconstructor collapse, then reflows the row both cards share."""
+        """Persists a settings card's collapse, then reflows the row both of them share."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         self._sync_config_row_height()
 
     def _sync_config_row_height(self) -> None:
         """Lets the shared config row size to its collapsed cards once both are collapsed, else keeps it full height."""
-        both_collapsed = self._config_panel.collapsed and self._reconstructor_panel.collapsed
+        both_collapsed = self._config_panel.collapsed and self._advanced_settings_panel.collapsed
         height = 0 if both_collapsed else self._config_height
         dpg_configure_item(TAG_MAIN_CONFIG_TABLE_CONFIG_ROW, height=height)
 

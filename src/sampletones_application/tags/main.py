@@ -14,11 +14,11 @@ TAG_MAIN_CONFIG_TABLE_CONFIG_ROW = TagName(
     Widget.TABLE,
     "config_row",
 )
-TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL = TagName(
+TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL = TagName(
     Page.MAIN,
-    Panel.RECONSTRUCTOR,
+    Panel.ADVANCED,
     Widget.PANEL,
-    "reconstructor_cell",
+    "advanced_cell",
 )
 TAG_MAIN_EXPLORER_TREE = TagName(
     Page.MAIN,

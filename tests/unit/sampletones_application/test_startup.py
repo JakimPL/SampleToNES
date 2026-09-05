@@ -1,6 +1,6 @@
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import Any, Callable, Dict, Final, FrozenSet, Generator, List
+from typing import Any, Callable, Dict, Final, FrozenSet, Generator, List, Tuple, Union
 from unittest.mock import PropertyMock, patch
 
 import dearpygui.dearpygui as dpg
@@ -25,11 +25,16 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.tags.main import (
     PRE_MAIN_RECONSTRUCTOR_SLOT,
+    TAG_MAIN_ADVANCED_PANEL,
+    TAG_MAIN_CONFIG_PANEL,
+    TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
     TAG_MAIN_CONVERTER_GROUP_CONTROLS,
     TAG_MAIN_CONVERTER_GROUP_ORDER,
+    TAG_MAIN_CONVERTER_PANEL,
     TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE,
     TAG_MAIN_CONVERTER_WINDOW_STEMS,
     TAG_MAIN_RECONSTRUCTOR_GROUP_GRID,
+    TAG_MAIN_RECONSTRUCTOR_PANEL,
     TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING,
     TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED,
 )
@@ -490,6 +495,60 @@ def _reports_running(app: Application, status_text: str, progress: float) -> Non
         update={"phase": ConversionPhase.RUNNING, "status_text": status_text, "progress": progress}
     )
     app._main_tab._on_converter_view_changed(running)
+
+
+class TestMainTabReadingOrder:
+    """The tab reads in one direction: what a run is set up with, what it gathers, what a row takes.
+
+    The reconstruction card names whichever row the converter's list stands on, so it follows the
+    list it reads rather than standing above it.
+    """
+
+    @staticmethod
+    def _identity(item: Union[int, str]) -> int:
+        """One reading of an item, since DearPyGui answers with an alias where a tag names one."""
+        return dpg.get_alias_id(item) if isinstance(item, str) else item
+
+    @classmethod
+    def _place(cls, tag: str) -> Tuple[int, int]:
+        """Where a card stands: the parent holding it, and its place among that parent's children."""
+        item = cls._identity(tag)
+        parent = cls._identity(dpg.get_item_parent(item))
+        children = [cls._identity(child) for child in dpg.get_item_children(parent)[1]]
+        return parent, children.index(item)
+
+    @classmethod
+    def _stands_within(cls, tag: str, ancestor: str) -> bool:
+        item = cls._identity(tag)
+        wanted = cls._identity(ancestor)
+        while item:
+            if item == wanted:
+                return True
+            item = cls._identity(dpg.get_item_parent(item))
+
+        return False
+
+    def test_the_reconstruction_card_follows_the_converter(self, app: Application) -> None:
+        converter_parent, converter_place = self._place(TAG_MAIN_CONVERTER_PANEL)
+        card_parent, card_place = self._place(TAG_MAIN_RECONSTRUCTOR_PANEL)
+
+        assert card_parent == converter_parent
+        assert card_place > converter_place
+
+    def test_the_settings_cards_share_the_row_above(self, app: Application) -> None:
+        assert self._stands_within(TAG_MAIN_CONFIG_PANEL, TAG_MAIN_CONFIG_TABLE_CONFIG_ROW)
+        assert self._stands_within(TAG_MAIN_ADVANCED_PANEL, TAG_MAIN_CONFIG_TABLE_CONFIG_ROW)
+
+    def test_the_row_holds_its_height_until_both_cards_collapse(self, app: Application) -> None:
+        """The row is the two settings cards' own, so it is theirs to give up."""
+        coordinator = app._main_tab
+        with (
+            patch.object(type(coordinator._config_panel), "collapsed", PropertyMock(return_value=True)),
+            patch.object(type(coordinator._advanced_settings_panel), "collapsed", PropertyMock(return_value=True)),
+        ):
+            coordinator._sync_config_row_height()
+
+        assert dpg.get_item_configuration(TAG_MAIN_CONFIG_TABLE_CONFIG_ROW)["height"] == 0
 
 
 class TestBrowserGathering:
