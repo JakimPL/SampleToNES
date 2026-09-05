@@ -142,6 +142,10 @@ class Gathering:
         """The setup with ``channel_name`` settled on every recording ``key`` stands for."""
         return replace(self, sources=self.sources.settled(key, slot, channel_name, held))
 
+    def toggled_throughout(self, slot: SettingsSlot, channel_name: ChannelName) -> Self:
+        """The setup with ``channel_name`` settled the one way on every recording listed."""
+        return replace(self, sources=self.sources.toggled_throughout(slot, channel_name))
+
     def with_levels(self, levels: MixLevels) -> Self:
         """The setup as rewritten levels leave it, the recordings standing as they were."""
         return replace(self, levels=levels)

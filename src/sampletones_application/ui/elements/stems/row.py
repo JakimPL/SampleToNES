@@ -110,7 +110,7 @@ class StemRowRenderer:
             tag = self._tags.channel(row.key, channel_name)
             agreement = row.agreement_on(channel_name)
             dpg_configure_item(tag, enabled=live)
-            dpg_set_value(tag, agreement is not Agreement.NONE)
+            dpg_set_value(tag, agreement.reads_held)
             ThemeRegistry.get(self._channel_theme(channel_name, agreement, view_model)).bind_to_item(tag)
 
         name_tag = self._tags.row(row.key, SUF_TEXT)
@@ -222,7 +222,7 @@ class StemRowRenderer:
         with dpg.group(horizontal=True, indent=columns.box_indent(channel_name)):
             dpg.add_checkbox(
                 tag=checkbox_tag,
-                default_value=row.agreement_on(channel_name) is not Agreement.NONE,
+                default_value=row.agreement_on(channel_name).reads_held,
                 user_data=(row.key, channel_name),
                 callback=self._gestures.on_channel_box,
             )

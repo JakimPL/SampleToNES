@@ -27,8 +27,8 @@ from sampletones_application.logic.main.converter.setup import (
 from sampletones_application.logic.main.converter.state import ConverterState
 from sampletones_application.logic.main.converter.view import (
     compose_view,
-    inspected_name,
     inspected_settings,
+    inspected_source,
     settings_slots,
     stem_rows,
 )
@@ -46,7 +46,10 @@ from sampletones_application.view_model.main.converter import (
     ConversionPhase,
     ConverterViewModel,
 )
-from sampletones_application.view_model.main.reconstructor import SettingsSlotViewModel
+from sampletones_application.view_model.main.reconstructor import (
+    InspectedSourceViewModel,
+    SettingsSlotViewModel,
+)
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.configs import Config
@@ -222,25 +225,39 @@ class ConverterLogic(CallbackMixin):
         return settings_slots(self._state)
 
     @property
-    def inspected_name(self) -> Optional[str]:
-        """What the settings card is editing, where a reader picked a row out of the list."""
-        return inspected_name(self._state)
+    def inspected_source(self) -> Optional[InspectedSourceViewModel]:
+        """The row the settings card is editing, where a reader picked one out of the list."""
+        return inspected_source(self._state)
+
+    @property
+    def live(self) -> bool:
+        """Whether a gesture reaches the setup, which a conversion holding resources answers."""
+        return not self._run.is_active
 
     def toggle_slot(self, field: SettingsField, channel_name: ChannelName) -> None:
-        """Settles one choice on ``channel_name``, wherever the settings card is pointed.
+        """Settles one choice on ``channel_name`` for the row the settings card is pointed at.
 
         A picked row settles the same way a folder's own box does — already agreeing lets the
-        choice go, every other reading takes it up. With no row picked the gesture reaches the
-        settings a recording joins the list with, which is what the run hands out.
+        choice go, every other reading takes it up — so one gesture answers for a folder and for
+        a recording alike.
         """
-        slot = SLOTS_BY_FIELD[field]
-        held = self._inspected_agreement(slot, channel_name).settles_to
         selected = self._state.selected
         if selected is None:
-            self._settle_joining(slot.settled(self._joining_settings, channel_name, held))
             return
 
+        slot = SLOTS_BY_FIELD[field]
+        held = self._inspected_agreement(slot, channel_name).settles_to
         self._settle(self._state.with_gathering(self._state.gathering.settled(selected, slot, channel_name, held)))
+
+    def toggle_channel(self, channel_name: ChannelName) -> None:
+        """Switches one channel across the whole list, which is what the channel's key reaches.
+
+        The list answers as one group: where every listed recording already holds the channel it
+        goes from each, and otherwise it reaches the ones standing without it, so one press always
+        leaves the list agreeing.
+        """
+        gathering = self._state.gathering.toggled_throughout(CHANNEL_SLOT, channel_name)
+        self._settle(self._state.with_gathering(gathering))
 
     def set_source_channels(self, path: Path, channels: FrozenSet[ChannelName]) -> None:
         """Names the channels one recording may take, which is the whole of what it reaches."""

@@ -205,11 +205,12 @@ class TestFolderRows:
 
         assert dpg.get_value(channel_tag(sources, ChannelName.PULSE1)) is True
 
-    def test_a_channel_they_differ_on_reads_ticked_in_the_softer_tone(
+    def test_a_channel_they_differ_on_reads_clear_in_the_softer_tone(
         self,
         dpg_context: None,
         layout_config,
     ) -> None:
+        """A tick would state an answer the folder has yet to give, so a divided reading is clear."""
         stems_list = build(layout_config)
         sources = folder_row(
             "sources",
@@ -220,7 +221,7 @@ class TestFolderRows:
         stems_list.update_view(view(sources))
 
         box = channel_tag(sources, ChannelName.PULSE1)
-        assert dpg.get_value(box) is True
+        assert dpg.get_value(box) is False
         assert dpg.get_item_alias(dpg.get_item_theme(box)) == TAG_GLOBAL_THEME_CHANNEL_PULSE1_PARTIAL
 
     def test_a_channel_none_of_them_holds_reads_clear(self, dpg_context: None, layout_config) -> None:

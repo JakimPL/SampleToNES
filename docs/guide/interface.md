@@ -91,15 +91,16 @@ asks first where you have already gathered a list.
 
 ### Settings
 
-A few settings are worth knowing before you convert. **Reconstructor settings**
-edits whatever the list has picked out: click a row and the card shows that
-recording's — or that folder's — **Channels** and **Bends**, and a folder whose
-recordings differ shows the choice half-lit until one click settles them all.
-With nothing picked, the card edits what every recording joins the list with, so
-that is where you set the channels a new row starts from. **Drive** sets how hard
-the channels are pushed and holds for the whole run. **General
-settings** holds the analysis options: sample rate, NES frequency, generation
-method, and feature scaling. The rest, including the worker count and the output
+A few settings are worth knowing before you convert. **Drive** sets how hard the
+channels are pushed and holds for the whole run, so it stands at the top of
+**Reconstruction settings** whatever you are looking at. Below it the card names
+the row you clicked in the converter's list — a folder reads how many recordings
+it stands for — and gives that row a box under every channel: one for the channel
+it takes, and one for the bend on it. A folder whose recordings differ reads clear
+in a softer tone until one click settles them all. Press a channel's key to set
+that channel across everything listed at once. **General settings** holds the
+analysis options: sample rate, NES frequency, generation method, and feature
+scaling. The rest, including the worker count and the output
 and library folders, sit under **Advanced settings**, which **View ▸ Show
 advanced settings** reveals. [Configuration](configuration.md) explains each
 one.

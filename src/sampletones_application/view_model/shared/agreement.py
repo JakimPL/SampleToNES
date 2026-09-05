@@ -33,3 +33,12 @@ class Agreement(StrEnum):
         wherever the group stands.
         """
         return self is not Agreement.ALL
+
+    @property
+    def reads_held(self) -> bool:
+        """Whether a box standing for this reading is drawn ticked.
+
+        A group only some of which makes the choice reads clear and takes the softened tone that
+        says so, since a tick states an answer the group has yet to give.
+        """
+        return self is Agreement.ALL

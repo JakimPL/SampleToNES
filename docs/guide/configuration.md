@@ -10,10 +10,10 @@ you want to go deeper.
 ## From the interface
 
 The **Main** tab exposes the everyday settings (grouped under **General
-settings**, **Reconstructor settings**, and **Advanced settings**):
+settings**, **Reconstruction settings**, and **Advanced settings**):
 
-- which **Channels** a recording takes when it joins a conversion, and the
-  **Drive** applied to them;
+- which channels the recording you picked out of the converter's list takes, and
+  the **Drive** applied to them;
 - **Normalize audio** and **Quantize audio** preprocessing;
 - the **Sample rate** and **NES frequency**;
 - the **Generation method** and **Feature scaling**, which set how the audio's

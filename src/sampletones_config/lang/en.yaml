@@ -348,11 +348,8 @@ main.config.tooltip.tooltip_nes_frequency: "Set the NES refresh rate (in Hz) for
 # =============================================================================
 # Main tab — Reconstructor panel
 # =============================================================================
-main.reconstructor.label.slot_channels: "Channels"
-main.reconstructor.label.slot_bends: "Bends"
-main.reconstructor.message.inspecting_joining: "Editing what every recording joins the list with."
-main.reconstructor.template.inspecting_row: "Editing {name}."
-main.reconstructor.label.section_settings: "Reconstructor settings"
+main.reconstructor.message.nothing_picked: "Pick a recording or a folder in the Converter to set what it takes."
+main.reconstructor.label.section_settings: "Reconstruction settings"
 main.reconstructor.label.slider_drive: "Drive"
 main.reconstructor.tooltip.tooltip_drive: "Amplify NES audio during instruction selection and output.\nAt 1.0 amplitudes are calibrated, higher values push the selection harder, introducing a distortion-like effect."
 

@@ -50,7 +50,7 @@ from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsP
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter.panel import GUIConverterPanel
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
-from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
+from sampletones_application.ui.panels.main.reconstructor.panel import GUIReconstructorPanel
 from sampletones_application.utils.file_dialogs.api import select_directory_dialog
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
@@ -216,9 +216,11 @@ class MainTabCoordinator:
                 slots=self._converter_logic.settings_slots,
                 inspected=None,
                 drive=_config.generation.drive,
+                live=True,
             ),
             layout=layout.main.reconstructor,
             inputs=layout.inputs,
+            stems_layout=layout.stems,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_RECONSTRUCTOR_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -258,6 +260,7 @@ class MainTabCoordinator:
         self._config_panel.on_library_settings_changed = config_manager.apply_library_settings
         self._reconstructor_panel.on_generation_settings_changed = config_manager.apply_generation_settings
         self._reconstructor_panel.on_slot_toggled = self._converter_logic.toggle_slot
+        self._reconstructor_panel.on_channel_keyed = self._converter_logic.toggle_channel
         self._advanced_settings_panel.on_advanced_settings_changed = config_manager.apply_advanced_settings
         self._advanced_settings_panel.on_select_library_directory = self._select_library_directory
         self._advanced_settings_panel.on_select_output_directory = self._select_output_directory
@@ -508,8 +511,9 @@ class MainTabCoordinator:
         self._reconstructor_panel.update_view(
             ReconstructorPanelViewModel(
                 slots=self._converter_logic.settings_slots,
-                inspected=self._converter_logic.inspected_name,
+                inspected=self._converter_logic.inspected_source,
                 drive=self._config_manager.config.generation.drive,
+                live=self._converter_logic.live,
             )
         )
 

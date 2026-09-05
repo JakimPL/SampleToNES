@@ -9,9 +9,10 @@ instruments, and building a whole song. Both assume it is already
 1. Launch the app and open the **Main** tab.
 2. In the **Filesystem** browser on the left, click an audio file (WAV, MP3,
    FLAC, OGG, AIFF, or AU) — or a folder, to reconstruct every audio file inside it.
-3. Optionally choose which channels to use under **Reconstructor settings** and
-   adjust **General settings**. At least one channel must be enabled.
-4. Click **Convert sample** (or **Convert directory** for a folder). The first
+3. Optionally click the recording in the list and choose which channels it takes
+   under **Reconstruction settings**, and adjust **General settings**. At least
+   one channel must be enabled.
+4. Click the button, which names the run it makes. The first
    time you use a given set of settings, the
    [instruction library](../concepts/instruction-library.md) is built
    automatically ("Generating instructions library..."), then the reconstruction

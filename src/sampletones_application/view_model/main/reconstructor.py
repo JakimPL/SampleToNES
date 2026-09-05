@@ -2,7 +2,7 @@ from typing import FrozenSet, Optional, Tuple
 
 from pydantic import BaseModel
 
-from sampletones_application.constants.sources import SettingsField
+from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_core.constants.enums import ChannelName
 
@@ -32,22 +32,38 @@ class SettingsSlotViewModel(BaseModel, frozen=True):
         return Agreement.SOME if channel_name in self.partial_channels else Agreement.NONE
 
 
-class ReconstructorPanelViewModel(BaseModel, frozen=True):
-    """What the settings card shows: the choices it edits, and what it is editing them on.
+class InspectedSourceViewModel(BaseModel, frozen=True):
+    """The row the settings card is editing, as the card names it.
 
-    ``inspected`` names the row a reader picked out of the list; with none picked the card edits
-    the settings a recording joins the list with, which is what every new row starts from.
+    A folder reads its own name and how many recordings it stands for, so the card says what a
+    choice made here reaches; a recording reads its name alone.
+    """
+
+    name: str
+    kind: SourceKind
+    holds: int
+
+    @property
+    def stands_for_a_folder(self) -> bool:
+        """The row is a folder, so its count is part of what names it."""
+        return self.kind is SourceKind.FOLDER
+
+
+class ReconstructorPanelViewModel(BaseModel, frozen=True):
+    """What the settings card shows: the choices it edits, and the row it edits them on.
+
+    ``inspected`` names the row a reader picked out of the converter's list, which is the whole of
+    what the choices below it reach. ``drive`` holds for the run as a whole and stands above them
+    whatever is picked. ``live`` says whether the choices take a gesture, which a conversion under
+    way answers.
     """
 
     slots: Tuple[SettingsSlotViewModel, ...]
-    inspected: Optional[str]
+    inspected: Optional[InspectedSourceViewModel]
     drive: float
+    live: bool
 
     @property
-    def channels(self) -> FrozenSet[ChannelName]:
-        """The channels the run hands out, which is the first slot's own reading."""
-        for slot in self.slots:
-            if slot.field is SettingsField.CHANNELS:
-                return slot.held_channels
-
-        return frozenset()
+    def inspecting(self) -> bool:
+        """A row is picked out, so the card has something to draw its choices on."""
+        return self.inspected is not None

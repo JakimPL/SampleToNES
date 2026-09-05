@@ -244,6 +244,24 @@ TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING = TagName(
     Widget.TEXT,
     "inspecting",
 )
+TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED = TagName(
+    Page.MAIN,
+    Panel.RECONSTRUCTOR,
+    Widget.TEXT,
+    "unpicked",
+)
+TAG_MAIN_RECONSTRUCTOR_GROUP_GRID = TagName(
+    Page.MAIN,
+    Panel.RECONSTRUCTOR,
+    Widget.GROUP,
+    "grid",
+)
+TAG_MAIN_RECONSTRUCTOR_TABLE_GRID = TagName(
+    Page.MAIN,
+    Panel.RECONSTRUCTOR,
+    Widget.TABLE,
+    "grid",
+)
 TAG_MAIN_CONVERTER_GROUP_CONTROLS = TagName(
     Page.MAIN,
     Panel.CONVERTER,

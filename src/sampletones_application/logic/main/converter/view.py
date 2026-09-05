@@ -14,7 +14,10 @@ from sampletones_application.logic.main.sources.slots import (
     SettingsSlot,
 )
 from sampletones_application.view_model.main.converter import ConversionPhase, ConverterViewModel
-from sampletones_application.view_model.main.reconstructor import SettingsSlotViewModel
+from sampletones_application.view_model.main.reconstructor import (
+    InspectedSourceViewModel,
+    SettingsSlotViewModel,
+)
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.enums import ChannelName
@@ -63,20 +66,20 @@ def compose_view(
 
 
 def settings_slots(state: ConverterState) -> Tuple[SettingsSlotViewModel, ...]:
-    """The choices the settings card edits, read from what the card is inspecting.
+    """The choices the settings card edits, read through the recordings the picked row stands for.
 
-    A picked row is read through the recordings it stands for; with none picked the card edits the
-    settings a recording joins the list with, which is what every new row starts from.
+    With no row picked the card has nothing to answer for, so every choice offers no channel and
+    the card says which gesture picks one.
     """
     inspected = inspected_settings(state)
     return tuple(_slot_reading(slot, inspected) for slot in SETTINGS_SLOTS)
 
 
 def inspected_settings(state: ConverterState) -> Tuple[StemSettings, ...]:
-    """The settings the card is editing: a picked row's recordings, or the joining settings."""
+    """The settings the card is editing, read from the recordings the picked row stands for."""
     selected = state.selected
     if selected is None:
-        return (state.settings.joining,)
+        return ()
 
     row = state.gathering.sources.row(selected)
     if row is None:
@@ -85,13 +88,21 @@ def inspected_settings(state: ConverterState) -> Tuple[StemSettings, ...]:
     return tuple(recording.settings for recording in row.recordings)
 
 
-def inspected_name(state: ConverterState) -> Optional[str]:
-    """What the card is editing, where a reader picked a row out of the list."""
+def inspected_source(state: ConverterState) -> Optional[InspectedSourceViewModel]:
+    """The row the card is editing, named the way the list names it."""
     selected = state.selected
     if selected is None:
         return None
 
-    return selected.path.name if selected.names_folder else selected.path.stem
+    row = state.gathering.sources.row(selected)
+    if row is None:
+        return None
+
+    return InspectedSourceViewModel(
+        name=selected.path.name if selected.names_folder else selected.path.stem,
+        kind=selected.kind,
+        holds=row.count,
+    )
 
 
 def _slot_reading(

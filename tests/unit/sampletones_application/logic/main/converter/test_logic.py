@@ -8,6 +8,7 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.output import OutputKind
+from sampletones_application.constants.sources import SourceKind
 from sampletones_application.logic.main.converter.logic import ConverterLogic
 from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.services.conversion.result import ConversionResult
@@ -658,7 +659,9 @@ class TestAFolderInTheList:
         converter_logic: ConverterLogic,
         tmp_path: Path,
     ) -> None:
-        self._folder(converter_logic, tmp_path, ["a.wav", "b.wav"])
+        """The list and the settings card read one folder the same way, since both fold its rows."""
+        root = self._folder(converter_logic, tmp_path, ["a.wav", "b.wav"])
+        converter_logic.select_row(root, SourceKind.FOLDER)
 
         row = _view(converter_logic).stem_sources[0]
 

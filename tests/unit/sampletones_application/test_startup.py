@@ -14,6 +14,7 @@ from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SettingsField
 from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_GROUP,
@@ -23,13 +24,16 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_STEMS_ROW_INERT,
 )
 from sampletones_application.tags.main import (
+    PRE_MAIN_RECONSTRUCTOR_SLOT,
     TAG_MAIN_CONVERTER_GROUP_CONTROLS,
     TAG_MAIN_CONVERTER_GROUP_ORDER,
     TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE,
     TAG_MAIN_CONVERTER_WINDOW_STEMS,
+    TAG_MAIN_RECONSTRUCTOR_GROUP_GRID,
+    TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING,
+    TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED,
 )
 from sampletones_application.ui.elements.stems.list import GUIStemsList
-from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
@@ -372,12 +376,25 @@ class TestChannelKeys:
         with patch.object(app._shell, "get_current_tab", return_value=tab):
             _press_shortcut(app, CHANNEL_SHORTCUT_IDS[channel])
 
-    def test_the_main_tab_switches_the_channel_a_recording_joins_with(self, app: Application) -> None:
-        joining = app.session_manager.converter_settings.channel_set
+    def test_the_main_tab_switches_the_channel_across_the_whole_list(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        """The key is the gesture that answers for everything listed, a row at a time being the box."""
+        paths = []
+        for name in ["a.wav", "b.wav"]:
+            path = tmp_path / name
+            path.touch()
+            paths.append(path)
+
+        app._main_tab._converter_logic.gather_recordings(paths)
+        held = ChannelName.TRIANGLE in _row_of(app, paths[0]).channels
 
         self._press(app, ChannelName.TRIANGLE, Tab.MAIN)
 
-        assert app.session_manager.converter_settings.channel_set == joining ^ {ChannelName.TRIANGLE}
+        for path in paths:
+            assert (ChannelName.TRIANGLE in _row_of(app, path).channels) is not held
 
     def test_the_sequencer_switches_its_mix(self, app: Application) -> None:
         self._press(app, ChannelName.NOISE, Tab.SEQUENCER)
@@ -440,7 +457,7 @@ def _click_row(app: Application, path: Path) -> None:
 
 def _click_slot_box(field: SettingsField, channel_name: ChannelName) -> None:
     """Clicks one of the settings card's boxes, the way DearPyGui reports a checkbox."""
-    box = GUIReconstructorPanel._slot_checkbox_tag(field, channel_name)
+    box = compose_tag(PRE_MAIN_RECONSTRUCTOR_SLOT, field.value, channel_name.value)
     dpg.get_item_callback(box)(box, True, dpg.get_item_user_data(box))
 
 
@@ -632,17 +649,20 @@ class TestConverterStemsCard:
         assert ChannelName.PULSE2 in _row_of(app, second).channels
         assert ChannelName.PULSE2 not in _row_of(app, first).channels
 
-    def test_the_card_edits_what_a_recording_joins_with_where_nothing_is_picked(
-        self,
-        app: Application,
-        tmp_path: Path,
-    ) -> None:
-        app._main_tab._converter_logic.set_output(OutputKind.MIXED)
+    def test_the_card_names_the_gesture_that_gives_it_a_row(self, app: Application, tmp_path: Path) -> None:
+        """The card answers for a picked row, so with none picked it says which gesture picks one."""
+        self._gather(app, tmp_path, ["a.wav"])
 
-        _click_slot_box(SettingsField.CHANNELS, ChannelName.PULSE2)
-        joined = self._gather(app, tmp_path, ["a.wav"])[0]
+        assert dpg.get_item_configuration(TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED)["show"] is True
+        assert dpg.get_item_configuration(TAG_MAIN_RECONSTRUCTOR_GROUP_GRID)["show"] is False
 
-        assert ChannelName.PULSE2 in _row_of(app, joined).channels
+    def test_a_picked_row_brings_the_grid_with_it(self, app: Application, tmp_path: Path) -> None:
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+
+        _click_row(app, path)
+
+        assert dpg.get_item_configuration(TAG_MAIN_RECONSTRUCTOR_GROUP_GRID)["show"] is True
+        assert dpg.get_value(TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING) == path.stem
 
     def test_the_run_controls_arrive_with_the_first_recording(self, app: Application, tmp_path: Path) -> None:
         """The choices answer for what is listed, so they stand once there is something to answer for."""
