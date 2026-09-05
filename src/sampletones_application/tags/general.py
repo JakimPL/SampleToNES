@@ -795,6 +795,7 @@ SUF_BUTTON_COLLAPSE_ALL = compose_tag(SUF_BUTTON, "collapse_all")
 SUF_BUTTON_SHOW_TRACEBACK = compose_tag(SUF_BUTTON, "show_traceback")
 SUF_BUTTON_DECREMENT = compose_tag(SUF_BUTTON, "decrement")
 SUF_BUTTON_INCREMENT = compose_tag(SUF_BUTTON, "increment")
+SUF_BENDS = "bends"
 SUF_CHANNELS = "channels"
 SUF_GROUP = "group"
 SUF_HEADING = "heading"

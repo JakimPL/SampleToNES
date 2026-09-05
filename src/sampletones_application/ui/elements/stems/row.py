@@ -251,8 +251,29 @@ class StemRowRenderer:
                 user_data=(row.key, channel_name),
                 callback=self._gestures.on_channel_box,
             )
+            self._create_bend(row, channel_name, columns)
 
         self._gestures.bind(checkbox_tag, SUF_CHANNELS)
+
+    def _create_bend(
+        self,
+        row: StemRowViewModel,
+        channel_name: ChannelName,
+        columns: StemsColumns,
+    ) -> None:
+        """The box stating the bend the recording carried on this channel, where the list draws one.
+
+        A list describing a conversion that has already run states what it took, so the box reports
+        rather than asks: the choice was made when the reconstruction was written.
+        """
+        if not columns.bends or channel_name not in row.bendable_channels:
+            return
+
+        dpg.add_checkbox(
+            tag=self._tags.bend(row.key, channel_name),
+            default_value=channel_name in row.bends,
+            enabled=False,
+        )
 
     def _create_remove(self, row: StemRowViewModel) -> None:
         remove = dpg.add_button(

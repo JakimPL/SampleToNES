@@ -33,6 +33,7 @@ def _row(
         kind=SourceKind.RECORDING,
         held=(),
         partial_channels=frozenset(),
+        bends=frozenset(),
         key=str(path),
         path=path,
         channels=channels,

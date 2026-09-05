@@ -85,6 +85,7 @@ def row(name: str) -> StemRowViewModel:
         held=(),
         channels=frozenset({ChannelName.PULSE1}),
         partial_channels=frozenset(),
+        bends=frozenset(),
         offered_channels=frozenset({ChannelName.PULSE1}),
         available=True,
         level=0,

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
+    SUF_BENDS,
     SUF_CHANNELS,
     SUF_CHECKBOX,
     SUF_FOLDER,
@@ -87,5 +88,15 @@ class StemsTags:
             SUF_ROW,
             key,
             SUF_CHANNELS,
+            compose_tag(channel_name, SUF_CHECKBOX),
+        )
+
+    def bend(self, key: str, channel_name: ChannelName) -> str:
+        """The tag the box stating the bend ``key`` took on a channel carries."""
+        return compose_tag(
+            self.prefix,
+            SUF_ROW,
+            key,
+            SUF_BENDS,
             compose_tag(channel_name, SUF_CHECKBOX),
         )

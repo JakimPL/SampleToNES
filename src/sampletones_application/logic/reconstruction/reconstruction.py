@@ -352,6 +352,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             )
 
         recordings = {entry.id: source_paths[index] for index, entry in enumerate(stems_data.config.entries)}
+        entries = stems_data.config.entries_by_id
         levels = stems_data.config.hierarchy.levels
         rows = tuple(
             StemRowViewModel(
@@ -361,6 +362,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                 held=(),
                 channels=self._stem_channels.get(stem_id, frozenset()),
                 partial_channels=frozenset(),
+                bends=entries[stem_id].settings.bend_set,
                 offered_channels=self._offered_stem_channels.get(stem_id, frozenset()),
                 available=recordings[stem_id].is_file(),
                 level=level_index,

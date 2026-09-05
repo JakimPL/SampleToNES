@@ -88,6 +88,7 @@ def _row(
     *,
     name: str,
     channels: FrozenSet[ChannelName] = frozenset(CHANNELS),
+    bends: FrozenSet[ChannelName] = frozenset(),
     offered_channels: FrozenSet[ChannelName] = frozenset(CHANNELS),
     level: int = 0,
     position: int = 0,
@@ -98,6 +99,7 @@ def _row(
         kind=SourceKind.RECORDING,
         held=(),
         partial_channels=frozenset(),
+        bends=bends,
         key=str(stem_id),
         path=Path(f"/audio/{name}.wav"),
         channels=channels,
@@ -309,3 +311,59 @@ class TestStemsPanelStates:
         assert dpg.is_item_shown(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_EMPTY)
         assert not dpg.is_item_shown(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP)
         assert not dpg.is_item_shown(panel.stems_list.tag)
+
+
+class TestTheBendARecordingTook:
+    """A finished reconstruction records the bend each recording carried, which the list states.
+
+    The choice was made when the reconstruction was written, so the box reports it rather than
+    offering it.
+    """
+
+    @staticmethod
+    def _bend_tag(panel: GUIReconstructionStemsPanel, stem_id: int, channel_name: ChannelName) -> str:
+        return panel.stems_list.tags.bend(str(stem_id), channel_name)
+
+    def test_a_tone_channel_carries_a_box_beside_its_own(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(1, name="bass")))
+
+        assert dpg.does_item_exist(self._bend_tag(panel, 1, ChannelName.PULSE1))
+
+    def test_it_reads_the_bend_the_recording_took(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(1, name="bass", bends=frozenset({ChannelName.PULSE1}))))
+
+        assert dpg.get_value(self._bend_tag(panel, 1, ChannelName.PULSE1)) is True
+
+    def test_a_channel_it_did_not_bend_reads_clear(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(1, name="bass")))
+
+        assert dpg.get_value(self._bend_tag(panel, 1, ChannelName.PULSE1)) is False
+
+    def test_the_box_states_rather_than_asks(self, panel: GUIReconstructionStemsPanel) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(1, name="bass")))
+
+        tag = self._bend_tag(panel, 1, ChannelName.PULSE1)
+        assert dpg.get_item_configuration(tag)["enabled"] is False
+
+    def test_a_channel_loading_no_divider_carries_none(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        """A bend moves a note by a fraction of a divider, so the noise channel has nothing to bend."""
+        render(panel)
+        panel.update_view(_view_model(_row(1, name="bass")))
+
+        assert not dpg.does_item_exist(self._bend_tag(panel, 1, ChannelName.NOISE))

@@ -40,7 +40,7 @@ RECORDED_ASSIGNMENT: StemsListOffer = StemsListOffer(
     removal=True,
     keeps_last_row=True,
     dragging=False,
-    bends=False,
+    bends=True,
     picking=False,
 )
 

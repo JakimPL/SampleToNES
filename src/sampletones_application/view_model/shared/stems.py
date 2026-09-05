@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from sampletones_application.constants.sources import SourceKind
 from sampletones_application.view_model.shared.agreement import Agreement
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
 
 
 class StemRowViewModel(BaseModel, frozen=True):
@@ -26,6 +26,9 @@ class StemRowViewModel(BaseModel, frozen=True):
     ``held`` carries the recordings a folder stands for, each a row of its own, which is what a
     reader reaches by opening it. They stand where the folder stands, so a recording answers for
     itself while the folder answers for them all.
+
+    ``bends`` names the channels whose notes the recording carries to the pitch it sounds, which a
+    list recording what a finished conversion took draws beside the channel itself.
     """
 
     key: str
@@ -34,6 +37,7 @@ class StemRowViewModel(BaseModel, frozen=True):
     held: Tuple["StemRowViewModel", ...]
     channels: FrozenSet[ChannelName]
     partial_channels: FrozenSet[ChannelName]
+    bends: FrozenSet[ChannelName]
     offered_channels: FrozenSet[ChannelName]
     available: bool
     level: int
@@ -54,6 +58,15 @@ class StemRowViewModel(BaseModel, frozen=True):
         folds them asks here rather than telling the two kinds apart again.
         """
         return self.held or (self,)
+
+    @property
+    def bendable_channels(self) -> FrozenSet[ChannelName]:
+        """The channels the row draws a bend box for: the offered ones that load a divider.
+
+        A bend moves a note by a fraction of the divider its channel loads, so the channels
+        holding one are where the choice reaches something.
+        """
+        return self.offered_channels & TONE_CHANNELS
 
     @property
     def name(self) -> str:
