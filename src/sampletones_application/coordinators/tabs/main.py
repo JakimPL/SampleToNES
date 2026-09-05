@@ -9,10 +9,8 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
-from sampletones_application.logic.main.converter import (
-    ConversionSuccess,
-    ConverterLogic,
-)
+from sampletones_application.logic.main.converter.logic import ConverterLogic
+from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.main import MainTabParameters
@@ -66,7 +64,7 @@ from sampletones_application.view_model.main.reconstructor import (
 from sampletones_application.view_model.main.updates import GenerationSettingsUpdate
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.reconstructions.converter import top_level_audio_files
+from sampletones_core.reconstructions.converter.paths import top_level_audio_files
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback

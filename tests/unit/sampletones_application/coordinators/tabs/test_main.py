@@ -6,7 +6,7 @@ import pytest
 
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
-from sampletones_application.logic.main.converter import ConversionSuccess
+from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_CANCEL,
     TAG_MAIN_CONVERTER_DIALOG_LOAD,

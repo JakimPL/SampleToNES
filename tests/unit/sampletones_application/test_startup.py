@@ -35,7 +35,7 @@ from sampletones_application.utils.parallelization.background import (
     stop_background_workers,
 )
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
-from sampletones_application.view_model.main.converter import ConversionPhase
+from sampletones_application.view_model.main.converter import ConversionPhase, ConverterViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 
@@ -426,6 +426,26 @@ def drop(tag: str, payload: str) -> None:
     dpg.get_item_configuration(tag)["drop_callback"](dpg.get_alias_id(tag), payload)
 
 
+def _level_of(app: Application, path: Path) -> str:
+    """The level band the row for ``path`` is drawn in."""
+    return str(dpg.get_item_parent(stems_list(app).row_tag(str(path), SUF_GROUP)))
+
+
+def _reports_running(app: Application, status_text: str, progress: float) -> None:
+    """Puts the panel in front of a conversion under way, the way the converter reports one."""
+    converter_logic = app._main_tab._converter_logic
+    emitted: List[ConverterViewModel] = []
+    listener = converter_logic.on_view_changed
+    converter_logic.on_view_changed = emitted.append
+    converter_logic.emit_initial_view()
+    converter_logic.on_view_changed = listener
+
+    running = emitted[0].model_copy(
+        update={"phase": ConversionPhase.RUNNING, "status_text": status_text, "progress": progress}
+    )
+    app._main_tab._on_converter_view_changed(running)
+
+
 class TestConverterStemsCard:
     """Gathering recordings paints the converter card: a row each, carrying what the reader set."""
 
@@ -479,11 +499,8 @@ class TestConverterStemsCard:
     def test_the_list_stays_on_screen_while_a_conversion_runs(self, app: Application, tmp_path: Path) -> None:
         """The setup is what a running conversion is making, so it keeps saying what that is."""
         path = self._gather(app, tmp_path, ["a.wav"])[0]
-        converter_logic = app._main_tab._converter_logic
 
-        converter_logic._phase = ConversionPhase.RUNNING
-        converter_logic.refresh_view()
-        converter_logic._emit_view_model("running", 0.5)
+        _reports_running(app, "running", 0.5)
 
         assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is True
         assert dpg.get_item_configuration(stems_list(app).row_tag(str(path), SUF_BUTTON))["enabled"] is False
@@ -516,16 +533,16 @@ class TestConverterStemsCard:
 
         drop(stems_list(app).row_tag(str(second), SUF_TEXT), str(first))
 
-        assert converter_logic._levels.level_count == 1
+        assert _level_of(app, first) == _level_of(app, second)
+        assert not dpg.does_item_exist(stems_list(app).level_tag(1, SUF_TABLE))
 
     def test_dropping_a_recording_in_a_gap_opens_a_level(self, app: Application, tmp_path: Path) -> None:
         first, _second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
-        converter_logic = app._main_tab._converter_logic
 
         drop(stems_list(app).level_tag(1, SUF_STRIP), str(first))
 
-        assert converter_logic._levels.level_count == 2
-        assert converter_logic._levels.level_of(first) == 1
+        assert dpg.does_item_exist(stems_list(app).level_tag(1, SUF_TABLE))
+        assert _level_of(app, first) == stems_list(app).level_tag(1, SUF_TABLE)
 
     def test_the_order_explanation_leaves_with_the_control_it_belongs_to(self, app: Application) -> None:
         """A tooltip left live over a hidden widget's rectangle explains whatever moved into it."""
