@@ -155,7 +155,15 @@ class GUIStemsList(CallbackMixin):
         return self.on_row_opened is not None
 
     def create(self, parent: str, *, show: bool = True) -> None:
-        """Build the list's recessed region and the handlers its rows share."""
+        """Build the list's recessed region and the handlers its rows share.
+
+        A list built again stands on none of the widgets it drew before — a window raised a second
+        time takes its whole tree down between one opening and the next — so what it remembers
+        having drawn is let go of here, and the next reading it takes is a draw rather than a
+        repaint of widgets that are gone.
+        """
+        self._bands.forget()
+        self._folders.forget()
         self._gestures.create_handlers()
         self._region.create(parent, show=show)
 

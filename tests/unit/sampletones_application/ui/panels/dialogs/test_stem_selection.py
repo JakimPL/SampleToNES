@@ -275,3 +275,29 @@ class TestAFolderInTheQuestion(BaseTestSuite):
         dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
 
         assert answered == [held]
+
+
+class TestAskingTwice(BaseTestSuite):
+    """The window takes its whole tree down between one opening and the next, so a second asking
+    draws the rows rather than repainting the ones that are gone."""
+
+    def test_the_rows_are_drawn_again(self, window: GUIStemSelectionWindow) -> None:
+        offered = candidates()
+        render(window, offered)
+        window.hide()
+
+        render(window, offered)
+
+        for row in offered:
+            assert dpg.does_item_exist(box_of(row))
+
+    def test_the_pick_still_settles(self, window: GUIStemSelectionWindow) -> None:
+        offered = candidates()
+        answered: List[List[Path]] = []
+        render(window, offered)
+        window.hide()
+
+        render(window, offered, answered.append)
+        dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
+
+        assert answered == [paths()[:MAX_STEM_SOURCES]]

@@ -79,6 +79,10 @@ class LevelBands:
         self._shape = shape
         return True
 
+    def forget(self) -> None:
+        """Let go of the shape standing, so the next reading is drawn rather than repainted."""
+        self._shape = ListShape.nothing()
+
     def build_heading(self, view_model: StemsListViewModel, parent: str) -> None:
         """Name the channels once above the rows, so a cell below them holds the box alone.
 
