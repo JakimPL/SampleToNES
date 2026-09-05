@@ -45,11 +45,12 @@ class WindowedRegion:
     its own ceiling back. A reading is therefore taken only while the region stands at the height
     of what it holds, which :attr:`natural` reports.
 
-    Where the reader had scrolled to is held between a draw and the frame that renders it. A scroll
-    written while the rows it applies to are being rebuilt lands against the layout of the frame
-    before, so the region reads a position it never asked for and picks a different slice from it,
-    which asks for another rebuild. The offset is therefore remembered as the rows come down and
-    put back once the frame that placed them has been drawn.
+    A region redrawn because the reader scrolled leaves the scroll where they put it. The rows it
+    holds change while the region itself stands, so a position written back would land against the
+    wheel that asked for the new rows and take the reader somewhere they never scrolled. A region
+    built in place of one a rebuild took down is a new widget standing at its top, so where the
+    reader had scrolled the one before it is named by :meth:`opens_at`, and handed back once the
+    frame that placed its rows has been drawn.
     """
 
     def __init__(
@@ -119,7 +120,16 @@ class WindowedRegion:
         region asked to scroll reports its travel a frame late and would send the window to the
         top of the list for that frame.
         """
-        return max(0.0, self._content() - self._height)
+        return self._travel(self._total)
+
+    def opens_at(self, offset: float) -> None:
+        """Open the region where the reader had scrolled the one it stands in place of.
+
+        A region goes down with the list around it and comes back a new widget at its top, so the
+        rows the reader was looking at are named by whoever held on to the position.
+        """
+        self._resting = offset
+        self._restoring = True
 
     def create(self, parent: str, *, show: bool = True) -> None:
         """Sink the region into ``parent``, sized to its rows until they reach its ceiling."""
@@ -137,15 +147,13 @@ class WindowedRegion:
 
         ``build`` is handed where the window opens and how many rows it holds, and adds them to
         :attr:`body` between the two reserves. ``lead`` builds the heading standing above them,
-        into the group it is handed. Where the reader stands is taken up before the rows come down
-        and put back by :meth:`settle`, so the rows they were looking at are the rows they keep
-        looking at.
+        into the group it is handed. The rows are chosen for where the reader stands, which is a
+        position they scrolled to themselves unless the region is opening in place of another.
 
         Before a row has been measured the region builds a first slice at its natural height and
         reserves nothing, which is what gives :meth:`settle` a run of rows to read.
         """
-        self._remember()
-        start, count = self._slice(self._resting, total)
+        start, count = self._slice(self._reading, total)
         dpg_delete_children(self._body_tag)
         measuring = not self._geometry.measured
         self._build_lead(lead)
@@ -166,7 +174,6 @@ class WindowedRegion:
         reading of a row is taken from; content standing anything else among its rows is a run of
         none.
         """
-        self._remember()
         dpg_delete_children(self._body_tag)
         self._build_lead(lead)
         build()
@@ -196,10 +203,10 @@ class WindowedRegion:
 
         return self._slice(self.offset, self._total) != self._drawn
 
-    def _remember(self) -> None:
-        """Take up where the reader stands, which the rows about to be built are chosen for."""
-        self._resting = self.offset
-        self._restoring = True
+    @property
+    def _reading(self) -> float:
+        """The position the rows are chosen for: where the reader stands, or where they go back to."""
+        return self._resting if self._restoring else self.offset
 
     def _restore(self) -> bool:
         """Put the reader back where they stood, once the frame that placed the rows has drawn.
@@ -218,13 +225,21 @@ class WindowedRegion:
         return True
 
     def _slice(self, offset: float, total: int) -> Window:
-        """The rows the region's scroll position reaches, in the list it is a window onto."""
+        """The rows the region's scroll position reaches, in the list it is a window onto.
+
+        The travel is worked out from the list being drawn rather than the one standing, so the
+        first draw of a region opens on the rows its position names.
+        """
         return self._geometry.slice_of(
             offset=offset,
-            extent=self.extent,
+            extent=self._travel(total),
             height=self._height,
             total=total,
         )
+
+    def _travel(self, total: int) -> float:
+        """How far a list of this length can be scrolled inside the region."""
+        return max(0.0, self._room_for(total) - self._height)
 
     def _build_lead(self, lead: Optional[LeadBuilder]) -> None:
         """Open the group the heading stands in, and let its owner fill it."""
@@ -268,7 +283,7 @@ class WindowedRegion:
 
     def _hold_rows(self) -> None:
         """Size the region to the room its rows ask for, holding it at its ceiling from there on."""
-        self._size_to(self._content())
+        self._size_to(self._room_for(self._total))
 
     def _hold_content(self) -> None:
         """Size a whole-drawn region to what it holds, holding it at its ceiling from there on.
@@ -279,9 +294,9 @@ class WindowedRegion:
         """
         self._size_to(self._body_height() + 2 * self._margin)
 
-    def _content(self) -> float:
-        """The room the region's whole list asks for: its heading, its rows, and its margins."""
-        return float(self._lead + self._geometry.reserve(self._total) + 2 * self._margin)
+    def _room_for(self, total: int) -> float:
+        """The room a list of this length asks for: the heading, the rows, and the margins."""
+        return float(self._lead + self._geometry.reserve(total) + 2 * self._margin)
 
     def _stand_at_natural_height(self) -> None:
         """Let the region take the height of what it holds, which is what a reading is read from."""

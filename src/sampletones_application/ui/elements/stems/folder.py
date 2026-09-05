@@ -7,7 +7,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.tags.general import SUF_TABLE
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
-from sampletones_application.ui.elements.layout.region import WindowedRegion
+from sampletones_application.ui.elements.layout.region import NO_SCROLL, WindowedRegion
 from sampletones_application.ui.elements.stems.columns import NO_RESERVE, StemsColumns
 from sampletones_application.ui.elements.stems.expansion import OpenFolders
 from sampletones_application.ui.elements.stems.row import StemRowRenderer
@@ -43,6 +43,7 @@ class FolderRenderer:
         self._open_folders = open_folders
         self._rows = rows
         self._regions: Dict[str, WindowedRegion] = {}
+        self._resting: Dict[str, float] = {}
         self._columns = StemsColumns(
             layout=layout,
             channels=(),
@@ -73,7 +74,12 @@ class FolderRenderer:
             self._open(row, view_model)
 
     def forget(self) -> None:
-        """Let go of the regions a rebuild took down, so the next draw builds them afresh."""
+        """Take up where each open folder stood, and let go of the regions a rebuild took down.
+
+        A region goes down with the list around it and comes back a new widget at its top, so the
+        position it was scrolled to is held here and handed to the region that replaces it.
+        """
+        self._resting = {key: region.offset for key, region in self._regions.items()}
         self._regions.clear()
 
     @property
@@ -128,6 +134,7 @@ class FolderRenderer:
             indent=self._layout.well_padding + self._layout.folder_indent,
         )
         region.create(self._tags.body)
+        region.opens_at(self._resting.get(row.key, NO_SCROLL))
         self._regions[row.key] = region
         self._fill(region, row, view_model)
 

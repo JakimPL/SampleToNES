@@ -20,7 +20,6 @@ OVERSCAN = 2
 CEILING = 100
 HEADING_TEXT = "channels"
 STANDING_OFFSET = 300.0
-NO_OFFSET = 0.0
 
 
 @pytest.fixture
@@ -214,11 +213,13 @@ class TestAWholeDraw(BaseTestSuite):
 
 
 class TestWhereTheReaderStands(BaseTestSuite):
-    """A rebuild leaves the reader where they were, and asks DearPyGui for nothing while it draws.
+    """A region redrawn as the reader scrolls leaves the scroll where they put it, and one built
+    in place of another opens where that one stood.
 
-    A scroll written while the rows it applies to are coming down lands against the layout of the
-    frame before, so the region reads back a position it never asked for. Every draw therefore
-    takes the offset up first and hands it back only once the rows have been placed.
+    The rows a region shows are replaced a frame after the wheel asked for them, by which time the
+    reader has scrolled on. A position written back then lands against the wheel and takes them
+    somewhere they never scrolled, which asks for the rows to be replaced again — a region that
+    never settles while a hand is on the wheel.
     """
 
     def test_a_draw_writes_no_scroll(self, region: WindowedRegion) -> None:
@@ -227,56 +228,58 @@ class TestWhereTheReaderStands(BaseTestSuite):
 
         set_y_scroll.assert_not_called()
 
-    def test_the_window_is_chosen_from_where_the_reader_stood(self, region: WindowedRegion) -> None:
-        """The offset is read once, so a position DearPyGui reports mid-rebuild reaches nothing."""
+    def test_the_window_follows_where_the_reader_scrolled_to(self, region: WindowedRegion) -> None:
         draw(region, 40)
         region.settle()
 
-        with patch.object(dpg, "get_y_scroll", return_value=STANDING_OFFSET) as get_y_scroll:
+        with patch.object(dpg, "get_y_scroll", return_value=STANDING_OFFSET):
             asked = draw(region, 40)
 
-        assert get_y_scroll.call_count == 1
         assert asked[0][0] > 0
 
-    def test_the_reader_is_put_back_once_the_rows_are_placed(self, region: WindowedRegion) -> None:
+    def test_a_redraw_the_scroll_asked_for_hands_nothing_back(self, region: WindowedRegion) -> None:
+        """By the frame the rows land the reader has scrolled on, so the region leaves them there."""
         draw(region, 40)
+        region.settle()
+        with patch.object(dpg, "get_y_scroll", return_value=STANDING_OFFSET):
+            draw(region, 40)
 
         with (
-            patch.object(dpg, "get_y_scroll", return_value=NO_OFFSET),
+            patch.object(dpg, "get_y_scroll", return_value=STANDING_OFFSET + PITCH),
             patch.object(dpg, "set_y_scroll") as set_y_scroll,
         ):
             region.settle()
 
         set_y_scroll.assert_not_called()
 
-    def test_a_position_the_rebuild_moved_is_restored(self, region: WindowedRegion) -> None:
-        """Where the rows come down and go back changed height, the offset is handed back."""
-        with patch.object(dpg, "get_y_scroll", return_value=STANDING_OFFSET):
-            draw(region, 40)
 
-        with (
-            patch.object(dpg, "get_y_scroll", return_value=NO_OFFSET),
-            patch.object(dpg, "set_y_scroll") as set_y_scroll,
-        ):
+class TestARegionOpeningInPlaceOfAnother(BaseTestSuite):
+    """A region built where one a rebuild took down stood opens on the rows that one showed."""
+
+    def test_its_window_opens_where_the_one_before_it_stood(self, region: WindowedRegion) -> None:
+        region.opens_at(STANDING_OFFSET)
+
+        asked = draw(region, 40)
+
+        assert asked[0][0] > 0
+
+    def test_the_reader_is_put_back_once_the_rows_are_placed(self, region: WindowedRegion) -> None:
+        region.opens_at(STANDING_OFFSET)
+        draw(region, 40)
+
+        with patch.object(dpg, "set_y_scroll") as set_y_scroll:
             region.settle()
 
         set_y_scroll.assert_called_once_with(REGION_TAG, STANDING_OFFSET)
 
     def test_it_is_handed_back_once(self, region: WindowedRegion) -> None:
         """A restored position is where the reader stands, so the next frame writes nothing."""
-        with patch.object(dpg, "get_y_scroll", return_value=STANDING_OFFSET):
-            draw(region, 40)
-
-        with (
-            patch.object(dpg, "get_y_scroll", return_value=NO_OFFSET),
-            patch.object(dpg, "set_y_scroll"),
-        ):
+        region.opens_at(STANDING_OFFSET)
+        draw(region, 40)
+        with patch.object(dpg, "set_y_scroll"):
             region.settle()
 
-        with (
-            patch.object(dpg, "get_y_scroll", return_value=NO_OFFSET),
-            patch.object(dpg, "set_y_scroll") as set_y_scroll,
-        ):
+        with patch.object(dpg, "set_y_scroll") as set_y_scroll:
             region.settle()
 
         set_y_scroll.assert_not_called()

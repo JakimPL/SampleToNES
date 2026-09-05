@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Final, FrozenSet, Iterator, List, Tuple
+from typing import Callable, Final, FrozenSet, Iterator, List, Tuple
+from unittest.mock import patch
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -40,6 +41,9 @@ ROOT_TAG = "test_root"
 PREFIX = "test.stems"
 CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.TRIANGLE)
 DOUBLE_CLICK_HANDLER: Final[str] = "mvAppItemType::mvDoubleClickedHandler"
+DEEP_FOLDER: Final[int] = 200
+STANDING_OFFSET: Final[float] = 700.0
+NO_OFFSET: Final[float] = 0.0
 
 
 @pytest.fixture
@@ -305,8 +309,8 @@ def double_click(tag: str) -> None:
     raise AssertionError("the list registers no double-click handler")
 
 
-class TestARecordingInsideAFolder:
-    """A recording standing inside an open folder answers the same gestures a loose one does."""
+class TestARecordingThatLeavesAFolder:
+    """A recording taken out from inside an open folder leaves it the way a loose one leaves."""
 
     @staticmethod
     def _opened(stems_list: GUIStemsList, sources: StemRowViewModel) -> None:
@@ -340,3 +344,49 @@ class TestARecordingInsideAFolder:
 
         for held in sources.held[1:]:
             assert dpg.does_item_exist(f"{PREFIX}.row.{held.key}.{SUF_TEXT}")
+
+
+def taken_down_at(offset: float) -> Callable[[str], float]:
+    """How DearPyGui reads a region a rebuild replaces: the one standing reports where the reader
+    scrolled it to, and the one built in its place stands at its top."""
+    standing = [offset]
+
+    def read(_tag: str) -> float:
+        return standing.pop() if standing else NO_OFFSET
+
+    return read
+
+
+class TestWhereAnOpenFolderStands:
+    """A rebuild takes an open folder's region down, and the one built in its place opens on the
+    rows the reader had scrolled to."""
+
+    @staticmethod
+    def _deep(stems_list: GUIStemsList) -> StemRowViewModel:
+        sources = folder("sources", holds=DEEP_FOLDER)
+        stems_list.update_view(view(sources))
+        press(twisty_of(sources))
+        return sources
+
+    def test_a_folder_at_its_top_comes_back_at_its_top(self, stems_list: GUIStemsList) -> None:
+        sources = self._deep(stems_list)
+
+        stems_list.update_view(view(sources, recording(Path("/audio/bass.wav"))))
+
+        assert dpg.does_item_exist(name_of(sources.held[0]))
+
+    def test_a_folder_scrolled_into_comes_back_where_it_stood(self, stems_list: GUIStemsList) -> None:
+        sources = self._deep(stems_list)
+
+        with patch.object(dpg, "get_y_scroll", taken_down_at(STANDING_OFFSET)):
+            stems_list.update_view(view(sources, recording(Path("/audio/bass.wav"))))
+
+        assert not dpg.does_item_exist(name_of(sources.held[0]))
+
+    def test_it_draws_the_recordings_that_position_reaches(self, stems_list: GUIStemsList) -> None:
+        sources = self._deep(stems_list)
+
+        with patch.object(dpg, "get_y_scroll", taken_down_at(STANDING_OFFSET)):
+            stems_list.update_view(view(sources, recording(Path("/audio/bass.wav"))))
+
+        assert any(dpg.does_item_exist(name_of(held)) for held in sources.held)
