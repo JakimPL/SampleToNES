@@ -93,7 +93,6 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         self._explorer_logic = explorer_logic
 
         self.on_wave_file_clicked: Optional[PathCallback] = None
-        self.on_directory_clicked: Optional[PathCallback] = None
         self.on_directory_add_requested: Optional[PathCallback] = None
         self.on_file_add_requested: Optional[PathCallback] = None
         self.can_add_stems: Optional[Callable[[], bool]] = None
@@ -349,10 +348,13 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         node: FileSystemNode,
         node_tag: str,
     ) -> None:
-        """Answers a click on a folder: Ctrl offers its recordings as stems, else it opens.
+        """Answers a click on a folder: Ctrl gathers its recordings, and a plain click opens it.
 
-        Ctrl does what **Add folder as stems** does, opening a stems conversion where none is
-        being built. While the converter is busy the folder opens the way a plain click opens it.
+        Gathering a folder reads every recording below it, which is work a reader asks for rather
+        than work that follows them around the browser. Ctrl does what **Add folder as stems**
+        does, so the folder joins the conversion without the reader leaving the row; a plain click
+        opens the folder and leaves the conversion as it stands, and so does every click while the
+        converter is busy.
         """
         has_content = self._explorer_logic.has_relevant_content(node.filepath)
         if not has_content:
@@ -363,7 +365,6 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
             return
 
         self._toggle_directory_expansion(node, node_tag)
-        self.call(self.on_directory_clicked, node.filepath)
 
     def _load_reconstruction(self, node: FileSystemNode) -> None:
         filepath = node.filepath

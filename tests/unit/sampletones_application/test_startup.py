@@ -1,6 +1,6 @@
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import Any, Callable, Dict, Final, Generator, List
+from typing import Any, Callable, Dict, Final, FrozenSet, Generator, List
 from unittest.mock import PropertyMock, patch
 
 import dearpygui.dearpygui as dpg
@@ -34,7 +34,9 @@ from sampletones_application.tags.main import (
     TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED,
 )
 from sampletones_application.ui.elements.stems.list import GUIStemsList
+from sampletones_application.ui.panels.main import explorer as explorer_module
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
+from sampletones_application.utils.gui.keyboard.modifiers import Modifier
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
     TAB_SHORTCUT_IDS,
@@ -48,9 +50,11 @@ from sampletones_application.view_model.main.converter import ConversionPhase, C
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.structures.tree import FileSystemNode, NodeType
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
 DRAG_PAYLOAD_SLOT: Final[int] = 3
+UNBUILT_ROW: Final[str] = "browser.row.unbuilt"
 
 _DPG_DISPLAY_FUNCTIONS = [
     "create_context",
@@ -486,6 +490,62 @@ def _reports_running(app: Application, status_text: str, progress: float) -> Non
         update={"phase": ConversionPhase.RUNNING, "status_text": status_text, "progress": progress}
     )
     app._main_tab._on_converter_view_changed(running)
+
+
+class TestBrowserGathering:
+    """What a gesture in the browser gathers: a click opens a folder, and Ctrl brings it in.
+
+    Reading every recording below a folder is work a reader asks for, so it answers the gathering
+    gesture alone. A plain click on a folder walks the browser and leaves the conversion as it is,
+    which is what keeps navigating into a large tree from gathering it.
+    """
+
+    @staticmethod
+    def _folder(directory: Path) -> FileSystemNode:
+        return FileSystemNode(directory.name, node_type=NodeType.DIRECTORY, filepath=directory)
+
+    @staticmethod
+    def _tree(tmp_path: Path) -> Path:
+        directory = tmp_path / "takes"
+        directory.mkdir()
+        (directory / "one.wav").touch()
+        (directory / "deeper").mkdir()
+        (directory / "deeper" / "two.wav").touch()
+        return directory
+
+    def _click(self, app: Application, directory: Path, *, modifiers: FrozenSet[Modifier]) -> None:
+        """Clicks a folder's row, with whatever the reader was holding down."""
+        panel = app._main_tab._explorer_panel
+        with patch.object(explorer_module, "capture_modifiers", return_value=modifiers):
+            panel._directory_node_clicked(self._folder(directory), UNBUILT_ROW)
+
+    def test_a_plain_click_gathers_nothing(self, app: Application, tmp_path: Path) -> None:
+        directory = self._tree(tmp_path)
+
+        self._click(app, directory, modifiers=frozenset())
+
+        assert app._main_tab._converter_logic.gathered_paths == ()
+
+    def test_ctrl_gathers_the_whole_tree_below_it(self, app: Application, tmp_path: Path) -> None:
+        directory = self._tree(tmp_path)
+
+        self._click(app, directory, modifiers=frozenset({Modifier.CTRL}))
+
+        assert set(app._main_tab._converter_logic.gathered_paths) == {
+            directory / "one.wav",
+            directory / "deeper" / "two.wav",
+        }
+
+    def test_a_plain_click_on_a_recording_gathers_it(self, app: Application, tmp_path: Path) -> None:
+        """A recording is one path, so naming it costs nothing and a click is enough."""
+        directory = self._tree(tmp_path)
+        panel = app._main_tab._explorer_panel
+        recording = directory / "one.wav"
+
+        with patch.object(explorer_module, "capture_modifiers", return_value=frozenset()):
+            panel._audio_node_clicked(FileSystemNode(recording.name, node_type=NodeType.FILE, filepath=recording))
+
+        assert app._main_tab._converter_logic.gathered_paths == (recording,)
 
 
 class TestConverterStemsCard:
