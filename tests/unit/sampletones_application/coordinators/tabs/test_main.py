@@ -205,7 +205,7 @@ def _stems_coordinator(
     coordinator._converter_logic.gathered_paths = gathered
     coordinator._converter_logic.source_count = len(gathered)
     coordinator._converter_logic.room_for_sources = room
-    coordinator._converter_logic.rows_gathering.return_value = folder_rows
+    coordinator._converter_logic.rows_offered_by.return_value = folder_rows
     coordinator._stem_selection_window = MagicMock()
     return coordinator
 
@@ -236,9 +236,10 @@ class TestOutputSwitch:
         coordinator._request_output(OutputKind.MIXED)
 
         coordinator._converter_logic.set_output.assert_not_called()
-        rows, room = coordinator._stem_selection_window.open.call_args.args
+        rows, room, answer = coordinator._stem_selection_window.open.call_args.args
         assert rows == coordinator._converter_logic.gathered_rows
         assert room == MAX_STEM_SOURCES
+        assert answer == coordinator._converter_logic.mix_only
 
     def test_a_list_a_mix_holds_takes_effect_at_once(self) -> None:
         gathered = tuple(Path(f"/audio/{index}.wav") for index in range(MAX_STEM_SOURCES))
@@ -409,9 +410,10 @@ class TestGatheringAFolder:
         coordinator._on_directory_add_requested(tmp_path)
 
         coordinator._converter_logic.gather_folder.assert_not_called()
-        offered, room = coordinator._stem_selection_window.open.call_args.args
+        offered, room, answer = coordinator._stem_selection_window.open.call_args.args
         assert offered == rows
-        assert room == MAX_STEM_SOURCES
+        assert room == coordinator._converter_logic.room_for_sources
+        assert answer == coordinator._converter_logic.gather_recordings
 
     def test_a_busy_application_leaves_the_folder_alone(self, tmp_path: Path) -> None:
         coordinator = _stems_coordinator(operation_active=True, folder_rows=_rows_holding(1))

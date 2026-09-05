@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Final, List, Sequence
+from typing import Final, List, Optional, Sequence
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -17,7 +17,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_TEXT_STEM_SELECTION_LIMIT,
 )
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSelectionWindow
+from sampletones_application.ui.panels.dialogs.stem_selection import Answer, GUIStemSelectionWindow
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.enums import ChannelName
@@ -90,9 +90,17 @@ def candidates(count: int = GATHERED) -> List[StemRowViewModel]:
     return [recording_row(path) for path in paths(count)]
 
 
-def render(window: GUIStemSelectionWindow, offered: Sequence[StemRowViewModel]) -> None:
-    """Builds the widget tree for what was gathered, the way ``open`` does without a live frame."""
-    window.open(offered, MAX_STEM_SOURCES)
+def render(
+    window: GUIStemSelectionWindow,
+    offered: Sequence[StemRowViewModel],
+    answer: Optional[Answer] = None,
+) -> None:
+    """Builds the widget tree for what was offered, the way ``open`` does without a live frame."""
+    window.open(offered, MAX_STEM_SOURCES, answer if answer is not None else discard)
+
+
+def discard(_picked: List[Path]) -> None:
+    """The answer a case makes no use of."""
 
 
 def box_of(row: StemRowViewModel) -> str:
@@ -149,9 +157,8 @@ class TestSettlingTheMix(BaseTestSuite):
     def test_a_pick_that_fits_settles(self, window: GUIStemSelectionWindow) -> None:
         offered = candidates()
         answered: List[List[Path]] = []
-        window.on_add = answered.append
 
-        render(window, offered)
+        render(window, offered, answered.append)
         dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
 
         assert answered == [paths()[:MAX_STEM_SOURCES]]
@@ -159,9 +166,8 @@ class TestSettlingTheMix(BaseTestSuite):
     def test_swapping_one_for_another_keeps_it_settling(self, window: GUIStemSelectionWindow) -> None:
         offered = candidates()
         answered: List[List[Path]] = []
-        window.on_add = answered.append
 
-        render(window, offered)
+        render(window, offered, answered.append)
         pick(offered[0])
         pick(offered[MAX_STEM_SOURCES])
         dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
@@ -171,9 +177,8 @@ class TestSettlingTheMix(BaseTestSuite):
     def test_a_pick_past_the_room_leaves_the_mix_as_it_was(self, window: GUIStemSelectionWindow) -> None:
         offered = candidates()
         answered: List[List[Path]] = []
-        window.on_add = answered.append
 
-        render(window, offered)
+        render(window, offered, answered.append)
         pick(offered[MAX_STEM_SOURCES])
         dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
 
@@ -246,10 +251,9 @@ class TestAFolderInTheQuestion(BaseTestSuite):
     ) -> None:
         """A folder settles either way, so it lets go of a full mix and takes what fits again."""
         answered: List[List[Path]] = []
-        window.on_add = answered.append
         held = paths(GATHERED)
         folder = folder_row(Path("/audio/takes"), held)
-        render(window, [folder])
+        render(window, [folder], answered.append)
         assert add_enabled() is True
 
         pick(folder)
@@ -264,8 +268,7 @@ class TestAFolderInTheQuestion(BaseTestSuite):
     def test_what_it_holds_is_what_the_mix_takes(self, window: GUIStemSelectionWindow) -> None:
         held = paths(3)
         answered: List[List[Path]] = []
-        window.on_add = answered.append
-        render(window, [folder_row(Path("/audio/takes"), held)])
+        render(window, [folder_row(Path("/audio/takes"), held)], answered.append)
 
         dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
 

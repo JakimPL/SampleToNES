@@ -335,7 +335,6 @@ class MainTabCoordinator:
         self._converter_panel.on_folder_channel_toggled = self._converter_logic.toggle_folder_channel
         self._converter_panel.on_row_selected = self._converter_logic.select_row
         self._converter_panel.on_source_played = self._file_playback.play
-        self._stem_selection_window.on_add = self._converter_logic.mix_only
 
     def _repaint_explorer_favorites(self, node: FileSystemNode) -> None:
         """Repaints the row whose star was toggled: the explorer mirrors the disk, so a path is one row."""
@@ -452,13 +451,20 @@ class MainTabCoordinator:
         """Answers the output switch, asking which recordings to mix where the list overflows one.
 
         A mix reaches a fixed number of recordings, so a longer list is put to the reader in the
-        window that shows what fits already ticked. Every other switch takes effect straight away.
+        window that shows what fits already ticked. The switch reads the output the setup still
+        holds while the question stands, since the run is what the reader is being asked about.
+        Every other switch takes effect straight away.
         """
         if not output.mixes or len(self._converter_logic.gathered_paths) <= MAX_STEM_SOURCES:
             self._converter_logic.set_output(output)
             return
 
-        self._stem_selection_window.open(self._converter_logic.gathered_rows, MAX_STEM_SOURCES)
+        self._converter_logic.refresh_view()
+        self._stem_selection_window.open(
+            self._converter_logic.gathered_rows,
+            MAX_STEM_SOURCES,
+            self._converter_logic.mix_only,
+        )
 
     def _can_add_stems(self) -> bool:
         """The converter is free to gather recordings into a stems conversion."""
@@ -486,19 +492,20 @@ class MainTabCoordinator:
         self._converter_logic.gather_folder(directory_path)
 
     def _mixing_beyond_room(self, directory_path: Path) -> bool:
-        """Whether the folder overflows the mix, which is a question rather than a gathering.
+        """Whether the folder brings in more than the mix has room for, which is a question.
 
-        Answering it settles the mix on what the reader picked, so the folder joins by the same
-        route a longer list does.
+        The answer names the recordings to gather, so it reaches the same gathering a click in the
+        browser reaches and the setup stands as it was until the reader gives one.
         """
         if not self._converter_logic.mixes:
             return False
 
-        rows = self._converter_logic.rows_gathering(directory_path)
-        if sum(len(row.recordings) for row in rows) <= MAX_STEM_SOURCES:
+        offered = self._converter_logic.rows_offered_by(directory_path)
+        room = self._converter_logic.room_for_sources
+        if sum(len(row.recordings) for row in offered) <= room:
             return False
 
-        self._stem_selection_window.open(rows, MAX_STEM_SOURCES)
+        self._stem_selection_window.open(offered, room, self._converter_logic.gather_recordings)
         return True
 
     def _request_cancel_confirmation(self) -> None:

@@ -35,6 +35,7 @@ from sampletones_application.logic.main.converter.view import (
 from sampletones_application.logic.main.sources.folder import Folder
 from sampletones_application.logic.main.sources.key import SourceKey
 from sampletones_application.logic.main.sources.levels import MixLevels
+from sampletones_application.logic.main.sources.list import SourceList
 from sampletones_application.logic.main.sources.recording import Recording
 from sampletones_application.logic.main.sources.slots import (
     CHANNEL_SLOT,
@@ -144,13 +145,17 @@ class ConverterLogic(CallbackMixin):
         """The gathered sources as one run of rows, which is what a reader picking a mix reads."""
         return stem_rows(self._state.gathering, mixes=False)
 
-    def rows_gathering(self, root: Path) -> Tuple[StemRowViewModel, ...]:
-        """The rows the list would stand as with ``root`` gathered, folders standing as folders.
+    def rows_offered_by(self, root: Path) -> Tuple[StemRowViewModel, ...]:
+        """The recordings below ``root`` the setup has yet to gather, as one row apiece.
 
-        A mix reaches a fixed number of recordings, so a folder overflowing what is left is put to
-        a reader as the same question the output switch asks: which of these to mix.
+        A mix reaches a fixed number of recordings, so a folder bringing in more than the room
+        left is put to a reader as the same question the output switch asks: which of these to mix.
+        The rows are what the folder offers rather than what it would leave the list standing as,
+        since the answer names the recordings to gather.
         """
-        return stem_rows(self._gathering_folder(root), mixes=False)
+        standing = frozenset(self.gathered_paths)
+        offered = tuple(recording for recording in self._folder_recordings(root) if recording.path not in standing)
+        return stem_rows(Gathering(sources=SourceList(rows=offered), levels=MixLevels()), mixes=False)
 
     @property
     def is_active(self) -> bool:

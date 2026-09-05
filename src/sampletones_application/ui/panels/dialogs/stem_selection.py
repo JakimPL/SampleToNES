@@ -30,6 +30,8 @@ from sampletones_application.view_model.shared.stems import (
     StemsListViewModel,
 )
 
+Answer = Callable[[List[Path]], None]
+
 ADD_FOCUS_STOP: Final[int] = 1
 NO_PICK: Final[int] = 0
 
@@ -44,7 +46,8 @@ class GUIStemSelectionWindow(GUIDialogWindow):
     against the room, and the mix is settled once the pick fits.
 
     One layout answers both places a mix runs out of room: turning the output switch on a longer
-    list, and gathering a folder that overflows what is left.
+    list, and gathering a folder that overflows what is left. Each opening names what its own
+    answer reaches, since one narrows a list already gathered and the other gathers what it names.
     """
 
     def __init__(
@@ -82,7 +85,7 @@ class GUIStemSelectionWindow(GUIDialogWindow):
         )
         self._list.on_row_picked = self._on_picked
 
-        self.on_add: Optional[Callable[[List[Path]], None]] = None
+        self._answer: Optional[Answer] = None
 
         super().__init__(
             tag=TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION,
@@ -92,10 +95,19 @@ class GUIStemSelectionWindow(GUIDialogWindow):
             shortcut_source=shortcut_source,
         )
 
-    def open(self, rows: Sequence[StemRowViewModel], room: int) -> None:
-        """Shows the rows gathered, picking as many recordings as the mix has room for."""
+    def open(
+        self,
+        rows: Sequence[StemRowViewModel],
+        room: int,
+        answer: Answer,
+    ) -> None:
+        """Shows the rows offered, picking as many recordings as the mix has room for.
+
+        ``answer`` is what the pick reaches, which is the question this opening puts.
+        """
         self._rows = tuple(rows)
         self._room = room
+        self._answer = answer
         self._picked = frozenset(recording.key for recording in self._view().recordings[:room])
         self.show()
 
@@ -195,4 +207,4 @@ class GUIStemSelectionWindow(GUIDialogWindow):
 
         picked = list(self._view().picked_paths)
         self.hide()
-        self.call(self.on_add, picked)
+        self.call(self._answer, picked)

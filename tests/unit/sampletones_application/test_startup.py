@@ -10,6 +10,7 @@ from sampletones_application.application import Application
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
+from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SettingsField
@@ -31,6 +32,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_GROUP_CONTROLS,
     TAG_MAIN_CONVERTER_GROUP_ORDER,
     TAG_MAIN_CONVERTER_PANEL,
+    TAG_MAIN_CONVERTER_RADIO_MODE,
     TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE,
     TAG_MAIN_CONVERTER_WINDOW_STEMS,
     TAG_MAIN_RECONSTRUCTOR_GROUP_GRID,
@@ -495,6 +497,80 @@ def _reports_running(app: Application, status_text: str, progress: float) -> Non
         update={"phase": ConversionPhase.RUNNING, "status_text": status_text, "progress": progress}
     )
     app._main_tab._on_converter_view_changed(running)
+
+
+class TestGatheringAFolderIntoAMix:
+    """A folder bringing in more than a mix holds is a question, and the answer reaches the mix.
+
+    The question names the recordings to gather, so what the reader picks is what the setup takes
+    up — the whole chain from the browser gesture to the rows the card ends up drawing.
+    """
+
+    @staticmethod
+    def _folder(tmp_path: Path, count: int) -> Path:
+        directory = tmp_path / "takes"
+        directory.mkdir()
+        for index in range(count):
+            (directory / f"take_{index:02d}.wav").touch()
+
+        return directory
+
+    @staticmethod
+    def _ask(app: Application, directory: Path) -> None:
+        """Ctrl-clicks the folder, the way the browser reports the gathering gesture."""
+        panel = app._main_tab._explorer_panel
+        node = FileSystemNode(directory.name, node_type=NodeType.DIRECTORY, filepath=directory)
+        with patch.object(explorer_module, "capture_modifiers", return_value=frozenset({Modifier.CTRL})):
+            panel._directory_node_clicked(node, UNBUILT_ROW)
+
+    def test_it_asks_rather_than_gathers(self, app: Application, tmp_path: Path) -> None:
+        directory = self._folder(tmp_path, MAX_STEM_SOURCES + 3)
+        app._main_tab._converter_logic.set_output(OutputKind.MIXED)
+
+        with patch.object(app._main_tab._stem_selection_window, "open") as opened:
+            self._ask(app, directory)
+
+        opened.assert_called_once()
+        assert app._main_tab._converter_logic.gathered_paths == ()
+
+    def test_what_the_reader_picks_is_what_the_mix_takes(self, app: Application, tmp_path: Path) -> None:
+        directory = self._folder(tmp_path, MAX_STEM_SOURCES + 3)
+        app._main_tab._converter_logic.set_output(OutputKind.MIXED)
+        with patch.object(app._main_tab._stem_selection_window, "open") as opened:
+            self._ask(app, directory)
+
+        offered, _room, answer = opened.call_args.args
+        picked = [row.path for row in offered[:MAX_STEM_SOURCES]]
+        answer(picked)
+
+        assert set(app._main_tab._converter_logic.gathered_paths) == set(picked)
+
+    def test_the_switch_reads_the_output_the_setup_holds(self, app: Application, tmp_path: Path) -> None:
+        """A question about a mix leaves the run as it is until the reader answers it."""
+        converter_logic = app._main_tab._converter_logic
+        paths = []
+        for index in range(MAX_STEM_SOURCES + 2):
+            path = tmp_path / f"take_{index:02d}.wav"
+            path.touch()
+            paths.append(path)
+
+        converter_logic.gather_recordings(paths)
+        standing = dpg.get_value(TAG_MAIN_CONVERTER_RADIO_MODE)
+
+        with patch.object(app._main_tab._stem_selection_window, "open"):
+            app._main_tab._request_output(OutputKind.MIXED)
+
+        assert dpg.get_value(TAG_MAIN_CONVERTER_RADIO_MODE) == standing
+
+    def test_a_folder_the_mix_still_holds_is_gathered(self, app: Application, tmp_path: Path) -> None:
+        directory = self._folder(tmp_path, MAX_STEM_SOURCES - 1)
+        app._main_tab._converter_logic.set_output(OutputKind.MIXED)
+
+        with patch.object(app._main_tab._stem_selection_window, "open") as opened:
+            self._ask(app, directory)
+
+        opened.assert_not_called()
+        assert len(app._main_tab._converter_logic.gathered_paths) == MAX_STEM_SOURCES - 1
 
 
 class TestMainTabReadingOrder:
