@@ -6,8 +6,6 @@ from sampletones_application.logic.main.sources.derive import (
     ConversionSetup,
     derive_conversion_setup,
 )
-from sampletones_application.logic.main.sources.recording import Recording
-from sampletones_application.logic.main.sources.slots import CHANNEL_SLOT
 from sampletones_core.reconstructions.converter import (
     BatchConversion,
     BatchEntry,
@@ -23,7 +21,6 @@ def conversion_setup(state: ConverterState) -> ConversionSetup:
     return derive_conversion_setup(
         state.gathering.sources,
         state.gathering.levels,
-        settings.enabled_channels,
         channel_cap=settings.effective_channel_cap,
         hierarchy_mode=settings.hierarchy_mode,
     )
@@ -38,7 +35,7 @@ def playing_sources(state: ConverterState) -> Tuple[Path, ...]:
 
 
 def batch_entries(state: ConverterState) -> Tuple[BatchEntry, ...]:
-    """One entry per gathered recording still holding a channel the run hands out.
+    """One entry per gathered recording still holding a channel.
 
     Each carries a setup of its own, so what a reader settled on a row is what that recording's
     reconstruction records. The folder a recording was gathered from decides where it is written,
@@ -48,19 +45,18 @@ def batch_entries(state: ConverterState) -> Tuple[BatchEntry, ...]:
     gathering = state.gathering
     entries = []
     for recording in gathering.sources.recordings:
-        narrowed = _narrowed(recording, state)
-        if not narrowed.settings.channels:
+        if not recording.settings.channels:
             continue
 
         entries.append(
             BatchEntry(
-                source=narrowed.path,
+                source=recording.path,
                 stems=StemsConfig.single_entry(
-                    narrowed.settings.channels,
-                    narrowed.settings.bends,
+                    recording.settings.channels,
+                    recording.settings.bends,
                     channel_cap=settings.effective_channel_cap,
                 ),
-                base_directory=gathering.folder_root_of(narrowed.path),
+                base_directory=gathering.folder_root_of(recording.path),
             )
         )
 
@@ -78,12 +74,3 @@ def conversion_plan(state: ConverterState) -> Optional[ConversionPlan]:
 
     entries = batch_entries(state)
     return BatchConversion(entries=entries) if entries else None
-
-
-def _narrowed(recording: Recording, state: ConverterState) -> Recording:
-    """The recording as the run hands channels out to it."""
-    settings = CHANNEL_SLOT.write(
-        recording.settings,
-        recording.settings.channel_set & state.settings.enabled_channels,
-    )
-    return recording.with_settings(settings)

@@ -8,6 +8,7 @@ from sampletones_application.logic.main.converter.gathering import Gathering
 from sampletones_application.logic.main.converter.state import ConverterState
 from sampletones_application.logic.main.sources.row import SourceRow
 from sampletones_application.logic.main.sources.slots import (
+    ALL_CHANNELS,
     CHANNEL_SLOT,
     SETTINGS_SLOTS,
     SettingsSlot,
@@ -49,8 +50,7 @@ def compose_view(
         is_file=destination.is_file,
         other_operation_active=other_operation_active,
         output=settings.output,
-        stem_sources=stem_rows(state.gathering, settings.enabled_channels, mixes=settings.mixes),
-        enabled_channels=settings.enabled_channels,
+        stem_sources=stem_rows(state.gathering, mixes=settings.mixes),
         channel_cap=settings.effective_channel_cap,
         max_channel_cap=settings.max_channel_cap,
         hierarchy_mode=settings.hierarchy_mode,
@@ -120,19 +120,19 @@ def _selected_key(state: ConverterState) -> Optional[str]:
 
 def stem_rows(
     gathering: Gathering,
-    enabled_channels: FrozenSet[ChannelName],
     *,
     mixes: bool,
 ) -> Tuple[StemRowViewModel, ...]:
     """The gathered sources as the panel reads them, each stating where it stands.
 
     A row is named by its path, so the list reports every gesture under the path it landed on, and
-    it offers a box on every channel the run enables. A source that has left the disk since it was
-    gathered reports itself as missing. A mix bands its recordings by the level each picks on; a
-    run writing one reconstruction apiece draws one band holding the whole list, folders included.
+    it offers a box on every channel, since the channels a row holds are the whole of what its
+    reconstruction reaches. A source that has left the disk since it was gathered reports itself as
+    missing. A mix bands its recordings by the level each picks on; a run writing one reconstruction
+    apiece draws one band holding the whole list, folders included.
     """
     placements = _mixed_placements(gathering) if mixes else _listed_placements(gathering)
-    return tuple(_row(placement, enabled_channels) for placement in placements)
+    return tuple(_row(placement) for placement in placements)
 
 
 @dataclass(frozen=True)
@@ -147,10 +147,10 @@ class _Placement:
     level_count: int
 
 
-def _row(placement: _Placement, enabled_channels: FrozenSet[ChannelName]) -> StemRowViewModel:
+def _row(placement: _Placement) -> StemRowViewModel:
     source = placement.source
     key = source.key
-    channels, partial = _readings(source, enabled_channels)
+    channels, partial = _readings(source)
     return StemRowViewModel(
         key=str(placement.path),
         kind=key.kind,
@@ -158,7 +158,7 @@ def _row(placement: _Placement, enabled_channels: FrozenSet[ChannelName]) -> Ste
         holds=source.count,
         channels=channels,
         partial_channels=partial,
-        offered_channels=enabled_channels,
+        offered_channels=ALL_CHANNELS,
         available=placement.path.is_dir() if key.names_folder else placement.path.is_file(),
         level=placement.level,
         position=placement.position,
@@ -167,18 +167,15 @@ def _row(placement: _Placement, enabled_channels: FrozenSet[ChannelName]) -> Ste
     )
 
 
-def _readings(
-    source: SourceRow,
-    enabled_channels: FrozenSet[ChannelName],
-) -> Tuple[FrozenSet[ChannelName], FrozenSet[ChannelName]]:
-    """How the recordings a row stands for read on each channel the run enables.
+def _readings(source: SourceRow) -> Tuple[FrozenSet[ChannelName], FrozenSet[ChannelName]]:
+    """How the recordings a row stands for read on each channel.
 
     A channel every one of them holds is ticked, one some of them hold is half-lit, and the rest
     are clear — which for a single recording is the plain ticked-or-clear reading.
     """
     held = set()
     partial = set()
-    for channel_name in enabled_channels:
+    for channel_name in ALL_CHANNELS:
         agreement = Agreement.over(
             channel_name in CHANNEL_SLOT.read(recording.settings) for recording in source.recordings
         )

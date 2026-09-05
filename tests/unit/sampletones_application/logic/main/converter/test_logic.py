@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, FrozenSet, List
+from typing import Callable, List
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -182,13 +182,14 @@ class TestCancelDuringLibraryGeneration:
 
 
 class TestNoChannelsGuard:
-    """With no channels enabled there is nothing to reconstruct, so the conversion must not start."""
+    """A gathered recording holding no channel reconstructs nothing, so the run must not start."""
 
     def test_no_generators_notifies_and_does_not_start(
         self,
         converter_logic: ConverterLogic,
     ) -> None:
         converter_logic.set_joining_channels(frozenset())
+        _listed(converter_logic, "a")
         on_no_generators = MagicMock()
         converter_logic.on_no_generators = on_no_generators
 
@@ -661,7 +662,7 @@ class TestAFolderInTheList:
 
         row = _view(converter_logic).stem_sources[0]
 
-        assert row.channels == _joining_channels(converter_logic)
+        assert row.channels == converter_logic.settings_slots[0].held_channels
         assert row.partial_channels == frozenset()
 
     def test_a_folder_its_recordings_differ_on_reads_as_half_held(
@@ -729,10 +730,6 @@ class TestAFolderInTheList:
         assert [row.stands_for_a_folder for row in rows] == [False, False]
 
 
-def _joining_channels(converter_logic: ConverterLogic) -> FrozenSet[ChannelName]:
-    return _view(converter_logic).enabled_channels
-
-
 class TestTheStemsView:
     """What the panel is told about the setup being built."""
 
@@ -768,16 +765,13 @@ class TestTheStemsView:
         assert view_model.has_input is False
         assert view_model.convert_button_enabled is False
 
-    def test_the_cap_the_view_reports_holds_within_the_channels_enabled(
+    def test_the_cap_the_view_reports_holds_within_the_channels_there_are(
         self,
         converter_logic: ConverterLogic,
-        session_manager: SessionManager,
     ) -> None:
-        channels = session_manager.converter_settings.channels
+        converter_logic.set_channel_cap(len(ChannelName) + 5)
 
-        converter_logic.set_channel_cap(len(channels) + 5)
-
-        assert _view(converter_logic).channel_cap == len(channels)
+        assert _view(converter_logic).channel_cap == len(ChannelName)
 
 
 def _aimed_at_a_recording(converter_logic: ConverterLogic, tmp_path: Path) -> Path:

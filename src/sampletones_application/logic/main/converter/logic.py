@@ -21,6 +21,7 @@ from sampletones_application.logic.main.converter.settings import RunSettings
 from sampletones_application.logic.main.converter.setup import (
     batch_entries,
     conversion_plan,
+    conversion_setup,
     playing_sources,
 )
 from sampletones_application.logic.main.converter.state import ConverterState
@@ -239,13 +240,8 @@ class ConverterLogic(CallbackMixin):
         self._settle(self._state.with_gathering(self._state.gathering.settled(selected, slot, channel_name, held)))
 
     def set_source_channels(self, path: Path, channels: FrozenSet[ChannelName]) -> None:
-        """Names the channels one recording may take, among the ones the reader was offered."""
-        gathering = self._state.gathering.written_among(
-            path,
-            CHANNEL_SLOT,
-            channels,
-            self._settings.enabled_channels,
-        )
+        """Names the channels one recording may take, which is the whole of what it reaches."""
+        gathering = self._state.gathering.written(path, CHANNEL_SLOT, channels)
         self._settle(self._state.with_gathering(gathering))
 
     def toggle_folder_channel(self, root: Path, channel_name: ChannelName) -> None:
@@ -325,13 +321,13 @@ class ConverterLogic(CallbackMixin):
             logger.warning("A conversion or library generation is already in progress")
             return
 
-        if not self._settings.enabled_channels:
-            self.call(self.on_no_generators)
+        if not self._state.gathering.count:
+            logger.warning("Nothing is gathered to convert")
             return
 
         plan = conversion_plan(self._state)
         if plan is None:
-            logger.warning("Nothing is selected to convert")
+            self.call(self.on_no_generators)
             return
 
         standing_target = self._standing_target(plan)
@@ -421,12 +417,12 @@ class ConverterLogic(CallbackMixin):
     def _redirected(self, state: ConverterState) -> ConverterState:
         """The setup with its destination following the sources that take part in it."""
         config = self._config_manager.config
-        channels = state.settings.enabled_channels
         destination = state.destination.named_after(state.gathering.sources)
         if state.settings.mixes:
-            return state.with_destination(destination.aimed_at_mix(config, playing_sources(state), channels))
+            setup = conversion_setup(state)
+            return state.with_destination(destination.aimed_at_mix(config, setup.sources, setup.stems.covered_channels))
 
-        return state.with_destination(destination.aimed_at_batch(config, batch_entries(state), channels))
+        return state.with_destination(destination.aimed_at_batch(config, batch_entries(state)))
 
     def _standing_target(self, plan: ConversionPlan) -> Optional[Path]:
         """The reconstruction ``plan`` would write over, where one stands.

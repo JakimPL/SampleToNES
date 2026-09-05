@@ -1,12 +1,11 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import AbstractSet, List, Sequence, Tuple
+from typing import List, Sequence, Tuple
 
 from sampletones_application.logic.main.sources.levels import MixLevels
 from sampletones_application.logic.main.sources.list import SourceList
 from sampletones_application.logic.main.sources.recording import Recording
-from sampletones_application.logic.main.sources.slots import CHANNEL_SLOT
-from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.constants.enums import HierarchyMode
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
@@ -27,18 +26,17 @@ class ConversionSetup:
 def derive_conversion_setup(
     sources: SourceList,
     levels: MixLevels,
-    enabled_channels: AbstractSet[ChannelName],
     *,
     channel_cap: int,
     hierarchy_mode: HierarchyMode,
 ) -> ConversionSetup:
     """Turns the levels a reader gathered into the recordings and the setup a conversion runs with.
 
-    Each recording is narrowed to the channels the run still enables, and one left holding none
-    takes no part: it reaches neither the mix nor the entries. What remains is numbered in level
-    order, which is the id the conversion records per frame and a stem selection later reads back.
+    A recording left holding no channel takes no part: it reaches neither the mix nor the entries.
+    What remains is numbered in level order, which is the id the conversion records per frame and a
+    stem selection later reads back.
     """
-    playing = [_recordings_of(sources, level, enabled_channels) for level in levels.levels]
+    playing = [_recordings_of(sources, level) for level in levels.levels]
     ordered = [recording for level in playing for recording in level]
 
     entries = [StemEntry(id=stem_id, settings=recording.settings) for stem_id, recording in enumerate(ordered)]
@@ -52,23 +50,15 @@ def derive_conversion_setup(
     )
 
 
-def _recordings_of(
-    sources: SourceList,
-    level: Sequence[Path],
-    enabled_channels: AbstractSet[ChannelName],
-) -> List[Recording]:
-    """The recordings of one level, each narrowed to the channels the run enables and still playing."""
-    narrowed = []
+def _recordings_of(sources: SourceList, level: Sequence[Path]) -> List[Recording]:
+    """The recordings of one level that hold a channel, which is what takes part in the mix."""
+    playing = []
     for path in level:
         recording = sources.recording(path)
-        if recording is None:
-            continue
+        if recording is not None and recording.settings.channels:
+            playing.append(recording)
 
-        settings = CHANNEL_SLOT.write(recording.settings, recording.settings.channel_set & enabled_channels)
-        if settings.channels:
-            narrowed.append(recording.with_settings(settings))
-
-    return narrowed
+    return playing
 
 
 def _hierarchy(

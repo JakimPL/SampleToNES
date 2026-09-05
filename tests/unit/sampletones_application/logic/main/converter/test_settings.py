@@ -1,7 +1,5 @@
 from typing import List
 
-import pytest
-
 from sampletones_application.constants.conversion import MIN_CHANNEL_CAP
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.logic.main.converter.settings import RunSettings
@@ -37,22 +35,19 @@ class TestTheChannelsARunHandsOut:
 
 
 class TestTheCapARunHoldsTo:
-    def test_a_cap_beyond_the_channels_enabled_is_held_to_them(self) -> None:
-        settings = _settings(TONES).with_channel_cap(len(TONES) + 5)
+    def test_a_cap_beyond_the_channels_there_are_is_held_to_them(self) -> None:
+        settings = _settings(TONES).with_channel_cap(len(ChannelName) + 5)
 
-        assert settings.effective_channel_cap == len(TONES)
+        assert settings.effective_channel_cap == len(ChannelName)
 
     def test_a_cap_below_one_channel_is_refused(self) -> None:
         assert _settings(TONES).with_channel_cap(0).effective_channel_cap == MIN_CHANNEL_CAP
 
-    def test_a_cap_falls_with_the_channels_it_was_asked_for(self) -> None:
+    def test_the_cap_stands_whatever_a_row_holds(self) -> None:
+        """The cap bounds a frame, so it answers to the hardware rather than to one row."""
         settings = _settings(TONES).with_channel_cap(3).with_joining_channels(frozenset({ChannelName.PULSE1}))
 
-        assert settings.effective_channel_cap == 1
-
-    @pytest.mark.parametrize("channels", [[], [ChannelName.PULSE1]], ids=["none", "one"])
-    def test_the_cap_always_leaves_room_for_one_channel(self, channels: List[ChannelName]) -> None:
-        assert _settings(channels).max_channel_cap == MIN_CHANNEL_CAP
+        assert settings.effective_channel_cap == 3
 
 
 class TestTheShapeOfTheRun:

@@ -75,17 +75,12 @@ class Destination:
 
         return replace(self, output_path=group_output_path(config, sources, channels))
 
-    def aimed_at_batch(
-        self,
-        config: Config,
-        entries: Tuple[BatchEntry, ...],
-        channels: AbstractSet[ChannelName],
-    ) -> Self:
+    def aimed_at_batch(self, config: Config, entries: Tuple[BatchEntry, ...]) -> Self:
         """The destination a run writing one reconstruction per recording names.
 
         One recording names the document it is written to, which is what a reader converting a
-        single file is looking at; several name the directory the run's settings hold, which is
-        the tree the batch writes into.
+        single file is looking at; several name the directory the channels they cover between them
+        are held under, which is the tree the batch writes into.
         """
         if not entries:
             return self
@@ -93,7 +88,8 @@ class Destination:
         if len(entries) == 1:
             return replace(self, output_path=entries[0].output_path(config))
 
-        return replace(self, output_path=config_directory_path(config, channels))
+        covered = frozenset().union(*(entry.stems.covered_channels for entry in entries))
+        return replace(self, output_path=config_directory_path(config, covered))
 
     def named_after(self, sources: SourceList) -> Self:
         """What a run names itself by, read from the sources gathered for it.

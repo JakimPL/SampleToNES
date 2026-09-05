@@ -1,13 +1,11 @@
 from pathlib import Path
-from typing import FrozenSet, List, Sequence, Tuple
+from typing import List, Sequence, Tuple
 
 from sampletones_application.logic.main.sources.derive import derive_conversion_setup
 from sampletones_application.logic.main.sources.levels import MixLevels
 from sampletones_application.logic.main.sources.list import SourceList
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from tests.unit.sampletones_application.logic.main.sources.factories import recording
-
-ENABLED: FrozenSet[ChannelName] = frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE})
 
 
 def _path(name: str) -> Path:
@@ -28,31 +26,17 @@ def _gathered(
 
 
 class TestWhatEachRecordingBringsToTheSetup:
-    def test_a_recording_keeps_the_channels_the_run_still_enables(self) -> None:
+    def test_a_recording_carries_the_channels_its_own_row_holds(self) -> None:
         sources, levels = _gathered(["lead"], holding=[ChannelName.PULSE1, ChannelName.PULSE2])
 
         setup = derive_conversion_setup(
             sources,
             levels,
-            ENABLED,
             channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )
 
-        assert setup.stems.entries[0].settings.channels == [ChannelName.PULSE1]
-
-    def test_the_channels_stand_in_the_order_the_run_names_them(self) -> None:
-        sources, levels = _gathered(["lead"], holding=[ChannelName.NOISE, ChannelName.PULSE1])
-
-        setup = derive_conversion_setup(
-            sources,
-            levels,
-            ENABLED,
-            channel_cap=1,
-            hierarchy_mode=HierarchyMode.STRICT,
-        )
-
-        assert setup.stems.entries[0].settings.channels == [ChannelName.PULSE1, ChannelName.NOISE]
+        assert setup.stems.entries[0].settings.channels == [ChannelName.PULSE1, ChannelName.PULSE2]
 
     def test_a_bend_the_recording_carries_reaches_the_entry(self) -> None:
         sources = SourceList().add_recording(
@@ -63,32 +47,11 @@ class TestWhatEachRecordingBringsToTheSetup:
         setup = derive_conversion_setup(
             sources,
             levels,
-            ENABLED,
             channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )
 
         assert setup.stems.entries[0].settings.bends == [ChannelName.TRIANGLE]
-
-    def test_a_bend_on_a_channel_the_run_leaves_out_goes_with_it(self) -> None:
-        sources = SourceList().add_recording(
-            recording(
-                str(_path("lead")),
-                [ChannelName.PULSE1, ChannelName.TRIANGLE],
-                [ChannelName.TRIANGLE],
-            )
-        )
-        levels = MixLevels.of([[_path("lead")]])
-
-        setup = derive_conversion_setup(
-            sources,
-            levels,
-            frozenset({ChannelName.PULSE1}),
-            channel_cap=1,
-            hierarchy_mode=HierarchyMode.STRICT,
-        )
-
-        assert setup.stems.entries[0].settings.bends == []
 
 
 class TestTheSetupTheLevelsAmountTo:
@@ -98,7 +61,6 @@ class TestTheSetupTheLevelsAmountTo:
         setup = derive_conversion_setup(
             sources,
             levels,
-            ENABLED,
             channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )
@@ -111,7 +73,6 @@ class TestTheSetupTheLevelsAmountTo:
         setup = derive_conversion_setup(
             sources,
             levels,
-            ENABLED,
             channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )
@@ -124,7 +85,6 @@ class TestTheSetupTheLevelsAmountTo:
         setup = derive_conversion_setup(
             sources,
             levels,
-            ENABLED,
             channel_cap=1,
             hierarchy_mode=HierarchyMode.ROUND_ROBIN,
         )
@@ -137,7 +97,6 @@ class TestTheSetupTheLevelsAmountTo:
         setup = derive_conversion_setup(
             sources,
             levels,
-            ENABLED,
             channel_cap=2,
             hierarchy_mode=HierarchyMode.ROUND_ROBIN,
         )
@@ -166,7 +125,6 @@ class TestARecordingThatTakesNoPart:
         setup = derive_conversion_setup(
             sources,
             levels,
-            ENABLED,
             channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )
@@ -180,7 +138,6 @@ class TestARecordingThatTakesNoPart:
         setup = derive_conversion_setup(
             sources,
             levels,
-            ENABLED,
             channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )
@@ -194,7 +151,6 @@ class TestARecordingThatTakesNoPart:
         setup = derive_conversion_setup(
             sources,
             levels,
-            ENABLED,
             channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )

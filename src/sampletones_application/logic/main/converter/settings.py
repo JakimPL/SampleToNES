@@ -31,12 +31,12 @@ class RunSettings:
 
     @property
     def max_channel_cap(self) -> int:
-        """The highest cap the enabled channels leave room for, which is at least one channel."""
-        return max(len(self.enabled_channels), MIN_CHANNEL_CAP)
+        """The highest cap there is, which is one recording holding every channel in a frame."""
+        return len(ChannelName)
 
     @property
     def effective_channel_cap(self) -> int:
-        """The cap a run holds to: what the reader asked for, within the channels now enabled."""
+        """The cap a run holds to, within the channels the hardware has."""
         return min(self.channel_cap, self.max_channel_cap)
 
     def with_joining(self, joining: StemSettings) -> Self:

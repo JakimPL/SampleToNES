@@ -62,7 +62,6 @@ class ConverterViewModel(BaseModel, frozen=True):
     other_operation_active: bool
     output: OutputKind
     stem_sources: Tuple[StemRowViewModel, ...]
-    enabled_channels: FrozenSet[ChannelName]
     channel_cap: int
     max_channel_cap: int
     hierarchy_mode: HierarchyMode
@@ -98,12 +97,12 @@ class ConverterViewModel(BaseModel, frozen=True):
 
     @property
     def channels_in_play(self) -> Tuple[ChannelName, ...]:
-        """The channels a conversion may reach, in the order the application names them.
+        """The channels a row draws a box on, in the order the application names them.
 
-        A stems row offers a checkbox per channel in play, so a channel the configuration leaves
-        out costs the row no column at all.
+        What a run reaches is what its rows hold, so every channel is put to a reader and the
+        settings card narrows a row that should reach fewer.
         """
-        return tuple(channel_name for channel_name in ChannelName.items() if channel_name in self.enabled_channels)
+        return tuple(ChannelName.items())
 
     @property
     def stems_list(self) -> StemsListViewModel:
