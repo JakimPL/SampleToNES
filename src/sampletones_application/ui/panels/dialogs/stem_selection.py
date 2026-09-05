@@ -151,6 +151,7 @@ class GUIStemSelectionWindow(GUIDialogWindow):
             channels_in_play=(),
             muted_channels=frozenset(),
             picked_keys=self._picked,
+            picking_room=self._room,
             live=True,
             collapse_levels=True,
             selected_key=None,
@@ -170,14 +171,17 @@ class GUIStemSelectionWindow(GUIDialogWindow):
         )
 
     def _on_picked(self, key: str) -> None:
-        """Picks the recordings a row stands for, or lets them go where they all stand picked."""
+        """Picks the recordings a row stands for, or lets them go where they all stand picked.
+
+        A mix is built from a fixed number of recordings, so a row takes as many as the room left
+        reaches and a full pick waits for something to leave.
+        """
         view_model = self._view()
         row = view_model.row(key)
         if row is None:
             return
 
-        keys = frozenset(recording.key for recording in row.recordings)
-        self._picked = self._picked | keys if view_model.picking_of(row).settles_to else self._picked - keys
+        self._picked = view_model.picking_settled(row)
         self._render()
 
     @property

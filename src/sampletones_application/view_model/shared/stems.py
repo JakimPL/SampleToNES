@@ -1,6 +1,6 @@
 from functools import cached_property
 from pathlib import Path
-from typing import Dict, FrozenSet, Optional, Self, Tuple
+from typing import Dict, FrozenSet, Iterator, Optional, Self, Tuple
 
 from pydantic import BaseModel
 
@@ -115,13 +115,16 @@ class StemsListViewModel(BaseModel, frozen=True):
     boxes report while staying as clickable as any other. ``collapse_levels`` draws every row
     in one table, leaving the levels to the reader's memory rather than to a caption.
     ``selected_key`` names the row a reader is inspecting, which the list draws picked out.
-    ``picked_keys`` names the recordings standing picked where the list asks which ones to mix.
+    ``picked_keys`` names the recordings standing picked where the list asks which ones to mix,
+    and ``picking_room`` how many recordings that pick may hold. A list putting no such question
+    names no room.
     """
 
     rows: Tuple[StemRowViewModel, ...]
     channels_in_play: Tuple[ChannelName, ...]
     muted_channels: FrozenSet[ChannelName]
     picked_keys: FrozenSet[str]
+    picking_room: Optional[int]
     live: bool
     collapse_levels: bool
     selected_key: Optional[str]
@@ -134,6 +137,7 @@ class StemsListViewModel(BaseModel, frozen=True):
             channels_in_play=(),
             muted_channels=frozenset(),
             picked_keys=frozenset(),
+            picking_room=None,
             live=True,
             collapse_levels=False,
             selected_key=None,
@@ -173,6 +177,50 @@ class StemsListViewModel(BaseModel, frozen=True):
         half-lit where some are, clear where none is, so one gesture answers for the whole folder.
         """
         return Agreement.over(recording.key in self.picked_keys for recording in row.recordings)
+
+    @property
+    def picking_full(self) -> bool:
+        """The pick holds all the room it has, so what stands clear waits for something to leave."""
+        return self.picking_room is not None and len(self.picked_keys) >= self.picking_room
+
+    def reaches(self, row: StemRowViewModel) -> bool:
+        """Whether a click on the row's box moves it.
+
+        A full pick answers only the rows it already holds, since taking another would build a
+        reconstruction from more recordings than one is made of. Letting recordings go stays open,
+        which is how a reader swaps one for another.
+        """
+        return not self.picking_full or self.picking_of(row) is not Agreement.NONE
+
+    def picking_settled(self, row: StemRowViewModel) -> FrozenSet[str]:
+        """The pick a click on ``row`` leaves behind.
+
+        A row every recording of which stands picked gives them all up, and so does one the mix
+        has no room to take more of; any other takes as many as the room still has, in the order
+        they were gathered. So a click settles the row either way from wherever it stands, and
+        half-lit is a state the reader arrives at rather than one a click makes.
+        """
+        if self._takes(row):
+            return self.picked_keys | frozenset(self._joining(row))
+
+        return self.picked_keys - frozenset(recording.key for recording in row.recordings)
+
+    def _takes(self, row: StemRowViewModel) -> bool:
+        """Whether a click on ``row`` brings recordings in: it settles that way, and there is room."""
+        return self.picking_of(row).settles_to and not self.picking_full
+
+    def _joining(self, row: StemRowViewModel) -> Iterator[str]:
+        """The recordings a click on ``row`` takes in: its own, as far as the room left reaches."""
+        standing = len(self.picked_keys)
+        for recording in row.recordings:
+            if recording.key in self.picked_keys:
+                continue
+
+            if self.picking_room is not None and standing >= self.picking_room:
+                return
+
+            yield recording.key
+            standing += 1
 
     @property
     def picked_paths(self) -> Tuple[Path, ...]:

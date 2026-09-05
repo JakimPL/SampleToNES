@@ -123,6 +123,7 @@ def _view_model(
             channels_in_play=CHANNELS if rows else (),
             muted_channels=muted_channels,
             picked_keys=frozenset(),
+            picking_room=None,
             live=True,
             collapse_levels=False,
         ),

@@ -110,7 +110,7 @@ def add_enabled() -> bool:
 
 
 class TestWhatIsOffered(BaseTestSuite):
-    """Everything gathered is offered and pickable, with as many as a mix holds arriving ticked."""
+    """Everything gathered is offered, with as many as a mix holds arriving ticked."""
 
     def test_every_recording_gathered_gets_a_box(self, window: GUIStemSelectionWindow) -> None:
         offered = candidates()
@@ -128,16 +128,19 @@ class TestWhatIsOffered(BaseTestSuite):
         render(window, offered)
         assert not any(dpg.get_value(box_of(row)) for row in offered[MAX_STEM_SOURCES:])
 
-    def test_a_recording_past_the_limit_is_pickable(self, window: GUIStemSelectionWindow) -> None:
-        """Swapping which recordings the mix is built from is what the question is for."""
+    def test_a_recording_past_the_room_waits(self, window: GUIStemSelectionWindow) -> None:
+        """A mix is built from a fixed number of recordings, so a full pick answers what it holds."""
         offered = candidates()
         render(window, offered)
-        beyond = offered[MAX_STEM_SOURCES]
-        assert dpg.get_item_configuration(box_of(beyond))["enabled"] is True
 
-        pick(beyond)
+        assert dpg.get_item_configuration(box_of(offered[MAX_STEM_SOURCES]))["enabled"] is False
 
-        assert dpg.get_value(box_of(beyond)) is True
+    def test_the_ones_it_holds_still_answer(self, window: GUIStemSelectionWindow) -> None:
+        """Letting a recording go is how the reader makes room for another."""
+        offered = candidates()
+        render(window, offered)
+
+        assert dpg.get_item_configuration(box_of(offered[0]))["enabled"] is True
 
 
 class TestSettlingTheMix(BaseTestSuite):
@@ -165,17 +168,16 @@ class TestSettlingTheMix(BaseTestSuite):
 
         assert answered == [paths()[1 : MAX_STEM_SOURCES + 1]]
 
-    def test_a_pick_larger_than_a_mix_holds_waits(self, window: GUIStemSelectionWindow) -> None:
+    def test_a_pick_past_the_room_leaves_the_mix_as_it_was(self, window: GUIStemSelectionWindow) -> None:
         offered = candidates()
         answered: List[List[Path]] = []
         window.on_add = answered.append
 
         render(window, offered)
         pick(offered[MAX_STEM_SOURCES])
-
-        assert add_enabled() is False
         dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
-        assert answered == []
+
+        assert answered == [paths()[:MAX_STEM_SOURCES]]
 
     def test_a_pick_of_nothing_waits(self, window: GUIStemSelectionWindow) -> None:
         offered = candidates()
@@ -185,14 +187,16 @@ class TestSettlingTheMix(BaseTestSuite):
 
         assert add_enabled() is False
 
-    def test_letting_one_go_settles_again(self, window: GUIStemSelectionWindow) -> None:
+    def test_letting_one_go_opens_the_room_for_another(self, window: GUIStemSelectionWindow) -> None:
         offered = candidates()
         render(window, offered)
-        pick(offered[MAX_STEM_SOURCES])
-        assert add_enabled() is False
+        beyond = offered[MAX_STEM_SOURCES]
 
         pick(offered[0])
+        assert dpg.get_item_configuration(box_of(beyond))["enabled"] is True
+        pick(beyond)
 
+        assert dpg.get_value(box_of(beyond)) is True
         assert add_enabled() is True
 
     def test_the_line_reads_what_stands_picked(self, window: GUIStemSelectionWindow) -> None:
@@ -200,7 +204,7 @@ class TestSettlingTheMix(BaseTestSuite):
         render(window, offered)
         opening = dpg.get_value(TAG_MAIN_CONVERTER_TEXT_STEM_SELECTION_LIMIT)
 
-        pick(offered[MAX_STEM_SOURCES])
+        pick(offered[0])
 
         assert dpg.get_value(TAG_MAIN_CONVERTER_TEXT_STEM_SELECTION_LIMIT) != opening
 
@@ -235,6 +239,27 @@ class TestAFolderInTheQuestion(BaseTestSuite):
         pick(folder)
 
         assert add_enabled() is False
+
+    def test_a_folder_larger_than_the_room_takes_as_many_as_fit(
+        self,
+        window: GUIStemSelectionWindow,
+    ) -> None:
+        """A folder settles either way, so it lets go of a full mix and takes what fits again."""
+        answered: List[List[Path]] = []
+        window.on_add = answered.append
+        held = paths(GATHERED)
+        folder = folder_row(Path("/audio/takes"), held)
+        render(window, [folder])
+        assert add_enabled() is True
+
+        pick(folder)
+        assert add_enabled() is False
+
+        pick(folder)
+
+        assert add_enabled() is True
+        dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
+        assert answered == [held[:MAX_STEM_SOURCES]]
 
     def test_what_it_holds_is_what_the_mix_takes(self, window: GUIStemSelectionWindow) -> None:
         held = paths(3)

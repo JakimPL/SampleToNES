@@ -132,6 +132,7 @@ class ConverterViewModel(BaseModel, frozen=True):
             channels_in_play=self.channels_in_play,
             muted_channels=frozenset(),
             picked_keys=frozenset(),
+            picking_room=None,
             live=not self.is_active,
             collapse_levels=not self.mixes_several,
             selected_key=self.selected_key,

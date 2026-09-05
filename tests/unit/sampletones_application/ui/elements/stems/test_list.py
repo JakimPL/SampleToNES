@@ -146,6 +146,7 @@ def view(
         channels_in_play=CHANNELS,
         muted_channels=muted_channels,
         picked_keys=picked_keys,
+        picking_room=None,
         live=live,
         collapse_levels=collapse_levels,
     )

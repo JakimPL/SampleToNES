@@ -122,7 +122,7 @@ class StemRowRenderer:
 
         if self._offer.master_box:
             master_tag = self._tags.row(row.key, SUF_CHECKBOX)
-            dpg_configure_item(master_tag, enabled=live and (self._offer.picking or row.offers_channels))
+            dpg_configure_item(master_tag, enabled=live and self._master_reaches(row, view_model))
             dpg_set_value(master_tag, self._master_value(row, view_model))
             self._tone_master(row, view_model)
 
@@ -139,6 +139,13 @@ class StemRowRenderer:
         )
         self._gestures.bind(master, SUF_CHECKBOX)
         self._tone_master(row, view_model)
+
+    def _master_reaches(self, row: StemRowViewModel, view_model: StemsListViewModel) -> bool:
+        """Whether the box beside the row answers a click: the pick has room, or the row has boxes."""
+        if self._offer.picking:
+            return view_model.reaches(row)
+
+        return row.offers_channels
 
     def _master_value(self, row: StemRowViewModel, view_model: StemsListViewModel) -> bool:
         """What the box beside the row reads: whether it is picked, or whether it takes part."""
