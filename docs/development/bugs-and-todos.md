@@ -116,19 +116,10 @@ again.
   the size at which the sequencer panels and the sequencer tab coordinator were divided into
   subpackages. Each divides the same way: a module per concern, with the class that stays holding
   the collaborators and the public surface.
-* The Main tab is wired in one constructor. `coordinators/tabs/main.py::MainTabCoordinator.__init__`
-  builds the tab's panels, logic objects and services and then wires them hook by hook, which makes
-  it by far the longest body in the coordinator layer and leaves a reader tracing a panel's hook to
-  what answers it by eye. The wiring divides by collaborator — a method per panel, stating what that
-  panel offers and what answers each hook — the way a tab coordinator already divides into a
-  subpackage once it holds several concerns.
 * Several calls reach the Main tab's panels through wrappers of the coordinator's own, where the
   Coordinators contract sanctions a wrapper only for an intent-level guard a contract requires. A
   wrapper that renames a call or reorders its arguments is work the logic object behind the call
   should be doing.
-* `logic/main/explorer.py::ExplorerLogic` forwards every member to the `ExplorerManager` it
-  constructs, declaring no state and no rule of its own. Either the logic object takes a job — the
-  explorer's own state machine — or its consumers hold the manager.
 * `utils/gui/dpg.py::dpg_get_item_parent` catches `Exception` where the Error Handling Policy leaves
   the broad catch to a service's top-level task wrapper. It stays: DearPyGui raises `Exception`
   itself for an absent item rather than a type of its own, so the catch is as narrow as what it
