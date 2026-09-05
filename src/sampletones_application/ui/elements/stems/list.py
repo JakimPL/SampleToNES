@@ -205,10 +205,11 @@ class GUIStemsList(CallbackMixin):
         return view_model.collapse_levels and not view_model.holds_folders
 
     def _plain_rows(self, view_model: StemsListViewModel) -> int:
-        """How many rows a whole-drawn well stands as a plain run of, which a reading counts by.
+        """How many rows of one height the well holds, which a reading of a row is counted from.
 
-        A run broken by a caption, a strip or an open folder's region carries more than rows, so
-        it counts none and the reading in force stands.
+        A well standing rows alone answers with its whole count. One standing a caption, a strip
+        or an open folder's region among them answers with none, since a block measured across
+        those would read a row as taller than it is.
         """
         if not view_model.collapse_levels or self._open_folders:
             return NO_ROWS
@@ -264,7 +265,7 @@ class GUIStemsList(CallbackMixin):
         """Read back what the regions drew, refill the ones a scroll has moved on from, and keep
         watching for as long as one of them holds rows it has yet to build."""
         self._settling = False
-        if self._region.settle():
+        if self._region.settle() and self._windows(self._view):
             self._draw_window(self._view)
             self._repaint(self._view)
 

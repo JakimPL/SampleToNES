@@ -87,8 +87,9 @@ class RowGeometry:
         rows is carried by the same number that reserves room for them. A move worth a pixel is
         worth drawing again.
 
-        A block giving less than ``MINIMUM_ROW_PITCH`` a row is a region measured while its rows
-        stood clipped or unplaced rather than a row that small, so the reading in force stands.
+        A block giving less than ``MINIMUM_ROW_PITCH`` a row was measured while its rows stood
+        clipped or unplaced, since no theme draws a row that small. The reading already taken is
+        kept, and the answer is that nothing moved.
         """
         if rows <= 0:
             return False

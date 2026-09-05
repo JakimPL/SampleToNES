@@ -8,7 +8,6 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.converter import BatchEntry
 from sampletones_core.reconstructions.converter.paths import (
     config_directory_path,
-    get_output_path,
     group_output_path,
 )
 
@@ -39,25 +38,6 @@ class Destination:
             return self.output_path.stem
 
         return self.input_path.stem if self.input_path is not None else ""
-
-    def aimed_at(
-        self,
-        config: Config,
-        input_path: Path,
-        channels: AbstractSet[ChannelName],
-    ) -> Self:
-        """The destination a newly picked recording or directory names.
-
-        Raises:
-            FileNotFoundError: The path names nothing on disk.
-            OSError: The path cannot be read.
-        """
-        return replace(
-            self,
-            input_path=input_path,
-            output_path=get_output_path(config, input_path, channels),
-            is_file=input_path.is_file(),
-        )
 
     def aimed_at_mix(
         self,

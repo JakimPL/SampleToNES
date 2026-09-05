@@ -1,10 +1,9 @@
-from typing import Protocol, Tuple, runtime_checkable
+from typing import Protocol, Tuple
 
 from sampletones_application.logic.main.sources.key import SourceKey
 from sampletones_application.logic.main.sources.recording import Recording
 
 
-@runtime_checkable
 class SourceRow(Protocol):
     """One row of the list a run is set up in.
 

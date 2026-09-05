@@ -524,7 +524,7 @@ class MainTabCoordinator:
             self._nothing_below(directory_path)
             return
 
-        if self._mixing_beyond_room(directory_path, found):
+        if self._mixing_beyond_room(found):
             return
 
         self._converter_logic.gather_folder(directory_path, found)
@@ -546,8 +546,8 @@ class MainTabCoordinator:
         self._scan_window.close()
         self._converter_logic.convert_folder(directory_path, found)
 
-    def _mixing_beyond_room(self, directory_path: Path, found: Tuple[Path, ...]) -> bool:
-        """Whether the folder brings in more than the mix has room for, which is a question.
+    def _mixing_beyond_room(self, found: Tuple[Path, ...]) -> bool:
+        """Whether what was read brings in more than the mix has room for, which is a question.
 
         The answer names the recordings to gather, so it reaches the same gathering a click in the
         browser reaches and the setup stands as it was until the reader gives one.
