@@ -53,7 +53,7 @@ class ConverterMessages:
         self,
         *,
         phase: ConversionPhase,
-        stems_mode: bool,
+        mixes: bool,
         is_file: bool,
         input_path: Optional[Path],
         playing: int,
@@ -63,7 +63,7 @@ class ConverterMessages:
         if phase in ACTIVE_PHASES:
             return self._language_manager["main.converter.label.cancel_button"]
 
-        if stems_mode:
+        if mixes:
             return self._mix_label(playing)
 
         base = (

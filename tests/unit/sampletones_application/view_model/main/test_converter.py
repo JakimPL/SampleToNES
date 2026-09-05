@@ -4,6 +4,7 @@ from typing import Final, FrozenSet, Optional, Tuple
 import pytest
 
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.view_model.main.converter import (
     ConversionPhase,
     ConverterAction,
@@ -46,8 +47,8 @@ def _view_model(
     other_operation_active: bool = False,
     progress: float = 0.0,
     input_path: Optional[Path] = Path("/audio/sample.wav"),
-    stems_mode: bool = False,
-    stem_sources: Tuple[StemRowViewModel, ...] = (),
+    mixes: bool = False,
+    stem_sources: Tuple[StemRowViewModel, ...] = (_row("sample"),),
     channel_cap: int = len(ENABLED_CHANNELS),
     max_sources: int = MAX_STEM_SOURCES,
 ) -> ConverterViewModel:
@@ -60,7 +61,7 @@ def _view_model(
         output_path=Path("/reconstructions"),
         is_file=True,
         other_operation_active=other_operation_active,
-        stems_mode=stems_mode,
+        output=OutputKind.MIXED if mixes else OutputKind.PER_RECORDING,
         stem_sources=stem_sources,
         enabled_channels=ENABLED_CHANNELS,
         channel_cap=channel_cap,
@@ -157,7 +158,7 @@ class TestStemsSection:
         view_model = _view_model(
             phase=ConversionPhase.IDLE,
             input_path=None,
-            stems_mode=True,
+            mixes=True,
             stem_sources=(_row("bass"),),
         )
 
@@ -166,24 +167,30 @@ class TestStemsSection:
         assert view_model.convert_button_enabled is True
 
     def test_an_empty_list_offers_nothing_to_convert(self) -> None:
-        view_model = _view_model(phase=ConversionPhase.IDLE, stems_mode=True)
+        view_model = _view_model(phase=ConversionPhase.IDLE, mixes=True, stem_sources=())
 
         assert view_model.has_input is False
         assert view_model.convert_button_enabled is False
 
-    def test_the_selected_path_carries_a_classic_conversion(self) -> None:
-        view_model = _view_model(phase=ConversionPhase.IDLE, stems_mode=False)
+    def test_a_gathered_recording_carries_a_run_writing_one_apiece(self) -> None:
+        view_model = _view_model(phase=ConversionPhase.IDLE, mixes=False, stem_sources=(_row("bass"),))
 
         assert view_model.has_input is True
 
+    def test_a_run_writing_one_apiece_takes_more_than_a_mix_could_hold(self) -> None:
+        rows = tuple(_row(str(index)) for index in range(MAX_STEM_SOURCES))
+        view_model = _view_model(phase=ConversionPhase.IDLE, mixes=False, stem_sources=rows)
+
+        assert view_model.can_add_source is True
+
     def test_a_full_list_takes_no_more(self) -> None:
         rows = tuple(_row(str(index)) for index in range(MAX_STEM_SOURCES))
-        view_model = _view_model(phase=ConversionPhase.IDLE, stems_mode=True, stem_sources=rows)
+        view_model = _view_model(phase=ConversionPhase.IDLE, mixes=True, stem_sources=rows)
 
         assert view_model.can_add_source is False
 
     def test_a_list_with_room_takes_another(self) -> None:
-        view_model = _view_model(phase=ConversionPhase.IDLE, stems_mode=True, stem_sources=(_row("bass"),))
+        view_model = _view_model(phase=ConversionPhase.IDLE, mixes=True, stem_sources=(_row("bass"),))
 
         assert view_model.can_add_source is True
 
@@ -194,7 +201,7 @@ class TestStemsSection:
         view_model = _view_model(
             phase=ConversionPhase.IDLE,
             input_path=None,
-            stems_mode=True,
+            mixes=True,
             stem_sources=(_row("bass", channels=frozenset()),),
         )
 

@@ -3,6 +3,7 @@ from typing import List
 import pytest
 
 from sampletones_application.constants.conversion import MIN_CHANNEL_CAP
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.logic.main.converter.settings import RunSettings
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
@@ -14,7 +15,7 @@ TONES: List[ChannelName] = [ChannelName.PULSE1, ChannelName.PULSE2, ChannelName.
 def _settings(channels: List[ChannelName], channel_cap: int = 4) -> RunSettings:
     return RunSettings(
         joining=_joining(channels),
-        stems_mode=False,
+        output=OutputKind.PER_RECORDING,
         channel_cap=channel_cap,
         hierarchy_mode=DEFAULT_STEMS_HIERARCHY_MODE,
     )
@@ -56,7 +57,7 @@ class TestTheCapARunHoldsTo:
 
 class TestTheShapeOfTheRun:
     def test_the_run_is_named_as_a_mix(self) -> None:
-        assert _settings(TONES).with_stems_mode(True).stems_mode is True
+        assert _settings(TONES).with_output(OutputKind.MIXED).mixes is True
 
     def test_the_levels_take_turns_as_the_reader_asked(self) -> None:
         settings = _settings(TONES).with_hierarchy_mode(HierarchyMode.STRICT)

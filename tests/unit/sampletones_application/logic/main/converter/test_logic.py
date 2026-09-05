@@ -7,6 +7,7 @@ import pytest
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.logic.main.converter.logic import ConverterLogic
 from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.services.conversion.result import ConversionResult
@@ -23,7 +24,6 @@ from tests.suite.language import FakeLanguageManager
 from tests.unit.sampletones_application.logic.main.converter.texts import TEXTS
 
 SCHEDULING: str = "sampletones_application.logic.main.converter.logic.CallbackQueue.add"
-OUTPUT_PATH: str = "sampletones_application.logic.main.converter.destination.get_output_path"
 
 
 def _config_writing_under(reconstructions_directory: Path) -> Config:
@@ -96,9 +96,15 @@ def _reports(service: MagicMock, result: ConversionResult) -> None:
     handler(result)
 
 
-def _gathered(converter_logic: ConverterLogic, *names: str) -> None:
-    converter_logic.set_stems_mode(True)
-    converter_logic.add_sources([Path(f"/audio/{name}.wav") for name in names])
+def _mixing(converter_logic: ConverterLogic, *names: str) -> None:
+    """Gathers recordings into a mix, which is the run several recordings amount to."""
+    converter_logic.set_output(OutputKind.MIXED)
+    converter_logic.gather_recordings([Path(f"/audio/{name}.wav") for name in names])
+
+
+def _listed(converter_logic: ConverterLogic, *names: str) -> None:
+    """Gathers recordings into a run writing one reconstruction apiece."""
+    converter_logic.gather_recordings([Path(f"/audio/{name}.wav") for name in names])
 
 
 def _started_plan(converter_logic: ConverterLogic, service: MagicMock) -> GroupConversion:
@@ -213,7 +219,7 @@ class TestNothingToConvertGuard:
         service: MagicMock,
     ) -> None:
         """A mix converts the recordings it gathered, so nothing about the browser's selection gates it."""
-        _gathered(converter_logic, "a", "b")
+        _mixing(converter_logic, "a", "b")
 
         plan = _started_plan(converter_logic, service)
 
@@ -229,8 +235,8 @@ class TestOverwriteGuard:
 
     @staticmethod
     def _aimed_at(converter_logic: ConverterLogic, path: Path) -> Path:
-        """Points the converter at ``path`` and answers where its run would write."""
-        converter_logic.set_input_path(path)
+        """Gathers ``path`` and answers where its run would write."""
+        converter_logic.gather_recordings([path])
         return _view(converter_logic).output_path
 
     @staticmethod
@@ -292,16 +298,16 @@ class TestOverwriteGuard:
         on_target_exists.assert_not_called()
         assert _phase(converter_logic) == ConversionPhase.WAITING
 
-    def test_a_batch_starts_without_asking(
+    def test_a_folder_starts_without_asking(
         self,
         converter_logic: ConverterLogic,
         tmp_path: Path,
     ) -> None:
-        """The scan keeps every reconstruction already written, so a standing file stops nothing."""
+        """A recording gathered from a folder is never written over, so a standing file stops nothing."""
         sources = tmp_path / "sources"
         sources.mkdir()
         (sources / "song.wav").touch()
-        converter_logic.set_input_path(sources)
+        converter_logic.gather_folder(sources)
         on_target_exists = MagicMock()
         converter_logic.on_target_exists = on_target_exists
 
@@ -345,42 +351,10 @@ class TestStartConversionGate:
         assert _phase(converter_logic) == ConversionPhase.WAITING
 
 
-class TestPickingWhatToConvert:
-    """``get_output_path``'s contract is the ``OSError`` family: those failures abort the
-    selection and report through ``on_error``; a failure outside the contract is a bug and
-    propagates."""
+class TestWhatTheSetupNamesItselfBy:
+    """A setup holding one row is that row, which is what a reader converting one file reads."""
 
-    @pytest.mark.parametrize(
-        "error",
-        [FileNotFoundError("missing"), OSError("invalid path")],
-        ids=["missing", "invalid"],
-    )
-    def test_path_failure_reports_error_and_aborts(
-        self,
-        converter_logic: ConverterLogic,
-        error: Exception,
-    ) -> None:
-        converter_logic.on_error = MagicMock()
-
-        with patch(OUTPUT_PATH, side_effect=error):
-            converter_logic.set_input_path(Path("/tmp/input.wav"))
-
-        converter_logic.on_error.assert_called_once_with(error)
-        converter_logic.emit_initial_view()
-        assert _view(converter_logic).input_path is None
-
-    def test_unexpected_failure_propagates(
-        self,
-        converter_logic: ConverterLogic,
-    ) -> None:
-        converter_logic.on_error = MagicMock()
-
-        with patch(OUTPUT_PATH, side_effect=KeyError("drive")), pytest.raises(KeyError):
-            converter_logic.set_input_path(Path("/tmp/input.wav"))
-
-        converter_logic.on_error.assert_not_called()
-
-    def test_a_picked_recording_reaches_the_view(
+    def test_one_recording_names_itself(
         self,
         converter_logic: ConverterLogic,
         tmp_path: Path,
@@ -390,6 +364,25 @@ class TestPickingWhatToConvert:
         view_model = _view(converter_logic)
 
         assert (view_model.input_path, view_model.is_file) == (source, True)
+
+    def test_one_folder_names_the_tree_it_mirrors(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        sources = tmp_path / "sources"
+        sources.mkdir()
+        (sources / "song.wav").touch()
+
+        converter_logic.gather_folder(sources)
+
+        view_model = _view(converter_logic)
+        assert (view_model.input_path, view_model.is_file) == (sources, False)
+
+    def test_several_rows_name_none_of_them(self, converter_logic: ConverterLogic) -> None:
+        _listed(converter_logic, "a", "b")
+
+        assert _view(converter_logic).input_path is None
 
 
 class TestWhatACompletedConversionLeaves:
@@ -499,60 +492,66 @@ class TestGatheringRecordings:
     def _names(self, converter_logic: ConverterLogic) -> List[str]:
         return [row.name for row in _view(converter_logic).stem_sources]
 
-    def test_selecting_a_recording_in_stems_mode_adds_it(self, converter_logic: ConverterLogic) -> None:
-        converter_logic.set_stems_mode(True)
-
-        converter_logic.select_source(Path("/audio/bass.wav"))
-        converter_logic.select_source(Path("/audio/lead.wav"))
+    def test_a_gathered_recording_becomes_a_row(self, converter_logic: ConverterLogic) -> None:
+        converter_logic.gather_recordings([Path("/audio/bass.wav")])
+        converter_logic.gather_recordings([Path("/audio/lead.wav")])
 
         assert self._names(converter_logic) == ["bass", "lead"]
 
     def test_adding_a_listed_recording_leaves_the_list_as_it_is(self, converter_logic: ConverterLogic) -> None:
-        _gathered(converter_logic, "bass", "lead")
+        _mixing(converter_logic, "bass", "lead")
         converter_logic.isolate_source(Path("/audio/lead.wav"))
 
-        converter_logic.add_sources([Path("/audio/lead.wav")])
+        converter_logic.gather_recordings([Path("/audio/lead.wav")])
 
         rows = _view(converter_logic).stem_sources
         assert [row.name for row in rows] == ["bass", "lead"]
         assert [row.level for row in rows] == [0, 1]
 
     def test_the_list_stops_at_the_room_it_has(self, converter_logic: ConverterLogic) -> None:
-        _gathered(converter_logic, *[str(index) for index in range(MAX_STEM_SOURCES + 3)])
+        _mixing(converter_logic, *[str(index) for index in range(MAX_STEM_SOURCES + 3)])
 
         assert converter_logic.source_count == MAX_STEM_SOURCES
         assert converter_logic.room_for_sources == 0
 
     def test_removing_a_recording_takes_it_out(self, converter_logic: ConverterLogic) -> None:
-        _gathered(converter_logic, "a", "b")
+        _mixing(converter_logic, "a", "b")
 
         converter_logic.remove_source(Path("/audio/a.wav"))
 
         assert self._names(converter_logic) == ["b"]
 
-    def test_entering_stems_mode_carries_the_picked_file_in(
+    def test_turning_to_a_mix_carries_the_picked_file_in(
         self,
         converter_logic: ConverterLogic,
         tmp_path: Path,
     ) -> None:
         source = _aimed_at_a_recording(converter_logic, tmp_path)
 
-        converter_logic.set_stems_mode(True)
+        converter_logic.set_output(OutputKind.MIXED)
 
         assert self._names(converter_logic) == [source.stem]
 
-    def test_leaving_stems_mode_keeps_the_recording_that_picks_first(
+    def test_turning_away_from_a_mix_keeps_every_recording(
         self,
         converter_logic: ConverterLogic,
     ) -> None:
-        _gathered(converter_logic, "a", "b")
+        _mixing(converter_logic, "a", "b")
 
-        converter_logic.set_stems_mode(False)
+        converter_logic.set_output(OutputKind.PER_RECORDING)
 
-        assert converter_logic.source_count == 1
+        assert converter_logic.source_count == 2
+
+    def test_a_per_recording_run_takes_more_than_a_mix_could_hold(
+        self,
+        converter_logic: ConverterLogic,
+    ) -> None:
+        _listed(converter_logic, *[str(index) for index in range(MAX_STEM_SOURCES + 3)])
+
+        assert converter_logic.source_count == MAX_STEM_SOURCES + 3
 
     def test_a_row_reports_the_level_it_landed_on(self, converter_logic: ConverterLogic) -> None:
-        _gathered(converter_logic, "a", "b")
+        _mixing(converter_logic, "a", "b")
 
         converter_logic.move_source_to_new_level(Path("/audio/b.wav"), 0)
 
@@ -571,7 +570,7 @@ class TestWhatTheGatheredRecordingsRun:
         converter_logic: ConverterLogic,
         service: MagicMock,
     ) -> None:
-        _gathered(converter_logic, "a", "b")
+        _mixing(converter_logic, "a", "b")
         converter_logic.set_source_channels(Path("/audio/a.wav"), frozenset({ChannelName.PULSE1}))
         converter_logic.isolate_source(Path("/audio/b.wav"))
 
@@ -585,7 +584,7 @@ class TestWhatTheGatheredRecordingsRun:
         converter_logic: ConverterLogic,
         service: MagicMock,
     ) -> None:
-        _gathered(converter_logic, "a", "b")
+        _mixing(converter_logic, "a", "b")
 
         converter_logic.set_source_channels(Path("/audio/a.wav"), frozenset())
         plan = _started_plan(converter_logic, service)
@@ -599,7 +598,7 @@ class TestWhatTheGatheredRecordingsRun:
         converter_logic: ConverterLogic,
         service: MagicMock,
     ) -> None:
-        _gathered(converter_logic, "a")
+        _mixing(converter_logic, "a")
 
         converter_logic.set_hierarchy_mode(HierarchyMode.STRICT)
 
@@ -610,7 +609,7 @@ class TestWhatTheGatheredRecordingsRun:
         converter_logic: ConverterLogic,
         service: MagicMock,
     ) -> None:
-        _gathered(converter_logic, "a")
+        _mixing(converter_logic, "a")
 
         converter_logic.set_channel_cap(1)
 
@@ -621,7 +620,7 @@ class TestWhatTheGatheredRecordingsRun:
         converter_logic: ConverterLogic,
         service: MagicMock,
     ) -> None:
-        _gathered(converter_logic, "a")
+        _mixing(converter_logic, "a")
 
         _started_plan(converter_logic, service)
 
@@ -633,23 +632,23 @@ class TestTheStemsView:
     """What the panel is told about the setup being built."""
 
     def test_the_rows_reach_the_view_in_list_order(self, converter_logic: ConverterLogic) -> None:
-        _gathered(converter_logic, "a", "b")
+        _mixing(converter_logic, "a", "b")
 
         view_model = _view(converter_logic)
 
         assert [row.name for row in view_model.stem_sources] == ["a", "b"]
-        assert view_model.stems_mode is True
+        assert view_model.mixes is True
         assert view_model.has_input is True
 
     def test_a_row_shows_the_channels_it_may_take(self, converter_logic: ConverterLogic) -> None:
-        _gathered(converter_logic, "a")
+        _mixing(converter_logic, "a")
 
         converter_logic.set_source_channels(Path("/audio/a.wav"), frozenset({ChannelName.NOISE}))
 
         assert _view(converter_logic).stem_sources[0].channels == frozenset({ChannelName.NOISE})
 
     def test_the_view_states_whether_another_recording_fits(self, converter_logic: ConverterLogic) -> None:
-        _gathered(converter_logic, *[str(index) for index in range(MAX_STEM_SOURCES)])
+        _mixing(converter_logic, *[str(index) for index in range(MAX_STEM_SOURCES)])
 
         view_model = _view(converter_logic)
 
@@ -657,7 +656,7 @@ class TestTheStemsView:
         assert view_model.can_add_source is False
 
     def test_an_empty_stems_list_offers_nothing_to_convert(self, converter_logic: ConverterLogic) -> None:
-        converter_logic.set_stems_mode(True)
+        converter_logic.set_output(OutputKind.MIXED)
 
         view_model = _view(converter_logic)
 
@@ -677,8 +676,8 @@ class TestTheStemsView:
 
 
 def _aimed_at_a_recording(converter_logic: ConverterLogic, tmp_path: Path) -> Path:
-    """Points the converter at a recording standing on disk, the way the browser does."""
+    """Gathers a recording standing on disk, the way a click in the browser does."""
     source = tmp_path / "song.wav"
     source.touch()
-    converter_logic.set_input_path(source)
+    converter_logic.gather_recordings([source])
     return source

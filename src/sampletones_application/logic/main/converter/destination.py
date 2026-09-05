@@ -2,9 +2,15 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import AbstractSet, Optional, Self, Tuple
 
+from sampletones_application.logic.main.sources.list import SourceList
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.reconstructions.converter.paths import get_output_path, group_output_path
+from sampletones_core.reconstructions.converter import BatchEntry
+from sampletones_core.reconstructions.converter.paths import (
+    config_directory_path,
+    get_output_path,
+    group_output_path,
+)
 
 
 @dataclass(frozen=True)
@@ -68,6 +74,40 @@ class Destination:
             return self
 
         return replace(self, output_path=group_output_path(config, sources, channels))
+
+    def aimed_at_batch(
+        self,
+        config: Config,
+        entries: Tuple[BatchEntry, ...],
+        channels: AbstractSet[ChannelName],
+    ) -> Self:
+        """The destination a run writing one reconstruction per recording names.
+
+        One recording names the document it is written to, which is what a reader converting a
+        single file is looking at; several name the directory the run's settings hold, which is
+        the tree the batch writes into.
+        """
+        if not entries:
+            return self
+
+        if len(entries) == 1:
+            return replace(self, output_path=entries[0].output_path(config))
+
+        return replace(self, output_path=config_directory_path(config, channels))
+
+    def named_after(self, sources: SourceList) -> Self:
+        """What a run names itself by, read from the sources gathered for it.
+
+        A setup holding one row is that row: a recording names the document it makes, a folder
+        names the tree it mirrors. Several rows name none of them, so the run reads as what its
+        destination says instead.
+        """
+        rows = sources.rows
+        if len(rows) != 1:
+            return replace(self, input_path=None, is_file=True)
+
+        key = rows[0].key
+        return replace(self, input_path=key.path, is_file=not key.names_folder)
 
     def writing_to(self, output_path: Path) -> Self:
         """The destination a completed run wrote, which is the document a reader would open."""

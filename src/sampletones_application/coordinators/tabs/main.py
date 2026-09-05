@@ -6,6 +6,8 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.constants.conversion import MAX_STEM_SOURCES
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
@@ -64,7 +66,6 @@ from sampletones_application.view_model.main.reconstructor import (
 from sampletones_application.view_model.main.updates import GenerationSettingsUpdate
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.reconstructions.converter.paths import top_level_audio_files
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
@@ -266,7 +267,7 @@ class MainTabCoordinator:
 
         self._converter_panel.on_convert_requested = self._converter_logic.start_conversion
         self._converter_panel.on_cancel_requested = self._request_cancel_confirmation
-        self._converter_panel.on_stems_mode_changed = self._request_stems_mode
+        self._converter_panel.on_output_changed = self._request_output
         self._converter_panel.on_channel_cap_changed = self._converter_logic.set_channel_cap
         self._converter_panel.on_hierarchy_mode_changed = self._converter_logic.set_hierarchy_mode
         self._converter_panel.on_source_channels_changed = self._converter_logic.set_source_channels
@@ -276,7 +277,8 @@ class MainTabCoordinator:
         self._converter_panel.on_source_isolated = self._converter_logic.isolate_source
         self._converter_panel.on_source_dropped_on_source = self._converter_logic.move_source_onto
         self._converter_panel.on_source_dropped_on_level = self._converter_logic.move_source_to_new_level
-        self._stem_selection_window.on_add = self._converter_logic.add_sources
+        self._converter_panel.on_folder_removed = self._converter_logic.remove_folder
+        self._stem_selection_window.on_add = self._converter_logic.mix_only
 
     def _repaint_explorer_favorites(self, node: FileSystemNode) -> None:
         """Repaints the row whose star was toggled: the explorer mirrors the disk, so a path is one row."""
@@ -291,40 +293,36 @@ class MainTabCoordinator:
 
     def _on_wave_file_clicked(self, filepath: Path) -> None:
         if not self._is_operation_active():
-            self._converter_logic.select_source(filepath)
+            self._converter_logic.gather_recordings([filepath])
 
     def _on_directory_clicked(self, directory_path: Path) -> None:
         if not self._is_operation_active():
-            self._converter_logic.set_input_path(directory_path, convert=False)
+            self._converter_logic.gather_folder(directory_path)
 
     def _request_reconstruct_file(self, filepath: Path) -> None:
         if self._notify_converter_running():
             return
 
-        self._leaving_stems_mode(lambda: self._on_reconstruct_file(filepath))
+        self._replacing_the_setup(lambda: self._on_reconstruct_file(filepath))
 
     def _request_reconstruct_directory(self, directory_path: Path) -> None:
         if self._notify_converter_running():
             return
 
-        self._leaving_stems_mode(lambda: self._on_reconstruct_directory(directory_path))
+        self._replacing_the_setup(lambda: self._on_reconstruct_directory(directory_path))
 
-    def _leaving_stems_mode(self, reconstruct: VoidCallback) -> None:
-        """Runs a conversion the browser asked for, asking first where it would drop a stems list.
+    def _replacing_the_setup(self, reconstruct: VoidCallback) -> None:
+        """Runs a conversion the browser asked for, asking first where it would drop what was gathered.
 
-        A Reconstruct names one file or one folder, which is what a classic conversion converts, so
-        the gathered recordings are what the reader is being asked about. Declining leaves the
-        setup as it stands and starts nothing.
+        A Reconstruct names one file or one folder and converts that alone, so a setup already
+        holding sources is what the reader is being asked about. Declining leaves the setup as it
+        stands and starts nothing.
         """
-        if not self._converter_logic.stems_mode:
+        if not self._converter_logic.gathered_paths:
             reconstruct()
             return
 
-        self._confirm_discarding_stems(lambda: self._reconstruct_without_stems(reconstruct))
-
-    def _reconstruct_without_stems(self, reconstruct: VoidCallback) -> None:
-        self._converter_logic.set_stems_mode(False)
-        reconstruct()
+        self._confirm_discarding_stems(reconstruct)
 
     def _confirm_discarding_stems(self, on_confirm: VoidCallback) -> None:
         self._dialogs.show_confirmation(
@@ -387,17 +385,18 @@ class MainTabCoordinator:
             on_cancel=self._converter_logic.close,
         )
 
-    def _request_stems_mode(self, stems_mode: bool) -> None:
-        """Answers the stems-mode switch, asking first where leaving it would drop recordings.
+    def _request_output(self, output: OutputKind) -> None:
+        """Answers the output switch, asking which recordings to mix where the list overflows one.
 
-        Turning stems mode off keeps the first recording, so a list of several loses the rest;
-        that is what the prompt confirms. Every other switch takes effect straight away.
+        A mix reaches a fixed number of recordings, so a longer list is put to the reader in the
+        window that shows what fits already ticked. Every other switch takes effect straight away.
         """
-        if stems_mode or self._converter_logic.source_count <= 1:
-            self._converter_logic.set_stems_mode(stems_mode)
+        candidates = self._converter_logic.gathered_paths
+        if not output.mixes or len(candidates) <= MAX_STEM_SOURCES:
+            self._converter_logic.set_output(output)
             return
 
-        self._confirm_discarding_stems(lambda: self._converter_logic.set_stems_mode(False))
+        self._stem_selection_window.open(candidates, MAX_STEM_SOURCES)
 
     def _can_add_stems(self) -> bool:
         """The converter is free to gather recordings into a stems conversion."""
@@ -408,29 +407,14 @@ class MainTabCoordinator:
         if self._is_operation_active():
             return
 
-        self._converter_logic.set_stems_mode(True)
-        self._converter_logic.add_sources([filepath])
+        self._converter_logic.gather_recordings([filepath])
 
     def _on_directory_add_requested(self, directory_path: Path) -> None:
-        """Offers a folder's recordings to a stems conversion, asking which ones where they overflow.
-
-        Where the folder holds no more than the list has room for, every recording joins at once.
-        A fuller folder raises the selection window, which shows what fits already ticked.
-        """
+        """Gathers a folder into the setup, standing for the recordings found below it."""
         if self._is_operation_active():
             return
 
-        candidates = top_level_audio_files(directory_path)
-        if not candidates:
-            return
-
-        self._converter_logic.set_stems_mode(True)
-        room = self._converter_logic.room_for_sources
-        if len(candidates) <= room:
-            self._converter_logic.add_sources(candidates)
-            return
-
-        self._stem_selection_window.open(candidates, room)
+        self._converter_logic.gather_folder(directory_path)
 
     def _request_cancel_confirmation(self) -> None:
         self._dialogs.show_confirmation(
@@ -613,8 +597,9 @@ class MainTabCoordinator:
     def refresh_converter_view(self) -> None:
         self._converter_logic.refresh_view()
 
-    def set_input_path(self, path: Path, convert: bool) -> None:
-        self._converter_logic.set_input_path(path, convert=convert)
+    def convert_path(self, path: Path) -> None:
+        """Converts exactly what a Reconstruct named, replacing whatever the reader gathered."""
+        self._converter_logic.convert_path(path)
 
     def save_browser_shape(self) -> None:
         """Writes down the folders the explorer stands open, so a later run reads down to them."""

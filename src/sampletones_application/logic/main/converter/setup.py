@@ -6,62 +6,84 @@ from sampletones_application.logic.main.sources.derive import (
     ConversionSetup,
     derive_conversion_setup,
 )
+from sampletones_application.logic.main.sources.recording import Recording
+from sampletones_application.logic.main.sources.slots import CHANNEL_SLOT
 from sampletones_core.reconstructions.converter import (
+    BatchConversion,
+    BatchEntry,
     ConversionPlan,
-    DirectoryConversion,
     GroupConversion,
 )
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 
 
 def conversion_setup(state: ConverterState) -> ConversionSetup:
-    """The recordings and the stems setup a run converts under, carrying the channel cap.
-
-    A mix is what the gathered levels amount to; a single conversion is one stem over every
-    enabled channel, which is the classic run's shape.
-    """
+    """The recordings and the stems setup a mix converts under, carrying the channel cap."""
     settings = state.settings
-    if settings.stems_mode:
-        return derive_conversion_setup(
-            state.gathering.sources,
-            state.gathering.levels,
-            settings.enabled_channels,
-            channel_cap=settings.effective_channel_cap,
-            hierarchy_mode=settings.hierarchy_mode,
-        )
-
-    joining = settings.joining
-    return ConversionSetup(
-        sources=(),
-        stems=StemsConfig.single_entry(
-            joining.channels,
-            joining.bends,
-            channel_cap=settings.effective_channel_cap,
-        ),
+    return derive_conversion_setup(
+        state.gathering.sources,
+        state.gathering.levels,
+        settings.enabled_channels,
+        channel_cap=settings.effective_channel_cap,
+        hierarchy_mode=settings.hierarchy_mode,
     )
 
 
 def playing_sources(state: ConverterState) -> Tuple[Path, ...]:
-    """The recordings that take part, in the order the conversion mixes them."""
-    return conversion_setup(state).sources
+    """The recordings that take part, in the order the run reaches them."""
+    if state.settings.mixes:
+        return conversion_setup(state).sources
+
+    return tuple(entry.source for entry in batch_entries(state))
+
+
+def batch_entries(state: ConverterState) -> Tuple[BatchEntry, ...]:
+    """One entry per gathered recording still holding a channel the run hands out.
+
+    Each carries a setup of its own, so what a reader settled on a row is what that recording's
+    reconstruction records. The folder a recording was gathered from decides where it is written,
+    which is what makes a run over a folder mirror that folder's tree.
+    """
+    settings = state.settings
+    gathering = state.gathering
+    entries = []
+    for recording in gathering.sources.recordings:
+        narrowed = _narrowed(recording, state)
+        if not narrowed.settings.channels:
+            continue
+
+        entries.append(
+            BatchEntry(
+                source=narrowed.path,
+                stems=StemsConfig.single_entry(
+                    narrowed.settings.channels,
+                    narrowed.settings.bends,
+                    channel_cap=settings.effective_channel_cap,
+                ),
+                base_directory=gathering.folder_root_of(narrowed.path),
+            )
+        )
+
+    return tuple(entries)
 
 
 def conversion_plan(state: ConverterState) -> Optional[ConversionPlan]:
-    """What a request amounts to: one reconstruction from the recordings gathered or the file
-    picked, or one per audio file the picked directory holds.
+    """What a request amounts to: one reconstruction from the recordings gathered, or one apiece.
 
-    A mix converts the recordings gathered for it, so it names a plan whichever path the reader
-    picked. A single conversion needs one, and a converter aimed at nothing has nothing to run.
+    A run with nobody taking part names no plan, which is what a converter aimed at nothing is.
     """
-    setup = conversion_setup(state)
-    if state.settings.stems_mode:
-        return GroupConversion(sources=setup.sources, stems=setup.stems)
+    if state.settings.mixes:
+        setup = conversion_setup(state)
+        return GroupConversion(sources=setup.sources, stems=setup.stems) if setup.sources else None
 
-    input_path = state.destination.input_path
-    if input_path is None:
-        return None
+    entries = batch_entries(state)
+    return BatchConversion(entries=entries) if entries else None
 
-    if state.destination.is_file:
-        return GroupConversion(sources=(input_path,), stems=setup.stems)
 
-    return DirectoryConversion(directory=input_path, stems=setup.stems)
+def _narrowed(recording: Recording, state: ConverterState) -> Recording:
+    """The recording as the run hands channels out to it."""
+    settings = CHANNEL_SLOT.write(
+        recording.settings,
+        recording.settings.channel_set & state.settings.enabled_channels,
+    )
+    return recording.with_settings(settings)

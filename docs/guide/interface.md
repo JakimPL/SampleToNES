@@ -25,42 +25,50 @@ the new reconstruction on the **Reconstructions** tab — after a folder run the
 button reads **Open** instead. **Cancel** stops a run, and only one runs at a
 time.
 
-Converting one file or one stems mix always writes to the same filename. If a
+Converting to one reconstruction always writes to the same filename. If a
 reconstruction of that name is already there, the app asks first; click
-**Convert anyway** to replace it. Converting a folder starts straight away: it
-converts the recordings that still need a reconstruction and leaves the ones
-already made, so you can rerun it to carry on where you stopped.
+**Convert anyway** to replace it. A folder starts straight away: it converts the
+recordings that still need a reconstruction and leaves the ones already made, so
+you can rerun it to carry on where you stopped.
 
-### Stems mode
+### What to convert
 
-**Stems mode** turns the card into a list of recordings to mix into one
-reconstruction. Tick it, then click each recording in the browser. You can also
-start from a classic conversion in one step: right-click a recording and choose
-**Add as stem**, or Ctrl-click it. Ctrl-clicking a folder offers everything
-inside it, as **Add folder as stems** does; if the folder holds more recordings
-than the list has room for, you pick which ones.
+The card holds a list of what a run converts. Click a recording in the browser to
+add it; right-click and choose **Add as stem**, or Ctrl-click, to do the same.
+Ctrl-click a folder — or use **Add folder as stems** — and the folder joins as
+one row standing for the recordings inside it.
 
 Each row shows one recording and a checkbox per channel it may use. Untick them
 all and the row grays out: that recording sits out of the conversion, and stays
-in the list so you can bring it back.
+in the list so you can bring it back. **x** takes a row out; taking out a folder
+takes everything it holds.
 
-Rows sit in **level** bands. A level is a turn to choose: every recording on
-level 1 picks its channels before any on level 2, so a lead can take what it
-needs before a pad does. Drag a row onto another row to join that row's level,
-or into the gap between two levels to give it a level of its own. Right-clicking a
-row lists the same moves as menu items, alongside the recording's own actions —
-copy its name or path, or show the file in your file manager.
+### One reconstruction each, or one from them all
 
-**Order** sets how the levels take turns: round by round, or one level filled
-before the next picks. **x** takes a row out. Untick **Stems mode** and the
-first recording stays as your single selection.
+**Mix into one** names what the run writes. Left clear, every recording in the
+list gets a reconstruction of its own, and the ones a folder holds are written
+into a tree mirroring that folder. Tick it and they mix into a single
+reconstruction instead.
+
+A mix reaches eight recordings, so ticking it with a longer list asks which ones
+to mix. The folders give up the recordings they stood for, and what you pick is
+what the mix converts.
+
+While mixing, rows sit in **level** bands. A level is a turn to choose: every
+recording on level 1 picks its channels before any on level 2, so a lead can take
+what it needs before a pad does. Drag a row onto another row to join that row's
+level, or into the gap between two levels to give it a level of its own.
+Right-clicking a row lists the same moves as menu items, alongside the
+recording's own actions — copy its name or path, or show the file in your file
+manager. **Order** sets how the levels take turns: round by round, or one level
+filled before the next picks.
 
 **Channels per source** caps how many channels one recording may hold in a
-single frame, and it applies to every conversion — one file, a whole folder, or
-a stems mix. Set to 1, each recording gets a single voice.
+single frame, and it applies to every conversion. Set to 1, each recording gets a
+single voice.
 
-Reconstructing a file or a folder from the browser converts that one thing, so
-while you are gathering stems it asks before dropping the list.
+Reconstructing a file or a folder from the browser converts that one thing, so it
+asks first where you have already gathered a list.
 
 ### Settings
 

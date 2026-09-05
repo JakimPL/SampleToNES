@@ -71,7 +71,7 @@ class TestActionLabel:
     def test_a_file_names_the_recording_it_would_convert(self) -> None:
         label = messages().action_label(
             phase=ConversionPhase.IDLE,
-            stems_mode=False,
+            mixes=False,
             is_file=True,
             input_path=Path("/audio/kick.wav"),
             playing=0,
@@ -82,7 +82,7 @@ class TestActionLabel:
     def test_a_directory_uses_the_directory_variant(self) -> None:
         label = messages().action_label(
             phase=ConversionPhase.IDLE,
-            stems_mode=False,
+            mixes=False,
             is_file=False,
             input_path=Path("/audio/drums"),
             playing=0,
@@ -93,7 +93,7 @@ class TestActionLabel:
     def test_nothing_picked_reads_the_bare_convert_label(self) -> None:
         label = messages().action_label(
             phase=ConversionPhase.IDLE,
-            stems_mode=False,
+            mixes=False,
             is_file=True,
             input_path=None,
             playing=0,
@@ -104,7 +104,7 @@ class TestActionLabel:
     def test_a_mix_names_how_many_recordings_take_part(self) -> None:
         label = messages().action_label(
             phase=ConversionPhase.IDLE,
-            stems_mode=True,
+            mixes=True,
             is_file=True,
             input_path=Path("/audio/kick.wav"),
             playing=3,
@@ -115,7 +115,7 @@ class TestActionLabel:
     def test_a_mix_with_nobody_taking_part_reads_the_bare_label(self) -> None:
         label = messages().action_label(
             phase=ConversionPhase.IDLE,
-            stems_mode=True,
+            mixes=True,
             is_file=True,
             input_path=None,
             playing=0,
@@ -130,7 +130,7 @@ class TestActionLabel:
     def test_a_conversion_holding_resources_reads_the_cancel_label(self, phase: ConversionPhase) -> None:
         label = messages().action_label(
             phase=phase,
-            stems_mode=False,
+            mixes=False,
             is_file=True,
             input_path=Path("/audio/kick.wav"),
             playing=0,

@@ -7,6 +7,7 @@ from sampletones_application.categories.elements.main import ConverterStemMoveEl
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.conversion import MIN_CHANNEL_CAP
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.general.stems import StemsListLayout
@@ -111,7 +112,8 @@ class GUIConverterPanel(GUIPanel):
 
         self.on_convert_requested: Optional[VoidCallback] = None
         self.on_cancel_requested: Optional[VoidCallback] = None
-        self.on_stems_mode_changed: Optional[Callable[[bool], None]] = None
+        self.on_output_changed: Optional[Callable[[OutputKind], None]] = None
+        self.on_folder_removed: Optional[Callable[[Path], None]] = None
         self.on_channel_cap_changed: Optional[Callable[[int], None]] = None
         self.on_hierarchy_mode_changed: Optional[Callable[[HierarchyMode], None]] = None
         self.on_source_channels_changed: Optional[Callable[[Path, FrozenSet[ChannelName]], None]] = None
@@ -297,7 +299,7 @@ class GUIConverterPanel(GUIPanel):
         self._stems_list.on_dropped_on_level = self._on_dropped_on_level
 
     def _update_setup(self, view_model: ConverterViewModel) -> None:
-        dpg_set_value(TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE, view_model.stems_mode)
+        dpg_set_value(TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE, view_model.mixes)
         dpg_configure_item(
             TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP,
             max_value=view_model.max_channel_cap,
@@ -308,18 +310,19 @@ class GUIConverterPanel(GUIPanel):
             TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
             self._hierarchy_labels[view_model.hierarchy_mode],
         )
-        dpg_configure_item(TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE, show=view_model.stems_mode)
-        set_tooltip_visible(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE, view_model.stems_mode)
+        dpg_configure_item(TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE, show=view_model.mixes)
+        set_tooltip_visible(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE, view_model.mixes)
         dpg_configure_item(TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE, enabled=not view_model.is_active)
         self._update_stems_list(view_model)
 
     def _update_stems_list(self, view_model: ConverterViewModel) -> None:
-        dpg_configure_item(TAG_MAIN_CONVERTER_WINDOW_STEMS, show=view_model.stems_mode)
+        dpg_configure_item(TAG_MAIN_CONVERTER_WINDOW_STEMS, show=True)
         dpg_configure_item(TAG_MAIN_CONVERTER_TEXT_STEMS_HINT, show=view_model.source_count == 0)
         self._stems_list.update_view(view_model.stems_list)
 
     def _on_stems_mode_toggled(self, _sender: Sender, value: bool) -> None:
-        self.call(self.on_stems_mode_changed, value)
+        """The switch names what the run writes, which the box states as a mix or not."""
+        self.call(self.on_output_changed, OutputKind.MIXED if value else OutputKind.PER_RECORDING)
 
     def _on_channel_cap_edited(self, _sender: Sender, _app_data: Any) -> None:
         self.call(self.on_channel_cap_changed, int(clamp_widget_value(TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP)))

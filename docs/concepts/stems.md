@@ -134,8 +134,11 @@ single-sample pipeline always did.
 A request becomes jobs through `reconstructions.converter`: a `ConversionPlan`
 answers with the `ConversionJob`s it divides into, resolved against the
 configuration the run uses. `GroupConversion` mixes the recordings it is given
-into one job, and `DirectoryConversion` scans a folder into one single-source job
-per audio file. `ReconstructionConverter` runs those jobs across its worker pool
+into one job; `BatchConversion` gives each gathered recording a job of its own,
+carrying the setup that recording's own row holds and the folder whose tree its
+reconstruction mirrors; and `DirectoryConversion` scans a folder into one
+single-source job per audio file, which is what the command line converts a
+directory as. `ReconstructionConverter` runs those jobs across its worker pool
 and reports the reconstructions written.
 
 `StemsConfig` (`reconstructor/stems/configs/`) is the setup: the entries, the

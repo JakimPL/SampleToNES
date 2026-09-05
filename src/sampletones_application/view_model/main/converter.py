@@ -4,6 +4,7 @@ from typing import Final, FrozenSet, Optional, Tuple
 
 from pydantic import BaseModel
 
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.view_model.shared.percent import format_percent
 from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
@@ -59,13 +60,18 @@ class ConverterViewModel(BaseModel, frozen=True):
     output_path: Optional[Path]
     is_file: bool
     other_operation_active: bool
-    stems_mode: bool
+    output: OutputKind
     stem_sources: Tuple[StemRowViewModel, ...]
     enabled_channels: FrozenSet[ChannelName]
     channel_cap: int
     max_channel_cap: int
     hierarchy_mode: HierarchyMode
     max_sources: int
+
+    @property
+    def mixes(self) -> bool:
+        """Several recordings are being gathered into one reconstruction."""
+        return self.output.mixes
 
     @property
     def progress_overlay(self) -> str:
@@ -82,11 +88,8 @@ class ConverterViewModel(BaseModel, frozen=True):
 
     @property
     def has_input(self) -> bool:
-        """Something is there to convert: a listed recording holding a channel, or a selected path."""
-        if self.stems_mode:
-            return any(row.takes_part for row in self.stem_sources)
-
-        return self.input_path is not None
+        """Something is there to convert: a gathered recording holding a channel the run enables."""
+        return any(row.takes_part for row in self.stem_sources)
 
     @property
     def source_count(self) -> int:
@@ -109,7 +112,7 @@ class ConverterViewModel(BaseModel, frozen=True):
             channels_in_play=self.channels_in_play,
             muted_channels=frozenset(),
             live=not self.is_active,
-            collapse_levels=False,
+            collapse_levels=not self.mixes,
         )
 
     @property
@@ -124,8 +127,8 @@ class ConverterViewModel(BaseModel, frozen=True):
 
     @property
     def can_add_source(self) -> bool:
-        """The list has room for another recording."""
-        return self.source_count < self.max_sources
+        """Another recording would reach the run, which a full mix answers no to."""
+        return not self.mixes or self.source_count < self.max_sources
 
     @property
     def convert_button_enabled(self) -> bool:

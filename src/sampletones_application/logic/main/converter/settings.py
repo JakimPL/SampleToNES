@@ -2,6 +2,7 @@ from dataclasses import dataclass, replace
 from typing import FrozenSet, Self
 
 from sampletones_application.constants.conversion import MIN_CHANNEL_CAP
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.logic.main.sources.slots import CHANNEL_SLOT
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
@@ -14,12 +15,12 @@ class RunSettings:
     ``joining`` is what a recording is given when it joins the setup, and a run hands out the
     channels it names: every gathered recording is narrowed to them, so this one value settles
     both what a new row starts from and what the whole run reaches. The rest name the shape of the
-    run itself — whether several recordings are being mixed into one reconstruction, how many
-    channels one recording may hold in a frame, and how the levels take turns.
+    run itself — what it writes, how many channels one recording may hold in a frame, and how the
+    levels take turns.
     """
 
     joining: StemSettings
-    stems_mode: bool
+    output: OutputKind
     channel_cap: int
     hierarchy_mode: HierarchyMode
 
@@ -46,9 +47,14 @@ class RunSettings:
         """
         return replace(self, joining=CHANNEL_SLOT.write(self.joining, channels))
 
-    def with_stems_mode(self, stems_mode: bool) -> Self:
-        """The run named as a mix of several recordings, or as one conversion."""
-        return replace(self, stems_mode=stems_mode)
+    @property
+    def mixes(self) -> bool:
+        """Several recordings are being gathered into one reconstruction."""
+        return self.output.mixes
+
+    def with_output(self, output: OutputKind) -> Self:
+        """The run writing one reconstruction per gathered recording, or one from them all."""
+        return replace(self, output=output)
 
     def with_channel_cap(self, channel_cap: int) -> Self:
         """The cap the reader asked for, held between one channel and the channels enabled."""

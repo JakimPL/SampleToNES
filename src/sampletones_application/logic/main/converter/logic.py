@@ -1,9 +1,11 @@
 from pathlib import Path
-from typing import Callable, FrozenSet, Optional, Sequence
+from typing import Callable, FrozenSet, Optional, Sequence, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.constants.conversion import MAX_STEM_SOURCES
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.main.converter.destination import Destination
 from sampletones_application.logic.main.converter.gathering import Gathering
@@ -16,11 +18,14 @@ from sampletones_application.logic.main.converter.run import (
 )
 from sampletones_application.logic.main.converter.settings import RunSettings
 from sampletones_application.logic.main.converter.setup import (
+    batch_entries,
     conversion_plan,
     playing_sources,
 )
 from sampletones_application.logic.main.converter.state import ConverterState
 from sampletones_application.logic.main.converter.view import compose_view
+from sampletones_application.logic.main.sources.folder import Folder
+from sampletones_application.logic.main.sources.key import SourceKey
 from sampletones_application.logic.main.sources.levels import MixLevels
 from sampletones_application.logic.main.sources.recording import Recording
 from sampletones_application.logic.main.sources.slots import CHANNEL_SLOT
@@ -33,6 +38,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions.converter import ConversionPlan
+from sampletones_core.reconstructions.converter.paths import top_level_audio_files
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
@@ -67,7 +73,7 @@ class ConverterLogic(CallbackMixin):
         self._state = ConverterState(
             settings=RunSettings(
                 joining=session_manager.converter_settings,
-                stems_mode=False,
+                output=OutputKind.PER_RECORDING,
                 channel_cap=len(ChannelName),
                 hierarchy_mode=DEFAULT_STEMS_HIERARCHY_MODE,
             ),
@@ -95,9 +101,9 @@ class ConverterLogic(CallbackMixin):
         self.is_library_available: Optional[Callable[[], bool]] = None
 
     @property
-    def stems_mode(self) -> bool:
+    def mixes(self) -> bool:
         """Several recordings are being gathered into one reconstruction."""
-        return self._state.settings.stems_mode
+        return self._settings.mixes
 
     @property
     def source_count(self) -> int:
@@ -106,8 +112,13 @@ class ConverterLogic(CallbackMixin):
 
     @property
     def room_for_sources(self) -> int:
-        """How many more recordings the stems list has room for."""
+        """How many more recordings the mix has room for."""
         return self._state.gathering.room
+
+    @property
+    def gathered_paths(self) -> Tuple[Path, ...]:
+        """Every gathered recording, which is what a reader picking a mix is offered."""
+        return self._state.gathering.paths
 
     @property
     def is_active(self) -> bool:
@@ -124,45 +135,61 @@ class ConverterLogic(CallbackMixin):
         if self._run.phase == ConversionPhase.IDLE:
             self._emit(self._messages.idle, 0.0)
 
-    def set_input_path(self, input_path: Path, convert: bool = False) -> None:
-        destination = self._aimed_at(self._state, input_path)
-        if destination is None:
-            return
+    def gather_recordings(self, paths: Sequence[Path]) -> None:
+        """Gathers recordings into the setup, each converted under what a recording joins with.
 
-        self._state = self._state.with_destination(destination)
-        if not self.is_active:
-            self._run.return_to_idle()
-            self._emit(self._messages.idle, 0.0)
-
-        if convert:
-            self.start_conversion()
-
-    def select_source(self, path: Path) -> None:
-        """Answers a recording picked in the explorer: it joins the list, or becomes the input.
-
-        In stems mode a pick adds to the setup being built, so a reader gathers a conversion by
-        clicking the recordings it mixes. Otherwise it is the single thing to convert.
-        """
-        if self.stems_mode:
-            self.add_sources([path])
-            return
-
-        self.set_input_path(path)
-
-    def add_sources(self, paths: Sequence[Path]) -> None:
-        """Adds recordings to the stems list, up to the room it has left.
-
-        A path already listed keeps the row it has, so adding it again leaves the setup as it is.
+        A path already gathered keeps the row and the settings it has. A mix reaches a fixed
+        number of recordings, so a full one takes no more; a per-recording run takes whatever is
+        offered, which is what converting a whole folder amounts to.
         """
         gathering = self._state.gathering
         for path in paths:
-            gathering = gathering.add(self._gathered(path))
+            gathering = self._joined(gathering, self._gathered(path))
 
         self._settle(self._state.with_gathering(gathering))
 
+    def gather_folder(self, root: Path) -> None:
+        """Gathers a folder, standing for every recording found directly below it.
+
+        A run writing one reconstruction per recording mirrors this folder's tree for what it
+        holds; a mix takes the recordings loose, which is what flattening leaves.
+        """
+        recordings = [self._gathered(path) for path in top_level_audio_files(root)]
+        if not recordings:
+            return
+
+        if self.mixes:
+            self.gather_recordings([recording.path for recording in recordings])
+            return
+
+        folder = Folder(root=root, recordings=tuple(recordings))
+        self._settle(self._state.with_gathering(self._state.gathering.listing_folder(folder)))
+
+    def convert_path(self, path: Path) -> None:
+        """Converts exactly what the reader named, which is what a Reconstruct asks for.
+
+        The setup becomes that one source — a recording, or a folder standing for the recordings
+        below it — and the run starts, writing one reconstruction apiece.
+        """
+        self._settle(
+            self._state.with_settings(self._settings.with_output(OutputKind.PER_RECORDING)).with_gathering(
+                Gathering.empty()
+            )
+        )
+        if path.is_dir():
+            self.gather_folder(path)
+        else:
+            self.gather_recordings([path])
+
+        self.start_conversion()
+
     def remove_source(self, path: Path) -> None:
-        """Takes a recording out of the stems list."""
-        self._settle(self._state.with_gathering(self._state.gathering.remove(path)))
+        """Takes one gathered recording out of the setup."""
+        self._settle(self._state.with_gathering(self._state.gathering.remove(SourceKey.recording(path))))
+
+    def remove_folder(self, root: Path) -> None:
+        """Takes a folder out of the setup, along with every recording it stands for."""
+        self._settle(self._state.with_gathering(self._state.gathering.remove(SourceKey.folder(root))))
 
     def set_source_channels(self, path: Path, channels: FrozenSet[ChannelName]) -> None:
         """Names the channels one recording may take, among the ones the reader was offered."""
@@ -194,17 +221,24 @@ class ConverterLogic(CallbackMixin):
         """Gives a recording a level of its own, in the slot the levels are broken at."""
         self._relevel(self._state.gathering.levels.move_to_new_level(path, position))
 
-    def set_stems_mode(self, stems_mode: bool) -> None:
-        """Switches between converting one selection and mixing several recordings into one.
+    def set_output(self, output: OutputKind) -> None:
+        """Names what the run writes: one reconstruction per recording, or one from them all.
 
-        Entering stems mode carries a selected file in as the first row. Leaving it keeps the
-        first row as the single selection, which is what the reader picked first.
+        A mix converts loose recordings and holds a fixed number of them, so turning to one
+        flattens the folders standing in the list and keeps what fits. Turning away leaves the
+        list as it is and lets the picking order go.
         """
-        if stems_mode == self.stems_mode:
+        if output == self._settings.output:
             return
 
-        state = self._state.with_settings(self._settings.with_stems_mode(stems_mode))
-        self._settle(self._entered(state) if stems_mode else self._left(state))
+        gathering = self._state.gathering
+        settled = gathering.mixing_only(gathering.paths[:MAX_STEM_SOURCES]) if output.mixes else gathering.unmixed()
+        self._settle(self._state.with_settings(self._settings.with_output(output)).with_gathering(settled))
+
+    def mix_only(self, paths: Sequence[Path]) -> None:
+        """Names the recordings a mix converts, which is what a reader answers a full mix with."""
+        gathering = self._state.gathering.mixing_only(tuple(paths)[:MAX_STEM_SOURCES])
+        self._settle(self._state.with_settings(self._settings.with_output(OutputKind.MIXED)).with_gathering(gathering))
 
     def set_joining_channels(self, channels: FrozenSet[ChannelName]) -> None:
         """Names the channels a recording holds when it joins the list, carried between runs.
@@ -286,45 +320,24 @@ class ConverterLogic(CallbackMixin):
         """A recording joining the list, holding the settings a recording joins with."""
         return Recording(path=path, settings=self._joining_settings)
 
+    def _joined(self, gathering: Gathering, recording: Recording) -> Gathering:
+        """One more recording in the setup, joining the mix where the run is one."""
+        return gathering.mixing(recording) if self.mixes else gathering.listing(recording)
+
     @property
     def _joining_settings(self) -> StemSettings:
         """What a recording is converted with when it joins the list, as the reader last left it."""
         return self._settings.joining
 
-    def _aimed_at(self, state: ConverterState, input_path: Path) -> Optional[Destination]:
-        """Where a newly picked path would write, or nothing where the path cannot be read."""
-        config = self._config_manager.config.model_copy()
-        try:
-            return state.destination.aimed_at(config, input_path, state.settings.enabled_channels)
-        except FileNotFoundError as exception:
-            logger.error("Input file does not exist")
-            self.call(self.on_error, exception)
-        except OSError as exception:
-            logger.error("Invalid path")
-            self.call(self.on_error, exception)
-
-        return None
-
-    def _entered(self, state: ConverterState) -> ConverterState:
-        """The setup a mix opens with: the file the reader picked, where they picked one."""
-        destination = state.destination
-        if state.gathering.count or destination.input_path is None or not destination.is_file:
-            return state
-
-        return state.with_gathering(state.gathering.add(self._gathered(destination.input_path)))
-
-    def _left(self, state: ConverterState) -> ConverterState:
-        """The setup a mix leaves behind: the recording that picked first, as the single input."""
-        if not state.gathering.count:
-            return state
-
-        gathering = state.gathering.kept_first()
-        destination = self._aimed_at(state, gathering.paths[0])
-        state = state.with_gathering(gathering)
-        return state if destination is None else state.with_destination(destination)
-
     def _relevel(self, levels: MixLevels) -> None:
-        """Takes up rewritten levels and follows them wherever the setup changed."""
+        """Takes up rewritten levels and follows them wherever the setup changed.
+
+        The levels are the mix's own order, so a run writing one reconstruction apiece has none to
+        rewrite and a gesture reaching it changes nothing.
+        """
+        if not self.mixes:
+            return
+
         self._settle(self._state.with_gathering(self._state.gathering.with_levels(levels)))
 
     def _settle(self, state: ConverterState) -> None:
@@ -340,16 +353,14 @@ class ConverterLogic(CallbackMixin):
             self._emit(self._messages.idle, 0.0)
 
     def _redirected(self, state: ConverterState) -> ConverterState:
-        if not state.settings.stems_mode:
-            return state
+        """The setup with its destination following the sources that take part in it."""
+        config = self._config_manager.config
+        channels = state.settings.enabled_channels
+        destination = state.destination.named_after(state.gathering.sources)
+        if state.settings.mixes:
+            return state.with_destination(destination.aimed_at_mix(config, playing_sources(state), channels))
 
-        return state.with_destination(
-            state.destination.aimed_at_mix(
-                self._config_manager.config,
-                playing_sources(state),
-                state.settings.enabled_channels,
-            )
-        )
+        return state.with_destination(destination.aimed_at_batch(config, batch_entries(state), channels))
 
     def _standing_target(self, plan: ConversionPlan) -> Optional[Path]:
         """The reconstruction ``plan`` would write over, where one stands.
@@ -432,7 +443,7 @@ class ConverterLogic(CallbackMixin):
         input_path = running_input if running_input is not None else destination.input_path
         return self._messages.action_label(
             phase=self._run.phase,
-            stems_mode=self.stems_mode,
+            mixes=self.mixes,
             is_file=destination.is_file,
             input_path=input_path,
             playing=len(playing_sources(self._state)),

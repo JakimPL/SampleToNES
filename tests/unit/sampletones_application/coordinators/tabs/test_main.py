@@ -1,10 +1,11 @@
 from pathlib import Path
-from typing import Final
+from typing import Final, Tuple
 from unittest.mock import MagicMock
 
 import pytest
 
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.tags.main import (
@@ -35,7 +36,8 @@ def _coordinator(*, operation_active: bool) -> MainTabCoordinator:
     coordinator._on_reconstruct_file = MagicMock()
     coordinator._on_reconstruct_directory = MagicMock()
     coordinator._converter_logic = MagicMock()
-    coordinator._converter_logic.stems_mode = False
+    coordinator._converter_logic.mixes = False
+    coordinator._converter_logic.gathered_paths = ()
     return coordinator
 
 
@@ -172,8 +174,8 @@ KEEP_STEMS_BUTTON_KEY: Final[str] = "main.converter.label.keep_stems_button"
 def _stems_coordinator(
     *,
     operation_active: bool = False,
-    stems_mode: bool = True,
-    source_count: int = 0,
+    mixes: bool = True,
+    gathered: Tuple[Path, ...] = (),
     room: int = MAX_STEM_SOURCES,
 ) -> MainTabCoordinator:
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
@@ -182,120 +184,74 @@ def _stems_coordinator(
     coordinator._dialogs = MagicMock()
     coordinator._language_manager = FakeLanguageManager()
     coordinator._converter_logic = MagicMock()
-    coordinator._converter_logic.stems_mode = stems_mode
-    coordinator._converter_logic.source_count = source_count
+    coordinator._converter_logic.mixes = mixes
+    coordinator._converter_logic.gathered_paths = gathered
+    coordinator._converter_logic.source_count = len(gathered)
     coordinator._converter_logic.room_for_sources = room
     coordinator._stem_selection_window = MagicMock()
     return coordinator
 
 
-class TestStemsModeSwitch:
-    """Leaving stems mode drops every recording but the first, so a list of several asks first."""
+class TestOutputSwitch:
+    """A mix reaches a fixed number of recordings, so a longer list is put to the reader first."""
 
-    def test_entering_stems_mode_takes_effect_at_once(self) -> None:
-        coordinator = _stems_coordinator(stems_mode=False)
+    def test_turning_to_a_mix_takes_effect_at_once(self) -> None:
+        coordinator = _stems_coordinator(mixes=False)
 
-        coordinator._request_stems_mode(True)
+        coordinator._request_output(OutputKind.MIXED)
 
-        coordinator._converter_logic.set_stems_mode.assert_called_once_with(True)
+        coordinator._converter_logic.set_output.assert_called_once_with(OutputKind.MIXED)
         coordinator._dialogs.show_confirmation.assert_not_called()
 
-    def test_leaving_with_one_recording_takes_effect_at_once(self) -> None:
-        coordinator = _stems_coordinator(source_count=1)
+    def test_turning_away_from_a_mix_takes_effect_at_once(self) -> None:
+        coordinator = _stems_coordinator(gathered=tuple(Path(f"/audio/{index}.wav") for index in range(20)))
 
-        coordinator._request_stems_mode(False)
+        coordinator._request_output(OutputKind.PER_RECORDING)
 
-        coordinator._converter_logic.set_stems_mode.assert_called_once_with(False)
+        coordinator._converter_logic.set_output.assert_called_once_with(OutputKind.PER_RECORDING)
         coordinator._dialogs.show_confirmation.assert_not_called()
 
-    def test_leaving_with_several_recordings_asks_first(self) -> None:
-        coordinator = _stems_coordinator(source_count=3)
+    def test_a_list_longer_than_a_mix_holds_asks_which_to_mix(self) -> None:
+        gathered = tuple(Path(f"/audio/{index}.wav") for index in range(MAX_STEM_SOURCES + 2))
+        coordinator = _stems_coordinator(mixes=False, gathered=gathered)
 
-        coordinator._request_stems_mode(False)
+        coordinator._request_output(OutputKind.MIXED)
 
-        coordinator._converter_logic.set_stems_mode.assert_not_called()
-        args, kwargs = coordinator._dialogs.show_confirmation.call_args
-        assert args[1] == DISCARD_STEMS_PROMPT_KEY
-        assert kwargs["ok_label"] == DISCARD_STEMS_BUTTON_KEY
-        assert kwargs["cancel_label"] == KEEP_STEMS_BUTTON_KEY
+        coordinator._converter_logic.set_output.assert_not_called()
+        candidates, room = coordinator._stem_selection_window.open.call_args.args
+        assert candidates == gathered
+        assert room == MAX_STEM_SOURCES
 
-    def test_confirming_the_prompt_leaves_stems_mode(self) -> None:
-        coordinator = _stems_coordinator(source_count=3)
+    def test_a_list_a_mix_holds_takes_effect_at_once(self) -> None:
+        gathered = tuple(Path(f"/audio/{index}.wav") for index in range(MAX_STEM_SOURCES))
+        coordinator = _stems_coordinator(mixes=False, gathered=gathered)
 
-        coordinator._request_stems_mode(False)
-        args, _ = coordinator._dialogs.show_confirmation.call_args
-        args[3]()
+        coordinator._request_output(OutputKind.MIXED)
 
-        coordinator._converter_logic.set_stems_mode.assert_called_once_with(False)
-
-    def test_declining_the_prompt_repaints_the_checkbox(self) -> None:
-        """The checkbox already moved when it was clicked, so declining restores what stands."""
-        coordinator = _stems_coordinator(source_count=3)
-
-        coordinator._request_stems_mode(False)
-        _, kwargs = coordinator._dialogs.show_confirmation.call_args
-        kwargs["on_cancel"]()
-
-        coordinator._converter_logic.set_stems_mode.assert_not_called()
-        coordinator._converter_logic.refresh_view.assert_called_once_with()
+        coordinator._converter_logic.set_output.assert_called_once_with(OutputKind.MIXED)
+        coordinator._stem_selection_window.open.assert_not_called()
 
 
 class TestDirectoryAdd:
-    """Ctrl-clicking a folder offers its recordings; a folder that overflows the list asks which."""
+    """Ctrl-clicking a folder gathers it, standing for the recordings found below it."""
 
-    def test_a_folder_that_fits_is_added_whole(self, tmp_path: Path) -> None:
-        (tmp_path / "a.wav").touch()
-        (tmp_path / "b.wav").touch()
-        coordinator = _stems_coordinator(room=MAX_STEM_SOURCES)
-
-        coordinator._on_directory_add_requested(tmp_path)
-
-        added = coordinator._converter_logic.add_sources.call_args.args[0]
-        assert {path.name for path in added} == {"a.wav", "b.wav"}
-        coordinator._stem_selection_window.open.assert_not_called()
-
-    def test_a_folder_that_overflows_raises_the_selection(self, tmp_path: Path) -> None:
-        for index in range(3):
-            (tmp_path / f"{index}.wav").touch()
-        coordinator = _stems_coordinator(room=2)
-
-        coordinator._on_directory_add_requested(tmp_path)
-
-        coordinator._converter_logic.add_sources.assert_not_called()
-        candidates, room = coordinator._stem_selection_window.open.call_args.args
-        assert len(candidates) == 3
-        assert room == 2
-
-    def test_a_folder_holding_no_recordings_is_left_alone(self, tmp_path: Path) -> None:
-        (tmp_path / "notes.txt").write_text("not audio")
+    def test_a_folder_joins_the_setup(self, tmp_path: Path) -> None:
         coordinator = _stems_coordinator()
 
         coordinator._on_directory_add_requested(tmp_path)
 
-        coordinator._converter_logic.add_sources.assert_not_called()
-        coordinator._stem_selection_window.open.assert_not_called()
-
-    def test_a_classic_conversion_starts_gathering(self, tmp_path: Path) -> None:
-        """The gesture is what starts a stems conversion, so it turns the mode on to answer."""
-        (tmp_path / "a.wav").touch()
-        coordinator = _stems_coordinator(stems_mode=False)
-
-        coordinator._on_directory_add_requested(tmp_path)
-
-        coordinator._converter_logic.set_stems_mode.assert_called_once_with(True)
-        assert coordinator._converter_logic.add_sources.call_args.args[0][0].name == "a.wav"
+        coordinator._converter_logic.gather_folder.assert_called_once_with(tmp_path)
 
     def test_a_busy_application_ignores_the_gesture(self, tmp_path: Path) -> None:
-        (tmp_path / "a.wav").touch()
         coordinator = _stems_coordinator(operation_active=True)
 
         coordinator._on_directory_add_requested(tmp_path)
 
-        coordinator._converter_logic.add_sources.assert_not_called()
+        coordinator._converter_logic.gather_folder.assert_not_called()
 
 
 class TestFileAdd:
-    """A recording added from the browser's menu joins a stems list, opening one where none stands."""
+    """A recording added from the browser's menu joins the setup, whichever run it names."""
 
     def test_a_recording_joins_the_list(self, tmp_path: Path) -> None:
         recording = tmp_path / "bass.wav"
@@ -304,23 +260,14 @@ class TestFileAdd:
 
         coordinator._on_file_add_requested(recording)
 
-        coordinator._converter_logic.add_sources.assert_called_once_with([recording])
-
-    def test_adding_from_a_classic_conversion_turns_stems_mode_on(self, tmp_path: Path) -> None:
-        recording = tmp_path / "bass.wav"
-        recording.touch()
-        coordinator = _stems_coordinator(stems_mode=False)
-
-        coordinator._on_file_add_requested(recording)
-
-        coordinator._converter_logic.set_stems_mode.assert_called_once_with(True)
+        coordinator._converter_logic.gather_recordings.assert_called_once_with([recording])
 
     def test_a_busy_application_ignores_the_gesture(self, tmp_path: Path) -> None:
         coordinator = _stems_coordinator(operation_active=True)
 
         coordinator._on_file_add_requested(tmp_path / "bass.wav")
 
-        coordinator._converter_logic.add_sources.assert_not_called()
+        coordinator._converter_logic.gather_recordings.assert_not_called()
 
 
 class TestModifierAddAvailability:
@@ -330,7 +277,7 @@ class TestModifierAddAvailability:
         assert _stems_coordinator()._can_add_stems() is True
 
     def test_a_classic_conversion_takes_the_click_and_opens_a_list(self) -> None:
-        assert _stems_coordinator(stems_mode=False)._can_add_stems() is True
+        assert _stems_coordinator(mixes=False)._can_add_stems() is True
 
     def test_a_busy_application_leaves_the_click_alone(self) -> None:
         assert _stems_coordinator(operation_active=True)._can_add_stems() is False
@@ -371,17 +318,17 @@ class TestOverwritePrompt:
         coordinator._converter_logic.start_conversion.assert_not_called()
 
 
-class TestReconstructLeavesStemsMode:
-    """A Reconstruct names what a classic conversion converts, so a gathered list is asked about."""
+class TestReconstructReplacesTheSetup:
+    """A Reconstruct converts what it names alone, so a setup already holding sources is asked about."""
 
-    def _coordinator(self, *, stems_mode: bool) -> MainTabCoordinator:
-        coordinator = _stems_coordinator(stems_mode=stems_mode)
+    def _coordinator(self, *, mixes: bool, gathered: Tuple[Path, ...] = ()) -> MainTabCoordinator:
+        coordinator = _stems_coordinator(mixes=mixes, gathered=gathered)
         coordinator._on_reconstruct_file = MagicMock()
         coordinator._on_reconstruct_directory = MagicMock()
         return coordinator
 
-    def test_a_classic_conversion_reconstructs_straight_away(self, tmp_path: Path) -> None:
-        coordinator = self._coordinator(stems_mode=False)
+    def test_an_empty_setup_reconstructs_straight_away(self, tmp_path: Path) -> None:
+        coordinator = self._coordinator(mixes=False)
 
         coordinator._request_reconstruct_file(tmp_path / "a.wav")
 
@@ -390,7 +337,7 @@ class TestReconstructLeavesStemsMode:
 
     @pytest.mark.parametrize("gesture", ["_request_reconstruct_file", "_request_reconstruct_directory"])
     def test_a_gathered_list_is_asked_about_first(self, tmp_path: Path, gesture: str) -> None:
-        coordinator = self._coordinator(stems_mode=True)
+        coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
 
         getattr(coordinator, gesture)(tmp_path)
 
@@ -398,20 +345,19 @@ class TestReconstructLeavesStemsMode:
         coordinator._on_reconstruct_directory.assert_not_called()
         assert coordinator._dialogs.show_confirmation.call_args.args[1] == DISCARD_STEMS_PROMPT_KEY
 
-    def test_confirming_leaves_stems_mode_and_converts(self, tmp_path: Path) -> None:
-        coordinator = self._coordinator(stems_mode=True)
+    def test_confirming_converts_what_was_named(self, tmp_path: Path) -> None:
+        coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
 
         coordinator._request_reconstruct_directory(tmp_path)
         coordinator._dialogs.show_confirmation.call_args.args[3]()
 
-        coordinator._converter_logic.set_stems_mode.assert_called_once_with(False)
         coordinator._on_reconstruct_directory.assert_called_once_with(tmp_path)
 
     def test_declining_converts_nothing(self, tmp_path: Path) -> None:
-        coordinator = self._coordinator(stems_mode=True)
+        coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
 
         coordinator._request_reconstruct_directory(tmp_path)
         coordinator._dialogs.show_confirmation.call_args.kwargs["on_cancel"]()
 
-        coordinator._converter_logic.set_stems_mode.assert_not_called()
+        coordinator._converter_logic.set_output.assert_not_called()
         coordinator._on_reconstruct_directory.assert_not_called()

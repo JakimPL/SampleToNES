@@ -11,6 +11,7 @@ from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.tags.general import (
     SUF_BUTTON,
@@ -457,8 +458,8 @@ class TestConverterStemsCard:
             paths.append(path)
 
         converter_logic = app._main_tab._converter_logic
-        converter_logic.set_stems_mode(True)
-        converter_logic.add_sources(paths)
+        converter_logic.set_output(OutputKind.MIXED)
+        converter_logic.gather_recordings(paths)
         return paths
 
     def test_a_row_is_built_for_every_recording(self, app: Application, tmp_path: Path) -> None:
@@ -488,13 +489,15 @@ class TestConverterStemsCard:
         assert not dpg.does_item_exist(stems_list(app).tags.row(str(first), SUF_GROUP))
         assert dpg.does_item_exist(stems_list(app).tags.row(str(second), SUF_GROUP))
 
-    def test_leaving_stems_mode_hides_the_list(self, app: Application, tmp_path: Path) -> None:
-        self._gather(app, tmp_path, ["a.wav"])
+    def test_the_list_stands_whichever_run_the_switch_names(self, app: Application, tmp_path: Path) -> None:
+        """The gathered sources are what a run converts either way, so the list is always on screen."""
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
         assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is True
 
-        app._main_tab._converter_logic.set_stems_mode(False)
+        app._main_tab._converter_logic.set_output(OutputKind.PER_RECORDING)
 
-        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is False
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is True
+        assert dpg.does_item_exist(stems_list(app).tags.row(str(path), SUF_GROUP))
 
     def test_the_list_stays_on_screen_while_a_conversion_runs(self, app: Application, tmp_path: Path) -> None:
         """The setup is what a running conversion is making, so it keeps saying what that is."""
@@ -548,10 +551,10 @@ class TestConverterStemsCard:
         """A tooltip left live over a hidden widget's rectangle explains whatever moved into it."""
         converter_logic = app._main_tab._converter_logic
 
-        converter_logic.set_stems_mode(True)
+        converter_logic.set_output(OutputKind.MIXED)
         assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE)["show"] is True
 
-        converter_logic.set_stems_mode(False)
+        converter_logic.set_output(OutputKind.PER_RECORDING)
         assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE)["show"] is False
 
     def test_a_recording_holding_no_channel_grays_out_but_stays_listed(
