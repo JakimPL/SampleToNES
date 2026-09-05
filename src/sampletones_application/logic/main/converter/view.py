@@ -31,12 +31,15 @@ def compose_view(
     running_input: Optional[Path],
     reconstructions_directory: Path,
     other_operation_active: bool,
+    rows: Tuple[StemRowViewModel, ...],
 ) -> ConverterViewModel:
     """The panel's whole reading of the converter at one moment.
 
     ``running_input`` is the recording a batch is on, which stands in for what the reader gathered
     while a run is under way; ``reconstructions_directory`` is where a converter that has gathered
-    nothing yet would write.
+    nothing yet would write. ``rows`` are the gathered sources as :func:`stem_rows` last read
+    them, which stand for as long as the gathering does and are therefore read once a gesture
+    rather than once a progress report.
     """
     settings = state.settings
     destination = state.destination
@@ -50,7 +53,7 @@ def compose_view(
         is_file=destination.is_file,
         other_operation_active=other_operation_active,
         output=settings.output,
-        stem_sources=stem_rows(state.gathering, mixes=settings.mixes),
+        stem_sources=rows,
         channel_cap=settings.effective_channel_cap,
         max_channel_cap=settings.max_channel_cap,
         hierarchy_mode=settings.hierarchy_mode,
@@ -155,7 +158,7 @@ def _row(placement: _Placement) -> StemRowViewModel:
         key=str(placement.path),
         kind=key.kind,
         path=placement.path,
-        holds=source.count,
+        held=_held(placement) if key.names_folder else (),
         channels=channels,
         partial_channels=partial,
         offered_channels=ALL_CHANNELS,
@@ -164,6 +167,31 @@ def _row(placement: _Placement) -> StemRowViewModel:
         position=placement.position,
         level_size=placement.level_size,
         level_count=placement.level_count,
+    )
+
+
+def _held(placement: _Placement) -> Tuple[StemRowViewModel, ...]:
+    """The recordings a folder stands for, each answering for itself.
+
+    They stand where the folder stands, since the folder is the row the list holds them under, and
+    each reads on a channel the way a recording does — plainly ticked or clear.
+    """
+    return tuple(
+        StemRowViewModel(
+            key=str(recording.path),
+            kind=recording.key.kind,
+            path=recording.path,
+            held=(),
+            channels=frozenset(CHANNEL_SLOT.read(recording.settings)),
+            partial_channels=frozenset(),
+            offered_channels=ALL_CHANNELS,
+            available=recording.path.is_file(),
+            level=placement.level,
+            position=placement.position,
+            level_size=placement.level_size,
+            level_count=placement.level_count,
+        )
+        for recording in placement.source.recordings
     )
 
 

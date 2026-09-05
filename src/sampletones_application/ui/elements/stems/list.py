@@ -1,10 +1,16 @@
 from typing import Optional
 
+import dearpygui.dearpygui as dpg
+
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.stems import StemsListLayout
+from sampletones_application.layout.glyphs.common import CommonGlyphs
+from sampletones_application.ui.elements.layout.geometry import RowGeometry
 from sampletones_application.ui.elements.layout.well import well
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.bands import LevelBands
+from sampletones_application.ui.elements.stems.expansion import OpenFolders
+from sampletones_application.ui.elements.stems.folder import FolderRenderer
 from sampletones_application.ui.elements.stems.gestures import (
     ChannelCallback,
     ChannelsCallback,
@@ -16,6 +22,7 @@ from sampletones_application.ui.elements.stems.messages import StemsMessages
 from sampletones_application.ui.elements.stems.offer import StemsListOffer
 from sampletones_application.ui.elements.stems.row import StemRowRenderer
 from sampletones_application.ui.elements.stems.tags import StemsTags
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
     StemsListViewModel,
@@ -41,6 +48,7 @@ class GUIStemsList(CallbackMixin):
         *,
         prefix: str,
         layout: StemsListLayout,
+        glyphs: CommonGlyphs,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         offer: StemsListOffer,
@@ -49,10 +57,14 @@ class GUIStemsList(CallbackMixin):
         self._layout = layout
         self._offer = offer
         self._view = StemsListViewModel.empty()
+        self._open_folders = OpenFolders()
+        self._geometry = RowGeometry.unmeasured(overscan=layout.window_overscan)
+        self._settling = False
 
         self._messages = StemsMessages(
             language_manager,
             offer=offer,
+            open_folders=self._open_folders,
             activatable=lambda: self.activatable,
         )
         self._gestures = StemsGestures(self._tags, messages=self._messages, status_bar=status_bar)
@@ -60,9 +72,18 @@ class GUIStemsList(CallbackMixin):
             self._tags,
             layout=layout,
             offer=offer,
+            glyphs=glyphs,
+            open_folders=self._open_folders,
             language_manager=language_manager,
             messages=self._messages,
             gestures=self._gestures,
+        )
+        self._folders = FolderRenderer(
+            self._tags,
+            layout=layout,
+            geometry=self._geometry,
+            open_folders=self._open_folders,
+            rows=self._rows,
         )
         self._bands = LevelBands(
             self._tags,
@@ -70,6 +91,8 @@ class GUIStemsList(CallbackMixin):
             offer=offer,
             language_manager=language_manager,
             rows=self._rows,
+            folders=self._folders,
+            open_folders=self._open_folders,
             gestures=self._gestures,
         )
 
@@ -80,6 +103,7 @@ class GUIStemsList(CallbackMixin):
         self.on_row_activated: Optional[StringCallback] = None
         self.on_dropped_on_row: Optional[KeyPairCallback] = None
         self.on_dropped_on_level: Optional[KeyOffsetCallback] = None
+        self.on_row_opened: Optional[StringCallback] = None
 
         self._gestures.on_channels_settled = lambda key, channels: self.call(self.on_channels_changed, key, channels)
         self._gestures.on_channel_toggled = lambda key, channel: self.call(self.on_channel_toggled, key, channel)
@@ -88,6 +112,8 @@ class GUIStemsList(CallbackMixin):
         self._gestures.on_row_activated = lambda key: self.call(self.on_row_activated, key)
         self._gestures.on_dropped_on_row = lambda key, target: self.call(self.on_dropped_on_row, key, target)
         self._gestures.on_dropped_on_level = lambda key, position: self.call(self.on_dropped_on_level, key, position)
+        self._gestures.on_row_opened = lambda key: self.call(self.on_row_opened, key)
+        self._gestures.on_folder_toggled = self.toggle_folder
 
     @property
     def tags(self) -> StemsTags:
@@ -119,15 +145,70 @@ class GUIStemsList(CallbackMixin):
         """Take up a new reading of the setup: rebuild the bands where it reshapes them, repaint
         the rows either way."""
         self._view = view_model
+        self._open_folders.hold_to({row.key for row in view_model.rows})
         self._messages.reads(view_model)
         self._gestures.reads(view_model)
-        self._bands.rebuild_if_reshaped(view_model)
+        rebuilt = self._bands.rebuild_if_reshaped(view_model)
         for row in view_model.rows:
             self._rows.repaint(row, view_model, releasable=self._releasable)
+            self._folders.repaint(row, view_model)
+
+        if rebuilt:
+            self._settle_soon()
 
     def row(self, key: str) -> Optional[StemRowViewModel]:
         """The row a gesture named, as the list last rendered it."""
         return self._view.row(key)
+
+    def stands_open(self, key: str) -> bool:
+        """Whether the folder's recordings are in view, which is what a menu names its move by."""
+        return self._open_folders.stands_open(key)
+
+    def toggle_folder(self, key: str) -> None:
+        """Put a folder's recordings in view or away again, and draw the list as it now stands."""
+        self._open_folders.toggle(key)
+        self.update_view(self._view)
+
+    def _settle_soon(self) -> None:
+        """Ask to read the drawn rows back once the frame that placed them has been rendered.
+
+        The list keeps this going for as long as a region it drew is following a scroll, so a
+        region refills itself rather than waiting on a frame hook an owner remembered to wire.
+        """
+        if self._settling:
+            return
+
+        self._settling = True
+        FrameCallbackManager.set_frame_callback(self._settle)
+
+    def _settle(self) -> None:
+        """Read back what the regions drew, refill the ones a scroll has moved on from, and keep
+        watching for as long as one of them holds rows it has yet to build."""
+        self._settling = False
+        self._measure_rows()
+        for key in self._folders.settle():
+            self._folders.redraw(key, self._view)
+            row = self._view.row(key)
+            if row is not None:
+                self._folders.repaint(row, self._view)
+
+        if self._open_folders:
+            self._settle_soon()
+
+    def _measure_rows(self) -> None:
+        """Read what one row takes from the rows the list has drawn, so a folder opens knowing it.
+
+        The reading is taken while the list stands as a plain run of rows, with no caption, strip
+        or open region among them, so what is measured is the rows' own room. A folder is then
+        opened against a reading the list took from its own rows and builds the handful it shows
+        rather than everything it holds; from there each region reads its own rows back.
+        """
+        rows = self._view.row_count
+        if not rows or self._open_folders or not self._view.collapse_levels:
+            return
+
+        if dpg.does_item_exist(self._tags.body):
+            self._geometry.take(block=float(dpg.get_item_rect_size(self._tags.body)[1]), rows=rows)
 
     @property
     def _releasable(self) -> bool:

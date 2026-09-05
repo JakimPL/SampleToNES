@@ -65,6 +65,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
         self._stems_list = GUIStemsList(
             prefix=PRE_RECONSTRUCTION_STEMS,
             layout=stems_layout,
+            glyphs=self._glyphs.common,
             language_manager=language_manager,
             status_bar=status_bar,
             offer=RECORDED_ASSIGNMENT,

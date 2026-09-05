@@ -96,7 +96,7 @@ def _row(
 ) -> StemRowViewModel:
     return StemRowViewModel(
         kind=SourceKind.RECORDING,
-        holds=1,
+        held=(),
         partial_channels=frozenset(),
         key=str(stem_id),
         path=Path(f"/audio/{name}.wav"),

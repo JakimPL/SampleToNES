@@ -43,6 +43,17 @@ all and the row grays out: that recording sits out of the conversion, and stays
 in the list so you can bring it back. **x** takes a row out; taking out a folder
 takes everything it holds.
 
+A folder's row names how many recordings it brought in, and its checkboxes read
+all three ways: ticked where every recording in it uses that channel, half-lit
+where they differ, clear where none does. One click settles the whole folder.
+
+A folder arrives closed. Click the marker beside its name — or double-click the
+name, or use **Show the recordings** in its menu — and it opens onto the
+recordings it holds, in a panel of its own that scrolls once there are more than
+it can show. Each of those recordings has its own checkboxes, so you can answer
+for one of them without breaking the folder up. Double-clicking a recording plays
+it.
+
 ### One reconstruction each, or one from them all
 
 **Mix into one** names what the run writes. Left clear, every recording in the

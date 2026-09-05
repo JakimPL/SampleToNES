@@ -4,3 +4,7 @@ remove_button_width: 30
 level_strip_height: 6
 well_padding: 8
 well_margin: 4
+twisty_width: 22
+folder_ceiling: 264
+folder_indent: 14
+window_overscan: 4

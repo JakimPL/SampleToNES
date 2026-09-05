@@ -30,6 +30,7 @@ from sampletones_application.logic.main.converter.view import (
     inspected_name,
     inspected_settings,
     settings_slots,
+    stem_rows,
 )
 from sampletones_application.logic.main.sources.folder import Folder
 from sampletones_application.logic.main.sources.key import SourceKey
@@ -47,6 +48,7 @@ from sampletones_application.view_model.main.converter import (
 )
 from sampletones_application.view_model.main.reconstructor import SettingsSlotViewModel
 from sampletones_application.view_model.shared.agreement import Agreement
+from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
@@ -94,6 +96,7 @@ class ConverterLogic(CallbackMixin):
             destination=Destination.unset(),
             selected=None,
         )
+        self._rows = self._read_rows()
 
         self._run = ConversionRun(conversion_service, messages=self._messages)
         self._run.on_report = self._on_report
@@ -410,6 +413,7 @@ class ConverterLogic(CallbackMixin):
         is no longer the one on screen.
         """
         self._state = self._redirected(state.selecting(state.selected))
+        self._rows = self._read_rows()
         if not self.is_active:
             self._run.return_to_idle()
             self._emit(self._messages.idle, 0.0)
@@ -497,8 +501,18 @@ class ConverterLogic(CallbackMixin):
             running_input=running_input,
             reconstructions_directory=self._config_manager.get_reconstructions_directory(),
             other_operation_active=self._is_operation_active(),
+            rows=self._rows,
         )
         self.call(self.on_view_changed, view_model)
+
+    def _read_rows(self) -> Tuple[StemRowViewModel, ...]:
+        """The gathered sources as the list draws them, read once for the setup now standing.
+
+        Reading a row reaches the disk for whether its recording is still there, and a folder is
+        read down to the recordings it holds, so the reading is taken where the setup changes and
+        stands through every report a run makes about it.
+        """
+        return stem_rows(self._state.gathering, mixes=self.mixes)
 
     def _action_label(self, running_input: Optional[Path]) -> str:
         destination = self._state.destination

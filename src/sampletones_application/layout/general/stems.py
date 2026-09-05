@@ -8,3 +8,7 @@ class StemsListLayout(BaseModel, extra="forbid", frozen=True):
     level_strip_height: int
     well_padding: int
     well_margin: int
+    twisty_width: int
+    folder_ceiling: int
+    folder_indent: int
+    window_overscan: int

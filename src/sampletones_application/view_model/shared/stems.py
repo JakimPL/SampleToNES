@@ -22,12 +22,16 @@ class StemRowViewModel(BaseModel, frozen=True):
     themselves out from the row alone. ``key`` is the identity the list reports a gesture under:
     the source's path where the list gathers files, the stem id where it describes a recorded
     assignment.
+
+    ``held`` carries the recordings a folder stands for, each a row of its own, which is what a
+    reader reaches by opening it. They stand where the folder stands, so a recording answers for
+    itself while the folder answers for them all.
     """
 
     key: str
     kind: SourceKind
     path: Path
-    holds: int
+    held: Tuple["StemRowViewModel", ...]
     channels: FrozenSet[ChannelName]
     partial_channels: FrozenSet[ChannelName]
     offered_channels: FrozenSet[ChannelName]
@@ -36,6 +40,11 @@ class StemRowViewModel(BaseModel, frozen=True):
     position: int
     level_size: int
     level_count: int
+
+    @property
+    def holds(self) -> int:
+        """How many recordings the row stands for, which a folder reads out beside its name."""
+        return len(self.held)
 
     @property
     def name(self) -> str:
@@ -123,6 +132,11 @@ class StemsListViewModel(BaseModel, frozen=True):
         return len(self.rows)
 
     @property
+    def holds_folders(self) -> bool:
+        """A folder stands among the rows, which is what gives the list a disclosure column."""
+        return any(row.stands_for_a_folder for row in self.rows)
+
+    @property
     def level_count(self) -> int:
         """How many levels the listed recordings are spread over."""
         return max((row.level + 1 for row in self.rows), default=0)
@@ -141,7 +155,8 @@ class StemsListViewModel(BaseModel, frozen=True):
 
     @cached_property
     def _by_key(self) -> Dict[str, StemRowViewModel]:
-        return {row.key: row for row in self.rows}
+        """Every row a gesture can land on, the recordings inside a folder among them."""
+        return {held.key: held for row in self.rows for held in (*row.held, row)}
 
     @property
     def playing_count(self) -> int:

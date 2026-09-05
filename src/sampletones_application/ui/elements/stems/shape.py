@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import FrozenSet, Self, Tuple
 
+from sampletones_application.ui.elements.stems.expansion import OpenFolders
 from sampletones_application.view_model.shared.stems import StemsListViewModel
 from sampletones_core.constants.enums import ChannelName
 
@@ -12,6 +13,7 @@ class RowPlacement:
     key: str
     level: int
     offered: FrozenSet[ChannelName]
+    opened: bool
 
 
 @dataclass(frozen=True)
@@ -27,13 +29,23 @@ class ListShape:
     rows: Tuple[RowPlacement, ...]
 
     @classmethod
-    def of(cls, view_model: StemsListViewModel) -> Self:
-        """The shape a view amounts to, which is what a list compares against what it drew."""
+    def of(cls, view_model: StemsListViewModel, open_folders: OpenFolders) -> Self:
+        """The shape a view amounts to, which is what a list compares against what it drew.
+
+        A folder opening or closing reshapes the list, since the region its recordings stand in
+        is built and taken down with it.
+        """
         return cls(
             columns=view_model.channels_in_play,
             collapsed=view_model.collapse_levels,
             rows=tuple(
-                RowPlacement(key=row.key, level=row.level, offered=row.offered_channels) for row in view_model.rows
+                RowPlacement(
+                    key=row.key,
+                    level=row.level,
+                    offered=row.offered_channels,
+                    opened=open_folders.stands_open(row.key),
+                )
+                for row in view_model.rows
             ),
         )
 

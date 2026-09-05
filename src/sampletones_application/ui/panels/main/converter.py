@@ -3,7 +3,10 @@ from typing import Any, Callable, Dict, FrozenSet, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.main import ConverterStemMoveElements
+from sampletones_application.categories.elements.main import (
+    ConverterFolderElements,
+    ConverterStemMoveElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.conversion import MIN_CHANNEL_CAP
@@ -44,7 +47,11 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_WINDOW_STEMS,
 )
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.context_menu import add_path_menu_items, context_menu
+from sampletones_application.ui.elements.context_menu import (
+    add_path_menu_items,
+    add_play_menu_item,
+    context_menu,
+)
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -90,6 +97,10 @@ class GUIConverterPanel(GUIPanel):
     A row is dragged onto another row to share that row's level, or onto the gap between two
     levels to open one of its own; the row's menu names the same moves in words and offers the
     recording's own filesystem actions.
+
+    A folder stands as one row reaching everything below it. Its menu shows or puts away the
+    recordings it holds, takes the whole of it out of the conversion, and offers the folder's own
+    filesystem actions.
     """
 
     def __init__(
@@ -126,6 +137,7 @@ class GUIConverterPanel(GUIPanel):
         self.on_source_isolated: Optional[PathCallback] = None
         self.on_source_dropped_on_source: Optional[Callable[[Path, Path], None]] = None
         self.on_source_dropped_on_level: Optional[Callable[[Path, int], None]] = None
+        self.on_source_played: Optional[PathCallback] = None
 
         self._layout = layout
         self._input_width = inputs.default_width
@@ -143,6 +155,7 @@ class GUIConverterPanel(GUIPanel):
         self._stems_list = GUIStemsList(
             prefix=PRE_MAIN_CONVERTER_STEMS,
             layout=stems_layout,
+            glyphs=self._glyphs.common,
             language_manager=language_manager,
             status_bar=status_bar,
             offer=GATHERED_SOURCES,
@@ -299,7 +312,8 @@ class GUIConverterPanel(GUIPanel):
         self._stems_list.on_channel_toggled = self._on_folder_channel_toggled
         self._stems_list.on_remove_requested = self._on_source_removed
         self._stems_list.on_row_activated = self._on_row_selected
-        self._stems_list.on_menu_requested = self._show_row_menu
+        self._stems_list.on_menu_requested = self._show_menu
+        self._stems_list.on_row_opened = self._on_source_played
         self._stems_list.on_dropped_on_row = self._on_dropped_on_source
         self._stems_list.on_dropped_on_level = self._on_dropped_on_level
 
@@ -365,17 +379,32 @@ class GUIConverterPanel(GUIPanel):
     def _on_dropped_on_level(self, key: str, position: int) -> None:
         self.call(self.on_source_dropped_on_level, Path(key), position)
 
-    def _show_row_menu(self, key: str) -> None:
-        """Names the moves the row can make, graying out the ones that would change nothing,
-        and offers the recording's own filesystem actions below them."""
+    def _on_source_played(self, key: str) -> None:
+        self.call(self.on_source_played, Path(key))
+
+    def _show_menu(self, key: str) -> None:
+        """Offer what the row a gesture landed on can do: a folder reaches everything below it,
+        a recording answers for itself."""
         row = self._stems_list.row(key)
         if row is None:
             return
 
+        if row.stands_for_a_folder:
+            self._show_folder_menu(row)
+            return
+
+        self._show_row_menu(row)
+
+    def _show_row_menu(self, row: StemRowViewModel) -> None:
+        """A recording is played wherever it is met, so the menu leads with the same item the file
+        browser offers, then names the moves the row can make, graying out the ones that would
+        change nothing, and offers the recording's own filesystem actions below them."""
         with context_menu():
-            header = dpg.add_text(row.name)
-            FontRegistry.bind_to_item(header, Font.MONO_BOLD)
-            dpg.add_separator()
+            self._menu_header(row.name)
+            add_play_menu_item(
+                self._language_manager["global.context.label.play"],
+                lambda: self.call(self.on_source_played, row.path),
+            )
             for element, enabled, callback in self._row_moves(row):
                 dpg.add_menu_item(
                     label=self._label(element),
@@ -384,6 +413,34 @@ class GUIConverterPanel(GUIPanel):
                 )
 
             add_path_menu_items(self._language_manager, row.path)
+
+    def _show_folder_menu(self, row: StemRowViewModel) -> None:
+        """A folder stands for everything gathered below it, so its menu reaches all of them at
+        once and leaves the recordings inside it to their own menus."""
+        key = row.key
+        opened = self._stems_list.stands_open(key)
+        with context_menu():
+            self._menu_header(row.name)
+            dpg.add_menu_item(
+                label=self._folder_label(
+                    ConverterFolderElements.CONTEXT_CLOSE_FOLDER
+                    if opened
+                    else ConverterFolderElements.CONTEXT_OPEN_FOLDER
+                ),
+                callback=lambda: self._stems_list.toggle_folder(key),
+            )
+            dpg.add_menu_item(
+                label=self._folder_label(ConverterFolderElements.CONTEXT_REMOVE_FOLDER),
+                callback=lambda: self.call(self.on_folder_removed, row.path),
+            )
+            add_path_menu_items(self._language_manager, row.path)
+
+    @staticmethod
+    def _menu_header(name: str) -> None:
+        """What the menu names above its items: whatever the gesture landed on."""
+        header = dpg.add_text(name)
+        FontRegistry.bind_to_item(header, Font.MONO_BOLD)
+        dpg.add_separator()
 
     def _row_moves(self, row: StemRowViewModel) -> List[Tuple[ConverterStemMoveElements, bool, VoidCallback]]:
         path = row.path
@@ -421,6 +478,9 @@ class GUIConverterPanel(GUIPanel):
         ]
 
     def _label(self, element: ConverterStemMoveElements) -> str:
+        return self._language_manager[Page.MAIN, Panel.CONVERTER, TextType.LABEL, element]
+
+    def _folder_label(self, element: ConverterFolderElements) -> str:
         return self._language_manager[Page.MAIN, Panel.CONVERTER, TextType.LABEL, element]
 
     def _create_action_button(self) -> None:

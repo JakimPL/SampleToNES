@@ -82,6 +82,7 @@ def build(
     stems_list = GUIStemsList(
         prefix=PREFIX,
         layout=layout_config.general.stems,
+        glyphs=layout_config.glyphs.common,
         language_manager=LanguageManager(LANG_EN),
         status_bar=GUIStatusBar(),
         offer=StemsListOffer(
@@ -111,7 +112,7 @@ def row(
     path = Path(f"/audio/{name}.wav")
     return StemRowViewModel(
         kind=SourceKind.RECORDING,
-        holds=1,
+        held=(),
         partial_channels=frozenset(),
         key=str(path),
         path=path,
@@ -169,7 +170,7 @@ def folder_row(
         key=str(path),
         kind=SourceKind.FOLDER,
         path=path,
-        holds=holds,
+        held=tuple(row(f"{name}/held_{index}") for index in range(holds)),
         channels=channels,
         partial_channels=partial_channels,
         offered_channels=frozenset(CHANNELS),

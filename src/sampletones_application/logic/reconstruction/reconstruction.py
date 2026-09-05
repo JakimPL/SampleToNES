@@ -358,7 +358,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                 key=str(stem_id),
                 kind=SourceKind.RECORDING,
                 path=recordings[stem_id],
-                holds=1,
+                held=(),
                 channels=self._stem_channels.get(stem_id, frozenset()),
                 partial_channels=frozenset(),
                 offered_channels=self._offered_stem_channels.get(stem_id, frozenset()),

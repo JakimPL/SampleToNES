@@ -1,4 +1,5 @@
 import threading
+from pathlib import Path
 from typing import Callable, Optional
 
 from sampletones_application.config.managers.session import SessionManager
@@ -89,13 +90,18 @@ class TreeLogic(CallbackMixin):
         self._pending_autoplay_node = None
 
     def play_node(self, node: FileSystemNode) -> None:
+        """Play the file a browser node stands for, where it is one this logic can sound."""
+        if node.node_type == NodeType.FILE:
+            self.play_path(node.filepath)
+
+    def play_path(self, path: Path) -> None:
         """Play a file on demand, preempting the auxiliary preview and the players.
 
-        Unlike autoplay this ignores the session autoplay flag and uses ``NORMAL``
-        priority: it is a deliberate user action, so it always plays and outranks the
-        reconstruction/sequencer players.
+        The session autoplay flag holds for what a selection sounds on its own; asking for a file
+        by name is a deliberate action, so it plays at ``NORMAL`` priority and outranks the
+        reconstruction and sequencer players.
         """
-        self._play_file(node, PlaybackPriority.NORMAL)
+        self._play_file(path, PlaybackPriority.NORMAL)
 
     def is_playable_file(self, node: TreeNode) -> bool:
         """Whether the node is a file this logic knows how to play (reconstruction or audio)."""
@@ -111,34 +117,24 @@ class TreeLogic(CallbackMixin):
             self._pending_autoplay_node = None
 
     def _autoplay_file(self, node: FileSystemNode) -> None:
-        if self._session_manager.autoplay:
-            self._play_file(node, PlaybackPriority.PREVIEW)
+        if self._session_manager.autoplay and node.node_type == NodeType.FILE:
+            self._play_file(node.filepath, PlaybackPriority.PREVIEW)
 
-    def _play_file(self, node: FileSystemNode, priority: PlaybackPriority) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
-            return
-
-        match node.filepath.suffix.lower():
+    def _play_file(self, path: Path, priority: PlaybackPriority) -> None:
+        match path.suffix.lower():
             case extensions.EXT_FILE_RECONSTRUCTION:
                 try:
-                    reconstruction = Reconstruction.load(node.filepath)
+                    reconstruction = Reconstruction.load(path)
                     self._audio_device_manager.play(
                         reconstruction.approximation,
                         update=False,
                         priority=priority,
                     )
                 except (OSError, SampleToNESError) as exception:
-                    logger.error_with_traceback(
-                        exception,
-                        f"Failed to play reconstruction file: {node.filepath}",
-                    )
+                    logger.error_with_traceback(exception, f"Failed to play reconstruction file: {path}")
                     self.call(self.on_autoplay_error, exception)
             case suffix if suffix in extensions.EXT_FILES_AUDIO:
-                self._audio_device_manager.play_file(
-                    node.filepath,
-                    update=False,
-                    priority=priority,
-                )
+                self._audio_device_manager.play_file(path, update=False, priority=priority)
 
     def is_node_favorite(self, node: TreeNode) -> bool:
         if not isinstance(node, FileSystemNode):

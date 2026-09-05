@@ -2,6 +2,7 @@ from typing import Any, Callable, Optional, Tuple
 
 from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.ui.elements.stems.expansion import OpenFolders
 from sampletones_application.ui.elements.stems.offer import StemsListOffer
 from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
@@ -23,10 +24,12 @@ class StemsMessages:
         language_manager: LanguageManager,
         *,
         offer: StemsListOffer,
+        open_folders: OpenFolders,
         activatable: Callable[[], bool],
     ) -> None:
         self._language_manager = language_manager
         self._offer = offer
+        self._open_folders = open_folders
         self._activatable = activatable
         self._view = StemsListViewModel.empty()
         self._msg_drag = language_manager["global.stems.message.drag_tooltip"]
@@ -121,6 +124,20 @@ class StemsMessages:
             return self._language_manager["global.stems.message.status_folder_remove"].format(name=row.name)
 
         return self._language_manager["global.stems.message.status_remove"].format(name=row.name)
+
+    def twisty(self, *_args: Any, user_data: str, **_kwargs: Any) -> str:
+        """What the marker beside a folder's name does from where it now stands."""
+        row = self._row(user_data)
+        if row is None:
+            return ""
+
+        return self._language_manager[
+            (
+                "global.stems.message.status_folder_close"
+                if self._open_folders.stands_open(user_data)
+                else "global.stems.message.status_folder_open"
+            )
+        ].format(name=row.name)
 
     def _row(self, key: str) -> Optional[StemRowViewModel]:
         return self._view.row(key)

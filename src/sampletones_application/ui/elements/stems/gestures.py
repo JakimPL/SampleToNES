@@ -7,6 +7,7 @@ from sampletones_application.tags.general import (
     SUF_CHANNELS,
     SUF_CHECKBOX,
     SUF_TEXT,
+    SUF_TWISTY,
 )
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.messages import StemsMessages
@@ -51,11 +52,18 @@ class StemsGestures:
         self.on_row_activated: Optional[StringCallback] = None
         self.on_dropped_on_row: Optional[KeyPairCallback] = None
         self.on_dropped_on_level: Optional[KeyOffsetCallback] = None
+        self.on_folder_toggled: Optional[StringCallback] = None
+        self.on_row_opened: Optional[StringCallback] = None
 
     @property
     def activatable(self) -> bool:
         """The owner answers a click on a row, so the list hands one on rather than absorbing it."""
         return self.on_row_activated is not None
+
+    @property
+    def playable(self) -> bool:
+        """The owner sounds a recording, so a double-click on a row reaches something."""
+        return self.on_row_opened is not None
 
     def reads(self, view_model: StemsListViewModel) -> None:
         """Takes up the view the list is drawing, which is what a gesture is answered against."""
@@ -63,11 +71,12 @@ class StemsGestures:
 
     def create_handlers(self) -> None:
         """Register one handler registry per row-widget kind."""
-        for kind in (SUF_TEXT, SUF_CHANNELS, SUF_CHECKBOX, SUF_BUTTON):
+        for kind in (SUF_TEXT, SUF_CHANNELS, SUF_CHECKBOX, SUF_BUTTON, SUF_TWISTY):
             dpg_delete_item(self._tags.handlers(kind))
 
         with dpg.item_handler_registry(tag=self._tags.handlers(SUF_TEXT)):
             dpg.add_item_clicked_handler(callback=self._on_name_clicked)
+            dpg.add_item_double_clicked_handler(callback=self._on_name_double_clicked)
             dpg.add_item_hover_handler(callback=self._hover_callback(self._messages.name))
 
         with dpg.item_handler_registry(tag=self._tags.handlers(SUF_CHANNELS)):
@@ -78,6 +87,9 @@ class StemsGestures:
 
         with dpg.item_handler_registry(tag=self._tags.handlers(SUF_BUTTON)):
             dpg.add_item_hover_handler(callback=self._hover_callback(self._messages.remove))
+
+        with dpg.item_handler_registry(tag=self._tags.handlers(SUF_TWISTY)):
+            dpg.add_item_hover_handler(callback=self._hover_callback(self._messages.twisty))
 
     def bind(self, item: str, kind: str) -> None:
         """Puts one row widget under the registry answering for its kind."""
@@ -121,6 +133,10 @@ class StemsGestures:
     def on_remove_button(self, _sender: Sender, _app_data: Any, user_data: str) -> None:
         self._report(self.on_removal_asked, user_data)
 
+    def on_twisty(self, _sender: Sender, _app_data: Any, user_data: str) -> None:
+        """The marker beside a folder's name puts its recordings in view, or away again."""
+        self._report(self.on_folder_toggled, user_data)
+
     def on_name_selected(self, _sender: Sender, _value: bool, user_data: str) -> None:
         """Hand a clicked row on, and let the next view say which row now reads as picked out."""
         if self.activatable:
@@ -139,13 +155,33 @@ class StemsGestures:
             self._report(self.on_dropped_on_level, app_data, position)
 
     def _on_name_clicked(self, _sender: Sender, app_data: Tuple[int, int]) -> None:
-        mouse_button, clicked_item = app_data
-        if mouse_button != dpg.mvMouseButton_Right:
+        key = self._named_by(app_data, dpg.mvMouseButton_Right)
+        if key is not None:
+            self._report(self.on_menu_asked, key)
+
+    def _on_name_double_clicked(self, _sender: Sender, app_data: Tuple[int, int]) -> None:
+        """A double-click opens what it landed on: a folder shows what it holds, a recording sounds."""
+        key = self._named_by(app_data, dpg.mvMouseButton_Left)
+        if key is None:
             return
 
+        row = self._view.row(key)
+        if row is not None and row.stands_for_a_folder:
+            self._report(self.on_folder_toggled, key)
+            return
+
+        if self.playable:
+            self._report(self.on_row_opened, key)
+
+    @staticmethod
+    def _named_by(app_data: Tuple[int, int], button: int) -> Optional[str]:
+        """The row a mouse gesture landed on, for the button the gesture speaks for."""
+        mouse_button, clicked_item = app_data
+        if mouse_button != button:
+            return None
+
         key = dpg.get_item_user_data(clicked_item)
-        if isinstance(key, str):
-            self._report(self.on_menu_asked, key)
+        return key if isinstance(key, str) else None
 
     def _hover_callback(self, message_function: MessageCallback) -> Callable[[Sender, int], None]:
         """Route a hovered row widget's explanation to the status bar.

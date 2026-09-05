@@ -10,3 +10,11 @@ class ConverterStemMoveElements(AbstractElement):
     CONTEXT_JOIN_BELOW = "context_join_below"
     CONTEXT_ISOLATE = "context_isolate"
     CONTEXT_REMOVE_STEM = "context_remove_stem"
+
+
+class ConverterFolderElements(AbstractElement):
+    """What a gathered folder offers, as the folder's own menu names it."""
+
+    CONTEXT_OPEN_FOLDER = "context_open_folder"
+    CONTEXT_CLOSE_FOLDER = "context_close_folder"
+    CONTEXT_REMOVE_FOLDER = "context_remove_folder"

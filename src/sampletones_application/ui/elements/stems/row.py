@@ -3,6 +3,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.stems import StemsListLayout
+from sampletones_application.layout.glyphs.common import CommonGlyphs
 from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_CHANNELS,
@@ -10,6 +11,7 @@ from sampletones_application.tags.general import (
     SUF_GROUP,
     SUF_TEXT,
     SUF_TOOLTIP,
+    SUF_TWISTY,
     TAG_GLOBAL_THEME_CHANNEL_MUTED,
     TAG_GLOBAL_THEME_DANGER_BUTTON,
     TAG_GLOBAL_THEME_STEMS_ROW,
@@ -17,6 +19,7 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.stems.expansion import OpenFolders
 from sampletones_application.ui.elements.stems.gestures import StemsGestures
 from sampletones_application.ui.elements.stems.messages import StemsMessages
 from sampletones_application.ui.elements.stems.offer import StemsListOffer
@@ -50,6 +53,8 @@ class StemRowRenderer:
         *,
         layout: StemsListLayout,
         offer: StemsListOffer,
+        glyphs: CommonGlyphs,
+        open_folders: OpenFolders,
         language_manager: LanguageManager,
         messages: StemsMessages,
         gestures: StemsGestures,
@@ -57,6 +62,8 @@ class StemRowRenderer:
         self._tags = tags
         self._layout = layout
         self._offer = offer
+        self._glyphs = glyphs
+        self._open_folders = open_folders
         self._language_manager = language_manager
         self._messages = messages
         self._gestures = gestures
@@ -81,7 +88,7 @@ class StemRowRenderer:
             if self._offer.master_box:
                 self._create_master(row)
 
-            self._create_name(row)
+            self._create_name(row, view_model)
             for channel_name in view_model.channels_in_play:
                 self._create_channel(row, channel_name)
 
@@ -134,27 +141,59 @@ class StemRowRenderer:
         )
         self._gestures.bind(master, SUF_CHECKBOX)
 
-    def _create_name(self, row: StemRowViewModel) -> None:
-        """The row itself: what names the source, what you drag it by, and what you drop onto."""
-        name = dpg.add_selectable(
-            label=self._row_label(row),
-            tag=self._tags.row(row.key, SUF_TEXT),
-            user_data=row.key,
-            callback=self._gestures.on_name_selected,
-            payload_type=self._tags.payload,
-            drop_callback=self._gestures.on_row_drop,
-        )
-        if self._offer.dragging:
-            with dpg.drag_payload(parent=name, drag_data=row.key, payload_type=self._tags.payload):
-                dpg.add_text(row.name)
+    def _create_name(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
+        """The row itself: what names the source, what you drag it by, and what you drop onto.
 
-        FontRegistry.bind_to_item(name, Font.REGULAR_SMALL)
-        self._gestures.bind(name, SUF_TEXT)
-        show_tooltip(
-            name,
-            self._messages.row_explanation(row),
-            text_tag=self._tags.row(row.key, SUF_TOOLTIP),
+        A folder leads with the marker that opens it, and where a list holds one every other row
+        opens the same width beside its name, so the names line up down the column.
+        """
+        with dpg.group(horizontal=True):
+            self._create_disclosure(row, view_model)
+            name = dpg.add_selectable(
+                label=self._row_label(row),
+                tag=self._tags.row(row.key, SUF_TEXT),
+                user_data=row.key,
+                callback=self._gestures.on_name_selected,
+                payload_type=self._tags.payload,
+                drop_callback=self._gestures.on_row_drop,
+            )
+            if self._offer.dragging:
+                with dpg.drag_payload(parent=name, drag_data=row.key, payload_type=self._tags.payload):
+                    dpg.add_text(row.name)
+
+            FontRegistry.bind_to_item(name, Font.BOLD_SMALL if row.stands_for_a_folder else Font.REGULAR_SMALL)
+            self._gestures.bind(name, SUF_TEXT)
+            show_tooltip(
+                name,
+                self._messages.row_explanation(row),
+                text_tag=self._tags.row(row.key, SUF_TOOLTIP),
+            )
+
+    def _create_disclosure(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
+        """The marker a folder opens by, and the room it takes beside every other row."""
+        if not view_model.holds_folders:
+            return
+
+        if not row.stands_for_a_folder:
+            dpg.add_spacer(width=self._layout.twisty_width)
+            return
+
+        twisty = dpg.add_button(
+            label=self._twisty_glyph(row.key),
+            tag=self._tags.row(row.key, SUF_TWISTY),
+            width=self._layout.twisty_width,
+            user_data=row.key,
+            callback=self._gestures.on_twisty,
         )
+        FontRegistry.bind_to_item(twisty, Font.ICON)
+        self._gestures.bind(twisty, SUF_TWISTY)
+
+    def _twisty_glyph(self, key: str) -> str:
+        """The marker stating whether the folder's recordings are in view."""
+        if self._open_folders.stands_open(key):
+            return self._glyphs.expanded
+
+        return self._glyphs.collapsed
 
     def _row_label(self, row: StemRowViewModel) -> str:
         """What the row reads as: the source's name, and for a folder how many it stands for."""

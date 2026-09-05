@@ -4,10 +4,12 @@ from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_CHANNELS,
     SUF_CHECKBOX,
+    SUF_FOLDER,
     SUF_GROUP,
     SUF_HANDLER_REGISTRY,
     SUF_LEVEL,
     SUF_PAYLOAD,
+    SUF_REGION,
     SUF_ROW,
     SUF_TABLE,
     SUF_WELL,
@@ -39,6 +41,27 @@ class StemsTags:
     def table(self) -> str:
         """The one table every row stands in while the levels are collapsed."""
         return compose_tag(self.prefix, SUF_TABLE)
+
+    def segment(self, position: int) -> str:
+        """One run of rows standing between two folders, each declaring the same columns.
+
+        A folder breaks the run it stands in, so the recordings on either side of one line up in
+        tables of their own; the first of them is the list's own table, and the only one a list
+        holding no folder draws.
+        """
+        return self.table if position == 0 else compose_tag(self.table, str(position))
+
+    def folder(self, key: str, suffix: str) -> str:
+        """The tag one of an open folder's own widgets carries: its region, or the rows in it."""
+        return compose_tag(self.prefix, SUF_FOLDER, key, suffix)
+
+    def region(self, key: str) -> str:
+        """The bounded space a folder's recordings scroll in while it stands open."""
+        return self.folder(key, SUF_REGION)
+
+    def held(self, key: str) -> str:
+        """The table the recordings inside one open folder stand in."""
+        return self.folder(key, compose_tag(SUF_REGION, SUF_TABLE))
 
     @property
     def payload(self) -> str:
