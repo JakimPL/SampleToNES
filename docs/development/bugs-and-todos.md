@@ -116,10 +116,12 @@ again.
   the size at which the sequencer panels and the sequencer tab coordinator were divided into
   subpackages. Each divides the same way: a module per concern, with the class that stays holding
   the collaborators and the public surface.
-* Several calls reach the Main tab's panels through wrappers of the coordinator's own, where the
-  Coordinators contract sanctions a wrapper only for an intent-level guard a contract requires. A
-  wrapper that renames a call or reorders its arguments is work the logic object behind the call
-  should be doing.
+* The Main tab's public surface renames several calls on its way to a panel —
+  `refresh_converter_view`, `is_converter_panel_visible`, `refresh_browser`. These are the tab's
+  own face rather than the inbound callbacks the Coordinators contract governs, which now travel as
+  one `MainTabHooks` value and are forwarded as they stand. What is worth settling is whether the
+  face wants those names at all, or whether the application should ask for the thing rather than
+  for the refresh of it.
 * `utils/gui/dpg.py::dpg_get_item_parent` catches `Exception` where the Error Handling Policy leaves
   the broad catch to a service's top-level task wrapper. It stays: DearPyGui raises `Exception`
   itself for an absent item rather than a type of its own, so the catch is as narrow as what it
