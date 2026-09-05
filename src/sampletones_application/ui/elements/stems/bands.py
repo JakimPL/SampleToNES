@@ -61,21 +61,24 @@ class LevelBands:
         self._level_template = language_manager["global.stems.template.level_caption"]
         self._shape = ListShape.nothing()
 
-    def rebuild_if_reshaped(self, view_model: StemsListViewModel) -> bool:
-        """Build the bands afresh where the view names a different shape than the one standing.
+    def reshaped(self, view_model: StemsListViewModel) -> bool:
+        """Whether the view names a different shape than the one standing, which asks for a rebuild.
 
-        Answers whether the bands were rebuilt, which is what tells a list its widgets are new.
+        The shape is taken up either way, so a list that has answered a reshape once answers the
+        same view with a repaint from then on.
         """
         shape = ListShape.of(view_model, self._open_folders)
         if shape == self._shape:
             return False
 
         self._shape = shape
-        self._folders.forget()
-        dpg.delete_item(self._tags.body, children_only=True)
+        return True
+
+    def build(self, view_model: StemsListViewModel) -> None:
+        """Build the bands the view names, into whatever the list has cleared for them."""
         if view_model.collapse_levels:
             self._create_listing(view_model)
-            return True
+            return
 
         for level_index in range(view_model.level_count):
             self._create_strip(level_index)
@@ -88,8 +91,6 @@ class LevelBands:
 
         if view_model.level_count:
             self._create_strip(view_model.level_count)
-
-        return True
 
     def _create_listing(self, view_model: StemsListViewModel) -> None:
         """Every row in one run, a folder breaking it so its own recordings stand below it."""

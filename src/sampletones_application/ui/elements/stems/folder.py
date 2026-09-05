@@ -61,6 +61,11 @@ class FolderRenderer:
         """Let go of the regions a rebuild took down, so the next draw builds them afresh."""
         self._regions.clear()
 
+    @property
+    def following(self) -> bool:
+        """An open folder holds back rows it has no room for, so a scroll asks it for others."""
+        return any(region.windowing for region in self._regions.values())
+
     def settle(self) -> Tuple[str, ...]:
         """Hold every open region to its ceiling and read what a row takes, a frame after a draw.
 

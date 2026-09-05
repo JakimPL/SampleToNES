@@ -584,6 +584,52 @@ class TestConverterStemsCard:
         assert ChannelName.PULSE2 in _row_of(app, second).channels
         assert ChannelName.PULSE2 not in _row_of(app, first).channels
 
+    def _gather_folder(self, app: Application, tmp_path: Path, names: List[str]) -> List[Path]:
+        """Gathers a folder of recordings as one row, and answers what it holds."""
+        root = tmp_path / "takes"
+        root.mkdir()
+        paths = []
+        for name in names:
+            path = root / name
+            path.touch()
+            paths.append(path)
+
+        converter_logic = app._main_tab._converter_logic
+        converter_logic.set_output(OutputKind.PER_RECORDING)
+        converter_logic.gather_folder(root)
+        return paths
+
+    def test_a_folder_arrives_closed_and_opens_onto_what_it_holds(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        held = self._gather_folder(app, tmp_path, ["a.wav", "b.wav"])
+        root = held[0].parent
+        name_tag = stems_list(app).tags.row(str(held[0]), SUF_TEXT)
+        assert not dpg.does_item_exist(name_tag)
+
+        stems_list(app).toggle_folder(str(root))
+
+        assert dpg.does_item_exist(name_tag)
+        assert dpg.does_item_exist(stems_list(app).tags.region(str(root)))
+
+    def test_a_recording_inside_an_open_folder_is_what_the_card_edits(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        """A reader who opens a folder answers for one of its recordings without breaking it up."""
+        first, second = self._gather_folder(app, tmp_path, ["a.wav", "b.wav"])
+        stems_list(app).toggle_folder(str(first.parent))
+        assert ChannelName.PULSE2 not in _row_of(app, second).channels
+
+        _click_row(app, second)
+        _click_slot_box(SettingsField.CHANNELS, ChannelName.PULSE2)
+
+        assert ChannelName.PULSE2 in _row_of(app, second).channels
+        assert ChannelName.PULSE2 not in _row_of(app, first).channels
+
     def test_the_card_edits_what_a_recording_joins_with_where_nothing_is_picked(
         self,
         app: Application,

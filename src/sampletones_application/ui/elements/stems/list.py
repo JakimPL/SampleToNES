@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Final, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -6,7 +6,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.glyphs.common import CommonGlyphs
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
-from sampletones_application.ui.elements.layout.well import well
+from sampletones_application.ui.elements.layout.region import WindowedRegion
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.bands import LevelBands
 from sampletones_application.ui.elements.stems.expansion import OpenFolders
@@ -29,6 +29,8 @@ from sampletones_application.view_model.shared.stems import (
 )
 from sampletones_shared.types.callback import StringCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
+
+NO_CEILING: Final[int] = 0
 
 
 class GUIStemsList(CallbackMixin):
@@ -60,6 +62,13 @@ class GUIStemsList(CallbackMixin):
         self._open_folders = OpenFolders()
         self._geometry = RowGeometry.unmeasured(overscan=layout.window_overscan)
         self._settling = False
+        self._region = WindowedRegion(
+            tag=self._tags.well,
+            geometry=self._geometry,
+            ceiling=NO_CEILING,
+            padding=layout.well_padding,
+            margin=layout.well_margin,
+        )
 
         self._messages = StemsMessages(
             language_manager,
@@ -133,13 +142,7 @@ class GUIStemsList(CallbackMixin):
     def create(self, parent: str, *, show: bool = True) -> None:
         """Build the list's recessed region and the handlers its rows share."""
         self._gestures.create_handlers()
-        well(
-            parent,
-            self._tags.well,
-            padding=self._layout.well_padding,
-            margin=self._layout.well_margin,
-            show=show,
-        )
+        self._region.create(parent, show=show)
 
     def update_view(self, view_model: StemsListViewModel) -> None:
         """Take up a new reading of the setup: rebuild the bands where it reshapes them, repaint
@@ -148,13 +151,22 @@ class GUIStemsList(CallbackMixin):
         self._open_folders.hold_to({row.key for row in view_model.rows})
         self._messages.reads(view_model)
         self._gestures.reads(view_model)
-        rebuilt = self._bands.rebuild_if_reshaped(view_model)
+        if self._bands.reshaped(view_model):
+            self._rebuild(view_model)
+            self._settle_soon()
+
+        self._repaint(view_model)
+
+    def _rebuild(self, view_model: StemsListViewModel) -> None:
+        """Draw the list afresh: the bands the view names, and a region under each open folder."""
+        self._folders.forget()
+        self._region.draw_whole(lambda: self._bands.build(view_model))
+
+    def _repaint(self, view_model: StemsListViewModel) -> None:
+        """Draw what the rows in view currently hold onto the widgets they stand as."""
         for row in view_model.rows:
             self._rows.repaint(row, view_model, releasable=self._releasable)
             self._folders.repaint(row, view_model)
-
-        if rebuilt:
-            self._settle_soon()
 
     def row(self, key: str) -> Optional[StemRowViewModel]:
         """The row a gesture named, as the list last rendered it."""
@@ -169,11 +181,17 @@ class GUIStemsList(CallbackMixin):
         self._open_folders.toggle(key)
         self.update_view(self._view)
 
+    @property
+    def _following(self) -> bool:
+        """A region is holding rows back, so the list watches for the scroll that asks for them."""
+        return self._folders.following
+
     def _settle_soon(self) -> None:
         """Ask to read the drawn rows back once the frame that placed them has been rendered.
 
-        The list keeps this going for as long as a region it drew is following a scroll, so a
-        region refills itself rather than waiting on a frame hook an owner remembered to wire.
+        The list keeps this going for as long as a region it drew is holding rows back, so a
+        region refills itself rather than waiting on a frame hook an owner remembered to wire. A
+        list short enough to be drawn whole asks for nothing after the frame that placed it.
         """
         if self._settling:
             return
@@ -186,13 +204,14 @@ class GUIStemsList(CallbackMixin):
         watching for as long as one of them holds rows it has yet to build."""
         self._settling = False
         self._measure_rows()
+        self._region.settle()
         for key in self._folders.settle():
             self._folders.redraw(key, self._view)
             row = self._view.row(key)
             if row is not None:
                 self._folders.repaint(row, self._view)
 
-        if self._open_folders:
+        if self._following:
             self._settle_soon()
 
     def _measure_rows(self) -> None:
@@ -204,7 +223,7 @@ class GUIStemsList(CallbackMixin):
         rather than everything it holds; from there each region reads its own rows back.
         """
         rows = self._view.row_count
-        if not rows or self._open_folders or not self._view.collapse_levels:
+        if not rows or self._open_folders or not self._view.collapse_levels or not self._view.holds_folders:
             return
 
         if dpg.does_item_exist(self._tags.body):

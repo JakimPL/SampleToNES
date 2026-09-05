@@ -58,7 +58,17 @@ class SourceList:
         return next((recording for recording in self.recordings if recording.path == path), None)
 
     def row(self, key: SourceKey) -> Optional[SourceRow]:
-        return next((row for row in self.rows if row.key == key), None)
+        """The row a key names, wherever it stands.
+
+        A reader who opens a folder answers for one of the recordings inside it, so a key naming a
+        recording reaches that recording whether it was gathered by name or through the folder
+        holding it.
+        """
+        listed = next((row for row in self.rows if row.key == key), None)
+        if listed is not None or key.names_folder:
+            return listed
+
+        return self.recording(key.path)
 
     def folder_root_of(self, path: Path) -> Optional[Path]:
         """The root of the folder holding ``path``, which is the tree a run mirrors for it.

@@ -104,10 +104,11 @@ class TestALongList(BaseTestSuite):
 
 
 class TestAnUnmeasuredRegion(BaseTestSuite):
-    """A region with no reading of a row yet builds the list whole, which is what gives the next
-    frame something to measure."""
+    """A region with no reading of a row yet builds a first slice at its natural height and
+    reserves nothing, which is the run of rows a reading is then taken from."""
 
-    def test_it_builds_every_row(self, dpg_context: None) -> None:
+    @pytest.fixture
+    def unmeasured(self, dpg_context: None) -> WindowedRegion:
         built = WindowedRegion(
             tag=REGION_TAG,
             geometry=RowGeometry.unmeasured(overscan=OVERSCAN),
@@ -118,7 +119,19 @@ class TestAnUnmeasuredRegion(BaseTestSuite):
         with dpg.window(tag=ROOT_TAG):
             built.create(ROOT_TAG)
 
-        assert draw(built, 500) == [(0, 500)]
+        return built
+
+    def test_it_builds_a_bounded_slice_of_a_long_list(self, unmeasured: WindowedRegion) -> None:
+        asked = draw(unmeasured, 5_000)
+        assert asked[0][0] == 0
+        assert asked[0][1] < 5_000
+
+    def test_it_reserves_nothing_while_it_has_no_reading(self, unmeasured: WindowedRegion) -> None:
+        draw(unmeasured, 5_000)
+        assert reserves(unmeasured) == (0, 0)
+
+    def test_a_short_list_is_still_built_whole(self, unmeasured: WindowedRegion) -> None:
+        assert draw(unmeasured, 4) == [(0, 4)]
 
 
 class TestRedrawing(BaseTestSuite):
