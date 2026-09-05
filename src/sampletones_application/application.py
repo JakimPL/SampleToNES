@@ -135,6 +135,10 @@ from sampletones_application.utils.frame_limiter import FrameLimiter
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
+from sampletones_application.utils.gui.render_thread import (
+    claim_render_thread,
+    release_render_thread,
+)
 from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
@@ -1655,6 +1659,7 @@ class Application:
             return True
 
     def run(self) -> None:
+        claim_render_thread()
         try:
             while dpg.is_dearpygui_running():
                 self.frame()
@@ -1663,6 +1668,7 @@ class Application:
         except KeyboardInterrupt:
             return
         finally:
+            release_render_thread()
             self._render_coordinator.cleanup()
             self._export_coordinator.cleanup()
             stop_background_workers()

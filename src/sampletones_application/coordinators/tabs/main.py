@@ -55,6 +55,7 @@ from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.render_thread import on_render_thread
 from sampletones_application.view_model.main.advanced import (
     AdvancedSettingsPanelViewModel,
 )
@@ -131,6 +132,7 @@ class MainTabCoordinator:
         _msg_no_files = language_manager["main.converter.message.status_no_files"]
         _msg_no_generators = language_manager["main.converter.message.status_no_channels"]
         self._ttl_progress = language_manager["main.converter.title.progress_dialog"]
+        self._repaint_priority = layout.scheduling.priorities.gui_action
 
         self._explorer_logic: ExplorerLogic = ExplorerLogic(
             config_manager,
@@ -291,7 +293,15 @@ class MainTabCoordinator:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
 
     def _on_converter_view_changed(self, view_model: ConverterViewModel) -> None:
-        """The converter's own view, and the settings card that follows what it has picked out."""
+        """The converter's own view, and the settings card that follows what it has picked out.
+
+        A gesture on the list rebuilds the list, and DearPyGui calls a widget's callback on a
+        thread of its own, so the redraw crosses to the render thread rather than tearing widgets
+        down underneath the frame being walked.
+        """
+        on_render_thread(self._repaint_converter, view_model, priority=self._repaint_priority)
+
+    def _repaint_converter(self, view_model: ConverterViewModel) -> None:
         self._converter_panel.update_view(view_model)
         self._update_reconstructor_panel_view()
         self._on_busy_state_changed()
