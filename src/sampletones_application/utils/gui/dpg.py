@@ -118,13 +118,18 @@ def dpg_get_item_parent(
 ) -> Optional[Sender]:
     """The item's parent, or None when the item is absent.
 
-    Queued callbacks mutate the item tree on the callback-queue thread, so an item read
-    from another thread can be removed underneath this lookup; DearPyGui reports the
-    absent item by raising, which resolves here to None.
+    Queued callbacks mutate the item tree on the callback-queue thread, so an item read from
+    another thread can be removed underneath this lookup; DearPyGui reports the absent item by
+    raising, which resolves here to None.
+
+    The catch is as broad as what it answers: DearPyGui raises ``Exception`` itself for an absent
+    item rather than a type of its own, so there is nothing narrower to name.
+    A test pins that, and the day the library raises something of its own is the day this
+    narrows to it.
     """
     try:
         parent: Optional[Sender] = dpg.get_item_parent(tag, *args, **kwargs)
-    except Exception:  # unsafe broad exception
+    except Exception:  # pylint: disable=broad-exception-caught
         return None
 
     return parent

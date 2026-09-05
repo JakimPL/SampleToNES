@@ -130,9 +130,10 @@ again.
   constructs, declaring no state and no rule of its own. Either the logic object takes a job — the
   explorer's own state machine — or its consumers hold the manager.
 * `utils/gui/dpg.py::dpg_get_item_parent` catches `Exception` where the Error Handling Policy leaves
-  the broad catch to a service's top-level task wrapper. The recovery it makes is real: a queued
-  callback can remove an item underneath the lookup. Naming the exception DearPyGui raises for an
-  absent item is what closes it, and the helper sits under every item lookup in the interface.
+  the broad catch to a service's top-level task wrapper. It stays: DearPyGui raises `Exception`
+  itself for an absent item rather than a type of its own, so the catch is as narrow as what it
+  answers. A test pins that contract, and the day the library raises something of its own is the
+  day the catch narrows.
 * `MainTabCoordinator` is constructed by no test. Every fixture in
   `tests/unit/sampletones_application/coordinators/tabs/test_main.py` builds the object through
   `__new__` and populates its privates by hand, so the wiring the application actually runs is
