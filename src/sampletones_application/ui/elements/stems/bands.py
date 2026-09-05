@@ -166,7 +166,7 @@ class LevelBands:
             tag=self._tags.level(level_index, SUF_TEXT),
             parent=self._tags.body,
         )
-        FontRegistry.bind_to_item(caption, Font.MONO_SMALL)
+        FontRegistry.bind_to_item(caption, Font.BOLD)
         ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER).bind_to_item(caption)
 
     def _create_table(
