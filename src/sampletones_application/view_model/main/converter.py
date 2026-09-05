@@ -67,6 +67,7 @@ class ConverterViewModel(BaseModel, frozen=True):
     max_channel_cap: int
     hierarchy_mode: HierarchyMode
     max_sources: int
+    selected_key: Optional[str]
 
     @property
     def mixes(self) -> bool:
@@ -113,6 +114,7 @@ class ConverterViewModel(BaseModel, frozen=True):
             muted_channels=frozenset(),
             live=not self.is_active,
             collapse_levels=not self.mixes,
+            selected_key=self.selected_key,
         )
 
     @property

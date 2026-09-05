@@ -10,3 +10,14 @@ class SourceKind(StrEnum):
 
     RECORDING = "recording"
     FOLDER = "folder"
+
+
+class SettingsField(StrEnum):
+    """The per-recording choices a reader makes, by the name the settings hold each under.
+
+    A further choice is one more member here, one more slot beside it, and one more line in the
+    card that names them — which is what keeps a new field from reaching every layer by hand.
+    """
+
+    CHANNELS = "channels"
+    BENDS = "bends"

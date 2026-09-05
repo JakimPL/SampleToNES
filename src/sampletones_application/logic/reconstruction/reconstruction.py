@@ -61,13 +61,7 @@ from sampletones_shared.utils.system.paths import (
     open_path_in_explorer,
 )
 
-EMPTY_STEMS_LIST: Final[StemsListViewModel] = StemsListViewModel(
-    rows=(),
-    channels_in_play=(),
-    muted_channels=frozenset(),
-    live=True,
-    collapse_levels=False,
-)
+EMPTY_STEMS_LIST: Final[StemsListViewModel] = StemsListViewModel.empty()
 
 
 class ExportServiceProtocol(Protocol):
@@ -388,6 +382,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                 muted_channels=frozenset(channels_in_play) - frozenset(self._selected_channels),
                 live=True,
                 collapse_levels=False,
+                selected_key=None,
             ),
             hierarchy_mode=stems_data.config.hierarchy.mode,
             channel_cap=stems_data.config.channel_cap,

@@ -1,21 +1,15 @@
 from dataclasses import dataclass
-from enum import StrEnum
-from typing import Callable, Final, FrozenSet, Tuple
+from typing import Callable, Dict, Final, FrozenSet, Tuple
 
+from sampletones_application.constants.sources import SettingsField
 from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName, ordered_channels
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 SettingsReader = Callable[[StemSettings], FrozenSet[ChannelName]]
 SettingsWriter = Callable[[StemSettings, FrozenSet[ChannelName]], StemSettings]
+SettingsOffer = Callable[[StemSettings], FrozenSet[ChannelName]]
 
 ALL_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
-
-
-class SettingsField(StrEnum):
-    """The per-recording choices a reader makes, by the name the settings hold each under."""
-
-    CHANNELS = "channels"
-    BENDS = "bends"
 
 
 def _channels_of(settings: StemSettings) -> FrozenSet[ChannelName]:
@@ -35,8 +29,17 @@ def _with_channels(
     return StemSettings(channels=held, bends=ordered_channels(settings.bend_set & channels))
 
 
+def _channels_offered(_settings: StemSettings) -> FrozenSet[ChannelName]:
+    return ALL_CHANNELS
+
+
 def _bends_of(settings: StemSettings) -> FrozenSet[ChannelName]:
     return settings.bend_set
+
+
+def _bends_offered(settings: StemSettings) -> FrozenSet[ChannelName]:
+    """A bend belongs to a channel the recording occupies whose hardware reads one."""
+    return settings.channel_set & TONE_CHANNELS
 
 
 def _with_bends(
@@ -53,19 +56,19 @@ class SettingsSlot:
     """One per-recording choice, in the form every reader of it works through.
 
     A slot states how the choice is read from a recording's settings, how a settled value is
-    written back, and which channels offer it at all. The list, the folder fold and the settings
-    card all work through slots, so a further choice reaches each of them as one more slot rather
-    than as a field spelled out again in every layer.
+    written back, and which channels put it to a reader as those settings stand. The list, the
+    folder fold and the settings card all work through slots, so a further choice reaches each of
+    them as one more slot rather than as a field spelled out again in every layer.
     """
 
     field: SettingsField
     read: SettingsReader
     write: SettingsWriter
-    channels_offered: FrozenSet[ChannelName]
+    offered: SettingsOffer
 
-    def offers(self, channel_name: ChannelName) -> bool:
-        """Whether this choice is put to a reader on ``channel_name``."""
-        return channel_name in self.channels_offered
+    def offers(self, settings: StemSettings, channel_name: ChannelName) -> bool:
+        """Whether this choice is put to a reader on ``channel_name``, as ``settings`` stand."""
+        return channel_name in self.offered(settings)
 
     def holds(self, settings: StemSettings, channel_name: ChannelName) -> bool:
         """Whether ``settings`` makes this choice on ``channel_name``."""
@@ -87,14 +90,16 @@ CHANNEL_SLOT: Final[SettingsSlot] = SettingsSlot(
     field=SettingsField.CHANNELS,
     read=_channels_of,
     write=_with_channels,
-    channels_offered=ALL_CHANNELS,
+    offered=_channels_offered,
 )
 
 BEND_SLOT: Final[SettingsSlot] = SettingsSlot(
     field=SettingsField.BENDS,
     read=_bends_of,
     write=_with_bends,
-    channels_offered=TONE_CHANNELS,
+    offered=_bends_offered,
 )
 
 SETTINGS_SLOTS: Final[Tuple[SettingsSlot, ...]] = (CHANNEL_SLOT, BEND_SLOT)
+
+SLOTS_BY_FIELD: Final[Dict[SettingsField, SettingsSlot]] = {slot.field: slot for slot in SETTINGS_SLOTS}

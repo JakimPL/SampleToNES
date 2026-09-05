@@ -110,7 +110,7 @@ class StemRowRenderer:
             ThemeRegistry.get(self._channel_theme(channel_name, agreement, view_model)).bind_to_item(tag)
 
         name_tag = self._tags.row(row.key, SUF_TEXT)
-        dpg_set_value(name_tag, False)
+        dpg_set_value(name_tag, row.key == view_model.selected_key)
         dpg_configure_item(name_tag, enabled=live)
         dpg_set_value(self._tags.row(row.key, SUF_TOOLTIP), self._messages.row_explanation(row))
         row_theme = TAG_GLOBAL_THEME_STEMS_ROW if row.in_play else TAG_GLOBAL_THEME_STEMS_ROW_INERT

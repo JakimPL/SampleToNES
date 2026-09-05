@@ -8,14 +8,20 @@ from tests.unit.sampletones_application.logic.main.sources.factories import sett
 
 
 class TestWhichChannelsASlotIsOfferedOn:
-    """A choice reaches a reader only on the channels whose hardware answers it."""
+    """A choice reaches a reader on the channels the settings it edits put it to."""
 
     def test_a_channel_is_offered_on_every_channel(self) -> None:
-        assert all(CHANNEL_SLOT.offers(channel_name) for channel_name in ChannelName.items())
+        held = settings(list(ChannelName.items()))
+        assert all(CHANNEL_SLOT.offers(held, channel_name) for channel_name in ChannelName.items())
 
-    def test_a_bend_is_offered_on_the_channels_that_read_one(self) -> None:
-        assert BEND_SLOT.channels_offered == TONE_CHANNELS
-        assert not BEND_SLOT.offers(ChannelName.NOISE)
+    def test_a_bend_is_offered_on_the_occupied_channels_that_read_one(self) -> None:
+        held = settings(list(ChannelName.items()))
+        assert BEND_SLOT.offered(held) == TONE_CHANNELS
+        assert not BEND_SLOT.offers(held, ChannelName.NOISE)
+
+    def test_a_bend_reaches_no_channel_the_recording_leaves_alone(self) -> None:
+        """A bend belongs to a channel the recording occupies, so an empty one offers none."""
+        assert BEND_SLOT.offered(settings([])) == frozenset()
 
 
 class TestSettlingTheChannelsARecordingOccupies:

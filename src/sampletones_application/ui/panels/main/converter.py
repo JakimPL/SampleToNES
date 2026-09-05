@@ -8,6 +8,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.conversion import MIN_CHANNEL_CAP
 from sampletones_application.constants.output import OutputKind
+from sampletones_application.constants.sources import SourceKind
 from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.general.stems import StemsListLayout
@@ -115,6 +116,7 @@ class GUIConverterPanel(GUIPanel):
         self.on_output_changed: Optional[Callable[[OutputKind], None]] = None
         self.on_folder_removed: Optional[Callable[[Path], None]] = None
         self.on_folder_channel_toggled: Optional[Callable[[Path, ChannelName], None]] = None
+        self.on_row_selected: Optional[Callable[[Path, SourceKind], None]] = None
         self.on_channel_cap_changed: Optional[Callable[[int], None]] = None
         self.on_hierarchy_mode_changed: Optional[Callable[[HierarchyMode], None]] = None
         self.on_source_channels_changed: Optional[Callable[[Path, FrozenSet[ChannelName]], None]] = None
@@ -296,6 +298,7 @@ class GUIConverterPanel(GUIPanel):
         self._stems_list.on_channels_changed = self._on_source_channels_changed
         self._stems_list.on_channel_toggled = self._on_folder_channel_toggled
         self._stems_list.on_remove_requested = self._on_source_removed
+        self._stems_list.on_row_activated = self._on_row_selected
         self._stems_list.on_menu_requested = self._show_row_menu
         self._stems_list.on_dropped_on_row = self._on_dropped_on_source
         self._stems_list.on_dropped_on_level = self._on_dropped_on_level
@@ -337,6 +340,12 @@ class GUIConverterPanel(GUIPanel):
 
     def _on_source_channels_changed(self, key: str, channels: FrozenSet[ChannelName]) -> None:
         self.call(self.on_source_channels_changed, Path(key), channels)
+
+    def _on_row_selected(self, key: str) -> None:
+        """A clicked row is the one the settings card inspects, whichever kind it is."""
+        row = self._stems_list.row(key)
+        if row is not None:
+            self.call(self.on_row_selected, Path(key), row.kind)
 
     def _on_folder_channel_toggled(self, key: str, channel_name: ChannelName) -> None:
         """A folder's box moves every recording it stands for, whichever way they were standing."""

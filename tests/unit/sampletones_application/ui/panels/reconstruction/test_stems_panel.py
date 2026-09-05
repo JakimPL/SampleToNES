@@ -118,6 +118,7 @@ def _view_model(
     return ReconstructionStemsViewModel(
         reconstruction_loaded=True,
         stems=StemsListViewModel(
+            selected_key=None,
             rows=rows,
             channels_in_play=CHANNELS if rows else (),
             muted_channels=muted_channels,

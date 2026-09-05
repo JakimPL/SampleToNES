@@ -6,6 +6,7 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.output import OutputKind
+from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.main.converter.destination import Destination
 from sampletones_application.logic.main.converter.gathering import Gathering
@@ -23,17 +24,28 @@ from sampletones_application.logic.main.converter.setup import (
     playing_sources,
 )
 from sampletones_application.logic.main.converter.state import ConverterState
-from sampletones_application.logic.main.converter.view import compose_view
+from sampletones_application.logic.main.converter.view import (
+    compose_view,
+    inspected_name,
+    inspected_settings,
+    settings_slots,
+)
 from sampletones_application.logic.main.sources.folder import Folder
 from sampletones_application.logic.main.sources.key import SourceKey
 from sampletones_application.logic.main.sources.levels import MixLevels
 from sampletones_application.logic.main.sources.recording import Recording
-from sampletones_application.logic.main.sources.slots import CHANNEL_SLOT
+from sampletones_application.logic.main.sources.slots import (
+    CHANNEL_SLOT,
+    SLOTS_BY_FIELD,
+    SettingsSlot,
+)
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.main.converter import (
     ConversionPhase,
     ConverterViewModel,
 )
+from sampletones_application.view_model.main.reconstructor import SettingsSlotViewModel
+from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
@@ -79,6 +91,7 @@ class ConverterLogic(CallbackMixin):
             ),
             gathering=Gathering.empty(),
             destination=Destination.unset(),
+            selected=None,
         )
 
         self._run = ConversionRun(conversion_service, messages=self._messages)
@@ -183,6 +196,14 @@ class ConverterLogic(CallbackMixin):
 
         self.start_conversion()
 
+    def select_row(self, path: Path, kind: SourceKind) -> None:
+        """Names the row a reader is inspecting, which the settings card edits."""
+        self._settle(self._state.with_selected(SourceKey(kind=kind, path=path)))
+
+    def clear_selection(self) -> None:
+        """Lets the inspected row go, so the card edits what a recording joins the list with."""
+        self._settle(self._state.with_selected(None))
+
     def remove_source(self, path: Path) -> None:
         """Takes one gathered recording out of the setup."""
         self._settle(self._state.with_gathering(self._state.gathering.remove(SourceKey.recording(path))))
@@ -190,6 +211,32 @@ class ConverterLogic(CallbackMixin):
     def remove_folder(self, root: Path) -> None:
         """Takes a folder out of the setup, along with every recording it stands for."""
         self._settle(self._state.with_gathering(self._state.gathering.remove(SourceKey.folder(root))))
+
+    @property
+    def settings_slots(self) -> Tuple[SettingsSlotViewModel, ...]:
+        """The choices the settings card edits, read from the row a reader picked."""
+        return settings_slots(self._state)
+
+    @property
+    def inspected_name(self) -> Optional[str]:
+        """What the settings card is editing, where a reader picked a row out of the list."""
+        return inspected_name(self._state)
+
+    def toggle_slot(self, field: SettingsField, channel_name: ChannelName) -> None:
+        """Settles one choice on ``channel_name``, wherever the settings card is pointed.
+
+        A picked row settles the same way a folder's own box does — already agreeing lets the
+        choice go, every other reading takes it up. With no row picked the gesture reaches the
+        settings a recording joins the list with, which is what the run hands out.
+        """
+        slot = SLOTS_BY_FIELD[field]
+        held = self._inspected_agreement(slot, channel_name).settles_to
+        selected = self._state.selected
+        if selected is None:
+            self._settle_joining(slot.settled(self._joining_settings, channel_name, held))
+            return
+
+        self._settle(self._state.with_gathering(self._state.gathering.settled(selected, slot, channel_name, held)))
 
     def set_source_channels(self, path: Path, channels: FrozenSet[ChannelName]) -> None:
         """Names the channels one recording may take, among the ones the reader was offered."""
@@ -258,9 +305,7 @@ class ConverterLogic(CallbackMixin):
         recording to the channels still named; each keeps the choice it was given for a channel
         left out and gets it back when that channel returns.
         """
-        settings = self._settings.with_joining_channels(channels)
-        self._session_manager.set_converter_settings(settings.joining)
-        self._settle(self._state.with_settings(settings))
+        self._settle_joining(CHANNEL_SLOT.write(self._joining_settings, channels))
 
     def set_channel_cap(self, channel_cap: int) -> None:
         """Names how many channels one recording may hold in a frame, for every conversion."""
@@ -327,6 +372,16 @@ class ConverterLogic(CallbackMixin):
     def _settings(self) -> RunSettings:
         return self._state.settings
 
+    def _settle_joining(self, joining: StemSettings) -> None:
+        """Takes up the settings a recording joins the list with, and writes them down."""
+        settings = self._settings.with_joining(joining)
+        self._session_manager.set_converter_settings(settings.joining)
+        self._settle(self._state.with_settings(settings))
+
+    def _inspected_agreement(self, slot: SettingsSlot, channel_name: ChannelName) -> Agreement:
+        """How the settings the card is editing read on ``channel_name`` in ``slot``."""
+        return Agreement.over(channel_name in slot.read(settings) for settings in inspected_settings(self._state))
+
     def _gathered(self, path: Path) -> Recording:
         """A recording joining the list, holding the settings a recording joins with."""
         return Recording(path=path, settings=self._joining_settings)
@@ -358,7 +413,7 @@ class ConverterLogic(CallbackMixin):
         shows follows every gesture; a settled run returns to idle, since the setup it reported on
         is no longer the one on screen.
         """
-        self._state = self._redirected(state)
+        self._state = self._redirected(state.selecting(state.selected))
         if not self.is_active:
             self._run.return_to_idle()
             self._emit(self._messages.idle, 0.0)

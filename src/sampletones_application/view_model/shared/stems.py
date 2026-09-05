@@ -96,6 +96,7 @@ class StemsListViewModel(BaseModel, frozen=True):
     ``muted_channels`` names the columns a choice made elsewhere has switched off, which the
     boxes report while staying as clickable as any other. ``collapse_levels`` draws every row
     in one table, leaving the levels to the reader's memory rather than to a caption.
+    ``selected_key`` names the row a reader is inspecting, which the list draws picked out.
     """
 
     rows: Tuple[StemRowViewModel, ...]
@@ -103,6 +104,7 @@ class StemsListViewModel(BaseModel, frozen=True):
     muted_channels: FrozenSet[ChannelName]
     live: bool
     collapse_levels: bool
+    selected_key: Optional[str]
 
     @classmethod
     def empty(cls) -> Self:
@@ -113,6 +115,7 @@ class StemsListViewModel(BaseModel, frozen=True):
             muted_channels=frozenset(),
             live=True,
             collapse_levels=False,
+            selected_key=None,
         )
 
     @property

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Final, FrozenSet, Iterator, List, Tuple
+from typing import Final, FrozenSet, Iterator, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -130,8 +130,10 @@ def view(
     live: bool = True,
     muted_channels: FrozenSet[ChannelName] = frozenset(),
     collapse_levels: bool = False,
+    selected_key: Optional[str] = None,
 ) -> StemsListViewModel:
     return StemsListViewModel(
+        selected_key=selected_key,
         rows=rows,
         channels_in_play=CHANNELS,
         muted_channels=muted_channels,
@@ -641,7 +643,7 @@ class TestCollapsedLevels:
 
 
 class TestActivation:
-    def test_a_clicked_row_reports_itself_and_stays_unselected(self, dpg_context: None, layout_config) -> None:
+    def test_a_clicked_row_reports_itself(self, dpg_context: None, layout_config) -> None:
         activated: List[str] = []
         stems_list = build(layout_config, dragging=False)
         stems_list.on_row_activated = activated.append
@@ -649,8 +651,17 @@ class TestActivation:
         stems_list.update_view(view(bass))
 
         name_tag = row_tag(bass, SUF_TEXT)
-        dpg.set_value(name_tag, True)
         dpg.get_item_callback(name_tag)(name_tag, True, bass.key)
 
         assert activated == [bass.key]
-        assert not dpg.get_value(name_tag)
+
+    def test_the_view_says_which_row_reads_as_picked_out(self, dpg_context: None, layout_config) -> None:
+        """A click is answered by whoever owns the list, so the next view decides what is selected."""
+        stems_list = build(layout_config, dragging=False)
+        bass = row("bass")
+        lead = row("lead")
+
+        stems_list.update_view(view(bass, lead, selected_key=lead.key))
+
+        assert dpg.get_value(row_tag(lead, SUF_TEXT)) is True
+        assert dpg.get_value(row_tag(bass, SUF_TEXT)) is False

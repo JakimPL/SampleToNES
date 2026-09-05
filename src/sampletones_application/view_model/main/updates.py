@@ -1,9 +1,8 @@
 from pathlib import Path
-from typing import List
 
 from pydantic import BaseModel
 
-from sampletones_core.constants.enums import ChannelName, SpectrumMethod
+from sampletones_core.constants.enums import SpectrumMethod
 
 
 class AudioSettingsUpdate(BaseModel, frozen=True):
@@ -17,8 +16,9 @@ class LibrarySettingsUpdate(BaseModel, frozen=True):
 
 
 class GenerationSettingsUpdate(BaseModel, frozen=True):
+    """What the settings card reports for the whole run, whichever row it is editing."""
+
     drive: float
-    channels: List[ChannelName]
 
 
 class AdvancedSettingsUpdate(BaseModel, frozen=True):

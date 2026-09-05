@@ -55,6 +55,7 @@ def _state(
         ),
         gathering=gathering,
         destination=Destination.unset(),
+        selected=None,
     )
 
 

@@ -72,6 +72,7 @@ def _view_model(
         max_channel_cap=len(ENABLED_CHANNELS),
         hierarchy_mode=HierarchyMode.ROUND_ROBIN,
         max_sources=max_sources,
+        selected_key=None,
     )
 
 

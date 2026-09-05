@@ -7,11 +7,17 @@ from sampletones_application.logic.main.converter.destination import Destination
 from sampletones_application.logic.main.converter.gathering import Gathering
 from sampletones_application.logic.main.converter.state import ConverterState
 from sampletones_application.logic.main.sources.row import SourceRow
-from sampletones_application.logic.main.sources.slots import CHANNEL_SLOT
+from sampletones_application.logic.main.sources.slots import (
+    CHANNEL_SLOT,
+    SETTINGS_SLOTS,
+    SettingsSlot,
+)
 from sampletones_application.view_model.main.converter import ConversionPhase, ConverterViewModel
+from sampletones_application.view_model.main.reconstructor import SettingsSlotViewModel
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 
 def compose_view(
@@ -49,7 +55,67 @@ def compose_view(
         max_channel_cap=settings.max_channel_cap,
         hierarchy_mode=settings.hierarchy_mode,
         max_sources=MAX_STEM_SOURCES,
+        selected_key=_selected_key(state),
     )
+
+
+def settings_slots(state: ConverterState) -> Tuple[SettingsSlotViewModel, ...]:
+    """The choices the settings card edits, read from what the card is inspecting.
+
+    A picked row is read through the recordings it stands for; with none picked the card edits the
+    settings a recording joins the list with, which is what every new row starts from.
+    """
+    inspected = inspected_settings(state)
+    return tuple(_slot_reading(slot, inspected) for slot in SETTINGS_SLOTS)
+
+
+def inspected_settings(state: ConverterState) -> Tuple[StemSettings, ...]:
+    """The settings the card is editing: a picked row's recordings, or the joining settings."""
+    selected = state.selected
+    if selected is None:
+        return (state.settings.joining,)
+
+    row = state.gathering.sources.row(selected)
+    if row is None:
+        return ()
+
+    return tuple(recording.settings for recording in row.recordings)
+
+
+def inspected_name(state: ConverterState) -> Optional[str]:
+    """What the card is editing, where a reader picked a row out of the list."""
+    selected = state.selected
+    if selected is None:
+        return None
+
+    return selected.path.name if selected.names_folder else selected.path.stem
+
+
+def _slot_reading(
+    slot: SettingsSlot,
+    inspected: Tuple[StemSettings, ...],
+) -> SettingsSlotViewModel:
+    offered = frozenset().union(*(slot.offered(settings) for settings in inspected)) if inspected else frozenset()
+    held = set()
+    partial = set()
+    for channel_name in offered:
+        agreement = Agreement.over(channel_name in slot.read(settings) for settings in inspected)
+        if agreement is Agreement.ALL:
+            held.add(channel_name)
+        elif agreement is Agreement.SOME:
+            partial.add(channel_name)
+
+    return SettingsSlotViewModel(
+        field=slot.field,
+        offered_channels=offered,
+        held_channels=frozenset(held),
+        partial_channels=frozenset(partial),
+    )
+
+
+def _selected_key(state: ConverterState) -> Optional[str]:
+    """The row a reader is inspecting, as the list names it."""
+    return None if state.selected is None else str(state.selected.path)
 
 
 def stem_rows(

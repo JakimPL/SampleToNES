@@ -11,7 +11,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.messages import StemsMessages
 from sampletones_application.ui.elements.stems.tags import StemsTags
-from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
+from sampletones_application.utils.gui.dpg import dpg_delete_item
 from sampletones_application.view_model.shared.stems import StemsListViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import Sender
@@ -121,9 +121,8 @@ class StemsGestures:
     def on_remove_button(self, _sender: Sender, _app_data: Any, user_data: str) -> None:
         self._report(self.on_removal_asked, user_data)
 
-    def on_name_selected(self, sender: Sender, _value: bool, user_data: str) -> None:
-        """Let go of a clicked row and hand it on: the list names recordings, it selects none."""
-        dpg_set_value(sender, False)
+    def on_name_selected(self, _sender: Sender, _value: bool, user_data: str) -> None:
+        """Hand a clicked row on, and let the next view say which row now reads as picked out."""
         if self.activatable:
             self._report(self.on_row_activated, user_data)
 

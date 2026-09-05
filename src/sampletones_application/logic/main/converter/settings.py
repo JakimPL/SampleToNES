@@ -39,6 +39,10 @@ class RunSettings:
         """The cap a run holds to: what the reader asked for, within the channels now enabled."""
         return min(self.channel_cap, self.max_channel_cap)
 
+    def with_joining(self, joining: StemSettings) -> Self:
+        """The settings a recording joins the list with, as a reader settled them."""
+        return replace(self, joining=joining)
+
     def with_joining_channels(self, channels: FrozenSet[ChannelName]) -> Self:
         """The settings a recording joins with, holding exactly ``channels``.
 
