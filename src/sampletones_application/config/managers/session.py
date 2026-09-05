@@ -7,9 +7,11 @@ from sampletones_application.config.managers.state import ApplicationStateManage
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.state.state import ApplicationState
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.playback import FollowMode
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
+from sampletones_core.constants.enums import HierarchyMode
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 
@@ -92,6 +94,30 @@ class SessionManager:
 
     def set_converter_settings(self, settings: StemSettings) -> None:
         self._config_manager.set_converter_settings(settings)
+
+    @property
+    def converter_output(self) -> OutputKind:
+        """What a run writes, as the reader last left the output switch."""
+        return self._config_manager.converter_output
+
+    def set_converter_output(self, output: OutputKind) -> None:
+        self._config_manager.set_converter_output(output)
+
+    @property
+    def converter_channel_cap(self) -> int:
+        """How many channels one recording may hold in a frame, as the reader last set it."""
+        return self._config_manager.converter_channel_cap
+
+    def set_converter_channel_cap(self, channel_cap: int) -> None:
+        self._config_manager.set_converter_channel_cap(channel_cap)
+
+    @property
+    def converter_hierarchy_mode(self) -> HierarchyMode:
+        """How the levels of a mix take turns, as the reader last set it."""
+        return self._config_manager.converter_hierarchy_mode
+
+    def set_converter_hierarchy_mode(self, hierarchy_mode: HierarchyMode) -> None:
+        self._config_manager.set_converter_hierarchy_mode(hierarchy_mode)
 
     def set_loop_song(self, value: bool) -> None:
         self._config_manager.set_loop_song(value)

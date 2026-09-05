@@ -53,10 +53,9 @@ from sampletones_application.view_model.main.reconstructor import (
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions.converter import ConversionPlan
-from sampletones_core.reconstructions.converter.paths import top_level_audio_files
+from sampletones_core.reconstructions.converter.paths import get_audio_files
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
@@ -91,9 +90,9 @@ class ConverterLogic(CallbackMixin):
         self._state = ConverterState(
             settings=RunSettings(
                 joining=session_manager.converter_settings,
-                output=OutputKind.PER_RECORDING,
-                channel_cap=len(ChannelName),
-                hierarchy_mode=DEFAULT_STEMS_HIERARCHY_MODE,
+                output=session_manager.converter_output,
+                channel_cap=session_manager.converter_channel_cap,
+                hierarchy_mode=session_manager.converter_hierarchy_mode,
             ),
             gathering=Gathering.empty(),
             destination=Destination.unset(),
@@ -398,9 +397,7 @@ class ConverterLogic(CallbackMixin):
 
     def _settle_joining(self, joining: StemSettings) -> None:
         """Takes up the settings a recording joins the list with, and writes them down."""
-        settings = self._settings.with_joining(joining)
-        self._session_manager.set_converter_settings(settings.joining)
-        self._settle(self._state.with_settings(settings))
+        self._settle(self._state.with_settings(self._settings.with_joining(joining)))
 
     def _inspected_agreement(self, slot: SettingsSlot, channel_name: ChannelName) -> Agreement:
         """How the settings the card is editing read on ``channel_name`` in ``slot``."""
@@ -411,8 +408,12 @@ class ConverterLogic(CallbackMixin):
         return Recording(path=path, settings=self._joining_settings)
 
     def _folder_recordings(self, root: Path) -> Tuple[Recording, ...]:
-        """The recordings a folder brings in, each joining with the settings a new row starts from."""
-        return tuple(self._gathered(path) for path in top_level_audio_files(root))
+        """Every recording below a folder, each joining with the settings a new row starts from.
+
+        The walk goes as deep as the folder does, so a folder of folders stands for what its whole
+        tree holds and a run writing one reconstruction apiece mirrors that tree.
+        """
+        return tuple(self._gathered(path) for path in get_audio_files(root, sort=True))
 
     def _gathering_folder(self, root: Path) -> Gathering:
         """The setup with ``root`` standing as one row, or as it stands where the folder is empty."""
@@ -449,11 +450,26 @@ class ConverterLogic(CallbackMixin):
         shows follows every gesture; a settled run returns to idle, since the setup it reported on
         is no longer the one on screen.
         """
+        self._remember(state.settings)
         self._state = self._redirected(state.selecting(state.selected))
         self._rows = self._read_rows()
         if not self.is_active:
             self._run.return_to_idle()
             self._emit(self._messages.idle, 0.0)
+
+    def _remember(self, settings: RunSettings) -> None:
+        """Write down the shape of the run, so a launch opens where the last one left off.
+
+        The settings a recording joins with and the run's own shape are carried between launches,
+        which is what makes the converter open on the setup the reader last worked in.
+        """
+        if settings == self._settings:
+            return
+
+        self._session_manager.set_converter_settings(settings.joining)
+        self._session_manager.set_converter_output(settings.output)
+        self._session_manager.set_converter_channel_cap(settings.channel_cap)
+        self._session_manager.set_converter_hierarchy_mode(settings.hierarchy_mode)
 
     def _redirected(self, state: ConverterState) -> ConverterState:
         """The setup with its destination following the sources that take part in it."""

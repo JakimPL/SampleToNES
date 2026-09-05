@@ -9,7 +9,6 @@ from sampletones_core.reconstructions.converter.paths.utils import (
     get_relative_path,
     group_output_path,
     holds_audio_files,
-    top_level_audio_files,
 )
 
 __all__ = [
@@ -21,5 +20,4 @@ __all__ = [
     "get_relative_path",
     "group_output_path",
     "holds_audio_files",
-    "top_level_audio_files",
 ]

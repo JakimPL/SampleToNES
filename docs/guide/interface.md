@@ -39,7 +39,7 @@ you can rerun it to carry on where you stopped.
 The card holds a list of what a run converts. Click a recording in the browser to
 add it; right-click and choose **Add as stem**, or Ctrl-click, to do the same.
 Ctrl-click a folder — or use **Add folder as stems** — and the folder joins as
-one row standing for the recordings inside it.
+one row standing for every recording below it, however deep the tree goes.
 
 The channels are named once above the rows, and each row shows one recording and
 a checkbox under every channel it may use. Untick them all and the row grays out:
@@ -85,7 +85,8 @@ filled before the next picks.
 **Channels per source**, below the list, caps how many channels one recording may
 hold in a single frame, and it applies to every conversion. Set to 1, each
 recording gets a single voice. It stands beside **Order** once there is a list to
-answer for.
+answer for. The output switch, the cap and the order are remembered, so the app
+opens on the run you last set up.
 
 Reconstructing a file or a folder from the browser converts that one thing, so it
 asks first where you have already gathered a list.

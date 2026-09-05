@@ -15,6 +15,7 @@ from sampletones_application.logic.instruction.library_manager import (
 from sampletones_application.logic.main.converter.logic import ConverterLogic
 from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.logic.main.explorer_manager import ExplorerManager
+from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.main import MainTabParameters
 from sampletones_application.services.conversion.service import ConversionService
@@ -159,9 +160,10 @@ class MainTabCoordinator:
             language_manager=language_manager,
             open_directories=session_manager.expanded_directories,
         )
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
         self._explorer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
-            audio_device_manager,
+            self._file_playback,
             scheduling=layout.scheduling,
         )
         self._explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
@@ -176,7 +178,7 @@ class MainTabCoordinator:
         self._explorer_tree_logic.on_lock_state_changed = self._explorer_panel.set_tree_enabled
         self._explorer_tree_logic.on_favorite_changed = self._repaint_explorer_favorites
         self._explorer_tree_logic.on_search_update_needed = self._explorer_panel.update_tree_visibility
-        self._explorer_tree_logic.on_autoplay_error = self._on_explorer_autoplay_error
+        self._file_playback.on_error = self._on_explorer_autoplay_error
 
     def _build_cards(
         self,
@@ -333,7 +335,7 @@ class MainTabCoordinator:
         self._converter_panel.on_folder_removed = self._converter_logic.remove_folder
         self._converter_panel.on_folder_channel_toggled = self._converter_logic.toggle_folder_channel
         self._converter_panel.on_row_selected = self._converter_logic.select_row
-        self._converter_panel.on_source_played = self._explorer_tree_logic.play_path
+        self._converter_panel.on_source_played = self._file_playback.play
         self._stem_selection_window.on_add = self._converter_logic.mix_only
 
     def _repaint_explorer_favorites(self, node: FileSystemNode) -> None:

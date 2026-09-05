@@ -21,6 +21,7 @@ from sampletones_application.view_model.main.converter import (
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions.converter import GroupConversion
+from tests.suite.base import BaseTestSuite
 from tests.suite.language import FakeLanguageManager
 from tests.unit.sampletones_application.logic.main.converter.texts import TEXTS
 
@@ -32,6 +33,14 @@ def _config_writing_under(reconstructions_directory: Path) -> Config:
     config = Config()
     general = config.general.model_copy(update={"reconstructions_directory": str(reconstructions_directory)})
     return config.model_copy(update={"general": general})
+
+
+def _config_manager_writing_under(reconstructions_directory: Path) -> MagicMock:
+    """The configuration manager a converter reads where a run writes from."""
+    config_manager = MagicMock()
+    config_manager.config = _config_writing_under(reconstructions_directory)
+    config_manager.get_reconstructions_directory.return_value = reconstructions_directory
+    return config_manager
 
 
 @pytest.fixture
@@ -60,9 +69,7 @@ def converter_logic(
     resolves within the test rather than in the reconstructions the developer holds.
     """
     reconstructions_directory = tmp_path / "reconstructions"
-    config_manager = MagicMock()
-    config_manager.config = _config_writing_under(reconstructions_directory)
-    config_manager.get_reconstructions_directory.return_value = reconstructions_directory
+    config_manager = _config_manager_writing_under(reconstructions_directory)
     scheduling = MagicMock(
         priorities=MagicMock(schedule=0),
         delays=MagicMock(schedule=0, cancel=0),
@@ -783,3 +790,91 @@ def _aimed_at_a_recording(converter_logic: ConverterLogic, tmp_path: Path) -> Pa
     source.touch()
     converter_logic.gather_recordings([source])
     return source
+
+
+class TestAFolderOfFolders(BaseTestSuite):
+    """A gathered folder stands for every recording below it, however deep the tree goes."""
+
+    @staticmethod
+    def _tree(tmp_path: Path) -> Path:
+        root = tmp_path / "library"
+        nested = root / "loops" / "drums"
+        nested.mkdir(parents=True)
+        (root / "top.wav").touch()
+        (nested / "deep.wav").touch()
+        (nested / "notes.txt").write_text("not audio")
+        return root
+
+    def test_every_recording_below_it_is_gathered(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        root = self._tree(tmp_path)
+
+        converter_logic.gather_folder(root)
+
+        assert {path.name for path in converter_logic.gathered_paths} == {"top.wav", "deep.wav"}
+
+    def test_it_still_stands_as_one_row(self, converter_logic: ConverterLogic, tmp_path: Path) -> None:
+        root = self._tree(tmp_path)
+
+        converter_logic.gather_folder(root)
+
+        rows = _view(converter_logic).stem_sources
+        assert len(rows) == 1
+        assert (rows[0].path, rows[0].holds) == (root, 2)
+
+
+class TestTheRunTheSessionCarries(BaseTestSuite):
+    """The shape of a run is carried between launches, so the converter opens where it was left."""
+
+    def test_the_output_switch_is_written_down(
+        self,
+        converter_logic: ConverterLogic,
+        session_manager: SessionManager,
+    ) -> None:
+        converter_logic.set_output(OutputKind.MIXED)
+
+        assert session_manager.converter_output is OutputKind.MIXED
+
+    def test_the_channel_cap_is_written_down(
+        self,
+        converter_logic: ConverterLogic,
+        session_manager: SessionManager,
+    ) -> None:
+        converter_logic.set_channel_cap(2)
+
+        assert session_manager.converter_channel_cap == 2
+
+    def test_the_order_is_written_down(
+        self,
+        converter_logic: ConverterLogic,
+        session_manager: SessionManager,
+    ) -> None:
+        converter_logic.set_hierarchy_mode(HierarchyMode.STRICT)
+
+        assert session_manager.converter_hierarchy_mode is HierarchyMode.STRICT
+
+    def test_a_converter_opens_on_what_the_session_carries(
+        self,
+        converter_logic: ConverterLogic,
+        session_manager: SessionManager,
+        service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """The whole point of writing them down: the next launch reads them back."""
+        converter_logic.set_output(OutputKind.MIXED)
+        converter_logic.set_channel_cap(2)
+        converter_logic.set_hierarchy_mode(HierarchyMode.STRICT)
+
+        reopened = ConverterLogic(
+            _config_manager_writing_under(tmp_path / "reconstructions"),
+            session_manager,
+            service,
+            scheduling=MagicMock(priorities=MagicMock(schedule=0), delays=MagicMock(schedule=0, cancel=0)),
+            language_manager=FakeLanguageManager(TEXTS),  # type: ignore[arg-type]
+            is_operation_active=lambda: False,
+        )
+
+        assert reopened.mixes is True

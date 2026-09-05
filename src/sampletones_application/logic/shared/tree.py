@@ -1,17 +1,12 @@
 import threading
-from pathlib import Path
 from typing import Callable, Optional
 
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
+from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
-from sampletones_shared.exceptions import SampleToNESError
-from sampletones_shared.logger import logger
-from sampletones_shared.paths import extensions
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -20,12 +15,12 @@ class TreeLogic(CallbackMixin):
     def __init__(
         self,
         session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        file_playback: FilePlayback,
         *,
         scheduling: SchedulingBehavior,
     ) -> None:
         self._session_manager = session_manager
-        self._audio_device_manager = audio_device_manager
+        self._file_playback = file_playback
         self._scheduling = scheduling
 
         self._lock_counter: int = 0
@@ -38,7 +33,6 @@ class TreeLogic(CallbackMixin):
         self.on_lock_state_changed: Optional[Callable[[bool], None]] = None
         self.on_favorite_changed: Optional[Callable[[FileSystemNode], None]] = None
         self.on_search_update_needed: Optional[VoidCallback] = None
-        self.on_autoplay_error: Optional[Callable[[Exception], None]] = None
 
     def lock(self) -> None:
         with self._thread_lock:
@@ -90,26 +84,16 @@ class TreeLogic(CallbackMixin):
         self._pending_autoplay_node = None
 
     def play_node(self, node: FileSystemNode) -> None:
-        """Play the file a browser node stands for, where it is one this logic can sound."""
+        """Play the file a browser node stands for, where it is one the player can sound."""
         if node.node_type == NodeType.FILE:
-            self.play_path(node.filepath)
-
-    def play_path(self, path: Path) -> None:
-        """Play a file on demand, preempting the auxiliary preview and the players.
-
-        The session autoplay flag holds for what a selection sounds on its own; asking for a file
-        by name is a deliberate action, so it plays at ``NORMAL`` priority and outranks the
-        reconstruction and sequencer players.
-        """
-        self._play_file(path, PlaybackPriority.NORMAL)
+            self._file_playback.play(node.filepath)
 
     def is_playable_file(self, node: TreeNode) -> bool:
-        """Whether the node is a file this logic knows how to play (reconstruction or audio)."""
+        """Whether the node is a file the player knows how to sound."""
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return False
 
-        suffix = node.filepath.suffix.lower()
-        return suffix == extensions.EXT_FILE_RECONSTRUCTION or suffix in extensions.EXT_FILES_AUDIO
+        return FilePlayback.plays(node.filepath)
 
     def _execute_autoplay(self) -> None:
         if self._pending_autoplay_node is not None:
@@ -117,24 +101,9 @@ class TreeLogic(CallbackMixin):
             self._pending_autoplay_node = None
 
     def _autoplay_file(self, node: FileSystemNode) -> None:
+        """Sound what a selection selects, where the session says a selection sounds at all."""
         if self._session_manager.autoplay and node.node_type == NodeType.FILE:
-            self._play_file(node.filepath, PlaybackPriority.PREVIEW)
-
-    def _play_file(self, path: Path, priority: PlaybackPriority) -> None:
-        match path.suffix.lower():
-            case extensions.EXT_FILE_RECONSTRUCTION:
-                try:
-                    reconstruction = Reconstruction.load(path)
-                    self._audio_device_manager.play(
-                        reconstruction.approximation,
-                        update=False,
-                        priority=priority,
-                    )
-                except (OSError, SampleToNESError) as exception:
-                    logger.error_with_traceback(exception, f"Failed to play reconstruction file: {path}")
-                    self.call(self.on_autoplay_error, exception)
-            case suffix if suffix in extensions.EXT_FILES_AUDIO:
-                self._audio_device_manager.play_file(path, update=False, priority=priority)
+            self._file_playback.play_at(node.filepath, PlaybackPriority.PREVIEW)
 
     def is_node_favorite(self, node: TreeNode) -> bool:
         if not isinstance(node, FileSystemNode):

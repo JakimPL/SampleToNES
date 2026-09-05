@@ -36,6 +36,7 @@ from sampletones_application.logic.reconstruction.manager import ReconstructionM
 from sampletones_application.logic.reconstruction.reconstruction import (
     ReconstructionPanelLogic,
 )
+from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.reconstruction import (
@@ -185,9 +186,10 @@ class ReconstructionTabCoordinator:
             config_manager,
             browser_manager,
         )
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
         self._browser_tree_logic: TreeLogic = TreeLogic(
             session_manager,
-            audio_device_manager,
+            self._file_playback,
             scheduling=layout.scheduling,
         )
         self._browser_panel: GUIReconstructionsBrowserPanel = GUIReconstructionsBrowserPanel(
@@ -204,7 +206,7 @@ class ReconstructionTabCoordinator:
         self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
         self._browser_tree_logic.on_favorite_changed = on_favorite_changed
         self._browser_tree_logic.on_search_update_needed = self._browser_panel.update_tree_visibility
-        self._browser_tree_logic.on_autoplay_error = self._on_preview_error
+        self._file_playback.on_error = self._on_preview_error
         self._browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
         self._browser_panel.on_favorites_filter_changed = self._on_browser_favorites_filter_changed
         self._reconstruction_player_logic = PlayerLogic(
