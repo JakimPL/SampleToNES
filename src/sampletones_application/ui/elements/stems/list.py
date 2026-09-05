@@ -1,6 +1,5 @@
-from typing import Final, Optional
-
-import dearpygui.dearpygui as dpg
+from functools import partial
+from typing import Final, Optional, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.stems import StemsListLayout
@@ -31,7 +30,7 @@ from sampletones_application.view_model.shared.stems import (
 from sampletones_shared.types.callback import StringCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
-NO_CEILING: Final[int] = 0
+NO_ROWS: Final[int] = 0
 
 
 class GUIStemsList(CallbackMixin):
@@ -66,7 +65,7 @@ class GUIStemsList(CallbackMixin):
         self._region = WindowedRegion(
             tag=self._tags.well,
             geometry=self._geometry,
-            ceiling=NO_CEILING,
+            ceiling=layout.well_ceiling,
             padding=layout.well_padding,
             margin=layout.well_margin,
         )
@@ -168,13 +167,59 @@ class GUIStemsList(CallbackMixin):
     def _rebuild(self, view_model: StemsListViewModel) -> None:
         """Draw the list afresh: the bands the view names, and a region under each open folder."""
         self._folders.forget()
-        self._region.draw_whole(lambda: self._bands.build(view_model))
+        if self._windows(view_model):
+            self._draw_window(view_model)
+            return
+
+        self._region.draw_whole(
+            partial(self._bands.build, view_model),
+            lead=partial(self._bands.build_heading, view_model),
+            rows=self._plain_rows(view_model),
+        )
+
+    def _draw_window(self, view_model: StemsListViewModel) -> None:
+        """Draw the rows the well reaches, reserving the room the rest of them would take."""
+        self._region.draw(
+            view_model.row_count,
+            partial(self._bands.build_rows, view_model),
+            lead=partial(self._bands.build_heading, view_model),
+        )
+
+    @staticmethod
+    def _windows(view_model: StemsListViewModel) -> bool:
+        """Whether the well draws a window over its rows rather than the whole run of them.
+
+        A window slides over rows of one height, which is what a list of recordings alone is: a
+        list banded by levels stands captions and strips among its rows, and a folder stands a
+        region of its own under one. A folder answers for its own length inside that region, so
+        the well holds the rows around it entire.
+        """
+        return view_model.collapse_levels and not view_model.holds_folders
+
+    def _plain_rows(self, view_model: StemsListViewModel) -> int:
+        """How many rows a whole-drawn well stands as a plain run of, which a reading counts by.
+
+        A run broken by a caption, a strip or an open folder's region carries more than rows, so
+        it counts none and the reading in force stands.
+        """
+        if not view_model.collapse_levels or self._open_folders:
+            return NO_ROWS
+
+        return view_model.row_count
 
     def _repaint(self, view_model: StemsListViewModel) -> None:
         """Draw what the rows in view currently hold onto the widgets they stand as."""
-        for row in view_model.rows:
+        for row in self._reached(view_model):
             self._rows.repaint(row, view_model, releasable=self._releasable)
             self._folders.repaint(row, view_model)
+
+    def _reached(self, view_model: StemsListViewModel) -> Tuple[StemRowViewModel, ...]:
+        """The rows the well has widgets for, which are the ones a repaint reaches."""
+        if not self._region.windowing:
+            return view_model.rows
+
+        start, count = self._region.window
+        return view_model.rows[start : start + count]
 
     def row(self, key: str) -> Optional[StemRowViewModel]:
         """The row a gesture named, as the list last rendered it."""
@@ -192,7 +237,7 @@ class GUIStemsList(CallbackMixin):
     @property
     def _following(self) -> bool:
         """A region is holding rows back, so the list watches for the scroll that asks for them."""
-        return self._folders.following
+        return self._region.windowing or self._folders.following
 
     def _settle_soon(self) -> None:
         """Ask to read the drawn rows back once the frame that placed them has been rendered.
@@ -211,8 +256,10 @@ class GUIStemsList(CallbackMixin):
         """Read back what the regions drew, refill the ones a scroll has moved on from, and keep
         watching for as long as one of them holds rows it has yet to build."""
         self._settling = False
-        self._measure_rows()
-        self._region.settle()
+        if self._region.settle():
+            self._draw_window(self._view)
+            self._repaint(self._view)
+
         for key in self._folders.settle():
             self._folders.redraw(key, self._view)
             row = self._view.row(key)
@@ -221,21 +268,6 @@ class GUIStemsList(CallbackMixin):
 
         if self._following:
             self._settle_soon()
-
-    def _measure_rows(self) -> None:
-        """Read what one row takes from the rows the list has drawn, so a folder opens knowing it.
-
-        The reading is taken while the list stands as a plain run of rows, with no caption, strip
-        or open region among them, so what is measured is the rows' own room. A folder is then
-        opened against a reading the list took from its own rows and builds the handful it shows
-        rather than everything it holds; from there each region reads its own rows back.
-        """
-        rows = self._view.row_count
-        if not rows or self._open_folders or not self._view.collapse_levels or not self._view.holds_folders:
-            return
-
-        if dpg.does_item_exist(self._tags.body):
-            self._geometry.take(block=float(dpg.get_item_rect_size(self._tags.body)[1]), rows=rows)
 
     @property
     def _releasable(self) -> bool:

@@ -21,6 +21,7 @@ from sampletones_application.tags.general import (
     SUF_CHANNELS,
     SUF_CHECKBOX,
     SUF_HANDLER_REGISTRY,
+    SUF_HEADING,
     SUF_LEVEL,
     SUF_ROW,
     SUF_STRIP,
@@ -49,6 +50,7 @@ ROOT_TAG = "test_root"
 PREFIX = "test.stems"
 CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.TRIANGLE)
 DRAG_PAYLOAD_SLOT: Final[int] = 3
+LONG_LIST: Final[int] = 200
 
 
 @pytest.fixture
@@ -668,3 +670,61 @@ class TestActivation:
 
         assert dpg.get_value(row_tag(lead, SUF_TEXT)) is True
         assert dpg.get_value(row_tag(bass, SUF_TEXT)) is False
+
+
+class TestTheHeading:
+    """The channels are named once above the rows, whatever shape the list takes below it."""
+
+    def test_a_plain_list_names_them(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("kick"), collapse_levels=True))
+
+        assert dpg.does_item_exist(compose_tag(PREFIX, SUF_HEADING, ChannelName.PULSE1, SUF_TEXT))
+
+    def test_a_banded_list_names_them_too(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("kick")))
+
+        assert dpg.does_item_exist(compose_tag(PREFIX, SUF_HEADING, ChannelName.PULSE1, SUF_TEXT))
+
+
+class TestTheWell:
+    """The well keeps the card's shape: where its rows are recordings alone it builds the ones it
+    shows and reserves the room for the rest, and it holds every row otherwise."""
+
+    def test_a_long_run_of_recordings_builds_the_rows_it_shows(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        built = sum(1 for entry in rows if dpg.does_item_exist(row_tag(entry, SUF_TEXT)))
+        assert 0 < built < LONG_LIST
+
+    def test_a_short_run_of_recordings_builds_them_all(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        rows = (row("kick"), row("snare"))
+
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        assert all(dpg.does_item_exist(row_tag(entry, SUF_TEXT)) for entry in rows)
+
+    def test_a_list_holding_a_folder_builds_every_row(self, dpg_context: None, layout_config) -> None:
+        """A folder answers for its own length inside its region, so the well holds the rest whole."""
+        stems_list = build(layout_config)
+        rows = (folder_row("sources"), *(row(f"take_{index}") for index in range(LONG_LIST)))
+
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        assert all(dpg.does_item_exist(row_tag(entry, SUF_TEXT)) for entry in rows)
+
+    def test_a_banded_list_builds_every_row(self, dpg_context: None, layout_config) -> None:
+        """Captions and strips stand among banded rows, so there is no one row to reserve room by."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+
+        stems_list.update_view(view(*rows))
+
+        assert all(dpg.does_item_exist(row_tag(entry, SUF_TEXT)) for entry in rows)

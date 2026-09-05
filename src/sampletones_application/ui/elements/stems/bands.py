@@ -78,15 +78,23 @@ class LevelBands:
         self._shape = shape
         return True
 
-    def build(self, view_model: StemsListViewModel) -> None:
-        """Build the bands the view names, into whatever the list has cleared for them.
+    def build_heading(self, view_model: StemsListViewModel, parent: str) -> None:
+        """Name the channels once above the rows, so a cell below them holds the box alone.
 
-        The channels are named once above them all, so a cell below holds the box alone.
+        The heading stands above whatever the list draws, banded or plain, and every table below
+        it is declared from the same grid.
         """
         columns = self.columns(view_model)
         self._folders.reads(columns)
-        self._heading.create(self._tags.body, columns)
+        self._heading.create(parent, columns)
         self._heading.render(view_model.muted_channels)
+
+    def build_rows(self, view_model: StemsListViewModel, start: int, count: int) -> None:
+        """One table of the rows a window reaches, in the grid the whole list stands in."""
+        self._create_table(self._tags.segment(0), view_model, view_model.rows[start : start + count])
+
+    def build(self, view_model: StemsListViewModel) -> None:
+        """Build the bands the view names, into whatever the list has cleared for them."""
         if view_model.collapse_levels:
             self._create_listing(view_model)
             return

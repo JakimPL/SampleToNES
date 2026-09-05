@@ -1,11 +1,11 @@
-from typing import Iterator, List, Tuple
+from typing import Iterator, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.paths import PALETTES_DIRECTORY, THEME_DIRECTORY
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
-from sampletones_application.ui.elements.layout.region import WindowedRegion
+from sampletones_application.ui.elements.layout.region import LeadBuilder, WindowedRegion
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
@@ -17,6 +17,7 @@ REGION_TAG = "test.region"
 PITCH = 20.0
 OVERSCAN = 2
 CEILING = 100
+HEADING_TEXT = "channels"
 
 
 @pytest.fixture
@@ -47,7 +48,12 @@ def region(dpg_context: None) -> WindowedRegion:
     return built
 
 
-def draw(region: WindowedRegion, total: int) -> List[Tuple[int, int]]:
+def heading(parent: str) -> None:
+    """A heading of the kind a list stands above its rows."""
+    dpg.add_text(HEADING_TEXT, parent=parent)
+
+
+def draw(region: WindowedRegion, total: int, *, lead: Optional[LeadBuilder] = None) -> List[Tuple[int, int]]:
     """Draw a list of ``total`` rows, reporting the slice the region asked to be built."""
     asked: List[Tuple[int, int]] = []
 
@@ -56,16 +62,20 @@ def draw(region: WindowedRegion, total: int) -> List[Tuple[int, int]]:
         for index in range(start, start + count):
             dpg.add_text(f"row {index}", parent=region.body)
 
-    region.draw(total, build)
+    region.draw(total, build, lead=lead)
     return asked
 
 
 def reserves(region: WindowedRegion) -> Tuple[int, int]:
     """The room standing above and below the rows the region drew."""
-    children = dpg.get_item_children(region.body, 1)
+    spacers = [
+        child
+        for child in dpg.get_item_children(region.body, 1)
+        if dpg.get_item_type(child) == "mvAppItemType::mvSpacer"
+    ]
     return (
-        int(dpg.get_item_configuration(children[0])["height"]),
-        int(dpg.get_item_configuration(children[-1])["height"]),
+        int(dpg.get_item_configuration(spacers[0])["height"]),
+        int(dpg.get_item_configuration(spacers[-1])["height"]),
     )
 
 
@@ -149,3 +159,52 @@ class TestRedrawing(BaseTestSuite):
         draw(region, 20)
         _, below = reserves(region)
         assert below == int((20 - 10) * PITCH)
+
+
+class TestALead(BaseTestSuite):
+    """A heading standing above the rows is built with them and scrolls with them."""
+
+    def test_the_heading_stands_before_the_rows(self, region: WindowedRegion) -> None:
+        draw(region, 4, lead=heading)
+        first = dpg.get_item_children(region.body, 1)[0]
+
+        assert dpg.get_item_type(first) == "mvAppItemType::mvGroup"
+
+    def test_the_rows_are_reserved_around_as_they_are_without_one(self, region: WindowedRegion) -> None:
+        draw(region, 500, lead=heading)
+
+        assert reserves(region) == (0, int((500 - 10) * PITCH))
+
+    def test_a_region_drawn_again_holds_one_heading(self, region: WindowedRegion) -> None:
+        draw(region, 4, lead=heading)
+        draw(region, 4, lead=heading)
+        groups = [
+            child
+            for child in dpg.get_item_children(region.body, 1)
+            if dpg.get_item_type(child) == "mvAppItemType::mvGroup"
+        ]
+
+        assert len(groups) == 1
+
+
+class TestAWholeDraw(BaseTestSuite):
+    """Content that is more than a run of rows is built entire, and the region holds it to its
+    ceiling from there on."""
+
+    def test_everything_it_is_given_is_built(self, region: WindowedRegion) -> None:
+        region.draw_whole(
+            lambda: [dpg.add_text(f"row {index}", parent=region.body) for index in range(30)], lead=None, rows=30
+        )
+
+        assert len(dpg.get_item_children(region.body, 1)) == 30
+
+    def test_it_holds_back_no_rows(self, region: WindowedRegion) -> None:
+        region.draw_whole(lambda: dpg.add_text("banded", parent=region.body), lead=None, rows=0)
+
+        assert not region.windowing
+
+    def test_it_carries_its_heading_too(self, region: WindowedRegion) -> None:
+        region.draw_whole(lambda: dpg.add_text("banded", parent=region.body), lead=heading, rows=0)
+        first = dpg.get_item_children(region.body, 1)[0]
+
+        assert dpg.get_item_type(first) == "mvAppItemType::mvGroup"

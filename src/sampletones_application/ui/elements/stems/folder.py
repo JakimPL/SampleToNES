@@ -126,7 +126,7 @@ class FolderRenderer:
         row: StemRowViewModel,
         view_model: StemsListViewModel,
     ) -> None:
-        region.draw(row.holds, partial(self._create_rows, region, row, view_model))
+        region.draw(row.holds, partial(self._create_rows, region, row, view_model), lead=None)
 
     def _create_rows(
         self,

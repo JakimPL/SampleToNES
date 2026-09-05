@@ -807,6 +807,7 @@ SUF_HANDLER_HEADER = compose_tag("handler", "header")
 SUF_HANDLER_DRAG = compose_tag("handler", "drag")
 SUF_HANDLER_LIST = compose_tag("handler", "list")
 SUF_LABEL = "label"
+SUF_LEAD = "lead"
 SUF_PATH = "path"
 SUF_TEXT = "text"
 SUF_TEXT_FAVORITES = compose_tag(SUF_TEXT, "favorites")

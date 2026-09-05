@@ -41,10 +41,12 @@ add it; right-click and choose **Add as stem**, or Ctrl-click, to do the same.
 Ctrl-click a folder — or use **Add folder as stems** — and the folder joins as
 one row standing for the recordings inside it.
 
-Each row shows one recording and a checkbox per channel it may use. Untick them
-all and the row grays out: that recording sits out of the conversion, and stays
-in the list so you can bring it back. **x** takes a row out; taking out a folder
-takes everything it holds.
+The channels are named once above the rows, and each row shows one recording and
+a checkbox under every channel it may use. Untick them all and the row grays out:
+that recording sits out of the conversion, and stays in the list so you can bring
+it back. **x** takes a row out; taking out a folder takes everything it holds.
+The list grows with what you gather and scrolls once it fills the card, so the
+cards below it stay where you left them.
 
 A folder's row names how many recordings it brought in, and its checkboxes read
 all three ways: ticked where every recording in it uses that channel, half-lit
