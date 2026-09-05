@@ -18,6 +18,7 @@ from sampletones_application.ui.elements.stems.gestures import (
     KeyPairCallback,
     StemsGestures,
 )
+from sampletones_application.ui.elements.stems.heading import StemsHeading
 from sampletones_application.ui.elements.stems.messages import StemsMessages
 from sampletones_application.ui.elements.stems.offer import StemsListOffer
 from sampletones_application.ui.elements.stems.row import StemRowRenderer
@@ -94,6 +95,12 @@ class GUIStemsList(CallbackMixin):
             open_folders=self._open_folders,
             rows=self._rows,
         )
+        self._heading = StemsHeading(
+            prefix=prefix,
+            layout=layout,
+            language_manager=language_manager,
+            bends=offer.bends,
+        )
         self._bands = LevelBands(
             self._tags,
             layout=layout,
@@ -101,6 +108,7 @@ class GUIStemsList(CallbackMixin):
             language_manager=language_manager,
             rows=self._rows,
             folders=self._folders,
+            heading=self._heading,
             open_folders=self._open_folders,
             gestures=self._gestures,
         )

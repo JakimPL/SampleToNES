@@ -1,6 +1,5 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.glyphs.common import CommonGlyphs
@@ -14,11 +13,13 @@ from sampletones_application.tags.general import (
     SUF_TWISTY,
     TAG_GLOBAL_THEME_CHANNEL_MUTED,
     TAG_GLOBAL_THEME_DANGER_BUTTON,
+    TAG_GLOBAL_THEME_STEMS_DROP_STRIP,
     TAG_GLOBAL_THEME_STEMS_ROW,
     TAG_GLOBAL_THEME_STEMS_ROW_INERT,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.stems.columns import StemsColumns
 from sampletones_application.ui.elements.stems.expansion import OpenFolders
 from sampletones_application.ui.elements.stems.gestures import StemsGestures
 from sampletones_application.ui.elements.stems.messages import StemsMessages
@@ -70,30 +71,26 @@ class StemRowRenderer:
         self._lbl_remove = language_manager["global.stems.label.remove"]
         self._folder_template = language_manager["global.stems.template.folder_row"]
 
-    def declare_columns(self, view_model: StemsListViewModel) -> None:
-        """The columns every band holds to, so the rows line up across the bands."""
-        if self._offer.master_box:
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.master_column_width)
-
-        dpg.add_table_column(width_stretch=True)
-        for _channel_name in view_model.channels_in_play:
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.channel_column_width)
-
-        if self._offer.removal:
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.remove_button_width)
-
-    def create(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
-        """Build the widgets one row stands as, in the columns the bands were declared with."""
+    def create(
+        self,
+        row: StemRowViewModel,
+        view_model: StemsListViewModel,
+        columns: StemsColumns,
+    ) -> None:
+        """Build the widgets one row stands as, in the columns its grid was declared with."""
         with dpg.table_row(tag=self._tags.row(row.key, SUF_GROUP)):
             if self._offer.master_box:
                 self._create_master(row)
 
             self._create_name(row, view_model)
             for channel_name in view_model.channels_in_play:
-                self._create_channel(row, channel_name)
+                self._create_channel(row, channel_name, columns)
 
             if self._offer.removal:
                 self._create_remove(row)
+
+            if columns.reserve_width > 0:
+                dpg.add_spacer()
 
     def repaint(
         self,
@@ -144,20 +141,21 @@ class StemRowRenderer:
     def _create_name(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
         """The row itself: what names the source, what you drag it by, and what you drop onto.
 
-        A folder leads with the marker that opens it, and where a list holds one every other row
-        opens the same width beside its name, so the names line up down the column.
+        A folder leads with the marker that opens it. The name takes the height its boxes take, so
+        the band a row reads as covers the whole of what stands beside it.
         """
         with dpg.group(horizontal=True):
-            self._create_disclosure(row, view_model)
+            self._create_disclosure(row)
             name = dpg.add_selectable(
                 label=self._row_label(row),
                 tag=self._tags.row(row.key, SUF_TEXT),
+                height=self._layout.name_height,
                 user_data=row.key,
                 callback=self._gestures.on_name_selected,
                 payload_type=self._tags.payload,
                 drop_callback=self._gestures.on_row_drop,
             )
-            if self._offer.dragging:
+            if self._draggable(view_model):
                 with dpg.drag_payload(parent=name, drag_data=row.key, payload_type=self._tags.payload):
                     dpg.add_text(row.name)
 
@@ -169,13 +167,13 @@ class StemRowRenderer:
                 text_tag=self._tags.row(row.key, SUF_TOOLTIP),
             )
 
-    def _create_disclosure(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
-        """The marker a folder opens by, and the room it takes beside every other row."""
-        if not view_model.holds_folders:
-            return
+    def _draggable(self, view_model: StemsListViewModel) -> bool:
+        """A row is dragged where the list bands its rows, which is what a drag rearranges."""
+        return self._offer.dragging and not view_model.collapse_levels
 
+    def _create_disclosure(self, row: StemRowViewModel) -> None:
+        """The marker a folder opens by, which stands beside the folder's own name."""
         if not row.stands_for_a_folder:
-            dpg.add_spacer(width=self._layout.twisty_width)
             return
 
         twisty = dpg.add_button(
@@ -186,6 +184,7 @@ class StemRowRenderer:
             callback=self._gestures.on_twisty,
         )
         FontRegistry.bind_to_item(twisty, Font.ICON)
+        ThemeRegistry.get(TAG_GLOBAL_THEME_STEMS_DROP_STRIP).bind_to_item(twisty)
         self._gestures.bind(twisty, SUF_TWISTY)
 
     def _twisty_glyph(self, key: str) -> str:
@@ -202,24 +201,32 @@ class StemRowRenderer:
 
         return self._folder_template.format(name=row.name, count=row.holds)
 
-    def _create_channel(self, row: StemRowViewModel, channel_name: ChannelName) -> None:
+    def _create_channel(
+        self,
+        row: StemRowViewModel,
+        channel_name: ChannelName,
+        columns: StemsColumns,
+    ) -> None:
         """The box giving the recording a channel, where the recording holds frames on it.
 
-        A recording holding none on this channel leaves the cell open, so the columns keep
-        lining up across the rows while only a reachable choice is drawn.
+        The box carries no label of its own: the heading names the channel once for the whole
+        column, and the box stands in the middle of that column under it. A recording holding no
+        frames on this channel leaves the cell open, so the columns keep lining up across the rows
+        while only a reachable choice is drawn.
         """
         if channel_name not in row.offered_channels:
             dpg.add_spacer()
             return
 
         checkbox_tag = self._tags.channel(row.key, channel_name)
-        dpg.add_checkbox(
-            label=channel_label(self._language_manager, channel_name),
-            tag=checkbox_tag,
-            default_value=row.agreement_on(channel_name) is not Agreement.NONE,
-            user_data=(row.key, channel_name),
-            callback=self._gestures.on_channel_box,
-        )
+        with dpg.group(horizontal=True, indent=columns.box_indent(channel_name)):
+            dpg.add_checkbox(
+                tag=checkbox_tag,
+                default_value=row.agreement_on(channel_name) is not Agreement.NONE,
+                user_data=(row.key, channel_name),
+                callback=self._gestures.on_channel_box,
+            )
+
         self._gestures.bind(checkbox_tag, SUF_CHANNELS)
 
     def _create_remove(self, row: StemRowViewModel) -> None:

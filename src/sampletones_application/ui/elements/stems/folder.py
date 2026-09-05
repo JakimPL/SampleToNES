@@ -1,3 +1,4 @@
+from dataclasses import replace
 from functools import partial
 from typing import Dict, Tuple
 
@@ -7,6 +8,7 @@ from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.tags.general import SUF_TABLE
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
 from sampletones_application.ui.elements.layout.region import WindowedRegion
+from sampletones_application.ui.elements.stems.columns import NO_RESERVE, StemsColumns
 from sampletones_application.ui.elements.stems.expansion import OpenFolders
 from sampletones_application.ui.elements.stems.row import StemRowRenderer
 from sampletones_application.ui.elements.stems.tags import StemsTags
@@ -41,6 +43,18 @@ class FolderRenderer:
         self._open_folders = open_folders
         self._rows = rows
         self._regions: Dict[str, WindowedRegion] = {}
+        self._columns = StemsColumns(
+            layout=layout,
+            channels=(),
+            master=False,
+            removable=False,
+            bends=False,
+            reserve=NO_RESERVE,
+        )
+
+    def reads(self, columns: StemsColumns) -> None:
+        """Takes up the grid the list is drawing, which a folder's own tables stand in too."""
+        self._columns = columns
 
     def create(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
         """Draw the folder's own row, and the region its recordings stand in while it is open."""
@@ -50,9 +64,10 @@ class FolderRenderer:
             header_row=False,
             policy=dpg.mvTable_SizingFixedFit,
             resizable=False,
+            borders_innerV=True,
         ):
-            self._rows.declare_columns(view_model)
-            self._rows.create(row, view_model)
+            self._columns.declare()
+            self._rows.create(row, view_model, self._columns)
 
         if self._open_folders.stands_open(row.key):
             self._open(row, view_model)
@@ -121,17 +136,23 @@ class FolderRenderer:
         start: int,
         count: int,
     ) -> None:
-        """One table of the recordings a region reaches, declaring the columns the list lines up on."""
+        """One table of the recordings a region reaches, declaring the columns the list lines up on.
+
+        The region spends a scrollbar's width of its own, which is the width the grid outside it
+        holds clear, so a box inside a folder stands in the column its neighbours stand in.
+        """
+        held_columns = replace(self._columns, reserve=NO_RESERVE)
         with dpg.table(
             tag=self._tags.held(row.key),
             parent=region.body,
             header_row=False,
             policy=dpg.mvTable_SizingFixedFit,
             resizable=False,
+            borders_innerV=True,
         ):
-            self._rows.declare_columns(view_model)
+            held_columns.declare()
             for held in row.held[start : start + count]:
-                self._rows.create(held, view_model)
+                self._rows.create(held, view_model, held_columns)
 
     @staticmethod
     def _reached(region: WindowedRegion, row: StemRowViewModel) -> Tuple[StemRowViewModel, ...]:

@@ -308,6 +308,12 @@ TAG_GLOBAL_THEME_STEMS_ROW_INERT = TagName(
     Widget.THEME,
     "stems_row_inert",
 )
+TAG_GLOBAL_THEME_STEMS_SLOT_LABEL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_slot_label",
+)
 TAG_GLOBAL_THEME_TOOLTIP = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -791,6 +797,7 @@ SUF_BUTTON_DECREMENT = compose_tag(SUF_BUTTON, "decrement")
 SUF_BUTTON_INCREMENT = compose_tag(SUF_BUTTON, "increment")
 SUF_CHANNELS = "channels"
 SUF_GROUP = "group"
+SUF_HEADING = "heading"
 SUF_GROUP_TRACEBACK = compose_tag(SUF_GROUP, "traceback")
 SUF_HANDLER_REGISTRY = compose_tag("handler", "registry")
 SUF_HANDLER_STATUS = compose_tag("handler", "status")

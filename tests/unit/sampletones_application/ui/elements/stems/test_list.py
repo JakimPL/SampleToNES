@@ -78,6 +78,7 @@ def build(
     removal: bool = True,
     keeps_last_row: bool = False,
     master_box: bool = False,
+    bends: bool = False,
 ) -> GUIStemsList:
     stems_list = GUIStemsList(
         prefix=PREFIX,
@@ -90,6 +91,7 @@ def build(
             removal=removal,
             keeps_last_row=keeps_last_row,
             dragging=dragging,
+            bends=bends,
         ),
     )
     with dpg.window(tag=ROOT_TAG):

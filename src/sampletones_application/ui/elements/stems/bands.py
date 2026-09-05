@@ -12,9 +12,11 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.stems.columns import NO_RESERVE, StemsColumns
 from sampletones_application.ui.elements.stems.expansion import OpenFolders
 from sampletones_application.ui.elements.stems.folder import FolderRenderer
 from sampletones_application.ui.elements.stems.gestures import StemsGestures
+from sampletones_application.ui.elements.stems.heading import StemsHeading
 from sampletones_application.ui.elements.stems.offer import StemsListOffer
 from sampletones_application.ui.elements.stems.row import StemRowRenderer
 from sampletones_application.ui.elements.stems.shape import ListShape
@@ -48,6 +50,7 @@ class LevelBands:
         language_manager: LanguageManager,
         rows: StemRowRenderer,
         folders: FolderRenderer,
+        heading: StemsHeading,
         open_folders: OpenFolders,
         gestures: StemsGestures,
     ) -> None:
@@ -56,6 +59,7 @@ class LevelBands:
         self._offer = offer
         self._rows = rows
         self._folders = folders
+        self._heading = heading
         self._open_folders = open_folders
         self._gestures = gestures
         self._level_template = language_manager["global.stems.template.level_caption"]
@@ -75,7 +79,14 @@ class LevelBands:
         return True
 
     def build(self, view_model: StemsListViewModel) -> None:
-        """Build the bands the view names, into whatever the list has cleared for them."""
+        """Build the bands the view names, into whatever the list has cleared for them.
+
+        The channels are named once above them all, so a cell below holds the box alone.
+        """
+        columns = self.columns(view_model)
+        self._folders.reads(columns)
+        self._heading.create(self._tags.body, columns)
+        self._heading.render(view_model.muted_channels)
         if view_model.collapse_levels:
             self._create_listing(view_model)
             return
@@ -150,13 +161,36 @@ class LevelBands:
         rows: Sequence[StemRowViewModel],
     ) -> None:
         """One grid of rows, every band declaring the same columns so they line up across bands."""
+        columns = self.columns(view_model)
         with dpg.table(
             tag=tag,
             parent=self._tags.body,
             header_row=False,
             policy=dpg.mvTable_SizingFixedFit,
             resizable=False,
+            borders_innerV=True,
         ):
-            self._rows.declare_columns(view_model)
+            columns.declare()
             for row in rows:
-                self._rows.create(row, view_model)
+                self._rows.create(row, view_model, columns)
+
+    def columns(self, view_model: StemsListViewModel) -> StemsColumns:
+        """The grid every table of this list stands in, the heading above them included.
+
+        A list holding a folder holds a scrollbar's width clear at its right end, so the columns
+        around a folder stand where the columns inside its own scrolling region stand.
+        """
+        return StemsColumns(
+            layout=self._layout,
+            channels=view_model.channels_in_play,
+            master=self._offer.master_box,
+            removable=self._offer.removal,
+            bends=self._offer.bends,
+            reserve=self._reserve(view_model),
+        )
+
+    def _reserve(self, view_model: StemsListViewModel) -> int:
+        if not view_model.holds_folders:
+            return NO_RESERVE
+
+        return self._layout.scrollbar_width + self._layout.column_gutter
