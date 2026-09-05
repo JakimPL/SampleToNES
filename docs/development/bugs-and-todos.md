@@ -133,6 +133,12 @@ again.
   `test_startup.py` builds the real application and drives gestures through it end to end — so the
   gap is that a case reading the coordinator's own behaviour cannot see a hook left unset. Building
   the object in that file is what closes it.
+* Principle 6 named a widget's callback as arriving on a thread of DearPyGui's own. It does not
+  here: `manual_callback_management` is never enabled, so a callback runs inside
+  `render_dearpygui_frame` and `on_render_thread` reaches it as a direct call. The principle and
+  the helper now state the hazard they answer — work arriving from a worker of our own. Whether to
+  enable manual callback management is a separate question: it would let a gesture's own work be
+  spread across frames, at the cost of every callback becoming a queued one.
 * `state.last_paths.library` is written and never read. `SessionManager.set_library_path` records
   the directory a library was chosen from, and `get_library_path` is reached by no caller: the
   dialog that would open there takes its starting directory from the advanced settings panel
