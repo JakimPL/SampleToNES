@@ -152,6 +152,13 @@ again.
 
 ## Bugs
 
+* A reconstruction written by an earlier 0.3.2 build cannot be opened. The stems record stamped
+  data version 2.2 while a stem entry still stated its channels on the entry itself; the entry now
+  carries a `StemSettings`, and the 2.2 upgrade step does not run on a file already stamped 2.2.
+  Files from v0.3.1 (data version 2.1) are unaffected — they carry no stems record and the step
+  synthesizes one in the current shape. Twenty-one files on the development machine are stranded
+  this way, nine of them true stems reconstructions.
+
 * No refreshing after library generation
 * Misaligned dialog boxes sizes at initialization
 * Audible noise instructions when matching near-silent samples for FFT γ0
