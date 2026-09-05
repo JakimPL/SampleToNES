@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -8,12 +8,13 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.output import OutputKind
+from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
 from sampletones_application.logic.main.converter.logic import ConverterLogic
 from sampletones_application.logic.main.converter.run import ConversionSuccess
-from sampletones_application.logic.main.explorer import ExplorerLogic
+from sampletones_application.logic.main.explorer_manager import ExplorerManager
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.main import MainTabParameters
 from sampletones_application.services.conversion.service import ConversionService
@@ -68,7 +69,7 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.logger import logger
-from sampletones_shared.types.callback import PathCallback, VoidCallback
+from sampletones_shared.types.callback import VoidCallback
 
 _LEFT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_MAIN, SUF_PANEL_LEFT)
 _CENTER_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_MAIN, SUF_PANEL_CENTER)
@@ -94,47 +95,66 @@ class MainTabCoordinator:
         audio_device_manager: AudioDeviceManager,
         library_manager: InstructionsLibraryManager,
         conversion_service: ConversionService,
-        on_reconstruct_file: PathCallback,
-        on_reconstruct_directory: PathCallback,
-        on_load_reconstruction: Callable[[Optional[Path]], None],
-        on_load_library: PathCallback,
-        is_operation_active: Callable[[], bool],
-        on_busy_state_changed: VoidCallback,
+        hooks: MainTabHooks,
         *,
         layout: MainTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
-        on_load_file: PathCallback,
-        on_load_directory: VoidCallback,
-        on_canceled: VoidCallback,
-        on_refresh_trees: VoidCallback,
-        on_generate_library: VoidCallback,
         stem_selection_window: GUIStemSelectionWindow,
     ) -> None:
         self._language_manager = language_manager
         self._config_manager = config_manager
         self._session_manager = session_manager
         self._library_manager = library_manager
-        self._on_reconstruct_file = on_reconstruct_file
-        self._on_reconstruct_directory = on_reconstruct_directory
-        self._on_load_reconstruction = on_load_reconstruction
-        self._is_operation_active = is_operation_active
-        self._on_busy_state_changed = on_busy_state_changed
-        self._on_refresh_trees = on_refresh_trees
+        self._hooks = hooks
         self._dialogs = dialogs
         self._stem_selection_window = stem_selection_window
 
         self._geometry = layout.geometry
         self._side_panel_count: int
         self._config_height = layout.config_height
-        _msg_converter_error = language_manager["main.converter.message.status_error"]
-        _msg_no_files = language_manager["main.converter.message.status_no_files"]
-        _msg_no_generators = language_manager["main.converter.message.status_no_channels"]
         self._ttl_progress = language_manager["main.converter.title.progress_dialog"]
         self._repaint_priority = layout.scheduling.priorities.gui_action
 
-        self._explorer_logic: ExplorerLogic = ExplorerLogic(
+        self._build_explorer(
+            config_manager,
+            session_manager,
+            audio_device_manager,
+            layout=layout,
+            language_manager=language_manager,
+            status_bar=status_bar,
+        )
+        self._build_cards(
+            config_manager,
+            session_manager,
+            conversion_service,
+            layout=layout,
+            language_manager=language_manager,
+            status_bar=status_bar,
+        )
+        self._wire_settings(config_manager)
+        self._wire_explorer()
+        self._wire_converter(
+            config_manager,
+            library_manager,
+            conversion_service,
+            dialogs,
+            language_manager,
+        )
+
+    def _build_explorer(
+        self,
+        config_manager: ConfigManager,
+        session_manager: SessionManager,
+        audio_device_manager: AudioDeviceManager,
+        *,
+        layout: MainTabParameters,
+        language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
+    ) -> None:
+        """The file browser: what reads the disk, what plays from it, and what draws both."""
+        self._explorer_logic: ExplorerManager = ExplorerManager(
             config_manager,
             language_manager=language_manager,
             open_directories=session_manager.expanded_directories,
@@ -158,6 +178,17 @@ class MainTabCoordinator:
         self._explorer_tree_logic.on_search_update_needed = self._explorer_panel.update_tree_visibility
         self._explorer_tree_logic.on_autoplay_error = self._on_explorer_autoplay_error
 
+    def _build_cards(
+        self,
+        config_manager: ConfigManager,
+        session_manager: SessionManager,
+        conversion_service: ConversionService,
+        *,
+        layout: MainTabParameters,
+        language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
+    ) -> None:
+        """The tab's cards and the converter behind them, each opening on what it last stood at."""
         _config = config_manager.config
         self._config_panel: GUIConfigPanel = GUIConfigPanel(
             ConfigPanelViewModel(
@@ -178,7 +209,7 @@ class MainTabCoordinator:
             conversion_service,
             scheduling=layout.scheduling,
             language_manager=language_manager,
-            is_operation_active=is_operation_active,
+            is_operation_active=self._hooks.is_operation_active,
         )
         self._reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(
             ReconstructorPanelViewModel(
@@ -217,6 +248,8 @@ class MainTabCoordinator:
             status_bar=status_bar,
         )
 
+    def _wire_settings(self, config_manager: ConfigManager) -> None:
+        """What the settings cards report, and what redraws them when the configuration moves."""
         config_manager.add_config_change_callback(self._update_config_panel_view)
         config_manager.add_config_change_callback(self._update_reconstructor_panel_view)
         config_manager.add_config_change_callback(self._update_advanced_settings_panel_view)
@@ -231,6 +264,8 @@ class MainTabCoordinator:
 
         self._wire_collapse_handlers()
 
+    def _wire_explorer(self) -> None:
+        """What a gesture in the browser reaches: the converter, the tab's own guards, the app."""
         self._explorer_panel.set_callbacks(
             on_wave_file_clicked=self._on_wave_file_clicked,
             on_directory_clicked=self._on_directory_clicked,
@@ -239,12 +274,24 @@ class MainTabCoordinator:
             can_add_stems=self._can_add_stems,
             on_reconstruct_file=self._request_reconstruct_file,
             on_reconstruct_directory=self._request_reconstruct_directory,
-            on_load_reconstruction=on_load_reconstruction,
-            on_load_library=on_load_library,
+            on_load_reconstruction=self._hooks.on_load_reconstruction,
+            on_load_library=self._hooks.on_load_library,
             on_set_as_library_directory=self._handle_select_library_directory,
             on_set_as_reconstructions_directory=self._advanced_settings_panel.change_reconstructions_directory,
         )
 
+    def _wire_converter(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        conversion_service: ConversionService,
+        dialogs: DialogsRenderer,
+        language_manager: LanguageManager,
+    ) -> None:
+        """What the converter reports and what answers it: the panel, the dialogs, the library."""
+        _msg_converter_error = language_manager["main.converter.message.status_error"]
+        _msg_no_files = language_manager["main.converter.message.status_no_files"]
+        _msg_no_generators = language_manager["main.converter.message.status_no_channels"]
         self._converter_logic.on_view_changed = self._on_converter_view_changed
         self._converter_logic.on_success = self._on_conversion_success
         self._converter_logic.on_error = lambda error: dialogs.show_error(error, _msg_converter_error)
@@ -261,10 +308,10 @@ class MainTabCoordinator:
         self._converter_logic.on_target_exists = self._confirm_overwriting_target
         self._converter_logic.is_library_available = library_manager.is_library_available_for_config
         self._converter_logic.cancel_library_generation = library_manager.cancel_generation
-        self._converter_logic.on_load_file = on_load_file
-        self._converter_logic.on_load_directory = on_load_directory
-        self._converter_logic.on_canceled = on_canceled
-        self._converter_logic.generate_library = on_generate_library
+        self._converter_logic.on_load_file = self._hooks.on_load_file
+        self._converter_logic.on_load_directory = self._hooks.on_load_directory
+        self._converter_logic.on_canceled = self._hooks.on_canceled
+        self._converter_logic.generate_library = self._hooks.on_generate_library
         config_manager.add_config_change_callback(self._converter_logic.refresh_view)
         library_manager.on_generation_progress_extra = conversion_service.forward_library_progress
 
@@ -304,27 +351,27 @@ class MainTabCoordinator:
     def _repaint_converter(self, view_model: ConverterViewModel) -> None:
         self._converter_panel.update_view(view_model)
         self._update_reconstructor_panel_view()
-        self._on_busy_state_changed()
+        self._hooks.on_busy_state_changed()
 
     def _on_wave_file_clicked(self, filepath: Path) -> None:
-        if not self._is_operation_active():
+        if not self._hooks.is_operation_active():
             self._converter_logic.gather_recordings([filepath])
 
     def _on_directory_clicked(self, directory_path: Path) -> None:
-        if not self._is_operation_active():
+        if not self._hooks.is_operation_active():
             self._converter_logic.gather_folder(directory_path)
 
     def _request_reconstruct_file(self, filepath: Path) -> None:
         if self._notify_converter_running():
             return
 
-        self._replacing_the_setup(lambda: self._on_reconstruct_file(filepath))
+        self._replacing_the_setup(lambda: self._hooks.on_reconstruct_file(filepath))
 
     def _request_reconstruct_directory(self, directory_path: Path) -> None:
         if self._notify_converter_running():
             return
 
-        self._replacing_the_setup(lambda: self._on_reconstruct_directory(directory_path))
+        self._replacing_the_setup(lambda: self._hooks.on_reconstruct_directory(directory_path))
 
     def _replacing_the_setup(self, reconstruct: VoidCallback) -> None:
         """Runs a conversion the browser asked for, asking first where it would drop what was gathered.
@@ -366,7 +413,7 @@ class MainTabCoordinator:
         )
 
     def _notify_converter_running(self) -> bool:
-        if not self._is_operation_active():
+        if not self._hooks.is_operation_active():
             return False
 
         logger.warning("Conversion is already running. Wait or cancel the current operation.")
@@ -379,7 +426,7 @@ class MainTabCoordinator:
         return True
 
     def _on_conversion_success(self, success: ConversionSuccess) -> None:
-        self._on_refresh_trees()
+        self._hooks.on_refresh_trees()
         if success.is_single:
             message = self._language_manager["main.converter.message.load_file_prompt"]
             ok_label = self._language_manager["main.converter.label.load_button"]
@@ -415,18 +462,18 @@ class MainTabCoordinator:
 
     def _can_add_stems(self) -> bool:
         """The converter is free to gather recordings into a stems conversion."""
-        return not self._is_operation_active()
+        return not self._hooks.is_operation_active()
 
     def _on_file_add_requested(self, filepath: Path) -> None:
         """Gathers one recording into a stems conversion, opening one where none is being built."""
-        if self._is_operation_active():
+        if self._hooks.is_operation_active():
             return
 
         self._converter_logic.gather_recordings([filepath])
 
     def _on_directory_add_requested(self, directory_path: Path) -> None:
         """Gathers a folder into the setup, standing for the recordings found below it."""
-        if self._is_operation_active():
+        if self._hooks.is_operation_active():
             return
 
         self._converter_logic.gather_folder(directory_path)

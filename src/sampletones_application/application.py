@@ -29,6 +29,7 @@ from sampletones_application.coordinators.reconstruction import (
     ReconstructionCoordinator,
 )
 from sampletones_application.coordinators.render import SongRenderCoordinator
+from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.coordinators.tabs.instructions import (
     InstructionsTabCoordinator,
 )
@@ -481,21 +482,23 @@ class Application:
             audio_device_manager=self.audio_device_manager,
             library_manager=self.library_manager,
             conversion_service=self.conversion_service,
-            on_reconstruct_file=self._reconstruct_file,
-            on_reconstruct_directory=self._reconstruct_directory,
-            on_load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
-            on_load_library=self._load_library,
-            is_operation_active=self._is_operation_active,
-            on_busy_state_changed=self._refresh_busy_state,
+            hooks=MainTabHooks(
+                is_operation_active=self._is_operation_active,
+                on_busy_state_changed=self._refresh_busy_state,
+                on_reconstruct_file=self._reconstruct_file,
+                on_reconstruct_directory=self._reconstruct_directory,
+                on_load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
+                on_load_library=self._load_library,
+                on_load_file=self._on_converted_reconstruction_loaded,
+                on_load_directory=self._navigate_to_reconstructions,
+                on_canceled=self._refresh_browsers,
+                on_refresh_trees=self._refresh_browsers,
+                on_generate_library=self._instructions_tab.ensure_library_loaded,
+            ),
             layout=MainTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
-            on_load_file=self._on_converted_reconstruction_loaded,
-            on_load_directory=self._navigate_to_reconstructions,
-            on_canceled=self._refresh_browsers,
-            on_refresh_trees=self._refresh_browsers,
-            on_generate_library=self._instructions_tab.ensure_library_loaded,
             stem_selection_window=self.stem_selection_window,
         )
 

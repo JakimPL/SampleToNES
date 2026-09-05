@@ -6,6 +6,7 @@ import pytest
 
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.output import OutputKind
+from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.tags.main import (
@@ -26,15 +27,30 @@ STOP_BUTTON_KEY: Final[str] = "main.converter.label.stop_button"
 CONTINUE_BUTTON_KEY: Final[str] = "main.converter.label.continue_button"
 
 
+def _hooks(*, operation_active: bool) -> MainTabHooks:
+    """The tab's outward collaborator, every hook of which a test can read what reached it."""
+    return MainTabHooks(
+        is_operation_active=lambda: operation_active,
+        on_busy_state_changed=MagicMock(),
+        on_reconstruct_file=MagicMock(),
+        on_reconstruct_directory=MagicMock(),
+        on_load_reconstruction=MagicMock(),
+        on_load_library=MagicMock(),
+        on_load_file=MagicMock(),
+        on_load_directory=MagicMock(),
+        on_canceled=MagicMock(),
+        on_refresh_trees=MagicMock(),
+        on_generate_library=MagicMock(),
+    )
+
+
 def _coordinator(*, operation_active: bool) -> MainTabCoordinator:
     """A coordinator with only the state the reconstruct guards touch, bypassing the heavy
     constructor."""
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
-    coordinator._is_operation_active = lambda: operation_active
+    coordinator._hooks = _hooks(operation_active=operation_active)
     coordinator._dialogs = MagicMock()
     coordinator._language_manager = FakeLanguageManager()
-    coordinator._on_reconstruct_file = MagicMock()
-    coordinator._on_reconstruct_directory = MagicMock()
     coordinator._converter_logic = MagicMock()
     coordinator._converter_logic.mixes = False
     coordinator._converter_logic.gathered_paths = ()
@@ -74,7 +90,7 @@ class TestReconstructGuards:
 
         coordinator._request_reconstruct_file(Path("/audio/sample.wav"))
 
-        coordinator._on_reconstruct_file.assert_not_called()
+        coordinator._hooks.on_reconstruct_file.assert_not_called()
         coordinator._dialogs.show_info.assert_called_once()
 
     def test_file_request_delegates_when_idle(self) -> None:
@@ -83,7 +99,7 @@ class TestReconstructGuards:
 
         coordinator._request_reconstruct_file(filepath)
 
-        coordinator._on_reconstruct_file.assert_called_once_with(filepath)
+        coordinator._hooks.on_reconstruct_file.assert_called_once_with(filepath)
         coordinator._dialogs.show_info.assert_not_called()
 
     def test_directory_request_declines_while_an_operation_is_active(self) -> None:
@@ -91,7 +107,7 @@ class TestReconstructGuards:
 
         coordinator._request_reconstruct_directory(Path("/audio"))
 
-        coordinator._on_reconstruct_directory.assert_not_called()
+        coordinator._hooks.on_reconstruct_directory.assert_not_called()
         coordinator._dialogs.show_info.assert_called_once()
 
     def test_directory_request_delegates_when_idle(self) -> None:
@@ -100,14 +116,14 @@ class TestReconstructGuards:
 
         coordinator._request_reconstruct_directory(directory)
 
-        coordinator._on_reconstruct_directory.assert_called_once_with(directory)
+        coordinator._hooks.on_reconstruct_directory.assert_called_once_with(directory)
         coordinator._dialogs.show_info.assert_not_called()
 
 
 def _success_coordinator() -> MainTabCoordinator:
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
     coordinator._dialogs = MagicMock()
-    coordinator._on_refresh_trees = MagicMock()
+    coordinator._hooks = _hooks(operation_active=False)
     coordinator._converter_logic = MagicMock()
     coordinator._language_manager = FakeLanguageManager()
     return coordinator
@@ -123,7 +139,7 @@ class TestConversionSuccessDialog:
 
         coordinator._on_conversion_success(ConversionSuccess(written=(output_path,)))
 
-        coordinator._on_refresh_trees.assert_called_once_with()
+        coordinator._hooks.on_refresh_trees.assert_called_once_with()
         coordinator._dialogs.show_confirmation.assert_called_once()
         args, kwargs = coordinator._dialogs.show_confirmation.call_args
         assert args[0] == TAG_MAIN_CONVERTER_DIALOG_LOAD
@@ -179,7 +195,7 @@ def _stems_coordinator(
     room: int = MAX_STEM_SOURCES,
 ) -> MainTabCoordinator:
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
-    coordinator._is_operation_active = lambda: operation_active
+    coordinator._hooks = _hooks(operation_active=operation_active)
     coordinator._notify_converter_running = lambda: operation_active
     coordinator._dialogs = MagicMock()
     coordinator._language_manager = FakeLanguageManager()
@@ -322,17 +338,14 @@ class TestReconstructReplacesTheSetup:
     """A Reconstruct converts what it names alone, so a setup already holding sources is asked about."""
 
     def _coordinator(self, *, mixes: bool, gathered: Tuple[Path, ...] = ()) -> MainTabCoordinator:
-        coordinator = _stems_coordinator(mixes=mixes, gathered=gathered)
-        coordinator._on_reconstruct_file = MagicMock()
-        coordinator._on_reconstruct_directory = MagicMock()
-        return coordinator
+        return _stems_coordinator(mixes=mixes, gathered=gathered)
 
     def test_an_empty_setup_reconstructs_straight_away(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=False)
 
         coordinator._request_reconstruct_file(tmp_path / "a.wav")
 
-        coordinator._on_reconstruct_file.assert_called_once_with(tmp_path / "a.wav")
+        coordinator._hooks.on_reconstruct_file.assert_called_once_with(tmp_path / "a.wav")
         coordinator._dialogs.show_confirmation.assert_not_called()
 
     @pytest.mark.parametrize("gesture", ["_request_reconstruct_file", "_request_reconstruct_directory"])
@@ -341,8 +354,8 @@ class TestReconstructReplacesTheSetup:
 
         getattr(coordinator, gesture)(tmp_path)
 
-        coordinator._on_reconstruct_file.assert_not_called()
-        coordinator._on_reconstruct_directory.assert_not_called()
+        coordinator._hooks.on_reconstruct_file.assert_not_called()
+        coordinator._hooks.on_reconstruct_directory.assert_not_called()
         assert coordinator._dialogs.show_confirmation.call_args.args[1] == DISCARD_STEMS_PROMPT_KEY
 
     def test_confirming_converts_what_was_named(self, tmp_path: Path) -> None:
@@ -351,7 +364,7 @@ class TestReconstructReplacesTheSetup:
         coordinator._request_reconstruct_directory(tmp_path)
         coordinator._dialogs.show_confirmation.call_args.args[3]()
 
-        coordinator._on_reconstruct_directory.assert_called_once_with(tmp_path)
+        coordinator._hooks.on_reconstruct_directory.assert_called_once_with(tmp_path)
 
     def test_declining_converts_nothing(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
@@ -360,4 +373,4 @@ class TestReconstructReplacesTheSetup:
         coordinator._dialogs.show_confirmation.call_args.kwargs["on_cancel"]()
 
         coordinator._converter_logic.set_output.assert_not_called()
-        coordinator._on_reconstruct_directory.assert_not_called()
+        coordinator._hooks.on_reconstruct_directory.assert_not_called()
