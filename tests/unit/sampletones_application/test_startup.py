@@ -12,6 +12,7 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.constants.output import OutputKind
+from sampletones_application.constants.sources import SettingsField
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.tags.general import (
     SUF_BUTTON,
@@ -26,6 +27,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_WINDOW_STEMS,
 )
 from sampletones_application.ui.elements.stems.list import GUIStemsList
+from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
@@ -37,6 +39,7 @@ from sampletones_application.utils.parallelization.background import (
 )
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_application.view_model.main.converter import ConversionPhase, ConverterViewModel
+from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 
@@ -427,6 +430,25 @@ def drop(tag: str, payload: str) -> None:
     dpg.get_item_configuration(tag)["drop_callback"](dpg.get_alias_id(tag), payload)
 
 
+def _click_row(app: Application, path: Path) -> None:
+    """Clicks a row the way DearPyGui reports a selectable being picked."""
+    name_tag = stems_list(app).tags.row(str(path), SUF_TEXT)
+    dpg.get_item_callback(name_tag)(name_tag, True, str(path))
+
+
+def _click_slot_box(field: SettingsField, channel_name: ChannelName) -> None:
+    """Clicks one of the settings card's boxes, the way DearPyGui reports a checkbox."""
+    box = GUIReconstructorPanel._slot_checkbox_tag(field, channel_name)
+    dpg.get_item_callback(box)(box, True, dpg.get_item_user_data(box))
+
+
+def _row_of(app: Application, path: Path) -> StemRowViewModel:
+    """The row the converter last drew for ``path``."""
+    row = stems_list(app).row(str(path))
+    assert row is not None
+    return row
+
+
 def _level_of(app: Application, path: Path) -> str:
     """The level band the row for ``path`` is drawn in."""
     return str(dpg.get_item_parent(stems_list(app).tags.row(str(path), SUF_GROUP)))
@@ -546,6 +568,33 @@ class TestConverterStemsCard:
 
         assert dpg.does_item_exist(stems_list(app).tags.level(1, SUF_TABLE))
         assert _level_of(app, first) == stems_list(app).tags.level(1, SUF_TABLE)
+
+    def test_a_clicked_row_is_what_the_settings_card_edits(self, app: Application, tmp_path: Path) -> None:
+        """The whole wiring chain: a click on a row, a box on the card, and the row it settles.
+
+        A recording joins holding the channels a run hands out, so the box the case ticks is one
+        of the two it starts without.
+        """
+        first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+        assert ChannelName.PULSE2 not in _row_of(app, second).channels
+
+        _click_row(app, second)
+        _click_slot_box(SettingsField.CHANNELS, ChannelName.PULSE2)
+
+        assert ChannelName.PULSE2 in _row_of(app, second).channels
+        assert ChannelName.PULSE2 not in _row_of(app, first).channels
+
+    def test_the_card_edits_what_a_recording_joins_with_where_nothing_is_picked(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        app._main_tab._converter_logic.set_output(OutputKind.MIXED)
+
+        _click_slot_box(SettingsField.CHANNELS, ChannelName.PULSE2)
+        joined = self._gather(app, tmp_path, ["a.wav"])[0]
+
+        assert ChannelName.PULSE2 in _row_of(app, joined).channels
 
     def test_the_order_explanation_leaves_with_the_control_it_belongs_to(self, app: Application) -> None:
         """A tooltip left live over a hidden widget's rectangle explains whatever moved into it."""

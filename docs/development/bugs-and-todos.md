@@ -125,10 +125,12 @@ again.
   itself for an absent item rather than a type of its own, so the catch is as narrow as what it
   answers. A test pins that contract, and the day the library raises something of its own is the
   day the catch narrows.
-* `MainTabCoordinator` is constructed by no test. Every fixture in
-  `tests/unit/sampletones_application/coordinators/tabs/test_main.py` builds the object through
-  `__new__` and populates its privates by hand, so the wiring the application actually runs is
-  exercised nowhere: a hook left unset or a call routed to the wrong object passes the suite.
+* Every fixture in `tests/unit/sampletones_application/coordinators/tabs/test_main.py` builds
+  `MainTabCoordinator` through `__new__` and populates its privates by hand, so what those cases
+  describe is a method rather than the wired object. The wiring itself is exercised —
+  `test_startup.py` builds the real application and drives gestures through it end to end — so the
+  gap is that a case reading the coordinator's own behaviour cannot see a hook left unset. Building
+  the object in that file is what closes it.
 * `state.last_paths.library` is written and never read. `SessionManager.set_library_path` records
   the directory a library was chosen from, and `get_library_path` is reached by no caller: the
   dialog that would open there takes its starting directory from the advanced settings panel
