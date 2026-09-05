@@ -1,5 +1,6 @@
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Optional
+from typing import Final, Optional, Tuple
 
 import pytest
 
@@ -10,7 +11,9 @@ from sampletones_application.services.conversion.result import (
 from sampletones_application.services.result import ServiceProgress
 from sampletones_application.view_model.main.converter import ConversionPhase
 from sampletones_core.reconstructions.stage import ReconstructionStage
-from tests.unit.sampletones_application.logic.main.converter.texts import messages
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
+from tests.unit.sampletones_application.logic.main.converter.texts import TEXTS, messages
 
 FRAMES: Final[int] = 1100
 
@@ -37,7 +40,7 @@ def _item(stage: ReconstructionStage, completed: int) -> ConversionItem:
     )
 
 
-class TestProgressText:
+class TestProgressText(BaseTestSuite):
     """A batch counts the files it has written; a single job names the reconstruction it is making."""
 
     def test_a_batch_counts_its_files(self) -> None:
@@ -62,66 +65,67 @@ class TestProgressText:
         assert messages().progress_text(progress, "kick") == "Progress: 2/5 files - rendering 1100/1100"
 
 
-class TestActionLabel:
-    """The one action button's label is a projection of converter state, composed where the display
-    strings are resolved (the logic layer) rather than glued together in the panel: it names the
-    selected input while idle and reads the cancel label once a conversion holds resources.
+class TestActionLabel(BaseTestSuite):
+    """The button says what the run writes.
+
+    One recording names its document, several are counted, and the count reads as a mix or as a run
+    of its own depending on the output switch, so the switch and the button read as one sentence.
     """
 
-    def test_a_file_names_the_recording_it_would_convert(self) -> None:
-        label = messages().action_label(
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        phase: ConversionPhase
+        mixes: bool
+        converted: Tuple[Path, ...]
+        expected: str
+
+    test_cases = (
+        TestCase(
+            label="nothing_gathered_offers_the_bare_label",
             phase=ConversionPhase.IDLE,
             mixes=False,
-            is_file=True,
-            input_path=Path("/audio/kick.wav"),
-            playing=0,
-        )
-
-        assert label == "Convert sample: kick.wav"
-
-    def test_a_directory_uses_the_directory_variant(self) -> None:
-        label = messages().action_label(
+            converted=(),
+            expected=TEXTS["main.converter.label.convert_button"],
+        ),
+        TestCase(
+            label="one_recording_names_its_document",
             phase=ConversionPhase.IDLE,
             mixes=False,
-            is_file=False,
-            input_path=Path("/audio/drums"),
-            playing=0,
-        )
-
-        assert label == "Convert directory: drums"
-
-    def test_nothing_picked_reads_the_bare_convert_label(self) -> None:
-        label = messages().action_label(
-            phase=ConversionPhase.IDLE,
-            mixes=False,
-            is_file=True,
-            input_path=None,
-            playing=0,
-        )
-
-        assert label == "Convert sample"
-
-    def test_a_mix_names_how_many_recordings_take_part(self) -> None:
-        label = messages().action_label(
+            converted=(Path("/audio/kick.wav"),),
+            expected=TEXTS["main.converter.template.convert_recording"].format(name="kick"),
+        ),
+        TestCase(
+            label="a_mix_of_one_names_it_too",
             phase=ConversionPhase.IDLE,
             mixes=True,
-            is_file=True,
-            input_path=Path("/audio/kick.wav"),
-            playing=3,
-        )
-
-        assert label == "Convert stems: 3"
-
-    def test_a_mix_with_nobody_taking_part_reads_the_bare_label(self) -> None:
-        label = messages().action_label(
+            converted=(Path("/audio/kick.wav"),),
+            expected=TEXTS["main.converter.template.convert_recording"].format(name="kick"),
+        ),
+        TestCase(
+            label="several_recordings_are_counted",
+            phase=ConversionPhase.IDLE,
+            mixes=False,
+            converted=(Path("/audio/kick.wav"), Path("/audio/snare.wav"), Path("/audio/hat.wav")),
+            expected=TEXTS["main.converter.template.convert_recordings"].format(count=3),
+        ),
+        TestCase(
+            label="several_mixed_recordings_read_as_a_mix",
             phase=ConversionPhase.IDLE,
             mixes=True,
-            is_file=True,
-            input_path=None,
-            playing=0,
+            converted=(Path("/audio/kick.wav"), Path("/audio/snare.wav"), Path("/audio/hat.wav")),
+            expected=TEXTS["main.converter.template.mix_recordings"].format(count=3),
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_label_says_what_the_run_writes(self, test_case: TestCase) -> None:
+        label = messages().action_label(
+            phase=test_case.phase,
+            mixes=test_case.mixes,
+            converted=test_case.converted,
         )
 
-        assert label == "Convert stems"
+        assert label == test_case.expected
 
     @pytest.mark.parametrize(
         "phase",
@@ -131,9 +135,7 @@ class TestActionLabel:
         label = messages().action_label(
             phase=phase,
             mixes=False,
-            is_file=True,
-            input_path=Path("/audio/kick.wav"),
-            playing=0,
+            converted=(Path("/audio/kick.wav"),),
         )
 
-        assert label == "Cancel"
+        assert label == TEXTS["main.converter.label.cancel_button"]

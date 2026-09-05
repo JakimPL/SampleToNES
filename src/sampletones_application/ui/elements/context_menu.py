@@ -36,6 +36,8 @@ def add_play_menu_item(
     label: str,
     on_play: VoidCallback,
     shortcut: str = "",
+    *,
+    enabled: bool = True,
 ) -> None:
     """Add the shared "Play" context-menu item; the caller supplies the play action.
 
@@ -44,12 +46,14 @@ def add_play_menu_item(
     them all through one builder keeps the item from drifting apart across panels.
 
     ``shortcut`` is shown as the item's accelerator hint when the action has a bound key,
-    and left blank for sources reached only by clicking.
+    and left blank for sources reached only by clicking. ``enabled`` states that the source is
+    there to be heard, which a caller listing files answers from the disk.
     """
     dpg.add_menu_item(
         label=label,
         shortcut=shortcut,
         callback=on_play,
+        enabled=enabled,
     )
 
 

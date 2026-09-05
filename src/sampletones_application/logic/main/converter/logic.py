@@ -496,7 +496,7 @@ class ConverterLogic(CallbackMixin):
             self._state,
             phase=self._run.phase,
             status_text=status_text,
-            action_label=self._action_label(running_input),
+            action_label=self._action_label(),
             progress=progress,
             running_input=running_input,
             reconstructions_directory=self._config_manager.get_reconstructions_directory(),
@@ -514,13 +514,10 @@ class ConverterLogic(CallbackMixin):
         """
         return stem_rows(self._state.gathering, mixes=self.mixes)
 
-    def _action_label(self, running_input: Optional[Path]) -> str:
-        destination = self._state.destination
-        input_path = running_input if running_input is not None else destination.input_path
+    def _action_label(self) -> str:
+        """What the button says the run writes, read from the recordings taking part in it."""
         return self._messages.action_label(
             phase=self._run.phase,
             mixes=self.mixes,
-            is_file=destination.is_file,
-            input_path=input_path,
-            playing=len(playing_sources(self._state)),
+            converted=playing_sources(self._state),
         )

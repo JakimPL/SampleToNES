@@ -13,14 +13,17 @@ The **Main** tab turns an audio file into a
 [reconstruction](../concepts/reconstruction.md). Most sessions start here.
 
 Pick an audio file — or a whole folder — in the **Filesystem** browser on the
-left, set up the conversion in the center, and click **Convert sample** (or
-**Convert directory** for a folder). The browser reopens the folders you were
-last working in, and **Collapse all** folds them away again. The [instruction
+left, set up the conversion in the center, and click the button, which names the
+run it is about to make: **Convert bass**, **Convert 6 recordings**, **Mix 5
+recordings**. The browser reopens the folders you were last working in, and
+**Collapse all** folds them away again. The [instruction
 library](../concepts/instruction-library.md) your settings need is built the
 first time you convert, so you can start straight away.
 
-While a run goes on, the panel shows the file going in and the file coming out;
-click either path to open it in your file manager. Afterwards, **Load** opens
+**Destination:** at the foot of the card names where a run writes — the document
+a single conversion makes, or the folder a longer run fills — and while a run
+goes on an **Input:** line above it names the recording being read. Click either
+path to open it in your file manager. Afterwards, **Load** opens
 the new reconstruction on the **Reconstructions** tab — after a folder run the
 button reads **Open** instead. **Cancel** stops a run, and only one runs at a
 time.
@@ -56,12 +59,12 @@ it.
 
 ### One reconstruction each, or one from them all
 
-**Mix into one** names what the run writes. Left clear, every recording in the
-list gets a reconstruction of its own, and the ones a folder holds are written
-into a tree mirroring that folder. Tick it and they mix into a single
-reconstruction instead.
+**Output**, at the head of the card, names what the run writes. On **One per
+recording**, every recording in the list gets a reconstruction of its own, and
+the ones a folder holds are written into a tree mirroring that folder. On **One
+from all**, they mix into a single reconstruction instead.
 
-A mix reaches eight recordings, so ticking it with a longer list asks which ones
+A mix reaches eight recordings, so choosing it with a longer list asks which ones
 to mix. The folders give up the recordings they stood for. The first eight arrive
 ticked and every one is pickable, so swapping one for another is a click each;
 the line above counts what you have picked, and **Add** settles the mix once the
@@ -76,9 +79,10 @@ recording's own actions — copy its name or path, or show the file in your file
 manager. **Order** sets how the levels take turns: round by round, or one level
 filled before the next picks.
 
-**Channels per source** caps how many channels one recording may hold in a
-single frame, and it applies to every conversion. Set to 1, each recording gets a
-single voice.
+**Channels per source**, below the list, caps how many channels one recording may
+hold in a single frame, and it applies to every conversion. Set to 1, each
+recording gets a single voice. It stands beside **Order** once there is a list to
+answer for.
 
 Reconstructing a file or a folder from the browser converts that one thing, so it
 asks first where you have already gathered a list.

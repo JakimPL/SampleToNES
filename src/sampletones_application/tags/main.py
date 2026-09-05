@@ -236,12 +236,6 @@ TAG_MAIN_CONVERTER_GROUP_SUMMARY = TagName(
     Widget.GROUP,
     "summary",
 )
-TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT = TagName(
-    Page.MAIN,
-    Panel.CONVERTER,
-    Widget.TEXT,
-    "summary_hint",
-)
 
 PRE_MAIN_RECONSTRUCTOR_SLOT = "slot"
 TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING = TagName(
@@ -256,11 +250,23 @@ TAG_MAIN_CONVERTER_GROUP_CONTROLS = TagName(
     Widget.GROUP,
     "controls",
 )
-TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE = TagName(
+TAG_MAIN_CONVERTER_RADIO_MODE = TagName(
     Page.MAIN,
     Panel.CONVERTER,
-    Widget.CHECKBOX,
-    "stems_mode",
+    Widget.RADIO,
+    "mode",
+)
+TAG_MAIN_CONVERTER_GROUP_ORDER = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.GROUP,
+    "order",
+)
+TAG_MAIN_CONVERTER_GROUP_INPUT = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.GROUP,
+    "input",
 )
 TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP = TagName(
     Page.MAIN,
@@ -274,11 +280,11 @@ TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE = TagName(
     Widget.COMBO,
     "hierarchy_mode",
 )
-TAG_MAIN_CONVERTER_TOOLTIP_STEMS_MODE = TagName(
+TAG_MAIN_CONVERTER_TOOLTIP_MODE = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.TOOLTIP,
-    "stems_mode",
+    "mode",
 )
 TAG_MAIN_CONVERTER_TOOLTIP_CHANNEL_CAP = TagName(
     Page.MAIN,

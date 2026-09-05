@@ -23,6 +23,8 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_STEMS_ROW_INERT,
 )
 from sampletones_application.tags.main import (
+    TAG_MAIN_CONVERTER_GROUP_CONTROLS,
+    TAG_MAIN_CONVERTER_GROUP_ORDER,
     TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE,
     TAG_MAIN_CONVERTER_WINDOW_STEMS,
 )
@@ -642,14 +644,34 @@ class TestConverterStemsCard:
 
         assert ChannelName.PULSE2 in _row_of(app, joined).channels
 
-    def test_the_order_explanation_leaves_with_the_control_it_belongs_to(self, app: Application) -> None:
-        """A tooltip left live over a hidden widget's rectangle explains whatever moved into it."""
-        converter_logic = app._main_tab._converter_logic
+    def test_the_run_controls_arrive_with_the_first_recording(self, app: Application, tmp_path: Path) -> None:
+        """The choices answer for what is listed, so they stand once there is something to answer for."""
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_GROUP_CONTROLS)["show"] is False
 
-        converter_logic.set_output(OutputKind.MIXED)
+        self._gather(app, tmp_path, ["a.wav"])
+
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_GROUP_CONTROLS)["show"] is True
+
+    def test_the_order_arrives_with_the_second_recording_in_a_mix(self, app: Application, tmp_path: Path) -> None:
+        """One recording is its own order, so the choice of how levels take turns arrives with the second."""
+        self._gather(app, tmp_path, ["a.wav"])
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_GROUP_ORDER)["show"] is False
+
+        self._gather(app, tmp_path, ["b.wav"])
+
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_GROUP_ORDER)["show"] is True
+
+    def test_the_order_explanation_leaves_with_the_control_it_belongs_to(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        """A tooltip left live over a hidden widget's rectangle explains whatever moved into it."""
+        self._gather(app, tmp_path, ["a.wav", "b.wav"])
         assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE)["show"] is True
 
-        converter_logic.set_output(OutputKind.PER_RECORDING)
+        app._main_tab._converter_logic.set_output(OutputKind.PER_RECORDING)
+
         assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE)["show"] is False
 
     def test_a_recording_holding_no_channel_grays_out_but_stays_listed(

@@ -48,7 +48,7 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSelectionWindow
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
-from sampletones_application.ui.panels.main.converter import GUIConverterPanel
+from sampletones_application.ui.panels.main.converter.panel import GUIConverterPanel
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
 from sampletones_application.utils.file_dialogs.api import select_directory_dialog

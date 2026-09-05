@@ -4,11 +4,11 @@ from sampletones_application.logic.main.converter.messages import ConverterMessa
 from tests.suite.language import FakeLanguageManager
 
 TEXTS: Final[Dict[str, str]] = {
-    "main.converter.label.convert_sample_button": "Convert sample",
-    "main.converter.label.convert_directory_button": "Convert directory",
-    "main.converter.label.convert_stems_button": "Convert stems",
+    "main.converter.label.convert_button": "Convert",
     "main.converter.label.cancel_button": "Cancel",
-    "main.converter.template.convert_label_template": "{}: {}",
+    "main.converter.template.convert_recording": "Convert {name}",
+    "main.converter.template.convert_recordings": "Convert {count} recordings",
+    "main.converter.template.mix_recordings": "Mix {count} recordings",
     "main.converter.template.progress_template": "Progress: {}/{} files",
     "main.converter.template.single_progress_template": "Reconstructing {}...",
     "main.converter.template.stage_template": " - {stage} {completed}/{total}",

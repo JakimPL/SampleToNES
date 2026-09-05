@@ -41,6 +41,7 @@ ACTIVE_PHASES: Final[FrozenSet[ConversionPhase]] = frozenset(
         ConversionPhase.CANCELLING,
     }
 )
+SINGLE_SOURCE: Final[int] = 1
 
 
 class ConverterViewModel(BaseModel, frozen=True):
@@ -94,6 +95,21 @@ class ConverterViewModel(BaseModel, frozen=True):
     @property
     def source_count(self) -> int:
         return len(self.stem_sources)
+
+    @property
+    def listed(self) -> bool:
+        """Something stands in the list, which is what the run's own choices answer for."""
+        return bool(self.stem_sources)
+
+    @property
+    def mixes_several(self) -> bool:
+        """A mix is being built from more than one recording, which is what an order decides."""
+        return self.mixes and self.source_count > SINGLE_SOURCE
+
+    @property
+    def shows_input(self) -> bool:
+        """A run is reporting the recording it is on, which is what the input line names."""
+        return self.input_path is not None and self.is_active
 
     @property
     def channels_in_play(self) -> Tuple[ChannelName, ...]:

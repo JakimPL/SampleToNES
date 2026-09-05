@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Final, Optional
+from typing import Dict, Final, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.services.conversion.result import ConversionItem
@@ -9,6 +9,7 @@ from sampletones_core.parallelization import ETAEstimator
 from sampletones_core.reconstructions.stage import ReconstructionStage
 
 SINGLE_JOB: Final[int] = 1
+SINGLE_SOURCE: Final[int] = 1
 
 
 class ConverterMessages:
@@ -54,38 +55,29 @@ class ConverterMessages:
         *,
         phase: ConversionPhase,
         mixes: bool,
-        is_file: bool,
-        input_path: Optional[Path],
-        playing: int,
+        converted: Tuple[Path, ...],
     ) -> str:
-        """The label the single action button shows: the cancel label while a conversion holds
-        resources, otherwise the convert label named after what it would convert."""
+        """The label the single action button shows.
+
+        While a conversion holds resources the button cancels it. Otherwise it says what the run
+        writes, counted from the recordings taking part, so the button and the output switch read
+        as one sentence rather than two.
+        """
         if phase in ACTIVE_PHASES:
             return self._language_manager["main.converter.label.cancel_button"]
 
-        if mixes:
-            return self._mix_label(playing)
+        if len(converted) > SINGLE_SOURCE:
+            template = (
+                self._language_manager["main.converter.template.mix_recordings"]
+                if mixes
+                else self._language_manager["main.converter.template.convert_recordings"]
+            )
+            return template.format(count=len(converted))
 
-        base = (
-            self._language_manager["main.converter.label.convert_sample_button"]
-            if is_file
-            else self._language_manager["main.converter.label.convert_directory_button"]
-        )
-        if input_path is None:
-            return base
+        if converted:
+            return self._language_manager["main.converter.template.convert_recording"].format(name=converted[0].stem)
 
-        return self._named_label(base, input_path.name)
-
-    def _mix_label(self, playing: int) -> str:
-        """The stems label, named after how many recordings take part."""
-        base = self._language_manager["main.converter.label.convert_stems_button"]
-        if not playing:
-            return base
-
-        return self._named_label(base, str(playing))
-
-    def _named_label(self, base: str, subject: str) -> str:
-        return self._language_manager["main.converter.template.convert_label_template"].format(base, subject)
+        return self._language_manager["main.converter.label.convert_button"]
 
     def _run_text(
         self,
