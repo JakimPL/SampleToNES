@@ -566,9 +566,16 @@ class TestConverterStemsCard:
         )
 
     def test_a_row_is_the_thing_you_drag_it_by(self, app: Application, tmp_path: Path) -> None:
+        """A level is a turn to choose, so the drag that rearranges them arrives with the second."""
+        first, _second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+
+        assert dpg.get_item_children(stems_list(app).tags.row(str(first), SUF_TEXT), DRAG_PAYLOAD_SLOT)
+
+    def test_one_recording_in_a_mix_is_its_own_order(self, app: Application, tmp_path: Path) -> None:
         path = self._gather(app, tmp_path, ["a.wav"])[0]
 
-        assert dpg.get_item_children(stems_list(app).tags.row(str(path), SUF_TEXT), DRAG_PAYLOAD_SLOT)
+        assert not dpg.does_item_exist(stems_list(app).tags.level(0, SUF_TEXT))
+        assert not dpg.get_item_children(stems_list(app).tags.row(str(path), SUF_TEXT), DRAG_PAYLOAD_SLOT)
 
     def test_dropping_a_recording_on_a_row_joins_that_rows_level(self, app: Application, tmp_path: Path) -> None:
         first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])

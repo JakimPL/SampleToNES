@@ -122,14 +122,18 @@ class ConverterViewModel(BaseModel, frozen=True):
 
     @property
     def stems_list(self) -> StemsListViewModel:
-        """The gathered recordings as the stems list draws them, inert while a conversion runs."""
+        """The gathered recordings as the stems list draws them, inert while a conversion runs.
+
+        A level is a turn to choose, so the bands and the drag that rearranges them arrive with
+        the second recording of a mix; one recording is its own order and reads as a plain run.
+        """
         return StemsListViewModel(
             rows=self.stem_sources,
             channels_in_play=self.channels_in_play,
             muted_channels=frozenset(),
             picked_keys=frozenset(),
             live=not self.is_active,
-            collapse_levels=not self.mixes,
+            collapse_levels=not self.mixes_several,
             selected_key=self.selected_key,
         )
 

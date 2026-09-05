@@ -26,11 +26,13 @@ class StemsMessages:
         offer: StemsListOffer,
         open_folders: OpenFolders,
         activatable: Callable[[], bool],
+        playable: Callable[[], bool],
     ) -> None:
         self._language_manager = language_manager
         self._offer = offer
         self._open_folders = open_folders
         self._activatable = activatable
+        self._playable = playable
         self._view = StemsListViewModel.empty()
         self._msg_drag = language_manager["global.stems.message.drag_tooltip"]
         self._msg_inert = language_manager["global.stems.message.inert_tooltip"]
@@ -61,6 +63,7 @@ class StemsMessages:
         return "\n".join(lines)
 
     def name(self, *_args: Any, user_data: str, **_kwargs: Any) -> str:
+        """The status line a row's name puts up: what the gestures it takes would do to it."""
         row = self._row(user_data)
         if row is None:
             return ""
@@ -71,13 +74,24 @@ class StemsMessages:
                 count=row.holds,
             )
 
+        return " ".join(self._row_gestures(row))
+
+    def _row_gestures(self, row: StemRowViewModel) -> Tuple[str, ...]:
+        """What a reader can do to a recording, in the order the list offers it.
+
+        A list that sounds a row says so, since a double-click is the one gesture nothing on the
+        row draws; a list that neither drags nor reveals reads as the name alone.
+        """
+        lines: Tuple[str, ...] = ()
         if self._offer.dragging:
-            return self._language_manager["global.stems.message.status_row_drag"].format(name=row.name)
+            lines += (self._language_manager["global.stems.message.status_row_drag"].format(name=row.name),)
+        elif self._activatable():
+            lines += (self._language_manager["global.stems.message.status_row_reveal"].format(name=row.name),)
 
-        if self._activatable():
-            return self._language_manager["global.stems.message.status_row_reveal"].format(name=row.name)
+        if self._playable():
+            lines += (self._language_manager["global.stems.message.status_row_play"].format(name=row.name),)
 
-        return row.name
+        return lines or (row.name,)
 
     def channel(
         self,

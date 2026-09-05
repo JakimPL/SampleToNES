@@ -8,6 +8,7 @@ from sampletones_application.tags.general import (
     SUF_STRIP,
     SUF_TABLE,
     SUF_TEXT,
+    TAG_GLOBAL_THEME_SECTION_HEADER,
     TAG_GLOBAL_THEME_STEMS_DROP_STRIP,
 )
 from sampletones_application.ui.elements.fonts.font import Font
@@ -159,12 +160,14 @@ class LevelBands:
         ThemeRegistry.get(TAG_GLOBAL_THEME_STEMS_DROP_STRIP).bind_to_item(strip)
 
     def _create_caption(self, level_index: int) -> None:
+        """The band's own name, in the accent a section header takes, so a level reads as one."""
         caption = dpg.add_text(
             self._level_template.format(level_index + 1).upper(),
             tag=self._tags.level(level_index, SUF_TEXT),
             parent=self._tags.body,
         )
         FontRegistry.bind_to_item(caption, Font.MONO_SMALL)
+        ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER).bind_to_item(caption)
 
     def _create_table(
         self,

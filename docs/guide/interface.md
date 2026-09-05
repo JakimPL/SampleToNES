@@ -73,9 +73,9 @@ click answers for a whole folder. The first eight arrive ticked and every one is
 pickable, so swapping one for another is a click each; the line above counts what
 you have picked, and **Add** settles the mix once the pick fits.
 
-While mixing, rows sit in **level** bands. A level is a turn to choose: every
-recording on level 1 picks its channels before any on level 2, so a lead can take
-what it needs before a pad does. Drag a row onto another row to join that row's
+From the second recording of a mix, rows sit in **level** bands. A level is a turn
+to choose: every recording on level 1 picks its channels before any on level 2, so
+a lead can take what it needs before a pad does. Drag a row onto another row to join that row's
 level, or into the gap between two levels to give it a level of its own.
 Right-clicking a row lists the same moves as menu items, alongside the
 recording's own actions — copy its name or path, or show the file in your file
