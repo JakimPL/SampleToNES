@@ -62,8 +62,10 @@ into a tree mirroring that folder. Tick it and they mix into a single
 reconstruction instead.
 
 A mix reaches eight recordings, so ticking it with a longer list asks which ones
-to mix. The folders give up the recordings they stood for, and what you pick is
-what the mix converts.
+to mix. The folders give up the recordings they stood for. The first eight arrive
+ticked and every one is pickable, so swapping one for another is a click each;
+the line above counts what you have picked, and **Add** settles the mix once the
+pick fits.
 
 While mixing, rows sit in **level** bands. A level is a turn to choose: every
 recording on level 1 picks its channels before any on level 2, so a lead can take

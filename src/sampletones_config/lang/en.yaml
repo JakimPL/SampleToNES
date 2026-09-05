@@ -414,7 +414,7 @@ main.converter.message.status_stems_mode: "Mix the gathered recordings into one 
 main.converter.title.discard_stems_dialog: "Replace the list?"
 main.converter.title.overwrite_target_dialog: "Write over it?"
 main.converter.title.stem_selection_dialog: "Pick recordings to mix"
-main.converter.template.stem_selection_limit: "A mix holds {} of the {} recordings gathered."
+main.converter.template.stem_selection_limit: "{picked} of {total} picked. A mix holds {room}."
 main.converter.label.context_move_up: "Move up"
 main.converter.label.context_move_down: "Move down"
 main.converter.label.context_join_above: "Join the level above"

@@ -17,6 +17,7 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
+from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 
@@ -24,11 +25,12 @@ ADD_FOCUS_STOP: Final[int] = 1
 
 
 class GUIStemSelectionWindow(GUIDialogWindow):
-    """A modal offering the recordings a folder holds, with the ones that fit already ticked.
+    """A modal offering the recordings gathered, with as many as a mix holds already ticked.
 
-    A folder can hold more recordings than one conversion has room for, so the reader is shown
-    what was found and which of it fits: the first ones up to the room left arrive ticked, the
-    rest stand disabled beneath a line stating the limit. What comes back is the reader's choice.
+    A list can hold more recordings than one mix has room for, so the reader is shown everything
+    gathered and picks which of it to mix: any recording is pickable, whichever ones arrived
+    ticked, so swapping the eighth for the ninth is one gesture. The line above reads what stands
+    picked against the room, and the mix is settled once the pick fits.
     """
 
     def __init__(
@@ -97,13 +99,13 @@ class GUIStemSelectionWindow(GUIDialogWindow):
         )
 
     def _create_candidate_rows(self) -> None:
+        """A box per recording gathered, the first ones the mix has room for arriving ticked."""
         for index, candidate in enumerate(self._candidates):
-            fits = index < self._room
             dpg.add_checkbox(
                 label=candidate.name,
                 tag=self._candidate_tag(candidate),
-                default_value=fits,
-                enabled=fits,
+                default_value=index < self._room,
+                callback=self._on_picked,
             )
 
     @table_wrapper(columns=2)
@@ -119,10 +121,26 @@ class GUIStemSelectionWindow(GUIDialogWindow):
             label=self._add_label,
             callback=self._add,
             width=-1,
+            enabled=self._fits,
         )
 
     def _limit_text(self) -> str:
-        return self._limit_template.format(self._room, len(self._candidates))
+        return self._limit_template.format(
+            picked=len(self._selected()),
+            total=len(self._candidates),
+            room=self._room,
+        )
+
+    def _on_picked(self, *_args: Any, **_kwargs: Any) -> None:
+        """Follow what stands picked: what the line reads, and whether the mix can be settled."""
+        dpg_set_value(TAG_MAIN_CONVERTER_TEXT_STEM_SELECTION_LIMIT, self._limit_text())
+        dpg_configure_item(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, enabled=self._fits)
+
+    @property
+    def _fits(self) -> bool:
+        """The pick is one a mix can be built from: at least one recording, and no more than fit."""
+        picked = len(self._selected())
+        return 0 < picked <= self._room
 
     def _selected(self) -> List[Path]:
         return [
@@ -132,6 +150,9 @@ class GUIStemSelectionWindow(GUIDialogWindow):
         ]
 
     def _add(self) -> None:
+        if not self._fits:
+            return
+
         selected = self._selected()
         self.hide()
         self.call(self.on_add, selected)
