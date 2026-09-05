@@ -56,7 +56,6 @@ from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions.converter import ConversionPlan
-from sampletones_core.reconstructions.converter.paths import get_audio_files
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
@@ -145,8 +144,8 @@ class ConverterLogic(CallbackMixin):
         """The gathered sources as one run of rows, which is what a reader picking a mix reads."""
         return stem_rows(self._state.gathering, mixes=False)
 
-    def rows_offered_by(self, root: Path) -> Tuple[StemRowViewModel, ...]:
-        """The recordings below ``root`` the setup has yet to gather, as one row apiece.
+    def rows_offered(self, found: Sequence[Path]) -> Tuple[StemRowViewModel, ...]:
+        """The recordings among ``found`` the setup has yet to gather, as one row apiece.
 
         A mix reaches a fixed number of recordings, so a folder bringing in more than the room
         left is put to a reader as the same question the output switch asks: which of these to mix.
@@ -154,7 +153,7 @@ class ConverterLogic(CallbackMixin):
         since the answer names the recordings to gather.
         """
         standing = frozenset(self.gathered_paths)
-        offered = tuple(recording for recording in self._folder_recordings(root) if recording.path not in standing)
+        offered = tuple(self._gathered(path) for path in found if path not in standing)
         return stem_rows(Gathering(sources=SourceList(rows=offered), levels=MixLevels()), mixes=False)
 
     @property
@@ -185,35 +184,39 @@ class ConverterLogic(CallbackMixin):
 
         self._settle(self._state.with_gathering(gathering))
 
-    def gather_folder(self, root: Path) -> None:
-        """Gathers a folder, standing for every recording found directly below it.
+    def gather_folder(self, root: Path, found: Sequence[Path]) -> None:
+        """Gathers a folder standing for the recordings ``found`` below it.
 
         A run writing one reconstruction per recording mirrors this folder's tree for what it
-        holds; a mix takes the recordings loose, which is what flattening leaves.
+        holds; a mix takes the recordings loose, which is what flattening leaves. The recordings
+        are handed in because reading them off the disk is work of its own, reported to the reader
+        while it runs.
         """
         if self.mixes:
-            self.gather_recordings([recording.path for recording in self._folder_recordings(root)])
+            self.gather_recordings(found)
             return
 
-        self._settle(self._state.with_gathering(self._gathering_folder(root)))
+        self._settle(self._state.with_gathering(self._gathering_folder(root, found)))
 
-    def convert_path(self, path: Path) -> None:
-        """Converts exactly what the reader named, which is what a Reconstruct asks for.
+    def convert_recording(self, path: Path) -> None:
+        """Converts exactly the recording the reader named, which is what a Reconstruct asks for."""
+        self._replace_setup()
+        self.gather_recordings([path])
+        self.start_conversion()
 
-        The setup becomes that one source — a recording, or a folder standing for the recordings
-        below it — and the run starts, writing one reconstruction apiece.
-        """
+    def convert_folder(self, root: Path, found: Sequence[Path]) -> None:
+        """Converts the recordings ``found`` below a folder, writing one reconstruction apiece."""
+        self._replace_setup()
+        self.gather_folder(root, found)
+        self.start_conversion()
+
+    def _replace_setup(self) -> None:
+        """Lets whatever was gathered go, since a Reconstruct names what it converts on its own."""
         self._settle(
             self._state.with_settings(self._settings.with_output(OutputKind.PER_RECORDING)).with_gathering(
                 Gathering.empty()
             )
         )
-        if path.is_dir():
-            self.gather_folder(path)
-        else:
-            self.gather_recordings([path])
-
-        self.start_conversion()
 
     def select_row(self, path: Path, kind: SourceKind) -> None:
         """Names the row a reader is inspecting, which the settings card edits."""
@@ -412,17 +415,9 @@ class ConverterLogic(CallbackMixin):
         """A recording joining the list, holding the settings a recording joins with."""
         return Recording(path=path, settings=self._joining_settings)
 
-    def _folder_recordings(self, root: Path) -> Tuple[Recording, ...]:
-        """Every recording below a folder, each joining with the settings a new row starts from.
-
-        The walk goes as deep as the folder does, so a folder of folders stands for what its whole
-        tree holds and a run writing one reconstruction apiece mirrors that tree.
-        """
-        return tuple(self._gathered(path) for path in get_audio_files(root, sort=True))
-
-    def _gathering_folder(self, root: Path) -> Gathering:
+    def _gathering_folder(self, root: Path, found: Sequence[Path]) -> Gathering:
         """The setup with ``root`` standing as one row, or as it stands where the folder is empty."""
-        recordings = self._folder_recordings(root)
+        recordings = tuple(self._gathered(path) for path in found)
         if not recordings:
             return self._state.gathering
 

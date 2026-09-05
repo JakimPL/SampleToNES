@@ -21,6 +21,7 @@ from sampletones_application.view_model.main.converter import (
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions.converter import GroupConversion
+from sampletones_core.reconstructions.converter.paths import get_audio_files
 from tests.suite.base import BaseTestSuite
 from tests.suite.language import FakeLanguageManager
 from tests.unit.sampletones_application.logic.main.converter.texts import TEXTS
@@ -316,7 +317,7 @@ class TestOverwriteGuard:
         sources = tmp_path / "sources"
         sources.mkdir()
         (sources / "song.wav").touch()
-        converter_logic.gather_folder(sources)
+        converter_logic.gather_folder(sources, get_audio_files(sources, sort=True))
         on_target_exists = MagicMock()
         converter_logic.on_target_exists = on_target_exists
 
@@ -383,7 +384,7 @@ class TestWhatTheSetupNamesItselfBy:
         sources.mkdir()
         (sources / "song.wav").touch()
 
-        converter_logic.gather_folder(sources)
+        converter_logic.gather_folder(sources, get_audio_files(sources, sort=True))
 
         view_model = _view(converter_logic)
         assert (view_model.input_path, view_model.is_file) == (sources, False)
@@ -646,7 +647,7 @@ class TestAFolderInTheList:
         for name in names:
             (root / name).touch()
 
-        converter_logic.gather_folder(root)
+        converter_logic.gather_folder(root, get_audio_files(root, sort=True))
         return root
 
     def test_a_folder_draws_one_row_naming_what_it_holds(
@@ -812,14 +813,14 @@ class TestAFolderOfFolders(BaseTestSuite):
     ) -> None:
         root = self._tree(tmp_path)
 
-        converter_logic.gather_folder(root)
+        converter_logic.gather_folder(root, get_audio_files(root, sort=True))
 
         assert {path.name for path in converter_logic.gathered_paths} == {"top.wav", "deep.wav"}
 
     def test_it_still_stands_as_one_row(self, converter_logic: ConverterLogic, tmp_path: Path) -> None:
         root = self._tree(tmp_path)
 
-        converter_logic.gather_folder(root)
+        converter_logic.gather_folder(root, get_audio_files(root, sort=True))
 
         rows = _view(converter_logic).stem_sources
         assert len(rows) == 1

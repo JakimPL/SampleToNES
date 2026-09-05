@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import AbstractSet, List, Tuple
+from typing import AbstractSet, Iterator, List, Tuple
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
@@ -85,12 +85,26 @@ def group_output_path(
     return Path((output_directory / f"{derive_name(sources)}{suffix}").absolute())
 
 
+def walk_audio_files(
+    input_directory: Path,
+    extensions: Tuple[str, ...] = EXT_FILES_AUDIO,
+) -> Iterator[Path]:
+    """The recordings below a directory, reported as the walk meets them.
+
+    A tree is read one entry at a time, so a caller reporting how far it has got hears from the
+    walk while it runs rather than once it ends.
+    """
+    for path in input_directory.rglob("*"):
+        if path.is_file() and path.suffix.lower() in extensions:
+            yield path
+
+
 def get_audio_files(
     input_directory: Path,
     extensions: Tuple[str, ...] = EXT_FILES_AUDIO,
     sort: bool = False,
 ) -> List[Path]:
-    audio_files = [path for path in input_directory.rglob("*") if path.is_file() and path.suffix.lower() in extensions]
+    audio_files = list(walk_audio_files(input_directory, extensions))
     if sort:
         audio_files.sort()
 

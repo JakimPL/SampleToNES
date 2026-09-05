@@ -340,6 +340,30 @@ TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET = TagName(
     Widget.DIALOG,
     "overwrite_target",
 )
+TAG_MAIN_CONVERTER_WINDOW_SCAN = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.WINDOW,
+    "scan",
+)
+TAG_MAIN_CONVERTER_TEXT_SCAN_FOLDER = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TEXT,
+    "scan_folder",
+)
+TAG_MAIN_CONVERTER_PROGRESS_SCAN = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.PROGRESS,
+    "scan",
+)
+TAG_MAIN_CONVERTER_BUTTON_STOP_SCAN = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.BUTTON,
+    "stop_scan",
+)
 TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION = TagName(
     Page.MAIN,
     Panel.CONVERTER,

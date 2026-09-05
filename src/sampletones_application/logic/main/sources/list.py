@@ -1,4 +1,5 @@
 from dataclasses import dataclass, replace
+from functools import cached_property
 from pathlib import Path
 from typing import Callable, Dict, FrozenSet, Optional, Self, Tuple
 
@@ -28,14 +29,28 @@ class SourceList:
 
     rows: Tuple[SourceRow, ...] = ()
 
-    @property
+    @cached_property
     def recordings(self) -> Tuple[Recording, ...]:
         """Every recording the list stands for, folders walked through to what they hold.
 
         This is the one reading that goes from rows to recordings; whoever needs the recordings a
-        run converts asks for them here.
+        run converts asks for them here. A list holding a folder of thousands is read many times
+        over in the course of one gesture, so the walk is taken once and held; the list is settled
+        rather than edited, so each reading belongs to the list that took it.
         """
         return tuple(recording for row in self.rows for recording in row.recordings)
+
+    @cached_property
+    def _by_path(self) -> Dict[Path, Recording]:
+        """Every recording under the path naming it, which is how a path is looked up."""
+        return {recording.path: recording for recording in self.recordings}
+
+    @cached_property
+    def _roots(self) -> Dict[Path, Path]:
+        """The folder each gathered recording was found below, where a folder stands for it."""
+        return {
+            recording.path: row.key.path for row in self.rows if row.key.names_folder for recording in row.recordings
+        }
 
     @property
     def paths(self) -> Tuple[Path, ...]:
@@ -52,10 +67,10 @@ class SourceList:
         return len(self.rows)
 
     def holds(self, path: Path) -> bool:
-        return any(recording.path == path for recording in self.recordings)
+        return path in self._by_path
 
     def recording(self, path: Path) -> Optional[Recording]:
-        return next((recording for recording in self.recordings if recording.path == path), None)
+        return self._by_path.get(path)
 
     def row(self, key: SourceKey) -> Optional[SourceRow]:
         """The row a key names, wherever it stands.
@@ -76,11 +91,7 @@ class SourceList:
         A recording the reader named answers with nothing, and its reconstruction sits directly in
         the directory the run's settings are named after.
         """
-        for row in self.rows:
-            if row.key.names_folder and any(recording.path == path for recording in row.recordings):
-                return row.key.path
-
-        return None
+        return self._roots.get(path)
 
     def add_recording(self, recording: Recording) -> Self:
         """Gathers one recording the reader named, leaving a path already standing as it is."""

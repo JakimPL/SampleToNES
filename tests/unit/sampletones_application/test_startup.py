@@ -57,6 +57,7 @@ from sampletones_application.view_model.main.converter import ConversionPhase, C
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.converter.paths import get_audio_files
 from sampletones_core.structures.tree import FileSystemNode, NodeType
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
@@ -499,6 +500,14 @@ def _reports_running(app: Application, status_text: str, progress: float) -> Non
     app._main_tab._on_converter_view_changed(running)
 
 
+def _ctrl_click_folder(app: Application, directory: Path) -> None:
+    """Reports a Ctrl-click on a folder's row, the way the browser does."""
+    panel = app._main_tab._explorer_panel
+    node = FileSystemNode(directory.name, node_type=NodeType.DIRECTORY, filepath=directory)
+    with patch.object(explorer_module, "capture_modifiers", return_value=frozenset({Modifier.CTRL})):
+        panel._directory_node_clicked(node, UNBUILT_ROW)
+
+
 class TestGatheringAFolderIntoAMix:
     """A folder bringing in more than a mix holds is a question, and the answer reaches the mix.
 
@@ -517,11 +526,9 @@ class TestGatheringAFolderIntoAMix:
 
     @staticmethod
     def _ask(app: Application, directory: Path) -> None:
-        """Ctrl-clicks the folder, the way the browser reports the gathering gesture."""
-        panel = app._main_tab._explorer_panel
-        node = FileSystemNode(directory.name, node_type=NodeType.DIRECTORY, filepath=directory)
-        with patch.object(explorer_module, "capture_modifiers", return_value=frozenset({Modifier.CTRL})):
-            panel._directory_node_clicked(node, UNBUILT_ROW)
+        """Ctrl-clicks the folder and waits for the reading, the way a reader does."""
+        _ctrl_click_folder(app, directory)
+        SingleThreadExecutor.join_all()
 
     def test_it_asks_rather_than_gathers(self, app: Application, tmp_path: Path) -> None:
         directory = self._folder(tmp_path, MAX_STEM_SOURCES + 3)
@@ -649,10 +656,12 @@ class TestBrowserGathering:
         return directory
 
     def _click(self, app: Application, directory: Path, *, modifiers: FrozenSet[Modifier]) -> None:
-        """Clicks a folder's row, with whatever the reader was holding down."""
+        """Clicks a folder's row, with whatever the reader was holding down, and lets it settle."""
         panel = app._main_tab._explorer_panel
         with patch.object(explorer_module, "capture_modifiers", return_value=modifiers):
             panel._directory_node_clicked(self._folder(directory), UNBUILT_ROW)
+
+        SingleThreadExecutor.join_all()
 
     def test_a_plain_click_gathers_nothing(self, app: Application, tmp_path: Path) -> None:
         directory = self._tree(tmp_path)
@@ -817,7 +826,7 @@ class TestConverterStemsCard:
 
         converter_logic = app._main_tab._converter_logic
         converter_logic.set_output(OutputKind.PER_RECORDING)
-        converter_logic.gather_folder(root)
+        converter_logic.gather_folder(root, get_audio_files(root, sort=True))
         return paths
 
     def test_a_folder_arrives_closed_and_opens_onto_what_it_holds(

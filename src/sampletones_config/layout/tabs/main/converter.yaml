@@ -4,3 +4,6 @@ stem_selection:
   width: 420
   height: 360
 stem_selection_footer: 44
+scan:
+  width: 420
+  height: 150

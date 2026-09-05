@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -15,6 +15,7 @@ from sampletones_application.logic.instruction.library_manager import (
 from sampletones_application.logic.main.converter.logic import ConverterLogic
 from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.logic.main.explorer_manager import ExplorerManager
+from sampletones_application.logic.main.sources.scan import FolderScan
 from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.main import MainTabParameters
@@ -46,6 +47,7 @@ from sampletones_application.tags.main import (
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.layout.responsive import expanded_side_width
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.panels.dialogs.scanning import GUIScanWindow
 from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSelectionWindow
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
@@ -161,6 +163,7 @@ class MainTabCoordinator:
             open_directories=session_manager.expanded_directories,
         )
         self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
+        self._folder_scan: FolderScan = FolderScan()
         self._explorer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             self._file_playback,
@@ -175,6 +178,9 @@ class MainTabCoordinator:
             colors=layout.tree_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_EXPLORER_PANEL),
         )
+        self._folder_scan.on_started = self._on_scan_started
+        self._folder_scan.on_progress = self._on_scan_progress
+        self._folder_scan.on_stopped = self._on_scan_stopped
         self._explorer_tree_logic.on_lock_state_changed = self._explorer_panel.set_tree_enabled
         self._explorer_tree_logic.on_favorite_changed = self._repaint_explorer_favorites
         self._explorer_tree_logic.on_search_update_needed = self._explorer_panel.update_tree_visibility
@@ -242,6 +248,11 @@ class MainTabCoordinator:
             status_bar=status_bar,
             path_colors=layout.path_colors,
         )
+        self._scan_window: GUIScanWindow = GUIScanWindow(
+            layout=layout.main.converter,
+            language_manager=language_manager,
+        )
+        self._scan_window.on_stop = self._folder_scan.stop
         self._converter_panel: GUIConverterPanel = GUIConverterPanel(
             layout=layout.main.converter,
             stems_layout=layout.stems,
@@ -478,20 +489,46 @@ class MainTabCoordinator:
         self._converter_logic.gather_recordings([filepath])
 
     def _on_directory_add_requested(self, directory_path: Path) -> None:
-        """Gathers a folder into the setup, standing for the recordings found below it.
+        """Reads what a folder holds, and gathers it once the reading is done.
 
-        A mix reaches a fixed number of recordings, so a folder overflowing it raises the same
-        question the output switch raises: which of what is now offered to mix.
+        A tree is read one entry at a time and a large one takes seconds, so the reading runs
+        beside the interface and says how far it has got.
         """
         if self._hooks.is_operation_active():
             return
 
-        if self._mixing_beyond_room(directory_path):
+        self._folder_scan.start(directory_path, self._gather_folder_read)
+
+    def _on_scan_started(self, directory_path: Path) -> None:
+        """Puts the wait on screen, since reading a folder of thousands takes seconds."""
+        on_render_thread(self._scan_window.open, directory_path, priority=self._repaint_priority)
+
+    def _on_scan_progress(self, count: int) -> None:
+        on_render_thread(self._scan_window.report, count, priority=self._repaint_priority)
+
+    def _on_scan_stopped(self) -> None:
+        on_render_thread(self._scan_window.close, priority=self._repaint_priority)
+
+    def _gather_folder_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
+        """Gathers what the walk found, on the thread the widgets it draws belong to."""
+        on_render_thread(self._gather_read, directory_path, found, priority=self._repaint_priority)
+
+    def _convert_folder_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
+        """Converts what the walk found, on the thread the widgets it draws belong to."""
+        on_render_thread(self._convert_read, directory_path, found, priority=self._repaint_priority)
+
+    def _gather_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
+        self._scan_window.close()
+        if self._mixing_beyond_room(directory_path, found):
             return
 
-        self._converter_logic.gather_folder(directory_path)
+        self._converter_logic.gather_folder(directory_path, found)
 
-    def _mixing_beyond_room(self, directory_path: Path) -> bool:
+    def _convert_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
+        self._scan_window.close()
+        self._converter_logic.convert_folder(directory_path, found)
+
+    def _mixing_beyond_room(self, directory_path: Path, found: Tuple[Path, ...]) -> bool:
         """Whether the folder brings in more than the mix has room for, which is a question.
 
         The answer names the recordings to gather, so it reaches the same gathering a click in the
@@ -500,7 +537,7 @@ class MainTabCoordinator:
         if not self._converter_logic.mixes:
             return False
 
-        offered = self._converter_logic.rows_offered_by(directory_path)
+        offered = self._converter_logic.rows_offered(found)
         room = self._converter_logic.room_for_sources
         if sum(len(row.recordings) for row in offered) <= room:
             return False
@@ -690,8 +727,16 @@ class MainTabCoordinator:
         self._converter_logic.refresh_view()
 
     def convert_path(self, path: Path) -> None:
-        """Converts exactly what a Reconstruct named, replacing whatever the reader gathered."""
-        self._converter_logic.convert_path(path)
+        """Converts exactly what a Reconstruct named, replacing whatever the reader gathered.
+
+        A folder is read before it is converted, which is work the reader watches rather than
+        waits blindly through.
+        """
+        if not path.is_dir():
+            self._converter_logic.convert_recording(path)
+            return
+
+        self._folder_scan.start(path, self._convert_folder_read)
 
     def save_browser_shape(self) -> None:
         """Writes down the folders the explorer stands open, so a later run reads down to them."""

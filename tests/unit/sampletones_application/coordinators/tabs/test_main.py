@@ -9,12 +9,14 @@ from sampletones_application.constants.output import OutputKind
 from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.logic.main.converter.run import ConversionSuccess
+from sampletones_application.logic.main.sources.scan import FolderScan
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_CANCEL,
     TAG_MAIN_CONVERTER_DIALOG_LOAD,
     TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
 )
+from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from tests.suite.language import FakeLanguageManager
 
 CONVERTER_RUNNING_MESSAGE_KEY: Final[str] = "main.explorer.message.converter_running_msg"
@@ -205,9 +207,31 @@ def _stems_coordinator(
     coordinator._converter_logic.gathered_paths = gathered
     coordinator._converter_logic.source_count = len(gathered)
     coordinator._converter_logic.room_for_sources = room
-    coordinator._converter_logic.rows_offered_by.return_value = folder_rows
+    coordinator._converter_logic.rows_offered.return_value = folder_rows
     coordinator._stem_selection_window = MagicMock()
+    coordinator._scan_window = MagicMock()
+    coordinator._repaint_priority = 0
+    coordinator._folder_scan = FolderScan()
+    coordinator._folder_scan.on_started = coordinator._on_scan_started
+    coordinator._folder_scan.on_progress = coordinator._on_scan_progress
+    coordinator._folder_scan.on_stopped = coordinator._on_scan_stopped
     return coordinator
+
+
+def _folder_of(tmp_path: Path, count: int) -> Path:
+    """A folder holding that many recordings, which the reading below it finds."""
+    root = tmp_path / "takes"
+    root.mkdir(exist_ok=True)
+    for index in range(count):
+        (root / f"take_{index:02d}.wav").touch()
+
+    return root
+
+
+def _add_folder(coordinator: MainTabCoordinator, root: Path) -> None:
+    """Asks for the folder and waits for the reading, the way a reader does."""
+    coordinator._on_directory_add_requested(root)
+    SingleThreadExecutor.join_all()
 
 
 class TestOutputSwitch:
@@ -255,11 +279,14 @@ class TestDirectoryAdd:
     """Ctrl-clicking a folder gathers it, standing for the recordings found below it."""
 
     def test_a_folder_joins_the_setup(self, tmp_path: Path) -> None:
-        coordinator = _stems_coordinator()
+        coordinator = _stems_coordinator(mixes=False)
+        root = _folder_of(tmp_path, 2)
 
-        coordinator._on_directory_add_requested(tmp_path)
+        _add_folder(coordinator, root)
 
-        coordinator._converter_logic.gather_folder.assert_called_once_with(tmp_path)
+        gathered, found = coordinator._converter_logic.gather_folder.call_args.args
+        assert gathered == root
+        assert {path.name for path in found} == {"take_00.wav", "take_01.wav"}
 
     def test_a_busy_application_ignores_the_gesture(self, tmp_path: Path) -> None:
         coordinator = _stems_coordinator(operation_active=True)
@@ -390,24 +417,24 @@ class TestGatheringAFolder:
     def test_a_run_writing_one_apiece_gathers_whatever_it_holds(self, tmp_path: Path) -> None:
         coordinator = _stems_coordinator(mixes=False, folder_rows=_rows_holding(MAX_STEM_SOURCES + 5))
 
-        coordinator._on_directory_add_requested(tmp_path)
+        _add_folder(coordinator, _folder_of(tmp_path, MAX_STEM_SOURCES + 5))
 
-        coordinator._converter_logic.gather_folder.assert_called_once_with(tmp_path)
+        coordinator._converter_logic.gather_folder.assert_called_once()
         coordinator._stem_selection_window.open.assert_not_called()
 
     def test_a_folder_a_mix_still_holds_is_gathered(self, tmp_path: Path) -> None:
         coordinator = _stems_coordinator(mixes=True, folder_rows=_rows_holding(MAX_STEM_SOURCES))
 
-        coordinator._on_directory_add_requested(tmp_path)
+        _add_folder(coordinator, _folder_of(tmp_path, MAX_STEM_SOURCES))
 
-        coordinator._converter_logic.gather_folder.assert_called_once_with(tmp_path)
+        coordinator._converter_logic.gather_folder.assert_called_once()
         coordinator._stem_selection_window.open.assert_not_called()
 
     def test_a_folder_overflowing_the_mix_asks_which_to_mix(self, tmp_path: Path) -> None:
         rows = _rows_holding(MAX_STEM_SOURCES, 1)
         coordinator = _stems_coordinator(mixes=True, folder_rows=rows)
 
-        coordinator._on_directory_add_requested(tmp_path)
+        _add_folder(coordinator, _folder_of(tmp_path, MAX_STEM_SOURCES + 1))
 
         coordinator._converter_logic.gather_folder.assert_not_called()
         offered, room, answer = coordinator._stem_selection_window.open.call_args.args
@@ -415,10 +442,19 @@ class TestGatheringAFolder:
         assert room == coordinator._converter_logic.room_for_sources
         assert answer == coordinator._converter_logic.gather_recordings
 
+    def test_the_reading_is_put_on_screen(self, tmp_path: Path) -> None:
+        """A folder of thousands takes seconds to read, so the reader is shown what they wait for."""
+        coordinator = _stems_coordinator(mixes=False, folder_rows=_rows_holding(1))
+        root = _folder_of(tmp_path, 1)
+
+        _add_folder(coordinator, root)
+
+        coordinator._scan_window.open.assert_called_once_with(root)
+
     def test_a_busy_application_leaves_the_folder_alone(self, tmp_path: Path) -> None:
         coordinator = _stems_coordinator(operation_active=True, folder_rows=_rows_holding(1))
 
-        coordinator._on_directory_add_requested(tmp_path)
+        _add_folder(coordinator, _folder_of(tmp_path, 1))
 
         coordinator._converter_logic.gather_folder.assert_not_called()
         coordinator._stem_selection_window.open.assert_not_called()
