@@ -2,12 +2,12 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable, Dict, FrozenSet, Optional, Self, Tuple
 
-from sampletones_application.logic.main.sources.agreement import Agreement
 from sampletones_application.logic.main.sources.folder import Folder
 from sampletones_application.logic.main.sources.key import SourceKey
 from sampletones_application.logic.main.sources.recording import Recording
 from sampletones_application.logic.main.sources.row import SourceRow
 from sampletones_application.logic.main.sources.slots import SettingsSlot
+from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
@@ -224,14 +224,35 @@ class SourceList:
     ) -> Tuple[SourceRow, ...]:
         rows: Tuple[SourceRow, ...] = ()
         for row in self.rows:
-            if row.key != key:
-                rows += (row,)
-                continue
-
-            changed = tuple(recording.with_settings(change(recording.settings)) for recording in row.recordings)
-            if key.names_folder:
-                rows += (Folder(root=key.path, recordings=changed),)
-            else:
-                rows += changed
+            rows += self._row_with(row, key, change)
 
         return rows
+
+    def _row_with(
+        self,
+        row: SourceRow,
+        key: SourceKey,
+        change: Callable[[StemSettings], StemSettings],
+    ) -> Tuple[SourceRow, ...]:
+        """The row as ``key`` leaves it.
+
+        A key naming the row changes every recording it stands for; one naming a recording a
+        folder holds changes that recording where it stands, so a reader settles a folder and the
+        recordings inside it through the same gesture.
+        """
+        if row.key == key:
+            changed = tuple(recording.with_settings(change(recording.settings)) for recording in row.recordings)
+            return (Folder(root=key.path, recordings=changed),) if key.names_folder else changed
+
+        if not row.key.names_folder or not any(recording.path == key.path for recording in row.recordings):
+            return (row,)
+
+        return (
+            Folder(
+                root=row.key.path,
+                recordings=tuple(
+                    recording.with_settings(change(recording.settings)) if recording.path == key.path else recording
+                    for recording in row.recordings
+                ),
+            ),
+        )

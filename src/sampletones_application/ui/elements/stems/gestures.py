@@ -18,6 +18,7 @@ from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, StringCallback
 
 ChannelsCallback = Callable[[str, FrozenSet[ChannelName]], None]
+ChannelCallback = Callable[[str, ChannelName], None]
 KeyOffsetCallback = Callable[[str, int], None]
 KeyPairCallback = Callable[[str, str], None]
 
@@ -44,6 +45,7 @@ class StemsGestures:
         self._view = StemsListViewModel.empty()
 
         self.on_channels_settled: Optional[ChannelsCallback] = None
+        self.on_channel_toggled: Optional[ChannelCallback] = None
         self.on_removal_asked: Optional[StringCallback] = None
         self.on_menu_asked: Optional[StringCallback] = None
         self.on_row_activated: Optional[StringCallback] = None
@@ -87,16 +89,23 @@ class StemsGestures:
         _value: bool,
         user_data: Tuple[str, ChannelName],
     ) -> None:
-        """A box settles one channel, so the row reports every box it now holds ticked."""
-        key, _channel_name = user_data
+        """A box settles one channel on the row it belongs to.
+
+        A recording answers with every box it now holds ticked, which is the whole of what it
+        stands on. A folder's box reads three ways, so it reports the channel alone and its owner
+        settles every recording below it — one gesture always moving the group somewhere.
+        """
+        key, channel_name = user_data
         row = self._view.row(key)
         if row is None:
             return
 
+        if row.stands_for_a_folder:
+            self._report(self.on_channel_toggled, key, channel_name)
+            return
+
         channels = frozenset(
-            channel_name
-            for channel_name in self._view.boxes_of(row)
-            if dpg.get_value(self._tags.channel(key, channel_name))
+            offered for offered in self._view.boxes_of(row) if dpg.get_value(self._tags.channel(key, offered))
         )
         self._report(self.on_channels_settled, key, channels)
 

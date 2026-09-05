@@ -201,6 +201,17 @@ class ConverterLogic(CallbackMixin):
         )
         self._settle(self._state.with_gathering(gathering))
 
+    def toggle_folder_channel(self, root: Path, channel_name: ChannelName) -> None:
+        """Settles one channel on every recording a folder stands for, in one gesture.
+
+        A folder its recordings already agree on lets the channel go; every other reading settles
+        the whole folder on it, so one gesture always moves the group somewhere.
+        """
+        gathering = self._state.gathering
+        key = SourceKey.folder(root)
+        held = gathering.sources.agreement(key, CHANNEL_SLOT, channel_name).settles_to
+        self._settle(self._state.with_gathering(gathering.settled(key, CHANNEL_SLOT, channel_name, held)))
+
     def move_source_within_level(self, path: Path, offset: int) -> None:
         """Moves a recording past the neighbor it shares a level with."""
         self._relevel(self._state.gathering.levels.move_within_level(path, offset))

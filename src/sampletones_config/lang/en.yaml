@@ -265,6 +265,11 @@ global.status.message.retuning_samples: "Retuning samples..."
 # Global — Stems
 # =============================================================================
 global.stems.template.level_caption: "Level {}"
+global.stems.template.folder_row: "{name}  ({count})"
+global.stems.message.folder_tooltip: "Every recording in this folder, converted on its own."
+global.stems.message.status_folder_channel: "Turn the {channel} channel on or off for every recording in {name}."
+global.stems.message.status_folder_remove: "Remove {name} and the recordings it holds."
+global.stems.message.status_folder_row: "{name} holds {count} recordings."
 global.stems.label.remove: "x"
 global.stems.message.drag_tooltip: "Drag onto another row to share its level, or onto a gap to start a new level."
 global.stems.message.inert_tooltip: "Tick a channel to use this recording."

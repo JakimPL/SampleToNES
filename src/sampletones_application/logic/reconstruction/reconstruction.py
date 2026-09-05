@@ -14,6 +14,7 @@ from typing import (
 import numpy as np
 
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.constants.sources import SourceKind
 from sampletones_application.logic.export.instrument.source import ExportableInstrument
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
@@ -361,8 +362,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         rows = tuple(
             StemRowViewModel(
                 key=str(stem_id),
+                kind=SourceKind.RECORDING,
                 path=recordings[stem_id],
+                holds=1,
                 channels=self._stem_channels.get(stem_id, frozenset()),
+                partial_channels=frozenset(),
                 offered_channels=self._offered_stem_channels.get(stem_id, frozenset()),
                 available=recordings[stem_id].is_file(),
                 level=level_index,

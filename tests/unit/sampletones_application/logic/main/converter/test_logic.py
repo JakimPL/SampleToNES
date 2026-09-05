@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, List
+from typing import Callable, FrozenSet, List
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -626,6 +626,111 @@ class TestWhatTheGatheredRecordingsRun:
 
         started_config = service.start.call_args.args[0]
         assert started_config == converter_logic._config_manager.config
+
+
+class TestAFolderInTheList:
+    """A folder stands as one row, answering for every recording gathered below it."""
+
+    def _folder(self, converter_logic: ConverterLogic, tmp_path: Path, names: List[str]) -> Path:
+        root = tmp_path / "sources"
+        root.mkdir()
+        for name in names:
+            (root / name).touch()
+
+        converter_logic.gather_folder(root)
+        return root
+
+    def test_a_folder_draws_one_row_naming_what_it_holds(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        root = self._folder(converter_logic, tmp_path, ["a.wav", "b.wav"])
+
+        rows = _view(converter_logic).stem_sources
+
+        assert len(rows) == 1
+        assert (rows[0].path, rows[0].holds, rows[0].stands_for_a_folder) == (root, 2, True)
+
+    def test_a_folder_its_recordings_agree_on_reads_as_held(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        self._folder(converter_logic, tmp_path, ["a.wav", "b.wav"])
+
+        row = _view(converter_logic).stem_sources[0]
+
+        assert row.channels == _joining_channels(converter_logic)
+        assert row.partial_channels == frozenset()
+
+    def test_a_folder_its_recordings_differ_on_reads_as_half_held(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        root = self._folder(converter_logic, tmp_path, ["a.wav", "b.wav"])
+
+        converter_logic.set_source_channels(root / "a.wav", frozenset({ChannelName.PULSE1}))
+
+        row = _view(converter_logic).stem_sources[0]
+        assert row.channels == frozenset({ChannelName.PULSE1})
+        assert ChannelName.TRIANGLE in row.partial_channels
+
+    def test_one_gesture_settles_the_whole_folder(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        root = self._folder(converter_logic, tmp_path, ["a.wav", "b.wav"])
+        converter_logic.set_source_channels(root / "a.wav", frozenset({ChannelName.PULSE1}))
+
+        converter_logic.toggle_folder_channel(root, ChannelName.TRIANGLE)
+
+        row = _view(converter_logic).stem_sources[0]
+        assert ChannelName.TRIANGLE in row.channels
+        assert ChannelName.TRIANGLE not in row.partial_channels
+
+    def test_a_folder_every_recording_of_which_holds_it_lets_it_go(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        root = self._folder(converter_logic, tmp_path, ["a.wav", "b.wav"])
+
+        converter_logic.toggle_folder_channel(root, ChannelName.TRIANGLE)
+
+        row = _view(converter_logic).stem_sources[0]
+        assert ChannelName.TRIANGLE not in row.channels
+        assert ChannelName.TRIANGLE not in row.partial_channels
+
+    def test_removing_a_folder_takes_everything_it_holds(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        root = self._folder(converter_logic, tmp_path, ["a.wav", "b.wav"])
+
+        converter_logic.remove_folder(root)
+
+        assert _view(converter_logic).stem_sources == ()
+        assert converter_logic.source_count == 0
+
+    def test_turning_to_a_mix_gives_up_the_folder(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        self._folder(converter_logic, tmp_path, ["a.wav", "b.wav"])
+
+        converter_logic.set_output(OutputKind.MIXED)
+
+        rows = _view(converter_logic).stem_sources
+        assert [row.stands_for_a_folder for row in rows] == [False, False]
+
+
+def _joining_channels(converter_logic: ConverterLogic) -> FrozenSet[ChannelName]:
+    return _view(converter_logic).enabled_channels
 
 
 class TestTheStemsView:

@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.sources import SourceKind
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.loader import load_layout_config
 from sampletones_application.paths import (
@@ -25,6 +26,7 @@ from sampletones_application.tags.general import (
     SUF_STRIP,
     SUF_TEXT,
     TAG_GLOBAL_THEME_CHANNEL_MUTED,
+    TAG_GLOBAL_THEME_CHANNEL_PULSE1_PARTIAL,
     TAG_GLOBAL_THEME_STEMS_ROW,
     TAG_GLOBAL_THEME_STEMS_ROW_INERT,
 )
@@ -108,6 +110,9 @@ def row(
 ) -> StemRowViewModel:
     path = Path(f"/audio/{name}.wav")
     return StemRowViewModel(
+        kind=SourceKind.RECORDING,
+        holds=1,
+        partial_channels=frozenset(),
         key=str(path),
         path=path,
         channels=channels,
@@ -147,6 +152,89 @@ def hover_handler(suffix: str) -> Callback:
     """The hover callback a row widget of that kind shares, as DearPyGui would call it."""
     registry = compose_tag(PREFIX, suffix, SUF_HANDLER_REGISTRY)
     return dpg.get_item_callback(dpg.get_item_children(registry, 1)[-1])
+
+
+def folder_row(
+    name: str,
+    *,
+    holds: int = 2,
+    channels: FrozenSet[ChannelName] = frozenset(CHANNELS),
+    partial_channels: FrozenSet[ChannelName] = frozenset(),
+) -> StemRowViewModel:
+    """A row standing for the recordings gathered below a folder."""
+    path = Path(f"/audio/{name}")
+    return StemRowViewModel(
+        key=str(path),
+        kind=SourceKind.FOLDER,
+        path=path,
+        holds=holds,
+        channels=channels,
+        partial_channels=partial_channels,
+        offered_channels=frozenset(CHANNELS),
+        available=True,
+        level=0,
+        position=0,
+        level_size=1,
+        level_count=1,
+    )
+
+
+class TestFolderRows:
+    """A folder is one row answering for the recordings below it."""
+
+    def test_a_folder_names_itself_and_how_many_it_holds(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        sources = folder_row("sources", holds=3)
+
+        stems_list.update_view(view(sources))
+
+        assert dpg.get_item_label(row_tag(sources, SUF_TEXT)) == "sources  (3)"
+
+    def test_a_channel_every_recording_holds_reads_ticked(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        sources = folder_row("sources")
+
+        stems_list.update_view(view(sources))
+
+        assert dpg.get_value(channel_tag(sources, ChannelName.PULSE1)) is True
+
+    def test_a_channel_they_differ_on_reads_ticked_in_the_softer_tone(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        stems_list = build(layout_config)
+        sources = folder_row(
+            "sources",
+            channels=frozenset(),
+            partial_channels=frozenset({ChannelName.PULSE1}),
+        )
+
+        stems_list.update_view(view(sources))
+
+        box = channel_tag(sources, ChannelName.PULSE1)
+        assert dpg.get_value(box) is True
+        assert dpg.get_item_alias(dpg.get_item_theme(box)) == TAG_GLOBAL_THEME_CHANNEL_PULSE1_PARTIAL
+
+    def test_a_channel_none_of_them_holds_reads_clear(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        sources = folder_row("sources", channels=frozenset())
+
+        stems_list.update_view(view(sources))
+
+        assert dpg.get_value(channel_tag(sources, ChannelName.PULSE1)) is False
+
+    def test_a_folders_box_reports_the_channel_it_settles(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config)
+        sources = folder_row("sources")
+        toggled: List[Tuple[str, ChannelName]] = []
+        stems_list.on_channel_toggled = lambda key, channel: toggled.append((key, channel))
+
+        stems_list.update_view(view(sources))
+        box = channel_tag(sources, ChannelName.PULSE1)
+        dpg.get_item_callback(box)(box, False, dpg.get_item_user_data(box))
+
+        assert toggled == [(sources.key, ChannelName.PULSE1)]
 
 
 class TestRows:

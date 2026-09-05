@@ -5,6 +5,7 @@ import pytest
 
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.output import OutputKind
+from sampletones_application.constants.sources import SourceKind
 from sampletones_application.view_model.main.converter import (
     ConversionPhase,
     ConverterAction,
@@ -29,6 +30,9 @@ def _row(
 ) -> StemRowViewModel:
     path = Path(f"/audio/{name}.wav")
     return StemRowViewModel(
+        kind=SourceKind.RECORDING,
+        holds=1,
+        partial_channels=frozenset(),
         key=str(path),
         path=path,
         channels=channels,

@@ -6,6 +6,7 @@ from sampletones_application.ui.elements.layout.well import well
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.bands import LevelBands
 from sampletones_application.ui.elements.stems.gestures import (
+    ChannelCallback,
     ChannelsCallback,
     KeyOffsetCallback,
     KeyPairCallback,
@@ -73,6 +74,7 @@ class GUIStemsList(CallbackMixin):
         )
 
         self.on_channels_changed: Optional[ChannelsCallback] = None
+        self.on_channel_toggled: Optional[ChannelCallback] = None
         self.on_remove_requested: Optional[StringCallback] = None
         self.on_menu_requested: Optional[StringCallback] = None
         self.on_row_activated: Optional[StringCallback] = None
@@ -80,6 +82,7 @@ class GUIStemsList(CallbackMixin):
         self.on_dropped_on_level: Optional[KeyOffsetCallback] = None
 
         self._gestures.on_channels_settled = lambda key, channels: self.call(self.on_channels_changed, key, channels)
+        self._gestures.on_channel_toggled = lambda key, channel: self.call(self.on_channel_toggled, key, channel)
         self._gestures.on_removal_asked = lambda key: self.call(self.on_remove_requested, key)
         self._gestures.on_menu_asked = lambda key: self.call(self.on_menu_requested, key)
         self._gestures.on_row_activated = lambda key: self.call(self.on_row_activated, key)

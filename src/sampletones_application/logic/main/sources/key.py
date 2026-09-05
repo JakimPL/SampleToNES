@@ -1,14 +1,8 @@
 from dataclasses import dataclass
-from enum import StrEnum
 from pathlib import Path
 from typing import Self
 
-
-class SourceKind(StrEnum):
-    """The two kinds of row a converter's list holds."""
-
-    RECORDING = "recording"
-    FOLDER = "folder"
+from sampletones_application.constants.sources import SourceKind
 
 
 @dataclass(frozen=True)

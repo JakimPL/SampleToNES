@@ -278,6 +278,7 @@ class MainTabCoordinator:
         self._converter_panel.on_source_dropped_on_source = self._converter_logic.move_source_onto
         self._converter_panel.on_source_dropped_on_level = self._converter_logic.move_source_to_new_level
         self._converter_panel.on_folder_removed = self._converter_logic.remove_folder
+        self._converter_panel.on_folder_channel_toggled = self._converter_logic.toggle_folder_channel
         self._stem_selection_window.on_add = self._converter_logic.mix_only
 
     def _repaint_explorer_favorites(self, node: FileSystemNode) -> None:

@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.sources import SourceKind
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.loader import load_layout_config
 from sampletones_application.paths import (
@@ -94,6 +95,9 @@ def _row(
     level_count: int = 1,
 ) -> StemRowViewModel:
     return StemRowViewModel(
+        kind=SourceKind.RECORDING,
+        holds=1,
+        partial_channels=frozenset(),
         key=str(stem_id),
         path=Path(f"/audio/{name}.wav"),
         channels=channels,

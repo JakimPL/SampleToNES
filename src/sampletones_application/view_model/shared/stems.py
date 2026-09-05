@@ -4,23 +4,32 @@ from typing import Dict, FrozenSet, Optional, Self, Tuple
 
 from pydantic import BaseModel
 
+from sampletones_application.constants.sources import SourceKind
+from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_core.constants.enums import ChannelName
 
 
 class StemRowViewModel(BaseModel, frozen=True):
-    """One recording in a stems list, as the list renders it.
+    """One row of a stems list, as the list renders it.
 
-    A row states where it stands — the level it picks on, the place it takes among the
-    recordings sharing that level, and how many of each the list holds — so the moves a list
-    offers gray themselves out from the row alone. ``key`` is the identity the list reports a
-    gesture under: the recording's path where the list gathers files, the stem id where it
-    describes a recorded assignment. ``offered_channels`` names the boxes the row draws and
-    ``channels`` the ones ticked among them.
+    A row stands for a recording or for a folder of them, and answers the same way either way:
+    ``offered_channels`` names the boxes it draws, ``channels`` the ones every recording it stands
+    for holds, and ``partial_channels`` the ones some of them hold. A recording reads as ticked or
+    clear; a folder its recordings disagree on reads as half-lit, and one gesture settles it.
+
+    A row states where it stands — the level it picks on, the place it takes among the recordings
+    sharing that level, and how many of each the list holds — so the moves a list offers gray
+    themselves out from the row alone. ``key`` is the identity the list reports a gesture under:
+    the source's path where the list gathers files, the stem id where it describes a recorded
+    assignment.
     """
 
     key: str
+    kind: SourceKind
     path: Path
+    holds: int
     channels: FrozenSet[ChannelName]
+    partial_channels: FrozenSet[ChannelName]
     offered_channels: FrozenSet[ChannelName]
     available: bool
     level: int
@@ -30,13 +39,25 @@ class StemRowViewModel(BaseModel, frozen=True):
 
     @property
     def name(self) -> str:
-        """The recording's own name, which is what the row reads as."""
-        return self.path.stem
+        """The source's own name, which is what the row reads as."""
+        return self.path.name if self.stands_for_a_folder else self.path.stem
+
+    @property
+    def stands_for_a_folder(self) -> bool:
+        """The row is a folder, standing for every recording gathered below it."""
+        return self.kind is SourceKind.FOLDER
 
     @property
     def takes_part(self) -> bool:
-        """The recording holds a channel, so the list counts it in."""
-        return bool(self.channels)
+        """The row holds a channel, so the list counts it in."""
+        return bool(self.channels or self.partial_channels)
+
+    def agreement_on(self, channel_name: ChannelName) -> Agreement:
+        """How the recordings this row stands for read on ``channel_name``."""
+        if channel_name in self.channels:
+            return Agreement.ALL
+
+        return Agreement.SOME if channel_name in self.partial_channels else Agreement.NONE
 
     @property
     def offers_channels(self) -> bool:

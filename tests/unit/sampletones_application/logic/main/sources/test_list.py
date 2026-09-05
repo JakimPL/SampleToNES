@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from sampletones_application.logic.main.sources.agreement import Agreement
 from sampletones_application.logic.main.sources.key import SourceKey
 from sampletones_application.logic.main.sources.list import SourceList
 from sampletones_application.logic.main.sources.slots import BEND_SLOT, CHANNEL_SLOT
+from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_core.constants.enums import ChannelName
 from tests.unit.sampletones_application.logic.main.sources.factories import folder, recording
 

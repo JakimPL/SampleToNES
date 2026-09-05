@@ -3,7 +3,7 @@ from typing import Tuple
 
 import pytest
 
-from sampletones_application.logic.main.sources.agreement import Agreement
+from sampletones_application.view_model.shared.agreement import Agreement
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 

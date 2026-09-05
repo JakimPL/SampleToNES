@@ -114,6 +114,7 @@ class GUIConverterPanel(GUIPanel):
         self.on_cancel_requested: Optional[VoidCallback] = None
         self.on_output_changed: Optional[Callable[[OutputKind], None]] = None
         self.on_folder_removed: Optional[Callable[[Path], None]] = None
+        self.on_folder_channel_toggled: Optional[Callable[[Path, ChannelName], None]] = None
         self.on_channel_cap_changed: Optional[Callable[[int], None]] = None
         self.on_hierarchy_mode_changed: Optional[Callable[[HierarchyMode], None]] = None
         self.on_source_channels_changed: Optional[Callable[[Path, FrozenSet[ChannelName]], None]] = None
@@ -293,6 +294,7 @@ class GUIConverterPanel(GUIPanel):
             self._stems_list.create(TAG_MAIN_CONVERTER_WINDOW_STEMS)
 
         self._stems_list.on_channels_changed = self._on_source_channels_changed
+        self._stems_list.on_channel_toggled = self._on_folder_channel_toggled
         self._stems_list.on_remove_requested = self._on_source_removed
         self._stems_list.on_menu_requested = self._show_row_menu
         self._stems_list.on_dropped_on_row = self._on_dropped_on_source
@@ -336,7 +338,16 @@ class GUIConverterPanel(GUIPanel):
     def _on_source_channels_changed(self, key: str, channels: FrozenSet[ChannelName]) -> None:
         self.call(self.on_source_channels_changed, Path(key), channels)
 
+    def _on_folder_channel_toggled(self, key: str, channel_name: ChannelName) -> None:
+        """A folder's box moves every recording it stands for, whichever way they were standing."""
+        self.call(self.on_folder_channel_toggled, Path(key), channel_name)
+
     def _on_source_removed(self, key: str) -> None:
+        row = self._stems_list.row(key)
+        if row is not None and row.stands_for_a_folder:
+            self.call(self.on_folder_removed, Path(key))
+            return
+
         self.call(self.on_source_removed, Path(key))
 
     def _on_dropped_on_source(self, key: str, target_key: str) -> None:

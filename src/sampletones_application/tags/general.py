@@ -266,6 +266,30 @@ TAG_GLOBAL_THEME_CHANNEL_MUTED = TagName(
     Widget.THEME,
     "channel_muted",
 )
+TAG_GLOBAL_THEME_CHANNEL_PULSE1_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_pulse1_partial",
+)
+TAG_GLOBAL_THEME_CHANNEL_PULSE2_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_pulse2_partial",
+)
+TAG_GLOBAL_THEME_CHANNEL_TRIANGLE_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_triangle_partial",
+)
+TAG_GLOBAL_THEME_CHANNEL_NOISE_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_noise_partial",
+)
 TAG_GLOBAL_THEME_STEMS_DROP_STRIP = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

@@ -21,10 +21,14 @@ from sampletones_application.ui.elements.stems.gestures import StemsGestures
 from sampletones_application.ui.elements.stems.messages import StemsMessages
 from sampletones_application.ui.elements.stems.offer import StemsListOffer
 from sampletones_application.ui.elements.stems.tags import StemsTags
-from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
+from sampletones_application.ui.themes.channels import (
+    CHANNEL_THEME_TAGS,
+    PARTIAL_CHANNEL_THEME_TAGS,
+)
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
     StemsListViewModel,
@@ -57,6 +61,7 @@ class StemRowRenderer:
         self._messages = messages
         self._gestures = gestures
         self._lbl_remove = language_manager["global.stems.label.remove"]
+        self._folder_template = language_manager["global.stems.template.folder_row"]
 
     def declare_columns(self, view_model: StemsListViewModel) -> None:
         """The columns every band holds to, so the rows line up across the bands."""
@@ -99,9 +104,10 @@ class StemRowRenderer:
         live = view_model.live
         for channel_name in view_model.boxes_of(row):
             tag = self._tags.channel(row.key, channel_name)
+            agreement = row.agreement_on(channel_name)
             dpg_configure_item(tag, enabled=live)
-            dpg_set_value(tag, channel_name in row.channels)
-            ThemeRegistry.get(self._channel_theme(channel_name, view_model)).bind_to_item(tag)
+            dpg_set_value(tag, agreement is not Agreement.NONE)
+            ThemeRegistry.get(self._channel_theme(channel_name, agreement, view_model)).bind_to_item(tag)
 
         name_tag = self._tags.row(row.key, SUF_TEXT)
         dpg_set_value(name_tag, False)
@@ -129,9 +135,9 @@ class StemRowRenderer:
         self._gestures.bind(master, SUF_CHECKBOX)
 
     def _create_name(self, row: StemRowViewModel) -> None:
-        """The row itself: what names the recording, what you drag it by, and what you drop onto."""
+        """The row itself: what names the source, what you drag it by, and what you drop onto."""
         name = dpg.add_selectable(
-            label=row.name,
+            label=self._row_label(row),
             tag=self._tags.row(row.key, SUF_TEXT),
             user_data=row.key,
             callback=self._gestures.on_name_selected,
@@ -150,6 +156,13 @@ class StemRowRenderer:
             text_tag=self._tags.row(row.key, SUF_TOOLTIP),
         )
 
+    def _row_label(self, row: StemRowViewModel) -> str:
+        """What the row reads as: the source's name, and for a folder how many it stands for."""
+        if not row.stands_for_a_folder:
+            return row.name
+
+        return self._folder_template.format(name=row.name, count=row.holds)
+
     def _create_channel(self, row: StemRowViewModel, channel_name: ChannelName) -> None:
         """The box giving the recording a channel, where the recording holds frames on it.
 
@@ -164,7 +177,7 @@ class StemRowRenderer:
         dpg.add_checkbox(
             label=channel_label(self._language_manager, channel_name),
             tag=checkbox_tag,
-            default_value=channel_name in row.channels,
+            default_value=row.agreement_on(channel_name) is not Agreement.NONE,
             user_data=(row.key, channel_name),
             callback=self._gestures.on_channel_box,
         )
@@ -182,9 +195,18 @@ class StemRowRenderer:
         ThemeRegistry.get(TAG_GLOBAL_THEME_DANGER_BUTTON).bind_to_item(remove)
         self._gestures.bind(remove, SUF_BUTTON)
 
-    def _channel_theme(self, channel_name: ChannelName, view_model: StemsListViewModel) -> str:
-        """The tone a channel's boxes take: its own color, muted where the channel is off."""
+    def _channel_theme(
+        self,
+        channel_name: ChannelName,
+        agreement: Agreement,
+        view_model: StemsListViewModel,
+    ) -> str:
+        """The tone a channel's box takes: its own color, softened where the row half-holds it,
+        muted where a choice made elsewhere has switched the channel off."""
         if channel_name in view_model.muted_channels:
             return TAG_GLOBAL_THEME_CHANNEL_MUTED
+
+        if agreement is Agreement.SOME:
+            return PARTIAL_CHANNEL_THEME_TAGS[channel_name]
 
         return CHANNEL_THEME_TAGS[channel_name]
