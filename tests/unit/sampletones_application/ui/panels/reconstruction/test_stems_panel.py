@@ -132,8 +132,8 @@ class TestStemsPanelRows:
         panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare")))
 
         stems_list = panel.stems_list
-        assert dpg.get_item_label(stems_list.row_tag("0", SUF_TEXT)) == "kick"
-        assert dpg.get_item_label(stems_list.row_tag("1", SUF_TEXT)) == "snare"
+        assert dpg.get_item_label(stems_list.tags.row("0", SUF_TEXT)) == "kick"
+        assert dpg.get_item_label(stems_list.tags.row("1", SUF_TEXT)) == "snare"
 
     def test_a_row_offers_a_box_on_every_channel_its_recording_holds(
         self,
@@ -144,15 +144,15 @@ class TestStemsPanelRows:
         panel.update_view(_view_model(_row(0, name="kick", offered_channels=frozenset({ChannelName.PULSE1}))))
 
         stems_list = panel.stems_list
-        assert dpg.does_item_exist(stems_list.channel_tag("0", ChannelName.PULSE1))
-        assert not dpg.does_item_exist(stems_list.channel_tag("0", ChannelName.NOISE))
+        assert dpg.does_item_exist(stems_list.tags.channel("0", ChannelName.PULSE1))
+        assert not dpg.does_item_exist(stems_list.tags.channel("0", ChannelName.NOISE))
 
     def test_every_row_carries_a_master_box(self, panel: GUIReconstructionStemsPanel) -> None:
         render(panel)
 
         panel.update_view(_view_model(_row(0, name="kick")))
 
-        assert dpg.get_value(panel.stems_list.row_tag("0", SUF_CHECKBOX))
+        assert dpg.get_value(panel.stems_list.tags.row("0", SUF_CHECKBOX))
 
     def test_rows_follow_a_changed_recording_set(self, panel: GUIReconstructionStemsPanel) -> None:
         render(panel)
@@ -161,8 +161,8 @@ class TestStemsPanelRows:
         panel.update_view(_view_model(_row(1, name="snare")))
 
         stems_list = panel.stems_list
-        assert not dpg.does_item_exist(stems_list.row_tag("0", SUF_TEXT))
-        assert dpg.does_item_exist(stems_list.row_tag("1", SUF_TEXT))
+        assert not dpg.does_item_exist(stems_list.tags.row("0", SUF_TEXT))
+        assert dpg.does_item_exist(stems_list.tags.row("1", SUF_TEXT))
 
 
 class TestStemsPanelSelection:
@@ -175,7 +175,7 @@ class TestStemsPanelSelection:
         render(panel)
         panel.update_view(_view_model(_row(0, name="kick")))
 
-        noise_tag = panel.stems_list.channel_tag("0", ChannelName.NOISE)
+        noise_tag = panel.stems_list.tags.channel("0", ChannelName.NOISE)
         dpg.set_value(noise_tag, False)
         dpg.get_item_callback(noise_tag)(noise_tag, False, ("0", ChannelName.NOISE))
 
@@ -190,7 +190,7 @@ class TestStemsPanelSelection:
         render(panel)
         panel.update_view(_view_model(_row(0, name="kick")))
 
-        master_tag = panel.stems_list.row_tag("0", SUF_CHECKBOX)
+        master_tag = panel.stems_list.tags.row("0", SUF_CHECKBOX)
         dpg.get_item_callback(master_tag)(master_tag, False, "0")
 
         assert reported == [(0, frozenset())]
@@ -206,7 +206,7 @@ class TestStemsPanelRemoval:
         panel.on_stem_remove_requested = requested.append
         panel.update_view(_view_model(_row(0, name="bass"), _row(1, name="lead")))
 
-        tag = panel.stems_list.row_tag("0", SUF_BUTTON)
+        tag = panel.stems_list.tags.row("0", SUF_BUTTON)
         dpg.get_item_callback(tag)(tag, None, dpg.get_item_user_data(tag))
 
         assert requested == [0]
@@ -219,7 +219,7 @@ class TestStemsPanelRemoval:
         render(panel)
         panel.update_view(_view_model(_row(0, name="bass")))
 
-        assert not dpg.is_item_enabled(panel.stems_list.row_tag("0", SUF_BUTTON))
+        assert not dpg.is_item_enabled(panel.stems_list.tags.row("0", SUF_BUTTON))
 
 
 class TestStemsPanelLevels:
@@ -255,8 +255,8 @@ class TestStemsPanelLevels:
             True,
         )
 
-        assert dpg.does_item_exist(panel.stems_list.table_tag)
-        assert dpg.does_item_exist(panel.stems_list.row_tag("1", SUF_TEXT))
+        assert dpg.does_item_exist(panel.stems_list.tags.table)
+        assert dpg.does_item_exist(panel.stems_list.tags.row("1", SUF_TEXT))
 
     def test_a_reader_who_collapsed_the_levels_keeps_them_collapsed_across_an_edit(
         self,
@@ -278,7 +278,7 @@ class TestStemsPanelLevels:
             )
         )
 
-        assert dpg.does_item_exist(panel.stems_list.table_tag)
+        assert dpg.does_item_exist(panel.stems_list.tags.table)
 
 
 class TestStemsPanelStates:

@@ -428,7 +428,7 @@ def drop(tag: str, payload: str) -> None:
 
 def _level_of(app: Application, path: Path) -> str:
     """The level band the row for ``path`` is drawn in."""
-    return str(dpg.get_item_parent(stems_list(app).row_tag(str(path), SUF_GROUP)))
+    return str(dpg.get_item_parent(stems_list(app).tags.row(str(path), SUF_GROUP)))
 
 
 def _reports_running(app: Application, status_text: str, progress: float) -> None:
@@ -465,8 +465,8 @@ class TestConverterStemsCard:
         paths = self._gather(app, tmp_path, ["a.wav", "b.wav"])
 
         for path in paths:
-            assert dpg.does_item_exist(stems_list(app).row_tag(str(path), SUF_GROUP))
-            assert dpg.does_item_exist(stems_list(app).row_tag(str(path), SUF_BUTTON))
+            assert dpg.does_item_exist(stems_list(app).tags.row(str(path), SUF_GROUP))
+            assert dpg.does_item_exist(stems_list(app).tags.row(str(path), SUF_BUTTON))
 
     def test_a_rows_channels_show_what_was_set(self, app: Application, tmp_path: Path) -> None:
         """The row offers a checkbox per channel the configuration enables, ticked as the row holds it."""
@@ -477,16 +477,16 @@ class TestConverterStemsCard:
 
         converter_logic.set_source_channels(path, frozenset({kept}))
 
-        assert dpg.get_value(stems_list(app).channel_tag(str(path), kept)) is True
-        assert dpg.get_value(stems_list(app).channel_tag(str(path), cleared)) is False
+        assert dpg.get_value(stems_list(app).tags.channel(str(path), kept)) is True
+        assert dpg.get_value(stems_list(app).tags.channel(str(path), cleared)) is False
 
     def test_removing_a_recording_takes_its_row_with_it(self, app: Application, tmp_path: Path) -> None:
         first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
 
         app._main_tab._converter_logic.remove_source(first)
 
-        assert not dpg.does_item_exist(stems_list(app).row_tag(str(first), SUF_GROUP))
-        assert dpg.does_item_exist(stems_list(app).row_tag(str(second), SUF_GROUP))
+        assert not dpg.does_item_exist(stems_list(app).tags.row(str(first), SUF_GROUP))
+        assert dpg.does_item_exist(stems_list(app).tags.row(str(second), SUF_GROUP))
 
     def test_leaving_stems_mode_hides_the_list(self, app: Application, tmp_path: Path) -> None:
         self._gather(app, tmp_path, ["a.wav"])
@@ -503,7 +503,7 @@ class TestConverterStemsCard:
         _reports_running(app, "running", 0.5)
 
         assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is True
-        assert dpg.get_item_configuration(stems_list(app).row_tag(str(path), SUF_BUTTON))["enabled"] is False
+        assert dpg.get_item_configuration(stems_list(app).tags.row(str(path), SUF_BUTTON))["enabled"] is False
 
     def test_a_level_draws_its_own_band(self, app: Application, tmp_path: Path) -> None:
         first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
@@ -511,38 +511,38 @@ class TestConverterStemsCard:
 
         converter_logic.isolate_source(second)
 
-        assert dpg.does_item_exist(stems_list(app).level_tag(0, SUF_TABLE))
-        assert dpg.does_item_exist(stems_list(app).level_tag(1, SUF_TABLE))
-        assert dpg.does_item_exist(stems_list(app).level_tag(2, SUF_STRIP))
-        assert dpg.get_item_parent(stems_list(app).row_tag(str(first), SUF_GROUP)) == stems_list(app).level_tag(
+        assert dpg.does_item_exist(stems_list(app).tags.level(0, SUF_TABLE))
+        assert dpg.does_item_exist(stems_list(app).tags.level(1, SUF_TABLE))
+        assert dpg.does_item_exist(stems_list(app).tags.level(2, SUF_STRIP))
+        assert dpg.get_item_parent(stems_list(app).tags.row(str(first), SUF_GROUP)) == stems_list(app).tags.level(
             0, SUF_TABLE
         )
-        assert dpg.get_item_parent(stems_list(app).row_tag(str(second), SUF_GROUP)) == stems_list(app).level_tag(
+        assert dpg.get_item_parent(stems_list(app).tags.row(str(second), SUF_GROUP)) == stems_list(app).tags.level(
             1, SUF_TABLE
         )
 
     def test_a_row_is_the_thing_you_drag_it_by(self, app: Application, tmp_path: Path) -> None:
         path = self._gather(app, tmp_path, ["a.wav"])[0]
 
-        assert dpg.get_item_children(stems_list(app).row_tag(str(path), SUF_TEXT), DRAG_PAYLOAD_SLOT)
+        assert dpg.get_item_children(stems_list(app).tags.row(str(path), SUF_TEXT), DRAG_PAYLOAD_SLOT)
 
     def test_dropping_a_recording_on_a_row_joins_that_rows_level(self, app: Application, tmp_path: Path) -> None:
         first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
         converter_logic = app._main_tab._converter_logic
         converter_logic.isolate_source(second)
 
-        drop(stems_list(app).row_tag(str(second), SUF_TEXT), str(first))
+        drop(stems_list(app).tags.row(str(second), SUF_TEXT), str(first))
 
         assert _level_of(app, first) == _level_of(app, second)
-        assert not dpg.does_item_exist(stems_list(app).level_tag(1, SUF_TABLE))
+        assert not dpg.does_item_exist(stems_list(app).tags.level(1, SUF_TABLE))
 
     def test_dropping_a_recording_in_a_gap_opens_a_level(self, app: Application, tmp_path: Path) -> None:
         first, _second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
 
-        drop(stems_list(app).level_tag(1, SUF_STRIP), str(first))
+        drop(stems_list(app).tags.level(1, SUF_STRIP), str(first))
 
-        assert dpg.does_item_exist(stems_list(app).level_tag(1, SUF_TABLE))
-        assert _level_of(app, first) == stems_list(app).level_tag(1, SUF_TABLE)
+        assert dpg.does_item_exist(stems_list(app).tags.level(1, SUF_TABLE))
+        assert _level_of(app, first) == stems_list(app).tags.level(1, SUF_TABLE)
 
     def test_the_order_explanation_leaves_with_the_control_it_belongs_to(self, app: Application) -> None:
         """A tooltip left live over a hidden widget's rectangle explains whatever moved into it."""
@@ -563,7 +563,7 @@ class TestConverterStemsCard:
 
         app._main_tab._converter_logic.set_source_channels(path, frozenset())
 
-        name_tag = stems_list(app).row_tag(str(path), SUF_TEXT)
-        assert dpg.does_item_exist(stems_list(app).row_tag(str(path), SUF_GROUP))
+        name_tag = stems_list(app).tags.row(str(path), SUF_TEXT)
+        assert dpg.does_item_exist(stems_list(app).tags.row(str(path), SUF_GROUP))
         assert dpg.get_item_alias(dpg.get_item_theme(name_tag)) == TAG_GLOBAL_THEME_STEMS_ROW_INERT
         assert dpg.get_item_configuration(name_tag)["enabled"] is True

@@ -50,6 +50,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIDestinationPathText, GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.list import GUIStemsList
+from sampletones_application.ui.elements.stems.offer import GATHERED_SOURCES
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.dpg import (
@@ -139,10 +140,7 @@ class GUIConverterPanel(GUIPanel):
             layout=stems_layout,
             language_manager=language_manager,
             status_bar=status_bar,
-            draggable=True,
-            removable=True,
-            retain_last_row=False,
-            master_checkbox=False,
+            offer=GATHERED_SOURCES,
         )
 
         super().__init__(tag=TAG_MAIN_CONVERTER_PANEL)

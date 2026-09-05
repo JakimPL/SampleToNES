@@ -31,6 +31,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.list import GUIStemsList
+from sampletones_application.ui.elements.stems.offer import StemsListOffer
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
@@ -71,20 +72,22 @@ def dpg_context(layout_config: LayoutConfig) -> Iterator[None]:
 def build(
     layout_config: LayoutConfig,
     *,
-    draggable: bool = True,
-    removable: bool = True,
-    retain_last_row: bool = False,
-    master_checkbox: bool = False,
+    dragging: bool = True,
+    removal: bool = True,
+    keeps_last_row: bool = False,
+    master_box: bool = False,
 ) -> GUIStemsList:
     stems_list = GUIStemsList(
         prefix=PREFIX,
         layout=layout_config.general.stems,
         language_manager=LanguageManager(LANG_EN),
         status_bar=GUIStatusBar(),
-        draggable=draggable,
-        removable=removable,
-        retain_last_row=retain_last_row,
-        master_checkbox=master_checkbox,
+        offer=StemsListOffer(
+            master_box=master_box,
+            removal=removal,
+            keeps_last_row=keeps_last_row,
+            dragging=dragging,
+        ),
     )
     with dpg.window(tag=ROOT_TAG):
         stems_list.create(ROOT_TAG)
@@ -242,7 +245,7 @@ class TestAffordances:
         dpg_context: None,
         layout_config,
     ) -> None:
-        stems_list = build(layout_config, draggable=True)
+        stems_list = build(layout_config, dragging=True)
         bass = row("bass")
 
         stems_list.update_view(view(bass))
@@ -254,7 +257,7 @@ class TestAffordances:
         dpg_context: None,
         layout_config,
     ) -> None:
-        stems_list = build(layout_config, draggable=False)
+        stems_list = build(layout_config, dragging=False)
         bass = row("bass")
 
         stems_list.update_view(view(bass))
@@ -263,7 +266,7 @@ class TestAffordances:
         assert not dpg.does_item_exist(compose_tag(PREFIX, SUF_LEVEL, "0", SUF_STRIP))
 
     def test_a_removable_list_gives_each_row_a_button(self, dpg_context: None, layout_config) -> None:
-        stems_list = build(layout_config, removable=True)
+        stems_list = build(layout_config, removal=True)
         bass = row("bass")
 
         stems_list.update_view(view(bass))
@@ -271,7 +274,7 @@ class TestAffordances:
         assert dpg.does_item_exist(row_tag(bass, SUF_BUTTON))
 
     def test_a_list_without_removal_gives_no_button(self, dpg_context: None, layout_config) -> None:
-        stems_list = build(layout_config, removable=False)
+        stems_list = build(layout_config, removal=False)
         bass = row("bass")
 
         stems_list.update_view(view(bass))
@@ -285,7 +288,7 @@ class TestRetainedLastRow:
         dpg_context: None,
         layout_config,
     ) -> None:
-        stems_list = build(layout_config, retain_last_row=True)
+        stems_list = build(layout_config, keeps_last_row=True)
         bass = row("bass")
 
         stems_list.update_view(view(bass))
@@ -293,7 +296,7 @@ class TestRetainedLastRow:
         assert not dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
 
     def test_a_row_may_leave_once_another_stands_beside_it(self, dpg_context: None, layout_config) -> None:
-        stems_list = build(layout_config, retain_last_row=True)
+        stems_list = build(layout_config, keeps_last_row=True)
         bass = row("bass")
         lead = row("lead")
 
@@ -302,7 +305,7 @@ class TestRetainedLastRow:
         assert dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
 
     def test_the_last_row_left_standing_stops_answering(self, dpg_context: None, layout_config) -> None:
-        stems_list = build(layout_config, retain_last_row=True)
+        stems_list = build(layout_config, keeps_last_row=True)
         bass = row("bass")
         lead = row("lead")
         stems_list.update_view(view(bass, lead))
@@ -312,7 +315,7 @@ class TestRetainedLastRow:
         assert not dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
 
     def test_a_list_that_keeps_no_row_lets_the_last_one_go(self, dpg_context: None, layout_config) -> None:
-        stems_list = build(layout_config, retain_last_row=False)
+        stems_list = build(layout_config, keeps_last_row=False)
         bass = row("bass")
 
         stems_list.update_view(view(bass))
@@ -429,7 +432,7 @@ class TestOfferedChannels:
 
 class TestMasterCheckbox:
     def test_a_master_box_reads_whether_the_row_holds_a_channel(self, dpg_context: None, layout_config) -> None:
-        stems_list = build(layout_config, master_checkbox=True)
+        stems_list = build(layout_config, master_box=True)
         playing = row("bass")
         quiet = row("pad", channels=frozenset())
 
@@ -444,7 +447,7 @@ class TestMasterCheckbox:
         layout_config,
     ) -> None:
         reported: List[Tuple[str, FrozenSet[ChannelName]]] = []
-        stems_list = build(layout_config, master_checkbox=True)
+        stems_list = build(layout_config, master_box=True)
         stems_list.on_channels_changed = lambda key, channels: reported.append((key, channels))
         bass = row("bass", channels=frozenset(), offered_channels=frozenset({ChannelName.PULSE1}))
         stems_list.update_view(view(bass))
@@ -456,7 +459,7 @@ class TestMasterCheckbox:
 
     def test_unticking_the_master_box_takes_every_channel_away(self, dpg_context: None, layout_config) -> None:
         reported: List[Tuple[str, FrozenSet[ChannelName]]] = []
-        stems_list = build(layout_config, master_checkbox=True)
+        stems_list = build(layout_config, master_box=True)
         stems_list.on_channels_changed = lambda key, channels: reported.append((key, channels))
         bass = row("bass")
         stems_list.update_view(view(bass))
@@ -471,7 +474,7 @@ class TestMasterCheckbox:
         dpg_context: None,
         layout_config,
     ) -> None:
-        stems_list = build(layout_config, master_checkbox=True)
+        stems_list = build(layout_config, master_box=True)
         silent = row("pad", channels=frozenset(), offered_channels=frozenset())
 
         stems_list.update_view(view(silent))
@@ -521,7 +524,7 @@ class TestMutedChannels:
 
 class TestCollapsedLevels:
     def test_collapsing_draws_every_row_in_one_table(self, dpg_context: None, layout_config) -> None:
-        stems_list = build(layout_config, draggable=False)
+        stems_list = build(layout_config, dragging=False)
         rows = (
             row("bass", level=0, position=0, level_size=1, level_count=2),
             row("pad", level=1, position=0, level_size=1, level_count=2),
@@ -529,13 +532,13 @@ class TestCollapsedLevels:
 
         stems_list.update_view(view(*rows, collapse_levels=True))
 
-        assert dpg.does_item_exist(stems_list.table_tag)
+        assert dpg.does_item_exist(stems_list.tags.table)
         assert not dpg.does_item_exist(compose_tag(PREFIX, SUF_LEVEL, "0", SUF_TEXT))
         for entry in rows:
             assert dpg.does_item_exist(row_tag(entry, SUF_TEXT))
 
     def test_expanding_brings_the_captions_back(self, dpg_context: None, layout_config) -> None:
-        stems_list = build(layout_config, draggable=False)
+        stems_list = build(layout_config, dragging=False)
         rows = (
             row("bass", level=0, position=0, level_size=1, level_count=2),
             row("pad", level=1, position=0, level_size=1, level_count=2),
@@ -544,7 +547,7 @@ class TestCollapsedLevels:
 
         stems_list.update_view(view(*rows))
 
-        assert not dpg.does_item_exist(stems_list.table_tag)
+        assert not dpg.does_item_exist(stems_list.tags.table)
         assert dpg.does_item_exist(compose_tag(PREFIX, SUF_LEVEL, "0", SUF_TEXT))
         assert dpg.does_item_exist(compose_tag(PREFIX, SUF_LEVEL, "1", SUF_TEXT))
 
@@ -552,7 +555,7 @@ class TestCollapsedLevels:
 class TestActivation:
     def test_a_clicked_row_reports_itself_and_stays_unselected(self, dpg_context: None, layout_config) -> None:
         activated: List[str] = []
-        stems_list = build(layout_config, draggable=False)
+        stems_list = build(layout_config, dragging=False)
         stems_list.on_row_activated = activated.append
         bass = row("bass")
         stems_list.update_view(view(bass))

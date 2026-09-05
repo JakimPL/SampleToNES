@@ -1,5 +1,6 @@
+from functools import cached_property
 from pathlib import Path
-from typing import FrozenSet, Tuple
+from typing import Dict, FrozenSet, Optional, Self, Tuple
 
 from pydantic import BaseModel
 
@@ -82,6 +83,17 @@ class StemsListViewModel(BaseModel, frozen=True):
     live: bool
     collapse_levels: bool
 
+    @classmethod
+    def empty(cls) -> Self:
+        """The view a list stands at before anything has been drawn into it."""
+        return cls(
+            rows=(),
+            channels_in_play=(),
+            muted_channels=frozenset(),
+            live=True,
+            collapse_levels=False,
+        )
+
     @property
     def row_count(self) -> int:
         return len(self.rows)
@@ -90,6 +102,22 @@ class StemsListViewModel(BaseModel, frozen=True):
     def level_count(self) -> int:
         """How many levels the listed recordings are spread over."""
         return max((row.level + 1 for row in self.rows), default=0)
+
+    def row(self, key: str) -> Optional[StemRowViewModel]:
+        """The row a gesture named, where the view still holds one."""
+        return self._by_key.get(key)
+
+    def rows_on(self, level_index: int) -> Tuple[StemRowViewModel, ...]:
+        """The rows one band holds, in the order they stand."""
+        return tuple(row for row in self.rows if row.level == level_index)
+
+    def boxes_of(self, row: StemRowViewModel) -> Tuple[ChannelName, ...]:
+        """The channels ``row`` draws a box for, in the order the columns stand."""
+        return tuple(channel for channel in self.channels_in_play if channel in row.offered_channels)
+
+    @cached_property
+    def _by_key(self) -> Dict[str, StemRowViewModel]:
+        return {row.key: row for row in self.rows}
 
     @property
     def playing_count(self) -> int:

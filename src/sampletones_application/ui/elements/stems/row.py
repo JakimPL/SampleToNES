@@ -1,0 +1,190 @@
+import dearpygui.dearpygui as dpg
+
+from sampletones_application.categories.context import channel_label
+from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general.stems import StemsListLayout
+from sampletones_application.tags.general import (
+    SUF_BUTTON,
+    SUF_CHANNELS,
+    SUF_CHECKBOX,
+    SUF_GROUP,
+    SUF_TEXT,
+    SUF_TOOLTIP,
+    TAG_GLOBAL_THEME_CHANNEL_MUTED,
+    TAG_GLOBAL_THEME_DANGER_BUTTON,
+    TAG_GLOBAL_THEME_STEMS_ROW,
+    TAG_GLOBAL_THEME_STEMS_ROW_INERT,
+)
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.stems.gestures import StemsGestures
+from sampletones_application.ui.elements.stems.messages import StemsMessages
+from sampletones_application.ui.elements.stems.offer import StemsListOffer
+from sampletones_application.ui.elements.stems.tags import StemsTags
+from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
+from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.view_model.shared.stems import (
+    StemRowViewModel,
+    StemsListViewModel,
+)
+from sampletones_core.constants.enums import ChannelName
+
+
+class StemRowRenderer:
+    """One row of a stems list: the widgets it stands as, and what it currently holds.
+
+    A row is the master box, the name, a box per channel in play, and the button that takes it
+    out — whichever of those the list offers. It answers for one row against the view it is drawn
+    from, and knows nothing about the bands the rows are grouped into.
+    """
+
+    def __init__(
+        self,
+        tags: StemsTags,
+        *,
+        layout: StemsListLayout,
+        offer: StemsListOffer,
+        language_manager: LanguageManager,
+        messages: StemsMessages,
+        gestures: StemsGestures,
+    ) -> None:
+        self._tags = tags
+        self._layout = layout
+        self._offer = offer
+        self._language_manager = language_manager
+        self._messages = messages
+        self._gestures = gestures
+        self._lbl_remove = language_manager["global.stems.label.remove"]
+
+    def declare_columns(self, view_model: StemsListViewModel) -> None:
+        """The columns every band holds to, so the rows line up across the bands."""
+        if self._offer.master_box:
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.master_column_width)
+
+        dpg.add_table_column(width_stretch=True)
+        for _channel_name in view_model.channels_in_play:
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.channel_column_width)
+
+        if self._offer.removal:
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=self._layout.remove_button_width)
+
+    def create(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
+        """Build the widgets one row stands as, in the columns the bands were declared with."""
+        with dpg.table_row(tag=self._tags.row(row.key, SUF_GROUP)):
+            if self._offer.master_box:
+                self._create_master(row)
+
+            self._create_name(row)
+            for channel_name in view_model.channels_in_play:
+                self._create_channel(row, channel_name)
+
+            if self._offer.removal:
+                self._create_remove(row)
+
+    def repaint(
+        self,
+        row: StemRowViewModel,
+        view_model: StemsListViewModel,
+        *,
+        releasable: bool,
+    ) -> None:
+        """Draw what the row currently holds onto the widgets it already stands as.
+
+        A row contributing nothing grays through its theme rather than through ``enabled``, so
+        it answers a drag and a right-click as readily as one in play. A box on a channel
+        switched off elsewhere takes the muted tone and stays as clickable as any other.
+        """
+        live = view_model.live
+        for channel_name in view_model.boxes_of(row):
+            tag = self._tags.channel(row.key, channel_name)
+            dpg_configure_item(tag, enabled=live)
+            dpg_set_value(tag, channel_name in row.channels)
+            ThemeRegistry.get(self._channel_theme(channel_name, view_model)).bind_to_item(tag)
+
+        name_tag = self._tags.row(row.key, SUF_TEXT)
+        dpg_set_value(name_tag, False)
+        dpg_configure_item(name_tag, enabled=live)
+        dpg_set_value(self._tags.row(row.key, SUF_TOOLTIP), self._messages.row_explanation(row))
+        row_theme = TAG_GLOBAL_THEME_STEMS_ROW if row.in_play else TAG_GLOBAL_THEME_STEMS_ROW_INERT
+        ThemeRegistry.get(row_theme).bind_to_item(name_tag)
+
+        if self._offer.master_box:
+            master_tag = self._tags.row(row.key, SUF_CHECKBOX)
+            dpg_configure_item(master_tag, enabled=live and row.offers_channels)
+            dpg_set_value(master_tag, row.takes_part)
+
+        if self._offer.removal:
+            dpg_configure_item(self._tags.row(row.key, SUF_BUTTON), enabled=live and releasable)
+
+    def _create_master(self, row: StemRowViewModel) -> None:
+        """The box moving every channel the row offers at once."""
+        master = dpg.add_checkbox(
+            tag=self._tags.row(row.key, SUF_CHECKBOX),
+            default_value=row.takes_part,
+            user_data=row.key,
+            callback=self._gestures.on_master_box,
+        )
+        self._gestures.bind(master, SUF_CHECKBOX)
+
+    def _create_name(self, row: StemRowViewModel) -> None:
+        """The row itself: what names the recording, what you drag it by, and what you drop onto."""
+        name = dpg.add_selectable(
+            label=row.name,
+            tag=self._tags.row(row.key, SUF_TEXT),
+            user_data=row.key,
+            callback=self._gestures.on_name_selected,
+            payload_type=self._tags.payload,
+            drop_callback=self._gestures.on_row_drop,
+        )
+        if self._offer.dragging:
+            with dpg.drag_payload(parent=name, drag_data=row.key, payload_type=self._tags.payload):
+                dpg.add_text(row.name)
+
+        FontRegistry.bind_to_item(name, Font.REGULAR_SMALL)
+        self._gestures.bind(name, SUF_TEXT)
+        show_tooltip(
+            name,
+            self._messages.row_explanation(row),
+            text_tag=self._tags.row(row.key, SUF_TOOLTIP),
+        )
+
+    def _create_channel(self, row: StemRowViewModel, channel_name: ChannelName) -> None:
+        """The box giving the recording a channel, where the recording holds frames on it.
+
+        A recording holding none on this channel leaves the cell open, so the columns keep
+        lining up across the rows while only a reachable choice is drawn.
+        """
+        if channel_name not in row.offered_channels:
+            dpg.add_spacer()
+            return
+
+        checkbox_tag = self._tags.channel(row.key, channel_name)
+        dpg.add_checkbox(
+            label=channel_label(self._language_manager, channel_name),
+            tag=checkbox_tag,
+            default_value=channel_name in row.channels,
+            user_data=(row.key, channel_name),
+            callback=self._gestures.on_channel_box,
+        )
+        self._gestures.bind(checkbox_tag, SUF_CHANNELS)
+
+    def _create_remove(self, row: StemRowViewModel) -> None:
+        remove = dpg.add_button(
+            label=self._lbl_remove,
+            tag=self._tags.row(row.key, SUF_BUTTON),
+            width=self._layout.remove_button_width,
+            user_data=row.key,
+            callback=self._gestures.on_remove_button,
+        )
+        FontRegistry.bind_to_item(remove, Font.MONO_SMALL)
+        ThemeRegistry.get(TAG_GLOBAL_THEME_DANGER_BUTTON).bind_to_item(remove)
+        self._gestures.bind(remove, SUF_BUTTON)
+
+    def _channel_theme(self, channel_name: ChannelName, view_model: StemsListViewModel) -> str:
+        """The tone a channel's boxes take: its own color, muted where the channel is off."""
+        if channel_name in view_model.muted_channels:
+            return TAG_GLOBAL_THEME_CHANNEL_MUTED
+
+        return CHANNEL_THEME_TAGS[channel_name]

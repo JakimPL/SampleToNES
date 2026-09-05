@@ -17,6 +17,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.list import GUIStemsList
+from sampletones_application.ui.elements.stems.offer import RECORDED_ASSIGNMENT
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.stems import (
@@ -66,10 +67,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
             layout=stems_layout,
             language_manager=language_manager,
             status_bar=status_bar,
-            draggable=False,
-            removable=True,
-            retain_last_row=True,
-            master_checkbox=True,
+            offer=RECORDED_ASSIGNMENT,
         )
 
         self.on_stem_channels_changed: Optional[Callable[[int, FrozenSet[ChannelName]], None]] = None
