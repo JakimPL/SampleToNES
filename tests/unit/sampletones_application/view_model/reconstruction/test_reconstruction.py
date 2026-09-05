@@ -23,6 +23,7 @@ EMPTY_STEMS = StemsListViewModel(
     rows=(),
     channels_in_play=(),
     muted_channels=frozenset(),
+    picked_keys=frozenset(),
     live=True,
     collapse_levels=False,
 )

@@ -82,10 +82,14 @@ class LevelBands:
         """Name the channels once above the rows, so a cell below them holds the box alone.
 
         The heading stands above whatever the list draws, banded or plain, and every table below
-        it is declared from the same grid.
+        it is declared from the same grid. A list drawing no channel columns has nothing to name,
+        so the rows stand on their own.
         """
         columns = self.columns(view_model)
         self._folders.reads(columns)
+        if not columns.channels:
+            return
+
         self._heading.create(parent, columns)
         self._heading.render(view_model.muted_channels)
 

@@ -80,7 +80,7 @@ class StemRowRenderer:
         """Build the widgets one row stands as, in the columns its grid was declared with."""
         with dpg.table_row(tag=self._tags.row(row.key, SUF_GROUP)):
             if self._offer.master_box:
-                self._create_master(row)
+                self._create_master(row, view_model)
 
             self._create_name(row, view_model)
             for channel_name in view_model.channels_in_play:
@@ -122,21 +122,39 @@ class StemRowRenderer:
 
         if self._offer.master_box:
             master_tag = self._tags.row(row.key, SUF_CHECKBOX)
-            dpg_configure_item(master_tag, enabled=live and row.offers_channels)
-            dpg_set_value(master_tag, row.takes_part)
+            dpg_configure_item(master_tag, enabled=live and (self._offer.picking or row.offers_channels))
+            dpg_set_value(master_tag, self._master_value(row, view_model))
+            self._tone_master(row, view_model)
 
         if self._offer.removal:
             dpg_configure_item(self._tags.row(row.key, SUF_BUTTON), enabled=live and releasable)
 
-    def _create_master(self, row: StemRowViewModel) -> None:
-        """The box moving every channel the row offers at once."""
+    def _create_master(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
+        """The box beside the row: what picks it for a mix, or what moves its channels at once."""
         master = dpg.add_checkbox(
             tag=self._tags.row(row.key, SUF_CHECKBOX),
-            default_value=row.takes_part,
+            default_value=self._master_value(row, view_model),
             user_data=row.key,
-            callback=self._gestures.on_master_box,
+            callback=self._gestures.on_pick_box if self._offer.picking else self._gestures.on_master_box,
         )
         self._gestures.bind(master, SUF_CHECKBOX)
+        self._tone_master(row, view_model)
+
+    def _master_value(self, row: StemRowViewModel, view_model: StemsListViewModel) -> bool:
+        """What the box beside the row reads: whether it is picked, or whether it takes part."""
+        if self._offer.picking:
+            return view_model.picking_of(row).reads_held
+
+        return row.takes_part
+
+    def _tone_master(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
+        """Soften a picking box where the folder it stands for is picked only in part."""
+        if not self._offer.picking:
+            return
+
+        agreement = view_model.picking_of(row)
+        theme = TAG_GLOBAL_THEME_STEMS_ROW_INERT if agreement is Agreement.SOME else TAG_GLOBAL_THEME_STEMS_ROW
+        ThemeRegistry.get(theme).bind_to_item(self._tags.row(row.key, SUF_CHECKBOX))
 
     def _create_name(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
         """The row itself: what names the source, what you drag it by, and what you drop onto.

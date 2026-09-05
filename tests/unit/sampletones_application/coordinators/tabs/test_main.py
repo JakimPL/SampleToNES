@@ -192,6 +192,7 @@ def _stems_coordinator(
     operation_active: bool = False,
     mixes: bool = True,
     gathered: Tuple[Path, ...] = (),
+    folder_rows: Tuple[MagicMock, ...] = (),
     room: int = MAX_STEM_SOURCES,
 ) -> MainTabCoordinator:
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
@@ -204,6 +205,7 @@ def _stems_coordinator(
     coordinator._converter_logic.gathered_paths = gathered
     coordinator._converter_logic.source_count = len(gathered)
     coordinator._converter_logic.room_for_sources = room
+    coordinator._converter_logic.rows_gathering.return_value = folder_rows
     coordinator._stem_selection_window = MagicMock()
     return coordinator
 
@@ -234,8 +236,8 @@ class TestOutputSwitch:
         coordinator._request_output(OutputKind.MIXED)
 
         coordinator._converter_logic.set_output.assert_not_called()
-        candidates, room = coordinator._stem_selection_window.open.call_args.args
-        assert candidates == gathered
+        rows, room = coordinator._stem_selection_window.open.call_args.args
+        assert rows == coordinator._converter_logic.gathered_rows
         assert room == MAX_STEM_SOURCES
 
     def test_a_list_a_mix_holds_takes_effect_at_once(self) -> None:
@@ -374,3 +376,47 @@ class TestReconstructReplacesTheSetup:
 
         coordinator._converter_logic.set_output.assert_not_called()
         coordinator._hooks.on_reconstruct_directory.assert_not_called()
+
+
+def _rows_holding(*counts: int) -> Tuple[MagicMock, ...]:
+    """Rows standing for that many recordings each, which is what the room is counted against."""
+    return tuple(MagicMock(recordings=tuple(MagicMock() for _ in range(count))) for count in counts)
+
+
+class TestGatheringAFolder:
+    """A mix reaches a fixed number of recordings, so a folder overflowing it asks rather than gathers."""
+
+    def test_a_run_writing_one_apiece_gathers_whatever_it_holds(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator(mixes=False, folder_rows=_rows_holding(MAX_STEM_SOURCES + 5))
+
+        coordinator._on_directory_add_requested(tmp_path)
+
+        coordinator._converter_logic.gather_folder.assert_called_once_with(tmp_path)
+        coordinator._stem_selection_window.open.assert_not_called()
+
+    def test_a_folder_a_mix_still_holds_is_gathered(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator(mixes=True, folder_rows=_rows_holding(MAX_STEM_SOURCES))
+
+        coordinator._on_directory_add_requested(tmp_path)
+
+        coordinator._converter_logic.gather_folder.assert_called_once_with(tmp_path)
+        coordinator._stem_selection_window.open.assert_not_called()
+
+    def test_a_folder_overflowing_the_mix_asks_which_to_mix(self, tmp_path: Path) -> None:
+        rows = _rows_holding(MAX_STEM_SOURCES, 1)
+        coordinator = _stems_coordinator(mixes=True, folder_rows=rows)
+
+        coordinator._on_directory_add_requested(tmp_path)
+
+        coordinator._converter_logic.gather_folder.assert_not_called()
+        offered, room = coordinator._stem_selection_window.open.call_args.args
+        assert offered == rows
+        assert room == MAX_STEM_SOURCES
+
+    def test_a_busy_application_leaves_the_folder_alone(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator(operation_active=True, folder_rows=_rows_holding(1))
+
+        coordinator._on_directory_add_requested(tmp_path)
+
+        coordinator._converter_logic.gather_folder.assert_not_called()
+        coordinator._stem_selection_window.open.assert_not_called()

@@ -380,6 +380,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                 rows=rows,
                 channels_in_play=tuple(channels_in_play),
                 muted_channels=frozenset(channels_in_play) - frozenset(self._selected_channels),
+                picked_keys=frozenset(),
                 live=True,
                 collapse_levels=False,
                 selected_key=None,

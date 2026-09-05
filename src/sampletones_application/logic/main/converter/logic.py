@@ -137,8 +137,21 @@ class ConverterLogic(CallbackMixin):
 
     @property
     def gathered_paths(self) -> Tuple[Path, ...]:
-        """Every gathered recording, which is what a reader picking a mix is offered."""
+        """Every gathered recording, which is what a run writing one apiece converts."""
         return self._state.gathering.paths
+
+    @property
+    def gathered_rows(self) -> Tuple[StemRowViewModel, ...]:
+        """The gathered sources as one run of rows, which is what a reader picking a mix reads."""
+        return stem_rows(self._state.gathering, mixes=False)
+
+    def rows_gathering(self, root: Path) -> Tuple[StemRowViewModel, ...]:
+        """The rows the list would stand as with ``root`` gathered, folders standing as folders.
+
+        A mix reaches a fixed number of recordings, so a folder overflowing what is left is put to
+        a reader as the same question the output switch asks: which of these to mix.
+        """
+        return stem_rows(self._gathering_folder(root), mixes=False)
 
     @property
     def is_active(self) -> bool:
@@ -174,16 +187,11 @@ class ConverterLogic(CallbackMixin):
         A run writing one reconstruction per recording mirrors this folder's tree for what it
         holds; a mix takes the recordings loose, which is what flattening leaves.
         """
-        recordings = [self._gathered(path) for path in top_level_audio_files(root)]
-        if not recordings:
-            return
-
         if self.mixes:
-            self.gather_recordings([recording.path for recording in recordings])
+            self.gather_recordings([recording.path for recording in self._folder_recordings(root)])
             return
 
-        folder = Folder(root=root, recordings=tuple(recordings))
-        self._settle(self._state.with_gathering(self._state.gathering.listing_folder(folder)))
+        self._settle(self._state.with_gathering(self._gathering_folder(root)))
 
     def convert_path(self, path: Path) -> None:
         """Converts exactly what the reader named, which is what a Reconstruct asks for.
@@ -401,6 +409,18 @@ class ConverterLogic(CallbackMixin):
     def _gathered(self, path: Path) -> Recording:
         """A recording joining the list, holding the settings a recording joins with."""
         return Recording(path=path, settings=self._joining_settings)
+
+    def _folder_recordings(self, root: Path) -> Tuple[Recording, ...]:
+        """The recordings a folder brings in, each joining with the settings a new row starts from."""
+        return tuple(self._gathered(path) for path in top_level_audio_files(root))
+
+    def _gathering_folder(self, root: Path) -> Gathering:
+        """The setup with ``root`` standing as one row, or as it stands where the folder is empty."""
+        recordings = self._folder_recordings(root)
+        if not recordings:
+            return self._state.gathering
+
+        return self._state.gathering.listing_folder(Folder(root=root, recordings=recordings))
 
     def _joined(self, gathering: Gathering, recording: Recording) -> Gathering:
         """One more recording in the setup, joining the mix where the run is one."""

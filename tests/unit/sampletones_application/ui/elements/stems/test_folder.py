@@ -113,6 +113,7 @@ def view(*rows: StemRowViewModel) -> StemsListViewModel:
         rows=rows,
         channels_in_play=CHANNELS,
         muted_channels=frozenset(),
+        picked_keys=frozenset(),
         live=True,
         collapse_levels=True,
         selected_key=None,

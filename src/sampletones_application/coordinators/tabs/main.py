@@ -457,12 +457,11 @@ class MainTabCoordinator:
         A mix reaches a fixed number of recordings, so a longer list is put to the reader in the
         window that shows what fits already ticked. Every other switch takes effect straight away.
         """
-        candidates = self._converter_logic.gathered_paths
-        if not output.mixes or len(candidates) <= MAX_STEM_SOURCES:
+        if not output.mixes or len(self._converter_logic.gathered_paths) <= MAX_STEM_SOURCES:
             self._converter_logic.set_output(output)
             return
 
-        self._stem_selection_window.open(candidates, MAX_STEM_SOURCES)
+        self._stem_selection_window.open(self._converter_logic.gathered_rows, MAX_STEM_SOURCES)
 
     def _can_add_stems(self) -> bool:
         """The converter is free to gather recordings into a stems conversion."""
@@ -476,11 +475,34 @@ class MainTabCoordinator:
         self._converter_logic.gather_recordings([filepath])
 
     def _on_directory_add_requested(self, directory_path: Path) -> None:
-        """Gathers a folder into the setup, standing for the recordings found below it."""
+        """Gathers a folder into the setup, standing for the recordings found below it.
+
+        A mix reaches a fixed number of recordings, so a folder overflowing it raises the same
+        question the output switch raises: which of what is now offered to mix.
+        """
         if self._hooks.is_operation_active():
             return
 
+        if self._mixing_beyond_room(directory_path):
+            return
+
         self._converter_logic.gather_folder(directory_path)
+
+    def _mixing_beyond_room(self, directory_path: Path) -> bool:
+        """Whether the folder overflows the mix, which is a question rather than a gathering.
+
+        Answering it settles the mix on what the reader picked, so the folder joins by the same
+        route a longer list does.
+        """
+        if not self._converter_logic.mixes:
+            return False
+
+        rows = self._converter_logic.rows_gathering(directory_path)
+        if sum(len(row.recordings) for row in rows) <= MAX_STEM_SOURCES:
+            return False
+
+        self._stem_selection_window.open(rows, MAX_STEM_SOURCES)
+        return True
 
     def _request_cancel_confirmation(self) -> None:
         self._dialogs.show_confirmation(

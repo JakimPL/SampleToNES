@@ -54,6 +54,7 @@ class StemsGestures:
         self.on_dropped_on_level: Optional[KeyOffsetCallback] = None
         self.on_folder_toggled: Optional[StringCallback] = None
         self.on_row_opened: Optional[StringCallback] = None
+        self.on_row_picked: Optional[StringCallback] = None
 
     @property
     def activatable(self) -> bool:
@@ -129,6 +130,10 @@ class StemsGestures:
 
         channels = frozenset(self._view.boxes_of(row)) if value else frozenset()
         self._report(self.on_channels_settled, user_data, channels)
+
+    def on_pick_box(self, _sender: Sender, _value: bool, user_data: str) -> None:
+        """The box beside a row picks the recordings it stands for, or lets them go."""
+        self._report(self.on_row_picked, user_data)
 
     def on_remove_button(self, _sender: Sender, _app_data: Any, user_data: str) -> None:
         self._report(self.on_removal_asked, user_data)

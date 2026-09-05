@@ -81,6 +81,7 @@ def build(
     keeps_last_row: bool = False,
     master_box: bool = False,
     bends: bool = False,
+    picking: bool = False,
 ) -> GUIStemsList:
     stems_list = GUIStemsList(
         prefix=PREFIX,
@@ -94,6 +95,7 @@ def build(
             keeps_last_row=keeps_last_row,
             dragging=dragging,
             bends=bends,
+            picking=picking,
         ),
     )
     with dpg.window(tag=ROOT_TAG):
@@ -134,6 +136,7 @@ def view(
     *rows: StemRowViewModel,
     live: bool = True,
     muted_channels: FrozenSet[ChannelName] = frozenset(),
+    picked_keys: FrozenSet[str] = frozenset(),
     collapse_levels: bool = False,
     selected_key: Optional[str] = None,
 ) -> StemsListViewModel:
@@ -142,6 +145,7 @@ def view(
         rows=rows,
         channels_in_play=CHANNELS,
         muted_channels=muted_channels,
+        picked_keys=picked_keys,
         live=live,
         collapse_levels=collapse_levels,
     )

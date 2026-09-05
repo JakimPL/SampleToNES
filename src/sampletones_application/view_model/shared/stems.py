@@ -47,6 +47,15 @@ class StemRowViewModel(BaseModel, frozen=True):
         return len(self.held)
 
     @property
+    def recordings(self) -> Tuple["StemRowViewModel", ...]:
+        """The recordings this row stands for: what a folder holds, or the row itself.
+
+        This is the one reading that goes from a row to recordings, so whatever counts, picks or
+        folds them asks here rather than telling the two kinds apart again.
+        """
+        return self.held or (self,)
+
+    @property
     def name(self) -> str:
         """The source's own name, which is what the row reads as."""
         return self.path.name if self.stands_for_a_folder else self.path.stem
@@ -106,11 +115,13 @@ class StemsListViewModel(BaseModel, frozen=True):
     boxes report while staying as clickable as any other. ``collapse_levels`` draws every row
     in one table, leaving the levels to the reader's memory rather than to a caption.
     ``selected_key`` names the row a reader is inspecting, which the list draws picked out.
+    ``picked_keys`` names the recordings standing picked where the list asks which ones to mix.
     """
 
     rows: Tuple[StemRowViewModel, ...]
     channels_in_play: Tuple[ChannelName, ...]
     muted_channels: FrozenSet[ChannelName]
+    picked_keys: FrozenSet[str]
     live: bool
     collapse_levels: bool
     selected_key: Optional[str]
@@ -122,6 +133,7 @@ class StemsListViewModel(BaseModel, frozen=True):
             rows=(),
             channels_in_play=(),
             muted_channels=frozenset(),
+            picked_keys=frozenset(),
             live=True,
             collapse_levels=False,
             selected_key=None,
@@ -148,6 +160,24 @@ class StemsListViewModel(BaseModel, frozen=True):
     def rows_on(self, level_index: int) -> Tuple[StemRowViewModel, ...]:
         """The rows one band holds, in the order they stand."""
         return tuple(row for row in self.rows if row.level == level_index)
+
+    @property
+    def recordings(self) -> Tuple[StemRowViewModel, ...]:
+        """Every recording the rows stand for, folders walked through to what they hold."""
+        return tuple(recording for row in self.rows for recording in row.recordings)
+
+    def picking_of(self, row: StemRowViewModel) -> Agreement:
+        """How the recordings ``row`` stands for read on standing picked.
+
+        A folder reads the three ways its channels read: picked where every recording it holds is,
+        half-lit where some are, clear where none is, so one gesture answers for the whole folder.
+        """
+        return Agreement.over(recording.key in self.picked_keys for recording in row.recordings)
+
+    @property
+    def picked_paths(self) -> Tuple[Path, ...]:
+        """The recordings standing picked, in the order the list draws them."""
+        return tuple(recording.path for recording in self.recordings if recording.key in self.picked_keys)
 
     def boxes_of(self, row: StemRowViewModel) -> Tuple[ChannelName, ...]:
         """The channels ``row`` draws a box for, in the order the columns stand."""

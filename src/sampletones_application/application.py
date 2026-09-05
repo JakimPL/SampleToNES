@@ -312,6 +312,10 @@ class Application:
         )
         self.stem_selection_window: GUIStemSelectionWindow = GUIStemSelectionWindow(
             layout=self.layout.tabs.main.converter,
+            stems_layout=self.layout.general.stems,
+            glyphs=self.layout.glyphs.common,
+            language_manager=self.language_manager,
+            status_bar=self.status_bar,
             title=self.language_manager["main.converter.title.stem_selection_dialog"],
             message=self.language_manager["main.converter.message.stem_selection_prompt"],
             limit_template=self.language_manager["main.converter.template.stem_selection_limit"],

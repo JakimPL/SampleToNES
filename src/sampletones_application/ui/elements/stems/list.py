@@ -120,6 +120,7 @@ class GUIStemsList(CallbackMixin):
         self.on_dropped_on_row: Optional[KeyPairCallback] = None
         self.on_dropped_on_level: Optional[KeyOffsetCallback] = None
         self.on_row_opened: Optional[StringCallback] = None
+        self.on_row_picked: Optional[StringCallback] = None
 
         self._gestures.on_channels_settled = lambda key, channels: self.call(self.on_channels_changed, key, channels)
         self._gestures.on_channel_toggled = lambda key, channel: self.call(self.on_channel_toggled, key, channel)
@@ -129,6 +130,7 @@ class GUIStemsList(CallbackMixin):
         self._gestures.on_dropped_on_row = lambda key, target: self.call(self.on_dropped_on_row, key, target)
         self._gestures.on_dropped_on_level = lambda key, position: self.call(self.on_dropped_on_level, key, position)
         self._gestures.on_row_opened = lambda key: self.call(self.on_row_opened, key)
+        self._gestures.on_row_picked = lambda key: self.call(self.on_row_picked, key)
         self._gestures.on_folder_toggled = self.toggle_folder
 
     @property
