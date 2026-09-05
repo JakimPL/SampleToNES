@@ -68,6 +68,23 @@ class TestGatheringAFolder:
         assert sources.folder_root_of(Path("/audio/a.wav")) is None
 
 
+class TestAFolderStandingForNothing:
+    """A row names the recordings a run writes, so a folder naming none stays out of the list."""
+
+    def test_an_empty_folder_leaves_the_list_as_it_is(self) -> None:
+        sources = SourceList().add_folder(folder("/audio", []))
+
+        assert sources.rows == ()
+
+    def test_a_folder_whose_recordings_another_holds_leaves_it_as_it_is(self) -> None:
+        held = recording("/audio/takes/a.wav")
+        sources = SourceList().add_folder(folder("/audio/takes", [held]))
+
+        sources = sources.add_folder(folder("/audio/takes/again", [held]))
+
+        assert sources.row_count == 1
+
+
 class TestLettingSourcesGo:
     def test_a_folder_goes_with_everything_it_holds(self) -> None:
         gathered = folder("/audio", [recording("/audio/a.wav"), recording("/audio/b.wav")])

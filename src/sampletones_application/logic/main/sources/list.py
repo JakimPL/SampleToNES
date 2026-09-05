@@ -105,12 +105,16 @@ class SourceList:
 
         A loose recording the folder lists joins it holding the settings it already had, so what a
         reader settled before gathering stands. A recording another folder holds stays there, which
-        is what keeps every path standing in the list once.
+        is what keeps every path standing in the list once, and a folder left standing for nothing
+        stays out, since a row that names no recording names nothing a run would write.
         """
         if self.row(folder.key) is not None:
             return self
 
         gathered = self._gathered_by(folder)
+        if not gathered:
+            return self
+
         taken = frozenset(recording.path for recording in gathered)
         kept = tuple(row for row in self.rows if row.key.names_folder or row.key.path not in taken)
         return replace(self, rows=kept + (folder.with_recordings(gathered),))

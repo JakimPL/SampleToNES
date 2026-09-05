@@ -41,6 +41,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
     TAG_MAIN_CONVERTER_PANEL,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
+    TAG_MAIN_EXPLORER_DIALOG_NOTHING_BELOW,
     TAG_MAIN_EXPLORER_PANEL,
     TAG_MAIN_RECONSTRUCTOR_PANEL,
 )
@@ -519,10 +520,27 @@ class MainTabCoordinator:
 
     def _gather_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
         self._scan_window.close()
+        if not found:
+            self._nothing_below(directory_path)
+            return
+
         if self._mixing_beyond_room(directory_path, found):
             return
 
         self._converter_logic.gather_folder(directory_path, found)
+
+    def _nothing_below(self, directory_path: Path) -> None:
+        """Says that a folder holds no recordings, which is the answer the reading came back with.
+
+        The reading is what knows, so the menu offers every folder and the answer arrives once,
+        rather than every folder being walked to decide whether the item may be clicked.
+        """
+        logger.info(f"No recordings below {directory_path}.")
+        self._dialogs.show_info(
+            TAG_MAIN_EXPLORER_DIALOG_NOTHING_BELOW,
+            self._language_manager["main.converter.message.status_no_files"],
+            self._language_manager["main.converter.title.scan_dialog"],
+        )
 
     def _convert_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
         self._scan_window.close()

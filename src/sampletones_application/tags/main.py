@@ -50,6 +50,12 @@ TAG_MAIN_EXPLORER_GROUP_CONTROLS = TagName(
     Widget.GROUP,
     "controls",
 )
+TAG_MAIN_EXPLORER_DIALOG_NOTHING_BELOW = TagName(
+    Page.MAIN,
+    Panel.EXPLORER,
+    Widget.DIALOG,
+    "nothing_below",
+)
 TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING = TagName(
     Page.MAIN,
     Panel.EXPLORER,
