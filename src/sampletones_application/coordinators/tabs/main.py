@@ -238,7 +238,7 @@ class MainTabCoordinator:
             on_reconstruct_directory=self._request_reconstruct_directory,
             on_load_reconstruction=on_load_reconstruction,
             on_load_library=on_load_library,
-            on_set_as_library_directory=self._advanced_settings_panel.change_library_directory,
+            on_set_as_library_directory=self._handle_select_library_directory,
             on_set_as_reconstructions_directory=self._advanced_settings_panel.change_reconstructions_directory,
         )
 

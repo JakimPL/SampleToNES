@@ -489,8 +489,8 @@ class Application:
             status_bar=self.status_bar,
             on_load_file=self._on_converted_reconstruction_loaded,
             on_load_directory=self._navigate_to_reconstructions,
-            on_canceled=self._refresh_reconstruction_trees,
-            on_refresh_trees=self._refresh_reconstruction_trees,
+            on_canceled=self._refresh_browsers,
+            on_refresh_trees=self._refresh_browsers,
             on_generate_library=self._instructions_tab.ensure_library_loaded,
             stem_selection_window=self.stem_selection_window,
         )
@@ -1040,7 +1040,13 @@ class Application:
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self._reconstruction_coordinator.load_with_confirmation(filepath)
 
-    def _refresh_reconstruction_trees(self) -> None:
+    def _refresh_browsers(self) -> None:
+        """Reads the disk afresh in every browser, so a reconstruction just written stands in each.
+
+        The Main tab browses the whole filesystem and offers to load a reconstruction from it, so
+        it reads a finished run as much as the two tabs the run was started from.
+        """
+        self._main_tab.refresh_browser()
         self._reconstructions_tab.refresh_browser()
         self._sequencer_tab.refresh_browser()
 

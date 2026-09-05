@@ -137,6 +137,10 @@ again.
   `tests/unit/sampletones_application/coordinators/tabs/test_main.py` builds the object through
   `__new__` and populates its privates by hand, so the wiring the application actually runs is
   exercised nowhere: a hook left unset or a call routed to the wrong object passes the suite.
+* `state.last_paths.library` is written and never read. `SessionManager.set_library_path` records
+  the directory a library was chosen from, and `get_library_path` is reached by no caller: the
+  dialog that would open there takes its starting directory from the advanced settings panel
+  instead. Either the dialog reads the remembered path or the field and its pair of accessors go.
 * Several directories under `ui/` carry modules without an `__init__.py`, which leaves each one a
   namespace package. A tool reading the tree treats such a directory as a root it can import from,
   so a module inside one answers for a standard-library name of the same word: `ui/elements/trace.py`
@@ -146,13 +150,6 @@ again.
 
 ## Bugs
 
-* The Main tab's browser stands as it was after a conversion. `MainTabCoordinator.refresh_browser()`
-  is reached by no caller, while `Application._refresh_reconstruction_trees` refreshes the
-  Reconstruction and Sequencer tabs, so a reconstruction just written appears in the two browsers it
-  was not started from.
-* A library directory chosen from the explorer's context menu lasts only for the session. The Browse
-  button's path stores the choice through `session_manager.set_library_path`; the menu's path reaches
-  `change_library_directory` on the panel alone, so the next start opens on the previous directory.
 * No refreshing after library generation
 * Misaligned dialog boxes sizes at initialization
 * Audible noise instructions when matching near-silent samples for FFT γ0
