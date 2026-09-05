@@ -152,12 +152,16 @@ again.
 
 ## Bugs
 
-* A reconstruction written by an earlier 0.3.2 build cannot be opened. The stems record stamped
-  data version 2.2 while a stem entry still stated its channels on the entry itself; the entry now
-  carries a `StemSettings`, and the 2.2 upgrade step does not run on a file already stamped 2.2.
-  Files from v0.3.1 (data version 2.1) are unaffected — they carry no stems record and the step
-  synthesizes one in the current shape. Twenty-one files on the development machine are stranded
-  this way, nine of them true stems reconstructions.
+* A reconstruction written by an earlier 0.3.2 build cannot be opened, and the pending upgrade step
+  is not where that is answered. The record stamped data version 2.2 while a stem entry still stated
+  its channels on the entry itself; the entry now carries a `StemSettings`, and a step from 2.1
+  never runs on a file already stamped 2.2. Data version 2.2 therefore means the current shape, and
+  a file stamped 2.2 in the earlier one is a mid-development artifact rather than a release the
+  format owes compatibility to — the files that existed were removed. What a release shipped is
+  unaffected: a v0.3.1 file carries data version 2.1 and no stems record, so the step synthesizes
+  one in the current shape. The lesson holds for the rest of 0.3.2: a shape that moves between
+  releases moves inside the pending step, and a build writing the pending version writes the shape
+  that step produces.
 
 * No refreshing after library generation
 * Misaligned dialog boxes sizes at initialization
