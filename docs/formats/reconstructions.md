@@ -78,12 +78,13 @@ current shape before deserialization (see
 is stored alongside the data version, for reference.
 
 The current data version is 2.2. Version 2.2 renamed the per-channel stream and
-approximation keys from `generator_name` to `channel_name` and the channel
-selection under the embedded config from `generators` to `channels`; the enum
-values stored inside (`pulse1`, `pulse2`, `triangle`, `noise`) never changed. It
-also records the source audio as one path per stem and carries the `stems_data`
-record on every reconstruction; a file written before either existed is read with
-its single path listed and a one-stem record synthesized from what it plays.
+approximation keys from `generator_name` to `channel_name`; the enum values
+stored inside (`pulse1`, `pulse2`, `triangle`, `noise`) never changed. It also
+records the source audio as one path per stem and carries the `stems_data` record
+on every reconstruction; a file written before either existed is read with its
+single path listed and a one-stem record synthesized from what it plays. The
+channel selection lives on that record — each entry states the settings its stem
+was converted with — so the embedded configuration carries none.
 
 ## Storage and export
 

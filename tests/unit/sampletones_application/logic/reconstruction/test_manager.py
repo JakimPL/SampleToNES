@@ -411,7 +411,7 @@ class TestReconstructionManagerLocateOriginalAudio:
             coefficient=1.0,
             audio_filepath=(missing_path,),
             stems_data=single_entry_stems_data(
-                list(Config().generation.channels),
+                [ChannelName.PULSE1],
                 {ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
             ),
         )

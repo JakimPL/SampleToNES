@@ -10,6 +10,7 @@ from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_application.constants.playback import FollowMode
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 
 class SessionManager:
@@ -83,6 +84,14 @@ class SessionManager:
 
     def set_follow_mode(self, value: FollowMode) -> None:
         self._config_manager.set_follow_mode(value)
+
+    @property
+    def converter_settings(self) -> StemSettings:
+        """The settings a recording is given when it joins the converter's list."""
+        return self._config_manager.converter_settings
+
+    def set_converter_settings(self, settings: StemSettings) -> None:
+        self._config_manager.set_converter_settings(settings)
 
     def set_loop_song(self, value: bool) -> None:
         self._config_manager.set_loop_song(value)

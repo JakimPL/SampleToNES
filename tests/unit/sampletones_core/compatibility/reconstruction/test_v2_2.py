@@ -35,13 +35,16 @@ class TestReconstructionV2_2:
         assert upgraded["instructions_data"][0][CHANNEL_NAME] == "pulse1"
         assert GENERATOR_NAME not in upgraded["instructions_data"][0]
 
-    def test_renames_embedded_channel_selection(self) -> None:
+    def test_the_embedded_channel_selection_moves_onto_the_stems_record(self) -> None:
         data = {"config": {"generation": {"generators": ["pulse1", "noise"], "drive": 1.0}}}
 
         upgraded = update(data)
 
-        assert upgraded["config"]["generation"]["channels"] == ["pulse1", "noise"]
-        assert "generators" not in upgraded["config"]["generation"]
+        generation = upgraded["config"]["generation"]
+        assert generation == {"drive": 1.0}
+        assert upgraded[STEMS_DATA]["config"]["entries"] == [
+            {"id": 0, SETTINGS: {CHANNELS: ["pulse1", "noise"], BENDS: []}}
+        ]
 
     def test_stamps_the_embedded_config_metadata(self) -> None:
         data = {"config": {"metadata": {"reconstruction_data_version": "2.1"}}}

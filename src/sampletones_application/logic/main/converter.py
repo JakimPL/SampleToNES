@@ -4,6 +4,7 @@ from typing import Callable, Dict, Final, FrozenSet, Optional, Protocol, Sequenc
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
+from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES, MIN_CHANNEL_CAP
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.main.sources.derive import (
@@ -34,7 +35,7 @@ from sampletones_application.view_model.main.converter import (
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
-from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
+from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.parallelization import ETAEstimator, TaskProgress
 from sampletones_core.reconstructions.converter import (
     ConversionPlan,
@@ -95,6 +96,7 @@ class ConverterLogic(CallbackMixin):
     def __init__(
         self,
         config_manager: ConfigManager,
+        session_manager: SessionManager,
         conversion_service: ConversionServiceProtocol,
         *,
         scheduling: SchedulingBehavior,
@@ -103,6 +105,7 @@ class ConverterLogic(CallbackMixin):
     ) -> None:
         self._language_manager = language_manager
         self._config_manager = config_manager
+        self._session_manager = session_manager
         self._service = conversion_service
         self._scheduling = scheduling
         self._is_operation_active = is_operation_active
@@ -227,7 +230,7 @@ class ConverterLogic(CallbackMixin):
         if recording is None:
             return
 
-        enabled = frozenset(self._config_manager.config.generation.channels)
+        enabled = self._enabled_channels
         held = recording.settings.channel_set
         self._sources = self._sources.written(
             recording.key,
@@ -257,12 +260,18 @@ class ConverterLogic(CallbackMixin):
         self._apply(self._levels.move_to_new_level(path, position))
 
     def _gathered(self, path: Path) -> Recording:
-        """A recording joining the list, holding the channels the run enables and bending each."""
-        enabled = list(self._config_manager.config.generation.channels)
-        return Recording(
-            path=path,
-            settings=StemSettings(channels=enabled, bends=bending_channels(enabled)),
-        )
+        """A recording joining the list, holding the settings a recording joins with."""
+        return Recording(path=path, settings=self._joining_settings)
+
+    @property
+    def _joining_settings(self) -> StemSettings:
+        """What a recording is converted with when it joins the list, as the reader last left it."""
+        return self._session_manager.converter_settings
+
+    @property
+    def _enabled_channels(self) -> FrozenSet[ChannelName]:
+        """The channels a run hands out, which is what a joining recording holds."""
+        return self._joining_settings.channel_set
 
     def set_stems_mode(self, stems_mode: bool) -> None:
         """Switches between converting one selection and mixing several recordings into one.
@@ -279,6 +288,17 @@ class ConverterLogic(CallbackMixin):
         else:
             self._leave_stems_mode()
 
+        self._refresh_setup()
+
+    def set_joining_channels(self, channels: FrozenSet[ChannelName]) -> None:
+        """Names the channels a recording holds when it joins the list, carried between runs.
+
+        A run hands out what a recording joins with, so narrowing this narrows every gathered
+        recording to the channels still named; each keeps the choice it was given for a channel
+        left out and gets it back when that channel returns.
+        """
+        joining = CHANNEL_SLOT.write(self._joining_settings, channels)
+        self._session_manager.set_converter_settings(joining)
         self._refresh_setup()
 
     def set_channel_cap(self, channel_cap: int) -> None:
@@ -301,7 +321,7 @@ class ConverterLogic(CallbackMixin):
             logger.warning("A conversion or library generation is already in progress")
             return
 
-        if not self._config_manager.config.generation.channels:
+        if not self._enabled_channels:
             self.call(self.on_no_generators)
             return
 
@@ -438,7 +458,7 @@ class ConverterLogic(CallbackMixin):
 
     def _assign_paths(self, input_path: Path, config: Config) -> bool:
         try:
-            self._output_path = get_output_path(config, input_path, frozenset(config.generation.channels))
+            self._output_path = get_output_path(config, input_path, self._enabled_channels)
             self._input_path = input_path
             self._is_file = input_path.is_file()
         except FileNotFoundError as exception:
@@ -502,21 +522,21 @@ class ConverterLogic(CallbackMixin):
         In stems mode this is what the gathered levels amount to; otherwise it is one stem over
         every enabled channel, which is the classic run's shape.
         """
-        enabled = list(config.generation.channels)
         if self._stems_mode:
             return derive_conversion_setup(
                 self._sources,
                 self._levels,
-                frozenset(enabled),
+                self._enabled_channels,
                 channel_cap=self._effective_channel_cap,
                 hierarchy_mode=self._hierarchy_mode,
             )
 
+        joining = self._joining_settings
         return ConversionSetup(
             sources=(),
             stems=StemsConfig.single_entry(
-                enabled,
-                bending_channels(enabled),
+                joining.channels,
+                joining.bends,
                 channel_cap=self._effective_channel_cap,
             ),
         )
@@ -532,7 +552,7 @@ class ConverterLogic(CallbackMixin):
         return min(self._channel_cap, self._max_channel_cap())
 
     def _max_channel_cap(self) -> int:
-        return max(len(self._config_manager.config.generation.channels), MIN_CHANNEL_CAP)
+        return max(len(self._enabled_channels), MIN_CHANNEL_CAP)
 
     def _apply(self, levels: MixLevels) -> None:
         """Takes up rewritten levels and follows them wherever the setup changed."""
@@ -574,7 +594,7 @@ class ConverterLogic(CallbackMixin):
         sources = self._source_paths
         if sources:
             config = self._config_manager.config
-            self._output_path = group_output_path(config, sources, frozenset(config.generation.channels))
+            self._output_path = group_output_path(config, sources, self._enabled_channels)
 
     def _stem_rows(self, config: Config) -> Tuple[StemRowViewModel, ...]:
         """The gathered recordings as the panel reads them, each stating where it stands.
@@ -583,7 +603,7 @@ class ConverterLogic(CallbackMixin):
         path it landed on, and it offers a box on every channel the configuration enables. A
         recording that has left the disk since it was gathered reports itself as missing.
         """
-        enabled = frozenset(config.generation.channels)
+        enabled = self._enabled_channels
         return tuple(
             StemRowViewModel(
                 key=str(path),
@@ -691,7 +711,7 @@ class ConverterLogic(CallbackMixin):
             other_operation_active=self._is_operation_active(),
             stems_mode=self._stems_mode,
             stem_sources=self._stem_rows(config),
-            enabled_channels=frozenset(config.generation.channels),
+            enabled_channels=self._enabled_channels,
             channel_cap=self._effective_channel_cap,
             max_channel_cap=self._max_channel_cap(),
             hierarchy_mode=self._hierarchy_mode,

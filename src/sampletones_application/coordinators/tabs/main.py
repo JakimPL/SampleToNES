@@ -63,6 +63,7 @@ from sampletones_application.view_model.main.converter import ConverterViewModel
 from sampletones_application.view_model.main.reconstructor import (
     ReconstructorPanelViewModel,
 )
+from sampletones_application.view_model.main.updates import GenerationSettingsUpdate
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.converter import top_level_audio_files
@@ -173,7 +174,7 @@ class MainTabCoordinator:
         )
         self._reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(
             ReconstructorPanelViewModel(
-                channels=frozenset(_config.generation.channels),
+                channels=session_manager.converter_settings.channel_set,
                 drive=_config.generation.drive,
             ),
             layout=layout.main.reconstructor,
@@ -199,6 +200,7 @@ class MainTabCoordinator:
         )
         self._converter_logic: ConverterLogic = ConverterLogic(
             config_manager,
+            session_manager,
             conversion_service,
             scheduling=layout.scheduling,
             language_manager=language_manager,
@@ -220,7 +222,7 @@ class MainTabCoordinator:
 
         self._config_panel.on_audio_settings_changed = config_manager.apply_audio_settings
         self._config_panel.on_library_settings_changed = config_manager.apply_library_settings
-        self._reconstructor_panel.on_generation_settings_changed = config_manager.apply_generation_settings
+        self._reconstructor_panel.on_generation_settings_changed = self._apply_generation_settings
         self._advanced_settings_panel.on_advanced_settings_changed = config_manager.apply_advanced_settings
         self._advanced_settings_panel.on_select_library_directory = self._select_library_directory
         self._advanced_settings_panel.on_select_output_directory = self._select_output_directory
@@ -453,11 +455,21 @@ class MainTabCoordinator:
             )
         )
 
+    def _apply_generation_settings(self, update: GenerationSettingsUpdate) -> None:
+        """Routes one gesture on the reconstruction card to the two owners it reaches.
+
+        Drive shapes every run, so it belongs to the generation configuration; the channels are
+        what a recording joins the converter's list holding, which the session carries between
+        runs.
+        """
+        self._config_manager.apply_generation_settings(update)
+        self._converter_logic.set_joining_channels(frozenset(update.channels))
+
     def _update_reconstructor_panel_view(self) -> None:
         config = self._config_manager.config
         self._reconstructor_panel.update_view(
             ReconstructorPanelViewModel(
-                channels=frozenset(config.generation.channels),
+                channels=self._session_manager.converter_settings.channel_set,
                 drive=config.generation.drive,
             )
         )

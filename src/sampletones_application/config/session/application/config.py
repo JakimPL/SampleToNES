@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_application.config.session.application.audio import AudioConfig
 from sampletones_application.config.session.application.browser import BrowserConfig
+from sampletones_application.config.session.application.converter import ConverterConfig
 from sampletones_application.config.session.application.display import DisplayConfig
 from sampletones_application.config.session.application.favorites import Favorites
 from sampletones_application.config.session.application.history import HistoryConfig
@@ -25,6 +26,10 @@ class ApplicationConfig(BaseModel):
     browser: BrowserConfig = Field(
         default_factory=BrowserConfig,
         description="How the browsers of reconstructions read what they narrow to.",
+    )
+    converter: ConverterConfig = Field(
+        default_factory=ConverterConfig,
+        description="What a recording is converted with when it joins the converter's list.",
     )
     display: DisplayConfig = Field(
         default_factory=DisplayConfig,

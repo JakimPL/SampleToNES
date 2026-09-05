@@ -132,23 +132,46 @@ def _with_default_stems_record(data: SerializedData) -> SerializedData:
     return updated
 
 
+def _without_configured_channels(data: SerializedData) -> SerializedData:
+    """The embedded config with its channel list dropped, now the stems record carries it.
+
+    Which channels a run hands out is the setup's to state, so the configuration holds the
+    settings that shaped the library and nothing about the channels themselves.
+    """
+    config = data.get(CONFIG)
+    if not isinstance(config, dict):
+        return data
+
+    generation = config.get(GENERATION)
+    if not isinstance(generation, dict):
+        return data
+
+    updated = dict(data)
+    updated[CONFIG] = {
+        **config,
+        GENERATION: {key: value for key, value in generation.items() if key != CHANNELS},
+    }
+    return updated
+
+
 def update(data: SerializedData) -> SerializedData:
     """Names each stored stream and approximation by its channel.
 
     Data version 2.1 stored a channel's stream and approximation under the key
     ``generator_name`` and the channel selection under
-    ``config.generation.generators``. Data version 2.2 names them ``channel_name``
-    and ``config.generation.channels``, stamps the embedded config's metadata with the
-    new data version, records the source audio as one path per stem, and carries the
-    single-entry stems record every reconstruction states, down to the settings each
-    stem is converted with: the channels it takes, and the ones it carries towards its
-    own recording.
+    ``config.generation.generators``. Data version 2.2 names the streams
+    ``channel_name``, stamps the embedded config's metadata with the new data version,
+    records the source audio as one path per stem, and carries the single-entry stems
+    record every reconstruction states, down to the settings each stem is converted
+    with: the channels it takes, and the ones it carries towards its own recording. The
+    channel selection moves onto that record, so the embedded configuration lets it go.
     """
     updated = dict(data)
     updated = _renamed_stream_keys(updated)
     updated = _stamped_embedded_config(updated)
     updated = _normalized_source_paths(updated)
-    return _with_default_stems_record(updated)
+    updated = _with_default_stems_record(updated)
+    return _without_configured_channels(updated)
 
 
 V2_2: Final[VersionUpdate] = VersionUpdate(

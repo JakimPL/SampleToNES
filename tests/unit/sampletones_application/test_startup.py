@@ -366,12 +366,12 @@ class TestChannelKeys:
         with patch.object(app._shell, "get_current_tab", return_value=tab):
             _press_shortcut(app, CHANNEL_SHORTCUT_IDS[channel])
 
-    def test_the_main_tab_switches_the_generator_a_reconstruction_is_built_from(self, app: Application) -> None:
-        selected = frozenset(app.config_manager.config.generation.channels)
+    def test_the_main_tab_switches_the_channel_a_recording_joins_with(self, app: Application) -> None:
+        joining = app.session_manager.converter_settings.channel_set
 
         self._press(app, ChannelName.TRIANGLE, Tab.MAIN)
 
-        assert frozenset(app.config_manager.config.generation.channels) == selected ^ {ChannelName.TRIANGLE}
+        assert app.session_manager.converter_settings.channel_set == joining ^ {ChannelName.TRIANGLE}
 
     def test_the_sequencer_switches_its_mix(self, app: Application) -> None:
         self._press(app, ChannelName.NOISE, Tab.SEQUENCER)
@@ -452,7 +452,7 @@ class TestConverterStemsCard:
         """The row offers a checkbox per channel the configuration enables, ticked as the row holds it."""
         path = self._gather(app, tmp_path, ["a.wav"])[0]
         converter_logic = app._main_tab._converter_logic
-        enabled = list(converter_logic._config_manager.config.generation.channels)
+        enabled = app.session_manager.converter_settings.channels
         kept, cleared = enabled[-1], enabled[0]
 
         converter_logic.set_source_channels(path, frozenset({kept}))

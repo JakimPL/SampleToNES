@@ -40,7 +40,7 @@ class TestUpgradeBinary:
 
         assert upgrade_binary(ObjectKind.RECONSTRUCTION, binary) is binary
 
-    def test_reconstruction_upgrade_renames_channels_and_stamps(self) -> None:
+    def test_reconstruction_upgrade_names_streams_by_channel_and_stamps(self) -> None:
         binary = msgpack.packb(
             {
                 "metadata": {"reconstruction_data_version": "2.1"},
@@ -59,6 +59,7 @@ class TestUpgradeBinary:
 
         assert data["approximations_data"][0]["channel_name"] == "pulse1"
         assert "generator_name" not in data["approximations_data"][0]
-        assert data["config"]["generation"]["channels"] == ["pulse1", "noise"]
+        assert "channels" not in data["config"]["generation"]
+        assert data["stems_data"]["config"]["entries"][0]["settings"]["channels"] == ["pulse1", "noise"]
         assert data["config"]["metadata"]["reconstruction_data_version"] == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
         assert data["metadata"]["reconstruction_data_version"] == SAMPLETONES_RECONSTRUCTION_DATA_VERSION

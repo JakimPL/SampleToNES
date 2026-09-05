@@ -6,6 +6,7 @@ from sampletones_application.constants.playback import FollowMode
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
 from sampletones_core.data.metadata import Metadata
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.serialization import load_yaml, save_yaml_atomic
 from sampletones_shared.utils.system.paths import to_path
@@ -152,6 +153,14 @@ class ApplicationConfigManager:
 
     def set_follow_mode(self, value: FollowMode) -> None:
         self.config.playback.follow_mode = value
+
+    @property
+    def converter_settings(self) -> StemSettings:
+        """The settings a recording is given when it joins the converter's list."""
+        return self.config.converter.settings
+
+    def set_converter_settings(self, settings: StemSettings) -> None:
+        self.config.converter.settings = settings
 
     @property
     def octave(self) -> int:

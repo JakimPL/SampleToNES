@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES, MIN_CHANNEL_CAP
 from sampletones_application.logic.main.converter import (
     ConversionSuccess,
@@ -52,7 +54,13 @@ def _config_writing_under(reconstructions_directory: Path) -> Config:
 
 
 @pytest.fixture
-def converter_logic(tmp_path: Path) -> ConverterLogic:
+def session_manager(tmp_path: Path) -> SessionManager:
+    """A session writing under the test's own directory, so the joining settings round-trip."""
+    return SessionManager(UserProfile(config=tmp_path / "config.json", state=tmp_path / "state.yaml"))
+
+
+@pytest.fixture
+def converter_logic(tmp_path: Path, session_manager: SessionManager) -> ConverterLogic:
     """A converter reading a real configuration, so resolving where a run writes answers as it does live.
 
     The configuration writes under the test's own directory, which keeps a target this converter
@@ -70,6 +78,7 @@ def converter_logic(tmp_path: Path) -> ConverterLogic:
     )
     logic = ConverterLogic(
         config_manager,
+        session_manager,
         service,
         scheduling=scheduling,
         language_manager=FakeLanguageManager(TEXTS),  # type: ignore[arg-type]
@@ -143,10 +152,7 @@ class TestNoChannelsGuard:
         self,
         converter_logic: ConverterLogic,
     ) -> None:
-        config = converter_logic._config_manager.config
-        converter_logic._config_manager.config = config.model_copy(
-            update={"generation": config.generation.model_copy(update={"channels": []})}
-        )
+        converter_logic.set_joining_channels(frozenset())
         on_no_generators = MagicMock()
         converter_logic.on_no_generators = on_no_generators
 
@@ -499,15 +505,23 @@ class TestConversionPlan:
         assert isinstance(plan, DirectoryConversion)
         assert plan.directory == Path("/audio")
 
-    def test_the_setup_covers_every_enabled_channel(self, converter_logic: ConverterLogic) -> None:
-        """With no stems listed, one stem holds every channel the configuration enables."""
+    def test_the_setup_covers_every_channel_a_recording_joins_with(
+        self,
+        converter_logic: ConverterLogic,
+        session_manager: SessionManager,
+    ) -> None:
+        """With no stems listed, one stem holds the settings a recording joins the list with."""
         config = self._prepare(converter_logic, Path("/audio/kick.wav"), is_file=True)
-        channels = list(config.generation.channels)
+        joining = session_manager.converter_settings
 
         plan = converter_logic._conversion_plan(config, Path("/audio/kick.wav"))
 
-        assert plan.stems == StemsConfig.single_entry(channels, bending_channels(channels), channel_cap=len(channels))
-        assert plan.stems.covered_channels == frozenset(channels)
+        assert plan.stems == StemsConfig.single_entry(
+            joining.channels,
+            joining.bends,
+            channel_cap=len(joining.channels),
+        )
+        assert plan.stems.covered_channels == joining.channel_set
 
     def test_starting_hands_the_plan_to_the_service(self, converter_logic: ConverterLogic) -> None:
         config = self._prepare(converter_logic, Path("/audio/kick.wav"), is_file=True)
@@ -631,9 +645,13 @@ class TestStemsSetup:
             ("a.wav", 1, 2),
         ]
 
-    def test_the_cap_holds_within_the_channels_enabled(self, converter_logic: ConverterLogic) -> None:
-        config = self._with_config(converter_logic)
-        channels = list(config.generation.channels)
+    def test_the_cap_holds_within_the_channels_enabled(
+        self,
+        converter_logic: ConverterLogic,
+        session_manager: SessionManager,
+    ) -> None:
+        self._with_config(converter_logic)
+        channels = session_manager.converter_settings.channels
 
         converter_logic.set_channel_cap(len(channels) + 5)
 

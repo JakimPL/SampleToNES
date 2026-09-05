@@ -114,12 +114,7 @@ class ConfigManager:
         self,
         update: GenerationSettingsUpdate,
     ) -> None:
-        new_generation = self.config.generation.model_copy(
-            update={
-                "drive": update.drive,
-                "channels": update.channels,
-            }
-        )
+        new_generation = self.config.generation.model_copy(update={"drive": update.drive})
         self.config = self.config.model_copy(
             update={
                 "generation": new_generation,
