@@ -113,7 +113,7 @@ test:
 	$(call script,dev/tests)
 
 benchmarks:
-	uv run python -m pytest tests/benchmarks --no-cov
+	uv run python -m pytest tests/benchmarks --no-cov -s
 
 ftm-samples: export SAMPLETONES_FTM_OUTPUT_DIR := build/ftm
 ftm-samples:
