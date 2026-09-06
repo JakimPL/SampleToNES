@@ -78,6 +78,7 @@ class GUIStemSelectionWindow(GUIDialogWindow):
         self._list = GUIStemsList(
             prefix=PRE_MAIN_CONVERTER_CANDIDATE,
             layout=stems_layout,
+            ceiling=layout.stem_selection_list,
             glyphs=glyphs,
             language_manager=language_manager,
             status_bar=status_bar,

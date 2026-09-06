@@ -84,8 +84,8 @@ class FolderRenderer:
 
     @property
     def following(self) -> bool:
-        """An open folder holds back rows it has no room for, so a scroll asks it for others."""
-        return any(region.windowing for region in self._regions.values())
+        """An open folder stands as something other than it will, so the list settles it again."""
+        return any(region.settling for region in self._regions.values())
 
     def settle(self) -> Tuple[str, ...]:
         """Hold every open region to its ceiling and read what a row takes, a frame after a draw.

@@ -72,6 +72,7 @@ def stems_list(dpg_context: None, layout_config: LayoutConfig) -> GUIStemsList:
     built = GUIStemsList(
         prefix=PREFIX,
         layout=layout_config.general.stems,
+        ceiling=layout_config.general.stems.well_ceiling,
         glyphs=layout_config.glyphs.common,
         language_manager=LanguageManager(LANG_EN),
         status_bar=GUIStatusBar(),

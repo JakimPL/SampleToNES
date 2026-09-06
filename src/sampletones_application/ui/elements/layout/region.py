@@ -43,7 +43,8 @@ class WindowedRegion:
     The height a run of rows asks for is worked out from the reading of a row rather than read off
     the widgets, since a region already held to its ceiling clips what it holds and would measure
     its own ceiling back. A reading is therefore taken only while the region stands at the height
-    of what it holds, which :attr:`natural` reports.
+    of what it holds, which :attr:`natural` reports. A reading arrives after the height it decides
+    has been set, so :attr:`settling` asks for the pass that holds the region to it.
 
     A region redrawn because the reader scrolled leaves the scroll where they put it. The rows it
     holds change while the region itself stands, so a position written back would land against the
@@ -78,6 +79,7 @@ class WindowedRegion:
         self._total = 0
         self._windowed = False
         self._natural = True
+        self._reading_to_hold = False
         self._drawn: Window = NO_ROWS
         self._resting = NO_SCROLL
         self._restoring = False
@@ -101,6 +103,16 @@ class WindowedRegion:
     def windowing(self) -> bool:
         """The region holds back rows it has no room for, so a scroll asks it for different ones."""
         return self._windowed and self._drawn[1] < self._total
+
+    @property
+    def settling(self) -> bool:
+        """The region stands as something other than it will, so whoever drew it settles it again.
+
+        A region holding rows back answers a scroll with a different slice, and one that has
+        just read what a row takes holds itself to that reading in the pass that follows. Either
+        way what stands now is not what the region comes to rest as.
+        """
+        return self.windowing or self._reading_to_hold
 
     @property
     def natural(self) -> bool:
@@ -185,7 +197,8 @@ class WindowedRegion:
 
         if not self._geometry.measured:
             self._stand_at_natural_height()
-            return self._take_reading()
+            self._reading_to_hold = self._take_reading()
+            return self._reading_to_hold
 
         self._hold_rows()
         if self._restore():
@@ -289,6 +302,7 @@ class WindowedRegion:
         within = content <= self._ceiling
         self._height = content if within else float(self._ceiling)
         self._natural = within
+        self._reading_to_hold = False
         dpg_configure_item(
             self._tag,
             height=AUTO_HEIGHT if within else self._ceiling,

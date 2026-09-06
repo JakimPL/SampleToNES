@@ -50,6 +50,7 @@ class ConverterListing(CallbackMixin):
         self._stems_list = GUIStemsList(
             prefix=PRE_MAIN_CONVERTER_STEMS,
             layout=stems_layout,
+            ceiling=stems_layout.well_ceiling,
             glyphs=glyphs,
             language_manager=language_manager,
             status_bar=status_bar,

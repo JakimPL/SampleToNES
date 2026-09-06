@@ -1,4 +1,4 @@
-from typing import Iterator, List, Optional, Tuple
+from typing import Any, Iterator, List, Optional, Tuple
 from unittest.mock import patch
 
 import dearpygui.dearpygui as dpg
@@ -66,6 +66,11 @@ def draw(region: WindowedRegion, total: int, *, lead: Optional[LeadBuilder] = No
 
     region.draw(total, build, lead=lead)
     return asked
+
+
+def block_of(height: float) -> Any:
+    """Stands in for the rows a frame placed, which is what a reading of a row is taken from."""
+    return patch.object(dpg, "get_item_rect_size", return_value=[0, height])
 
 
 def reserves(region: WindowedRegion) -> Tuple[int, int]:
@@ -144,6 +149,62 @@ class TestAnUnmeasuredRegion(BaseTestSuite):
 
     def test_a_short_list_is_still_built_whole(self, unmeasured: WindowedRegion) -> None:
         assert draw(unmeasured, 4) == [(0, 4)]
+
+
+class TestAReadingTheHeightHasYetToFollow(BaseTestSuite):
+    """A region reads what a row takes from the rows it drew, which is a frame after it was sized.
+
+    The reading is what says how tall the whole list stands, so a region holding it is standing at
+    a height decided before it knew: :attr:`settling` is what asks for the pass that puts it right,
+    and without one a long list stands as tall as every row it drew.
+    """
+
+    @pytest.fixture
+    def unmeasured(self, dpg_context: None) -> WindowedRegion:
+        built = WindowedRegion(
+            tag=REGION_TAG,
+            geometry=RowGeometry.unmeasured(overscan=OVERSCAN),
+            ceiling=CEILING,
+            padding=0,
+            margin=0,
+        )
+        with dpg.window(tag=ROOT_TAG):
+            built.create(ROOT_TAG)
+
+        return built
+
+    def test_a_reading_asks_for_the_pass_that_holds_the_region_to_it(self, unmeasured: WindowedRegion) -> None:
+        drawn = draw(unmeasured, 500)
+        with block_of(drawn[0][1] * PITCH):
+            unmeasured.settle()
+
+        assert unmeasured.settling
+
+    def test_that_pass_holds_the_region_to_its_ceiling(self, unmeasured: WindowedRegion) -> None:
+        drawn = draw(unmeasured, 500)
+        with block_of(drawn[0][1] * PITCH):
+            unmeasured.settle()
+
+        assert unmeasured.settle()
+        assert not unmeasured.natural
+        assert draw(unmeasured, 500)[0][1] < drawn[0][1]
+
+    def test_it_comes_to_rest_once_the_height_follows_the_reading(self, unmeasured: WindowedRegion) -> None:
+        """A list the region shows whole holds nothing back, so the reading is the last thing due."""
+        drawn = draw(unmeasured, 4)
+        with block_of(drawn[0][1] * PITCH):
+            unmeasured.settle()
+
+        unmeasured.settle()
+
+        assert not unmeasured.settling
+
+    def test_a_region_with_nothing_to_read_asks_for_nothing(self, unmeasured: WindowedRegion) -> None:
+        """A region drawn where no frame has placed its rows measures nothing, and waits."""
+        draw(unmeasured, 4)
+        unmeasured.settle()
+
+        assert not unmeasured.settling
 
 
 class TestRedrawing(BaseTestSuite):

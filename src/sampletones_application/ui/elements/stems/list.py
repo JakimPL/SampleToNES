@@ -43,6 +43,10 @@ class GUIStemsList(CallbackMixin):
 
     The list holds the view it was last given and nothing beside it: the rows, the columns and
     what a gesture may reach are all read from that one value.
+
+    ``ceiling`` is the room its owner gives it: the list stands as tall as what it holds up to
+    that, and scrolls from there on. An owner drawing the list inside a space of its own states
+    the room that space has, so the list is the one thing in it that scrolls.
     """
 
     def __init__(
@@ -50,6 +54,7 @@ class GUIStemsList(CallbackMixin):
         *,
         prefix: str,
         layout: StemsListLayout,
+        ceiling: int,
         glyphs: CommonGlyphs,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -65,7 +70,7 @@ class GUIStemsList(CallbackMixin):
         self._region = WindowedRegion(
             tag=self._tags.well,
             geometry=self._geometry,
-            ceiling=layout.well_ceiling,
+            ceiling=ceiling,
             padding=layout.well_padding,
             margin=layout.well_margin,
         )
@@ -255,8 +260,8 @@ class GUIStemsList(CallbackMixin):
 
     @property
     def _following(self) -> bool:
-        """A region is holding rows back, so the list watches for the scroll that asks for them."""
-        return self._region.windowing or self._folders.following
+        """A region stands as something other than it will, so the list settles it once more."""
+        return self._region.settling or self._folders.following
 
     def _settle_soon(self) -> None:
         """Ask to read the drawn rows back once the frame that placed them has been rendered.
