@@ -112,16 +112,6 @@ class WindowedRegion:
         """How far the region has been scrolled, read from the region itself."""
         return self._scroll(dpg.get_y_scroll)
 
-    @property
-    def extent(self) -> float:
-        """How far the region can be scrolled, worked out from the room its rows ask for.
-
-        The travel follows from what the region reserved rather than from what it reports, since a
-        region asked to scroll reports its travel a frame late and would send the window to the
-        top of the list for that frame.
-        """
-        return self._travel(self._total)
-
     def opens_at(self, offset: float) -> None:
         """Open the region where the reader had scrolled the one it stands in place of.
 
@@ -227,19 +217,10 @@ class WindowedRegion:
     def _slice(self, offset: float, total: int) -> Window:
         """The rows the region's scroll position reaches, in the list it is a window onto.
 
-        The travel is worked out from the list being drawn rather than the one standing, so the
-        first draw of a region opens on the rows its position names.
+        The position is counted in the rooms the region reserves by, which is what the spacer
+        above the rows is built from, so the block stands over what the reader is looking at.
         """
-        return self._geometry.slice_of(
-            offset=offset,
-            extent=self._travel(total),
-            height=self._height,
-            total=total,
-        )
-
-    def _travel(self, total: int) -> float:
-        """How far a list of this length can be scrolled inside the region."""
-        return max(0.0, self._room_for(total) - self._height)
+        return self._geometry.slice_of(offset=offset, height=self._height, total=total)
 
     def _build_lead(self, lead: Optional[LeadBuilder]) -> None:
         """Open the group the heading stands in, and let its owner fill it."""

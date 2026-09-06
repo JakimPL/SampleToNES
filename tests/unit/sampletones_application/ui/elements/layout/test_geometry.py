@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Tuple
 
 import pytest
 
@@ -14,7 +15,8 @@ from tests.suite.case import BaseRegularTestCase
 OVERSCAN = 2
 PITCH = 20.0
 REGION_HEIGHT = 100.0
-TRAVEL = 1000.0
+TOTAL_ROWS = 100
+READING_STEPS = 40
 
 
 def measured(*, overscan: int = OVERSCAN, pitch: float = PITCH) -> RowGeometry:
@@ -43,7 +45,7 @@ class TestAnUnmeasuredGeometry(BaseTestSuite):
 
     def test_a_short_list_is_drawn_whole(self) -> None:
         geometry = RowGeometry.unmeasured(overscan=OVERSCAN)
-        assert geometry.slice_of(offset=0.0, extent=0.0, height=REGION_HEIGHT, total=3) == (0, 3)
+        assert geometry.slice_of(offset=0.0, height=REGION_HEIGHT, total=3) == (0, 3)
 
 
 class TestAMeasuredGeometry(BaseTestSuite):
@@ -81,8 +83,8 @@ class TestWindowSize(BaseTestSuite):
 
 
 class TestSliceOf(BaseTestSuite):
-    """Where a window opens follows how far through its travel the region is scrolled, so the top
-    of the list is reachable at the top and the end of it at the end."""
+    """Where a window opens is where the offset stands counted in the rooms the region reserves
+    by, so the top of the list is reachable at the top and the end of it at the end."""
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
@@ -93,54 +95,88 @@ class TestSliceOf(BaseTestSuite):
     test_cases = (
         TestCase(label="a_short_list_is_drawn_whole", offset=0.0, total=8, expected=(0, 8)),
         TestCase(label="a_list_the_size_of_the_window_is_drawn_whole", offset=0.0, total=10, expected=(0, 10)),
-        TestCase(label="the_top_opens_at_the_first_row", offset=0.0, total=100, expected=(0, 10)),
-        TestCase(label="the_middle_opens_halfway_down", offset=TRAVEL / 2, total=100, expected=(45, 10)),
-        TestCase(label="the_end_opens_at_the_last_rows", offset=TRAVEL, total=100, expected=(90, 10)),
+        TestCase(label="the_top_opens_at_the_first_row", offset=0.0, total=TOTAL_ROWS, expected=(0, 10)),
+        TestCase(label="a_row_down_carries_the_overscan", offset=PITCH, total=TOTAL_ROWS, expected=(0, 10)),
+        TestCase(label="the_middle_opens_halfway_down", offset=950.0, total=TOTAL_ROWS, expected=(45, 10)),
+        TestCase(label="the_end_opens_at_the_last_rows", offset=1900.0, total=TOTAL_ROWS, expected=(90, 10)),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_the_slice_follows_the_travel(self, test_case: TestCase) -> None:
+    def test_the_slice_follows_the_rooms_the_offset_counts_out(self, test_case: TestCase) -> None:
         window = measured().slice_of(
             offset=test_case.offset,
-            extent=TRAVEL,
             height=REGION_HEIGHT,
             total=test_case.total,
         )
         assert window == test_case.expected
 
     def test_the_end_of_the_list_is_reachable(self) -> None:
-        """A region scrolled to the end of its travel builds the rows at the end of its list."""
+        """A region scrolled to the end of its rows builds the rows at the end of its list."""
         total = 5_000
         geometry = measured()
-        start, count = geometry.slice_of(offset=TRAVEL, extent=TRAVEL, height=REGION_HEIGHT, total=total)
+        start, count = geometry.slice_of(offset=total * PITCH, height=REGION_HEIGHT, total=total)
         assert start + count == total
 
-    def test_a_region_with_no_travel_opens_at_the_top(self) -> None:
-        """A region measured before it has been laid out reports no travel, and the top of a list
-        is what stands until it reports some."""
-        geometry = measured()
-        start, _ = geometry.slice_of(offset=500.0, extent=0.0, height=REGION_HEIGHT, total=100)
-        assert start == 0
-
-    @pytest.mark.parametrize("offset", range(0, 1001, 37))
+    @pytest.mark.parametrize("offset", range(0, 2001, 37))
     def test_a_window_stays_inside_the_list_at_any_offset(self, offset: int) -> None:
-        total = 100
         start, count = measured().slice_of(
             offset=float(offset),
-            extent=TRAVEL,
             height=REGION_HEIGHT,
-            total=total,
+            total=TOTAL_ROWS,
         )
         assert start >= 0
-        assert start + count <= total
+        assert start + count <= TOTAL_ROWS
 
     def test_the_window_only_moves_forward_as_the_region_scrolls(self) -> None:
         geometry = measured()
         previous = 0
-        for offset in range(0, 1001, 13):
-            start, _ = geometry.slice_of(offset=float(offset), extent=TRAVEL, height=REGION_HEIGHT, total=500)
+        for offset in range(0, 10_001, 13):
+            start, _ = geometry.slice_of(offset=float(offset), height=REGION_HEIGHT, total=500)
             assert start >= previous
             previous = start
+
+
+class TestTheWindowCoversTheRegion(BaseTestSuite):
+    """The rows a window names stand across the region the offset it was chosen for is looking at.
+
+    A window is placed by the room reserved above it and filled with rows of whatever height the
+    theme draws them at, so the two agree in length only while the reading is exact. The rows
+    have to reach across the region either way: a reading over the height a row really takes is
+    what a list whose rows are drawn in tables of their own leaves behind, and a window chosen
+    against it left the foot of an open folder blank and its last rows out of reach.
+    """
+
+    @pytest.mark.parametrize("drawn", (PITCH * 0.8, PITCH, PITCH * 1.3))
+    def test_the_rows_it_names_reach_across_the_region(self, drawn: float) -> None:
+        geometry = measured()
+        for offset in self._offsets(geometry, drawn):
+            start, count = geometry.slice_of(offset=offset, height=REGION_HEIGHT, total=TOTAL_ROWS)
+            head = float(geometry.reserve(start))
+            assert head <= offset
+            assert head + count * drawn >= offset + REGION_HEIGHT
+
+    @pytest.mark.parametrize("drawn", (PITCH * 0.8, PITCH, PITCH * 1.3))
+    def test_the_last_row_stands_at_the_foot(self, drawn: float) -> None:
+        geometry = measured()
+        start, count = geometry.slice_of(
+            offset=self._offsets(geometry, drawn)[-1],
+            height=REGION_HEIGHT,
+            total=TOTAL_ROWS,
+        )
+        assert start + count == TOTAL_ROWS
+
+    @staticmethod
+    def _offsets(geometry: RowGeometry, drawn: float) -> Tuple[float, ...]:
+        """Every position the reader can scroll a region whose rows are drawn ``drawn`` tall.
+
+        What the region holds is the two reserves and the block of drawn rows, so a row drawn at
+        a height the reading overstates makes the content shorter than the rooms it was reserved
+        in, and the reader stops short of the travel the reserves alone would give.
+        """
+        count = geometry.size(REGION_HEIGHT)
+        content = geometry.reserve(TOTAL_ROWS) - geometry.reserve(count) + count * drawn
+        travel = content - REGION_HEIGHT
+        return tuple(travel * step / READING_STEPS for step in range(READING_STEPS + 1))
 
 
 class TestReserve(BaseTestSuite):
@@ -159,7 +195,7 @@ class TestReserve(BaseTestSuite):
     def test_the_reserves_and_the_drawn_rows_span_the_list(self) -> None:
         geometry = measured()
         total = 100
-        start, count = geometry.slice_of(offset=400.0, extent=TRAVEL, height=REGION_HEIGHT, total=total)
+        start, count = geometry.slice_of(offset=400.0, height=REGION_HEIGHT, total=total)
         spanned = geometry.reserve(start) + geometry.reserve(count) + geometry.reserve(total - start - count)
         assert spanned == geometry.reserve(total)
 

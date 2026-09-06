@@ -215,11 +215,13 @@ class GUIStemsList(CallbackMixin):
     def _plain_rows(self, view_model: StemsListViewModel) -> int:
         """How many rows of one height the well holds, which a reading of a row is counted from.
 
-        A well standing rows alone answers with its whole count. One standing a caption, a strip
-        or an open folder's region among them answers with none, since a block measured across
-        those would read a row as taller than it is.
+        A well standing recordings alone answers with its whole count. One standing a caption, a
+        strip or a folder answers with none: a folder is a table of its own with a region under
+        it, so a block measured across those carries a table's chrome per folder and reads a row
+        as taller than it is. The reading a folder's rows are reserved by is then the one that
+        folder's own region takes, from the run of rows it draws.
         """
-        if not view_model.collapse_levels or self._open_folders:
+        if not view_model.collapse_levels or view_model.holds_folders:
             return NO_ROWS
 
         return view_model.row_count

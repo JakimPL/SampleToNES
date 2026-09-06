@@ -58,23 +58,20 @@ class RowGeometry:
         """Whether a list of this length outgrows the region, which is what asks for a window."""
         return total > self.size(height)
 
-    def slice_of(self, *, offset: float, extent: float, height: float, total: int) -> Window:
+    def slice_of(self, *, offset: float, height: float, total: int) -> Window:
         """The rows a scroll position reaches: where the window opens, and how many it holds.
 
-        Where the window opens follows how far through its travel the region is scrolled rather
-        than how many rows that offset counts out, so the top of the list is reachable at the top
-        and the end of it at the end however the reading of a row stands. ``extent`` is how far
-        the region can be scrolled, which is what the offset is read against.
+        The window opens where the offset stands counted in the same rooms the undrawn rows are
+        reserved in, so the block a region builds covers the position it was chosen for whatever
+        the reading of a row stands at. The overscan above it is what a scroll back the way it
+        came meets, and the end of the list is what a region scrolled past its last window holds.
         """
         if not self.windows(height=height, total=total):
             return (0, total)
 
         count = self.size(height)
-        last = total - count
-        if extent <= UNMEASURED:
-            return (0, count)
-
-        return (max(0, min(round(offset / extent * last), last)), count)
+        reached = int(offset / self.room) - self.overscan
+        return (max(0, min(reached, total - count)), count)
 
     def reserve(self, rows: int) -> int:
         """The room a number of rows takes, which stands in place of the ones left undrawn."""
