@@ -163,16 +163,22 @@ again.
   releases moves inside the pending step, and a build writing the pending version writes the shape
   that step produces.
 
-* An occasional segmentation fault, the same one each time. The kernel records it as
-  `segfault at 10 ip 000000000180314d ... in python3.13`, and that address disassembles to
-  `method_dealloc+0x8d`: the instruction that loads the current thread state out of thread-local
-  storage and reads a field of it. The pointer is null, so a bound method — a callback — is being
-  freed on a thread the interpreter holds no state for. It has been recorded on 22 August, twice on
-  4 September and twice on 6 September, each time at that same instruction, so it predates the
-  converter rebuild and is deterministic in whatever reaches it rather than a race between threads.
-  The route that reaches it is still open: it was reported while opening a reconstruction, and
-  opening one by every route the interface offers has yet to reproduce it. A session started with
-  `PYTHONFAULTHANDLER=1` prints the Python frames at the fault, which is what would name the owner.
+* Opening a reconstruction segfaults the render loop. A faulthandler traceback names both sides:
+  the main thread is inside `render_dearpygui_frame`, and another thread is partway through
+  `filter_approximations`, reached from `tree.py::double_click_callback` through the browser, the
+  reconstruction coordinator and `display_reconstruction`. That second thread is DearPyGui's own:
+  a probe with a global mouse handler reports the callback on one thread identifier and the render
+  loop on another, so **DearPyGui invokes a widget's callback on a thread of its own**. Loading a
+  reconstruction therefore tears the whole tab down and rebuilds it — a plot series of nine million
+  points among it — while the renderer walks the items it is dropping.
+
+  The premise `architecture.md` states is the opposite of what the probe reads: it says manual
+  callback management is off and so a callback runs inside the frame, which would make
+  `on_render_thread` a direct call everywhere. It is not, and the sites that read as deferrals are
+  crossings that nothing performs. Either the gestures that rebuild widgets cross through
+  `on_render_thread`, or `manual_callback_management` is turned on and the frame drains DearPyGui's
+  own queue, which makes the document true and closes the class rather than this one instance. The
+  record: the same fault on 22 August, twice on 4 September and twice on 6 September.
 
 * No refreshing after library generation
 * Misaligned dialog boxes sizes at initialization
