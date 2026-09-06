@@ -5,6 +5,15 @@ components:
   - item_type: Checkbox
     entries:
       - type: color
+        key: FrameBg
+        value: .channel_pulse1_partial
+      - type: color
+        key: FrameBgHovered
+        value: .channel_pulse1_partial
+      - type: color
+        key: FrameBgActive
+        value: .channel_pulse1_partial
+      - type: color
         key: CheckMark
         value: .channel_pulse1_soft
       - type: color

@@ -32,6 +32,7 @@ colors:
   accent_hover: "#6fb8ff"
   accent_active: "#3585d6"
   accent_muted: "#3a5570"
+  accent_partial: "#4fa6ff55"
   on_accent: "#0b1520"
 
   primary: "#0e639c"
@@ -62,6 +63,10 @@ colors:
   channel_pulse2_soft: "#dcd3a4"
   channel_triangle_soft: "#aecadd"
   channel_noise_soft: "#c4c6cc"
+  channel_pulse1_partial: "#f0925655"
+  channel_pulse2_partial: "#f2d15f55"
+  channel_triangle_partial: "#7fc3f255"
+  channel_noise_partial: "#b4b8c055"
 
   tab: "#232325"
   tab_hovered: "#2d2d31"

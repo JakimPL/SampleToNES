@@ -14,6 +14,8 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_CHANNEL_MUTED,
     TAG_GLOBAL_THEME_DANGER_BUTTON,
     TAG_GLOBAL_THEME_STEMS_DROP_STRIP,
+    TAG_GLOBAL_THEME_STEMS_PICK,
+    TAG_GLOBAL_THEME_STEMS_PICK_PARTIAL,
     TAG_GLOBAL_THEME_STEMS_ROW,
     TAG_GLOBAL_THEME_STEMS_ROW_INERT,
 )
@@ -155,12 +157,17 @@ class StemRowRenderer:
         return row.takes_part
 
     def _tone_master(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
-        """Soften a picking box where the folder it stands for is picked only in part."""
+        """Fill a picking box where the folder it stands for is picked only in part.
+
+        A tick states an answer the folder has yet to give, so a half-picked one reads clear and
+        takes the accent as a fill instead: the reader sees at a glance that some of what the
+        folder holds is going into the mix, and one click settles the whole of it either way.
+        """
         if not self._offer.picking:
             return
 
         agreement = view_model.picking_of(row)
-        theme = TAG_GLOBAL_THEME_STEMS_ROW_INERT if agreement is Agreement.SOME else TAG_GLOBAL_THEME_STEMS_ROW
+        theme = TAG_GLOBAL_THEME_STEMS_PICK_PARTIAL if agreement is Agreement.SOME else TAG_GLOBAL_THEME_STEMS_PICK
         ThemeRegistry.get(theme).bind_to_item(self._tags.row(row.key, SUF_CHECKBOX))
 
     def _create_name(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:

@@ -69,9 +69,10 @@ from all**, they mix into a single reconstruction instead.
 A mix reaches eight recordings, so choosing it with a longer list asks which ones
 to mix, and so does adding a folder that overflows what is left. The question
 shows the same rows the card does — folders open onto what they hold, and one
-click answers for a whole folder. The first eight arrive ticked and every one is
-pickable, so swapping one for another is a click each; the line above counts what
-you have picked, and **Add** settles the mix once the pick fits.
+click answers for a whole folder, its box filling where only some of what it
+holds is picked. The first eight arrive ticked and every one is pickable, so
+swapping one for another is a click each; the line above counts what you have
+picked, and **Add** settles the mix once the pick fits.
 
 From the second recording of a mix, rows sit in **level** bands. A level is a turn
 to choose: every recording on level 1 picks its channels before any on level 2, so

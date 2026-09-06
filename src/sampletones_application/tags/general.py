@@ -308,6 +308,18 @@ TAG_GLOBAL_THEME_STEMS_ROW_INERT = TagName(
     Widget.THEME,
     "stems_row_inert",
 )
+TAG_GLOBAL_THEME_STEMS_PICK = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_pick",
+)
+TAG_GLOBAL_THEME_STEMS_PICK_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_pick_partial",
+)
 TAG_GLOBAL_THEME_STEMS_SLOT_LABEL = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
