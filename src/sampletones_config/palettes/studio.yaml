@@ -32,7 +32,7 @@ colors:
   accent_hover: "#a180ce"
   accent_active: "#7b629e"
   accent_muted: "#685386"
-  accent_partial: "#b98af355"
+  accent_partial: "#b98af3aa"
   on_accent: "#17131f"
 
   primary: "#8f6fc0"
@@ -63,10 +63,10 @@ colors:
   channel_pulse2_soft: "#dfd6a8"
   channel_triangle_soft: "#b9cedf"
   channel_noise_soft: "#cbcace"
-  channel_pulse1_partial: "#f0925655"
-  channel_pulse2_partial: "#f2d15f55"
-  channel_triangle_partial: "#8cc1ed55"
-  channel_noise_partial: "#bbb8c255"
+  channel_pulse1_partial: "#f0925688"
+  channel_pulse2_partial: "#f2d15f88"
+  channel_triangle_partial: "#8cc1ed88"
+  channel_noise_partial: "#bbb8c288"
 
   tab: "#24283a"
   tab_hovered: "#2f3a56"
