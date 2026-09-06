@@ -163,6 +163,17 @@ again.
   releases moves inside the pending step, and a build writing the pending version writes the shape
   that step produces.
 
+* An occasional segmentation fault, the same one each time. The kernel records it as
+  `segfault at 10 ip 000000000180314d ... in python3.13`, and that address disassembles to
+  `method_dealloc+0x8d`: the instruction that loads the current thread state out of thread-local
+  storage and reads a field of it. The pointer is null, so a bound method — a callback — is being
+  freed on a thread the interpreter holds no state for. It has been recorded on 22 August, twice on
+  4 September and twice on 6 September, each time at that same instruction, so it predates the
+  converter rebuild and is deterministic in whatever reaches it rather than a race between threads.
+  The route that reaches it is still open: it was reported while opening a reconstruction, and
+  opening one by every route the interface offers has yet to reproduce it. A session started with
+  `PYTHONFAULTHANDLER=1` prints the Python frames at the fault, which is what would name the owner.
+
 * No refreshing after library generation
 * Misaligned dialog boxes sizes at initialization
 * Audible noise instructions when matching near-silent samples for FFT γ0
