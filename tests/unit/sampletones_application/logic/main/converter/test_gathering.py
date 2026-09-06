@@ -174,28 +174,30 @@ class TestTurningToAMix:
     """A mix converts loose recordings and holds a fixed number of them."""
 
     def test_the_recordings_picked_stand_alone_and_in_order(self) -> None:
-        gathering = Gathering.empty().listing_folder(
-            folder("/audio", [recording("/audio/a.wav"), recording("/audio/b.wav")])
-        )
+        held = folder("/audio", [recording("/audio/a.wav"), recording("/audio/b.wav")])
+        gathering = Gathering.empty().listing_folder(held)
 
-        gathering = gathering.mixing_only((Path("/audio/b.wav"),))
+        gathering = gathering.mixing_only((recording("/audio/b.wav"),))
 
         assert _names(gathering) == ["b"]
         assert _mixed_names(gathering) == ["b"]
         assert gathering.folder_root_of(Path("/audio/b.wav")) is None
 
-    def test_a_recording_keeps_the_settings_it_stood_with(self) -> None:
-        gathering = Gathering.empty().listing(recording("/audio/a.wav", [ChannelName.NOISE]))
+    def test_a_recording_keeps_the_settings_it_is_named_with(self) -> None:
+        gathering = Gathering.empty().listing(recording("/audio/a.wav"))
 
-        settled = gathering.mixing_only((Path("/audio/a.wav"),)).recording(Path("/audio/a.wav"))
+        named = recording("/audio/a.wav", [ChannelName.NOISE])
+        settled = gathering.mixing_only((named,)).recording(Path("/audio/a.wav"))
 
         assert settled is not None
         assert settled.settings.channel_set == {ChannelName.NOISE}
 
-    def test_a_path_the_list_never_gathered_takes_no_part(self) -> None:
-        gathering = _listed("a").mixing_only((Path("/audio/a.wav"), Path("/audio/stranger.wav")))
+    def test_a_recording_the_list_never_gathered_joins_it(self) -> None:
+        """The mix and the list are one thing, so naming a recording is what brings it in."""
+        gathering = _listed("a").mixing_only((recording("/audio/a.wav"), recording("/audio/stranger.wav")))
 
-        assert _names(gathering) == ["a"]
+        assert _names(gathering) == ["a", "stranger"]
+        assert _mixed_names(gathering) == ["a", "stranger"]
 
 
 class TestTurningAwayFromAMix:

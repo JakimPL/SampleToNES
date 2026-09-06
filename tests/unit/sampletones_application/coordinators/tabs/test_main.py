@@ -438,9 +438,21 @@ class TestGatheringAFolder:
 
         coordinator._converter_logic.gather_folder.assert_not_called()
         offered, room, answer = coordinator._stem_selection_window.open.call_args.args
-        assert offered == rows
-        assert room == coordinator._converter_logic.room_for_sources
-        assert answer == coordinator._converter_logic.gather_recordings
+        assert offered == coordinator._converter_logic.gathered_rows + rows
+        assert room == MAX_STEM_SOURCES
+        assert answer == coordinator._converter_logic.mix_only
+
+    def test_a_full_mix_is_offered_beside_what_the_folder_holds(self, tmp_path: Path) -> None:
+        """A mix with no room left is answerable: letting one go is what makes room for another."""
+        rows = _rows_holding(1)
+        coordinator = _stems_coordinator(mixes=True, folder_rows=rows, room=0)
+        coordinator._converter_logic.gathered_rows = _rows_holding(*[1] * MAX_STEM_SOURCES)
+
+        _add_folder(coordinator, _folder_of(tmp_path, 1))
+
+        offered, room, _answer = coordinator._stem_selection_window.open.call_args.args
+        assert offered == coordinator._converter_logic.gathered_rows + rows
+        assert room == MAX_STEM_SOURCES
 
     def test_the_reading_is_put_on_screen(self, tmp_path: Path) -> None:
         """A folder of thousands takes seconds to read, so the reader is shown what they wait for."""

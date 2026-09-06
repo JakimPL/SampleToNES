@@ -50,8 +50,13 @@ class Gathering:
 
     @property
     def paths(self) -> Tuple[Path, ...]:
-        """Every gathered recording, in the order the list holds it."""
+        """Where every gathered recording stands, in the order the list holds it."""
         return self.sources.paths
+
+    @property
+    def recordings(self) -> Tuple[Recording, ...]:
+        """Every gathered recording, in the order the list holds it."""
+        return self.sources.recordings
 
     @property
     def mixed_paths(self) -> Tuple[Path, ...]:
@@ -150,22 +155,19 @@ class Gathering:
         """The setup as rewritten levels leave it, the recordings standing as they were."""
         return replace(self, levels=levels)
 
-    def mixing_only(self, paths: Tuple[Path, ...]) -> Self:
-        """The setup a mix runs from: exactly ``paths``, loose, each keeping what it was given.
+    def mixing_only(self, recordings: Tuple[Recording, ...]) -> Self:
+        """The setup a mix runs from: exactly these recordings, loose, in the order they are named.
 
-        This is what turning to a mix leaves behind — the folders give up the recordings they
-        stood for, and what the reader did not pick goes with them.
+        This is what answering for a mix leaves behind — the folders give up the recordings they
+        stood for, and what the reader did not name goes with them. A recording is handed in whole
+        rather than by path, so one the list already holds keeps what it was given and one joining
+        from a folder arrives under the settings a recording joins with.
         """
-        recordings = {recording.path: recording for recording in self.sources.recordings}
         sources = SourceList()
         levels = MixLevels()
-        for path in paths:
-            recording = recordings.get(path)
-            if recording is None:
-                continue
-
+        for recording in recordings:
             sources = sources.add_recording(recording)
-            levels = levels.add(path)
+            levels = levels.add(recording.path)
 
         return replace(self, sources=sources, levels=levels)
 

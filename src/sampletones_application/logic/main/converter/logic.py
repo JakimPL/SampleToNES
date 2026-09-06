@@ -149,8 +149,8 @@ class ConverterLogic(CallbackMixin):
 
         A mix reaches a fixed number of recordings, so a folder bringing in more than the room
         left is put to a reader as the same question the output switch asks: which of these to mix.
-        The rows are what the folder offers rather than what it would leave the list standing as,
-        since the answer names the recordings to gather.
+        The rows are what the folder offers, which the question stands beside the recordings the
+        mix is built from so that the reader chooses between the two.
         """
         standing = frozenset(self.gathered_paths)
         offered = tuple(self._gathered(path) for path in found if path not in standing)
@@ -321,13 +321,26 @@ class ConverterLogic(CallbackMixin):
             return
 
         gathering = self._state.gathering
-        settled = gathering.mixing_only(gathering.paths[:MAX_STEM_SOURCES]) if output.mixes else gathering.unmixed()
+        settled = (
+            gathering.mixing_only(gathering.recordings[:MAX_STEM_SOURCES]) if output.mixes else gathering.unmixed()
+        )
         self._settle(self._state.with_settings(self._settings.with_output(output)).with_gathering(settled))
 
     def mix_only(self, paths: Sequence[Path]) -> None:
-        """Names the recordings a mix converts, which is what a reader answers a full mix with."""
-        gathering = self._state.gathering.mixing_only(tuple(paths)[:MAX_STEM_SOURCES])
-        self._settle(self._state.with_settings(self._settings.with_output(OutputKind.MIXED)).with_gathering(gathering))
+        """Names the recordings a mix converts, gathering the ones the list does not hold yet.
+
+        This is the answer to both places a mix is put to the reader: narrowing a list longer than
+        one holds, and choosing between what the mix stands on and what a folder offers beside it.
+        Either way the answer names the whole mix, so what it leaves out goes and what it names
+        joins — a recording already listed keeping the settings it has.
+        """
+        gathering = self._state.gathering
+        mixed = tuple(self._standing(gathering, path) for path in tuple(paths)[:MAX_STEM_SOURCES])
+        self._settle(
+            self._state.with_settings(self._settings.with_output(OutputKind.MIXED)).with_gathering(
+                gathering.mixing_only(mixed)
+            )
+        )
 
     def set_joining_channels(self, channels: FrozenSet[ChannelName]) -> None:
         """Names the channels a recording holds when it joins the list, carried between runs.
@@ -414,6 +427,11 @@ class ConverterLogic(CallbackMixin):
     def _gathered(self, path: Path) -> Recording:
         """A recording joining the list, holding the settings a recording joins with."""
         return Recording(path=path, settings=self._joining_settings)
+
+    def _standing(self, gathering: Gathering, path: Path) -> Recording:
+        """The recording ``path`` names: the one the list holds, or one joining it."""
+        recording = gathering.recording(path)
+        return recording if recording is not None else self._gathered(path)
 
     def _gathering_folder(self, root: Path, found: Sequence[Path]) -> Gathering:
         """The setup with ``root`` standing as one row, or as it stands where the folder is empty."""

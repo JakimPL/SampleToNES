@@ -46,8 +46,9 @@ class GUIStemSelectionWindow(GUIDialogWindow):
     against the room, and the mix is settled once the pick fits.
 
     One layout answers both places a mix runs out of room: turning the output switch on a longer
-    list, and gathering a folder that overflows what is left. Each opening names what its own
-    answer reaches, since one narrows a list already gathered and the other gathers what it names.
+    list, and gathering a folder that overflows what is left. Both put the same question — which
+    recordings the mix is built from — so a folder is offered beside what the mix already stands
+    on and the answer names the whole of it.
     """
 
     def __init__(

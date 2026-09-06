@@ -572,6 +572,49 @@ class TestGatheringRecordings:
         ]
 
 
+class TestAnsweringWhichRecordingsToMix:
+    """A mix reaching a fixed number of recordings is put to the reader, and the answer is what
+    the mix is then built from: what it names joins, and what it leaves out goes."""
+
+    def _names(self, converter_logic: ConverterLogic) -> List[str]:
+        return [row.name for row in _view(converter_logic).stem_sources]
+
+    def test_the_answer_names_the_whole_mix(self, converter_logic: ConverterLogic) -> None:
+        _mixing(converter_logic, "a", "b", "c")
+
+        converter_logic.mix_only([Path("/audio/a.wav"), Path("/audio/c.wav")])
+
+        assert self._names(converter_logic) == ["a", "c"]
+
+    def test_a_recording_the_list_never_held_joins_it(self, converter_logic: ConverterLogic) -> None:
+        """A full mix is answered by letting one go for one a folder offered, in the one gesture."""
+        _mixing(converter_logic, *[str(index) for index in range(MAX_STEM_SOURCES)])
+
+        standing = [Path(f"/audio/{index}.wav") for index in range(MAX_STEM_SOURCES - 1)]
+        converter_logic.mix_only([*standing, Path("/audio/late.wav")])
+
+        assert self._names(converter_logic)[-1] == "late"
+        assert converter_logic.source_count == MAX_STEM_SOURCES
+
+    def test_a_recording_standing_keeps_the_channels_it_was_given(
+        self,
+        converter_logic: ConverterLogic,
+    ) -> None:
+        _mixing(converter_logic, "a", "b")
+        converter_logic.set_source_channels(Path("/audio/a.wav"), frozenset({ChannelName.NOISE}))
+
+        converter_logic.mix_only([Path("/audio/a.wav")])
+
+        assert _view(converter_logic).stem_sources[0].channels == frozenset({ChannelName.NOISE})
+
+    def test_the_run_it_leaves_is_a_mix(self, converter_logic: ConverterLogic) -> None:
+        _listed(converter_logic, "a", "b")
+
+        converter_logic.mix_only([Path("/audio/a.wav")])
+
+        assert converter_logic.mixes
+
+
 class TestWhatTheGatheredRecordingsRun:
     """What the converter asks the service to run, once a reader has set the mix up."""
 

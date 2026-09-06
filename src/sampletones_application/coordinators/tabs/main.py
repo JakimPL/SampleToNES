@@ -549,18 +549,23 @@ class MainTabCoordinator:
     def _mixing_beyond_room(self, found: Tuple[Path, ...]) -> bool:
         """Whether what was read brings in more than the mix has room for, which is a question.
 
-        The answer names the recordings to gather, so it reaches the same gathering a click in the
-        browser reaches and the setup stands as it was until the reader gives one.
+        A mix already standing on recordings leaves the reader a choice between those and the ones
+        the folder offers, so the question stands both together and opens with the mix as it is.
+        The answer names the whole mix, which is how letting one go makes room for another; the
+        setup stands as it was until the reader gives one.
         """
         if not self._converter_logic.mixes:
             return False
 
         offered = self._converter_logic.rows_offered(found)
-        room = self._converter_logic.room_for_sources
-        if sum(len(row.recordings) for row in offered) <= room:
+        if sum(len(row.recordings) for row in offered) <= self._converter_logic.room_for_sources:
             return False
 
-        self._stem_selection_window.open(offered, room, self._converter_logic.gather_recordings)
+        self._stem_selection_window.open(
+            self._converter_logic.gathered_rows + offered,
+            MAX_STEM_SOURCES,
+            self._converter_logic.mix_only,
+        )
         return True
 
     def _request_cancel_confirmation(self) -> None:
