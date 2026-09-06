@@ -38,6 +38,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
+from sampletones_application.utils.gui.callbacks import hold_callbacks
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
@@ -172,6 +173,7 @@ class ApplicationShell:
         initial_menu_state: MenuBarViewModel,
     ) -> None:
         dpg.create_context()
+        hold_callbacks()
         self._set_fonts()
         self._set_textures()
         self._register_shortcuts(bindings)

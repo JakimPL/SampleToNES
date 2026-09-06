@@ -133,12 +133,13 @@ again.
   `test_startup.py` builds the real application and drives gestures through it end to end — so the
   gap is that a case reading the coordinator's own behaviour cannot see a hook left unset. Building
   the object in that file is what closes it.
-* Principle 6 named a widget's callback as arriving on a thread of DearPyGui's own. It does not
-  here: `manual_callback_management` is never enabled, so a callback runs inside
-  `render_dearpygui_frame` and `on_render_thread` reaches it as a direct call. The principle and
-  the helper now state the hazard they answer — work arriving from a worker of our own. Whether to
-  enable manual callback management is a separate question: it would let a gesture's own work be
-  spread across frames, at the cost of every callback becoming a queued one.
+* Principle 6 was rewritten once on the premise that a widget's callback arrives on the render
+  thread, reasoned from `manual_callback_management` never having been enabled. A probe reads the
+  opposite: a global mouse handler reports one thread identifier and the render loop another, so
+  DearPyGui answers a gesture on a thread of its own and every callback that rebuilt widgets was
+  racing the renderer. Manual callback management is now on and the frame runs what DearPyGui
+  gathered, which makes the principle true rather than merely stated. What a gesture costs is now
+  paid between frames, so a callback heavy enough to be felt is one to spread across frames itself.
 * `state.last_paths.library` is written and never read. `SessionManager.set_library_path` records
   the directory a library was chosen from, and `get_library_path` is reached by no caller: the
   dialog that would open there takes its starting directory from the advanced settings panel
@@ -162,23 +163,6 @@ again.
   one in the current shape. The lesson holds for the rest of 0.3.2: a shape that moves between
   releases moves inside the pending step, and a build writing the pending version writes the shape
   that step produces.
-
-* Opening a reconstruction segfaults the render loop. A faulthandler traceback names both sides:
-  the main thread is inside `render_dearpygui_frame`, and another thread is partway through
-  `filter_approximations`, reached from `tree.py::double_click_callback` through the browser, the
-  reconstruction coordinator and `display_reconstruction`. That second thread is DearPyGui's own:
-  a probe with a global mouse handler reports the callback on one thread identifier and the render
-  loop on another, so **DearPyGui invokes a widget's callback on a thread of its own**. Loading a
-  reconstruction therefore tears the whole tab down and rebuilds it — a plot series of nine million
-  points among it — while the renderer walks the items it is dropping.
-
-  The premise `architecture.md` states is the opposite of what the probe reads: it says manual
-  callback management is off and so a callback runs inside the frame, which would make
-  `on_render_thread` a direct call everywhere. It is not, and the sites that read as deferrals are
-  crossings that nothing performs. Either the gestures that rebuild widgets cross through
-  `on_render_thread`, or `manual_callback_management` is turned on and the frame drains DearPyGui's
-  own queue, which makes the document true and closes the class rather than this one instance. The
-  record: the same fault on 22 August, twice on 4 September and twice on 6 September.
 
 * No refreshing after library generation
 * Misaligned dialog boxes sizes at initialization

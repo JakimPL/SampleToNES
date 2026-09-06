@@ -133,6 +133,7 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.frame_limiter import FrameLimiter
+from sampletones_application.utils.gui.callbacks import run_held_callbacks
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
@@ -1649,6 +1650,13 @@ class Application:
         dpg.render_dearpygui_frame()
 
     def _post_frame(self) -> None:
+        """Answer the gestures the frame gathered, then the work waiting on the render thread.
+
+        DearPyGui holds a widget's callback rather than running it where the gesture landed, so
+        the gestures run here — on the thread that drew the items they reach — and whatever they
+        ask of the queue is due from the same thread on the next pass.
+        """
+        run_held_callbacks()
         CaretOverlay.redraw()
         CallbackQueue.notify_frame()
         CallbackQueue.add(
