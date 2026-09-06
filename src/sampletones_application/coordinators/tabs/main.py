@@ -284,7 +284,6 @@ class MainTabCoordinator:
     def _wire_explorer(self) -> None:
         """What a gesture in the browser reaches: the converter, the tab's own guards, the app."""
         self._explorer_panel.set_callbacks(
-            on_wave_file_clicked=self._on_wave_file_clicked,
             on_directory_add_requested=self._on_directory_add_requested,
             on_file_add_requested=self._on_file_add_requested,
             can_add_stems=self._can_add_stems,
@@ -368,10 +367,6 @@ class MainTabCoordinator:
         self._converter_panel.update_view(view_model)
         self._update_reconstructor_panel_view()
         self._hooks.on_busy_state_changed()
-
-    def _on_wave_file_clicked(self, filepath: Path) -> None:
-        if not self._hooks.is_operation_active():
-            self._converter_logic.gather_recordings([filepath])
 
     def _request_reconstruct_file(self, filepath: Path) -> None:
         if self._notify_converter_running():

@@ -662,11 +662,12 @@ class TestMainTabReadingOrder:
 
 
 class TestBrowserGathering:
-    """What a gesture in the browser gathers: a click opens a folder, and Ctrl brings it in.
+    """What a gesture in the browser gathers: a plain click walks it, and gathering is asked for.
 
     Reading every recording below a folder is work a reader asks for, so it answers the gathering
-    gesture alone. A plain click on a folder walks the browser and leaves the conversion as it is,
-    which is what keeps navigating into a large tree from gathering it.
+    gesture alone. A plain click walks the browser and leaves the conversion as it is — opening a
+    folder, playing a recording — which is what keeps navigating a large tree from gathering it.
+    Ctrl brings in whatever the row names, and a double-click brings in a recording.
     """
 
     @staticmethod
@@ -707,16 +708,31 @@ class TestBrowserGathering:
             directory / "deeper" / "two.wav",
         }
 
-    def test_a_plain_click_on_a_recording_gathers_it(self, app: Application, tmp_path: Path) -> None:
-        """A recording is one path, so naming it costs nothing and a click is enough."""
-        directory = self._tree(tmp_path)
+    def test_a_plain_click_on_a_recording_gathers_nothing(self, app: Application, tmp_path: Path) -> None:
+        """A plain click previews a recording, so listening through a folder leaves the run alone."""
+        recording = self._recording(tmp_path)
         panel = app._main_tab._explorer_panel
-        recording = directory / "one.wav"
 
         with patch.object(explorer_module, "capture_modifiers", return_value=frozenset()):
-            panel._audio_node_clicked(FileSystemNode(recording.name, node_type=NodeType.FILE, filepath=recording))
+            panel._audio_node_clicked(self._node(recording))
+
+        assert app._main_tab._converter_logic.gathered_paths == ()
+
+    def test_a_double_click_on_a_recording_gathers_it(self, app: Application, tmp_path: Path) -> None:
+        """A recording is one path, so naming it costs nothing and one gesture brings it in."""
+        recording = self._recording(tmp_path)
+        panel = app._main_tab._explorer_panel
+
+        panel._on_file_node_double_clicked(0, (dpg.mvMouseButton_Left, 0), (self._node(recording), 0))
 
         assert app._main_tab._converter_logic.gathered_paths == (recording,)
+
+    def _recording(self, tmp_path: Path) -> Path:
+        return self._tree(tmp_path) / "one.wav"
+
+    @staticmethod
+    def _node(recording: Path) -> FileSystemNode:
+        return FileSystemNode(recording.name, node_type=NodeType.FILE, filepath=recording)
 
 
 class TestConverterStemsCard:

@@ -7,8 +7,9 @@ instruments, and building a whole song. Both assume it is already
 ## Reconstruct a sound into FamiTracker instruments
 
 1. Launch the app and open the **Main** tab.
-2. In the **Filesystem** browser on the left, click an audio file (WAV, MP3,
-   FLAC, OGG, AIFF, or AU) — or a folder, to reconstruct every audio file inside it.
+2. In the **Filesystem** browser on the left, double-click an audio file (WAV,
+   MP3, FLAC, OGG, AIFF, or AU) — or Ctrl-click a folder, to reconstruct every
+   audio file inside it.
 3. Optionally click the recording in the list and choose which channels it takes
    under **Reconstruction settings**, and adjust **General settings**. At least
    one channel must be enabled.

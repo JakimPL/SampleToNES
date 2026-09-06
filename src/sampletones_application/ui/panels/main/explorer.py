@@ -92,7 +92,6 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         self._language_manager = language_manager
         self._explorer_logic = explorer_logic
 
-        self.on_wave_file_clicked: Optional[PathCallback] = None
         self.on_directory_add_requested: Optional[PathCallback] = None
         self.on_file_add_requested: Optional[PathCallback] = None
         self.can_add_stems: Optional[Callable[[], bool]] = None
@@ -283,18 +282,26 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         return None
 
     def _audio_node_clicked(self, node: FileSystemNode) -> None:
-        """Answers a click on a recording: Ctrl gathers it as a stem, else it becomes the selection.
+        """Answers a click on a recording: Ctrl gathers it as a stem, and a plain click plays it.
 
-        Ctrl is the gathering gesture throughout the browser, so it reaches a recording the same
-        way it reaches a folder and does what **Add as stem** does, opening a stems conversion
-        where none is being built. A plain click hands the recording to the converter and plays it.
+        A plain click previews the recording and leaves the conversion as it stands, so walking the
+        browser to hear what a file holds costs the run nothing. Ctrl is the gathering gesture
+        throughout the browser, so it reaches a recording the same way it reaches a folder and does
+        what **Add as stem** does, opening a stems conversion where none is being built; where the
+        converter is busy it is a plain click, and the recording plays.
         """
-        if Modifier.CTRL in capture_modifiers() and self.query(self.can_add_stems, default=False):
-            self.call(self.on_file_add_requested, node.filepath)
+        if Modifier.CTRL in capture_modifiers() and self._gather_audio_node(node):
             return
 
-        self.call(self.on_wave_file_clicked, node.filepath)
         self._logic.request_autoplay(node)
+
+    def _gather_audio_node(self, node: FileSystemNode) -> bool:
+        """Hands a recording to the converter where it is free to take one, saying whether it went."""
+        if not self.query(self.can_add_stems, default=False):
+            return False
+
+        self.call(self.on_file_add_requested, node.filepath)
+        return True
 
     def _on_file_node_double_clicked(
         self,
@@ -309,8 +316,7 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
                 case extensions.EXT_FILE_RECONSTRUCTION:
                     self._load_reconstruction(node)
                 case suffix if suffix in extensions.EXT_FILES_AUDIO:
-                    self._logic.cancel_autoplay()
-                    return self._reconstruct_file(node)
+                    self._gather_audio_node(node)
                 case extensions.EXT_FILE_LIBRARY:
                     return self._load_library(node)
 
@@ -381,12 +387,6 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
             return self._explorer_logic.has_relevant_content(node.filepath)
 
         return True
-
-    def _reconstruct_file(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
-            return
-
-        self.call(self.on_reconstruct_file, node.filepath)
 
     def _toggle_directory_expansion(
         self,

@@ -36,10 +36,12 @@ you can rerun it to carry on where you stopped.
 
 ### What to convert
 
-The card holds a list of what a run converts. Click a recording in the browser to
-add it; right-click and choose **Add as stem**, or Ctrl-click, to do the same.
-Ctrl-click a folder — or use **Add folder as stems** — and the folder joins as
-one row standing for every recording below it, however deep the tree goes.
+The card holds a list of what a run converts. Double-click a recording in the
+browser to add it; right-click and choose **Add as stem**, or Ctrl-click, to do
+the same. A plain click plays the recording, so you can listen through a folder
+before you take anything from it. Ctrl-click a folder — or use **Add folder as
+stems** — and the folder joins as one row standing for every recording below it,
+however deep the tree goes.
 
 The channels are named once above the rows, and each row shows one recording and
 a checkbox under every channel it may use. Untick them all and the row grays out:
