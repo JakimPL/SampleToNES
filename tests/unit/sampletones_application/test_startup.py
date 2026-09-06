@@ -21,13 +21,16 @@ from sampletones_application.tags.general import (
     SUF_GROUP,
     SUF_STRIP,
     SUF_TABLE,
+    SUF_TABLE_COLUMN,
     SUF_TEXT,
     TAG_GLOBAL_THEME_STEMS_ROW_INERT,
 )
 from sampletones_application.tags.main import (
     PRE_MAIN_RECONSTRUCTOR_SLOT,
     TAG_MAIN_ADVANCED_PANEL,
+    TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL,
     TAG_MAIN_CONFIG_PANEL,
+    TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
     TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
     TAG_MAIN_CONVERTER_GROUP_CONTROLS,
     TAG_MAIN_CONVERTER_GROUP_ORDER,
@@ -632,6 +635,30 @@ class TestMainTabReadingOrder:
             coordinator._sync_config_row_height()
 
         assert dpg.get_item_configuration(TAG_MAIN_CONFIG_TABLE_CONFIG_ROW)["height"] == 0
+
+    @staticmethod
+    def _share(cell_tag: str) -> float:
+        """The share of the settings row the column behind a cell holds."""
+        column = compose_tag(cell_tag, SUF_TABLE_COLUMN)
+        return float(dpg.get_item_configuration(column)["init_width_or_weight"])
+
+    def test_the_advanced_card_leaves_the_row_and_comes_back_to_its_half(self, app: Application) -> None:
+        """One toggle leaves the row to the general card, the other gives the advanced one its half.
+
+        Which way the first toggle goes is whatever the session was left at, so the pair of shares
+        is what the rule states: nothing while the card is put away, and the general card's own
+        share once it stands again.
+        """
+        coordinator = app._main_tab
+        general = self._share(TAG_MAIN_CONFIG_PANEL_CONFIG_CELL)
+
+        coordinator.toggle_advanced_settings()
+        first = self._share(TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL)
+        coordinator.toggle_advanced_settings()
+        second = self._share(TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL)
+
+        assert general > 0
+        assert {first, second} == {0.0, general}
 
 
 class TestBrowserGathering:

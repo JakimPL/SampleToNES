@@ -665,6 +665,20 @@ class MainTabCoordinator:
 
         self._sync_explorer_width()
 
+    @property
+    def _config_columns(self) -> Tuple[ColumnSpec, ...]:
+        """The settings cards the tab lays side by side, in the order they read."""
+        return (
+            ColumnSpec(
+                tag=TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
+                build=self._config_panel.create_panel,
+            ),
+            ColumnSpec(
+                tag=TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL,
+                build=self._advanced_settings_panel.create_panel,
+            ),
+        )
+
     def _build_center(self, parent: str) -> None:
         """Stacks the settings cards side by side, then the converter and the card reading its list.
 
@@ -676,18 +690,9 @@ class MainTabCoordinator:
             panel_gap=self._geometry.panel_gap,
             height=self._config_height,
             tag=TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
-            columns=[
-                ColumnSpec(
-                    tag=TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
-                    build=self._config_panel.create_panel,
-                ),
-                ColumnSpec(
-                    tag=TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL,
-                    build=self._advanced_settings_panel.create_panel,
-                ),
-            ],
+            columns=self._config_columns,
         )
-        self._sync_config_row_height()
+        self._sync_advanced_settings()
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._converter_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
@@ -735,9 +740,10 @@ class MainTabCoordinator:
         self._sync_config_row_height()
 
     def _sync_config_row_height(self) -> None:
-        """Lets the shared config row size to its collapsed cards once both are collapsed, else keeps it full height."""
-        both_collapsed = self._config_panel.collapsed and self._advanced_settings_panel.collapsed
-        height = 0 if both_collapsed else self._config_height
+        """Lets the settings row size to its collapsed bars once every card standing in it is collapsed."""
+        advanced_stands = self._session_manager.advanced_settings and not self._advanced_settings_panel.collapsed
+        expanded = not self._config_panel.collapsed or advanced_stands
+        height = self._config_height if expanded else 0
         dpg_configure_item(TAG_MAIN_CONFIG_TABLE_CONFIG_ROW, height=height)
 
     def is_converter_active(self) -> bool:
@@ -773,11 +779,28 @@ class MainTabCoordinator:
         self._reconstructor_panel.toggle_channel(channel)
 
     def toggle_advanced_settings(self) -> None:
-        advanced_settings = self._session_manager.toggle_show_advanced_settings()
-        self._advanced_settings_panel.set_visibility(advanced_settings)
+        """Puts the advanced card away or stands it back beside the general one."""
+        self._session_manager.toggle_show_advanced_settings()
+        self._sync_advanced_settings()
 
     def sync_advanced_settings_visibility(self) -> None:
-        self._advanced_settings_panel.set_visibility(self._session_manager.advanced_settings)
+        """Stands the settings row as the session left it, which is what a launch opens on."""
+        self._sync_advanced_settings()
+
+    def _sync_advanced_settings(self) -> None:
+        """Stands the advanced card where the reader asked for it, the general one taking the rest.
+
+        The row divides itself among the cards standing in it, so a card put away leaves the whole
+        width to the one beside it and the general settings reach as far as the cards below them.
+        """
+        standing = self._session_manager.advanced_settings
+        cells = {TAG_MAIN_CONFIG_PANEL_CONFIG_CELL}
+        if standing:
+            cells.add(TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL)
+
+        self._advanced_settings_panel.set_visibility(standing)
+        TabColumns.stand_columns(self._config_columns, cells, self._geometry.panel_gap)
+        self._sync_config_row_height()
 
     def emit_initial_view(self) -> None:
         self._converter_logic.emit_initial_view()
