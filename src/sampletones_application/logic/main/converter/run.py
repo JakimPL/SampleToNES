@@ -140,7 +140,7 @@ class ConversionRun(CallbackMixin):
         self._service.cancel()
 
     def abandon(self) -> None:
-        """Gives up a request that never reached the service, which is a cancellation all the same."""
+        """Gives up a request still standing this side of the service, which cancels it all the same."""
         self._settle_as_canceled()
 
     def close(self) -> None:

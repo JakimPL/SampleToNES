@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -21,10 +21,10 @@ from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
-LEVEL_ABOVE: int = -1
-LEVEL_BELOW: int = 1
-POSITION_EARLIER: int = -1
-POSITION_LATER: int = 1
+LEVEL_ABOVE: Final[int] = -1
+LEVEL_BELOW: Final[int] = 1
+POSITION_EARLIER: Final[int] = -1
+POSITION_LATER: Final[int] = 1
 
 PathOffsetCallback = Callable[[Path, int], None]
 

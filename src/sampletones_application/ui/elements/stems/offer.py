@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Final
 
 
 @dataclass(frozen=True)
@@ -26,7 +27,7 @@ class StemsListOffer:
     picking: bool
 
 
-GATHERED_SOURCES: StemsListOffer = StemsListOffer(
+GATHERED_SOURCES: Final[StemsListOffer] = StemsListOffer(
     master_box=False,
     removal=True,
     keeps_last_row=False,
@@ -35,7 +36,7 @@ GATHERED_SOURCES: StemsListOffer = StemsListOffer(
     picking=False,
 )
 
-RECORDED_ASSIGNMENT: StemsListOffer = StemsListOffer(
+RECORDED_ASSIGNMENT: Final[StemsListOffer] = StemsListOffer(
     master_box=True,
     removal=True,
     keeps_last_row=True,
@@ -44,7 +45,7 @@ RECORDED_ASSIGNMENT: StemsListOffer = StemsListOffer(
     picking=False,
 )
 
-PICKED_SOURCES: StemsListOffer = StemsListOffer(
+PICKED_SOURCES: Final[StemsListOffer] = StemsListOffer(
     master_box=True,
     removal=False,
     keeps_last_row=False,

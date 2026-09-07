@@ -39,7 +39,7 @@ class ListShape:
 
         A folder opening or closing reshapes the list, since the region its recordings stand in
         is built and taken down with it, and so does a recording leaving the folder, since the
-        region then holds a row for something the list no longer stands for.
+        region draws a row for each one the list still stands for.
         """
         return cls(
             columns=view_model.channels_in_play,

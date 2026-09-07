@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Final, Tuple
+from typing import Final, Self, Tuple
 
 Window = Tuple[int, int]
 
@@ -31,7 +31,7 @@ class RowGeometry:
     pitch: float
 
     @classmethod
-    def unmeasured(cls, *, overscan: int) -> "RowGeometry":
+    def unmeasured(cls, *, overscan: int) -> Self:
         """The reading a list starts from, before it has drawn a row to measure."""
         return cls(overscan=overscan, pitch=UNMEASURED)
 

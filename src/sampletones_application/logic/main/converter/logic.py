@@ -334,7 +334,7 @@ class ConverterLogic(CallbackMixin):
         self._settle(self._state.with_settings(self._settings.with_output(output)).with_gathering(settled))
 
     def mix_only(self, paths: Sequence[Path]) -> None:
-        """Names the recordings a mix converts, gathering the ones the list does not hold yet.
+        """Names the recordings a mix converts, gathering each one the list has still to take up.
 
         This is the answer to both places a mix is put to the reader: narrowing a list longer than
         one holds, and choosing between what the mix stands on and what a folder offers beside it.
@@ -459,8 +459,8 @@ class ConverterLogic(CallbackMixin):
         """Takes up a rewritten setup and follows it wherever it reaches.
 
         A mix names its destination after the recordings that take part, so the path the panel
-        shows follows every gesture; a settled run returns to idle, since the setup it reported on
-        is no longer the one on screen.
+        shows follows every gesture; a settled run returns to idle, since the screen has moved on
+        from the setup it reported.
         """
         self._remember(state.settings)
         self._state = self._redirected(state.selecting(state.selected))
