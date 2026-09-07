@@ -11,12 +11,11 @@ token, resolved where it is drawn. This document holds the mechanism.
 
 ## A color is a token
 
-A color is written as a palette token and stays one until it reaches DearPyGui. `BaseColor`
-(`utils/palette/colors/`) carries what was written, and its `rgba` property answers with the palette
-active at the moment of the read, so whoever holds the color follows a palette swap. Every
-annotation names `BaseColor` — a dataclass field, a signature, a dictionary key — and `WrittenColor`
-appears only on the Pydantic field that validates a YAML entry. The read happens where the value is
-handed to a widget, and what a consumer keeps is the token.
+Every annotation names `BaseColor` (`utils/palette/colors/`) — a dataclass field, a signature, a
+dictionary key — and `WrittenColor` appears only on the Pydantic field that validates a YAML entry,
+which is the one place a written token is read out of the configuration. The `rgba` read happens
+where the value is handed to a widget, and what a consumer keeps is the token, so whoever holds a
+color follows a palette swap.
 
 ## A shade is composed by naming its form
 

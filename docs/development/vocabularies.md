@@ -64,10 +64,6 @@ language_manager[
 
 ## Widget tags
 
-The `tags/` package contains only DPG widget string identifiers: `TAG_*` whole tags, and
-`SUF_*`/`PRE_*` fragments that compose into them. Dimensions, colors, timings, and display strings
-live in YAML configuration loaded at startup (`layout/`).
-
 ### `compose_tag` is the one composer
 
 `tags/compose.py` owns `TAG_SEPARATOR` and the joiner; every tag reaches its final spelling through
@@ -75,7 +71,7 @@ it. Each part is lowercased and its whitespace runs become single underscores, s
 runtime name — a sample title, a layer label — reads the same however that name arrives cased or
 spaced, and a part already holding a composed tag contributes its own segments, which is how a child
 tag extends its parent. Fragments hold bare segments (`SUF_GRAPH_PLOT = "plot"`) and gain separators
-from the joiner, so a fragment reads as the segment it names and either end composes onto it.
+only from the joiner, so a fragment reads as the segment it names and either end composes onto it.
 
 ### A whole tag is a `TagName`
 

@@ -108,7 +108,7 @@ DearPyGui gives every key handler the same global reach, so priority and consume
 
 A binding is declared once and read by everyone who prints or fires it: `ShortcutId` names the action together with the category that answers it, and the scheme under `sampletones_config/keybindings/` decides the combination, so a printed key and the handler behind it stay in step by construction.
 
-The router is constructed at the composition root and injected into every consumer (principle 7); its one global handler is bound in `shell.py` once the DPG context exists. The scopes, the focus query, the modal stack, the key vocabulary, and how a scheme is chosen, layered, and edited are in [`keyboard.md`](keyboard.md).
+The router is constructed at the composition root and injected into every consumer (principle 7). The scopes, the focus query, the modal stack, the key vocabulary, and how a scheme is chosen, layered, and edited are in [`keyboard.md`](keyboard.md).
 
 ### 13. A color is a token, resolved where it is drawn
 
@@ -140,9 +140,7 @@ Two mechanisms keep the codebase aligned with this document.
 
 They read the source as an AST through the shared layer in `sampletones_shared/meta/source/`, which discovers modules, resolves the receiver a subscript sits on, and expands an enum-annotated key part to its members; the palette and shortcut checks read the shipped YAML beside it. That layer derives each package directory from its own location and reports a root it finds nothing at, so a check that sweeps nothing fails loudly where it would otherwise pass clean. Because the checks are global by nature — a dead entry and an unread fragment are both absences — the hooks pass whole-tree rather than filenames.
 
-**Behavioral contracts are enforced by review.** Contracts a grep cannot see — where state lives, which methods touch DPG, how errors travel — are upheld in code review against this document. Deviations that survive review are recorded in `docs/development/bugs-and-todos.md § Architecture` until they are paid off; the ledger, not the codebase, is the memory of what is currently out of line.
-
-**A contract and the code that meets it change together.** A change that alters a contract this document states lands with the document edit that states it, and a deviation it knowingly leaves behind lands with a ledger entry — `guidelines.md` § Documents holds the general rule. Every branch therefore leaves an updated contract, a recorded deviation, or both, which is what a later reader has to go on.
+**Behavioral contracts are enforced by review.** Contracts a grep cannot see — where state lives, which methods touch DPG, how errors travel — are upheld in code review against this document. A change that alters one of them lands with the edit stating the new contract, and one that knowingly leaves a distance behind lands with an entry in `docs/development/bugs-and-todos.md § Architecture` — `guidelines.md` § Documents holds that rule. The ledger, not the codebase, is the memory of what is currently out of line.
 
 ---
 

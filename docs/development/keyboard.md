@@ -14,13 +14,14 @@ mechanism behind both.
 
 ## The dispatcher
 
-DearPyGui delivers a press to every registered key handler with the same global reach, so priority
-and consume semantics exist where the application builds them. A single `KeyRouter`
+DearPyGui delivers a press to every registered key handler with the same global reach, and gives
+none of them a way to stop another — or ImGui itself — from also seeing it, so priority and consume
+semantics exist only where the application builds them. A single `KeyRouter`
 (`utils/gui/keyboard/`) owns the one `add_key_press_handler` for the whole application, snapshots
 the modifier state once into a frozen `KeyEvent`, and offers that event to registered **scopes**
 from highest priority to lowest. The first active scope whose handler returns `True` claims the
-press and ends the walk; this software walk is the consume mechanism the framework leaves
-available.
+press and ends the walk; this software walk is the sole consume mechanism the framework
+leaves available.
 
 Each keyboard consumer registers one scope through `register(handle, *, priority, active)`, where
 `active()` reports whether the scope wants keys at this moment and `handle(event) -> bool` acts on
@@ -70,8 +71,8 @@ lifetime, and the built-in `MODAL` scope routes each press to the top of the sta
 outranks the panel and shortcut scopes, every scope beneath it reads the keyboard as though the
 application held no dialogs at all.
 
-The router is constructed at the composition root and injected into every consumer (architecture
-principle 7); its one global handler is bound in `shell.py` once the DPG context exists.
+Its one global handler is bound in `shell.py` once the DPG context exists, on the router the
+composition root built and injected into every consumer (architecture principle 7).
 
 ---
 
@@ -81,11 +82,9 @@ One key table (`utils/gui/keyboard/keys.py`) reads a key both ways — the name 
 code a press carries — and one combination type, `KeyCombination`, parses that spelling, displays
 it, and answers whether a press matches it.
 
-Above them a binding is declared exactly once: `ShortcutId` names every action a key reaches
-together with the category that answers it, and the scheme under `sampletones_config/keybindings/`
-is where the combination is decided. The menu printing an accelerator, the panel acting on a press,
-and the dispatcher firing the callback all read that one entry, so a printed key and the handler
-behind it stay in step by construction.
+Above them stands the one declared binding (architecture principle 12). The menu printing an
+accelerator, the panel acting on a press, and the dispatcher firing the callback all read that one
+entry, so each of the three shows or fires whatever the scheme currently says.
 
 **The combination is data and the category is code.** Which keys reach an action is the reader's to
 choose, while which scope answers them follows from where the action is handled. A scheme is
