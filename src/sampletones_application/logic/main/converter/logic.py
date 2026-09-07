@@ -4,7 +4,6 @@ from typing import Callable, FrozenSet, Optional, Sequence, Tuple
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
@@ -133,6 +132,16 @@ class ConverterLogic(CallbackMixin):
     def room_for_sources(self) -> int:
         """How many more recordings the mix has room for."""
         return self._state.gathering.room
+
+    @property
+    def mix_ceiling(self) -> int:
+        """How many recordings one mix reaches, which is the room a reader picks one within."""
+        return self._state.gathering.ceiling
+
+    @property
+    def list_fits_a_mix(self) -> bool:
+        """One mix has room for the whole list, so turning to one takes it as it stands."""
+        return self._state.gathering.fits_a_mix
 
     @property
     def gathered_paths(self) -> Tuple[Path, ...]:
@@ -285,10 +294,8 @@ class ConverterLogic(CallbackMixin):
         A folder its recordings already agree on lets the channel go; every other reading settles
         the whole folder on it, so one gesture always moves the group somewhere.
         """
-        gathering = self._state.gathering
-        key = SourceKey.folder(root)
-        held = gathering.sources.agreement(key, CHANNEL_SLOT, channel_name).settles_to
-        self._settle(self._state.with_gathering(gathering.settled(key, CHANNEL_SLOT, channel_name, held)))
+        gathering = self._state.gathering.toggled(SourceKey.folder(root), CHANNEL_SLOT, channel_name)
+        self._settle(self._state.with_gathering(gathering))
 
     def move_source_within_level(self, path: Path, offset: int) -> None:
         """Moves a recording past the neighbor it shares a level with."""
@@ -322,7 +329,7 @@ class ConverterLogic(CallbackMixin):
 
         gathering = self._state.gathering
         settled = (
-            gathering.mixing_only(gathering.recordings[:MAX_STEM_SOURCES]) if output.mixes else gathering.unmixed()
+            gathering.mixing_only(gathering.recordings[: gathering.ceiling]) if output.mixes else gathering.unmixed()
         )
         self._settle(self._state.with_settings(self._settings.with_output(output)).with_gathering(settled))
 
@@ -335,7 +342,7 @@ class ConverterLogic(CallbackMixin):
         joins — a recording already listed keeping the settings it has.
         """
         gathering = self._state.gathering
-        mixed = tuple(self._standing(gathering, path) for path in tuple(paths)[:MAX_STEM_SOURCES])
+        mixed = tuple(self._standing(gathering, path) for path in tuple(paths)[: gathering.ceiling])
         self._settle(
             self._state.with_settings(self._settings.with_output(OutputKind.MIXED)).with_gathering(
                 gathering.mixing_only(mixed)

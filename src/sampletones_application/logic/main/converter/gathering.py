@@ -44,9 +44,19 @@ class Gathering:
         return self.sources.row_count
 
     @property
+    def ceiling(self) -> int:
+        """How many recordings one mix reaches, whatever the list holds."""
+        return self.levels.ceiling
+
+    @property
     def room(self) -> int:
         """How many more recordings the mix has room to take."""
         return self.levels.room
+
+    @property
+    def fits_a_mix(self) -> bool:
+        """One mix has room for every recording gathered, so turning to one asks the reader nothing."""
+        return self.count <= self.ceiling
 
     @property
     def paths(self) -> Tuple[Path, ...]:
@@ -122,6 +132,10 @@ class Gathering:
     ) -> Self:
         """The setup with ``channel_name`` settled on every recording ``key`` stands for."""
         return replace(self, sources=self.sources.settled(key, slot, channel_name, held))
+
+    def toggled(self, key: SourceKey, slot: SettingsSlot, channel_name: ChannelName) -> Self:
+        """The setup one gesture on ``key`` leaves behind, settled the way the row reads."""
+        return replace(self, sources=self.sources.toggled(key, slot, channel_name))
 
     def toggled_throughout(self, slot: SettingsSlot, channel_name: ChannelName) -> Self:
         """The setup with ``channel_name`` settled the one way on every recording listed."""

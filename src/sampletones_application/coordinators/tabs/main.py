@@ -6,7 +6,6 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.logic.instruction.library_manager import (
@@ -473,14 +472,14 @@ class MainTabCoordinator:
         holds while the question stands, since the run is what the reader is being asked about.
         Every other switch takes effect straight away.
         """
-        if not output.mixes or len(self._converter_logic.gathered_paths) <= MAX_STEM_SOURCES:
+        if not output.mixes or self._converter_logic.list_fits_a_mix:
             self._converter_logic.set_output(output)
             return
 
         self._converter_logic.refresh_view()
         self._stem_selection_window.open(
             self._converter_logic.gathered_rows,
-            MAX_STEM_SOURCES,
+            self._converter_logic.mix_ceiling,
             self._converter_logic.mix_only,
         )
 
@@ -569,7 +568,7 @@ class MainTabCoordinator:
 
         self._stem_selection_window.open(
             self._converter_logic.gathered_rows + offered,
-            MAX_STEM_SOURCES,
+            self._converter_logic.mix_ceiling,
             self._converter_logic.mix_only,
         )
         return True

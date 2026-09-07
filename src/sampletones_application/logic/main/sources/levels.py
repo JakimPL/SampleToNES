@@ -44,9 +44,14 @@ class MixLevels:
         return len(self.levels)
 
     @property
+    def ceiling(self) -> int:
+        """How many recordings one mix reaches, which is the ceiling every reader of it asks for."""
+        return MAX_STEM_SOURCES
+
+    @property
     def room(self) -> int:
         """How many more recordings this mix reaches."""
-        return MAX_STEM_SOURCES - self.count
+        return self.ceiling - self.count
 
     def holds(self, path: Path) -> bool:
         return path in self.paths

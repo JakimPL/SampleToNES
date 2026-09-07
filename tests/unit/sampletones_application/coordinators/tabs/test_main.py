@@ -196,6 +196,7 @@ def _stems_coordinator(
     gathered: Tuple[Path, ...] = (),
     folder_rows: Tuple[MagicMock, ...] = (),
     room: int = MAX_STEM_SOURCES,
+    ceiling: int = MAX_STEM_SOURCES,
 ) -> MainTabCoordinator:
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
     coordinator._hooks = _hooks(operation_active=operation_active)
@@ -207,6 +208,8 @@ def _stems_coordinator(
     coordinator._converter_logic.gathered_paths = gathered
     coordinator._converter_logic.source_count = len(gathered)
     coordinator._converter_logic.room_for_sources = room
+    coordinator._converter_logic.mix_ceiling = ceiling
+    coordinator._converter_logic.list_fits_a_mix = len(gathered) <= ceiling
     coordinator._converter_logic.rows_offered.return_value = folder_rows
     coordinator._stem_selection_window = MagicMock()
     coordinator._scan_window = MagicMock()

@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import FrozenSet, Optional, Tuple
 
-from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.logic.main.converter.destination import Destination
 from sampletones_application.logic.main.converter.gathering import Gathering
 from sampletones_application.logic.main.converter.state import ConverterState
@@ -60,7 +59,7 @@ def compose_view(
         channel_cap=settings.effective_channel_cap,
         max_channel_cap=settings.max_channel_cap,
         hierarchy_mode=settings.hierarchy_mode,
-        max_sources=MAX_STEM_SOURCES,
+        max_sources=state.gathering.ceiling,
         selected_key=_selected_key(state),
     )
 

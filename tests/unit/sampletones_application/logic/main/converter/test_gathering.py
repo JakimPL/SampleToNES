@@ -80,6 +80,13 @@ class TestTheCeilingAMixHoldsTo:
         assert gathering.count == MAX_STEM_SOURCES
         assert gathering.recording(Path("/audio/one_more.wav")) is None
 
+    def test_a_list_within_the_ceiling_fits_one_mix(self) -> None:
+        assert _listed(*[f"source{index}" for index in range(MAX_STEM_SOURCES)]).fits_a_mix is True
+
+    def test_a_list_past_the_ceiling_does_not(self) -> None:
+        """Turning to a mix is what asks this, so a longer list is what the reader is asked about."""
+        assert _listed(*[f"source{index}" for index in range(MAX_STEM_SOURCES + 1)]).fits_a_mix is False
+
 
 class TestSettlingOneRecording:
     def test_a_slot_settles_on_the_recording_named(self) -> None:
