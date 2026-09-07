@@ -144,6 +144,32 @@ again.
   the directory a library was chosen from, and `get_library_path` is reached by no caller: the
   dialog that would open there takes its starting directory from the advanced settings panel
   instead. Either the dialog reads the remembered path or the field and its pair of accessors go.
+* Which recordings a mix is built from is decided in `ui/` until **Add** is pressed. The chooser
+  holds the pick as its own `_picked` set and asks `StemsListViewModel` how a gesture moves it —
+  `picking_of`, `reaches` and `picking_settled` compute the transitions in `view_model/shared/`,
+  which is a projection answering a question about state rather than describing one. The logic
+  layer hears the answer and nothing before it, so a pick abandoned by closing the window was
+  never state anyone else could read. Principles 3 and 4 put that machine in `logic/`, with the
+  chooser drawing what a view model says and reporting the gesture; moving it is a phase rather
+  than a patch, because the dialog is what drives the pick today.
+* `ConverterMessages` reads the strings it puts to a reader once, at construction, where principle
+  8 has text resolve at the point of use so a language change takes effect on the next read. The
+  stage names and the status lines are cached as fields; the templates the run fills are read live.
+  This predates the converter's rebuild — the class it replaced cached the same way — and the fix
+  is the same either way: read each key where it is used, and let the manager answer.
+* `FolderScan` (`logic/main/sources/scan.py`) runs a long directory read on a worker and reports
+  back, which is what `services/` is for, while standing in `logic/`. It reports through optional
+  hooks rather than the result union, and its reports arrive on the worker's own thread, so the
+  coordinator crosses to the render thread on its behalf rather than the walk posting to
+  `CallbackQueue`. It stays there because it is short and the tab is its only caller; what a move
+  would buy is the exhaustive `match` every other long operation reports through.
+* Every gesture re-derives the whole setup. `ConverterLogic._settle` reads the gathered sources
+  into rows and follows the state to its destination, which builds one batch entry per recording
+  still holding a channel. Measured by `tests/benchmarks/test_converter_load.py` on a folder of ten
+  thousand: 38 ms of row reading and 53 ms of entry derivation, so a click on a channel box spends
+  about a tenth of a second on model work before a widget is touched — all of it repeated, since
+  what changed was one recording. Answering it means holding the rows against the gathering that
+  produced them and deriving entries for the recordings a gesture actually moved.
 * Several directories under `ui/` carry modules without an `__init__.py`, which leaves each one a
   namespace package. A tool reading the tree treats such a directory as a root it can import from,
   so a module inside one answers for a standard-library name of the same word: `ui/elements/trace.py`

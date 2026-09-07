@@ -7,9 +7,14 @@ import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.loader import load_layout_config
+from sampletones_application.logic.main.converter.destination import Destination
 from sampletones_application.logic.main.converter.gathering import Gathering
+from sampletones_application.logic.main.converter.settings import RunSettings
+from sampletones_application.logic.main.converter.setup import batch_entries
+from sampletones_application.logic.main.converter.state import ConverterState
 from sampletones_application.logic.main.converter.view import stem_rows
 from sampletones_application.logic.main.sources.folder import Folder
 from sampletones_application.logic.main.sources.key import SourceKey
@@ -34,6 +39,7 @@ from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.shared.stems import StemsListViewModel
+from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from tests.suite.base import BaseTestSuite
@@ -62,6 +68,21 @@ def folder_of(root: Path, count: int) -> Folder:
 def gathering_of(root: Path, count: int) -> Gathering:
     """The setup a reader is left with after gathering one folder of ``count`` recordings."""
     return Gathering.empty().listing_folder(folder_of(root, count))
+
+
+def state_of(root: Path, count: int) -> ConverterState:
+    """The setup a per-recording run derives its entries from, one folder gathered into it."""
+    return ConverterState(
+        settings=RunSettings(
+            joining=SETTINGS,
+            output=OutputKind.PER_RECORDING,
+            channel_cap=len(ChannelName),
+            hierarchy_mode=DEFAULT_STEMS_HIERARCHY_MODE,
+        ),
+        gathering=gathering_of(root, count),
+        destination=Destination.unset(),
+        selected=None,
+    )
 
 
 def seconds(work: Callable[[], object]) -> float:
@@ -144,6 +165,30 @@ class TestReadingTheRowsAGestureLeaves(BaseTestSuite):
 
         assert len(rows) == 1
         assert rows[0].holds == LARGE_FOLDER
+
+
+class TestReadingWhereEachRecordingIsWritten(BaseTestSuite):
+    """Every gesture derives the entries a per-recording run would write.
+
+    Settling the setup follows it to the destination, which builds one entry per gathered recording
+    holding a channel and asks the list which folder each was gathered from. So this runs on every
+    click beside the row reading, and the bound holds it to the length of the list rather than to
+    the list times the folders standing in it.
+    """
+
+    def test_it_costs_what_the_list_holds(self) -> None:
+        small = state_of(SMALL_ROOT, SMALL_FOLDER)
+        large = state_of(LARGE_ROOT, LARGE_FOLDER)
+        one, many, report = growth(lambda: batch_entries(small), lambda: batch_entries(large))
+
+        assert many < linear(one), report
+
+    def test_it_writes_an_entry_for_every_recording_a_folder_holds(self) -> None:
+        """What the derivation costs is what it builds, which is one entry per recording."""
+        entries = batch_entries(state_of(LARGE_ROOT, LARGE_FOLDER))
+
+        assert len(entries) == LARGE_FOLDER
+        assert entries[0].base_directory == LARGE_ROOT
 
 
 class TestSettlingAChannel(BaseTestSuite):
