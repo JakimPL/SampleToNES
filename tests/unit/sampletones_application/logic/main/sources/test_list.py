@@ -5,10 +5,11 @@ from sampletones_application.logic.main.sources.list import SourceList
 from sampletones_application.logic.main.sources.slots import BEND_SLOT, CHANNEL_SLOT
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_core.constants.enums import ChannelName
+from tests.suite.base import BaseTestSuite
 from tests.unit.sampletones_application.logic.main.sources.factories import folder, recording
 
 
-class TestGatheringRecordings:
+class TestGatheringRecordings(BaseTestSuite):
     def test_a_recording_named_stands_as_a_row_of_its_own(self) -> None:
         sources = SourceList().add_recording(recording("/audio/a.wav"))
         assert sources.paths == (Path("/audio/a.wav"),)
@@ -25,7 +26,7 @@ class TestGatheringRecordings:
         assert sources.rows == (first,)
 
 
-class TestGatheringAFolder:
+class TestGatheringAFolder(BaseTestSuite):
     def test_a_folder_stands_as_one_row_holding_its_recordings(self) -> None:
         gathered = folder("/audio", [recording("/audio/a.wav"), recording("/audio/b.wav")])
         sources = SourceList().add_folder(gathered)
@@ -68,7 +69,7 @@ class TestGatheringAFolder:
         assert sources.folder_root_of(Path("/audio/a.wav")) is None
 
 
-class TestAFolderStandingForNothing:
+class TestAFolderStandingForNothing(BaseTestSuite):
     """A row names the recordings a run writes, so a folder naming none stays out of the list."""
 
     def test_an_empty_folder_leaves_the_list_as_it_is(self) -> None:
@@ -85,7 +86,7 @@ class TestAFolderStandingForNothing:
         assert sources.row_count == 1
 
 
-class TestLettingSourcesGo:
+class TestLettingSourcesGo(BaseTestSuite):
     def test_a_folder_goes_with_everything_it_holds(self) -> None:
         gathered = folder("/audio", [recording("/audio/a.wav"), recording("/audio/b.wav")])
         sources = SourceList().add_folder(gathered).remove(gathered.key)
@@ -109,7 +110,7 @@ class TestLettingSourcesGo:
         assert sources.paths == (Path("/audio/b.wav"),)
 
 
-class TestSettlingWhatARowStandsFor:
+class TestSettlingWhatARowStandsFor(BaseTestSuite):
     def test_a_recording_settles_on_its_own(self) -> None:
         row = recording("/audio/a.wav")
         sources = SourceList().add_recording(row).settled(row.key, CHANNEL_SLOT, ChannelName.NOISE, True)
@@ -135,7 +136,7 @@ class TestSettlingWhatARowStandsFor:
         assert untouched.settings.channel_set == {ChannelName.PULSE1}
 
 
-class TestHowAFolderReads:
+class TestHowAFolderReads(BaseTestSuite):
     def test_a_folder_every_recording_of_which_holds_it_reads_as_all(self) -> None:
         gathered = folder("/audio", [recording("/audio/a.wav"), recording("/audio/b.wav")])
         sources = SourceList().add_folder(gathered)
@@ -161,7 +162,7 @@ class TestHowAFolderReads:
         )
 
 
-class TestOneGestureOnARow:
+class TestOneGestureOnARow(BaseTestSuite):
     def test_a_folder_its_recordings_disagree_on_settles_on_all_of_them(self) -> None:
         gathered = folder(
             "/audio",

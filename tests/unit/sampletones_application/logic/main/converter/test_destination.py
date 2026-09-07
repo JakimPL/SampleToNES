@@ -3,9 +3,10 @@ from typing import Tuple
 
 from sampletones_application.logic.main.converter.destination import Destination
 from sampletones_core.configs import Config
+from tests.suite.base import BaseTestSuite
 
 
-class TestTheDocumentARunIsMaking:
+class TestTheDocumentARunIsMaking(BaseTestSuite):
     """A run of one names itself after the reconstruction it writes."""
 
     def test_the_output_names_the_reconstruction(self) -> None:
@@ -32,7 +33,7 @@ class TestTheDocumentARunIsMaking:
         assert (destination.output_path, destination.reconstruction_name) == (written, "mixed")
 
 
-class TestWhereAMixWrites:
+class TestWhereAMixWrites(BaseTestSuite):
     def test_a_mix_with_nobody_taking_part_stands_where_it_was(self) -> None:
         destination = Destination.unset()
         sources: Tuple[Path, ...] = ()

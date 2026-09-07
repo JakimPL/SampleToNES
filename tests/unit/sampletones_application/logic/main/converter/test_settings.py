@@ -6,6 +6,7 @@ from sampletones_application.logic.main.converter.settings import RunSettings
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from tests.suite.base import BaseTestSuite
 
 TONES: List[ChannelName] = [ChannelName.PULSE1, ChannelName.PULSE2, ChannelName.TRIANGLE]
 
@@ -23,7 +24,7 @@ def _joining(channels: List[ChannelName]) -> StemSettings:
     return StemSettings(channels=channels, bends=bending_channels(channels))
 
 
-class TestTheCapARunHoldsTo:
+class TestTheCapARunHoldsTo(BaseTestSuite):
     def test_a_cap_beyond_the_channels_there_are_is_held_to_them(self) -> None:
         settings = _settings(TONES).with_channel_cap(len(ChannelName) + 5)
 
@@ -39,7 +40,7 @@ class TestTheCapARunHoldsTo:
         assert settings.effective_channel_cap == 3
 
 
-class TestTheShapeOfTheRun:
+class TestTheShapeOfTheRun(BaseTestSuite):
     def test_the_run_is_named_as_a_mix(self) -> None:
         assert _settings(TONES).with_output(OutputKind.MIXED).mixes is True
 

@@ -17,6 +17,7 @@ from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending
 from sampletones_core.reconstructions.converter import BatchConversion, GroupConversion
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from tests.suite.base import BaseTestSuite
 from tests.unit.sampletones_application.logic.main.sources.factories import folder, recording
 
 JOINING: List[ChannelName] = [ChannelName.PULSE1, ChannelName.PULSE2, ChannelName.TRIANGLE]
@@ -59,7 +60,7 @@ def _state(
     )
 
 
-class TestWhatAPerRecordingRunConverts:
+class TestWhatAPerRecordingRunConverts(BaseTestSuite):
     """One reconstruction per gathered recording, each under the settings its own row holds."""
 
     def test_a_recording_becomes_an_entry_of_its_own(self) -> None:
@@ -94,7 +95,7 @@ class TestWhatAPerRecordingRunConverts:
         assert conversion_plan(_state(output=OutputKind.PER_RECORDING)) is None
 
 
-class TestWhatAMixRuns:
+class TestWhatAMixRuns(BaseTestSuite):
     def test_a_mix_groups_every_gathered_recording(self) -> None:
         plan = conversion_plan(_state(output=OutputKind.MIXED, mixed=["/audio/a.wav", "/audio/b.wav"]))
 

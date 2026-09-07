@@ -35,6 +35,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.ui.elements.stems.offer import StemsListOffer
+from sampletones_application.ui.elements.stems.tags import StemsTags
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
@@ -45,9 +46,11 @@ from sampletones_application.view_model.shared.stems import (
 )
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.callback import Callback
+from tests.suite.base import BaseTestSuite
 
 ROOT_TAG = "test_root"
 PREFIX = "test.stems"
+TAGS: Final[StemsTags] = StemsTags(prefix=PREFIX)
 CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.TRIANGLE)
 DRAG_PAYLOAD_SLOT: Final[int] = 3
 LONG_LIST: Final[int] = 200
@@ -155,17 +158,16 @@ def view(
 
 
 def row_tag(entry: StemRowViewModel, suffix: str) -> str:
-    return compose_tag(PREFIX, SUF_ROW, entry.key, suffix)
+    return TAGS.row(entry.key, suffix)
 
 
 def channel_tag(entry: StemRowViewModel, channel_name: ChannelName) -> str:
-    return compose_tag(PREFIX, SUF_ROW, entry.key, SUF_CHANNELS, compose_tag(channel_name, SUF_CHECKBOX))
+    return TAGS.channel(entry.key, channel_name)
 
 
 def hover_handler(suffix: str) -> Callback:
     """The hover callback a row widget of that kind shares, as DearPyGui would call it."""
-    registry = compose_tag(PREFIX, suffix, SUF_HANDLER_REGISTRY)
-    return dpg.get_item_callback(dpg.get_item_children(registry, 1)[-1])
+    return dpg.get_item_callback(dpg.get_item_children(TAGS.handlers(suffix), 1)[-1])
 
 
 def folder_row(
@@ -194,16 +196,17 @@ def folder_row(
     )
 
 
-class TestFolderRows:
+class TestFolderRows(BaseTestSuite):
     """A folder is one row answering for the recordings below it."""
 
     def test_a_folder_names_itself_and_how_many_it_holds(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config)
         sources = folder_row("sources", holds=3)
+        named = LanguageManager(LANG_EN)["global.stems.template.folder_row"].format(name="sources", count=3)
 
         stems_list.update_view(view(sources))
 
-        assert dpg.get_item_label(row_tag(sources, SUF_TEXT)) == "sources  (3)"
+        assert dpg.get_item_label(row_tag(sources, SUF_TEXT)) == named
 
     def test_a_channel_every_recording_holds_reads_ticked(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config)
@@ -253,7 +256,7 @@ class TestFolderRows:
         assert toggled == [(sources.key, ChannelName.PULSE1)]
 
 
-class TestRows:
+class TestRows(BaseTestSuite):
     def test_a_row_names_its_recording_and_offers_every_channel_in_play(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config)
         bass = row("bass")
@@ -315,7 +318,7 @@ class TestRows:
         assert stems_list.row("nothing") is None
 
 
-class TestLevels:
+class TestLevels(BaseTestSuite):
     def test_each_level_carries_its_own_band(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config)
         rows = (
@@ -325,8 +328,9 @@ class TestLevels:
 
         stems_list.update_view(view(*rows))
 
-        assert dpg.get_value(compose_tag(PREFIX, SUF_LEVEL, "0", SUF_TEXT)) == "LEVEL 1"
-        assert dpg.get_value(compose_tag(PREFIX, SUF_LEVEL, "1", SUF_TEXT)) == "LEVEL 2"
+        caption = LanguageManager(LANG_EN)["global.stems.template.level_caption"]
+        assert dpg.get_value(TAGS.level(0, SUF_TEXT)) == caption.format(1).upper()
+        assert dpg.get_value(TAGS.level(1, SUF_TEXT)) == caption.format(2).upper()
 
     def test_a_draggable_list_opens_a_strip_above_each_level_and_below_the_last(
         self, dpg_context: None, layout_config
@@ -340,10 +344,10 @@ class TestLevels:
         stems_list.update_view(view(*rows))
 
         for position in range(3):
-            assert dpg.does_item_exist(compose_tag(PREFIX, SUF_LEVEL, str(position), SUF_STRIP))
+            assert dpg.does_item_exist(TAGS.level(position, SUF_STRIP))
 
 
-class TestAffordances:
+class TestAffordances(BaseTestSuite):
     def test_a_draggable_list_makes_the_row_itself_the_thing_you_drag(
         self,
         dpg_context: None,
@@ -367,7 +371,7 @@ class TestAffordances:
         stems_list.update_view(view(bass))
 
         assert not dpg.get_item_children(row_tag(bass, SUF_TEXT), DRAG_PAYLOAD_SLOT)
-        assert not dpg.does_item_exist(compose_tag(PREFIX, SUF_LEVEL, "0", SUF_STRIP))
+        assert not dpg.does_item_exist(TAGS.level(0, SUF_STRIP))
 
     def test_a_removable_list_gives_each_row_a_button(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config, removal=True)
@@ -386,7 +390,7 @@ class TestAffordances:
         assert not dpg.does_item_exist(row_tag(bass, SUF_BUTTON))
 
 
-class TestRetainedLastRow:
+class TestRetainedLastRow(BaseTestSuite):
     def test_a_list_holding_on_to_its_last_row_offers_no_way_to_remove_it(
         self,
         dpg_context: None,
@@ -427,7 +431,7 @@ class TestRetainedLastRow:
         assert dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
 
 
-class TestGestures:
+class TestGestures(BaseTestSuite):
     def test_unticking_a_channel_reports_the_row_and_what_it_keeps(self, dpg_context: None, layout_config) -> None:
         reported: List[Tuple[str, FrozenSet[ChannelName]]] = []
         stems_list = build(layout_config)
@@ -454,7 +458,7 @@ class TestGestures:
         assert removed == [bass.key]
 
 
-class TestBusyState:
+class TestBusyState(BaseTestSuite):
     def test_a_list_that_is_not_live_disables_every_control_it_drew(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config)
         bass = row("bass")
@@ -477,7 +481,7 @@ class TestBusyState:
         assert dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
 
 
-class TestVanishedWidgets:
+class TestVanishedWidgets(BaseTestSuite):
     """DearPyGui reports a hover a frame after it happened, by which time the row may have gone."""
 
     def test_a_hover_naming_a_row_that_went_is_let_be(self, dpg_context: None, layout_config) -> None:
@@ -506,7 +510,7 @@ class TestVanishedWidgets:
         assert dpg.get_alias_id(channel_tag(bass, ChannelName.PULSE1)) == standing
 
 
-class TestOfferedChannels:
+class TestOfferedChannels(BaseTestSuite):
     def test_a_row_draws_a_box_only_on_the_channels_it_offers(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config)
         bass = row("bass", channels=frozenset({ChannelName.PULSE1}), offered_channels=frozenset({ChannelName.PULSE1}))
@@ -534,7 +538,7 @@ class TestOfferedChannels:
         assert dpg.does_item_exist(channel_tag(bass, ChannelName.TRIANGLE))
 
 
-class TestMasterCheckbox:
+class TestMasterCheckbox(BaseTestSuite):
     def test_a_master_box_reads_whether_the_row_holds_a_channel(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config, master_box=True)
         playing = row("bass")
@@ -594,7 +598,7 @@ class TestMasterCheckbox:
         assert not dpg.does_item_exist(row_tag(bass, SUF_CHECKBOX))
 
 
-class TestMutedChannels:
+class TestMutedChannels(BaseTestSuite):
     def test_a_muted_channel_takes_the_muted_tone(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config)
         bass = row("bass")
@@ -626,7 +630,7 @@ class TestMutedChannels:
         assert dpg.get_item_theme(channel_tag(bass, ChannelName.TRIANGLE)) != muted
 
 
-class TestCollapsedLevels:
+class TestCollapsedLevels(BaseTestSuite):
     def test_collapsing_draws_every_row_in_one_table(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config, dragging=False)
         rows = (
@@ -637,7 +641,7 @@ class TestCollapsedLevels:
         stems_list.update_view(view(*rows, collapse_levels=True))
 
         assert dpg.does_item_exist(stems_list.tags.table)
-        assert not dpg.does_item_exist(compose_tag(PREFIX, SUF_LEVEL, "0", SUF_TEXT))
+        assert not dpg.does_item_exist(TAGS.level(0, SUF_TEXT))
         for entry in rows:
             assert dpg.does_item_exist(row_tag(entry, SUF_TEXT))
 
@@ -652,11 +656,11 @@ class TestCollapsedLevels:
         stems_list.update_view(view(*rows))
 
         assert not dpg.does_item_exist(stems_list.tags.table)
-        assert dpg.does_item_exist(compose_tag(PREFIX, SUF_LEVEL, "0", SUF_TEXT))
-        assert dpg.does_item_exist(compose_tag(PREFIX, SUF_LEVEL, "1", SUF_TEXT))
+        assert dpg.does_item_exist(TAGS.level(0, SUF_TEXT))
+        assert dpg.does_item_exist(TAGS.level(1, SUF_TEXT))
 
 
-class TestActivation:
+class TestActivation(BaseTestSuite):
     def test_a_clicked_row_reports_itself(self, dpg_context: None, layout_config) -> None:
         activated: List[str] = []
         stems_list = build(layout_config, dragging=False)
@@ -681,7 +685,7 @@ class TestActivation:
         assert dpg.get_value(row_tag(bass, SUF_TEXT)) is False
 
 
-class TestTheHeading:
+class TestTheHeading(BaseTestSuite):
     """The channels are named once above the rows, whatever shape the list takes below it."""
 
     def test_a_plain_list_names_them(self, dpg_context: None, layout_config) -> None:
@@ -699,7 +703,7 @@ class TestTheHeading:
         assert dpg.does_item_exist(compose_tag(PREFIX, SUF_HEADING, ChannelName.PULSE1, SUF_TEXT))
 
 
-class TestTheWell:
+class TestTheWell(BaseTestSuite):
     """The well keeps the card's shape: where its rows are recordings alone it builds the ones it
     shows and reserves the room for the rest, and it holds every row otherwise."""
 

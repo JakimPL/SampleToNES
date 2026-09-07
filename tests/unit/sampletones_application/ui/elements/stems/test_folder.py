@@ -36,6 +36,7 @@ from sampletones_application.view_model.shared.stems import (
     StemsListViewModel,
 )
 from sampletones_core.constants.enums import ChannelName
+from tests.suite.base import BaseTestSuite
 
 ROOT_TAG = "test_root"
 PREFIX = "test.stems"
@@ -161,7 +162,7 @@ def folder_without(row: StemRowViewModel, leaving: StemRowViewModel) -> StemRowV
     return row.model_copy(update={"held": held})
 
 
-class TestAClosedFolder:
+class TestAClosedFolder(BaseTestSuite):
     """A folder arrives closed, standing as one row that names how many recordings it brought in."""
 
     def test_it_draws_no_region(self, stems_list: GUIStemsList) -> None:
@@ -186,7 +187,7 @@ class TestAClosedFolder:
         assert not dpg.does_item_exist(twisty_of(bass))
 
 
-class TestOpeningAFolder:
+class TestOpeningAFolder(BaseTestSuite):
     """The marker beside a folder's name puts its recordings in view, and puts them away again."""
 
     def test_the_marker_opens_a_region(self, stems_list: GUIStemsList) -> None:
@@ -232,7 +233,7 @@ class TestOpeningAFolder:
         assert dpg.does_item_exist(region_of(sources))
 
 
-class TestARecordingInsideAFolder:
+class TestARecordingInsideAFolder(BaseTestSuite):
     """A reader who opened a folder answers for one of its recordings without leaving the list."""
 
     def test_it_draws_a_box_on_every_channel_it_offers(self, stems_list: GUIStemsList) -> None:
@@ -257,7 +258,7 @@ class TestARecordingInsideAFolder:
         assert settled == [(held.key, frozenset({ChannelName.TRIANGLE}))]
 
 
-class TestDoubleClick:
+class TestDoubleClick(BaseTestSuite):
     """A double-click opens what it landed on: a folder shows what it holds, a recording sounds."""
 
     def test_a_double_clicked_folder_opens(self, stems_list: GUIStemsList) -> None:
@@ -287,7 +288,7 @@ class TestDoubleClick:
         assert opened == []
 
 
-class TestAFolderThatLeaves:
+class TestAFolderThatLeaves(BaseTestSuite):
     """A folder taken out of the list is forgotten with it, so its name arriving again is closed."""
 
     def test_a_folder_that_left_the_list_comes_back_closed(self, stems_list: GUIStemsList) -> None:
@@ -310,7 +311,7 @@ def double_click(tag: str) -> None:
     raise AssertionError("the list registers no double-click handler")
 
 
-class TestARecordingThatLeavesAFolder:
+class TestARecordingThatLeavesAFolder(BaseTestSuite):
     """A recording taken out from inside an open folder leaves it the way a loose one leaves."""
 
     @staticmethod
@@ -358,7 +359,7 @@ def taken_down_at(offset: float) -> Callable[[str], float]:
     return read
 
 
-class TestWhereAnOpenFolderStands:
+class TestWhereAnOpenFolderStands(BaseTestSuite):
     """A rebuild takes an open folder's region down, and the one built in its place opens on the
     rows the reader had scrolled to."""
 

@@ -6,6 +6,7 @@ from sampletones_application.logic.main.converter.gathering import Gathering
 from sampletones_application.logic.main.sources.key import SourceKey
 from sampletones_application.logic.main.sources.slots import CHANNEL_SLOT
 from sampletones_core.constants.enums import ChannelName
+from tests.suite.base import BaseTestSuite
 from tests.unit.sampletones_application.logic.main.sources.factories import folder, recording
 
 
@@ -35,7 +36,7 @@ def _mixed_names(gathering: Gathering) -> List[str]:
     return [path.stem for path in gathering.levels.paths]
 
 
-class TestGatheringRecordings:
+class TestGatheringRecordings(BaseTestSuite):
     def test_a_recording_stands_in_the_list_and_on_a_level(self) -> None:
         gathering = _mixed("bass")
 
@@ -66,7 +67,7 @@ class TestGatheringRecordings:
         assert gathering.recording(Path("/audio/bass.wav")) is None
 
 
-class TestTheCeilingAMixHoldsTo:
+class TestTheCeilingAMixHoldsTo(BaseTestSuite):
     """A mix reaches as many recordings as the assignment has room to mix, whatever gathers them."""
 
     def test_an_empty_setup_has_room_for_the_whole_ceiling(self) -> None:
@@ -88,7 +89,7 @@ class TestTheCeilingAMixHoldsTo:
         assert _listed(*[f"source{index}" for index in range(MAX_STEM_SOURCES + 1)]).fits_a_mix is False
 
 
-class TestSettlingOneRecording:
+class TestSettlingOneRecording(BaseTestSuite):
     def test_a_slot_settles_on_the_recording_named(self) -> None:
         gathering = _mixed("bass", "lead").written(
             Path("/audio/bass.wav"),
@@ -108,7 +109,7 @@ class TestSettlingOneRecording:
         assert gathering.written(Path("/audio/stranger.wav"), CHANNEL_SLOT, frozenset()) == gathering
 
 
-class TestTheListAPerRecordingRunConverts:
+class TestTheListAPerRecordingRunConverts(BaseTestSuite):
     """A run writing one reconstruction apiece converts whatever the list holds, unbounded."""
 
     def test_a_recording_joins_the_list_without_joining_a_mix(self) -> None:
@@ -139,7 +140,7 @@ class TestTheListAPerRecordingRunConverts:
         assert gathering.count == 0
 
 
-class TestTurningToAMix:
+class TestTurningToAMix(BaseTestSuite):
     """A mix converts loose recordings and holds a fixed number of them."""
 
     def test_the_recordings_picked_stand_alone_and_in_order(self) -> None:
@@ -169,7 +170,7 @@ class TestTurningToAMix:
         assert _mixed_names(gathering) == ["a", "stranger"]
 
 
-class TestTurningAwayFromAMix:
+class TestTurningAwayFromAMix(BaseTestSuite):
     def test_the_list_stands_and_the_picking_order_goes(self) -> None:
         gathering = _mixed("bass", "lead").unmixed()
 

@@ -195,6 +195,7 @@ def _stems_coordinator(
     mixes: bool = True,
     gathered: Tuple[Path, ...] = (),
     folder_rows: Tuple[MagicMock, ...] = (),
+    gathered_rows: Tuple[MagicMock, ...] = (),
     room: int = MAX_STEM_SOURCES,
     ceiling: int = MAX_STEM_SOURCES,
 ) -> MainTabCoordinator:
@@ -211,6 +212,7 @@ def _stems_coordinator(
     coordinator._converter_logic.mix_ceiling = ceiling
     coordinator._converter_logic.list_fits_a_mix = len(gathered) <= ceiling
     coordinator._converter_logic.rows_offered.return_value = folder_rows
+    coordinator._converter_logic.gathered_rows = gathered_rows
     coordinator._stem_selection_window = MagicMock()
     coordinator._scan_window = MagicMock()
     coordinator._repaint_priority = 0
@@ -258,13 +260,14 @@ class TestOutputSwitch:
 
     def test_a_list_longer_than_a_mix_holds_asks_which_to_mix(self) -> None:
         gathered = tuple(Path(f"/audio/{index}.wav") for index in range(MAX_STEM_SOURCES + 2))
-        coordinator = _stems_coordinator(mixes=False, gathered=gathered)
+        listed = _rows_holding(*[1] * len(gathered))
+        coordinator = _stems_coordinator(mixes=False, gathered=gathered, gathered_rows=listed)
 
         coordinator._request_output(OutputKind.MIXED)
 
         coordinator._converter_logic.set_output.assert_not_called()
         rows, room, answer = coordinator._stem_selection_window.open.call_args.args
-        assert rows == coordinator._converter_logic.gathered_rows
+        assert rows == listed
         assert room == MAX_STEM_SOURCES
         assert answer == coordinator._converter_logic.mix_only
 
@@ -462,8 +465,12 @@ class TestGatheringAFolder:
     def test_a_full_mix_is_offered_beside_what_the_folder_holds(self, tmp_path: Path) -> None:
         """A mix with no room left is answerable: letting one go is what makes room for another."""
         rows = _rows_holding(1)
-        coordinator = _stems_coordinator(mixes=True, folder_rows=rows, room=0)
-        coordinator._converter_logic.gathered_rows = _rows_holding(*[1] * MAX_STEM_SOURCES)
+        coordinator = _stems_coordinator(
+            mixes=True,
+            folder_rows=rows,
+            gathered_rows=_rows_holding(*[1] * MAX_STEM_SOURCES),
+            room=0,
+        )
 
         _add_folder(coordinator, _folder_of(tmp_path, 1))
 

@@ -126,7 +126,7 @@ def _started_plan(converter_logic: ConverterLogic, service: MagicMock) -> GroupC
     return plan
 
 
-class TestCancelDuringLibraryGeneration:
+class TestCancelDuringLibraryGeneration(BaseTestSuite):
     """The converter requests a library when none exists and waits for it. Cancelling during that
     wait must abort the pending conversion and stop the in-flight generation."""
 
@@ -190,7 +190,7 @@ class TestCancelDuringLibraryGeneration:
         scheduled.assert_called_once()
 
 
-class TestNoChannelsGuard:
+class TestNoChannelsGuard(BaseTestSuite):
     """A gathered recording holding no channel reconstructs nothing, so the run must not start."""
 
     def test_no_generators_notifies_and_does_not_start(
@@ -209,7 +209,7 @@ class TestNoChannelsGuard:
         assert _phase(converter_logic) == ConversionPhase.IDLE
 
 
-class TestNothingToConvertGuard:
+class TestNothingToConvertGuard(BaseTestSuite):
     """A converter aimed at nothing has no plan to run, so a request leaves it where it stands."""
 
     def test_a_request_with_nothing_picked_starts_nothing(
@@ -236,7 +236,7 @@ class TestNothingToConvertGuard:
         assert plan.sources == (Path("/audio/a.wav"), Path("/audio/b.wav"))
 
 
-class TestOverwriteGuard:
+class TestOverwriteGuard(BaseTestSuite):
     """A single conversion writes one named file, so a run that would replace one asks first.
 
     A batch settles the question itself — it converts what is still to be written — so the
@@ -364,7 +364,7 @@ class TestOverwriteGuard:
         assert _phase(converter_logic) == ConversionPhase.WAITING
 
 
-class TestStartConversionGate:
+class TestStartConversionGate(BaseTestSuite):
     """A conversion refuses to start while another exclusive operation is active, so two heavy
     processes cannot run at once."""
 
@@ -397,7 +397,7 @@ class TestStartConversionGate:
         assert _phase(converter_logic) == ConversionPhase.WAITING
 
 
-class TestWhatTheSetupNamesItselfBy:
+class TestWhatTheSetupNamesItselfBy(BaseTestSuite):
     """A setup holding one row is that row, which is what a reader converting one file reads."""
 
     def test_one_recording_names_itself(
@@ -431,7 +431,7 @@ class TestWhatTheSetupNamesItselfBy:
         assert _view(converter_logic).input_path is None
 
 
-class TestWhatACompletedConversionLeaves:
+class TestWhatACompletedConversionLeaves(BaseTestSuite):
     """A completed conversion tells its listener what it wrote, so the follow-up offer can target
     the single reconstruction or the folder holding a batch."""
 
@@ -480,7 +480,7 @@ class TestWhatACompletedConversionLeaves:
         converter_logic.on_load_directory.assert_called_once_with()
 
 
-class TestFailureReturnsToIdle:
+class TestFailureReturnsToIdle(BaseTestSuite):
     """With no Close button, a failure reports through ``on_error`` and schedules its own return to
     idle so the panel never strands on the failed phase."""
 
@@ -500,7 +500,7 @@ class TestFailureReturnsToIdle:
         converter_logic.on_error.assert_called_once()
 
 
-class TestActivePhases:
+class TestActivePhases(BaseTestSuite):
     """``is_active`` reports a conversion occupying resources for every non-idle, non-terminal phase —
     covering the WAITING preparation that runs before the service starts."""
 
@@ -532,7 +532,7 @@ class TestActivePhases:
         assert (_phase(converter_logic), converter_logic.is_active) == (ConversionPhase.IDLE, False)
 
 
-class TestGatheringRecordings:
+class TestGatheringRecordings(BaseTestSuite):
     """The rows a reader gathers, as the panel reads them back."""
 
     def _names(self, converter_logic: ConverterLogic) -> List[str]:
@@ -608,7 +608,7 @@ class TestGatheringRecordings:
         ]
 
 
-class TestAnsweringWhichRecordingsToMix:
+class TestAnsweringWhichRecordingsToMix(BaseTestSuite):
     """A mix reaching a fixed number of recordings is put to the reader, and the answer is what
     the mix is then built from: what it names joins, and what it leaves out goes."""
 
@@ -651,7 +651,7 @@ class TestAnsweringWhichRecordingsToMix:
         assert converter_logic.mixes
 
 
-class TestWhatTheGatheredRecordingsRun:
+class TestWhatTheGatheredRecordingsRun(BaseTestSuite):
     """What the converter asks the service to run, once a reader has set the mix up."""
 
     def test_the_rows_channels_and_levels_reach_the_setup(
@@ -717,7 +717,7 @@ class TestWhatTheGatheredRecordingsRun:
         assert started_config == converter_logic._config_manager.config
 
 
-class TestAFolderInTheList:
+class TestAFolderInTheList(BaseTestSuite):
     """A folder stands as one row, answering for every recording gathered below it."""
 
     def _folder(self, converter_logic: ConverterLogic, tmp_path: Path, names: List[str]) -> Path:
@@ -820,7 +820,7 @@ class TestAFolderInTheList:
         assert [row.stands_for_a_folder for row in rows] == [False, False]
 
 
-class TestTheStemsView:
+class TestTheStemsView(BaseTestSuite):
     """What the panel is told about the setup being built."""
 
     def test_the_rows_reach_the_view_in_list_order(self, converter_logic: ConverterLogic) -> None:

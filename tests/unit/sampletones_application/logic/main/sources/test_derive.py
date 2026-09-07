@@ -5,6 +5,7 @@ from sampletones_application.logic.main.sources.derive import derive_conversion_
 from sampletones_application.logic.main.sources.levels import MixLevels
 from sampletones_application.logic.main.sources.list import SourceList
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from tests.suite.base import BaseTestSuite
 from tests.unit.sampletones_application.logic.main.sources.factories import recording
 
 
@@ -25,7 +26,7 @@ def _gathered(
     return sources, MixLevels.of([[_path(name) for name in level] for level in levels])
 
 
-class TestWhatEachRecordingBringsToTheSetup:
+class TestWhatEachRecordingBringsToTheSetup(BaseTestSuite):
     def test_a_recording_carries_the_channels_its_own_row_holds(self) -> None:
         sources, levels = _gathered(["lead"], holding=[ChannelName.PULSE1, ChannelName.PULSE2])
 
@@ -54,7 +55,7 @@ class TestWhatEachRecordingBringsToTheSetup:
         assert setup.stems.entries[0].settings.bends == [ChannelName.TRIANGLE]
 
 
-class TestTheSetupTheLevelsAmountTo:
+class TestTheSetupTheLevelsAmountTo(BaseTestSuite):
     def test_a_recordings_position_is_its_stem_id(self) -> None:
         sources, levels = _gathered(["a", "b"])
 
@@ -104,7 +105,7 @@ class TestTheSetupTheLevelsAmountTo:
         assert (setup.stems.channel_cap, setup.stems.hierarchy.mode) == (2, HierarchyMode.ROUND_ROBIN)
 
 
-class TestARecordingThatTakesNoPart:
+class TestARecordingThatTakesNoPart(BaseTestSuite):
     """A recording left holding no channel the run enables reaches neither the mix nor the entries."""
 
     def _silent_beside(self, names: List[str]) -> Tuple[SourceList, MixLevels]:

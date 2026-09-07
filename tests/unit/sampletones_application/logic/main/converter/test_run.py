@@ -21,6 +21,7 @@ from sampletones_application.services.result import (
 from sampletones_application.view_model.main.converter import ConversionPhase
 from sampletones_core.configs import Config
 from sampletones_core.parallelization import TaskProgress
+from tests.suite.base import BaseTestSuite
 from tests.unit.sampletones_application.logic.main.converter.texts import messages
 
 WRITTEN: Tuple[Path, ...] = (Path("/reconstructions/kick.stn"),)
@@ -63,7 +64,7 @@ def driver() -> Driver:
     return Driver()
 
 
-class TestWhereARunStands:
+class TestWhereARunStands(BaseTestSuite):
     """A run occupies resources from the moment it is requested until it settles."""
 
     def test_a_fresh_run_is_idle(self, driver: Driver) -> None:
@@ -111,7 +112,7 @@ class TestWhereARunStands:
         assert (driver.run.phase, driver.run.is_active) == (phase, False)
 
 
-class TestWhatARunReports:
+class TestWhatARunReports(BaseTestSuite):
     def test_a_request_says_it_is_waiting(self, driver: Driver) -> None:
         driver.run.wait()
 
@@ -167,7 +168,7 @@ class TestWhatARunReports:
         assert len(driver.reports) == reported
 
 
-class TestWhatACompletedRunHandsOver:
+class TestWhatACompletedRunHandsOver(BaseTestSuite):
     """A completed conversion tells its listener what it wrote, so the follow-up offer can target
     the single reconstruction or the folder holding a batch."""
 

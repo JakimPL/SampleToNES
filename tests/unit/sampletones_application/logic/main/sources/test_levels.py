@@ -5,6 +5,7 @@ import pytest
 
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.logic.main.sources.levels import MixLevels
+from tests.suite.base import BaseTestSuite
 
 
 def _path(name: str) -> Path:
@@ -19,7 +20,7 @@ def _shape(levels: MixLevels) -> List[List[str]]:
     return [[path.stem for path in level] for level in levels.levels]
 
 
-class TestGathering:
+class TestGathering(BaseTestSuite):
     """The mix a reader builds: recordings arrive on the first level and leave without a trace."""
 
     def test_the_first_recording_opens_a_level(self) -> None:
@@ -44,7 +45,7 @@ class TestGathering:
             _levels(["bass"]).level_of(_path("lead"))
 
 
-class TestTheCeilingAMixHolds:
+class TestTheCeilingAMixHolds(BaseTestSuite):
     """A mix reaches as many recordings as the assignment has room to mix."""
 
     def test_an_empty_mix_has_room_for_the_whole_ceiling(self) -> None:
@@ -62,7 +63,7 @@ class TestTheCeilingAMixHolds:
         assert levels.add(_path("one_more")).count == MAX_STEM_SOURCES
 
 
-class TestMovesWithinALevel:
+class TestMovesWithinALevel(BaseTestSuite):
     """Position among peers settles which of two equal-cost choices picks first."""
 
     def test_a_recording_moves_past_its_neighbor(self) -> None:
@@ -73,7 +74,7 @@ class TestMovesWithinALevel:
         assert _shape(levels.move_within_level(_path("bass"), -1)) == _shape(levels)
 
 
-class TestMovesBetweenLevels:
+class TestMovesBetweenLevels(BaseTestSuite):
     def test_a_recording_joins_the_level_below(self) -> None:
         assert _shape(_levels(["bass"], ["lead"]).join_level(_path("bass"), 1)) == [["lead", "bass"]]
 
@@ -96,7 +97,7 @@ class TestMovesBetweenLevels:
         assert _shape(levels.isolate(_path("bass"))) == _shape(levels)
 
 
-class TestDropOntoARow:
+class TestDropOntoARow(BaseTestSuite):
     def test_the_dragged_recording_takes_the_place_it_was_dropped_on(self) -> None:
         assert _shape(_levels(["bass"], ["lead", "pad"]).move_onto(_path("bass"), _path("pad"))) == [
             ["lead", "bass", "pad"]
@@ -107,7 +108,7 @@ class TestDropOntoARow:
         assert _shape(levels.move_onto(_path("bass"), _path("bass"))) == _shape(levels)
 
 
-class TestDropOntoAStrip:
+class TestDropOntoAStrip(BaseTestSuite):
     """A strip is the gap between two bands, counted from the one above the first level."""
 
     @pytest.mark.parametrize(

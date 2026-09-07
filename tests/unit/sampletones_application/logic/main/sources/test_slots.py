@@ -4,10 +4,11 @@ from sampletones_application.logic.main.sources.slots import (
     SETTINGS_SLOTS,
 )
 from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
+from tests.suite.base import BaseTestSuite
 from tests.unit.sampletones_application.logic.main.sources.factories import settings
 
 
-class TestWhichChannelsASlotIsOfferedOn:
+class TestWhichChannelsASlotIsOfferedOn(BaseTestSuite):
     """A choice reaches a reader on the channels the settings it edits put it to."""
 
     def test_a_channel_is_offered_on_every_channel(self) -> None:
@@ -24,7 +25,7 @@ class TestWhichChannelsASlotIsOfferedOn:
         assert BEND_SLOT.offered(settings([])) == frozenset()
 
 
-class TestSettlingTheChannelsARecordingOccupies:
+class TestSettlingTheChannelsARecordingOccupies(BaseTestSuite):
     def test_a_channel_settled_on_joins_the_ones_held(self) -> None:
         settled = CHANNEL_SLOT.settled(settings(), ChannelName.NOISE, True)
         assert settled.channel_set == {ChannelName.PULSE1, ChannelName.NOISE}
@@ -45,7 +46,7 @@ class TestSettlingTheChannelsARecordingOccupies:
         assert settled.bends == []
 
 
-class TestSettlingTheChannelsARecordingBends:
+class TestSettlingTheChannelsARecordingBends(BaseTestSuite):
     def test_a_bend_settled_on_a_channel_held_stands(self) -> None:
         held = settings([ChannelName.PULSE1, ChannelName.TRIANGLE])
         settled = BEND_SLOT.settled(held, ChannelName.TRIANGLE, True)
@@ -66,7 +67,7 @@ class TestSettlingTheChannelsARecordingBends:
         assert settled.channels == held.channels
 
 
-class TestTheSlotsARecordingOffers:
+class TestTheSlotsARecordingOffers(BaseTestSuite):
     def test_every_slot_reads_and_settles_the_choice_it_names(self) -> None:
         for slot in SETTINGS_SLOTS:
             held = settings(list(TONE_CHANNELS))
