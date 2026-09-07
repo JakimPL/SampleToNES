@@ -85,6 +85,20 @@ def group_output_path(
     return Path((output_directory / f"{derive_name(sources)}{suffix}").absolute())
 
 
+def walk_entries(input_directory: Path) -> Iterator[Path]:
+    """Every path below a directory, reported as the walk meets it.
+
+    A caller that has to answer between entries — one counting what it has found, or one a reader
+    may stop partway — reads the tree through this and decides for itself what each entry is.
+    """
+    return input_directory.rglob("*")
+
+
+def is_audio_file(path: Path, extensions: Tuple[str, ...] = EXT_FILES_AUDIO) -> bool:
+    """Whether a path names a recording a run converts."""
+    return path.is_file() and path.suffix.lower() in extensions
+
+
 def walk_audio_files(
     input_directory: Path,
     extensions: Tuple[str, ...] = EXT_FILES_AUDIO,
@@ -94,8 +108,8 @@ def walk_audio_files(
     A tree is read one entry at a time, so a caller reporting how far it has got hears from the
     walk while it runs rather than once it ends.
     """
-    for path in input_directory.rglob("*"):
-        if path.is_file() and path.suffix.lower() in extensions:
+    for path in walk_entries(input_directory):
+        if is_audio_file(path, extensions):
             yield path
 
 

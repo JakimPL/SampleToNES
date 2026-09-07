@@ -3,6 +3,7 @@ from typing import List, Tuple
 
 import pytest
 
+from sampletones_application.logic.main.sources import scan as scan_module
 from sampletones_application.logic.main.sources.scan import REPORT_EVERY, FolderScan
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from tests.suite.base import BaseTestSuite
@@ -119,3 +120,63 @@ class TestGivingUp(BaseTestSuite):
 
         assert scan.running is False
         assert len(read(scan, root)) == 1
+
+
+class TestOneWalkAtATime(BaseTestSuite):
+    """The answer travels with the walk that earns it, and a walk is let go however it ends."""
+
+    def test_each_walk_answers_the_caller_that_asked_for_it(
+        self,
+        scan: FolderScan,
+        tmp_path: Path,
+    ) -> None:
+        """Two callers ask this one scan — a gathering and a conversion — so a walk that reported
+        to the other one would convert a folder nobody asked about."""
+        first = tree(tmp_path / "first", 2)
+        second = tree(tmp_path / "second", 3)
+        gathered: List[Tuple[Path, Tuple[Path, ...]]] = []
+        converted: List[Tuple[Path, Tuple[Path, ...]]] = []
+
+        scan.start(first, lambda root, found: gathered.append((root, found)))
+        SingleThreadExecutor.join_all()
+        scan.start(second, lambda root, found: converted.append((root, found)))
+        SingleThreadExecutor.join_all()
+
+        assert [root for root, _ in gathered] == [first]
+        assert [root for root, _ in converted] == [second]
+
+    def test_a_walk_that_fails_leaves_the_next_free_to_start(
+        self,
+        scan: FolderScan,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A reading that dies partway holds nothing back, so the reader may ask again."""
+        root = tree(tmp_path / "takes", 2)
+
+        def raising(_root: Path) -> List[Path]:
+            raise OSError("the tree went away")
+
+        monkeypatch.setattr(scan_module, "walk_entries", raising)
+        scan.start(root, lambda _root, _found: None)
+        SingleThreadExecutor.join_all()
+
+        assert scan.running is False
+
+        monkeypatch.undo()
+        assert len(read(scan, root)) == 1
+
+    def test_a_folder_asked_for_while_one_is_read_is_turned_away(
+        self,
+        scan: FolderScan,
+        tmp_path: Path,
+    ) -> None:
+        """One walk runs at a time, so the second answer hears nothing until it is asked again."""
+        root = tree(tmp_path / "takes", 2)
+        answered: List[Path] = []
+        scan._running.set()
+
+        scan.start(root, lambda found_root, _found: answered.append(found_root))
+        SingleThreadExecutor.join_all()
+
+        assert answered == []
