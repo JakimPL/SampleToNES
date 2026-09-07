@@ -105,14 +105,20 @@ class WindowedRegion:
         return self._windowed and self._drawn[1] < self._total
 
     @property
+    def standing(self) -> bool:
+        """The region's body is on screen, which is what a draw fills and a settle reads."""
+        return bool(dpg.does_item_exist(self._body_tag))
+
+    @property
     def settling(self) -> bool:
         """The region stands as something other than it will, so whoever drew it settles it again.
 
         A region holding rows back answers a scroll with a different slice, and one that has
         just read what a row takes holds itself to that reading in the pass that follows. Either
-        way what stands now is not what the region comes to rest as.
+        way what stands now is not what the region comes to rest as. A region whose body has been
+        taken down comes to rest where it is, so a window closing ends the pass it was keeping.
         """
-        return self.windowing or self._reading_to_hold
+        return self.standing and (self.windowing or self._reading_to_hold)
 
     @property
     def natural(self) -> bool:
@@ -155,6 +161,9 @@ class WindowedRegion:
         Before a row has been measured the region builds a first slice at its natural height and
         reserves nothing, which is what gives :meth:`settle` a run of rows to read.
         """
+        if not self.standing:
+            return
+
         start, count = self._slice(self._reading, total)
         dpg_delete_children(self._body_tag)
         measuring = not self._geometry.measured
@@ -176,6 +185,9 @@ class WindowedRegion:
         reading of a row is taken from; content standing anything else among its rows is a run of
         none.
         """
+        if not self.standing:
+            return
+
         dpg_delete_children(self._body_tag)
         self._build_lead(lead)
         build()
@@ -187,8 +199,11 @@ class WindowedRegion:
         """Size the region to what it holds and read what a row takes, a frame after a draw.
 
         Answers whether the rows standing are still the ones the region reaches, which is what
-        asks an owner to draw it again.
+        asks an owner to draw it again. A region whose body has been taken down asks for nothing.
         """
+        if not self.standing:
+            return False
+
         self._take_lead()
         if not self._windowed:
             self._take_reading()

@@ -344,3 +344,22 @@ class TestARegionOpeningInPlaceOfAnother(BaseTestSuite):
             region.settle()
 
         set_y_scroll.assert_not_called()
+
+
+class TestARegionWhoseBodyHasGone(BaseTestSuite):
+    """A window closing takes the region's whole subtree down while the pass that settles it is
+    still armed, so the region answers for a body that is no longer there."""
+
+    def test_it_asks_for_nothing_more(self, region: WindowedRegion) -> None:
+        draw(region, 40)
+        dpg.delete_item(ROOT_TAG, children_only=True)
+
+        assert region.settle() is False
+        assert region.settling is False
+
+    def test_a_draw_reaching_it_builds_nothing(self, region: WindowedRegion) -> None:
+        """Building into a parent that has been freed is what a closed dialog would otherwise do."""
+        draw(region, 40)
+        dpg.delete_item(ROOT_TAG, children_only=True)
+
+        assert draw(region, 40) == []
