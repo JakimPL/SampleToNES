@@ -102,7 +102,13 @@ class GUIScanWindow(GUIWindow):
             )
 
     def _stop(self) -> None:
-        self._rolling = False
+        """Takes the window away and asks the walk to give up, which is what **Stop** means here.
+
+        The window answers the gesture itself rather than the walk's next word, so pressing
+        **Stop** is what closes it however the reading ends. A walk that reaches the end of its
+        tree finds the window already gone and takes it away again, which leaves it where it is.
+        """
+        self.close()
         self.call(self.on_stop)
 
     def _roll_on(self) -> None:
