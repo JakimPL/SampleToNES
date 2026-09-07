@@ -7,25 +7,24 @@ instruments, and building a whole song. Both assume it is already
 ## Reconstruct a sound into FamiTracker instruments
 
 1. Launch the app and open the **Main** tab.
-2. In the **Filesystem** browser on the left, double-click an audio file (WAV,
-   MP3, FLAC, OGG, AIFF, or AU) — or Ctrl-click a folder, to reconstruct every
-   audio file inside it.
+2. In the **Filesystem** browser, double-click an audio file (WAV, MP3, FLAC,
+   OGG, AIFF, or AU) — or Ctrl-click a folder, to reconstruct every audio file
+   inside it.
 3. Optionally click the recording in the list and choose which channels it takes
    under **Source settings**, and adjust **General settings**. At least
    one channel must be enabled.
-4. Click the button, which names the run it makes. The first
-   time you use a given set of settings, the
-   [instruction library](../concepts/instruction-library.md) is built
-   automatically ("Generating instructions library..."), then the reconstruction
-   runs.
-5. When it finishes, click **Load** to open the result on the **Reconstructions**
+4. Click the button under **Output** to start the conversion. The first time you
+   convert with a given set of settings, the [instruction
+   library](../concepts/instruction-library.md) it needs is built first
+   ("Generating instructions library..."), which takes a while.
+5. When it finishes, click **Load** to open the result on the **Reconstruction**
    tab.
 6. Choose **Reconstruction ▸ Export instruments ▸ FamiTracker instruments...** and
    name the export. One `.fti` file is generated per instrument: `Kick (pulse1).fti`,
    `Kick (triangle).fti`, and so on.
 
 That is the shortest path from a sound to instruments you can load in FamiTracker.
-The [interface guide](interface.md) covers the **Main** and **Reconstructions**
+The [interface guide](interface.md) covers the **Main** and **Reconstruction**
 tabs in full.
 
 ## Build a song and export a module
@@ -33,9 +32,9 @@ tabs in full.
 1. Choose **File ▸ New project**. The app switches to the **Sequencer** tab.
 2. Have one or more reconstructions ready — make them as above, or open existing
    ones.
-3. Add each as a sample: in the Sequencer's **Reconstructions** browser on the
-   left, right-click a reconstruction and choose **Add to Sequencer**. If its NES
-   frequency differs from the project's, confirm with **Add anyway**.
+3. Add each as a sample: in the Sequencer's **Browser**, right-click a
+   reconstruction and choose **Add to Sequencer**. If its NES frequency differs
+   from the project's, confirm with **Add anyway**.
 4. In the **Tracker** grid, click a cell and type notes on your keyboard; assign a
    sample to a channel with the cell's right-click **Set voice**.
 5. Arrange the piece in the **Order** grid, and set **Rows**, **Tempo**, **Speed**,
