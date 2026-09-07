@@ -174,14 +174,23 @@ class GUIStemsList(CallbackMixin):
         self._region.create(parent, show=show)
 
     def update_view(self, view_model: StemsListViewModel) -> None:
-        """Take up a new reading of the setup: rebuild the bands where it reshapes them, repaint
-        the rows either way."""
+        """Take up a new reading of the setup: draw what it reshapes, repaint the rows either way.
+
+        A reading that moved the recordings of one folder alone is answered inside that folder, so
+        the rows around it keep the widgets they stand as and the reader keeps the scroll they left.
+        """
         self._view = view_model
         self._open_folders.hold_to({row.key for row in view_model.rows})
         self._messages.reads(view_model)
         self._gestures.reads(view_model)
-        if self._bands.reshaped(view_model):
+        asked = self._bands.reshape(view_model)
+        if asked.whole:
             self._rebuild(view_model)
+        else:
+            for key in asked.folders:
+                self._folders.redraw(key, view_model)
+
+        if asked.redraws:
             self._settle_soon()
 
         self._repaint(view_model)

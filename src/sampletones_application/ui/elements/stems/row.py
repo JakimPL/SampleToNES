@@ -106,6 +106,10 @@ class StemRowRenderer:
         A row contributing nothing grays through its theme rather than through ``enabled``, so
         it answers a drag and a right-click as readily as one in play. A box on a channel
         switched off elsewhere takes the muted tone and stays as clickable as any other.
+
+        A folder reads out how many recordings it stands for, so its label is written here as well
+        as at the draw: a recording leaving the folder is answered inside the folder's own region,
+        and the count on the row above it follows from the same reading.
         """
         live = view_model.live
         for channel_name in view_model.boxes_of(row):
@@ -117,7 +121,7 @@ class StemRowRenderer:
 
         name_tag = self._tags.row(row.key, SUF_TEXT)
         dpg_set_value(name_tag, row.key == view_model.selected_key)
-        dpg_configure_item(name_tag, enabled=live)
+        dpg_configure_item(name_tag, enabled=live, label=self._row_label(row))
         dpg_set_value(self._tags.row(row.key, SUF_TOOLTIP), self._messages.row_explanation(row))
         row_theme = TAG_GLOBAL_THEME_STEMS_ROW if row.in_play else TAG_GLOBAL_THEME_STEMS_ROW_INERT
         ThemeRegistry.get(row_theme).bind_to_item(name_tag)

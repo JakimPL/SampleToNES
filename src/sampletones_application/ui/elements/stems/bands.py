@@ -20,7 +20,7 @@ from sampletones_application.ui.elements.stems.gestures import StemsGestures
 from sampletones_application.ui.elements.stems.heading import StemsHeading
 from sampletones_application.ui.elements.stems.offer import StemsListOffer
 from sampletones_application.ui.elements.stems.row import StemRowRenderer
-from sampletones_application.ui.elements.stems.shape import ListShape
+from sampletones_application.ui.elements.stems.shape import ListShape, Reshape
 from sampletones_application.ui.elements.stems.tags import StemsTags
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.view_model.shared.stems import (
@@ -66,18 +66,19 @@ class LevelBands:
         self._level_template = language_manager["global.stems.template.level_caption"]
         self._shape = ListShape.nothing()
 
-    def reshaped(self, view_model: StemsListViewModel) -> bool:
-        """Whether the view names a different shape than the one standing, which asks for a rebuild.
+    def reshape(self, view_model: StemsListViewModel) -> Reshape:
+        """What the view asks of the widgets standing: the whole list, some folders, or nothing.
 
         The shape is taken up either way, so a list that has answered a reshape once answers the
         same view with a repaint from then on.
         """
         shape = ListShape.of(view_model, self._open_folders)
         if shape == self._shape:
-            return False
+            return Reshape.nothing()
 
+        asked = shape.against(self._shape)
         self._shape = shape
-        return True
+        return asked
 
     def forget(self) -> None:
         """Let go of the shape standing, so the next reading is drawn rather than repainted."""

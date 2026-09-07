@@ -347,6 +347,53 @@ class TestARecordingThatLeavesAFolder(BaseTestSuite):
         for held in sources.held[1:]:
             assert dpg.does_item_exist(f"{PREFIX}.row.{held.key}.{SUF_TEXT}")
 
+    def test_the_rows_around_the_folder_keep_the_widgets_they_stand_as(self, stems_list: GUIStemsList) -> None:
+        """A recording leaving a folder is answered inside it, so the list around it stands."""
+        sources = folder("sources", holds=3)
+        bass = recording(Path("/audio/bass.wav"))
+        stems_list.update_view(view(bass, sources))
+        press(twisty_of(sources))
+        standing = dpg.get_alias_id(name_of(bass))
+
+        stems_list.update_view(view(bass, folder_without(sources, sources.held[0])))
+
+        assert dpg.get_alias_id(name_of(bass)) == standing
+
+    def test_the_folder_row_keeps_the_widget_it_stands_as(self, stems_list: GUIStemsList) -> None:
+        sources = folder("sources", holds=3)
+        self._opened(stems_list, sources)
+        standing = dpg.get_alias_id(name_of(sources))
+
+        stems_list.update_view(view(folder_without(sources, sources.held[0])))
+
+        assert dpg.get_alias_id(name_of(sources)) == standing
+
+    def test_the_folder_reads_out_how_many_it_now_holds(self, stems_list: GUIStemsList) -> None:
+        sources = folder("sources", holds=3)
+        self._opened(stems_list, sources)
+
+        stems_list.update_view(view(folder_without(sources, sources.held[0])))
+
+        assert "2" in str(dpg.get_item_label(name_of(sources)))
+
+    def test_a_closed_folder_reads_out_how_many_it_now_holds(self, stems_list: GUIStemsList) -> None:
+        sources = folder("sources", holds=3)
+        stems_list.update_view(view(sources))
+
+        stems_list.update_view(view(folder_without(sources, sources.held[0])))
+
+        assert "2" in str(dpg.get_item_label(name_of(sources)))
+
+    def test_a_row_arriving_draws_the_list_again(self, stems_list: GUIStemsList) -> None:
+        """A row the list did not hold is met by the tables, so those are what is built again."""
+        sources = folder("sources", holds=3)
+        stems_list.update_view(view(sources))
+        standing = dpg.get_alias_id(name_of(sources))
+
+        stems_list.update_view(view(sources, recording(Path("/audio/bass.wav"))))
+
+        assert dpg.get_alias_id(name_of(sources)) != standing
+
 
 def taken_down_at(offset: float) -> Callable[[str], float]:
     """How DearPyGui reads a region a rebuild replaces: the one standing reports where the reader
