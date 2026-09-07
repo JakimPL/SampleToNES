@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.tabs.main.converter import ConverterLayout
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_DANGER_BUTTON
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_BUTTON_STOP_SCAN,
     TAG_MAIN_CONVERTER_PROGRESS_SCAN,
@@ -13,6 +14,7 @@ from sampletones_application.tags.main import (
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.window import GUIWindow
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.types.callback import VoidCallback
@@ -99,6 +101,7 @@ class GUIScanWindow(GUIWindow):
                 label=self._stop_label,
                 callback=self._stop,
                 width=-1,
+                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_DANGER_BUTTON),
             )
 
     def _stop(self) -> None:
