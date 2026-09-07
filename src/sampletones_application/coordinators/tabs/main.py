@@ -543,7 +543,7 @@ class MainTabCoordinator:
         logger.info(f"No recordings below {directory_path}.")
         self._dialogs.show_info(
             TAG_MAIN_EXPLORER_DIALOG_NOTHING_BELOW,
-            self._language_manager["main.converter.message.status_no_files"],
+            self._language_manager["main.converter.message.scan_nothing_below"],
             self._language_manager["main.converter.title.scan_dialog"],
         )
 

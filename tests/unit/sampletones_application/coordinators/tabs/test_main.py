@@ -27,6 +27,7 @@ OPEN_BUTTON_KEY: Final[str] = "main.converter.label.open_button"
 CLOSE_BUTTON_KEY: Final[str] = "main.converter.label.close_button"
 STOP_BUTTON_KEY: Final[str] = "main.converter.label.stop_button"
 CONTINUE_BUTTON_KEY: Final[str] = "main.converter.label.continue_button"
+NOTHING_BELOW_KEY: Final[str] = "main.converter.message.scan_nothing_below"
 
 
 def _hooks(*, operation_active: bool) -> MainTabHooks:
@@ -300,6 +301,17 @@ class TestDirectoryAdd:
         coordinator._on_directory_add_requested(tmp_path)
 
         coordinator._converter_logic.gather_folder.assert_not_called()
+
+    def test_a_folder_holding_no_recordings_says_so(self, tmp_path: Path) -> None:
+        """The reading is what knows what a folder holds, so the answer arrives when it comes back
+        and the setup stands as it was."""
+        coordinator = _stems_coordinator(mixes=False)
+        root = _folder_of(tmp_path, 0)
+
+        _add_folder(coordinator, root)
+
+        coordinator._converter_logic.gather_folder.assert_not_called()
+        assert coordinator._dialogs.show_info.call_args.args[1] == NOTHING_BELOW_KEY
 
 
 class TestFileAdd:
