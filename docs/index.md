@@ -64,6 +64,7 @@ The [**development**](development/) section is for contributors.
 - [Keyboard and actions](development/keyboard.md) — how a press reaches behavior, and how an action is declared and shown.
 - [Identifier vocabularies](development/vocabularies.md) — the keys display text is looked up by, and the tags DearPyGui knows a widget by.
 - [Colors and palettes](development/palette.md) — how a color is written, composed, and handed to DearPyGui.
+- [The render thread](development/render-thread.md) — how work reaches DearPyGui from another thread, and what each crossing costs.
 - [Playback](development/playback.md) — the audio transport shared by every view, and rendering the song to a file.
 - [Progress](development/progress.md) — how a long operation says how far it has come, in one process and across the pool's workers.
 - [Console player](development/player.md) — the 6502 driver an `.nsf` carries, the codec that fits a song beside it, and how both are verified.
