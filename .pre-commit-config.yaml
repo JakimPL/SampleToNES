@@ -49,6 +49,14 @@ repos:
         pass_filenames: false
         verbose: true
 
+      - id: rendered-literals
+        name: rendered literals
+        entry: uv run scripts/checks/rendered_literals.py
+        language: system
+        files: ^tests/.*\.py$
+        pass_filenames: false
+        verbose: true
+
       - id: tag-names
         name: tag names
         entry: uv run scripts/checks/tag_names.py --all
