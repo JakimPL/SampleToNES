@@ -357,10 +357,10 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         """Answers a click on a folder: Ctrl gathers its recordings, and a plain click opens it.
 
         Gathering a folder reads every recording below it, which is work a reader asks for rather
-        than work that follows them around the browser. Ctrl does what **Add folder as stems**
-        does, so the folder joins the conversion without the reader leaving the row; a plain click
-        opens the folder and leaves the conversion as it stands, and so does every click while the
-        converter is busy.
+        than work that follows them around the browser. Ctrl does what **Add folder** does, so the
+        folder joins the conversion without the reader leaving the row; a plain click opens the
+        folder and leaves the conversion as it stands, and so does every click while the converter
+        is busy.
         """
         has_content = self._explorer_logic.has_relevant_content(node.filepath)
         if not has_content:

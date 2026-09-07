@@ -28,20 +28,22 @@ the new reconstruction on the **Reconstructions** tab — after a folder run the
 button reads **Open** instead. **Cancel** stops a run, and only one runs at a
 time.
 
-Converting to one reconstruction always writes to the same filename. If a
-reconstruction of that name is already there, the app asks first; click
-**Convert anyway** to replace it. A folder starts straight away: it converts the
-recordings that still need a reconstruction and leaves the ones already made, so
-you can rerun it to carry on where you stopped.
+A recording you added by name is written every time you convert, so where a
+reconstruction of that name already stands the app asks first — naming the one it
+is about to replace, or counting them where a run would replace several — and
+**Convert anyway** goes ahead. Recordings that came in with a folder are left
+where their reconstruction already stands, so rerunning a folder carries on from
+where you stopped.
 
 ### What to convert
 
 The card holds a list of what a run converts. Double-click a recording in the
 browser to add it; right-click and choose **Add as stem**, or Ctrl-click, to do
 the same. A plain click plays the recording, so you can listen through a folder
-before you take anything from it. Ctrl-click a folder — or use **Add folder as
-stems** — and the folder joins as one row standing for every recording below it,
-however deep the tree goes.
+before you take anything from it. Ctrl-click a folder — or use **Add folder** —
+and the folder joins as one row standing for every recording below it, however
+deep the tree goes. Reading a large tree takes a moment, so a window names the
+folder and counts what it has found, with a **Stop** if you picked the wrong one.
 
 The channels are named once above the rows, and each row shows one recording and
 a checkbox under every channel it may use. Untick them all and the row grays out:
@@ -51,8 +53,9 @@ The list grows with what you gather and scrolls once it fills the card, so the
 cards below it stay where you left them.
 
 A folder's row names how many recordings it brought in, and its checkboxes read
-all three ways: ticked where every recording in it uses that channel, half-lit
-where they differ, clear where none does. One click settles the whole folder.
+all three ways: ticked where every recording in it uses that channel, filled in
+that channel's own color where they differ, and empty where none does. One click
+settles the whole folder.
 
 A folder arrives closed. Click the marker beside its name — or double-click the
 name, or use **Show the recordings** in its menu — and it opens onto the
@@ -102,14 +105,14 @@ channels are pushed and holds for the whole run, so it stands at the top of
 **Reconstruction settings** whatever you are looking at. Below it the card names
 the row you clicked in the converter's list — a folder reads how many recordings
 it stands for — and gives that row a box under every channel: one for the channel
-it takes, and one for the bend on it. A folder whose recordings differ reads clear
-in a softer tone until one click settles them all. Press a channel's key to set
-that channel across everything listed at once. **General settings** holds the
-analysis options: sample rate, NES frequency, generation method, and feature
-scaling. The rest, including the worker count and the output
-and library folders, sit under **Advanced settings**, which **View ▸ Show
-advanced settings** reveals. [Configuration](configuration.md) explains each
-one.
+it takes, and one for the bend on it. A folder whose recordings differ on a
+channel fills that box in the channel's own color and leaves it unticked, until
+one click settles them all. Press a channel's key to set that channel across
+everything listed at once. **General settings** holds the analysis options:
+sample rate, NES frequency, generation method, and feature scaling. The rest,
+including the worker count and the output and library folders, sit under
+**Advanced settings**, which **View ▸ Show advanced settings** reveals.
+[Configuration](configuration.md) explains each one.
 
 ## Reconstructions
 
