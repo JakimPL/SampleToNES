@@ -185,29 +185,3 @@ class TestOneGestureOnARow:
         )
         sources = SourceList().add_folder(gathered).toggled(gathered.key, BEND_SLOT, ChannelName.TRIANGLE)
         assert sources.agreement(gathered.key, BEND_SLOT, ChannelName.TRIANGLE) == Agreement.ALL
-
-
-class TestFlatteningTheList:
-    def test_a_folder_gives_up_the_recordings_it_stood_for(self) -> None:
-        gathered = folder("/audio", [recording("/audio/a.wav"), recording("/audio/b.wav")])
-        sources = SourceList().add_folder(gathered).flattened()
-
-        assert sources.row_count == 2
-        assert sources.folder_root_of(Path("/audio/a.wav")) is None
-
-    def test_the_recordings_keep_the_order_they_stood_in(self) -> None:
-        sources = SourceList().add_recording(recording("/other/a.wav"))
-        sources = sources.add_folder(folder("/audio", [recording("/audio/b.wav"), recording("/audio/c.wav")]))
-
-        assert sources.flattened().paths == (
-            Path("/other/a.wav"),
-            Path("/audio/b.wav"),
-            Path("/audio/c.wav"),
-        )
-
-    def test_the_recordings_keep_the_settings_they_stood_with(self) -> None:
-        gathered = folder("/audio", [recording("/audio/a.wav", [ChannelName.NOISE])])
-        loose = SourceList().add_folder(gathered).flattened().recording(Path("/audio/a.wav"))
-
-        assert loose is not None
-        assert loose.settings.channel_set == {ChannelName.NOISE}

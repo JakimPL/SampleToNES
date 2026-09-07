@@ -342,15 +342,6 @@ class ConverterLogic(CallbackMixin):
             )
         )
 
-    def set_joining_channels(self, channels: FrozenSet[ChannelName]) -> None:
-        """Names the channels a recording holds when it joins the list, carried between runs.
-
-        A run hands out what a recording joins with, so narrowing this narrows every gathered
-        recording to the channels still named; each keeps the choice it was given for a channel
-        left out and gets it back when that channel returns.
-        """
-        self._settle_joining(CHANNEL_SLOT.write(self._joining_settings, channels))
-
     def set_channel_cap(self, channel_cap: int) -> None:
         """Names how many channels one recording may hold in a frame, for every conversion."""
         self._settle(self._state.with_settings(self._settings.with_channel_cap(channel_cap)))
@@ -415,10 +406,6 @@ class ConverterLogic(CallbackMixin):
     @property
     def _settings(self) -> RunSettings:
         return self._state.settings
-
-    def _settle_joining(self, joining: StemSettings) -> None:
-        """Takes up the settings a recording joins the list with, and writes them down."""
-        self._settle(self._state.with_settings(self._settings.with_joining(joining)))
 
     def _inspected_agreement(self, slot: SettingsSlot, channel_name: ChannelName) -> Agreement:
         """How the settings the card is editing read on ``channel_name`` in ``slot``."""

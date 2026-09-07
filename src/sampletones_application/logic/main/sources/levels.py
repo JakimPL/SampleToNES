@@ -87,11 +87,6 @@ class MixLevels:
         """Lets a recording go, together with the level it emptied."""
         return self.of(self._without(path))
 
-    def keep_first(self) -> Self:
-        """Keeps the recording that picks first, which is the one a single-source run carries."""
-        paths = self.paths
-        return self.of([[paths[0]]]) if paths else self.of([])
-
     def move_within_level(self, path: Path, offset: int) -> Self:
         """Moves a recording past the neighbor it shares a level with, changing which ties first."""
         if not self.holds(path):

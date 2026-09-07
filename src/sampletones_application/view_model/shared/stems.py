@@ -248,8 +248,3 @@ class StemsListViewModel(BaseModel, frozen=True):
     def _by_key(self) -> Dict[str, StemRowViewModel]:
         """Every row a gesture can land on, the recordings inside a folder among them."""
         return {held.key: held for row in self.rows for held in (*row.held, row)}
-
-    @property
-    def playing_count(self) -> int:
-        """How many of the listed recordings hold a channel."""
-        return sum(1 for row in self.rows if row.takes_part)

@@ -68,7 +68,6 @@ def _view_model(
         other_operation_active=other_operation_active,
         output=OutputKind.MIXED if mixes else OutputKind.PER_RECORDING,
         stem_sources=stem_sources,
-        enabled_channels=ENABLED_CHANNELS,
         channel_cap=channel_cap,
         max_channel_cap=len(ENABLED_CHANNELS),
         hierarchy_mode=HierarchyMode.ROUND_ROBIN,
@@ -212,7 +211,6 @@ class TestStemsSection:
         )
 
         assert view_model.has_input is False
-        assert view_model.playing_count == 0
         assert view_model.convert_button_enabled is False
 
 

@@ -58,11 +58,6 @@ class Gathering:
         """Every gathered recording, in the order the list holds it."""
         return self.sources.recordings
 
-    @property
-    def mixed_paths(self) -> Tuple[Path, ...]:
-        """The recordings a mix converts, in the order they pick in."""
-        return self.levels.paths
-
     def recording(self, path: Path) -> Optional[Recording]:
         """The gathered recording at ``path``, where the list holds one."""
         return self.sources.recording(path)
@@ -117,25 +112,6 @@ class Gathering:
             return self
 
         return replace(self, sources=self.sources.written(recording.key, slot, value))
-
-    def written_among(
-        self,
-        path: Path,
-        slot: SettingsSlot,
-        value: FrozenSet[ChannelName],
-        offered: FrozenSet[ChannelName],
-    ) -> Self:
-        """The setup with one recording's slot settled to ``value``, among the channels ``offered``.
-
-        A channel left out of the run reaches no checkbox, so the recording keeps whatever it was
-        given for it and gets that choice back when the channel returns.
-        """
-        recording = self.recording(path)
-        if recording is None:
-            return self
-
-        held = slot.read(recording.settings)
-        return self.written(path, slot, (held - offered) | value)
 
     def settled(
         self,

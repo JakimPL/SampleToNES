@@ -198,14 +198,6 @@ class SourceList:
 
         return Agreement.over(slot.holds(recording.settings, channel_name) for recording in row.recordings)
 
-    def flattened(self) -> Self:
-        """The same recordings as loose rows, in the order they stand.
-
-        A mix converts recordings alone, so a folder standing in the list contributes what it
-        holds and stops standing for them.
-        """
-        return replace(self, rows=self.recordings)
-
     def _gathered_by(self, folder: Folder) -> Tuple[Recording, ...]:
         """The recordings ``folder`` takes on, each holding the settings it already stood with."""
         loose = self._loose_recordings()

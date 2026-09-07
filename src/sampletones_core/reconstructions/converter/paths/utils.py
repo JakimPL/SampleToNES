@@ -125,18 +125,6 @@ def get_audio_files(
     return audio_files
 
 
-def holds_audio_files(
-    input_directory: Path,
-    extensions: Tuple[str, ...] = EXT_FILES_AUDIO,
-) -> bool:
-    """Whether a batch of this folder would find anything to convert.
-
-    A batch reaches every recording below the folder, so the walk goes as deep and stops at the
-    first one it meets, which is what makes the answer cheap enough for a gesture to ask for it.
-    """
-    return any(path.is_file() and path.suffix.lower() in extensions for path in input_directory.rglob("*"))
-
-
 def filter_files(
     audio_files: List[Path],
     base_directory: Path,

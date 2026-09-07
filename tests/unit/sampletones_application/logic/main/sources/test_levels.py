@@ -35,9 +35,6 @@ class TestGathering:
     def test_removing_the_last_of_a_level_takes_the_level_with_it(self) -> None:
         assert _shape(_levels(["bass"], ["lead"]).remove(_path("bass"))) == [["lead"]]
 
-    def test_keeping_the_first_leaves_the_recording_that_picks_first(self) -> None:
-        assert _shape(_levels(["bass", "lead"], ["pad"]).keep_first()) == [["bass"]]
-
     def test_a_row_states_where_it_stands(self) -> None:
         levels = _levels(["bass", "lead"], ["pad"])
         assert (levels.level_of(_path("lead")), levels.position_of(_path("lead"))) == (0, 1)

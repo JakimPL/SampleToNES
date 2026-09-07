@@ -144,11 +144,6 @@ class ConverterViewModel(BaseModel, frozen=True):
         return max((row.level + 1 for row in self.stem_sources), default=0)
 
     @property
-    def playing_count(self) -> int:
-        """How many of the listed recordings take part in the conversion."""
-        return sum(1 for row in self.stem_sources if row.takes_part)
-
-    @property
     def can_add_source(self) -> bool:
         """Another recording would reach the run, which a full mix answers no to."""
         return not self.mixes or self.source_count < self.max_sources

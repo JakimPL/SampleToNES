@@ -23,17 +23,6 @@ def _joining(channels: List[ChannelName]) -> StemSettings:
     return StemSettings(channels=channels, bends=bending_channels(channels))
 
 
-class TestTheChannelsARunHandsOut:
-    def test_the_channels_a_recording_joins_with_are_what_the_run_enables(self) -> None:
-        assert _settings(TONES).enabled_channels == frozenset(TONES)
-
-    def test_narrowing_the_joining_channels_takes_the_bends_they_carried(self) -> None:
-        narrowed = _settings(TONES).with_joining_channels(frozenset({ChannelName.PULSE1}))
-
-        assert narrowed.joining.channels == [ChannelName.PULSE1]
-        assert ChannelName.TRIANGLE not in narrowed.joining.bends
-
-
 class TestTheCapARunHoldsTo:
     def test_a_cap_beyond_the_channels_there_are_is_held_to_them(self) -> None:
         settings = _settings(TONES).with_channel_cap(len(ChannelName) + 5)
@@ -45,7 +34,7 @@ class TestTheCapARunHoldsTo:
 
     def test_the_cap_stands_whatever_a_row_holds(self) -> None:
         """The cap bounds a frame, so it answers to the hardware rather than to one row."""
-        settings = _settings(TONES).with_channel_cap(3).with_joining_channels(frozenset({ChannelName.PULSE1}))
+        settings = _settings([ChannelName.PULSE1]).with_channel_cap(3)
 
         assert settings.effective_channel_cap == 3
 

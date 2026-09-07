@@ -1,9 +1,8 @@
 from dataclasses import dataclass, replace
-from typing import FrozenSet, Self
+from typing import Self
 
 from sampletones_application.constants.conversion import MIN_CHANNEL_CAP
 from sampletones_application.constants.output import OutputKind
-from sampletones_application.logic.main.sources.slots import CHANNEL_SLOT
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
@@ -12,22 +11,16 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.settings impor
 class RunSettings:
     """The choices a run holds to, whatever it converts.
 
-    ``joining`` is what a recording is given when it joins the setup, and a run hands out the
-    channels it names: every gathered recording is narrowed to them, so this one value settles
-    both what a new row starts from and what the whole run reaches. The rest name the shape of the
-    run itself — what it writes, how many channels one recording may hold in a frame, and how the
-    levels take turns.
+    ``joining`` is what a recording is given when it joins the setup, and each recording carries
+    its own settings from there, so what a run reaches is what its rows hold. The rest name the
+    shape of the run itself — what it writes, how many channels one recording may hold in a frame,
+    and how the levels take turns.
     """
 
     joining: StemSettings
     output: OutputKind
     channel_cap: int
     hierarchy_mode: HierarchyMode
-
-    @property
-    def enabled_channels(self) -> FrozenSet[ChannelName]:
-        """The channels a run hands out, which is what a joining recording holds."""
-        return self.joining.channel_set
 
     @property
     def max_channel_cap(self) -> int:
@@ -38,18 +31,6 @@ class RunSettings:
     def effective_channel_cap(self) -> int:
         """The cap a run holds to, within the channels the hardware has."""
         return min(self.channel_cap, self.max_channel_cap)
-
-    def with_joining(self, joining: StemSettings) -> Self:
-        """The settings a recording joins the list with, as a reader settled them."""
-        return replace(self, joining=joining)
-
-    def with_joining_channels(self, channels: FrozenSet[ChannelName]) -> Self:
-        """The settings a recording joins with, holding exactly ``channels``.
-
-        A bend the recording carried on a channel left out goes with it, which is what keeps the
-        joining settings a value the core accepts.
-        """
-        return replace(self, joining=CHANNEL_SLOT.write(self.joining, channels))
 
     @property
     def mixes(self) -> bool:

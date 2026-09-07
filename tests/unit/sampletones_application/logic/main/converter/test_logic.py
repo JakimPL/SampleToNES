@@ -197,8 +197,8 @@ class TestNoChannelsGuard:
         self,
         converter_logic: ConverterLogic,
     ) -> None:
-        converter_logic.set_joining_channels(frozenset())
         _listed(converter_logic, "a")
+        converter_logic.set_source_channels(Path("/audio/a.wav"), frozenset())
         on_no_generators = MagicMock()
         converter_logic.on_no_generators = on_no_generators
 

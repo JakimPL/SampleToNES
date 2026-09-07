@@ -32,7 +32,7 @@ def _names(gathering: Gathering) -> List[str]:
 
 
 def _mixed_names(gathering: Gathering) -> List[str]:
-    return [path.stem for path in gathering.mixed_paths]
+    return [path.stem for path in gathering.levels.paths]
 
 
 class TestGatheringRecordings:
@@ -99,44 +99,6 @@ class TestSettlingOneRecording:
         gathering = _mixed("bass")
 
         assert gathering.written(Path("/audio/stranger.wav"), CHANNEL_SLOT, frozenset()) == gathering
-
-
-class TestSettlingAmongTheChannelsOffered:
-    """A reader answers for the channels the run enables, and the rest stands as it was."""
-
-    def _held(self, gathering: Gathering) -> FrozenSet[ChannelName]:
-        settled = gathering.recording(Path("/audio/bass.wav"))
-        assert settled is not None
-        return settled.settings.channel_set
-
-    def test_a_channel_left_out_of_the_run_keeps_the_choice_it_was_given(self) -> None:
-        gathering = Gathering.empty().listing(recording("/audio/bass.wav", [ChannelName.PULSE1, ChannelName.NOISE]))
-
-        gathering = gathering.written_among(
-            Path("/audio/bass.wav"),
-            CHANNEL_SLOT,
-            frozenset(),
-            frozenset({ChannelName.PULSE1}),
-        )
-
-        assert self._held(gathering) == {ChannelName.NOISE}
-
-    def test_a_channel_the_reader_answered_for_settles_to_the_answer(self) -> None:
-        gathering = Gathering.empty().listing(recording("/audio/bass.wav", [ChannelName.PULSE1]))
-
-        gathering = gathering.written_among(
-            Path("/audio/bass.wav"),
-            CHANNEL_SLOT,
-            frozenset({ChannelName.PULSE2}),
-            frozenset({ChannelName.PULSE1, ChannelName.PULSE2}),
-        )
-
-        assert self._held(gathering) == {ChannelName.PULSE2}
-
-    def test_a_recording_the_setup_never_gathered_changes_nothing(self) -> None:
-        gathering = _mixed("bass")
-
-        assert gathering.written_among(Path("/audio/stranger.wav"), CHANNEL_SLOT, frozenset(), frozenset()) == gathering
 
 
 class TestTheListAPerRecordingRunConverts:
