@@ -61,22 +61,21 @@ class FolderScan(CallbackMixin):
 
     @concurrent(wait=False)
     def _walk(self, root: Path, answer: FoundCallback) -> None:
-        """Reads the tree, lets the walk go, and reports how it ended, in that order.
+        """Reads the tree, reports how it ended, and lets the walk go, in that order.
 
-        The walk is let go whatever becomes of it, so a reading that fails partway leaves the next
-        folder free to be asked for.
+        The walk holds its claim until its report has gone out, so the worker and the scan agree
+        on the moment a folder may next be asked for. It is let go whatever becomes of the reading,
+        so one that fails partway leaves the next folder free to be asked for.
         """
         try:
             found = self._gather(root)
-            stopped = self._stopping.is_set()
+            if self._stopping.is_set():
+                self.call(self.on_stopped)
+                return
+
+            self.call(answer, root, tuple(sorted(found)))
         finally:
             self._running.clear()
-
-        if stopped:
-            self.call(self.on_stopped)
-            return
-
-        self.call(answer, root, tuple(sorted(found)))
 
     def _gather(self, root: Path) -> List[Path]:
         """The recordings met below ``root``, giving up at the entry the reader stops the walk on.

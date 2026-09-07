@@ -180,3 +180,35 @@ class TestOneWalkAtATime(BaseTestSuite):
         SingleThreadExecutor.join_all()
 
         assert answered == []
+
+    def test_a_walk_stands_as_running_while_it_hands_its_answer_over(
+        self,
+        scan: FolderScan,
+        tmp_path: Path,
+    ) -> None:
+        """The worker outlives its own answer, and a folder asked for in that moment reaches an
+        executor still holding the last one, so the scan reads as running for as long as it does."""
+        root = tree(tmp_path / "takes", 2)
+        standing: List[bool] = []
+
+        scan.start(root, lambda _root, _found: standing.append(scan.running))
+        SingleThreadExecutor.join_all()
+
+        assert standing == [True]
+
+    def test_a_walk_stands_as_running_while_it_says_it_stopped(
+        self,
+        scan: FolderScan,
+        tmp_path: Path,
+    ) -> None:
+        """A walk the reader gave up on reports the same way its answer does, so both leave the
+        scan free at the one moment the worker does."""
+        root = tree(tmp_path / "takes", REPORT_EVERY * 4)
+        standing: List[bool] = []
+        scan.on_progress = lambda _count: scan.stop()
+        scan.on_stopped = lambda: standing.append(scan.running)
+
+        scan.start(root, lambda _root, _found: None)
+        SingleThreadExecutor.join_all()
+
+        assert standing == [True]
