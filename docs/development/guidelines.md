@@ -85,6 +85,12 @@ These rules govern the Python in this repository. They complement
 1. A document change is part of the change that motivates it. Code that alters a contract a document states lands together with the edit stating the new contract, and a deviation the change knowingly leaves behind lands with an entry in the ledger that document names. What a branch leaves behind is therefore the current contract, the recorded distance from it, or both.
 1. Use American English.
 
+## Guide
+
+1. `docs/guide/` is written for someone using the application, not changing it. A page says what a reader can do and how, in the order they would do it; a page organized by control catalogues the application instead of explaining it.
+1. A few sentences per feature. Mechanism, file formats and per-widget behavior belong to `docs/development/`, and a `###` inside a guide section is the sign a passage grew into a reference.
+1. Write for a reader with no picture of the screen. Name a control by the label the application ships, read from the language file, rather than by where it sits.
+
 ## Tests
 
 1. A test file mirrors the ownership of the code it exercises.
