@@ -2,24 +2,28 @@
 
 _SampleToNES_ reconstructs according to a **generation configuration** — the
 sample rate, the NES frequency, how the audio is analyzed, and how candidates are
-scored. Which channels a conversion uses travels with the conversion itself, so
-each recording says which of them it may take. The settings you reach for most
-often are on the **Main** tab; the rest live in the configuration file, for when
-you want to go deeper.
+scored. The settings you reach for most often are on the **Main** tab; the rest
+live in the configuration file, for when you want to go deeper.
+
+Which channels a recording may use is not one of them. The NES has four sound
+channels — **Pulse 1**, **Pulse 2**, **Triangle**, and **Noise** — and you pick
+which of them each recording takes in the converter's list, every time you set up
+a conversion. See [choosing which channels a recording
+uses](interface.md#choosing-which-channels-a-recording-uses).
 
 ## From the interface
 
-The **Main** tab exposes the everyday settings (grouped under **General
-settings**, **Source settings**, and **Advanced settings**):
+Three cards on the **Main** tab hold the everyday settings:
 
-- which channels the recording you picked out of the converter's list takes, and
-  the **Drive** applied to them;
-- **Normalize audio** and **Quantize audio** preprocessing;
-- the **Sample rate** and **NES frequency**;
-- the **Generation method** and **Feature scaling**, which set how the audio's
-  frequency content is measured and weighted (see
-  [Reconstruction algorithms](../concepts/reconstruction.md));
-- the **Workers** count and the library and output folders.
+- **General settings** — **Normalize audio** and **Quantize audio**, and the
+  **Sample rate** and **NES frequency** a library is built for.
+- **Source settings** — the **Drive** a run is pushed with, and the channels and
+  bends of the recording you picked out of the converter's list.
+- **Advanced settings** — the **Method** and **Feature scaling**, which set how
+  the audio's frequency content is measured and weighted (see [Reconstruction
+  algorithms](../concepts/reconstruction.md)); the **Workers** count; and the
+  instruction library and output folders. **View ▸ Show advanced settings**
+  reveals this card.
 
 Changing any of these updates your configuration, which is saved to `config.json`
 (see [Where your files live](files.md)).
