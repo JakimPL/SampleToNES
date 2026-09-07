@@ -9,6 +9,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
 
 NO_RESERVE: Final[int] = 0
+NO_INDENT: Final[int] = 0
 COLUMN_BORDER: Final[int] = 1
 ONE_SLOT: Final[int] = 1
 TWO_SLOTS: Final[int] = 2
@@ -28,10 +29,11 @@ class StemsColumns:
     rather than on the boxes beside them. A channel column holds one box, or two where ``bends``
     states that a cell carries the bend on its channel, and takes the width that fits.
 
-    ``reserve`` holds a strip clear at the right end of the grid, as wide as a scrollbar. A folder
-    draws its recordings inside a region of their own, which spends that width on its scrollbar;
-    holding the same width clear out here stands the columns of the grid around a folder where the
-    columns inside it stand.
+    ``folders`` states that the list this grid belongs to holds folders, which settles both ends
+    of the row. At the right, a folder draws its recordings inside a region of their own, and the
+    room that region spends there is held clear out here so the columns around a folder stand where
+    the columns inside it stand. At the left, a folder's own row leads with the marker that opens
+    it, and a row carrying none opens where that marker's glyph does.
     """
 
     layout: StemsListLayout
@@ -39,7 +41,7 @@ class StemsColumns:
     master: bool
     removable: bool
     bends: bool
-    reserve: int
+    folders: bool
 
     @property
     def channel_width(self) -> int:
@@ -47,8 +49,21 @@ class StemsColumns:
         return self.layout.channel_column_width if self.bends else self.layout.channel_solo_width
 
     @property
+    def reserve(self) -> int:
+        """The room a folder's region spends at the right of the grid, held clear across the list.
+
+        A region insets its body by the well's padding and keeps a scrollbar's width clear beside
+        it, so a strip of that width at the right end of every table outside a folder stands the
+        two grids in one.
+        """
+        if not self.folders:
+            return NO_RESERVE
+
+        return self.layout.well_padding + self.layout.scrollbar_width
+
+    @property
     def reserve_width(self) -> int:
-        """The width the reserve column is declared at, so the room it holds is a scrollbar's.
+        """The width the reserve column is declared at, so the room it holds is the region's.
 
         A column takes its own width plus the padding on either side of its cell and the rule drawn
         beside it, so those come off the room the strip is meant to hold clear.
@@ -84,6 +99,23 @@ class StemsColumns:
     def box_indent(self, channel_name: ChannelName) -> int:
         """How far a channel's boxes sit in, so they stand in the middle of their own column."""
         return self._centered(self.slots(channel_name) * self.layout.channel_box_width)
+
+    def marker_indent(self, glyph: str, font: Font) -> int:
+        """How far a row carrying no marker sits in, so its name opens where a marker's glyph does.
+
+        A folder's row leads with a button as wide as the marker column, and the glyph inside it
+        stands in the middle of that button. A recording standing loose in the same list opens at
+        the glyph rather than at the button, which reads as one column of names without spending
+        the marker's whole width on a row that has none.
+        """
+        if not self.folders:
+            return NO_INDENT
+
+        measured = dpg.get_text_size(glyph, font=FontRegistry.get_tag(font))
+        if measured is None:
+            return NO_INDENT
+
+        return max(NO_INDENT, (self.layout.twisty_width - int(measured[0])) // 2)
 
     def name_indent(self, label: str, font: Font) -> int:
         """How far a channel's name sits in, so it stands over the middle of its own column.

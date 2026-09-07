@@ -21,7 +21,7 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.stems.columns import StemsColumns
+from sampletones_application.ui.elements.stems.columns import NO_INDENT, StemsColumns
 from sampletones_application.ui.elements.stems.expansion import OpenFolders
 from sampletones_application.ui.elements.stems.gestures import StemsGestures
 from sampletones_application.ui.elements.stems.messages import StemsMessages
@@ -84,7 +84,7 @@ class StemRowRenderer:
             if self._offer.master_box:
                 self._create_master(row, view_model)
 
-            self._create_name(row, view_model)
+            self._create_name(row, view_model, columns)
             for channel_name in view_model.channels_in_play:
                 self._create_channel(row, channel_name, columns)
 
@@ -170,11 +170,17 @@ class StemRowRenderer:
         theme = TAG_GLOBAL_THEME_STEMS_PICK_PARTIAL if agreement is Agreement.SOME else TAG_GLOBAL_THEME_STEMS_PICK
         ThemeRegistry.get(theme).bind_to_item(self._tags.row(row.key, SUF_CHECKBOX))
 
-    def _create_name(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
+    def _create_name(
+        self,
+        row: StemRowViewModel,
+        view_model: StemsListViewModel,
+        columns: StemsColumns,
+    ) -> None:
         """The row itself: what names the source, what you drag it by, and what you drop onto.
 
-        A folder leads with the marker that opens it. The name takes the height its boxes take, so
-        the band a row reads as covers the whole of what stands beside it.
+        A folder leads with the marker that opens it, and a recording standing loose beside one
+        opens where that marker's glyph does, so the names read as one column. The name takes the
+        height its boxes take, so the band a row reads as covers the whole of what stands beside it.
         """
         with dpg.group(horizontal=True):
             self._create_disclosure(row)
@@ -182,6 +188,7 @@ class StemRowRenderer:
                 label=self._row_label(row),
                 tag=self._tags.row(row.key, SUF_TEXT),
                 height=self._layout.name_height,
+                indent=self._name_indent(row, columns),
                 user_data=row.key,
                 callback=self._gestures.on_name_selected,
                 payload_type=self._tags.payload,
@@ -198,6 +205,13 @@ class StemRowRenderer:
                 self._messages.row_explanation(row),
                 text_tag=self._tags.row(row.key, SUF_TOOLTIP),
             )
+
+    def _name_indent(self, row: StemRowViewModel, columns: StemsColumns) -> int:
+        """How far the row's name sits in: a folder opens at its marker, anything else at the glyph."""
+        if row.stands_for_a_folder:
+            return NO_INDENT
+
+        return columns.marker_indent(self._glyphs.collapsed, Font.ICON)
 
     def _draggable(self, view_model: StemsListViewModel) -> bool:
         """A row is dragged where the list bands its rows, which is what a drag rearranges."""

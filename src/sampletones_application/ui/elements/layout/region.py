@@ -17,6 +17,7 @@ SliceBuilder = Callable[[int, int], None]
 LeadBuilder = Callable[[str], None]
 
 NO_ROWS: Final[Window] = (0, 0)
+NO_GUTTER: Final[int] = 0
 NO_LEAD: Final[float] = 0.0
 AUTO_HEIGHT: Final[int] = 0
 NO_SCROLL: Final[float] = 0.0
@@ -38,7 +39,9 @@ class WindowedRegion:
 
     The region owns every quantity the window is chosen by: the room it reserved, because it
     placed it, and the height it holds, because it set it. So a caller draws and then settles,
-    and there is one order for the two.
+    and there is one order for the two. ``gutter`` is the room a scrollbar takes, which the region
+    holds clear at the right of its body while it stands without one, so what it holds keeps one
+    width across the moment it starts scrolling.
 
     The height a run of rows asks for is worked out from the reading of a row rather than read off
     the widgets, since a region already held to its ceiling clips what it holds and would measure
@@ -62,6 +65,7 @@ class WindowedRegion:
         ceiling: int,
         padding: int,
         margin: int,
+        gutter: int,
         indent: Optional[int] = None,
     ) -> None:
         self._tag = tag
@@ -69,6 +73,7 @@ class WindowedRegion:
         self._ceiling = ceiling
         self._padding = padding
         self._margin = margin
+        self._gutter = gutter
         self._indent = indent
         self._above_tag = compose_tag(tag, SUF_SPACER_ABOVE)
         self._below_tag = compose_tag(tag, SUF_SPACER_BELOW)
@@ -146,6 +151,7 @@ class WindowedRegion:
             self._tag,
             padding=self._padding,
             margin=self._margin,
+            gutter=self._gutter,
             indent=self._indent,
             show=show,
         )
@@ -312,6 +318,7 @@ class WindowedRegion:
         self._height = self._body_height() + 2 * self._margin
         self._natural = True
         dpg_configure_item(self._tag, height=AUTO_HEIGHT, auto_resize_y=True, no_scrollbar=True)
+        self._hold_gutter(scrolling=False)
 
     def _size_to(self, content: float) -> None:
         within = content <= self._ceiling
@@ -324,6 +331,19 @@ class WindowedRegion:
             auto_resize_y=within,
             no_scrollbar=within,
         )
+        self._hold_gutter(scrolling=not within)
+
+    def _hold_gutter(self, *, scrolling: bool) -> None:
+        """Keep the body one width, whether the room at its right is a scrollbar or the gutter.
+
+        A region past its ceiling draws a scrollbar, which takes that room out of the width the
+        body is measured against; one within it draws none, and the gutter stands in its place. So
+        the columns inside a region stand where they stand however long the list it holds grows.
+        """
+        if not dpg.does_item_exist(self._body_tag):
+            return
+
+        dpg_configure_item(self._body_tag, width=-(self._padding + (NO_GUTTER if scrolling else self._gutter)))
 
     def _body_height(self) -> float:
         """How tall the rows drawn into the region stand, as the frame that placed them left them."""

@@ -8,7 +8,7 @@ from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.tags.general import SUF_TABLE
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
 from sampletones_application.ui.elements.layout.region import NO_SCROLL, WindowedRegion
-from sampletones_application.ui.elements.stems.columns import NO_RESERVE, StemsColumns
+from sampletones_application.ui.elements.stems.columns import StemsColumns
 from sampletones_application.ui.elements.stems.expansion import OpenFolders
 from sampletones_application.ui.elements.stems.row import StemRowRenderer
 from sampletones_application.ui.elements.stems.tags import StemsTags
@@ -50,7 +50,7 @@ class FolderRenderer:
             master=False,
             removable=False,
             bends=False,
-            reserve=NO_RESERVE,
+            folders=False,
         )
 
     def reads(self, columns: StemsColumns) -> None:
@@ -131,6 +131,7 @@ class FolderRenderer:
             ceiling=self._layout.folder_ceiling,
             padding=self._layout.well_padding,
             margin=self._layout.well_margin,
+            gutter=self._layout.scrollbar_width,
             indent=self._layout.well_padding + self._layout.folder_indent,
         )
         region.create(self._tags.body)
@@ -156,10 +157,11 @@ class FolderRenderer:
     ) -> None:
         """One table of the recordings a region reaches, declaring the columns the list lines up on.
 
-        The region spends a scrollbar's width of its own, which is the width the grid outside it
-        holds clear, so a box inside a folder stands in the column its neighbours stand in.
+        The room the region spends at its own right is the room the grid outside it holds clear, so
+        the recordings inside a folder stand in the columns their neighbours stand in and none of
+        them leads with a marker.
         """
-        held_columns = replace(self._columns, reserve=NO_RESERVE)
+        held_columns = replace(self._columns, folders=False)
         with dpg.table(
             tag=self._tags.held(row.key),
             parent=region.body,

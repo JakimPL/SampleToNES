@@ -16,6 +16,5 @@ class StemsListLayout(BaseModel, extra="forbid", frozen=True):
     folder_indent: int
     window_overscan: int
     scrollbar_width: int
-    column_gutter: int
     cell_padding: int
     name_height: int

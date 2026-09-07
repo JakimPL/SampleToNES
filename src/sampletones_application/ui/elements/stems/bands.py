@@ -13,7 +13,7 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.stems.columns import NO_RESERVE, StemsColumns
+from sampletones_application.ui.elements.stems.columns import StemsColumns
 from sampletones_application.ui.elements.stems.expansion import OpenFolders
 from sampletones_application.ui.elements.stems.folder import FolderRenderer
 from sampletones_application.ui.elements.stems.gestures import StemsGestures
@@ -196,8 +196,9 @@ class LevelBands:
     def columns(self, view_model: StemsListViewModel) -> StemsColumns:
         """The grid every table of this list stands in, the heading above them included.
 
-        A list holding a folder holds a scrollbar's width clear at its right end, so the columns
-        around a folder stand where the columns inside its own scrolling region stand.
+        A list holding a folder says so to the grid, which is what stands the columns around a
+        folder where the columns inside its own region stand and opens a loose row's name where a
+        folder's marker opens.
         """
         return StemsColumns(
             layout=self._layout,
@@ -205,11 +206,5 @@ class LevelBands:
             master=self._offer.master_box,
             removable=self._offer.removal,
             bends=self._offer.bends,
-            reserve=self._reserve(view_model),
+            folders=view_model.holds_folders,
         )
-
-    def _reserve(self, view_model: StemsListViewModel) -> int:
-        if not view_model.holds_folders:
-            return NO_RESERVE
-
-        return self._layout.scrollbar_width + self._layout.column_gutter

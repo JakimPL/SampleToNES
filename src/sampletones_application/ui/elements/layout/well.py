@@ -16,6 +16,7 @@ def well(
     *,
     padding: int,
     margin: int,
+    gutter: int,
     indent: Optional[int] = None,
     height: int = 0,
     show: bool = True,
@@ -31,6 +32,8 @@ def well(
     and ``indent`` at the left, the two being the same width unless a caller nests the body inside
     something. A well sunk under a row of its own indents to show what it belongs to while its
     right edge stays where every other row's is, so the columns line up down the whole list.
+    ``gutter`` widens that right inset by the room a scrollbar takes, which a caller hands over
+    while the well stands without one, so the body keeps one width however tall its content grows.
     ``margin`` opens the gap above the first row and below the last, which the row spacing between
     the content and the spacers adds to.
     """
@@ -46,7 +49,7 @@ def well(
         show=show,
     ):
         dpg.add_spacer(height=margin)
-        dpg.add_group(tag=body_tag, indent=padding if indent is None else indent, width=-padding)
+        dpg.add_group(tag=body_tag, indent=padding if indent is None else indent, width=-(padding + gutter))
         dpg.add_spacer(height=margin)
 
     ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND).bind_to_item(tag)

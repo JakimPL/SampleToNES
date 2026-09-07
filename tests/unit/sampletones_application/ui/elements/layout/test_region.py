@@ -6,7 +6,7 @@ import pytest
 
 from sampletones_application.paths import PALETTES_DIRECTORY, THEME_DIRECTORY
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
-from sampletones_application.ui.elements.layout.region import LeadBuilder, WindowedRegion
+from sampletones_application.ui.elements.layout.region import NO_GUTTER, LeadBuilder, WindowedRegion
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
@@ -43,6 +43,7 @@ def region(dpg_context: None) -> WindowedRegion:
         ceiling=CEILING,
         padding=0,
         margin=0,
+        gutter=NO_GUTTER,
     )
     with dpg.window(tag=ROOT_TAG):
         built.create(ROOT_TAG)
@@ -132,6 +133,7 @@ class TestAnUnmeasuredRegion(BaseTestSuite):
             ceiling=CEILING,
             padding=0,
             margin=0,
+            gutter=NO_GUTTER,
         )
         with dpg.window(tag=ROOT_TAG):
             built.create(ROOT_TAG)
@@ -167,6 +169,7 @@ class TestAReadingTheHeightHasYetToFollow(BaseTestSuite):
             ceiling=CEILING,
             padding=0,
             margin=0,
+            gutter=NO_GUTTER,
         )
         with dpg.window(tag=ROOT_TAG):
             built.create(ROOT_TAG)

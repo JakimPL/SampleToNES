@@ -5,7 +5,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.glyphs.common import CommonGlyphs
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
-from sampletones_application.ui.elements.layout.region import WindowedRegion
+from sampletones_application.ui.elements.layout.region import NO_GUTTER, WindowedRegion
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.bands import LevelBands
 from sampletones_application.ui.elements.stems.expansion import OpenFolders
@@ -73,6 +73,7 @@ class GUIStemsList(CallbackMixin):
             ceiling=ceiling,
             padding=layout.well_padding,
             margin=layout.well_margin,
+            gutter=NO_GUTTER,
         )
 
         self._messages = StemsMessages(

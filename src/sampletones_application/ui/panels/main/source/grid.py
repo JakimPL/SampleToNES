@@ -11,7 +11,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_SOURCE_GROUP_GRID,
     TAG_MAIN_SOURCE_TABLE_GRID,
 )
-from sampletones_application.ui.elements.stems.columns import NO_RESERVE, StemsColumns
+from sampletones_application.ui.elements.stems.columns import StemsColumns
 from sampletones_application.ui.elements.stems.heading import StemsHeading
 from sampletones_application.ui.themes.channels import (
     CHANNEL_THEME_TAGS,
@@ -62,7 +62,7 @@ class SettingsGrid(CallbackMixin):
             master=False,
             removable=False,
             bends=True,
-            reserve=NO_RESERVE,
+            folders=False,
         )
 
         self.on_slot_toggled: Optional[SlotCallback] = None

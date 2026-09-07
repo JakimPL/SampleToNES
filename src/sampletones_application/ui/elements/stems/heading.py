@@ -16,7 +16,7 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.stems.columns import NO_RESERVE, StemsColumns
+from sampletones_application.ui.elements.stems.columns import StemsColumns
 from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -52,7 +52,7 @@ class StemsHeading:
             master=False,
             removable=False,
             bends=bends,
-            reserve=NO_RESERVE,
+            folders=False,
         )
 
     @property
