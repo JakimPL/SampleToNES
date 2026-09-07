@@ -1,6 +1,6 @@
 # The Reconstruction Browser
 
-This document governs the tree of reconstructions the **Reconstructions** and **Sequencer** tabs
+This document governs the tree of reconstructions the **Reconstruction** and **Sequencer** tabs
 share: how a reconstructions directory becomes rows, what a row stands for, and what it answers.
 Consult it when changing what the browser lists, how a row reads, or what a click on one does. It
 complements `docs/development/architecture.md` (layering and ownership) and
