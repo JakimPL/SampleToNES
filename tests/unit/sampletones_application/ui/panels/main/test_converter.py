@@ -49,6 +49,7 @@ ROOT_TAG = "test_root"
 LANGUAGE_MANAGER = LanguageManager(LANG_EN)
 ACTION_LABEL = "Convert 2 recordings"
 STATUS_TEXT = "No tasks in progress."
+RECORDING = Path("/audio/kick.wav")
 
 
 @pytest.fixture
@@ -286,7 +287,7 @@ class TestTheDestination:
     def test_the_input_line_waits_for_a_run(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         panel, _reported = build(layout_config)
 
-        panel.update_view(view(row("kick"), input_path=Path("/audio/kick.wav")))
+        panel.update_view(view(row("kick"), input_path=RECORDING))
 
         assert not shows(TAG_MAIN_CONVERTER_GROUP_INPUT)
 
@@ -301,9 +302,9 @@ class TestTheDestination:
             view(
                 row("kick"),
                 phase=ConversionPhase.RUNNING,
-                input_path=Path("/audio/kick.wav"),
+                input_path=RECORDING,
             )
         )
 
         assert shows(TAG_MAIN_CONVERTER_GROUP_INPUT)
-        assert str(panel.input_path_text.path) == "/audio/kick.wav"
+        assert panel.input_path_text.path == RECORDING
