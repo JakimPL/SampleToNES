@@ -131,7 +131,7 @@ again.
   `MainTabCoordinator` through `__new__` and populates its privates by hand, so what those cases
   describe is a method rather than the wired object. The wiring itself is exercised —
   `test_startup.py` builds the real application and drives gestures through it end to end — so the
-  gap is that a case reading the coordinator's own behaviour cannot see a hook left unset. Building
+  gap is that a case reading the coordinator's own behavior cannot see a hook left unset. Building
   the object in that file is what closes it.
 * Principle 6 was rewritten once on the premise that a widget's callback arrives on the render
   thread, reasoned from `manual_callback_management` never having been enabled. A probe reads the
@@ -165,11 +165,14 @@ again.
   would buy is the exhaustive `match` every other long operation reports through.
 * Every gesture re-derives the whole setup. `ConverterLogic._settle` reads the gathered sources
   into rows and follows the state to its destination, which builds one batch entry per recording
-  still holding a channel. Measured by `tests/benchmarks/test_converter_load.py` on a folder of ten
-  thousand: 38 ms of row reading and 53 ms of entry derivation, so a click on a channel box spends
-  about a tenth of a second on model work before a widget is touched — all of it repeated, since
-  what changed was one recording. Answering it means holding the rows against the gathering that
-  produced them and deriving entries for the recordings a gesture actually moved.
+  still holding a channel. `tests/benchmarks/test_converter_load.py` holds both to the length of
+  the list, and reads about 40 ms and 50 ms on a folder of ten thousand with the collector held
+  off. What a reader pays is more: a gesture hands `_settle` a state whose recordings are new
+  objects, so the readings are taken cold and the collector's own share falls inside them —
+  measured together at roughly a quarter of a second per gesture at that size, before a widget is
+  touched. All of it is repeated work, since what changed was one recording. Answering it means
+  holding the rows against the gathering that produced them and deriving entries for the
+  recordings a gesture actually moved.
 * Several directories under `ui/` carry modules without an `__init__.py`, which leaves each one a
   namespace package. A tool reading the tree treats such a directory as a root it can import from,
   so a module inside one answers for a standard-library name of the same word: `ui/elements/trace.py`

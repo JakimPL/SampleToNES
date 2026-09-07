@@ -1,3 +1,4 @@
+import gc
 from itertools import count
 from pathlib import Path
 from time import process_time
@@ -47,7 +48,7 @@ from tests.suite.base import BaseTestSuite
 SMALL_FOLDER: Final[int] = 1_000
 LARGE_FOLDER: Final[int] = 10_000
 REPEATS: Final[int] = 3
-GROWTH_ALLOWANCE: Final[float] = 1.6
+GROWTH_ALLOWANCE: Final[float] = 2.0
 REGION_HEIGHT: Final[float] = 264.0
 ROW_PITCH: Final[float] = 36.0
 OVERSCAN: Final[int] = 4
@@ -86,12 +87,24 @@ def state_of(root: Path, count: int) -> ConverterState:
 
 
 def seconds(work: Callable[[], object]) -> float:
-    """The best of several runs, which is the reading least disturbed by other load."""
-    readings: List[float] = []
-    for _ in range(REPEATS):
-        started = process_time()
-        work()
-        readings.append(process_time() - started)
+    """The best of several runs, taken with the collector held off so the reading is the work's.
+
+    The collector runs on how much is live rather than on what the work does, so a run building ten
+    times the objects meets it more often and reads as more than ten times the cost — enough to
+    swallow the growth these bounds are about. Held off for the reading, what is left is how the
+    work itself follows the length of the list, and the objects are collected once it comes back.
+    """
+    collecting = gc.isenabled()
+    gc.disable()
+    try:
+        readings: List[float] = []
+        for _ in range(REPEATS):
+            started = process_time()
+            work()
+            readings.append(process_time() - started)
+    finally:
+        if collecting:
+            gc.enable()
 
     return min(readings)
 
@@ -111,7 +124,14 @@ def growth(small: Callable[[], object], large: Callable[[], object]) -> Tuple[fl
 
 
 def linear(one: float) -> float:
-    """The most a reading may cost while the work it does still follows the list's length."""
+    """The most a reading may cost while the work it does still follows the list's length.
+
+    ``GROWTH_ALLOWANCE`` is the room the reading itself takes. The smaller run is the divisor and
+    is warmed by whatever ran before it, so the two readings differ in more than the work between
+    them. The shapes these bounds are here to catch — the list read again for each row, or once
+    per folder standing in it — read fifty times over at ten thousand, so the allowance is wide
+    enough for the warmth and narrow enough for those.
+    """
     return one * (LARGE_FOLDER / SMALL_FOLDER) * GROWTH_ALLOWANCE
 
 
