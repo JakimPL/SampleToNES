@@ -331,6 +331,8 @@ class TestModifierAddAvailability:
 
 OVERWRITE_TARGET_PROMPT_KEY: Final[str] = "main.converter.message.overwrite_target_prompt"
 OVERWRITE_TARGET_BUTTON_KEY: Final[str] = "main.converter.label.overwrite_target_button"
+OVERWRITE_TARGETS_PROMPT_KEY: Final[str] = "main.converter.message.overwrite_targets_prompt"
+OVERWRITE_TARGETS_TITLE_KEY: Final[str] = "main.converter.title.overwrite_targets_dialog"
 
 
 class TestOverwritePrompt:
@@ -340,7 +342,7 @@ class TestOverwritePrompt:
         coordinator = _stems_coordinator()
         target = tmp_path / "song.stn"
 
-        coordinator._confirm_overwriting_target(target)
+        coordinator._confirm_overwriting_target((target,))
 
         args, kwargs = coordinator._dialogs.show_confirmation.call_args
         assert args[0] == TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET
@@ -348,10 +350,22 @@ class TestOverwritePrompt:
         assert kwargs["ok_label"] == OVERWRITE_TARGET_BUTTON_KEY
         assert kwargs["path"] == target
 
+    def test_several_standing_reconstructions_are_all_put_to_the_reader(self, tmp_path: Path) -> None:
+        """Confirming writes over every one of them, so the prompt speaks for all of them."""
+        coordinator = _stems_coordinator()
+        targets = tuple(tmp_path / name for name in ("one.stn", "two.stn", "three.stn"))
+
+        coordinator._confirm_overwriting_target(targets)
+
+        args, kwargs = coordinator._dialogs.show_confirmation.call_args
+        assert args[1] == OVERWRITE_TARGETS_PROMPT_KEY
+        assert args[2] == OVERWRITE_TARGETS_TITLE_KEY
+        assert kwargs["path"] is None
+
     def test_confirming_runs_the_conversion_it_asked_about(self, tmp_path: Path) -> None:
         coordinator = _stems_coordinator()
 
-        coordinator._confirm_overwriting_target(tmp_path / "song.stn")
+        coordinator._confirm_overwriting_target((tmp_path / "song.stn",))
         coordinator._dialogs.show_confirmation.call_args.args[3]()
 
         coordinator._converter_logic.start_conversion.assert_called_once_with(confirmed=True)
@@ -359,7 +373,7 @@ class TestOverwritePrompt:
     def test_declining_converts_nothing(self, tmp_path: Path) -> None:
         coordinator = _stems_coordinator()
 
-        coordinator._confirm_overwriting_target(tmp_path / "song.stn")
+        coordinator._confirm_overwriting_target((tmp_path / "song.stn",))
 
         coordinator._converter_logic.start_conversion.assert_not_called()
 

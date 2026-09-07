@@ -404,19 +404,30 @@ class MainTabCoordinator:
             on_cancel=self._converter_logic.refresh_view,
         )
 
-    def _confirm_overwriting_target(self, target: Path) -> None:
-        """Asks before a conversion writes over the reconstruction already standing at its target.
+    def _confirm_overwriting_target(self, targets: Tuple[Path, ...]) -> None:
+        """Asks before a conversion writes over the reconstructions already standing at its targets.
 
-        A batch keeps what it finds and converts the rest, so this reaches the reader for a
-        single conversion — the one run whose output would replace a file already made.
+        Confirming writes over every one of them, so the prompt speaks for all of them: one is
+        named by the path it stands at, and several are counted.
         """
+        one = len(targets) == 1
+        message = (
+            self._language_manager["main.converter.message.overwrite_target_prompt"]
+            if one
+            else self._language_manager["main.converter.message.overwrite_targets_prompt"]
+        )
+        title = (
+            self._language_manager["main.converter.title.overwrite_target_dialog"]
+            if one
+            else self._language_manager["main.converter.title.overwrite_targets_dialog"]
+        )
         self._dialogs.show_confirmation(
             TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
-            self._language_manager["main.converter.message.overwrite_target_prompt"],
-            self._language_manager["main.converter.title.overwrite_target_dialog"],
+            message if one else message.format(count=len(targets)),
+            title,
             lambda: self._converter_logic.start_conversion(confirmed=True),
             ok_label=self._language_manager["main.converter.label.overwrite_target_button"],
-            path=target,
+            path=targets[0] if one else None,
         )
 
     def _notify_converter_running(self) -> bool:

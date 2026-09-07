@@ -269,8 +269,44 @@ class TestOverwriteGuard:
         with patch(SCHEDULING):
             converter_logic.start_conversion()
 
-        on_target_exists.assert_called_once_with(target)
+        on_target_exists.assert_called_once_with((target,))
         converter_logic.generate_library.assert_not_called()
+        assert _phase(converter_logic) == ConversionPhase.IDLE
+
+    def _target_alone(self, converter_logic: ConverterLogic, source: Path) -> Path:
+        """Where a run over this recording alone would write, leaving the setup as it was found."""
+        target = self._aimed_at(converter_logic, source)
+        converter_logic.remove_source(source)
+        return target
+
+    def test_every_standing_target_is_named_to_the_reader(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        """A recording the reader named is written whenever the run goes, so all of them are named.
+
+        The answer covers each one it is given, which is what makes the prompt worth reading.
+        """
+        sources = []
+        targets = []
+        for name in ("one.wav", "two.wav", "three.wav"):
+            source = tmp_path / name
+            source.touch()
+            sources.append(source)
+            targets.append(self._target_alone(converter_logic, source))
+
+        for target in targets:
+            self._standing(target)
+
+        converter_logic.gather_recordings(sources)
+        on_target_exists = MagicMock()
+        converter_logic.on_target_exists = on_target_exists
+
+        with patch(SCHEDULING):
+            converter_logic.start_conversion()
+
+        on_target_exists.assert_called_once_with(tuple(targets))
         assert _phase(converter_logic) == ConversionPhase.IDLE
 
     def test_a_confirmed_run_goes_ahead(

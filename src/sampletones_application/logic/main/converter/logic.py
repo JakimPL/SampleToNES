@@ -59,7 +59,7 @@ from sampletones_core.reconstructions.converter import ConversionPlan
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
-from sampletones_shared.types.callback import PathCallback, VoidCallback
+from sampletones_shared.types.callback import PathCallback, PathsCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
@@ -111,7 +111,7 @@ class ConverterLogic(CallbackMixin):
         self.on_error: Optional[Callable[[Exception], None]] = None
         self.on_no_files_to_process: Optional[VoidCallback] = None
         self.on_no_generators: Optional[VoidCallback] = None
-        self.on_target_exists: Optional[PathCallback] = None
+        self.on_target_exists: Optional[PathsCallback] = None
         self.on_load_file: Optional[PathCallback] = None
         self.on_load_directory: Optional[VoidCallback] = None
         self.on_canceled: Optional[VoidCallback] = None
@@ -378,9 +378,9 @@ class ConverterLogic(CallbackMixin):
             self.call(self.on_no_generators)
             return
 
-        standing_target = self._standing_target(plan)
-        if standing_target is not None and not confirmed:
-            self.call(self.on_target_exists, standing_target)
+        standing_targets = self._standing_targets(plan)
+        if standing_targets and not confirmed:
+            self.call(self.on_target_exists, standing_targets)
             return
 
         self._run.wait()
@@ -499,14 +499,15 @@ class ConverterLogic(CallbackMixin):
 
         return state.with_destination(destination.aimed_at_batch(config, batch_entries(state)))
 
-    def _standing_target(self, plan: ConversionPlan) -> Optional[Path]:
-        """The reconstruction ``plan`` would write over, where one stands.
+    def _standing_targets(self, plan: ConversionPlan) -> Tuple[Path, ...]:
+        """Every reconstruction ``plan`` would write over, in the order the run reaches them.
 
-        A batch converts what is still to be written and keeps the rest, so it puts nothing to
-        the reader; a run writing one document asks about that document.
+        A recording gathered from a folder is left where its reconstruction already stands, so a
+        repeated folder run picks up where the last one stopped and puts nothing to the reader.
+        A recording the reader named is written whenever the run goes, so all of those are named
+        together: the answer covers each one it is given.
         """
-        targets = plan.existing_targets(self._config_manager.config)
-        return targets[0] if targets else None
+        return plan.existing_targets(self._config_manager.config)
 
     def _wait_for_library_and_start(self) -> None:
         if self._run.phase != ConversionPhase.WAITING:
