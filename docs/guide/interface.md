@@ -10,14 +10,7 @@ _SampleToNES_ has four tabs, and `F1` to `F4` switch between them:
 
 Work moves through them in that order. You convert on **Main**, and when the run
 finishes **Load** opens the result on **Reconstruction**. From there **Add to
-Sequencer** hands it to a song. The **Instructions** tab is optional: converting
-builds the library your settings need, so you come here only to build one ahead
-of time or to look at what one holds.
-
-Two things sit outside the tabs. Everything a reconstruction exports to is on the
-**Reconstruction** menu rather than on a tab. And the **Edit** and **Voice**
-menus rebuild themselves around whatever your cursor is on, so what they offer
-depends on where you are working.
+Sequencer** hands it to a song. The **Instructions** tab is optional and allows you to explore single _instructions_ — unit blocks the NES sound processor produces.
 
 ## Choosing what to convert
 
@@ -159,7 +152,7 @@ or **Noise** and the note keys play the instrument on that generator.
 
 ## Exporting
 
-Everything a reconstruction exports to is on the **Reconstruction** menu.
+You export a reconstruction from the **Reconstruction** menu.
 **Export instruments ▸ FamiTracker instruments...** writes one `.fti` per
 channel, **Bitphase presets...** writes the same as `.json`, and **NSF
 program...** writes a single `.nsf` that plays the whole reconstruction on a NES.
@@ -192,11 +185,12 @@ Each menu covers one kind of work:
 
 - **File** — projects, the module and program a song exports to, and rendering a
   song to audio.
-- **Edit** — undo and redo, then the actions of whatever your cursor is on.
-- **Reconstruction** — making, opening and saving reconstructions, and every
-  export of one.
+- **Edit** — undo and redo, then the actions of whatever you have selected, so
+  its lower half changes with what you are working on.
+- **Reconstruction** — making, opening and saving reconstructions, and exporting
+  them.
 - **Voice** — the ways a voice comes into the sequencer, and the actions of the
-  one you picked.
+  voice you picked.
 - **Playback** — playing, autoplay, following the song, and muting channels.
 - **View** — advanced settings, favorites, the display, and the shortcuts.
 - **Help** — **About**.
