@@ -18,7 +18,9 @@ The [**guide**](guide/) walks through the application from installation onward.
 
 - [Installation](guide/installation.md) — the standalone build, running from source, and GPU acceleration.
 - [Getting started](guide/getting-started.md) — your first reconstruction and your first song.
-- [The interface](guide/interface.md) — the Main, Reconstructions, and Instructions tabs, and the menus.
+- [The interface](guide/interface.md) — the four tabs, the menus, and the keyboard shortcuts.
+- [Converting audio](guide/converting.md) — the Main tab: gathering recordings, choosing channels, and running a conversion.
+- [Working with a reconstruction](guide/reconstruction.md) — the Reconstruction tab: listening, editing instruments, and exporting.
 - [The sequencer](guide/sequencer.md) — the tracker: arranging samples and hand-written instruments into a song, exporting a module, and rendering it to audio.
 - [Command line](guide/command-line.md) — running without the graphical interface.
 - [Where your files live](guide/files.md) — the folders and file types _SampleToNES_ uses.

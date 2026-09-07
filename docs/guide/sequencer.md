@@ -37,7 +37,7 @@ than the project and the project already has voices, _SampleToNES_ warns with
 
 A new instrument starts out holding a note at full volume, so you can place it and
 hear it straight away; give it the sound you want on the **Reconstruction** tab
-(right-click ▸ **Edit**). See [editing instruments](interface.md#editing-instruments).
+(right-click ▸ **Edit**). See [editing instruments](reconstruction.md#editing-instruments).
 An imported `.fti` arrives with the volume, arpeggio, and duty-cycle envelopes the
 file states, and **Instrument imported** names anything the file held on a tracker's
 own terms that the voice leaves behind — see [reading an instrument
