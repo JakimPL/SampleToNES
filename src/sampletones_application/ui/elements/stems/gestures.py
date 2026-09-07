@@ -20,6 +20,7 @@ from sampletones_shared.types.callback import MessageCallback, StringCallback
 
 ChannelsCallback = Callable[[str, FrozenSet[ChannelName]], None]
 ChannelCallback = Callable[[str, ChannelName], None]
+RowSelectionCallback = Callable[[str, bool], None]
 KeyOffsetCallback = Callable[[str, int], None]
 KeyPairCallback = Callable[[str, str], None]
 
@@ -49,7 +50,7 @@ class StemsGestures:
         self.on_channel_toggled: Optional[ChannelCallback] = None
         self.on_removal_asked: Optional[StringCallback] = None
         self.on_menu_asked: Optional[StringCallback] = None
-        self.on_row_activated: Optional[StringCallback] = None
+        self.on_row_activated: Optional[RowSelectionCallback] = None
         self.on_dropped_on_row: Optional[KeyPairCallback] = None
         self.on_dropped_on_level: Optional[KeyOffsetCallback] = None
         self.on_folder_toggled: Optional[StringCallback] = None
@@ -142,10 +143,14 @@ class StemsGestures:
         """The marker beside a folder's name puts its recordings in view, or away again."""
         self._report(self.on_folder_toggled, user_data)
 
-    def on_name_selected(self, _sender: Sender, _value: bool, user_data: str) -> None:
-        """Hand a clicked row on, and let the next view say which row now reads as picked out."""
+    def on_name_selected(self, _sender: Sender, value: bool, user_data: str) -> None:
+        """Hand a clicked row on, along with whether it now reads as picked out or as let go.
+
+        A row already picked out reads as let go when it is clicked again, which is the answer
+        DearPyGui hands the callback, so one gesture both picks a row and releases it.
+        """
         if self.activatable:
-            self._report(self.on_row_activated, user_data)
+            self._report(self.on_row_activated, user_data, value)
 
     def on_row_drop(self, sender: Sender, app_data: str) -> None:
         """A recording was dropped on a row, so it joins that row's level at its place."""

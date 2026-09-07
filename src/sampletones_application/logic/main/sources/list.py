@@ -171,20 +171,6 @@ class SourceList:
         held = self.agreement(key, slot, channel_name).settles_to
         return self.settled(key, slot, channel_name, held)
 
-    def toggled_throughout(
-        self,
-        slot: SettingsSlot,
-        channel_name: ChannelName,
-    ) -> Self:
-        """The list one gesture reaching every row leaves behind.
-
-        The whole list reads as one group: where every recording already makes the choice it goes
-        from each, and otherwise it reaches the ones standing without it, so one gesture always
-        leaves the list agreeing on that channel.
-        """
-        held = Agreement.over(slot.holds(recording.settings, channel_name) for recording in self.recordings).settles_to
-        return replace(self, rows=tuple(self._throughout(slot, channel_name, held)))
-
     def agreement(
         self,
         key: SourceKey,
@@ -247,23 +233,6 @@ class SourceList:
         channels: FrozenSet[ChannelName],
     ) -> Tuple[SourceRow, ...]:
         return self._rows_with(key, lambda settings: slot.write(settings, channels))
-
-    def _throughout(
-        self,
-        slot: SettingsSlot,
-        channel_name: ChannelName,
-        held: bool,
-    ) -> Tuple[SourceRow, ...]:
-        """Every row with ``channel_name`` settled the one way, folders carrying it to what they hold."""
-        rows: Tuple[SourceRow, ...] = ()
-        for row in self.rows:
-            changed = tuple(
-                recording.with_settings(slot.settled(recording.settings, channel_name, held))
-                for recording in row.recordings
-            )
-            rows += (Folder(root=row.key.path, recordings=changed),) if row.key.names_folder else changed
-
-        return rows
 
     def _rows_with(
         self,

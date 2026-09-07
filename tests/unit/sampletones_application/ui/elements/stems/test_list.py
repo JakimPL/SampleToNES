@@ -662,16 +662,45 @@ class TestCollapsedLevels(BaseTestSuite):
 
 class TestActivation(BaseTestSuite):
     def test_a_clicked_row_reports_itself(self, dpg_context: None, layout_config) -> None:
-        activated: List[str] = []
+        activated: List[Tuple[str, bool]] = []
         stems_list = build(layout_config, dragging=False)
-        stems_list.on_row_activated = activated.append
+        stems_list.on_row_activated = lambda key, picked: activated.append((key, picked))
         bass = row("bass")
         stems_list.update_view(view(bass))
 
         name_tag = row_tag(bass, SUF_TEXT)
         dpg.get_item_callback(name_tag)(name_tag, True, bass.key)
 
-        assert activated == [bass.key]
+        assert activated == [(bass.key, True)]
+
+    def test_a_row_clicked_again_reports_that_it_was_let_go(self, dpg_context: None, layout_config) -> None:
+        """DearPyGui hands the callback what the row now reads as, so one gesture answers both ways."""
+        activated: List[Tuple[str, bool]] = []
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_row_activated = lambda key, picked: activated.append((key, picked))
+        bass = row("bass")
+        stems_list.update_view(view(bass, selected_key=bass.key))
+
+        name_tag = row_tag(bass, SUF_TEXT)
+        dpg.get_item_callback(name_tag)(name_tag, False, bass.key)
+
+        assert activated == [(bass.key, False)]
+
+    def test_the_list_names_the_row_a_key_press_acts_on(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config, dragging=False)
+        bass = row("bass")
+        lead = row("lead")
+
+        stems_list.update_view(view(bass, lead, selected_key=lead.key))
+
+        assert stems_list.picked_key == lead.key
+
+    def test_a_list_holding_nothing_picked_out_names_no_row(self, dpg_context: None, layout_config) -> None:
+        stems_list = build(layout_config, dragging=False)
+
+        stems_list.update_view(view(row("bass")))
+
+        assert stems_list.picked_key is None
 
     def test_the_view_says_which_row_reads_as_picked_out(self, dpg_context: None, layout_config) -> None:
         """A click is answered by whoever owns the list, so the next view decides what is selected."""

@@ -18,6 +18,7 @@ class ShortcutCategory(StrEnum):
     """
 
     APPLICATION = "application"
+    SOURCES = "sources"
     ORDER = "order"
     TRACKER = "tracker"
     VOICES = "voices"
@@ -184,6 +185,9 @@ class ShortcutId(Enum):
     TRACKER_CLEAR_PREVIOUS_ROW = ("TrackerClearPreviousRow", ShortcutCategory.TRACKER)
     TRACKER_CANCEL_ENTRY = ("TrackerCancelEntry", ShortcutCategory.TRACKER)
     TRACKER_PLAY_FROM_ROW = ("TrackerPlayFromRow", ShortcutCategory.TRACKER)
+
+    SOURCES_REMOVE_SOURCE = ("SourcesRemoveSource", ShortcutCategory.SOURCES)
+    SOURCES_CLEAR_SELECTION = ("SourcesClearSelection", ShortcutCategory.SOURCES)
 
     VOICES_RENAME_VOICE = ("VoicesRenameVoice", ShortcutCategory.VOICES)
     VOICES_REMOVE_VOICE = ("VoicesRemoveVoice", ShortcutCategory.VOICES)

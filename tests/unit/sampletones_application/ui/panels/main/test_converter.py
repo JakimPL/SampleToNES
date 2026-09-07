@@ -35,6 +35,8 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.main.converter.panel import GUIConverterPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
+from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyEvent, KeyRouter
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.main.converter import (
@@ -44,6 +46,7 @@ from sampletones_application.view_model.main.converter import (
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName
+from tests.suite.shortcuts import shipped_source
 
 ROOT_TAG = "test_root"
 LANGUAGE_MANAGER = LanguageManager(LANG_EN)
@@ -102,6 +105,7 @@ def view(
     phase: ConversionPhase = ConversionPhase.IDLE,
     input_path: Optional[Path] = None,
     output_path: Optional[Path] = None,
+    selected_key: Optional[str] = None,
 ) -> ConverterViewModel:
     return ConverterViewModel(
         phase=phase,
@@ -118,11 +122,16 @@ def view(
         max_channel_cap=len(ChannelName),
         hierarchy_mode=DEFAULT_STEMS_HIERARCHY_MODE,
         max_sources=8,
-        selected_key=None,
+        selected_key=selected_key,
     )
 
 
-def build(layout_config: LayoutConfig) -> Tuple[GUIConverterPanel, List[OutputKind]]:
+def build(
+    layout_config: LayoutConfig,
+    *,
+    key_router: Optional[KeyRouter] = None,
+    tab_active: ActivePredicate = lambda: True,
+) -> Tuple[GUIConverterPanel, List[OutputKind]]:
     """The card as the application builds it, over the output switch it reports."""
     panel = GUIConverterPanel(
         layout=layout_config.tabs.main.converter,
@@ -131,6 +140,9 @@ def build(layout_config: LayoutConfig) -> Tuple[GUIConverterPanel, List[OutputKi
         path_colors=layout_config.general.colors.paths,
         language_manager=LANGUAGE_MANAGER,
         status_bar=GUIStatusBar(),
+        key_router=key_router if key_router is not None else KeyRouter(),
+        shortcut_source=shipped_source(),
+        tab_active=tab_active,
     )
     reported: List[OutputKind] = []
     panel.on_output_changed = reported.append
@@ -274,6 +286,77 @@ class TestTheList:
         panel.update_view(view(row("kick")))
 
         assert not shows(TAG_MAIN_CONVERTER_TEXT_STEMS_HINT)
+
+
+class TestTheKeysTheListClaims:
+    """A row picked out puts the list on the keyboard, and everything else is left to travel on."""
+
+    @staticmethod
+    def _press(router: KeyRouter, shortcut_id: ShortcutId) -> bool:
+        """Offer the press the shipped scheme gives ``shortcut_id`` to the scopes, as the router does."""
+        combination = shipped_source().shortcut(shortcut_id).combination
+        assert combination is not None
+        return router.route(KeyEvent(key=combination.key, modifiers=combination.modifiers))
+
+    def test_a_press_rests_while_no_row_is_picked_out(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        router = KeyRouter()
+        panel, _reported = build(layout_config, key_router=router)
+        removed: List[Path] = []
+        panel.on_source_removed = removed.append
+        panel.update_view(view(row("kick")))
+
+        assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is False
+        assert removed == []
+
+    def test_a_press_rests_while_another_tab_is_in_front(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        router = KeyRouter()
+        panel, _reported = build(layout_config, key_router=router, tab_active=lambda: False)
+        removed: List[Path] = []
+        panel.on_source_removed = removed.append
+        kick = row("kick")
+        panel.update_view(view(kick, selected_key=kick.key))
+
+        assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is False
+        assert removed == []
+
+    def test_it_removes_the_recording_picked_out(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        router = KeyRouter()
+        panel, _reported = build(layout_config, key_router=router)
+        removed: List[Path] = []
+        panel.on_source_removed = removed.append
+        kick = row("kick")
+        panel.update_view(view(kick, selected_key=kick.key))
+
+        assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is True
+        assert removed == [kick.path]
+
+    def test_it_lets_the_row_picked_out_go(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        router = KeyRouter()
+        panel, _reported = build(layout_config, key_router=router)
+        cleared: List[bool] = []
+        panel.on_selection_cleared = lambda: cleared.append(True)
+        kick = row("kick")
+        panel.update_view(view(kick, selected_key=kick.key))
+
+        assert self._press(router, ShortcutId.SOURCES_CLEAR_SELECTION) is True
+        assert cleared == [True]
+
+    def test_a_press_it_has_no_action_for_travels_on(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        """The list yields whatever its category leaves unnamed, so the shortcuts still hear it."""
+        router = KeyRouter()
+        panel, _reported = build(layout_config, key_router=router)
+        kick = row("kick")
+        panel.update_view(view(kick, selected_key=kick.key))
+
+        assert self._press(router, ShortcutId.SAVE_PROJECT) is False
 
 
 class TestTheDestination:

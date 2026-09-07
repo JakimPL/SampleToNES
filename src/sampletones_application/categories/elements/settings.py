@@ -146,6 +146,9 @@ class KeybindingActionElements(AbstractElement):
     TRACKER_CANCEL_ENTRY = "tracker_cancel_entry"
     TRACKER_PLAY_FROM_ROW = "tracker_play_from_row"
 
+    SOURCES_REMOVE_SOURCE = "sources_remove_source"
+    SOURCES_CLEAR_SELECTION = "sources_clear_selection"
+
     VOICES_RENAME_VOICE = "voices_rename_voice"
     VOICES_REMOVE_VOICE = "voices_remove_voice"
     VOICES_MOVE_VOICE_UP = "voices_move_voice_up"
@@ -159,6 +162,7 @@ class KeybindingCategoryElements(AbstractElement):
     """The name a reader finds each editable scope under, one member per :class:`ShortcutCategory`."""
 
     APPLICATION = "application"
+    SOURCES = "sources"
     ORDER = "order"
     TRACKER = "tracker"
     VOICES = "voices"

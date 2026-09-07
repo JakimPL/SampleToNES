@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, List
+from typing import Callable, FrozenSet, List
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -818,6 +818,63 @@ class TestAFolderInTheList(BaseTestSuite):
 
         rows = _view(converter_logic).stem_sources
         assert [row.stands_for_a_folder for row in rows] == [False, False]
+
+
+class TestTheChannelAKeyReaches(BaseTestSuite):
+    """A channel's key settles the row a reader picked out, which is the box beside that row."""
+
+    @staticmethod
+    def _channels_of(converter_logic: ConverterLogic, path: Path) -> FrozenSet[ChannelName]:
+        """The channels the row standing for ``path`` reads as holding."""
+        held = [row.channels for row in _view(converter_logic).stem_sources if row.path == path]
+        assert len(held) == 1
+        return held[0]
+
+    def test_it_settles_the_recording_picked_out(self, converter_logic: ConverterLogic) -> None:
+        _listed(converter_logic, "kick", "snare")
+        kick = Path("/audio/kick.wav")
+        converter_logic.select_row(kick, SourceKind.RECORDING)
+        held = ChannelName.TRIANGLE in self._channels_of(converter_logic, kick)
+
+        converter_logic.toggle_channel(ChannelName.TRIANGLE)
+
+        assert (ChannelName.TRIANGLE in self._channels_of(converter_logic, kick)) is not held
+
+    def test_it_leaves_the_rows_it_was_not_pointed_at(self, converter_logic: ConverterLogic) -> None:
+        _listed(converter_logic, "kick", "snare")
+        snare = Path("/audio/snare.wav")
+        converter_logic.select_row(Path("/audio/kick.wav"), SourceKind.RECORDING)
+        standing = self._channels_of(converter_logic, snare)
+
+        converter_logic.toggle_channel(ChannelName.TRIANGLE)
+
+        assert self._channels_of(converter_logic, snare) == standing
+
+    def test_a_folder_picked_out_carries_it_to_what_it_holds(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        root = tmp_path / "sources"
+        root.mkdir()
+        for name in ("a.wav", "b.wav"):
+            (root / name).touch()
+
+        converter_logic.gather_folder(root, get_audio_files(root, sort=True))
+        converter_logic.select_row(root, SourceKind.FOLDER)
+        held = ChannelName.TRIANGLE in self._channels_of(converter_logic, root)
+
+        converter_logic.toggle_channel(ChannelName.TRIANGLE)
+
+        assert (ChannelName.TRIANGLE in self._channels_of(converter_logic, root)) is not held
+
+    def test_nothing_picked_out_leaves_the_list_as_it_stands(self, converter_logic: ConverterLogic) -> None:
+        _listed(converter_logic, "kick", "snare")
+        standing = [row.channels for row in _view(converter_logic).stem_sources]
+
+        converter_logic.toggle_channel(ChannelName.TRIANGLE)
+
+        assert [row.channels for row in _view(converter_logic).stem_sources] == standing
 
 
 class TestTheStemsView(BaseTestSuite):

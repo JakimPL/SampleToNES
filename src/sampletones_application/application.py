@@ -505,6 +505,9 @@ class Application:
             dialogs=self.dialogs,
             status_bar=self.status_bar,
             stem_selection_window=self.stem_selection_window,
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+            tab_active=self._is_main_tab_current,
         )
 
         self._sequencer_tab = SequencerTabCoordinator(
@@ -807,6 +810,14 @@ class Application:
             auto_expand_favorite_reconstructions=self.session_manager.auto_expand_favorite_reconstructions,
             auto_expand_favorite_directories=self.session_manager.auto_expand_favorite_directories,
         )
+
+    def _is_main_tab_current(self) -> bool:
+        """Whether the Main tab is in front, which is what puts the converter's list on the keyboard.
+
+        The list keeps the row a reader picked out while another tab is worked on, so this is what
+        tells a press meant for that row from one meant for whatever is now in front.
+        """
+        return self._shell.get_current_tab() == Tab.MAIN
 
     def _is_reconstructions_tab_current(self) -> bool:
         """Whether the Reconstructions tab is in front, which is what puts its panels on the keyboard.

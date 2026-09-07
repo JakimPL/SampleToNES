@@ -274,14 +274,13 @@ class ConverterLogic(CallbackMixin):
         self._settle(self._state.with_gathering(self._state.gathering.settled(selected, slot, channel_name, held)))
 
     def toggle_channel(self, channel_name: ChannelName) -> None:
-        """Switches one channel across the whole list, which is what the channel's key reaches.
+        """Settles one channel on the row a reader picked out, which the channel's key reaches.
 
-        The list answers as one group: where every listed recording already holds the channel it
-        goes from each, and otherwise it reaches the ones standing without it, so one press always
-        leaves the list agreeing.
+        The key answers for the row the settings card is pointed at, so a press reaches exactly
+        the recordings the box beside that row reaches. With no row picked out there is nothing
+        for the press to settle, and it leaves the list as it stands.
         """
-        gathering = self._state.gathering.toggled_throughout(CHANNEL_SLOT, channel_name)
-        self._settle(self._state.with_gathering(gathering))
+        self.toggle_slot(SettingsField.CHANNELS, channel_name)
 
     def set_source_channels(self, path: Path, channels: FrozenSet[ChannelName]) -> None:
         """Names the channels one recording may take, which is the whole of what it reaches."""

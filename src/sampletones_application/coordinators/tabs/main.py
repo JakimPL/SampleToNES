@@ -59,7 +59,9 @@ from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
 from sampletones_application.utils.gui.render_thread import on_render_thread
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.main.advanced import (
     AdvancedSettingsPanelViewModel,
 )
@@ -105,6 +107,9 @@ class MainTabCoordinator:
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
         stem_selection_window: GUIStemSelectionWindow,
+        key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
+        tab_active: ActivePredicate,
     ) -> None:
         self._language_manager = language_manager
         self._config_manager = config_manager
@@ -135,6 +140,9 @@ class MainTabCoordinator:
             layout=layout,
             language_manager=language_manager,
             status_bar=status_bar,
+            key_router=key_router,
+            shortcut_source=shortcut_source,
+            tab_active=tab_active,
         )
         self._wire_settings(config_manager)
         self._wire_explorer()
@@ -195,6 +203,9 @@ class MainTabCoordinator:
         layout: MainTabParameters,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
+        key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
+        tab_active: ActivePredicate,
     ) -> None:
         """The tab's cards and the converter behind them, each opening on what it last stood at."""
         _config = config_manager.config
@@ -261,6 +272,9 @@ class MainTabCoordinator:
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_CONVERTER_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
+            key_router=key_router,
+            shortcut_source=shortcut_source,
+            tab_active=tab_active,
         )
 
     def _wire_settings(self, config_manager: ConfigManager) -> None:
@@ -273,7 +287,6 @@ class MainTabCoordinator:
         self._config_panel.on_library_settings_changed = config_manager.apply_library_settings
         self._source_panel.on_generation_settings_changed = config_manager.apply_generation_settings
         self._source_panel.on_slot_toggled = self._converter_logic.toggle_slot
-        self._source_panel.on_channel_keyed = self._converter_logic.toggle_channel
         self._advanced_settings_panel.on_advanced_settings_changed = config_manager.apply_advanced_settings
         self._advanced_settings_panel.on_select_library_directory = self._select_library_directory
         self._advanced_settings_panel.on_select_output_directory = self._select_output_directory
@@ -344,6 +357,7 @@ class MainTabCoordinator:
         self._converter_panel.on_folder_removed = self._converter_logic.remove_folder
         self._converter_panel.on_folder_channel_toggled = self._converter_logic.toggle_folder_channel
         self._converter_panel.on_row_selected = self._converter_logic.select_row
+        self._converter_panel.on_selection_cleared = self._converter_logic.clear_selection
         self._converter_panel.on_source_played = self._file_playback.play
 
     def _repaint_explorer_favorites(self, node: FileSystemNode) -> None:
@@ -780,8 +794,8 @@ class MainTabCoordinator:
         self._explorer_panel.refresh()
 
     def toggle_channel(self, channel: ChannelName) -> None:
-        """Switches one channel in or out of the set a reconstruction is built from."""
-        self._source_panel.toggle_channel(channel)
+        """Settles one channel on the recording or folder the reader has picked out of the list."""
+        self._converter_logic.toggle_channel(channel)
 
     def toggle_advanced_settings(self) -> None:
         """Puts the advanced card away or stands it back beside the general one."""

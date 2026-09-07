@@ -181,8 +181,8 @@ class GUIReconstructionStemsPanel(GUIPanel):
     def _on_remove_requested(self, key: str) -> None:
         self.call(self.on_stem_remove_requested, int(key))
 
-    def _on_row_activated(self, key: str) -> None:
-        """A clicked row shows its recording where it sits on disk."""
+    def _on_row_activated(self, key: str, _picked: bool) -> None:
+        """A clicked row shows its recording where it sits on disk, whichever way it now reads."""
         row = self._stems_list.row(key)
         if row is not None and row.available:
             open_path_in_explorer(row.path)

@@ -21,6 +21,8 @@ from sampletones_application.ui.panels.main.converter.listing import ConverterLi
 from sampletones_application.ui.panels.main.converter.menus import ConverterMenus
 from sampletones_application.ui.panels.main.converter.setup import ConverterSetup
 from sampletones_application.ui.panels.main.converter.summary import ConverterSummary
+from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.main.converter import ConverterViewModel
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_shared.types.callback import PathCallback, VoidCallback
@@ -47,6 +49,9 @@ class GUIConverterPanel(GUIPanel):
         initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
+        key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
+        tab_active: ActivePredicate,
     ) -> None:
         self._language_manager = language_manager
         self._setup = ConverterSetup(inputs=inputs, language_manager=language_manager)
@@ -55,6 +60,9 @@ class GUIConverterPanel(GUIPanel):
             glyphs=self._glyphs.common,
             language_manager=language_manager,
             status_bar=status_bar,
+            key_router=key_router,
+            shortcut_source=shortcut_source,
+            tab_active=tab_active,
         )
         self._menus = ConverterMenus(
             stems_list=self._listing.stems_list,
@@ -80,6 +88,7 @@ class GUIConverterPanel(GUIPanel):
         self.on_source_channels_changed: Optional[Callable[[Path, FrozenSet[ChannelName]], None]] = None
         self.on_folder_channel_toggled: Optional[Callable[[Path, ChannelName], None]] = None
         self.on_row_selected: Optional[Callable[[Path, SourceKind], None]] = None
+        self.on_selection_cleared: Optional[VoidCallback] = None
         self.on_source_removed: Optional[PathCallback] = None
         self.on_folder_removed: Optional[PathCallback] = None
         self.on_source_moved: Optional[PathOffsetCallback] = None
@@ -153,6 +162,7 @@ class GUIConverterPanel(GUIPanel):
             self.on_folder_channel_toggled, path, channel
         )
         self._listing.on_row_selected = lambda path, kind: self.call(self.on_row_selected, path, kind)
+        self._listing.on_selection_cleared = lambda: self.call(self.on_selection_cleared)
         self._listing.on_source_removed = lambda path: self.call(self.on_source_removed, path)
         self._listing.on_folder_removed = lambda path: self.call(self.on_folder_removed, path)
         self._listing.on_source_played = lambda path: self.call(self.on_source_played, path)

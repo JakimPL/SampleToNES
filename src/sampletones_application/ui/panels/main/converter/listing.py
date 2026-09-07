@@ -18,9 +18,17 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.ui.elements.stems.offer import GATHERED_SOURCES
 from sampletones_application.utils.gui.dpg import dpg_configure_item
+from sampletones_application.utils.gui.keyboard import (
+    PRIORITY_PANEL,
+    ActivePredicate,
+    KeyEvent,
+    KeyRouter,
+)
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.main.converter import ConverterViewModel
 from sampletones_core.constants.enums import ChannelName
-from sampletones_shared.types.callback import PathCallback, StringCallback
+from sampletones_shared.types.callback import PathCallback, StringCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 ChannelsCallback = Callable[[Path, FrozenSet[ChannelName]], None]
@@ -36,6 +44,10 @@ class ConverterListing(CallbackMixin):
     The list reports its gestures by the key a row is drawn under, and this is where that key
     becomes the path the logic answers for — including the two a folder answers differently:
     removing one takes everything it holds, and its box settles every recording under it.
+
+    A row picked out puts the list on the keyboard: while the Main tab is in front and no field
+    holds the keys, the list answers the presses its own category names and yields every other, so
+    a press it has no action for still reaches the application's shortcuts.
     """
 
     def __init__(
@@ -45,8 +57,14 @@ class ConverterListing(CallbackMixin):
         glyphs: CommonGlyphs,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
+        key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
+        tab_active: ActivePredicate,
     ) -> None:
         self._language_manager = language_manager
+        self._router = key_router
+        self._shortcuts = shortcut_source
+        self._tab_active = tab_active
         self._stems_list = GUIStemsList(
             prefix=PRE_MAIN_CONVERTER_STEMS,
             layout=stems_layout,
@@ -60,12 +78,15 @@ class ConverterListing(CallbackMixin):
         self.on_source_channels_changed: Optional[ChannelsCallback] = None
         self.on_folder_channel_toggled: Optional[ChannelCallback] = None
         self.on_row_selected: Optional[RowCallback] = None
+        self.on_selection_cleared: Optional[VoidCallback] = None
         self.on_source_removed: Optional[PathCallback] = None
         self.on_folder_removed: Optional[PathCallback] = None
         self.on_source_played: Optional[PathCallback] = None
         self.on_source_dropped_on_source: Optional[PathPairCallback] = None
         self.on_source_dropped_on_level: Optional[PathOffsetCallback] = None
         self.on_menu_requested: Optional[StringCallback] = None
+
+        self._router.register(self._on_key_pressed, priority=PRIORITY_PANEL, active=self._keys_active)
 
     @property
     def stems_list(self) -> GUIStemsList:
@@ -104,11 +125,44 @@ class ConverterListing(CallbackMixin):
         """A folder's box moves every recording it stands for, whichever way they were standing."""
         self.call(self.on_folder_channel_toggled, Path(key), channel_name)
 
-    def _on_selected(self, key: str) -> None:
-        """A clicked row is the one the settings card inspects, whichever kind it is."""
+    def _on_selected(self, key: str, picked: bool) -> None:
+        """A clicked row is the one the settings card inspects; clicking it again lets it go."""
+        if not picked:
+            self.call(self.on_selection_cleared)
+            return
+
         row = self._stems_list.row(key)
         if row is not None:
             self.call(self.on_row_selected, Path(key), row.kind)
+
+    def _keys_active(self) -> bool:
+        """Whether the list owns the next key: its tab is in front and it holds a row picked out.
+
+        A row picked out outlives a move to another tab, so the tab is read at the moment of the
+        press. A modal dialog claims keys above this scope in the router, so the list needs no
+        check of its own for one.
+        """
+        return self._tab_active() and self._stems_list.picked_key is not None and not self._router.is_field_focused
+
+    def _on_key_pressed(self, event: KeyEvent) -> bool:
+        """Act on the row picked out, reporting whether the list consumed the press.
+
+        The scheme says which press each of the list's actions answers to; a press its category
+        leaves unnamed goes on to the application's shortcuts.
+        """
+        key = self._stems_list.picked_key
+        if key is None:
+            return False
+
+        match self._shortcuts.action(ShortcutCategory.SOURCES, event):
+            case ShortcutId.SOURCES_REMOVE_SOURCE:
+                self._on_removed(key)
+            case ShortcutId.SOURCES_CLEAR_SELECTION:
+                self.call(self.on_selection_cleared)
+            case _:
+                return False
+
+        return True
 
     def _on_removed(self, key: str) -> None:
         """Taking a folder out takes everything it holds, which is a move of its own."""

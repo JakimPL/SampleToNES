@@ -13,7 +13,7 @@ from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.constants.output import OutputKind
-from sampletones_application.constants.sources import SettingsField
+from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
@@ -391,12 +391,8 @@ class TestChannelKeys:
         with patch.object(app._shell, "get_current_tab", return_value=tab):
             _press_shortcut(app, CHANNEL_SHORTCUT_IDS[channel])
 
-    def test_the_main_tab_switches_the_channel_across_the_whole_list(
-        self,
-        app: Application,
-        tmp_path: Path,
-    ) -> None:
-        """The key is the gesture that answers for everything listed, a row at a time being the box."""
+    @staticmethod
+    def _gathered(app: Application, tmp_path: Path) -> List[Path]:
         paths = []
         for name in ["a.wav", "b.wav"]:
             path = tmp_path / name
@@ -404,12 +400,46 @@ class TestChannelKeys:
             paths.append(path)
 
         app._main_tab._converter_logic.gather_recordings(paths)
+        return paths
+
+    def test_the_main_tab_settles_the_channel_on_the_row_picked_out(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        """The key answers for the row the settings card is pointed at, which is the box beside it."""
+        paths = self._gathered(app, tmp_path)
+        app._main_tab._converter_logic.select_row(paths[0], SourceKind.RECORDING)
         held = ChannelName.TRIANGLE in _row_of(app, paths[0]).channels
 
         self._press(app, ChannelName.TRIANGLE, Tab.MAIN)
 
-        for path in paths:
-            assert (ChannelName.TRIANGLE in _row_of(app, path).channels) is not held
+        assert (ChannelName.TRIANGLE in _row_of(app, paths[0]).channels) is not held
+
+    def test_the_rows_it_was_not_pointed_at_stand_as_they_were(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        paths = self._gathered(app, tmp_path)
+        app._main_tab._converter_logic.select_row(paths[0], SourceKind.RECORDING)
+        held = ChannelName.TRIANGLE in _row_of(app, paths[1]).channels
+
+        self._press(app, ChannelName.TRIANGLE, Tab.MAIN)
+
+        assert (ChannelName.TRIANGLE in _row_of(app, paths[1]).channels) is held
+
+    def test_the_main_tab_holding_nothing_picked_out_leaves_the_list_alone(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        paths = self._gathered(app, tmp_path)
+        standing = [_row_of(app, path).channels for path in paths]
+
+        self._press(app, ChannelName.TRIANGLE, Tab.MAIN)
+
+        assert [_row_of(app, path).channels for path in paths] == standing
 
     def test_the_sequencer_switches_its_mix(self, app: Application) -> None:
         self._press(app, ChannelName.NOISE, Tab.SEQUENCER)

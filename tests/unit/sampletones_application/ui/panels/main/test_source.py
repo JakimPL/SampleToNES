@@ -282,22 +282,6 @@ class TestTheChoicesTheCardReports:
 
         assert reported == [(SettingsField.CHANNELS, channel)]
 
-    @pytest.mark.parametrize("channel", list(ChannelName.items()))
-    def test_the_key_a_channel_answers_to_reaches_the_whole_list(
-        self,
-        channel: ChannelName,
-        dpg_context: None,
-        layout_config: LayoutConfig,
-    ) -> None:
-        """A box answers for the picked row; the key answers for everything listed."""
-        panel, _reported = build(layout_config, view(channels_slot(), inspected=recording("bass")))
-        keyed: List[ChannelName] = []
-        panel.on_channel_keyed = keyed.append
-
-        panel.toggle_channel(channel)
-
-        assert keyed == [channel]
-
 
 class TestBoxTags:
     def test_every_choice_and_channel_carries_a_tag_of_its_own(

@@ -71,7 +71,6 @@ class GUISourceSettingsPanel(GUIPanel):
 
         self.on_generation_settings_changed: Optional[Callable[[GenerationSettingsUpdate], None]] = None
         self.on_slot_toggled: Optional[Callable[[SettingsField, ChannelName], None]] = None
-        self.on_channel_keyed: Optional[Callable[[ChannelName], None]] = None
 
         super().__init__(
             tag=TAG_MAIN_SOURCE_PANEL,
@@ -106,14 +105,6 @@ class GUISourceSettingsPanel(GUIPanel):
         dpg_configure_item(TAG_MAIN_SOURCE_TEXT_UNPICKED, show=not view_model.inspecting)
         dpg_configure_item(self._grid.tag, show=view_model.inspecting)
         self._grid.render(view_model)
-
-    def toggle_channel(self, channel: ChannelName) -> None:
-        """Switches one channel across the whole list, which is what its key reaches.
-
-        A box on the card answers for the row a reader picked out; the key answers for the list,
-        so setting a channel on everything at once is one press rather than a row at a time.
-        """
-        self.call(self.on_channel_keyed, channel)
 
     def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._item_handler_tag):
