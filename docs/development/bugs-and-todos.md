@@ -4,6 +4,13 @@
 
 * Interface scale
 * Tree navigation using keys
+* Moving through the converter's list of gathered recordings with the keyboard. The list holds one
+  row picked out, which is a selection rather than a position: `ConverterState.selected` names it,
+  a click sets it, and `Del` and `Esc` reach it through the `SOURCES` key scope
+  (`ui/panels/main/converter/listing.py`). What is missing is a cursor the arrow keys move, `Home`
+  and `End`, and a folder opened and closed from the keyboard — the last of which the list answers
+  for on its own, since which folders stand open is `OpenFolders` in `ui/elements/stems/` rather
+  than anything the model records.
 * Waveform LOD for zooming
 * Alt for scrolling graphs
 * Drag and drop
@@ -40,6 +47,13 @@ starts carrying.
 ### Workflow
 
 * Waveform construction preview for single-file conversion
+* Picking several rows of the converter's list at once, so a group leaves or settles in one gesture
+  rather than a row at a time. The widget family already draws a multi-pick reading —
+  `StemsListOffer.picking` with `picked_keys` and `picking_room` in `view_model/shared/stems.py` —
+  built for the mix chooser and switched off for `GATHERED_SOURCES`. What a converter pick needs
+  beyond it is a pick with no ceiling, since the chooser's is the room a mix has, and the gestures
+  the list already offers one row reaching every picked row: removal, a channel box, and the
+  settings card, which names a single row today.
 * Selection operations on a reconstruction
 * Reconstruction trimming
 

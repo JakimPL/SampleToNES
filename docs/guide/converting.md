@@ -15,11 +15,15 @@ The **Converter** card lists the recordings a conversion uses. Add them from the
 
 Turn on **Playback ▸ Autoplay** (`Ctrl+P`) to play a recording with a single click. This lets you listen through a folder before adding anything from it. With Autoplay off, right-click a recording and choose **Play**.
 
+Adding a folder opens a small window while the folder is read. The window names the folder, counts the recordings found so far, and has a **Stop** button that gives up the search. A folder with no recordings inside it says so and adds nothing.
+
 **x** removes a row from the list. Removing a folder removes every recording in it.
+
+Click a row to pick it out. The **Source settings** card then shows that row. Click it again, or press `Esc`, to let it go. Press `Del` to remove the row you picked out.
 
 ## Choosing which channels a recording uses
 
-The NES has four sound channels: **Pulse 1**, **Pulse 2**, **Triangle**, and **Noise**. Every recording in the list has a checkbox for each channel. Check the channels that the recording may use. Press `1` to `4` to switch a channel on or off for every recording at once.
+The NES has four sound channels: **Pulse 1**, **Pulse 2**, **Triangle**, and **Noise**. Every recording in the list has a checkbox for each channel. Check the channels that the recording may use. Press `1` to `4` to switch a channel on or off for the row you picked out.
 
 A folder represents all the recordings inside it. Its checkbox shows their channel assignments:
 

@@ -36,4 +36,4 @@ Project properties belong to a project and are covered in the [sequencer guide](
 
 **Reset to defaults** restores the original shortcuts. Your changes take effect when you click **OK**. They are saved with your settings and are still there the next time you start.
 
-`Space` plays and pauses, and `Esc` stops, anywhere in the app. On macOS, the shortcuts use Command where other platforms use Control.
+`Space` plays and pauses, and `Esc` stops. When you have picked out a row in the converter's list, the first `Esc` lets that row go and the next one stops playback. On macOS, the shortcuts use Command where other platforms use Control.

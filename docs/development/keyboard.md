@@ -34,7 +34,7 @@ Three priorities order the whole application:
 | Priority | Scope | Active when | Behavior |
 |----------|-------|-------------|-----------|
 | `MODAL` (100) | the open dialog's navigator | a modal dialog holds the keyboard | routes Tab/Enter/Escape to the dialog's focus ring and claims every press, so a dialog owns the keyboard exclusively while it is shown |
-| `PANEL` (60) | a sequencer sub-panel (grid / order / samples) | its tab is in front and that sub-panel holds the cursor or selection | handles its tracker keys and yields the combinations it does not own so a higher-reaching shortcut still wins |
+| `PANEL` (60) | a sub-panel holding a cursor or a selection — a sequencer grid, the order list, the voices, the converter's list of gathered recordings | its tab is in front and that sub-panel holds the cursor or the row picked out | handles the keys its own category names and yields the combinations it does not own so a higher-reaching shortcut still wins |
 | `SHORTCUT` (40) | application shortcuts (`ShortcutManager`) | always | fires the matching shortcut while no field is being edited, or whenever the shortcut is `field_transparent` |
 
 The router offers a panel the key ahead of the shortcut scope, so a panel returns `False` on any
