@@ -51,7 +51,7 @@ class TestToggleChannel(BaseTestSuite):
 
     test_cases = (
         TestCase(
-            label="the main tab switches a channel of the reconstructor",
+            label="the main tab switches a channel of the source settings",
             tab=Tab.MAIN,
             expected=Surface.MAIN,
         ),

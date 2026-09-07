@@ -49,7 +49,7 @@ class InspectedSourceViewModel(BaseModel, frozen=True):
         return self.kind is SourceKind.FOLDER
 
 
-class ReconstructorPanelViewModel(BaseModel, frozen=True):
+class SourceSettingsPanelViewModel(BaseModel, frozen=True):
     """What the settings card shows: the choices it edits, and the row it edits them on.
 
     ``inspected`` names the row a reader picked out of the converter's list, which is the whole of

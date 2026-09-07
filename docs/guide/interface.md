@@ -102,7 +102,7 @@ asks first where you have already gathered a list.
 
 A few settings are worth knowing before you convert. **Drive** sets how hard the
 channels are pushed and holds for the whole run, so it stands at the top of
-**Reconstruction settings** whatever you are looking at. Below it the card names
+**Source settings** whatever you are looking at. Below it the card names
 the row you clicked in the converter's list — a folder reads how many recordings
 it stands for — and gives that row a box under every channel: one for the channel
 it takes, and one for the bend on it. A folder whose recordings differ on a

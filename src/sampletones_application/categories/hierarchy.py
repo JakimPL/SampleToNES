@@ -74,7 +74,7 @@ class Panel(StrEnum):
 
     # Main tab
     CONFIG = auto()
-    RECONSTRUCTOR = auto()
+    SOURCE = auto()
     CONVERTER = auto()
     ADVANCED = auto()
 

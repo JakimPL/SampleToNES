@@ -46,7 +46,7 @@ from sampletones_application.view_model.main.converter import (
     ConversionPhase,
     ConverterViewModel,
 )
-from sampletones_application.view_model.main.reconstructor import (
+from sampletones_application.view_model.main.source import (
     InspectedSourceViewModel,
     SettingsSlotViewModel,
 )

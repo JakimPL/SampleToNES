@@ -11,7 +11,7 @@ instruments, and building a whole song. Both assume it is already
    MP3, FLAC, OGG, AIFF, or AU) — or Ctrl-click a folder, to reconstruct every
    audio file inside it.
 3. Optionally click the recording in the list and choose which channels it takes
-   under **Reconstruction settings**, and adjust **General settings**. At least
+   under **Source settings**, and adjust **General settings**. At least
    one channel must be enabled.
 4. Click the button, which names the run it makes. The first
    time you use a given set of settings, the

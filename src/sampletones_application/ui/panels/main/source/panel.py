@@ -6,31 +6,31 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.sources import SettingsField
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.general.stems import StemsListLayout
-from sampletones_application.layout.tabs.main.reconstructor import ReconstructorLayout
+from sampletones_application.layout.tabs.main.source import SourceSettingsLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_HANDLER_REGISTRY,
     TAG_GLOBAL_THEME_SECTION_HEADER,
 )
 from sampletones_application.tags.main import (
-    TAG_MAIN_RECONSTRUCTOR_PANEL,
-    TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
-    TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING,
-    TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED,
+    TAG_MAIN_SOURCE_PANEL,
+    TAG_MAIN_SOURCE_SLIDER_DRIVE,
+    TAG_MAIN_SOURCE_TEXT_INSPECTING,
+    TAG_MAIN_SOURCE_TEXT_UNPICKED,
 )
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.panels.main.reconstructor.grid import SettingsGrid
+from sampletones_application.ui.panels.main.source.grid import SettingsGrid
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.gui.widgets import clamp_widget_value
-from sampletones_application.view_model.main.reconstructor import (
+from sampletones_application.view_model.main.source import (
     InspectedSourceViewModel,
-    ReconstructorPanelViewModel,
+    SourceSettingsPanelViewModel,
 )
 from sampletones_application.view_model.main.updates import GenerationSettingsUpdate
 from sampletones_core.constants.algorithm import MAX_DRIVE
@@ -38,8 +38,8 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import Sender
 
 
-class GUIReconstructorPanel(GUIPanel):
-    """The settings card: the drive a run holds to, and the choices the picked row is given.
+class GUISourceSettingsPanel(GUIPanel):
+    """The source settings card: the drive a run holds to, and the choices the picked row is given.
 
     Drive stands above the rule and answers for the run as a whole, so it is there whatever the
     reader is looking at. Below the rule the card names the row picked out of the converter's
@@ -49,9 +49,9 @@ class GUIReconstructorPanel(GUIPanel):
 
     def __init__(
         self,
-        initial_view: ReconstructorPanelViewModel,
+        initial_view: SourceSettingsPanelViewModel,
         *,
-        layout: ReconstructorLayout,
+        layout: SourceSettingsLayout,
         inputs: InputsLayout,
         stems_layout: StemsListLayout,
         language_manager: LanguageManager,
@@ -65,16 +65,16 @@ class GUIReconstructorPanel(GUIPanel):
         self._label_width = inputs.label_width
         self._status_bar = status_bar
         self._grid = SettingsGrid(layout=stems_layout, language_manager=language_manager)
-        self._msg_unpicked = language_manager["main.reconstructor.message.nothing_picked"]
+        self._msg_unpicked = language_manager["main.source.message.nothing_picked"]
         self._tpl_folder = language_manager["global.stems.template.folder_row"]
-        self._item_handler_tag = compose_tag(TAG_MAIN_RECONSTRUCTOR_PANEL, SUF_HANDLER_REGISTRY)
+        self._item_handler_tag = compose_tag(TAG_MAIN_SOURCE_PANEL, SUF_HANDLER_REGISTRY)
 
         self.on_generation_settings_changed: Optional[Callable[[GenerationSettingsUpdate], None]] = None
         self.on_slot_toggled: Optional[Callable[[SettingsField, ChannelName], None]] = None
         self.on_channel_keyed: Optional[Callable[[ChannelName], None]] = None
 
         super().__init__(
-            tag=TAG_MAIN_RECONSTRUCTOR_PANEL,
+            tag=TAG_MAIN_SOURCE_PANEL,
             height=layout.height,
         )
         self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
@@ -83,7 +83,7 @@ class GUIReconstructorPanel(GUIPanel):
         self._setup_handlers()
         with self._collapsible_card(
             parent,
-            self._language_manager["main.reconstructor.label.section_settings"],
+            self._language_manager["main.source.label.section_settings"],
             glyph=self._glyphs.headers.reconstruction,
             width=self.width,
         ):
@@ -97,13 +97,13 @@ class GUIReconstructorPanel(GUIPanel):
         self._grid.on_slot_toggled = self._on_slot_toggled
         self.update_view(self._view)
 
-    def update_view(self, view_model: ReconstructorPanelViewModel) -> None:
+    def update_view(self, view_model: SourceSettingsPanelViewModel) -> None:
         """Take up what the card now edits: the drive, the row picked out, and its choices."""
         self._view = view_model
-        dpg.set_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, view_model.drive)
-        dpg_set_value(TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING, self._subject_text(view_model.inspected))
-        dpg_configure_item(TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING, show=view_model.inspecting)
-        dpg_configure_item(TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED, show=not view_model.inspecting)
+        dpg.set_value(TAG_MAIN_SOURCE_SLIDER_DRIVE, view_model.drive)
+        dpg_set_value(TAG_MAIN_SOURCE_TEXT_INSPECTING, self._subject_text(view_model.inspected))
+        dpg_configure_item(TAG_MAIN_SOURCE_TEXT_INSPECTING, show=view_model.inspecting)
+        dpg_configure_item(TAG_MAIN_SOURCE_TEXT_UNPICKED, show=not view_model.inspecting)
         dpg_configure_item(self._grid.tag, show=view_model.inspecting)
         self._grid.render(view_model)
 
@@ -125,14 +125,14 @@ class GUIReconstructorPanel(GUIPanel):
         """The row the card is editing, named the way the list names it."""
         text = dpg.add_text(
             self._subject_text(self._view.inspected),
-            tag=TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING,
+            tag=TAG_MAIN_SOURCE_TEXT_INSPECTING,
         )
         FontRegistry.bind_to_item(text, Font.BOLD)
         ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER).bind_to_item(text)
 
     def _create_unpicked_hint(self) -> None:
         """What to do to give the card something to edit, standing where the row's name stands."""
-        text = dpg.add_text(self._msg_unpicked, tag=TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED, wrap=self.width)
+        text = dpg.add_text(self._msg_unpicked, tag=TAG_MAIN_SOURCE_TEXT_UNPICKED, wrap=self.width)
         FontRegistry.bind_to_item(text, Font.REGULAR_SMALL)
 
     def _subject_text(self, inspected: Optional[InspectedSourceViewModel]) -> str:
@@ -145,9 +145,9 @@ class GUIReconstructorPanel(GUIPanel):
         return inspected.name
 
     def _create_drive_slider(self) -> None:
-        with labeled_field(self._language_manager["main.reconstructor.label.slider_drive"], self._label_width):
+        with labeled_field(self._language_manager["main.source.label.slider_drive"], self._label_width):
             dpg.add_slider_float(
-                tag=TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
+                tag=TAG_MAIN_SOURCE_SLIDER_DRIVE,
                 min_value=0.0,
                 max_value=MAX_DRIVE,
                 default_value=self._view.drive,
@@ -156,22 +156,22 @@ class GUIReconstructorPanel(GUIPanel):
             )
 
         dpg.bind_item_handler_registry(
-            TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
+            TAG_MAIN_SOURCE_SLIDER_DRIVE,
             self._item_handler_tag,
         )
         self._status_bar.bind_to_item(
-            TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
+            TAG_MAIN_SOURCE_SLIDER_DRIVE,
             self._language_manager["global.status.message.input"],
         )
         FontRegistry.bind_to_item(
-            TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
+            TAG_MAIN_SOURCE_SLIDER_DRIVE,
             Font.MONO,
         )
 
     def _create_tooltips(self) -> None:
         show_tooltip(
-            TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
-            self._language_manager["main.reconstructor.tooltip.tooltip_drive"],
+            TAG_MAIN_SOURCE_SLIDER_DRIVE,
+            self._language_manager["main.source.tooltip.tooltip_drive"],
         )
 
     def _on_slot_toggled(self, field: SettingsField, channel_name: ChannelName) -> None:
@@ -182,6 +182,6 @@ class GUIReconstructorPanel(GUIPanel):
 
     def _report_generation_settings(self) -> None:
         generation_update = GenerationSettingsUpdate(
-            drive=float(clamp_widget_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE)),
+            drive=float(clamp_widget_value(TAG_MAIN_SOURCE_SLIDER_DRIVE)),
         )
         self.call(self.on_generation_settings_changed, generation_update)

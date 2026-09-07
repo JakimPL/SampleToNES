@@ -98,15 +98,15 @@ TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY = TagName(
     Widget.INPUT,
     "nes_frequency",
 )
-TAG_MAIN_RECONSTRUCTOR_PANEL = TagName(
+TAG_MAIN_SOURCE_PANEL = TagName(
     Page.MAIN,
-    Panel.RECONSTRUCTOR,
+    Panel.SOURCE,
     Widget.PANEL,
-    "reconstructor",
+    "source",
 )
-TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE = TagName(
+TAG_MAIN_SOURCE_SLIDER_DRIVE = TagName(
     Page.MAIN,
-    Panel.RECONSTRUCTOR,
+    Panel.SOURCE,
     Widget.SLIDER,
     "drive",
 )
@@ -243,28 +243,28 @@ TAG_MAIN_CONVERTER_GROUP_SUMMARY = TagName(
     "summary",
 )
 
-PRE_MAIN_RECONSTRUCTOR_SLOT = "slot"
-TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING = TagName(
+PRE_MAIN_SOURCE_SLOT = "slot"
+TAG_MAIN_SOURCE_TEXT_INSPECTING = TagName(
     Page.MAIN,
-    Panel.RECONSTRUCTOR,
+    Panel.SOURCE,
     Widget.TEXT,
     "inspecting",
 )
-TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED = TagName(
+TAG_MAIN_SOURCE_TEXT_UNPICKED = TagName(
     Page.MAIN,
-    Panel.RECONSTRUCTOR,
+    Panel.SOURCE,
     Widget.TEXT,
     "unpicked",
 )
-TAG_MAIN_RECONSTRUCTOR_GROUP_GRID = TagName(
+TAG_MAIN_SOURCE_GROUP_GRID = TagName(
     Page.MAIN,
-    Panel.RECONSTRUCTOR,
+    Panel.SOURCE,
     Widget.GROUP,
     "grid",
 )
-TAG_MAIN_RECONSTRUCTOR_TABLE_GRID = TagName(
+TAG_MAIN_SOURCE_TABLE_GRID = TagName(
     Page.MAIN,
-    Panel.RECONSTRUCTOR,
+    Panel.SOURCE,
     Widget.TABLE,
     "grid",
 )

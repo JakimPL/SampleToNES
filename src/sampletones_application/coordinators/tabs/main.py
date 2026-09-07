@@ -42,7 +42,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
     TAG_MAIN_EXPLORER_DIALOG_NOTHING_BELOW,
     TAG_MAIN_EXPLORER_PANEL,
-    TAG_MAIN_RECONSTRUCTOR_PANEL,
+    TAG_MAIN_SOURCE_PANEL,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.layout.responsive import expanded_side_width
@@ -53,7 +53,7 @@ from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsP
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter.panel import GUIConverterPanel
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
-from sampletones_application.ui.panels.main.reconstructor.panel import GUIReconstructorPanel
+from sampletones_application.ui.panels.main.source.panel import GUISourceSettingsPanel
 from sampletones_application.utils.file_dialogs.api import select_directory_dialog
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
@@ -65,8 +65,8 @@ from sampletones_application.view_model.main.advanced import (
 )
 from sampletones_application.view_model.main.config import ConfigPanelViewModel
 from sampletones_application.view_model.main.converter import ConverterViewModel
-from sampletones_application.view_model.main.reconstructor import (
-    ReconstructorPanelViewModel,
+from sampletones_application.view_model.main.source import (
+    SourceSettingsPanelViewModel,
 )
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName
@@ -219,17 +219,17 @@ class MainTabCoordinator:
             language_manager=language_manager,
             is_operation_active=self._hooks.is_operation_active,
         )
-        self._reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(
-            ReconstructorPanelViewModel(
+        self._source_panel: GUISourceSettingsPanel = GUISourceSettingsPanel(
+            SourceSettingsPanelViewModel(
                 slots=self._converter_logic.settings_slots,
                 inspected=None,
                 drive=_config.generation.drive,
                 live=True,
             ),
-            layout=layout.main.reconstructor,
+            layout=layout.main.source,
             inputs=layout.inputs,
             stems_layout=layout.stems,
-            initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_RECONSTRUCTOR_PANEL),
+            initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_SOURCE_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
         )
@@ -266,14 +266,14 @@ class MainTabCoordinator:
     def _wire_settings(self, config_manager: ConfigManager) -> None:
         """What the settings cards report, and what redraws them when the configuration moves."""
         config_manager.add_config_change_callback(self._update_config_panel_view)
-        config_manager.add_config_change_callback(self._update_reconstructor_panel_view)
+        config_manager.add_config_change_callback(self._update_source_panel_view)
         config_manager.add_config_change_callback(self._update_advanced_settings_panel_view)
 
         self._config_panel.on_audio_settings_changed = config_manager.apply_audio_settings
         self._config_panel.on_library_settings_changed = config_manager.apply_library_settings
-        self._reconstructor_panel.on_generation_settings_changed = config_manager.apply_generation_settings
-        self._reconstructor_panel.on_slot_toggled = self._converter_logic.toggle_slot
-        self._reconstructor_panel.on_channel_keyed = self._converter_logic.toggle_channel
+        self._source_panel.on_generation_settings_changed = config_manager.apply_generation_settings
+        self._source_panel.on_slot_toggled = self._converter_logic.toggle_slot
+        self._source_panel.on_channel_keyed = self._converter_logic.toggle_channel
         self._advanced_settings_panel.on_advanced_settings_changed = config_manager.apply_advanced_settings
         self._advanced_settings_panel.on_select_library_directory = self._select_library_directory
         self._advanced_settings_panel.on_select_output_directory = self._select_output_directory
@@ -364,7 +364,7 @@ class MainTabCoordinator:
 
     def _repaint_converter(self, view_model: ConverterViewModel) -> None:
         self._converter_panel.update_view(view_model)
-        self._update_reconstructor_panel_view()
+        self._update_source_panel_view()
         self._hooks.on_busy_state_changed()
 
     def _request_reconstruct_file(self, filepath: Path) -> None:
@@ -594,13 +594,13 @@ class MainTabCoordinator:
             )
         )
 
-    def _update_reconstructor_panel_view(self) -> None:
+    def _update_source_panel_view(self) -> None:
         """The settings card reads the choices from the converter and the drive from the config.
 
         The two owners answer one card, so the composition point is where their readings meet.
         """
-        self._reconstructor_panel.update_view(
-            ReconstructorPanelViewModel(
+        self._source_panel.update_view(
+            SourceSettingsPanelViewModel(
                 slots=self._converter_logic.settings_slots,
                 inspected=self._converter_logic.inspected_source,
                 drive=self._config_manager.config.generation.drive,
@@ -701,14 +701,14 @@ class MainTabCoordinator:
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._converter_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
-        self._reconstructor_panel.create_panel(parent)
+        self._source_panel.create_panel(parent)
 
     def _wire_collapse_handlers(self) -> None:
         """Routes each Main card's collapse toggle to the handler that persists it and reflows the shared config row."""
         self._explorer_panel.set_collapse_handler(self._on_explorer_collapse_changed)
         self._config_panel.set_collapse_handler(self._on_config_row_collapse_changed)
         self._advanced_settings_panel.set_collapse_handler(self._on_config_row_collapse_changed)
-        self._reconstructor_panel.set_collapse_handler(self._on_card_collapse_changed)
+        self._source_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._converter_panel.set_collapse_handler(self._on_card_collapse_changed)
 
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
@@ -781,7 +781,7 @@ class MainTabCoordinator:
 
     def toggle_channel(self, channel: ChannelName) -> None:
         """Switches one channel in or out of the set a reconstruction is built from."""
-        self._reconstructor_panel.toggle_channel(channel)
+        self._source_panel.toggle_channel(channel)
 
     def toggle_advanced_settings(self) -> None:
         """Puts the advanced card away or stands it back beside the general one."""

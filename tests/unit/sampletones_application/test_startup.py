@@ -26,7 +26,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_STEMS_ROW_INERT,
 )
 from sampletones_application.tags.main import (
-    PRE_MAIN_RECONSTRUCTOR_SLOT,
+    PRE_MAIN_SOURCE_SLOT,
     TAG_MAIN_ADVANCED_PANEL,
     TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL,
     TAG_MAIN_CONFIG_PANEL,
@@ -38,10 +38,10 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_RADIO_MODE,
     TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE,
     TAG_MAIN_CONVERTER_WINDOW_STEMS,
-    TAG_MAIN_RECONSTRUCTOR_GROUP_GRID,
-    TAG_MAIN_RECONSTRUCTOR_PANEL,
-    TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING,
-    TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED,
+    TAG_MAIN_SOURCE_GROUP_GRID,
+    TAG_MAIN_SOURCE_PANEL,
+    TAG_MAIN_SOURCE_TEXT_INSPECTING,
+    TAG_MAIN_SOURCE_TEXT_UNPICKED,
 )
 from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.ui.panels.main import explorer as explorer_module
@@ -472,7 +472,7 @@ def _click_row(app: Application, path: Path) -> None:
 
 def _click_slot_box(field: SettingsField, channel_name: ChannelName) -> None:
     """Clicks one of the settings card's boxes, the way DearPyGui reports a checkbox."""
-    box = compose_tag(PRE_MAIN_RECONSTRUCTOR_SLOT, field.value, channel_name.value)
+    box = compose_tag(PRE_MAIN_SOURCE_SLOT, field.value, channel_name.value)
     dpg.get_item_callback(box)(box, True, dpg.get_item_user_data(box))
 
 
@@ -616,7 +616,7 @@ class TestMainTabReadingOrder:
 
     def test_the_reconstruction_card_follows_the_converter(self, app: Application) -> None:
         converter_parent, converter_place = self._place(TAG_MAIN_CONVERTER_PANEL)
-        card_parent, card_place = self._place(TAG_MAIN_RECONSTRUCTOR_PANEL)
+        card_parent, card_place = self._place(TAG_MAIN_SOURCE_PANEL)
 
         assert card_parent == converter_parent
         assert card_place > converter_place
@@ -907,16 +907,16 @@ class TestConverterStemsCard:
         """The card answers for a picked row, so with none picked it says which gesture picks one."""
         self._gather(app, tmp_path, ["a.wav"])
 
-        assert dpg.get_item_configuration(TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED)["show"] is True
-        assert dpg.get_item_configuration(TAG_MAIN_RECONSTRUCTOR_GROUP_GRID)["show"] is False
+        assert dpg.get_item_configuration(TAG_MAIN_SOURCE_TEXT_UNPICKED)["show"] is True
+        assert dpg.get_item_configuration(TAG_MAIN_SOURCE_GROUP_GRID)["show"] is False
 
     def test_a_picked_row_brings_the_grid_with_it(self, app: Application, tmp_path: Path) -> None:
         path = self._gather(app, tmp_path, ["a.wav"])[0]
 
         _click_row(app, path)
 
-        assert dpg.get_item_configuration(TAG_MAIN_RECONSTRUCTOR_GROUP_GRID)["show"] is True
-        assert dpg.get_value(TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING) == path.stem
+        assert dpg.get_item_configuration(TAG_MAIN_SOURCE_GROUP_GRID)["show"] is True
+        assert dpg.get_value(TAG_MAIN_SOURCE_TEXT_INSPECTING) == path.stem
 
     def test_the_run_controls_arrive_with_the_first_recording(self, app: Application, tmp_path: Path) -> None:
         """The choices answer for what is listed, so they stand once there is something to answer for."""

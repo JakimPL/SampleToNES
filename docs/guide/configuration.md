@@ -10,7 +10,7 @@ you want to go deeper.
 ## From the interface
 
 The **Main** tab exposes the everyday settings (grouped under **General
-settings**, **Reconstruction settings**, and **Advanced settings**):
+settings**, **Source settings**, and **Advanced settings**):
 
 - which channels the recording you picked out of the converter's list takes, and
   the **Drive** applied to them;

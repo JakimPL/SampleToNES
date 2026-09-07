@@ -347,12 +347,12 @@ main.config.tooltip.tooltip_sample_rate: "Set the sample rate (in Hz) for audio 
 main.config.tooltip.tooltip_nes_frequency: "Set the NES refresh rate (in Hz) for audio processing.\n  • NTSC = 60 Hz,\n  • PAL = 50 Hz."
 
 # =============================================================================
-# Main tab — Reconstructor panel
+# Main tab — Source settings panel
 # =============================================================================
-main.reconstructor.message.nothing_picked: "Pick a recording or a folder in the Converter to change its settings."
-main.reconstructor.label.section_settings: "Reconstruction settings"
-main.reconstructor.label.slider_drive: "Drive"
-main.reconstructor.tooltip.tooltip_drive: "Amplify NES audio during instruction selection and output.\nAt 1.0 amplitudes are calibrated, higher values push the selection harder, introducing a distortion-like effect."
+main.source.message.nothing_picked: "Pick a recording or a folder in the Converter to change its settings."
+main.source.label.section_settings: "Source settings"
+main.source.label.slider_drive: "Drive"
+main.source.tooltip.tooltip_drive: "Amplify NES audio during instruction selection and output.\nAt 1.0 amplitudes are calibrated, higher values push the selection harder, introducing a distortion-like effect."
 
 # =============================================================================
 # Main tab — Converter

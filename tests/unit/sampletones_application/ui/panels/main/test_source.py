@@ -17,24 +17,24 @@ from sampletones_application.paths import (
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HEADING, SUF_TEXT
 from sampletones_application.tags.main import (
-    PRE_MAIN_RECONSTRUCTOR_SLOT,
-    TAG_MAIN_RECONSTRUCTOR_GROUP_GRID,
-    TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
-    TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING,
-    TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED,
+    PRE_MAIN_SOURCE_SLOT,
+    TAG_MAIN_SOURCE_GROUP_GRID,
+    TAG_MAIN_SOURCE_SLIDER_DRIVE,
+    TAG_MAIN_SOURCE_TEXT_INSPECTING,
+    TAG_MAIN_SOURCE_TEXT_UNPICKED,
 )
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.panels.main.reconstructor.panel import GUIReconstructorPanel
+from sampletones_application.ui.panels.main.source.panel import GUISourceSettingsPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
-from sampletones_application.view_model.main.reconstructor import (
+from sampletones_application.view_model.main.source import (
     InspectedSourceViewModel,
-    ReconstructorPanelViewModel,
     SettingsSlotViewModel,
+    SourceSettingsPanelViewModel,
 )
 from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
 
@@ -87,8 +87,8 @@ def view(
     *slots: SettingsSlotViewModel,
     inspected: Optional[InspectedSourceViewModel] = None,
     live: bool = True,
-) -> ReconstructorPanelViewModel:
-    return ReconstructorPanelViewModel(
+) -> SourceSettingsPanelViewModel:
+    return SourceSettingsPanelViewModel(
         slots=slots,
         inspected=inspected,
         drive=DRIVE,
@@ -110,12 +110,12 @@ def channels_slot(*, held: FrozenSet[ChannelName] = frozenset()) -> SettingsSlot
 
 def build(
     layout_config: LayoutConfig,
-    initial: ReconstructorPanelViewModel,
-) -> Tuple[GUIReconstructorPanel, List[Tuple[SettingsField, ChannelName]]]:
+    initial: SourceSettingsPanelViewModel,
+) -> Tuple[GUISourceSettingsPanel, List[Tuple[SettingsField, ChannelName]]]:
     """The card as the application builds it, over the choices it reports."""
-    panel = GUIReconstructorPanel(
+    panel = GUISourceSettingsPanel(
         initial,
-        layout=layout_config.tabs.main.reconstructor,
+        layout=layout_config.tabs.main.source,
         inputs=layout_config.general.inputs,
         stems_layout=layout_config.general.stems,
         language_manager=LanguageManager(LANG_EN),
@@ -130,7 +130,7 @@ def build(
 
 
 def box_tag(field: SettingsField, channel_name: ChannelName) -> str:
-    return compose_tag(PRE_MAIN_RECONSTRUCTOR_SLOT, field.value, channel_name.value)
+    return compose_tag(PRE_MAIN_SOURCE_SLOT, field.value, channel_name.value)
 
 
 def shows(tag: str) -> bool:
@@ -143,14 +143,14 @@ class TestDrive:
     def test_it_stands_with_nothing_picked(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         build(layout_config, view())
 
-        assert dpg.get_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE) == pytest.approx(DRIVE)
+        assert dpg.get_value(TAG_MAIN_SOURCE_SLIDER_DRIVE) == pytest.approx(DRIVE)
 
     def test_it_stands_above_the_row_the_card_edits(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         build(layout_config, view())
-        body = dpg.get_item_children(dpg.get_item_parent(TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING), 1)
-        drive = dpg.get_item_parent(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE)
+        body = dpg.get_item_children(dpg.get_item_parent(TAG_MAIN_SOURCE_TEXT_INSPECTING), 1)
+        drive = dpg.get_item_parent(TAG_MAIN_SOURCE_SLIDER_DRIVE)
 
-        assert body.index(drive) < body.index(dpg.get_alias_id(TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING))
+        assert body.index(drive) < body.index(dpg.get_alias_id(TAG_MAIN_SOURCE_TEXT_INSPECTING))
 
 
 class TestNothingPicked:
@@ -159,17 +159,17 @@ class TestNothingPicked:
     def test_the_hint_stands(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         build(layout_config, view())
 
-        assert shows(TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED)
+        assert shows(TAG_MAIN_SOURCE_TEXT_UNPICKED)
 
     def test_the_grid_stands_away(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         build(layout_config, view())
 
-        assert not shows(TAG_MAIN_RECONSTRUCTOR_GROUP_GRID)
+        assert not shows(TAG_MAIN_SOURCE_GROUP_GRID)
 
     def test_the_row_is_named_by_nothing(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         build(layout_config, view())
 
-        assert not shows(TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING)
+        assert not shows(TAG_MAIN_SOURCE_TEXT_INSPECTING)
 
 
 class TestAPickedRow:
@@ -180,14 +180,14 @@ class TestAPickedRow:
 
         panel.update_view(view(channels_slot(), inspected=recording("bass")))
 
-        assert dpg.get_value(TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING) == "bass"
+        assert dpg.get_value(TAG_MAIN_SOURCE_TEXT_INSPECTING) == "bass"
 
     def test_a_folder_reads_how_many_it_stands_for(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         panel, _reported = build(layout_config, view())
 
         panel.update_view(view(channels_slot(), inspected=folder("VEH2 Loops", HELD_RECORDINGS)))
 
-        named = dpg.get_value(TAG_MAIN_RECONSTRUCTOR_TEXT_INSPECTING)
+        named = dpg.get_value(TAG_MAIN_SOURCE_TEXT_INSPECTING)
         assert named.startswith("VEH2 Loops")
         assert str(HELD_RECORDINGS) in named
 
@@ -196,8 +196,8 @@ class TestAPickedRow:
 
         panel.update_view(view(channels_slot(), inspected=recording("bass")))
 
-        assert shows(TAG_MAIN_RECONSTRUCTOR_GROUP_GRID)
-        assert not shows(TAG_MAIN_RECONSTRUCTOR_TEXT_UNPICKED)
+        assert shows(TAG_MAIN_SOURCE_GROUP_GRID)
+        assert not shows(TAG_MAIN_SOURCE_TEXT_UNPICKED)
 
 
 class TestTheGrid:
@@ -207,9 +207,7 @@ class TestTheGrid:
         build(layout_config, view())
 
         for channel_name in ChannelName.items():
-            assert dpg.does_item_exist(
-                compose_tag(TAG_MAIN_RECONSTRUCTOR_GROUP_GRID, SUF_HEADING, channel_name, SUF_TEXT)
-            )
+            assert dpg.does_item_exist(compose_tag(TAG_MAIN_SOURCE_GROUP_GRID, SUF_HEADING, channel_name, SUF_TEXT))
 
     def test_a_channel_the_row_takes_reads_ticked(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         panel, _reported = build(layout_config, view())

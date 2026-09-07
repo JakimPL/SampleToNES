@@ -7,9 +7,9 @@ from sampletones_application.constants.sources import SettingsField
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.main import (
-    PRE_MAIN_RECONSTRUCTOR_SLOT,
-    TAG_MAIN_RECONSTRUCTOR_GROUP_GRID,
-    TAG_MAIN_RECONSTRUCTOR_TABLE_GRID,
+    PRE_MAIN_SOURCE_SLOT,
+    TAG_MAIN_SOURCE_GROUP_GRID,
+    TAG_MAIN_SOURCE_TABLE_GRID,
 )
 from sampletones_application.ui.elements.stems.columns import NO_RESERVE, StemsColumns
 from sampletones_application.ui.elements.stems.heading import StemsHeading
@@ -19,9 +19,9 @@ from sampletones_application.ui.themes.channels import (
 )
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
-from sampletones_application.view_model.main.reconstructor import (
-    ReconstructorPanelViewModel,
+from sampletones_application.view_model.main.source import (
     SettingsSlotViewModel,
+    SourceSettingsPanelViewModel,
 )
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_core.constants.enums import ChannelName
@@ -51,7 +51,7 @@ class SettingsGrid(CallbackMixin):
     ) -> None:
         self._layout = layout
         self._heading = StemsHeading(
-            prefix=TAG_MAIN_RECONSTRUCTOR_GROUP_GRID,
+            prefix=TAG_MAIN_SOURCE_GROUP_GRID,
             layout=layout,
             language_manager=language_manager,
             bends=True,
@@ -70,15 +70,15 @@ class SettingsGrid(CallbackMixin):
     @property
     def tag(self) -> str:
         """The grid as a whole, which the card shows once a reader has picked a row out."""
-        return TAG_MAIN_RECONSTRUCTOR_GROUP_GRID
+        return TAG_MAIN_SOURCE_GROUP_GRID
 
-    def create(self, view_model: ReconstructorPanelViewModel) -> None:
+    def create(self, view_model: SourceSettingsPanelViewModel) -> None:
         """Build the channel names and the one row of boxes standing under them."""
-        with dpg.group(tag=TAG_MAIN_RECONSTRUCTOR_GROUP_GRID):
-            self._heading.create(TAG_MAIN_RECONSTRUCTOR_GROUP_GRID, self._columns)
+        with dpg.group(tag=TAG_MAIN_SOURCE_GROUP_GRID):
+            self._heading.create(TAG_MAIN_SOURCE_GROUP_GRID, self._columns)
             self._heading.render(NO_MUTED_CHANNELS)
             with dpg.table(
-                tag=TAG_MAIN_RECONSTRUCTOR_TABLE_GRID,
+                tag=TAG_MAIN_SOURCE_TABLE_GRID,
                 header_row=False,
                 policy=dpg.mvTable_SizingFixedFit,
                 resizable=False,
@@ -87,14 +87,14 @@ class SettingsGrid(CallbackMixin):
                 self._columns.declare()
                 self._create_row(view_model)
 
-    def render(self, view_model: ReconstructorPanelViewModel) -> None:
+    def render(self, view_model: SourceSettingsPanelViewModel) -> None:
         """Draw what the picked row currently holds onto the boxes it already stands as."""
         boxes = self._boxes(view_model)
         for field, channel_name in self._cells():
             slot = boxes.get(field)
             self._render_box(field, channel_name, slot, live=view_model.live)
 
-    def _create_row(self, view_model: ReconstructorPanelViewModel) -> None:
+    def _create_row(self, view_model: SourceSettingsPanelViewModel) -> None:
         """One row of the grid: the name column left open, and a cell for every channel."""
         with dpg.table_row():
             self._columns.open_leading_cells()
@@ -157,7 +157,7 @@ class SettingsGrid(CallbackMixin):
         return SETTINGS_FIELDS[: self._columns.slots(channel_name)]
 
     @staticmethod
-    def _boxes(view_model: ReconstructorPanelViewModel) -> Dict[SettingsField, SettingsSlotViewModel]:
+    def _boxes(view_model: SourceSettingsPanelViewModel) -> Dict[SettingsField, SettingsSlotViewModel]:
         """The choices the card is editing, reachable by the field each answers for."""
         return {slot.field: slot for slot in view_model.slots}
 
@@ -180,4 +180,4 @@ class SettingsGrid(CallbackMixin):
 
     @staticmethod
     def _box_tag(field: SettingsField, channel_name: ChannelName) -> str:
-        return compose_tag(PRE_MAIN_RECONSTRUCTOR_SLOT, field.value, channel_name.value)
+        return compose_tag(PRE_MAIN_SOURCE_SLOT, field.value, channel_name.value)
