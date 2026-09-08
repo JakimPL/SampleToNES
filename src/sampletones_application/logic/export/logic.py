@@ -56,7 +56,7 @@ class SongExportLogic(CallbackMixin):
         self._stages: List[ExportStage] = []
         self._figure: str = NO_FIGURE
         self._progress: float = NO_PROGRESS
-        self._travelling: bool = False
+        self._traveling: bool = False
 
         self._service.subscribe(self._on_service_result)
 
@@ -80,7 +80,7 @@ class SongExportLogic(CallbackMixin):
 
         self._phase = ExportPhase.CANCELING
         self._figure = self._canceling_label
-        self._travelling = False
+        self._traveling = False
         self._emit_view()
         self._service.cancel()
 
@@ -102,7 +102,7 @@ class SongExportLogic(CallbackMixin):
         self._stages = []
         self._figure = NO_FIGURE
         self._progress = NO_PROGRESS
-        self._travelling = True
+        self._traveling = True
         self._emit_view()
         self.call(self.on_started)
 
@@ -116,7 +116,7 @@ class SongExportLogic(CallbackMixin):
             return
 
         self._reach(stage)
-        self._travelling = stage in TRAVELING_STAGES
+        self._traveling = stage in TRAVELING_STAGES
         self._progress = progress.fraction
         self._figure = self._figure_text(progress)
         self._emit_view()
@@ -132,7 +132,7 @@ class SongExportLogic(CallbackMixin):
         figure is spelled out for the one that does not: what the song takes so far against what
         the console has room for, which is the answer the reader is waiting on.
         """
-        if self._travelling or progress.total <= NOTHING_MEASURED:
+        if self._traveling or progress.total <= NOTHING_MEASURED:
             return NO_FIGURE
 
         return self._size_template.format(
@@ -154,5 +154,5 @@ class SongExportLogic(CallbackMixin):
             stages=tuple(self._stages),
             figure=self._figure,
             progress=self._progress,
-            traveling=self._travelling,
+            traveling=self._traveling,
         )

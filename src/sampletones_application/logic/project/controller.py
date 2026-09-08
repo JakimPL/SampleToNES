@@ -347,7 +347,7 @@ class ProjectController(CallbackMixin):
         """Reads a row even before its pattern has been created.
 
         An order position may reference an empty (uncreated) pattern; partial and
-        clear edits treat that as a blank row, and :meth:`set_row` materialises the
+        clear edits treat that as a blank row, and :meth:`set_row` materializes the
         pattern when it writes.
         """
         pattern = self.song.pattern(channel, pattern_index)

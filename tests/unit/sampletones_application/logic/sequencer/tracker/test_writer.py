@@ -423,7 +423,7 @@ class TestRoundTrip:
         assert render_frame(grid.logic) == before
 
 
-class TestMaterialisation:
+class TestMaterialization:
     """A paste reaches a channel holding no pattern by giving it one, the way an edit does."""
 
     def test_a_frame_holding_no_pattern_gains_one_where_a_block_lands(self, grid: Grid) -> None:

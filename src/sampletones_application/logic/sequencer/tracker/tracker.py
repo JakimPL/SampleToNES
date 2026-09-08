@@ -440,7 +440,7 @@ class SequencerTrackerLogic(CallbackMixin):
         return carried
 
     def set_note_off(self, channel: ChannelName, row_index: int) -> None:
-        """Writes a note-off into one channel's cell, materialising the pattern if needed."""
+        """Writes a note-off into one channel's cell, materializing the pattern if needed."""
         self.set_row(channel, row_index, command=NoteOff())
 
     def set_note_off_all_generators(self, row_index: int) -> None:
@@ -588,7 +588,7 @@ class SequencerTrackerLogic(CallbackMixin):
         return None
 
     def _create_frame_pattern(self, channel: ChannelName) -> Optional[int]:
-        """Materialises a pattern for an empty slot at the current frame, on first edit.
+        """Materializes a pattern for an empty slot at the current frame, on first edit.
 
         Providing content to a channel whose current frame is an empty (None) slot
         creates a fresh pattern and assigns it to that order position, so the

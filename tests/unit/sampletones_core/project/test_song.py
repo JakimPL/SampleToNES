@@ -206,7 +206,7 @@ class TestSongDuplicateFrame:
 
         assert song.order[0][ChannelName.PULSE1] == 0
 
-    def test_duplicate_carries_an_unmaterialised_index_across(self) -> None:
+    def test_duplicate_carries_an_unmaterialized_index_across(self) -> None:
         song = _song()
         song.set_order_entry(0, ChannelName.PULSE1, 7)
 

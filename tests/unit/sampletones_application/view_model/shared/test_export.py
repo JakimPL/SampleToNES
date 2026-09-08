@@ -66,10 +66,10 @@ class TestWhereTheRunStands:
 class TestHowTheStageUnderWayReads:
     """A stage arriving at an end carries a bar; one that does not carries the turning symbol."""
 
-    def test_a_travelling_stage_shows_its_bar(self) -> None:
+    def test_a_traveling_stage_shows_its_bar(self) -> None:
         assert view_model(traveling=True).progress_visible is True
 
-    def test_a_travelling_stage_hides_the_turning_symbol(self) -> None:
+    def test_a_traveling_stage_hides_the_turning_symbol(self) -> None:
         assert view_model(traveling=True).working_visible is False
 
     def test_a_stage_without_an_end_shows_the_turning_symbol(self) -> None:

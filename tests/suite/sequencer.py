@@ -97,7 +97,7 @@ def render_slots(
 ) -> str:
     """The pattern each channel plays at a frame, which is what tells a blank pattern from none.
 
-    A frame renders the same either way, so this is the reading that shows a write materialising a
+    A frame renders the same either way, so this is the reading that shows a write materializing a
     pattern the channel had not held before.
     """
     frame = controller.project.song.order[frame_index]
@@ -311,7 +311,7 @@ def _fill_cell(
 ) -> None:
     """Writes the values one channel cell states, passing over a cell that states none.
 
-    A cell is written whole where it carries anything, so the row it lands on materialises exactly
+    A cell is written whole where it carries anything, so the row it lands on materializes exactly
     once however many of its subcolumns hold a value.
     """
     note = parse_note(tokens[0], voice_ids)

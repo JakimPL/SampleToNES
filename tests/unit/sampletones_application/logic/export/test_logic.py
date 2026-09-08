@@ -150,7 +150,7 @@ class TestFollowingARun:
 class TestHowEachStageReads:
     """A stage traveling to an end is a fraction; one measured against a limit is a figure."""
 
-    def test_a_travelling_stage_carries_its_share(
+    def test_a_traveling_stage_carries_its_share(
         self,
         logic: SongExportLogic,
         service: FakeExportService,
@@ -160,7 +160,7 @@ class TestHowEachStageReads:
         service.deliver(progress(ExportStage.WALKING, WALKED_TICKS, SONG_TICKS))
         assert views[-1].progress == pytest.approx(WALKED_TICKS / SONG_TICKS)
 
-    def test_a_travelling_stage_states_no_figure(
+    def test_a_traveling_stage_states_no_figure(
         self,
         logic: SongExportLogic,
         service: FakeExportService,

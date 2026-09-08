@@ -95,7 +95,7 @@ class TestTheStageList:
 class TestHowTheStageUnderWayReads:
     """A stage arriving at an end carries a bar; one measured against a limit carries a figure."""
 
-    def test_a_travelling_stage_shows_its_bar(self, window: GUIExportWindow) -> None:
+    def test_a_traveling_stage_shows_its_bar(self, window: GUIExportWindow) -> None:
         render(window, traveling=True)
         assert shown(TAG_SETTINGS_EXPORT_GROUP_MEASURED)
         assert not shown(TAG_SETTINGS_EXPORT_GROUP_WORKING)

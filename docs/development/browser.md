@@ -251,7 +251,7 @@ are dropped as the manager is built.
 
 **What the mode costs.** Resolving it walks the model once per rebuild, on the tree worker, testing each
 row with `is_node_favorite` and `has_favorite_ancestor` — set lookups over `filepath.parents` — and the
-anchors the preference follows are read out of that one answer. What it materialises is the starred rows
+anchors the preference follows are read out of that one answer. What it materializes is the starred rows
 and the rows above them, and what reaches DearPyGui is the drawn rows alone: on a directory holding
 hundreds of thousands of reconstructions, a favorites-only browser creates widgets for the starred ones
 and their headings. A keystroke resolves the query alone, the drawn rows being the mode's to state. A
