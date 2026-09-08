@@ -38,7 +38,7 @@ def _held_ticks(
     expected: bytes,
     limit: int,
 ) -> int:
-    """The ticks a phrase covers once it has played out, its final value carrying onwards."""
+    """The ticks a phrase covers once it has played out, its final value carrying onward."""
     end = position + len(expected)
     if len(expected) == limit or index.plane[end] != expected[-1]:
         return len(expected)

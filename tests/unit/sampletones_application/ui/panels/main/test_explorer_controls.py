@@ -184,7 +184,7 @@ class TestCollapseAll:
         assert music_tag in {tag for tag, _ in folded}
         assert all(not expanded for _, expanded in folded)
 
-    def test_the_folders_the_model_held_are_dropped_afterwards(
+    def test_the_folders_the_model_held_are_dropped_afterward(
         self,
         folded: List[Tuple[str, bool]],
     ) -> None:

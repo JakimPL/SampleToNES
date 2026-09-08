@@ -150,7 +150,7 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
     def _on_collapse_all_clicked(self) -> None:
         """Folds every folder away and drops the children it had loaded, so opening one reads it again.
 
-        The rows fold while the model still states them, and the folders the model held go afterwards,
+        The rows fold while the model still states them, and the folders the model held go afterward,
         which is what makes a later open list the folder as it stands on disk.
         """
         super()._on_collapse_all_clicked()

@@ -72,7 +72,7 @@ class RefinementConfig(DataModel):
 
     A note reaches the hardware as a divider, and the divider grid is finer than the note grid
     everywhere below the top of the range. The refinement reads where each frame's fundamental
-    actually stands and bends the note it landed on towards it, so material recorded off the grid
+    actually stands and bends the note it landed on toward it, so material recorded off the grid
     comes back in tune with itself.
 
     These settle how a bend is shaped and hold for a whole run. Which recordings bend, and on which

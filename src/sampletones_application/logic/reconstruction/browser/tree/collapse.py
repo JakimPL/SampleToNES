@@ -10,7 +10,7 @@ def collapse_single_child_containers(node: TreeNode) -> None:
 
     A heading leading to one row asks the reader to open a level that tells them nothing new, so the
     row takes the heading's name ahead of its own and rises into its place. Working from the deepest
-    rows upwards folds a whole chain at once, one separator per level: with a single configuration
+    rows upward folds a whole chain at once, one separator per level: with a single configuration
     present the configuration branch reads ``44.1 kHz·30 Hz·FFT·γ0·PTN`` as one row, and it grows back
     into groups as soon as a second configuration arrives.
 

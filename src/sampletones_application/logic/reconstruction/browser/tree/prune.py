@@ -8,7 +8,7 @@ def prune_empty_containers(node: TreeNode) -> None:
     """Drops the containers the browser invents that gather nothing, deepest first.
 
     A group or a sample is a heading the browser writes itself, so one left holding nothing says
-    nothing and leaves. Working from the deepest rows upwards lets a whole chain of such headings go
+    nothing and leaves. Working from the deepest rows upward lets a whole chain of such headings go
     at once, the branch root among them, which keeps a reconstructions directory holding nothing to
     show silent. A folder the disk holds stays where it is, since the configuration branch reads the
     disk as it is.

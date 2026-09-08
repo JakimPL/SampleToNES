@@ -173,7 +173,7 @@ class GUISequencerHistoryPanel(GUIPanel):
         Rendering is capped at ``max_rendered_entries`` so a full-budget history
         keeps the panel responsive; the window tracks the cursor, keeping the
         current entry visible and clickable. Entries beyond the window are
-        reached by stepping the cursor towards them.
+        reached by stepping the cursor toward them.
         """
         limit = self._layout.history.max_rendered_entries
         entries = view_model.entries

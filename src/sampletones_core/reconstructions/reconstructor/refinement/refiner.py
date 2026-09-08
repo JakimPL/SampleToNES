@@ -26,7 +26,7 @@ StemIds = Dict[ChannelName, List[int]]
 
 @dataclass(frozen=True)
 class PitchRefiner:
-    """Bends each chosen note towards where the recording's own fundamental stands.
+    """Bends each chosen note toward where the recording's own fundamental stands.
 
     The matching stage places every frame on the nearest note of the equal-tempered grid, which is
     as fine as its candidate catalog goes. The hardware is finer than that everywhere below the top
@@ -72,7 +72,7 @@ class PitchRefiner:
         stem_ids: StemIds,
         recordings: StemRecordings,
     ) -> Streams:
-        """The decoded streams with every frame's note bent towards what the recording sounds.
+        """The decoded streams with every frame's note bent toward what the recording sounds.
 
         Args:
             streams: What each channel plays, one candidate per frame.
@@ -94,7 +94,7 @@ class PitchRefiner:
         }
 
     def _bends_of(self, stem_id: int) -> FrozenSet[ChannelName]:
-        """The channels one stem carries towards its own recording."""
+        """The channels one stem carries toward its own recording."""
         entry = self.stems.entries_by_id.get(stem_id)
         if entry is None:
             return frozenset()
@@ -158,7 +158,7 @@ class PitchRefiner:
         if reading is None or reading.confidence < self.config.generation.refinement.confidence:
             return None
 
-        return generator.bend_towards(instruction.pitch, reading.frequency)
+        return generator.bend_toward(instruction.pitch, reading.frequency)
 
     def _reader_at(
         self,

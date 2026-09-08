@@ -273,7 +273,7 @@ class TestTheReadersShape:
 
 
 class TestFollowingTheReader:
-    """A click on a row is how it folds, and the browser reads what it stands as afterwards."""
+    """A click on a row is how it folds, and the browser reads what it stands as afterward."""
 
     def test_a_click_reads_the_row_the_frame_after_it_landed(
         self,

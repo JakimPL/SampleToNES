@@ -275,7 +275,7 @@ temperament — most recordings of most instruments — sits somewhere inside it
 
 `sampletones_core.reconstructions.reconstructor.refinement` spends that room, after the decoder has
 settled which note each frame plays and before the frames are rendered. It spends it where the run
-asks: a stem entry names the channels it carries towards its own recording, so one recording's bass
+asks: a stem entry names the channels it carries toward its own recording, so one recording's bass
 line can land on its exact tuning while another's lead keeps the grid.
 
 ### 6.1 Reading rather than searching
@@ -306,7 +306,7 @@ frames with no pitch to read.
 
 ### 6.2 Landing the note, and holding it
 
-A reading becomes a bend through the generator, which owns the divider geometry: `bend_towards`
+A reading becomes a bend through the generator, which owns the divider geometry: `bend_toward`
 answers with the divider steps that land the note nearest the frequency read, bounded by
 `bend_range` — **half the gap to each neighboring note**. That bound is what leaves the refined
 pitches gapless: note *n* covers `[(tₙ + tₙ₊₁) / 2, (tₙ + tₙ₋₁) / 2]`, and those windows tile the

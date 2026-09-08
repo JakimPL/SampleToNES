@@ -7,7 +7,7 @@ from sampletones_player.compression.tokens.sizes import phrase_size
 class PhraseToken:
     """The plane plays a phrase from the table, shifted by ``transpose``, for ``ticks`` ticks.
 
-    A count past the phrase's own length holds its final value onwards, the way a note whose
+    A count past the phrase's own length holds its final value onward, the way a note whose
     envelope has finished keeps sounding, and a count short of it cuts the note off.
     """
 

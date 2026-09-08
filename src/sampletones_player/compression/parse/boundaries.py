@@ -6,7 +6,7 @@ from typing import FrozenSet, List, Tuple
 
 @dataclass(frozen=True)
 class Boundaries:
-    """The ticks a token starts on, read forwards and backwards from every tick of a plane.
+    """The ticks a token starts on, read forward and backward from every tick of a plane.
 
     A loop re-enters the stream partway through, so the tick it re-enters at holds a token of
     its own and nothing spans across it. Knowing the nearest boundary either side of a tick is

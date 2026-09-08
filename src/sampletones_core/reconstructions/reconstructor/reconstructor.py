@@ -178,7 +178,7 @@ class Reconstructor:
         )
 
     def _refiner(self, stems_config: StemsConfig) -> PitchRefiner:
-        """The pass that carries each chosen note towards the fundamental the recording sounds."""
+        """The pass that carries each chosen note toward the fundamental the recording sounds."""
         return PitchRefiner(config=self.config, channels=self.channels, stems=stems_config)
 
     @staticmethod

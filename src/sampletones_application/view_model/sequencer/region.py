@@ -35,7 +35,7 @@ class GridRegion(BaseModel, frozen=True):
 
     Both bounds are inclusive, so a region always covers the cell it was started from and the
     smallest one covers exactly that cell. A producer orders the bounds it was given, which is
-    what makes a selection dragged upwards name the same region as one dragged down to the same
+    what makes a selection dragged upward name the same region as one dragged down to the same
     pair of cells.
     """
 

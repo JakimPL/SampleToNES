@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class LinearAttackEnvelope(BaseModel):
-    """Linear rise from 0 to full level over the attack, holding 1 afterwards."""
+    """Linear rise from 0 to full level over the attack, holding 1 afterward."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 

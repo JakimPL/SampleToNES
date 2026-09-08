@@ -163,7 +163,7 @@ def update(data: SerializedData) -> SerializedData:
     ``channel_name``, stamps the embedded config's metadata with the new data version,
     records the source audio as one path per stem, and carries the single-entry stems
     record every reconstruction states, down to the settings each stem is converted
-    with: the channels it takes, and the ones it carries towards its own recording. The
+    with: the channels it takes, and the ones it carries toward its own recording. The
     channel selection moves onto that record, so the embedded configuration lets it go.
     """
     updated = dict(data)

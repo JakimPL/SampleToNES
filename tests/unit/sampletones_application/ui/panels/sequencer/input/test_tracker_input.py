@@ -52,12 +52,12 @@ class TestSelection:
         assert region is not None
         assert (region.first_row, region.last_row) == (4, 5)
 
-    def test_extending_upwards_names_the_same_region_as_downwards(self) -> None:
+    def test_extending_upward_names_the_same_region_as_downward(self) -> None:
         """The bounds are ordered by the region, so the direction of the drag leaves no trace."""
-        upwards = _state(SubColumn.VOICE, row=5).extend_row(-1, ROW_COUNT).region
-        downwards = _state(SubColumn.VOICE, row=4).extend_row(1, ROW_COUNT).region
+        upward = _state(SubColumn.VOICE, row=5).extend_row(-1, ROW_COUNT).region
+        downward = _state(SubColumn.VOICE, row=4).extend_row(1, ROW_COUNT).region
 
-        assert upwards == downwards
+        assert upward == downward
 
     def test_a_further_extend_keeps_the_original_anchor(self) -> None:
         extended = _state(SubColumn.VOICE, row=4).extend_row(1, ROW_COUNT).extend_row(3, ROW_COUNT)

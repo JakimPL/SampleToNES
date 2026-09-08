@@ -53,7 +53,7 @@ class StemsConfig(DataModel):
 
     @cached_property
     def bent_channels(self) -> FrozenSet[ChannelName]:
-        """Every channel some stem carries towards its own recording."""
+        """Every channel some stem carries toward its own recording."""
         return frozenset(channel for entry in self.entries for channel in entry.settings.bends)
 
     @cached_property

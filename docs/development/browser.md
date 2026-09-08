@@ -175,7 +175,7 @@ One rule serves both. `TreeVisibility` (`sampletones_core/structures/tree/visibi
 rows a criterion named and answers which rows stay: a named row, a row leading down to one, and a row
 one holds. `resolve_visibility` keeps the named rows and the rows above them, so what a pass holds in
 memory follows the size of what was found, and a row beneath a match is answered from its own path
-upwards.
+upward.
 
 **What a criterion names and what it keeps are two sets.** A criterion points the reader at some rows
 and brings others along with them, and only the first kind is worth unfolding to. The rows a criterion
@@ -276,4 +276,4 @@ which is how a collapsed card is remembered too.
 **Folding the whole tree away** is the other control every card carries. It reaches the rows through the
 model rather than the widget tree, so one pass covers a branch however deep it runs, and it records what
 it set — leaving the memory empty, which is the shape a later pass then draws. The explorer folds first
-and drops the folders it had read afterwards, so opening one lists it as it stands on disk.
+and drops the folders it had read afterward, so opening one lists it as it stands on disk.

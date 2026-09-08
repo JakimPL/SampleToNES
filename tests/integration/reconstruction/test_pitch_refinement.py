@@ -133,7 +133,7 @@ class TestAConversionLandsOnTheNoteTheSourceSounds:
     hardware's divider grid is finer than that, and the refinement is what spends the difference.
     """
 
-    def test_a_detuned_tone_comes_back_bent_towards_its_own_pitch(
+    def test_a_detuned_tone_comes_back_bent_toward_its_own_pitch(
         self,
         config: Config,
         tmp_path: Path,

@@ -144,7 +144,7 @@ and reports the reconstructions written.
 `StemsConfig` (`reconstructor/stems/configs/`) is the setup: the entries, the
 precedence hierarchy and its mode, and the channel cap. An entry is an id and the
 `StemSettings` its recording is converted with — the channels it may occupy, and
-which of those it carries towards the divider it really sounds. A further
+which of those it carries toward the divider it really sounds. A further
 per-recording choice is a field on those settings, which is what lets the list a
 reader sets a run up in, the entry the run records, and a later reader of that
 record all state the same thing. It validates its own consistency — unique ids, a hierarchy naming every

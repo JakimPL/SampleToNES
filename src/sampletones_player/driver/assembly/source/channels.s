@@ -125,7 +125,7 @@ channels_advance:
 ;
 ; The values a tick plays come from wherever the token put them: a phrase body, the bytes spelled
 ; out behind a literal, or the value the plane already reached. A body played out holds its last
-; value onwards, which is what carries a note whose envelope has finished.
+; value onward, which is what carries a note whose envelope has finished.
 plane_advance:
     lda plane_state + PLANE_TOKEN_TICKS,x
     bne @within

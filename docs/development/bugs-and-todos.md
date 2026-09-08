@@ -86,7 +86,7 @@ starts carrying.
 * Code documentation
 * A backward-compatibility corpus of files older builds actually wrote. Every upgrade step is
   exercised against a payload the test builds itself — hand-written mappings for the step, and,
-  for projects, a current document rewritten backwards into the older shape — so a step is held
+  for projects, a current document rewritten backward into the older shape — so a step is held
   only to the fields it names. One archived `.stn`, `.ins` and `.stp` per shipped version, each
   written by that version and exercising every feature it could store, would hold the whole
   document to the chain and would catch a field that changed shape while no step named it.
