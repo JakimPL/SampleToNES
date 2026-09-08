@@ -296,6 +296,18 @@ TAG_GLOBAL_THEME_STEMS_DROP_STRIP = TagName(
     Widget.THEME,
     "stems_drop_strip",
 )
+TAG_GLOBAL_THEME_STEMS_GRID = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_grid",
+)
+TAG_GLOBAL_THEME_STEMS_GROUP_ROW = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_group_row",
+)
 TAG_GLOBAL_THEME_STEMS_ROW = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

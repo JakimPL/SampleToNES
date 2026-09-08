@@ -10,6 +10,7 @@ from sampletones_application.tags.general import (
     SUF_TEXT,
     TAG_GLOBAL_THEME_SECTION_HEADER,
     TAG_GLOBAL_THEME_STEMS_DROP_STRIP,
+    TAG_GLOBAL_THEME_STEMS_GRID,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -183,7 +184,11 @@ class LevelBands:
         view_model: StemsListViewModel,
         rows: Sequence[StemRowViewModel],
     ) -> None:
-        """One grid of rows, every band declaring the same columns so they line up across bands."""
+        """One grid of rows, every band declaring the same columns so they line up across bands.
+
+        The grid carries a row background so a group's own row can take a band of its own, and
+        states that background as clear, so every other row reads on the well behind it.
+        """
         columns = self.columns(view_model)
         with dpg.table(
             tag=tag,
@@ -192,7 +197,9 @@ class LevelBands:
             policy=dpg.mvTable_SizingFixedFit,
             resizable=False,
             borders_innerV=True,
-        ):
+            row_background=True,
+        ) as grid:
+            ThemeRegistry.get(TAG_GLOBAL_THEME_STEMS_GRID).bind_to_item(grid)
             columns.declare()
             for row in rows:
                 self._rows.create(row, view_model, columns)

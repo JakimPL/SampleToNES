@@ -13,6 +13,7 @@ from sampletones_application.tags.general import (
     SUF_TWISTY,
     TAG_GLOBAL_THEME_CHANNEL_MUTED,
     TAG_GLOBAL_THEME_DANGER_BUTTON,
+    TAG_GLOBAL_THEME_STEMS_GROUP_ROW,
     TAG_GLOBAL_THEME_STEMS_PICK,
     TAG_GLOBAL_THEME_STEMS_PICK_PARTIAL,
     TAG_GLOBAL_THEME_STEMS_ROW,
@@ -78,8 +79,15 @@ class StemRowRenderer:
         view_model: StemsListViewModel,
         columns: StemsColumns,
     ) -> None:
-        """Build the widgets one row stands as, in the columns its grid was declared with."""
-        with dpg.table_row(tag=self._tags.row(row.key, SUF_GROUP)):
+        """Build the widgets one row stands as, in the columns its grid was declared with.
+
+        A folder's row takes a band of its own behind it, so a group reads apart from the
+        recordings standing loose around it without spending a pixel of the list's height.
+        """
+        with dpg.table_row(tag=self._tags.row(row.key, SUF_GROUP)) as line:
+            if row.stands_for_a_folder:
+                ThemeRegistry.get(TAG_GLOBAL_THEME_STEMS_GROUP_ROW).bind_to_item(line)
+
             if self._offer.master_box:
                 self._create_master(row, view_model)
 

@@ -23,6 +23,7 @@ from sampletones_application.tags.general import (
     SUF_GROUP,
     SUF_TEXT,
     SUF_TWISTY,
+    TAG_GLOBAL_THEME_STEMS_GROUP_ROW,
 )
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -160,6 +161,11 @@ def box_of(row: StemRowViewModel, channel_name: ChannelName) -> str:
 def table_of(row: StemRowViewModel) -> int:
     """The grid one row stands in, which is what says whether two rows share a rhythm."""
     return dpg.get_item_parent(f"{PREFIX}.row.{row.key}.{SUF_GROUP}")
+
+
+def theme_on(row: StemRowViewModel) -> str:
+    """The theme one row's line carries, which is what bands a group apart from its neighbours."""
+    return dpg.get_item_alias(dpg.get_item_theme(f"{PREFIX}.row.{row.key}.{SUF_GROUP}"))
 
 
 def folder_without(row: StemRowViewModel, leaving: StemRowViewModel) -> StemRowViewModel:
@@ -497,3 +503,34 @@ class TestTheRhythmAFolderStandsIn(BaseTestSuite):
         press(twisty_of(sources))
 
         assert table_of(sources) == table_of(bass) == table_of(lead)
+
+
+class TestTheBandAGroupReadsBy(BaseTestSuite):
+    """A group takes a band of its own behind its row, which is what sets it apart from a recording.
+
+    The band is drawn as the row's background rather than as space around it, so a folder reads
+    apart while the list keeps the one rhythm every row stands in.
+    """
+
+    def test_a_folder_carries_the_band(self, stems_list: GUIStemsList) -> None:
+        sources = folder("sources", holds=3)
+
+        stems_list.update_view(view(sources))
+
+        assert theme_on(sources) == TAG_GLOBAL_THEME_STEMS_GROUP_ROW
+
+    def test_a_recording_carries_none(self, stems_list: GUIStemsList) -> None:
+        bass = recording(Path("/audio/bass.wav"))
+
+        stems_list.update_view(view(folder("sources", holds=1), bass))
+
+        assert theme_on(bass) != TAG_GLOBAL_THEME_STEMS_GROUP_ROW
+
+    def test_a_recording_inside_a_folder_carries_none(self, stems_list: GUIStemsList) -> None:
+        """What a folder holds are recordings, so the band names the folder alone."""
+        sources = folder("sources", holds=3)
+        stems_list.update_view(view(sources))
+
+        press(twisty_of(sources))
+
+        assert all(theme_on(held) != TAG_GLOBAL_THEME_STEMS_GROUP_ROW for held in sources.held)
