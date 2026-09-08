@@ -37,9 +37,9 @@ class LevelBands:
     levels draws every row in one table, which is the shape a list takes where the bands record a
     setup rather than offer somewhere to drop onto.
 
-    A folder breaks the run of rows it stands in, so the recordings it opens onto stand between
-    the rows above it and the rows below. Every table declares the same columns, so the rows line
-    up down the list however many folders break it.
+    An open folder breaks the run of rows it stands in, so the recordings it opens onto stand
+    between the rows above it and the rows below. Every table declares the same columns, so the
+    rows line up down the list however many folders break it.
     """
 
     def __init__(
@@ -122,26 +122,29 @@ class LevelBands:
             self._create_strip(view_model.level_count)
 
     def _create_listing(self, view_model: StemsListViewModel) -> None:
-        """Every row in one run, a folder breaking it so its own recordings stand below it."""
-        loose: List[StemRowViewModel] = []
+        """Every row in one run, an open folder breaking it so its recordings stand below it.
+
+        A folder's own row is a row like any other and stands in the table of the rows around it,
+        so the list keeps one rhythm down its whole length. What breaks the run is the region an
+        open folder opens onto, which is drawn between the row it belongs to and the next one.
+        """
+        standing: List[StemRowViewModel] = []
         segment = 0
         for row in view_model.rows:
-            if not row.stands_for_a_folder:
-                loose.append(row)
-                continue
+            standing.append(row)
+            if row.stands_for_a_folder and self._open_folders.stands_open(row.key):
+                segment = self._flush(standing, view_model, segment)
+                self._folders.open(row, view_model)
 
-            segment = self._flush(loose, view_model, segment)
-            self._folders.create(row, view_model)
+        self._flush(standing, view_model, segment)
 
-        self._flush(loose, view_model, segment)
-
-    def _flush(self, loose: List[StemRowViewModel], view_model: StemsListViewModel, segment: int) -> int:
-        """Draw the run of rows gathered since the last folder, and open the next run empty."""
-        if not loose:
+    def _flush(self, standing: List[StemRowViewModel], view_model: StemsListViewModel, segment: int) -> int:
+        """Draw the run of rows gathered since the last open folder, and open the next run empty."""
+        if not standing:
             return segment
 
-        self._create_table(self._tags.segment(segment), view_model, tuple(loose))
-        loose.clear()
+        self._create_table(self._tags.segment(segment), view_model, tuple(standing))
+        standing.clear()
         return segment + 1
 
     def _create_strip(self, position: int) -> None:

@@ -5,7 +5,6 @@ from typing import Dict, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.layout.general.stems import StemsListLayout
-from sampletones_application.tags.general import SUF_TABLE
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
 from sampletones_application.ui.elements.layout.region import NO_SCROLL, WindowedRegion
 from sampletones_application.ui.elements.stems.columns import StemsColumns
@@ -21,11 +20,12 @@ from sampletones_application.view_model.shared.stems import (
 class FolderRenderer:
     """One gathered folder: the row standing for it, and the recordings it opens onto.
 
-    A folder arrives closed, reading as its name and how many recordings it brought in. Opening
-    it sinks a region below the row, in which the recordings are drawn the way any other row is,
-    so a reader answers for one of them without leaving the list. The region holds a folder's
-    worth of rows and scrolls past that, building only the rows it shows — which is what makes
-    opening a folder of thousands cost what opening a folder of ten costs.
+    A folder arrives closed, reading as its name and how many recordings it brought in — one row
+    among the rows around it, standing in their table and taking the height they take. Opening it
+    sinks a region below that row, in which the recordings are drawn the way any other row is, so
+    a reader answers for one of them without leaving the list. The region holds a folder's worth
+    of rows and scrolls past that, building only the rows it shows — which is what makes opening a
+    folder of thousands cost what opening a folder of ten costs.
     """
 
     def __init__(
@@ -56,22 +56,6 @@ class FolderRenderer:
     def reads(self, columns: StemsColumns) -> None:
         """Takes up the grid the list is drawing, which a folder's own tables stand in too."""
         self._columns = columns
-
-    def create(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
-        """Draw the folder's own row, and the region its recordings stand in while it is open."""
-        with dpg.table(
-            tag=self._tags.folder(row.key, SUF_TABLE),
-            parent=self._tags.body,
-            header_row=False,
-            policy=dpg.mvTable_SizingFixedFit,
-            resizable=False,
-            borders_innerV=True,
-        ):
-            self._columns.declare()
-            self._rows.create(row, view_model, self._columns)
-
-        if self._open_folders.stands_open(row.key):
-            self._open(row, view_model)
 
     def forget(self) -> None:
         """Take up where each open folder stood, and let go of the regions a rebuild took down.
@@ -123,8 +107,12 @@ class FolderRenderer:
         for held in self._reached(region, row):
             self._rows.repaint(held, view_model, releasable=releasable)
 
-    def _open(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
-        """Sink the folder's region below its row and fill it with the rows it reaches."""
+    def open(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
+        """Sink the folder's region below its row and fill it with the rows it reaches.
+
+        The folder's own row stands in the run of rows around it, so what is drawn here is the
+        space its recordings scroll in — which is why a folder standing closed draws nothing.
+        """
         region = WindowedRegion(
             tag=self._tags.region(row.key),
             geometry=self._geometry,

@@ -140,7 +140,12 @@ class StemsGestures:
         self._report(self.on_removal_asked, user_data)
 
     def on_twisty(self, _sender: Sender, _app_data: Any, user_data: str) -> None:
-        """The marker beside a folder's name puts its recordings in view, or away again."""
+        """The marker beside a folder's name puts its recordings in view, or away again.
+
+        The glyph is what states which way the folder stands, so the marker is put back where the
+        press found it and the list's own reading decides what it reads as next.
+        """
+        dpg_set_value(self._tags.row(user_data, SUF_TWISTY), False)
         self._report(self.on_folder_toggled, user_data)
 
     def on_name_selected(self, _sender: Sender, value: bool, user_data: str) -> None:

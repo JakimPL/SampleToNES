@@ -20,6 +20,7 @@ from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_CHANNELS,
     SUF_CHECKBOX,
+    SUF_GROUP,
     SUF_TEXT,
     SUF_TWISTY,
 )
@@ -154,6 +155,11 @@ def name_of(row: StemRowViewModel) -> str:
 
 def box_of(row: StemRowViewModel, channel_name: ChannelName) -> str:
     return f"{PREFIX}.row.{row.key}.{SUF_CHANNELS}.{channel_name}.{SUF_CHECKBOX}"
+
+
+def table_of(row: StemRowViewModel) -> int:
+    """The grid one row stands in, which is what says whether two rows share a rhythm."""
+    return dpg.get_item_parent(f"{PREFIX}.row.{row.key}.{SUF_GROUP}")
 
 
 def folder_without(row: StemRowViewModel, leaving: StemRowViewModel) -> StemRowViewModel:
@@ -439,3 +445,55 @@ class TestWhereAnOpenFolderStands(BaseTestSuite):
             stems_list.update_view(view(sources, recording(Path("/audio/bass.wav"))))
 
         assert any(dpg.does_item_exist(name_of(held)) for held in sources.held)
+
+
+class TestTheRhythmAFolderStandsIn(BaseTestSuite):
+    """A folder's own row is a row like any other, so the list keeps one rhythm down its length.
+
+    A grid gives every row it holds the same height, and a table of its own would give a folder a
+    chrome of its own on top of it. So the folder's row stands in the grid of the rows around it,
+    and only the region an open folder opens onto breaks the run.
+    """
+
+    def test_a_closed_folder_stands_in_the_grid_of_the_rows_around_it(self, stems_list: GUIStemsList) -> None:
+        bass = recording(Path("/audio/bass.wav"))
+        sources = folder("sources", holds=3)
+        lead = recording(Path("/audio/lead.wav"))
+
+        stems_list.update_view(view(bass, sources, lead))
+
+        assert table_of(sources) == table_of(bass) == table_of(lead)
+
+    def test_the_marker_stands_as_tall_as_the_name_it_leads(
+        self,
+        stems_list: GUIStemsList,
+        layout_config: LayoutConfig,
+    ) -> None:
+        sources = folder("sources", holds=3)
+
+        stems_list.update_view(view(sources))
+
+        marker = dpg.get_item_configuration(twisty_of(sources))
+        assert marker["height"] == layout_config.general.stems.name_height
+
+    def test_an_open_folder_breaks_the_run_so_its_region_stands_between(self, stems_list: GUIStemsList) -> None:
+        bass = recording(Path("/audio/bass.wav"))
+        sources = folder("sources", holds=3)
+        lead = recording(Path("/audio/lead.wav"))
+        stems_list.update_view(view(bass, sources, lead))
+
+        press(twisty_of(sources))
+
+        assert table_of(sources) == table_of(bass)
+        assert table_of(lead) != table_of(sources)
+
+    def test_a_folder_closed_again_rejoins_the_run(self, stems_list: GUIStemsList) -> None:
+        bass = recording(Path("/audio/bass.wav"))
+        sources = folder("sources", holds=3)
+        lead = recording(Path("/audio/lead.wav"))
+        stems_list.update_view(view(bass, sources, lead))
+        press(twisty_of(sources))
+
+        press(twisty_of(sources))
+
+        assert table_of(sources) == table_of(bass) == table_of(lead)

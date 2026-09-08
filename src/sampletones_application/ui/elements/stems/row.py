@@ -13,7 +13,6 @@ from sampletones_application.tags.general import (
     SUF_TWISTY,
     TAG_GLOBAL_THEME_CHANNEL_MUTED,
     TAG_GLOBAL_THEME_DANGER_BUTTON,
-    TAG_GLOBAL_THEME_STEMS_DROP_STRIP,
     TAG_GLOBAL_THEME_STEMS_PICK,
     TAG_GLOBAL_THEME_STEMS_PICK_PARTIAL,
     TAG_GLOBAL_THEME_STEMS_ROW,
@@ -222,19 +221,23 @@ class StemRowRenderer:
         return self._offer.dragging and not view_model.collapse_levels
 
     def _create_disclosure(self, row: StemRowViewModel) -> None:
-        """The marker a folder opens by, which stands beside the folder's own name."""
+        """The marker a folder opens by, which stands beside the folder's own name.
+
+        The marker stands as tall as the name it leads, so a folder's row takes the height every
+        other row takes and the list keeps one rhythm from top to bottom.
+        """
         if not row.stands_for_a_folder:
             return
 
-        twisty = dpg.add_button(
+        twisty = dpg.add_selectable(
             label=self._twisty_glyph(row.key),
             tag=self._tags.row(row.key, SUF_TWISTY),
             width=self._layout.twisty_width,
+            height=self._layout.name_height,
             user_data=row.key,
             callback=self._gestures.on_twisty,
         )
         FontRegistry.bind_to_item(twisty, Font.ICON)
-        ThemeRegistry.get(TAG_GLOBAL_THEME_STEMS_DROP_STRIP).bind_to_item(twisty)
         self._gestures.bind(twisty, SUF_TWISTY)
 
     def _twisty_glyph(self, key: str) -> str:
