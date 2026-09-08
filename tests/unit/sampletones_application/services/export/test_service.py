@@ -46,7 +46,7 @@ def outcome(results: List[Any]) -> Any:
 
 
 class StubBackend:
-    """Records what the service asked for and returns a prepared artefact.
+    """Records what the service asked for and returns a prepared artifact.
 
     The service under test owns the thread boundary and the result contract; what lands
     on disk belongs to the real backends and is exercised in their own tests.

@@ -160,7 +160,7 @@ def key_display(key: int) -> str:
 
 
 def key_code(name: str) -> int:
-    """The key a written name stands for, however the name is capitalised.
+    """The key a written name stands for, however the name is capitalized.
 
     Reading a name back into a code is what lets a binding be written down, so a configured
     combination and a declared one arrive at the same key. A key answers to the name it displays

@@ -8,7 +8,7 @@ from sampletones_core.project.song_position import SongPosition
 class RowSynthesizerProtocol(Protocol):
     """Streaming synthesis kernel a service drives, one row at a time.
 
-    This is the input contract every consumer of a song's audio takes; the concrete synthesiser
+    This is the input contract every consumer of a song's audio takes; the concrete synthesizer
     lives in the logic layer and satisfies it structurally. Each ``render_row`` call produces one
     row's worth of audio, advances the internal position cursor, and returns a snapshot of the
     cursor from before the advance so callers can post accurate position events.

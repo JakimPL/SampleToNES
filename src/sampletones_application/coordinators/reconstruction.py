@@ -50,7 +50,7 @@ class ReconstructionCoordinator:
     - It must be saved before replacement.
     - Its dirty/saved state drives the window title.
     - Menu bar instrument regeneration flows through it so that all
-      reconstruction mutations remain centralised.
+      reconstruction mutations remain centralized.
 
     The reconstructions tab is wired in after construction through
     ``set_reconstructions_tab``; ``_tab`` asserts it is present before first use.

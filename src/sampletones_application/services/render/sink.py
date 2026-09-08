@@ -23,7 +23,7 @@ class RenderSink(Protocol):
     """Where a render's rows go on their way to the destination file.
 
     A sink is entered for the length of one render: rows arrive through ``write`` in the order
-    they are synthesised, and ``finish`` completes whatever the sink still owes the destination.
+    they are synthesized, and ``finish`` completes whatever the sink still owes the destination.
     Leaving the sink closes what it opened and clears what was only ever temporary; ``discard``
     is how a caller that decided against the result removes the file itself.
 
@@ -50,9 +50,9 @@ class RenderSink(Protocol):
 
 
 class DirectRenderSink:
-    """Writes each row to the destination as it is synthesised.
+    """Writes each row to the destination as it is synthesized.
 
-    One pass over the song, at the level the synthesiser produced: the encoder receives a row as
+    One pass over the song, at the level the synthesizer produced: the encoder receives a row as
     soon as it exists, so the file grows with the render and nothing is held between the two.
     """
 
@@ -101,7 +101,7 @@ class DirectRenderSink:
 class NormalizingRenderSink:
     """Spills the render, then writes it at the scale that brings its peak to full.
 
-    The loudest sample is known only once the last row is synthesised, so the rows are spilled
+    The loudest sample is known only once the last row is synthesized, so the rows are spilled
     beside the destination as they arrive and read back in blocks against the peak they turned
     out to hold. The destination is opened for the second pass alone, which is what makes the
     encoder see the finished levels rather than the raw ones.

@@ -26,7 +26,7 @@ def make_controller() -> ProjectController:
 
 
 def all_channels() -> FrozenSet[ChannelName]:
-    """The fully audible mask a synthesiser renders under unless a test moves it."""
+    """The fully audible mask a synthesizer renders under unless a test moves it."""
     return ALL_CHANNELS
 
 
@@ -37,7 +37,7 @@ def make_synthesizer(
     sample_rate: int = DEFAULT_SAMPLE_RATE,
     active_channels: Callable[[], FrozenSet[ChannelName]] = all_channels,
 ) -> RowSynthesizer:
-    """A synthesiser rendering at ``sample_rate``, standing in for the output a caller supplies."""
+    """A synthesizer rendering at ``sample_rate``, standing in for the output a caller supplies."""
     return RowSynthesizer(
         controller,
         config,

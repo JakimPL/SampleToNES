@@ -330,7 +330,7 @@ class ReconstructionTabCoordinator:
         self._reconstruction_instruments_logic.on_display_refreshed = self._instrument_audition_logic.refresh
 
     def _on_export_result(self, result: ExportResult) -> None:
-        """Reports a finished export in the words of the artefact it produced.
+        """Reports a finished export in the words of the artifact it produced.
 
         A run long enough to watch held a window while it ran, and DearPyGui carries one modal at
         a time, so the report waits for the frame that draws the screen without it.

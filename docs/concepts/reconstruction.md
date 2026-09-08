@@ -313,7 +313,7 @@ pitches gapless: note *n* covers `[(tₙ + tₙ₊₁) / 2, (tₙ + tₙ₋₁) 
 divider range exactly, so every divider the notes span is reachable and none is claimed twice.
 
 A bend that followed every reading exactly would jitter, and jitter is more audible than the tuning
-it chases. So the per-frame proposals are settled by a change-penalised walk, the same shape the
+it chases. So the per-frame proposals are settled by a change-penalized walk, the same shape the
 Viterbi decoder settles a note contour with: the cost of a bend is how far it stands from that
 frame's reading, plus a toll on changing at all. The states a frame may take are the bends its
 neighborhood proposed together with no bend, which keeps the walk to a handful of states even where

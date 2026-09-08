@@ -146,7 +146,7 @@ class FolderRenderer:
         """One table of the recordings a region reaches, declaring the columns the list lines up on.
 
         The room the region spends at its own right is the room the grid outside it holds clear, so
-        the recordings inside a folder stand in the columns their neighbours stand in and none of
+        the recordings inside a folder stand in the columns their neighbors stand in and none of
         them leads with a marker.
         """
         held_columns = replace(self._columns, folders=False)

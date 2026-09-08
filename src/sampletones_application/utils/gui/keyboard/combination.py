@@ -65,7 +65,7 @@ class KeyCombination:
         plus key.
 
         Args:
-            text: A combination as :meth:`display` writes it, in any capitalisation.
+            text: A combination as :meth:`display` writes it, in any capitalization.
 
         Returns:
             KeyCombination: The combination the text names.

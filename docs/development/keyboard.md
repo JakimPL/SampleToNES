@@ -105,7 +105,7 @@ override naming an action this build has none of, a key the table has none of, o
 category already gives away is reported and left out, so one stale entry costs only itself.
 
 A change reaches the running application through `ShortcutSource.on_bindings_changed` — the
-keyboard's analogue of the palette switch ([`palette.md`](palette.md)) — and the dispatcher
+keyboard's analog of the palette switch ([`palette.md`](palette.md)) — and the dispatcher
 re-reads the keys while the menus re-print their accelerators. Each registration names the action it
 fires, which is what leaves a rebind that little to catch up.
 

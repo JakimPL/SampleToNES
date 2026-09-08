@@ -207,7 +207,7 @@ class TestParse(BaseTestSuite):
             expected=KeyCombination(dpg.mvKey_Z, CTRL_SHIFT),
         ),
         TestCase(
-            label="any capitalisation",
+            label="any capitalization",
             text="ctrl+shift+z",
             expected=KeyCombination(dpg.mvKey_Z, CTRL_SHIFT),
         ),

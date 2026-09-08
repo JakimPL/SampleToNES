@@ -87,7 +87,7 @@ These rules govern the Python in this repository. They complement
 
 ## Guide
 
-1. `docs/guide/` is written for someone using the application, not changing it. A page says what a reader can do and how, in the order they would do it; a page organized by control catalogues the application instead of explaining it.
+1. `docs/guide/` is written for someone using the application, not changing it. A page says what a reader can do and how, in the order they would do it; a page organized by control catalogs the application instead of explaining it.
 1. A few sentences per feature. Mechanism, file formats and per-widget behavior belong to `docs/development/`, and a `###` inside a guide section is the sign a passage grew into a reference.
 1. Write for a reader with no picture of the screen. Name a control by the label the application ships, read from the language file, rather than by where it sits.
 1. Write in plain, direct English. Short sentences carrying one fact each, the noun repeated rather than replaced by a pronoun, and a bulleted list wherever the page states several things of one kind. Use everyday verbs — *shows*, *changes*, *opens*, *removes*, *click* — in place of this repository's own vocabulary (*settles*, *holds*, *answers*, *stands for*, *reaches*), which names concepts a reader of the guide has never met.

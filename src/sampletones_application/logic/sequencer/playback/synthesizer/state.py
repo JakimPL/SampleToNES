@@ -7,7 +7,7 @@ from ..protocol import ChannelGeneratorProtocol
 
 @dataclass
 class ChannelState:
-    """One channel of the synthesiser: the voice filling its ticks, beside what it carries.
+    """One channel of the synthesizer: the voice filling its ticks, beside what it carries.
 
     The pattern state is the engine's own (:class:`~sampletones_core.performance.state.ChannelPerformance`),
     so what a channel is sounding, how far into it, and at what transpose and volume are read
@@ -16,7 +16,7 @@ class ChannelState:
     over several rows keeps one continuous waveform.
 
     Attributes:
-        generator: The synthesiser filling the channel's ticks.
+        generator: The synthesizer filling the channel's ticks.
         performance: What the channel carries from row to row.
     """
 

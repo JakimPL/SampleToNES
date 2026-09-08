@@ -22,7 +22,7 @@ class SequencerChannelsLogic(CallbackMixin):
     silences the other three and remembers the set it replaced, so leaving the solo returns to
     the mix it interrupted.
 
-    The synthesiser reads :attr:`active_channels` on every rendered row, so a change is heard
+    The synthesizer reads :attr:`active_channels` on every rendered row, so a change is heard
     while playback continues.
     """
 
@@ -34,7 +34,7 @@ class SequencerChannelsLogic(CallbackMixin):
 
     @property
     def active_channels(self) -> FrozenSet[ChannelName]:
-        """The channels that sound, the mask the synthesiser mixes."""
+        """The channels that sound, the mask the synthesizer mixes."""
         return ALL_CHANNELS - self._muted
 
     def build_channels(self) -> SequencerChannelsViewModel:

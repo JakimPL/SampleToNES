@@ -141,7 +141,7 @@ applies a loudness curve.
 
 The strategy that reads a channel's per-frame candidates into the stream it plays,
 named by `generation.decoder.selector`. The **greedy** decoder plays each frame's
-best candidate; the **Viterbi** decoder (the default) favours continuity, changing a
+best candidate; the **Viterbi** decoder (the default) favors continuity, changing a
 channel only when the gain in match quality outweighs the cost of the change.
 
 ### Calibration

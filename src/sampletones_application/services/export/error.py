@@ -10,7 +10,7 @@ class ExportError:
     """A failed export, carrying the exception the result dialog reports.
 
     Attributes:
-        kind: The artefact the run set out to produce.
+        kind: The artifact the run set out to produce.
         export_format: The format the run set out to write, and ``None`` for an audio export.
         exception: The failure raised while writing.
     """
