@@ -84,7 +84,14 @@ class GUIStemsList(CallbackMixin):
             activatable=lambda: self.activatable,
             playable=lambda: self.playable,
         )
-        self._gestures = StemsGestures(self._tags, messages=self._messages, status_bar=status_bar)
+        self._gestures = StemsGestures(
+            self._tags,
+            messages=self._messages,
+            status_bar=status_bar,
+            activatable=lambda: self.activatable,
+            playable=lambda: self.playable,
+            has_menu=lambda: self.has_menu,
+        )
         self._rows = StemRowRenderer(
             self._tags,
             layout=layout,
@@ -160,6 +167,11 @@ class GUIStemsList(CallbackMixin):
     def playable(self) -> bool:
         """The owner sounds a recording, so a double-click on a row reaches something."""
         return self.on_row_opened is not None
+
+    @property
+    def has_menu(self) -> bool:
+        """The owner puts a menu up over a row, so a right-click on one reaches something."""
+        return self.on_menu_requested is not None
 
     def create(self, parent: str, *, show: bool = True) -> None:
         """Build the list's recessed region and the handlers its rows share.

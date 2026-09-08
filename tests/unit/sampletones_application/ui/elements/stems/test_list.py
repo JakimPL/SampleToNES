@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Final, FrozenSet, Iterator, List, Optional, Tuple
 
@@ -18,12 +19,8 @@ from sampletones_application.paths import (
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON,
-    SUF_CHANNELS,
     SUF_CHECKBOX,
-    SUF_HANDLER_REGISTRY,
     SUF_HEADING,
-    SUF_LEVEL,
-    SUF_ROW,
     SUF_STRIP,
     SUF_TEXT,
     TAG_GLOBAL_THEME_CHANNEL_MUTED,
@@ -54,6 +51,9 @@ TAGS: Final[StemsTags] = StemsTags(prefix=PREFIX)
 CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.TRIANGLE)
 DRAG_PAYLOAD_SLOT: Final[int] = 3
 LONG_LIST: Final[int] = 200
+CLICK_HANDLER: Final[int] = 0
+DOUBLE_CLICK_HANDLER: Final[int] = 1
+UNSET_CALLBACK_NOTE: Final[str] = "No callback for GUIStemsList"
 
 
 @pytest.fixture
@@ -168,6 +168,24 @@ def channel_tag(entry: StemRowViewModel, channel_name: ChannelName) -> str:
 def hover_handler(suffix: str) -> Callback:
     """The hover callback a row widget of that kind shares, as DearPyGui would call it."""
     return dpg.get_item_callback(dpg.get_item_children(TAGS.handlers(suffix), 1)[-1])
+
+
+def name_handler(position: int) -> Callback:
+    """One of the mouse callbacks a row's name shares, as DearPyGui would call it."""
+    return dpg.get_item_callback(dpg.get_item_children(TAGS.handlers(SUF_TEXT), 1)[position])
+
+
+def click_on(entry: StemRowViewModel, position: int, button: int) -> None:
+    """Land a mouse gesture on a row's name the way DearPyGui reports one."""
+    name_tag = row_tag(entry, SUF_TEXT)
+    name_handler(position)(name_tag, (button, dpg.get_alias_id(name_tag)))
+
+
+def select_name(entry: StemRowViewModel, value: bool) -> None:
+    """Click a row's name the way DearPyGui does: the widget moves, then the callback runs."""
+    name_tag = row_tag(entry, SUF_TEXT)
+    dpg.set_value(name_tag, value)
+    dpg.get_item_callback(name_tag)(name_tag, value, entry.key)
 
 
 def folder_row(
@@ -712,6 +730,102 @@ class TestActivation(BaseTestSuite):
 
         assert dpg.get_value(row_tag(lead, SUF_TEXT)) is True
         assert dpg.get_value(row_tag(bass, SUF_TEXT)) is False
+
+
+class TestGesturesTheOwnerLeavesUnanswered(BaseTestSuite):
+    """A list hands a gesture on where it has an owner for it, and lets the rest be.
+
+    A click still moves the widget it lands on, so a list answering no click puts the row back the
+    way its view holds it — a reader picking through such a list would otherwise leave a trail of
+    rows reading as picked that no reading of the list ever wrote.
+    """
+
+    def test_a_click_leaves_the_row_reading_as_the_view_holds_it(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        stems_list = build(layout_config, dragging=False)
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        select_name(bass, True)
+
+        assert dpg.get_value(row_tag(bass, SUF_TEXT)) is False
+
+    def test_the_row_the_view_holds_picked_out_keeps_reading_that_way(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        """A click that reaches nobody puts the row back where the view stands it, either way."""
+        stems_list = build(layout_config, dragging=False)
+        bass = row("bass")
+        stems_list.update_view(view(bass, selected_key=bass.key))
+
+        select_name(bass, False)
+
+        assert dpg.get_value(row_tag(bass, SUF_TEXT)) is True
+
+    def test_a_right_click_is_let_be_where_the_owner_puts_no_menu_up(
+        self,
+        dpg_context: None,
+        layout_config,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        caplog.set_level(logging.DEBUG)
+        stems_list = build(layout_config, dragging=False)
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        click_on(bass, CLICK_HANDLER, dpg.mvMouseButton_Right)
+
+        assert UNSET_CALLBACK_NOTE not in caplog.text
+
+    def test_a_right_click_names_its_row_where_the_owner_puts_one_up(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        asked: List[str] = []
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_menu_requested = asked.append
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        click_on(bass, CLICK_HANDLER, dpg.mvMouseButton_Right)
+
+        assert asked == [bass.key]
+
+    def test_a_double_click_is_let_be_where_the_owner_sounds_nothing(
+        self,
+        dpg_context: None,
+        layout_config,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        caplog.set_level(logging.DEBUG)
+        stems_list = build(layout_config, dragging=False)
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        click_on(bass, DOUBLE_CLICK_HANDLER, dpg.mvMouseButton_Left)
+
+        assert UNSET_CALLBACK_NOTE not in caplog.text
+
+    def test_a_double_click_sounds_its_row_where_the_owner_answers(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        opened: List[str] = []
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_row_opened = opened.append
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        click_on(bass, DOUBLE_CLICK_HANDLER, dpg.mvMouseButton_Left)
+
+        assert opened == [bass.key]
 
 
 class TestTheHeading(BaseTestSuite):

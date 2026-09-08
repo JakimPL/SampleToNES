@@ -12,7 +12,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.messages import StemsMessages
 from sampletones_application.ui.elements.stems.tags import StemsTags
-from sampletones_application.utils.gui.dpg import dpg_delete_item
+from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
 from sampletones_application.view_model.shared.stems import StemsListViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import Sender
@@ -32,6 +32,10 @@ class StemsGestures:
     hover explanation and the right-click read the row they landed on rather than needing a
     handler apiece. Every event this class answers arrives as a widget and a payload; what
     leaves it is the row a gesture named and what the reader asked of it.
+
+    Three of those gestures reach past the row to whoever owns the list — picking a row out,
+    sounding it, and putting its menu up — so the list is asked whether it has an owner for each.
+    A gesture with none rests here, and the widget it moved is put back where it stood.
     """
 
     def __init__(
@@ -40,10 +44,16 @@ class StemsGestures:
         *,
         messages: StemsMessages,
         status_bar: GUIStatusBar,
+        activatable: Callable[[], bool],
+        playable: Callable[[], bool],
+        has_menu: Callable[[], bool],
     ) -> None:
         self._tags = tags
         self._messages = messages
         self._status_bar = status_bar
+        self._activatable = activatable
+        self._playable = playable
+        self._has_menu = has_menu
         self._view = StemsListViewModel.empty()
 
         self.on_channels_settled: Optional[ChannelsCallback] = None
@@ -56,16 +66,6 @@ class StemsGestures:
         self.on_folder_toggled: Optional[StringCallback] = None
         self.on_row_opened: Optional[StringCallback] = None
         self.on_row_picked: Optional[StringCallback] = None
-
-    @property
-    def activatable(self) -> bool:
-        """The owner answers a click on a row, so the list hands one on rather than absorbing it."""
-        return self.on_row_activated is not None
-
-    @property
-    def playable(self) -> bool:
-        """The owner sounds a recording, so a double-click on a row reaches something."""
-        return self.on_row_opened is not None
 
     def reads(self, view_model: StemsListViewModel) -> None:
         """Takes up the view the list is drawing, which is what a gesture is answered against."""
@@ -148,9 +148,16 @@ class StemsGestures:
 
         A row already picked out reads as let go when it is clicked again, which is the answer
         DearPyGui hands the callback, so one gesture both picks a row and releases it.
+
+        A list whose owner answers no click has the row put back the way the view holds it: the
+        click moved the widget and nothing behind it, so the row would otherwise keep a picked
+        look that no reading of the list ever wrote.
         """
-        if self.activatable:
-            self._report(self.on_row_activated, user_data, value)
+        if not self._activatable():
+            dpg_set_value(self._tags.row(user_data, SUF_TEXT), user_data == self._view.selected_key)
+            return
+
+        self._report(self.on_row_activated, user_data, value)
 
     def on_row_drop(self, sender: Sender, app_data: str) -> None:
         """A recording was dropped on a row, so it joins that row's level at its place."""
@@ -165,6 +172,10 @@ class StemsGestures:
             self._report(self.on_dropped_on_level, app_data, position)
 
     def _on_name_clicked(self, _sender: Sender, app_data: Tuple[int, int]) -> None:
+        """A right-click names the row its menu stands over, where the owner puts one up."""
+        if not self._has_menu():
+            return
+
         key = self._named_by(app_data, dpg.mvMouseButton_Right)
         if key is not None:
             self._report(self.on_menu_asked, key)
@@ -180,7 +191,7 @@ class StemsGestures:
             self._report(self.on_folder_toggled, key)
             return
 
-        if self.playable:
+        if self._playable():
             self._report(self.on_row_opened, key)
 
     @staticmethod
