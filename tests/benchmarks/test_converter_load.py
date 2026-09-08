@@ -1,8 +1,6 @@
-import gc
 from itertools import count
 from pathlib import Path
-from time import process_time
-from typing import Callable, Final, Iterator, List, Tuple
+from typing import Callable, Final, Iterator, Tuple
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -44,10 +42,10 @@ from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from tests.suite.base import BaseTestSuite
+from tests.suite.timing import seconds
 
 SMALL_FOLDER: Final[int] = 1_000
 LARGE_FOLDER: Final[int] = 10_000
-REPEATS: Final[int] = 3
 GROWTH_ALLOWANCE: Final[float] = 2.0
 REGION_HEIGHT: Final[float] = 264.0
 ROW_PITCH: Final[float] = 36.0
@@ -86,34 +84,11 @@ def state_of(root: Path, count: int) -> ConverterState:
     )
 
 
-def seconds(work: Callable[[], object]) -> float:
-    """The best of several runs, taken with the collector held off so the reading is the work's.
-
-    The collector runs on how much is live rather than on what the work does, so a run building ten
-    times the objects meets it more often and reads as more than ten times the cost — enough to
-    swallow the growth these bounds are about. Held off for the reading, what is left is how the
-    work itself follows the length of the list, and the objects are collected once it comes back.
-    """
-    collecting = gc.isenabled()
-    gc.disable()
-    try:
-        readings: List[float] = []
-        for _ in range(REPEATS):
-            started = process_time()
-            work()
-            readings.append(process_time() - started)
-    finally:
-        if collecting:
-            gc.enable()
-
-    return min(readings)
-
-
 def growth(small: Callable[[], object], large: Callable[[], object]) -> Tuple[float, float, str]:
     """What each size costs, and a line naming both readings and the growth between them."""
     one = seconds(small)
     many = seconds(large)
-    ratio = many / one if one > 0 else float("inf")
+    ratio = many / one
     report = (
         f"{SMALL_FOLDER} recordings {one * 1000:.1f} ms, "
         f"{LARGE_FOLDER} recordings {many * 1000:.1f} ms, "
