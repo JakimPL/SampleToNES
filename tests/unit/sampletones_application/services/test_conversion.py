@@ -125,7 +125,7 @@ class TestConversionServiceEmissions:
         assert result.current_item is not None
         assert result.current_item.source == Path("/some/file.wav")
 
-    def test_on_progress_cancelling_emits_service_progress(
+    def test_on_progress_canceling_emits_service_progress(
         self,
         service: Service,
     ) -> None:
@@ -134,7 +134,7 @@ class TestConversionServiceEmissions:
         results.clear()
 
         progress = TaskProgress(total=5, completed=3)
-        callbacks["on_progress"](TaskStatus.CANCELLING, progress)
+        callbacks["on_progress"](TaskStatus.CANCELING, progress)
 
         assert len(results) == 1
         assert isinstance(results[0], ServiceProgress)

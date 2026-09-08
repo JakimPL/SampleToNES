@@ -579,7 +579,7 @@ class Application:
                 ExportStage.WRITING: self.language_manager["settings.export.label.stage_writing"],
             },
             size_template=self.language_manager["settings.export.template.size"],
-            cancelling_label=self.language_manager["settings.export.message.status_cancelling"],
+            canceling_label=self.language_manager["settings.export.message.status_canceling"],
         )
 
         self._export_coordinator = SongExportCoordinator(

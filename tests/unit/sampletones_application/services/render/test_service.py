@@ -147,17 +147,17 @@ class TestNormalizing(BaseTestSuite):
         assert not (tmp_path / f"song.wav{SCRATCH_SUFFIX}").exists()
 
 
-class TestCancelling(BaseTestSuite):
+class TestCanceling(BaseTestSuite):
     """A canceled render reports itself canceled and names no file."""
 
-    def _cancelling_synthesizer(self, service: SongRenderService) -> FakeSynthesizer:
+    def _canceling_synthesizer(self, service: SongRenderService) -> FakeSynthesizer:
         return FakeSynthesizer(on_row=lambda rendered: service.cancel() if rendered == 4 else None)
 
     def test_a_canceled_render_leaves_no_file(self, tmp_path: Path) -> None:
         destination = tmp_path / "song.wav"
         service = SongRenderService()
         service.start(
-            synthesizer=self._cancelling_synthesizer(service),
+            synthesizer=self._canceling_synthesizer(service),
             destination=destination,
             spec=wave_spec(),
             normalize=False,
@@ -171,7 +171,7 @@ class TestCancelling(BaseTestSuite):
         results: List[RenderResult] = []
         service.subscribe(results.append)
         service.start(
-            synthesizer=self._cancelling_synthesizer(service),
+            synthesizer=self._canceling_synthesizer(service),
             destination=tmp_path / "song.wav",
             spec=wave_spec(),
             normalize=False,
@@ -183,7 +183,7 @@ class TestCancelling(BaseTestSuite):
     def test_a_canceled_normalized_render_leaves_no_spill(self, tmp_path: Path) -> None:
         service = SongRenderService()
         service.start(
-            synthesizer=self._cancelling_synthesizer(service),
+            synthesizer=self._canceling_synthesizer(service),
             destination=tmp_path / "song.wav",
             spec=wave_spec(),
             normalize=True,

@@ -822,7 +822,7 @@ class SequencerTabCoordinator:
 
         The rate governs how every sample plays back, so changing it on a project that already
         holds samples prompts once (until acknowledged for the session); an empty or acknowledged
-        project applies silently. Cancelling restores the field to the project's current value.
+        project applies silently. Canceling restores the field to the project's current value.
         """
         if nes_frequency == self._sequencer_tracker_logic.settings.nes_frequency:
             return

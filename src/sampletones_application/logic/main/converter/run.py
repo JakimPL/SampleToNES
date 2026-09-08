@@ -113,7 +113,7 @@ class ConversionRun(CallbackMixin):
 
     @property
     def is_running(self) -> bool:
-        """The service holds the run, so cancelling it is the service's business."""
+        """The service holds the run, so canceling it is the service's business."""
         return self._service.is_running()
 
     @property
@@ -134,8 +134,8 @@ class ConversionRun(CallbackMixin):
 
     def cancel(self) -> None:
         """Asks the service to give up the run it holds."""
-        self._phase = ConversionPhase.CANCELLING
-        self._report(self._messages.cancelling, 0.0)
+        self._phase = ConversionPhase.CANCELING
+        self._report(self._messages.canceling, 0.0)
         self._system_progress.error()
         self._service.cancel()
 
@@ -177,8 +177,8 @@ class ConversionRun(CallbackMixin):
                 self._settle_as_canceled()
 
     def _handle_progress_result(self, progress: ServiceProgress[ConversionItem]) -> None:
-        if self._phase == ConversionPhase.CANCELLING:
-            self._report(self._messages.cancelling, progress.fraction)
+        if self._phase == ConversionPhase.CANCELING:
+            self._report(self._messages.canceling, progress.fraction)
             return
 
         self._phase = ConversionPhase.RUNNING

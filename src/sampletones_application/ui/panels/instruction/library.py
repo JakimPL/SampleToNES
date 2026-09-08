@@ -262,7 +262,7 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
         )
 
     def set_tree_enabled(self, enabled: bool) -> None:
-        """Locks the tree and the control reading it again, leaving a running generation cancellable."""
+        """Locks the tree and the control reading it again, leaving a running generation cancelable."""
         dpg_configure_item(
             self._tags.group_tree,
             enabled=enabled,

@@ -24,7 +24,7 @@ class ConverterMessages:
         self.idle: str = language_manager["main.converter.message.status_idle"]
         self.waiting: str = language_manager["main.converter.message.status_waiting"]
         self.generating_library: str = language_manager["main.converter.message.status_generating_library"]
-        self.cancelling: str = language_manager["main.converter.message.status_cancelling"]
+        self.canceling: str = language_manager["main.converter.message.status_canceling"]
         self.canceled: str = language_manager["main.converter.message.status_canceled"]
         self.completed: str = language_manager["main.converter.message.status_reconstruction_completed"]
         self.failed: str = language_manager["main.converter.message.status_error"]

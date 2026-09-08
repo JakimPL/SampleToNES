@@ -120,7 +120,7 @@ class TestPrimaryAction:
             (ConversionPhase.IDLE, ConverterAction.CONVERT),
             (ConversionPhase.WAITING, ConverterAction.CANCEL),
             (ConversionPhase.RUNNING, ConverterAction.CANCEL),
-            (ConversionPhase.CANCELLING, ConverterAction.CANCEL),
+            (ConversionPhase.CANCELING, ConverterAction.CANCEL),
             (ConversionPhase.COMPLETED, ConverterAction.CONVERT),
             (ConversionPhase.CANCELED, ConverterAction.CONVERT),
             (ConversionPhase.FAILED, ConverterAction.CONVERT),
@@ -139,7 +139,7 @@ class TestPrimaryActionEnabled:
         [
             (ConversionPhase.WAITING, True),
             (ConversionPhase.RUNNING, True),
-            (ConversionPhase.CANCELLING, False),
+            (ConversionPhase.CANCELING, False),
         ],
     )
     def test_cancel_enablement(self, phase: ConversionPhase, enabled: bool) -> None:

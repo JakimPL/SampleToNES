@@ -127,7 +127,7 @@ def _started_plan(converter_logic: ConverterLogic, service: MagicMock) -> GroupC
 
 
 class TestCancelDuringLibraryGeneration(BaseTestSuite):
-    """The converter requests a library when none exists and waits for it. Cancelling during that
+    """The converter requests a library when none exists and waits for it. Canceling during that
     wait must abort the pending conversion and stop the in-flight generation."""
 
     def test_cancel_while_waiting_cancels_generation_and_finishes(

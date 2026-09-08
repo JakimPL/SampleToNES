@@ -15,13 +15,13 @@ NOTHING_MEASURED: Final[int] = 0
 class ExportPhase(StrEnum):
     IDLE = "idle"
     EXPORTING = "exporting"
-    CANCELLING = "cancelling"
+    CANCELING = "canceling"
 
 
 ACTIVE_PHASES: Final[FrozenSet[ExportPhase]] = frozenset(
     {
         ExportPhase.EXPORTING,
-        ExportPhase.CANCELLING,
+        ExportPhase.CANCELING,
     }
 )
 

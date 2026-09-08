@@ -86,7 +86,7 @@ class TestStoppingARun:
         assert view_model(phase=ExportPhase.EXPORTING).cancel_enabled is True
 
     def test_an_export_already_stopping_takes_no_further_stop(self) -> None:
-        assert view_model(phase=ExportPhase.CANCELLING).cancel_enabled is False
+        assert view_model(phase=ExportPhase.CANCELING).cancel_enabled is False
 
     def test_an_export_being_stopped_still_holds_the_screen(self) -> None:
-        assert view_model(phase=ExportPhase.CANCELLING).is_active is True
+        assert view_model(phase=ExportPhase.CANCELING).is_active is True

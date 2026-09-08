@@ -129,7 +129,7 @@ class TestActionLabel(BaseTestSuite):
 
     @pytest.mark.parametrize(
         "phase",
-        [ConversionPhase.WAITING, ConversionPhase.RUNNING, ConversionPhase.CANCELLING],
+        [ConversionPhase.WAITING, ConversionPhase.RUNNING, ConversionPhase.CANCELING],
     )
     def test_a_conversion_holding_resources_reads_the_cancel_label(self, phase: ConversionPhase) -> None:
         label = messages().action_label(

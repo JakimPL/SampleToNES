@@ -39,7 +39,7 @@ class GUIExportWindow(GUIDialogWindow):
     the foot of the list, and it carries either a bar filling toward its end or the turning
     indicator of work whose length the data decides.
 
-    Cancelling is offered for as long as the run can still answer one.
+    Canceling is offered for as long as the run can still answer one.
     """
 
     _fits_content = True

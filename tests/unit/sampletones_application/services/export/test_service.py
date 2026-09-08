@@ -531,7 +531,7 @@ class TestExportServiceConcurrency:
         assert call_count == 0
 
 
-class CancellingBackend:
+class CancelingBackend:
     """Withdraws the run from inside it, the way a user pressing Cancel does."""
 
     def __init__(self, service: ExportService) -> None:
@@ -607,7 +607,7 @@ class TestWithdrawingARun:
         export_service, results = service
         export_service.export_instrument(
             tmp_path / "instrument.nsf",
-            CancellingBackend(export_service),
+            CancelingBackend(export_service),
             build_instrument(),
         )
         assert isinstance(outcome(results), ServiceCanceled)
@@ -616,14 +616,14 @@ class TestWithdrawingARun:
         export_service, results = service
         export_service.export_instrument(
             tmp_path / "instrument.nsf",
-            CancellingBackend(export_service),
+            CancelingBackend(export_service),
             build_instrument(),
         )
         assert not any(isinstance(result, (ExportSuccess, ExportError)) for result in results)
 
     def test_the_format_stops_where_it_was_told(self, service, tmp_path) -> None:
         export_service, _ = service
-        backend = CancellingBackend(export_service)
+        backend = CancelingBackend(export_service)
         export_service.export_instrument(tmp_path / "instrument.nsf", backend, build_instrument())
         assert backend.stages == [ExportStage.WALKING]
 

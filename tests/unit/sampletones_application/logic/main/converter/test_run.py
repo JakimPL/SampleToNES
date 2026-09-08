@@ -82,12 +82,12 @@ class TestWhereARunStands(BaseTestSuite):
 
         assert (driver.run.phase, driver.run.is_active) == (ConversionPhase.RUNNING, True)
 
-    def test_cancelling_holds_resources_until_the_service_answers(self, driver: Driver) -> None:
+    def test_canceling_holds_resources_until_the_service_answers(self, driver: Driver) -> None:
         driver.begin()
 
         driver.run.cancel()
 
-        assert (driver.run.phase, driver.run.is_active) == (ConversionPhase.CANCELLING, True)
+        assert (driver.run.phase, driver.run.is_active) == (ConversionPhase.CANCELING, True)
         driver.service.cancel.assert_called_once()
 
     @pytest.mark.parametrize(
@@ -141,14 +141,14 @@ class TestWhatARunReports(BaseTestSuite):
 
         assert driver.reports[-1].input_path is None
 
-    def test_a_cancelled_run_keeps_reporting_the_cancelling_line(self, driver: Driver) -> None:
+    def test_a_canceled_run_keeps_reporting_the_canceling_line(self, driver: Driver) -> None:
         driver.begin()
         driver.run.cancel()
 
         driver.reports_from_service(ServiceProgress(completed=1, total=2))
 
-        assert driver.reports[-1].status_text == "main.converter.message.status_cancelling"
-        assert driver.run.phase == ConversionPhase.CANCELLING
+        assert driver.reports[-1].status_text == "main.converter.message.status_canceling"
+        assert driver.run.phase == ConversionPhase.CANCELING
 
     def test_library_progress_moves_the_bar_while_waiting(self, driver: Driver) -> None:
         driver.run.wait()

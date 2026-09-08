@@ -17,7 +17,7 @@ class ConversionPhase(StrEnum):
     IDLE = "idle"
     WAITING = "waiting"
     RUNNING = "running"
-    CANCELLING = "cancelling"
+    CANCELING = "canceling"
     COMPLETED = "completed"
     CANCELED = "canceled"
     FAILED = "failed"
@@ -38,7 +38,7 @@ ACTIVE_PHASES: Final[FrozenSet[ConversionPhase]] = frozenset(
     {
         ConversionPhase.WAITING,
         ConversionPhase.RUNNING,
-        ConversionPhase.CANCELLING,
+        ConversionPhase.CANCELING,
     }
 )
 SINGLE_SOURCE: Final[int] = 1
@@ -163,6 +163,6 @@ class ConverterViewModel(BaseModel, frozen=True):
     @property
     def primary_action_enabled(self) -> bool:
         if self.primary_action == ConverterAction.CANCEL:
-            return self.phase != ConversionPhase.CANCELLING
+            return self.phase != ConversionPhase.CANCELING
 
         return self.convert_button_enabled

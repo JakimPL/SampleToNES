@@ -68,7 +68,7 @@ class SongRenderLogic(CallbackMixin):
         self._session_manager = session_manager
         self._service = render_service
         self._is_operation_active = is_operation_active
-        self._msg_cancelling = language_manager["settings.render.message.status_cancelling"]
+        self._msg_canceling = language_manager["settings.render.message.status_canceling"]
         self._msg_canceled = language_manager["settings.render.message.status_canceled"]
         self._msg_completed = language_manager["settings.render.message.status_completed"]
         self._msg_failed = language_manager["settings.render.message.status_failed"]
@@ -187,8 +187,8 @@ class SongRenderLogic(CallbackMixin):
         if not self._service.is_running():
             return
 
-        self._phase = RenderPhase.CANCELLING
-        self._status_text = self._msg_cancelling
+        self._phase = RenderPhase.CANCELING
+        self._status_text = self._msg_canceling
         self._emit_view()
         self._service.cancel()
 
@@ -211,7 +211,7 @@ class SongRenderLogic(CallbackMixin):
 
     def _handle_progress(self, progress: ServiceProgress[RenderStage]) -> None:
         """Puts a pass's report on the bar, holding the message a stop was asked under."""
-        if self._phase == RenderPhase.CANCELLING:
+        if self._phase == RenderPhase.CANCELING:
             return
 
         self._phase = RenderPhase.RENDERING

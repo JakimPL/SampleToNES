@@ -247,8 +247,8 @@ class TestReportingTheRender:
             )
         )
 
-        assert render.view.phase == RenderPhase.CANCELLING
-        assert render.view.status_text == "settings.render.message.status_cancelling"
+        assert render.view.phase == RenderPhase.CANCELING
+        assert render.view.status_text == "settings.render.message.status_canceling"
 
     def test_a_stop_reaches_the_service(self, render: RenderFixture) -> None:
         render.configure()

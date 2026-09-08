@@ -136,5 +136,5 @@ class TestAWithdrawalReachesTheTasks:
             release_path.touch()
             processor.wait(POOL_TIMEOUT)
 
-            assert recorder.last_of(TaskStatus.CANCELLING) is not None
+            assert recorder.last_of(TaskStatus.CANCELING) is not None
             assert not processor.is_running()

@@ -165,7 +165,7 @@ class TestConversionSuccessDialog:
 
 
 class TestCancelConfirmation:
-    """Cancelling is destructive, so the panel's cancel intent asks for confirmation before the
+    """Canceling is destructive, so the panel's cancel intent asks for confirmation before the
     conversion is actually stopped."""
 
     def test_cancel_request_confirms_before_stopping(self) -> None:

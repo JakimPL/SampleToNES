@@ -416,13 +416,13 @@ class TestCommit:
 
 
 class TestCancel:
-    def test_cancelling_an_untouched_dialog_closes_it_without_asking(self, harness: Harness) -> None:
+    def test_canceling_an_untouched_dialog_closes_it_without_asking(self, harness: Harness) -> None:
         harness.cancel()
 
         assert harness.dialogs.confirmations == []
         assert not harness.window.visible
 
-    def test_cancelling_an_edited_dialog_asks_first(self, harness: Harness) -> None:
+    def test_canceling_an_edited_dialog_asks_first(self, harness: Harness) -> None:
         harness.select(ABOUT_DIALOG)
         harness.type_combination(FREE_COMBINATION)
         harness.cancel()

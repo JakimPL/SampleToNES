@@ -35,7 +35,7 @@ class SongExportLogic(CallbackMixin):
     at an end, and the bytes against the room there is where it does not.
 
     An export holds the application while it writes, so the dialog stands from the first word the
-    run says until the outcome that ends it, and cancelling is answered at the next point the
+    run says until the outcome that ends it, and canceling is answered at the next point the
     format looks up.
     """
 
@@ -45,12 +45,12 @@ class SongExportLogic(CallbackMixin):
         *,
         stage_labels: Dict[ExportStage, str],
         size_template: str,
-        cancelling_label: str,
+        canceling_label: str,
     ) -> None:
         self._service = export_service
         self._stage_labels = stage_labels
         self._size_template = size_template
-        self._cancelling_label = cancelling_label
+        self._canceling_label = canceling_label
 
         self._phase: ExportPhase = ExportPhase.IDLE
         self._stages: List[ExportStage] = []
@@ -78,8 +78,8 @@ class SongExportLogic(CallbackMixin):
         if not self._service.is_running():
             return
 
-        self._phase = ExportPhase.CANCELLING
-        self._figure = self._cancelling_label
+        self._phase = ExportPhase.CANCELING
+        self._figure = self._canceling_label
         self._travelling = False
         self._emit_view()
         self._service.cancel()
@@ -108,7 +108,7 @@ class SongExportLogic(CallbackMixin):
 
     def _on_progress(self, progress: ServiceProgress[ExportStage]) -> None:
         """Puts the stage's own reading on screen, holding what a stop was asked under."""
-        if self._phase == ExportPhase.CANCELLING:
+        if self._phase == ExportPhase.CANCELING:
             return
 
         stage = progress.current_item
