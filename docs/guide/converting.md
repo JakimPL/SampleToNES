@@ -48,7 +48,7 @@ Below it, the card shows the name of the recording you selected in the list and 
 
 A mix can hold up to eight recordings. If you switch to **One from all** with more than eight recordings in the list, a dialog asks which ones to mix. The same dialog opens when you add a folder with more recordings than the mix has room for.
 
-The dialog lists the same rows as the card and shows how many recordings you have selected. **Add** becomes available when your selection fits. A full mix cannot accept more recordings, so uncheck one before checking another.
+The dialog lists the same rows as the card and shows how many recordings you have selected. Double-click a row to hear the recording. **Add** becomes available when your selection fits. A full mix cannot accept more recordings, so uncheck one before checking another.
 
 Once a mix has two or more recordings, the rows are grouped into **levels**. A level decides which recordings choose their channels first. Everything on level 1 is given channels before anything on level 2. This lets a lead melody take the channels it needs before a background part does.
 

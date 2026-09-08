@@ -359,6 +359,7 @@ class MainTabCoordinator:
         self._converter_panel.on_row_selected = self._converter_logic.select_row
         self._converter_panel.on_selection_cleared = self._converter_logic.clear_selection
         self._converter_panel.on_source_played = self._file_playback.play
+        self._stem_selection_window.on_source_played = self._file_playback.play
 
     def _repaint_explorer_favorites(self, node: FileSystemNode) -> None:
         """Repaints the row whose star was toggled: the explorer mirrors the disk, so a path is one row."""

@@ -612,6 +612,21 @@ class TestGatheringAFolderIntoAMix:
         opened.assert_not_called()
         assert len(app._main_tab._converter_logic.gathered_paths) == MAX_STEM_SOURCES - 1
 
+    def test_a_recording_in_the_question_sounds_where_the_reader_asks_for_it(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        """A reader decides by ear, so the question reaches the player the converter's list reaches."""
+        window = app._main_tab._stem_selection_window
+        directory = self._folder(tmp_path, MAX_STEM_SOURCES + 3)
+        recording = directory / "take_00.wav"
+
+        with patch.object(app._main_tab._file_playback, "play_at") as sounded:
+            window.on_source_played(recording)
+
+        assert sounded.call_args.args[0] == recording
+
 
 class TestMainTabReadingOrder:
     """The tab reads in one direction: what a run is set up with, what it gathers, what a row takes.

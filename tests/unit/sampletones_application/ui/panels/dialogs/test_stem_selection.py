@@ -10,13 +10,14 @@ from sampletones_application.constants.sources import SourceKind
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.paths import LANG_EN
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import SUF_BUTTON, SUF_CHECKBOX, SUF_ROW
+from sampletones_application.tags.general import SUF_BUTTON, SUF_CHECKBOX, SUF_ROW, SUF_TEXT
 from sampletones_application.tags.main import (
     PRE_MAIN_CONVERTER_CANDIDATE,
     TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS,
     TAG_MAIN_CONVERTER_TEXT_STEM_SELECTION_LIMIT,
 )
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.elements.stems.tags import StemsTags
 from sampletones_application.ui.panels.dialogs.stem_selection import Answer, GUIStemSelectionWindow
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.view_model.shared.stems import StemRowViewModel
@@ -26,6 +27,8 @@ from tests.suite.shortcuts import shipped_source
 
 LANGUAGE_MANAGER: Final[LanguageManager] = LanguageManager(LANG_EN)
 GATHERED: Final[int] = MAX_STEM_SOURCES + 4
+TAGS: Final[StemsTags] = StemsTags(prefix=PRE_MAIN_CONVERTER_CANDIDATE)
+DOUBLE_CLICK_HANDLER: Final[int] = 1
 
 
 @pytest.fixture(name="window")
@@ -113,6 +116,24 @@ def pick(row: StemRowViewModel) -> None:
     """Click one row's box the way DearPyGui reports a checkbox."""
     tag = box_of(row)
     dpg.get_item_callback(tag)(tag, not dpg.get_value(tag), dpg.get_item_user_data(tag))
+
+
+def name_of(row: StemRowViewModel) -> str:
+    return TAGS.row(row.key, SUF_TEXT)
+
+
+def sound(row: StemRowViewModel) -> None:
+    """Double-click one row's name the way DearPyGui reports the gesture."""
+    handler = dpg.get_item_children(TAGS.handlers(SUF_TEXT), 1)[DOUBLE_CLICK_HANDLER]
+    name_tag = name_of(row)
+    dpg.get_item_callback(handler)(name_tag, (dpg.mvMouseButton_Left, dpg.get_alias_id(name_tag)))
+
+
+def click_name(row: StemRowViewModel, value: bool) -> None:
+    """Click one row's name the way DearPyGui does: the widget moves, then the callback runs."""
+    name_tag = name_of(row)
+    dpg.set_value(name_tag, value)
+    dpg.get_item_callback(name_tag)(name_tag, value, row.key)
 
 
 def add_enabled() -> bool:
@@ -301,3 +322,26 @@ class TestAskingTwice(BaseTestSuite):
         dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
 
         assert answered == [paths()[:MAX_STEM_SOURCES]]
+
+
+class TestHearingWhatARowStandsFor(BaseTestSuite):
+    """A reader decides by ear, so the question sounds a recording the way the card's list does."""
+
+    def test_a_double_clicked_recording_is_named_to_sound(self, window: GUIStemSelectionWindow) -> None:
+        played: List[Path] = []
+        offered = candidates()
+        window.on_source_played = played.append
+        render(window, offered)
+
+        sound(offered[0])
+
+        assert played == [offered[0].path]
+
+    def test_clicking_a_name_leaves_the_row_reading_as_it_stood(self, window: GUIStemSelectionWindow) -> None:
+        """The pick is made by the boxes, so a click on a name marks no row as picked out."""
+        offered = candidates()
+        render(window, offered)
+
+        click_name(offered[0], True)
+
+        assert dpg.get_value(name_of(offered[0])) is False

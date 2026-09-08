@@ -29,6 +29,7 @@ from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
     StemsListViewModel,
 )
+from sampletones_shared.types.callback import PathCallback
 
 Answer = Callable[[List[Path]], None]
 
@@ -49,6 +50,9 @@ class GUIStemSelectionWindow(GUIDialogWindow):
     list, and gathering a folder that overflows what is left. Both put the same question — which
     recordings the mix is built from — so a folder is offered beside what the mix already stands
     on and the answer names the whole of it.
+
+    A double-click sounds the recording it lands on, the way the converter's own list does, so the
+    reader hears what a row stands for before deciding whether it belongs in the mix.
     """
 
     def __init__(
@@ -85,9 +89,11 @@ class GUIStemSelectionWindow(GUIDialogWindow):
             status_bar=status_bar,
             offer=PICKED_SOURCES,
         )
-        self._list.on_row_picked = self._on_picked
-
+        self.on_source_played: Optional[PathCallback] = None
         self._answer: Optional[Answer] = None
+
+        self._list.on_row_picked = self._on_picked
+        self._list.on_row_opened = lambda key: self.call(self.on_source_played, Path(key))
 
         super().__init__(
             tag=TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION,
