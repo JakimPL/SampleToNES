@@ -79,8 +79,13 @@ class ConverterMenus(CallbackMixin):
                 lambda: self.call(self.on_source_played, row.path),
                 enabled=row.available,
             )
+            dpg.add_separator()
             for element, enabled, callback in self._moves(row, banded=banded):
-                dpg.add_menu_item(label=self._label(element), enabled=enabled, callback=callback)
+                dpg.add_menu_item(
+                    label=self._label(element),
+                    enabled=enabled,
+                    callback=callback,
+                )
 
             add_path_menu_items(self._language_manager, row.path)
 
