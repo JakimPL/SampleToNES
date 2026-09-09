@@ -67,6 +67,7 @@ class GUIConverterPanel(GUIPanel):
         self._menus = ConverterMenus(
             stems_list=self._listing.stems_list,
             language_manager=language_manager,
+            shortcut_source=shortcut_source,
         )
         self._action = ConverterActionButton(
             layout=layout,

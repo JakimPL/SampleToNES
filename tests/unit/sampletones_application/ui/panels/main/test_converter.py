@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -32,6 +32,7 @@ from sampletones_application.tags.main import (
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.panels.main.converter import menus as menus_module
 from sampletones_application.ui.panels.main.converter.panel import GUIConverterPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
@@ -419,3 +420,58 @@ class TestTheDestination:
 
         assert shows(TAG_MAIN_CONVERTER_GROUP_INPUT)
         assert panel.input_path_text.path == RECORDING
+
+
+class TestTheRemovalItemInTheMenu:
+    """Taking a row out is one action, so the item and the key print and reach the same thing."""
+
+    @staticmethod
+    def _items(
+        panel: GUIConverterPanel,
+        entry: StemRowViewModel,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> List[Dict[str, Any]]:
+        """The items the row's context menu registers, as a reader would meet them."""
+        registered: List[Dict[str, Any]] = []
+        monkeypatch.setattr(menus_module.dpg, "add_menu_item", lambda **kwargs: registered.append(kwargs) or 0)
+        monkeypatch.setattr(menus_module.dpg, "add_separator", lambda **_kwargs: 0)
+        panel._show_menu(entry.key)
+        return registered
+
+    def _removal(
+        self,
+        panel: GUIConverterPanel,
+        entry: StemRowViewModel,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> Dict[str, Any]:
+        label = LANGUAGE_MANAGER["main.converter.label.context_remove_stem"]
+        items = self._items(panel, entry, monkeypatch)
+        return next(item for item in items if item["label"] == label)
+
+    def test_it_prints_the_key_that_does_the_same_thing(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel, _reported = build(layout_config)
+        kick = row("kick")
+        panel.update_view(view(kick, row("snare")))
+
+        removal = self._removal(panel, kick, monkeypatch)
+
+        assert removal["shortcut"] == shipped_source().display(ShortcutId.SOURCES_REMOVE_SOURCE)
+
+    def test_it_stands_inert_while_a_run_holds_the_list(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel, _reported = build(layout_config)
+        kick = row("kick")
+        panel.update_view(view(kick, row("snare"), phase=ConversionPhase.RUNNING))
+
+        removal = self._removal(panel, kick, monkeypatch)
+
+        assert removal["enabled"] is False

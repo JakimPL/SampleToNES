@@ -59,7 +59,7 @@ This means the UI layer can never be in an inconsistent state: it always reflect
 
 ### 5. Panels communicate via optional callback hooks
 
-A panel never calls coordinator or logic methods directly. Instead it exposes public optional callback attributes (`on_x: Optional[Callback] = None`) that coordinators set during wiring. The panel fires them through `CallbackMixin.call()`, which logs a warning and yields `None` for a hook left unset.
+A panel never calls coordinator or logic methods directly. Instead it exposes public optional callback attributes (`on_x: Optional[Callback] = None`) that coordinators set during wiring. The panel fires them through `CallbackMixin.call()`, which notes a hook left unset at debug and yields `None`, so partial wiring during construction reads as the expected condition it is.
 
 A hook the panel consults for state rather than notifies of an event is read through `CallbackMixin.query()`, which preserves the hook's declared return type and takes the answer to assume while the hook is unset. A widget parameter or branch fed by such a hook therefore receives a value of its expected type at every moment, including the window before wiring completes.
 

@@ -17,6 +17,8 @@ from sampletones_application.ui.elements.context_menu import (
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.stems.list import GUIStemsList
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -43,9 +45,11 @@ class ConverterMenus(CallbackMixin):
         *,
         stems_list: GUIStemsList,
         language_manager: LanguageManager,
+        shortcut_source: ShortcutSource,
     ) -> None:
         self._stems_list = stems_list
         self._language_manager = language_manager
+        self._shortcuts = shortcut_source
         self._lbl_play = language_manager["global.context.label.play"]
 
         self.on_source_played: Optional[PathCallback] = None
@@ -87,6 +91,10 @@ class ConverterMenus(CallbackMixin):
                     callback=callback,
                 )
 
+            self._create_removal(
+                self._label(ConverterStemMoveElements.CONTEXT_REMOVE_STEM),
+                lambda: self.call(self.on_source_removed, row.path),
+            )
             add_path_menu_items(self._language_manager, row.path)
 
     def _show_folder(self, row: StemRowViewModel) -> None:
@@ -101,10 +109,9 @@ class ConverterMenus(CallbackMixin):
                 ),
                 callback=lambda: self.call(self.on_folder_toggled, row.path),
             )
-            dpg.add_menu_item(
-                label=self._folder_label(ConverterFolderElements.CONTEXT_REMOVE_FOLDER),
-                enabled=self._stems_list.lets_a_row_go,
-                callback=lambda: self.call(self.on_folder_removed, row.path),
+            self._create_removal(
+                self._folder_label(ConverterFolderElements.CONTEXT_REMOVE_FOLDER),
+                lambda: self.call(self.on_folder_removed, row.path),
             )
             add_path_menu_items(self._language_manager, row.path)
 
@@ -116,17 +123,12 @@ class ConverterMenus(CallbackMixin):
     ) -> List[Tuple[ConverterStemMoveElements, bool, VoidCallback]]:
         """The moves the row can make, which are the level moves while a mix is banded.
 
-        A run writing a reconstruction apiece has no order to rearrange, so it offers the one move
-        that means something there: taking the recording out.
+        A run writing a reconstruction apiece has no order to rearrange, so it offers none of them
+        and the row's own removal is the whole of what it can be told to do.
         """
         path = row.path
-        removal = (
-            ConverterStemMoveElements.CONTEXT_REMOVE_STEM,
-            self._stems_list.lets_a_row_go,
-            lambda: self.call(self.on_source_removed, path),
-        )
         if not banded:
-            return [removal]
+            return []
 
         return [
             (
@@ -154,8 +156,20 @@ class ConverterMenus(CallbackMixin):
                 not row.alone_on_level,
                 lambda: self.call(self.on_source_isolated, path),
             ),
-            removal,
         ]
+
+    def _create_removal(self, label: str, callback: VoidCallback) -> None:
+        """The item taking a row out, printing the key that does the same thing.
+
+        The key and the item are one action, so the item reads whatever combination the scheme
+        gives it and a rebind reaches the menu without another edit.
+        """
+        dpg.add_menu_item(
+            label=label,
+            shortcut=self._shortcuts.display(ShortcutId.SOURCES_REMOVE_SOURCE),
+            enabled=self._stems_list.lets_a_row_go,
+            callback=callback,
+        )
 
     @staticmethod
     def _header(name: str) -> None:
