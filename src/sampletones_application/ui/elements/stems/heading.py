@@ -65,7 +65,11 @@ class StemsHeading:
         return compose_tag(self._prefix, SUF_HEADING, channel_name, SUF_TEXT)
 
     def create(self, parent: str, columns: StemsColumns) -> None:
-        """Draw the heading above the rows, in the columns those rows stand in."""
+        """Draw the heading above the rows, in the columns those rows stand in.
+
+        The grid below rules its own top edge, which is the line dividing the names from the rows
+        they stand over.
+        """
         self._columns = columns
         with dpg.table(
             tag=self.table,
@@ -79,8 +83,6 @@ class StemsHeading:
             self._create_names()
             if self._bends:
                 self._create_slots()
-
-        dpg.add_separator(parent=parent)
 
     def render(self, muted_channels: FrozenSet[ChannelName]) -> None:
         """Tone each channel's name the way its boxes are toned, so a column reads as one."""

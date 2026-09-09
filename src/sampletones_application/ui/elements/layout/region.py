@@ -18,6 +18,7 @@ LeadBuilder = Callable[[str], None]
 
 NO_ROWS: Final[Window] = (0, 0)
 NO_GUTTER: Final[int] = 0
+NO_MARGIN: Final[int] = 0
 NO_LEAD: Final[float] = 0.0
 AUTO_HEIGHT: Final[int] = 0
 NO_SCROLL: Final[float] = 0.0

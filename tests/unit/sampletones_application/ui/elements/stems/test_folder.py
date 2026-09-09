@@ -24,6 +24,7 @@ from sampletones_application.tags.general import (
     SUF_TEXT,
     SUF_TWISTY,
     TAG_GLOBAL_THEME_STEMS_GROUP_ROW,
+    TAG_GLOBAL_THEME_STEMS_MARKER,
 )
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -470,6 +471,16 @@ class TestTheRhythmAFolderStandsIn(BaseTestSuite):
 
         assert table_of(sources) == table_of(bass) == table_of(lead)
 
+    def test_the_marker_stands_its_glyph_in_the_middle_of_its_room(self, stems_list: GUIStemsList) -> None:
+        """The marker's theme spends no padding around the glyph and centers it in the room it was
+        given, which is what holds a folder's row to the height of the rows around it and stands
+        the glyph where a recording listed loose opens its name."""
+        sources = folder("sources", holds=3)
+
+        stems_list.update_view(view(sources))
+
+        assert dpg.get_item_alias(dpg.get_item_theme(twisty_of(sources))) == TAG_GLOBAL_THEME_STEMS_MARKER
+
     def test_the_marker_stands_as_tall_as_the_name_it_leads(
         self,
         stems_list: GUIStemsList,
@@ -481,6 +492,7 @@ class TestTheRhythmAFolderStandsIn(BaseTestSuite):
 
         marker = dpg.get_item_configuration(twisty_of(sources))
         assert marker["height"] == layout_config.general.stems.name_height
+        assert marker["width"] == layout_config.general.stems.twisty_width
 
     def test_an_open_folder_breaks_the_run_so_its_region_stands_between(self, stems_list: GUIStemsList) -> None:
         bass = recording(Path("/audio/bass.wav"))

@@ -187,7 +187,9 @@ class LevelBands:
         """One grid of rows, every band declaring the same columns so they line up across bands.
 
         The grid carries a row background so a group's own row can take a band of its own, and
-        states that background as clear, so every other row reads on the well behind it.
+        states that background as clear, so every other row reads on the well behind it. Rules run
+        between the rows as well as between the columns, and around the grid's own edges, so the
+        run of rows an open folder breaks still reads as one ruled list down its whole length.
         """
         columns = self.columns(view_model)
         with dpg.table(
@@ -197,6 +199,8 @@ class LevelBands:
             policy=dpg.mvTable_SizingFixedFit,
             resizable=False,
             borders_innerV=True,
+            borders_innerH=True,
+            borders_outerH=True,
             row_background=True,
         ) as grid:
             ThemeRegistry.get(TAG_GLOBAL_THEME_STEMS_GRID).bind_to_item(grid)

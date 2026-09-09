@@ -1,0 +1,19 @@
+name: stems_marker
+tag: global.theme.stems_marker
+
+components:
+  - item_type: Button
+    entries:
+      - type: style
+        key: FramePadding
+        x: 0
+        y: 0
+      - type: color
+        key: Button
+        value: .transparent
+      - type: color
+        key: ButtonHovered
+        value: .selection_hovered
+      - type: color
+        key: ButtonActive
+        value: .selection_active

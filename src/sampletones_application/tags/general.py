@@ -302,6 +302,12 @@ TAG_GLOBAL_THEME_STEMS_GRID = TagName(
     Widget.THEME,
     "stems_grid",
 )
+TAG_GLOBAL_THEME_STEMS_MARKER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_marker",
+)
 TAG_GLOBAL_THEME_STEMS_GROUP_ROW = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

@@ -287,6 +287,29 @@ class TestTheList:
 
         assert not shows(TAG_MAIN_CONVERTER_TEXT_STEMS_HINT)
 
+    def test_an_empty_list_stands_away_so_the_hint_has_the_room(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A list holding nothing draws a heading and its rules over empty room, so it stands away."""
+        panel, _reported = build(layout_config)
+
+        panel.update_view(view())
+
+        assert not shows(panel.stems_list.tag)
+
+    def test_the_list_comes_back_with_the_first_recording(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        panel, _reported = build(layout_config)
+
+        panel.update_view(view(row("kick")))
+
+        assert shows(panel.stems_list.tag)
+
 
 class TestTheKeysTheListClaims:
     """A row picked out puts the list on the keyboard, and everything else is left to travel on."""

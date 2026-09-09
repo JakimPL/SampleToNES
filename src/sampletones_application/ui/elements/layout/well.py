@@ -35,7 +35,9 @@ def well(
     ``gutter`` widens that right inset by the room a scrollbar takes, which a caller hands over
     while the well stands without one, so the body keeps one width however tall its content grows.
     ``margin`` opens the gap above the first row and below the last, which the row spacing between
-    the content and the spacers adds to.
+    the content and the spacers adds to. A well asked for none lays neither spacer, so its rows
+    open where the well does — which is what a well nested inside a list takes, its rows being a
+    run of the list rather than a body of their own.
     """
     body_tag = compose_tag(tag, SUF_GROUP)
     with dpg.child_window(
@@ -48,9 +50,12 @@ def well(
         no_scrollbar=True,
         show=show,
     ):
-        dpg.add_spacer(height=margin)
+        if margin:
+            dpg.add_spacer(height=margin)
+
         dpg.add_group(tag=body_tag, indent=padding if indent is None else indent, width=-(padding + gutter))
-        dpg.add_spacer(height=margin)
+        if margin:
+            dpg.add_spacer(height=margin)
 
     ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND).bind_to_item(tag)
     return body_tag

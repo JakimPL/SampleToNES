@@ -14,6 +14,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_CHANNEL_MUTED,
     TAG_GLOBAL_THEME_DANGER_BUTTON,
     TAG_GLOBAL_THEME_STEMS_GROUP_ROW,
+    TAG_GLOBAL_THEME_STEMS_MARKER,
     TAG_GLOBAL_THEME_STEMS_PICK,
     TAG_GLOBAL_THEME_STEMS_PICK_PARTIAL,
     TAG_GLOBAL_THEME_STEMS_ROW,
@@ -89,7 +90,7 @@ class StemRowRenderer:
                 ThemeRegistry.get(TAG_GLOBAL_THEME_STEMS_GROUP_ROW).bind_to_item(line)
 
             if self._offer.master_box:
-                self._create_master(row, view_model)
+                self._create_master(row, view_model, columns)
 
             self._create_name(row, view_model, columns)
             for channel_name in view_model.channels_in_play:
@@ -142,10 +143,16 @@ class StemRowRenderer:
         if self._offer.removal:
             dpg_configure_item(self._tags.row(row.key, SUF_BUTTON), enabled=live and releasable)
 
-    def _create_master(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
+    def _create_master(
+        self,
+        row: StemRowViewModel,
+        view_model: StemsListViewModel,
+        columns: StemsColumns,
+    ) -> None:
         """The box beside the row: what picks it for a mix, or what moves its channels at once."""
         master = dpg.add_checkbox(
             tag=self._tags.row(row.key, SUF_CHECKBOX),
+            indent=columns.master_indent,
             default_value=self._master_value(row, view_model),
             user_data=row.key,
             callback=self._gestures.on_pick_box if self._offer.picking else self._gestures.on_master_box,
@@ -231,13 +238,14 @@ class StemRowRenderer:
     def _create_disclosure(self, row: StemRowViewModel) -> None:
         """The marker a folder opens by, which stands beside the folder's own name.
 
-        The marker stands as tall as the name it leads, so a folder's row takes the height every
-        other row takes and the list keeps one rhythm from top to bottom.
+        The marker is drawn to the height of the name it leads and spends no padding around its
+        glyph, which stands a folder's row in the rhythm every other row keeps. Its own frame is
+        the room it was given, so what the pointer shades is the marker and nothing beside it.
         """
         if not row.stands_for_a_folder:
             return
 
-        twisty = dpg.add_selectable(
+        twisty = dpg.add_button(
             label=self._twisty_glyph(row.key),
             tag=self._tags.row(row.key, SUF_TWISTY),
             width=self._layout.twisty_width,
@@ -246,6 +254,7 @@ class StemRowRenderer:
             callback=self._gestures.on_twisty,
         )
         FontRegistry.bind_to_item(twisty, Font.ICON)
+        ThemeRegistry.get(TAG_GLOBAL_THEME_STEMS_MARKER).bind_to_item(twisty)
         self._gestures.bind(twisty, SUF_TWISTY)
 
     def _twisty_glyph(self, key: str) -> str:

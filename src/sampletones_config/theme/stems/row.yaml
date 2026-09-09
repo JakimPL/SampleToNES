@@ -7,3 +7,7 @@ components:
       - type: color
         key: Text
         value: .text
+      - type: style
+        key: SelectableTextAlign
+        x: 0.0
+        y: 0.5

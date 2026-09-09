@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
-from sampletones_application.ui.elements.layout.region import NO_SCROLL, WindowedRegion
+from sampletones_application.ui.elements.layout.region import NO_MARGIN, NO_SCROLL, WindowedRegion
 from sampletones_application.ui.elements.stems.columns import StemsColumns
 from sampletones_application.ui.elements.stems.expansion import OpenFolders
 from sampletones_application.ui.elements.stems.row import StemRowRenderer
@@ -111,14 +111,16 @@ class FolderRenderer:
         """Sink the folder's region below its row and fill it with the rows it reaches.
 
         The folder's own row stands in the run of rows around it, so what is drawn here is the
-        space its recordings scroll in — which is why a folder standing closed draws nothing.
+        space its recordings scroll in — which is why a folder standing closed draws nothing. The
+        region opens no margin of its own: its recordings carry on from the row above them, so
+        they start where the region does and the seam stays as narrow as the list's own rules.
         """
         region = WindowedRegion(
             tag=self._tags.region(row.key),
             geometry=self._geometry,
             ceiling=self._layout.folder_ceiling,
             padding=self._layout.well_padding,
-            margin=self._layout.well_margin,
+            margin=NO_MARGIN,
             gutter=self._layout.scrollbar_width,
             indent=self._layout.well_padding + self._layout.folder_indent,
         )
@@ -147,7 +149,9 @@ class FolderRenderer:
 
         The room the region spends at its own right is the room the grid outside it holds clear, so
         the recordings inside a folder stand in the columns their neighbors stand in and none of
-        them leads with a marker.
+        them leads with a marker. Rules run between these rows the way they run outside, and the
+        grids on either side of the region rule the two seams, so a folder's recordings read as
+        the same list as the rows above and below them however far the region is scrolled.
         """
         held_columns = replace(self._columns, folders=False)
         with dpg.table(
@@ -157,6 +161,7 @@ class FolderRenderer:
             policy=dpg.mvTable_SizingFixedFit,
             resizable=False,
             borders_innerV=True,
+            borders_innerH=True,
         ):
             held_columns.declare()
             for held in row.held[start : start + count]:

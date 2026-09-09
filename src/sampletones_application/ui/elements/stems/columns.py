@@ -96,9 +96,17 @@ class StemsColumns:
 
         return ONE_SLOT
 
+    @property
+    def master_indent(self) -> int:
+        """How far the box beside a row sits in, so it stands in the middle of its own column."""
+        return self._centered(self.layout.channel_box_width, within=self.layout.master_column_width)
+
     def box_indent(self, channel_name: ChannelName) -> int:
         """How far a channel's boxes sit in, so they stand in the middle of their own column."""
-        return self._centered(self.slots(channel_name) * self.layout.channel_box_width)
+        return self._centered(
+            self.slots(channel_name) * self.layout.channel_box_width,
+            within=self.channel_width,
+        )
 
     def marker_indent(self, glyph: str, font: Font) -> int:
         """How far a row carrying no marker sits in, so its name opens where a marker's glyph does.
@@ -127,7 +135,7 @@ class StemsColumns:
         if measured is None:
             return 0
 
-        return self._centered(int(measured[0]))
+        return self._centered(int(measured[0]), within=self.channel_width)
 
     def open_leading_cells(self) -> None:
         """Open the cells standing before the channels, which a heading leaves blank."""
@@ -141,6 +149,10 @@ class StemsColumns:
         if self.removable:
             dpg.add_spacer()
 
-    def _centered(self, span: int) -> int:
-        """The indent standing something of this width in the middle of a channel's column."""
-        return max(0, (self.channel_width - self.layout.cell_padding * 2 - span) // 2)
+    def _centered(self, span: int, *, within: int) -> int:
+        """The indent standing something of this width in the middle of a column of that width.
+
+        A cell opens after its own padding and the column's width is what is left for what stands
+        in it, so the padding is already spent by the time the indent is measured from.
+        """
+        return max(NO_INDENT, (within - span) // 2)

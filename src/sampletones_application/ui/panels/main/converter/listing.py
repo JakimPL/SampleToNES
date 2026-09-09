@@ -114,8 +114,13 @@ class ConverterListing(CallbackMixin):
         self._stems_list.on_dropped_on_level = self._on_dropped_on_level
 
     def update_view(self, view_model: ConverterViewModel) -> None:
-        """Draw the gathered recordings, with the hint standing while none are."""
+        """Draw the gathered recordings, with the hint standing while none are.
+
+        A list holding nothing stands its heading and its rules over empty room, so the hint takes
+        the whole of that room instead and the list comes back with the first recording gathered.
+        """
         dpg_configure_item(TAG_MAIN_CONVERTER_TEXT_STEMS_HINT, show=not view_model.listed)
+        dpg_configure_item(self._stems_list.tag, show=view_model.listed)
         self._stems_list.update_view(view_model.stems_list)
 
     def _on_channels_changed(self, key: str, channels: FrozenSet[ChannelName]) -> None:
