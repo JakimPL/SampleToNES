@@ -73,6 +73,18 @@ spaced, and a part already holding a composed tag contributes its own segments, 
 tag extends its parent. Fragments hold bare segments (`SUF_GRAPH_PLOT = "plot"`) and gain separators
 only from the joiner, so a fragment reads as the segment it names and either end composes onto it.
 
+### A runtime name carries its identity beside it
+
+Because the composer reads two names that differ only in case or spacing as one segment, a tag built
+from a name a user gave — a file path, a project title — carries `identity_part(*parts)` beside the
+name. The part is a short digest of the name exactly as it arrived, so `Kick.wav` and `kick.wav`
+name widgets of their own, and the readable name stays in the tag so a DearPyGui error still says
+which row it is about. `tags/compose.py` states the rule once over
+`sampletones_shared.utils.hashing.identity_digest`, which joins the parts on a separator no name
+carries; `ui/elements/stems/tags.py` and `ui/elements/tree/tag.py` both read it. A widget keyed by
+anything a user names needs it — DearPyGui refuses a duplicate alias, so two names arriving at one
+tag break the draw rather than crossing quietly.
+
 ### A whole tag is a `TagName`
 
 `TagName` is the `str` subclass in `categories/key/tag.py` that names a tag's four parts and

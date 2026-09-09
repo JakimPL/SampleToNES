@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
@@ -49,6 +50,8 @@ from sampletones_application.view_model.main.converter import (
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 from tests.suite.gestures import CLICKED, click_row_name
 from tests.suite.shortcuts import rebound_source, shipped_source
 
@@ -184,6 +187,20 @@ def build(
 
     panel.update_view(view())
     return panel, reported
+
+
+@pytest.fixture
+def registered(monkeypatch: pytest.MonkeyPatch) -> List[Dict[str, Any]]:
+    """The items a menu registers, as a reader would meet them."""
+    items: List[Dict[str, Any]] = []
+    monkeypatch.setattr(menus_module.dpg, "add_menu_item", lambda **kwargs: items.append(kwargs) or 0)
+    monkeypatch.setattr(menus_module.dpg, "add_separator", lambda **_kwargs: 0)
+    return items
+
+
+def right_click(panel: GUIConverterPanel, entry: StemRowViewModel) -> None:
+    """Land a right-click on the row's name, which is what puts that row's menu up."""
+    click_row_name(panel.stems_list.tags, entry.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
 
 
 def shows(tag: str) -> bool:
@@ -513,25 +530,16 @@ class TestTheDestination:
 class TestTheMenuARightClickPutsUp:
     """A right-click on a row raises the menu the card draws for it, over the row it landed on."""
 
-    @staticmethod
-    def _registered(monkeypatch: pytest.MonkeyPatch) -> List[Dict[str, Any]]:
-        """The items a menu registers, as a reader would meet them."""
-        registered: List[Dict[str, Any]] = []
-        monkeypatch.setattr(menus_module.dpg, "add_menu_item", lambda **kwargs: registered.append(kwargs) or 0)
-        monkeypatch.setattr(menus_module.dpg, "add_separator", lambda **_kwargs: 0)
-        return registered
-
     def test_a_right_click_raises_the_row_s_menu(
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> None:
         """The list reports the gesture and the card answers it, which is what puts a menu up."""
         panel, _reported = build(layout_config)
         kick = row("kick")
         panel.update_view(view(kick, row("snare")))
-        registered = self._registered(monkeypatch)
 
         click_row_name(panel.stems_list.tags, kick.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
 
@@ -541,7 +549,7 @@ class TestTheMenuARightClickPutsUp:
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> None:
         """The menu prints the key that removes a row, so both name the row the menu stands over."""
         panel, _reported = build(layout_config)
@@ -549,7 +557,6 @@ class TestTheMenuARightClickPutsUp:
         panel.on_row_selected = lambda path, kind: selected.append((path, kind))
         kick, snare = row("kick"), row("snare")
         panel.update_view(view(kick, snare, selected_key=kick.key))
-        self._registered(monkeypatch)
 
         click_row_name(panel.stems_list.tags, snare.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
 
@@ -559,12 +566,11 @@ class TestTheMenuARightClickPutsUp:
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> None:
         panel, _reported = build(layout_config)
         sources = folder("sources", holds=3)
         panel.update_view(view(sources))
-        registered = self._registered(monkeypatch)
 
         click_row_name(panel.stems_list.tags, sources.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
 
@@ -577,13 +583,12 @@ class TestTheMenuARightClickPutsUp:
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> None:
         panel, _reported = build(layout_config)
         sources = folder("sources", holds=3)
         panel.update_view(view(sources))
         panel.stems_list.toggle_folder(sources.key)
-        registered = self._registered(monkeypatch)
 
         click_row_name(panel.stems_list.tags, sources.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
 
@@ -593,14 +598,13 @@ class TestTheMenuARightClickPutsUp:
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> None:
         panel, _reported = build(layout_config)
         folders: List[Path] = []
         panel.on_folder_removed = folders.append
         sources = folder("sources", holds=3)
         panel.update_view(view(sources))
-        registered = self._registered(monkeypatch)
 
         click_row_name(panel.stems_list.tags, sources.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
         removal = next(
@@ -613,7 +617,7 @@ class TestTheMenuARightClickPutsUp:
         assert folders == [sources.path]
 
 
-class TestTheMovesAMixOffers:
+class TestTheMovesAMixOffers(BaseTestSuite):
     """A run mixing its recordings orders them, so a row's menu offers the moves that reorder it."""
 
     @staticmethod
@@ -625,13 +629,10 @@ class TestTheMovesAMixOffers:
         cls,
         panel: GUIConverterPanel,
         entry: StemRowViewModel,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> Dict[str, Dict[str, Any]]:
         """The move items the row's menu registers, each under the label it prints."""
-        registered: List[Dict[str, Any]] = []
-        monkeypatch.setattr(menus_module.dpg, "add_menu_item", lambda **kwargs: registered.append(kwargs) or 0)
-        monkeypatch.setattr(menus_module.dpg, "add_separator", lambda **_kwargs: 0)
-        panel._show_menu(entry.key)
+        right_click(panel, entry)
         offered = {cls._label(element) for element in ConverterStemMoveElements}
         return {item["label"]: item for item in registered if item["label"] in offered}
 
@@ -640,23 +641,23 @@ class TestTheMovesAMixOffers:
         cls,
         panel: GUIConverterPanel,
         entry: StemRowViewModel,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> Dict[str, bool]:
         """The moves the row's menu offers and whether each stands live, in the order it lists them."""
-        offered = cls._offered(panel, entry, monkeypatch)
+        offered = cls._offered(panel, entry, registered)
         return {label: bool(item.get("enabled", True)) for label, item in offered.items()}
 
     def test_a_run_writing_one_reconstruction_apiece_offers_removal_alone(
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> None:
         panel, _reported = build(layout_config)
         kick = row("kick")
         panel.update_view(view(kick, row("snare")))
 
-        moves = self._moves(panel, kick, monkeypatch)
+        moves = self._moves(panel, kick, registered)
 
         assert list(moves) == [self._label(ConverterStemMoveElements.CONTEXT_REMOVE_STEM)]
 
@@ -664,13 +665,13 @@ class TestTheMovesAMixOffers:
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> None:
         panel, _reported = build(layout_config)
         kick = row("kick")
         panel.update_view(view(kick, row("snare"), output=OutputKind.MIXED))
 
-        moves = self._moves(panel, kick, monkeypatch)
+        moves = self._moves(panel, kick, registered)
 
         assert list(moves) == [
             self._label(ConverterStemMoveElements.CONTEXT_MOVE_UP),
@@ -681,51 +682,66 @@ class TestTheMovesAMixOffers:
             self._label(ConverterStemMoveElements.CONTEXT_REMOVE_STEM),
         ]
 
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        """One row's placement among the levels, and the moves that placement leaves it."""
+
+        rows: Tuple[StemRowViewModel, ...]
+        subject: int
+        expected: Dict[ConverterStemMoveElements, bool]
+
+    test_cases = (
+        TestCase(
+            label="alone_on_the_first_of_two_levels",
+            rows=(row("kick", level=0, level_count=2), row("snare", level=1, level_count=2)),
+            subject=0,
+            expected={
+                ConverterStemMoveElements.CONTEXT_MOVE_UP: False,
+                ConverterStemMoveElements.CONTEXT_MOVE_DOWN: False,
+                ConverterStemMoveElements.CONTEXT_JOIN_ABOVE: False,
+                ConverterStemMoveElements.CONTEXT_JOIN_BELOW: True,
+                ConverterStemMoveElements.CONTEXT_ISOLATE: False,
+            },
+        ),
+        TestCase(
+            label="second_on_the_last_of_two_levels",
+            rows=(
+                row("hat", level=0, level_count=2),
+                row("kick", level=1, position=0, level_size=2, level_count=2),
+                row("snare", level=1, position=1, level_size=2, level_count=2),
+            ),
+            subject=2,
+            expected={
+                ConverterStemMoveElements.CONTEXT_MOVE_UP: True,
+                ConverterStemMoveElements.CONTEXT_MOVE_DOWN: False,
+                ConverterStemMoveElements.CONTEXT_JOIN_ABOVE: True,
+                ConverterStemMoveElements.CONTEXT_JOIN_BELOW: False,
+                ConverterStemMoveElements.CONTEXT_ISOLATE: True,
+            },
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_each_move_stands_live_where_the_row_has_room_for_it(
         self,
+        test_case: TestCase,
         dpg_context: None,
         layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> None:
-        """A row alone on the first of two levels can go down and join the level below it."""
         panel, _reported = build(layout_config)
-        kick = row("kick", level=0, level_count=2)
-        snare = row("snare", level=1, level_count=2)
-        panel.update_view(view(kick, snare, output=OutputKind.MIXED))
+        panel.update_view(view(*test_case.rows, output=OutputKind.MIXED))
 
-        moves = self._moves(panel, kick, monkeypatch)
+        moves = self._moves(panel, test_case.rows[test_case.subject], registered)
 
-        assert moves[self._label(ConverterStemMoveElements.CONTEXT_MOVE_UP)] is False
-        assert moves[self._label(ConverterStemMoveElements.CONTEXT_MOVE_DOWN)] is False
-        assert moves[self._label(ConverterStemMoveElements.CONTEXT_JOIN_ABOVE)] is False
-        assert moves[self._label(ConverterStemMoveElements.CONTEXT_JOIN_BELOW)] is True
-        assert moves[self._label(ConverterStemMoveElements.CONTEXT_ISOLATE)] is False
-
-    def test_a_row_standing_beside_another_can_go_up_and_be_set_apart(
-        self,
-        dpg_context: None,
-        layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """A row second on a level of two can move earlier, join the level above, and stand alone."""
-        panel, _reported = build(layout_config)
-        kick = row("kick", level=1, position=0, level_size=2, level_count=2)
-        snare = row("snare", level=1, position=1, level_size=2, level_count=2)
-        panel.update_view(view(row("hat", level=0, level_count=2), kick, snare, output=OutputKind.MIXED))
-
-        moves = self._moves(panel, snare, monkeypatch)
-
-        assert moves[self._label(ConverterStemMoveElements.CONTEXT_MOVE_UP)] is True
-        assert moves[self._label(ConverterStemMoveElements.CONTEXT_MOVE_DOWN)] is False
-        assert moves[self._label(ConverterStemMoveElements.CONTEXT_JOIN_ABOVE)] is True
-        assert moves[self._label(ConverterStemMoveElements.CONTEXT_JOIN_BELOW)] is False
-        assert moves[self._label(ConverterStemMoveElements.CONTEXT_ISOLATE)] is True
+        expected = {self._label(element): live for element, live in test_case.expected.items()}
+        assert {label: moves[label] for label in expected} == expected
 
     def test_each_move_reports_the_direction_it_prints(
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> None:
         """An offset is added to the row's place, so moving earlier reports -1 and later reports 1.
 
@@ -743,7 +759,7 @@ class TestTheMovesAMixOffers:
         snare = row("snare", level=1, position=1, level_size=2, level_count=3)
         panel.update_view(view(row("hat", level=0, level_count=3), kick, snare, output=OutputKind.MIXED))
 
-        offered = self._offered(panel, snare, monkeypatch)
+        offered = self._offered(panel, snare, registered)
         for element in (
             ConverterStemMoveElements.CONTEXT_MOVE_UP,
             ConverterStemMoveElements.CONTEXT_MOVE_DOWN,
@@ -762,33 +778,21 @@ class TestTheRemovalItemInTheMenu:
     """Taking a row out is one action, so the item and the key print and reach the same thing."""
 
     @staticmethod
-    def _items(
-        panel: GUIConverterPanel,
-        entry: StemRowViewModel,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> List[Dict[str, Any]]:
-        """The items the row's context menu registers, as a reader would meet them."""
-        registered: List[Dict[str, Any]] = []
-        monkeypatch.setattr(menus_module.dpg, "add_menu_item", lambda **kwargs: registered.append(kwargs) or 0)
-        monkeypatch.setattr(menus_module.dpg, "add_separator", lambda **_kwargs: 0)
-        panel._show_menu(entry.key)
-        return registered
-
     def _removal(
-        self,
         panel: GUIConverterPanel,
         entry: StemRowViewModel,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
+        """The removal item the row's menu prints, reached the way a reader reaches it."""
         label = LANGUAGE_MANAGER["main.converter.label.context_remove_stem"]
-        items = self._items(panel, entry, monkeypatch)
-        return next(item for item in items if item["label"] == label)
+        right_click(panel, entry)
+        return next(item for item in registered if item["label"] == label)
 
     def test_it_takes_the_recording_it_stands_over_and_nothing_else(
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> None:
         """The item is fired, since a removal printing the right key still reaches nothing."""
         panel, _reported = build(layout_config)
@@ -799,7 +803,7 @@ class TestTheRemovalItemInTheMenu:
         kick = row("kick")
         panel.update_view(view(kick, row("snare")))
 
-        self._removal(panel, kick, monkeypatch)["callback"]()
+        self._removal(panel, kick, registered)["callback"]()
 
         assert removed == [kick.path]
         assert folders == []
@@ -808,13 +812,13 @@ class TestTheRemovalItemInTheMenu:
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> None:
         panel, _reported = build(layout_config)
         kick = row("kick")
         panel.update_view(view(kick, row("snare")))
 
-        removal = self._removal(panel, kick, monkeypatch)
+        removal = self._removal(panel, kick, registered)
 
         assert removal["shortcut"] == shipped_source().display(ShortcutId.SOURCES_REMOVE_SOURCE)
 
@@ -822,7 +826,7 @@ class TestTheRemovalItemInTheMenu:
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> None:
         """A rebind reaches the menu, which is what tells the printed key from a written one."""
         source = rebound_source(ShortcutId.SOURCES_REMOVE_SOURCE, REBOUND_REMOVAL)
@@ -830,7 +834,7 @@ class TestTheRemovalItemInTheMenu:
         kick = row("kick")
         panel.update_view(view(kick, row("snare")))
 
-        removal = self._removal(panel, kick, monkeypatch)
+        removal = self._removal(panel, kick, registered)
 
         assert removal["shortcut"] == REBOUND_REMOVAL
         assert removal["shortcut"] != shipped_source().display(ShortcutId.SOURCES_REMOVE_SOURCE)
@@ -839,12 +843,12 @@ class TestTheRemovalItemInTheMenu:
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        monkeypatch: pytest.MonkeyPatch,
+        registered: List[Dict[str, Any]],
     ) -> None:
         panel, _reported = build(layout_config)
         kick = row("kick")
         panel.update_view(view(kick, row("snare"), phase=ConversionPhase.RUNNING))
 
-        removal = self._removal(panel, kick, monkeypatch)
+        removal = self._removal(panel, kick, registered)
 
         assert removal["enabled"] is False

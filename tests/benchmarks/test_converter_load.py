@@ -50,9 +50,6 @@ SMALL_FOLDER: Final[int] = 1_000
 LARGE_FOLDER: Final[int] = 10_000
 GROWTH_ALLOWANCE: Final[float] = 2.0
 UNREADABLE: Final[float] = float("inf")
-REGION_HEIGHT: Final[float] = 264.0
-ROW_PITCH: Final[float] = 36.0
-OVERSCAN: Final[int] = 4
 SETTINGS: Final[StemSettings] = StemSettings(channels=[ChannelName.PULSE1], bends=[])
 SMALL_ROOT: Final[Path] = Path("/gathered/small")
 LARGE_ROOT: Final[Path] = Path("/gathered/large")
@@ -221,36 +218,6 @@ class TestSettlingAChannel(BaseTestSuite):
         )
 
         assert many < linear(one), report
-
-
-class TestWhatTheListDraws(BaseTestSuite):
-    """What a region builds is what a reader can see, however long the list behind it is.
-
-    This is the claim the folder rests on: opening ten thousand recordings costs what opening ten
-    costs, because the rows outside the window stand as reserved room rather than as widgets.
-    """
-
-    def test_the_window_holds_the_same_rows_however_long_the_list(self) -> None:
-        geometry = RowGeometry(overscan=OVERSCAN, pitch=ROW_PITCH)
-        _, few = geometry.slice_of(offset=0.0, height=REGION_HEIGHT, total=SMALL_FOLDER)
-        _, many = geometry.slice_of(offset=0.0, height=REGION_HEIGHT, total=LARGE_FOLDER)
-
-        assert few == many
-
-    def test_the_room_it_reserves_stands_for_the_whole_list(self) -> None:
-        geometry = RowGeometry(overscan=OVERSCAN, pitch=ROW_PITCH)
-
-        assert geometry.reserve(LARGE_FOLDER) == int(LARGE_FOLDER * ROW_PITCH)
-
-    def test_the_end_of_a_long_list_is_reachable(self) -> None:
-        geometry = RowGeometry(overscan=OVERSCAN, pitch=ROW_PITCH)
-        start, count = geometry.slice_of(
-            offset=LARGE_FOLDER * ROW_PITCH,
-            height=REGION_HEIGHT,
-            total=LARGE_FOLDER,
-        )
-
-        assert start + count == LARGE_FOLDER
 
 
 @pytest.fixture

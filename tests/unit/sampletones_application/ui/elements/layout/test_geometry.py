@@ -110,6 +110,16 @@ class TestSliceOf(BaseTestSuite):
         )
         assert window == test_case.expected
 
+    def test_a_window_holds_the_same_rows_however_long_the_list(self) -> None:
+        """This is the claim a folder rests on: opening ten thousand costs what opening ten costs,
+        because the rows outside the window stand as reserved room rather than as widgets."""
+        geometry = measured()
+
+        _, few = geometry.slice_of(offset=0.0, height=REGION_HEIGHT, total=TOTAL_ROWS)
+        _, many = geometry.slice_of(offset=0.0, height=REGION_HEIGHT, total=100 * TOTAL_ROWS)
+
+        assert few == many
+
     def test_the_end_of_the_list_is_reachable(self) -> None:
         """A region scrolled to the end of its rows builds the rows at the end of its list."""
         total = 5_000

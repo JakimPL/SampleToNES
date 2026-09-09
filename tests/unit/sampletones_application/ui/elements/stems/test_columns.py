@@ -9,7 +9,7 @@ from sampletones_application.layout.loader import load_layout_config
 from sampletones_application.paths import BEHAVIOR_DIRECTORY, LAYOUT_DIRECTORY, PALETTES_DIRECTORY
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.stems.columns import COLUMN_BORDER, StemsColumns
+from sampletones_application.ui.elements.stems.columns import StemsColumns
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_core.constants.enums import ChannelName
@@ -173,32 +173,11 @@ class TestTheRoomAFolderSpends(BaseTestSuite):
     """A folder draws its recordings inside a region of its own, and the room that region spends
     at its right is held clear across every table outside it, so the columns stand in one grid."""
 
-    def test_a_grid_holding_folders_holds_the_room_clear(
-        self,
-        layout_config: LayoutConfig,
-    ) -> None:
-        """A region insets its body by the well's padding and holds a scrollbar's width beside it."""
-        stems = layout_config.general.stems
-
-        reserve = columns(layout_config, folders=True).reserve
-
-        assert reserve == stems.well_padding + stems.scrollbar_width
-
     def test_a_grid_holding_none_spends_nothing(
         self,
         layout_config: LayoutConfig,
     ) -> None:
         assert columns(layout_config, folders=False).reserve == 0
-
-    def test_the_reserve_column_comes_out_the_width_of_the_room(
-        self,
-        layout_config: LayoutConfig,
-    ) -> None:
-        """A column takes its own width plus the padding either side and the rule beside it."""
-        stems = layout_config.general.stems
-        grid = columns(layout_config, folders=True)
-
-        assert grid.reserve_width == grid.reserve - 2 * stems.cell_padding - COLUMN_BORDER
 
 
 class TestTheColumnsAGridDeclares(BaseTestSuite):

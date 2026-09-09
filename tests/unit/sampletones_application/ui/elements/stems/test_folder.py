@@ -30,7 +30,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.elements.stems.columns import StemsColumns
+from sampletones_application.ui.elements.stems.columns import COLUMN_BORDER, StemsColumns
 from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.ui.elements.stems.offer import GATHERED_SOURCES
 from sampletones_application.ui.elements.stems.tags import StemsTags
@@ -566,11 +566,7 @@ class TestWhereTheNamesOpen(BaseTestSuite):
     def _indent(row: StemRowViewModel) -> int:
         return int(dpg.get_item_configuration(name_of(row))["indent"])
 
-    def test_a_folder_opens_at_its_marker(
-        self,
-        stems_list: GUIStemsList,
-        layout_config: LayoutConfig,
-    ) -> None:
+    def test_a_folder_opens_at_its_marker(self, stems_list: GUIStemsList) -> None:
         """The marker leads the row, so the name that follows it opens where the marker ends."""
         sources = folder("sources", holds=3)
 
@@ -618,6 +614,29 @@ class TestTheOneGridAFolderStandsIn(BaseTestSuite):
         body = compose_tag(region_of(sources), SUF_GROUP)
         inset = -int(dpg.get_item_configuration(body)["width"])
         assert inset == layout_config.general.stems.folder_reserve
+
+    def test_the_strip_a_table_declares_comes_out_the_width_of_that_room(
+        self,
+        stems_list: GUIStemsList,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The column ending every table and the inset a region draws at are one figure.
+
+        A column takes its own width plus its cell padding and the rule beside it, so what the
+        strip holds clear is what the region beside it spends.
+        """
+        stems = layout_config.general.stems
+        sources = folder("sources", holds=3)
+        loose = recording(Path("/audio/bass.wav"))
+        stems_list.update_view(view(sources, loose))
+        press(twisty_of(sources))
+
+        declared = dpg.get_item_children(table_of(loose), 0)
+        strip = int(dpg.get_item_configuration(declared[-1])["init_width_or_weight"])
+        body = compose_tag(region_of(sources), SUF_GROUP)
+
+        held_clear = strip + 2 * stems.cell_padding + COLUMN_BORDER
+        assert held_clear == -int(dpg.get_item_configuration(body)["width"])
 
 
 class TestTheBandAGroupReadsBy(BaseTestSuite):

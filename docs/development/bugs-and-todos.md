@@ -207,6 +207,21 @@ again.
   releases moves inside the pending step, and a build writing the pending version writes the shape
   that step produces.
 
+* The converter's card jumps for about two frames the first time a folder is opened in a list that
+  held one from the outset. `GUIStemsList._rebuild` returns early on exactly `_windows()` —
+  `collapse_levels and not holds_folders` — which is the same condition under which `_plain_rows`
+  answers with the row count, so `draw_whole` is always handed none and the shared `RowGeometry`
+  goes unmeasured until a folder's own region measures it. That first slice is taken at the
+  `MINIMUM_ROW_PITCH` floor, which reaches far more rows than the region shows, and the settle after
+  it re-slices at the reading. Either the whole-drawn path reports the rows of its plain segments,
+  or the geometry opens from `layout.name_height` rather than the floor.
+
+* Every right-click leaves a popup window behind. `ui/elements/context_menu.py` opens an untagged
+  `dpg.window(popup=True)` that nothing deletes, so the item tree grows by a menu's worth of widgets
+  and their captured closures per gesture, for the life of the run. It is shared by the converter's
+  list, the file browsers and the samples panel. The popup needs a tag of its own per panel and a
+  deletion before it is built again.
+
 * No refreshing after library generation
 * Misaligned dialog boxes sizes at initialization
 * Audible noise instructions when matching near-silent samples for FFT γ0
