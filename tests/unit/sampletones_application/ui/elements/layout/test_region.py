@@ -10,6 +10,7 @@ from sampletones_application.tags.general import SUF_LEAD
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
 from sampletones_application.ui.elements.layout.region import (
     NO_GUTTER,
+    NO_MARGIN,
     NO_SCROLL,
     LeadBuilder,
     WindowedRegion,
@@ -31,7 +32,6 @@ STANDING_OFFSET = 300.0
 PADDING = 8
 GUTTER = 13
 MARGIN = 6
-NO_MARGIN = 0
 LEAD_TAG = compose_tag(REGION_TAG, SUF_LEAD)
 HEADING_HEIGHT = 50.0
 NO_HEADING = 0.0

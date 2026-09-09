@@ -6,6 +6,7 @@ import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.categories.elements.main import ConverterStemMoveElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SourceKind
@@ -664,7 +665,7 @@ class TestTheMovesAMixOffers(BaseTestSuite):
 
     @staticmethod
     def _label(element: ConverterStemMoveElements) -> str:
-        return LANGUAGE_MANAGER[f"main.converter.label.{element.value}"]
+        return LANGUAGE_MANAGER[Page.MAIN, Panel.CONVERTER, TextType.LABEL, element]
 
     @classmethod
     def _offered(

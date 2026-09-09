@@ -74,6 +74,13 @@ starts carrying.
   tenth or more of a short conversion, and a CI runner has measured it at a third. The kernel is a
   matrix of one row per bin, so restricting it to the rows the chosen notes name is a slice — what
   needs care is that the union of harmonic bins over a whole stream is wider than any one frame's.
+* Keeping what a stopped folder scan found. `_walk` in `logic/main/sources/scan.py` reports
+  `on_stopped` and returns where the reader presses **Stop**, so the recordings met so far go
+  nowhere, while `_gather` already answers with them. Handing that list to `answer` instead would
+  let a reader stop a long walk and keep the count they watched climb. What it needs beside it is
+  `_gather_read`'s empty branch (`coordinators/tabs/main.py`) reworked: a stop before the first
+  recording turns up is a different answer from a folder that holds none, which is what that branch
+  says today.
 * Calibrating the pitch refinement. `generation.refinement`'s confidence threshold, change weight
   and window are chosen by hand; `docs/concepts/calibration.md`'s experiment measures the criterion
   blend and could measure these beside it. The change weight is the one with an audible trade-off:
@@ -221,6 +228,27 @@ again.
   and their captured closures per gesture, for the life of the run. It is shared by the converter's
   list, the file browsers and the samples panel. The popup needs a tag of its own per panel and a
   deletion before it is built again.
+
+* A mix of one recording offers five moves that can never be taken. `update_view` in
+  `ui/panels/main/converter/panel.py` reads `self._banded = view_model.mixes`, while the list bands
+  on `collapse_levels = not mixes_several` (`view_model/main/converter.py`). With **Mixed** named
+  and one recording gathered, the menu is built banded over a list drawn collapsed, so
+  `_moves(row, banded=True)` answers with every level item and each of them disabled. Reading
+  `mixes_several` there is the whole of it: the menu and the list would then answer one question.
+
+* A channel key pressed during a conversion rewrites the setup with nothing on screen.
+  `toggle_slot` in `logic/main/converter/logic.py` settles the choice whatever the run is doing,
+  and `_settle` emits a view while `not self.is_active`, so `1`–`4` mid-run move the gathering and
+  the reader meets it once the run closes. The boxes beside a row already draw with `enabled=live`,
+  which is what holds the pointer to the same rule; the guard `toggle_slot` wants is that rule,
+  read from `live`.
+
+* The removal key reaches a row a collapsed converter card is hiding. `GUIStemsList.picked_key`
+  answers for the rows drawn, and a collapsed card leaves its widgets standing at `show=False`, so
+  `Del` takes the picked recording off a list the reader has put away. The Source settings card
+  names that row throughout and collapsing the card is the reader's own gesture, so this is the
+  smaller half of the case a closed folder raised; it wants an answer of its own, since what is
+  shown is read from a drawn frame rather than from the widget's existence.
 
 * No refreshing after library generation
 * Misaligned dialog boxes sizes at initialization

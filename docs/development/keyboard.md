@@ -34,7 +34,7 @@ Three priorities order the whole application:
 | Priority | Scope | Active when | Behavior |
 |----------|-------|-------------|-----------|
 | `MODAL` (100) | the open dialog's navigator | a modal dialog holds the keyboard | routes Tab/Enter/Escape to the dialog's focus ring and claims every press, so a dialog owns the keyboard exclusively while it is shown |
-| `PANEL` (60) | a sub-panel holding a cursor or a selection — a sequencer grid, the order list, the voices, the converter's list of gathered recordings | its tab is in front and that sub-panel holds the cursor or the row picked out | handles the keys its own category names and yields the combinations it does not own so a higher-reaching shortcut still wins |
+| `PANEL` (60) | a sub-panel the keys are meant for — the sequencer's tracker grid, the order list, the voices, the converter's list of gathered recordings, the instruments panel while an audition is open | its tab is in front and the sub-panel holds what the keys act on: a cursor, a row picked out, or an open audition | handles the keys its own category names and yields the combinations it does not own so a higher-reaching shortcut still wins |
 | `SHORTCUT` (40) | application shortcuts (`ShortcutManager`) | always | fires the matching shortcut while no field is being edited, or whenever the shortcut is `field_transparent` |
 
 The router offers a panel the key ahead of the shortcut scope, so a panel returns `False` on any
@@ -44,11 +44,11 @@ scope while a grid cursor is set.
 
 ### A panel scope answers on its own tab
 
-A cursor and a selection outlive a move to another tab, so a panel is given the predicate that
-reports whether its tab is the one in front and reads it at the moment of the press, the way focus
-is read. The composition root resolves the tab and the scope composes the answer into its `active`,
-which keeps the fact in one place and leaves the router's contract — the scope decides whether it
-wants the key — as it stands.
+A cursor, a picked row and an open audition all outlive a move to another tab, so a panel is given
+the predicate that reports whether its tab is the one in front and reads it at the moment of the
+press, the way focus is read. The composition root resolves the tab and the scope composes the
+answer into its `active`, which keeps the fact in one place and leaves the router's contract — the
+scope decides whether it wants the key — as it stands.
 
 ### Focus is pulled, not pushed
 
