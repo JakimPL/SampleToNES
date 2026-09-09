@@ -7,6 +7,7 @@ import pytest
 from sampletones_application.paths import PALETTES_DIRECTORY, THEME_DIRECTORY
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
 from sampletones_application.ui.elements.layout.region import NO_GUTTER, LeadBuilder, WindowedRegion
+from sampletones_application.ui.elements.layout.well import well
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
@@ -22,6 +23,8 @@ HEADING_TEXT = "channels"
 STANDING_OFFSET = 300.0
 PADDING = 8
 GUTTER = 13
+MARGIN = 6
+NO_MARGIN = 0
 
 
 @pytest.fixture
@@ -422,3 +425,35 @@ class TestTheGutterAScrollbarWillTake(BaseTestSuite):
         gutted.settle()
 
         assert self._inset(gutted) == PADDING + GUTTER
+
+
+class TestTheGapAWellOpens(BaseTestSuite):
+    """A well opens a gap above its first row and below its last, or lays its rows flush.
+
+    A well standing on a card of its own opens the gap so its body reads apart from the card's
+    edge; one nested inside a list lays its rows flush, since the list's own rhythm carries them.
+    """
+
+    @staticmethod
+    def _built(dpg_context: None, *, margin: int) -> str:
+        with dpg.window(tag=ROOT_TAG):
+            body = well(ROOT_TAG, REGION_TAG, padding=PADDING, margin=margin, width=-PADDING)
+
+        return body
+
+    def test_a_well_asked_for_a_gap_lays_a_spacer_either_side(self, dpg_context: None) -> None:
+        body = self._built(dpg_context, margin=MARGIN)
+
+        laid = dpg.get_item_children(REGION_TAG, 1)
+
+        assert len(laid) == 3
+        assert laid[1] == dpg.get_alias_id(body)
+        assert dpg.get_item_configuration(laid[0])["height"] == MARGIN
+        assert dpg.get_item_configuration(laid[2])["height"] == MARGIN
+
+    def test_a_well_asked_for_none_opens_its_rows_where_it_opens(self, dpg_context: None) -> None:
+        body = self._built(dpg_context, margin=NO_MARGIN)
+
+        laid = dpg.get_item_children(REGION_TAG, 1)
+
+        assert laid == [dpg.get_alias_id(body)]

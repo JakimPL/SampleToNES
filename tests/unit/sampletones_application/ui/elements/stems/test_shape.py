@@ -144,7 +144,6 @@ class TestWhetherAnythingIsDrawn(BaseTestSuite):
         TestCase(label="nothing_draws_nothing", reshape=Reshape.nothing(), expected=False),
         TestCase(label="the_whole_list_draws", reshape=Reshape.everything(), expected=True),
         TestCase(label="one_folder_draws", reshape=Reshape.within(("drums",)), expected=True),
-        TestCase(label="no_folder_draws_nothing", reshape=Reshape.within(()), expected=False),
     )
 
     @pytest.mark.parametrize(
@@ -155,16 +154,60 @@ class TestWhetherAnythingIsDrawn(BaseTestSuite):
     def test_whether_widgets_were_built(self, test_case: TestCase) -> None:
         assert test_case.reshape.redraws is test_case.expected
 
+    def test_a_reshape_naming_no_folder_is_the_one_that_asks_for_nothing(self) -> None:
+        """Both stand for a reading the standing widgets already show, so they are one reshape."""
+        assert Reshape.within(()) == Reshape.nothing()
+
 
 class TestWhereARowStands(BaseTestSuite):
-    """A placement answers whether two readings put the same row in the same place."""
+    """A placement answers whether two readings put the same row in the same place.
 
-    def test_a_row_holding_something_else_still_stands_where_it_did(self) -> None:
-        """What a folder holds is answered separately, so it plays no part in where the row is."""
-        assert placed("drums", held=("one", "two")).stands_where(placed("drums", held=("one",)))
+    What a folder holds is answered separately, so it plays no part in where the folder's own
+    row stands; the band it sits in and whether it stands open both do.
+    """
 
-    def test_a_row_that_moved_band_stands_elsewhere(self) -> None:
-        assert not placed("drums", level=0).stands_where(placed("drums", level=1))
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        standing: RowPlacement
+        incoming: RowPlacement
 
-    def test_a_folder_that_opened_stands_elsewhere(self) -> None:
-        assert not placed("drums", opened=True).stands_where(placed("drums"))
+    test_cases = (
+        TestCase(
+            label="what_a_folder_holds_leaves_it_where_it_was",
+            standing=placed("drums", held=("one",)),
+            incoming=placed("drums", held=("one", "two")),
+            expected=True,
+        ),
+        TestCase(
+            label="a_row_that_moved_band_stands_elsewhere",
+            standing=placed("drums", level=1),
+            incoming=placed("drums", level=0),
+            expected=False,
+        ),
+        TestCase(
+            label="a_folder_that_opened_stands_elsewhere",
+            standing=placed("drums"),
+            incoming=placed("drums", opened=True),
+            expected=False,
+        ),
+        TestCase(
+            label="a_row_offered_other_channels_stands_elsewhere",
+            standing=placed("drums", offered=(ChannelName.PULSE1,)),
+            incoming=placed("drums", offered=CHANNELS),
+            expected=False,
+        ),
+        TestCase(
+            label="another_row_stands_elsewhere",
+            standing=placed("drums"),
+            incoming=placed("bass"),
+            expected=False,
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_whether_two_readings_stand_the_row_the_same_way(self, test_case: TestCase) -> None:
+        assert test_case.incoming.stands_where(test_case.standing) is test_case.expected

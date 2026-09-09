@@ -39,6 +39,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyEvent, KeyRouter, focus
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.main.converter import (
@@ -49,13 +50,14 @@ from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.gestures import CLICKED, click_row_name
-from tests.suite.shortcuts import shipped_source
+from tests.suite.shortcuts import rebound_source, shipped_source
 
 ROOT_TAG = "test_root"
 LANGUAGE_MANAGER = LanguageManager(LANG_EN)
 ACTION_LABEL = "Convert 2 recordings"
 STATUS_TEXT = "No tasks in progress."
 RECORDING = Path("/audio/kick.wav")
+REBOUND_REMOVAL = "Ctrl+Shift+K"
 
 
 @pytest.fixture
@@ -161,6 +163,7 @@ def build(
     *,
     key_router: Optional[KeyRouter] = None,
     tab_active: ActivePredicate = lambda: True,
+    shortcut_source: Optional[ShortcutSource] = None,
 ) -> Tuple[GUIConverterPanel, List[OutputKind]]:
     """The card as the application builds it, over the output switch it reports."""
     panel = GUIConverterPanel(
@@ -171,7 +174,7 @@ def build(
         language_manager=LANGUAGE_MANAGER,
         status_bar=GUIStatusBar(),
         key_router=key_router if key_router is not None else KeyRouter(),
-        shortcut_source=shipped_source(),
+        shortcut_source=shipped_source() if shortcut_source is None else shortcut_source,
         tab_active=tab_active,
     )
     reported: List[OutputKind] = []
@@ -747,6 +750,23 @@ class TestTheRemovalItemInTheMenu:
         removal = self._removal(panel, kick, monkeypatch)
 
         assert removal["shortcut"] == shipped_source().display(ShortcutId.SOURCES_REMOVE_SOURCE)
+
+    def test_it_prints_whatever_the_scheme_in_place_gives_the_action(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A rebind reaches the menu, which is what tells the printed key from a written one."""
+        source = rebound_source(ShortcutId.SOURCES_REMOVE_SOURCE, REBOUND_REMOVAL)
+        panel, _reported = build(layout_config, shortcut_source=source)
+        kick = row("kick")
+        panel.update_view(view(kick, row("snare")))
+
+        removal = self._removal(panel, kick, monkeypatch)
+
+        assert removal["shortcut"] == REBOUND_REMOVAL
+        assert removal["shortcut"] != shipped_source().display(ShortcutId.SOURCES_REMOVE_SOURCE)
 
     def test_it_stands_inert_while_a_run_holds_the_list(
         self,

@@ -2,6 +2,7 @@ from functools import lru_cache
 
 from sampletones_application.paths import KEYBINDINGS_DIRECTORY
 from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 
@@ -24,3 +25,16 @@ def shipped_source() -> ShortcutSource:
     changes what a press means shows up as a failure here.
     """
     return ShortcutSource(shipped_scheme())
+
+
+def rebound_source(shortcut_id: ShortcutId, combination: str) -> ShortcutSource:
+    """A source over the shipped scheme with one action answering ``combination`` instead.
+
+    A case reading the shipped keys on both sides passes whatever the production side does, so
+    what tells a combination read from the scheme apart from one written into the code is a
+    scheme that gives the action different keys.
+    """
+    scheme = shipped_scheme()
+    rebound = dict(scheme.bindings)
+    rebound[shortcut_id] = rebound[shortcut_id].rebound(combination)
+    return ShortcutSource(ShortcutScheme(name=scheme.name, bindings=rebound))
