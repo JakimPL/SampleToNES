@@ -1,6 +1,6 @@
 import gc
 from time import process_time
-from typing import Callable, Final, List
+from typing import Callable, Final, List, Tuple
 
 REPEATS: Final[int] = 3
 MINIMUM_READING: Final[float] = 0.25
@@ -19,13 +19,14 @@ def seconds(work: Callable[[], object]) -> float:
     The collector is held off for the reading, since it runs on how much is live rather than on
     what the work does: a batch building ten times the objects meets it more often and reads as
     more than ten times the cost. What is left is how the work itself follows its input, and the
-    objects are collected once the reading comes back.
+    collector is armed again once the reading comes back, on whatever the batches left behind.
     """
     collecting = gc.isenabled()
     gc.disable()
     try:
-        runs = _runs_reaching(work)
-        readings: List[float] = [_batch(work, runs) / runs for _ in range(REPEATS)]
+        runs, reached = _runs_reaching(work)
+        readings: List[float] = [reached / runs]
+        readings.extend(_batch(work, runs) / runs for _ in range(REPEATS - 1))
     finally:
         if collecting:
             gc.enable()
@@ -33,13 +34,19 @@ def seconds(work: Callable[[], object]) -> float:
     return min(readings)
 
 
-def _runs_reaching(work: Callable[[], object]) -> int:
-    """How many runs a batch takes to cost more than the clock's own step, doubling until it does."""
-    runs = FIRST_BATCH
-    while runs < MOST_RUNS and _batch(work, runs) < MINIMUM_READING:
-        runs *= 2
+def _runs_reaching(work: Callable[[], object]) -> Tuple[int, float]:
+    """The batch that costs more than the clock's own step, doubling until it does.
 
-    return runs
+    The batch that qualified is a reading like any other, so it comes back beside the run count
+    it took and stands as the first of the readings.
+    """
+    runs = FIRST_BATCH
+    reading = _batch(work, runs)
+    while runs < MOST_RUNS and reading < MINIMUM_READING:
+        runs *= 2
+        reading = _batch(work, runs)
+
+    return runs, reading
 
 
 def _batch(work: Callable[[], object], runs: int) -> float:

@@ -31,6 +31,7 @@ from sampletones_application.tags.general import SUF_TEXT
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.elements.stems.gestures import ROW_WIDGET_KINDS
 from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.ui.elements.stems.offer import GATHERED_SOURCES
 from sampletones_application.ui.elements.stems.tags import StemsTags
@@ -48,6 +49,7 @@ from tests.suite.timing import seconds
 SMALL_FOLDER: Final[int] = 1_000
 LARGE_FOLDER: Final[int] = 10_000
 GROWTH_ALLOWANCE: Final[float] = 2.0
+UNREADABLE: Final[float] = float("inf")
 REGION_HEIGHT: Final[float] = 264.0
 ROW_PITCH: Final[float] = 36.0
 OVERSCAN: Final[int] = 4
@@ -86,10 +88,14 @@ def state_of(root: Path, count: int) -> ConverterState:
 
 
 def growth(small: Callable[[], object], large: Callable[[], object]) -> Tuple[float, float, str]:
-    """What each size costs, and a line naming both readings and the growth between them."""
+    """What each size costs, and a line naming both readings and the growth between them.
+
+    A clock coarse enough to read the smaller run as nothing at all reports the growth as
+    unbounded, so the line prints and the bound fails on the reading rather than on the division.
+    """
     one = seconds(small)
     many = seconds(large)
-    ratio = many / one
+    ratio = many / one if one > 0 else UNREADABLE
     report = (
         f"{SMALL_FOLDER} recordings {one * 1000:.1f} ms, "
         f"{LARGE_FOLDER} recordings {many * 1000:.1f} ms, "
@@ -306,6 +312,14 @@ def list_drawn_as(prefix: str, layout_config: LayoutConfig) -> GUIStemsList:
     return built
 
 
+def cleared(prefix: str, stems_list: GUIStemsList) -> None:
+    """Take down everything one drawn list stands as: its own well, and the registries it made."""
+    tags = StemsTags(prefix=prefix)
+    dpg.delete_item(stems_list.tag)
+    for kind in ROW_WIDGET_KINDS:
+        dpg.delete_item(tags.handlers(kind))
+
+
 def rows_on_screen(prefix: str, listing: StemsListViewModel) -> int:
     """How many of a folder's recordings the list put widgets on screen for."""
     folder_row = listing.rows[0]
@@ -355,8 +369,15 @@ class TestDrawingAGatheredFolder(BaseTestSuite):
 
     @staticmethod
     def _opened(prefix: str, layout_config: LayoutConfig, listing: StemsListViewModel) -> int:
-        """Draw the listing, open the folder standing in it, and count the rows that reached screen."""
+        """Draw the listing, open the folder standing in it, and count the rows that reached screen.
+
+        What the gesture built is taken down once it has been counted, so a batch of them costs
+        what one costs: the window each reading is taken in holds the widgets of that reading
+        alone, and the small run is measured on the same window as the large one.
+        """
         stems_list = list_drawn_as(prefix, layout_config)
         stems_list.update_view(listing)
         stems_list.toggle_folder(listing.rows[0].key)
-        return rows_on_screen(prefix, listing)
+        reached = rows_on_screen(prefix, listing)
+        cleared(prefix, stems_list)
+        return reached

@@ -1,4 +1,4 @@
-from typing import Any, Callable, FrozenSet, Optional, Tuple
+from typing import Any, Callable, Final, FrozenSet, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -17,6 +17,8 @@ from sampletones_application.view_model.shared.stems import StemsListViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, StringCallback
+
+ROW_WIDGET_KINDS: Final[Tuple[str, ...]] = (SUF_TEXT, SUF_CHANNELS, SUF_CHECKBOX, SUF_BUTTON, SUF_TWISTY)
 
 ChannelsCallback = Callable[[str, FrozenSet[ChannelName]], None]
 ChannelCallback = Callable[[str, ChannelName], None]
@@ -73,7 +75,7 @@ class StemsGestures:
 
     def create_handlers(self) -> None:
         """Register one handler registry per row-widget kind."""
-        for kind in (SUF_TEXT, SUF_CHANNELS, SUF_CHECKBOX, SUF_BUTTON, SUF_TWISTY):
+        for kind in ROW_WIDGET_KINDS:
             dpg_delete_item(self._tags.handlers(kind))
 
         with dpg.item_handler_registry(tag=self._tags.handlers(SUF_TEXT)):
