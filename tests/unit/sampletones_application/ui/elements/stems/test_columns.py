@@ -20,6 +20,9 @@ TABLE_TAG = "test_table"
 GLYPH = "▸"
 GLYPH_WIDTH = 9.0
 GLYPH_SIZE = [GLYPH_WIDTH, 20.0]
+LABEL = "PULSE 1"
+LABEL_WIDTH = 41.0
+LABEL_SIZE = [LABEL_WIDTH, 14.0]
 CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.TRIANGLE)
 
 
@@ -103,6 +106,48 @@ class TestWhereARowWithoutAMarkerOpens(BaseTestSuite):
         assert indent == 0
 
 
+class TestWhereAChannelNameStands(BaseTestSuite):
+    """The heading names each channel over the middle of the column its boxes stand in, so the
+    name reads as that column's however long the channel is called."""
+
+    def test_the_name_stands_over_the_middle_of_its_column(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems = layout_config.general.stems
+
+        with measured(LABEL_SIZE):
+            indent = columns(layout_config, folders=True).name_indent(LABEL, Font.BOLD_SMALL)
+
+        assert indent == (stems.channel_solo_width - int(LABEL_WIDTH)) // 2
+
+    def test_a_name_over_a_column_carrying_bends_stands_in_the_wider_room(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A cell holding the channel and the bend on it takes a column of its own width, and the
+        name above it is centered in that."""
+        stems = layout_config.general.stems
+
+        with measured(LABEL_SIZE):
+            indent = columns(layout_config, folders=True, bends=True).name_indent(LABEL, Font.BOLD_SMALL)
+
+        assert indent == (stems.channel_column_width - int(LABEL_WIDTH)) // 2
+
+    def test_a_name_no_frame_has_measured_yet_opens_at_the_edge(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A measurement waits on a drawn frame, and the next reading of the heading settles it."""
+        with measured(None):
+            indent = columns(layout_config, folders=True).name_indent(LABEL, Font.BOLD_SMALL)
+
+        assert indent == 0
+
+
 class TestWhereABoxStands(BaseTestSuite):
     """Every box stands in the middle of the column it belongs to, whichever column that is."""
 
@@ -172,6 +217,13 @@ class TestWhereABoxStands(BaseTestSuite):
 class TestTheRoomAFolderSpends(BaseTestSuite):
     """A folder draws its recordings inside a region of its own, and the room that region spends
     at its right is held clear across every table outside it, so the columns stand in one grid."""
+
+    def test_a_grid_holding_folders_spends_what_a_region_takes(
+        self,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The room is the layout's own figure, which is what a folder's region spends at its right."""
+        assert columns(layout_config, folders=True).reserve == layout_config.general.stems.folder_reserve
 
     def test_a_grid_holding_none_spends_nothing(
         self,

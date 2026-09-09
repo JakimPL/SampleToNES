@@ -61,6 +61,7 @@ ACTION_LABEL = "Convert 2 recordings"
 STATUS_TEXT = "No tasks in progress."
 RECORDING = Path("/audio/kick.wav")
 REBOUND_REMOVAL = "Ctrl+Shift+K"
+SEPARATOR = "separator"
 
 
 @pytest.fixture
@@ -191,10 +192,14 @@ def build(
 
 @pytest.fixture
 def registered(monkeypatch: pytest.MonkeyPatch) -> List[Dict[str, Any]]:
-    """The items a menu registers, as a reader would meet them."""
+    """The items a menu registers, in the order a reader meets them, the rules between them included."""
     items: List[Dict[str, Any]] = []
     monkeypatch.setattr(menus_module.dpg, "add_menu_item", lambda **kwargs: items.append(kwargs) or 0)
-    monkeypatch.setattr(menus_module.dpg, "add_separator", lambda **_kwargs: 0)
+    monkeypatch.setattr(
+        menus_module.dpg,
+        "add_separator",
+        lambda **_kwargs: items.append({"label": SEPARATOR}) or 0,
+    )
     return items
 
 
@@ -544,6 +549,43 @@ class TestTheMenuARightClickPutsUp:
         click_row_name(panel.stems_list.tags, kick.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
 
         assert LANGUAGE_MANAGER["main.converter.label.context_remove_stem"] in [item["label"] for item in registered]
+
+    def test_a_rule_divides_sounding_a_recording_from_moving_it(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        """Play sounds the recording where it stands; everything under the rule moves it or takes
+        it off the list, so the two readings of the menu are kept apart."""
+        panel, _reported = build(layout_config)
+        kick = row("kick")
+        panel.update_view(view(kick, row("snare")))
+
+        right_click(panel, kick)
+
+        labels = [item["label"] for item in registered]
+        assert labels[labels.index(LANGUAGE_MANAGER["global.context.label.play"]) + 1] == SEPARATOR
+
+    def test_the_item_a_folder_offers_opens_it_on_the_list(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        """The item does what the marker beside the folder's name does, so a reader reaching for
+        the menu meets the same folder open."""
+        panel, _reported = build(layout_config)
+        sources = folder("sources", holds=3)
+        panel.update_view(view(sources))
+
+        right_click(panel, sources)
+        opening = next(
+            item for item in registered if item["label"] == LANGUAGE_MANAGER["main.converter.label.context_open_folder"]
+        )
+        opening["callback"]()
+
+        assert panel.stems_list.stands_open(sources.key)
 
     def test_a_right_click_picks_the_row_it_stands_over(
         self,

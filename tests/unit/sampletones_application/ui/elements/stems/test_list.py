@@ -1081,6 +1081,26 @@ class TestTheHeading(BaseTestSuite):
         assert dpg.does_item_exist(compose_tag(PREFIX, SUF_HEADING, ChannelName.PULSE1, SUF_TEXT))
 
 
+class TestTheRulesTheGridDraws(BaseTestSuite):
+    """A rule runs around the grid's own edges and between its rows, so the run of rows an open
+    folder breaks reads as one ruled list down its whole length."""
+
+    def test_the_grid_rules_the_rows_off_from_the_heading(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        """The heading draws no rule of its own, so the grid below it is what divides the two."""
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("kick"), collapse_levels=True))
+
+        assert dpg.get_item_configuration(TAGS.table)["borders_outerH"] is True
+
+    def test_the_grid_rules_between_the_rows_it_holds(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("kick"), row("snare"), collapse_levels=True))
+
+        assert dpg.get_item_configuration(TAGS.table)["borders_innerH"] is True
+
+
 class TestTheWell(BaseTestSuite):
     """The well keeps the card's shape: where its rows are recordings alone it builds the ones it
     shows and reserves the room for the rest, and it holds every row otherwise."""

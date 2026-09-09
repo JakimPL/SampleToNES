@@ -8,7 +8,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.paths import LANG_EN
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import SUF_BUTTON
+from sampletones_application.tags.general import SUF_BUTTON, TAG_GLOBAL_THEME_DANGER_BUTTON
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_BUTTON_STOP_SCAN,
     TAG_MAIN_CONVERTER_TEXT_SCAN_FOLDER,
@@ -55,6 +55,18 @@ class TestWhatTheWindowSays(BaseTestSuite):
         window.report(FOUND)
 
         assert dpg.get_value(TAG_MAIN_CONVERTER_TEXT_SCAN_FOLDER) == PROGRESS.format(count=FOUND, name=ROOT.name)
+
+
+class TestHowStopReads(BaseTestSuite):
+    """Stop gives up on a reading the reader asked for, so it carries the tone the interface
+    gives an action that undoes what is under way."""
+
+    def test_stop_carries_the_tone_of_the_action_it_is(self, window: GUIScanWindow) -> None:
+        open_on(window, ROOT)
+
+        theme = dpg.get_item_theme(compose_tag(TAG_MAIN_CONVERTER_BUTTON_STOP_SCAN, SUF_BUTTON))
+
+        assert dpg.get_item_alias(theme) == TAG_GLOBAL_THEME_DANGER_BUTTON
 
 
 class TestGivingUp(BaseTestSuite):

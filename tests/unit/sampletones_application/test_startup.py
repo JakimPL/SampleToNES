@@ -467,6 +467,45 @@ class TestChannelKeys:
         assert not app._sequencer_tab.channels.any_muted
 
 
+class TestTheRemovalKey:
+    """The key that takes a recording off the list reaches the row the reader picked out.
+
+    The whole application answers here, so a press travels the way it does at runtime: the router
+    hands it to the dispatcher, the scheme names the action, and the tab in front decides whether
+    the converter's list is what the press reaches.
+    """
+
+    @staticmethod
+    def _picked(app: Application, tmp_path: Path) -> Path:
+        """One gathered recording, clicked so the list holds it picked out."""
+        path = tmp_path / "a.wav"
+        path.touch()
+        app._main_tab._converter_logic.gather_recordings([path])
+        _click_row(app, path)
+        return path
+
+    @staticmethod
+    def _press(app: Application, tab: Tab) -> None:
+        with patch.object(app._shell, "get_current_tab", return_value=tab):
+            _press_shortcut(app, ShortcutId.SOURCES_REMOVE_SOURCE)
+
+    def test_the_main_tab_takes_the_picked_row_off_the_list(self, app: Application, tmp_path: Path) -> None:
+        path = self._picked(app, tmp_path)
+
+        self._press(app, Tab.MAIN)
+
+        assert not dpg.does_item_exist(stems_list(app).tags.row(str(path), SUF_GROUP))
+
+    def test_another_tab_in_front_leaves_the_row_where_it_is(self, app: Application, tmp_path: Path) -> None:
+        """A picked row outlives a move to another tab, so which tab stands in front is read at
+        the moment the press lands."""
+        path = self._picked(app, tmp_path)
+
+        self._press(app, Tab.SEQUENCER)
+
+        assert dpg.does_item_exist(stems_list(app).tags.row(str(path), SUF_GROUP))
+
+
 class TestTabKeys:
     """One key per tab, bringing it to the front from wherever the reader stands.
 
