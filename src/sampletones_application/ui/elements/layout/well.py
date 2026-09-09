@@ -16,7 +16,7 @@ def well(
     *,
     padding: int,
     margin: int,
-    gutter: int,
+    width: int,
     indent: Optional[int] = None,
     height: int = 0,
     show: bool = True,
@@ -28,12 +28,10 @@ def well(
     card. Alongside ``card()`` this is where the recessed depth theme is bound; the region
     sizes itself to its rows unless ``height`` reserves a footprint.
 
-    Returns the inset body group content is added to, which keeps ``padding`` clear at the right
-    and ``indent`` at the left, the two being the same width unless a caller nests the body inside
-    something. A well sunk under a row of its own indents to show what it belongs to while its
-    right edge stays where every other row's is, so the columns line up down the whole list.
-    ``gutter`` widens that right inset by the room a scrollbar takes, which a caller hands over
-    while the well stands without one, so the body keeps one width however tall its content grows.
+    Returns the inset body group content is added to, which opens at ``indent`` and comes out at
+    ``width``, the caller stating the room to hold clear at the right. A well sunk under a row of
+    its own indents to show what it belongs to while its right edge stays where every other row's
+    is, so the columns line up down the whole list.
     ``margin`` opens the gap above the first row and below the last, which the row spacing between
     the content and the spacers adds to. A well asked for none lays neither spacer, so its rows
     open where the well does — which is what a well nested inside a list takes, its rows being a
@@ -53,7 +51,7 @@ def well(
         if margin:
             dpg.add_spacer(height=margin)
 
-        dpg.add_group(tag=body_tag, indent=padding if indent is None else indent, width=-(padding + gutter))
+        dpg.add_group(tag=body_tag, indent=padding if indent is None else indent, width=width)
         if margin:
             dpg.add_spacer(height=margin)
 

@@ -152,7 +152,7 @@ class WindowedRegion:
             self._tag,
             padding=self._padding,
             margin=self._margin,
-            gutter=self._gutter,
+            width=self._body_width(scrolling=False),
             indent=self._indent,
             show=show,
         )
@@ -341,10 +341,14 @@ class WindowedRegion:
         body is measured against; one within it draws none, and the gutter stands in its place. So
         the columns inside a region stand where they stand however long the list it holds grows.
         """
-        if not dpg.does_item_exist(self._body_tag):
-            return
+        dpg_configure_item(self._body_tag, width=self._body_width(scrolling=scrolling))
 
-        dpg_configure_item(self._body_tag, width=-(self._padding + (NO_GUTTER if scrolling else self._gutter)))
+    def _body_width(self, *, scrolling: bool) -> int:
+        """What the body is drawn at: its own room, less the padding and whatever stands at its right.
+
+        A scrollbar and the gutter take the same room, so the body comes out one width either way.
+        """
+        return -(self._padding + (NO_GUTTER if scrolling else self._gutter))
 
     def _body_height(self) -> float:
         """How tall the rows drawn into the region stand, as the frame that placed them left them."""

@@ -166,7 +166,7 @@ def table_of(row: StemRowViewModel) -> int:
 
 
 def theme_on(row: StemRowViewModel) -> str:
-    """The theme one row's line carries, which is what bands a group apart from its neighbours."""
+    """The theme one row's line carries, which is what bands a group apart from its neighbors."""
     return dpg.get_item_alias(dpg.get_item_theme(f"{PREFIX}.row.{row.key}.{SUF_GROUP}"))
 
 

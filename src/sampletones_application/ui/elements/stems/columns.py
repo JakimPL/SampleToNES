@@ -123,7 +123,7 @@ class StemsColumns:
         if measured is None:
             return NO_INDENT
 
-        return max(NO_INDENT, (self.layout.twisty_width - int(measured[0])) // 2)
+        return self._centered(int(measured[0]), within=self.layout.twisty_width)
 
     def name_indent(self, label: str, font: Font) -> int:
         """How far a channel's name sits in, so it stands over the middle of its own column.
@@ -133,7 +133,7 @@ class StemsColumns:
         """
         measured = dpg.get_text_size(label, font=FontRegistry.get_tag(font))
         if measured is None:
-            return 0
+            return NO_INDENT
 
         return self._centered(int(measured[0]), within=self.channel_width)
 

@@ -80,6 +80,8 @@ class KeybindingActionElements(AbstractElement):
     SELECT_TAB_SEQUENCER = "select_tab_sequencer"
     SELECT_TAB_INSTRUCTIONS = "select_tab_instructions"
 
+    SOURCES_REMOVE_SOURCE = "sources_remove_source"
+
     ORDER_PREVIOUS_POSITION = "order_previous_position"
     ORDER_NEXT_POSITION = "order_next_position"
     ORDER_PREVIOUS_CHANNEL = "order_previous_channel"
@@ -145,8 +147,6 @@ class KeybindingActionElements(AbstractElement):
     TRACKER_CLEAR_PREVIOUS_ROW = "tracker_clear_previous_row"
     TRACKER_CANCEL_ENTRY = "tracker_cancel_entry"
     TRACKER_PLAY_FROM_ROW = "tracker_play_from_row"
-
-    SOURCES_REMOVE_SOURCE = "sources_remove_source"
 
     VOICES_RENAME_VOICE = "voices_rename_voice"
     VOICES_REMOVE_VOICE = "voices_remove_voice"

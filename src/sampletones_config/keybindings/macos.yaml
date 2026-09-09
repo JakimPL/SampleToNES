@@ -72,6 +72,9 @@ bindings:
   SelectTabSequencer: {combination: "F3", field_transparent: true}
   SelectTabInstructions: {combination: "F4", field_transparent: true}
 
+  # sources
+  SourcesRemoveSource: {combination: "Del"}
+
   # order table
   OrderPreviousPosition: {combination: "Left"}
   OrderNextPosition: {combination: "Right", aliases: ["Enter"]}
@@ -139,9 +142,6 @@ bindings:
   TrackerClearPreviousRow: {combination: "Backspace"}
   TrackerCancelEntry: {combination: "Esc"}
   TrackerPlayFromRow: {combination: "Ctrl+Shift+Space"}
-
-  # sources
-  SourcesRemoveSource: {combination: "Del"}
 
   # voices
   VoicesRenameVoice: {combination: "F2"}

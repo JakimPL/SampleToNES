@@ -108,6 +108,8 @@ class ShortcutId(Enum):
     SELECT_TAB_SEQUENCER = ("SelectTabSequencer", ShortcutCategory.APPLICATION)
     SELECT_TAB_INSTRUCTIONS = ("SelectTabInstructions", ShortcutCategory.APPLICATION)
 
+    SOURCES_REMOVE_SOURCE = ("SourcesRemoveSource", ShortcutCategory.SOURCES)
+
     ORDER_PREVIOUS_POSITION = ("OrderPreviousPosition", ShortcutCategory.ORDER)
     ORDER_NEXT_POSITION = ("OrderNextPosition", ShortcutCategory.ORDER)
     ORDER_PREVIOUS_CHANNEL = ("OrderPreviousChannel", ShortcutCategory.ORDER)
@@ -185,8 +187,6 @@ class ShortcutId(Enum):
     TRACKER_CLEAR_PREVIOUS_ROW = ("TrackerClearPreviousRow", ShortcutCategory.TRACKER)
     TRACKER_CANCEL_ENTRY = ("TrackerCancelEntry", ShortcutCategory.TRACKER)
     TRACKER_PLAY_FROM_ROW = ("TrackerPlayFromRow", ShortcutCategory.TRACKER)
-
-    SOURCES_REMOVE_SOURCE = ("SourcesRemoveSource", ShortcutCategory.SOURCES)
 
     VOICES_RENAME_VOICE = ("VoicesRenameVoice", ShortcutCategory.VOICES)
     VOICES_REMOVE_VOICE = ("VoicesRemoveVoice", ShortcutCategory.VOICES)
