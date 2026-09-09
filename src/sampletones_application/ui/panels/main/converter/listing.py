@@ -153,14 +153,15 @@ class ConverterListing(CallbackMixin):
         """Act on the row picked out, reporting whether the list consumed the press.
 
         The scheme says which press each of the list's actions answers to; a press its category
-        leaves unnamed goes on to the application's shortcuts.
+        leaves unnamed goes on to the application's shortcuts, as does one naming a move the list
+        is standing inert against.
         """
         key = self._stems_list.picked_key
         if key is None:
             return False
 
         match self._shortcuts.action(ShortcutCategory.SOURCES, event):
-            case ShortcutId.SOURCES_REMOVE_SOURCE:
+            case ShortcutId.SOURCES_REMOVE_SOURCE if self._stems_list.lets_a_row_go:
                 self._on_removed(key)
             case ShortcutId.SOURCES_CLEAR_SELECTION:
                 self.call(self.on_selection_cleared)

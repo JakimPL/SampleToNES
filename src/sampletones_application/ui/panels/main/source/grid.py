@@ -73,7 +73,10 @@ class SettingsGrid(CallbackMixin):
         return TAG_MAIN_SOURCE_GROUP_GRID
 
     def create(self, view_model: SourceSettingsPanelViewModel) -> None:
-        """Build the channel names and the one row of boxes standing under them."""
+        """Build the channel names and the one row of boxes standing under them.
+
+        The grid rules its own top edge, which is the line dividing the names from the boxes.
+        """
         with dpg.group(tag=TAG_MAIN_SOURCE_GROUP_GRID):
             self._heading.create(TAG_MAIN_SOURCE_GROUP_GRID, self._columns)
             self._heading.render(NO_MUTED_CHANNELS)
@@ -83,6 +86,7 @@ class SettingsGrid(CallbackMixin):
                 policy=dpg.mvTable_SizingFixedFit,
                 resizable=False,
                 borders_innerV=True,
+                borders_outerH=True,
             ):
                 self._columns.declare()
                 self._create_row(view_model)

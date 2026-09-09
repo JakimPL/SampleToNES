@@ -277,6 +277,15 @@ class GUIStemsList(CallbackMixin):
         """The row standing picked out, which is what a key press acts on."""
         return self._view.selected_key
 
+    @property
+    def lets_a_row_go(self) -> bool:
+        """Whether a row may be taken out: the list is live, and it holds more than it keeps.
+
+        A gesture reaching removal from outside the row's own button — a key press, a menu item —
+        asks this, so every way out of the list answers to the one rule the button reads.
+        """
+        return self._view.live and self._releasable
+
     def stands_open(self, key: str) -> bool:
         """Whether the folder's recordings are in view, which is what a menu names its move by."""
         return self._open_folders.stands_open(key)

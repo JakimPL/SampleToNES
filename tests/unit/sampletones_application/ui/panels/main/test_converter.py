@@ -350,6 +350,22 @@ class TestTheKeysTheListClaims:
         assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is False
         assert removed == []
 
+    def test_a_press_rests_while_the_list_stands_inert(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A run holds the list still, so the key answers to the rule the row's own button reads."""
+        router = KeyRouter()
+        panel, _reported = build(layout_config, key_router=router)
+        removed: List[Path] = []
+        panel.on_source_removed = removed.append
+        kick = row("kick")
+        panel.update_view(view(kick, selected_key=kick.key, phase=ConversionPhase.RUNNING))
+
+        assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is False
+        assert removed == []
+
     def test_it_removes_the_recording_picked_out(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         router = KeyRouter()
         panel, _reported = build(layout_config, key_router=router)

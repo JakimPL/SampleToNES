@@ -20,6 +20,7 @@ from sampletones_application.tags.main import (
     PRE_MAIN_SOURCE_SLOT,
     TAG_MAIN_SOURCE_GROUP_GRID,
     TAG_MAIN_SOURCE_SLIDER_DRIVE,
+    TAG_MAIN_SOURCE_TABLE_GRID,
     TAG_MAIN_SOURCE_TEXT_INSPECTING,
     TAG_MAIN_SOURCE_TEXT_UNPICKED,
 )
@@ -202,6 +203,16 @@ class TestAPickedRow:
 
 class TestTheGrid:
     """The channels are named once above the row, and each cell holds the boxes it offers."""
+
+    def test_the_grid_rules_the_names_off_from_the_boxes(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The heading draws no rule of its own, so the grid below it is what divides the two."""
+        build(layout_config, view())
+
+        assert dpg.get_item_configuration(TAG_MAIN_SOURCE_TABLE_GRID)["borders_outerH"] is True
 
     def test_every_channel_is_named(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         build(layout_config, view())

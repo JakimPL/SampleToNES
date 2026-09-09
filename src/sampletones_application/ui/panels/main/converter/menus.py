@@ -103,6 +103,7 @@ class ConverterMenus(CallbackMixin):
             )
             dpg.add_menu_item(
                 label=self._folder_label(ConverterFolderElements.CONTEXT_REMOVE_FOLDER),
+                enabled=self._stems_list.lets_a_row_go,
                 callback=lambda: self.call(self.on_folder_removed, row.path),
             )
             add_path_menu_items(self._language_manager, row.path)
@@ -121,7 +122,7 @@ class ConverterMenus(CallbackMixin):
         path = row.path
         removal = (
             ConverterStemMoveElements.CONTEXT_REMOVE_STEM,
-            True,
+            self._stems_list.lets_a_row_go,
             lambda: self.call(self.on_source_removed, path),
         )
         if not banded:
