@@ -18,3 +18,12 @@ class StemsListLayout(BaseModel, extra="forbid", frozen=True):
     scrollbar_width: int
     cell_padding: int
     name_height: int
+
+    @property
+    def folder_reserve(self) -> int:
+        """The room a folder's region spends at the right of its body.
+
+        A region insets its body by its padding and keeps a scrollbar's width clear beside it, so
+        the grid outside a folder holds that same strip and the two grids stand as one.
+        """
+        return self.well_padding + self.scrollbar_width

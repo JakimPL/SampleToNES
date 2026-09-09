@@ -111,9 +111,9 @@ class FolderRenderer:
         """Sink the folder's region below its row and fill it with the rows it reaches.
 
         The folder's own row stands in the run of rows around it, so what is drawn here is the
-        space its recordings scroll in — which is why a folder standing closed draws nothing. The
-        region opens no margin of its own: its recordings carry on from the row above them, so
-        they start where the region does and the seam stays as narrow as the list's own rules.
+        space its recordings scroll in, which an open folder is what puts on screen. The region
+        holds its recordings flush to its own edges, so they carry on from the row above them and
+        the seam stays as narrow as the list's own rules.
         """
         region = WindowedRegion(
             tag=self._tags.region(row.key),

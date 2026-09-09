@@ -139,8 +139,8 @@ class ConverterListing(CallbackMixin):
         """Whether the list owns the next key: its tab is in front and it holds a row picked out.
 
         A row picked out outlives a move to another tab, so the tab is read at the moment of the
-        press. A modal dialog claims keys above this scope in the router, so the list needs no
-        check of its own for one.
+        press. A modal dialog claims keys above this scope in the router, which is what holds the
+        list off while one stands open.
         """
         return self._tab_active() and self._stems_list.picked_key is not None and not self._router.is_field_focused
 

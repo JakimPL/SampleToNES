@@ -50,16 +50,14 @@ class StemsColumns:
 
     @property
     def reserve(self) -> int:
-        """The room a folder's region spends at the right of the grid, held clear across the list.
+        """The room held clear at the right of every table outside a folder, which is the region's.
 
-        A region insets its body by the well's padding and keeps a scrollbar's width clear beside
-        it, so a strip of that width at the right end of every table outside a folder stands the
-        two grids in one.
+        A list holding no folder opens no region, so its tables run to the edge.
         """
         if not self.folders:
             return NO_RESERVE
 
-        return self.layout.well_padding + self.layout.scrollbar_width
+        return self.layout.folder_reserve
 
     @property
     def reserve_width(self) -> int:
@@ -113,8 +111,8 @@ class StemsColumns:
 
         A folder's row leads with a button as wide as the marker column, and the glyph inside it
         stands in the middle of that button. A recording standing loose in the same list opens at
-        the glyph rather than at the button, which reads as one column of names without spending
-        the marker's whole width on a row that has none.
+        that glyph, so the names read as one column while a row with no marker keeps the room a
+        marker would have spent.
         """
         if not self.folders:
             return NO_INDENT

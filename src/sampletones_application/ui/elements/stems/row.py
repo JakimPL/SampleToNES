@@ -82,8 +82,8 @@ class StemRowRenderer:
     ) -> None:
         """Build the widgets one row stands as, in the columns its grid was declared with.
 
-        A folder's row takes a band of its own behind it, so a group reads apart from the
-        recordings standing loose around it without spending a pixel of the list's height.
+        A folder's row takes a band of its own behind it, which is what reads a group apart
+        from the recordings standing loose around it, and the band lies within the row's height.
         """
         with dpg.table_row(tag=self._tags.row(row.key, SUF_GROUP)) as line:
             if row.stands_for_a_folder:
@@ -238,9 +238,9 @@ class StemRowRenderer:
     def _create_disclosure(self, row: StemRowViewModel) -> None:
         """The marker a folder opens by, which stands beside the folder's own name.
 
-        The marker is drawn to the height of the name it leads and spends no padding around its
-        glyph, which stands a folder's row in the rhythm every other row keeps. Its own frame is
-        the room it was given, so what the pointer shades is the marker and nothing beside it.
+        The marker is drawn to the height of the name it leads, its glyph filling that frame,
+        which stands a folder's row in the rhythm every other row keeps. Its frame is the room it
+        was given, so the shading the pointer draws covers the marker exactly.
         """
         if not row.stands_for_a_folder:
             return

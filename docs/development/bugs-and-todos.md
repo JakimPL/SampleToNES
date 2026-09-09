@@ -6,7 +6,7 @@
 * Tree navigation using keys
 * Moving through the converter's list of gathered recordings with the keyboard. The list holds one
   row picked out, which is a selection rather than a position: `ConverterState.selected` names it,
-  a click sets it, and `Del` and `Esc` reach it through the `SOURCES` key scope
+  a click sets it, and `Del` reaches it through the `SOURCES` key scope
   (`ui/panels/main/converter/listing.py`). What is missing is a cursor the arrow keys move, `Home`
   and `End`, and a folder opened and closed from the keyboard — the last of which the list answers
   for on its own, since which folders stand open is `OpenFolders` in `ui/elements/stems/` rather

@@ -123,8 +123,8 @@ class ConverterMenus(CallbackMixin):
     ) -> List[Tuple[ConverterStemMoveElements, bool, VoidCallback]]:
         """The moves the row can make, which are the level moves while a mix is banded.
 
-        A run writing a reconstruction apiece has no order to rearrange, so it offers none of them
-        and the row's own removal is the whole of what it can be told to do.
+        A run writing a reconstruction apiece keeps its recordings in one flat list, so its rows
+        offer removal alone.
         """
         path = row.path
         if not banded:

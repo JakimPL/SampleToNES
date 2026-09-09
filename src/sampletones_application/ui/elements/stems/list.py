@@ -159,7 +159,7 @@ class GUIStemsList(CallbackMixin):
 
     @property
     def activatable(self) -> bool:
-        """The owner answers a click on a row, so the list hands one on rather than absorbing it."""
+        """The owner answers a click on a row, so the list hands the row it picked on."""
         return self.on_row_activated is not None
 
     @property

@@ -26,7 +26,7 @@ class Reshape:
 
     @classmethod
     def everything(cls) -> Self:
-        """What a reading the standing widgets cannot be brought to asks for."""
+        """What a reading asks for once it moves more than a repaint settles."""
         return cls(whole=True, folders=())
 
     @classmethod

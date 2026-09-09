@@ -33,9 +33,9 @@ def well(
     its own indents to show what it belongs to while its right edge stays where every other row's
     is, so the columns line up down the whole list.
     ``margin`` opens the gap above the first row and below the last, which the row spacing between
-    the content and the spacers adds to. A well asked for none lays neither spacer, so its rows
-    open where the well does — which is what a well nested inside a list takes, its rows being a
-    run of the list rather than a body of their own.
+    the content and the spacers adds to. A well asked for a margin of zero opens its rows where the
+    well itself opens, which is what a well nested inside a list takes: its rows are a run of the
+    list, and the list's own rhythm carries them.
     """
     body_tag = compose_tag(tag, SUF_GROUP)
     with dpg.child_window(

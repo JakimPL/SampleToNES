@@ -338,8 +338,8 @@ class WindowedRegion:
         """Keep the body one width, whether the room at its right is a scrollbar or the gutter.
 
         A region past its ceiling draws a scrollbar, which takes that room out of the width the
-        body is measured against; one within it draws none, and the gutter stands in its place. So
-        the columns inside a region stand where they stand however long the list it holds grows.
+        body is measured against; one within its ceiling holds the same room as a gutter. So the
+        columns inside a region stand where they stand however long the list it holds grows.
         """
         dpg_configure_item(self._body_tag, width=self._body_width(scrolling=scrolling))
 
