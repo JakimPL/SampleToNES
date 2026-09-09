@@ -44,6 +44,7 @@ from sampletones_application.view_model.shared.stems import (
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.callback import Callback
 from tests.suite.base import BaseTestSuite
+from tests.suite.gestures import CLICKED, DOUBLE_CLICKED, HOVERED, click_row_name, handler_of
 
 ROOT_TAG = "test_root"
 PREFIX = "test.stems"
@@ -51,8 +52,6 @@ TAGS: Final[StemsTags] = StemsTags(prefix=PREFIX)
 CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.TRIANGLE)
 DRAG_PAYLOAD_SLOT: Final[int] = 3
 LONG_LIST: Final[int] = 200
-CLICK_HANDLER: Final[int] = 0
-DOUBLE_CLICK_HANDLER: Final[int] = 1
 
 
 @pytest.fixture
@@ -166,18 +165,12 @@ def channel_tag(entry: StemRowViewModel, channel_name: ChannelName) -> str:
 
 def hover_handler(suffix: str) -> Callback:
     """The hover callback a row widget of that kind shares, as DearPyGui would call it."""
-    return dpg.get_item_callback(dpg.get_item_children(TAGS.handlers(suffix), 1)[-1])
+    return dpg.get_item_callback(handler_of(TAGS.handlers(suffix), HOVERED))
 
 
-def name_handler(position: int) -> Callback:
-    """One of the mouse callbacks a row's name shares, as DearPyGui would call it."""
-    return dpg.get_item_callback(dpg.get_item_children(TAGS.handlers(SUF_TEXT), 1)[position])
-
-
-def click_on(entry: StemRowViewModel, position: int, button: int) -> None:
+def click_on(entry: StemRowViewModel, kind: str, button: int) -> None:
     """Land a mouse gesture on a row's name the way DearPyGui reports one."""
-    name_tag = row_tag(entry, SUF_TEXT)
-    name_handler(position)(name_tag, (button, dpg.get_alias_id(name_tag)))
+    click_row_name(TAGS, entry.key, kind=kind, button=button)
 
 
 def select_name(entry: StemRowViewModel, value: bool) -> None:
@@ -763,7 +756,7 @@ class TestActivation(BaseTestSuite):
         lead = row("lead")
         stems_list.update_view(view(bass, lead, selected_key=bass.key))
 
-        click_on(lead, CLICK_HANDLER, dpg.mvMouseButton_Right)
+        click_on(lead, CLICKED, dpg.mvMouseButton_Right)
 
         assert activated == [lead.key]
         assert asked == [lead.key]
@@ -875,7 +868,7 @@ class TestGesturesTheOwnerLeavesUnanswered(BaseTestSuite):
         stems_list.update_view(view(bass))
 
         with patch.object(stems_list, "call") as handed_on:
-            click_on(bass, CLICK_HANDLER, dpg.mvMouseButton_Right)
+            click_on(bass, CLICKED, dpg.mvMouseButton_Right)
 
         assert stems_list.has_menu is False
         handed_on.assert_not_called()
@@ -891,7 +884,7 @@ class TestGesturesTheOwnerLeavesUnanswered(BaseTestSuite):
         bass = row("bass")
         stems_list.update_view(view(bass))
 
-        click_on(bass, CLICK_HANDLER, dpg.mvMouseButton_Right)
+        click_on(bass, CLICKED, dpg.mvMouseButton_Right)
 
         assert asked == [bass.key]
 
@@ -905,7 +898,7 @@ class TestGesturesTheOwnerLeavesUnanswered(BaseTestSuite):
         stems_list.update_view(view(bass))
 
         with patch.object(stems_list, "call") as handed_on:
-            click_on(bass, DOUBLE_CLICK_HANDLER, dpg.mvMouseButton_Left)
+            click_on(bass, DOUBLE_CLICKED, dpg.mvMouseButton_Left)
 
         assert stems_list.playable is False
         handed_on.assert_not_called()
@@ -921,9 +914,35 @@ class TestGesturesTheOwnerLeavesUnanswered(BaseTestSuite):
         bass = row("bass")
         stems_list.update_view(view(bass))
 
-        click_on(bass, DOUBLE_CLICK_HANDLER, dpg.mvMouseButton_Left)
+        click_on(bass, DOUBLE_CLICKED, dpg.mvMouseButton_Left)
 
         assert opened == [bass.key]
+
+
+class TestEachGestureAnswersItsOwnButton(BaseTestSuite):
+    """Both handlers report every button, so each reads the one its own gesture is made with."""
+
+    def test_a_left_click_puts_no_menu_up(self, dpg_context: None, layout_config) -> None:
+        asked: List[str] = []
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_menu_requested = asked.append
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        click_on(bass, CLICKED, dpg.mvMouseButton_Left)
+
+        assert asked == []
+
+    def test_a_right_double_click_sounds_nothing(self, dpg_context: None, layout_config) -> None:
+        opened: List[str] = []
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_row_opened = opened.append
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        click_on(bass, DOUBLE_CLICKED, dpg.mvMouseButton_Right)
+
+        assert opened == []
 
 
 class TestTheHeading(BaseTestSuite):

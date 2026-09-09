@@ -16,6 +16,7 @@ from sampletones_application.paths import (
     PALETTES_DIRECTORY,
     THEME_DIRECTORY,
 )
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_GROUP,
@@ -25,8 +26,10 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_STEMS_GROUP_ROW,
     TAG_GLOBAL_THEME_STEMS_MARKER,
 )
+from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.elements.stems.columns import StemsColumns
 from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.ui.elements.stems.offer import GATHERED_SOURCES
 from sampletones_application.ui.elements.stems.tags import StemsTags
@@ -40,14 +43,15 @@ from sampletones_application.view_model.shared.stems import (
 )
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
+from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
 
 ROOT_TAG = "test_root"
 PREFIX = "test.stems"
 TAGS: Final[StemsTags] = StemsTags(prefix=PREFIX)
 CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.TRIANGLE)
-DOUBLE_CLICK_HANDLER: Final[str] = "mvAppItemType::mvDoubleClickedHandler"
 DEEP_FOLDER: Final[int] = 200
 STANDING_OFFSET: Final[float] = 700.0
+GLYPH_SIZE: Final[List[float]] = [9.0, 20.0]
 NO_OFFSET: Final[float] = 0.0
 
 
@@ -137,6 +141,16 @@ def view(*rows: StemRowViewModel) -> StemsListViewModel:
         collapse_levels=True,
         selected_key=None,
     )
+
+
+def named(name: str, *, holds: int) -> str:
+    """How a folder's row reads: its own name, and how many recordings it holds."""
+    return str(LanguageManager(LANG_EN)["global.stems.template.folder_row"].format(name=name, count=holds))
+
+
+def measured(size: List[float]) -> object:
+    """What DearPyGui answers a text measurement with, which needs a drawn frame to be a size."""
+    return patch.object(dpg, "get_text_size", return_value=size)
 
 
 def press(tag: str) -> None:
@@ -278,7 +292,7 @@ class TestDoubleClick(BaseTestSuite):
     def test_a_double_clicked_folder_opens(self, stems_list: GUIStemsList) -> None:
         sources = folder("sources", holds=2)
         stems_list.update_view(view(sources))
-        double_click(name_of(sources))
+        double_click(sources)
         assert dpg.does_item_exist(region_of(sources))
 
     def test_a_double_clicked_recording_is_reported(self, stems_list: GUIStemsList) -> None:
@@ -287,7 +301,7 @@ class TestDoubleClick(BaseTestSuite):
         stems_list.on_row_opened = opened.append
 
         stems_list.update_view(view(bass))
-        double_click(name_of(bass))
+        double_click(bass)
 
         assert opened == [bass.key]
 
@@ -297,7 +311,7 @@ class TestDoubleClick(BaseTestSuite):
         stems_list.on_row_opened = opened.append
 
         stems_list.update_view(view(sources))
-        double_click(name_of(sources))
+        double_click(sources)
 
         assert opened == []
 
@@ -314,15 +328,9 @@ class TestAFolderThatLeaves(BaseTestSuite):
         assert not dpg.does_item_exist(region_of(sources))
 
 
-def double_click(tag: str) -> None:
-    """Double-click a widget the way DearPyGui reports it, through the registry its kind shares."""
-    registry = TAGS.handlers(SUF_TEXT)
-    for handler in dpg.get_item_children(registry, 1):
-        if dpg.get_item_info(handler)["type"] == DOUBLE_CLICK_HANDLER:
-            dpg.get_item_callback(handler)(handler, (dpg.mvMouseButton_Left, dpg.get_alias_id(tag)))
-            return
-
-    raise AssertionError("the list registers no double-click handler")
+def double_click(row: StemRowViewModel) -> None:
+    """Double-click one row's name the way DearPyGui reports the gesture."""
+    click_row_name(TAGS, row.key, kind=DOUBLE_CLICKED, button=dpg.mvMouseButton_Left)
 
 
 class TestARecordingThatLeavesAFolder(BaseTestSuite):
@@ -388,7 +396,7 @@ class TestARecordingThatLeavesAFolder(BaseTestSuite):
 
         stems_list.update_view(view(folder_without(sources, sources.held[0])))
 
-        assert "2" in str(dpg.get_item_label(name_of(sources)))
+        assert dpg.get_item_label(name_of(sources)) == named("sources", holds=2)
 
     def test_a_closed_folder_reads_out_how_many_it_now_holds(self, stems_list: GUIStemsList) -> None:
         sources = folder("sources", holds=3)
@@ -396,7 +404,7 @@ class TestARecordingThatLeavesAFolder(BaseTestSuite):
 
         stems_list.update_view(view(folder_without(sources, sources.held[0])))
 
-        assert "2" in str(dpg.get_item_label(name_of(sources)))
+        assert dpg.get_item_label(name_of(sources)) == named("sources", holds=2)
 
     def test_a_row_arriving_draws_the_list_again(self, stems_list: GUIStemsList) -> None:
         """A row the list did not hold is met by the tables, so those are what is built again."""
@@ -472,10 +480,9 @@ class TestTheRhythmAFolderStandsIn(BaseTestSuite):
 
         assert table_of(sources) == table_of(bass) == table_of(lead)
 
-    def test_the_marker_stands_its_glyph_in_the_middle_of_its_room(self, stems_list: GUIStemsList) -> None:
-        """The marker's theme spends no padding around the glyph and centers it in the room it was
-        given, which is what holds a folder's row to the height of the rows around it and stands
-        the glyph where a recording listed loose opens its name."""
+    def test_the_marker_carries_the_theme_that_centers_its_glyph(self, stems_list: GUIStemsList) -> None:
+        """The marker's own theme is what spends no padding around the glyph and centers it, which
+        is what holds a folder's row to the height of the rows around it."""
         sources = folder("sources", holds=3)
 
         stems_list.update_view(view(sources))
@@ -516,6 +523,80 @@ class TestTheRhythmAFolderStandsIn(BaseTestSuite):
         press(twisty_of(sources))
 
         assert table_of(sources) == table_of(bass) == table_of(lead)
+
+
+class TestWhereTheNamesOpen(BaseTestSuite):
+    """A folder opens at its marker and a recording at that marker's glyph, so they read as one
+    column of names however the two kinds of row stand beside each other."""
+
+    @staticmethod
+    def _grid(layout_config: LayoutConfig) -> StemsColumns:
+        """The columns the list declares for a run of gathered sources holding folders."""
+        return StemsColumns(
+            layout=layout_config.general.stems,
+            channels=CHANNELS,
+            master=GATHERED_SOURCES.master_box,
+            removable=GATHERED_SOURCES.removal,
+            bends=GATHERED_SOURCES.bends,
+            folders=True,
+        )
+
+    @staticmethod
+    def _indent(row: StemRowViewModel) -> int:
+        return int(dpg.get_item_configuration(name_of(row))["indent"])
+
+    def test_a_folder_opens_at_its_marker(
+        self,
+        stems_list: GUIStemsList,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The marker leads the row, so the name that follows it opens where the marker ends."""
+        sources = folder("sources", holds=3)
+
+        with measured(GLYPH_SIZE):
+            stems_list.update_view(view(sources))
+
+        assert self._indent(sources) == 0
+
+    def test_a_recording_beside_it_opens_at_the_marker_s_glyph(
+        self,
+        stems_list: GUIStemsList,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A measured glyph puts the name in from the edge, which is what lines the column up."""
+        bass = recording(Path("/audio/bass.wav"))
+
+        with measured(GLYPH_SIZE):
+            stems_list.update_view(view(folder("sources", holds=1), bass))
+            expected = self._grid(layout_config).marker_indent(
+                layout_config.glyphs.common.collapsed,
+                Font.ICON,
+            )
+
+        assert expected > 0
+        assert self._indent(bass) == expected
+
+
+class TestTheOneGridAFolderStandsIn(BaseTestSuite):
+    """The room a table outside a folder holds clear is the room that folder's region spends.
+
+    The two are computed apart — one as a column at the end of every table, one as the inset a
+    region draws its body at — so the columns line up only while both read one figure.
+    """
+
+    def test_the_reserve_is_the_room_the_open_folder_s_region_takes(
+        self,
+        stems_list: GUIStemsList,
+        layout_config: LayoutConfig,
+    ) -> None:
+        sources = folder("sources", holds=3)
+        stems_list.update_view(view(sources))
+
+        press(twisty_of(sources))
+
+        body = compose_tag(region_of(sources), SUF_GROUP)
+        inset = -int(dpg.get_item_configuration(body)["width"])
+        assert inset == layout_config.general.stems.folder_reserve
 
 
 class TestTheBandAGroupReadsBy(BaseTestSuite):
@@ -563,7 +644,8 @@ class TestWhatMakesTheBandVisible(BaseTestSuite):
 
         assert dpg.get_item_configuration(table_of(sources))["row_background"] is True
 
-    def test_the_grid_states_its_own_rows_clear(self, stems_list: GUIStemsList) -> None:
+    def test_the_grid_carries_the_theme_that_states_its_own_rows_clear(self, stems_list: GUIStemsList) -> None:
+        """Every row would otherwise take DearPyGui's own alternation behind the band."""
         bass = recording(Path("/audio/bass.wav"))
 
         stems_list.update_view(view(folder("sources", holds=1), bass))

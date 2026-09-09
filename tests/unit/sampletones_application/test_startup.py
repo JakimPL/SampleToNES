@@ -64,6 +64,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.converter.paths import get_audio_files
 from sampletones_core.structures.tree import FileSystemNode, NodeType
+from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
 DRAG_PAYLOAD_SLOT: Final[int] = 3
@@ -543,15 +544,9 @@ def _ctrl_click_folder(app: Application, directory: Path) -> None:
         panel._directory_node_clicked(node, UNBUILT_ROW)
 
 
-DOUBLE_CLICKED_HANDLER = 1
-
-
 def _double_click_name(prefix: str, key: str) -> None:
     """Double-click one row's name in a stems list, the way DearPyGui reports the gesture."""
-    tags = StemsTags(prefix=prefix)
-    handler = dpg.get_item_children(tags.handlers(SUF_TEXT), 1)[DOUBLE_CLICKED_HANDLER]
-    name_tag = tags.row(key, SUF_TEXT)
-    dpg.get_item_callback(handler)(name_tag, (dpg.mvMouseButton_Left, dpg.get_alias_id(name_tag)))
+    click_row_name(StemsTags(prefix=prefix), key, kind=DOUBLE_CLICKED, button=dpg.mvMouseButton_Left)
 
 
 class TestGatheringAFolderIntoAMix:

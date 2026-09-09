@@ -23,12 +23,12 @@ from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
+from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
 from tests.suite.shortcuts import shipped_source
 
 LANGUAGE_MANAGER: Final[LanguageManager] = LanguageManager(LANG_EN)
 GATHERED: Final[int] = MAX_STEM_SOURCES + 4
 TAGS: Final[StemsTags] = StemsTags(prefix=PRE_MAIN_CONVERTER_CANDIDATE)
-DOUBLE_CLICK_HANDLER: Final[int] = 1
 
 
 @pytest.fixture(name="window")
@@ -124,9 +124,7 @@ def name_of(row: StemRowViewModel) -> str:
 
 def sound(row: StemRowViewModel) -> None:
     """Double-click one row's name the way DearPyGui reports the gesture."""
-    handler = dpg.get_item_children(TAGS.handlers(SUF_TEXT), 1)[DOUBLE_CLICK_HANDLER]
-    name_tag = name_of(row)
-    dpg.get_item_callback(handler)(name_tag, (dpg.mvMouseButton_Left, dpg.get_alias_id(name_tag)))
+    click_row_name(TAGS, row.key, kind=DOUBLE_CLICKED, button=dpg.mvMouseButton_Left)
 
 
 def click_name(row: StemRowViewModel, value: bool) -> None:

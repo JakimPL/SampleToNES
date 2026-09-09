@@ -4,6 +4,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 import dearpygui.dearpygui as dpg
 import pytest
 
+from sampletones_application.categories.elements.main import ConverterStemMoveElements
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SourceKind
@@ -47,6 +48,7 @@ from sampletones_application.view_model.main.converter import (
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName
+from tests.suite.gestures import CLICKED, click_row_name
 from tests.suite.shortcuts import shipped_source
 
 ROOT_TAG = "test_root"
@@ -81,13 +83,40 @@ def dpg_context(layout_config: LayoutConfig) -> Iterator[None]:
         dpg.destroy_context()
 
 
-def row(name: str) -> StemRowViewModel:
+def row(
+    name: str,
+    *,
+    level: int = 0,
+    position: int = 0,
+    level_size: int = 1,
+    level_count: int = 1,
+) -> StemRowViewModel:
     path = Path(f"/audio/{name}.wav")
     return StemRowViewModel(
         key=str(path),
         kind=SourceKind.RECORDING,
         path=path,
         held=(),
+        channels=frozenset({ChannelName.PULSE1}),
+        partial_channels=frozenset(),
+        bends=frozenset(),
+        offered_channels=frozenset({ChannelName.PULSE1}),
+        available=True,
+        level=level,
+        position=position,
+        level_size=level_size,
+        level_count=level_count,
+    )
+
+
+def folder(name: str, *, holds: int) -> StemRowViewModel:
+    """A row standing for everything gathered below one folder."""
+    root = Path(f"/audio/{name}")
+    return StemRowViewModel(
+        key=str(root),
+        kind=SourceKind.FOLDER,
+        path=root,
+        held=tuple(row(f"{name}/take_{index}") for index in range(holds)),
         channels=frozenset({ChannelName.PULSE1}),
         partial_channels=frozenset(),
         bends=frozenset(),
@@ -396,6 +425,44 @@ class TestTheKeysTheListClaims:
         assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is True
         assert removed == [kick.path]
 
+    def test_it_removes_the_folder_picked_out_and_everything_it_holds(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A folder is taken out as a folder, so the recordings below it leave with it."""
+        router = KeyRouter()
+        panel, _reported = build(layout_config, key_router=router)
+        removed: List[Path] = []
+        folders: List[Path] = []
+        panel.on_source_removed = removed.append
+        panel.on_folder_removed = folders.append
+        sources = folder("sources", holds=3)
+        panel.update_view(view(sources, selected_key=sources.key))
+
+        assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is True
+        assert folders == [sources.path]
+        assert removed == []
+
+    def test_a_recording_picked_out_leaves_on_its_own(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A recording standing beside a folder is taken out as a recording."""
+        router = KeyRouter()
+        panel, _reported = build(layout_config, key_router=router)
+        removed: List[Path] = []
+        folders: List[Path] = []
+        panel.on_source_removed = removed.append
+        panel.on_folder_removed = folders.append
+        kick = row("kick")
+        panel.update_view(view(folder("sources", holds=2), kick, selected_key=kick.key))
+
+        assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is True
+        assert removed == [kick.path]
+        assert folders == []
+
     def test_a_press_it_has_no_action_for_travels_on(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         """The list yields whatever its category leaves unnamed, so the shortcuts still hear it."""
         router = KeyRouter()
@@ -438,6 +505,207 @@ class TestTheDestination:
 
         assert shows(TAG_MAIN_CONVERTER_GROUP_INPUT)
         assert panel.input_path_text.path == RECORDING
+
+
+class TestTheMenuARightClickPutsUp:
+    """A right-click on a row raises the menu the card draws for it, over the row it landed on."""
+
+    @staticmethod
+    def _registered(monkeypatch: pytest.MonkeyPatch) -> List[Dict[str, Any]]:
+        """The items a menu registers, as a reader would meet them."""
+        registered: List[Dict[str, Any]] = []
+        monkeypatch.setattr(menus_module.dpg, "add_menu_item", lambda **kwargs: registered.append(kwargs) or 0)
+        monkeypatch.setattr(menus_module.dpg, "add_separator", lambda **_kwargs: 0)
+        return registered
+
+    def test_a_right_click_raises_the_row_s_menu(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The list reports the gesture and the card answers it, which is what puts a menu up."""
+        panel, _reported = build(layout_config)
+        kick = row("kick")
+        panel.update_view(view(kick, row("snare")))
+        registered = self._registered(monkeypatch)
+
+        click_row_name(panel.stems_list.tags, kick.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
+
+        assert LANGUAGE_MANAGER["main.converter.label.context_remove_stem"] in [item["label"] for item in registered]
+
+    def test_a_right_click_picks_the_row_it_stands_over(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The menu prints the key that removes a row, so both name the row the menu stands over."""
+        panel, _reported = build(layout_config)
+        selected: List[Tuple[Path, SourceKind]] = []
+        panel.on_row_selected = lambda path, kind: selected.append((path, kind))
+        kick, snare = row("kick"), row("snare")
+        panel.update_view(view(kick, snare, selected_key=kick.key))
+        self._registered(monkeypatch)
+
+        click_row_name(panel.stems_list.tags, snare.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
+
+        assert selected == [(snare.path, SourceKind.RECORDING)]
+
+    def test_a_folder_offers_what_reaches_everything_below_it(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel, _reported = build(layout_config)
+        sources = folder("sources", holds=3)
+        panel.update_view(view(sources))
+        registered = self._registered(monkeypatch)
+
+        click_row_name(panel.stems_list.tags, sources.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
+
+        labels = [item["label"] for item in registered]
+        assert LANGUAGE_MANAGER["main.converter.label.context_open_folder"] in labels
+        assert LANGUAGE_MANAGER["main.converter.label.context_remove_folder"] in labels
+        assert LANGUAGE_MANAGER["main.converter.label.context_remove_stem"] not in labels
+
+    def test_an_open_folder_offers_to_close_again(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel, _reported = build(layout_config)
+        sources = folder("sources", holds=3)
+        panel.update_view(view(sources))
+        panel.stems_list.toggle_folder(sources.key)
+        registered = self._registered(monkeypatch)
+
+        click_row_name(panel.stems_list.tags, sources.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
+
+        assert LANGUAGE_MANAGER["main.converter.label.context_close_folder"] in [item["label"] for item in registered]
+
+    def test_a_folder_removed_from_its_menu_takes_everything_it_holds(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel, _reported = build(layout_config)
+        folders: List[Path] = []
+        panel.on_folder_removed = folders.append
+        sources = folder("sources", holds=3)
+        panel.update_view(view(sources))
+        registered = self._registered(monkeypatch)
+
+        click_row_name(panel.stems_list.tags, sources.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
+        removal = next(
+            item
+            for item in registered
+            if item["label"] == LANGUAGE_MANAGER["main.converter.label.context_remove_folder"]
+        )
+        removal["callback"]()
+
+        assert folders == [sources.path]
+
+
+class TestTheMovesAMixOffers:
+    """A run mixing its recordings orders them, so a row's menu offers the moves that reorder it."""
+
+    @staticmethod
+    def _label(element: ConverterStemMoveElements) -> str:
+        return LANGUAGE_MANAGER[f"main.converter.label.{element.value}"]
+
+    @classmethod
+    def _moves(
+        cls,
+        panel: GUIConverterPanel,
+        entry: StemRowViewModel,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> Dict[str, bool]:
+        """The moves the row's menu offers and whether each stands live, in the order it lists them."""
+        registered: List[Dict[str, Any]] = []
+        monkeypatch.setattr(menus_module.dpg, "add_menu_item", lambda **kwargs: registered.append(kwargs) or 0)
+        monkeypatch.setattr(menus_module.dpg, "add_separator", lambda **_kwargs: 0)
+        panel._show_menu(entry.key)
+        offered = {cls._label(element) for element in ConverterStemMoveElements}
+        return {item["label"]: bool(item.get("enabled", True)) for item in registered if item["label"] in offered}
+
+    def test_a_run_writing_one_reconstruction_apiece_offers_removal_alone(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel, _reported = build(layout_config)
+        kick = row("kick")
+        panel.update_view(view(kick, row("snare")))
+
+        moves = self._moves(panel, kick, monkeypatch)
+
+        assert list(moves) == [self._label(ConverterStemMoveElements.CONTEXT_REMOVE_STEM)]
+
+    def test_a_mix_offers_every_move_a_row_can_make(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        panel, _reported = build(layout_config)
+        kick = row("kick")
+        panel.update_view(view(kick, row("snare"), output=OutputKind.MIXED))
+
+        moves = self._moves(panel, kick, monkeypatch)
+
+        assert list(moves) == [
+            self._label(ConverterStemMoveElements.CONTEXT_MOVE_UP),
+            self._label(ConverterStemMoveElements.CONTEXT_MOVE_DOWN),
+            self._label(ConverterStemMoveElements.CONTEXT_JOIN_ABOVE),
+            self._label(ConverterStemMoveElements.CONTEXT_JOIN_BELOW),
+            self._label(ConverterStemMoveElements.CONTEXT_ISOLATE),
+            self._label(ConverterStemMoveElements.CONTEXT_REMOVE_STEM),
+        ]
+
+    def test_each_move_stands_live_where_the_row_has_room_for_it(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A row alone on the first of two levels can go down and join the level below it."""
+        panel, _reported = build(layout_config)
+        kick = row("kick", level=0, level_count=2)
+        snare = row("snare", level=1, level_count=2)
+        panel.update_view(view(kick, snare, output=OutputKind.MIXED))
+
+        moves = self._moves(panel, kick, monkeypatch)
+
+        assert moves[self._label(ConverterStemMoveElements.CONTEXT_MOVE_UP)] is False
+        assert moves[self._label(ConverterStemMoveElements.CONTEXT_MOVE_DOWN)] is False
+        assert moves[self._label(ConverterStemMoveElements.CONTEXT_JOIN_ABOVE)] is False
+        assert moves[self._label(ConverterStemMoveElements.CONTEXT_JOIN_BELOW)] is True
+        assert moves[self._label(ConverterStemMoveElements.CONTEXT_ISOLATE)] is False
+
+    def test_a_row_standing_beside_another_can_go_up_and_be_set_apart(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A row second on a level of two can move earlier, join the level above, and stand alone."""
+        panel, _reported = build(layout_config)
+        kick = row("kick", level=1, position=0, level_size=2, level_count=2)
+        snare = row("snare", level=1, position=1, level_size=2, level_count=2)
+        panel.update_view(view(row("hat", level=0, level_count=2), kick, snare, output=OutputKind.MIXED))
+
+        moves = self._moves(panel, snare, monkeypatch)
+
+        assert moves[self._label(ConverterStemMoveElements.CONTEXT_MOVE_UP)] is True
+        assert moves[self._label(ConverterStemMoveElements.CONTEXT_MOVE_DOWN)] is False
+        assert moves[self._label(ConverterStemMoveElements.CONTEXT_JOIN_ABOVE)] is True
+        assert moves[self._label(ConverterStemMoveElements.CONTEXT_JOIN_BELOW)] is False
+        assert moves[self._label(ConverterStemMoveElements.CONTEXT_ISOLATE)] is True
 
 
 class TestTheRemovalItemInTheMenu:
