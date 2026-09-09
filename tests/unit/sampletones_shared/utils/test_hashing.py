@@ -231,6 +231,10 @@ class TestIdentityDigest:
     def test_the_separator_a_name_carries_nowhere_joins_the_parts(self) -> None:
         assert identity_digest("folder", "take") == calculate_hash(f"folder{IDENTITY_SEPARATOR}take")
 
+    def test_parts_split_at_a_different_place_digest_apart(self) -> None:
+        """The separator stands between the parts, so where one ends and the next opens is read."""
+        assert identity_digest("fol", "dertake") != identity_digest("folder", "take")
+
     def test_digest_takes_the_length_it_is_asked_for(self) -> None:
         assert len(identity_digest("take", length=8)) == 8
         assert len(identity_digest("take")) == HASH_LENGTH

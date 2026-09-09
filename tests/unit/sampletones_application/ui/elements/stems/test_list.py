@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Final, FrozenSet, Iterator, List, Optional, Tuple
+from typing import Any, Final, FrozenSet, Iterator, List, Optional, Tuple
 from unittest.mock import patch
 
 import dearpygui.dearpygui as dpg
@@ -21,6 +21,7 @@ from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_CHECKBOX,
     SUF_HEADING,
+    SUF_LEAD,
     SUF_STRIP,
     SUF_TEXT,
     TAG_GLOBAL_THEME_CHANNEL_MUTED,
@@ -44,6 +45,7 @@ from sampletones_application.view_model.shared.stems import (
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.callback import Callback
 from tests.suite.base import BaseTestSuite
+from tests.suite.frames import Frames
 from tests.suite.gestures import CLICKED, DOUBLE_CLICKED, HOVERED, click_row_name, handler_of
 
 ROOT_TAG = "test_root"
@@ -52,6 +54,12 @@ TAGS: Final[StemsTags] = StemsTags(prefix=PREFIX)
 CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.TRIANGLE)
 DRAG_PAYLOAD_SLOT: Final[int] = 3
 LONG_LIST: Final[int] = 200
+ROW_PITCH: Final[float] = 20.0
+HEADING_HEIGHT: Final[float] = 24.0
+DEEP_SCROLL: Final[float] = 2000.0
+EARLY_ROW: Final[int] = 0
+REACHED_ROW: Final[int] = 100
+SETTLING_FRAMES: Final[int] = 2
 
 
 @pytest.fixture
@@ -153,6 +161,20 @@ def view(
         live=live,
         collapse_levels=collapse_levels,
     )
+
+
+def placed(rows: int) -> Any:
+    """Stands in for a frame having placed this many rows of one height under the heading.
+
+    A region reads what a row takes from the block its rows were drawn into, which no suite
+    renders, so the block answers as a frame would have left it.
+    """
+    lead_tag = compose_tag(TAGS.well, SUF_LEAD)
+
+    def sized(item: str, *_args: Any, **_kwargs: Any) -> List[float]:
+        return [0.0, HEADING_HEIGHT if item == lead_tag else rows * ROW_PITCH + HEADING_HEIGHT]
+
+    return patch.object(dpg, "get_item_rect_size", side_effect=sized)
 
 
 def row_tag(entry: StemRowViewModel, suffix: str) -> str:
@@ -1001,3 +1023,72 @@ class TestTheWell(BaseTestSuite):
         stems_list.update_view(view(*rows))
 
         assert all(dpg.does_item_exist(row_tag(entry, SUF_TEXT)) for entry in rows)
+
+
+class TestTheListSettlingItsWell(BaseTestSuite):
+    """A region reads its rows back a frame after they are placed, and refills itself from there.
+
+    The reading a row is measured by, and the rows a scroll has moved on to, both belong to the
+    frame after a draw, so the list asks for that frame and keeps asking for as long as a region
+    still holds rows it has yet to build.
+    """
+
+    @staticmethod
+    def _built(rows: Tuple[StemRowViewModel, ...]) -> int:
+        """How many of the list's rows stand as widgets, which is the block a frame would place."""
+        return sum(1 for entry in rows if dpg.does_item_exist(row_tag(entry, SUF_TEXT)))
+
+    @classmethod
+    def _drawn(cls, rows: Tuple[StemRowViewModel, ...], index: int) -> bool:
+        return dpg.does_item_exist(row_tag(rows[index], SUF_TEXT))
+
+    def test_a_well_holding_rows_back_asks_for_another_frame(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: Frames,
+    ) -> None:
+        """The rows outside the window are built as the reader reaches them, so the pass goes on."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        with placed(self._built(rows)):
+            frames.render()
+
+        assert frames.pending == 1
+
+    def test_a_well_holding_everything_it_drew_comes_to_rest(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: Frames,
+    ) -> None:
+        """A list short enough to stand whole has nothing left to build, so it stops watching."""
+        stems_list = build(layout_config)
+        rows = (row("kick"), row("snare"))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        with placed(self._built(rows)):
+            frames.render(SETTLING_FRAMES)
+
+        assert frames.pending == 0
+
+    def test_a_scroll_brings_the_rows_it_reaches_in(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: Frames,
+    ) -> None:
+        """The window follows the reader, so rows they scrolled to are built and the ones behind go."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+        with placed(self._built(rows)):
+            frames.render()
+
+        with placed(self._built(rows)), patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL):
+            frames.render()
+
+        assert self._drawn(rows, REACHED_ROW)
+        assert not self._drawn(rows, EARLY_ROW)

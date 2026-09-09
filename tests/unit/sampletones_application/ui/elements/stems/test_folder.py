@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Final, FrozenSet, Iterator, List, Tuple
+from typing import Any, Callable, Final, FrozenSet, Iterator, List, Tuple
 from unittest.mock import patch
 
 import dearpygui.dearpygui as dpg
@@ -20,6 +20,7 @@ from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_GROUP,
+    SUF_LEAD,
     SUF_TEXT,
     SUF_TWISTY,
     TAG_GLOBAL_THEME_STEMS_GRID,
@@ -43,6 +44,7 @@ from sampletones_application.view_model.shared.stems import (
 )
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
+from tests.suite.frames import Frames
 from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
 
 ROOT_TAG = "test_root"
@@ -53,6 +55,11 @@ DEEP_FOLDER: Final[int] = 200
 STANDING_OFFSET: Final[float] = 700.0
 GLYPH_SIZE: Final[List[float]] = [9.0, 20.0]
 NO_OFFSET: Final[float] = 0.0
+ROW_PITCH: Final[float] = 20.0
+HEADING_HEIGHT: Final[float] = 24.0
+REACHED_HELD: Final[int] = 40
+FRAMES_TO_FOLLOW: Final[int] = 2
+FIRST_HELD: Final[int] = 0
 
 
 @pytest.fixture
@@ -151,6 +158,20 @@ def named(name: str, *, holds: int) -> str:
 def measured(size: List[float]) -> object:
     """What DearPyGui answers a text measurement with, which needs a drawn frame to be a size."""
     return patch.object(dpg, "get_text_size", return_value=size)
+
+
+def placed(rows: int) -> Any:
+    """Stands in for a frame having placed this many rows of one height under a region's heading.
+
+    A region reads what a row takes from the block its rows were drawn into, which no suite
+    renders, so every region answers as the frame would have left it.
+    """
+
+    def sized(item: str, *_args: Any, **_kwargs: Any) -> List[float]:
+        block = rows * ROW_PITCH + HEADING_HEIGHT
+        return [0.0, HEADING_HEIGHT if str(item).endswith(f".{SUF_LEAD}") else block]
+
+    return patch.object(dpg, "get_item_rect_size", side_effect=sized)
 
 
 def press(tag: str) -> None:
@@ -651,3 +672,56 @@ class TestWhatMakesTheBandVisible(BaseTestSuite):
         stems_list.update_view(view(folder("sources", holds=1), bass))
 
         assert dpg.get_item_alias(dpg.get_item_theme(table_of(bass))) == TAG_GLOBAL_THEME_STEMS_GRID
+
+
+class TestAFolderFollowingItsReader(BaseTestSuite):
+    """An open folder reads its rows back the frame after they are placed, and refills itself.
+
+    A folder answers for its own length inside its region, so a scroll into one is answered there:
+    the list settles the folder's region and redraws the rows that position now reaches, leaving
+    the list around it alone.
+    """
+
+    @staticmethod
+    def _opened(stems_list: GUIStemsList) -> StemRowViewModel:
+        sources = folder("sources", holds=DEEP_FOLDER)
+        stems_list.update_view(view(sources))
+        press(twisty_of(sources))
+        return sources
+
+    @staticmethod
+    def _built(sources: StemRowViewModel) -> int:
+        """How many of the folder's recordings stand as widgets, which is the block a frame places."""
+        return sum(1 for held in sources.held if dpg.does_item_exist(name_of(held)))
+
+    def test_a_scroll_into_one_brings_the_recordings_it_reaches_in(
+        self,
+        stems_list: GUIStemsList,
+        frames: Frames,
+    ) -> None:
+        """The folder's own region follows the reader, so the list around it keeps its widgets."""
+        sources = self._opened(stems_list)
+        with placed(self._built(sources)):
+            frames.render()
+
+        with placed(self._built(sources)), patch.object(dpg, "get_y_scroll", return_value=STANDING_OFFSET):
+            frames.render(FRAMES_TO_FOLLOW)
+
+        assert dpg.does_item_exist(name_of(sources.held[REACHED_HELD]))
+        assert not dpg.does_item_exist(name_of(sources.held[FIRST_HELD]))
+
+    def test_the_folder_s_own_row_stays_where_it_stood(
+        self,
+        stems_list: GUIStemsList,
+        frames: Frames,
+    ) -> None:
+        """A scroll inside a folder is answered inside it, so the rows around it are left be."""
+        sources = self._opened(stems_list)
+        with placed(self._built(sources)):
+            frames.render()
+        standing = dpg.get_alias_id(name_of(sources))
+
+        with placed(self._built(sources)), patch.object(dpg, "get_y_scroll", return_value=STANDING_OFFSET):
+            frames.render(FRAMES_TO_FOLLOW)
+
+        assert dpg.get_alias_id(name_of(sources)) == standing

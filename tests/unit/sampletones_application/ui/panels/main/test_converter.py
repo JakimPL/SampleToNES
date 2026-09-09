@@ -621,6 +621,21 @@ class TestTheMovesAMixOffers:
         return LANGUAGE_MANAGER[f"main.converter.label.{element.value}"]
 
     @classmethod
+    def _offered(
+        cls,
+        panel: GUIConverterPanel,
+        entry: StemRowViewModel,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> Dict[str, Dict[str, Any]]:
+        """The move items the row's menu registers, each under the label it prints."""
+        registered: List[Dict[str, Any]] = []
+        monkeypatch.setattr(menus_module.dpg, "add_menu_item", lambda **kwargs: registered.append(kwargs) or 0)
+        monkeypatch.setattr(menus_module.dpg, "add_separator", lambda **_kwargs: 0)
+        panel._show_menu(entry.key)
+        offered = {cls._label(element) for element in ConverterStemMoveElements}
+        return {item["label"]: item for item in registered if item["label"] in offered}
+
+    @classmethod
     def _moves(
         cls,
         panel: GUIConverterPanel,
@@ -628,12 +643,8 @@ class TestTheMovesAMixOffers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> Dict[str, bool]:
         """The moves the row's menu offers and whether each stands live, in the order it lists them."""
-        registered: List[Dict[str, Any]] = []
-        monkeypatch.setattr(menus_module.dpg, "add_menu_item", lambda **kwargs: registered.append(kwargs) or 0)
-        monkeypatch.setattr(menus_module.dpg, "add_separator", lambda **_kwargs: 0)
-        panel._show_menu(entry.key)
-        offered = {cls._label(element) for element in ConverterStemMoveElements}
-        return {item["label"]: bool(item.get("enabled", True)) for item in registered if item["label"] in offered}
+        offered = cls._offered(panel, entry, monkeypatch)
+        return {label: bool(item.get("enabled", True)) for label, item in offered.items()}
 
     def test_a_run_writing_one_reconstruction_apiece_offers_removal_alone(
         self,
@@ -710,6 +721,42 @@ class TestTheMovesAMixOffers:
         assert moves[self._label(ConverterStemMoveElements.CONTEXT_JOIN_BELOW)] is False
         assert moves[self._label(ConverterStemMoveElements.CONTEXT_ISOLATE)] is True
 
+    def test_each_move_reports_the_direction_it_prints(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """An offset is added to the row's place, so moving earlier reports -1 and later reports 1.
+
+        The item is fired rather than read, since a move standing under the right label still
+        reorders the wrong way while the offset behind it is the mirror of what the label says.
+        """
+        panel, _reported = build(layout_config)
+        moved: List[Tuple[Path, int]] = []
+        joined: List[Tuple[Path, int]] = []
+        isolated: List[Path] = []
+        panel.on_source_moved = lambda path, offset: moved.append((path, offset))
+        panel.on_source_level_joined = lambda path, offset: joined.append((path, offset))
+        panel.on_source_isolated = isolated.append
+        kick = row("kick", level=1, position=0, level_size=2, level_count=3)
+        snare = row("snare", level=1, position=1, level_size=2, level_count=3)
+        panel.update_view(view(row("hat", level=0, level_count=3), kick, snare, output=OutputKind.MIXED))
+
+        offered = self._offered(panel, snare, monkeypatch)
+        for element in (
+            ConverterStemMoveElements.CONTEXT_MOVE_UP,
+            ConverterStemMoveElements.CONTEXT_MOVE_DOWN,
+            ConverterStemMoveElements.CONTEXT_JOIN_ABOVE,
+            ConverterStemMoveElements.CONTEXT_JOIN_BELOW,
+            ConverterStemMoveElements.CONTEXT_ISOLATE,
+        ):
+            offered[self._label(element)]["callback"]()
+
+        assert moved == [(snare.path, -1), (snare.path, 1)]
+        assert joined == [(snare.path, -1), (snare.path, 1)]
+        assert isolated == [snare.path]
+
 
 class TestTheRemovalItemInTheMenu:
     """Taking a row out is one action, so the item and the key print and reach the same thing."""
@@ -736,6 +783,26 @@ class TestTheRemovalItemInTheMenu:
         label = LANGUAGE_MANAGER["main.converter.label.context_remove_stem"]
         items = self._items(panel, entry, monkeypatch)
         return next(item for item in items if item["label"] == label)
+
+    def test_it_takes_the_recording_it_stands_over_and_nothing_else(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The item is fired, since a removal printing the right key still reaches nothing."""
+        panel, _reported = build(layout_config)
+        removed: List[Path] = []
+        folders: List[Path] = []
+        panel.on_source_removed = removed.append
+        panel.on_folder_removed = folders.append
+        kick = row("kick")
+        panel.update_view(view(kick, row("snare")))
+
+        self._removal(panel, kick, monkeypatch)["callback"]()
+
+        assert removed == [kick.path]
+        assert folders == []
 
     def test_it_prints_the_key_that_does_the_same_thing(
         self,

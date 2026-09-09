@@ -5,8 +5,15 @@ import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.paths import PALETTES_DIRECTORY, THEME_DIRECTORY
+from sampletones_application.tags.compose import compose_tag
+from sampletones_application.tags.general import SUF_LEAD
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
-from sampletones_application.ui.elements.layout.region import NO_GUTTER, LeadBuilder, WindowedRegion
+from sampletones_application.ui.elements.layout.region import (
+    NO_GUTTER,
+    NO_SCROLL,
+    LeadBuilder,
+    WindowedRegion,
+)
 from sampletones_application.ui.elements.layout.well import well
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
@@ -25,6 +32,11 @@ PADDING = 8
 GUTTER = 13
 MARGIN = 6
 NO_MARGIN = 0
+LEAD_TAG = compose_tag(REGION_TAG, SUF_LEAD)
+HEADING_HEIGHT = 50.0
+NO_HEADING = 0.0
+FITTING_ROWS = 4
+MEASURING_ROWS = 8
 
 
 @pytest.fixture
@@ -74,9 +86,17 @@ def draw(region: WindowedRegion, total: int, *, lead: Optional[LeadBuilder] = No
     return asked
 
 
-def block_of(height: float) -> Any:
-    """Stands in for the rows a frame placed, which is what a reading of a row is taken from."""
-    return patch.object(dpg, "get_item_rect_size", return_value=[0, height])
+def block_of(height: float, *, lead: float = NO_HEADING) -> Any:
+    """Stands in for the rows a frame placed, and for the heading standing above them.
+
+    A block is measured whole, so the heading's own room is part of what a region reads and comes
+    out of it again before a row is counted from what is left.
+    """
+
+    def measured(item: str, *_args: Any, **_kwargs: Any) -> List[float]:
+        return [0.0, lead if item == LEAD_TAG else height]
+
+    return patch.object(dpg, "get_item_rect_size", side_effect=measured)
 
 
 def reserves(region: WindowedRegion) -> Tuple[int, int]:
@@ -301,6 +321,44 @@ class TestALead(BaseTestSuite):
 
         assert len(groups) == 1
 
+    def test_the_room_the_rows_ask_for_counts_the_heading(self, region: WindowedRegion) -> None:
+        """Rows that stand inside the region alone outgrow it once a heading stands above them."""
+        draw(region, FITTING_ROWS, lead=heading)
+
+        with block_of(NO_HEADING, lead=HEADING_HEIGHT):
+            region.settle()
+
+        assert not region.natural
+
+    def test_the_same_rows_without_one_stand_inside_it(self, region: WindowedRegion) -> None:
+        """What puts the rows past the ceiling is the heading, so without one they fit."""
+        draw(region, FITTING_ROWS, lead=heading)
+
+        with block_of(NO_HEADING, lead=NO_HEADING):
+            region.settle()
+
+        assert region.natural
+
+    def test_the_reading_of_a_row_leaves_the_heading_out(self, dpg_context: None) -> None:
+        """A block is measured with the heading in it, so a row is counted from what is left."""
+        geometry = RowGeometry.unmeasured(overscan=OVERSCAN)
+        built = WindowedRegion(
+            tag=REGION_TAG,
+            geometry=geometry,
+            ceiling=CEILING,
+            padding=0,
+            margin=0,
+            gutter=NO_GUTTER,
+        )
+        with dpg.window(tag=ROOT_TAG):
+            built.create(ROOT_TAG)
+
+        drawn = draw(built, MEASURING_ROWS, lead=heading)
+        with block_of(drawn[0][1] * PITCH + HEADING_HEIGHT, lead=HEADING_HEIGHT):
+            built.settle()
+
+        assert geometry.pitch == PITCH
+
 
 class TestAWholeDraw(BaseTestSuite):
     """Content that is more than a run of rows is built entire, and the region holds it to its
@@ -323,6 +381,30 @@ class TestAWholeDraw(BaseTestSuite):
         first = dpg.get_item_children(region.body, 1)[0]
 
         assert dpg.get_item_type(first) == "mvAppItemType::mvGroup"
+
+    def test_content_past_the_ceiling_is_held_at_it(self, region: WindowedRegion) -> None:
+        """What a region holds is measured rather than counted, since it is more than a run of rows."""
+        region.draw_whole(lambda: dpg.add_text("banded", parent=region.body), lead=None, rows=0)
+
+        with block_of(CEILING + PITCH):
+            region.settle()
+
+        assert not region.natural
+        assert dpg.get_item_configuration(REGION_TAG)["height"] == CEILING
+        assert dpg.get_item_configuration(REGION_TAG)["auto_resize_y"] is False
+
+    def test_content_inside_the_ceiling_sizes_the_region_to_itself(self, region: WindowedRegion) -> None:
+        """A region held at its ceiling follows what it holds back down once that fits again."""
+        region.draw_whole(lambda: dpg.add_text("banded", parent=region.body), lead=None, rows=0)
+        with block_of(CEILING + PITCH):
+            region.settle()
+
+        with block_of(CEILING - PITCH):
+            region.settle()
+
+        assert region.natural
+        assert dpg.get_item_configuration(REGION_TAG)["auto_resize_y"] is True
+        assert dpg.get_item_configuration(REGION_TAG)["no_scrollbar"] is True
 
 
 class TestWhereTheReaderStands(BaseTestSuite):
@@ -384,6 +466,17 @@ class TestARegionOpeningInPlaceOfAnother(BaseTestSuite):
             region.settle()
 
         set_y_scroll.assert_called_once_with(REGION_TAG, STANDING_OFFSET)
+
+    def test_a_region_opening_where_it_already_stands_writes_nothing(self, region: WindowedRegion) -> None:
+        """A folder opens at the top by default, which is where the region stands, so no scroll is written."""
+        region.opens_at(NO_SCROLL)
+        draw(region, 40)
+
+        with patch.object(dpg, "set_y_scroll") as set_y_scroll:
+            settled = region.settle()
+
+        set_y_scroll.assert_not_called()
+        assert settled is False
 
     def test_it_is_handed_back_once(self, region: WindowedRegion) -> None:
         """A restored position is where the reader stands, so the next frame writes nothing."""
