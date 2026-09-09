@@ -151,11 +151,12 @@ def view(
     picked_keys: FrozenSet[str] = frozenset(),
     collapse_levels: bool = False,
     selected_key: Optional[str] = None,
+    channels_in_play: Tuple[ChannelName, ...] = CHANNELS,
 ) -> StemsListViewModel:
     return StemsListViewModel(
         selected_key=selected_key,
         rows=rows,
-        channels_in_play=CHANNELS,
+        channels_in_play=channels_in_play,
         muted_channels=muted_channels,
         picked_keys=picked_keys,
         picking_room=None,
@@ -442,6 +443,22 @@ class TestLevels(BaseTestSuite):
         assert dpg.get_value(TAGS.level(0, SUF_TEXT)) == caption.format(1).upper()
         assert dpg.get_value(TAGS.level(1, SUF_TEXT)) == caption.format(2).upper()
 
+    def test_a_row_moving_to_another_band_is_built_into_it(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A band is a table of its own, so a row picking on another level stands as a widget of
+        that table rather than as the one it was drawn into."""
+        stems_list = build(layout_config)
+        bass = row("bass", level=0, level_count=2)
+        stems_list.update_view(view(bass, row("drums", level=1, level_count=2)))
+        standing = dpg.get_alias_id(row_tag(bass, SUF_TEXT))
+
+        stems_list.update_view(view(row("bass", level=1, level_count=2), row("drums", level=1, level_count=2)))
+
+        assert dpg.get_alias_id(row_tag(bass, SUF_TEXT)) != standing
+
     def test_a_draggable_list_opens_a_strip_above_each_level_and_below_the_last(
         self, dpg_context: None, layout_config
     ) -> None:
@@ -684,6 +701,21 @@ class TestOfferedChannels(BaseTestSuite):
         stems_list.update_view(view(bass))
 
         assert dpg.get_item_theme(row_tag(bass, SUF_TEXT)) == ThemeRegistry.get(TAG_GLOBAL_THEME_STEMS_ROW_INERT).tag
+
+    def test_a_channel_coming_into_play_draws_the_rows_again(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The columns every table declares are the channels in play, so one arriving is met by
+        the tables themselves rather than by the boxes already drawn."""
+        stems_list = build(layout_config)
+        bass = row("bass")
+        stems_list.update_view(view(bass, channels_in_play=(ChannelName.PULSE1,)))
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.does_item_exist(channel_tag(bass, ChannelName.TRIANGLE))
 
     def test_a_row_gaining_a_box_is_drawn_again(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         stems_list = build(layout_config)

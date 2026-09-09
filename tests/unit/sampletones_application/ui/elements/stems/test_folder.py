@@ -59,7 +59,9 @@ ROW_PITCH: Final[float] = 20.0
 HEADING_HEIGHT: Final[float] = 24.0
 REACHED_HELD: Final[int] = 40
 FRAMES_TO_FOLLOW: Final[int] = 2
+FRAMES_TO_SETTLE: Final[int] = 3
 FIRST_HELD: Final[int] = 0
+HOLDS_ONE_PAST_THE_CEILING: Final[int] = 13
 
 
 @pytest.fixture
@@ -451,6 +453,54 @@ class TestARecordingThatLeavesAFolder(BaseTestSuite):
         stems_list.update_view(view(folder_without(sources, sources.held[0])))
 
         assert dpg.get_item_label(name_of(sources)) == named("sources", holds=2)
+
+    @staticmethod
+    def _settled(stems_list: GUIStemsList, frames: Frames, *, holds: int) -> StemRowViewModel:
+        """An open folder standing at the height its recordings ask for, as a run of frames leaves it.
+
+        A region reads what it holds back the frame after the rows are placed and sizes itself to
+        that, so the readings settle over the first few frames and the folder stands still from
+        there on.
+        """
+        sources = folder("sources", holds=holds)
+        stems_list.update_view(view(sources))
+        press(twisty_of(sources))
+        for _ in range(FRAMES_TO_SETTLE):
+            with placed(holds):
+                frames.render()
+
+        assert frames.pending == 0
+        return sources
+
+    def test_one_of_them_leaving_asks_for_the_frame_that_reads_the_folder_back(
+        self,
+        stems_list: GUIStemsList,
+        frames: Frames,
+    ) -> None:
+        """The region is filled again where the recording stood, so what room its rows now ask for
+        is read back once the frame that placed them has been rendered."""
+        sources = self._settled(stems_list, frames, holds=HOLDS_ONE_PAST_THE_CEILING)
+
+        stems_list.update_view(view(folder_without(sources, sources.held[FIRST_HELD])))
+
+        assert frames.pending == 1
+
+    def test_the_folder_comes_down_to_the_room_its_recordings_now_ask_for(
+        self,
+        stems_list: GUIStemsList,
+        frames: Frames,
+    ) -> None:
+        """A folder whose recordings outgrow its region stands at its ceiling and scrolls them;
+        with one fewer they fit, and the frame that reads them back is what stands it at their
+        own height again."""
+        sources = self._settled(stems_list, frames, holds=HOLDS_ONE_PAST_THE_CEILING)
+        assert dpg.get_item_configuration(region_of(sources))["auto_resize_y"] is False
+
+        stems_list.update_view(view(folder_without(sources, sources.held[FIRST_HELD])))
+        with placed(HOLDS_ONE_PAST_THE_CEILING - 1):
+            frames.render()
+
+        assert dpg.get_item_configuration(region_of(sources))["auto_resize_y"] is True
 
     def test_a_row_arriving_draws_the_list_again(self, stems_list: GUIStemsList) -> None:
         """A row the list did not hold is met by the tables, so those are what is built again."""

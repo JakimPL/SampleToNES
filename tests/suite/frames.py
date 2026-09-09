@@ -1,4 +1,4 @@
-from typing import Final, List
+from typing import Final, List, Tuple
 
 from sampletones_shared.types.callback import VoidCallback
 
@@ -16,11 +16,15 @@ class Frames:
     """
 
     def __init__(self) -> None:
-        self._held: List[VoidCallback] = []
+        self._held: List[Tuple[int, VoidCallback]] = []
 
     def hold(self, callback: VoidCallback, frame_count: int = ONE_FRAME) -> None:
-        """Take work a widget hands over, standing in for ``FrameCallbackManager``."""
-        self._held.append(callback)
+        """Take work a widget hands over, standing in for ``FrameCallbackManager``.
+
+        ``frame_count`` is how many frames the work waits through, which is what the manager
+        counts from the frame the widget handed it over on.
+        """
+        self._held.append((max(ONE_FRAME, frame_count), callback))
 
     @property
     def pending(self) -> int:
@@ -30,6 +34,8 @@ class Frames:
     def render(self, frames: int = ONE_FRAME) -> None:
         """Carry out the work each of this many frames would, in the order it was handed over."""
         for _ in range(frames):
-            held, self._held = self._held, []
-            for callback in held:
+            counted = [(waiting - 1, callback) for waiting, callback in self._held]
+            due = [callback for waiting, callback in counted if not waiting]
+            self._held = [(waiting, callback) for waiting, callback in counted if waiting]
+            for callback in due:
                 callback()
