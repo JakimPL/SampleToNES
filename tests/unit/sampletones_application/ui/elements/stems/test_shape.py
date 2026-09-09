@@ -141,7 +141,7 @@ class TestWhetherAnythingIsDrawn(BaseTestSuite):
         reshape: Reshape
 
     test_cases = (
-        TestCase(label="nothing_draws_nothing", reshape=Reshape.nothing(), expected=False),
+        TestCase(label="naming_no_folder_draws_nothing", reshape=Reshape.within(()), expected=False),
         TestCase(label="the_whole_list_draws", reshape=Reshape.everything(), expected=True),
         TestCase(label="one_folder_draws", reshape=Reshape.within(("drums",)), expected=True),
     )
@@ -153,10 +153,6 @@ class TestWhetherAnythingIsDrawn(BaseTestSuite):
     )
     def test_whether_widgets_were_built(self, test_case: TestCase) -> None:
         assert test_case.reshape.redraws is test_case.expected
-
-    def test_a_reshape_naming_no_folder_is_the_one_that_asks_for_nothing(self) -> None:
-        """Both stand for a reading the standing widgets already show, so they are one reshape."""
-        assert Reshape.within(()) == Reshape.nothing()
 
 
 class TestWhereARowStands(BaseTestSuite):

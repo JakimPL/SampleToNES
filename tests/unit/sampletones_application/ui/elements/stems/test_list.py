@@ -352,6 +352,22 @@ class TestRows(BaseTestSuite):
         assert stems_list.row(bass.key) == bass
         assert stems_list.row("nothing") is None
 
+    def test_the_reading_the_list_already_stands_at_keeps_the_widgets_it_drew(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The same reading twice asks for a repaint, so the reader keeps the row they are over."""
+        stems_list = build(layout_config)
+        bass = row("bass")
+        reading = view(bass)
+        stems_list.update_view(reading)
+        standing = dpg.get_alias_id(row_tag(bass, SUF_TEXT))
+
+        stems_list.update_view(reading)
+
+        assert dpg.get_alias_id(row_tag(bass, SUF_TEXT)) == standing
+
 
 class TestRowsNamedAlike(BaseTestSuite):
     """Two recordings a tag part spells the same way stand on widgets of their own.

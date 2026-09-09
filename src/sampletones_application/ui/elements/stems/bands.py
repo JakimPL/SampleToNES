@@ -70,13 +70,10 @@ class LevelBands:
     def reshape(self, view_model: StemsListViewModel) -> Reshape:
         """What the view asks of the widgets standing: the whole list, some folders, or nothing.
 
-        The shape is taken up either way, so a list that has answered a reshape once answers the
-        same view with a repaint from then on.
+        The shape is taken up as it is read, so a list that has answered a reshape once answers
+        the same view with a repaint from then on.
         """
         shape = ListShape.of(view_model, self._open_folders)
-        if shape == self._shape:
-            return Reshape.nothing()
-
         asked = shape.against(self._shape)
         self._shape = shape
         return asked

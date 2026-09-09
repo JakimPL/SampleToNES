@@ -1,8 +1,9 @@
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.ui.elements.stems.expansion import OpenFolders
+from sampletones_application.ui.elements.stems.host import StemsListHost
 from sampletones_application.ui.elements.stems.offer import StemsListOffer
 from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
@@ -25,14 +26,12 @@ class StemsMessages:
         *,
         offer: StemsListOffer,
         open_folders: OpenFolders,
-        activatable: Callable[[], bool],
-        playable: Callable[[], bool],
+        host: StemsListHost,
     ) -> None:
         self._language_manager = language_manager
         self._offer = offer
         self._open_folders = open_folders
-        self._activatable = activatable
-        self._playable = playable
+        self._host = host
         self._view = StemsListViewModel.empty()
         self._msg_drag = language_manager["global.stems.message.drag_tooltip"]
         self._msg_inert = language_manager["global.stems.message.inert_tooltip"]
@@ -85,10 +84,10 @@ class StemsMessages:
         lines: Tuple[str, ...] = ()
         if self._offer.dragging:
             lines += (self._language_manager["global.stems.message.status_row_drag"].format(name=row.name),)
-        elif self._activatable():
+        elif self._host.activatable:
             lines += (self._language_manager["global.stems.message.status_row_reveal"].format(name=row.name),)
 
-        if self._playable():
+        if self._host.playable:
             lines += (self._language_manager["global.stems.message.status_row_play"].format(name=row.name),)
 
         return lines or (row.name,)

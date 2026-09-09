@@ -20,18 +20,17 @@ class Reshape:
     folders: Tuple[str, ...]
 
     @classmethod
-    def nothing(cls) -> Self:
-        """What a reading the list already stands at asks for, which a repaint answers on its own."""
-        return cls(whole=False, folders=())
-
-    @classmethod
     def everything(cls) -> Self:
         """What a reading asks for once it moves more than a repaint settles."""
         return cls(whole=True, folders=())
 
     @classmethod
     def within(cls, folders: Tuple[str, ...]) -> Self:
-        """What a reading that moved the recordings of these folders alone asks for."""
+        """What a reading that moved the recordings of these folders alone asks for.
+
+        Naming no folder is what a reading the list already stands at asks for, which a repaint
+        answers on its own.
+        """
         return cls(whole=False, folders=folders)
 
     @property

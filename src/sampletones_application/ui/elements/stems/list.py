@@ -80,16 +80,13 @@ class GUIStemsList(CallbackMixin):
             language_manager,
             offer=offer,
             open_folders=self._open_folders,
-            activatable=lambda: self.activatable,
-            playable=lambda: self.playable,
+            host=self,
         )
         self._gestures = StemsGestures(
             self._tags,
             messages=self._messages,
             status_bar=status_bar,
-            activatable=lambda: self.activatable,
-            playable=lambda: self.playable,
-            has_menu=lambda: self.has_menu,
+            host=self,
         )
         self._rows = StemRowRenderer(
             self._tags,

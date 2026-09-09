@@ -68,6 +68,15 @@ class StemsColumns:
         """
         return self.reserve - 2 * self.layout.cell_padding - COLUMN_BORDER
 
+    @property
+    def reserved(self) -> bool:
+        """Whether the strip stands at the right of a row, which is the room a region spends.
+
+        A grid holds the strip clear where there is room left to declare a column at, so a list
+        of folders ends every table on it and every other grid ends on the column before it.
+        """
+        return self.reserve_width > 0
+
     def declare(self) -> None:
         """Add this grid's columns to the table currently being built."""
         if self.master:
@@ -80,7 +89,7 @@ class StemsColumns:
         if self.removable:
             dpg.add_table_column(width_fixed=True, init_width_or_weight=self.layout.remove_button_width)
 
-        if self.reserve_width > 0:
+        if self.reserved:
             dpg.add_table_column(width_fixed=True, init_width_or_weight=self.reserve_width)
 
     def slots(self, channel_name: ChannelName) -> int:

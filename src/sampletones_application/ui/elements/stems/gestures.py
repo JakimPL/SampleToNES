@@ -10,6 +10,7 @@ from sampletones_application.tags.general import (
     SUF_TWISTY,
 )
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.elements.stems.host import StemsListHost
 from sampletones_application.ui.elements.stems.messages import StemsMessages
 from sampletones_application.ui.elements.stems.tags import StemsTags
 from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
@@ -46,16 +47,12 @@ class StemsGestures:
         *,
         messages: StemsMessages,
         status_bar: GUIStatusBar,
-        activatable: Callable[[], bool],
-        playable: Callable[[], bool],
-        has_menu: Callable[[], bool],
+        host: StemsListHost,
     ) -> None:
         self._tags = tags
         self._messages = messages
         self._status_bar = status_bar
-        self._activatable = activatable
-        self._playable = playable
-        self._has_menu = has_menu
+        self._host = host
         self._view = StemsListViewModel.empty()
 
         self.on_channels_settled: Optional[ChannelsCallback] = None
@@ -182,7 +179,7 @@ class StemsGestures:
         The menu prints the key that takes a row out, so the row the menu stands over is the row
         that key reaches: picking it here is what holds the item and the key to one action.
         """
-        if not self._has_menu():
+        if not self._host.has_menu:
             return
 
         key = self._named_by(app_data, dpg.mvMouseButton_Right)
@@ -198,7 +195,7 @@ class StemsGestures:
         reading it settles arrives in the same frame and the row follows that instead.
         """
         dpg_set_value(self._tags.row(key, SUF_TEXT), key == self._view.selected_key)
-        if self._activatable():
+        if self._host.activatable:
             self._report(self.on_row_activated, key)
 
     def _on_name_double_clicked(self, _sender: Sender, app_data: Tuple[int, int]) -> None:
@@ -212,7 +209,7 @@ class StemsGestures:
             self._report(self.on_folder_toggled, key)
             return
 
-        if self._playable():
+        if self._host.playable:
             self._report(self.on_row_opened, key)
 
     @staticmethod

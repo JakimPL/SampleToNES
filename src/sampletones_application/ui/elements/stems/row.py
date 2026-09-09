@@ -103,7 +103,7 @@ class StemRowRenderer:
             if self._offer.removal:
                 self._create_remove(row)
 
-            if columns.reserve_width > 0:
+            if columns.reserved:
                 dpg.add_spacer()
 
     def repaint(
