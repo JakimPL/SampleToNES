@@ -215,6 +215,50 @@ class TestAReadingTheHeightHasYetToFollow(BaseTestSuite):
         assert not unmeasured.settling
 
 
+class TestAHeightTheFrameHasYetToShow(BaseTestSuite):
+    """A region that takes a new height stands at its old one until the frame after.
+
+    Whatever the region is drawn inside measures it as it stands, so a region reporting itself at
+    rest the moment it resizes leaves the one around it holding a scrollbar over content that fits.
+    """
+
+    @pytest.fixture
+    def sizing(self, dpg_context: None) -> WindowedRegion:
+        built = WindowedRegion(
+            tag=REGION_TAG,
+            geometry=RowGeometry(overscan=OVERSCAN, pitch=PITCH),
+            ceiling=CEILING,
+            padding=0,
+            margin=0,
+            gutter=NO_GUTTER,
+        )
+        with dpg.window(tag=ROOT_TAG):
+            built.create(ROOT_TAG)
+
+        return built
+
+    def test_a_region_that_shrank_below_its_ceiling_asks_for_another_pass(
+        self,
+        sizing: WindowedRegion,
+    ) -> None:
+        draw(sizing, 500)
+        sizing.settle()
+
+        draw(sizing, 2)
+        sizing.settle()
+
+        assert sizing.natural
+        assert sizing.settling
+
+    def test_a_region_standing_where_it_stood_comes_to_rest(self, sizing: WindowedRegion) -> None:
+        draw(sizing, 2)
+        sizing.settle()
+
+        sizing.settle()
+
+        assert not sizing.settling
+
+
 class TestRedrawing(BaseTestSuite):
     """A region drawn again replaces what it held, so its rows stand once however often it is
     rebuilt."""

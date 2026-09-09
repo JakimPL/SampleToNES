@@ -86,6 +86,7 @@ class WindowedRegion:
         self._windowed = False
         self._natural = True
         self._reading_to_hold = False
+        self._resized = False
         self._drawn: Window = NO_ROWS
         self._resting = NO_SCROLL
         self._restoring = False
@@ -120,11 +121,13 @@ class WindowedRegion:
         """The region stands as something other than it will, so whoever drew it settles it again.
 
         A region holding rows back answers a scroll with a different slice, and one that has
-        just read what a row takes holds itself to that reading in the pass that follows. Either
-        way what stands now is not what the region comes to rest as. A region whose body has been
-        taken down comes to rest where it is, so a window closing ends the pass it was keeping.
+        just read what a row takes holds itself to that reading in the pass that follows. A region
+        that has just taken a new height stands at its old one until the frame after, and whatever
+        it is drawn inside measures it as it stands, so that too asks for another pass. Either way
+        what stands now is not what the region comes to rest as. A region whose body has been taken
+        down comes to rest where it is, so a window closing ends the pass it was keeping.
         """
-        return self.standing and (self.windowing or self._reading_to_hold)
+        return self.standing and (self.windowing or self._reading_to_hold or self._resized)
 
     @property
     def natural(self) -> bool:
@@ -211,6 +214,7 @@ class WindowedRegion:
         if not self.standing:
             return False
 
+        self._resized = False
         self._take_lead()
         if not self._windowed:
             self._take_reading()
@@ -323,7 +327,9 @@ class WindowedRegion:
 
     def _size_to(self, content: float) -> None:
         within = content <= self._ceiling
-        self._height = content if within else float(self._ceiling)
+        height = content if within else float(self._ceiling)
+        self._resized = height != self._height
+        self._height = height
         self._natural = within
         self._reading_to_hold = False
         dpg_configure_item(
