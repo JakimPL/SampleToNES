@@ -227,9 +227,34 @@ class TestAReadingTheHeightHasYetToFollow(BaseTestSuite):
 
         assert not unmeasured.settling
 
-    def test_a_region_with_nothing_to_read_asks_for_nothing(self, unmeasured: WindowedRegion) -> None:
-        """A region drawn where no frame has placed its rows measures nothing, and waits."""
+    def test_a_region_taking_the_height_it_measures_asks_to_be_read_back(
+        self,
+        unmeasured: WindowedRegion,
+    ) -> None:
+        """The height a region opens at is not the one it measures, and a move is a move.
+
+        Whatever the region is drawn inside measures it as it stands, so the height it takes to
+        read a row by asks for the same further pass a height taken from a reading does.
+        """
         draw(unmeasured, 4)
+
+        unmeasured.settle()
+
+        assert unmeasured.settling
+
+    def test_a_region_with_nothing_to_read_comes_to_rest_where_it_stands(
+        self,
+        unmeasured: WindowedRegion,
+    ) -> None:
+        """A region drawn where no frame has placed its rows measures nothing, and settles anyway.
+
+        The first pass moves it off the height it opened at, which is a move like any other and
+        asks to be read back. The pass that follows finds it standing where it already stood, so a
+        region with nothing to measure comes to rest rather than asking on every frame.
+        """
+        draw(unmeasured, 4)
+        unmeasured.settle()
+
         unmeasured.settle()
 
         assert not unmeasured.settling

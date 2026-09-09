@@ -320,16 +320,23 @@ class WindowedRegion:
 
     def _stand_at_natural_height(self) -> None:
         """Let the region take the height of what it holds, which is what a reading is read from."""
-        self._height = self._body_height() + 2 * self._margin
+        self._take_height(self._body_height() + 2 * self._margin)
         self._natural = True
         dpg_configure_item(self._tag, height=AUTO_HEIGHT, auto_resize_y=True, no_scrollbar=True)
         self._hold_gutter(scrolling=False)
 
-    def _size_to(self, content: float) -> None:
-        within = content <= self._ceiling
-        height = content if within else float(self._ceiling)
+    def _take_height(self, height: float) -> None:
+        """Stand at a height, noting whether it is one the region has yet to be drawn at.
+
+        Every height the region takes is taken here, so one it has just moved to asks for the pass
+        that reads it back however the region came by it.
+        """
         self._resized = height != self._height
         self._height = height
+
+    def _size_to(self, content: float) -> None:
+        within = content <= self._ceiling
+        self._take_height(content if within else float(self._ceiling))
         self._natural = within
         self._reading_to_hold = False
         dpg_configure_item(
