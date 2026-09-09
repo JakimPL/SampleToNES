@@ -19,7 +19,7 @@ Adding a folder opens a small window while the folder is read. The window names 
 
 **x** removes a row from the list. Removing a folder removes every recording in it.
 
-Click a row to pick it out. The **Source settings** card then shows that row. Click it again, or press `Esc`, to let it go. Press `Del` to remove the row you picked out.
+Click a row to pick it out. The **Source settings** card then shows that row. Press `Del` to remove the row you picked out.
 
 ## Choosing which channels a recording uses
 

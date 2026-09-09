@@ -231,10 +231,6 @@ class ConverterLogic(CallbackMixin):
         """Names the row a reader is inspecting, which the settings card edits."""
         self._settle(self._state.with_selected(SourceKey(kind=kind, path=path)))
 
-    def clear_selection(self) -> None:
-        """Lets the inspected row go, so the card edits what a recording joins the list with."""
-        self._settle(self._state.with_selected(None))
-
     def remove_source(self, path: Path) -> None:
         """Takes one gathered recording out of the setup."""
         self._settle(self._state.with_gathering(self._state.gathering.remove(SourceKey.recording(path))))

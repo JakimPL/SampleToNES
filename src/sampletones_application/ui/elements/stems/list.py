@@ -15,7 +15,6 @@ from sampletones_application.ui.elements.stems.gestures import (
     ChannelsCallback,
     KeyOffsetCallback,
     KeyPairCallback,
-    RowSelectionCallback,
     StemsGestures,
 )
 from sampletones_application.ui.elements.stems.heading import StemsHeading
@@ -131,7 +130,7 @@ class GUIStemsList(CallbackMixin):
         self.on_channel_toggled: Optional[ChannelCallback] = None
         self.on_remove_requested: Optional[StringCallback] = None
         self.on_menu_requested: Optional[StringCallback] = None
-        self.on_row_activated: Optional[RowSelectionCallback] = None
+        self.on_row_activated: Optional[StringCallback] = None
         self.on_dropped_on_row: Optional[KeyPairCallback] = None
         self.on_dropped_on_level: Optional[KeyOffsetCallback] = None
         self.on_row_opened: Optional[StringCallback] = None
@@ -141,7 +140,7 @@ class GUIStemsList(CallbackMixin):
         self._gestures.on_channel_toggled = lambda key, channel: self.call(self.on_channel_toggled, key, channel)
         self._gestures.on_removal_asked = lambda key: self.call(self.on_remove_requested, key)
         self._gestures.on_menu_asked = lambda key: self.call(self.on_menu_requested, key)
-        self._gestures.on_row_activated = lambda key, picked: self.call(self.on_row_activated, key, picked)
+        self._gestures.on_row_activated = lambda key: self.call(self.on_row_activated, key)
         self._gestures.on_dropped_on_row = lambda key, target: self.call(self.on_dropped_on_row, key, target)
         self._gestures.on_dropped_on_level = lambda key, position: self.call(self.on_dropped_on_level, key, position)
         self._gestures.on_row_opened = lambda key: self.call(self.on_row_opened, key)

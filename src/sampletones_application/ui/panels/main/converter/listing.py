@@ -28,7 +28,7 @@ from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, Sh
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.main.converter import ConverterViewModel
 from sampletones_core.constants.enums import ChannelName
-from sampletones_shared.types.callback import PathCallback, StringCallback, VoidCallback
+from sampletones_shared.types.callback import PathCallback, StringCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 ChannelsCallback = Callable[[Path, FrozenSet[ChannelName]], None]
@@ -78,7 +78,6 @@ class ConverterListing(CallbackMixin):
         self.on_source_channels_changed: Optional[ChannelsCallback] = None
         self.on_folder_channel_toggled: Optional[ChannelCallback] = None
         self.on_row_selected: Optional[RowCallback] = None
-        self.on_selection_cleared: Optional[VoidCallback] = None
         self.on_source_removed: Optional[PathCallback] = None
         self.on_folder_removed: Optional[PathCallback] = None
         self.on_source_played: Optional[PathCallback] = None
@@ -130,12 +129,8 @@ class ConverterListing(CallbackMixin):
         """A folder's box moves every recording it stands for, whichever way they were standing."""
         self.call(self.on_folder_channel_toggled, Path(key), channel_name)
 
-    def _on_selected(self, key: str, picked: bool) -> None:
-        """A clicked row is the one the settings card inspects; clicking it again lets it go."""
-        if not picked:
-            self.call(self.on_selection_cleared)
-            return
-
+    def _on_selected(self, key: str) -> None:
+        """A clicked row is the one the settings card inspects."""
         row = self._stems_list.row(key)
         if row is not None:
             self.call(self.on_row_selected, Path(key), row.kind)
@@ -163,8 +158,6 @@ class ConverterListing(CallbackMixin):
         match self._shortcuts.action(ShortcutCategory.SOURCES, event):
             case ShortcutId.SOURCES_REMOVE_SOURCE if self._stems_list.lets_a_row_go:
                 self._on_removed(key)
-            case ShortcutId.SOURCES_CLEAR_SELECTION:
-                self.call(self.on_selection_cleared)
             case _:
                 return False
 

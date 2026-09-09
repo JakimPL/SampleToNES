@@ -147,7 +147,6 @@ class KeybindingActionElements(AbstractElement):
     TRACKER_PLAY_FROM_ROW = "tracker_play_from_row"
 
     SOURCES_REMOVE_SOURCE = "sources_remove_source"
-    SOURCES_CLEAR_SELECTION = "sources_clear_selection"
 
     VOICES_RENAME_VOICE = "voices_rename_voice"
     VOICES_REMOVE_VOICE = "voices_remove_voice"

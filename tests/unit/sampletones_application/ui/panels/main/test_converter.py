@@ -377,17 +377,6 @@ class TestTheKeysTheListClaims:
         assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is True
         assert removed == [kick.path]
 
-    def test_it_lets_the_row_picked_out_go(self, dpg_context: None, layout_config: LayoutConfig) -> None:
-        router = KeyRouter()
-        panel, _reported = build(layout_config, key_router=router)
-        cleared: List[bool] = []
-        panel.on_selection_cleared = lambda: cleared.append(True)
-        kick = row("kick")
-        panel.update_view(view(kick, selected_key=kick.key))
-
-        assert self._press(router, ShortcutId.SOURCES_CLEAR_SELECTION) is True
-        assert cleared == [True]
-
     def test_a_press_it_has_no_action_for_travels_on(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         """The list yields whatever its category leaves unnamed, so the shortcuts still hear it."""
         router = KeyRouter()

@@ -88,7 +88,6 @@ class GUIConverterPanel(GUIPanel):
         self.on_source_channels_changed: Optional[Callable[[Path, FrozenSet[ChannelName]], None]] = None
         self.on_folder_channel_toggled: Optional[Callable[[Path, ChannelName], None]] = None
         self.on_row_selected: Optional[Callable[[Path, SourceKind], None]] = None
-        self.on_selection_cleared: Optional[VoidCallback] = None
         self.on_source_removed: Optional[PathCallback] = None
         self.on_folder_removed: Optional[PathCallback] = None
         self.on_source_moved: Optional[PathOffsetCallback] = None
@@ -162,7 +161,6 @@ class GUIConverterPanel(GUIPanel):
             self.on_folder_channel_toggled, path, channel
         )
         self._listing.on_row_selected = lambda path, kind: self.call(self.on_row_selected, path, kind)
-        self._listing.on_selection_cleared = lambda: self.call(self.on_selection_cleared)
         self._listing.on_source_removed = lambda path: self.call(self.on_source_removed, path)
         self._listing.on_folder_removed = lambda path: self.call(self.on_folder_removed, path)
         self._listing.on_source_played = lambda path: self.call(self.on_source_played, path)

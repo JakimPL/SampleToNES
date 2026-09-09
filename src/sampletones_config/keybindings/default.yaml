@@ -142,7 +142,6 @@ bindings:
 
   # sources
   SourcesRemoveSource: {combination: "Del"}
-  SourcesClearSelection: {combination: "Esc"}
 
   # voices
   VoicesRenameVoice: {combination: "F2"}

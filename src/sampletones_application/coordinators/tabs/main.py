@@ -357,7 +357,6 @@ class MainTabCoordinator:
         self._converter_panel.on_folder_removed = self._converter_logic.remove_folder
         self._converter_panel.on_folder_channel_toggled = self._converter_logic.toggle_folder_channel
         self._converter_panel.on_row_selected = self._converter_logic.select_row
-        self._converter_panel.on_selection_cleared = self._converter_logic.clear_selection
         self._converter_panel.on_source_played = self._file_playback.play
         self._stem_selection_window.on_source_played = self._file_playback.play
 

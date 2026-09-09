@@ -680,29 +680,33 @@ class TestCollapsedLevels(BaseTestSuite):
 
 class TestActivation(BaseTestSuite):
     def test_a_clicked_row_reports_itself(self, dpg_context: None, layout_config) -> None:
-        activated: List[Tuple[str, bool]] = []
+        activated: List[str] = []
         stems_list = build(layout_config, dragging=False)
-        stems_list.on_row_activated = lambda key, picked: activated.append((key, picked))
+        stems_list.on_row_activated = activated.append
         bass = row("bass")
         stems_list.update_view(view(bass))
 
-        name_tag = row_tag(bass, SUF_TEXT)
-        dpg.get_item_callback(name_tag)(name_tag, True, bass.key)
+        select_name(bass, True)
 
-        assert activated == [(bass.key, True)]
+        assert activated == [bass.key]
 
-    def test_a_row_clicked_again_reports_that_it_was_let_go(self, dpg_context: None, layout_config) -> None:
-        """DearPyGui hands the callback what the row now reads as, so one gesture answers both ways."""
-        activated: List[Tuple[str, bool]] = []
+    def test_the_second_click_of_a_double_click_names_the_same_row(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        """DearPyGui reports a selectable once per click, so a double-click reports its row twice
+        rather than picking it out and letting it go again."""
+        activated: List[str] = []
         stems_list = build(layout_config, dragging=False)
-        stems_list.on_row_activated = lambda key, picked: activated.append((key, picked))
+        stems_list.on_row_activated = activated.append
         bass = row("bass")
-        stems_list.update_view(view(bass, selected_key=bass.key))
+        stems_list.update_view(view(bass))
 
-        name_tag = row_tag(bass, SUF_TEXT)
-        dpg.get_item_callback(name_tag)(name_tag, False, bass.key)
+        select_name(bass, True)
+        select_name(bass, False)
 
-        assert activated == [(bass.key, False)]
+        assert activated == [bass.key, bass.key]
 
     def test_the_list_names_the_row_a_key_press_acts_on(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config, dragging=False)

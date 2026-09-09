@@ -931,7 +931,6 @@ settings.keybindings.label.select_tab_reconstructions: "Go to the Reconstruction
 settings.keybindings.label.select_tab_sequencer: "Go to the Sequencer tab"
 settings.keybindings.label.select_tab_instructions: "Go to the Instructions tab"
 settings.keybindings.label.sources_remove_source: "Remove the picked recording"
-settings.keybindings.label.sources_clear_selection: "Let the picked recording go"
 settings.keybindings.label.order_previous_position: "Previous position"
 settings.keybindings.label.order_next_position: "Next position"
 settings.keybindings.label.order_previous_channel: "Previous channel"

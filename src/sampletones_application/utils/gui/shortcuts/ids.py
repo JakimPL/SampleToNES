@@ -187,7 +187,6 @@ class ShortcutId(Enum):
     TRACKER_PLAY_FROM_ROW = ("TrackerPlayFromRow", ShortcutCategory.TRACKER)
 
     SOURCES_REMOVE_SOURCE = ("SourcesRemoveSource", ShortcutCategory.SOURCES)
-    SOURCES_CLEAR_SELECTION = ("SourcesClearSelection", ShortcutCategory.SOURCES)
 
     VOICES_RENAME_VOICE = ("VoicesRenameVoice", ShortcutCategory.VOICES)
     VOICES_REMOVE_VOICE = ("VoicesRemoveVoice", ShortcutCategory.VOICES)
