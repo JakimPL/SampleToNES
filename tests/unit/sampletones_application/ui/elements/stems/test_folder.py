@@ -18,8 +18,6 @@ from sampletones_application.paths import (
 )
 from sampletones_application.tags.general import (
     SUF_BUTTON,
-    SUF_CHANNELS,
-    SUF_CHECKBOX,
     SUF_GROUP,
     SUF_TEXT,
     SUF_TWISTY,
@@ -31,6 +29,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.ui.elements.stems.offer import GATHERED_SOURCES
+from sampletones_application.ui.elements.stems.tags import StemsTags
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
@@ -44,6 +43,7 @@ from tests.suite.base import BaseTestSuite
 
 ROOT_TAG = "test_root"
 PREFIX = "test.stems"
+TAGS: Final[StemsTags] = StemsTags(prefix=PREFIX)
 CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.TRIANGLE)
 DOUBLE_CLICK_HANDLER: Final[str] = "mvAppItemType::mvDoubleClickedHandler"
 DEEP_FOLDER: Final[int] = 200
@@ -145,29 +145,29 @@ def press(tag: str) -> None:
 
 
 def twisty_of(row: StemRowViewModel) -> str:
-    return f"{PREFIX}.row.{row.key}.{SUF_TWISTY}"
+    return TAGS.row(row.key, SUF_TWISTY)
 
 
 def region_of(row: StemRowViewModel) -> str:
-    return f"{PREFIX}.folder.{row.key}.region"
+    return TAGS.region(row.key)
 
 
 def name_of(row: StemRowViewModel) -> str:
-    return f"{PREFIX}.row.{row.key}.{SUF_TEXT}"
+    return TAGS.row(row.key, SUF_TEXT)
 
 
 def box_of(row: StemRowViewModel, channel_name: ChannelName) -> str:
-    return f"{PREFIX}.row.{row.key}.{SUF_CHANNELS}.{channel_name}.{SUF_CHECKBOX}"
+    return TAGS.channel(row.key, channel_name)
 
 
 def table_of(row: StemRowViewModel) -> int:
     """The grid one row stands in, which is what says whether two rows share a rhythm."""
-    return dpg.get_item_parent(f"{PREFIX}.row.{row.key}.{SUF_GROUP}")
+    return dpg.get_item_parent(TAGS.row(row.key, SUF_GROUP))
 
 
 def theme_on(row: StemRowViewModel) -> str:
     """The theme one row's line carries, which is what bands a group apart from its neighbors."""
-    return dpg.get_item_alias(dpg.get_item_theme(f"{PREFIX}.row.{row.key}.{SUF_GROUP}"))
+    return dpg.get_item_alias(dpg.get_item_theme(TAGS.row(row.key, SUF_GROUP)))
 
 
 def folder_without(row: StemRowViewModel, leaving: StemRowViewModel) -> StemRowViewModel:
@@ -316,7 +316,7 @@ class TestAFolderThatLeaves(BaseTestSuite):
 
 def double_click(tag: str) -> None:
     """Double-click a widget the way DearPyGui reports it, through the registry its kind shares."""
-    registry = f"{PREFIX}.{SUF_TEXT}.handler.registry"
+    registry = TAGS.handlers(SUF_TEXT)
     for handler in dpg.get_item_children(registry, 1):
         if dpg.get_item_info(handler)["type"] == DOUBLE_CLICK_HANDLER:
             dpg.get_item_callback(handler)(handler, (dpg.mvMouseButton_Left, dpg.get_alias_id(tag)))
@@ -337,7 +337,7 @@ class TestARecordingThatLeavesAFolder(BaseTestSuite):
         sources = folder("sources", holds=3)
         self._opened(stems_list, sources)
 
-        button = f"{PREFIX}.row.{sources.held[0].key}.{SUF_BUTTON}"
+        button = TAGS.row(sources.held[0].key, SUF_BUTTON)
 
         assert dpg.get_item_configuration(button)["enabled"] is True
 
@@ -349,7 +349,7 @@ class TestARecordingThatLeavesAFolder(BaseTestSuite):
 
         stems_list.update_view(view(folder_without(sources, leaving)))
 
-        assert not dpg.does_item_exist(f"{PREFIX}.row.{leaving.key}.{SUF_TEXT}")
+        assert not dpg.does_item_exist(name_of(leaving))
 
     def test_the_ones_that_stay_are_still_drawn(self, stems_list: GUIStemsList) -> None:
         sources = folder("sources", holds=3)
@@ -359,7 +359,7 @@ class TestARecordingThatLeavesAFolder(BaseTestSuite):
         stems_list.update_view(view(folder_without(sources, leaving)))
 
         for held in sources.held[1:]:
-            assert dpg.does_item_exist(f"{PREFIX}.row.{held.key}.{SUF_TEXT}")
+            assert dpg.does_item_exist(name_of(held))
 
     def test_the_rows_around_the_folder_keep_the_widgets_they_stand_as(self, stems_list: GUIStemsList) -> None:
         """A recording leaving a folder is answered inside it, so the list around it stands."""

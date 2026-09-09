@@ -1,11 +1,13 @@
-import hashlib
-from typing import Callable, Dict, Iterable, List, Tuple
+from typing import Callable, Dict, Final, Iterable, List, Tuple
 
 from sampletones_core.project import Project
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.voice import samples
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_shared.utils.hashing import identity_digest
+
+FINGERPRINT_LENGTH: Final[int] = 64
 
 ReconstructionHash = Callable[[Reconstruction], str]
 
@@ -17,10 +19,11 @@ def fingerprint_project(
 ) -> str:
     """Returns a content hash used to verify that a restore reproduces a snapshot.
 
-    The hash covers the full project state; each sample's reconstruction content
-    enters through ``reconstruction_hash``, so the caller decides between a
-    memoized digest (capture, where copy-on-write keeps it valid) and a fresh one
-    (verification, where recomputing from scratch catches any divergence).
+    The hash covers the full project state, spelled out part by part so that two projects
+    differing anywhere in it differ here. Each sample's reconstruction content enters through
+    ``reconstruction_hash``, so the caller decides between a memoized digest (capture, where
+    copy-on-write keeps it valid) and a fresh one (verification, where recomputing from scratch
+    catches any divergence).
     """
     parts: List[str] = [
         project.metadata.model_dump_json(),
@@ -37,8 +40,7 @@ def fingerprint_project(
             case Instrument():
                 parts.append(voice.model_dump_json())
 
-    combined = "|".join(parts)
-    return hashlib.sha256(combined.encode("utf-8")).hexdigest()
+    return identity_digest(*parts, length=FINGERPRINT_LENGTH)
 
 
 class ReconstructionHashCache:

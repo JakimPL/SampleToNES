@@ -335,6 +335,65 @@ class TestRows(BaseTestSuite):
         assert stems_list.row("nothing") is None
 
 
+class TestRowsNamedAlike(BaseTestSuite):
+    """Two recordings a tag part spells the same way stand on widgets of their own.
+
+    A tag part lowercases its name and collapses whitespace, so paths differing only in case or
+    spacing reach one segment. Each row carries the identity of its own key beside the name.
+    """
+
+    def test_two_paths_differing_in_case_carry_their_own_names(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        stems_list = build(layout_config)
+        lower, upper = row("kick"), row("Kick")
+
+        stems_list.update_view(view(lower, upper))
+
+        assert row_tag(lower, SUF_TEXT) != row_tag(upper, SUF_TEXT)
+        assert dpg.get_item_label(row_tag(lower, SUF_TEXT)) == "kick"
+        assert dpg.get_item_label(row_tag(upper, SUF_TEXT)) == "Kick"
+
+    def test_a_channel_ticked_on_one_leaves_the_other_alone(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        stems_list = build(layout_config)
+        spaced, scored = row("my song"), row("my_song")
+
+        stems_list.update_view(
+            view(
+                spaced,
+                scored,
+                selected_key=None,
+            ),
+        )
+        dpg.set_value(channel_tag(spaced, ChannelName.PULSE1), False)
+
+        assert dpg.get_value(channel_tag(scored, ChannelName.PULSE1)) is True
+
+    def test_the_reading_reported_names_the_row_it_was_ticked_on(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        """The boxes report through the key their row carries, so one row's tick is its own."""
+        reported: List[Tuple[str, FrozenSet[ChannelName]]] = []
+        stems_list = build(layout_config)
+        stems_list.on_channels_changed = lambda key, channels: reported.append((key, channels))
+        lower, upper = row("kick"), row("Kick")
+        stems_list.update_view(view(lower, upper))
+
+        box = channel_tag(upper, ChannelName.PULSE1)
+        dpg.set_value(box, False)
+        dpg.get_item_callback(box)(box, False, dpg.get_item_user_data(box))
+
+        assert reported == [(upper.key, frozenset({ChannelName.TRIANGLE}))]
+
+
 class TestLevels(BaseTestSuite):
     def test_each_level_carries_its_own_band(self, dpg_context: None, layout_config) -> None:
         stems_list = build(layout_config)

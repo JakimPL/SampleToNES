@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from sampletones_application.tags.compose import compose_tag
+from sampletones_application.tags.compose import compose_tag, identity_part
 from sampletones_application.tags.general import (
     SUF_BENDS,
     SUF_CHANNELS,
@@ -24,6 +24,11 @@ class StemsTags:
 
     Every widget a list builds is named from the list's own prefix, so the grammar stands in one
     place and whatever addresses a row — the list, its handlers, a test — spells it the same way.
+
+    A row is named by its key, which is the path the recording was gathered from. A tag part
+    lowercases that path and collapses its whitespace, so the key stands beside an identity part
+    that keeps two recordings of one normalized name — ``Kick.wav`` and ``kick.wav`` gathered
+    together — on widgets of their own.
     """
 
     prefix: str
@@ -54,7 +59,7 @@ class StemsTags:
 
     def folder(self, key: str, suffix: str) -> str:
         """The tag one of an open folder's own widgets carries: its region, or the rows in it."""
-        return compose_tag(self.prefix, SUF_FOLDER, key, suffix)
+        return compose_tag(self.prefix, SUF_FOLDER, key, identity_part(key), suffix)
 
     def region(self, key: str) -> str:
         """The bounded space a folder's recordings scroll in while it stands open."""
@@ -75,7 +80,7 @@ class StemsTags:
 
     def row(self, key: str, suffix: str) -> str:
         """The tag one of a row's widgets carries, which is how anything outside addresses it."""
-        return compose_tag(self.prefix, SUF_ROW, key, suffix)
+        return compose_tag(self.prefix, SUF_ROW, key, identity_part(key), suffix)
 
     def level(self, level_index: int, suffix: str) -> str:
         """The tag one of a band's widgets carries: its caption, its table, or the strip above it."""
@@ -83,20 +88,8 @@ class StemsTags:
 
     def channel(self, key: str, channel_name: ChannelName) -> str:
         """The tag the box giving ``key`` a channel carries."""
-        return compose_tag(
-            self.prefix,
-            SUF_ROW,
-            key,
-            SUF_CHANNELS,
-            compose_tag(channel_name, SUF_CHECKBOX),
-        )
+        return self.row(key, compose_tag(SUF_CHANNELS, channel_name, SUF_CHECKBOX))
 
     def bend(self, key: str, channel_name: ChannelName) -> str:
         """The tag the box stating the bend ``key`` took on a channel carries."""
-        return compose_tag(
-            self.prefix,
-            SUF_ROW,
-            key,
-            SUF_BENDS,
-            compose_tag(channel_name, SUF_CHECKBOX),
-        )
+        return self.row(key, compose_tag(SUF_BENDS, channel_name, SUF_CHECKBOX))

@@ -33,6 +33,7 @@ from sampletones_application.ui.elements.layout.geometry import RowGeometry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.ui.elements.stems.offer import GATHERED_SOURCES
+from sampletones_application.ui.elements.stems.tags import StemsTags
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
@@ -308,7 +309,8 @@ def list_drawn_as(prefix: str, layout_config: LayoutConfig) -> GUIStemsList:
 def rows_on_screen(prefix: str, listing: StemsListViewModel) -> int:
     """How many of a folder's recordings the list put widgets on screen for."""
     folder_row = listing.rows[0]
-    return sum(1 for held in folder_row.held if dpg.does_item_exist(f"{prefix}.row.{held.key}.{SUF_TEXT}"))
+    tags = StemsTags(prefix=prefix)
+    return sum(1 for held in folder_row.held if dpg.does_item_exist(tags.row(held.key, SUF_TEXT)))
 
 
 class TestDrawingAGatheredFolder(BaseTestSuite):

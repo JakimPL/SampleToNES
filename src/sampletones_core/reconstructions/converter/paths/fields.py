@@ -17,7 +17,7 @@ from sampletones_core.constants.enums import (
     ordered_channels,
 )
 from sampletones_core.constants.field_aliases import ALIASES
-from sampletones_shared.utils.serialization import HASH_PATTERN, hash_models
+from sampletones_shared.utils.hashing import HASH_PATTERN, hash_models
 
 CONFIG_DIRECTORY_SEPARATOR: Final[str] = "_"
 

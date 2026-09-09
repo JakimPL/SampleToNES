@@ -10,7 +10,7 @@ from sampletones_application.constants.sources import SourceKind
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.paths import LANG_EN
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import SUF_BUTTON, SUF_CHECKBOX, SUF_ROW, SUF_TEXT
+from sampletones_application.tags.general import SUF_BUTTON, SUF_CHECKBOX, SUF_TEXT
 from sampletones_application.tags.main import (
     PRE_MAIN_CONVERTER_CANDIDATE,
     TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS,
@@ -109,7 +109,7 @@ def discard(_picked: List[Path]) -> None:
 
 
 def box_of(row: StemRowViewModel) -> str:
-    return compose_tag(PRE_MAIN_CONVERTER_CANDIDATE, SUF_ROW, row.key, SUF_CHECKBOX)
+    return TAGS.row(row.key, SUF_CHECKBOX)
 
 
 def pick(row: StemRowViewModel) -> None:
