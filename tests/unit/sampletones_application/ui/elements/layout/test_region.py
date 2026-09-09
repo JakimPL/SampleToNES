@@ -20,6 +20,8 @@ OVERSCAN = 2
 CEILING = 100
 HEADING_TEXT = "channels"
 STANDING_OFFSET = 300.0
+PADDING = 8
+GUTTER = 13
 
 
 @pytest.fixture
@@ -366,3 +368,57 @@ class TestARegionWhoseBodyHasGone(BaseTestSuite):
         dpg.delete_item(ROOT_TAG, children_only=True)
 
         assert draw(region, 40) == []
+
+
+class TestTheGutterAScrollbarWillTake(BaseTestSuite):
+    """A region holds the scrollbar's room clear until the scrollbar itself takes it.
+
+    A child window's scrollbar comes out of the room its content stands in, so a grid inside a
+    region that scrolls would stand narrower than the same grid inside one that fits. Holding the
+    room clear while no scrollbar stands keeps the content one width across the moment it starts
+    scrolling, which is what lines a folder's columns up with the columns around it.
+    """
+
+    @pytest.fixture(name="gutted")
+    def gutted_fixture(self, dpg_context: None) -> WindowedRegion:
+        built = WindowedRegion(
+            tag=REGION_TAG,
+            geometry=RowGeometry(overscan=OVERSCAN, pitch=PITCH),
+            ceiling=CEILING,
+            padding=PADDING,
+            margin=0,
+            gutter=GUTTER,
+        )
+        with dpg.window(tag=ROOT_TAG):
+            built.create(ROOT_TAG)
+
+        return built
+
+    @staticmethod
+    def _inset(region: WindowedRegion) -> int:
+        """The room the body holds clear at its right, which a negative width states."""
+        return -int(dpg.get_item_configuration(region.body)["width"])
+
+    def test_a_region_standing_whole_holds_the_room_clear(self, gutted: WindowedRegion) -> None:
+        draw(gutted, 4)
+        gutted.settle()
+
+        assert self._inset(gutted) == PADDING + GUTTER
+
+    def test_a_region_that_scrolls_gives_the_room_up(self, gutted: WindowedRegion) -> None:
+        """The scrollbar stands in that room itself, so the body would otherwise pay for it twice."""
+        with block_of(PITCH * 500):
+            draw(gutted, 500)
+            gutted.settle()
+
+        assert self._inset(gutted) == PADDING
+
+    def test_a_region_falling_back_under_its_ceiling_holds_it_again(self, gutted: WindowedRegion) -> None:
+        with block_of(PITCH * 500):
+            draw(gutted, 500)
+            gutted.settle()
+
+        draw(gutted, 4)
+        gutted.settle()
+
+        assert self._inset(gutted) == PADDING + GUTTER

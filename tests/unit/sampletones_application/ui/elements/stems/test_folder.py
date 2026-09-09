@@ -23,6 +23,7 @@ from sampletones_application.tags.general import (
     SUF_GROUP,
     SUF_TEXT,
     SUF_TWISTY,
+    TAG_GLOBAL_THEME_STEMS_GRID,
     TAG_GLOBAL_THEME_STEMS_GROUP_ROW,
     TAG_GLOBAL_THEME_STEMS_MARKER,
 )
@@ -546,3 +547,25 @@ class TestTheBandAGroupReadsBy(BaseTestSuite):
         press(twisty_of(sources))
 
         assert all(theme_on(held) != TAG_GLOBAL_THEME_STEMS_GROUP_ROW for held in sources.held)
+
+
+class TestWhatMakesTheBandVisible(BaseTestSuite):
+    """A band is a row background, so the grid draws one and states its own rows clear.
+
+    The theme on a folder's row paints nothing unless its table draws row backgrounds at all, and
+    every other row would take the default alternation if the grid left it unstated.
+    """
+
+    def test_the_grid_draws_row_backgrounds(self, stems_list: GUIStemsList) -> None:
+        sources = folder("sources", holds=3)
+
+        stems_list.update_view(view(sources))
+
+        assert dpg.get_item_configuration(table_of(sources))["row_background"] is True
+
+    def test_the_grid_states_its_own_rows_clear(self, stems_list: GUIStemsList) -> None:
+        bass = recording(Path("/audio/bass.wav"))
+
+        stems_list.update_view(view(folder("sources", holds=1), bass))
+
+        assert dpg.get_item_alias(dpg.get_item_theme(table_of(bass))) == TAG_GLOBAL_THEME_STEMS_GRID

@@ -1,6 +1,6 @@
-import logging
 from pathlib import Path
 from typing import Final, FrozenSet, Iterator, List, Optional, Tuple
+from unittest.mock import patch
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -53,7 +53,6 @@ DRAG_PAYLOAD_SLOT: Final[int] = 3
 LONG_LIST: Final[int] = 200
 CLICK_HANDLER: Final[int] = 0
 DOUBLE_CLICK_HANDLER: Final[int] = 1
-UNSET_CALLBACK_NOTE: Final[str] = "No callback for GUIStemsList"
 
 
 @pytest.fixture
@@ -775,16 +774,16 @@ class TestGesturesTheOwnerLeavesUnanswered(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config,
-        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        caplog.set_level(logging.DEBUG)
         stems_list = build(layout_config, dragging=False)
         bass = row("bass")
         stems_list.update_view(view(bass))
 
-        click_on(bass, CLICK_HANDLER, dpg.mvMouseButton_Right)
+        with patch.object(stems_list, "call") as handed_on:
+            click_on(bass, CLICK_HANDLER, dpg.mvMouseButton_Right)
 
-        assert UNSET_CALLBACK_NOTE not in caplog.text
+        assert stems_list.has_menu is False
+        handed_on.assert_not_called()
 
     def test_a_right_click_names_its_row_where_the_owner_puts_one_up(
         self,
@@ -805,16 +804,16 @@ class TestGesturesTheOwnerLeavesUnanswered(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config,
-        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        caplog.set_level(logging.DEBUG)
         stems_list = build(layout_config, dragging=False)
         bass = row("bass")
         stems_list.update_view(view(bass))
 
-        click_on(bass, DOUBLE_CLICK_HANDLER, dpg.mvMouseButton_Left)
+        with patch.object(stems_list, "call") as handed_on:
+            click_on(bass, DOUBLE_CLICK_HANDLER, dpg.mvMouseButton_Left)
 
-        assert UNSET_CALLBACK_NOTE not in caplog.text
+        assert stems_list.playable is False
+        handed_on.assert_not_called()
 
     def test_a_double_click_sounds_its_row_where_the_owner_answers(
         self,

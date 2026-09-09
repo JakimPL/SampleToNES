@@ -26,6 +26,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_STEMS_ROW_INERT,
 )
 from sampletones_application.tags.main import (
+    PRE_MAIN_CONVERTER_CANDIDATE,
     PRE_MAIN_SOURCE_SLOT,
     TAG_MAIN_ADVANCED_PANEL,
     TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL,
@@ -44,6 +45,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_SOURCE_TEXT_UNPICKED,
 )
 from sampletones_application.ui.elements.stems.list import GUIStemsList
+from sampletones_application.ui.elements.stems.tags import StemsTags
 from sampletones_application.ui.panels.main import explorer as explorer_module
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.keyboard.modifiers import Modifier
@@ -541,6 +543,17 @@ def _ctrl_click_folder(app: Application, directory: Path) -> None:
         panel._directory_node_clicked(node, UNBUILT_ROW)
 
 
+DOUBLE_CLICKED_HANDLER = 1
+
+
+def _double_click_name(prefix: str, key: str) -> None:
+    """Double-click one row's name in a stems list, the way DearPyGui reports the gesture."""
+    tags = StemsTags(prefix=prefix)
+    handler = dpg.get_item_children(tags.handlers(SUF_TEXT), 1)[DOUBLE_CLICKED_HANDLER]
+    name_tag = tags.row(key, SUF_TEXT)
+    dpg.get_item_callback(handler)(name_tag, (dpg.mvMouseButton_Left, dpg.get_alias_id(name_tag)))
+
+
 class TestGatheringAFolderIntoAMix:
     """A folder bringing in more than a mix holds is a question, and the answer reaches the mix.
 
@@ -617,15 +630,22 @@ class TestGatheringAFolderIntoAMix:
         app: Application,
         tmp_path: Path,
     ) -> None:
-        """A reader decides by ear, so the question reaches the player the converter's list reaches."""
-        window = app._main_tab._stem_selection_window
+        """A reader decides by ear, so a double-click in the question reaches the player the
+        converter's list reaches, the whole way from the gesture to the device."""
         directory = self._folder(tmp_path, MAX_STEM_SOURCES + 3)
-        recording = directory / "take_00.wav"
+        app._main_tab._converter_logic.set_output(OutputKind.MIXED)
+        with patch.object(app._main_tab._stem_selection_window, "open") as opened:
+            self._ask(app, directory)
 
-        with patch.object(app._main_tab._file_playback, "play_at") as sounded:
-            window.on_source_played(recording)
+        offered, room, answer = opened.call_args.args
+        window = app._main_tab._stem_selection_window
+        window.open(offered, room, answer)
+        recording = offered[0]
 
-        assert sounded.call_args.args[0] == recording
+        with patch.object(app.audio_device_manager, "play_file") as sounded:
+            _double_click_name(PRE_MAIN_CONVERTER_CANDIDATE, recording.key)
+
+        assert sounded.call_args.args[0] == recording.path
 
 
 class TestMainTabReadingOrder:

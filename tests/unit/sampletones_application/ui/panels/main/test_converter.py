@@ -36,7 +36,7 @@ from sampletones_application.ui.panels.main.converter import menus as menus_modu
 from sampletones_application.ui.panels.main.converter.panel import GUIConverterPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
-from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyEvent, KeyRouter
+from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyEvent, KeyRouter, focus
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
@@ -332,6 +332,24 @@ class TestTheKeysTheListClaims:
         removed: List[Path] = []
         panel.on_source_removed = removed.append
         panel.update_view(view(row("kick")))
+
+        assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is False
+        assert removed == []
+
+    def test_a_press_rests_while_a_field_holds_the_keys(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A reader typing a path keeps the plain keys, so Del edits the field rather than the list."""
+        monkeypatch.setattr(focus, "is_field_focused", lambda: True)
+        router = KeyRouter()
+        panel, _reported = build(layout_config, key_router=router)
+        removed: List[Path] = []
+        panel.on_source_removed = removed.append
+        kick = row("kick")
+        panel.update_view(view(kick, selected_key=kick.key))
 
         assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is False
         assert removed == []
