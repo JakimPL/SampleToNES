@@ -585,6 +585,43 @@ class TestVanishedWidgets(BaseTestSuite):
 
         hover_handler(SUF_TEXT)(0, hovered)
 
+    def test_a_click_naming_a_row_that_went_is_let_be(self, dpg_context: None, layout_config) -> None:
+        """A gesture is answered a frame after it landed, by which time a rebuild may have run."""
+        stems_list = build(layout_config)
+        bass = row("bass")
+        reported: List[str] = []
+        stems_list.on_menu_requested = reported.append
+        stems_list.on_row_picked = reported.append
+        stems_list.update_view(view(bass))
+        clicked = dpg.get_alias_id(row_tag(bass, SUF_TEXT))
+        stems_list.update_view(view())
+
+        callback = dpg.get_item_callback(handler_of(TAGS.handlers(SUF_TEXT), CLICKED))
+        callback(row_tag(bass, SUF_TEXT), (dpg.mvMouseButton_Right, clicked))
+
+        assert reported == []
+
+    def test_a_channel_settled_while_a_box_is_gone_keeps_what_the_row_held(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        """A box that is no longer drawn stands for the reading it last showed, not for an empty one."""
+        stems_list = build(layout_config)
+        bass = row("bass")
+        settled: List[FrozenSet[ChannelName]] = []
+        stems_list.on_channels_changed = lambda _key, channels: settled.append(channels)
+        stems_list.update_view(view(bass))
+        dpg.delete_item(channel_tag(bass, ChannelName.TRIANGLE))
+
+        dpg.get_item_callback(channel_tag(bass, ChannelName.PULSE1))(
+            channel_tag(bass, ChannelName.PULSE1),
+            True,
+            (bass.key, ChannelName.PULSE1),
+        )
+
+        assert settled == [frozenset(CHANNELS)]
+
     def test_unticking_the_last_channel_keeps_the_widget_the_pointer_is_over(
         self,
         dpg_context: None,

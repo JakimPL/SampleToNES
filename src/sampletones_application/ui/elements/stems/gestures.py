@@ -121,9 +121,20 @@ class StemsGestures:
             return
 
         channels = frozenset(
-            offered for offered in self._view.boxes_of(row) if dpg.get_value(self._tags.channel(key, offered))
+            offered
+            for offered in self._view.boxes_of(row)
+            if self._ticked(key, offered, standing=offered in row.channels)
         )
         self._report(self.on_channels_settled, key, channels)
+
+    def _ticked(self, key: str, channel_name: ChannelName, *, standing: bool) -> bool:
+        """Whether a channel's box stands ticked, which is what the row reports it holds.
+
+        A box the list has taken away answers with the reading it last stood for, so a row settles
+        on the channels it holds rather than on the ones whose boxes happen to be drawn.
+        """
+        tag = self._tags.channel(key, channel_name)
+        return bool(dpg.get_value(tag)) if dpg.does_item_exist(tag) else standing
 
     def on_master_box(self, _sender: Sender, value: bool, user_data: str) -> None:
         """The master box hands the row every channel it offers, or takes them all away."""
@@ -206,9 +217,13 @@ class StemsGestures:
 
     @staticmethod
     def _named_by(app_data: Tuple[int, int], button: int) -> Optional[str]:
-        """The row a mouse gesture landed on, for the button the gesture speaks for."""
+        """The row a mouse gesture landed on, for the button the gesture speaks for.
+
+        The gesture is answered a frame after DearPyGui gathered it, by which time a rebuilt list
+        may have taken the widget away, so the answer is for the widgets still standing.
+        """
         mouse_button, clicked_item = app_data
-        if mouse_button != button:
+        if mouse_button != button or not dpg.does_item_exist(clicked_item):
             return None
 
         key = dpg.get_item_user_data(clicked_item)
