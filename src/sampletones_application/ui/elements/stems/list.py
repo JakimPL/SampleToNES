@@ -273,8 +273,14 @@ class GUIStemsList(CallbackMixin):
 
     @property
     def picked_key(self) -> Optional[str]:
-        """The row standing picked out, which is what a key press acts on."""
-        return self._view.selected_key
+        """The row standing picked out, which is what a key press acts on.
+
+        A selection outlives the widgets it was made on: closing a folder takes the recordings
+        inside it off the list while the reading still names one of them. The pick answers for
+        the rows drawn, so a key reaches the row the reader is looking at.
+        """
+        key = self._view.selected_key
+        return key if key is not None and self._rows.stands(key) else None
 
     @property
     def lets_a_row_go(self) -> bool:

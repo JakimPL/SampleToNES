@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Final, FrozenSet, Iterator, List, Tuple
+from typing import Any, Callable, Final, FrozenSet, Iterator, List, Optional, Tuple
 from unittest.mock import patch
 
 import dearpygui.dearpygui as dpg
@@ -137,7 +137,7 @@ def folder(name: str, *, holds: int) -> StemRowViewModel:
     )
 
 
-def view(*rows: StemRowViewModel) -> StemsListViewModel:
+def view(*rows: StemRowViewModel, selected_key: Optional[str] = None) -> StemsListViewModel:
     return StemsListViewModel(
         rows=rows,
         channels_in_play=CHANNELS,
@@ -146,7 +146,7 @@ def view(*rows: StemRowViewModel) -> StemsListViewModel:
         picking_room=None,
         live=True,
         collapse_levels=True,
-        selected_key=None,
+        selected_key=selected_key,
     )
 
 
@@ -305,6 +305,31 @@ class TestARecordingInsideAFolder(BaseTestSuite):
         dpg.get_item_callback(box)(box, False, dpg.get_item_user_data(box))
 
         assert settled == [(held.key, frozenset({ChannelName.TRIANGLE}))]
+
+
+class TestThePickInsideAFolder(BaseTestSuite):
+    """A key press acts on the row picked out, which a folder standing open is where one is drawn."""
+
+    def test_a_recording_the_folder_shows_is_the_row_a_key_acts_on(self, stems_list: GUIStemsList) -> None:
+        sources = folder("sources", holds=2)
+        held = sources.held[FIRST_HELD]
+
+        stems_list.update_view(view(sources, selected_key=held.key))
+        press(twisty_of(sources))
+
+        assert stems_list.picked_key == held.key
+
+    def test_closing_the_folder_leaves_no_row_for_a_key_to_act_on(self, stems_list: GUIStemsList) -> None:
+        """The reading still names the recording, and the list has taken its widgets away with the
+        folder, so a key press has nothing on screen to act on."""
+        sources = folder("sources", holds=2)
+        held = sources.held[FIRST_HELD]
+
+        stems_list.update_view(view(sources, selected_key=held.key))
+        press(twisty_of(sources))
+        press(twisty_of(sources))
+
+        assert stems_list.picked_key is None
 
 
 class TestDoubleClick(BaseTestSuite):

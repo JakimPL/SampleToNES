@@ -15,7 +15,7 @@ The **Converter** card lists the recordings a conversion uses. Add them from the
 
 Turn on **Playback ▸ Autoplay** (`Ctrl+P`) to play a recording with a single click. This lets you listen through a folder before adding anything from it. With Autoplay off, right-click a recording and choose **Play**.
 
-Adding a folder opens a small window while the folder is read. **Stop** ends the search and keeps what it has found so far. A folder with no recordings inside it says so and adds nothing.
+Adding a folder opens a small window while the folder is read. **Stop** ends the search and leaves the list as it was. A folder with no recordings inside it says so and adds nothing.
 
 **x** removes a row from the list. Removing a folder removes every recording in it.
 
