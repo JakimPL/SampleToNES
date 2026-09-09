@@ -33,8 +33,9 @@ class StemsGestures:
     leaves it is the row a gesture named and what the reader asked of it.
 
     Three of those gestures reach past the row to whoever owns the list — picking a row out,
-    sounding it, and putting its menu up — so the list is asked whether it has an owner for each.
-    A gesture with none rests here, and the widget it moved is put back where it stood.
+    sounding it, and putting its menu up — so the list is asked whether it has an owner for each,
+    and a gesture with none rests here. A clicked row's widget is written from the view either
+    way, so it reads as the last reading of the list left it.
     """
 
     def __init__(
@@ -143,21 +144,12 @@ class StemsGestures:
         self._report(self.on_folder_toggled, user_data)
 
     def on_name_selected(self, _sender: Sender, _value: bool, user_data: str) -> None:
-        """Hand a clicked row on, and let the next view say which row now reads as picked out.
+        """Pick the row a click landed on, whichever way the widget swung.
 
-        A click means the row it landed on, whichever way the widget swung: DearPyGui reports a
-        selectable once per click, so a double-click that sounds a recording leaves it picked out
-        the way a single click does.
-
-        A list whose owner answers no click has the row put back the way the view holds it: the
-        click moved the widget and nothing behind it, so the row would otherwise keep a picked
-        look that no reading of the list ever wrote.
+        DearPyGui reports a selectable once per click, so a double-click that sounds a recording
+        picks its row the way a single click does.
         """
-        if not self._activatable():
-            dpg_set_value(self._tags.row(user_data, SUF_TEXT), user_data == self._view.selected_key)
-            return
-
-        self._report(self.on_row_activated, user_data)
+        self._pick(user_data)
 
     def on_row_drop(self, sender: Sender, app_data: str) -> None:
         """A recording was dropped on a row, so it joins that row's level at its place."""
@@ -172,13 +164,29 @@ class StemsGestures:
             self._report(self.on_dropped_on_level, app_data, position)
 
     def _on_name_clicked(self, _sender: Sender, app_data: Tuple[int, int]) -> None:
-        """A right-click names the row its menu stands over, where the owner puts one up."""
+        """A right-click picks the row its menu stands over, where the owner puts one up.
+
+        The menu prints the key that takes a row out, so the row the menu stands over is the row
+        that key reaches: picking it here is what holds the item and the key to one action.
+        """
         if not self._has_menu():
             return
 
         key = self._named_by(app_data, dpg.mvMouseButton_Right)
         if key is not None:
+            self._pick(key)
             self._report(self.on_menu_asked, key)
+
+    def _pick(self, key: str) -> None:
+        """Stand the row as the view holds it, and hand the pick on where an owner takes one.
+
+        The widget is written from the view every time, so a row reads as the last reading left it
+        and a list recording no selection stands its rows plain. Where an owner answers, the
+        reading it settles arrives in the same frame and the row follows that instead.
+        """
+        dpg_set_value(self._tags.row(key, SUF_TEXT), key == self._view.selected_key)
+        if self._activatable():
+            self._report(self.on_row_activated, key)
 
     def _on_name_double_clicked(self, _sender: Sender, app_data: Tuple[int, int]) -> None:
         """A double-click opens what it landed on: a folder shows what it holds, a recording sounds."""

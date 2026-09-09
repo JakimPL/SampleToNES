@@ -689,6 +689,42 @@ class TestActivation(BaseTestSuite):
 
         assert activated == [bass.key]
 
+    def test_a_right_click_picks_the_row_its_menu_stands_over(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        """The menu prints the key that takes a row out, so both name the row the menu stands over."""
+        activated: List[str] = []
+        asked: List[str] = []
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_row_activated = activated.append
+        stems_list.on_menu_requested = asked.append
+        bass = row("bass")
+        lead = row("lead")
+        stems_list.update_view(view(bass, lead, selected_key=bass.key))
+
+        click_on(lead, CLICK_HANDLER, dpg.mvMouseButton_Right)
+
+        assert activated == [lead.key]
+        assert asked == [lead.key]
+
+    def test_a_row_no_reading_picks_out_reads_plain(
+        self,
+        dpg_context: None,
+        layout_config,
+    ) -> None:
+        """A list whose owner answers a click without recording one stands its rows as the view
+        holds them, so the click leaves the look the last reading wrote."""
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_row_activated = lambda _key: None
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        select_name(bass, True)
+
+        assert dpg.get_value(row_tag(bass, SUF_TEXT)) is False
+
     def test_the_second_click_of_a_double_click_names_the_same_row(
         self,
         dpg_context: None,
