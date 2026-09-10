@@ -28,7 +28,7 @@ from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, Sh
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.main.converter import ConverterViewModel
 from sampletones_core.constants.enums import ChannelName
-from sampletones_shared.types.callback import PathCallback, StringCallback
+from sampletones_shared.types.callback import PathCallback, StringCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 ChannelsCallback = Callable[[Path, FrozenSet[ChannelName]], None]
@@ -84,6 +84,7 @@ class ConverterListing(CallbackMixin):
         self.on_source_dropped_on_source: Optional[PathPairCallback] = None
         self.on_source_dropped_on_level: Optional[PathOffsetCallback] = None
         self.on_menu_requested: Optional[StringCallback] = None
+        self.on_selection_cleared: Optional[VoidCallback] = None
 
         self._router.register(self._on_key_pressed, priority=PRIORITY_PANEL, active=self._keys_active)
 
@@ -111,6 +112,7 @@ class ConverterListing(CallbackMixin):
         self._stems_list.on_row_opened = lambda key: self.call(self.on_source_played, Path(key))
         self._stems_list.on_dropped_on_row = self._on_dropped_on_row
         self._stems_list.on_dropped_on_level = self._on_dropped_on_level
+        self._stems_list.on_selection_cleared = lambda: self.call(self.on_selection_cleared)
 
     def update_view(self, view_model: ConverterViewModel) -> None:
         """Draw the gathered recordings, with the hint standing while none are.

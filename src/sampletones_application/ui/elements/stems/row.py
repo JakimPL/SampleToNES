@@ -74,10 +74,6 @@ class StemRowRenderer:
         self._lbl_remove = language_manager["global.stems.label.remove"]
         self._folder_template = language_manager["global.stems.template.folder_row"]
 
-    def stands(self, key: str) -> bool:
-        """Whether the row is drawn, which is what a gesture or a key press can reach it by."""
-        return bool(dpg.does_item_exist(self._tags.row(key, SUF_TEXT)))
-
     def create(
         self,
         row: StemRowViewModel,

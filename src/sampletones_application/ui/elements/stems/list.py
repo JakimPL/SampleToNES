@@ -27,7 +27,7 @@ from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
     StemsListViewModel,
 )
-from sampletones_shared.types.callback import StringCallback
+from sampletones_shared.types.callback import StringCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 NO_ROWS: Final[int] = 0
@@ -132,6 +132,7 @@ class GUIStemsList(CallbackMixin):
         self.on_dropped_on_level: Optional[KeyOffsetCallback] = None
         self.on_row_opened: Optional[StringCallback] = None
         self.on_row_picked: Optional[StringCallback] = None
+        self.on_selection_cleared: Optional[VoidCallback] = None
 
         self._gestures.on_channels_settled = lambda key, channels: self.call(self.on_channels_changed, key, channels)
         self._gestures.on_channel_toggled = lambda key, channel: self.call(self.on_channel_toggled, key, channel)
@@ -272,12 +273,11 @@ class GUIStemsList(CallbackMixin):
     def picked_key(self) -> Optional[str]:
         """The row standing picked out, which is what a key press acts on.
 
-        A selection outlives the widgets it was made on: closing a folder takes the recordings
-        inside it off the list while the reading still names one of them. The pick answers for
-        the rows drawn, so a key reaches the row the reader is looking at.
+        The reading is what holds the pick, so a key reaches the same row the settings card names
+        however the list is drawn: a long list scrolled past it builds its rows in slices, and a
+        card put away keeps them where they stand.
         """
-        key = self._view.selected_key
-        return key if key is not None and self._rows.stands(key) else None
+        return self._view.selected_key
 
     @property
     def lets_a_row_go(self) -> bool:
@@ -293,9 +293,23 @@ class GUIStemsList(CallbackMixin):
         return self._open_folders.stands_open(key)
 
     def toggle_folder(self, key: str) -> None:
-        """Put a folder's recordings in view or away again, and draw the list as it now stands."""
+        """Put a folder's recordings in view or away again, and draw the list as it now stands.
+
+        A folder closing over the row picked out takes that row off the list, so the pick is
+        reported as gone and the reading that comes back names none. This is the one gesture that
+        moves a pick without landing on a row, which is what keeps the pick and the rows in step.
+        """
+        closing = self._open_folders.stands_open(key) and self._holds_picked(key)
         self._open_folders.toggle(key)
         self.update_view(self._view)
+        if closing:
+            self.call(self.on_selection_cleared)
+
+    def _holds_picked(self, key: str) -> bool:
+        """Whether the folder stands for the row picked out, which closing it would take away."""
+        row = self._view.row(key)
+        picked = self._view.selected_key
+        return row is not None and any(held.key == picked for held in row.held)
 
     @property
     def _following(self) -> bool:

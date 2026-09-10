@@ -310,7 +310,12 @@ class TestARecordingInsideAFolder(BaseTestSuite):
 
 
 class TestThePickInsideAFolder(BaseTestSuite):
-    """A key press acts on the row picked out, which a folder standing open is where one is drawn."""
+    """A folder closing over the row picked out reports the pick as gone, which is what keeps the
+    list, the settings card and the keys naming one row.
+
+    The reading holds the pick, so every other way the rows are drawn leaves it where it is; this
+    is the one gesture that takes the picked row off the list without landing on it.
+    """
 
     def test_a_recording_the_folder_shows_is_the_row_a_key_acts_on(self, stems_list: GUIStemsList) -> None:
         sources = folder("sources", holds=2)
@@ -321,17 +326,52 @@ class TestThePickInsideAFolder(BaseTestSuite):
 
         assert stems_list.picked_key == held.key
 
-    def test_closing_the_folder_leaves_no_row_for_a_key_to_act_on(self, stems_list: GUIStemsList) -> None:
-        """The reading still names the recording, and the list has taken its widgets away with the
-        folder, so a key press has nothing on screen to act on."""
+    def test_closing_the_folder_over_the_picked_row_reports_the_pick_as_gone(
+        self,
+        stems_list: GUIStemsList,
+    ) -> None:
+        cleared: List[bool] = []
+        stems_list.on_selection_cleared = lambda: cleared.append(True)
+        sources = folder("sources", holds=2)
+        stems_list.update_view(view(sources, selected_key=sources.held[FIRST_HELD].key))
+        press(twisty_of(sources))
+
+        press(twisty_of(sources))
+
+        assert cleared == [True]
+
+    def test_closing_a_folder_the_pick_stands_outside_leaves_it_alone(
+        self,
+        stems_list: GUIStemsList,
+    ) -> None:
+        """The recordings the folder takes away are its own, so a pick elsewhere is untouched."""
+        cleared: List[bool] = []
+        stems_list.on_selection_cleared = lambda: cleared.append(True)
+        sources = folder("sources", holds=2)
+        bass = recording(Path("/audio/bass.wav"))
+        stems_list.update_view(view(sources, bass, selected_key=bass.key))
+        press(twisty_of(sources))
+
+        press(twisty_of(sources))
+
+        assert cleared == []
+        assert stems_list.picked_key == bass.key
+
+    def test_opening_a_folder_over_the_picked_row_leaves_the_pick_alone(
+        self,
+        stems_list: GUIStemsList,
+    ) -> None:
+        """Opening puts recordings on the list rather than taking them off it."""
+        cleared: List[bool] = []
+        stems_list.on_selection_cleared = lambda: cleared.append(True)
         sources = folder("sources", holds=2)
         held = sources.held[FIRST_HELD]
-
         stems_list.update_view(view(sources, selected_key=held.key))
-        press(twisty_of(sources))
+
         press(twisty_of(sources))
 
-        assert stems_list.picked_key is None
+        assert cleared == []
+        assert stems_list.picked_key == held.key
 
 
 class TestDoubleClick(BaseTestSuite):

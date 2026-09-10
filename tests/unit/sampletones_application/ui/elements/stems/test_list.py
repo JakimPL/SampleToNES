@@ -1113,6 +1113,28 @@ class TestTheHeading(BaseTestSuite):
         assert dpg.does_item_exist(compose_tag(PREFIX, SUF_HEADING, ChannelName.PULSE1, SUF_TEXT))
 
 
+class TestThePickALongListHolds(BaseTestSuite):
+    """A long list builds the rows a window reaches, and the pick is the reading's rather than the
+    widgets', so scrolling away from the picked row leaves it the row a key acts on."""
+
+    def test_a_row_scrolled_out_of_the_window_is_still_the_row_a_key_acts_on(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: Frames,
+    ) -> None:
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        picked = rows[EARLY_ROW]
+        stems_list.update_view(view(*rows, collapse_levels=True, selected_key=picked.key))
+
+        with placed(LONG_LIST), patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL):
+            frames.render(SETTLING_FRAMES)
+
+        assert not dpg.does_item_exist(row_tag(picked, SUF_TEXT))
+        assert stems_list.picked_key == picked.key
+
+
 class TestTheRulesTheGridDraws(BaseTestSuite):
     """A rule runs around the grid's own edges and between its rows, so the run of rows an open
     folder breaks reads as one ruled list down its whole length."""
