@@ -239,6 +239,7 @@ class GUIStemsList(CallbackMixin):
 
     def _repaint(self, view_model: StemsListViewModel) -> None:
         """Draw what the rows in view currently hold onto the widgets they stand as."""
+        self._bands.repaint_heading(view_model)
         for row in self._reached(view_model):
             self._rows.repaint(row, view_model, releasable=self._releasable)
             self._folders.repaint(row, view_model, releasable=self._releasable)

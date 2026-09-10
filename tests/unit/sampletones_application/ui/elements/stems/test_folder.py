@@ -730,6 +730,19 @@ class TestTheOneGridAFolderStandsIn(BaseTestSuite):
         inset = -int(dpg.get_item_configuration(body)["width"])
         assert inset == layout_config.general.stems.folder_reserve
 
+    def test_every_row_opens_a_cell_for_the_strip_its_table_declares(
+        self,
+        stems_list: GUIStemsList,
+    ) -> None:
+        """A row short of a cell would let the columns after it slide left, so the row opens one
+        wherever the grid holds the strip clear."""
+        sources = folder("sources", holds=3)
+        loose = recording(Path("/audio/bass.wav"))
+        stems_list.update_view(view(sources, loose))
+
+        declared = len(dpg.get_item_children(table_of(loose), 0))
+        assert len(dpg.get_item_children(TAGS.row(loose.key, SUF_GROUP), 1)) == declared
+
     def test_the_strip_a_table_declares_comes_out_the_width_of_that_room(
         self,
         stems_list: GUIStemsList,

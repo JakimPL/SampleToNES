@@ -15,7 +15,7 @@ from sampletones_application.paths import (
     THEME_DIRECTORY,
 )
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import SUF_HEADING, SUF_TEXT
+from sampletones_application.tags.general import SUF_HEADING, SUF_TABLE, SUF_TEXT
 from sampletones_application.tags.main import (
     PRE_MAIN_SOURCE_SLOT,
     TAG_MAIN_SOURCE_GROUP_GRID,
@@ -213,6 +213,18 @@ class TestTheGrid:
         build(layout_config, view())
 
         assert dpg.get_item_configuration(TAG_MAIN_SOURCE_TABLE_GRID)["borders_outerH"] is True
+
+    def test_the_heading_draws_no_rule_of_its_own(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """One line divides the names from the boxes, so the heading leaves the drawing of it to
+        the grid rather than adding a second beside it."""
+        build(layout_config, view())
+
+        heading = compose_tag(TAG_MAIN_SOURCE_GROUP_GRID, SUF_HEADING, SUF_TABLE)
+        assert dpg.get_item_configuration(heading)["borders_outerH"] is False
 
     def test_every_channel_is_named(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         build(layout_config, view())

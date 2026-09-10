@@ -22,6 +22,8 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
+from sampletones_application.utils.gui.frame import FrameCallbackManager
+from tests.suite.frames import Frames
 
 _EXPANDED_GLYPH = "v"
 _COLLAPSED_GLYPH = ">"
@@ -34,6 +36,7 @@ _RAIL_WIDTH = 28
 
 
 _STRIP_PADDING = 8
+HOVER_RECHECK_FRAMES = 2
 
 
 @pytest.fixture
@@ -249,6 +252,28 @@ class TestHorizontalCollapse:
 
         assert controller.strip_tag in probed
         assert controller.rail_tag in probed
+
+    def test_a_hovered_bar_asks_for_the_frame_that_catches_the_pointer_leaving(
+        self,
+        dpg_context: None,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """An item hover handler fires only while the pointer is over the item, so the re-check
+        that restores the idle background waits the couple of frames the hover takes to end."""
+        controller = _controller(CollapseAxis.VERTICAL)
+        _build_card(controller)
+        held = Frames()
+        probed: List[str] = []
+        monkeypatch.setattr(FrameCallbackManager, "set_frame_callback", held.hold)
+        monkeypatch.setattr(dpg, "is_item_hovered", lambda tag: bool(probed.append(tag)) or True)
+        controller._on_bar_hover()
+        probed.clear()
+
+        held.render(HOVER_RECHECK_FRAMES - 1)
+        assert probed == []
+
+        held.render()
+        assert probed == [controller.strip_tag]
 
     def test_toggle_announces_the_new_state(self, dpg_context: None) -> None:
         controller = _controller(CollapseAxis.HORIZONTAL_LEFT)

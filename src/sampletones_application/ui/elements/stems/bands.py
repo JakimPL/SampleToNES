@@ -97,6 +97,17 @@ class LevelBands:
         self._heading.create(parent, columns)
         self._heading.render(view_model.muted_channels)
 
+    def repaint_heading(self, view_model: StemsListViewModel) -> None:
+        """Tone the channel names to the reading standing, which a tick moves without a redraw.
+
+        Which channels are switched off elsewhere is drawn onto the widgets already standing, so
+        the names follow the boxes below them between one draw and the next.
+        """
+        if not view_model.channels_in_play:
+            return
+
+        self._heading.render(view_model.muted_channels)
+
     def build_rows(self, view_model: StemsListViewModel, start: int, count: int) -> None:
         """One table of the rows a window reaches, in the grid the whole list stands in."""
         self._create_table(self._tags.segment(0), view_model, view_model.rows[start : start + count])

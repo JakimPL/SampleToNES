@@ -23,6 +23,7 @@ from sampletones_application.tags.general import (
     SUF_HEADING,
     SUF_LEAD,
     SUF_STRIP,
+    SUF_TABLE,
     SUF_TEXT,
     TAG_GLOBAL_THEME_CHANNEL_MUTED,
     TAG_GLOBAL_THEME_CHANNEL_PULSE1_PARTIAL,
@@ -36,6 +37,7 @@ from sampletones_application.ui.elements.stems.columns import StemsColumns
 from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.ui.elements.stems.offer import StemsListOffer
 from sampletones_application.ui.elements.stems.tags import StemsTags
+from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
@@ -552,6 +554,22 @@ class TestRetainedLastRow(BaseTestSuite):
 
         assert not dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
 
+    def test_the_rule_the_button_reads_is_the_one_every_way_out_reads(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        """A key press and a menu item reach removal past the row's own button, and each asks the
+        list rather than the widget, so the last row a list holds on to stays wherever it is asked
+        from."""
+        stems_list = build(layout_config, keeps_last_row=True)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+        alone = stems_list.lets_a_row_go
+        stems_list.update_view(view(bass, row("lead")))
+
+        assert alone is False
+        assert stems_list.lets_a_row_go is True
+
     def test_a_list_that_keeps_no_row_lets_the_last_one_go(
         self, dpg_context: None, layout_config: LayoutConfig
     ) -> None:
@@ -846,6 +864,43 @@ class TestMutedChannels(BaseTestSuite):
 
         muted = ThemeRegistry.get(TAG_GLOBAL_THEME_CHANNEL_MUTED).tag
         assert dpg.get_item_theme(channel_tag(bass, ChannelName.TRIANGLE)) != muted
+
+
+class TestTheToneAChannelNameTakes(BaseTestSuite):
+    """The heading tones each channel's name the way its boxes are toned, so the name and the
+    column of boxes under it read as one thing."""
+
+    @staticmethod
+    def _name_tag(channel_name: ChannelName) -> str:
+        return compose_tag(PREFIX, SUF_HEADING, channel_name, SUF_TEXT)
+
+    def test_a_muted_channel_is_named_in_the_muted_tone(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("bass"), muted_channels=frozenset({ChannelName.TRIANGLE})))
+
+        muted = ThemeRegistry.get(TAG_GLOBAL_THEME_CHANNEL_MUTED).tag
+        assert dpg.get_item_theme(self._name_tag(ChannelName.TRIANGLE)) == muted
+        assert dpg.get_item_theme(self._name_tag(ChannelName.PULSE1)) != muted
+
+    def test_a_channel_in_play_is_named_in_its_own_color(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("bass")))
+
+        expected = ThemeRegistry.get(CHANNEL_THEME_TAGS[ChannelName.PULSE1]).tag
+        assert dpg.get_item_theme(self._name_tag(ChannelName.PULSE1)) == expected
+
+    def test_a_channel_switched_back_on_is_named_in_its_own_color_again(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        stems_list = build(layout_config)
+        stems_list.update_view(view(row("bass"), muted_channels=frozenset({ChannelName.TRIANGLE})))
+
+        stems_list.update_view(view(row("bass")))
+
+        muted = ThemeRegistry.get(TAG_GLOBAL_THEME_CHANNEL_MUTED).tag
+        assert dpg.get_item_theme(self._name_tag(ChannelName.TRIANGLE)) != muted
 
 
 class TestCollapsedLevels(BaseTestSuite):
@@ -1148,6 +1203,16 @@ class TestTheRulesTheGridDraws(BaseTestSuite):
 
         assert dpg.get_item_configuration(TAGS.table)["borders_outerH"] is True
 
+    def test_the_heading_draws_no_rule_of_its_own(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        """One line divides the names from the rows, so the heading leaves the drawing of it to
+        the grid rather than adding a second beside it."""
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("kick"), collapse_levels=True))
+
+        heading = compose_tag(PREFIX, SUF_HEADING, SUF_TABLE)
+        assert dpg.get_item_configuration(heading)["borders_outerH"] is False
+
     def test_the_grid_rules_between_the_rows_it_holds(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         stems_list = build(layout_config)
 
@@ -1246,6 +1311,39 @@ class TestTheListSettlingItsWell(BaseTestSuite):
 
         with placed(self._built(rows)):
             frames.render()
+
+        assert frames.pending == 1
+
+    def test_readings_arriving_before_the_frame_ask_for_the_one_frame(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: Frames,
+    ) -> None:
+        """One pass answers for whatever the list has drawn by the time it runs, so a run of
+        readings between two frames leaves one pass rather than one apiece."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+
+        stems_list.update_view(view(*rows, collapse_levels=True))
+        stems_list.update_view(view(*rows[:-1], collapse_levels=True))
+        stems_list.update_view(view(*rows[:-2], collapse_levels=True))
+
+        assert frames.pending == 1
+
+    def test_the_pass_renews_itself_rather_than_piling_up(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: Frames,
+    ) -> None:
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        for _ in range(SETTLING_FRAMES):
+            with placed(self._built(rows)):
+                frames.render()
 
         assert frames.pending == 1
 
