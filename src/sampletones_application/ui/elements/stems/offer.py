@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Final
 
+from sampletones_application.view_model.shared.stems import StemsListViewModel
+
 
 @dataclass(frozen=True)
 class StemsListOffer:
@@ -25,6 +27,15 @@ class StemsListOffer:
     dragging: bool
     bends: bool
     picking: bool
+
+    def drags(self, view_model: StemsListViewModel) -> bool:
+        """Whether a row is dragged, which the bands a drag rearranges are what it takes.
+
+        A drag moves a recording between levels, so it reaches a list drawing them. Whoever draws
+        the row and whoever explains it both read this, so what a row offers and what it says it
+        offers are one answer.
+        """
+        return self.dragging and not view_model.collapse_levels
 
 
 GATHERED_SOURCES: Final[StemsListOffer] = StemsListOffer(

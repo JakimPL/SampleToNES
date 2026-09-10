@@ -212,7 +212,7 @@ class StemRowRenderer:
                 payload_type=self._tags.payload,
                 drop_callback=self._gestures.on_row_drop,
             )
-            if self._draggable(view_model):
+            if self._offer.drags(view_model):
                 with dpg.drag_payload(parent=name, drag_data=row.key, payload_type=self._tags.payload):
                     dpg.add_text(row.name)
 
@@ -230,10 +230,6 @@ class StemRowRenderer:
             return NO_INDENT
 
         return columns.marker_indent(self._glyphs.collapsed, Font.ICON)
-
-    def _draggable(self, view_model: StemsListViewModel) -> bool:
-        """A row is dragged where the list bands its rows, which is what a drag rearranges."""
-        return self._offer.dragging and not view_model.collapse_levels
 
     def _create_disclosure(self, row: StemRowViewModel) -> None:
         """The marker a folder opens by, which stands beside the folder's own name.

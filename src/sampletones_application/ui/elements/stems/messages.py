@@ -56,7 +56,7 @@ class StemsMessages:
         elif not row.takes_part:
             lines.append(self._msg_inert)
 
-        if self._offer.dragging:
+        if self._offer.drags(self._view):
             lines.append(self._msg_drag)
 
         return "\n".join(lines)
@@ -82,9 +82,9 @@ class StemsMessages:
         row draws; a list that neither drags nor reveals reads as the name alone.
         """
         lines: Tuple[str, ...] = ()
-        if self._offer.dragging:
+        if self._offer.drags(self._view):
             lines += (self._language_manager["global.stems.message.status_row_drag"].format(name=row.name),)
-        elif self._host.activatable:
+        if self._host.activatable:
             lines += (self._language_manager["global.stems.message.status_row_reveal"].format(name=row.name),)
 
         if self._host.playable:
