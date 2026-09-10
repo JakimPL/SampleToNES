@@ -241,8 +241,8 @@ class GUIStemsList(CallbackMixin):
         """Draw what the rows in view currently hold onto the widgets they stand as."""
         self._bands.repaint_heading(view_model)
         for row in self._reached(view_model):
-            self._rows.repaint(row, view_model, releasable=self._releasable)
-            self._folders.repaint(row, view_model, releasable=self._releasable)
+            self._rows.repaint(row, view_model)
+            self._folders.repaint(row, view_model)
 
     def _reached(self, view_model: StemsListViewModel) -> Tuple[StemRowViewModel, ...]:
         """The rows the well has widgets for, which are the ones a repaint reaches."""
@@ -273,7 +273,7 @@ class GUIStemsList(CallbackMixin):
         A gesture reaching removal from outside the row's own button — a key press, a menu item —
         asks this, so every way out of the list answers to the one rule the button reads.
         """
-        return self._view.live and self._releasable
+        return self._view.live and self._rows.releasable(self._view)
 
     def stands_open(self, key: str) -> bool:
         """Whether the folder's recordings are in view, which is what a menu names its move by."""
@@ -328,12 +328,7 @@ class GUIStemsList(CallbackMixin):
             self._folders.redraw(key, self._view)
             row = self._view.row(key)
             if row is not None:
-                self._folders.repaint(row, self._view, releasable=self._releasable)
+                self._folders.repaint(row, self._view)
 
         if self._following:
             self._settle_soon()
-
-    @property
-    def _releasable(self) -> bool:
-        """Whether a row may leave, which a list holding on to its last one answers by its count."""
-        return self._view.row_count > 1 or not self._offer.keeps_last_row

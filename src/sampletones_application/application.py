@@ -1566,10 +1566,10 @@ class Application:
     def _toggle_channel(self, generator: ChannelName) -> None:
         """Switches one NES channel in the tab in front of the reader.
 
-        A channel is switched by a control of its own on three tabs: the generators a
-        reconstruction is built from on the Main tab, the slices the waveform draws and plays on
+        A channel is switched by a control of its own on three tabs: the channels the row picked
+        out of the converter may take on the Main tab, the slices the waveform draws and plays on
         the Reconstructions tab, and the sequencer's mix elsewhere. One key reaches whichever of
-        them is on screen, so a reader silences what they are listening to without leaving it.
+        them is on screen, so a reader stays where they are while they move it.
         """
         match self._shell.get_current_tab():
             case Tab.MAIN:

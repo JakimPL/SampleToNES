@@ -19,7 +19,7 @@ Adding a folder opens a small window while the folder is read. **Stop** ends the
 
 **x** removes a row from the list. Removing a folder removes every recording in it.
 
-Click a row to select it. The **Source settings** card then shows that recording. Press `Del` to remove the selected row.
+Click a row to select it. The **Source settings** card then shows that recording. Right-clicking a row selects it as well. Press `Del` to remove the selected row. Closing a folder that holds the selected recording clears the selection.
 
 ## Choosing which channels a recording uses
 
@@ -31,7 +31,7 @@ A folder represents all the recordings inside it. Its checkbox shows their chann
 - filled with the channel's color if only some recordings use it,
 - empty if none of them use it.
 
-Click the checkbox to change the channel for all recordings in the folder. To change the channel for one recording, open the folder and click the marker next to its name, or double-click the recording name.
+Click the checkbox to change the channel for all recordings in the folder. To change the channel for one recording, open the folder first: click the marker next to the folder name, or double-click the folder name. Each recording inside then has its own checkboxes.
 
 The **Source settings** card has two more settings. **Drive** sets how hard the channels are pushed. It applies to the whole conversion.
 

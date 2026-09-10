@@ -235,11 +235,19 @@ again.
   read from `live`.
 
 * The removal key reaches a row a collapsed converter card is hiding. `GUIStemsList.picked_key`
-  answers for the rows drawn, and a collapsed card leaves its widgets standing at `show=False`, so
-  `Del` takes the picked recording off a list the reader has put away. The Source settings card
-  names that row throughout and collapsing the card is the reader's own gesture, so this is the
-  smaller half of the case a closed folder raised; it wants an answer of its own, since what is
-  shown is read from a drawn frame rather than from the widget's existence.
+  answers with the row the reading holds picked out, which a collapsed card keeps, so `Del` takes
+  the picked recording off a list the reader has put away. The Source settings card names that row
+  throughout and collapsing the card is the reader's own gesture, so the pick is right to survive
+  it; what is missing is that the card standing away is a reason for the key to rest. Whether a
+  card is shown is read from a drawn frame, so the answer belongs with the collapse controller
+  rather than with the list.
+
+* A windowed list keeps a settle pass alive for as long as it holds rows back, including while its
+  card is collapsed and the list is hidden. `GUIStemsList._settle_soon` re-arms while `_following`
+  is true, and `WindowedRegion.standing` asks only that the body item exists, so a gathering of a
+  few hundred recordings reconfigures two widgets every frame for the rest of the run. DearPyGui
+  offers no scroll callback, so the pass itself is the design; what it wants is the same drawn
+  visibility reading the removal key above needs, which is why the two are recorded together.
 
 * No refreshing after library generation
 * Misaligned dialog boxes sizes at initialization

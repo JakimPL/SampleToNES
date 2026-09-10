@@ -102,13 +102,7 @@ class StemRowRenderer:
             if columns.reserved:
                 dpg.add_spacer()
 
-    def repaint(
-        self,
-        row: StemRowViewModel,
-        view_model: StemsListViewModel,
-        *,
-        releasable: bool,
-    ) -> None:
+    def repaint(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
         """Draw what the row currently holds onto the widgets it already stands as.
 
         A row contributing nothing grays through its theme rather than through ``enabled``, so
@@ -141,7 +135,15 @@ class StemRowRenderer:
             self._tone_master(row, view_model)
 
         if self._offer.removal:
-            dpg_configure_item(self._tags.row(row.key, SUF_BUTTON), enabled=live and releasable)
+            dpg_configure_item(self._tags.row(row.key, SUF_BUTTON), enabled=live and self.releasable(view_model))
+
+    def releasable(self, view_model: StemsListViewModel) -> bool:
+        """Whether a row may leave, which a list holding on to its last one answers by its count.
+
+        The button on the row reads this, and so does every gesture reaching removal from outside
+        the row — a key press, a menu item — so one rule answers them all.
+        """
+        return view_model.row_count > 1 or not self._offer.keeps_last_row
 
     def _create_master(
         self,

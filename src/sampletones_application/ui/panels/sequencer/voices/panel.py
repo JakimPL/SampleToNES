@@ -35,6 +35,7 @@ from sampletones_application.utils.gui.keyboard import (
     ActivePredicate,
     KeyEvent,
     KeyRouter,
+    panel_scope_active,
 )
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
@@ -464,12 +465,10 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._selected_voice_id = None
 
     def _keys_active(self) -> bool:
-        """Whether the voices panel owns the next key.
+        """Whether the voices panel owns the next key, which the voice it holds selected decides.
 
-        The panel answers only while its tab is in front, since a selection outlives a move to
-        another tab. There, a name being edited keeps the keyboard so Escape can cancel the rename;
-        otherwise the panel acts when a voice is selected and no field holds the keyboard. A modal
-        dialog claims keys at a higher priority in the router, so the panel needs no modal check.
+        A name being edited claims every press on its own, so Escape reaches the rename it would
+        cancel rather than the field that holds the keyboard.
         """
         if not self._tab_active():
             return False
@@ -477,7 +476,11 @@ class GUISequencerVoicesPanel(GUIPanel):
         if self._editing_voice_id is not None:
             return True
 
-        return self._selected_voice_id is not None and not self._router.is_field_focused
+        return panel_scope_active(
+            tab_active=self._tab_active,
+            router=self._router,
+            holds=self._selected_voice_id is not None,
+        )
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
         """Applies a voices key to the selected voice, reporting whether the panel consumed it.

@@ -88,13 +88,7 @@ class FolderRenderer:
 
         self._fill(region, row, view_model)
 
-    def repaint(
-        self,
-        row: StemRowViewModel,
-        view_model: StemsListViewModel,
-        *,
-        releasable: bool,
-    ) -> None:
+    def repaint(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
         """Draw what the recordings in view currently hold onto the widgets they stand as.
 
         A recording inside a folder leaves the same way a loose one does, so it answers the same
@@ -105,7 +99,7 @@ class FolderRenderer:
             return
 
         for held in self._reached(region, row):
-            self._rows.repaint(held, view_model, releasable=releasable)
+            self._rows.repaint(held, view_model)
 
     def open(self, row: StemRowViewModel, view_model: StemsListViewModel) -> None:
         """Sink the folder's region below its row and fill it with the rows it reaches.

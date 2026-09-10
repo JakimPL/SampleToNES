@@ -23,6 +23,7 @@ from sampletones_application.utils.gui.keyboard import (
     ActivePredicate,
     KeyEvent,
     KeyRouter,
+    panel_scope_active,
 )
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
@@ -138,13 +139,12 @@ class ConverterListing(CallbackMixin):
             self.call(self.on_row_selected, Path(key), row.kind)
 
     def _keys_active(self) -> bool:
-        """Whether the list owns the next key: its tab is in front and it holds a row picked out.
-
-        A row picked out outlives a move to another tab, so the tab is read at the moment of the
-        press. A modal dialog claims keys above this scope in the router, which is what holds the
-        list off while one stands open.
-        """
-        return self._tab_active() and self._stems_list.picked_key is not None and not self._router.is_field_focused
+        """Whether the list owns the next key, which the row it holds picked out is what decides."""
+        return panel_scope_active(
+            tab_active=self._tab_active,
+            router=self._router,
+            holds=self._stems_list.picked_key is not None,
+        )
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
         """Act on the row picked out, reporting whether the list consumed the press.
