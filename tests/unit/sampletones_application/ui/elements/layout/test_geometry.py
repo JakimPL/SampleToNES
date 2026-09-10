@@ -14,6 +14,7 @@ from tests.suite.case import BaseRegularTestCase
 
 OVERSCAN = 2
 PITCH = 20.0
+OPENING = 16.0
 REGION_HEIGHT = 100.0
 TOTAL_ROWS = 100
 READING_STEPS = 40
@@ -21,30 +22,36 @@ READING_STEPS = 40
 
 def measured(*, overscan: int = OVERSCAN, pitch: float = PITCH) -> RowGeometry:
     """A reading of the room one row takes, as a region that has drawn rows would hold it."""
-    return RowGeometry(overscan=overscan, pitch=pitch)
+    return RowGeometry(overscan=overscan, pitch=pitch, opening=OPENING)
 
 
 class TestAnUnmeasuredGeometry(BaseTestSuite):
-    """A geometry that has yet to read a row works from the least room a row can take, so a first
-    draw is generous rather than unbounded."""
+    """A geometry that has yet to read a row works from the height its layout gives one, so a
+    first draw builds about the rows the region shows."""
 
     def test_it_reports_no_reading(self) -> None:
-        assert not RowGeometry.unmeasured(overscan=OVERSCAN).measured
+        assert not RowGeometry.opening_at(overscan=OVERSCAN, opening=OPENING).measured
 
-    def test_it_works_from_the_floor(self) -> None:
-        assert RowGeometry.unmeasured(overscan=OVERSCAN).room == MINIMUM_ROW_PITCH
+    def test_it_works_from_the_opening_it_was_given(self) -> None:
+        assert RowGeometry.opening_at(overscan=OVERSCAN, opening=OPENING).room == OPENING
 
-    def test_its_window_is_wider_than_a_measured_one(self) -> None:
-        """A floor no row goes under makes the first window larger than it needs to be, never
-        smaller, so the rows the region shows are among the ones it built."""
-        unmeasured = RowGeometry.unmeasured(overscan=OVERSCAN)
-        assert unmeasured.size(REGION_HEIGHT) > measured().size(REGION_HEIGHT)
+    def test_an_opening_under_the_floor_is_held_to_it(self) -> None:
+        """No theme draws a row that small, so a figure below the floor opens at the floor."""
+        opened = RowGeometry.opening_at(overscan=OVERSCAN, opening=MINIMUM_ROW_PITCH / 2)
+        assert opened.room == MINIMUM_ROW_PITCH
+
+    def test_its_window_covers_what_a_measured_one_covers(self) -> None:
+        """The opening stands close to what a row takes, so the first slice reaches the rows the
+        region shows rather than several times as many."""
+        unmeasured = RowGeometry.opening_at(overscan=OVERSCAN, opening=OPENING)
+        assert unmeasured.size(REGION_HEIGHT) >= measured().size(REGION_HEIGHT)
+        assert unmeasured.size(REGION_HEIGHT) < 2 * measured().size(REGION_HEIGHT)
 
     def test_it_still_holds_a_long_list_back(self) -> None:
-        assert RowGeometry.unmeasured(overscan=OVERSCAN).windows(height=REGION_HEIGHT, total=10_000)
+        assert RowGeometry.opening_at(overscan=OVERSCAN, opening=OPENING).windows(height=REGION_HEIGHT, total=10_000)
 
     def test_a_short_list_is_drawn_whole(self) -> None:
-        geometry = RowGeometry.unmeasured(overscan=OVERSCAN)
+        geometry = RowGeometry.opening_at(overscan=OVERSCAN, opening=OPENING)
         assert geometry.slice_of(offset=0.0, height=REGION_HEIGHT, total=3) == (0, 3)
 
 
@@ -197,10 +204,10 @@ class TestReserve(BaseTestSuite):
     def test_reserve_is_the_room_those_rows_take(self, rows: int) -> None:
         assert measured().reserve(rows) == int(rows * PITCH)
 
-    def test_an_unmeasured_geometry_reserves_by_the_floor(self) -> None:
+    def test_an_unmeasured_geometry_reserves_by_its_opening(self) -> None:
         rows = 100
-        geometry = RowGeometry.unmeasured(overscan=OVERSCAN)
-        assert geometry.reserve(rows) == int(rows * MINIMUM_ROW_PITCH)
+        geometry = RowGeometry.opening_at(overscan=OVERSCAN, opening=OPENING)
+        assert geometry.reserve(rows) == int(rows * OPENING)
 
     def test_the_reserves_and_the_drawn_rows_span_the_list(self) -> None:
         geometry = measured()
@@ -215,13 +222,13 @@ class TestTake(BaseTestSuite):
     its rows is carried by the same number that reserves room for them."""
 
     def test_a_reading_gives_the_room_one_row_takes(self) -> None:
-        geometry = RowGeometry.unmeasured(overscan=OVERSCAN)
+        geometry = RowGeometry.opening_at(overscan=OVERSCAN, opening=OPENING)
         geometry.take(block=200.0, rows=10)
         assert geometry.pitch == pytest.approx(20.0)
         assert geometry.measured
 
     def test_a_first_reading_is_worth_redrawing(self) -> None:
-        geometry = RowGeometry.unmeasured(overscan=OVERSCAN)
+        geometry = RowGeometry.opening_at(overscan=OVERSCAN, opening=OPENING)
         assert geometry.take(block=200.0, rows=10)
 
     def test_a_reading_that_holds_asks_for_no_redraw(self) -> None:

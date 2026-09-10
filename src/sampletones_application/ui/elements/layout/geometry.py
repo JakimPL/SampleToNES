@@ -19,9 +19,9 @@ class RowGeometry:
     rows have already been placed and shared by every region drawing rows of that shape. A folder
     opens knowing what a row takes because the list the folder stands in measured it.
 
-    A geometry that has yet to read anything works from the least room a row can take, so a first
-    draw is generous rather than unbounded: it builds more rows than it needs, measures them, and
-    holds to that reading from the next frame on.
+    A geometry that has yet to read anything works from ``opening`` — the room the layout says a
+    row takes — so a first draw builds about the rows it shows, and the reading taken from them
+    settles it from the next frame on.
 
     ``overscan`` is how many rows stand beyond each edge of what a region shows, so a scroll in
     either direction meets rows that are already there.
@@ -29,11 +29,12 @@ class RowGeometry:
 
     overscan: int
     pitch: float
+    opening: float
 
     @classmethod
-    def unmeasured(cls, *, overscan: int) -> Self:
-        """The reading a list starts from, before it has drawn a row to measure."""
-        return cls(overscan=overscan, pitch=UNMEASURED)
+    def opening_at(cls, *, overscan: int, opening: float) -> Self:
+        """The reading a list starts from, which the height its layout gives a row opens."""
+        return cls(overscan=overscan, pitch=UNMEASURED, opening=max(MINIMUM_ROW_PITCH, opening))
 
     @property
     def measured(self) -> bool:
@@ -42,12 +43,12 @@ class RowGeometry:
 
     @property
     def room(self) -> float:
-        """The room one row is worked from: what was read, or the least a row can take.
+        """The room one row is worked from: what was read, or what the layout opens it at.
 
-        ``MINIMUM_ROW_PITCH`` is a floor rather than a guess at the theme in force, so a window
-        taken before anything has been measured is wider than it needs to be and never narrower.
+        ``MINIMUM_ROW_PITCH`` is the floor an opening is held to, so a window taken before
+        anything has been measured covers a region rather than a sliver of one.
         """
-        return self.pitch if self.measured else MINIMUM_ROW_PITCH
+        return self.pitch if self.measured else self.opening
 
     def size(self, height: float) -> int:
         """How many rows a window over a region of this height holds, overscan included."""

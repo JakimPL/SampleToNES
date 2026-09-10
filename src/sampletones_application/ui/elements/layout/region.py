@@ -17,6 +17,7 @@ SliceBuilder = Callable[[int, int], None]
 LeadBuilder = Callable[[str], None]
 
 NO_ROWS: Final[Window] = (0, 0)
+NO_TOTAL: Final[int] = 0
 NO_GUTTER: Final[int] = 0
 NO_MARGIN: Final[int] = 0
 NO_LEAD: Final[float] = 0.0
@@ -185,15 +186,13 @@ class WindowedRegion:
         self._windowed = True
         self._drawn = (start, count)
 
-    def draw_whole(self, build: VoidCallback, *, lead: Optional[LeadBuilder], rows: int) -> None:
+    def draw_whole(self, build: VoidCallback, *, lead: Optional[LeadBuilder]) -> None:
         """Build the region's contents entire, for content that is more than a run of rows.
 
         A region holding captions, strips or regions of its own has no one row to reserve room by,
-        so it stands as tall as what it holds and scrolls once that reaches its ceiling.
-
-        ``rows`` is how many rows of one height the content is a plain run of, which is what a
-        reading of a row is taken from; content standing anything else among its rows is a run of
-        none.
+        so it stands as tall as what it holds and scrolls once that reaches its ceiling. What a row
+        takes is read from the runs of rows a region draws windows over, which is where a block of
+        one height stands on its own.
         """
         if not self.standing:
             return
@@ -201,7 +200,7 @@ class WindowedRegion:
         dpg_delete_children(self._body_tag)
         self._build_lead(lead)
         build()
-        self._total = rows
+        self._total = NO_TOTAL
         self._windowed = False
         self._drawn = NO_ROWS
 

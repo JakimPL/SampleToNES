@@ -25,6 +25,7 @@ from tests.suite.base import BaseTestSuite
 ROOT_TAG = "test_root"
 REGION_TAG = "test.region"
 PITCH = 20.0
+OPENING = 8.0
 OVERSCAN = 2
 CEILING = 100
 HEADING_TEXT = "channels"
@@ -56,7 +57,7 @@ def region(dpg_context: None) -> WindowedRegion:
     """A region whose reading of a row is already taken, as a list that has drawn rows leaves it."""
     built = WindowedRegion(
         tag=REGION_TAG,
-        geometry=RowGeometry(overscan=OVERSCAN, pitch=PITCH),
+        geometry=RowGeometry(overscan=OVERSCAN, pitch=PITCH, opening=OPENING),
         ceiling=CEILING,
         padding=0,
         margin=0,
@@ -154,7 +155,7 @@ class TestAnUnmeasuredRegion(BaseTestSuite):
     def unmeasured(self, dpg_context: None) -> WindowedRegion:
         built = WindowedRegion(
             tag=REGION_TAG,
-            geometry=RowGeometry.unmeasured(overscan=OVERSCAN),
+            geometry=RowGeometry.opening_at(overscan=OVERSCAN, opening=OPENING),
             ceiling=CEILING,
             padding=0,
             margin=0,
@@ -190,7 +191,7 @@ class TestAReadingTheHeightHasYetToFollow(BaseTestSuite):
     def unmeasured(self, dpg_context: None) -> WindowedRegion:
         built = WindowedRegion(
             tag=REGION_TAG,
-            geometry=RowGeometry.unmeasured(overscan=OVERSCAN),
+            geometry=RowGeometry.opening_at(overscan=OVERSCAN, opening=OPENING),
             ceiling=CEILING,
             padding=0,
             margin=0,
@@ -271,7 +272,7 @@ class TestAHeightTheFrameHasYetToShow(BaseTestSuite):
     def sizing(self, dpg_context: None) -> WindowedRegion:
         built = WindowedRegion(
             tag=REGION_TAG,
-            geometry=RowGeometry(overscan=OVERSCAN, pitch=PITCH),
+            geometry=RowGeometry(overscan=OVERSCAN, pitch=PITCH, opening=OPENING),
             ceiling=CEILING,
             padding=0,
             margin=0,
@@ -366,7 +367,7 @@ class TestALead(BaseTestSuite):
 
     def test_the_reading_of_a_row_leaves_the_heading_out(self, dpg_context: None) -> None:
         """A block is measured with the heading in it, so a row is counted from what is left."""
-        geometry = RowGeometry.unmeasured(overscan=OVERSCAN)
+        geometry = RowGeometry.opening_at(overscan=OVERSCAN, opening=OPENING)
         built = WindowedRegion(
             tag=REGION_TAG,
             geometry=geometry,
@@ -390,26 +391,24 @@ class TestAWholeDraw(BaseTestSuite):
     ceiling from there on."""
 
     def test_everything_it_is_given_is_built(self, region: WindowedRegion) -> None:
-        region.draw_whole(
-            lambda: [dpg.add_text(f"row {index}", parent=region.body) for index in range(30)], lead=None, rows=30
-        )
+        region.draw_whole(lambda: [dpg.add_text(f"row {index}", parent=region.body) for index in range(30)], lead=None)
 
         assert len(dpg.get_item_children(region.body, 1)) == 30
 
     def test_it_holds_back_no_rows(self, region: WindowedRegion) -> None:
-        region.draw_whole(lambda: dpg.add_text("banded", parent=region.body), lead=None, rows=0)
+        region.draw_whole(lambda: dpg.add_text("banded", parent=region.body), lead=None)
 
         assert not region.windowing
 
     def test_it_carries_its_heading_too(self, region: WindowedRegion) -> None:
-        region.draw_whole(lambda: dpg.add_text("banded", parent=region.body), lead=heading, rows=0)
+        region.draw_whole(lambda: dpg.add_text("banded", parent=region.body), lead=heading)
         first = dpg.get_item_children(region.body, 1)[0]
 
         assert dpg.get_item_type(first) == "mvAppItemType::mvGroup"
 
     def test_content_past_the_ceiling_is_held_at_it(self, region: WindowedRegion) -> None:
         """What a region holds is measured rather than counted, since it is more than a run of rows."""
-        region.draw_whole(lambda: dpg.add_text("banded", parent=region.body), lead=None, rows=0)
+        region.draw_whole(lambda: dpg.add_text("banded", parent=region.body), lead=None)
 
         with block_of(CEILING + PITCH):
             region.settle()
@@ -420,7 +419,7 @@ class TestAWholeDraw(BaseTestSuite):
 
     def test_content_inside_the_ceiling_sizes_the_region_to_itself(self, region: WindowedRegion) -> None:
         """A region held at its ceiling follows what it holds back down once that fits again."""
-        region.draw_whole(lambda: dpg.add_text("banded", parent=region.body), lead=None, rows=0)
+        region.draw_whole(lambda: dpg.add_text("banded", parent=region.body), lead=None)
         with block_of(CEILING + PITCH):
             region.settle()
 
@@ -548,7 +547,7 @@ class TestTheGutterAScrollbarWillTake(BaseTestSuite):
     def gutted_fixture(self, dpg_context: None) -> WindowedRegion:
         built = WindowedRegion(
             tag=REGION_TAG,
-            geometry=RowGeometry(overscan=OVERSCAN, pitch=PITCH),
+            geometry=RowGeometry(overscan=OVERSCAN, pitch=PITCH, opening=OPENING),
             ceiling=CEILING,
             padding=PADDING,
             margin=0,

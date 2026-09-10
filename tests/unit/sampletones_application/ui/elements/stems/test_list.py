@@ -30,6 +30,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_STEMS_ROW_INERT,
 )
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.geometry import MINIMUM_ROW_PITCH
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.columns import StemsColumns
 from sampletones_application.ui.elements.stems.list import GUIStemsList
@@ -1169,6 +1170,24 @@ class TestTheWell(BaseTestSuite):
 
         built = sum(1 for entry in rows if dpg.does_item_exist(row_tag(entry, SUF_TEXT)))
         assert 0 < built < LONG_LIST
+
+    def test_the_first_slice_is_sized_by_the_height_the_layout_gives_a_row(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """No frame has measured a row yet, so the well opens at the layout's own figure: it
+        builds about the rows the ceiling holds rather than the several times as many a floor of
+        eight pixels a row would reach."""
+        stems = layout_config.general.stems
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        built = sum(1 for entry in rows if dpg.does_item_exist(row_tag(entry, SUF_TEXT)))
+        assert built < stems.well_ceiling / MINIMUM_ROW_PITCH
+        assert built >= stems.well_ceiling / stems.name_height
 
     def test_a_short_run_of_recordings_builds_them_all(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         stems_list = build(layout_config)

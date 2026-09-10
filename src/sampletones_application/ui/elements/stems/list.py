@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Final, Optional, Tuple
+from typing import Optional, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.stems import StemsListLayout
@@ -29,8 +29,6 @@ from sampletones_application.view_model.shared.stems import (
 )
 from sampletones_shared.types.callback import StringCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
-
-NO_ROWS: Final[int] = 0
 
 
 class GUIStemsList(CallbackMixin):
@@ -65,7 +63,10 @@ class GUIStemsList(CallbackMixin):
         self._offer = offer
         self._view = StemsListViewModel.empty()
         self._open_folders = OpenFolders()
-        self._geometry = RowGeometry.unmeasured(overscan=layout.window_overscan)
+        self._geometry = RowGeometry.opening_at(
+            overscan=layout.window_overscan,
+            opening=float(layout.name_height),
+        )
         self._settling = False
         self._region = WindowedRegion(
             tag=self._tags.well,
@@ -215,7 +216,6 @@ class GUIStemsList(CallbackMixin):
         self._region.draw_whole(
             partial(self._bands.build, view_model),
             lead=partial(self._bands.build_heading, view_model),
-            rows=self._plain_rows(view_model),
         )
 
     def _draw_window(self, view_model: StemsListViewModel) -> None:
@@ -236,20 +236,6 @@ class GUIStemsList(CallbackMixin):
         the well holds the rows around it entire.
         """
         return view_model.collapse_levels and not view_model.holds_folders
-
-    def _plain_rows(self, view_model: StemsListViewModel) -> int:
-        """How many rows of one height the well holds, which a reading of a row is counted from.
-
-        A well standing recordings alone answers with its whole count. One standing a caption, a
-        strip or a folder answers with none: a folder is a table of its own with a region under
-        it, so a block measured across those carries a table's chrome per folder and reads a row
-        as taller than it is. The reading a folder's rows are reserved by is then the one that
-        folder's own region takes, from the run of rows it draws.
-        """
-        if not view_model.collapse_levels or view_model.holds_folders:
-            return NO_ROWS
-
-        return view_model.row_count
 
     def _repaint(self, view_model: StemsListViewModel) -> None:
         """Draw what the rows in view currently hold onto the widgets they stand as."""

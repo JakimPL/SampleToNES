@@ -310,7 +310,9 @@ class TestDrawingAGatheredFolder(BaseTestSuite):
         large_listing: StemsListViewModel,
     ) -> None:
         layout = layout_config.general.stems
-        window = RowGeometry.unmeasured(overscan=layout.window_overscan).size(float(layout.folder_ceiling))
+        window = RowGeometry.opening_at(overscan=layout.window_overscan, opening=float(layout.name_height)).size(
+            float(layout.folder_ceiling)
+        )
         drawn = tuple(
             self._opened(prefix, layout_config, listing)
             for prefix, listing in (("load.small", small_listing), ("load.large", large_listing))
