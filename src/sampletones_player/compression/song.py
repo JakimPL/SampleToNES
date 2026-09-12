@@ -1,5 +1,6 @@
 from typing import FrozenSet, Optional, Sequence
 
+from sampletones_player.compression.budget import DEFAULT_SEARCH_BUDGET, SearchBudget
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.dictionary.phrase import Phrase
@@ -26,6 +27,7 @@ def compress_song(
     *,
     seeds: Sequence[Phrase],
     loop_tick: Optional[int] = None,
+    budget: SearchBudget = DEFAULT_SEARCH_BUDGET,
     report: CodecReporter = silent_reporter,
 ) -> CompressedPlanes:
     """Compresses a song's four register streams into the dictionary and streams a file carries.
@@ -39,6 +41,7 @@ def compress_song(
         pitches: The timer each pitch sounds at, which is what turns a timer into an index.
         seeds: The phrases the song's instruments offer the dictionary.
         loop_tick: The tick the song returns to once it ends, or ``None`` where it stops there.
+        budget: How much work the search spends beyond the phrases the instruments seed.
         report: Hears what the codec holds each time it looks up, and answers whether it goes on.
 
     Returns:
@@ -53,6 +56,7 @@ def compress_song(
         seeds,
         options=EVERY_LAYER,
         boundaries=_entries(loop_tick),
+        budget=budget,
         report=report,
     )
 

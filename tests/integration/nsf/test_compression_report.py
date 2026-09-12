@@ -116,7 +116,7 @@ def corpus(
     instrument_catalog: Dict[str, Sample],
     integration_project: Project,
 ) -> Tuple[CorpusEntry, ...]:
-    """The songs the report measures: each sample alone, and the arrangement at two lengths."""
+    """The songs the report measures: each sample alone, the arrangement at two lengths, and a dense minute."""
     return build_corpus(instrument_catalog, integration_project)
 
 

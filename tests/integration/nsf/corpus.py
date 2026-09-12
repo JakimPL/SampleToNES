@@ -229,17 +229,20 @@ def build_corpus(
     instrument_catalog: Dict[str, Sample],
     integration_project: Project,
 ) -> Tuple[CorpusEntry, ...]:
-    """The songs the codec is measured on: each sample alone, and the arrangement at two lengths.
+    """The songs the codec is measured on: each sample alone, the arrangement at two lengths, and
+    a minute of dense reconstruction.
 
     Args:
         instrument_catalog: The samples the integration suite reads.
         integration_project: The arrangement those samples are played in.
 
     Returns:
-        Tuple[CorpusEntry, ...]: The samples first, then the arrangement, then the long one.
+        Tuple[CorpusEntry, ...]: The samples first, then the arrangement, the long one, and the
+            reconstruction.
     """
     return (
         *sample_entries(instrument_catalog, integration_project.settings),
         arrangement_entry(ARRANGEMENT, integration_project),
         arrangement_entry(LONG_ARRANGEMENT, lengthened_arrangement(integration_project, TARGET_SECONDS)),
+        reconstruction_entry(RECONSTRUCTION, RECONSTRUCTION_SECONDS),
     )

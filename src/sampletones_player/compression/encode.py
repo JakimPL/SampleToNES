@@ -2,6 +2,7 @@ from dataclasses import replace
 from typing import Dict, Final, FrozenSet, Iterable, Sequence, Tuple
 
 from sampletones_player.compression.admit import admit_seeds
+from sampletones_player.compression.budget import DEFAULT_SEARCH_BUDGET, SearchBudget
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.dictionary.prune import prune
@@ -119,6 +120,7 @@ def encode_planes(
     *,
     options: CodecOptions,
     boundaries: FrozenSet[int],
+    budget: SearchBudget = DEFAULT_SEARCH_BUDGET,
     report: CodecReporter = silent_reporter,
 ) -> CompressedPlanes:
     """Compresses a song's planes into the dictionary and streams the driver reads.
@@ -135,6 +137,7 @@ def encode_planes(
         seeds: The phrases the song's instruments offer.
         options: Which of the codec's layers the encoding is built from.
         boundaries: The ticks a token starts on, beyond the first tick of the song.
+        budget: How much work the search spends beyond the phrases the instruments seed.
         report: Hears what the run holds each time it looks up, and answers whether it goes on.
 
     Returns:
@@ -170,6 +173,7 @@ def encode_planes(
             options,
             entries,
             monitor,
+            budget,
         )
 
     table, parses = _settle(

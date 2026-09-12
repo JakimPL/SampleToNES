@@ -264,11 +264,13 @@ transposition it makes possible.
 
 ## 7. Limitations
 
-- **The search struggles on dense reconstructions.** A reconstruction whose planes turn
-  over at nearly every tick offers enormous numbers of candidates, and past a cap the
-  search stops gathering and earns nothing for that song. It bites at lengths where the
-  song already exceeds the program area, so it costs a diagnosis rather than a song, but
-  a dense export of two minutes is stored materially larger than the same song at one.
+- **The search reads a dense plane only so far.** A reconstruction whose planes turn over
+  at nearly every tick offers enormous numbers of candidates, and a round gathers a fixed
+  number of them, shared among the planes by what each has to offer. A plane that spells out
+  little is read whole; a dense one is read as far as its share reaches, and the figures
+  beyond that point go unsearched. It bites at lengths where the song already exceeds the
+  program area, so it costs a diagnosis rather than a song, but a dense export of two
+  minutes is stored materially larger than the same song at one.
 - **The dictionary holds 255 phrases.** A project of roughly 30 to 60 samples fills it
   from its instruments alone, at which point the search has no room left to work in and
   further samples compete for slots on measured value.
@@ -303,6 +305,7 @@ Where things live:
 | the dictionary, its entries and its pruning | `sampletones_player.compression.dictionary` |
 | phrases the instruments offer | `sampletones_player.compression.seeds` |
 | phrases the search earns | `sampletones_player.compression.search` |
+| how much work the search spends | `sampletones_player.compression.budget` |
 | what a phrase plays against a plane | `sampletones_player.compression.matches` |
 | encoding, and the decoder the driver is held to | `sampletones_player.compression.encode`, `.decode` |
 | the opcode layout and its bounds | `sampletones_player.specification.compression` |

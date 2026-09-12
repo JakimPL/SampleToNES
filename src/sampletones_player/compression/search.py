@@ -1,5 +1,6 @@
-from typing import Dict, Final, FrozenSet, List, NamedTuple, Sequence
+from typing import Callable, Dict, Final, FrozenSet, Iterator, List, NamedTuple, Sequence, Tuple
 
+from sampletones_player.compression.budget import SearchBudget, shares
 from sampletones_player.compression.dictionary.phrase import Phrase, phrase_entry_size
 from sampletones_player.compression.dictionary.table import PhraseTable, phrase_table
 from sampletones_player.compression.matches.cache import MatchCache
@@ -14,9 +15,6 @@ from sampletones_player.specification.compression import MAX_PHRASE_IDS
 
 MIN_CANDIDATE_LENGTH: Final[int] = 3
 MAX_CANDIDATE_LENGTH: Final[int] = 48
-MAX_CANDIDATE_ENTRIES: Final[int] = 200_000
-MAX_SEARCH_ROUNDS: Final[int] = 64
-CONFIRMED_CANDIDATES: Final[int] = 3
 MIN_OCCURRENCES: Final[int] = 2
 UNSHIFTED_OCCURRENCE_TRANSPOSE: Final[int] = 0
 SHIFTED_OCCURRENCE_TRANSPOSE: Final[int] = 1
@@ -49,28 +47,58 @@ def _residue_spans(parse: Parse) -> List[_Span]:
     return spans
 
 
+def _windows(parse: Parse) -> Iterator[Tuple[int, int]]:
+    """Each position the parse still spells out, beside the longest candidate starting there."""
+    for span in _residue_spans(parse):
+        for position in range(span.start, span.end):
+            yield position, min(MAX_CANDIDATE_LENGTH, span.end - position)
+
+
+def _entries(longest: int) -> int:
+    return max(0, longest - MIN_CANDIDATE_LENGTH + 1)
+
+
+def _demand(parse: Parse) -> int:
+    return sum(_entries(longest) for _, longest in _windows(parse))
+
+
+def _gather_plane(
+    plane: int,
+    index: PlaneIndex,
+    parse: Parse,
+    allowance: int,
+    gather: Callable[[bytes, List[_Occurrence]], List[_Occurrence]],
+) -> None:
+    differences = index.differences
+    entries = 0
+    for position, longest in _windows(parse):
+        if entries >= allowance:
+            return
+
+        occurrence = _Occurrence(plane=plane, position=position)
+        for length in range(MIN_CANDIDATE_LENGTH, longest + 1):
+            gather(differences[position : position + length - 1], []).append(occurrence)
+
+        entries += _entries(longest)
+
+
 def _candidates(
     indices: Sequence[PlaneIndex],
     parses: Sequence[Parse],
     monitor: CodecMonitor,
+    entries: int,
 ) -> Dict[bytes, List[_Occurrence]]:
+    """Every candidate shape the planes still spell out, beside where each occurs.
+
+    The entries a round gathers are shared among the planes by what each has to offer, so a
+    plane that spells out little is read whole and a dense one is read as far as its share
+    reaches, and every plane is heard from.
+    """
     found: Dict[bytes, List[_Occurrence]] = {}
-    gather = found.setdefault
-    entries = 0
-    for plane, (index, parse) in enumerate(zip(indices, parses)):
+    allowances = shares([_demand(parse) for parse in parses], entries)
+    for plane, (index, parse, allowance) in enumerate(zip(indices, parses, allowances)):
         monitor.poll()
-        differences = index.differences
-        for span in _residue_spans(parse):
-            if entries > MAX_CANDIDATE_ENTRIES:
-                return found
-
-            for position in range(span.start, span.end):
-                longest = min(MAX_CANDIDATE_LENGTH, span.end - position)
-                occurrence = _Occurrence(plane=plane, position=position)
-                for length in range(MIN_CANDIDATE_LENGTH, longest + 1):
-                    gather(differences[position : position + length - 1], []).append(occurrence)
-
-                entries += max(0, longest - MIN_CANDIDATE_LENGTH + 1)
+        _gather_plane(plane, index, parse, allowance, found.setdefault)
 
     return found
 
@@ -112,9 +140,10 @@ def _ranked(
     parses: Sequence[Parse],
     phrase_id: int,
     monitor: CodecMonitor,
+    budget: SearchBudget,
 ) -> List[_Candidate]:
     ranked: List[_Candidate] = []
-    for key, occurrences in _candidates(indices, parses, monitor).items():
+    for key, occurrences in _candidates(indices, parses, monitor, budget.candidate_entries).items():
         if len(occurrences) < MIN_OCCURRENCES:
             continue
 
@@ -130,7 +159,7 @@ def _ranked(
             ranked.append(_Candidate(gain=gain, body=body))
 
     ranked.sort(key=lambda candidate: (-candidate.gain, candidate.body))
-    return ranked[:CONFIRMED_CANDIDATES]
+    return ranked[: budget.confirmed_candidates]
 
 
 def _total(table: PhraseTable, parses: Sequence[Parse]) -> int:
@@ -143,6 +172,7 @@ def search_phrases(
     options: CodecOptions,
     boundaries: FrozenSet[int],
     monitor: CodecMonitor,
+    budget: SearchBudget,
 ) -> PhraseTable:
     """Fills the dictionary with the phrases the song's own planes repeat.
 
@@ -161,6 +191,7 @@ def search_phrases(
         options: Which of the codec's layers the encoding is built from.
         boundaries: The ticks a token starts on.
         monitor: Carries the run's reckoning of itself onward.
+        budget: How many candidates a round gathers and confirms, and how many rounds run.
 
     Returns:
         PhraseTable: The seeded phrases alongside the ones the search earned.
@@ -172,12 +203,12 @@ def search_phrases(
     parses = parse_planes(cache, table, options, boundaries, monitor)
     total = _total(table, parses)
     monitor.reached(len(table), total)
-    for _ in range(MAX_SEARCH_ROUNDS):
+    for _ in range(budget.rounds):
         if len(table) == MAX_PHRASE_IDS:
             return table
 
         settled = False
-        for candidate in _ranked(indices, parses, len(table), monitor):
+        for candidate in _ranked(indices, parses, len(table), monitor, budget):
             offered = Phrase(body=candidate.body)
             enlarged = phrase_table(table.phrases + (offered,))
             trial = parse_planes_offered(
