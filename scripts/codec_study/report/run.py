@@ -1,7 +1,7 @@
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Final, List, Optional, Sequence
+from typing import Final, Iterator, List, Optional, Sequence, Tuple
 
 from codec_study.accounting import rows as accounting
 from codec_study.manifest import StudyManifest
@@ -9,8 +9,9 @@ from codec_study.measure import Measurement
 from codec_study.report import aggregate
 from codec_study.report import rows as songs
 from codec_study.report.writers import markdown_table, write_csv
-from codec_study.variants.production import BASELINE
+from codec_study.variants.production import BASELINE_NAME
 from codec_study.variants.variant import Variant
+from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_shared.paths.source import REPOSITORY_ROOT
 from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
 
@@ -64,12 +65,14 @@ def write_run(
         variants: The variants every song was encoded under.
         measurements: Every song under every variant, in the order measured.
         derived: The strategy-depth measurements drawn from those, reported beside them and
-            left out of the accounting, which reads each encoding once.
+            left out of the accounting, which reads each written encoding once.
     """
     reported = (*measurements, *derived)
     song_rows = [songs.study_row(measurement) for measurement in reported]
-    group_rows = aggregate.group_rows(reported, BASELINE.name)
-    accounting_rows = [accounting.account(measurement) for measurement in measurements]
+    group_rows = aggregate.group_rows(reported, BASELINE_NAME)
+    accounting_rows = [
+        accounting.account(measurement, compressed) for measurement, compressed in _written(measurements)
+    ]
     manifest.save(directory / MANIFEST_JSON)
     write_csv(directory / REPORT_CSV, songs.COLUMNS, [row.cells for row in song_rows])
     write_csv(directory / ACCOUNTING_CSV, accounting.COLUMNS, [row.cells for row in accounting_rows])
@@ -79,6 +82,14 @@ def write_run(
     lines.extend(("## Songs", "", *markdown_table(songs.COLUMNS, [row.cells for row in song_rows]), ""))
     lines.extend(("## Accounting", "", *_accounting_table(accounting_rows), ""))
     (directory / REPORT_MARKDOWN).write_text("\n".join(lines), encoding="utf-8")
+
+
+def _written(measurements: Sequence[Measurement]) -> Iterator[Tuple[Measurement, CompressedPlanes]]:
+    """The measurements whose streams the driver reads as they stand, beside those streams."""
+    for measurement in measurements:
+        written = measurement.encoding.written
+        if written is not None:
+            yield measurement, written
 
 
 def _header(

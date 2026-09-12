@@ -9,6 +9,7 @@ from codec_study.accounting.pairs import ramps_in_literals, set_holds
 from codec_study.accounting.shares import PlaneShares, plane_shares
 from codec_study.accounting.tokens import ReadToken, read_tokens
 from codec_study.measure import Measurement
+from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.planes.order import PlaneOrder
 
 HYPOTHESES: Final[Tuple[Tuple[str, str], ...]] = (
@@ -99,16 +100,19 @@ class AccountingRow:
         return f"{100.0 * saving / self.block:.1f}%"
 
 
-def account(measurement: Measurement) -> AccountingRow:
+def account(
+    measurement: Measurement,
+    compressed: CompressedPlanes,
+) -> AccountingRow:
     """Reads one encoding back and states what every hypothesis would reach in it.
 
     Args:
-        measurement: The encoding.
+        measurement: The encoding under the song and variant it belongs to.
+        compressed: Its streams as the driver reads them.
 
     Returns:
         AccountingRow: The shares and the findings.
     """
-    compressed = measurement.compressed
     tokens: Dict[str, Tuple[ReadToken, ...]] = {
         name: read_tokens(stream) for name, stream in zip(PlaneOrder.names(), compressed.streams)
     }

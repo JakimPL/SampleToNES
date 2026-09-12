@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import Dict, Final, List, Optional, Sequence, Tuple
 
 from codec_study.measure import Measurement
@@ -63,9 +64,7 @@ def _song_depths(
                 Measurement(
                     song=best.song,
                     variant=f"{DEPTH_PREFIX}{depth}",
-                    compressed=best.compressed,
-                    seconds=seconds,
-                    lossless=best.lossless,
+                    encoding=replace(best.encoding, seconds=seconds),
                 )
             )
 

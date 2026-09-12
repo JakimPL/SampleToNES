@@ -5,7 +5,7 @@ from typing import Final, Tuple
 import pytest
 
 from codec_study.corpus.song import SongGroup, StudySong
-from codec_study.measure import Measurement
+from codec_study.measure import Measurement, production_encoding
 from codec_study.variants.seeds import split, trimmed, whole_and_split
 from codec_study.variants.strategy import DEPTH_PREFIX, depth_measurements
 from sampletones_player.compression.compressed import CompressedPlanes
@@ -114,16 +114,15 @@ def _measurement(
     seconds: float,
 ) -> Measurement:
     stream = emit([LiteralToken(values=bytes(TICKS))] if spelled_out else [HoldToken(ticks=TICKS)])
+    compressed = CompressedPlanes(
+        phrases=phrase_table(()),
+        streams=PlaneOrder.across([stream] * PLANE_COUNT),
+        ticks=TICKS,
+    )
     return Measurement(
         song=song,
         variant=variant,
-        compressed=CompressedPlanes(
-            phrases=phrase_table(()),
-            streams=PlaneOrder.across([stream] * PLANE_COUNT),
-            ticks=TICKS,
-        ),
-        seconds=seconds,
-        lossless=True,
+        encoding=production_encoding(song, compressed, seconds),
     )
 
 

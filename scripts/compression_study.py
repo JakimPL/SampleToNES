@@ -6,6 +6,7 @@ from codec_study.corpus.build import build_corpus
 from codec_study.manifest import StudyManifest, StudySource
 from codec_study.measure import Measurement, measure
 from codec_study.report.run import run_directory, write_run
+from codec_study.variants.baselines import Baselines
 from codec_study.variants.registry import EVERY_VARIANT, selected_variants
 from codec_study.variants.strategy import STRATEGY_ORDER, depth_measurements
 from sampletones_shared.logger import logger
@@ -71,7 +72,7 @@ def main() -> None:
         variants=_names(arguments.variants),
         quick=arguments.quick,
     )
-    variants = selected_variants(manifest.variants)
+    variants = selected_variants(manifest.variants, Baselines())
     directory = run_directory(arguments.output)
     corpus = build_corpus(manifest)
 
@@ -88,7 +89,7 @@ def main() -> None:
 
             logger.info(
                 f"  {measurement.block} bytes, {measurement.bytes_per_tick:.3f} bytes per tick, "
-                f"{len(measurement.compressed.phrases)} phrases, {measurement.seconds:.1f} s"
+                f"{measurement.phrases} phrases, {measurement.seconds:.1f} s"
             )
             measurements.append(measurement)
 

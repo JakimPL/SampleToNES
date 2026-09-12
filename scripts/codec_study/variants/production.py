@@ -1,7 +1,8 @@
+from time import process_time
 from typing import Callable, Final, Sequence, Tuple
 
 from codec_study.corpus.song import StudySong
-from codec_study.measure import Encoder
+from codec_study.measure import Encoder, Encoding, production_encoding
 from codec_study.variants.seeds import split, trimmed, whole_and_split
 from codec_study.variants.variant import Variant, VariantKind
 from sampletones_player.compression.budget import DEFAULT_SEARCH_BUDGET, SearchBudget
@@ -25,16 +26,16 @@ LIGHT_CONFIRMED: Final[int] = 1
 DEEP_CONFIRMED: Final[int] = 8
 
 
-def encode_production(
+def compress(
     song: StudySong,
     *,
     seeds: Sequence[Phrase],
     budget: SearchBudget,
 ) -> CompressedPlanes:
-    """Encodes a song as the export does, every layer on, over the seeds and budget given.
+    """Compresses a song as the export does, every layer on, over the seeds and budget given.
 
     Args:
-        song: The song to encode.
+        song: The song to compress.
         seeds: The phrases offered to the dictionary.
         budget: How much work the search spends.
 
@@ -50,16 +51,37 @@ def encode_production(
     )
 
 
-def encode_baseline(song: StudySong) -> CompressedPlanes:
-    """Encodes a song as the export does today.
+def compress_baseline(song: StudySong) -> CompressedPlanes:
+    """Compresses a song as the export does today.
 
     Args:
-        song: The song to encode.
+        song: The song to compress.
 
     Returns:
         CompressedPlanes: The dictionary and the token streams.
     """
-    return encode_production(song, seeds=song.seeds, budget=DEFAULT_SEARCH_BUDGET)
+    return compress(song, seeds=song.seeds, budget=DEFAULT_SEARCH_BUDGET)
+
+
+def encode_production(
+    song: StudySong,
+    *,
+    seeds: Sequence[Phrase],
+    budget: SearchBudget,
+) -> Encoding:
+    """Encodes a song as the export does, timing the run and playing the result back.
+
+    Args:
+        song: The song to encode.
+        seeds: The phrases offered to the dictionary.
+        budget: How much work the search spends.
+
+    Returns:
+        Encoding: The encoding, its streams kept as written.
+    """
+    started = process_time()
+    compressed = compress(song, seeds=seeds, budget=budget)
+    return production_encoding(song, compressed, process_time() - started)
 
 
 def seed_encoder(transform: SeedTransform) -> Encoder:
@@ -72,7 +94,7 @@ def seed_encoder(transform: SeedTransform) -> Encoder:
         Encoder: The encoder, searching at the default budget.
     """
 
-    def encode(song: StudySong) -> CompressedPlanes:
+    def encode(song: StudySong) -> Encoding:
         return encode_production(song, seeds=transform(song.seeds), budget=DEFAULT_SEARCH_BUDGET)
 
     return encode
@@ -88,7 +110,7 @@ def budget_encoder(budget: SearchBudget) -> Encoder:
         Encoder: The encoder.
     """
 
-    def encode(song: StudySong) -> CompressedPlanes:
+    def encode(song: StudySong) -> Encoding:
         return encode_production(song, seeds=song.seeds, budget=budget)
 
     return encode
@@ -129,15 +151,6 @@ def _splitter(threshold: int) -> SeedTransform:
 def _both(threshold: int) -> SeedTransform:
     return lambda seeds: whole_and_split(seeds, threshold)
 
-
-BASELINE: Final[Variant] = Variant(
-    name=BASELINE_NAME,
-    hypothesis="",
-    kind=VariantKind.BASELINE,
-    note="",
-    encode=encode_baseline,
-    needs_seeds=False,
-)
 
 SEED_VARIANTS: Final[Tuple[Variant, ...]] = (
     _seed_variant("seeds-trimmed", trimmed),

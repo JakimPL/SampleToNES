@@ -1,19 +1,40 @@
 from typing import Dict, Final, Sequence, Tuple
 
-from codec_study.variants.production import BASELINE, BUDGET_VARIANTS, SEED_VARIANTS
+from codec_study.variants.baselines import Baselines, baseline_variant
+from codec_study.variants.production import BASELINE_NAME, BUDGET_VARIANTS, SEED_VARIANTS
+from codec_study.variants.sandbox import grammar_variants
 from codec_study.variants.variant import Variant
 
 EVERY_VARIANT: Final[str] = "all"
-VARIANTS: Final[Dict[str, Variant]] = {
-    variant.name: variant for variant in (BASELINE, *SEED_VARIANTS, *BUDGET_VARIANTS)
-}
 
 
-def selected_variants(names: Sequence[str]) -> Tuple[Variant, ...]:
+def variants(baselines: Baselines) -> Dict[str, Variant]:
+    """Every variant a run may encode under, by name, the baseline first.
+
+    Args:
+        baselines: Where the production encodings are kept for the variants built on them.
+
+    Returns:
+        Dict[str, Variant]: The variants, in the order a run encodes them.
+    """
+    every = (
+        baseline_variant(baselines),
+        *SEED_VARIANTS,
+        *BUDGET_VARIANTS,
+        *grammar_variants(baselines),
+    )
+    return {variant.name: variant for variant in every}
+
+
+def selected_variants(
+    names: Sequence[str],
+    baselines: Baselines,
+) -> Tuple[Variant, ...]:
     """The variants a run encodes every song under, the baseline always first.
 
     Args:
         names: The names the run asks for, or ``all`` for every registered variant.
+        baselines: Where the production encodings are kept for the variants built on them.
 
     Returns:
         Tuple[Variant, ...]: The baseline, then the named variants in the order given.
@@ -21,12 +42,13 @@ def selected_variants(names: Sequence[str]) -> Tuple[Variant, ...]:
     Raises:
         KeyError: If a name is registered to no variant.
     """
+    registered = variants(baselines)
     if EVERY_VARIANT in names:
-        return tuple(VARIANTS.values())
+        return tuple(registered.values())
 
-    unknown = [name for name in names if name not in VARIANTS]
+    unknown = [name for name in names if name not in registered]
     if unknown:
-        raise KeyError(f"no variant is called {', '.join(unknown)}; the registry holds {', '.join(VARIANTS)}")
+        raise KeyError(f"no variant is called {', '.join(unknown)}; the registry holds {', '.join(registered)}")
 
-    chosen = [VARIANTS[name] for name in names if name != BASELINE.name]
-    return (BASELINE, *chosen)
+    chosen = [registered[name] for name in names if name != BASELINE_NAME]
+    return (registered[BASELINE_NAME], *chosen)

@@ -81,7 +81,7 @@ def study_row(measurement: Measurement) -> StudyRow:
         block=measurement.block,
         dictionary=measurement.dictionary,
         streams=measurement.streams,
-        phrases=len(measurement.compressed.phrases),
+        phrases=measurement.phrases,
         seconds=measurement.seconds,
         lossless=measurement.lossless,
     )
