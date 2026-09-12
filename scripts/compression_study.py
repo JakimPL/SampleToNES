@@ -6,11 +6,12 @@ from codec_study.corpus.build import build_corpus
 from codec_study.manifest import StudyManifest, StudySource
 from codec_study.measure import Measurement, measure
 from codec_study.report.run import run_directory, write_run
-from codec_study.variants.registry import selected_variants
+from codec_study.variants.registry import EVERY_VARIANT, selected_variants
+from codec_study.variants.strategy import STRATEGY_ORDER, depth_measurements
 from sampletones_shared.logger import logger
 
 DEFAULT_LENGTHEN_SECONDS: Final[int] = 180
-DEFAULT_VARIANTS: Final[str] = "baseline"
+DEFAULT_VARIANTS: Final[str] = EVERY_VARIANT
 
 
 def main() -> None:
@@ -53,7 +54,7 @@ def main() -> None:
         "--variants",
         type=str,
         default=DEFAULT_VARIANTS,
-        help="Comma-separated variants every song is encoded under; the baseline always runs.",
+        help="Comma-separated variants every song is encoded under, or all; the baseline always runs.",
     )
     parser.add_argument(
         "--quick",
@@ -77,6 +78,9 @@ def main() -> None:
     measurements: List[Measurement] = []
     for song in corpus:
         for variant in variants:
+            if not variant.applies(song):
+                continue
+
             logger.info(f"Encoding {song.name} ({song.ticks} ticks) under {variant.name}")
             measurement = measure(song, variant.name, variant.encode)
             if not measurement.lossless:
@@ -88,7 +92,13 @@ def main() -> None:
             )
             measurements.append(measurement)
 
-    write_run(directory, manifest, variants, measurements)
+    write_run(
+        directory,
+        manifest,
+        variants,
+        measurements,
+        depth_measurements(measurements, STRATEGY_ORDER),
+    )
     logger.info(f"Report written to {directory}")
 
 

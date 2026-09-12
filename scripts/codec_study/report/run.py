@@ -54,6 +54,7 @@ def write_run(
     manifest: StudyManifest,
     variants: Sequence[Variant],
     measurements: Sequence[Measurement],
+    derived: Sequence[Measurement],
 ) -> None:
     """Writes a run's report, its accounting and the manifest that reproduces it.
 
@@ -62,14 +63,18 @@ def write_run(
         manifest: What the run read.
         variants: The variants every song was encoded under.
         measurements: Every song under every variant, in the order measured.
+        derived: The strategy-depth measurements drawn from those, reported beside them and
+            left out of the accounting, which reads each encoding once.
     """
-    song_rows = [songs.study_row(measurement) for measurement in measurements]
-    group_rows = aggregate.group_rows(measurements, BASELINE.name)
+    reported = (*measurements, *derived)
+    song_rows = [songs.study_row(measurement) for measurement in reported]
+    group_rows = aggregate.group_rows(reported, BASELINE.name)
     accounting_rows = [accounting.account(measurement) for measurement in measurements]
     manifest.save(directory / MANIFEST_JSON)
     write_csv(directory / REPORT_CSV, songs.COLUMNS, [row.cells for row in song_rows])
     write_csv(directory / ACCOUNTING_CSV, accounting.COLUMNS, [row.cells for row in accounting_rows])
     lines = _header(manifest, variants)
+    lines.extend(("## Variants", "", *_variants_table(variants), ""))
     lines.extend(("## Groups", "", *markdown_table(aggregate.COLUMNS, [row.cells for row in group_rows]), ""))
     lines.extend(("## Songs", "", *markdown_table(songs.COLUMNS, [row.cells for row in song_rows]), ""))
     lines.extend(("## Accounting", "", *_accounting_table(accounting_rows), ""))
@@ -93,6 +98,12 @@ def _header(
         "Each accounting share is the saving a hypothesis would reach, as a share of the whole song block.",
         "",
     ]
+
+
+def _variants_table(variants: Sequence[Variant]) -> List[str]:
+    columns = ("variant", "hypothesis", "kind", "driver")
+    cells = [(variant.name, variant.hypothesis, variant.kind.value, variant.note) for variant in variants]
+    return markdown_table(columns, cells)
 
 
 def _accounting_table(rows: Sequence[accounting.AccountingRow]) -> List[str]:

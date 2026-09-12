@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import StrEnum
 
+from codec_study.corpus.song import StudySong
 from codec_study.measure import Encoder
 
 
@@ -28,6 +29,7 @@ class Variant:
         kind: What the variant changes.
         note: What the driver would have to do, where the variant changes the format.
         encode: What the variant writes a song as.
+        needs_seeds: Whether the variant changes anything only where a song offers seeds.
     """
 
     name: str
@@ -35,3 +37,15 @@ class Variant:
     kind: VariantKind
     note: str
     encode: Encoder
+    needs_seeds: bool
+
+    def applies(self, song: StudySong) -> bool:
+        """Whether encoding ``song`` under this variant can differ from the baseline.
+
+        Args:
+            song: The song.
+
+        Returns:
+            bool: Whether the variant is worth measuring on it.
+        """
+        return bool(song.seeds) or not self.needs_seeds
