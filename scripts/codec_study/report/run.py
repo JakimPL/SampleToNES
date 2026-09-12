@@ -8,6 +8,7 @@ from codec_study.manifest import StudyManifest
 from codec_study.measure import Measurement
 from codec_study.report import aggregate
 from codec_study.report import rows as songs
+from codec_study.report import verdicts
 from codec_study.report.writers import markdown_table, write_csv
 from codec_study.variants.production import BASELINE_NAME
 from codec_study.variants.variant import Variant
@@ -20,6 +21,7 @@ RUN_STAMP: Final[str] = "run-%Y%m%d-%H%M%S"
 REPORT_CSV: Final[str] = "report.csv"
 REPORT_MARKDOWN: Final[str] = "report.md"
 ACCOUNTING_CSV: Final[str] = "accounting.csv"
+VERDICTS_CSV: Final[str] = "verdicts.csv"
 MANIFEST_JSON: Final[str] = "manifest.json"
 UNKNOWN_COMMIT: Final[str] = "unknown"
 
@@ -57,7 +59,7 @@ def write_run(
     measurements: Sequence[Measurement],
     derived: Sequence[Measurement],
 ) -> None:
-    """Writes a run's report, its accounting and the manifest that reproduces it.
+    """Writes a run's report, its verdicts, its accounting and the manifest that reproduces it.
 
     Args:
         directory: The run's directory.
@@ -70,14 +72,26 @@ def write_run(
     reported = (*measurements, *derived)
     song_rows = [songs.study_row(measurement) for measurement in reported]
     group_rows = aggregate.group_rows(reported, BASELINE_NAME)
+    verdict_rows = verdicts.verdict_rows(group_rows, measurements, variants)
     accounting_rows = [
         accounting.account(measurement, compressed) for measurement, compressed in _written(measurements)
     ]
     manifest.save(directory / MANIFEST_JSON)
     write_csv(directory / REPORT_CSV, songs.COLUMNS, [row.cells for row in song_rows])
+    write_csv(directory / VERDICTS_CSV, verdicts.COLUMNS, [row.cells for row in verdict_rows])
     write_csv(directory / ACCOUNTING_CSV, accounting.COLUMNS, [row.cells for row in accounting_rows])
     lines = _header(manifest, variants)
     lines.extend(("## Variants", "", *_variants_table(variants), ""))
+    lines.extend(
+        (
+            "## Verdicts",
+            "",
+            verdicts.RULE,
+            "",
+            *markdown_table(verdicts.COLUMNS, [row.cells for row in verdict_rows]),
+            "",
+        )
+    )
     lines.extend(("## Groups", "", *markdown_table(aggregate.COLUMNS, [row.cells for row in group_rows]), ""))
     lines.extend(("## Songs", "", *markdown_table(songs.COLUMNS, [row.cells for row in song_rows]), ""))
     lines.extend(("## Accounting", "", *_accounting_table(accounting_rows), ""))
