@@ -122,6 +122,7 @@ target-version = ["py312"]
 profile = "black"
 line_length = 120
 known_first_party = [
+    "codec_study",
     "sampletones",
     "sampletones_application",
     "sampletones_assets",
@@ -134,7 +135,7 @@ known_first_party = [
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
-pythonpath = ["."]
+pythonpath = [".", "scripts"]
 
 [tool.coverage.run]
 source = [
