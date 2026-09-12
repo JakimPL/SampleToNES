@@ -3,8 +3,8 @@
 This document governs sound across the application: what may be heard, who decides, and what each
 transport command means. Consult it when adding audio a user can start, a surface that starts it, or
 a control over what is heard. The contracts here bind every tab and every player. It complements
-`docs/development/architecture.md` (which owns the keyboard-routing layer, §12) and
-`docs/development/guidelines.md`.
+`docs/development/architecture.md`, `docs/development/keyboard.md` (which owns the keyboard-routing
+layer) and `docs/development/guidelines.md`.
 
 ---
 

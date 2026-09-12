@@ -26,18 +26,18 @@ Four ways bring a voice in, and the **Voice** menu holds all four:
 | **New instrument** | An instrument holding a note at full volume, ready to place and hear |
 | **Add sample from file...** | A reconstruction saved anywhere on disk, as a sample |
 | **Import instrument...** | A FamiTracker instrument file (`.fti`), as an instrument |
-| **Add to Sequencer** | The reconstruction the **Reconstructions** tab holds, as a sample |
+| **Add to Sequencer** | The reconstruction the **Reconstruction** tab holds, as a sample |
 
 The first three also sit at the top of the **Voices** list, and on the list's own
 menu — right-click below the rows to reach it. **Add to Sequencer** is on the
-**Reconstructions** browser to the left (right-click a reconstruction) and on the
-**Reconstructions** tab. If a reconstruction was made at a different NES frequency
+**Browser** on the Sequencer tab (right-click a reconstruction) and on the
+**Reconstruction** tab. If a reconstruction was made at a different NES frequency
 than the project and the project already has voices, _SampleToNES_ warns with
 **Different NES frequency**; **Add anyway** adds it regardless.
 
 A new instrument starts out holding a note at full volume, so you can place it and
-hear it straight away; give it the sound you want on the **Reconstructions** tab
-(right-click ▸ **Edit**). See [editing instruments](interface.md#editing-instruments).
+hear it straight away; give it the sound you want on the **Reconstruction** tab
+(right-click ▸ **Edit**). See [editing instruments](reconstruction.md#editing-instruments).
 An imported `.fti` arrives with the volume, arpeggio, and duty-cycle envelopes the
 file states, and **Instrument imported** names anything the file held on a tracker's
 own terms that the voice leaves behind — see [reading an instrument

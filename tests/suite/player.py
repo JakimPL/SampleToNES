@@ -5,7 +5,10 @@ from typing import Dict, Final, List, Optional, Sequence
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+)
 from sampletones_core.constants.general import DUTY_CYCLES
 from sampletones_core.exporters import Features
 from sampletones_core.exports.request import InstrumentExport, SampleExport
@@ -243,7 +246,7 @@ def player_reconstruction(
         config=config,
         coefficient=1.0,
         audio_filepath=(Path(os.devnull),),
-        stems_data=single_entry_stems_data(list(config.generation.channels), instructions),
+        stems_data=single_entry_stems_data(list(DEFAULT_CHANNELS), instructions),
     )
 
 

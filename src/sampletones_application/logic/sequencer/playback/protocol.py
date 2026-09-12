@@ -8,9 +8,9 @@ from sampletones_core.constants.enums import GeneratorClassName
 class ChannelGeneratorProtocol(Protocol):
     """Minimal generator interface required by the synthesis engine.
 
-    Each NES channel's generator synthesises one tick of audio from an
+    Each NES channel's generator synthesizes one tick of audio from an
     instruction. The concrete type is generic (``Generator[InstructionT,
-    TimerT]``); this protocol captures only the surface the synthesiser
+    TimerT]``); this protocol captures only the surface the synthesizer
     actually uses so that invariant generic instantiations (e.g.
     ``PulseGenerator``) are accepted while keeping their precise generic types.
 
@@ -18,7 +18,7 @@ class ChannelGeneratorProtocol(Protocol):
     pairing is a runtime invariant maintained by ``CHANNEL_CLASSES`` dispatch, which
     lies outside the static type system.
 
-    ``frame_length`` is settable so the synthesiser can give each tick the span its clock
+    ``frame_length`` is settable so the synthesizer can give each tick the span its clock
     states, which is what keeps a rendered tick lasting ``1 / nes_frequency`` seconds at a
     sample rate the tick divides unevenly.
     """

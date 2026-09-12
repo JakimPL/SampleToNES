@@ -66,10 +66,10 @@ class TestWhereTheRunStands:
 class TestHowTheStageUnderWayReads:
     """A stage arriving at an end carries a bar; one that does not carries the turning symbol."""
 
-    def test_a_travelling_stage_shows_its_bar(self) -> None:
+    def test_a_traveling_stage_shows_its_bar(self) -> None:
         assert view_model(traveling=True).progress_visible is True
 
-    def test_a_travelling_stage_hides_the_turning_symbol(self) -> None:
+    def test_a_traveling_stage_hides_the_turning_symbol(self) -> None:
         assert view_model(traveling=True).working_visible is False
 
     def test_a_stage_without_an_end_shows_the_turning_symbol(self) -> None:
@@ -86,7 +86,7 @@ class TestStoppingARun:
         assert view_model(phase=ExportPhase.EXPORTING).cancel_enabled is True
 
     def test_an_export_already_stopping_takes_no_further_stop(self) -> None:
-        assert view_model(phase=ExportPhase.CANCELLING).cancel_enabled is False
+        assert view_model(phase=ExportPhase.CANCELING).cancel_enabled is False
 
     def test_an_export_being_stopped_still_holds_the_screen(self) -> None:
-        assert view_model(phase=ExportPhase.CANCELLING).is_active is True
+        assert view_model(phase=ExportPhase.CANCELING).is_active is True

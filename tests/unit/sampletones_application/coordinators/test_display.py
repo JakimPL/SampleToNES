@@ -351,13 +351,13 @@ class TestCommit:
 
 
 class TestCancel:
-    def test_cancelling_an_untouched_dialog_closes_it_without_asking(self, harness: Harness) -> None:
+    def test_canceling_an_untouched_dialog_closes_it_without_asking(self, harness: Harness) -> None:
         harness.cancel()
 
         assert harness.dialogs.confirmations == []
         assert not harness.window.visible
 
-    def test_cancelling_a_changed_dialog_asks_first(self, harness: Harness) -> None:
+    def test_canceling_a_changed_dialog_asks_first(self, harness: Harness) -> None:
         harness.change(harness.settings.with_palette(DARK))
         harness.cancel()
 
@@ -504,7 +504,7 @@ class TestCountdown:
         assert not harness.countdown.visible
         assert harness.settings.window.borderless is True
 
-    def test_a_kept_change_is_still_undone_by_cancelling(self, harness: Harness) -> None:
+    def test_a_kept_change_is_still_undone_by_canceling(self, harness: Harness) -> None:
         harness.change(harness.settings.with_window(harness.settings.window.with_borderless(True)))
         harness.keep()
         harness.cancel()

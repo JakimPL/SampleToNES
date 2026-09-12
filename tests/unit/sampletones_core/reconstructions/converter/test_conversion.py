@@ -1,15 +1,23 @@
 from pathlib import Path
+from typing import Final, List
 from unittest.mock import MagicMock
 
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    bending_channels,
+)
 from sampletones_core.reconstructions.converter.conversion import reconstruct_job
 from sampletones_core.reconstructions.converter.job import ConversionJob
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_shared.exceptions import UnsupportedAudioFormatError
 from sampletones_shared.utils.progress import silent_reporter
+
+CHANNELS: Final[List[ChannelName]] = list(DEFAULT_CHANNELS)
 
 
 @pytest.fixture
@@ -20,7 +28,7 @@ def mock_reconstructor() -> MagicMock:
 def _job(tmp_path: Path, output_path: Path) -> ConversionJob:
     return ConversionJob(
         sources=(tmp_path / "song.wav",),
-        stems=StemsConfig.single_entry(list(Config().generation.channels)),
+        stems=StemsConfig.single_entry(CHANNELS, bending_channels(CHANNELS)),
         output_path=output_path,
     )
 

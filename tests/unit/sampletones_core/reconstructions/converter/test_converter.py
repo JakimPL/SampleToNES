@@ -4,6 +4,10 @@ from unittest.mock import patch
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    bending_channels,
+)
 from sampletones_core.reconstructions.converter import (
     DirectoryConversion,
     GroupConversion,
@@ -23,7 +27,8 @@ def config() -> Config:
 
 @pytest.fixture(scope="module")
 def stems(config: Config) -> StemsConfig:
-    return StemsConfig.single_entry(list(config.generation.channels))
+    channels = list(DEFAULT_CHANNELS)
+    return StemsConfig.single_entry(channels, bending_channels(channels))
 
 
 def _group(path: Path, stems: StemsConfig) -> GroupConversion:

@@ -150,7 +150,7 @@ row accepts, so text typed by hand lands the values the grid would.
 A copy writes both clipboards, and a paste reads the desktop's text first: it stands while it
 parses as a block for *that* grid, and any other text leaves the grid's own block in hand. So a
 block copied in a second instance pastes here, and a copy taken in this one survives whatever
-else the desktop picks up afterwards. `can_paste_block` asks the same question through a
+else the desktop picks up afterward. `can_paste_block` asks the same question through a
 `ParsedBlockCache`, which reparses only when the text has changed, so opening a menu costs one
 string compare.
 

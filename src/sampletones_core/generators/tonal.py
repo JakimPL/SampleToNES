@@ -64,7 +64,7 @@ class TonalGenerator(Generator[TonalInstructionT, PhaseTimer], ABC):
         """
         return timer_to_frequency(self.get_timer(pitch, offset)) * self.timer.phase_increment
 
-    def bend_towards(self, pitch: int, frequency: float) -> int:
+    def bend_toward(self, pitch: int, frequency: float) -> int:
         """The bend that lands this note nearest a frequency, held inside the note's own room.
 
         A note owns half the dividers between itself and each neighbor, which is what tiles the

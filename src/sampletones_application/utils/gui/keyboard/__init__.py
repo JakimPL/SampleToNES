@@ -8,6 +8,7 @@ from sampletones_application.utils.gui.keyboard.router import (
     KeyRouter,
     ModalKeyHandler,
 )
+from sampletones_application.utils.gui.keyboard.scope import panel_scope_active
 
 __all__ = [
     "PRIORITY_MODAL",
@@ -18,4 +19,5 @@ __all__ = [
     "KeyEvent",
     "KeyRouter",
     "ModalKeyHandler",
+    "panel_scope_active",
 ]

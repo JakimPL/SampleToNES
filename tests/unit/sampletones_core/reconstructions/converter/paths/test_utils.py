@@ -4,15 +4,17 @@ from typing import List
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import DEFAULT_CHANNELS
 from sampletones_core.reconstructions.converter.paths import (
     filter_files,
     get_audio_files,
     get_output_path,
     get_relative_path,
     group_output_path,
-    top_level_audio_files,
 )
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
+
+CHANNELS = frozenset(DEFAULT_CHANNELS)
 
 
 @pytest.fixture(scope="module")
@@ -51,7 +53,7 @@ class TestGetOutputPath:
     ) -> None:
         audio_file = tmp_path / "song.wav"
         audio_file.touch()
-        result = get_output_path(config, audio_file)
+        result = get_output_path(config, audio_file, CHANNELS)
         assert result.suffix == EXT_FILE_RECONSTRUCTION
 
     def test_directory_input_returns_path_ending_with_directory_name(
@@ -59,7 +61,7 @@ class TestGetOutputPath:
         config: Config,
         tmp_path: Path,
     ) -> None:
-        result = get_output_path(config, tmp_path)
+        result = get_output_path(config, tmp_path, CHANNELS)
         assert result.name == tmp_path.name
 
     def test_non_existent_input_raises_file_not_found_error(
@@ -69,7 +71,7 @@ class TestGetOutputPath:
     ) -> None:
         missing = tmp_path / "does_not_exist"
         with pytest.raises(FileNotFoundError):
-            get_output_path(config, missing)
+            get_output_path(config, missing, CHANNELS)
 
 
 class TestGetAudioFiles:
@@ -117,25 +119,3 @@ class TestFilterFiles:
         output_file.touch()
         result = filter_files([audio_file], tmp_path, output_directory)
         assert result == []
-
-
-class TestTopLevelAudioFiles:
-    """Gathering the sources of one reconstruction stays with the folder that was pointed at."""
-
-    def test_reports_the_audio_files_the_folder_itself_holds(self, tmp_path: Path) -> None:
-        (tmp_path / "b.wav").touch()
-        (tmp_path / "a.wav").touch()
-        (tmp_path / "notes.txt").write_text("not audio")
-
-        assert [path.name for path in top_level_audio_files(tmp_path)] == ["a.wav", "b.wav"]
-
-    def test_a_nested_recording_stays_where_it_is(self, tmp_path: Path) -> None:
-        nested = tmp_path / "nested"
-        nested.mkdir()
-        (nested / "deep.wav").touch()
-        (tmp_path / "a.wav").touch()
-
-        assert [path.name for path in top_level_audio_files(tmp_path)] == ["a.wav"]
-
-    def test_a_folder_of_nothing_reports_nothing(self, tmp_path: Path) -> None:
-        assert top_level_audio_files(tmp_path) == []

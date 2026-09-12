@@ -14,6 +14,7 @@ from typing import (
 import numpy as np
 
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.constants.sources import SourceKind
 from sampletones_application.logic.export.instrument.source import ExportableInstrument
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
@@ -60,13 +61,7 @@ from sampletones_shared.utils.system.paths import (
     open_path_in_explorer,
 )
 
-EMPTY_STEMS_LIST: Final[StemsListViewModel] = StemsListViewModel(
-    rows=(),
-    channels_in_play=(),
-    muted_channels=frozenset(),
-    live=True,
-    collapse_levels=False,
-)
+EMPTY_STEMS_LIST: Final[StemsListViewModel] = StemsListViewModel.empty()
 
 
 class ExportServiceProtocol(Protocol):
@@ -357,12 +352,17 @@ class ReconstructionPanelLogic(CallbackMixin):
             )
 
         recordings = {entry.id: source_paths[index] for index, entry in enumerate(stems_data.config.entries)}
+        entries = stems_data.config.entries_by_id
         levels = stems_data.config.hierarchy.levels
         rows = tuple(
             StemRowViewModel(
                 key=str(stem_id),
+                kind=SourceKind.RECORDING,
                 path=recordings[stem_id],
+                held=(),
                 channels=self._stem_channels.get(stem_id, frozenset()),
+                partial_channels=frozenset(),
+                bends=entries[stem_id].settings.bend_set,
                 offered_channels=self._offered_stem_channels.get(stem_id, frozenset()),
                 available=recordings[stem_id].is_file(),
                 level=level_index,
@@ -382,8 +382,11 @@ class ReconstructionPanelLogic(CallbackMixin):
                 rows=rows,
                 channels_in_play=tuple(channels_in_play),
                 muted_channels=frozenset(channels_in_play) - frozenset(self._selected_channels),
+                picked_keys=frozenset(),
+                picking_room=None,
                 live=True,
                 collapse_levels=False,
+                selected_key=None,
             ),
             hierarchy_mode=stems_data.config.hierarchy.mode,
             channel_cap=stems_data.config.channel_cap,

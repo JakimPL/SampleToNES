@@ -1,19 +1,21 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.constants.output import OutputKind
+from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
-from sampletones_application.logic.main.converter import (
-    ConversionSuccess,
-    ConverterLogic,
-)
-from sampletones_application.logic.main.explorer import ExplorerLogic
+from sampletones_application.logic.main.converter.logic import ConverterLogic
+from sampletones_application.logic.main.converter.run import ConversionSuccess
+from sampletones_application.logic.main.explorer_manager import ExplorerManager
+from sampletones_application.logic.main.sources.scan import FolderScan
+from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.main import MainTabParameters
 from sampletones_application.services.conversion.service import ConversionService
@@ -28,6 +30,7 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.tags.main import (
     TAG_MAIN_ADVANCED_PANEL,
+    TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL,
     TAG_MAIN_CONFIG_PANEL,
     TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
     TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
@@ -37,38 +40,41 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
     TAG_MAIN_CONVERTER_PANEL,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
+    TAG_MAIN_EXPLORER_DIALOG_NOTHING_BELOW,
     TAG_MAIN_EXPLORER_PANEL,
-    TAG_MAIN_RECONSTRUCTOR_PANEL,
-    TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
+    TAG_MAIN_SOURCE_PANEL,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.layout.responsive import expanded_side_width
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.panels.dialogs.scanning import GUIScanWindow
 from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSelectionWindow
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
-from sampletones_application.ui.panels.main.converter import GUIConverterPanel
+from sampletones_application.ui.panels.main.converter.panel import GUIConverterPanel
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
-from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
+from sampletones_application.ui.panels.main.source.panel import GUISourceSettingsPanel
 from sampletones_application.utils.file_dialogs.api import select_directory_dialog
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
+from sampletones_application.utils.gui.render_thread import on_render_thread
+from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.main.advanced import (
     AdvancedSettingsPanelViewModel,
 )
 from sampletones_application.view_model.main.config import ConfigPanelViewModel
 from sampletones_application.view_model.main.converter import ConverterViewModel
-from sampletones_application.view_model.main.reconstructor import (
-    ReconstructorPanelViewModel,
+from sampletones_application.view_model.main.source import (
+    SourceSettingsPanelViewModel,
 )
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.reconstructions.converter import top_level_audio_files
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.logger import logger
-from sampletones_shared.types.callback import PathCallback, VoidCallback
+from sampletones_shared.types.callback import VoidCallback
 
 _LEFT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_MAIN, SUF_PANEL_LEFT)
 _CENTER_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_MAIN, SUF_PANEL_CENTER)
@@ -94,53 +100,81 @@ class MainTabCoordinator:
         audio_device_manager: AudioDeviceManager,
         library_manager: InstructionsLibraryManager,
         conversion_service: ConversionService,
-        on_reconstruct_file: PathCallback,
-        on_reconstruct_directory: PathCallback,
-        on_load_reconstruction: Callable[[Optional[Path]], None],
-        on_load_library: PathCallback,
-        is_operation_active: Callable[[], bool],
-        on_busy_state_changed: VoidCallback,
+        hooks: MainTabHooks,
         *,
         layout: MainTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
         status_bar: GUIStatusBar,
-        on_load_file: PathCallback,
-        on_load_directory: VoidCallback,
-        on_canceled: VoidCallback,
-        on_refresh_trees: VoidCallback,
-        on_generate_library: VoidCallback,
         stem_selection_window: GUIStemSelectionWindow,
+        key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
+        tab_active: ActivePredicate,
     ) -> None:
         self._language_manager = language_manager
         self._config_manager = config_manager
         self._session_manager = session_manager
         self._library_manager = library_manager
-        self._on_reconstruct_file = on_reconstruct_file
-        self._on_reconstruct_directory = on_reconstruct_directory
-        self._on_load_reconstruction = on_load_reconstruction
-        self._is_operation_active = is_operation_active
-        self._on_busy_state_changed = on_busy_state_changed
-        self._on_refresh_trees = on_refresh_trees
+        self._hooks = hooks
         self._dialogs = dialogs
         self._stem_selection_window = stem_selection_window
 
         self._geometry = layout.geometry
         self._side_panel_count: int
         self._config_height = layout.config_height
-        _msg_converter_error = language_manager["main.converter.message.status_error"]
-        _msg_no_files = language_manager["main.converter.message.status_no_files"]
-        _msg_no_generators = language_manager["main.converter.message.status_no_channels"]
         self._ttl_progress = language_manager["main.converter.title.progress_dialog"]
+        self._repaint_priority = layout.scheduling.priorities.gui_action
 
-        self._explorer_logic: ExplorerLogic = ExplorerLogic(
+        self._build_explorer(
+            config_manager,
+            session_manager,
+            audio_device_manager,
+            layout=layout,
+            language_manager=language_manager,
+            status_bar=status_bar,
+        )
+        self._build_cards(
+            config_manager,
+            session_manager,
+            conversion_service,
+            layout=layout,
+            language_manager=language_manager,
+            status_bar=status_bar,
+            key_router=key_router,
+            shortcut_source=shortcut_source,
+            tab_active=tab_active,
+        )
+        self._wire_settings(config_manager)
+        self._wire_explorer()
+        self._wire_converter(
+            config_manager,
+            library_manager,
+            conversion_service,
+            dialogs,
+            language_manager,
+        )
+
+    def _build_explorer(
+        self,
+        config_manager: ConfigManager,
+        session_manager: SessionManager,
+        audio_device_manager: AudioDeviceManager,
+        *,
+        layout: MainTabParameters,
+        language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
+    ) -> None:
+        """The file browser: what reads the disk, what plays from it, and what draws both."""
+        self._explorer_logic: ExplorerManager = ExplorerManager(
             config_manager,
             language_manager=language_manager,
             open_directories=session_manager.expanded_directories,
         )
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
+        self._folder_scan: FolderScan = FolderScan()
         self._explorer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
-            audio_device_manager,
+            self._file_playback,
             scheduling=layout.scheduling,
         )
         self._explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
@@ -152,11 +186,28 @@ class MainTabCoordinator:
             colors=layout.tree_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_EXPLORER_PANEL),
         )
+        self._folder_scan.on_started = self._on_scan_started
+        self._folder_scan.on_progress = self._on_scan_progress
+        self._folder_scan.on_stopped = self._on_scan_stopped
         self._explorer_tree_logic.on_lock_state_changed = self._explorer_panel.set_tree_enabled
         self._explorer_tree_logic.on_favorite_changed = self._repaint_explorer_favorites
         self._explorer_tree_logic.on_search_update_needed = self._explorer_panel.update_tree_visibility
-        self._explorer_tree_logic.on_autoplay_error = self._on_explorer_autoplay_error
+        self._file_playback.on_error = self._on_explorer_autoplay_error
 
+    def _build_cards(
+        self,
+        config_manager: ConfigManager,
+        session_manager: SessionManager,
+        conversion_service: ConversionService,
+        *,
+        layout: MainTabParameters,
+        language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
+        key_router: KeyRouter,
+        shortcut_source: ShortcutSource,
+        tab_active: ActivePredicate,
+    ) -> None:
+        """The tab's cards and the converter behind them, each opening on what it last stood at."""
         _config = config_manager.config
         self._config_panel: GUIConfigPanel = GUIConfigPanel(
             ConfigPanelViewModel(
@@ -171,14 +222,25 @@ class MainTabCoordinator:
             language_manager=language_manager,
             status_bar=status_bar,
         )
-        self._reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(
-            ReconstructorPanelViewModel(
-                channels=frozenset(_config.generation.channels),
+        self._converter_logic: ConverterLogic = ConverterLogic(
+            config_manager,
+            session_manager,
+            conversion_service,
+            scheduling=layout.scheduling,
+            language_manager=language_manager,
+            is_operation_active=self._hooks.is_operation_active,
+        )
+        self._source_panel: GUISourceSettingsPanel = GUISourceSettingsPanel(
+            SourceSettingsPanelViewModel(
+                slots=self._converter_logic.settings_slots,
+                inspected=None,
                 drive=_config.generation.drive,
+                live=True,
             ),
-            layout=layout.main.reconstructor,
+            layout=layout.main.source,
             inputs=layout.inputs,
-            initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_RECONSTRUCTOR_PANEL),
+            stems_layout=layout.stems,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_SOURCE_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
         )
@@ -197,13 +259,11 @@ class MainTabCoordinator:
             status_bar=status_bar,
             path_colors=layout.path_colors,
         )
-        self._converter_logic: ConverterLogic = ConverterLogic(
-            config_manager,
-            conversion_service,
-            scheduling=layout.scheduling,
+        self._scan_window: GUIScanWindow = GUIScanWindow(
+            layout=layout.main.converter,
             language_manager=language_manager,
-            is_operation_active=is_operation_active,
         )
+        self._scan_window.on_stop = self._folder_scan.stop
         self._converter_panel: GUIConverterPanel = GUIConverterPanel(
             layout=layout.main.converter,
             stems_layout=layout.stems,
@@ -212,35 +272,53 @@ class MainTabCoordinator:
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_CONVERTER_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
+            key_router=key_router,
+            shortcut_source=shortcut_source,
+            tab_active=tab_active,
         )
 
+    def _wire_settings(self, config_manager: ConfigManager) -> None:
+        """What the settings cards report, and what redraws them when the configuration moves."""
         config_manager.add_config_change_callback(self._update_config_panel_view)
-        config_manager.add_config_change_callback(self._update_reconstructor_panel_view)
+        config_manager.add_config_change_callback(self._update_source_panel_view)
         config_manager.add_config_change_callback(self._update_advanced_settings_panel_view)
 
         self._config_panel.on_audio_settings_changed = config_manager.apply_audio_settings
         self._config_panel.on_library_settings_changed = config_manager.apply_library_settings
-        self._reconstructor_panel.on_generation_settings_changed = config_manager.apply_generation_settings
+        self._source_panel.on_generation_settings_changed = config_manager.apply_generation_settings
+        self._source_panel.on_slot_toggled = self._converter_logic.toggle_slot
         self._advanced_settings_panel.on_advanced_settings_changed = config_manager.apply_advanced_settings
         self._advanced_settings_panel.on_select_library_directory = self._select_library_directory
         self._advanced_settings_panel.on_select_output_directory = self._select_output_directory
 
         self._wire_collapse_handlers()
 
+    def _wire_explorer(self) -> None:
+        """What a gesture in the browser reaches: the converter, the tab's own guards, the app."""
         self._explorer_panel.set_callbacks(
-            on_wave_file_clicked=self._on_wave_file_clicked,
-            on_directory_clicked=self._on_directory_clicked,
             on_directory_add_requested=self._on_directory_add_requested,
             on_file_add_requested=self._on_file_add_requested,
             can_add_stems=self._can_add_stems,
             on_reconstruct_file=self._request_reconstruct_file,
             on_reconstruct_directory=self._request_reconstruct_directory,
-            on_load_reconstruction=on_load_reconstruction,
-            on_load_library=on_load_library,
-            on_set_as_library_directory=self._advanced_settings_panel.change_library_directory,
+            on_load_reconstruction=self._hooks.on_load_reconstruction,
+            on_load_library=self._hooks.on_load_library,
+            on_set_as_library_directory=self._handle_select_library_directory,
             on_set_as_reconstructions_directory=self._advanced_settings_panel.change_reconstructions_directory,
         )
 
+    def _wire_converter(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        conversion_service: ConversionService,
+        dialogs: DialogsRenderer,
+        language_manager: LanguageManager,
+    ) -> None:
+        """What the converter reports and what answers it: the panel, the dialogs, the library."""
+        _msg_converter_error = language_manager["main.converter.message.status_error"]
+        _msg_no_files = language_manager["main.converter.message.status_no_files"]
+        _msg_no_generators = language_manager["main.converter.message.status_no_channels"]
         self._converter_logic.on_view_changed = self._on_converter_view_changed
         self._converter_logic.on_success = self._on_conversion_success
         self._converter_logic.on_error = lambda error: dialogs.show_error(error, _msg_converter_error)
@@ -257,16 +335,16 @@ class MainTabCoordinator:
         self._converter_logic.on_target_exists = self._confirm_overwriting_target
         self._converter_logic.is_library_available = library_manager.is_library_available_for_config
         self._converter_logic.cancel_library_generation = library_manager.cancel_generation
-        self._converter_logic.on_load_file = on_load_file
-        self._converter_logic.on_load_directory = on_load_directory
-        self._converter_logic.on_canceled = on_canceled
-        self._converter_logic.generate_library = on_generate_library
+        self._converter_logic.on_load_file = self._hooks.on_load_file
+        self._converter_logic.on_load_directory = self._hooks.on_load_directory
+        self._converter_logic.on_canceled = self._hooks.on_canceled
+        self._converter_logic.generate_library = self._hooks.on_generate_library
         config_manager.add_config_change_callback(self._converter_logic.refresh_view)
         library_manager.on_generation_progress_extra = conversion_service.forward_library_progress
 
         self._converter_panel.on_convert_requested = self._converter_logic.start_conversion
         self._converter_panel.on_cancel_requested = self._request_cancel_confirmation
-        self._converter_panel.on_stems_mode_changed = self._request_stems_mode
+        self._converter_panel.on_output_changed = self._request_output
         self._converter_panel.on_channel_cap_changed = self._converter_logic.set_channel_cap
         self._converter_panel.on_hierarchy_mode_changed = self._converter_logic.set_hierarchy_mode
         self._converter_panel.on_source_channels_changed = self._converter_logic.set_source_channels
@@ -276,7 +354,12 @@ class MainTabCoordinator:
         self._converter_panel.on_source_isolated = self._converter_logic.isolate_source
         self._converter_panel.on_source_dropped_on_source = self._converter_logic.move_source_onto
         self._converter_panel.on_source_dropped_on_level = self._converter_logic.move_source_to_new_level
-        self._stem_selection_window.on_add = self._converter_logic.add_sources
+        self._converter_panel.on_folder_removed = self._converter_logic.remove_folder
+        self._converter_panel.on_folder_channel_toggled = self._converter_logic.toggle_folder_channel
+        self._converter_panel.on_row_selected = self._converter_logic.select_row
+        self._converter_panel.on_selection_cleared = self._converter_logic.clear_selection
+        self._converter_panel.on_source_played = self._file_playback.play
+        self._stem_selection_window.on_source_played = self._file_playback.play
 
     def _repaint_explorer_favorites(self, node: FileSystemNode) -> None:
         """Repaints the row whose star was toggled: the explorer mirrors the disk, so a path is one row."""
@@ -286,45 +369,43 @@ class MainTabCoordinator:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
 
     def _on_converter_view_changed(self, view_model: ConverterViewModel) -> None:
+        """The converter's own view, and the settings card that follows what it has picked out.
+
+        A gesture on the list rebuilds the list, and DearPyGui calls a widget's callback on a
+        thread of its own, so the redraw crosses to the render thread rather than tearing widgets
+        down underneath the frame being walked.
+        """
+        on_render_thread(self._repaint_converter, view_model, priority=self._repaint_priority)
+
+    def _repaint_converter(self, view_model: ConverterViewModel) -> None:
         self._converter_panel.update_view(view_model)
-        self._on_busy_state_changed()
-
-    def _on_wave_file_clicked(self, filepath: Path) -> None:
-        if not self._is_operation_active():
-            self._converter_logic.select_source(filepath)
-
-    def _on_directory_clicked(self, directory_path: Path) -> None:
-        if not self._is_operation_active():
-            self._converter_logic.set_input_path(directory_path, convert=False)
+        self._update_source_panel_view()
+        self._hooks.on_busy_state_changed()
 
     def _request_reconstruct_file(self, filepath: Path) -> None:
         if self._notify_converter_running():
             return
 
-        self._leaving_stems_mode(lambda: self._on_reconstruct_file(filepath))
+        self._replacing_the_setup(lambda: self._hooks.on_reconstruct_file(filepath))
 
     def _request_reconstruct_directory(self, directory_path: Path) -> None:
         if self._notify_converter_running():
             return
 
-        self._leaving_stems_mode(lambda: self._on_reconstruct_directory(directory_path))
+        self._replacing_the_setup(lambda: self._hooks.on_reconstruct_directory(directory_path))
 
-    def _leaving_stems_mode(self, reconstruct: VoidCallback) -> None:
-        """Runs a conversion the browser asked for, asking first where it would drop a stems list.
+    def _replacing_the_setup(self, reconstruct: VoidCallback) -> None:
+        """Runs a conversion the browser asked for, asking first where it would drop what was gathered.
 
-        A Reconstruct names one file or one folder, which is what a classic conversion converts, so
-        the gathered recordings are what the reader is being asked about. Declining leaves the
-        setup as it stands and starts nothing.
+        A Reconstruct names one file or one folder and converts that alone, so a setup already
+        holding sources is what the reader is being asked about. Declining leaves the setup as it
+        stands and starts nothing.
         """
-        if not self._converter_logic.stems_mode:
+        if not self._converter_logic.gathered_paths:
             reconstruct()
             return
 
-        self._confirm_discarding_stems(lambda: self._reconstruct_without_stems(reconstruct))
-
-    def _reconstruct_without_stems(self, reconstruct: VoidCallback) -> None:
-        self._converter_logic.set_stems_mode(False)
-        reconstruct()
+        self._confirm_discarding_stems(reconstruct)
 
     def _confirm_discarding_stems(self, on_confirm: VoidCallback) -> None:
         self._dialogs.show_confirmation(
@@ -337,23 +418,34 @@ class MainTabCoordinator:
             on_cancel=self._converter_logic.refresh_view,
         )
 
-    def _confirm_overwriting_target(self, target: Path) -> None:
-        """Asks before a conversion writes over the reconstruction already standing at its target.
+    def _confirm_overwriting_target(self, targets: Tuple[Path, ...]) -> None:
+        """Asks before a conversion writes over the reconstructions already standing at its targets.
 
-        A batch keeps what it finds and converts the rest, so this reaches the reader for a
-        single conversion — the one run whose output would replace a file already made.
+        Confirming writes over every one of them, so the prompt speaks for all of them: one is
+        named by the path it stands at, and several are counted.
         """
+        one = len(targets) == 1
+        message = (
+            self._language_manager["main.converter.message.overwrite_target_prompt"]
+            if one
+            else self._language_manager["main.converter.message.overwrite_targets_prompt"]
+        )
+        title = (
+            self._language_manager["main.converter.title.overwrite_target_dialog"]
+            if one
+            else self._language_manager["main.converter.title.overwrite_targets_dialog"]
+        )
         self._dialogs.show_confirmation(
             TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
-            self._language_manager["main.converter.message.overwrite_target_prompt"],
-            self._language_manager["main.converter.title.overwrite_target_dialog"],
+            message if one else message.format(count=len(targets)),
+            title,
             lambda: self._converter_logic.start_conversion(confirmed=True),
             ok_label=self._language_manager["main.converter.label.overwrite_target_button"],
-            path=target,
+            path=targets[0] if one else None,
         )
 
     def _notify_converter_running(self) -> bool:
-        if not self._is_operation_active():
+        if not self._hooks.is_operation_active():
             return False
 
         logger.warning("Conversion is already running. Wait or cancel the current operation.")
@@ -366,7 +458,7 @@ class MainTabCoordinator:
         return True
 
     def _on_conversion_success(self, success: ConversionSuccess) -> None:
-        self._on_refresh_trees()
+        self._hooks.on_refresh_trees()
         if success.is_single:
             message = self._language_manager["main.converter.message.load_file_prompt"]
             ok_label = self._language_manager["main.converter.label.load_button"]
@@ -387,50 +479,114 @@ class MainTabCoordinator:
             on_cancel=self._converter_logic.close,
         )
 
-    def _request_stems_mode(self, stems_mode: bool) -> None:
-        """Answers the stems-mode switch, asking first where leaving it would drop recordings.
+    def _request_output(self, output: OutputKind) -> None:
+        """Answers the output switch, asking which recordings to mix where the list overflows one.
 
-        Turning stems mode off keeps the first recording, so a list of several loses the rest;
-        that is what the prompt confirms. Every other switch takes effect straight away.
+        A mix reaches a fixed number of recordings, so a longer list is put to the reader in the
+        window that shows what fits already ticked. The switch reads the output the setup still
+        holds while the question stands, since the run is what the reader is being asked about.
+        Every other switch takes effect straight away.
         """
-        if stems_mode or self._converter_logic.source_count <= 1:
-            self._converter_logic.set_stems_mode(stems_mode)
+        if not output.mixes or self._converter_logic.list_fits_a_mix:
+            self._converter_logic.set_output(output)
             return
 
-        self._confirm_discarding_stems(lambda: self._converter_logic.set_stems_mode(False))
+        self._converter_logic.refresh_view()
+        self._stem_selection_window.open(
+            self._converter_logic.gathered_rows,
+            self._converter_logic.mix_ceiling,
+            self._converter_logic.mix_only,
+        )
 
     def _can_add_stems(self) -> bool:
         """The converter is free to gather recordings into a stems conversion."""
-        return not self._is_operation_active()
+        return not self._hooks.is_operation_active()
 
     def _on_file_add_requested(self, filepath: Path) -> None:
         """Gathers one recording into a stems conversion, opening one where none is being built."""
-        if self._is_operation_active():
+        if self._hooks.is_operation_active():
             return
 
-        self._converter_logic.set_stems_mode(True)
-        self._converter_logic.add_sources([filepath])
+        self._converter_logic.gather_recordings([filepath])
 
     def _on_directory_add_requested(self, directory_path: Path) -> None:
-        """Offers a folder's recordings to a stems conversion, asking which ones where they overflow.
+        """Reads what a folder holds, and gathers it once the reading is done.
 
-        Where the folder holds no more than the list has room for, every recording joins at once.
-        A fuller folder raises the selection window, which shows what fits already ticked.
+        A tree is read one entry at a time and a large one takes seconds, so the reading runs
+        beside the interface and says how far it has got.
         """
-        if self._is_operation_active():
+        if self._hooks.is_operation_active():
             return
 
-        candidates = top_level_audio_files(directory_path)
-        if not candidates:
+        self._folder_scan.start(directory_path, self._gather_folder_read)
+
+    def _on_scan_started(self, directory_path: Path) -> None:
+        """Puts the wait on screen, since reading a folder of thousands takes seconds."""
+        on_render_thread(self._scan_window.open, directory_path, priority=self._repaint_priority)
+
+    def _on_scan_progress(self, count: int) -> None:
+        on_render_thread(self._scan_window.report, count, priority=self._repaint_priority)
+
+    def _on_scan_stopped(self) -> None:
+        on_render_thread(self._scan_window.close, priority=self._repaint_priority)
+
+    def _gather_folder_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
+        """Gathers what the walk found, on the thread the widgets it draws belong to."""
+        on_render_thread(self._gather_read, directory_path, found, priority=self._repaint_priority)
+
+    def _convert_folder_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
+        """Converts what the walk found, on the thread the widgets it draws belong to."""
+        on_render_thread(self._convert_read, directory_path, found, priority=self._repaint_priority)
+
+    def _gather_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
+        self._scan_window.close()
+        if not found:
+            self._nothing_below(directory_path)
             return
 
-        self._converter_logic.set_stems_mode(True)
-        room = self._converter_logic.room_for_sources
-        if len(candidates) <= room:
-            self._converter_logic.add_sources(candidates)
+        if self._mixing_beyond_room(found):
             return
 
-        self._stem_selection_window.open(candidates, room)
+        self._converter_logic.gather_folder(directory_path, found)
+
+    def _nothing_below(self, directory_path: Path) -> None:
+        """Says that a folder holds no recordings, which is the answer the reading came back with.
+
+        The reading is what knows, so the menu offers every folder and the answer arrives once,
+        rather than every folder being walked to decide whether the item may be clicked.
+        """
+        logger.info(f"No recordings below {directory_path}.")
+        self._dialogs.show_info(
+            TAG_MAIN_EXPLORER_DIALOG_NOTHING_BELOW,
+            self._language_manager["main.converter.message.scan_nothing_below"],
+            self._language_manager["main.converter.title.scan_dialog"],
+        )
+
+    def _convert_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
+        self._scan_window.close()
+        self._converter_logic.convert_folder(directory_path, found)
+
+    def _mixing_beyond_room(self, found: Tuple[Path, ...]) -> bool:
+        """Whether what was read brings in more than the mix has room for, which is a question.
+
+        A mix already standing on recordings leaves the reader a choice between those and the ones
+        the folder offers, so the question stands both together and opens with the mix as it is.
+        The answer names the whole mix, which is how letting one go makes room for another; the
+        setup stands as it was until the reader gives one.
+        """
+        if not self._converter_logic.mixes:
+            return False
+
+        offered = self._converter_logic.rows_offered(found)
+        if sum(len(row.recordings) for row in offered) <= self._converter_logic.room_for_sources:
+            return False
+
+        self._stem_selection_window.open(
+            self._converter_logic.gathered_rows + offered,
+            self._converter_logic.mix_ceiling,
+            self._converter_logic.mix_only,
+        )
+        return True
 
     def _request_cancel_confirmation(self) -> None:
         self._dialogs.show_confirmation(
@@ -453,12 +609,17 @@ class MainTabCoordinator:
             )
         )
 
-    def _update_reconstructor_panel_view(self) -> None:
-        config = self._config_manager.config
-        self._reconstructor_panel.update_view(
-            ReconstructorPanelViewModel(
-                channels=frozenset(config.generation.channels),
-                drive=config.generation.drive,
+    def _update_source_panel_view(self) -> None:
+        """The settings card reads the choices from the converter and the drive from the config.
+
+        The two owners answer one card, so the composition point is where their readings meet.
+        """
+        self._source_panel.update_view(
+            SourceSettingsPanelViewModel(
+                slots=self._converter_logic.settings_slots,
+                inspected=self._converter_logic.inspected_source,
+                drive=self._config_manager.config.generation.drive,
+                live=self._converter_logic.live,
             )
         )
 
@@ -524,35 +685,45 @@ class MainTabCoordinator:
 
         self._sync_explorer_width()
 
+    @property
+    def _config_columns(self) -> Tuple[ColumnSpec, ...]:
+        """The settings cards the tab lays side by side, in the order they read."""
+        return (
+            ColumnSpec(
+                tag=TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
+                build=self._config_panel.create_panel,
+            ),
+            ColumnSpec(
+                tag=TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL,
+                build=self._advanced_settings_panel.create_panel,
+            ),
+        )
+
     def _build_center(self, parent: str) -> None:
-        """Stacks the config and reconstructor cards side by side, then the advanced and converter cards below."""
+        """Stacks the settings cards side by side, then the converter and the card reading its list.
+
+        The reconstruction card names whichever row the converter's list stands on, so it follows
+        that list and the tab reads in one direction: what a run is set up with, what it gathers,
+        and what the gathered row takes.
+        """
         TabColumns.row(
             panel_gap=self._geometry.panel_gap,
             height=self._config_height,
             tag=TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
-            columns=[
-                ColumnSpec(
-                    tag=TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
-                    build=self._config_panel.create_panel,
-                ),
-                ColumnSpec(
-                    tag=TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
-                    build=self._reconstructor_panel.create_panel,
-                ),
-            ],
+            columns=self._config_columns,
         )
-        self._sync_config_row_height()
-        dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
-        self._advanced_settings_panel.create_panel(parent)
+        self._sync_advanced_settings()
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._converter_panel.create_panel(parent)
+        dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
+        self._source_panel.create_panel(parent)
 
     def _wire_collapse_handlers(self) -> None:
         """Routes each Main card's collapse toggle to the handler that persists it and reflows the shared config row."""
         self._explorer_panel.set_collapse_handler(self._on_explorer_collapse_changed)
         self._config_panel.set_collapse_handler(self._on_config_row_collapse_changed)
-        self._reconstructor_panel.set_collapse_handler(self._on_config_row_collapse_changed)
-        self._advanced_settings_panel.set_collapse_handler(self._on_card_collapse_changed)
+        self._advanced_settings_panel.set_collapse_handler(self._on_config_row_collapse_changed)
+        self._source_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._converter_panel.set_collapse_handler(self._on_card_collapse_changed)
 
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
@@ -584,14 +755,15 @@ class MainTabCoordinator:
         dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
 
     def _on_config_row_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
-        """Persists the config or reconstructor collapse, then reflows the row both cards share."""
+        """Persists a settings card's collapse, then reflows the row both of them share."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
         self._sync_config_row_height()
 
     def _sync_config_row_height(self) -> None:
-        """Lets the shared config row size to its collapsed cards once both are collapsed, else keeps it full height."""
-        both_collapsed = self._config_panel.collapsed and self._reconstructor_panel.collapsed
-        height = 0 if both_collapsed else self._config_height
+        """Lets the settings row size to its collapsed bars once every card standing in it is collapsed."""
+        advanced_stands = self._session_manager.advanced_settings and not self._advanced_settings_panel.collapsed
+        expanded = not self._config_panel.collapsed or advanced_stands
+        height = self._config_height if expanded else 0
         dpg_configure_item(TAG_MAIN_CONFIG_TABLE_CONFIG_ROW, height=height)
 
     def is_converter_active(self) -> bool:
@@ -603,8 +775,17 @@ class MainTabCoordinator:
     def refresh_converter_view(self) -> None:
         self._converter_logic.refresh_view()
 
-    def set_input_path(self, path: Path, convert: bool) -> None:
-        self._converter_logic.set_input_path(path, convert=convert)
+    def convert_path(self, path: Path) -> None:
+        """Converts exactly what a Reconstruct named, replacing whatever the reader gathered.
+
+        A folder is read before it is converted, which is work the reader watches rather than
+        waits blindly through.
+        """
+        if not path.is_dir():
+            self._converter_logic.convert_recording(path)
+            return
+
+        self._folder_scan.start(path, self._convert_folder_read)
 
     def save_browser_shape(self) -> None:
         """Writes down the folders the explorer stands open, so a later run reads down to them."""
@@ -614,15 +795,32 @@ class MainTabCoordinator:
         self._explorer_panel.refresh()
 
     def toggle_channel(self, channel: ChannelName) -> None:
-        """Switches one channel in or out of the set a reconstruction is built from."""
-        self._reconstructor_panel.toggle_channel(channel)
+        """Settles one channel on the recording or folder the reader has picked out of the list."""
+        self._converter_logic.toggle_channel(channel)
 
     def toggle_advanced_settings(self) -> None:
-        advanced_settings = self._session_manager.toggle_show_advanced_settings()
-        self._advanced_settings_panel.set_visibility(advanced_settings)
+        """Puts the advanced card away or stands it back beside the general one."""
+        self._session_manager.toggle_show_advanced_settings()
+        self._sync_advanced_settings()
 
     def sync_advanced_settings_visibility(self) -> None:
-        self._advanced_settings_panel.set_visibility(self._session_manager.advanced_settings)
+        """Stands the settings row as the session left it, which is what a launch opens on."""
+        self._sync_advanced_settings()
+
+    def _sync_advanced_settings(self) -> None:
+        """Stands the advanced card where the reader asked for it, the general one taking the rest.
+
+        The row divides itself among the cards standing in it, so a card put away leaves the whole
+        width to the one beside it and the general settings reach as far as the cards below them.
+        """
+        standing = self._session_manager.advanced_settings
+        cells = {TAG_MAIN_CONFIG_PANEL_CONFIG_CELL}
+        if standing:
+            cells.add(TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL)
+
+        self._advanced_settings_panel.set_visibility(standing)
+        TabColumns.stand_columns(self._config_columns, cells, self._geometry.panel_gap)
+        self._sync_config_row_height()
 
     def emit_initial_view(self) -> None:
         self._converter_logic.emit_initial_view()

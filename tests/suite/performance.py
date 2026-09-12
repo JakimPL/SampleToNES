@@ -4,7 +4,11 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    FeatureKey,
+)
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
@@ -38,7 +42,7 @@ def _reconstruction(
         coefficient=1.0,
         audio_filepath=(Path("/dev/null"),),
         stems_data=single_entry_stems_data(
-            list(Config().generation.channels),
+            list(DEFAULT_CHANNELS),
             channel_instructions,
         ),
     )

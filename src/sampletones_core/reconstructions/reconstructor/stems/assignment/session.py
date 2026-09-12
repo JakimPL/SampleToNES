@@ -271,5 +271,5 @@ class AssignmentSession:
         self,
         stem_id: int,
     ) -> Dict[ChannelName, GeneratorUnion]:
-        allowed = self.stems_config.entries_by_id[stem_id].channel_set
+        allowed = self.stems_config.entries_by_id[stem_id].settings.channel_set
         return {name: self.channels[name] for name in self.free_channels if name in allowed}

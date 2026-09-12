@@ -274,7 +274,9 @@ below that is room the matching leaves unused, and material that was never in A=
 temperament — most recordings of most instruments — sits somewhere inside it.
 
 `sampletones_core.reconstructions.reconstructor.refinement` spends that room, after the decoder has
-settled which note each frame plays and before the frames are rendered.
+settled which note each frame plays and before the frames are rendered. It spends it where the run
+asks: a stem entry names the channels it carries toward its own recording, so one recording's bass
+line can land on its exact tuning while another's lead keeps the grid.
 
 ### 6.1 Reading rather than searching
 
@@ -304,14 +306,14 @@ frames with no pitch to read.
 
 ### 6.2 Landing the note, and holding it
 
-A reading becomes a bend through the generator, which owns the divider geometry: `bend_towards`
+A reading becomes a bend through the generator, which owns the divider geometry: `bend_toward`
 answers with the divider steps that land the note nearest the frequency read, bounded by
 `bend_range` — **half the gap to each neighboring note**. That bound is what leaves the refined
 pitches gapless: note *n* covers `[(tₙ + tₙ₊₁) / 2, (tₙ + tₙ₋₁) / 2]`, and those windows tile the
 divider range exactly, so every divider the notes span is reachable and none is claimed twice.
 
 A bend that followed every reading exactly would jitter, and jitter is more audible than the tuning
-it chases. So the per-frame proposals are settled by a change-penalised walk, the same shape the
+it chases. So the per-frame proposals are settled by a change-penalized walk, the same shape the
 Viterbi decoder settles a note contour with: the cost of a bend is how far it stands from that
 frame's reading, plus a toll on changing at all. The states a frame may take are the bends its
 neighborhood proposed together with no bend, which keeps the walk to a handful of states even where
@@ -329,14 +331,19 @@ a tenth or more, since the reading needs a handful of bins per frame and the tra
 every bin the spectrum covers. Restricting it to the bins the chosen notes actually name is the
 work `docs/development/bugs-and-todos.md` records under **Features**.
 
-A frame makes no proposal where it rests, where its channel is not pitched — the noise channel's
-sixteen periods have no finer grid — or where its reading falls below the confidence threshold. A
-conversion that bent no note records both bend dimensions as ones the channel governs, so it writes
-the same instrument it wrote before the feature existed.
+A frame makes no proposal where it rests, where the stem holding it leaves that channel out, where
+its channel is not pitched — the noise channel's sixteen periods have no finer grid — or where its
+reading falls below the confidence threshold. A conversion that bent no note records both bend
+dimensions as ones the channel governs, so it writes the instrument an unrefined run writes.
+
+Which recordings are carried, and on which channels, each stem entry states for itself in
+`bends` — a subset of the channels it occupies, and of the three that load a divider. A channel a
+stem leaves out keeps the note the matching chose, and a stem carrying nothing at all is never
+read, so the transform is spent only where a bend comes of it. The settings below shape a bend
+once it is asked for, and hold for a whole run.
 
 | parameter | default | notes |
 |---|---|---|
-| `generation.refinement.enabled` | on | acts only where the run renders the chosen instructions |
 | `generation.refinement.confidence` | 0.15 | the share of a frame's energy its harmonics must hold |
 | `generation.refinement.change_weight` | 2.0 | divider steps of reading error worth avoiding one change |
 | `generation.refinement.window` | 4 | the frames on either side whose readings a frame may settle on |
@@ -383,7 +390,7 @@ noise):
 | spectral / temporal weight | 0.8 / 0.2 | criterion blend                                 |
 | spectral distance        | β-divergence | also `squared`, `absolute`                     |
 | selector                 | Viterbi | `greedy` / `viterbi`                                |
-| pitch refinement         | on      | bends each note onto the divider the source sounds  |
+| pitch refinement         | per stem | bends each note onto the divider the source sounds  |
 | normalize / quantize     | on / off | input preprocessing                                |
 
 Package map:

@@ -2,10 +2,12 @@ from typing import Any, Dict
 
 from sampletones_core.compatibility.fields import (
     AUDIO_FILEPATH,
+    BENDS,
     CHANNEL_NAME,
     CHANNELS,
     GENERATOR_NAME,
     INSTRUCTIONS,
+    SETTINGS,
     STEMS_DATA,
 )
 from sampletones_core.compatibility.reconstruction.v2_2 import update
@@ -33,13 +35,16 @@ class TestReconstructionV2_2:
         assert upgraded["instructions_data"][0][CHANNEL_NAME] == "pulse1"
         assert GENERATOR_NAME not in upgraded["instructions_data"][0]
 
-    def test_renames_embedded_channel_selection(self) -> None:
+    def test_the_embedded_channel_selection_moves_onto_the_stems_record(self) -> None:
         data = {"config": {"generation": {"generators": ["pulse1", "noise"], "drive": 1.0}}}
 
         upgraded = update(data)
 
-        assert upgraded["config"]["generation"]["channels"] == ["pulse1", "noise"]
-        assert "generators" not in upgraded["config"]["generation"]
+        generation = upgraded["config"]["generation"]
+        assert generation == {"drive": 1.0}
+        assert upgraded[STEMS_DATA]["config"]["entries"] == [
+            {"id": 0, SETTINGS: {CHANNELS: ["pulse1", "noise"], BENDS: []}}
+        ]
 
     def test_stamps_the_embedded_config_metadata(self) -> None:
         data = {"config": {"metadata": {"reconstruction_data_version": "2.1"}}}
@@ -66,7 +71,7 @@ class TestReconstructionV2_2:
 
         assert upgraded["id"] == "abc"
         assert upgraded[AUDIO_FILEPATH] == []
-        assert upgraded[STEMS_DATA]["config"]["entries"][0]["channels"] == []
+        assert upgraded[STEMS_DATA]["config"]["entries"][0][SETTINGS][CHANNELS] == []
         assert upgraded[STEMS_DATA]["assignments"] == []
 
     def test_a_single_path_records_as_a_one_tuple(self) -> None:
@@ -88,7 +93,7 @@ class TestReconstructionV2_2:
         upgraded = update(data)
 
         stems_data = upgraded[STEMS_DATA]
-        assert stems_data["config"]["entries"] == [{"id": 0, CHANNELS: ["pulse1", "noise"]}]
+        assert stems_data["config"]["entries"] == [{"id": 0, SETTINGS: {CHANNELS: ["pulse1", "noise"], BENDS: []}}]
         assert stems_data["config"]["channel_cap"] == DEFAULT_STEMS_CHANNEL_CAP
         assert stems_data["assignments"] == [
             {CHANNEL_NAME: "pulse1", "stem_ids": [0, 0]},

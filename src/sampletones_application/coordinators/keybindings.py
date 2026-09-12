@@ -41,7 +41,7 @@ class KeybindingsCoordinator:
     The dialog edits a draft while the application keeps running on the keys it started with, so
     Escape, Tab and Enter answer the same way throughout a session of rebinding them. Confirming
     hands the draft's scheme to the source every action resolves against and writes the scheme name
-    and the rebound actions to the session; cancelling drops the draft and leaves the keys alone.
+    and the rebound actions to the session; canceling drops the draft and leaves the keys alone.
 
     An assignment onto keys another action of the same scope holds is offered after a prompt naming
     that action, which is then left unbound — one combination reaches one action within a scope.

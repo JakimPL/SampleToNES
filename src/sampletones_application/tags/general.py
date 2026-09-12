@@ -266,11 +266,53 @@ TAG_GLOBAL_THEME_CHANNEL_MUTED = TagName(
     Widget.THEME,
     "channel_muted",
 )
+TAG_GLOBAL_THEME_CHANNEL_PULSE1_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_pulse1_partial",
+)
+TAG_GLOBAL_THEME_CHANNEL_PULSE2_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_pulse2_partial",
+)
+TAG_GLOBAL_THEME_CHANNEL_TRIANGLE_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_triangle_partial",
+)
+TAG_GLOBAL_THEME_CHANNEL_NOISE_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_noise_partial",
+)
 TAG_GLOBAL_THEME_STEMS_DROP_STRIP = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.THEME,
     "stems_drop_strip",
+)
+TAG_GLOBAL_THEME_STEMS_GRID = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_grid",
+)
+TAG_GLOBAL_THEME_STEMS_MARKER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_marker",
+)
+TAG_GLOBAL_THEME_STEMS_GROUP_ROW = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_group_row",
 )
 TAG_GLOBAL_THEME_STEMS_ROW = TagName(
     Page.GLOBAL,
@@ -283,6 +325,24 @@ TAG_GLOBAL_THEME_STEMS_ROW_INERT = TagName(
     Panel.IMPLICIT,
     Widget.THEME,
     "stems_row_inert",
+)
+TAG_GLOBAL_THEME_STEMS_PICK = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_pick",
+)
+TAG_GLOBAL_THEME_STEMS_PICK_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_pick_partial",
+)
+TAG_GLOBAL_THEME_STEMS_SLOT_LABEL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_slot_label",
 )
 TAG_GLOBAL_THEME_TOOLTIP = TagName(
     Page.GLOBAL,
@@ -765,8 +825,10 @@ SUF_BUTTON_COLLAPSE_ALL = compose_tag(SUF_BUTTON, "collapse_all")
 SUF_BUTTON_SHOW_TRACEBACK = compose_tag(SUF_BUTTON, "show_traceback")
 SUF_BUTTON_DECREMENT = compose_tag(SUF_BUTTON, "decrement")
 SUF_BUTTON_INCREMENT = compose_tag(SUF_BUTTON, "increment")
+SUF_BENDS = "bends"
 SUF_CHANNELS = "channels"
 SUF_GROUP = "group"
+SUF_HEADING = "heading"
 SUF_GROUP_TRACEBACK = compose_tag(SUF_GROUP, "traceback")
 SUF_HANDLER_REGISTRY = compose_tag("handler", "registry")
 SUF_HANDLER_STATUS = compose_tag("handler", "status")
@@ -776,6 +838,7 @@ SUF_HANDLER_HEADER = compose_tag("handler", "header")
 SUF_HANDLER_DRAG = compose_tag("handler", "drag")
 SUF_HANDLER_LIST = compose_tag("handler", "list")
 SUF_LABEL = "label"
+SUF_LEAD = "lead"
 SUF_PATH = "path"
 SUF_TEXT = "text"
 SUF_TEXT_FAVORITES = compose_tag(SUF_TEXT, "favorites")
@@ -785,7 +848,10 @@ SUF_CHECKBOX = "checkbox"
 SUF_CHECKBOX_FAVORITES = compose_tag(SUF_CHECKBOX, "favorites")
 SUF_STRIP = "strip"
 SUF_TABLE = "table"
+SUF_TABLE_COLUMN = compose_tag(SUF_TABLE, "column")
+SUF_TABLE_GAP = compose_tag(SUF_TABLE, "gap")
 SUF_TOOLTIP = "tooltip"
+SUF_TWISTY = "twisty"
 SUF_TOOLTIP_DETAIL = compose_tag(SUF_TOOLTIP, "detail")
 SUF_DIALOG_INFO = compose_tag("dialog", "info")
 SUF_PANEL_LEFT = compose_tag("panel", "left")
@@ -795,7 +861,11 @@ SUF_COLLAPSE_STRIP = compose_tag("collapse", "strip")
 SUF_COLLAPSE_BODY = compose_tag("collapse", "body")
 SUF_COLLAPSE_RAIL = compose_tag("collapse", "rail")
 SUF_COLLAPSE_CHEVRON = compose_tag("collapse", "chevron")
+SUF_FOLDER = "folder"
+SUF_REGION = "region"
 SUF_ROW = "row"
+SUF_SPACER_ABOVE = compose_tag("spacer", "above")
+SUF_SPACER_BELOW = compose_tag("spacer", "below")
 SUF_LEVEL = "level"
 SUF_WELL = "well"
 SUF_PAYLOAD = "payload"

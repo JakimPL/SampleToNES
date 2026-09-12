@@ -117,7 +117,7 @@ def _reconstructions(
 def coordinator() -> SequencerReconstructions:
     """The reconstruction gestures with only the collaborators an import touches.
 
-    The tab's full constructor builds the sequencer's GUI subtree (themes, fonts, synthesiser),
+    The tab's full constructor builds the sequencer's GUI subtree (themes, fonts, synthesizer),
     which is out of scope here; only the import orchestration is under test. Defaults to an open
     project with samples and a matching reconstruction frequency (60 Hz); individual tests
     override.

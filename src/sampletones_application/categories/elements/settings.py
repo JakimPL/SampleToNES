@@ -80,6 +80,8 @@ class KeybindingActionElements(AbstractElement):
     SELECT_TAB_SEQUENCER = "select_tab_sequencer"
     SELECT_TAB_INSTRUCTIONS = "select_tab_instructions"
 
+    SOURCES_REMOVE_SOURCE = "sources_remove_source"
+
     ORDER_PREVIOUS_POSITION = "order_previous_position"
     ORDER_NEXT_POSITION = "order_next_position"
     ORDER_PREVIOUS_CHANNEL = "order_previous_channel"
@@ -159,6 +161,7 @@ class KeybindingCategoryElements(AbstractElement):
     """The name a reader finds each editable scope under, one member per :class:`ShortcutCategory`."""
 
     APPLICATION = "application"
+    SOURCES = "sources"
     ORDER = "order"
     TRACKER = "tracker"
     VOICES = "voices"

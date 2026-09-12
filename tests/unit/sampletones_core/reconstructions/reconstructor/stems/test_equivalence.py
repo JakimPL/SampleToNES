@@ -5,7 +5,7 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH
-from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
@@ -15,6 +15,7 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.frame impor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 
@@ -30,7 +31,12 @@ def _config(
     channel_cap: int,
 ) -> StemsConfig:
     return StemsConfig(
-        entries=[StemEntry(id=stem_id, channels=list(channels)) for stem_id, channels in entries.items()],
+        entries=[
+            StemEntry(
+                id=stem_id, settings=StemSettings(channels=list(channels), bends=bending_channels(list(channels)))
+            )
+            for stem_id, channels in entries.items()
+        ],
         hierarchy=StemsHierarchy(levels=levels, mode=mode),
         channel_cap=channel_cap,
     )
@@ -214,7 +220,7 @@ class TestRandomizedDifferential:
         counts: Dict[int, int] = {}
         for choice in assignment.choices:
             counts[choice.stem_id] = counts.get(choice.stem_id, 0) + 1
-            assert choice.channel_name in stems_config.entries_by_id[choice.stem_id].channel_set
+            assert choice.channel_name in stems_config.entries_by_id[choice.stem_id].settings.channel_set
         assert all(count <= stems_config.channel_cap for count in counts.values())
 
         if stems_config.hierarchy.mode == HierarchyMode.STRICT:

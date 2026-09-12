@@ -1,3 +1,5 @@
+from typing import Optional
+
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.tags.compose import compose_tag
@@ -14,34 +16,42 @@ def well(
     *,
     padding: int,
     margin: int,
-    height: int = 0,
+    width: int,
+    indent: Optional[int] = None,
     show: bool = True,
 ) -> str:
     """Sink a recessed region into a card and bind its depth theme.
 
     A well sinks a list below the card it sits on, the way a column of cards sits below the
     tab around it, so a run of rows reads as one body rather than as content loose on the
-    card. Alongside ``card()`` this is where the recessed depth theme is bound; the region
-    sizes itself to its rows unless ``height`` reserves a footprint.
+    card. Alongside ``card()`` this is where the recessed depth theme is bound, and the region
+    sizes itself to the rows it holds, which whoever owns it holds to a ceiling of their own.
 
-    Returns the inset body group content is added to, which keeps ``padding`` clear at the
-    sides. ``margin`` opens the gap above the first row and below the last, which the row
-    spacing between the content and the spacers adds to.
+    Returns the inset body group content is added to, which opens at ``indent`` and comes out at
+    ``width``, the caller stating the room to hold clear at the right. A well sunk under a row of
+    its own indents to show what it belongs to while its right edge stays where every other row's
+    is, so the columns line up down the whole list.
+    ``margin`` opens the gap above the first row and below the last, which the row spacing between
+    the content and the spacers adds to. A well asked for a margin of zero opens its rows where the
+    well itself opens, which is what a well nested inside a list takes: its rows are a run of the
+    list, and the list's own rhythm carries them.
     """
     body_tag = compose_tag(tag, SUF_GROUP)
     with dpg.child_window(
         tag=tag,
         parent=parent,
         width=-1,
-        height=height,
-        auto_resize_y=height == 0,
+        auto_resize_y=True,
         border=False,
         no_scrollbar=True,
         show=show,
     ):
-        dpg.add_spacer(height=margin)
-        dpg.add_group(tag=body_tag, indent=padding, width=-padding)
-        dpg.add_spacer(height=margin)
+        if margin:
+            dpg.add_spacer(height=margin)
+
+        dpg.add_group(tag=body_tag, indent=padding if indent is None else indent, width=width)
+        if margin:
+            dpg.add_spacer(height=margin)
 
     ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_GROUND).bind_to_item(tag)
     return body_tag

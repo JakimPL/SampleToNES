@@ -176,7 +176,7 @@ class TestTheTwoFaces:
         assert dpg.get_item_configuration(TAG_SETTINGS_RENDER_BUTTON_CANCEL)["enabled"]
 
     def test_a_render_already_stopping_takes_no_further_stop(self, window: GUIRenderWindow) -> None:
-        render(window, phase=RenderPhase.CANCELLING)
+        render(window, phase=RenderPhase.CANCELING)
 
         assert not dpg.get_item_configuration(TAG_SETTINGS_RENDER_BUTTON_CANCEL)["enabled"]
 

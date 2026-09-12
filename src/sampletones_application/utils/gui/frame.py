@@ -21,6 +21,15 @@ class FrameCallback:
 
 
 class FrameCallbackManager(metaclass=NonInstantiableMeta):
+    """Work picked up once a named frame has been drawn.
+
+    Reading a laid-out size or letting a configuration take effect needs a frame drawn with it, and
+    naming the frame is how a callback asks for one. The render thread inside the callback queue's
+    drain stands between frames rather than inside one, which leaves the next frame the drain's own
+    to reach: ``dpg.split_frame`` there waits for what the wait itself prevents and the application
+    stops for good, while a frame count asks for the same thing and lets the loop keep running.
+    """
+
     _callbacks: ClassVar[List[FrameCallback]] = []
     _lock: ClassVar[threading.Lock] = threading.Lock()
 

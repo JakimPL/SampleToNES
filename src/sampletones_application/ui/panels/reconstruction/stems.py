@@ -17,6 +17,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.list import GUIStemsList
+from sampletones_application.ui.elements.stems.offer import RECORDED_ASSIGNMENT
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.stems import (
@@ -64,12 +65,11 @@ class GUIReconstructionStemsPanel(GUIPanel):
         self._stems_list = GUIStemsList(
             prefix=PRE_RECONSTRUCTION_STEMS,
             layout=stems_layout,
+            ceiling=stems_layout.well_ceiling,
+            glyphs=self._glyphs.common,
             language_manager=language_manager,
             status_bar=status_bar,
-            draggable=False,
-            removable=True,
-            retain_last_row=True,
-            master_checkbox=True,
+            offer=RECORDED_ASSIGNMENT,
         )
 
         self.on_stem_channels_changed: Optional[Callable[[int, FrozenSet[ChannelName]], None]] = None
@@ -182,7 +182,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
         self.call(self.on_stem_remove_requested, int(key))
 
     def _on_row_activated(self, key: str) -> None:
-        """A clicked row shows its recording where it sits on disk."""
+        """A clicked row shows its recording where it sits on disk, whichever way it now reads."""
         row = self._stems_list.row(key)
         if row is not None and row.available:
             open_path_in_explorer(row.path)

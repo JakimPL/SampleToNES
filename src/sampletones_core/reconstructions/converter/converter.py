@@ -1,7 +1,8 @@
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, FrozenSet, List, Optional, Tuple
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.parallelization import TaskProcessor
 from sampletones_shared.logger import LoggerProtocol
 from sampletones_shared.logger import logger as default_logger
@@ -41,9 +42,14 @@ class ReconstructionConverter(TaskProcessor[Path]):
         super().start()
 
     def _create_tasks(self) -> List[Any]:
-        reconstructor = Reconstructor(self.config)
+        """One task per job, sharing the reconstructor the whole run's channels are built for."""
         self.jobs = self.plan.jobs(self.config)
+        reconstructor = Reconstructor(self.config, self._covered_channels())
         return [(reconstructor, job, JobReporter(self._task_reporter(index))) for index, job in enumerate(self.jobs)]
+
+    def _covered_channels(self) -> FrozenSet[ChannelName]:
+        """Every channel the jobs hand out, which is what the run builds generators for."""
+        return frozenset(channel_name for job in self.jobs for channel_name in job.stems.covered_channels)
 
     def _get_task_function(
         self,

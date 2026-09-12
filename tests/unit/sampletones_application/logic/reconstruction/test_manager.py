@@ -8,13 +8,14 @@ import pytest
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import LoadReconstructionError
 from tests.suite.errors import DIRECTORY_READ_ERRORS
 from tests.suite.stems import single_entry_stems_data
@@ -24,8 +25,14 @@ def _two_entry_stems_data() -> StemsData:
     return StemsData(
         config=StemsConfig(
             entries=[
-                StemEntry(id=0, channels=[ChannelName.PULSE1]),
-                StemEntry(id=1, channels=[ChannelName.PULSE1]),
+                StemEntry(
+                    id=0,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                ),
+                StemEntry(
+                    id=1,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                ),
             ],
             hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
             channel_cap=1,
@@ -404,7 +411,7 @@ class TestReconstructionManagerLocateOriginalAudio:
             coefficient=1.0,
             audio_filepath=(missing_path,),
             stems_data=single_entry_stems_data(
-                list(Config().generation.channels),
+                [ChannelName.PULSE1],
                 {ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
             ),
         )

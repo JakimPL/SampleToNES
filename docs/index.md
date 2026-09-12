@@ -18,7 +18,9 @@ The [**guide**](guide/) walks through the application from installation onward.
 
 - [Installation](guide/installation.md) — the standalone build, running from source, and GPU acceleration.
 - [Getting started](guide/getting-started.md) — your first reconstruction and your first song.
-- [The interface](guide/interface.md) — the Main, Reconstructions, and Instructions tabs, and the menus.
+- [The interface](guide/interface.md) — the four tabs, the menus, and the keyboard shortcuts.
+- [Converting audio](guide/converting.md) — the Main tab: gathering recordings, choosing channels, and running a conversion.
+- [Working with a reconstruction](guide/reconstruction.md) — the Reconstruction tab: listening, editing instruments, and exporting.
 - [The sequencer](guide/sequencer.md) — the tracker: arranging samples and hand-written instruments into a song, exporting a module, and rendering it to audio.
 - [Command line](guide/command-line.md) — running without the graphical interface.
 - [Where your files live](guide/files.md) — the folders and file types _SampleToNES_ uses.
@@ -61,6 +63,10 @@ The [**development**](development/) section is for contributors.
 - [Package layers](development/packages.md) — the packages the repository divides into, and the order they import each other in.
 - [Undo engine](development/undo.md) — the design of the undo/redo subsystem.
 - [Sequencer blocks](development/sequencer-blocks.md) — the rules copy, cut, paste and delete follow on both grids.
+- [Keyboard and actions](development/keyboard.md) — how a press reaches behavior, and how an action is declared and shown.
+- [Identifier vocabularies](development/vocabularies.md) — the keys display text is looked up by, and the tags DearPyGui knows a widget by.
+- [Colors and palettes](development/palette.md) — how a color is written, composed, and handed to DearPyGui.
+- [The render thread](development/render-thread.md) — how work reaches DearPyGui from another thread, and what each crossing costs.
 - [Playback](development/playback.md) — the audio transport shared by every view, and rendering the song to a file.
 - [Progress](development/progress.md) — how a long operation says how far it has come, in one process and across the pool's workers.
 - [Console player](development/player.md) — the 6502 driver an `.nsf` carries, the codec that fits a song beside it, and how both are verified.

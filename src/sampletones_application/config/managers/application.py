@@ -2,10 +2,13 @@ from pathlib import Path
 from typing import Dict, Optional, Set
 
 from sampletones_application.config.session.application.config import ApplicationConfig
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.playback import FollowMode
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
+from sampletones_core.constants.enums import HierarchyMode
 from sampletones_core.data.metadata import Metadata
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.serialization import load_yaml, save_yaml_atomic
 from sampletones_shared.utils.system.paths import to_path
@@ -152,6 +155,38 @@ class ApplicationConfigManager:
 
     def set_follow_mode(self, value: FollowMode) -> None:
         self.config.playback.follow_mode = value
+
+    @property
+    def converter_settings(self) -> StemSettings:
+        """The settings a recording is given when it joins the converter's list."""
+        return self.config.converter.settings
+
+    def set_converter_settings(self, settings: StemSettings) -> None:
+        self.config.converter.settings = settings
+
+    @property
+    def converter_output(self) -> OutputKind:
+        """What a run writes, as the reader last left the output switch."""
+        return self.config.converter.output
+
+    def set_converter_output(self, output: OutputKind) -> None:
+        self.config.converter.output = output
+
+    @property
+    def converter_channel_cap(self) -> int:
+        """How many channels one recording may hold in a frame, as the reader last set it."""
+        return self.config.converter.channel_cap
+
+    def set_converter_channel_cap(self, channel_cap: int) -> None:
+        self.config.converter.channel_cap = channel_cap
+
+    @property
+    def converter_hierarchy_mode(self) -> HierarchyMode:
+        """How the levels of a mix take turns, as the reader last set it."""
+        return self.config.converter.hierarchy_mode
+
+    def set_converter_hierarchy_mode(self, hierarchy_mode: HierarchyMode) -> None:
+        self.config.converter.hierarchy_mode = hierarchy_mode
 
     @property
     def octave(self) -> int:

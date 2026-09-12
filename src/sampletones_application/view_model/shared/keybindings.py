@@ -21,7 +21,7 @@ class KeybindingRow(BaseModel, frozen=True):
         """Whether the row answers a filter, which reads both what it is called and what it answers.
 
         Args:
-            text: What the reader typed, matched in any capitalisation.
+            text: What the reader typed, matched in any capitalization.
 
         Returns:
             bool: True while the label or the combination holds the text, and for an empty filter.

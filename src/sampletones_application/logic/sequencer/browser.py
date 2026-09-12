@@ -44,7 +44,7 @@ class SequencerBrowserLogic(CallbackMixin):
     ) -> Sample:
         """Adds an already-loaded reconstruction as a sample.
 
-        The sample embeds the reconstruction object and can be renamed afterwards
+        The sample embeds the reconstruction object and can be renamed afterward
         from the samples panel.
         """
         return self._controller.add_sample(reconstruction, name=name)

@@ -18,6 +18,7 @@ class ShortcutCategory(StrEnum):
     """
 
     APPLICATION = "application"
+    SOURCES = "sources"
     ORDER = "order"
     TRACKER = "tracker"
     VOICES = "voices"
@@ -106,6 +107,8 @@ class ShortcutId(Enum):
     SELECT_TAB_RECONSTRUCTIONS = ("SelectTabReconstructions", ShortcutCategory.APPLICATION)
     SELECT_TAB_SEQUENCER = ("SelectTabSequencer", ShortcutCategory.APPLICATION)
     SELECT_TAB_INSTRUCTIONS = ("SelectTabInstructions", ShortcutCategory.APPLICATION)
+
+    SOURCES_REMOVE_SOURCE = ("SourcesRemoveSource", ShortcutCategory.SOURCES)
 
     ORDER_PREVIOUS_POSITION = ("OrderPreviousPosition", ShortcutCategory.ORDER)
     ORDER_NEXT_POSITION = ("OrderNextPosition", ShortcutCategory.ORDER)

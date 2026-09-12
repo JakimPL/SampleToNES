@@ -1,4 +1,4 @@
-from typing import Final, Optional, Self, Tuple
+from typing import AbstractSet, Final, Optional, Self, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -14,9 +14,10 @@ from sampletones_core.constants.enums import (
     ChannelName,
     SpectrumMethod,
     abbreviate_channel_names,
+    ordered_channels,
 )
 from sampletones_core.constants.field_aliases import ALIASES
-from sampletones_shared.utils.serialization import HASH_PATTERN, hash_models
+from sampletones_shared.utils.hashing import HASH_PATTERN, hash_models
 
 CONFIG_DIRECTORY_SEPARATOR: Final[str] = "_"
 
@@ -45,13 +46,18 @@ class ConfigDirectoryFields(BaseModel):
         return tuple(CHANNEL_ABBREVIATION_TO_NAME[character] for character in self.gn)
 
     @classmethod
-    def from_config(cls, config: Config) -> Self:
+    def from_config(cls, config: Config, channels: AbstractSet[ChannelName]) -> Self:
+        """The fields a run's own directory is named from: its settings, and the channels it hands out.
+
+        The channels come from the setup rather than the configuration, so the name is written in
+        the order the application states them however the caller gathered the set.
+        """
         return cls(
             sr=config.library.sample_rate,
             nf=config.library.nes_frequency,
             sm=config.library.spectrum_method,
             tg=config.library.transformation_gamma,
-            gn=abbreviate_channel_names(config.generation.channels),
+            gn=abbreviate_channel_names(ordered_channels(channels)),
             ch=hash_models(config.library, config.generation),
         )
 
@@ -98,5 +104,5 @@ class ConfigDirectoryFields(BaseModel):
         )
 
     @classmethod
-    def generate_config_directory_name(cls, config: Config) -> str:
-        return cls.from_config(config).directory_name
+    def generate_config_directory_name(cls, config: Config, channels: AbstractSet[ChannelName]) -> str:
+        return cls.from_config(config, channels).directory_name

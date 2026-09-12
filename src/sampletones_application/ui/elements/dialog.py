@@ -57,7 +57,7 @@ class GUIDialogWindow(GUIWindow, ABC):
 
         Args:
             stops: The controls the focus ring cycles, in reading order.
-            on_escape: What cancelling this dialog means.
+            on_escape: What canceling this dialog means.
             initial_index: The stop focus opens on, which points a prompt at the answer it expects.
         """
         self._navigator = DialogKeyboardNavigator(

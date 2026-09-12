@@ -12,7 +12,7 @@ class ExportSuccess:
     """A completed export, with the path it wrote and what the file kept.
 
     Attributes:
-        kind: The artefact the run produced.
+        kind: The artifact the run produced.
         filepath: A file the run wrote, which a batch reports as the first of its slices.
         export_format: The format the run wrote, and ``None`` for an audio export.
         truncation: What the target format's item limit left out, and ``None`` when

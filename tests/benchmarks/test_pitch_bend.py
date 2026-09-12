@@ -1,4 +1,3 @@
-from time import process_time
 from typing import Final, List
 
 import pytest
@@ -7,11 +6,11 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.generators.render import render_instructions
 from sampletones_core.instructions import PulseInstruction
+from tests.suite.timing import seconds
 
 FRAMES: Final[int] = 6000
 PITCH: Final[int] = 60
 VOLUME: Final[int] = 12
-REPEATS: Final[int] = 3
 BEND_OVERHEAD_LIMIT: Final[float] = 1.25
 
 
@@ -30,14 +29,8 @@ def _stream(bent: bool) -> List[PulseInstruction]:
 
 
 def _render_seconds(config: Config, instructions: List[PulseInstruction]) -> float:
-    """The best of several renders, which is the reading least disturbed by other load."""
-    readings: List[float] = []
-    for _ in range(REPEATS):
-        started = process_time()
-        render_instructions(instructions, ChannelName.PULSE1, config)
-        readings.append(process_time() - started)
-
-    return min(readings)
+    """What one render of the stream costs, the reading least disturbed by other load."""
+    return seconds(lambda: render_instructions(instructions, ChannelName.PULSE1, config))
 
 
 @pytest.fixture(scope="module")

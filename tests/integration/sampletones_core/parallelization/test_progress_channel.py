@@ -37,7 +37,7 @@ def counting_run(
     release_path: Path,
     workers: int,
 ) -> Iterator[Tuple[CountingProcessor, ProgressRecorder]]:
-    """Starts a counting run, hands the test its recorder, and reaps the pool afterwards.
+    """Starts a counting run, hands the test its recorder, and reaps the pool afterward.
 
     The release file is written on the way out whatever the test did, so a run whose assertion
     failed before releasing its tasks still ends rather than holding a worker at its halfway mark.
@@ -125,7 +125,7 @@ class TestAWithdrawalReachesTheTasks:
 
     The tasks are held at their halfway mark, so the withdrawal below is delivered to workers that
     are provably still running: what ends the run is the answer the reporter gave them, and the
-    pool being torn down afterwards is the backstop rather than the mechanism.
+    pool being torn down afterward is the backstop rather than the mechanism.
     """
 
     def test_a_withdrawn_run_ends_canceled(self, release_path: Path) -> None:
@@ -136,5 +136,5 @@ class TestAWithdrawalReachesTheTasks:
             release_path.touch()
             processor.wait(POOL_TIMEOUT)
 
-            assert recorder.last_of(TaskStatus.CANCELLING) is not None
+            assert recorder.last_of(TaskStatus.CANCELING) is not None
             assert not processor.is_running()

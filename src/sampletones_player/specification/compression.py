@@ -2,13 +2,12 @@ from enum import IntEnum
 from math import ceil
 from typing import Final
 
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
 from sampletones_player.specification.binary import (
     BYTE_VALUES,
     MAX_BYTE_VALUE,
     WORD_SIZE,
 )
-from sampletones_player.specification.channels import TONE_CHANNELS
 from sampletones_shared.constants.general import BITS_PER_BYTE
 
 

@@ -1,5 +1,3 @@
-from typing import List
-
 from pydantic import AliasChoices, ConfigDict, Field
 
 from sampletones_core.constants.algorithm import (
@@ -12,7 +10,6 @@ from sampletones_core.constants.algorithm import (
     MAX_DRIVE,
     PERCEPTUAL_EXPONENT,
     PHASE_ALIGNER,
-    REFINE_PITCH,
     REFINEMENT_CHANGE_WEIGHT,
     REFINEMENT_CONFIDENCE,
     REFINEMENT_WINDOW,
@@ -28,8 +25,6 @@ from sampletones_core.constants.algorithm import (
     TRANSITION_VOLUME_WEIGHT,
 )
 from sampletones_core.constants.enums import (
-    DEFAULT_CHANNELS,
-    ChannelName,
     PhaseAlignerName,
     SelectorName,
     SpectralDistance,
@@ -77,11 +72,13 @@ class RefinementConfig(DataModel):
 
     A note reaches the hardware as a divider, and the divider grid is finer than the note grid
     everywhere below the top of the range. The refinement reads where each frame's fundamental
-    actually stands and bends the note it landed on towards it, so material recorded off the grid
+    actually stands and bends the note it landed on toward it, so material recorded off the grid
     comes back in tune with itself.
 
+    These settle how a bend is shaped and hold for a whole run. Which recordings bend, and on which
+    channels, each stem entry states for itself.
+
     Attributes:
-        enabled: Whether a conversion bends the notes it chose.
         confidence: The share of a frame's energy its harmonics must hold for its reading to count.
         change_weight: The divider steps of reading error worth avoiding one change of bend.
         window: The frames on either side whose readings a frame may settle on.
@@ -89,7 +86,6 @@ class RefinementConfig(DataModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    enabled: bool = Field(default=REFINE_PITCH)
     confidence: float = Field(default=REFINEMENT_CONFIDENCE, ge=0.0, le=1.0)
     change_weight: float = Field(default=REFINEMENT_CHANGE_WEIGHT, ge=0.0)
     window: int = Field(default=REFINEMENT_WINDOW, ge=0)
@@ -111,13 +107,6 @@ class GenerationConfig(DataModel):
     reset_phase: bool = Field(default=RESET_PHASE)
     final_regeneration: bool = Field(default=FINAL_REGENERATION)
 
-    channels: List[ChannelName] = Field(
-        default_factory=DEFAULT_CHANNELS.copy,
-        validation_alias=AliasChoices(
-            "channels",
-            "generators",
-        ),
-    )
     calculation: CalculationConfig = Field(default_factory=CalculationConfig)
     weights: WeightsConfig = Field(default_factory=WeightsConfig)
     metric: MetricConfig = Field(default_factory=MetricConfig)

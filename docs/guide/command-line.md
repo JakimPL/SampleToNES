@@ -13,6 +13,8 @@ executable you made (`./bin/sampletones` on Linux, `bin\sampletones.exe` on Wind
 * **Reconstruct a file** — `sampletones input.wav -o output.stn`
 * **Reconstruct a folder** — `sampletones path/to/folder` reconstructs every audio
   file inside it.
+* **Choose the channels** — add `--channels pulse1,pulse2` to reconstruct onto those two
+  alone; without it a run uses pulse 1, triangle, and noise.
 * **Open a file in the app** — `sampletones song.stp` opens the interface preloaded
   with it; a `.stn` reconstruction or `.ins` library works the same way.
 * **Use a specific configuration** — add `--config my-config.json`; otherwise your
@@ -28,6 +30,7 @@ executable you made (`./bin/sampletones` on Linux, `bin\sampletones.exe` on Wind
 | --- | --- |
 | `path` | (positional) an audio file or folder to reconstruct, or a `.stn` / `.ins` / `.stp` file to open in the app. Omit it to launch the interface. |
 | `--output`, `-o` | output path for a reconstruction |
+| `--channels` | channels the reconstruction may use, comma separated (default: `pulse1,triangle,noise`) |
 | `--config`, `-c` | path to a configuration `.json` (default: your saved `config.json`) |
 | `--generate`, `-g` | build the instruction library for the configuration, then exit |
 | `--version`, `-v` | print the version and exit |

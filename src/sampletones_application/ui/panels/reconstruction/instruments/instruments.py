@@ -77,6 +77,7 @@ from sampletones_application.utils.gui.keyboard import (
     ActivePredicate,
     KeyEvent,
     KeyRouter,
+    panel_scope_active,
 )
 from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
@@ -580,10 +581,13 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         """Whether a note key sounds the instrument the panel has in front of it.
 
         The keys reach an instrument alone, since a recording plays the audio it was made from,
-        and only while the Reconstructions tab is in front. A field being typed into keeps its own
-        characters, so a sequence entered by hand types letters rather than sounding notes.
+        so an open audition is what the panel holds them for.
         """
-        return self._audition_open and self._tab_active() and not self._router.is_field_focused
+        return panel_scope_active(
+            tab_active=self._tab_active,
+            router=self._router,
+            holds=self._audition_open,
+        )
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
         """Sounds the open instrument at the note a piano key names, reporting whether it did."""

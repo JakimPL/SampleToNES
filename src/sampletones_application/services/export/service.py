@@ -150,7 +150,7 @@ class ExportService(ServiceBase[ExportResult]):
         slices rather than the destination itself.
 
         Args:
-            kind: The artefact the run produces, naming the dialog that reports it.
+            kind: The artifact the run produces, naming the dialog that reports it.
             destination: The destination the run was given.
             export_format: The format the run writes, carried through to the result, and ``None``
                 for an audio export.

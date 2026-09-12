@@ -93,7 +93,7 @@ class ConversionService(ServiceBase[ConversionResult]):
         task_progress: TaskProgress,
     ) -> None:
         match task_status:
-            case TaskStatus.RUNNING | TaskStatus.CANCELLING:
+            case TaskStatus.RUNNING | TaskStatus.CANCELING:
                 self._emit(
                     ServiceProgress(
                         completed=task_progress.completed,

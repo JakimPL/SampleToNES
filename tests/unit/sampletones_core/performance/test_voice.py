@@ -6,7 +6,11 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    FeatureKey,
+)
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
 from sampletones_core.instructions import (
@@ -48,7 +52,7 @@ def _reconstruction(
         coefficient=1.0,
         audio_filepath=(Path("/dev/null"),),
         stems_data=single_entry_stems_data(
-            list(Config().generation.channels),
+            list(DEFAULT_CHANNELS),
             {channel_name: instructions_list},
         ),
     )

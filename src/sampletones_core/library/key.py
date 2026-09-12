@@ -9,7 +9,7 @@ from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.library.filename.fields import InstructionsFilenameFields
-from sampletones_shared.utils.serialization import hash_model
+from sampletones_shared.utils.hashing import hash_model
 
 
 class InstructionLibraryKey(BaseModel):

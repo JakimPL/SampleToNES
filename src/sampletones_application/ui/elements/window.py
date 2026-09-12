@@ -30,9 +30,14 @@ class GUIWindow(GUIPanel, ABC):
 
     A window holding prose of a length it learns at the moment it opens sets
     ``_fits_content``, which lets it grow past the height it states.
+
+    A window claims the screen while it stands, so the reader answers it before going on. One
+    reporting work already under way clears ``_claims_the_screen`` instead, which leaves the rest
+    of the interface live beside it.
     """
 
     _fits_content: bool = False
+    _claims_the_screen: bool = True
 
     def yield_to(self, raise_modal: VoidCallback) -> None:
         """Steps off screen and runs ``raise_modal`` a frame later, so what it raises can open.
@@ -86,7 +91,7 @@ class GUIWindow(GUIPanel, ABC):
             no_collapse=True,
             no_close=on_close is None,
             on_close=on_close,
-            modal=True,
+            modal=self._claims_the_screen,
             **geometry,
         ):
             yield

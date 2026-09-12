@@ -5,7 +5,10 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import STEM_ACTIVITY_FLOOR
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+)
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor, get_feature_extractor
 from sampletones_core.fft.fragment.audio import FragmentedAudio
@@ -35,7 +38,7 @@ def extractor(config: Config, window: Window) -> FeatureExtractor:
 
 @pytest.fixture(scope="module")
 def channels(config: Config) -> Dict[ChannelName, GeneratorUnion]:
-    return get_generators_by_channels(config, config.generation.channels)
+    return get_generators_by_channels(config, DEFAULT_CHANNELS)
 
 
 @pytest.fixture(scope="module")

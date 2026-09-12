@@ -19,9 +19,12 @@ from sampletones_application.view_model.shared.stems import StemsListViewModel
 from sampletones_core.constants.enums import HierarchyMode
 
 EMPTY_STEMS = StemsListViewModel(
+    selected_key=None,
     rows=(),
     channels_in_play=(),
     muted_channels=frozenset(),
+    picked_keys=frozenset(),
+    picking_room=None,
     live=True,
     collapse_levels=False,
 )

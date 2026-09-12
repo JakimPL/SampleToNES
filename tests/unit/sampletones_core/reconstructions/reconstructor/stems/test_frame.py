@@ -4,7 +4,12 @@ import numpy as np
 import pytest
 
 from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH
-from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    HierarchyMode,
+    bending_channels,
+)
 from sampletones_core.fft import Fragment
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
@@ -13,6 +18,7 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.frame impor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 
@@ -29,7 +35,10 @@ def _config(
     channel_cap: int,
 ) -> StemsConfig:
     return StemsConfig(
-        entries=[StemEntry(id=stem_id, channels=channels) for stem_id, channels in entries.items()],
+        entries=[
+            StemEntry(id=stem_id, settings=StemSettings(channels=channels, bends=bending_channels(channels)))
+            for stem_id, channels in entries.items()
+        ],
         hierarchy=StemsHierarchy(levels=levels, mode=mode),
         channel_cap=channel_cap,
     )
@@ -62,7 +71,7 @@ class TestAssignFrameValidation:
         extractor: FeatureExtractor,
     ) -> None:
         stems_config = _config({0: [ChannelName.PULSE2]}, [[0]], HierarchyMode.STRICT, 1)
-        with pytest.raises(ValueError, match="configuration lacks"):
+        with pytest.raises(ValueError, match="the run was not built for"):
             _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
 
 

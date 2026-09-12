@@ -84,7 +84,7 @@ class Song(BaseModel):
         """Adds an empty pattern to ``channel`` at a free index and returns it.
 
         The index clears both the channel's pool and every index its order slots
-        already reference, so it never aliases a slot whose pattern is unmaterialised.
+        already reference, so it never aliases a slot whose pattern is unmaterialized.
         """
         return self.channels[channel].add_pattern(
             self.rows_per_pattern,
@@ -109,7 +109,7 @@ class Song(BaseModel):
         pattern per channel and an edit to either is heard in both. The copy is a fresh
         mapping, so assigning a channel a different pattern in one frame leaves the
         other frame where it was. Silent slots stay silent, and an index whose pattern
-        is not yet materialised is carried across as the reference it is.
+        is not yet materialized is carried across as the reference it is.
         """
         self.order.insert(position + 1, dict(self.order[position]))
 

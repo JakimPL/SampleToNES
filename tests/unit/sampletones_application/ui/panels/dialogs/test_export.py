@@ -95,7 +95,7 @@ class TestTheStageList:
 class TestHowTheStageUnderWayReads:
     """A stage arriving at an end carries a bar; one measured against a limit carries a figure."""
 
-    def test_a_travelling_stage_shows_its_bar(self, window: GUIExportWindow) -> None:
+    def test_a_traveling_stage_shows_its_bar(self, window: GUIExportWindow) -> None:
         render(window, traveling=True)
         assert shown(TAG_SETTINGS_EXPORT_GROUP_MEASURED)
         assert not shown(TAG_SETTINGS_EXPORT_GROUP_WORKING)
@@ -126,7 +126,7 @@ class TestStoppingARun:
         assert dpg.get_item_configuration(TAG_SETTINGS_EXPORT_BUTTON_CANCEL)["enabled"]
 
     def test_an_export_already_stopping_offers_no_further_stop(self, window: GUIExportWindow) -> None:
-        render(window, phase=ExportPhase.CANCELLING)
+        render(window, phase=ExportPhase.CANCELING)
         assert not dpg.get_item_configuration(TAG_SETTINGS_EXPORT_BUTTON_CANCEL)["enabled"]
 
     def test_pressing_cancel_asks_the_run_to_stop(self, window: GUIExportWindow) -> None:
@@ -139,6 +139,6 @@ class TestStoppingARun:
     def test_a_run_already_stopping_takes_no_second_ask(self, window: GUIExportWindow) -> None:
         asked: List[bool] = []
         window.on_cancel = lambda: asked.append(True)
-        render(window, phase=ExportPhase.CANCELLING)
+        render(window, phase=ExportPhase.CANCELING)
         dpg.get_item_callback(compose_tag(TAG_SETTINGS_EXPORT_BUTTON_CANCEL, SUF_BUTTON))()
         assert asked == []

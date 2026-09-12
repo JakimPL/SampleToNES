@@ -24,7 +24,7 @@ class PitchTable(BaseModel):
     where adding one to a timer means nothing.
 
     Attributes:
-        timers: The timer for each pitch, from the lowest the project reaches upwards.
+        timers: The timer for each pitch, from the lowest the project reaches upward.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)

@@ -6,7 +6,7 @@ def instrument_slice_name(base_name: str, channel: ChannelName) -> str:
 
     Every export path shares this form, so a slice carries the same name whether it
     reaches a tracker as a standalone instrument file or as one entry of a project's
-    instrument table. The parenthesised suffix keeps the base name readable while
+    instrument table. The parenthesized suffix keeps the base name readable while
     identifying the channel the slice drives.
 
     Args:

@@ -1,7 +1,8 @@
 from pathlib import Path
-from typing import List, Tuple
+from typing import AbstractSet, Iterator, List, Tuple
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.converter.paths.fields import (
     ConfigDirectoryFields,
 )
@@ -25,13 +26,31 @@ def get_relative_path(
     return Path(output_path.absolute())
 
 
+def config_directory_path(
+    config: Config,
+    channels: AbstractSet[ChannelName],
+) -> Path:
+    """The directory a run writes its reconstructions into.
+
+    The directory is named after the settings that shaped the library and the channels the run
+    hands out, so runs that differ in either keep their results apart.
+    """
+    config_directory = ConfigDirectoryFields.generate_config_directory_name(config, channels)
+    return to_path(config.general.reconstructions_directory) / config_directory
+
+
 def get_output_path(
     config: Config,
     input_path: Path,
+    channels: AbstractSet[ChannelName],
     suffix: str = EXT_FILE_RECONSTRUCTION,
 ) -> Path:
-    config_directory = ConfigDirectoryFields.generate_config_directory_name(config)
-    output_directory = to_path(config.general.reconstructions_directory) / config_directory
+    """Where the reconstruction of one recording, or the folder of them, is written.
+
+    ``channels`` names what the run hands out, which the configuration's own directory is named
+    after alongside the settings that shaped the library.
+    """
+    output_directory = config_directory_path(config, channels)
     if input_path.is_dir():
         return output_directory / input_path.name
 
@@ -47,6 +66,7 @@ def get_output_path(
 def group_output_path(
     config: Config,
     sources: Tuple[Path, ...],
+    channels: AbstractSet[ChannelName],
     suffix: str = EXT_FILE_RECONSTRUCTION,
 ) -> Path:
     """Where the one reconstruction built from ``sources`` is written.
@@ -55,12 +75,42 @@ def group_output_path(
     one source names it after itself, and several after what they share
     (:func:`sampletones_core.reconstructions.naming.derive.derive_name`).
 
+    ``channels`` names what the run hands out, which the configuration's own directory is named
+    after.
+
     Raises:
         ValueError: If ``sources`` is empty.
     """
-    config_directory = ConfigDirectoryFields.generate_config_directory_name(config)
-    output_directory = to_path(config.general.reconstructions_directory) / config_directory
+    output_directory = config_directory_path(config, channels)
     return Path((output_directory / f"{derive_name(sources)}{suffix}").absolute())
+
+
+def walk_entries(input_directory: Path) -> Iterator[Path]:
+    """Every path below a directory, reported as the walk meets it.
+
+    A caller that has to answer between entries — one counting what it has found, or one a reader
+    may stop partway — reads the tree through this and decides for itself what each entry is.
+    """
+    return input_directory.rglob("*")
+
+
+def is_audio_file(path: Path, extensions: Tuple[str, ...] = EXT_FILES_AUDIO) -> bool:
+    """Whether a path names a recording a run converts."""
+    return path.is_file() and path.suffix.lower() in extensions
+
+
+def walk_audio_files(
+    input_directory: Path,
+    extensions: Tuple[str, ...] = EXT_FILES_AUDIO,
+) -> Iterator[Path]:
+    """The recordings below a directory, reported as the walk meets them.
+
+    A tree is read one entry at a time, so a caller reporting how far it has got hears from the
+    walk while it runs rather than once it ends.
+    """
+    for path in walk_entries(input_directory):
+        if is_audio_file(path, extensions):
+            yield path
 
 
 def get_audio_files(
@@ -68,25 +118,10 @@ def get_audio_files(
     extensions: Tuple[str, ...] = EXT_FILES_AUDIO,
     sort: bool = False,
 ) -> List[Path]:
-    audio_files = [path for path in input_directory.rglob("*") if path.is_file() and path.suffix.lower() in extensions]
+    audio_files = list(walk_audio_files(input_directory, extensions))
     if sort:
         audio_files.sort()
 
-    return audio_files
-
-
-def top_level_audio_files(
-    input_directory: Path,
-    extensions: Tuple[str, ...] = EXT_FILES_AUDIO,
-) -> List[Path]:
-    """The audio files sitting directly in a directory, in name order.
-
-    Where a batch reaches every recording below a folder, gathering the sources of one
-    reconstruction stays with the folder a reader pointed at, so what it offers is what that
-    folder itself holds.
-    """
-    audio_files = [path for path in input_directory.iterdir() if path.is_file() and path.suffix.lower() in extensions]
-    audio_files.sort()
     return audio_files
 
 

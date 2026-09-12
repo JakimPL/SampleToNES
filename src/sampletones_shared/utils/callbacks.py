@@ -12,14 +12,15 @@ class CallbackMixin:
     them: optional hook attributes are the sole channel outward.  ``call``
     announces an event and ``query`` asks a hook for a value; both are
     deliberately lenient about missing hooks — partial wiring during
-    construction is expected and logged rather than raised.
+    construction is expected, so an unset hook is noted at debug and the
+    caller carries on.
     """
 
     def call(self, callback: Optional[Callback], *args: Any, **kwargs: Any) -> Any:
         """
         Safely invokes a callback with provided arguments.
 
-        Handles None callbacks gracefully by logging a warning and returning None.
+        Handles None callbacks gracefully by noting them at debug and returning None.
         Validates that the callback is callable before invocation.
 
         Args:
@@ -34,7 +35,7 @@ class CallbackMixin:
             TypeError: If callback is not None but is not callable.
         """
         if callback is None:
-            logger.warning(f"No callback for {self.__class__.__name__} to call.")
+            logger.debug(f"No callback for {self.__class__.__name__} to call.")
             return None
 
         if not callable(callback):
@@ -71,7 +72,7 @@ class CallbackMixin:
             TypeError: If callback is not None but is not callable.
         """
         if callback is None:
-            logger.warning(f"No callback for {self.__class__.__name__} to query.")
+            logger.debug(f"No callback for {self.__class__.__name__} to query.")
             return default
 
         if not callable(callback):

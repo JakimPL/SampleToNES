@@ -9,7 +9,13 @@ import pytest
 from pydantic import ValidationError
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName, FeatureKey, HierarchyMode
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    FeatureKey,
+    HierarchyMode,
+    bending_channels,
+)
 from sampletones_core.data import Metadata
 from sampletones_core.features import resting_held_features, resting_reference
 from sampletones_core.instructions import PulseInstruction
@@ -22,6 +28,7 @@ from sampletones_core.reconstructions.reconstruction.stems.data import (
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.application import (
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
 )
@@ -64,7 +71,7 @@ def _reconstruction(instructions: List[PulseInstruction]) -> Reconstruction:
         coefficient=1.0,
         audio_filepath=(Path("/dev/null"),),
         stems_data=single_entry_stems_data(
-            list(Config().generation.channels),
+            list(DEFAULT_CHANNELS),
             {ChannelName.PULSE1: instructions},
         ),
     )
@@ -87,7 +94,12 @@ def _saved_playing_channels_only(path: Path) -> Path:
 class TestStemsDataRoundTrip:
     def test_stems_data_survives_save_and_load(self, tmp_path: Path) -> None:
         stems_config = StemsConfig(
-            entries=[StemEntry(id=0, channels=[ChannelName.PULSE1])],
+            entries=[
+                StemEntry(
+                    id=0,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                )
+            ],
             hierarchy=StemsHierarchy(levels=[[0]], mode=HierarchyMode.STRICT),
             channel_cap=1,
         )
@@ -124,8 +136,18 @@ class TestStemsDataRoundTrip:
         stems_data = StemsData(
             config=StemsConfig(
                 entries=[
-                    StemEntry(id=0, channels=[ChannelName.PULSE1]),
-                    StemEntry(id=1, channels=[ChannelName.PULSE1]),
+                    StemEntry(
+                        id=0,
+                        settings=StemSettings(
+                            channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])
+                        ),
+                    ),
+                    StemEntry(
+                        id=1,
+                        settings=StemSettings(
+                            channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])
+                        ),
+                    ),
                 ],
                 hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
                 channel_cap=1,
@@ -150,6 +172,7 @@ class TestStemsDataRoundTrip:
 
     def test_paths_numbering_the_entries_is_enforced(self) -> None:
         stems_data = StemsData.single_entry(
+            [ChannelName.PULSE1],
             [ChannelName.PULSE1],
             [ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
             channel_cap=1,
@@ -181,8 +204,18 @@ class TestSourcePaths:
         stems_data = StemsData(
             config=StemsConfig(
                 entries=[
-                    StemEntry(id=0, channels=[ChannelName.PULSE1]),
-                    StemEntry(id=1, channels=[ChannelName.PULSE1]),
+                    StemEntry(
+                        id=0,
+                        settings=StemSettings(
+                            channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])
+                        ),
+                    ),
+                    StemEntry(
+                        id=1,
+                        settings=StemSettings(
+                            channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])
+                        ),
+                    ),
                 ],
                 hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
                 channel_cap=1,
@@ -360,7 +393,9 @@ class TestVersionUpgradeOnLoad:
             item["generator_name"] = item.pop("channel_name")
 
         generation = data["config"]["generation"]
-        generation["generators"] = generation.pop("channels")
+        generation["generators"] = [
+            str(channel_name) for channel_name in reconstruction.stems_data.config.entries[0].settings.channels
+        ]
         config_metadata = data["config"].get("metadata")
         if isinstance(config_metadata, dict):
             config_metadata["reconstruction_data_version"] = "2.1"
@@ -395,8 +430,9 @@ class TestVersionUpgradeOnLoad:
         for item in data["instructions_data"]:
             item["generator_name"] = item.pop("channel_name")
 
+        channels = list(reconstruction.stems_data.config.entries[0].settings.channels)
         generation = data["config"]["generation"]
-        generation["generators"] = generation.pop("channels")
+        generation["generators"] = [str(channel_name) for channel_name in channels]
         config_metadata = data["config"].get("metadata")
         if isinstance(config_metadata, dict):
             config_metadata["reconstruction_data_version"] = "2.1"
@@ -407,7 +443,7 @@ class TestVersionUpgradeOnLoad:
 
         stems_data = loaded.stems_data
         assert stems_data.config.entries[0].id == 0
-        assert stems_data.config.entries[0].channels == list(loaded.config.generation.channels)
+        assert stems_data.config.entries[0].settings.channels == channels
         assert loaded.audio_filepath == reconstruction.audio_filepath
         for channel, stem_ids in stems_data.assignments_by_channel.items():
             assert len(stem_ids) == len(loaded.instructions[channel])

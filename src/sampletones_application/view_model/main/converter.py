@@ -4,6 +4,7 @@ from typing import Final, FrozenSet, Optional, Tuple
 
 from pydantic import BaseModel
 
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.view_model.shared.percent import format_percent
 from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
@@ -16,7 +17,7 @@ class ConversionPhase(StrEnum):
     IDLE = "idle"
     WAITING = "waiting"
     RUNNING = "running"
-    CANCELLING = "cancelling"
+    CANCELING = "canceling"
     COMPLETED = "completed"
     CANCELED = "canceled"
     FAILED = "failed"
@@ -37,9 +38,10 @@ ACTIVE_PHASES: Final[FrozenSet[ConversionPhase]] = frozenset(
     {
         ConversionPhase.WAITING,
         ConversionPhase.RUNNING,
-        ConversionPhase.CANCELLING,
+        ConversionPhase.CANCELING,
     }
 )
+SINGLE_SOURCE: Final[int] = 1
 
 
 class ConverterViewModel(BaseModel, frozen=True):
@@ -59,13 +61,18 @@ class ConverterViewModel(BaseModel, frozen=True):
     output_path: Optional[Path]
     is_file: bool
     other_operation_active: bool
-    stems_mode: bool
+    output: OutputKind
     stem_sources: Tuple[StemRowViewModel, ...]
-    enabled_channels: FrozenSet[ChannelName]
     channel_cap: int
     max_channel_cap: int
     hierarchy_mode: HierarchyMode
     max_sources: int
+    selected_key: Optional[str]
+
+    @property
+    def mixes(self) -> bool:
+        """Several recordings are being gathered into one reconstruction."""
+        return self.output.mixes
 
     @property
     def progress_overlay(self) -> str:
@@ -82,34 +89,53 @@ class ConverterViewModel(BaseModel, frozen=True):
 
     @property
     def has_input(self) -> bool:
-        """Something is there to convert: a listed recording holding a channel, or a selected path."""
-        if self.stems_mode:
-            return any(row.takes_part for row in self.stem_sources)
-
-        return self.input_path is not None
+        """Something is there to convert: a gathered recording holding a channel the run enables."""
+        return any(row.takes_part for row in self.stem_sources)
 
     @property
     def source_count(self) -> int:
         return len(self.stem_sources)
 
     @property
-    def channels_in_play(self) -> Tuple[ChannelName, ...]:
-        """The channels a conversion may reach, in the order the application names them.
+    def listed(self) -> bool:
+        """Something stands in the list, which is what the run's own choices answer for."""
+        return bool(self.stem_sources)
 
-        A stems row offers a checkbox per channel in play, so a channel the configuration leaves
-        out costs the row no column at all.
+    @property
+    def mixes_several(self) -> bool:
+        """A mix is being built from more than one recording, which is what an order decides."""
+        return self.mixes and self.source_count > SINGLE_SOURCE
+
+    @property
+    def shows_input(self) -> bool:
+        """A run is reporting the recording it is on, which is what the input line names."""
+        return self.input_path is not None and self.is_active
+
+    @property
+    def channels_in_play(self) -> Tuple[ChannelName, ...]:
+        """The channels a row draws a box on, in the order the application names them.
+
+        What a run reaches is what its rows hold, so every channel is put to a reader and the
+        settings card narrows a row that should reach fewer.
         """
-        return tuple(channel_name for channel_name in ChannelName.items() if channel_name in self.enabled_channels)
+        return tuple(ChannelName.items())
 
     @property
     def stems_list(self) -> StemsListViewModel:
-        """The gathered recordings as the stems list draws them, inert while a conversion runs."""
+        """The gathered recordings as the stems list draws them, inert while a conversion runs.
+
+        A level is a turn to choose, so the bands and the drag that rearranges them arrive with
+        the second recording of a mix; one recording is its own order and reads as a plain run.
+        """
         return StemsListViewModel(
             rows=self.stem_sources,
             channels_in_play=self.channels_in_play,
             muted_channels=frozenset(),
+            picked_keys=frozenset(),
+            picking_room=None,
             live=not self.is_active,
-            collapse_levels=False,
+            collapse_levels=not self.mixes_several,
+            selected_key=self.selected_key,
         )
 
     @property
@@ -118,14 +144,9 @@ class ConverterViewModel(BaseModel, frozen=True):
         return max((row.level + 1 for row in self.stem_sources), default=0)
 
     @property
-    def playing_count(self) -> int:
-        """How many of the listed recordings take part in the conversion."""
-        return sum(1 for row in self.stem_sources if row.takes_part)
-
-    @property
     def can_add_source(self) -> bool:
-        """The list has room for another recording."""
-        return self.source_count < self.max_sources
+        """Another recording would reach the run, which a full mix answers no to."""
+        return not self.mixes or self.source_count < self.max_sources
 
     @property
     def convert_button_enabled(self) -> bool:
@@ -142,6 +163,6 @@ class ConverterViewModel(BaseModel, frozen=True):
     @property
     def primary_action_enabled(self) -> bool:
         if self.primary_action == ConverterAction.CANCEL:
-            return self.phase != ConversionPhase.CANCELLING
+            return self.phase != ConversionPhase.CANCELING
 
         return self.convert_button_enabled

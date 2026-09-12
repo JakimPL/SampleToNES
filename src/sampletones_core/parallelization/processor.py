@@ -41,7 +41,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
 
         self.status: TaskStatus = TaskStatus.PENDING
         self.running = False
-        self.cancelling = False
+        self.canceling = False
         self.total_tasks = 0
         self.completed_tasks = 0
         self.current_item: Optional[str] = None
@@ -80,15 +80,15 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
     def cleanup(self) -> None:
         self.status = TaskStatus.CLEANING_UP
         self.running = False
-        self.cancelling = True
+        self.canceling = True
 
         self._withdraw()
         self._notify_progress()
         self._cleanup()
 
     def cancel(self) -> None:
-        self.status = TaskStatus.CANCELLING
-        self.cancelling = True
+        self.status = TaskStatus.CANCELING
+        self.canceling = True
 
         self._withdraw()
         self._notify_progress()
@@ -97,13 +97,13 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
     def shutdown(self) -> None:
         """Stops the pool and reaps its workers on the calling thread before returning.
 
-        Cancelling from the interface tears the pool down on a background thread to keep
+        Canceling from the interface tears the pool down on a background thread to keep
         the interface responsive. At application exit the process is about to release the
         shared resources the pool's spawned workers rely on, so the teardown runs inline
         here and returns only once the pool has stopped."""
         self.status = TaskStatus.CLEANING_UP
         self.running = False
-        self.cancelling = True
+        self.canceling = True
 
         self._withdraw()
         self._notify_progress()
@@ -124,8 +124,8 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
     def is_canceled(self) -> bool:
         return self.status == TaskStatus.CANCELED
 
-    def is_cancelling(self) -> bool:
-        return self.status == TaskStatus.CANCELLING
+    def is_canceling(self) -> bool:
+        return self.status == TaskStatus.CANCELING
 
     def is_failed(self) -> bool:
         return self.status == TaskStatus.FAILED
@@ -195,7 +195,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
     def _reset_status(self) -> None:
         self.status = TaskStatus.PENDING
         self.running = False
-        self.cancelling = False
+        self.canceling = False
         self.total_tasks = 0
         self.completed_tasks = 0
         self.current_item = None
@@ -238,7 +238,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
             iterator = self.future.result()
 
             while True:
-                if self.cancelling:
+                if self.canceling:
                     raise CancelledError()
 
                 result = next(iterator)
@@ -251,7 +251,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         except KeyboardInterrupt as exception:
             raise CancelledError() from exception
         except OperationCanceled:
-            self.cancelling = True
+            self.canceling = True
             self._finalize_cancellation()
             return
         except CancelledError:
@@ -281,12 +281,12 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
             self.logger.debug(f"Status: {self.status}; progress: {progress}")
 
     def _finalize_cancellation(self) -> None:
-        if not self.cancelling:
+        if not self.canceling:
             return
 
         self.logger.info("Task processing was canceled.")
         self.status = TaskStatus.CANCELED
-        self.cancelling = False
+        self.canceling = False
         self.running = False
         self._notify_progress()
         self.call(self.on_canceled)

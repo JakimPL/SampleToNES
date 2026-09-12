@@ -72,6 +72,9 @@ bindings:
   SelectTabSequencer: {combination: "F3", field_transparent: true}
   SelectTabInstructions: {combination: "F4", field_transparent: true}
 
+  # sources
+  SourcesRemoveSource: {combination: "Del"}
+
   # order table
   OrderPreviousPosition: {combination: "Left"}
   OrderNextPosition: {combination: "Right", aliases: ["Enter"]}

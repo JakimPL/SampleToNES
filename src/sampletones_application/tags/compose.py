@@ -1,7 +1,10 @@
 import re
 from typing import Final
 
+from sampletones_shared.utils.hashing import identity_digest
+
 TAG_SEPARATOR: Final[str] = "."
+TAG_DIGEST_LENGTH: Final[int] = 8
 
 _WHITESPACE: Final[re.Pattern[str]] = re.compile(r"\s+")
 
@@ -36,3 +39,20 @@ def compose_tag(*parts: str) -> str:
         raise ValueError("A tag needs at least one part")
 
     return TAG_SEPARATOR.join(_normalize_segment(part) for part in parts)
+
+
+def identity_part(*parts: str) -> str:
+    """Composes the tag part standing for one identity, whatever text its name normalizes to.
+
+    A tag part built from a runtime name arrives lowercased with its whitespace runs collapsed, so
+    two names that differ only in case or spacing spell the same segment. Adding this part beside
+    the name keeps each identity on a widget of its own, and leaves the name itself in the tag for
+    whoever reads a DearPyGui error.
+
+    Args:
+        *parts: The pieces the identity is spelled in, in the order they belong.
+
+    Returns:
+        str: A digest of the identity, short enough to read beside the name it stands for.
+    """
+    return identity_digest(*parts, length=TAG_DIGEST_LENGTH)

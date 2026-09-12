@@ -1,7 +1,8 @@
 from pathlib import Path
-from typing import Final, FrozenSet, Sequence
+from typing import AbstractSet, Final, FrozenSet, Sequence
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.progress import (
     STAGE_BEGUN,
     WHOLE_STAGE,
@@ -34,8 +35,16 @@ class FakeReconstructor:
     reconstruction under way is made while that reconstruction is provably under way.
     """
 
-    def __init__(self, config: Config, release_path: Path, *, frames: int = FAKE_FRAMES) -> None:
+    def __init__(
+        self,
+        config: Config,
+        channels: AbstractSet[ChannelName],
+        release_path: Path,
+        *,
+        frames: int = FAKE_FRAMES,
+    ) -> None:
         self.config = config
+        self.channels = channels
         self.release_path = release_path
         self.frames = frames
 

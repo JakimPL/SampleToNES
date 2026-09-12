@@ -206,7 +206,7 @@ class TestGetFilename(BaseTestSuite):
             name="Kick (pulse1)",
             extension=".fti",
             expected="Kick (pulse1).fti",
-            label="carries_a_parenthesised_slice_name",
+            label="carries_a_parenthesized_slice_name",
         ),
         TestCase(
             name="Kick v1.2",
@@ -568,7 +568,7 @@ class TestShortenPath(BaseTestSuite):
     )
 
     def _create_resolved_mock(self, resolved_path: Any) -> MagicMock:
-        """Stands in for the resolved path, keeping the path flavour each case declares.
+        """Stands in for the resolved path, keeping the path flavor each case declares.
 
         Every case states its expectation as a ``PurePosixPath`` or a ``PureWindowsPath``, so
         the parts come from that pure path and the case reads the same on either platform.

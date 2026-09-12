@@ -30,7 +30,7 @@ from sampletones import (
 | `Config` | generation configuration; build it with `Config.load(path)` or `Config.default()` |
 | `Window` | analysis window derived from a config (`Window.from_config(config)`) |
 | `InstructionLibrary` | the library of candidate instructions a reconstruction searches |
-| `Reconstructor` | runs a reconstruction: `Reconstructor(config)("sample.wav")` |
+| `Reconstructor` | runs a reconstruction: `Reconstructor(config, channels)("sample.wav")` |
 | `Reconstruction` | the result of a reconstruction — its approximation audio, per-channel instructions, and the config used |
 | `ChannelName` | enum naming the four channels: `pulse1`, `pulse2`, `triangle`, `noise` |
 | `Generator` | shared base class of the oscillator generators |
@@ -92,12 +92,13 @@ With a library in place for the configuration:
 ```python
 from sampletones import Config, Reconstructor
 from sampletones_core.audio.io import write_wave
+from sampletones_core.constants.enums import DEFAULT_CHANNELS
 
 # Load configuration
 config = Config.load("config.json")
 
-# Prepare the reconstructor
-reconstructor = Reconstructor(config)
+# Prepare the reconstructor for the channels the run may use
+reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS))
 
 # Reconstruct an audio file and save the reconstruction
 reconstruction = reconstructor("sample.wav")

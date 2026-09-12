@@ -143,7 +143,7 @@ class TestWhatTheDialogDraws:
         assert view.cancel_enabled
 
     def test_a_render_already_stopping_takes_no_further_stop(self) -> None:
-        view = view_model(wave_settings(), phase=RenderPhase.CANCELLING)
+        view = view_model(wave_settings(), phase=RenderPhase.CANCELING)
 
         assert view.is_active
         assert not view.cancel_enabled

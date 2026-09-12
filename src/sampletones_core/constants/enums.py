@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
-from typing import Dict, Final, List, Literal
+from typing import AbstractSet, Dict, Final, FrozenSet, List, Literal
 
 
 class GeneratorName(StrEnum):
@@ -89,6 +89,15 @@ class CQTWindow(StrEnum):
     RECTANGULAR = "rectangular"
 
 
+TONE_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(
+    {
+        ChannelName.PULSE1,
+        ChannelName.PULSE2,
+        ChannelName.TRIANGLE,
+    }
+)
+
+
 CHANNEL_ABBREVIATIONS: Final[Dict[ChannelName, Literal["P", "p", "T", "N"]]] = {
     ChannelName.PULSE1: "P",
     ChannelName.PULSE2: "p",
@@ -110,6 +119,24 @@ DEFAULT_CHANNELS: Final[List[ChannelName]] = [
     ChannelName.TRIANGLE,
     ChannelName.NOISE,
 ]
+
+
+def ordered_channels(channel_names: AbstractSet[ChannelName]) -> List[ChannelName]:
+    """``channel_names`` in the order the application names the channels.
+
+    A set states which channels something reaches; a run hands them out in one settled order, so
+    everything built from a set is put back into that order here.
+    """
+    return [name for name in ChannelName.items() if name in channel_names]
+
+
+def bending_channels(channel_names: List[ChannelName]) -> List[ChannelName]:
+    """Those of ``channel_names`` whose hardware loads a divider a bend can move.
+
+    A stem offered a set of channels carries every one of them that can be carried, which is what
+    a conversion does until a reader says otherwise.
+    """
+    return [name for name in channel_names if name in TONE_CHANNELS]
 
 
 def abbreviate_channel_names(channel_names: List[ChannelName]) -> str:

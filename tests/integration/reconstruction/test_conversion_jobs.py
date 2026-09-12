@@ -3,7 +3,11 @@ from pathlib import Path
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    bending_channels,
+)
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.converter import (
     DirectoryConversion,
@@ -18,6 +22,7 @@ from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.exceptions import OperationCanceled
 from sampletones_shared.utils.progress import silent_reporter
 from tests.integration.assets.reconstruction import (
+    THREE_STEM_CHANNELS,
     build_mini_library,
     three_stem_config,
     three_stem_reconstruction_config,
@@ -36,7 +41,7 @@ class TestGroupConversionEndToEnd:
 
     def test_three_stems_convert_into_one_reconstruction_file(self, tmp_path: Path) -> None:
         config = _writing_to(three_stem_reconstruction_config(), tmp_path / "out")
-        reconstructor = Reconstructor(config, library=build_mini_library(config))
+        reconstructor = Reconstructor(config, frozenset(THREE_STEM_CHANNELS), library=build_mini_library(config))
         sources = write_three_stem_recordings(config, tmp_path)
 
         jobs = GroupConversion(sources=sources, stems=three_stem_config()).jobs(config)
@@ -52,9 +57,10 @@ class TestGroupConversionEndToEnd:
 
     def test_one_source_converts_the_classic_way(self, tmp_path: Path) -> None:
         config = _writing_to(Config(), tmp_path / "out")
-        reconstructor = Reconstructor(config, library=build_mini_library(config))
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=build_mini_library(config))
         source = write_three_stem_recordings(config, tmp_path)[0]
-        stems = StemsConfig.single_entry(list(config.generation.channels))
+        channels = list(DEFAULT_CHANNELS)
+        stems = StemsConfig.single_entry(channels, bending_channels(channels))
 
         jobs = GroupConversion(sources=(source,), stems=stems).jobs(config)
         written = reconstruct_job((reconstructor, jobs[0], silent_reporter))
@@ -70,11 +76,11 @@ class TestDirectoryConversionEndToEnd:
 
     def test_each_recording_is_written_on_its_own(self, tmp_path: Path) -> None:
         config = _writing_to(Config(), tmp_path / "out")
-        reconstructor = Reconstructor(config, library=build_mini_library(config))
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=build_mini_library(config))
         recordings = tmp_path / "recordings"
         recordings.mkdir()
         sources = write_three_stem_recordings(config, recordings)
-        stems = StemsConfig.single_entry([ChannelName.PULSE1], channel_cap=1)
+        stems = StemsConfig.single_entry([ChannelName.PULSE1], bending_channels([ChannelName.PULSE1]), channel_cap=1)
 
         jobs = DirectoryConversion(directory=recordings, stems=stems).jobs(config)
 
@@ -96,7 +102,7 @@ class TestAJobReportsItselfAsItRuns:
 
     def test_the_run_passes_through_its_stages_in_order(self, tmp_path: Path) -> None:
         config = _writing_to(three_stem_reconstruction_config(), tmp_path / "out")
-        reconstructor = Reconstructor(config, library=build_mini_library(config))
+        reconstructor = Reconstructor(config, frozenset(THREE_STEM_CHANNELS), library=build_mini_library(config))
         sources = write_three_stem_recordings(config, tmp_path)
         jobs = GroupConversion(sources=sources, stems=three_stem_config()).jobs(config)
         reporter: RecordingReporter[ReconstructionProgress] = RecordingReporter()
@@ -107,9 +113,10 @@ class TestAJobReportsItselfAsItRuns:
 
     def test_the_reading_climbs_from_nothing_to_the_whole_run(self, tmp_path: Path) -> None:
         config = _writing_to(Config(), tmp_path / "out")
-        reconstructor = Reconstructor(config, library=build_mini_library(config))
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=build_mini_library(config))
         source = write_three_stem_recordings(config, tmp_path)[0]
-        stems = StemsConfig.single_entry(list(config.generation.channels))
+        channels = list(DEFAULT_CHANNELS)
+        stems = StemsConfig.single_entry(channels, bending_channels(channels))
         jobs = GroupConversion(sources=(source,), stems=stems).jobs(config)
         reporter: RecordingReporter[ReconstructionProgress] = RecordingReporter()
 
@@ -122,9 +129,10 @@ class TestAJobReportsItselfAsItRuns:
 
     def test_the_matching_stage_counts_the_frames_the_recording_holds(self, tmp_path: Path) -> None:
         config = _writing_to(Config(), tmp_path / "out")
-        reconstructor = Reconstructor(config, library=build_mini_library(config))
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=build_mini_library(config))
         source = write_three_stem_recordings(config, tmp_path)[0]
-        stems = StemsConfig.single_entry(list(config.generation.channels))
+        channels = list(DEFAULT_CHANNELS)
+        stems = StemsConfig.single_entry(channels, bending_channels(channels))
         jobs = GroupConversion(sources=(source,), stems=stems).jobs(config)
         reporter: RecordingReporter[ReconstructionProgress] = RecordingReporter()
 
@@ -135,9 +143,10 @@ class TestAJobReportsItselfAsItRuns:
 
     def test_a_withdrawn_job_unwinds_and_writes_nothing(self, tmp_path: Path) -> None:
         config = _writing_to(Config(), tmp_path / "out")
-        reconstructor = Reconstructor(config, library=build_mini_library(config))
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=build_mini_library(config))
         source = write_three_stem_recordings(config, tmp_path)[0]
-        stems = StemsConfig.single_entry(list(config.generation.channels))
+        channels = list(DEFAULT_CHANNELS)
+        stems = StemsConfig.single_entry(channels, bending_channels(channels))
         jobs = GroupConversion(sources=(source,), stems=stems).jobs(config)
         reporter: RecordingReporter[ReconstructionProgress] = RecordingReporter(withdraw_at=FIRST_REPORT)
 

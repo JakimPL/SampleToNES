@@ -106,6 +106,7 @@ from sampletones_application.utils.gui.keyboard import (
     ActivePredicate,
     KeyEvent,
     KeyRouter,
+    panel_scope_active,
 )
 from sampletones_application.utils.gui.keyboard.keys import HEX_KEYS, SIGN_KEYS
 from sampletones_application.utils.gui.keyboard.modifiers import (
@@ -1385,15 +1386,12 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._menu.add_action_items(target)
 
     def _keys_active(self) -> bool:
-        """Whether the grid owns the next key: its tab is in front, its cursor is set, and no
-        field holds the keyboard.
-
-        The grid keeps its cursor while another tab is worked on, so the tab in front is what
-        decides whether a press reaches it. A focused field keeps the keyboard, so the grid stands
-        down while the user types into an input. A modal dialog claims keys at a higher priority in
-        the router, so the grid carries no modal check of its own.
-        """
-        return self._tab_active() and self._input_state.cursor is not None and not self._router.is_field_focused
+        """Whether the grid owns the next key, which the cell its cursor is set on decides."""
+        return panel_scope_active(
+            tab_active=self._tab_active,
+            router=self._router,
+            holds=self._input_state.cursor is not None,
+        )
 
     # TODO: to extract common parts [_on_key_pressed]
     def _on_key_pressed(self, event: KeyEvent) -> bool:

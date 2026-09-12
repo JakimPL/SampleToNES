@@ -29,6 +29,7 @@ from sampletones_application.coordinators.reconstruction import (
     ReconstructionCoordinator,
 )
 from sampletones_application.coordinators.render import SongRenderCoordinator
+from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.coordinators.tabs.instructions import (
     InstructionsTabCoordinator,
 )
@@ -132,9 +133,14 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.frame_limiter import FrameLimiter
+from sampletones_application.utils.gui.callbacks import run_held_callbacks
 from sampletones_application.utils.gui.dialogs import DialogsRenderer, get_dialog_tag
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
+from sampletones_application.utils.gui.render_thread import (
+    claim_render_thread,
+    release_render_thread,
+)
 from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
@@ -307,6 +313,10 @@ class Application:
         )
         self.stem_selection_window: GUIStemSelectionWindow = GUIStemSelectionWindow(
             layout=self.layout.tabs.main.converter,
+            stems_layout=self.layout.general.stems,
+            glyphs=self.layout.glyphs.common,
+            language_manager=self.language_manager,
+            status_bar=self.status_bar,
             title=self.language_manager["main.converter.title.stem_selection_dialog"],
             message=self.language_manager["main.converter.message.stem_selection_prompt"],
             limit_template=self.language_manager["main.converter.template.stem_selection_limit"],
@@ -477,22 +487,27 @@ class Application:
             audio_device_manager=self.audio_device_manager,
             library_manager=self.library_manager,
             conversion_service=self.conversion_service,
-            on_reconstruct_file=self._reconstruct_file,
-            on_reconstruct_directory=self._reconstruct_directory,
-            on_load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
-            on_load_library=self._load_library,
-            is_operation_active=self._is_operation_active,
-            on_busy_state_changed=self._refresh_busy_state,
+            hooks=MainTabHooks(
+                is_operation_active=self._is_operation_active,
+                on_busy_state_changed=self._refresh_busy_state,
+                on_reconstruct_file=self._reconstruct_file,
+                on_reconstruct_directory=self._reconstruct_directory,
+                on_load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
+                on_load_library=self._load_library,
+                on_load_file=self._on_converted_reconstruction_loaded,
+                on_load_directory=self._navigate_to_reconstructions,
+                on_canceled=self._refresh_browsers,
+                on_refresh_trees=self._refresh_browsers,
+                on_generate_library=self._instructions_tab.ensure_library_loaded,
+            ),
             layout=MainTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
-            on_load_file=self._on_converted_reconstruction_loaded,
-            on_load_directory=self._navigate_to_reconstructions,
-            on_canceled=self._refresh_reconstruction_trees,
-            on_refresh_trees=self._refresh_reconstruction_trees,
-            on_generate_library=self._instructions_tab.ensure_library_loaded,
             stem_selection_window=self.stem_selection_window,
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+            tab_active=self._is_main_tab_current,
         )
 
         self._sequencer_tab = SequencerTabCoordinator(
@@ -564,7 +579,7 @@ class Application:
                 ExportStage.WRITING: self.language_manager["settings.export.label.stage_writing"],
             },
             size_template=self.language_manager["settings.export.template.size"],
-            cancelling_label=self.language_manager["settings.export.message.status_cancelling"],
+            canceling_label=self.language_manager["settings.export.message.status_canceling"],
         )
 
         self._export_coordinator = SongExportCoordinator(
@@ -796,6 +811,14 @@ class Application:
             auto_expand_favorite_directories=self.session_manager.auto_expand_favorite_directories,
         )
 
+    def _is_main_tab_current(self) -> bool:
+        """Whether the Main tab is in front, which is what puts the converter's list on the keyboard.
+
+        The list keeps the row a reader picked out while another tab is worked on, so this is what
+        tells a press meant for that row from one meant for whatever is now in front.
+        """
+        return self._shell.get_current_tab() == Tab.MAIN
+
     def _is_reconstructions_tab_current(self) -> bool:
         """Whether the Reconstructions tab is in front, which is what puts its panels on the keyboard.
 
@@ -1005,7 +1028,7 @@ class Application:
             self._reconstructions_tab.request_export_instruments_dialog(export_format)
 
     def _reconstruct_file(self, filepath: Path) -> None:
-        self._main_tab.set_input_path(filepath, convert=True)
+        self._main_tab.convert_path(filepath)
         self.session_manager.set_audio_input_path(filepath.parent)
         self._set_current_tab(Tab.MAIN)
         self._update_menu()
@@ -1021,7 +1044,7 @@ class Application:
         self._reconstruct_file(filepath)
 
     def _reconstruct_directory(self, directory_path: Path) -> None:
-        self._main_tab.set_input_path(directory_path, convert=True)
+        self._main_tab.convert_path(directory_path)
         self.session_manager.set_audio_input_path(directory_path)
         self._set_current_tab(Tab.MAIN)
         self._update_menu()
@@ -1040,7 +1063,13 @@ class Application:
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self._reconstruction_coordinator.load_with_confirmation(filepath)
 
-    def _refresh_reconstruction_trees(self) -> None:
+    def _refresh_browsers(self) -> None:
+        """Reads the disk afresh in every browser, so a reconstruction just written stands in each.
+
+        The Main tab browses the whole filesystem and offers to load a reconstruction from it, so
+        it reads a finished run as much as the two tabs the run was started from.
+        """
+        self._main_tab.refresh_browser()
         self._reconstructions_tab.refresh_browser()
         self._sequencer_tab.refresh_browser()
 
@@ -1537,10 +1566,10 @@ class Application:
     def _toggle_channel(self, generator: ChannelName) -> None:
         """Switches one NES channel in the tab in front of the reader.
 
-        A channel is switched by a control of its own on three tabs: the generators a
-        reconstruction is built from on the Main tab, the slices the waveform draws and plays on
+        A channel is switched by a control of its own on three tabs: the channels the row picked
+        out of the converter may take on the Main tab, the slices the waveform draws and plays on
         the Reconstructions tab, and the sequencer's mix elsewhere. One key reaches whichever of
-        them is on screen, so a reader silences what they are listening to without leaving it.
+        them is on screen, so a reader stays where they are while they move it.
         """
         match self._shell.get_current_tab():
             case Tab.MAIN:
@@ -1632,6 +1661,13 @@ class Application:
         dpg.render_dearpygui_frame()
 
     def _post_frame(self) -> None:
+        """Answer the gestures the frame gathered, then the work waiting on the render thread.
+
+        DearPyGui holds a widget's callback rather than running it where the gesture landed, so
+        the gestures run here — on the thread that drew the items they reach — and whatever they
+        ask of the queue is due from the same thread on the next pass.
+        """
+        run_held_callbacks()
         CaretOverlay.redraw()
         CallbackQueue.notify_frame()
         CallbackQueue.add(
@@ -1649,6 +1685,7 @@ class Application:
             return True
 
     def run(self) -> None:
+        claim_render_thread()
         try:
             while dpg.is_dearpygui_running():
                 self.frame()
@@ -1657,6 +1694,7 @@ class Application:
         except KeyboardInterrupt:
             return
         finally:
+            release_render_thread()
             self._render_coordinator.cleanup()
             self._export_coordinator.cleanup()
             stop_background_workers()

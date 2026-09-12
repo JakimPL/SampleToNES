@@ -11,7 +11,7 @@ from sampletones_application.logic.history.fingerprint import (
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.shared.project_source import snapshot_project
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_shared.utils.serialization import hash_model
+from sampletones_shared.utils.hashing import hash_model
 from tests.conftest import ReconstructionFactory
 from tests.unit.sampletones_application.logic.history.conftest import HistoryFactory
 

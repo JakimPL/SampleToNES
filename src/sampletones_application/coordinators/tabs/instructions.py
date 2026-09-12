@@ -15,6 +15,7 @@ from sampletones_application.logic.instruction.library import LibraryLogic
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
+from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.instructions import InstructionsTabParameters
@@ -126,9 +127,10 @@ class InstructionsTabCoordinator:
             language_manager=language_manager,
             is_operation_active=is_operation_active,
         )
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
         self._library_tree_logic = TreeLogic(
             session_manager,
-            audio_device_manager,
+            self._file_playback,
             scheduling=layout.scheduling,
         )
         self._library_panel = GUIInstructionsLibraryPanel(

@@ -7,7 +7,7 @@ from sampletones_application.logic.shared.project_source import snapshot_project
 from sampletones_application.view_model.shared.history import HistoryDetail
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
-from sampletones_shared.utils.serialization import hash_model
+from sampletones_shared.utils.hashing import hash_model
 
 from .action import HistoryAction
 from .errors import HistoryIntegrityError, UntrackedMutationError

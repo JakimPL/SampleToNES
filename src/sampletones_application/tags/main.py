@@ -14,11 +14,11 @@ TAG_MAIN_CONFIG_TABLE_CONFIG_ROW = TagName(
     Widget.TABLE,
     "config_row",
 )
-TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL = TagName(
+TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL = TagName(
     Page.MAIN,
-    Panel.RECONSTRUCTOR,
+    Panel.ADVANCED,
     Widget.PANEL,
-    "reconstructor_cell",
+    "advanced_cell",
 )
 TAG_MAIN_EXPLORER_TREE = TagName(
     Page.MAIN,
@@ -49,6 +49,12 @@ TAG_MAIN_EXPLORER_GROUP_CONTROLS = TagName(
     Panel.EXPLORER,
     Widget.GROUP,
     "controls",
+)
+TAG_MAIN_EXPLORER_DIALOG_NOTHING_BELOW = TagName(
+    Page.MAIN,
+    Panel.EXPLORER,
+    Widget.DIALOG,
+    "nothing_below",
 )
 TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING = TagName(
     Page.MAIN,
@@ -92,15 +98,15 @@ TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY = TagName(
     Widget.INPUT,
     "nes_frequency",
 )
-TAG_MAIN_RECONSTRUCTOR_PANEL = TagName(
+TAG_MAIN_SOURCE_PANEL = TagName(
     Page.MAIN,
-    Panel.RECONSTRUCTOR,
+    Panel.SOURCE,
     Widget.PANEL,
-    "reconstructor",
+    "source",
 )
-TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE = TagName(
+TAG_MAIN_SOURCE_SLIDER_DRIVE = TagName(
     Page.MAIN,
-    Panel.RECONSTRUCTOR,
+    Panel.SOURCE,
     Widget.SLIDER,
     "drive",
 )
@@ -236,25 +242,55 @@ TAG_MAIN_CONVERTER_GROUP_SUMMARY = TagName(
     Widget.GROUP,
     "summary",
 )
-TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT = TagName(
-    Page.MAIN,
-    Panel.CONVERTER,
-    Widget.TEXT,
-    "summary_hint",
-)
 
-PRE_MAIN_RECONSTRUCTOR_CHANNEL = "channel"
+PRE_MAIN_SOURCE_SLOT = "slot"
+TAG_MAIN_SOURCE_TEXT_INSPECTING = TagName(
+    Page.MAIN,
+    Panel.SOURCE,
+    Widget.TEXT,
+    "inspecting",
+)
+TAG_MAIN_SOURCE_TEXT_UNPICKED = TagName(
+    Page.MAIN,
+    Panel.SOURCE,
+    Widget.TEXT,
+    "unpicked",
+)
+TAG_MAIN_SOURCE_GROUP_GRID = TagName(
+    Page.MAIN,
+    Panel.SOURCE,
+    Widget.GROUP,
+    "grid",
+)
+TAG_MAIN_SOURCE_TABLE_GRID = TagName(
+    Page.MAIN,
+    Panel.SOURCE,
+    Widget.TABLE,
+    "grid",
+)
 TAG_MAIN_CONVERTER_GROUP_CONTROLS = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.GROUP,
     "controls",
 )
-TAG_MAIN_CONVERTER_CHECKBOX_STEMS_MODE = TagName(
+TAG_MAIN_CONVERTER_RADIO_MODE = TagName(
     Page.MAIN,
     Panel.CONVERTER,
-    Widget.CHECKBOX,
-    "stems_mode",
+    Widget.RADIO,
+    "mode",
+)
+TAG_MAIN_CONVERTER_GROUP_ORDER = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.GROUP,
+    "order",
+)
+TAG_MAIN_CONVERTER_GROUP_INPUT = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.GROUP,
+    "input",
 )
 TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP = TagName(
     Page.MAIN,
@@ -268,11 +304,11 @@ TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE = TagName(
     Widget.COMBO,
     "hierarchy_mode",
 )
-TAG_MAIN_CONVERTER_TOOLTIP_STEMS_MODE = TagName(
+TAG_MAIN_CONVERTER_TOOLTIP_MODE = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.TOOLTIP,
-    "stems_mode",
+    "mode",
 )
 TAG_MAIN_CONVERTER_TOOLTIP_CHANNEL_CAP = TagName(
     Page.MAIN,
@@ -309,6 +345,30 @@ TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET = TagName(
     Panel.CONVERTER,
     Widget.DIALOG,
     "overwrite_target",
+)
+TAG_MAIN_CONVERTER_WINDOW_SCAN = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.WINDOW,
+    "scan",
+)
+TAG_MAIN_CONVERTER_TEXT_SCAN_FOLDER = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TEXT,
+    "scan_folder",
+)
+TAG_MAIN_CONVERTER_PROGRESS_SCAN = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.PROGRESS,
+    "scan",
+)
+TAG_MAIN_CONVERTER_BUTTON_STOP_SCAN = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.BUTTON,
+    "stop_scan",
 )
 TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION = TagName(
     Page.MAIN,

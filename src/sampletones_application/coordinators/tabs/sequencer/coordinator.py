@@ -39,6 +39,7 @@ from sampletones_application.logic.sequencer.tracker import (
     TrackerRegionAdjuster,
 )
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
+from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
 from sampletones_application.services.song_player.service import SongPlayerService
@@ -133,9 +134,10 @@ class SequencerTabCoordinator:
             browser_manager,
             project_controller,
         )
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
         self._sequencer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
-            audio_device_manager,
+            self._file_playback,
             scheduling=layout.scheduling,
         )
         self._sequencer_browser_panel: GUISequencerBrowserPanel = GUISequencerBrowserPanel(
@@ -572,7 +574,7 @@ class SequencerTabCoordinator:
         self._sequencer_tree_logic.on_lock_state_changed = self._sequencer_browser_panel.set_tree_enabled
         self._sequencer_tree_logic.on_favorite_changed = self._on_favorite_changed
         self._sequencer_tree_logic.on_search_update_needed = self._sequencer_browser_panel.update_tree_visibility
-        self._sequencer_tree_logic.on_autoplay_error = self._on_preview_error
+        self._file_playback.on_error = self._on_preview_error
 
     def _wire_playback_callbacks(self) -> None:
         self._song_player_logic.on_position_changed = self._on_player_position_changed
@@ -820,7 +822,7 @@ class SequencerTabCoordinator:
 
         The rate governs how every sample plays back, so changing it on a project that already
         holds samples prompts once (until acknowledged for the session); an empty or acknowledged
-        project applies silently. Cancelling restores the field to the project's current value.
+        project applies silently. Canceling restores the field to the project's current value.
         """
         if nes_frequency == self._sequencer_tracker_logic.settings.nes_frequency:
             return

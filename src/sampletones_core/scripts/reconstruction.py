@@ -1,9 +1,14 @@
 from pathlib import Path
-from typing import Final, Optional, Tuple
+from typing import Final, Optional, Sequence, Tuple
 
 from tqdm import tqdm
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import (
+    ChannelName,
+    bending_channels,
+    ordered_channels,
+)
 from sampletones_core.library import InstructionLibrary
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_core.reconstructions import Reconstructor
@@ -11,9 +16,9 @@ from sampletones_core.reconstructions.converter import (
     ConversionJob,
     DirectoryConversion,
     ReconstructionConverter,
-    get_output_path,
     reconstruct_job,
 )
+from sampletones_core.reconstructions.converter.paths import get_output_path
 from sampletones_core.reconstructions.progress import ReconstructionProgress
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.scripts.library import generate_library
@@ -25,10 +30,11 @@ BAR_STEPS: Final[int] = 1000
 def reconstruct_file(
     input_path: Path,
     config: Config,
+    channels: Sequence[ChannelName],
     output_path: Optional[Path] = None,
 ) -> None:
     if output_path is None:
-        output_path = get_output_path(config, input_path)
+        output_path = get_output_path(config, input_path, frozenset(channels))
 
     if output_path.exists():
         logger.info(f"Reconstructing file {input_path} exists, skipping")
@@ -40,7 +46,7 @@ def reconstruct_file(
     logger.info(f"Starting reconstruction for file {input_path}")
     job = ConversionJob(
         sources=(input_path,),
-        stems=_classic_setup(config),
+        stems=_classic_setup(channels),
         output_path=output_path,
     )
     progress_bar = tqdm(total=BAR_STEPS, desc=f"Reconstructing {input_path.name}", unit="step")
@@ -51,7 +57,7 @@ def reconstruct_file(
         return True
 
     try:
-        reconstruct_job((Reconstructor(config), job, on_progress))
+        reconstruct_job((Reconstructor(config, frozenset(channels)), job, on_progress))
     finally:
         progress_bar.close()
 
@@ -61,10 +67,11 @@ def reconstruct_file(
 def reconstruct_directory(
     input_path: Path,
     config: Config,
+    channels: Sequence[ChannelName],
     output_path: Optional[Path] = None,
 ) -> None:
     if output_path is None:
-        output_path = get_output_path(config, input_path)
+        output_path = get_output_path(config, input_path, frozenset(channels))
 
     if not input_path.is_dir():
         raise NotADirectoryError(f"Expected a directory path, got file path: {input_path}")
@@ -117,7 +124,7 @@ def reconstruct_directory(
 
     converter = ReconstructionConverter(
         config,
-        DirectoryConversion(directory=input_path, stems=_classic_setup(config)),
+        DirectoryConversion(directory=input_path, stems=_classic_setup(channels)),
         logger=null_logger,
     )
 
@@ -138,6 +145,7 @@ def reconstruct_directory(
         progress_bar.close()
 
 
-def _classic_setup(config: Config) -> StemsConfig:
-    """The setup a single-source conversion runs under: one stem over every enabled channel."""
-    return StemsConfig.single_entry(list(config.generation.channels))
+def _classic_setup(channels: Sequence[ChannelName]) -> StemsConfig:
+    """The setup a single-source conversion runs under: one stem over the channels it was given."""
+    ordered = ordered_channels(frozenset(channels))
+    return StemsConfig.single_entry(ordered, bending_channels(ordered))

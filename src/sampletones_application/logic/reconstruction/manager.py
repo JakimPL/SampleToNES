@@ -12,7 +12,7 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
-from sampletones_shared.utils.serialization import hash_model
+from sampletones_shared.utils.hashing import hash_model
 from sampletones_shared.utils.system.paths import first_missing
 from sampletones_shared.utils.system.reveal.selection import open_paths_in_explorer
 

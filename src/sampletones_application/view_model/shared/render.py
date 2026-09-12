@@ -26,7 +26,7 @@ class RenderPhase(StrEnum):
     IDLE = "idle"
     CONFIGURING = "configuring"
     RENDERING = "rendering"
-    CANCELLING = "cancelling"
+    CANCELING = "canceling"
     COMPLETED = "completed"
     CANCELED = "canceled"
     FAILED = "failed"
@@ -36,7 +36,7 @@ ACTIVE_PHASES: Final[FrozenSet[RenderPhase]] = frozenset(
     {
         RenderPhase.CONFIGURING,
         RenderPhase.RENDERING,
-        RenderPhase.CANCELLING,
+        RenderPhase.CANCELING,
     }
 )
 

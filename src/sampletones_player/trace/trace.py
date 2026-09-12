@@ -31,7 +31,7 @@ class RegisterTrace:
     """Every APU register write a run of the driver makes, grouped by the call that makes it.
 
     This is the contract the assembly is written against: initialization clears the channels,
-    enables them and sounds the song's first tick, and each play call afterwards either advances
+    enables them and sounds the song's first tick, and each play call afterward either advances
     the streams and writes the tick it lands on, or leaves the console alone. The three registers
     that reset a running channel are written only where their value changes, which is what keeps
     a pulse waveform's phase running across a rest the way a rendered channel does.

@@ -1,0 +1,12 @@
+name: stems_grid
+tag: global.theme.stems_grid
+
+components:
+  - item_type: Table
+    entries:
+      - type: color
+        key: TableRowBg
+        value: .transparent
+      - type: color
+        key: TableRowBgAlt
+        value: .transparent

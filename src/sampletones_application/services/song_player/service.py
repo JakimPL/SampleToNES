@@ -137,7 +137,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
     def seek(self, order_position: int) -> None:
         """Moves the live playhead to another order while playback continues.
 
-        This keeps the synthesiser's state (where ``start`` resets it), so voices sounding at the
+        This keeps the synthesizer's state (where ``start`` resets it), so voices sounding at the
         moment of the move carry over to the new order — the playhead jumps while the audio plays on.
         Rows already buffered ahead play out first, so the jump lands within one look-ahead window.
         """
@@ -151,7 +151,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
         Used to follow a structural order edit (insert/remove/move) so playback stays on the
         frame it was sounding: the row within the frame continues from where it was, and
-        voices carry over (the synthesiser keeps its state).
+        voices carry over (the synthesizer keeps its state).
         """
         if not self.alive:
             return

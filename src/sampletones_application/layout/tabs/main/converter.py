@@ -8,3 +8,5 @@ class ConverterLayout(BaseModel, extra="forbid", frozen=True):
     button_height: int
     stem_selection: Dimensions
     stem_selection_footer: int
+    stem_selection_list: int
+    scan: Dimensions

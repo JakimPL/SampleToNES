@@ -1,0 +1,21 @@
+name: channel_noise_partial
+tag: global.theme.channel_noise_partial
+
+components:
+  - item_type: Checkbox
+    entries:
+      - type: color
+        key: FrameBg
+        value: .channel_noise_partial
+      - type: color
+        key: FrameBgHovered
+        value: .channel_noise_partial
+      - type: color
+        key: FrameBgActive
+        value: .channel_noise_partial
+      - type: color
+        key: CheckMark
+        value: .channel_noise_soft
+      - type: color
+        key: Text
+        value: .channel_noise_soft

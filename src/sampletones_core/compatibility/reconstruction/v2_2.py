@@ -4,6 +4,7 @@ from sampletones_core.compatibility.fields import (
     APPROXIMATIONS_DATA,
     ASSIGNMENTS,
     AUDIO_FILEPATH,
+    BENDS,
     CHANNEL_CAP,
     CHANNEL_NAME,
     CHANNELS,
@@ -20,6 +21,7 @@ from sampletones_core.compatibility.fields import (
     METADATA,
     MODE,
     RECONSTRUCTION_DATA_VERSION,
+    SETTINGS,
     STEM_IDS,
     STEMS_DATA,
 )
@@ -53,7 +55,7 @@ def _default_stems_data(data: SerializedData) -> SerializedData:
 
     One stem covers every enabled channel and owns every frame of each channel that plays,
     which is the classic run's shape, so the synthesized record states what the
-    reconstruction is.
+    reconstruction is. It bends nothing, which is what a build writing this shape did.
     """
     config = data.get(CONFIG)
     channels = config.get(GENERATION, {}).get(CHANNELS, []) if isinstance(config, dict) else []
@@ -69,7 +71,7 @@ def _default_stems_data(data: SerializedData) -> SerializedData:
     ]
     return {
         CONFIG: {
-            ENTRIES: [{ID: 0, CHANNELS: channels}],
+            ENTRIES: [{ID: 0, SETTINGS: {CHANNELS: channels, BENDS: []}}],
             HIERARCHY: {LEVELS: [[0]], MODE: str(DEFAULT_STEMS_HIERARCHY_MODE)},
             CHANNEL_CAP: DEFAULT_STEMS_CHANNEL_CAP,
         },
@@ -130,21 +132,46 @@ def _with_default_stems_record(data: SerializedData) -> SerializedData:
     return updated
 
 
+def _without_configured_channels(data: SerializedData) -> SerializedData:
+    """The embedded config with its channel list dropped, now the stems record carries it.
+
+    Which channels a run hands out is the setup's to state, so the configuration holds the
+    settings that shaped the library and nothing about the channels themselves.
+    """
+    config = data.get(CONFIG)
+    if not isinstance(config, dict):
+        return data
+
+    generation = config.get(GENERATION)
+    if not isinstance(generation, dict):
+        return data
+
+    updated = dict(data)
+    updated[CONFIG] = {
+        **config,
+        GENERATION: {key: value for key, value in generation.items() if key != CHANNELS},
+    }
+    return updated
+
+
 def update(data: SerializedData) -> SerializedData:
     """Names each stored stream and approximation by its channel.
 
     Data version 2.1 stored a channel's stream and approximation under the key
     ``generator_name`` and the channel selection under
-    ``config.generation.generators``. Data version 2.2 names them ``channel_name``
-    and ``config.generation.channels``, stamps the embedded config's metadata with the
-    new data version, records the source audio as one path per stem, and carries the
-    single-entry stems record every reconstruction states.
+    ``config.generation.generators``. Data version 2.2 names the streams
+    ``channel_name``, stamps the embedded config's metadata with the new data version,
+    records the source audio as one path per stem, and carries the single-entry stems
+    record every reconstruction states, down to the settings each stem is converted
+    with: the channels it takes, and the ones it carries toward its own recording. The
+    channel selection moves onto that record, so the embedded configuration lets it go.
     """
     updated = dict(data)
     updated = _renamed_stream_keys(updated)
     updated = _stamped_embedded_config(updated)
     updated = _normalized_source_paths(updated)
-    return _with_default_stems_record(updated)
+    updated = _with_default_stems_record(updated)
+    return _without_configured_channels(updated)
 
 
 V2_2: Final[VersionUpdate] = VersionUpdate(

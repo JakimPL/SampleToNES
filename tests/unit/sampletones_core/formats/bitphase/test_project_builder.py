@@ -5,7 +5,10 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+)
 from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.formats.bitphase.builder import project_to_bitphase
 from sampletones_core.formats.bitphase.model.pattern import BitphaseRow, EffectCell
@@ -72,7 +75,7 @@ def build_reconstruction(
         config=Config(),
         coefficient=1.0,
         audio_filepath=(Path("/dev/null"),),
-        stems_data=single_entry_stems_data(list(Config().generation.channels), instructions),
+        stems_data=single_entry_stems_data(list(DEFAULT_CHANNELS), instructions),
     )
 
 

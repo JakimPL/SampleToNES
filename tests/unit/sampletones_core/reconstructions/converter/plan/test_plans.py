@@ -1,11 +1,20 @@
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
-from sampletones_core.reconstructions.converter.paths.utils import get_output_path, group_output_path
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    bending_channels,
+)
+from sampletones_core.reconstructions.converter.paths.utils import (
+    config_directory_path,
+    get_output_path,
+    group_output_path,
+)
+from sampletones_core.reconstructions.converter.plan.batch import BatchConversion, BatchEntry
 from sampletones_core.reconstructions.converter.plan.directory import DirectoryConversion
 from sampletones_core.reconstructions.converter.plan.group import GroupConversion
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -17,9 +26,13 @@ def config() -> Config:
     return Config()
 
 
+CHANNELS = frozenset(DEFAULT_CHANNELS)
+
+
 @pytest.fixture(scope="module")
 def stems(config: Config) -> StemsConfig:
-    return StemsConfig.single_entry(list(config.generation.channels))
+    channels = list(DEFAULT_CHANNELS)
+    return StemsConfig.single_entry(channels, bending_channels(channels))
 
 
 def _write_audio_files(directory: Path, names: List[str]) -> List[Path]:
@@ -47,7 +60,7 @@ class TestGroupConversion:
         assert len(jobs) == 1
         assert jobs[0].sources == (source,)
         assert jobs[0].stems == stems
-        assert jobs[0].output_path == get_output_path(config, source)
+        assert jobs[0].output_path == get_output_path(config, source, CHANNELS)
 
     def test_several_sources_make_one_job_over_all_of_them(
         self,
@@ -62,7 +75,7 @@ class TestGroupConversion:
 
         assert len(jobs) == 1
         assert jobs[0].sources == sources
-        assert jobs[0].output_path == group_output_path(config, sources)
+        assert jobs[0].output_path == group_output_path(config, sources, CHANNELS)
 
     def test_the_setup_travels_with_the_job(
         self,
@@ -70,7 +83,7 @@ class TestGroupConversion:
         tmp_path: Path,
     ) -> None:
         sources = tuple(_write_audio_files(tmp_path, ["a.wav", "b.wav"]))
-        targeted = StemsConfig.single_entry([ChannelName.PULSE1], channel_cap=1)
+        targeted = StemsConfig.single_entry([ChannelName.PULSE1], bending_channels([ChannelName.PULSE1]), channel_cap=1)
 
         jobs = GroupConversion(sources=sources, stems=targeted).jobs(config)
 
@@ -99,7 +112,7 @@ class TestDirectoryConversion:
         tmp_path: Path,
     ) -> None:
         _write_audio_files(tmp_path, ["nested/deeper/b.wav"])
-        output_path = get_output_path(config, tmp_path)
+        output_path = get_output_path(config, tmp_path, CHANNELS)
 
         jobs = DirectoryConversion(directory=tmp_path, stems=stems).jobs(config)
 
@@ -125,6 +138,115 @@ class TestDirectoryConversion:
     ) -> None:
         with pytest.raises(NoFilesToProcessError):
             DirectoryConversion(directory=tmp_path, stems=stems).jobs(config)
+
+
+def _batch(stems: StemsConfig, *sources: Path, base_directory: Optional[Path] = None) -> BatchConversion:
+    entries = tuple(BatchEntry(source=source, stems=stems, base_directory=base_directory) for source in sources)
+    return BatchConversion(entries=entries)
+
+
+class TestBatchConversion:
+    def test_every_recording_becomes_its_own_single_source_job(
+        self,
+        config: Config,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        sources = _write_audio_files(tmp_path, ["a.wav", "b.wav"])
+
+        jobs = _batch(stems, *sources).jobs(config)
+
+        assert [job.sources for job in jobs] == [(sources[0],), (sources[1],)]
+
+    def test_a_recording_named_by_itself_is_written_where_a_single_conversion_writes_it(
+        self,
+        config: Config,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        source = _write_audio_files(tmp_path, ["song.wav"])[0]
+
+        jobs = _batch(stems, source).jobs(config)
+
+        assert jobs[0].output_path == group_output_path(config, (source,), CHANNELS)
+
+    def test_a_recording_gathered_from_a_folder_mirrors_that_folder(
+        self,
+        config: Config,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        source = _write_audio_files(tmp_path, ["nested/deeper/b.wav"])[0]
+
+        jobs = _batch(stems, source, base_directory=tmp_path).jobs(config)
+
+        mirrored = config_directory_path(config, CHANNELS) / tmp_path.name
+        assert jobs[0].output_path == mirrored / "nested" / "deeper" / "b.stn"
+
+    def test_each_recording_carries_the_setup_it_was_given(
+        self,
+        config: Config,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        sources = _write_audio_files(tmp_path, ["a.wav", "b.wav"])
+        targeted = StemsConfig.single_entry([ChannelName.NOISE], [])
+
+        plan = BatchConversion(
+            entries=(
+                BatchEntry(source=sources[0], stems=stems, base_directory=None),
+                BatchEntry(source=sources[1], stems=targeted, base_directory=None),
+            )
+        )
+
+        assert [job.stems for job in plan.jobs(config)] == [stems, targeted]
+
+    def test_a_gathered_recording_already_written_is_left_as_it_stands(
+        self,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        config = _config_writing_under(tmp_path / "out")
+        sources = _write_audio_files(tmp_path / "loops", ["a.wav", "b.wav"])
+        plan = _batch(stems, *sources, base_directory=tmp_path / "loops")
+        written = plan.jobs(config)[0].output_path
+        written.parent.mkdir(parents=True, exist_ok=True)
+        written.touch()
+
+        assert [job.sources[0].name for job in plan.jobs(config)] == ["b.wav"]
+
+    def test_a_recording_the_reader_named_is_written_again(
+        self,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        config = _config_writing_under(tmp_path / "out")
+        source = _write_audio_files(tmp_path, ["song.wav"])[0]
+        plan = _batch(stems, source)
+        written = plan.jobs(config)[0].output_path
+        written.parent.mkdir(parents=True, exist_ok=True)
+        written.touch()
+
+        assert len(plan.jobs(config)) == 1
+
+    def test_a_batch_left_with_nothing_to_write_raises(
+        self,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        config = _config_writing_under(tmp_path / "out")
+        source = _write_audio_files(tmp_path / "loops", ["a.wav"])[0]
+        plan = _batch(stems, source, base_directory=tmp_path / "loops")
+        written = plan.jobs(config)[0].output_path
+        written.parent.mkdir(parents=True, exist_ok=True)
+        written.touch()
+
+        with pytest.raises(NoFilesToProcessError):
+            plan.jobs(config)
+
+    def test_a_batch_holding_no_recording_raises(self, config: Config) -> None:
+        with pytest.raises(NoFilesToProcessError):
+            BatchConversion(entries=()).jobs(config)
 
 
 def _config_writing_under(reconstructions_directory: Path) -> Config:
@@ -174,6 +296,35 @@ class TestExistingTargets:
 
         assert plan.existing_targets(config) == ()
 
+    def test_a_batch_names_the_target_standing_for_a_recording_the_reader_named(
+        self,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        config = _config_writing_under(tmp_path / "out")
+        source = _write_audio_files(tmp_path, ["song.wav"])[0]
+        plan = _batch(stems, source)
+        target = plan.jobs(config)[0].output_path
+        target.parent.mkdir(parents=True)
+        target.touch()
+
+        assert plan.existing_targets(config) == (target,)
+
+    def test_a_batch_settles_a_gathered_recording_itself(
+        self,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        """A folder is picked up where the last run stopped, so a written one puts nothing to the reader."""
+        config = _config_writing_under(tmp_path / "out")
+        source = _write_audio_files(tmp_path / "loops", ["a.wav"])[0]
+        plan = _batch(stems, source, base_directory=tmp_path / "loops")
+        target = plan.jobs(config)[0].output_path
+        target.parent.mkdir(parents=True)
+        target.touch()
+
+        assert plan.existing_targets(config) == ()
+
     def test_a_directory_conversion_settles_the_question_itself(
         self,
         stems: StemsConfig,
@@ -194,8 +345,12 @@ class TestGroupOutputPath:
     def test_one_source_names_the_file_after_itself(self, config: Config, tmp_path: Path) -> None:
         source = tmp_path / "song.wav"
         source.touch()
-        assert group_output_path(config, (source,)) == get_output_path(config, source)
+        assert group_output_path(config, (source,), CHANNELS) == get_output_path(
+            config,
+            source,
+            CHANNELS,
+        )
 
     def test_sources_sharing_a_directory_name_the_file_after_it(self, config: Config, tmp_path: Path) -> None:
         sources = tuple(_write_audio_files(tmp_path / "session", ["a.wav", "b.wav"]))
-        assert group_output_path(config, sources).stem == "session"
+        assert group_output_path(config, sources, CHANNELS).stem == "session"

@@ -18,7 +18,10 @@ from sampletones_application.logic.sequencer.tracker.block import BlockKey
 from sampletones_application.view_model.sequencer.slot import SUBCOLUMNS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+)
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
@@ -71,7 +74,7 @@ def sample_reconstruction(channels: Sequence[ChannelName]) -> Reconstruction:
         config=config,
         coefficient=1.0,
         audio_filepath=(Path("/dev/null"),),
-        stems_data=single_entry_stems_data(list(config.generation.channels), instructions),
+        stems_data=single_entry_stems_data(list(DEFAULT_CHANNELS), instructions),
     )
 
 
@@ -94,7 +97,7 @@ def render_slots(
 ) -> str:
     """The pattern each channel plays at a frame, which is what tells a blank pattern from none.
 
-    A frame renders the same either way, so this is the reading that shows a write materialising a
+    A frame renders the same either way, so this is the reading that shows a write materializing a
     pattern the channel had not held before.
     """
     frame = controller.project.song.order[frame_index]
@@ -308,7 +311,7 @@ def _fill_cell(
 ) -> None:
     """Writes the values one channel cell states, passing over a cell that states none.
 
-    A cell is written whole where it carries anything, so the row it lands on materialises exactly
+    A cell is written whole where it carries anything, so the row it lands on materializes exactly
     once however many of its subcolumns hold a value.
     """
     note = parse_note(tokens[0], voice_ids)

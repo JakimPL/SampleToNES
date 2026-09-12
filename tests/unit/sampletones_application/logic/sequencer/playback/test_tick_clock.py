@@ -126,7 +126,7 @@ class TestTheOutputRateIsFollowed(BaseTestSuite):
     """The audio is rendered at the rate its consumer reports, so a rendered second lasts a second.
 
     Live playback opens its device stream at that rate and a render writes its file at it, so a
-    synthesiser fixed to some other rate plays the song at the ratio between the two.
+    synthesizer fixed to some other rate plays the song at the ratio between the two.
     """
 
     @pytest.mark.parametrize("sample_rate", UNEVEN_RATES + (EVEN_SAMPLE_RATE, 48000))

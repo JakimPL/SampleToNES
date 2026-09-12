@@ -132,7 +132,8 @@ file in between.
 | Opening the channel, reading it, and reaping it | `TaskProcessor` (`parallelization/processor.py`) |
 | How long a run has left, from what it has covered | `ETAEstimator` (`parallelization/progress.py`) |
 | Turning a run's account into a result the application reads | `ConversionService` (`services/conversion/`) |
-| The bar, the status line, and the stage's name | `ConverterLogic` (`logic/main/converter.py`) |
+| The bar, and the taskbar the run also reports to | `ConversionRun` (`logic/main/converter/run.py`) |
+| The status line and the stage's name | `ConverterMessages` (`logic/main/converter/messages.py`) |
 
 ### A finished task stays finished
 

@@ -7,7 +7,13 @@ from sampletones_core.audio import write_wave
 from sampletones_core.audio.processing import normalize
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.configs.generation import GenerationConfig
-from sampletones_core.constants.enums import ChannelName, HierarchyMode, SpectrumMethod
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    HierarchyMode,
+    SpectrumMethod,
+    bending_channels,
+)
 from sampletones_core.fft import Window
 from sampletones_core.fft.features import get_feature_extractor
 from sampletones_core.generators import get_generators_by_channels
@@ -22,6 +28,7 @@ from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_yaml
 from tests.integration.assets.synth_config import SynthConfig
@@ -57,7 +64,10 @@ def three_stem_config() -> StemsConfig:
     hierarchy level, stem c (pulse 1, noise) on the second.
     """
     return StemsConfig(
-        entries=[StemEntry(id=stem_id, channels=channels) for stem_id, channels in THREE_STEM_ENTRY_CHANNELS.items()],
+        entries=[
+            StemEntry(id=stem_id, settings=StemSettings(channels=channels, bends=bending_channels(channels)))
+            for stem_id, channels in THREE_STEM_ENTRY_CHANNELS.items()
+        ],
         hierarchy=StemsHierarchy(
             levels=[[STEM_A_ID, STEM_B_ID], [STEM_C_ID]],
             mode=HierarchyMode.STRICT,
@@ -67,8 +77,8 @@ def three_stem_config() -> StemsConfig:
 
 
 def three_stem_reconstruction_config() -> Config:
-    """Builds a reconstruction config with both pulses enabled for the three-stem example."""
-    return Config(generation=GenerationConfig(channels=THREE_STEM_CHANNELS))
+    """Builds a reconstruction config for the three-stem example."""
+    return Config()
 
 
 def write_three_stem_recordings(
@@ -124,6 +134,7 @@ def reconstruct_sample(
     audio: np.ndarray,
     config: Config,
     library: InstructionLibrary,
+    channels: FrozenSet[ChannelName],
     *,
     tmp_dir: Pathlike,
     name: str,
@@ -131,7 +142,7 @@ def reconstruct_sample(
     """Runs the real reconstruction pipeline on ``audio`` via a temp WAV."""
     path = Path(tmp_dir) / f"{name}.wav"
     write_wave(path, config.library.sample_rate, audio)
-    reconstruction = Reconstructor(config, library=library)(path)
+    reconstruction = Reconstructor(config, channels, library=library)(path)
     if reconstruction is None:
         raise AssertionError(f"Reconstruction of '{name}' produced no result")
 
@@ -149,7 +160,14 @@ def make_sample(
     loop: bool = False,
 ) -> Sample:
     """Reconstructs ``audio`` into a `Sample`, asserting the channels it plays."""
-    reconstruction = reconstruct_sample(audio, config, library, tmp_dir=tmp_dir, name=name)
+    reconstruction = reconstruct_sample(
+        audio,
+        config,
+        library,
+        expected_slices,
+        tmp_dir=tmp_dir,
+        name=name,
+    )
     played = frozenset(reconstruction.playing_channels)
     if played != expected_slices:
         raise AssertionError(f"Sample '{name}' covers {set(played)}, expected {set(expected_slices)}")
@@ -185,7 +203,7 @@ def load_instrument_catalog(
     catalog: Dict[str, Sample] = {}
     for entry in spec["instruments"]:
         channels = [ChannelName(name) for name in entry["channels"]]
-        config = Config(library=library_config, generation=GenerationConfig(channels=channels))
+        config = Config(library=library_config)
         audio = _render_instrument(synth_config, entry["synth"], sample_rate=sample_rate)
         catalog[entry["name"]] = make_sample(
             entry["name"],

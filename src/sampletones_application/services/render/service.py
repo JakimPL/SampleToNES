@@ -25,13 +25,13 @@ from sampletones_shared.logger import logger
 class SongRenderService(ServiceBase[RenderResult]):
     """Renders a whole song to a file on a background thread, reporting each pass as it runs.
 
-    The synthesiser arrives per call, so the service holds no opinion on what a song sounds
+    The synthesizer arrives per call, so the service holds no opinion on what a song sounds
     like: it drives the same kernel the player drives, one row at a time, and hands each row to
     a sink. The sink decides what becomes of a row — straight to the encoder, or spilled and
     written back at the level the whole render turned out to reach — so the service reports one
     pass or two without knowing which format waits on the other side.
 
-    A render is one at a time. Cancelling is honored between rows and between encoded blocks,
+    A render is one at a time. Canceling is honored between rows and between encoded blocks,
     and the file a canceled or failed run was writing is removed, so a result names a path only
     where a finished file stands.
     """

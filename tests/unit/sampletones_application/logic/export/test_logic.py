@@ -20,7 +20,7 @@ WALKING_LABEL: Final[str] = "Playing the song out"
 COMPRESSING_LABEL: Final[str] = "Compressing the song"
 WRITING_LABEL: Final[str] = "Writing the file"
 SIZE_TEMPLATE: Final[str] = "{completed} of {total} bytes"
-CANCELLING_LABEL: Final[str] = "Stopping the export..."
+CANCELING_LABEL: Final[str] = "Stopping the export..."
 NOTHING_MEASURED: Final[int] = 0
 PROGRAM_AREA: Final[int] = 32429
 SONG_TICKS: Final[int] = 14400
@@ -77,7 +77,7 @@ def logic_fixture(service: FakeExportService) -> SongExportLogic:
             ExportStage.WRITING: WRITING_LABEL,
         },
         size_template=SIZE_TEMPLATE,
-        cancelling_label=CANCELLING_LABEL,
+        canceling_label=CANCELING_LABEL,
     )
 
 
@@ -150,7 +150,7 @@ class TestFollowingARun:
 class TestHowEachStageReads:
     """A stage traveling to an end is a fraction; one measured against a limit is a figure."""
 
-    def test_a_travelling_stage_carries_its_share(
+    def test_a_traveling_stage_carries_its_share(
         self,
         logic: SongExportLogic,
         service: FakeExportService,
@@ -160,7 +160,7 @@ class TestHowEachStageReads:
         service.deliver(progress(ExportStage.WALKING, WALKED_TICKS, SONG_TICKS))
         assert views[-1].progress == pytest.approx(WALKED_TICKS / SONG_TICKS)
 
-    def test_a_travelling_stage_states_no_figure(
+    def test_a_traveling_stage_states_no_figure(
         self,
         logic: SongExportLogic,
         service: FakeExportService,
@@ -221,7 +221,7 @@ class TestStoppingARun:
     ) -> None:
         service.deliver(ServiceStarted(total=NOTHING_MEASURED))
         logic.cancel()
-        assert views[-1].figure == CANCELLING_LABEL
+        assert views[-1].figure == CANCELING_LABEL
 
     def test_a_report_arriving_after_a_stop_leaves_the_message_standing(
         self,
@@ -232,7 +232,7 @@ class TestStoppingARun:
         service.deliver(ServiceStarted(total=NOTHING_MEASURED))
         logic.cancel()
         service.deliver(progress(ExportStage.COMPRESSING, REACHED_SIZE, PROGRAM_AREA))
-        assert views[-1].figure == CANCELLING_LABEL
+        assert views[-1].figure == CANCELING_LABEL
 
     def test_a_stop_asked_of_nothing_reaches_no_service(
         self,

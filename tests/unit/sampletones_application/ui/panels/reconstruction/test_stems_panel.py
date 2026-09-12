@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.sources import SourceKind
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.loader import load_layout_config
 from sampletones_application.paths import (
@@ -87,6 +88,7 @@ def _row(
     *,
     name: str,
     channels: FrozenSet[ChannelName] = frozenset(CHANNELS),
+    bends: FrozenSet[ChannelName] = frozenset(),
     offered_channels: FrozenSet[ChannelName] = frozenset(CHANNELS),
     level: int = 0,
     position: int = 0,
@@ -94,6 +96,10 @@ def _row(
     level_count: int = 1,
 ) -> StemRowViewModel:
     return StemRowViewModel(
+        kind=SourceKind.RECORDING,
+        held=(),
+        partial_channels=frozenset(),
+        bends=bends,
         key=str(stem_id),
         path=Path(f"/audio/{name}.wav"),
         channels=channels,
@@ -114,9 +120,12 @@ def _view_model(
     return ReconstructionStemsViewModel(
         reconstruction_loaded=True,
         stems=StemsListViewModel(
+            selected_key=None,
             rows=rows,
             channels_in_play=CHANNELS if rows else (),
             muted_channels=muted_channels,
+            picked_keys=frozenset(),
+            picking_room=None,
             live=True,
             collapse_levels=False,
         ),
@@ -132,8 +141,8 @@ class TestStemsPanelRows:
         panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare")))
 
         stems_list = panel.stems_list
-        assert dpg.get_item_label(stems_list.row_tag("0", SUF_TEXT)) == "kick"
-        assert dpg.get_item_label(stems_list.row_tag("1", SUF_TEXT)) == "snare"
+        assert dpg.get_item_label(stems_list.tags.row("0", SUF_TEXT)) == "kick"
+        assert dpg.get_item_label(stems_list.tags.row("1", SUF_TEXT)) == "snare"
 
     def test_a_row_offers_a_box_on_every_channel_its_recording_holds(
         self,
@@ -144,15 +153,15 @@ class TestStemsPanelRows:
         panel.update_view(_view_model(_row(0, name="kick", offered_channels=frozenset({ChannelName.PULSE1}))))
 
         stems_list = panel.stems_list
-        assert dpg.does_item_exist(stems_list.channel_tag("0", ChannelName.PULSE1))
-        assert not dpg.does_item_exist(stems_list.channel_tag("0", ChannelName.NOISE))
+        assert dpg.does_item_exist(stems_list.tags.channel("0", ChannelName.PULSE1))
+        assert not dpg.does_item_exist(stems_list.tags.channel("0", ChannelName.NOISE))
 
     def test_every_row_carries_a_master_box(self, panel: GUIReconstructionStemsPanel) -> None:
         render(panel)
 
         panel.update_view(_view_model(_row(0, name="kick")))
 
-        assert dpg.get_value(panel.stems_list.row_tag("0", SUF_CHECKBOX))
+        assert dpg.get_value(panel.stems_list.tags.row("0", SUF_CHECKBOX))
 
     def test_rows_follow_a_changed_recording_set(self, panel: GUIReconstructionStemsPanel) -> None:
         render(panel)
@@ -161,8 +170,8 @@ class TestStemsPanelRows:
         panel.update_view(_view_model(_row(1, name="snare")))
 
         stems_list = panel.stems_list
-        assert not dpg.does_item_exist(stems_list.row_tag("0", SUF_TEXT))
-        assert dpg.does_item_exist(stems_list.row_tag("1", SUF_TEXT))
+        assert not dpg.does_item_exist(stems_list.tags.row("0", SUF_TEXT))
+        assert dpg.does_item_exist(stems_list.tags.row("1", SUF_TEXT))
 
 
 class TestStemsPanelSelection:
@@ -175,7 +184,7 @@ class TestStemsPanelSelection:
         render(panel)
         panel.update_view(_view_model(_row(0, name="kick")))
 
-        noise_tag = panel.stems_list.channel_tag("0", ChannelName.NOISE)
+        noise_tag = panel.stems_list.tags.channel("0", ChannelName.NOISE)
         dpg.set_value(noise_tag, False)
         dpg.get_item_callback(noise_tag)(noise_tag, False, ("0", ChannelName.NOISE))
 
@@ -190,7 +199,7 @@ class TestStemsPanelSelection:
         render(panel)
         panel.update_view(_view_model(_row(0, name="kick")))
 
-        master_tag = panel.stems_list.row_tag("0", SUF_CHECKBOX)
+        master_tag = panel.stems_list.tags.row("0", SUF_CHECKBOX)
         dpg.get_item_callback(master_tag)(master_tag, False, "0")
 
         assert reported == [(0, frozenset())]
@@ -206,7 +215,7 @@ class TestStemsPanelRemoval:
         panel.on_stem_remove_requested = requested.append
         panel.update_view(_view_model(_row(0, name="bass"), _row(1, name="lead")))
 
-        tag = panel.stems_list.row_tag("0", SUF_BUTTON)
+        tag = panel.stems_list.tags.row("0", SUF_BUTTON)
         dpg.get_item_callback(tag)(tag, None, dpg.get_item_user_data(tag))
 
         assert requested == [0]
@@ -219,7 +228,7 @@ class TestStemsPanelRemoval:
         render(panel)
         panel.update_view(_view_model(_row(0, name="bass")))
 
-        assert not dpg.is_item_enabled(panel.stems_list.row_tag("0", SUF_BUTTON))
+        assert not dpg.is_item_enabled(panel.stems_list.tags.row("0", SUF_BUTTON))
 
 
 class TestStemsPanelLevels:
@@ -255,8 +264,8 @@ class TestStemsPanelLevels:
             True,
         )
 
-        assert dpg.does_item_exist(panel.stems_list.table_tag)
-        assert dpg.does_item_exist(panel.stems_list.row_tag("1", SUF_TEXT))
+        assert dpg.does_item_exist(panel.stems_list.tags.table)
+        assert dpg.does_item_exist(panel.stems_list.tags.row("1", SUF_TEXT))
 
     def test_a_reader_who_collapsed_the_levels_keeps_them_collapsed_across_an_edit(
         self,
@@ -278,7 +287,7 @@ class TestStemsPanelLevels:
             )
         )
 
-        assert dpg.does_item_exist(panel.stems_list.table_tag)
+        assert dpg.does_item_exist(panel.stems_list.tags.table)
 
 
 class TestStemsPanelStates:
@@ -302,3 +311,59 @@ class TestStemsPanelStates:
         assert dpg.is_item_shown(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_EMPTY)
         assert not dpg.is_item_shown(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP)
         assert not dpg.is_item_shown(panel.stems_list.tag)
+
+
+class TestTheBendARecordingTook:
+    """A finished reconstruction records the bend each recording carried, which the list states.
+
+    The choice was made when the reconstruction was written, so the box reports it rather than
+    offering it.
+    """
+
+    @staticmethod
+    def _bend_tag(panel: GUIReconstructionStemsPanel, stem_id: int, channel_name: ChannelName) -> str:
+        return panel.stems_list.tags.bend(str(stem_id), channel_name)
+
+    def test_a_tone_channel_carries_a_box_beside_its_own(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(1, name="bass")))
+
+        assert dpg.does_item_exist(self._bend_tag(panel, 1, ChannelName.PULSE1))
+
+    def test_it_reads_the_bend_the_recording_took(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(1, name="bass", bends=frozenset({ChannelName.PULSE1}))))
+
+        assert dpg.get_value(self._bend_tag(panel, 1, ChannelName.PULSE1)) is True
+
+    def test_a_channel_it_did_not_bend_reads_clear(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(1, name="bass")))
+
+        assert dpg.get_value(self._bend_tag(panel, 1, ChannelName.PULSE1)) is False
+
+    def test_the_box_states_rather_than_asks(self, panel: GUIReconstructionStemsPanel) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(1, name="bass")))
+
+        tag = self._bend_tag(panel, 1, ChannelName.PULSE1)
+        assert dpg.get_item_configuration(tag)["enabled"] is False
+
+    def test_a_channel_loading_no_divider_carries_none(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        """A bend moves a note by a fraction of a divider, so the noise channel has nothing to bend."""
+        render(panel)
+        panel.update_view(_view_model(_row(1, name="bass")))
+
+        assert not dpg.does_item_exist(self._bend_tag(panel, 1, ChannelName.NOISE))

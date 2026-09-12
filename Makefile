@@ -1,5 +1,5 @@
 .PHONY: help setup install build release system-deps run clean pre-commit test benchmarks \
-	ftm-samples nsf-samples nsf-render compression-report icons player check-import-boundary check-tag-names check-unused-tags \
+	ftm-samples nsf-samples nsf-render compression-report icons player check-import-boundary check-tag-names check-unused-tags check-rendered-literals \
 	check-language-keys check-palette-colors check-shortcut-actions calibration lint pylint mypy format
 
 ifeq ($(OS),Windows_NT)
@@ -113,7 +113,7 @@ test:
 	$(call script,dev/tests)
 
 benchmarks:
-	uv run python -m pytest tests/benchmarks --no-cov
+	uv run python -m pytest tests/benchmarks --no-cov -s
 
 ftm-samples: export SAMPLETONES_FTM_OUTPUT_DIR := build/ftm
 ftm-samples:
@@ -144,6 +144,9 @@ check-tag-names:
 
 check-unused-tags:
 	uv run scripts/checks/unused_tags.py
+
+check-rendered-literals:
+	uv run scripts/checks/rendered_literals.py
 
 check-language-keys:
 	uv run scripts/checks/language_keys.py

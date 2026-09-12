@@ -64,7 +64,7 @@ class TestACountThatFalls:
 class TestWhereAnEstimateStands:
     """A remaining time is stated only where the count travels toward the total."""
 
-    def test_a_stage_travelling_to_its_total_estimates(self) -> None:
+    def test_a_stage_traveling_to_its_total_estimates(self) -> None:
         reports: List[ServiceProgress[RenderStage]] = []
         progress = StageProgress(RenderStage.SYNTHESIS, TOTAL_SAMPLES, emit=reports.append, estimates=True)
         progress.advance(TOTAL_SAMPLES)

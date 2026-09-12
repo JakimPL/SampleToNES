@@ -1,5 +1,5 @@
 from dataclasses import dataclass, replace
-from typing import Dict, List, Optional
+from typing import Dict, FrozenSet, List, Optional
 
 import numpy as np
 
@@ -16,6 +16,7 @@ from sampletones_core.generators import (
 from sampletones_core.instructions import PulseInstruction, TriangleInstruction
 from sampletones_core.reconstructions.reconstructor.decoder.base import Streams
 from sampletones_core.reconstructions.reconstructor.matching import ScoredCandidate
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 
 from .smoothing import smoothed
 
@@ -25,7 +26,7 @@ StemIds = Dict[ChannelName, List[int]]
 
 @dataclass(frozen=True)
 class PitchRefiner:
-    """Bends each chosen note towards where the recording's own fundamental stands.
+    """Bends each chosen note toward where the recording's own fundamental stands.
 
     The matching stage places every frame on the nearest note of the equal-tempered grid, which is
     as fine as its candidate catalog goes. The hardware is finer than that everywhere below the top
@@ -42,22 +43,28 @@ class PitchRefiner:
     and the run of bends is then settled against a toll on changing, so a stream holds a tuning
     rather than chasing one.
 
+    Which recordings are carried, and on which channels, each stem entry states for itself, so a
+    channel a stem leaves alone keeps the note the matching chose.
+
     Attributes:
         config: The settings the refinement and the render are run under.
         channels: The generator each channel sounds through, which owns the divider geometry.
+        stems: The setup the run assigns channels under, which states the bends each stem asks for.
     """
 
     config: Config
     channels: Dict[ChannelName, GeneratorUnion]
+    stems: StemsConfig
 
     @property
     def active(self) -> bool:
         """Whether this run bends its notes.
 
         A run keeping the audio each frame was matched on would write a bend it never sounds, so
-        the refinement acts where the chosen instructions are rendered afresh.
+        the refinement acts where the chosen instructions are rendered afresh and some stem asks
+        for a bend.
         """
-        return self.config.generation.refinement.enabled and self.config.generation.final_regeneration
+        return bool(self.stems.bent_channels) and self.config.generation.final_regeneration
 
     def refine(
         self,
@@ -65,7 +72,7 @@ class PitchRefiner:
         stem_ids: StemIds,
         recordings: StemRecordings,
     ) -> Streams:
-        """The decoded streams with every frame's note bent towards what the recording sounds.
+        """The decoded streams with every frame's note bent toward what the recording sounds.
 
         Args:
             streams: What each channel plays, one candidate per frame.
@@ -78,11 +85,21 @@ class PitchRefiner:
         if not self.active:
             return streams
 
-        readers = {stem_id: self._reader(recording) for stem_id, recording in recordings.items()}
+        readers = {
+            stem_id: self._reader(recording) for stem_id, recording in recordings.items() if self._bends_of(stem_id)
+        }
         return {
             channel_name: self._refined(channel_name, stream, stem_ids.get(channel_name, []), readers)
             for channel_name, stream in streams.items()
         }
+
+    def _bends_of(self, stem_id: int) -> FrozenSet[ChannelName]:
+        """The channels one stem carries toward its own recording."""
+        entry = self.stems.entries_by_id.get(stem_id)
+        if entry is None:
+            return frozenset()
+
+        return entry.settings.bend_set
 
     def _reader(self, recording: np.ndarray) -> InstantaneousPitch:
         """The instantaneous-pitch reading of one stem, taken once for every channel that took it."""
@@ -104,9 +121,13 @@ class PitchRefiner:
         if not isinstance(generator, (PulseGenerator, TriangleGenerator)):
             return stream
 
+        if channel_name not in self.stems.bent_channels:
+            return stream
+
         settings = self.config.generation.refinement
         proposals = [
-            self._proposal(generator, candidate, frame, stem_ids, readers) for frame, candidate in enumerate(stream)
+            self._proposal(generator, channel_name, candidate, frame, stem_ids, readers)
+            for frame, candidate in enumerate(stream)
         ]
         bends = smoothed(
             proposals,
@@ -118,6 +139,7 @@ class PitchRefiner:
     def _proposal(
         self,
         generator: TonalGeneratorUnion,
+        channel_name: ChannelName,
         candidate: ScoredCandidate,
         frame: int,
         stem_ids: List[int],
@@ -128,7 +150,7 @@ class PitchRefiner:
         if not isinstance(instruction, (PulseInstruction, TriangleInstruction)) or not instruction.on:
             return None
 
-        reader = self._reader_at(frame, stem_ids, readers)
+        reader = self._reader_at(channel_name, frame, stem_ids, readers)
         if reader is None:
             return None
 
@@ -136,20 +158,21 @@ class PitchRefiner:
         if reading is None or reading.confidence < self.config.generation.refinement.confidence:
             return None
 
-        return generator.bend_towards(instruction.pitch, reading.frequency)
+        return generator.bend_toward(instruction.pitch, reading.frequency)
 
-    @staticmethod
     def _reader_at(
+        self,
+        channel_name: ChannelName,
         frame: int,
         stem_ids: List[int],
         readers: Dict[int, InstantaneousPitch],
     ) -> Optional[InstantaneousPitch]:
-        """The reading of the recording this channel took at one frame, where it took one."""
+        """The reading behind one frame, where the stem it took asks for this channel to bend."""
         if frame >= len(stem_ids):
             return None
 
         stem_id = stem_ids[frame]
-        if stem_id == RESTING_STEM_ID:
+        if stem_id == RESTING_STEM_ID or channel_name not in self._bends_of(stem_id):
             return None
 
         return readers.get(stem_id)

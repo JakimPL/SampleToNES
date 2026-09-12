@@ -8,7 +8,7 @@ from sampletones_application.view_model.instruction.table_data import (
 )
 from sampletones_core.constants.general import DUTY_CYCLES, NOISE_PERIODS
 from sampletones_core.utils.frequencies import pitch_to_name
-from sampletones_shared.utils.serialization import hash_model
+from sampletones_shared.utils.hashing import hash_model
 
 
 class InstructionTableLogic:

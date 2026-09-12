@@ -41,7 +41,7 @@ class TestSnapshotIndependence(BaseTestSuite):
 
 
 class TestASnapshotIsASource(BaseTestSuite):
-    """A captured document reads as the source a synthesiser takes."""
+    """A captured document reads as the source a synthesizer takes."""
 
     def test_the_live_controller_is_a_source(self, project_controller: ProjectController) -> None:
         source: ProjectSource = project_controller

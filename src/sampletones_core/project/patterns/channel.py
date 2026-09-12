@@ -35,7 +35,7 @@ class Channel(BaseModel):
         """Returns a free index above every pool key and ``reserved_indices``.
 
         The pool alone does not reveal indices an order slot references before its
-        pattern is materialised, so a caller aware of those passes them as
+        pattern is materialized, so a caller aware of those passes them as
         ``reserved_indices`` to keep the new index from taking one of them.
         """
         return max(self.patterns.keys() | reserved_indices, default=-1) + 1
@@ -55,7 +55,7 @@ class Channel(BaseModel):
         """Returns the pattern at ``index``, creating an empty one if absent.
 
         Lets an order position reference an index before its pattern exists; the
-        pattern is materialised on first write (once the slot gains content).
+        pattern is materialized on first write (once the slot gains content).
         """
         if index not in self.patterns:
             self.patterns[index] = Pattern.empty(length)
@@ -67,7 +67,7 @@ class Channel(BaseModel):
 
         ``reserved_indices`` are extra indices the clone must avoid beyond the pool's
         own keys, so a caller that knows of indices referenced elsewhere (order slots
-        whose patterns are not yet materialised) keeps the clone from taking one of them.
+        whose patterns are not yet materialized) keeps the clone from taking one of them.
         """
         source = self.patterns[index]
         clone_index = self._next_index(reserved_indices)

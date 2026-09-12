@@ -43,13 +43,15 @@ change any of these and a different library is selected or generated.
 
 ## `generation`
 
-Which channels are used, and how candidates are scored. It carries a few
-top-level keys and groups the scoring controls into `calculation`, `weights`,
-`metric`, and `decoder`.
+How candidates are scored. It carries a few top-level keys and groups the
+scoring controls into `calculation`, `weights`, `metric`, and `decoder`.
+
+Which channels a conversion uses is stated by the conversion itself — per
+recording, in the converter — so it is a setting of the interface rather than a
+configuration key.
 
 | Key | Meaning | Values |
 | --- | --- | --- |
-| `channels` | channels used | list of `pulse1`, `pulse2`, `triangle`, `noise` (legacy key `generators` loads too) |
 | `drive` | how hard the channels are pushed (alias: `mixer`) | 0 < value ≤ 5 |
 | `reset_phase` | reset oscillator phase within each instruction | `true` / `false` |
 | `final_regeneration` | re-render the chosen instructions at the end to keep oscillators continuous | `true` / `false` |

@@ -10,3 +10,8 @@ components:
       - type: color
         key: Text
         value: .text_muted
+  - item_type: Text
+    entries:
+      - type: color
+        key: Text
+        value: .text_muted
