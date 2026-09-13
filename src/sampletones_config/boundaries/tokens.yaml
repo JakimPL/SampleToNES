@@ -40,3 +40,38 @@
   message: >-
     sampletones_shared is shipped code; the compression study harness (scripts/codec_study) stays
     outside it, and a finding it earns lands as production code of its own
+
+- root: sampletones_application
+  pattern: "**/*.py"
+  forbidden: '\bsampletones_tools\b'
+  message: >-
+    sampletones_application is shipped code and names no tool; the command line is the one importer of
+    sampletones_tools
+
+- root: sampletones_core
+  pattern: "**/*.py"
+  forbidden: '\bsampletones_tools\b'
+  message: >-
+    sampletones_core is shipped code and names no tool; the command line is the one importer of
+    sampletones_tools
+
+- root: sampletones_player
+  pattern: "**/*.py"
+  forbidden: '\bsampletones_tools\b'
+  message: >-
+    sampletones_player is shipped code and names no tool; the command line is the one importer of
+    sampletones_tools
+
+- root: sampletones_shared
+  pattern: "**/*.py"
+  forbidden: '\bsampletones_tools\b'
+  message: >-
+    sampletones_shared is shipped code and names no tool; the command line is the one importer of
+    sampletones_tools
+
+- root: sampletones_assets
+  pattern: "**/*.py"
+  forbidden: '\bsampletones_tools\b'
+  message: >-
+    sampletones_assets is shipped code and names no tool; the command line is the one importer of
+    sampletones_tools

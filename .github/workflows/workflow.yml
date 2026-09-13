@@ -87,6 +87,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install dist/*.whl
           sampletones --version
+          sampletones --help
 
       - name: Check the wheel carries every resource it needs at startup
         shell: bash

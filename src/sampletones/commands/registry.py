@@ -6,6 +6,7 @@ from sampletones.commands.open import OPEN
 from sampletones.commands.run import RUN
 from sampletones.commands.self_check import SELF_CHECK
 from sampletones_shared.command import Command
+from sampletones_tools.registry import DEVELOPER_COMMANDS
 
 USER_COMMANDS: Final[Tuple[Command, ...]] = (RUN, OPEN, CONVERT, LIBRARY, SELF_CHECK)
-COMMANDS: Final[Tuple[Command, ...]] = USER_COMMANDS
+COMMANDS: Final[Tuple[Command, ...]] = (*USER_COMMANDS, *DEVELOPER_COMMANDS)

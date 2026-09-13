@@ -21,6 +21,8 @@ BOUNDARIES: Final[ImportBoundaryRules] = ImportBoundaryRules.load()
 APPLICATION: Final[str] = "sampletones_application"
 CORE: Final[str] = "sampletones_core"
 PLAYER: Final[str] = "sampletones_player"
+TOOLS: Final[str] = "sampletones_tools"
+ENTRY: Final[str] = "sampletones"
 ASSEMBLER: Final[str] = "sampletones_player.driver.assembler"
 
 VISUAL_IMPORT: Final[str] = "import dearpygui.dearpygui as dpg\n"
@@ -29,6 +31,7 @@ PLAIN_IMPORT: Final[str] = "from sampletones_core.project.project import Project
 PLAYER_IMPORT: Final[str] = "from sampletones_player.song import Song\n"
 ASSEMBLER_IMPORT: Final[str] = "from sampletones_player.driver.assembler.builder import build_driver\n"
 DRIVER_IMPORT: Final[str] = "from sampletones_player.driver.image import DriverImage\n"
+TOOLS_IMPORT: Final[str] = "from sampletones_tools.registry import DEVELOPER_COMMANDS\n"
 PANEL_SUFFIX: Final[str] = "def build() -> None:\n    dpg.add_group(parent=SUF_PANEL_LEFT)\n"
 THIRD_PARTY_IMPORT: Final[str] = "import numpy\n"
 
@@ -69,6 +72,18 @@ class TestPackageGraph:
     def test_the_synthesis_package_stands_below_the_reconstruction_engine(self) -> None:
         """Equal temperament sits in `sampletones_shared`, so synthesis reaches no engine module."""
         assert CORE not in reached_units(self.LAYERS, "sampletones_synthesis")
+
+    def test_the_entry_is_the_one_importer_of_the_tools(self) -> None:
+        """The wheel carries the tools, and the command line is where a developer reaches them."""
+        assert {unit for unit, layers in self.LAYERS.items() if TOOLS in layers} == {ENTRY}
+
+    def test_no_shipped_package_reaches_the_tools(self) -> None:
+        shipped = set(self.LAYERS) - {ENTRY, TOOLS}
+
+        assert all(TOOLS not in reached_units(self.LAYERS, package) for package in shipped)
+
+    def test_the_tools_reach_the_application(self) -> None:
+        assert APPLICATION in self.LAYERS[TOOLS]
 
 
 class TestPlayerGraph:
@@ -152,6 +167,19 @@ class TestDeclaredRules:
         write_module(tmp_path / APPLICATION / "ui" / "panels", "left.py", PANEL_SUFFIX)
 
         assert len(reported(tmp_path)) == 1
+
+    def test_a_shipped_module_naming_the_tools_is_reported_by_the_graph_and_by_name(self, tmp_path: Path) -> None:
+        write_module(tmp_path / CORE / "formats", "tooling.py", TOOLS_IMPORT)
+
+        kinds = reported(tmp_path)
+
+        assert TOOLS in kinds
+        assert any("names no tool" in kind for kind in kinds)
+
+    def test_the_entry_naming_the_tools_is_left_alone(self, tmp_path: Path) -> None:
+        write_module(tmp_path / ENTRY / "commands", "registry.py", TOOLS_IMPORT)
+
+        assert reported(tmp_path) == []
 
 
 class TestStandaloneRules:

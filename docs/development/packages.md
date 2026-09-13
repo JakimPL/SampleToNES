@@ -17,6 +17,7 @@ has come — inside one process and across the pool's workers — is [`progress.
 ```mermaid
 graph TD
     ENTRY["sampletones\n(entry point)"]
+    TOOLS["sampletones_tools\n(developer tools)"]
     APP["sampletones_application\n(GUI)"]
     PLAYER["sampletones_player\n(NES player)"]
     CORE["sampletones_core\n(reconstruction engine)"]
@@ -27,6 +28,12 @@ graph TD
 
     ENTRY --> APP
     ENTRY --> CORE
+    ENTRY --> TOOLS
+    TOOLS --> APP
+    TOOLS --> PLAYER
+    TOOLS --> CORE
+    TOOLS --> ASSETS
+    TOOLS --> SHARED
     APP --> PLAYER
     APP --> CORE
     PLAYER --> CORE
@@ -48,9 +55,16 @@ graph TD
 | `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats | `sampletones_shared`, `sampletones_synthesis` |
 | `sampletones_player` | The NES player: the register model, the re-clocking schedule, the 6502 driver and the NSF file | `sampletones_shared`, `sampletones_core` |
 | `sampletones_application` | The DearPyGui front end | `sampletones_shared`, `sampletones_core`, `sampletones_player` |
-| `sampletones` | The command-line entry: the dispatcher, the commands and the startup self-check | `sampletones_shared`, `sampletones_core`, `sampletones_application` |
+| `sampletones_tools` | Everything a developer runs and the application does not: the developer commands and the libraries behind them | `sampletones_shared`, `sampletones_assets`, `sampletones_core`, `sampletones_player`, `sampletones_application` |
+| `sampletones` | The command-line entry: the dispatcher, the commands and the startup self-check | `sampletones_shared`, `sampletones_core`, `sampletones_application`, `sampletones_tools` |
 
 Third-party imports are the package author's own choice and stand outside this table.
+
+**The tools package is reached from the command line alone.** `sampletones_tools` holds what a
+developer runs and the application never imports: the developer commands and the libraries behind
+them. `sampletones` is its one importer, appending the developer commands to the user commands, so
+the wheel and the bundle carry the tools and no shipped package depends on them.
+[Tooling](tooling.md) states what a tool is and what a developer command does in an installed copy.
 
 **The reconstruction engine stands below the console player.** A reconstruction is produced, saved
 and exported to a tracker with `sampletones_player` absent from the process, which is what lets the
@@ -114,6 +128,11 @@ units it may import — and the rule the check runs derives from them: every uni
 out of reach, so an edge is declared before it is taken. The hook audits the whole source tree on
 every commit (`make check-import-boundary`), which means adding an edge to a table is how a new
 dependency is opened, and removing one enumerates the work of closing it.
+
+Five token rules hold the shipped packages to the tools edge a second way: a module of
+`sampletones_application`, `sampletones_core`, `sampletones_player`, `sampletones_shared` or
+`sampletones_assets` that spells `sampletones_tools` at all is reported, so the edge is closed in
+words as well as in imports.
 
 A graph answers for its own well-formedness as it is read: a unit reaching a unit the graph leaves
 undeclared is refused, and so is a graph whose units reach themselves, since a unit's layers state a

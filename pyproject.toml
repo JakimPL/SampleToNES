@@ -112,6 +112,7 @@ packages = [
     "src/sampletones_player",
     "src/sampletones_shared",
     "src/sampletones_synthesis",
+    "src/sampletones_tools",
 ]
 
 [tool.black]
@@ -133,6 +134,7 @@ known_first_party = [
     "sampletones_player",
     "sampletones_shared",
     "sampletones_synthesis",
+    "sampletones_tools",
 ]
 
 [tool.pytest.ini_options]
@@ -147,6 +149,7 @@ source = [
     "sampletones_player",
     "sampletones_shared",
     "sampletones_synthesis",
+    "sampletones_tools",
 ]
 
 [tool.coverage.report]
@@ -164,6 +167,7 @@ files = [
     "src/sampletones_player",
     "src/sampletones_shared",
     "src/sampletones_synthesis",
+    "src/sampletones_tools",
     "scripts",
 ]
 exclude = ["tests"]

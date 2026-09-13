@@ -74,8 +74,36 @@ arguments. Each command turns its arguments into a frozen record, field by field
 | `self-check` | Verifies that the build's imports, bundled resources and configuration files are usable |
 
 `--version` and `--help` are flags of the entry itself. The headless runs behind `convert` and
-`library` live in `sampletones_core/headless/`, where the calibration reuses them. Developer
-commands join the registry as the tools they run move into their own package.
+`library` live in `sampletones_core/headless/`, where the calibration reuses them. The developer
+commands are listed by `sampletones_tools/registry.py` and join as the tools they run move into
+that package.
+
+## The tools package
+
+`src/sampletones_tools/` holds every tool the running application does not use, in subpackages by
+subject, and `sampletones_tools/registry.py` lists the developer commands they offer.
+`sampletones/commands/registry.py` appends them to the user commands, which is the one import of
+the tools package; [package layers](packages.md) holds the edge. The wheel and the bundle carry the
+package, so every command exists in every copy of the program, and three rules decide what a
+developer command does there:
+
+- **The checkout guard.** `sampletones_tools/checkout.py` holds `require_checkout(command)`: the
+  repository root must hold `pyproject.toml` beside `src/`, or the command exits naming
+  `uv run sampletones <command>` in a checkout. Every developer command that reads or writes the
+  repository calls it first. A command that measures the code on this machine runs anywhere.
+- **No default derived from the repository.** An emitter takes a required `--output`; a measurement
+  defaults to the user's Documents. Nothing a developer command writes lands beside an installed
+  package.
+- **Package data is read from the package**, through `importlib.resources`, never through a path
+  under the repository, so it ships in the wheel and the bundle.
+
+Developer commands are run as `uv run sampletones <command>` from a checkout; the `sampletones`
+command `make setup` installs is a wheel and refuses the guarded ones the same way. A command module
+imports pillow, py65 and the like inside `run`, and a test imports the registry in a subprocess and
+asserts they stay out of `sys.modules`, since a startup failure in any tool module would break every
+invocation, the GUI included. The editable install puts `src/` on the path whole, so a checkout
+sees the tools package whatever the wheel lists; hatchling's `dev-mode-exact` stays off for that
+reason.
 
 ## The bootstrap scripts
 
@@ -112,6 +140,8 @@ the make target that names each. The checks are also pre-commit hooks;
 | Concern | Owner |
 |---|---|
 | Which commands the entry offers | `src/sampletones/commands/registry.py` |
+| Which developer commands exist | `src/sampletones_tools/registry.py` |
+| Whether a command runs outside a checkout | `src/sampletones_tools/checkout.py` |
 | What a command is | `src/sampletones_shared/command.py` |
 | What a bootstrap script may import | `sampletones_config/boundaries/standalone.yaml` |
 | What differs between systems | `scripts/bootstrap/platforms/` |

@@ -7,7 +7,8 @@ packages:
     sampletones_core: [sampletones_shared, sampletones_synthesis]
     sampletones_player: [sampletones_shared, sampletones_core]
     sampletones_application: [sampletones_shared, sampletones_core, sampletones_player]
-    sampletones: [sampletones_shared, sampletones_core, sampletones_application]
+    sampletones_tools: [sampletones_shared, sampletones_assets, sampletones_core, sampletones_player, sampletones_application]
+    sampletones: [sampletones_shared, sampletones_core, sampletones_application, sampletones_tools]
 
 player:
   root: sampletones_player
