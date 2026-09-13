@@ -489,26 +489,52 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.warning("No reconstruction data available for instruments export")
             return
 
-        base_name = destination.stem
-        request = SampleExport(
-            name=base_name,
+        request = self._sample_request(reconstruction_data, destination.stem)
+        self._session_manager.set_instrument_path(destination.parent)
+        self._export_service.export_sample(
+            destination,
+            self._export_backends[export_format],
+            request,
+        )
+
+    def sample_request(self) -> SampleExport:
+        """The loaded reconstruction's slices as one export, under the reconstruction's own name.
+
+        A format asking for its choices in a setup of its own names the export before a
+        destination exists, so the slices take the name the reconstruction is known by.
+
+        Raises:
+            AssertionError: If no reconstruction is loaded.
+        """
+        reconstruction_data = self._reconstruction_data
+        if not reconstruction_data:
+            raise AssertionError("Expected reconstruction data to be loaded before exporting instruments")
+
+        return self._sample_request(reconstruction_data, reconstruction_data.name)
+
+    def _sample_request(
+        self,
+        reconstruction_data: ReconstructionData,
+        name: str,
+    ) -> SampleExport:
+        """The slice of every playing channel of the reconstruction as one export named ``name``.
+
+        Each slice takes its channel suffix from the name, and a channel standing by describes no
+        frame and is left to rest.
+        """
+        return SampleExport(
+            name=name,
             instruments=tuple(
                 self._instrument_export(
                     channel_name,
                     feature,
-                    instrument_slice_name(base_name, channel_name),
+                    instrument_slice_name(name, channel_name),
                 )
                 for channel_name, feature in reconstruction_data.feature_data.channels.items()
                 if feature.has_frames
             ),
             nes_frequency=self._nes_frequency(),
             tuning=self._tuning(),
-        )
-        self._session_manager.set_instrument_path(destination.parent)
-        self._export_service.export_sample(
-            destination,
-            self._export_backends[export_format],
-            request,
         )
 
     def _instrument_export(

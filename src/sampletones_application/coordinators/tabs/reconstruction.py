@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, Optional, Sequence
+from typing import Callable, Dict, Mapping, Optional, Sequence
 
 import dearpygui.dearpygui as dpg
 
@@ -13,6 +13,7 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.export.instrument import (
     InstrumentExportCoordinator,
 )
+from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -132,6 +133,7 @@ class ReconstructionTabCoordinator:
         browser_manager: BrowserManager,
         export_service: ExportService,
         export_backends: Dict[ExportFormat, ExportBackend],
+        format_setups: Mapping[ExportFormat, ExportSetup],
         on_load_reconstruction_with_confirmation: Callable[[Optional[Path]], None],
         on_change_audio_state: VoidCallback,
         on_favorite_changed: Callable[[FileSystemNode], None],
@@ -159,6 +161,7 @@ class ReconstructionTabCoordinator:
         )
         self._session_manager = session_manager
         self._export_backends = export_backends
+        self._format_setups = format_setups
         self._instrument_exports = instrument_exports
         self._dialogs = dialogs
         self._original_audio_locator = original_audio_locator
@@ -761,6 +764,12 @@ class ReconstructionTabCoordinator:
         self,
         export_format: ExportFormat,
     ) -> None:
+        """Writes the loaded reconstruction's slices in ``export_format``, asking first for what the
+        format leaves open: its own setup where it has one, and the destination alone otherwise."""
+        if export_format in self._format_setups:
+            self._format_setups[export_format].open_sample(self._reconstruction_panel_logic.sample_request())
+            return
+
         self._reconstruction_panel_logic.request_export_instruments_dialog(export_format)
 
     def _on_preview_error(self, exception: Exception) -> None:

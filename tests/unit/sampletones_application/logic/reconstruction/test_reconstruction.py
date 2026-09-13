@@ -830,6 +830,47 @@ class TestReconstructionPanelLogicExportInstruments:
         assert backend is mock_export_backends[case.export_format]
 
 
+class TestReconstructionPanelLogicSampleRequest:
+    """A format setting its export up in a dialog of its own names the slices before a destination
+    exists, so the request carries the reconstruction's own name."""
+
+    def test_with_no_data_raises_assertion_error(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+    ) -> None:
+        with pytest.raises(AssertionError):
+            panel_logic.sample_request()
+
+    def test_the_request_is_named_after_the_reconstruction(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = loaded_data
+
+        request = panel_logic.sample_request()
+
+        assert request.name == loaded_data.name
+        assert [instrument.name for instrument in request.instruments] == [f"{loaded_data.name} (pulse1)"]
+
+    def test_the_request_holds_the_slices_a_confirmed_export_writes(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+        mock_export_service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = loaded_data
+        panel_logic.handle_export_instruments_confirmed(
+            tmp_path / f"{loaded_data.name}{EXT_FILE_INSTRUMENT}",
+            ExportFormat.FAMITRACKER,
+        )
+
+        assert panel_logic.sample_request() == mock_export_service.export_sample.call_args.args[2]
+
+
 class TestReconstructionPanelLogicExportWav:
     def test_request_export_wav_dialog_with_no_data_raises_assertion_error(
         self,
