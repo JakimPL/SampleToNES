@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import Final, Optional, Sequence, Tuple
+from typing import Dict, Final, Mapping, Optional, Sequence, Tuple
+
+from bootstrap.platforms.bundling import Bundling
 
 LINUX: Final[str] = "Linux"
-POSIX_LAUNCHER: Final[str] = "sampletones"
 POSIX_INTERPRETER: Final[Tuple[str, str]] = ("bin", "python")
 PNG_ICON: Final[str] = "src/sampletones_assets/icons/sampletones.png"
 SYSTEM_PACKAGES: Final[Tuple[str, ...]] = (
@@ -24,19 +25,23 @@ SYSTEM_PACKAGES: Final[Tuple[str, ...]] = (
     "libxrender1",
     "libxxf86vm1",
 )
+BUNDLING: Final[Bundling] = Bundling(
+    icon=PNG_ICON,
+    executable_suffix="",
+    pyaudio_advice=(
+        "Run 'make system-deps' to install the PortAudio packages, then 'make build' to reinstall the dependencies."
+    ),
+    tkinter_advice="Run 'make system-deps' to install python3-tk, then build again.",
+    tkinter_warning=(
+        "This bundle opens file dialogs through zenity or kdialog, which the machine running it has to "
+        "provide. Run 'make system-deps' to install python3-tk and carry Tk as a self-contained fallback."
+    ),
+)
 
 
 def posix_interpreter(environment: Path) -> Path:
     """The interpreter a POSIX virtual environment at ``environment`` runs."""
     return environment.joinpath(*POSIX_INTERPRETER)
-
-
-def posix_launcher(distribution: Path, *, release: bool) -> Path:
-    """The executable PyInstaller writes under ``distribution`` on a POSIX system."""
-    if release:
-        return distribution / POSIX_LAUNCHER / POSIX_LAUNCHER
-
-    return distribution / POSIX_LAUNCHER
 
 
 class Linux:
@@ -47,35 +52,14 @@ class Linux:
         return LINUX
 
     @property
-    def bundles(self) -> bool:
+    def cuda(self) -> bool:
         return True
-
-    @property
-    def icon(self) -> str:
-        return PNG_ICON
-
-    @property
-    def pyaudio_advice(self) -> str:
-        return (
-            "Run 'make system-deps' to install the PortAudio packages, then 'make build' to reinstall the dependencies."
-        )
-
-    @property
-    def tkinter_advice(self) -> str:
-        return "Run 'make system-deps' to install python3-tk, then build again."
-
-    @property
-    def tkinter_warning(self) -> str:
-        return (
-            "This bundle opens file dialogs through zenity or kdialog, which the machine running it has to "
-            "provide. Run 'make system-deps' to install python3-tk and carry Tk as a self-contained fallback."
-        )
 
     def interpreter(self, environment: Path) -> Path:
         return posix_interpreter(environment)
 
-    def launcher(self, distribution: Path, *, release: bool) -> Path:
-        return posix_launcher(distribution, release=release)
+    def bundling(self) -> Bundling:
+        return BUNDLING
 
     def missing_package_manager(self) -> Optional[str]:
         return None
@@ -86,6 +70,14 @@ class Linux:
             ("sudo", "apt-get", "install", "-y", *SYSTEM_PACKAGES),
         )
 
-    def build_environment(self, *, machine: str, portaudio_prefix: str) -> Sequence[str]:
-        del machine, portaudio_prefix
+    def setup_variables(self, base: Mapping[str, str], *, machine: str) -> Dict[str, str]:
+        del machine
+        return dict(base)
+
+    def build_flags(self, *, machine: str) -> Sequence[str]:
+        del machine
+        return ()
+
+    def nvidia_smi_locations(self, environment: Mapping[str, str]) -> Sequence[Path]:
+        del environment
         return ()

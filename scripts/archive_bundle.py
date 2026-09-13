@@ -4,7 +4,24 @@ import zipfile
 from pathlib import Path
 from typing import Final, List, Sequence
 
+from bootstrap.layout import BUNDLES, DISTRIBUTION, repository_root
+from bootstrap.project import Project, read_project
+
 ARCHIVE_COMPRESSION: Final[int] = zipfile.ZIP_DEFLATED
+ARCHIVE_SUFFIX: Final[str] = ".zip"
+
+
+def archive_root(project: Project, label: str) -> str:
+    """The directory every archived entry sits under, which names the archive too.
+
+    Args:
+        project: The project, whose name and version lead the name.
+        label: The platform the bundle was built for, such as ``windows-x86_64``.
+
+    Returns:
+        str: The name, such as ``sampletones-v0.3.0-windows-x86_64``.
+    """
+    return f"{project.name}-v{project.version}-{label}"
 
 
 def bundle_entries(source: Path) -> List[Path]:
@@ -18,7 +35,7 @@ def archive_name(path: Path, *, source: Path, root: str) -> str:
 
 
 def write_archive(source: Path, archive: Path, *, root: str) -> List[Path]:
-    """Archive a built bundle directory, placing every entry under ``root``.
+    """Archives a built bundle directory, placing every entry under ``root``.
 
     Each entry is read where it lies, which keeps the archive available while a virus scanner or a
     process that ran the executable holds a handle inside the directory, and carries over the
@@ -34,20 +51,21 @@ def write_archive(source: Path, archive: Path, *, root: str) -> List[Path]:
 
 
 def main(argv: Sequence[str]) -> int:
-    """Archive a built bundle directory under a versioned root directory."""
-    parser = argparse.ArgumentParser(description="Archive a built bundle directory under a versioned root.")
-    parser.add_argument("source", type=Path, help="the built bundle directory, such as bin/sampletones")
-    parser.add_argument("archive", type=Path, help="the path of the zip file to write")
-    parser.add_argument("--root", required=True, help="the directory name every archived entry sits under")
+    """Archives the release bundle into the bundles directory, named by the version and the platform."""
+    parser = argparse.ArgumentParser(description="Archive the release bundle under a versioned root.")
+    parser.add_argument("--label", required=True, help="the platform the bundle was built for, such as windows-x86_64")
     arguments = parser.parse_args(list(argv))
 
-    source: Path = arguments.source
-    archive: Path = arguments.archive
+    root = repository_root()
+    project = read_project(root)
+    source = root / DISTRIBUTION / project.name
     if not source.is_dir():
         print(f"::error::Bundle directory {source} is missing")
         return 1
 
-    entries = write_archive(source, archive, root=arguments.root)
+    name = archive_root(project, arguments.label)
+    archive = root / BUNDLES / f"{name}{ARCHIVE_SUFFIX}"
+    entries = write_archive(source, archive, root=name)
     print(f"Archived {len(entries)} entries from {source} into {archive}")
     return 0
 

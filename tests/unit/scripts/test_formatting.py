@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from tests.suite.bootstrap import RecordingRunner
@@ -6,34 +8,29 @@ from tests.suite.scripts import load_script
 formatting = load_script("formatting.py")
 
 
-class TestMain:
-    def test_isort_runs_before_black_over_the_three_trees(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        runner = RecordingRunner({}, None)
-        monkeypatch.setattr(formatting, "run", runner)
+class TestFormattedPaths:
+    def test_the_three_trees_are_formatted_by_default(self) -> None:
+        assert formatting.formatted_paths(()) == formatting.FORMATTED_TREES
 
-        assert formatting.main([]) == 0
+    def test_named_paths_replace_the_trees(self) -> None:
+        assert formatting.formatted_paths(("scripts/lint.py",)) == ("scripts/lint.py",)
+
+
+class TestFormatCode:
+    def test_isort_runs_before_black(self, tmp_path: Path) -> None:
+        runner = RecordingRunner({}, None)
+
+        formatting.format_code(tmp_path, formatting.FORMATTED_TREES, runner=runner, environment={})
+
         assert runner.lines == [
-            "uv run python -m isort src tests scripts",
-            "uv run python -m black src tests scripts",
+            " ".join((*formatting.ISORT, *formatting.FORMATTED_TREES)),
+            " ".join((*formatting.BLACK, *formatting.FORMATTED_TREES)),
         ]
-        assert "Code formatting complete." in capsys.readouterr().out
 
-    def test_named_paths_replace_the_trees(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        runner = RecordingRunner({}, None)
-        monkeypatch.setattr(formatting, "run", runner)
-
-        assert formatting.main(["scripts/lint.py"]) == 0
-        assert all(line.endswith(" scripts/lint.py") for line in runner.lines)
-
-    def test_a_failing_formatter_stops_the_run(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_a_failing_formatter_stops_the_run(self, tmp_path: Path) -> None:
         runner = RecordingRunner({"isort": 1}, None)
-        monkeypatch.setattr(formatting, "run", runner)
 
         with pytest.raises(SystemExit, match="isort"):
-            formatting.main([])
+            formatting.format_code(tmp_path, formatting.FORMATTED_TREES, runner=runner, environment={})
 
         assert len(runner.lines) == 1

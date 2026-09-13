@@ -4,8 +4,8 @@ import sys
 from pathlib import Path
 from typing import Final, Mapping, Sequence, Tuple
 
+from bootstrap.layout import repository_root
 from bootstrap.processes import Runner, expect_success, run
-from bootstrap.repository import repository_root
 
 FORMATTED_TREES: Final[Tuple[str, ...]] = ("src", "tests", "scripts")
 ISORT: Final[Tuple[str, ...]] = ("uv", "run", "python", "-m", "isort")
@@ -36,6 +36,11 @@ def format_code(
     expect_success(runner, (*BLACK, *paths), cwd=root, environment=environment)
 
 
+def formatted_paths(named: Sequence[str]) -> Tuple[str, ...]:
+    """The paths a run formats: the ones named, or the source, test and script trees."""
+    return tuple(named) or FORMATTED_TREES
+
+
 def main(argv: Sequence[str]) -> int:
     """Formats the source, test and script trees, or the paths named."""
     parser = argparse.ArgumentParser(description="Format the SampleToNES code with isort and black.")
@@ -44,7 +49,7 @@ def main(argv: Sequence[str]) -> int:
 
     format_code(
         repository_root(),
-        tuple(arguments.paths) or FORMATTED_TREES,
+        formatted_paths(tuple(arguments.paths)),
         runner=run,
         environment=os.environ,
     )

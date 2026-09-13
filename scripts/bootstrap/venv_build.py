@@ -2,14 +2,14 @@ import sys
 from pathlib import Path
 from typing import Dict, Final, Mapping, Sequence
 
+from bootstrap.layout import BUILD_ENVIRONMENT
 from bootstrap.platforms.protocol import Platform
 from bootstrap.processes import Runner, expect_success
 
-BUILD_ENVIRONMENT: Final[str] = ".venv-build"
 PIP_REQUIRE_VIRTUALENV: Final[str] = "PIP_REQUIRE_VIRTUALENV"
 
 
-def build_environment(
+def ensure_build_venv(
     root: Path,
     platform: Platform,
     *,

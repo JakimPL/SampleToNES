@@ -111,8 +111,10 @@ developer command does there:
 - **No default derived from the repository.** An emitter takes a required `--output`; a measurement
   defaults to the user's Documents. Nothing a developer command writes lands beside an installed
   package.
-- **Package data is read from the package**, through `importlib.resources`, never through a path
-  under the repository, so it ships in the wheel and the bundle.
+- **Package data is read from the package.** `package_directory` in
+  `sampletones_shared/paths/package.py` places a package from the import system's own record, so
+  the same path holds in a checkout, in the wheel and in the bundle, where PyInstaller unpacks each
+  package's data beside its modules.
 - **A tool reads the files it is given.** What a tool measures or converts arrives on its command
   line or in a file a run wrote; the code names no file on one machine, so every run starts from
   what the person running it has.
@@ -123,7 +125,8 @@ imports pillow, NumPy and the like inside `run`, and a test imports the registry
 asserts that only the command, registry and package modules of the tools load and no heavy library
 does, since a startup failure in any tool module would break every invocation, the GUI included. A
 command reports a refused value in one line: `describe_failure` in
-`sampletones_shared/utils/validation.py` renders a validation error the way a person reads it. The editable install puts `src/` on the path whole, so a checkout
+`sampletones_shared/utils/validation.py` renders a validation error the way a person reads it. The
+editable install puts `src/` on the path whole, so a checkout
 sees the tools package whatever the wheel lists; hatchling's `dev-mode-exact` stays off for that
 reason.
 
@@ -131,7 +134,7 @@ reason.
 
 | Script | Target | What it does |
 |---|---|---|
-| `bundle.py` | `make build`, `make release` | Creates `.venv-build`, installs the package with the `build` extra, checks the interpreter carries PortAudio (and Tk, for a release), writes the bundle with PyInstaller, runs its self-check, and copies the notices beside a release |
+| `bundle.py` | `make build`, `make release` | Creates `.venv-build`, installs the package with the `build` extra, checks the interpreter carries PortAudio (and Tk, for a release), writes the bundle with PyInstaller, runs its self-check, and copies the notices beside a release. Every package the wheel carries brings its data files at its own package path, so the frozen application finds them where an installed one does |
 | `setup_environment.py` | `make setup` | Reads the NVIDIA driver, synchronizes the development environment with the matching GPU extra, installs the global `sampletones` command |
 | `system_dependencies.py` | `make system-deps` | Installs the system packages: apt on Debian-based Linux, Homebrew on macOS, nothing on Windows |
 | `build_environment.py` | CI | Prints the compiler flags a macOS build exports, one `KEY=VALUE` per line |
@@ -140,15 +143,30 @@ reason.
 | `lint.py` | `make lint` | Runs mypy over the files `pyproject.toml` configures and pylint over `src/` and `scripts/`; `--mypy` or `--pylint` picks one, and named paths narrow both |
 | `formatting.py` | `make format` | Runs isort, then black, over `src/`, `tests/` and `scripts/`, or over the paths named |
 | `hooks.py` | `make pre-commit` | Installs the git hooks pre-commit runs at commit and at push |
-| `detect_cuda.py` | via `setup_environment.py` | Maps the driver's CUDA version to the CuPy extra |
 | `runtime_hooks/release_environment.py` | build input | The PyInstaller runtime hook that gives a release bundle its deployment defaults |
-| `ci/` | the release workflow | The gates a release passes: the tag matches the version, the bundle ships its notices and starts |
+| `verify_version_tag.py` | the release workflow | Holds the release tag to the version `pyproject.toml` records |
+| `verify_bundle.py` | the release workflow | Holds the release bundle to its notices, keeps the build tools out of it, and starts its launcher |
+| `archive_bundle.py` | the release workflow | Zips the release bundle into `bundles/`, named by the version and the `--label` of the platform |
 
-`scripts/bootstrap/` holds what they share: the repository root (`repository.py`), the
-interpreter version check (`interpreter.py`), running a command and holding it to success
-(`processes.py`), a run of named passes that reports every failure at once (`passes.py`), the
-build environment and the installs into it (`venv_build.py`), the preflight of the build
-interpreter (`preflight.py`), and the platforms (`platforms/`).
+`scripts/bootstrap/` holds what they share, one fact in one place:
+
+- `layout.py`: the repository root and every path and list a script names: `bin`, `bundles`,
+  `.venv-build`, the runtime hook, the notices, the build tools a bundle leaves out, and what
+  `make clean` removes.
+- `project.py`: what `pyproject.toml` states, read with `tomllib`: the name, the version, the
+  entry module, the wheel's packages, and the extras and groups the scripts install, which it
+  holds the file to.
+- `platforms/`: what differs between systems, behind `Platform`, with `Bundling` holding what a
+  bundle takes on a system that builds one.
+- `cuda.py`: the NVIDIA driver's CUDA version and the CuPy extra it selects.
+- `interpreter.py`, `processes.py`, `passes.py`, `files.py`: the interpreter version check,
+  running a command and holding it to success, a run of named passes that reports every failure
+  at once, and removing a file or a tree.
+- `venv_build.py`, `preflight.py`: the build environment and the installs into it, and the
+  preflight of the build interpreter.
+
+Every script's work is a function taking the runner and the variables; `main` parses the arguments
+and passes in the real ones, and the tests pass a `RecordingRunner`.
 
 ## Who governs what
 
@@ -162,10 +180,12 @@ interpreter (`preflight.py`), and the platforms (`platforms/`).
 | What a command is | `src/sampletones_shared/command.py` |
 | What a bootstrap script may import | `sampletones_config/boundaries/standalone.yaml` |
 | What differs between systems | `scripts/bootstrap/platforms/` |
+| Where a script finds a path, a notice or a clean target | `scripts/bootstrap/layout.py` |
+| What the scripts read from `pyproject.toml` | `scripts/bootstrap/project.py` |
 | Where a build installs | `scripts/bootstrap/venv_build.py` |
 | What a bundle has to carry before it is built | `scripts/bootstrap/preflight.py` |
 | The PyInstaller invocation | `scripts/bundle.py` |
 | The test passes and the command each runs | `scripts/run_tests.py` |
 | What `make lint` and `make format` sweep | `scripts/lint.py`, `scripts/formatting.py` |
-| The GPU extra a machine gets | `scripts/detect_cuda.py` |
-| What a release bundle is held to | `scripts/ci/checks/bundle.py` |
+| The GPU extra a machine gets | `scripts/bootstrap/cuda.py` |
+| What a release is held to | `scripts/verify_version_tag.py`, `scripts/verify_bundle.py` |

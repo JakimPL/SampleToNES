@@ -71,7 +71,7 @@ Pillow is a developer tool the build environment never installs, and the bundle 
 `pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is
 installed, and PyInstaller follows that import into the bundle. The application reads its icons as
 files, so the exclusion spares every bundle Pillow's extension modules and the imaging libraries
-that come with them. `scripts/ci/checks/bundle.py` holds the release bundles to it.
+that come with them. `scripts/verify_bundle.py` holds the release bundles to it.
 
 ## NES player driver
 

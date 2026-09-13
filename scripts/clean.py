@@ -1,49 +1,42 @@
 import argparse
-import os
-import shutil
 import sys
 from pathlib import Path
-from typing import Final, Sequence, Tuple
+from typing import Sequence
 
-from bootstrap.repository import repository_root
-
-ARTIFACTS: Final[Tuple[str, ...]] = ("bin", "build", "dist", "htmlcov", ".coverage")
-ARTIFACT_PATTERNS: Final[Tuple[str, ...]] = ("*.spec",)
-CACHE_DIRECTORIES: Final[Tuple[str, ...]] = ("__pycache__",)
-CACHE_DIRECTORY_SUFFIXES: Final[Tuple[str, ...]] = (".egg-info",)
-CACHE_FILE_SUFFIXES: Final[Tuple[str, ...]] = (".pyc",)
-LEFT_ALONE: Final[Tuple[str, ...]] = (".git", ".venv", ".venv-build")
-
-
-def _remove(path: Path) -> None:
-    if path.is_dir():
-        shutil.rmtree(path)
-    elif path.exists():
-        path.unlink()
+from bootstrap.files import remove_path
+from bootstrap.layout import (
+    CACHE_DIRECTORIES,
+    CACHE_DIRECTORY_SUFFIXES,
+    CACHE_FILE_SUFFIXES,
+    CLEAN_ARTIFACTS,
+    CLEAN_PATTERNS,
+    ENVIRONMENTS,
+    repository_root,
+)
 
 
 def remove_artifacts(root: Path) -> None:
     """Removes the build outputs and the coverage reports under ``root``."""
-    for name in ARTIFACTS:
-        _remove(root / name)
+    for name in CLEAN_ARTIFACTS:
+        remove_path(root / name)
 
-    for pattern in ARTIFACT_PATTERNS:
+    for pattern in CLEAN_PATTERNS:
         for path in root.glob(pattern):
-            _remove(path)
+            remove_path(path)
 
 
 def remove_caches(root: Path) -> None:
     """Removes the bytecode caches and packaging leftovers under ``root``, the environments left alone."""
-    for directory, subdirectories, files in os.walk(root):
-        subdirectories[:] = [name for name in subdirectories if name not in LEFT_ALONE]
+    for directory, subdirectories, files in root.walk():
+        subdirectories[:] = [name for name in subdirectories if name not in ENVIRONMENTS]
         for name in list(subdirectories):
             if name in CACHE_DIRECTORIES or name.endswith(CACHE_DIRECTORY_SUFFIXES):
-                shutil.rmtree(Path(directory) / name)
+                remove_path(directory / name)
                 subdirectories.remove(name)
 
         for name in files:
             if name.endswith(CACHE_FILE_SUFFIXES):
-                (Path(directory) / name).unlink()
+                remove_path(directory / name)
 
 
 def main(argv: Sequence[str]) -> int:

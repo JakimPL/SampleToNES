@@ -1,16 +1,17 @@
 import sys
 from pathlib import Path
 
+from bootstrap.layout import BUILD_ENVIRONMENT
 from bootstrap.platforms.linux import Linux
-from bootstrap.venv_build import BUILD_ENVIRONMENT, build_environment, install
+from bootstrap.venv_build import ensure_build_venv, install
 from tests.suite.bootstrap import RecordingRunner
 
 
-class TestBuildEnvironment:
+class TestEnsureBuildVenv:
     def test_a_missing_environment_is_created_by_the_running_interpreter(self, tmp_path: Path) -> None:
         runner = RecordingRunner({}, None)
 
-        python = build_environment(tmp_path, Linux(), runner=runner, environment={})
+        python = ensure_build_venv(tmp_path, Linux(), runner=runner, environment={})
 
         assert python == Linux().interpreter(tmp_path / BUILD_ENVIRONMENT)
         assert runner.lines == [f"{sys.executable} -m venv --clear {tmp_path / BUILD_ENVIRONMENT}"]
@@ -21,14 +22,14 @@ class TestBuildEnvironment:
         python.write_text("")
         runner = RecordingRunner({}, None)
 
-        assert build_environment(tmp_path, Linux(), runner=runner, environment={}) == python
+        assert ensure_build_venv(tmp_path, Linux(), runner=runner, environment={}) == python
         assert runner.lines == []
 
     def test_a_directory_an_interrupted_creation_left_is_created_again(self, tmp_path: Path) -> None:
         (tmp_path / BUILD_ENVIRONMENT).mkdir()
         runner = RecordingRunner({}, None)
 
-        build_environment(tmp_path, Linux(), runner=runner, environment={})
+        ensure_build_venv(tmp_path, Linux(), runner=runner, environment={})
 
         assert runner.lines == [f"{sys.executable} -m venv --clear {tmp_path / BUILD_ENVIRONMENT}"]
 

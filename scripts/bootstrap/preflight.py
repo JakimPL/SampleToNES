@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Final, Mapping
 
-from bootstrap.platforms.protocol import Platform
+from bootstrap.platforms.bundling import Bundling
 from bootstrap.processes import Runner
 
 PYAUDIO: Final[str] = "pyaudio"
@@ -39,7 +39,7 @@ def can_import(
 
 def check_build_interpreter(
     python: Path,
-    platform: Platform,
+    bundling: Bundling,
     *,
     release: bool,
     runner: Runner,
@@ -54,7 +54,7 @@ def check_build_interpreter(
 
     Args:
         python: The build environment's interpreter.
-        platform: The system the build runs on.
+        bundling: What building a bundle takes on the system, whose advice a refusal gives.
         release: Whether the bundle is a release.
         runner: What runs the probes.
         cwd: The directory the probes run in.
@@ -67,7 +67,7 @@ def check_build_interpreter(
     if not can_import(python, PYAUDIO, runner=runner, cwd=cwd, environment=environment):
         raise SystemExit(
             "ERROR: the build interpreter cannot import pyaudio, so the bundle would carry no audio playback.\n"
-            f"{platform.pyaudio_advice}"
+            f"{bundling.pyaudio_advice}"
         )
 
     print(f"{PYAUDIO}: available")
@@ -78,7 +78,7 @@ def check_build_interpreter(
     if release:
         raise SystemExit(
             "ERROR: the build interpreter cannot import tkinter, so a release bundle would depend on the "
-            f"machine running it for file dialogs.\n{platform.tkinter_advice}"
+            f"machine running it for file dialogs.\n{bundling.tkinter_advice}"
         )
 
-    print(f"WARNING: the build interpreter cannot import tkinter. {platform.tkinter_warning}")
+    print(f"WARNING: the build interpreter cannot import tkinter. {bundling.tkinter_warning}")

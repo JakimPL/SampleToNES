@@ -30,7 +30,7 @@ class TestCheckBuildInterpreter:
         with pytest.raises(SystemExit, match="make system-deps"):
             check_build_interpreter(
                 python,
-                Linux(),
+                Linux().bundling(),
                 release=False,
                 runner=RecordingRunner({"import pyaudio": 1}, None),
                 cwd=tmp_path,
@@ -41,7 +41,7 @@ class TestCheckBuildInterpreter:
         with pytest.raises(SystemExit, match="tkinter"):
             check_build_interpreter(
                 python,
-                Linux(),
+                Linux().bundling(),
                 release=True,
                 runner=RecordingRunner({"import tkinter": 1}, None),
                 cwd=tmp_path,
@@ -56,7 +56,7 @@ class TestCheckBuildInterpreter:
     ) -> None:
         check_build_interpreter(
             python,
-            Linux(),
+            Linux().bundling(),
             release=False,
             runner=RecordingRunner({"import tkinter": 1}, None),
             cwd=tmp_path,
@@ -73,7 +73,7 @@ class TestCheckBuildInterpreter:
     ) -> None:
         check_build_interpreter(
             python,
-            Linux(),
+            Linux().bundling(),
             release=True,
             runner=RecordingRunner({}, None),
             cwd=tmp_path,

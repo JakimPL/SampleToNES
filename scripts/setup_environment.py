@@ -2,33 +2,38 @@ import argparse
 import os
 import platform as running
 import sys
-from typing import Dict, Final, List, Mapping, Optional, Sequence, Tuple
+from pathlib import Path
+from typing import Final, List, Mapping, Optional, Sequence, Tuple
 
-import detect_cuda
-
-from bootstrap.processes import expect_success, run
-from bootstrap.repository import repository_root
+from bootstrap.cuda import detect
+from bootstrap.layout import repository_root
+from bootstrap.platforms.factory import current_platform
+from bootstrap.platforms.protocol import Platform
+from bootstrap.processes import Runner, expect_success, run
+from bootstrap.project import DEVELOPMENT_GROUP, GPU_CUDA11_EXTRA, GPU_EXTRA, read_project
 
 GPU_AUTO: Final[str] = "auto"
 GPU_OFF: Final[str] = "0"
 GPU_CHOICES: Final[Tuple[str, ...]] = (
     GPU_AUTO,
     GPU_OFF,
-    detect_cuda.EXTRA_GPU,
-    detect_cuda.EXTRA_GPU_CUDA11,
+    GPU_EXTRA,
+    GPU_CUDA11_EXTRA,
 )
 DEFAULT_GPU: Final[str] = GPU_AUTO
-DEVELOPMENT_GROUP: Final[str] = "dev"
-DARWIN: Final[str] = "Darwin"
-ARCHFLAGS: Final[str] = "ARCHFLAGS"
 
 
-def gpu_extra(choice: str, *, system: str) -> Optional[str]:
+def gpu_extra(
+    choice: str,
+    platform: Platform,
+    environment: Mapping[str, str],
+) -> Optional[str]:
     """The optional-dependency extra a GPU choice selects.
 
     Args:
         choice: ``auto`` to read the NVIDIA driver, ``0`` for the CPU backend, or an extra's name.
-        system: The name ``platform.system()`` reports.
+        platform: The system the setup runs on.
+        environment: The variables the driver's locations are read from.
 
     Returns:
         Optional[str]: The extra, or ``None`` for the CPU backend.
@@ -37,7 +42,7 @@ def gpu_extra(choice: str, *, system: str) -> Optional[str]:
         return None
 
     if choice == GPU_AUTO:
-        detection = detect_cuda.detect(system=system)
+        detection = detect(platform, environment)
         print(detection.reason, file=sys.stderr)
         return detection.extra
 
@@ -65,22 +70,31 @@ def setup_commands(extra: Optional[str]) -> List[List[str]]:
     ]
 
 
-def setup_environment_variables(
-    base: Mapping[str, str],
+def set_up_environment(
+    root: Path,
+    platform: Platform,
+    extra: Optional[str],
     *,
-    system: str,
     machine: str,
-) -> Dict[str, str]:
-    """The variables the setup commands see: the caller's, pinned to the native architecture on macOS.
+    runner: Runner,
+    environment: Mapping[str, str],
+) -> None:
+    """Synchronizes the development environment and installs the global ``sampletones`` command.
 
-    Homebrew's PortAudio carries the machine's own architecture while a python.org interpreter
-    compiles for both, so the flag settles audio playback on the native one.
+    Args:
+        root: The repository.
+        platform: The system the setup runs on, which adds the variables the build needs.
+        extra: The GPU extra installed with the package, or ``None`` for the CPU backend.
+        machine: The processor architecture ``platform.machine()`` reports.
+        runner: What runs the commands.
+        environment: The caller's variables.
+
+    Raises:
+        SystemExit: If a command fails.
     """
-    variables = dict(base)
-    if system == DARWIN:
-        variables[ARCHFLAGS] = f"-arch {machine}"
-
-    return variables
+    variables = platform.setup_variables(environment, machine=machine)
+    for command in setup_commands(extra):
+        expect_success(runner, command, cwd=root, environment=variables)
 
 
 def main(argv: Sequence[str]) -> int:
@@ -95,11 +109,16 @@ def main(argv: Sequence[str]) -> int:
     arguments = parser.parse_args(list(argv))
 
     root = repository_root()
-    system = running.system()
-    environment = setup_environment_variables(os.environ, system=system, machine=running.machine())
-    for command in setup_commands(gpu_extra(arguments.gpu, system=system)):
-        expect_success(run, command, cwd=root, environment=environment)
-
+    read_project(root)
+    platform = current_platform()
+    set_up_environment(
+        root,
+        platform,
+        gpu_extra(arguments.gpu, platform, os.environ),
+        machine=running.machine(),
+        runner=run,
+        environment=os.environ,
+    )
     return 0
 
 

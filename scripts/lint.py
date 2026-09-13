@@ -1,11 +1,12 @@
 import argparse
 import os
 import sys
-from typing import Final, Sequence, Set, Tuple
+from pathlib import Path
+from typing import Final, Mapping, Sequence, Set, Tuple
 
+from bootstrap.layout import repository_root
 from bootstrap.passes import Pass, run_passes
-from bootstrap.processes import run
-from bootstrap.repository import repository_root
+from bootstrap.processes import Runner, run
 
 MYPY: Final[str] = "mypy"
 PYLINT: Final[str] = "pylint"
@@ -32,6 +33,39 @@ def linters(paths: Sequence[str]) -> Tuple[Pass, ...]:
     )
 
 
+def lint_code(
+    root: Path,
+    passes: Sequence[Pass],
+    *,
+    runner: Runner,
+    environment: Mapping[str, str],
+) -> int:
+    """Runs every linter asked for and names the ones that failed.
+
+    Args:
+        root: The repository, which the linters run in.
+        passes: The linters, in order.
+        runner: What runs them.
+        environment: The variables they see.
+
+    Returns:
+        int: 0 where every linter passed, 1 otherwise.
+    """
+    failed = run_passes(passes, root=root, runner=runner, environment=environment)
+    if failed:
+        print(f"Linting failed: {', '.join(failed)}.")
+        return 1
+
+    print("All linting checks passed.")
+    return 0
+
+
+def chosen_linters(paths: Sequence[str], *, mypy: bool, pylint: bool) -> Tuple[Pass, ...]:
+    """The linters a run asks for: the ones flagged, or both where none is."""
+    chosen: Set[str] = {name for name, wanted in ((MYPY, mypy), (PYLINT, pylint)) if wanted}
+    return tuple(linter for linter in linters(paths) if not chosen or linter.name in chosen)
+
+
 def main(argv: Sequence[str]) -> int:
     """Type checks and lints the code, and reports which linter failed."""
     parser = argparse.ArgumentParser(description="Type check and lint the SampleToNES code.")
@@ -40,15 +74,12 @@ def main(argv: Sequence[str]) -> int:
     parser.add_argument("paths", nargs="*", help="files or directories to lint in place of the whole trees")
     arguments = parser.parse_args(list(argv))
 
-    chosen: Set[str] = {name for name, wanted in ((MYPY, arguments.mypy), (PYLINT, arguments.pylint)) if wanted}
-    passes = tuple(linter for linter in linters(tuple(arguments.paths)) if not chosen or linter.name in chosen)
-    failed = run_passes(passes, root=repository_root(), runner=run, environment=os.environ)
-    if failed:
-        print(f"Linting failed: {', '.join(failed)}.")
-        return 1
-
-    print("All linting checks passed.")
-    return 0
+    return lint_code(
+        repository_root(),
+        chosen_linters(tuple(arguments.paths), mypy=arguments.mypy, pylint=arguments.pylint),
+        runner=run,
+        environment=os.environ,
+    )
 
 
 if __name__ == "__main__":

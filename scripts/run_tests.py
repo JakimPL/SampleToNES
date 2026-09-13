@@ -1,11 +1,12 @@
 import argparse
 import os
 import sys
-from typing import Dict, Final, Sequence, Tuple
+from pathlib import Path
+from typing import Dict, Final, Mapping, Sequence, Tuple
 
+from bootstrap.layout import repository_root
 from bootstrap.passes import Pass
-from bootstrap.processes import run
-from bootstrap.repository import repository_root
+from bootstrap.processes import Runner, run
 
 SUITE: Final[str] = "suite"
 DOCTESTS: Final[str] = "doctests"
@@ -48,6 +49,28 @@ def planned_passes(workers: str) -> Dict[str, Pass]:
     return {current.name: current for current in passes}
 
 
+def run_pass(
+    chosen: Pass,
+    root: Path,
+    *,
+    runner: Runner,
+    environment: Mapping[str, str],
+) -> int:
+    """Announces one pass and runs it from the repository root.
+
+    Args:
+        chosen: The pass.
+        root: The repository.
+        runner: What runs the pass.
+        environment: The variables pytest sees.
+
+    Returns:
+        int: The status pytest exited with.
+    """
+    print(chosen.announcement)
+    return runner(chosen.command, cwd=root, environment=environment, quiet=False)
+
+
 def main(argv: Sequence[str]) -> int:
     """Runs one pass of the tests and exits with the status pytest gave it."""
     parser = argparse.ArgumentParser(description="Run one pass of the SampleToNES tests.")
@@ -59,13 +82,11 @@ def main(argv: Sequence[str]) -> int:
     )
     arguments = parser.parse_args(list(argv))
 
-    chosen = planned_passes(arguments.workers)[arguments.name]
-    print(chosen.announcement)
-    return run(
-        chosen.command,
-        cwd=repository_root(),
+    return run_pass(
+        planned_passes(arguments.workers)[arguments.name],
+        repository_root(),
+        runner=run,
         environment=os.environ,
-        quiet=False,
     )
 
 

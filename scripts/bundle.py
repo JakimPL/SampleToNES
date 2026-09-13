@@ -6,40 +6,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, List, Mapping, Sequence, Tuple
 
+from bootstrap.files import remove_path
 from bootstrap.interpreter import REQUIRED_VERSION, require_python
+from bootstrap.layout import BUILD_TOOLS, DISTRIBUTION, NOTICES, RELEASE_HOOK, repository_root
+from bootstrap.platforms.bundling import Bundling
 from bootstrap.platforms.factory import current_platform
 from bootstrap.platforms.protocol import Platform
 from bootstrap.preflight import check_build_interpreter
 from bootstrap.processes import Runner, expect_success, run
-from bootstrap.repository import repository_root
-from bootstrap.venv_build import build_environment, install
+from bootstrap.project import BUILD_EXTRA, GPU_EXTRA, Project, read_project
+from bootstrap.venv_build import ensure_build_venv, install
 
-BUNDLE_NAME: Final[str] = "sampletones"
-DISTRIBUTION: Final[str] = "bin"
-ENTRY: Final[str] = "src/sampletones/__main__.py"
-RELEASE_HOOK: Final[str] = "scripts/runtime_hooks/release_environment.py"
 SELF_CHECK: Final[str] = "self-check"
-BUILD_EXTRA: Final[str] = "build"
-GPU_EXTRA: Final[str] = "gpu"
-DATA: Final[Tuple[Tuple[str, str], ...]] = (
-    ("src/sampletones_assets/icons", "assets/icons"),
-    ("src/sampletones_assets/fonts", "assets/fonts"),
-    ("src/sampletones_config", "config"),
-    ("src/sampletones_player/driver/binary", "sampletones_player/driver/binary"),
-)
-DATA_SEPARATOR: Final[str] = ":"
-EXCLUDED_MODULES: Final[Tuple[str, ...]] = ("PIL",)
-NOTICES: Final[Tuple[str, ...]] = ("LICENSE", "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES.txt")
-NO_BUNDLE: Final[str] = (
-    "ERROR: a standalone bundle is built on Linux and Windows.\n"
-    "On macOS, SampleToNES runs from source:\n"
-    "\n"
-    "    make system-deps\n"
-    "    make setup\n"
-    "    make run\n"
-    "\n"
-    "See docs/guide/installation.md for the full steps."
-)
 
 
 @dataclass(frozen=True)
@@ -66,14 +44,19 @@ def extras(options: BundleOptions) -> Tuple[str, ...]:
 
 def pyinstaller_command(
     python: Path,
-    platform: Platform,
+    bundling: Bundling,
+    project: Project,
     options: BundleOptions,
 ) -> List[str]:
     """The PyInstaller invocation that writes the bundle.
 
+    Every package the wheel carries brings its data files along at its own package path, so the
+    frozen application reads them through ``importlib.resources`` the way an installed one does.
+
     Args:
         python: The build environment's interpreter.
-        platform: The system the bundle is built for.
+        bundling: What building a bundle takes on the system.
+        project: The project the bundle is built from.
         options: How the bundle is built.
 
     Returns:
@@ -84,37 +67,36 @@ def pyinstaller_command(
         "-m",
         "PyInstaller",
         "--name",
-        BUNDLE_NAME,
+        project.name,
         "--onedir" if options.release else "--onefile",
         "--noconfirm",
         "--distpath",
         DISTRIBUTION,
         "--icon",
-        platform.icon,
+        bundling.icon,
     ]
-    for source, destination in DATA:
-        command.extend(("--add-data", f"{source}{DATA_SEPARATOR}{destination}"))
+    for package in project.packages:
+        command.extend(("--collect-data", package))
 
-    command.extend(("--copy-metadata", BUNDLE_NAME))
-    for module in EXCLUDED_MODULES:
+    command.extend(("--copy-metadata", project.name))
+    for module in BUILD_TOOLS:
         command.extend(("--exclude-module", module))
 
     if options.release:
         command.extend(("--runtime-hook", RELEASE_HOOK))
 
-    command.append(ENTRY)
+    command.append(project.entry_script)
     return command
 
 
-def remove_previous(distribution: Path) -> None:
-    """Removes what an earlier build left under ``distribution``, whichever shape it took."""
-    for previous in (distribution / BUNDLE_NAME, distribution / f"{BUNDLE_NAME}.exe"):
-        if previous.is_dir():
-            print(f"Removing the previous artifact: {previous}")
-            shutil.rmtree(previous)
-        elif previous.exists():
-            print(f"Removing the previous artifact: {previous}")
-            previous.unlink()
+def remove_previous(distribution: Path, bundling: Bundling, name: str) -> None:
+    """Removes what an earlier build left under ``distribution``, a release's directory or a single file."""
+    for previous in (
+        bundling.launcher(distribution, name=name, release=True).parent,
+        bundling.launcher(distribution, name=name, release=False),
+    ):
+        if remove_path(previous):
+            print(f"Removed the previous artifact: {previous}")
 
 
 def copy_notices(root: Path, bundle: Path) -> None:
@@ -146,12 +128,14 @@ def build_bundle(
         Path: The launcher the bundle offers.
 
     Raises:
-        SystemExit: If a step fails, or PyInstaller produced no launcher.
+        SystemExit: If the system builds no bundle, a step fails, or PyInstaller produced no launcher.
     """
+    bundling = platform.bundling()
+    project = read_project(root)
     if options.release:
         print("Release build: onedir bundle, injecting release deployment configuration")
 
-    python = build_environment(
+    python = ensure_build_venv(
         root,
         platform,
         runner=runner,
@@ -166,22 +150,22 @@ def build_bundle(
     )
     check_build_interpreter(
         python,
-        platform,
+        bundling,
         release=options.release,
         runner=runner,
         cwd=root,
         environment=environment,
     )
     distribution = root / DISTRIBUTION
-    remove_previous(distribution)
+    remove_previous(distribution, bundling, project.name)
     print("Building executable...")
     expect_success(
         runner,
-        pyinstaller_command(python, platform, options),
+        pyinstaller_command(python, bundling, project, options),
         cwd=root,
         environment=environment,
     )
-    launcher = platform.launcher(distribution, release=options.release)
+    launcher = bundling.launcher(distribution, name=project.name, release=options.release)
     if not launcher.is_file():
         raise SystemExit(f"Build failed: PyInstaller produced no executable at {launcher}.")
 
@@ -214,14 +198,9 @@ def main(argv: Sequence[str]) -> int:
     options = BundleOptions(release=arguments.release, gpu=arguments.gpu)
 
     require_python(REQUIRED_VERSION)
-    platform = current_platform()
-    if not platform.bundles:
-        print(NO_BUNDLE, file=sys.stderr)
-        return 1
-
     build_bundle(
         repository_root(),
-        platform,
+        current_platform(),
         options,
         runner=run,
         environment=os.environ,

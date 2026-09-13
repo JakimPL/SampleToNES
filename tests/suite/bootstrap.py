@@ -1,6 +1,28 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Callable, Dict, Final, List, Mapping, Optional, Sequence, Tuple
+
+PROJECT_NAME: Final[str] = "sampletones"
+PROJECT_VERSION: Final[str] = "0.3.0"
+PROJECT_DOCUMENT: Final[str] = f"""
+[project]
+name = "{PROJECT_NAME}"
+version = "{PROJECT_VERSION}"
+
+[project.scripts]
+{PROJECT_NAME} = "{PROJECT_NAME}.__main__:main"
+
+[project.optional-dependencies]
+build = ["pyinstaller"]
+gpu = ["cupy-cuda12x"]
+gpu-cuda11 = ["cupy-cuda11x"]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/{PROJECT_NAME}", "src/{PROJECT_NAME}_core"]
+"""
 
 
 @dataclass(frozen=True)
@@ -70,3 +92,10 @@ class RecordingRunner:
     def lines(self) -> List[str]:
         """Every recorded command as one line, in the order run."""
         return [recorded.line for recorded in self.commands]
+
+
+def write_project(root: Path) -> Path:
+    """Writes a ``pyproject.toml`` under ``root`` stating what the scripts read, and answers with ``root``."""
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "pyproject.toml").write_text(PROJECT_DOCUMENT, encoding="utf-8")
+    return root

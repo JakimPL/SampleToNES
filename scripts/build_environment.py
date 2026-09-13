@@ -1,31 +1,9 @@
 import argparse
 import platform as running
-import shutil
-import subprocess
 import sys
-from typing import Final, Sequence
+from typing import Sequence
 
 from bootstrap.platforms.factory import current_platform
-
-HOMEBREW: Final[str] = "brew"
-PORTAUDIO: Final[str] = "portaudio"
-
-
-def portaudio_prefix() -> str:
-    """Where Homebrew installed PortAudio, or empty where Homebrew is absent."""
-    if shutil.which(HOMEBREW) is None:
-        return ""
-
-    completed = subprocess.run(
-        [HOMEBREW, "--prefix", PORTAUDIO],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if completed.returncode != 0:
-        return ""
-
-    return completed.stdout.strip()
 
 
 def main(argv: Sequence[str]) -> int:
@@ -33,11 +11,7 @@ def main(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(description="Print the build environment audio playback compiles under.")
     parser.parse_args(list(argv))
 
-    lines = current_platform().build_environment(
-        machine=running.machine(),
-        portaudio_prefix=portaudio_prefix(),
-    )
-    for line in lines:
+    for line in current_platform().build_flags(machine=running.machine()):
         print(line)
 
     return 0
