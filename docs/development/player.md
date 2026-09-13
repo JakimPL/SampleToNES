@@ -42,9 +42,9 @@ off on its own, and `uv run sampletones codec report` writes what each one saves
 songs. The format's constants are settled from that report rather than from argument.
 
 **A change to the codec is measured before it is built.** `uv run sampletones codec study` reads the
-projects and stems on this machine, encodes every song under every candidate change, and
-writes the sizes, the times and a verdict per candidate under
-`Documents/SampleToNES/compression`. A candidate is one of two things. A new way of choosing
+projects and stems named on its command line, encodes every song under every candidate change,
+and writes the sizes, the times, a verdict per candidate and the manifest that repeats the run
+under `Documents/SampleToNES/compression`. A candidate is one of two things. A new way of choosing
 tokens is encoded and played back by the production codec itself. A new token grammar is
 priced in bytes by a study parser, which first has to reproduce the production parser's
 bytes on today's grammar. The rule is printed in the report: a candidate earns a production
@@ -152,7 +152,7 @@ The chain runs from the register values upward, and each link is held on its own
 | The codec is lossless | every encoding decodes to the planes it was written from, over a corpus |
 | The codec is safe | a plane the codec finds nothing in stays within its literal bound |
 | The ratio | `uv run sampletones codec report` — bytes per tick and ticks that fit, per layer |
-| What a change would save | `uv run sampletones codec study` — the songs on this machine under every candidate change, with a verdict each |
+| What a change would save | `uv run sampletones codec study` — the projects and stems it is given, under every candidate change, with a verdict each |
 | The byte layout | a hand-built song serializes to expected bytes |
 | The assembly agrees with the specification | the include's equates are read and compared field by field |
 | The driver behaves | the assembled image on a 6502 emulator against `RegisterTrace.from_song`, over several rates and over songs that repeat |

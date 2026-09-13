@@ -5,7 +5,9 @@ import pytest
 
 from sampletones.commands.registry import COMMANDS
 from sampletones.dispatcher import dispatch
+from sampletones_tools.codec.command import DEFAULT_LENGTHEN_SECONDS
 from sampletones_tools.codec.study.manifest import StudyManifest
+from sampletones_tools.codec.study.variants.registry import EVERY_VARIANT
 
 RUNNER: Final[str] = "sampletones_tools.codec.study.session.run_study"
 REPORTER: Final[str] = "sampletones_tools.codec.report.session.run_report"
@@ -84,13 +86,23 @@ class TestCodecStudy:
         assert manifest.lengthen_seconds == 30
         assert output == tmp_path
 
-    def test_a_quick_run_reads_the_small_corpus_into_the_documents(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_a_run_naming_no_source_is_refused_with_the_way_to_name_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
         study = RecordedStudy()
         monkeypatch.setattr(RUNNER, study)
 
-        assert dispatch(COMMANDS, ["codec", "study", "--quick"]) == 0
+        with pytest.raises(SystemExit, match="reads the files it is given"):
+            dispatch(COMMANDS, ["codec", "study"])
+
+        assert study.runs == []
+
+    def test_the_lengthening_defaults_to_its_constant(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        study = RecordedStudy()
+        monkeypatch.setattr(RUNNER, study)
+
+        assert dispatch(COMMANDS, ["codec", "study", "--project", "songs/one.stp"]) == 0
         manifest, output = study.runs[0]
-        assert manifest == StudyManifest.default(lengthen_seconds=180, variants=("all",), quick=True)
+        assert manifest.lengthen_seconds == DEFAULT_LENGTHEN_SECONDS
+        assert manifest.variants == (EVERY_VARIANT,)
         assert output is None
 
     def test_an_action_is_required(self) -> None:

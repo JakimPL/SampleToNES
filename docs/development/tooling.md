@@ -86,7 +86,7 @@ The developer commands, listed by `sampletones_tools/registry.py` and run as
 | `check <name> [options]` | Holds the tree to one of its checks: `import-boundary`, `language-keys`, `palette-colors`, `rendered-literals`, `shortcut-actions`, `tag-names`, `unused-tags`; each is a pre-commit hook, and [architecture](architecture.md#enforcement) says what each holds. Needs a checkout |
 | `btp samples -o DIR`, `ftm samples -o DIR`, `nsf samples -o DIR` | Builds the synthetic corpus and writes it as example files: the arrangement as two Bitphase documents (at its tempo and as a groove), the arrangement as a FamiTracker module, or each sample and the arrangement as `.nsf` programs |
 | `codec report -o DIR` | Compresses the synthetic corpus under every layer of the codec and writes the report the format's constants are settled from, as CSV and Markdown |
-| `codec study [--manifest FILE] [--project FILE]... [--reconstruction PATH]... [-o DIR] [--lengthen SECONDS] [--variants LIST] [--quick]` | Encodes the projects and stems on this machine under every candidate change to the codec and writes the sizes, the times and a verdict per candidate; without `-o` the run lands under Documents/SampleToNES/compression |
+| `codec study [--manifest FILE] [--project FILE]... [--reconstruction PATH]... [-o DIR] [--lengthen SECONDS] [--variants LIST]` | Encodes the projects and stems it is given, or the ones a manifest names, under every candidate change to the codec and writes the sizes, the times, a verdict per candidate and the manifest that repeats the run; without `-o` the run lands under Documents/SampleToNES/compression |
 | `driver [--directory DIR]` | Assembles the NES player driver with cc65 and prints the layout the build produced; without `--directory` it writes the driver the package ships, which needs a checkout |
 | `icons [--directory DIR]` | Writes the icon suite from the mark; without `--directory` it writes the icons the package ships, which needs a checkout |
 | `nsf render --directory DIR [--tail SECONDS]` | Renders every exported `.nsf` file in the directory to a wave beside it, through ffmpeg's libgme demuxer |
@@ -97,7 +97,7 @@ The developer commands, listed by `sampletones_tools/registry.py` and run as
 subject, and `sampletones_tools/registry.py` lists the developer commands they offer.
 `sampletones/commands/registry.py` appends them to the user commands, which is the one import of
 the tools package; [package layers](packages.md) holds the edge. The wheel and the bundle carry the
-package, so every command exists in every copy of the program, and three rules decide what a
+package, so every command exists in every copy of the program, and four rules decide what a
 developer command does there:
 
 - **The checkout guard.** `sampletones_tools/checkout.py` holds `require_checkout(command)`: the
@@ -109,6 +109,9 @@ developer command does there:
   package.
 - **Package data is read from the package**, through `importlib.resources`, never through a path
   under the repository, so it ships in the wheel and the bundle.
+- **A tool reads the files it is given.** What a tool measures or converts arrives on its command
+  line or in a file a run wrote; the code names no file on one machine, so every run starts from
+  what the person running it has.
 
 Developer commands are run as `uv run sampletones <command>` from a checkout; the `sampletones`
 command `make setup` installs is a wheel and refuses the guarded ones the same way. A command module

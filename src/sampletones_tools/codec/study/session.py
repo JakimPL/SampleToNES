@@ -3,7 +3,7 @@ from typing import Final, List, Optional, Tuple
 
 from sampletones_shared.logger import logger
 from sampletones_tools.codec.study.corpus.build import build_corpus
-from sampletones_tools.codec.study.manifest import StudyManifest, StudySource
+from sampletones_tools.codec.study.manifest import NO_SOURCE, StudyManifest, StudySource
 from sampletones_tools.codec.study.measure import Measurement, measure
 from sampletones_tools.codec.study.report.run import run_directory, write_run
 from sampletones_tools.codec.study.variants.baselines import Baselines
@@ -28,38 +28,33 @@ def resolve_manifest(
     reconstructions: Tuple[Path, ...],
     lengthen_seconds: int,
     variants: Tuple[str, ...],
-    quick: bool,
 ) -> StudyManifest:
-    """The manifest a run measures: the one a file states, or the corpus on this machine.
+    """The manifest a run measures: the sources named outright, or the ones a manifest file states.
 
-    Projects or reconstructions named outright stand in for the corpus while the manifest's
-    lengthening and variants stay.
+    Sources named outright stand in for a manifest's own, while its lengthening and variants stay.
 
     Args:
-        path: A manifest a run wrote, or ``None`` for the corpus on this machine.
-        projects: Project files measured in place of the corpus.
-        reconstructions: Stem files, or directories of stems, measured in place of the corpus.
-        lengthen_seconds: How long each project's lengthened copy lasts.
-        variants: The names of the variants every song is encoded under.
-        quick: Whether to read one small project and one stem, to check the harness.
+        path: A manifest a run wrote, or ``None`` to measure the sources named outright.
+        projects: Project files to measure.
+        reconstructions: Stem files, or directories of stems, to measure.
+        lengthen_seconds: How long each project's lengthened copy lasts, unless a manifest states it.
+        variants: The names of the variants every song is encoded under, unless a manifest states them.
+
+    Raises:
+        ValueError: If neither a manifest nor a source is named.
     """
-    manifest = (
-        StudyManifest.load(path)
-        if path is not None
-        else StudyManifest.default(
-            lengthen_seconds=lengthen_seconds,
-            variants=variants,
-            quick=quick,
-        )
-    )
-    if not projects and not reconstructions:
+    if path is None and not projects and not reconstructions:
+        raise ValueError(NO_SOURCE)
+
+    manifest = StudyManifest.load(path) if path is not None else None
+    if manifest is not None and not projects and not reconstructions:
         return manifest
 
     return StudyManifest(
         projects=tuple(StudySource.at(project) for project in projects),
         reconstructions=tuple(StudySource.at(reconstruction) for reconstruction in reconstructions),
-        lengthen_seconds=manifest.lengthen_seconds,
-        variants=manifest.variants,
+        lengthen_seconds=manifest.lengthen_seconds if manifest is not None else lengthen_seconds,
+        variants=manifest.variants if manifest is not None else variants,
     )
 
 
