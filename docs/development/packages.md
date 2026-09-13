@@ -44,7 +44,7 @@ graph TD
 | Package | Purpose | May import |
 |---------|---------|------------|
 | `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, and the command type the entry and the tools share | — |
-| `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, calibration, and these boundaries themselves — reached as package data rather than by import | — |
+| `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, behavior, deployment, and these boundaries themselves — reached as package data rather than by import | — |
 | `sampletones_assets` | The application icons and the bundled fonts, reached as package data | — |
 | `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats | `sampletones_shared` |
 | `sampletones_player` | The NES player: the register model, the re-clocking schedule, the 6502 driver and the NSF file | `sampletones_shared`, `sampletones_core` |
@@ -110,9 +110,9 @@ includes and the linker configuration in `sampletones_tools/player/assembly/`, r
 data, to produce the committed `driver/binary/driver.bin`; `uv run sampletones driver` runs it,
 and the tests rebuild the sources and hold the committed image to them wherever cc65 is
 installed. `sampletones_tools/player/trace/` holds `RegisterTrace`, what the driver is expected
-to write call by call, which the emulator tests hold the assembled driver to. The application
-ships the binary alone. The toolchain the build needs is described in
-[`dependencies.md`](release/dependencies.md).
+to write call by call, which the emulator tests hold the assembled driver to. Exporting reads the
+assembled binary; the wheel carries the assembly sources beside it, inside the tools package. The
+toolchain the build needs is described in [`dependencies.md`](release/dependencies.md).
 
 ---
 

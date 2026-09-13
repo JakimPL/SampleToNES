@@ -59,6 +59,20 @@ target: a target names the script that does the work and passes its flag. The tw
 the root, `install.sh` and `install.bat`, exist for the double-click path and call the same bundle
 script.
 
+**8. A developer command works from what it is given, in every copy of the program.** The wheel
+and the bundle carry the tools package, so every developer command exists wherever `sampletones`
+is installed, and each one reaches files the same way in all of them:
+
+- *Inputs* arrive on the command line or in a file a run wrote, so a run starts from what the person
+  running it has.
+- *Outputs* go where `--output` (`-o`) names. A measurement given no `-o` writes a timestamped
+  directory under the user's Documents; `codec report` and the sample emitters take `-o` always.
+- *The repository* is reached through the checkout guard. A command that reads or writes the
+  repository, or needs a development dependency, runs from a checkout; so `driver` and `icons`
+  rewrite the files the package ships from a checkout, and a measurement runs anywhere.
+- *Package data* is read from the package it ships in, which holds in a checkout, in the wheel and
+  in the bundle.
+
 ## The commands
 
 `src/sampletones/` is the entry package. `dispatcher.py` builds one parser over the commands and
@@ -67,8 +81,9 @@ them. A command is a frozen `Command` (`sampletones_shared/command.py`): its nam
 help, the function adding its options to a parser, and the function running it over the parsed
 arguments. Each command turns its arguments into a frozen record, field by field, before it works; a
 command with actions, such as `codec`, reads the action first and builds the record that action takes.
-A command writing files names their directory `--output` (`-o`), and an option naming an input says
-what it reads, so `--config` is a configuration file wherever it appears.
+A command writing files names where they go `--output` (`-o`): a file for `convert`, a directory for
+the others. An option naming an input says what it reads, so `--config` is a configuration file
+wherever it appears.
 
 | Command | What it does |
 |---|---|
@@ -100,25 +115,13 @@ The developer commands, listed by `sampletones_tools/registry.py` and run as
 `src/sampletones_tools/` holds every tool the running application does not use, in subpackages by
 subject, and `sampletones_tools/registry.py` lists the developer commands they offer.
 `sampletones/commands/registry.py` appends them to the user commands, which is the one import of
-the tools package; [package layers](packages.md) holds the edge. The wheel and the bundle carry the
-package, so every command exists in every copy of the program, and four rules decide what a
-developer command does there:
+the tools package; [package layers](packages.md) holds the edge. Two helpers carry out principle 8:
 
-- **The checkout guard.** `sampletones_tools/checkout.py` holds `require_checkout(command)`: the
-  repository root must hold `pyproject.toml` beside `src/`, or the command exits naming
-  `uv run sampletones <command>` in a checkout. Every developer command that reads or writes the
-  repository calls it first, and so does one that needs a development dependency, as `icons` needs
-  Pillow. A command that measures the code on this machine runs anywhere.
-- **No default derived from the repository.** An emitter takes a required `--output`; a measurement
-  defaults to the user's Documents. Nothing a developer command writes lands beside an installed
-  package.
-- **Package data is read from the package.** `package_directory` in
-  `sampletones_shared/paths/package.py` places a package from the import system's own record, so
-  the same path holds in a checkout, in the wheel and in the bundle, where PyInstaller unpacks each
-  package's data beside its modules.
-- **A tool reads the files it is given.** What a tool measures or converts arrives on its command
-  line or in a file a run wrote; the code names no file on one machine, so every run starts from
-  what the person running it has.
+- `sampletones_tools/checkout.py` holds `require_checkout(command)`: the repository root holds
+  `pyproject.toml` beside `src/`, or the command exits naming `uv run sampletones <command>` in a
+  checkout. `icons` calls it for Pillow, a development dependency, as well as for the repository.
+- `package_directory` in `sampletones_shared/paths/package.py` places a package from the import
+  system's own record, where PyInstaller unpacks each package's data beside its modules.
 
 Developer commands are run as `uv run sampletones <command>` from a checkout; the `sampletones`
 command `make setup` installs is a wheel and refuses the guarded ones the same way. A command module

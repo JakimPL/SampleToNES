@@ -57,9 +57,7 @@ make run            # starts the app
 
 After you pull new changes, run `make setup` again.
 
-### Build a standalone app
-
-On Windows and Linux, you can build a standalone app from the source code:
+On Windows and Linux, you can also build a standalone app from the source code:
 
 - **Windows**: double-click `install.bat`. It builds `bin\sampletones.exe`.
 - **Linux**: run `make system-deps`, then `./install.sh`. It builds `bin/sampletones`.
