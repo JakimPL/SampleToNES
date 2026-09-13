@@ -37,7 +37,7 @@ A ready-to-run executable built on your machine. You only need Python 3.12.
 ### Linux
 
 1. Install the audio and file-dialog system packages: `make system-deps` (or run
-   `./scripts/linux/build/dependencies.sh`).
+   `python3 scripts/system_dependencies.py`).
 2. Install Python 3.12, then run `./install.sh` in a terminal. It builds a
    `bin/sampletones` executable.
 3. Run `./bin/sampletones` to start.

@@ -74,6 +74,7 @@ The [**development**](development/) section is for contributors.
 - [Configuration](development/config-organization.md) — how the YAML configuration package is laid out.
 - [Coding guidelines](development/guidelines.md) — conventions for the codebase.
 - [Dependencies](development/dependencies.md) — the libraries _SampleToNES_ builds on.
+- [Tooling](development/tooling.md) — the scripts and the Makefile: what runs on the system interpreter, what runs in the project environment.
 - [Bugs and to-dos](development/bugs-and-todos.md) — the working ledger of known gaps.
 
 ## Glossary

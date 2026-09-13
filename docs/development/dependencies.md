@@ -20,9 +20,9 @@ Instruction libraries and reconstructions are serialized with [MessagePack](http
 
 ## Audio playback
 
-Playback goes through PortAudio, reached with the `pyaudio` package. PyPI carries `pyaudio` wheels for Windows, so Linux and macOS compile it on install and need the PortAudio headers and library on the machine. Linux takes them from the distribution packages listed in `scripts/linux/build/dependencies.sh`; macOS takes them from Homebrew through `scripts/macos/build/dependencies.sh`.
+Playback goes through PortAudio, reached with the `pyaudio` package. PyPI carries `pyaudio` wheels for Windows, so Linux and macOS compile it on install and need the PortAudio headers and library on the machine. `scripts/system_dependencies.py` installs them: the distribution packages through apt on Linux, PortAudio through Homebrew on macOS.
 
-Compiling on macOS also depends on the interpreter's architecture. The python.org installer ships a universal2 build, which compiles extensions for both Apple Silicon and Intel, while Homebrew's `libportaudio` carries the machine's own architecture. Pinning `ARCHFLAGS` to `uname -m` settles it on the native one: `make setup` sets it directly, and the CI workflows take it from `scripts/macos/build/build_env.sh`, which reports it as a `KEY=VALUE` line alongside the PortAudio prefix for a Homebrew installed outside its usual place.
+Compiling on macOS also depends on the interpreter's architecture. The python.org installer ships a universal2 build, which compiles extensions for both Apple Silicon and Intel, while Homebrew's `libportaudio` carries the machine's own architecture. Pinning `ARCHFLAGS` to `uname -m` settles it on the native one: `make setup` sets it directly, and the CI workflows take it from `scripts/build_environment.py`, which reports it as a `KEY=VALUE` line alongside the PortAudio prefix for a Homebrew installed outside its usual place.
 
 ## Audio rendering
 
@@ -66,7 +66,7 @@ with, and every wheel, bundle and test run finds them where they lie. `make icon
 from the mark, and the `icons` pre-push hook writes them for a push that touches either directory,
 holding the committed files to what the mark describes. CI runs that same hook.
 
-Pillow is a build-time tool, and the bundle scripts pass `--exclude-module PIL` to hold it to that:
+Pillow is a build-time tool, and the bundle script passes `--exclude-module PIL` to hold it to that:
 `pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is
 installed, and PyInstaller follows that import into the bundle. The application reads its icons as
 files, so the exclusion spares every bundle Pillow's extension modules and the imaging libraries
@@ -124,8 +124,8 @@ Three tools serve the player, each reached by one command:
 | py65 | `make test` | `uv sync --group dev` | the `dev` dependency group |
 | ffmpeg with `libgme` | `make nsf-render` | the system's package manager | the machine listening to an export |
 
-`scripts/linux/build/dependencies.sh` and its macOS counterpart carry what building and running the
-application needs, and the workflows install the `dev` group, so py65 is the one of the three CI
+`scripts/system_dependencies.py` carries what building and running the application needs, and the
+workflows install the `dev` group, so py65 is the one of the three CI
 reaches — the suite verifies the driver through it alone. cc65 and ffmpeg stay on the machine of
 whoever runs `make player` or `make nsf-render`, and a workflow that assembles the driver or renders
 a wave is what would put them in those scripts. The application itself calls neither: an export is
@@ -133,7 +133,7 @@ written by the package's own code, from the committed `driver.bin`.
 
 ## Linux (standalone executable)
 
-Building a standalone executable on Linux needs the PortAudio, Tk and OpenGL/X11 system packages. Install them with `make system-deps` (or run `scripts/linux/build/dependencies.sh`), which holds the full list.
+Building a standalone executable on Linux needs the PortAudio, Tk and OpenGL/X11 system packages. Install them with `make system-deps` (or run `python3 scripts/system_dependencies.py`), which holds the full list.
 
 PortAudio is required. Tk backs the file dialogs where neither a portal nor a desktop tool answers, and `make release` requires it so the shipped executable stays self-contained.
 

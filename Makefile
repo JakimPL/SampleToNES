@@ -16,15 +16,11 @@ ifeq ($(UNAME_S),Windows)
 	SCRIPTS_DIR := scripts/windows
 	SCRIPT_EXT := .bat
 	RUN_SCRIPT :=
-	BUILD_SCRIPT := install.bat
-	EXECUTABLE := sampletones.exe
 	PYTHON := python
 else
 	SCRIPTS_DIR := scripts/linux
 	SCRIPT_EXT := .sh
 	RUN_SCRIPT := bash
-	BUILD_SCRIPT := ./install.sh
-	EXECUTABLE := sampletones
 	PYTHON := python3
 endif
 
@@ -40,32 +36,13 @@ else
 Q := "
 endif
 
-BUILD_COMMAND := $(RUN_SCRIPT) $(BUILD_SCRIPT)
-RELEASE_COMMAND := $(RUN_SCRIPT) $(BUILD_SCRIPT) --release
-SYSTEM_DEPS_COMMAND := bash scripts/linux/build/dependencies.sh
-SETUP_ENV :=
-
-ifeq ($(UNAME_S),Darwin)
-	MACOS_NO_BUNDLE := bash scripts/macos/build/no_bundle.sh
-	BUILD_COMMAND := $(MACOS_NO_BUNDLE) 'make build'
-	RELEASE_COMMAND := $(MACOS_NO_BUNDLE) 'make release'
-	SYSTEM_DEPS_COMMAND := bash scripts/macos/build/dependencies.sh
-	SETUP_ENV := ARCHFLAGS="-arch $(shell uname -m)"
-endif
-
 GPU ?= auto
-GPU_EXTRA :=
-ifeq ($(filter 0,$(GPU)),)
-ifneq ($(filter setup,$(MAKECMDGOALS)),)
-	GPU_EXTRA := $(shell $(PYTHON) scripts/detect_cuda.py --extra)
-endif
-endif
 
 help:
 	@echo $(Q)Available targets:$(Q)
 	@echo $(Q)  make setup       - Set up development environment (uv); GPU auto-detected, GPU=0 forces CPU$(Q)
 	@echo $(Q)  make pre-commit  - Install pre-commit hooks$(Q)
-	@echo $(Q)  make system-deps - Install system packages required to build and run (Debian-based, or Homebrew on macOS)$(Q)
+	@echo $(Q)  make system-deps - Install system packages required to build and run (apt on Debian-based Linux, Homebrew on macOS)$(Q)
 	@echo $(Q)  make build       - Compile standalone executable (development deployment config: DEBUG, strict history)$(Q)
 	@echo $(Q)  make release     - Compile standalone executable with the release deployment config (INFO, self-healing history)$(Q)
 	@echo $(Q)  make test        - Run unit tests with coverage$(Q)
@@ -84,28 +61,26 @@ help:
 	@echo $(Q)  make run         - Run SampleToNES application$(Q)
 
 setup:
-	$(SETUP_ENV) uv sync --group dev $(if $(GPU_EXTRA),--extra $(GPU_EXTRA),)
-	$(MAKE) icons
-	$(SETUP_ENV) uv tool install --force $(if $(GPU_EXTRA),".[$(GPU_EXTRA)]",.)
+	$(PYTHON) scripts/setup_environment.py --gpu $(GPU)
 
 install:
 	$(MAKE) setup
 	$(MAKE) build
 
 build:
-	$(BUILD_COMMAND)
+	$(PYTHON) scripts/bundle.py
 
 release:
-	$(RELEASE_COMMAND)
+	$(PYTHON) scripts/bundle.py --release
 
 system-deps:
-	$(SYSTEM_DEPS_COMMAND)
+	$(PYTHON) scripts/system_dependencies.py
 
 run:
 	uv run sampletones
 
 clean:
-	$(call script,build/clean)
+	$(PYTHON) scripts/clean.py
 
 pre-commit:
 	$(call script,dev/pre_commit)

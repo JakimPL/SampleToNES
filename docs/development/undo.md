@@ -87,7 +87,7 @@ cursor and repaints rows in place via an index-keyed diff.
 values, so an edit path reaching the project outside a transaction raises
 `UntrackedMutationError` at once — in a development run and in the test suite alike, since
 several tests build the whole application and read that file. A user build takes the opposite
-values from `scripts/release_env_hook.py`, so a gap that reaches a release is healed into an
+values from `scripts/runtime_hooks/release_environment.py`, so a gap that reaches a release is healed into an
 `UNTRACKED` entry rather than shown to the user. The gap therefore surfaces where it can be
 fixed and stays quiet where it cannot.
 
