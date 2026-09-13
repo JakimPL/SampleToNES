@@ -255,7 +255,7 @@ minutes at 60 Hz**, against the 49 seconds a record per tick reaches. Encoding i
 about two seconds; decoding it costs the console around twenty instructions per plane
 per tick, comfortably inside a video frame.
 
-`make compression-report` writes this table over a corpus of songs, and the format's
+`uv run sampletones codec report` writes this table over a corpus of songs, and the format's
 constants are settled from it. Two of them were settled against expectation: splitting
 the duty cycle out of the control byte into a plane of its own **costs** 14 %, because
 volume and duty turn over together and a split pays two opcodes for what one covers;

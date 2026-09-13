@@ -6,7 +6,7 @@ import pytest
 from sampletones_core.project.project import Project
 from sampletones_player.compression.encode import encode_planes
 from sampletones_player.compression.options import EVERY_LAYER
-from tests.integration.nsf.corpus import (
+from sampletones_tools.codec.report.corpus import (
     LONG_ARRANGEMENT,
     RECONSTRUCTION,
     RECONSTRUCTION_SECONDS,

@@ -38,7 +38,7 @@ planes it writes, and every row playing it becomes a token naming that entry. Se
 what the samples leave uncovered.
 
 **Every layer earns its place on measured ground.** Each stage of the codec can be switched
-off on its own, and `make compression-report` writes what each one saves across a corpus of
+off on its own, and `uv run sampletones codec report` writes what each one saves across a corpus of
 songs. The format's constants are settled from that report rather than from argument.
 
 **A change to the codec is measured before it is built.** `uv run sampletones codec study` reads the
@@ -151,7 +151,7 @@ The chain runs from the register values upward, and each link is held on its own
 |---|---|
 | The codec is lossless | every encoding decodes to the planes it was written from, over a corpus |
 | The codec is safe | a plane the codec finds nothing in stays within its literal bound |
-| The ratio | `make compression-report` — bytes per tick and ticks that fit, per layer |
+| The ratio | `uv run sampletones codec report` — bytes per tick and ticks that fit, per layer |
 | What a change would save | `uv run sampletones codec study` — the songs on this machine under every candidate change, with a verdict each |
 | The byte layout | a hand-built song serializes to expected bytes |
 | The assembly agrees with the specification | the include's equates are read and compared field by field |
@@ -159,7 +159,7 @@ The chain runs from the register values upward, and each link is held on its own
 | The driver's arithmetic | a song stating a bend outright, held to the divider each tick is meant to sound at |
 | The audio | a captured trace re-rendered against the reconstruction's own approximation |
 | The whole export | a project exported, played on the emulator, and read back as the instructions the sequencer sounds |
-| Listening | `make nsf-samples` then `uv run sampletones nsf render --directory build/nsf`, or any NSF player |
+| Listening | `uv run sampletones nsf samples -o build/nsf` then `uv run sampletones nsf render --directory build/nsf`, or any NSF player |
 | Speed | `make benchmarks` — the encoder's own cost on the shapes that scale worst |
 
 The audio comparison is the one that catches a mistake the trace would let through: the

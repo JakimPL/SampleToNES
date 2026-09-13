@@ -11,9 +11,9 @@ from sampletones_core.project.voices.sample import Sample
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.builder import song_from_reconstruction
 from sampletones_player.registers.playable import playable
+from sampletones_tools.samples.nsf import exported_information
 from tests.integration.nsf.console.instructions import instructions_from_trace, sounded_approximation
 from tests.integration.nsf.console.session import captured_trace
-from tests.integration.nsf.exports import exported_information
 
 ChannelInstructions = Dict[ChannelName, List[InstructionUnion]]
 

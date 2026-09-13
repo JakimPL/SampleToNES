@@ -8,6 +8,7 @@ from sampletones.dispatcher import dispatch
 from sampletones_tools.codec.study.manifest import StudyManifest
 
 RUNNER: Final[str] = "sampletones_tools.codec.study.session.run_study"
+REPORTER: Final[str] = "sampletones_tools.codec.report.session.run_report"
 
 
 class RecordedStudy:
@@ -17,6 +18,35 @@ class RecordedStudy:
     def __call__(self, manifest: StudyManifest, output: Optional[Path]) -> Path:
         self.runs.append((manifest, output))
         return output if output is not None else Path("run")
+
+
+class TestCodecReport:
+    def test_the_report_is_written_into_the_output_and_its_tables_are_printed(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        outputs: List[Path] = []
+
+        def run_report(output: Path) -> Tuple[Path, Path]:
+            outputs.append(output)
+            return output / "report.csv", output / "report.md"
+
+        monkeypatch.setattr(REPORTER, run_report)
+
+        assert dispatch(COMMANDS, ["codec", "report", "-o", str(tmp_path)]) == 0
+        assert outputs == [tmp_path]
+        assert capsys.readouterr().out.splitlines() == [
+            f"Wrote {tmp_path / 'report.csv'}",
+            f"Wrote {tmp_path / 'report.md'}",
+        ]
+
+    def test_the_output_is_required(self) -> None:
+        with pytest.raises(SystemExit) as leaving:
+            dispatch(COMMANDS, ["codec", "report"])
+
+        assert leaving.value.code == 2
 
 
 class TestCodecStudy:

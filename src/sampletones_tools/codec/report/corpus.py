@@ -30,7 +30,7 @@ from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.compression.seeds import phrases_from_project
 from sampletones_player.song import Song
 from sampletones_shared.music import Tuning
-from tests.integration.nsf.songs import RECORD_BYTES_PER_TICK, lengthened
+from sampletones_tools.codec.report.songs import RECORD_BYTES_PER_TICK, lengthened
 
 ARRANGEMENT: Final[str] = "arrangement"
 LONG_ARRANGEMENT: Final[str] = "arrangement, three minutes"
@@ -81,20 +81,20 @@ def _sample_project(
 
 
 def sample_entries(
-    instrument_catalog: Dict[str, Sample],
+    catalog: Dict[str, Sample],
     settings: ProjectSettings,
 ) -> Tuple[CorpusEntry, ...]:
     """Each catalog sample as a song of its own, played at the tuning it was reconstructed at.
 
     Args:
-        instrument_catalog: The samples the integration suite reads.
+        catalog: The samples of the synthetic corpus, by name.
         settings: The project settings a sample is seeded under.
 
     Returns:
         Tuple[CorpusEntry, ...]: One entry per sample, in catalog order.
     """
     entries: List[CorpusEntry] = []
-    for name, sample in instrument_catalog.items():
+    for name, sample in catalog.items():
         tuning = sample.reconstruction.config.library.tuning
         entries.append(
             CorpusEntry(
@@ -225,24 +225,24 @@ def reconstruction_entry(name: str, seconds: int) -> CorpusEntry:
     )
 
 
-def build_corpus(
-    instrument_catalog: Dict[str, Sample],
-    integration_project: Project,
+def corpus_entries(
+    catalog: Dict[str, Sample],
+    project: Project,
 ) -> Tuple[CorpusEntry, ...]:
     """The songs the codec is measured on: each sample alone, the arrangement at two lengths, and
     a minute of dense reconstruction.
 
     Args:
-        instrument_catalog: The samples the integration suite reads.
-        integration_project: The arrangement those samples are played in.
+        catalog: The samples of the synthetic corpus, by name.
+        project: The arrangement those samples are played in.
 
     Returns:
         Tuple[CorpusEntry, ...]: The samples first, then the arrangement, the long one, and the
             reconstruction.
     """
     return (
-        *sample_entries(instrument_catalog, integration_project.settings),
-        arrangement_entry(ARRANGEMENT, integration_project),
-        arrangement_entry(LONG_ARRANGEMENT, lengthened_arrangement(integration_project, TARGET_SECONDS)),
+        *sample_entries(catalog, project.settings),
+        arrangement_entry(ARRANGEMENT, project),
+        arrangement_entry(LONG_ARRANGEMENT, lengthened_arrangement(project, TARGET_SECONDS)),
         reconstruction_entry(RECONSTRUCTION, RECONSTRUCTION_SECONDS),
     )

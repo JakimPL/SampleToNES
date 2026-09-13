@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Final, Optional
+from typing import Dict, Final
 
 import pytest
 
@@ -8,26 +8,14 @@ from sampletones_player.builder import song_from_reconstruction
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.song import Song
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
-from tests.integration.output import resolve_output_directory, resolve_output_path
-from tests.integration.paths import NSF_OUTPUT_ENV
 
 EXPORTED_SAMPLE: Final[str] = "lead"
 
 
-@pytest.fixture(scope="session")
-def nsf_output_dir() -> Optional[Path]:
-    """The persistent output directory ``SAMPLETONES_NSF_OUTPUT_DIR`` names."""
-    return resolve_output_directory(NSF_OUTPUT_ENV)
-
-
 @pytest.fixture
-def nsf_paths(
-    nsf_output_dir: Optional[Path],
-    tmp_path: Path,
-    instrument_catalog: Dict[str, Sample],
-) -> Dict[str, Path]:
+def nsf_paths(tmp_path: Path, instrument_catalog: Dict[str, Sample]) -> Dict[str, Path]:
     """Where each sample's produced ``.nsf`` is written."""
-    return {name: resolve_output_path(nsf_output_dir, tmp_path, f"{name}{EXT_FILE_NSF}") for name in instrument_catalog}
+    return {name: tmp_path / f"{name}{EXT_FILE_NSF}" for name in instrument_catalog}
 
 
 @pytest.fixture(scope="session")

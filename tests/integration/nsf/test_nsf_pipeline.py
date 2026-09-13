@@ -29,7 +29,7 @@ from sampletones_player.specification.song import (
     TOTAL_TICKS_OFFSET,
 )
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
-from tests.integration.nsf.exports import exported_information
+from sampletones_tools.samples.nsf import exported_information
 
 
 def song_block(data: bytes, image: DriverImage) -> bytes:

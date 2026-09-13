@@ -6,9 +6,12 @@ from typing import Final, Optional, Tuple
 from sampletones_shared.command import Command
 
 NAME: Final[str] = "codec"
-HELP: Final[str] = "measure the song codec"
+HELP: Final[str] = "measure the song codec on the synthetic corpus or on songs of this machine"
 ACTION_FIELD: Final[str] = "action"
 ACTION_METAVAR: Final[str] = "<action>"
+REPORT: Final[str] = "report"
+REPORT_HELP: Final[str] = "compress the synthetic corpus under every layer of the codec and write the report tables"
+REPORT_OUTPUT_HELP: Final[str] = "the directory the report is written into, created when missing"
 STUDY: Final[str] = "study"
 STUDY_HELP: Final[str] = (
     "encode the projects and stems on this machine under every candidate change, with a verdict each"
@@ -28,6 +31,13 @@ DEFAULT_LENGTHEN_SECONDS: Final[int] = 180
 
 
 @dataclass(frozen=True)
+class ReportArguments:
+    """What a report run is given: the directory the tables are written into."""
+
+    output: Path
+
+
+@dataclass(frozen=True)
 class StudyArguments:
     """What a study run is given, as written on the command line."""
 
@@ -42,6 +52,8 @@ class StudyArguments:
 
 def configure(parser: ArgumentParser) -> None:
     actions = parser.add_subparsers(dest=ACTION_FIELD, metavar=ACTION_METAVAR, required=True)
+    report = actions.add_parser(REPORT, help=REPORT_HELP, description=REPORT_HELP)
+    report.add_argument("--output", "-o", type=Path, required=True, help=REPORT_OUTPUT_HELP)
     study = actions.add_parser(STUDY, help=STUDY_HELP, description=STUDY_HELP)
     study.add_argument("--manifest", type=Path, default=None, help=MANIFEST_HELP)
     study.add_argument("--project", type=Path, action="append", dest="projects", default=[], help=PROJECT_HELP)
@@ -61,16 +73,32 @@ def configure(parser: ArgumentParser) -> None:
 
 def run(arguments: Namespace) -> int:
     """Measures the codec the way the action describes."""
-    given = StudyArguments(
-        manifest=arguments.manifest,
-        projects=tuple(arguments.projects),
-        reconstructions=tuple(arguments.reconstructions),
-        output=arguments.output,
-        lengthen=arguments.lengthen,
-        variants=arguments.variants,
-        quick=arguments.quick,
+    if arguments.action == REPORT:
+        return _report(ReportArguments(output=arguments.output))
+
+    return _study(
+        StudyArguments(
+            manifest=arguments.manifest,
+            projects=tuple(arguments.projects),
+            reconstructions=tuple(arguments.reconstructions),
+            output=arguments.output,
+            lengthen=arguments.lengthen,
+            variants=arguments.variants,
+            quick=arguments.quick,
+        )
     )
 
+
+def _report(given: ReportArguments) -> int:
+    from sampletones_tools.codec.report.session import run_report
+
+    for path in run_report(given.output):
+        print(f"Wrote {path}")
+
+    return 0
+
+
+def _study(given: StudyArguments) -> int:
     from sampletones_tools.codec.study.session import resolve_manifest, run_study, variant_names
 
     manifest = resolve_manifest(

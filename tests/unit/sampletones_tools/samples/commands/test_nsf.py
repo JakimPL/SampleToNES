@@ -5,9 +5,41 @@ import pytest
 
 from sampletones.commands.registry import COMMANDS
 from sampletones.dispatcher import dispatch
+from sampletones_tools.samples.emit import Emitter
+from sampletones_tools.samples.nsf import write_samples
 from sampletones_tools.samples.render import RenderedWave, RenderingError
 
 RENDERER: Final[str] = "sampletones_tools.samples.render.render_directory"
+EMITTER: Final[str] = "sampletones_tools.samples.emit.emit_samples"
+
+
+class TestNsfSamples:
+    def test_the_nsf_emitter_writes_into_the_output_and_every_file_is_printed(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        calls: List[Tuple[Path, Emitter]] = []
+
+        def emit_samples(output: Path, emitter: Emitter) -> List[Path]:
+            calls.append((output, emitter))
+            return [output / "kick.nsf", output / "song.nsf"]
+
+        monkeypatch.setattr(EMITTER, emit_samples)
+
+        assert dispatch(COMMANDS, ["nsf", "samples", "--output", str(tmp_path)]) == 0
+        assert calls == [(tmp_path, write_samples)]
+        assert capsys.readouterr().out.splitlines() == [
+            f"Wrote {tmp_path / 'kick.nsf'}",
+            f"Wrote {tmp_path / 'song.nsf'}",
+        ]
+
+    def test_the_output_is_required(self) -> None:
+        with pytest.raises(SystemExit) as leaving:
+            dispatch(COMMANDS, ["nsf", "samples"])
+
+        assert leaving.value.code == 2
 
 
 class TestNsfRender:

@@ -13,7 +13,7 @@ from sampletones_core.constants.enums import (
 )
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
-from tests.integration.assets.reconstruction import build_mini_library
+from sampletones_tools.corpus.catalog import build_mini_library
 
 _DURATION_SECONDS: Final[float] = 1.0
 _LOWER_TONE: Final[float] = 440.0

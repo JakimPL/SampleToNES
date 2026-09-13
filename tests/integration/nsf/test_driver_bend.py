@@ -8,10 +8,10 @@ from sampletones_player.song import Song
 from sampletones_player.specification.binary import BYTE_VALUES
 from sampletones_player.specification.registers import PULSE1_TIMER_HIGH, TIMER_HIGH_SHIFT
 from sampletones_tools.player.trace.trace import RegisterTrace
+from sampletones_tools.samples.nsf import exported_information
 from tests.integration.nsf.console.instructions import channel_values, timer_value
 from tests.integration.nsf.console.machine import register_file
 from tests.integration.nsf.console.session import captured_trace, play_calls_covering
-from tests.integration.nsf.exports import exported_information
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 from tests.suite.player import PLAYER_PITCHES, bent_song

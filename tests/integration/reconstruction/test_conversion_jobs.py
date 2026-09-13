@@ -21,14 +21,14 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.exceptions import OperationCanceled
 from sampletones_shared.utils.progress import silent_reporter
-from tests.integration.assets.reconstruction import (
+from sampletones_tools.corpus.catalog import build_mini_library
+from tests.suite.progress import FIRST_REPORT, RecordingReporter, reported_stages
+from tests.suite.stems import (
     THREE_STEM_CHANNELS,
-    build_mini_library,
     three_stem_config,
     three_stem_reconstruction_config,
     write_three_stem_recordings,
 )
-from tests.suite.progress import FIRST_REPORT, RecordingReporter, reported_stages
 
 
 def _writing_to(config: Config, directory: Path) -> Config:

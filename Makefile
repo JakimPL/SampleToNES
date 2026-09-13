@@ -1,5 +1,4 @@
-.PHONY: help setup install system-deps build release run clean pre-commit test benchmarks lint format \
-	ftm-samples nsf-samples compression-report
+.PHONY: help setup install system-deps build release run clean pre-commit test benchmarks lint format
 
 ifeq ($(OS),Windows_NT)
 ifeq ($(MSYSTEM),)
@@ -30,9 +29,6 @@ help:
 	@echo $(Q)  make release     - Compile standalone executable with the release deployment config (INFO, self-healing history)$(Q)
 	@echo $(Q)  make test        - Run the doctests, the covered suite and the benchmarks$(Q)
 	@echo $(Q)  make benchmarks  - Run the measured-duration suite on its own$(Q)
-	@echo $(Q)  make ftm-samples - Emit example .ftm files to build/ftm via the integration suite$(Q)
-	@echo $(Q)  make nsf-samples - Emit example .nsf files to build/nsf via the integration suite$(Q)
-	@echo $(Q)  make compression-report - Measure the song codec into build/compression$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
 	@echo $(Q)  make lint        - Run mypy and pylint (ARGS=--mypy or ARGS=--pylint for one of them)$(Q)
 	@echo $(Q)  make format      - Auto-format code (isort, black)$(Q)
@@ -74,15 +70,3 @@ lint:
 
 format:
 	$(PYTHON) scripts/formatting.py
-
-ftm-samples: export SAMPLETONES_FTM_OUTPUT_DIR := build/ftm
-ftm-samples:
-	uv run python -m pytest tests/integration/famitracker
-
-nsf-samples: export SAMPLETONES_NSF_OUTPUT_DIR := build/nsf
-nsf-samples:
-	uv run python -m pytest tests/integration/nsf
-
-compression-report: export SAMPLETONES_COMPRESSION_OUTPUT_DIR := build/compression
-compression-report:
-	uv run python -m pytest tests/integration/nsf/test_compression_report.py

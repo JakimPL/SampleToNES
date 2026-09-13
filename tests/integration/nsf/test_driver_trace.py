@@ -12,6 +12,7 @@ from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.nsf import PROGRAM_SIZE
 from sampletones_player.specification.song import STEP_FRACTION_OFFSET, STEP_WHOLE_OFFSET
 from sampletones_tools.player.trace.trace import RegisterTrace
+from sampletones_tools.samples.nsf import exported_information
 from tests.integration.nsf.console.session import (
     TRAILING_CALLS,
     captured_trace,
@@ -19,7 +20,6 @@ from tests.integration.nsf.console.session import (
     play_calls_covering,
     play_calls_reaching,
 )
-from tests.integration.nsf.exports import exported_information
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 
