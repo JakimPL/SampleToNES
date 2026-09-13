@@ -20,13 +20,26 @@ class LanguageKeysArguments:
 
 
 def configure(parser: ArgumentParser) -> None:
-    parser.add_argument("--source", type=Path, default=None, help=SOURCE_HELP)
-    parser.add_argument("--language-file", type=Path, default=None, help=LANGUAGE_FILE_HELP)
+    parser.add_argument(
+        "--source",
+        type=Path,
+        default=None,
+        help=SOURCE_HELP,
+    )
+    parser.add_argument(
+        "--language-file",
+        type=Path,
+        default=None,
+        help=LANGUAGE_FILE_HELP,
+    )
 
 
 def run(arguments: Namespace) -> int:
     """Reports every disagreement between the language file and the lookups reading it."""
-    given = LanguageKeysArguments(source=arguments.source, language_file=arguments.language_file)
+    given = LanguageKeysArguments(
+        source=arguments.source,
+        language_file=arguments.language_file,
+    )
 
     from sampletones_application.paths import LANG_EN
     from sampletones_shared.paths.source import SOURCE_ROOT
@@ -39,4 +52,9 @@ def run(arguments: Namespace) -> int:
     return report(findings)
 
 
-LANGUAGE_KEYS: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+LANGUAGE_KEYS: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

@@ -42,6 +42,9 @@ def write_samples(corpus: Corpus, output: Path) -> List[Path]:
         written.append(destination)
 
     arrangement = output / f"{SONG_NAME}{EXT_FILE_NSF}"
-    NSFBackend().write_project(arrangement, ProjectExport(project=corpus.project))
+    NSFBackend().write_project(
+        arrangement,
+        ProjectExport(project=corpus.project),
+    )
     written.append(arrangement)
     return written

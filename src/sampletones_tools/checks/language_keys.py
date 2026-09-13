@@ -4,7 +4,17 @@ import sys
 from enum import Enum, EnumMeta
 from pathlib import Path
 from types import ModuleType
-from typing import Callable, Dict, Final, List, Mapping, NamedTuple, Optional, Sequence, Type
+from typing import (
+    Callable,
+    Dict,
+    Final,
+    List,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Type,
+)
 
 import yaml
 
@@ -129,7 +139,10 @@ def entry_key(line: str) -> Optional[str]:
 def entry_lines(path: Path) -> Dict[str, int]:
     """Where each key sits in the language file, read line by line."""
     lines: Dict[str, int] = {}
-    for number, line in enumerate(path.read_text(encoding=LANGUAGE_ENCODING).splitlines(), start=FIRST_LINE):
+    for number, line in enumerate(
+        path.read_text(encoding=LANGUAGE_ENCODING).splitlines(),
+        start=FIRST_LINE,
+    ):
         key = entry_key(line)
         if key is not None:
             lines.setdefault(key, number)
@@ -157,7 +170,10 @@ def language_entries(path: Path) -> Dict[str, int]:
     return {str(key): lines.get(str(key), FIRST_LINE) for key in raw}
 
 
-def broken_lookups(sites: Sequence[LookupSite], entries: Mapping[str, int]) -> List[Finding]:
+def broken_lookups(
+    sites: Sequence[LookupSite],
+    entries: Mapping[str, int],
+) -> List[Finding]:
     """Every literal key a lookup asks for that the language file holds no entry for.
 
     Args:

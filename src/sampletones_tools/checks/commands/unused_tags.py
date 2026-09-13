@@ -33,9 +33,17 @@ def configure(parser: ArgumentParser) -> None:
 
 def run(arguments: Namespace) -> int:
     """Reports every tag fragment the repository declares and never reads."""
-    given = UnusedTagsArguments(tags=arguments.tags, reference_roots=tuple(arguments.reference_roots))
+    given = UnusedTagsArguments(
+        tags=arguments.tags,
+        reference_roots=tuple(arguments.reference_roots),
+    )
 
-    from sampletones_tools.checks.unused_tags import REFERENCE_ROOTS, TAGS_PACKAGE, check_reads, report
+    from sampletones_tools.checks.unused_tags import (
+        REFERENCE_ROOTS,
+        TAGS_PACKAGE,
+        check_reads,
+        report,
+    )
 
     unread = check_reads(
         given.tags if given.tags is not None else TAGS_PACKAGE,
@@ -44,4 +52,9 @@ def run(arguments: Namespace) -> int:
     return report(unread)
 
 
-UNUSED_TAGS: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+UNUSED_TAGS: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

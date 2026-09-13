@@ -33,8 +33,18 @@ def build_parser(commands: Sequence[Command]) -> ArgumentParser:
         description=DESCRIPTION,
         epilog=f"Run '{PROGRAM} {COMMAND_METAVAR} --help' for a command's options.",
     )
-    parser.add_argument("--version", "-v", action="version", version=SAMPLETONES_NAME_VERSION)
-    subparsers = parser.add_subparsers(dest=COMMAND_FIELD, metavar=COMMAND_METAVAR, required=True)
+    parser.add_argument(
+        "--version",
+        "-v",
+        action="version",
+        version=SAMPLETONES_NAME_VERSION,
+    )
+    subparsers = parser.add_subparsers(
+        dest=COMMAND_FIELD,
+        metavar=COMMAND_METAVAR,
+        required=True,
+    )
+
     for command in commands:
         subparser = subparsers.add_parser(command.name, help=command.help, description=command.help)
         command.configure(subparser)

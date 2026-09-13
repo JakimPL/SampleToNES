@@ -20,4 +20,9 @@ def run(arguments: Namespace) -> int:
     return run_self_check()
 
 
-SELF_CHECK: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+SELF_CHECK: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

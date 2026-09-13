@@ -20,7 +20,15 @@ def write_csv(rows: List[CalibrationRow], path: Path) -> None:
         writer = csv.writer(handle)
         writer.writerow(["variant", "item", "category", "referee", "score"])
         for row in rows:
-            writer.writerow([row.variant, row.item, row.category, row.referee, f"{row.score:.6f}"])
+            writer.writerow(
+                [
+                    row.variant,
+                    row.item,
+                    row.category,
+                    row.referee,
+                    f"{row.score:.6f}",
+                ]
+            )
 
 
 def write_markdown(rows: List[CalibrationRow], path: Path) -> None:

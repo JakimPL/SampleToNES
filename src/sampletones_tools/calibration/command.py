@@ -85,4 +85,9 @@ def run(arguments: Namespace) -> int:
     return 0
 
 
-CALIBRATION: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+CALIBRATION: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

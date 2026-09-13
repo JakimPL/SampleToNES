@@ -35,7 +35,11 @@ def build_project(
         speed=module_config.speed,
         nes_frequency=module_config.nes_frequency,
     )
-    project = Project.create(title=module_config.title, author=module_config.author, settings=settings)
+    project = Project.create(
+        title=module_config.title,
+        author=module_config.author,
+        settings=settings,
+    )
     for sample in catalog.values():
         project.voices.append(sample)
 
@@ -53,4 +57,7 @@ def build_corpus(tmp_dir: Pathlike) -> Corpus:
         Corpus: The samples and the arrangement.
     """
     catalog = build_catalog(CatalogSpec.load(), SynthConfig.load(), tmp_dir=tmp_dir)
-    return Corpus(catalog=catalog, project=build_project(catalog, ModuleConfig.load(), SongSpec.load()))
+    return Corpus(
+        catalog=catalog,
+        project=build_project(catalog, ModuleConfig.load(), SongSpec.load()),
+    )

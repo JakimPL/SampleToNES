@@ -51,4 +51,9 @@ def run(arguments: Namespace) -> int:
     return report(violations)
 
 
-IMPORT_BOUNDARY: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+IMPORT_BOUNDARY: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

@@ -96,9 +96,15 @@ def report(found: Sequence[Finding]) -> int:
     if not found:
         return 0
 
-    print("Case(s) holding rendered text against a spelled-out literal:", file=sys.stderr)
+    print(
+        "Case(s) holding rendered text against a spelled-out literal:",
+        file=sys.stderr,
+    )
     for location, rendering in found:
-        print(f"  {location}: {rendering} compared with a written-out string", file=sys.stderr)
+        print(
+            f"  {location}: {rendering} compared with a written-out string",
+            file=sys.stderr,
+        )
 
     print(
         f"\nFound {len(found)} such comparison(s). Compare the values rather than their text: "

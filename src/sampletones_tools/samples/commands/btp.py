@@ -17,8 +17,14 @@ SAMPLES_HELP: Final[str] = "write the corpus arrangement as Bitphase documents (
 
 
 def configure(parser: ArgumentParser) -> None:
-    actions = parser.add_subparsers(dest=ACTION_FIELD, metavar=ACTION_METAVAR, required=True)
-    add_output_option(actions.add_parser(SAMPLES, help=SAMPLES_HELP, description=SAMPLES_HELP))
+    actions = parser.add_subparsers(
+        dest=ACTION_FIELD,
+        metavar=ACTION_METAVAR,
+        required=True,
+    )
+    add_output_option(
+        actions.add_parser(SAMPLES, help=SAMPLES_HELP, description=SAMPLES_HELP),
+    )
 
 
 def run(arguments: Namespace) -> int:
@@ -31,4 +37,9 @@ def run(arguments: Namespace) -> int:
     return print_written(emit_samples(given.output, write_samples))
 
 
-BTP: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+BTP: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

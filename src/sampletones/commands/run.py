@@ -33,4 +33,9 @@ def run(arguments: Namespace) -> int:
     return 0
 
 
-RUN: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+RUN: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

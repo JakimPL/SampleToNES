@@ -31,11 +31,19 @@ def configure(parser: ArgumentParser) -> None:
 
 def run(arguments: Namespace) -> int:
     """Reports every color the application stores resolved or the configuration writes out."""
-    given = PaletteColorsArguments(package=arguments.package, config=arguments.config, palettes=arguments.palettes)
+    given = PaletteColorsArguments(
+        package=arguments.package,
+        config=arguments.config,
+        palettes=arguments.palettes,
+    )
 
     from sampletones_application.paths import PALETTES_DIRECTORY
     from sampletones_shared.paths.resources import CONFIG_DIRECTORY
-    from sampletones_tools.checks.palette_colors import APPLICATION_PACKAGE, check_colors, report
+    from sampletones_tools.checks.palette_colors import (
+        APPLICATION_PACKAGE,
+        check_colors,
+        report,
+    )
 
     findings = check_colors(
         given.package if given.package is not None else APPLICATION_PACKAGE,
@@ -45,4 +53,9 @@ def run(arguments: Namespace) -> int:
     return report(findings)
 
 
-PALETTE_COLORS: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+PALETTE_COLORS: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

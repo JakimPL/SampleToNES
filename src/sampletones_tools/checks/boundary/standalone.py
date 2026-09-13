@@ -106,7 +106,12 @@ class StandaloneRule(BaseModel):
             for part in path.relative_to(root).with_suffix("").parts:
                 if part in taken and part not in seen:
                     seen.add(part)
-                    violations.append(Violation(kind=f"{part} {SHADOWING}", location=str(path)))
+                    violations.append(
+                        Violation(
+                            kind=f"{part} {SHADOWING}",
+                            location=str(path),
+                        )
+                    )
 
         return violations
 

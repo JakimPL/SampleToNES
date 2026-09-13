@@ -115,7 +115,10 @@ def _check_language() -> str:
 
 def _check_resources() -> str:
     from sampletones_application.ui.resources.items import FontResource, IconResource
-    from sampletones_application.ui.resources.resources import get_font_path, get_icon_path
+    from sampletones_application.ui.resources.resources import (
+        get_font_path,
+        get_icon_path,
+    )
 
     for font in FontResource:
         get_font_path(font)
@@ -138,7 +141,9 @@ def _check_export_backends() -> str:
 
 
 def _check_file_dialog_backend() -> str:
-    from sampletones_application.utils.file_dialogs.selection import select_file_dialog_backend
+    from sampletones_application.utils.file_dialogs.selection import (
+        select_file_dialog_backend,
+    )
 
     return type(select_file_dialog_backend()).__name__
 
@@ -168,7 +173,10 @@ def run_self_check() -> int:
         try:
             detail = check.run()
         except CHECK_FAILURES as exception:
-            print(f"{FAILURE_PREFIX} {check.name}: {type(exception).__name__}: {exception}", file=sys.stderr)
+            print(
+                f"{FAILURE_PREFIX} {check.name}: {type(exception).__name__}: {exception}",
+                file=sys.stderr,
+            )
             return FAILURE_STATUS
 
         print(f"{SUCCESS_PREFIX} {check.name}: {detail}")

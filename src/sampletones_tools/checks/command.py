@@ -11,9 +11,19 @@ GATE_METAVAR: Final[str] = "<check>"
 
 
 def configure(parser: ArgumentParser) -> None:
-    gates = parser.add_subparsers(dest=GATE_FIELD, metavar=GATE_METAVAR, required=True)
+    gates = parser.add_subparsers(
+        dest=GATE_FIELD,
+        metavar=GATE_METAVAR,
+        required=True,
+    )
     for gate in GATES:
-        gate.configure(gates.add_parser(gate.name, help=gate.help, description=gate.help))
+        gate.configure(
+            gates.add_parser(
+                gate.name,
+                help=gate.help,
+                description=gate.help,
+            )
+        )
 
 
 def run(arguments: Namespace) -> int:
@@ -30,4 +40,9 @@ def run(arguments: Namespace) -> int:
     return gate.run(arguments)
 
 
-CHECK: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+CHECK: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

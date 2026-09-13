@@ -32,12 +32,34 @@ class RenderArguments:
 
 
 def configure(parser: ArgumentParser) -> None:
-    actions = parser.add_subparsers(dest=ACTION_FIELD, metavar=ACTION_METAVAR, required=True)
-    samples = actions.add_parser(SAMPLES, help=SAMPLES_HELP, description=SAMPLES_HELP)
+    actions = parser.add_subparsers(
+        dest=ACTION_FIELD,
+        metavar=ACTION_METAVAR,
+        required=True,
+    )
+    samples = actions.add_parser(
+        SAMPLES,
+        help=SAMPLES_HELP,
+        description=SAMPLES_HELP,
+    )
     add_output_option(samples)
-    render = actions.add_parser(RENDER, help=RENDER_HELP, description=RENDER_HELP)
-    render.add_argument("--directory", type=Path, required=True, help=DIRECTORY_HELP)
-    render.add_argument("--tail", type=float, default=DEFAULT_TAIL_SECONDS, help=TAIL_HELP)
+    render = actions.add_parser(
+        RENDER,
+        help=RENDER_HELP,
+        description=RENDER_HELP,
+    )
+    render.add_argument(
+        "--directory",
+        type=Path,
+        required=True,
+        help=DIRECTORY_HELP,
+    )
+    render.add_argument(
+        "--tail",
+        type=float,
+        default=DEFAULT_TAIL_SECONDS,
+        help=TAIL_HELP,
+    )
 
 
 def run(arguments: Namespace) -> int:
@@ -45,7 +67,9 @@ def run(arguments: Namespace) -> int:
     if arguments.action == SAMPLES:
         return _write_samples(SamplesArguments(output=arguments.output))
 
-    return _render(RenderArguments(directory=arguments.directory, tail=arguments.tail))
+    return _render(
+        RenderArguments(directory=arguments.directory, tail=arguments.tail),
+    )
 
 
 def _write_samples(given: SamplesArguments) -> int:
@@ -74,4 +98,9 @@ def _render(given: RenderArguments) -> int:
     return 0
 
 
-NSF: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+NSF: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

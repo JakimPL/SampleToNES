@@ -41,7 +41,10 @@ DEFAULT_COUNT_COSTS: Final[Costs] = replace(
     operands=DEFAULT_COUNT_OPERANDS,
     default_entry=DEFAULT_COUNT_SIZE,
 )
-SET_HOLD_BOUND_COSTS: Final[Costs] = replace(PRODUCTION_COSTS, set_hold=SET_HOLD_BOUND)
+SET_HOLD_BOUND_COSTS: Final[Costs] = replace(
+    PRODUCTION_COSTS,
+    set_hold=SET_HOLD_BOUND,
+)
 
 
 class GrammarVariant(NamedTuple):

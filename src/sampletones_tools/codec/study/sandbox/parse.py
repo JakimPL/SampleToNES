@@ -5,7 +5,10 @@ from sampletones_player.compression.parse.literals import LiteralWindow
 from sampletones_player.specification.compression import MAX_LITERAL_BYTES
 from sampletones_tools.codec.study.sandbox.context import PlaneContext
 from sampletones_tools.codec.study.sandbox.edges.generator import EdgeGenerator
-from sampletones_tools.codec.study.sandbox.edges.holds import hold_edges, wide_hold_edges
+from sampletones_tools.codec.study.sandbox.edges.holds import (
+    hold_edges,
+    wide_hold_edges,
+)
 from sampletones_tools.codec.study.sandbox.edges.literals import relax_literal
 from sampletones_tools.codec.study.sandbox.edges.phrases import phrase_edges
 from sampletones_tools.codec.study.sandbox.edges.set_hold import set_hold_edges
@@ -95,7 +98,14 @@ def parse_plane(
     offered = generators(grammar)
     shortest: Shortest[StudyToken] = Shortest.across(ticks)
     window = LiteralWindow(shortest.costs)
-    _relax_forward(offered, context, shortest, 0, following[0], holdable=grammar.start_hold)
+    _relax_forward(
+        offered,
+        context,
+        shortest,
+        0,
+        following[0],
+        holdable=grammar.start_hold,
+    )
     for position in range(1, ticks + 1):
         relax_literal(
             context,
@@ -114,4 +124,7 @@ def parse_plane(
                 holdable=position not in entries.entries,
             )
 
-    return StudyParse(tokens=shortest.walk(ticks), costs=tuple(shortest.costs))
+    return StudyParse(
+        tokens=shortest.walk(ticks),
+        costs=tuple(shortest.costs),
+    )

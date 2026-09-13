@@ -62,6 +62,14 @@ def write_icon_suite(directory: Path, mark: Mark) -> List[Path]:
 
     return [
         _write_vector(directory / ICON_VECTOR_FILENAME, mark),
-        _write_raster(directory / ICON_UNIX_FILENAME, master, mark.render.raster_size),
-        _write_windows_icon(directory / ICON_WIN_FILENAME, master, mark.render.windows_sizes),
+        _write_raster(
+            directory / ICON_UNIX_FILENAME,
+            master,
+            mark.render.raster_size,
+        ),
+        _write_windows_icon(
+            directory / ICON_WIN_FILENAME,
+            master,
+            mark.render.windows_sizes,
+        ),
     ]

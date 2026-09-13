@@ -209,5 +209,8 @@ def report(findings: Sequence[ColorFinding]) -> int:
     for location, message in findings:
         print(f"  {location}: {message}", file=sys.stderr)
 
-    print(f"\nFound {len(findings)} color(s) detached from the palette.", file=sys.stderr)
+    print(
+        f"\nFound {len(findings)} color(s) detached from the palette.",
+        file=sys.stderr,
+    )
     return 1

@@ -78,4 +78,9 @@ def run(arguments: Namespace) -> int:
     return 0
 
 
-CONVERT: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+CONVERT: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

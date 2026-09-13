@@ -2,13 +2,27 @@ import ast
 import sys
 from enum import StrEnum
 from pathlib import Path
-from typing import Dict, Final, List, NamedTuple, Optional, Sequence, Tuple, Type, TypeVar
+from typing import (
+    Dict,
+    Final,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+)
 
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key.tag import TagName
 from sampletones_application.tags.compose import TAG_SEPARATOR
 from sampletones_tools.checks.source.constants import ModuleConstant, module_constants
-from sampletones_tools.checks.source.modules import SourceModule, discover_modules, parse_module
+from sampletones_tools.checks.source.modules import (
+    SourceModule,
+    discover_modules,
+    parse_module,
+)
 from sampletones_tools.checks.source.nodes import terminal_name
 from sampletones_tools.checks.source.packages import package_directory
 
@@ -82,7 +96,10 @@ def call_arguments(call: ast.Call) -> Optional[Dict[str, ast.expr]]:
     return arguments
 
 
-def hierarchy_member(node: ast.expr, enum: Type[EnumMember]) -> Optional[EnumMember]:
+def hierarchy_member(
+    node: ast.expr,
+    enum: Type[EnumMember],
+) -> Optional[EnumMember]:
     """The hierarchy member an argument names, such as `Page.GLOBAL`.
 
     Args:
@@ -128,7 +145,10 @@ def composed_tag(arguments: Dict[str, ast.expr]) -> Optional[TagName]:
     return TagName(page, panel, widget, element)
 
 
-def check_constant(module: SourceModule, constant: ModuleConstant) -> Optional[TagFinding]:
+def check_constant(
+    module: SourceModule,
+    constant: ModuleConstant,
+) -> Optional[TagFinding]:
     """Checks one constant of a tags module, where it is bound to a tag.
 
     Args:

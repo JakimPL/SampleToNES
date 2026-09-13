@@ -112,7 +112,12 @@ def calibrate(request: CalibrationRequest) -> Path:
     items = build_corpus(sample_rate, config=CorpusConfig.load())
     item_paths = write_corpus(items, request.output / CORPUS_DIRECTORY, sample_rate)
     referees = build_referees(sample_rate)
-    variants = build_variants(base, request.methods, request.perceptual_exponents, request.temporal_weights)
+    variants = build_variants(
+        base,
+        request.methods,
+        request.perceptual_exponents,
+        request.temporal_weights,
+    )
 
     channel_names = ", ".join(channel.value for channel in request.channels)
     logger.info(

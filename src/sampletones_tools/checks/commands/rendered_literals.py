@@ -18,16 +18,32 @@ class RenderedLiteralsArguments:
 
 
 def configure(parser: ArgumentParser) -> None:
-    parser.add_argument("--tests", type=Path, action="append", dest="roots", default=[], help=TESTS_HELP)
+    parser.add_argument(
+        "--tests",
+        type=Path,
+        action="append",
+        dest="roots",
+        default=[],
+        help=TESTS_HELP,
+    )
 
 
 def run(arguments: Namespace) -> int:
     """Reports every case comparing text it rendered with a literal it spelled out."""
     given = RenderedLiteralsArguments(roots=tuple(arguments.roots))
 
-    from sampletones_tools.checks.rendered_literals import TEST_ROOTS, check_cases, report
+    from sampletones_tools.checks.rendered_literals import (
+        TEST_ROOTS,
+        check_cases,
+        report,
+    )
 
     return report(check_cases(given.roots or TEST_ROOTS))
 
 
-RENDERED_LITERALS: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+RENDERED_LITERALS: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

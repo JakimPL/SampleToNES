@@ -95,7 +95,11 @@ def seed_encoder(transform: SeedTransform) -> Encoder:
     """
 
     def encode(song: StudySong) -> Encoding:
-        return encode_production(song, seeds=transform(song.seeds), budget=DEFAULT_SEARCH_BUDGET)
+        return encode_production(
+            song,
+            seeds=transform(song.seeds),
+            budget=DEFAULT_SEARCH_BUDGET,
+        )
 
     return encode
 

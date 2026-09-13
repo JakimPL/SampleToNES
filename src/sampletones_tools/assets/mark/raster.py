@@ -55,7 +55,11 @@ class MarkRaster:
         size = (self.canvas, self.canvas)
         top = Image.new("RGB", size, self.mark.colors.background.top)
         bottom = Image.new("RGB", size, self.mark.colors.background.bottom)
-        shaded = Image.composite(bottom, top, Image.linear_gradient("L").resize(size))
+        shaded = Image.composite(
+            bottom,
+            top,
+            Image.linear_gradient("L").resize(size),
+        )
 
         background = Image.new("RGBA", size, TRANSPARENT)
         background.paste(shaded, mask=self._frame_mask())
@@ -77,7 +81,10 @@ class MarkRaster:
         what holds the outline smooth along its whole sweep.
         """
         radius = self.mark.waves.width * self.scale / 2
-        for point in sine_points(self.mark.waves.sine, self.mark.render.curve_samples):
+        for point in sine_points(
+            self.mark.waves.sine,
+            self.mark.render.curve_samples,
+        ):
             center_x, center_y = point.x * self.scale, point.y * self.scale
             draw.ellipse(
                 (
@@ -90,7 +97,10 @@ class MarkRaster:
             )
 
     def _draw_square(self, draw: ImageDraw.ImageDraw) -> None:
-        for rectangle in square_rectangles(self.mark.waves.square, self.mark.waves.width):
+        for rectangle in square_rectangles(
+            self.mark.waves.square,
+            self.mark.waves.width,
+        ):
             draw.rectangle(
                 (
                     round(rectangle.left * self.scale),
@@ -113,4 +123,7 @@ class MarkRaster:
         return overlay
 
     def _rim_color(self) -> ColorRGBA:
-        return with_alpha_fraction(parse_hex_color(self.mark.colors.rim), self.mark.frame.rim.opacity)
+        return with_alpha_fraction(
+            parse_hex_color(self.mark.colors.rim),
+            self.mark.frame.rim.opacity,
+        )

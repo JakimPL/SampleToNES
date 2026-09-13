@@ -83,7 +83,9 @@ def require_renderer() -> None:
             libgme demuxer.
     """
     if locate_program(FFMPEG) is None:
-        raise RenderingError(missing_program_message(FFMPEG, RENDER_PURPOSE, INSTALL_HINTS))
+        raise RenderingError(
+            missing_program_message(FFMPEG, RENDER_PURPOSE, INSTALL_HINTS),
+        )
 
     if not decodes_exports():
         raise RenderingError(
@@ -170,6 +172,12 @@ def render_directory(directory: Path, tail_seconds: float) -> List[RenderedWave]
         except subprocess.CalledProcessError as error:
             raise RenderingError(f"{FFMPEG} rejected {source}: exit status {error.returncode}") from error
 
-        rendered.append(RenderedWave(source=source, destination=destination, seconds=seconds))
+        rendered.append(
+            RenderedWave(
+                source=source,
+                destination=destination,
+                seconds=seconds,
+            )
+        )
 
     return rendered

@@ -149,7 +149,13 @@ def verdict_rows(
         if variant.kind is VariantKind.BASELINE or variant.name not in by_variant:
             continue
 
-        rows.append(_verdict_row(variant, by_variant[variant.name], priced=variant.name in priced))
+        rows.append(
+            _verdict_row(
+                variant,
+                by_variant[variant.name],
+                priced=variant.name in priced,
+            )
+        )
 
     return tuple(rows)
 

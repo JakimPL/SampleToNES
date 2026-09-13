@@ -26,11 +26,19 @@ def configure(parser: ArgumentParser) -> None:
 
 def run(arguments: Namespace) -> int:
     """Reports any tag constant whose name departs from the tag it composes."""
-    given = TagNamesArguments(files=tuple(arguments.files), everything=arguments.all)
+    given = TagNamesArguments(
+        files=tuple(arguments.files),
+        everything=arguments.all,
+    )
 
     from sampletones_tools.checks.tag_names import check_tags, report
 
     return report(check_tags(given.files, given.everything))
 
 
-TAG_NAMES: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+TAG_NAMES: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

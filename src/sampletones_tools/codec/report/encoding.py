@@ -25,14 +25,51 @@ RECORDS: Final[str] = "records"
 REGISTER_PLANES: Final[str] = "register planes"
 SPLIT_CONTROL: Final[str] = "split control"
 CONTROL_LEVEL_MASK: Final[int] = 0x3F
-HOLDS_OPTIONS: Final[CodecOptions] = CodecOptions(holds=True, phrases=False, transposition=False, search=False)
+HOLDS_OPTIONS: Final[CodecOptions] = CodecOptions(
+    holds=True,
+    phrases=False,
+    transposition=False,
+    search=False,
+)
 
 PLANE_VARIANTS: Final[Tuple[Tuple[str, CodecOptions], ...]] = (
-    (LITERALS, CodecOptions(holds=False, phrases=False, transposition=False, search=False)),
+    (
+        LITERALS,
+        CodecOptions(
+            holds=False,
+            phrases=False,
+            transposition=False,
+            search=False,
+        ),
+    ),
     (HOLDS, HOLDS_OPTIONS),
-    (INSTRUMENTS, CodecOptions(holds=True, phrases=True, transposition=False, search=False)),
-    (TRANSPOSITION, CodecOptions(holds=True, phrases=True, transposition=True, search=False)),
-    (SEARCH, CodecOptions(holds=True, phrases=True, transposition=True, search=True)),
+    (
+        INSTRUMENTS,
+        CodecOptions(
+            holds=True,
+            phrases=True,
+            transposition=False,
+            search=False,
+        ),
+    ),
+    (
+        TRANSPOSITION,
+        CodecOptions(
+            holds=True,
+            phrases=True,
+            transposition=True,
+            search=False,
+        ),
+    ),
+    (
+        SEARCH,
+        CodecOptions(
+            holds=True,
+            phrases=True,
+            transposition=True,
+            search=True,
+        ),
+    ),
 )
 
 
@@ -151,7 +188,13 @@ def _baseline_rows(entry: CorpusEntry, space: int) -> Tuple[ReportRow, ...]:
             records=entry.records,
             space=space,
         ),
-        _measured_row(entry, REGISTER_PLANES, _register_planes(entry.song.streams), 0, space),
+        _measured_row(
+            entry,
+            REGISTER_PLANES,
+            _register_planes(entry.song.streams),
+            0,
+            space,
+        ),
         _measured_row(
             entry,
             SPLIT_CONTROL,

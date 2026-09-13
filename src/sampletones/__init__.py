@@ -74,9 +74,9 @@ def __getattr__(name: str) -> Any:
 
 
 __all__ = [
+    "ChannelName",
     "Config",
     "Generator",
-    "ChannelName",
     "Instruction",
     "InstructionLibrary",
     "NoiseGenerator",

@@ -64,7 +64,12 @@ class MultiResolutionAuditoryReferee:
 
         return float(np.mean(distances))
 
-    def _band_energy(self, audio: np.ndarray, window_size: int, band_matrix: np.ndarray) -> np.ndarray:
+    def _band_energy(
+        self,
+        audio: np.ndarray,
+        window_size: int,
+        band_matrix: np.ndarray,
+    ) -> np.ndarray:
         hop = window_size // self.config.hop_divisor
         _, _, spectrum = stft(
             audio.astype(np.float64),
@@ -77,7 +82,12 @@ class MultiResolutionAuditoryReferee:
         return band_energy
 
     @classmethod
-    def _band_matrix(cls, sample_rate: int, window_size: int, config: RefereeConfig) -> np.ndarray:
+    def _band_matrix(
+        cls,
+        sample_rate: int,
+        window_size: int,
+        config: RefereeConfig,
+    ) -> np.ndarray:
         """
         Rectangular aggregation matrix from STFT bins onto ERB-spaced bands.
 
@@ -93,7 +103,11 @@ class MultiResolutionAuditoryReferee:
             config.band_count + 1,
         )
         bin_rates = cls._erb_rate(frequencies)
-        band_indices = np.clip(np.searchsorted(edges_rate, bin_rates, side="right") - 1, 0, config.band_count - 1)
+        band_indices = np.clip(
+            np.searchsorted(edges_rate, bin_rates, side="right") - 1,
+            0,
+            config.band_count - 1,
+        )
 
         matrix = np.zeros((config.band_count, frequencies.shape[0]))
         matrix[band_indices, np.arange(frequencies.shape[0])] = 1.0

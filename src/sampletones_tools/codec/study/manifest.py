@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 
+# TODO: to remove completely
 PROJECT_SUFFIX: Final[str] = ".stp"
 DEFAULT_PROJECT_NAMES: Final[Tuple[str, ...]] = ("Amen", "Demo", "Tempo", "Test")
 QUICK_PROJECT_NAMES: Final[Tuple[str, ...]] = ("Test",)

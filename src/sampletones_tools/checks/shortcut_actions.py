@@ -217,5 +217,8 @@ def report(findings: Sequence[Finding]) -> int:
     for kind, location, message in findings:
         print(f"  {kind} | {location}: {message}", file=sys.stderr)
 
-    print(f"\nFound {len(findings)} incomplete action declaration(s).", file=sys.stderr)
+    print(
+        f"\nFound {len(findings)} incomplete action declaration(s).",
+        file=sys.stderr,
+    )
     return 1

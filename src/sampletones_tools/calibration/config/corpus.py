@@ -23,18 +23,38 @@ class CorpusConfig(BaseModel, frozen=True):
     remaining adjustable in one place.
     """
 
-    seed: int = Field(ge=0, description="Seed of the random generator behind the stochastic probes.")
-    item_seconds: float = Field(gt=0.0, description="Duration of every corpus item in seconds.")
-    amplitude: float = Field(gt=0.0, le=1.0, description="Scale applied to every unit-level probe.")
+    seed: int = Field(
+        ge=0,
+        description="Seed of the random generator behind the stochastic probes.",
+    )
+    item_seconds: float = Field(
+        gt=0.0,
+        description="Duration of every corpus item in seconds.",
+    )
+    amplitude: float = Field(
+        gt=0.0,
+        le=1.0,
+        description="Scale applied to every unit-level probe.",
+    )
     reference_frequency: float = Field(
         gt=0.0,
         description="Anchor tone in Hz shared by the mix, pluck, and crescendo probes.",
     )
-    tone: ToneConfig = Field(description="Steady sine probes.")
-    timbre: TimbreConfig = Field(description="Pulse-wave probes.")
-    noise: NoiseConfig = Field(description="Broadband noise probes.")
-    mix: MixConfig = Field(description="Tone-plus-noise probes.")
-    transient: TransientConfig = Field(description="Percussive probes.")
+    tone: ToneConfig = Field(
+        description="Steady sine probes.",
+    )
+    timbre: TimbreConfig = Field(
+        description="Pulse-wave probes.",
+    )
+    noise: NoiseConfig = Field(
+        description="Broadband noise probes.",
+    )
+    mix: MixConfig = Field(
+        description="Tone-plus-noise probes.",
+    )
+    transient: TransientConfig = Field(
+        description="Percussive probes.",
+    )
 
     @classmethod
     def load(cls) -> Self:

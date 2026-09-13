@@ -4,7 +4,9 @@ import numpy as np
 
 from sampletones_core.audio.processing import clip_audio
 from sampletones_tools.calibration.config.corpus import CorpusConfig
-from sampletones_tools.synthesis.envelopes.exponential_decay import ExponentialDecayEnvelope
+from sampletones_tools.synthesis.envelopes.exponential_decay import (
+    ExponentialDecayEnvelope,
+)
 from sampletones_tools.synthesis.envelopes.linear_attack import LinearAttackEnvelope
 from sampletones_tools.synthesis.envelopes.linear_ramp import LinearRampEnvelope
 from sampletones_tools.synthesis.envelopes.types import EnvelopeUnion
@@ -193,8 +195,16 @@ def _transient_probes(config: CorpusConfig) -> List[Probe]:
             "transient",
             _voice(config, _layer(WhiteNoiseOscillator(kind="white_noise"), snare_decay)),
         ),
-        ("transient-kick", "transient", _voice(config, _layer(kick_glide, kick_decay))),
-        ("transient-pluck", "transient", _voice(config, _layer(reference_tone, pluck_attack, pluck_decay))),
+        (
+            "transient-kick",
+            "transient",
+            _voice(config, _layer(kick_glide, kick_decay)),
+        ),
+        (
+            "transient-pluck",
+            "transient",
+            _voice(config, _layer(reference_tone, pluck_attack, pluck_decay)),
+        ),
     ]
 
 
@@ -228,7 +238,12 @@ def _voice(config: CorpusConfig, *layers: Layer) -> Voice:
     )
 
 
-def _item(name: str, category: str, audio: np.ndarray, config: CorpusConfig) -> CorpusItem:
+def _item(
+    name: str,
+    category: str,
+    audio: np.ndarray,
+    config: CorpusConfig,
+) -> CorpusItem:
     """
     Assemble a corpus item from a unit-scale probe.
 

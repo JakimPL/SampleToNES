@@ -57,7 +57,9 @@ class SongSpec(BaseModel):
         return load_yaml_model(SONG_PATH, cls)
 
 
-def _order(frames: Sequence[Mapping[ChannelName, int]]) -> List[Dict[ChannelName, Optional[int]]]:
+def _order(
+    frames: Sequence[Mapping[ChannelName, int]],
+) -> List[Dict[ChannelName, Optional[int]]]:
     return [{channel: frame.get(channel) for channel in ChannelName.items()} for frame in frames]
 
 
@@ -72,7 +74,11 @@ def _row(spec: RowSpec, channel: ChannelName, samples_by_name: Mapping[str, Samp
     if channel not in sample.reconstruction.playing_channels:
         raise ValueError(f"Sample '{spec.sample}' has no '{channel.value}' slice for the {channel.value} channel")
 
-    return Row(command=NoteOn(voice_id=sample.id), transpose=spec.transpose, volume=spec.volume)
+    return Row(
+        command=NoteOn(voice_id=sample.id),
+        transpose=spec.transpose,
+        volume=spec.volume,
+    )
 
 
 def _pattern(
@@ -96,7 +102,12 @@ def _channels(
     channels: Dict[ChannelName, Channel] = {}
     for channel, spec in channel_specs.items():
         patterns = {
-            index: _pattern(row_specs, rows_per_pattern, channel, samples_by_name)
+            index: _pattern(
+                row_specs,
+                rows_per_pattern,
+                channel,
+                samples_by_name,
+            )
             for index, row_specs in spec.patterns.items()
         }
         channels[channel] = Channel(name=channel, patterns=patterns)

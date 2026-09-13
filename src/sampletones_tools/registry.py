@@ -10,4 +10,13 @@ from sampletones_tools.samples.commands.btp import BTP
 from sampletones_tools.samples.commands.ftm import FTM
 from sampletones_tools.samples.commands.nsf import NSF
 
-DEVELOPER_COMMANDS: Final[Tuple[Command, ...]] = (BTP, CALIBRATION, CHECK, CODEC, DRIVER, FTM, ICONS, NSF)
+DEVELOPER_COMMANDS: Final[Tuple[Command, ...]] = (
+    BTP,
+    CALIBRATION,
+    CHECK,
+    CODEC,
+    DRIVER,
+    FTM,
+    ICONS,
+    NSF,
+)

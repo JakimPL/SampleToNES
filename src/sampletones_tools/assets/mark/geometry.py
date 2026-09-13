@@ -38,8 +38,20 @@ def _cubic_point(
     progress: float,
 ) -> Point:
     return Point(
-        x=_cubic_coordinate(start.x, curve.control_start.x, curve.control_end.x, curve.end.x, progress),
-        y=_cubic_coordinate(start.y, curve.control_start.y, curve.control_end.y, curve.end.y, progress),
+        x=_cubic_coordinate(
+            start.x,
+            curve.control_start.x,
+            curve.control_end.x,
+            curve.end.x,
+            progress,
+        ),
+        y=_cubic_coordinate(
+            start.y,
+            curve.control_start.y,
+            curve.control_end.y,
+            curve.end.y,
+            progress,
+        ),
     )
 
 

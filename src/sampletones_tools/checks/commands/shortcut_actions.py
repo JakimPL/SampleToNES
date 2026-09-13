@@ -20,4 +20,9 @@ def run(arguments: Namespace) -> int:
     return report(check())
 
 
-SHORTCUT_ACTIONS: Final[Command] = Command(name=NAME, help=HELP, configure=configure, run=run)
+SHORTCUT_ACTIONS: Final[Command] = Command(
+    name=NAME,
+    help=HELP,
+    configure=configure,
+    run=run,
+)

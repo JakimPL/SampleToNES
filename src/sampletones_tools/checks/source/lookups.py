@@ -7,7 +7,11 @@ from sampletones_tools.checks.source.bindings.scopes import module_scopes
 from sampletones_tools.checks.source.index import SourceIndex
 from sampletones_tools.checks.source.modules import SourceModule
 from sampletones_tools.checks.source.subscripts import SubscriptSite, find_subscripts
-from sampletones_tools.checks.source.values import EnumTable, ResolvedValues, ValueResolver
+from sampletones_tools.checks.source.values import (
+    EnumTable,
+    ResolvedValues,
+    ValueResolver,
+)
 
 
 @dataclass(frozen=True)
@@ -29,7 +33,10 @@ class LookupSite:
         return not self.unresolved_parts
 
 
-def composed_values(resolutions: Sequence[ResolvedValues], separator: str) -> Tuple[str, ...]:
+def composed_values(
+    resolutions: Sequence[ResolvedValues],
+    separator: str,
+) -> Tuple[str, ...]:
     """Every string a lookup's resolved parts spell together.
 
     A lookup of one part spells that part's values. A lookup of several parts spells one string per
@@ -107,7 +114,18 @@ def module_lookups(
             enums=enums,
             constants=index.constants,
         )
-        sites.extend(lookup_site(module, site, resolver, separator) for site in find_subscripts(scope.node, receivers))
+        sites.extend(
+            lookup_site(
+                module,
+                site,
+                resolver,
+                separator,
+            )
+            for site in find_subscripts(
+                scope.node,
+                receivers,
+            )
+        )
 
     return sites
 
