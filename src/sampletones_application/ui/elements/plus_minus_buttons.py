@@ -90,7 +90,12 @@ class GUIPlusMinusButtons(CallbackMixin):
         """Removes the buttons and, when hold-repeat is armed, the shared mouse handler."""
         self._clear_existing_items()
 
-    def _build(self, *, increment_enabled: bool, decrement_enabled: bool) -> None:
+    def _build(
+        self,
+        *,
+        increment_enabled: bool,
+        decrement_enabled: bool,
+    ) -> None:
         self._clear_existing_items()
         increment_leads = self._order is PlusMinusOrder.PLUS_FIRST
         with dpg.table(

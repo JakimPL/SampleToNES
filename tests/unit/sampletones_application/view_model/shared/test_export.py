@@ -75,6 +75,12 @@ class TestHowTheStageUnderWayReads:
     def test_a_stage_without_an_end_shows_the_turning_symbol(self) -> None:
         assert view_model(traveling=False, figure=SIZE).working_visible is True
 
+    def test_a_stage_with_words_to_state_shows_its_figure(self) -> None:
+        assert view_model(traveling=False, figure=SIZE).figure_visible is True
+
+    def test_a_stage_with_nothing_to_state_leaves_the_indicator_alone(self) -> None:
+        assert view_model(traveling=False, figure="").figure_visible is False
+
     def test_a_bar_is_labeled_with_the_share_it_has_covered(self) -> None:
         assert view_model(progress=HALFWAY).progress_overlay == "50%"
 

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Final, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -20,6 +20,7 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.centered import centered
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.keyboard import KeyRouter
@@ -29,6 +30,8 @@ from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.view_model.shared.export import SongExportViewModel
 from sampletones_core.exports.stage import ExportStage
 from sampletones_shared.types.callback import VoidCallback
+
+RING_STYLE: Final[int] = 1
 
 
 class GUIExportWindow(GUIDialogWindow):
@@ -55,6 +58,7 @@ class GUIExportWindow(GUIDialogWindow):
     ) -> None:
         self._language_manager = language_manager
         self._text_colors = text_colors
+        self._indicator = layout.export.indicator
         self._view_model: SongExportViewModel = SongExportViewModel.idle()
 
         self.on_cancel: Optional[VoidCallback] = None
@@ -138,23 +142,27 @@ class GUIExportWindow(GUIDialogWindow):
         """The reading of a stage whose length the data decides: what it holds, and that it turns.
 
         A bar would have to state a fraction of something, and this stage travels toward nothing,
-        so what stands here is the figure it does know beside a symbol that keeps moving.
+        so what stands here is the figure it does know beside a symbol that keeps moving. The pair
+        stands centered in the window, and both are drawn in the figure's font, which is the font
+        the ring takes its size from, so the ring sits level with the line beside it.
         """
         with dpg.group(
             tag=TAG_SETTINGS_EXPORT_GROUP_WORKING,
             show=False,
-            horizontal=True,
         ):
-            dpg.add_loading_indicator(
-                style=1,
-                radius=2.0,
-                thickness=1.5,
-            )
-            dpg.add_text("", tag=TAG_SETTINGS_EXPORT_TEXT_FIGURE)
-            FontRegistry.bind_to_item(
-                TAG_SETTINGS_EXPORT_TEXT_FIGURE,
-                Font.MONO_SMALL,
-            )
+            with centered():
+                with dpg.group(horizontal=True):
+                    dpg.add_loading_indicator(
+                        style=RING_STYLE,
+                        radius=self._indicator.radius,
+                        thickness=self._indicator.thickness,
+                    )
+                    dpg.add_text("", tag=TAG_SETTINGS_EXPORT_TEXT_FIGURE)
+
+        FontRegistry.bind_to_item(
+            TAG_SETTINGS_EXPORT_GROUP_WORKING,
+            Font.MONO_SMALL,
+        )
 
     def _create_cancel(self) -> None:
         GUIButton(
@@ -182,6 +190,10 @@ class GUIExportWindow(GUIDialogWindow):
             show=view_model.working_visible,
         )
         dpg_set_value(TAG_SETTINGS_EXPORT_TEXT_FIGURE, view_model.figure)
+        dpg_configure_item(
+            TAG_SETTINGS_EXPORT_TEXT_FIGURE,
+            show=view_model.figure_visible,
+        )
         dpg_configure_item(
             TAG_SETTINGS_EXPORT_BUTTON_CANCEL,
             enabled=view_model.cancel_enabled,
