@@ -6,7 +6,7 @@ from sampletones_player.driver.image import DriverImage
 from sampletones_player.specification.compression import PLANE_COUNT, PLANE_STATE_SIZE
 from sampletones_tools.codec.report.corpus import CorpusEntry, corpus_entries
 from sampletones_tools.codec.report.encoding import Encoding, encode_corpus, report_rows
-from sampletones_tools.codec.report.rows import write_csv, write_markdown
+from sampletones_tools.codec.report.rows import report_table, write_markdown
 from sampletones_tools.codec.report.songs import available_bytes
 from sampletones_tools.corpus.build import build_corpus
 
@@ -31,12 +31,12 @@ def write_report(
     Returns:
         Tuple[Path, Path]: The CSV table and the Markdown table.
     """
-    rows = report_rows(entries, encodings, space)
+    table = report_table(report_rows(entries, encodings, space))
     output.mkdir(parents=True, exist_ok=True)
     csv_path = output / CSV_FILENAME
     markdown_path = output / MARKDOWN_FILENAME
-    write_csv(rows, csv_path)
-    write_markdown(rows, markdown_path, PLANE_COUNT * PLANE_STATE_SIZE)
+    table.write_csv(csv_path)
+    write_markdown(table, markdown_path, PLANE_COUNT * PLANE_STATE_SIZE)
     return csv_path, markdown_path
 
 

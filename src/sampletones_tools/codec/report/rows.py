@@ -1,7 +1,8 @@
-import csv
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Sequence, Tuple
+
+from sampletones_shared.utils.tables import Table
 
 COLUMNS: Final[Tuple[str, ...]] = (
     "corpus",
@@ -81,26 +82,17 @@ class ReportRow:
         )
 
 
-def write_csv(rows: Sequence[ReportRow], path: Path) -> None:
-    """Writes the measurements as a table another tool reads.
+def report_table(rows: Sequence[ReportRow]) -> Table:
+    """The measurements as the report's table, in the order they are reported."""
+    return Table(columns=COLUMNS, rows=tuple(row.cells for row in rows))
+
+
+def write_markdown(table: Table, path: Path, state: int) -> None:
+    """Writes the measurements as a document a reader reads.
 
     Args:
-        rows: The measurements, in the order they are reported.
-        path: Where the table is written.
-    """
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(COLUMNS)
-        for row in rows:
-            writer.writerow(row.cells)
-
-
-def write_markdown(rows: Sequence[ReportRow], path: Path, state: int) -> None:
-    """Writes the measurements as a table a reader reads.
-
-    Args:
-        rows: The measurements, in the order they are reported.
-        path: Where the table is written.
+        table: The measurements.
+        path: Where the document is written.
         state: The zero-page bytes the decoder's plane state takes.
     """
     lines = [
@@ -108,8 +100,6 @@ def write_markdown(rows: Sequence[ReportRow], path: Path, state: int) -> None:
         "",
         f"Decoder state: {state} bytes of zero page.",
         "",
-        "| " + " | ".join(COLUMNS) + " |",
-        "|" + "|".join("---" for _ in COLUMNS) + "|",
+        *table.markdown_lines(),
     ]
-    lines.extend("| " + " | ".join(row.cells) + " |" for row in rows)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")

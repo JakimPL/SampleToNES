@@ -1,11 +1,15 @@
-import csv
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Final, Iterable, List, Tuple
 
 import numpy as np
 
-from .runner import CalibrationRow
+from sampletones_shared.utils.tables import Table
+from sampletones_tools.calibration.runner import CalibrationRow
+
+CSV_COLUMNS: Final[Tuple[str, ...]] = ("variant", "item", "category", "referee", "score")
+VARIANT_COLUMN: Final[str] = "variant"
+OVERALL_COLUMN: Final[str] = "overall"
 
 
 def write_csv(rows: List[CalibrationRow], path: Path) -> None:
@@ -16,19 +20,10 @@ def write_csv(rows: List[CalibrationRow], path: Path) -> None:
         rows: Scored rows from the runner.
         path: Target CSV path.
     """
-    with path.open("w", newline="") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["variant", "item", "category", "referee", "score"])
-        for row in rows:
-            writer.writerow(
-                [
-                    row.variant,
-                    row.item,
-                    row.category,
-                    row.referee,
-                    f"{row.score:.6f}",
-                ]
-            )
+    Table(
+        columns=CSV_COLUMNS,
+        rows=tuple((row.variant, row.item, row.category, row.referee, f"{row.score:.6f}") for row in rows),
+    ).write_csv(path)
 
 
 def write_markdown(rows: List[CalibrationRow], path: Path) -> None:
@@ -41,25 +36,23 @@ def write_markdown(rows: List[CalibrationRow], path: Path) -> None:
         path: Target markdown path.
     """
     lines: List[str] = ["# Calibration report", ""]
-
     for referee in _ordered(row.referee for row in rows):
         referee_rows = [row for row in rows if row.referee == referee]
-        categories = _ordered(row.category for row in referee_rows)
-        variants = _ordered(row.variant for row in referee_rows)
-        means = _mean_scores(referee_rows)
+        lines.extend((f"## {referee}", "", *_referee_table(referee_rows).markdown_lines(), ""))
 
-        lines.append(f"## {referee}")
-        lines.append("")
-        lines.append("| variant | " + " | ".join(categories) + " | overall |")
-        lines.append("|---" * (len(categories) + 2) + "|")
-        for variant in variants:
-            cells = [f"{means.get((variant, category), float('nan')):.3f}" for category in categories]
-            overall = np.mean([row.score for row in referee_rows if row.variant == variant])
-            lines.append(f"| {variant} | " + " | ".join(cells) + f" | {float(overall):.3f} |")
+    path.write_text("\n".join(lines), encoding="utf-8")
 
-        lines.append("")
 
-    path.write_text("\n".join(lines))
+def _referee_table(rows: List[CalibrationRow]) -> Table:
+    categories = _ordered(row.category for row in rows)
+    means = _mean_scores(rows)
+    cells: List[Tuple[str, ...]] = []
+    for variant in _ordered(row.variant for row in rows):
+        scores = [f"{means.get((variant, category), float('nan')):.3f}" for category in categories]
+        overall = np.mean([row.score for row in rows if row.variant == variant])
+        cells.append((variant, *scores, f"{float(overall):.3f}"))
+
+    return Table(columns=(VARIANT_COLUMN, *categories, OVERALL_COLUMN), rows=tuple(cells))
 
 
 def _mean_scores(rows: List[CalibrationRow]) -> Dict[Tuple[str, str], float]:

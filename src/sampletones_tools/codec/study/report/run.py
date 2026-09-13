@@ -6,6 +6,7 @@ from typing import Final, Iterator, List, Optional, Sequence, Tuple
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_shared.paths.source import REPOSITORY_ROOT
 from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
+from sampletones_shared.utils.tables import Table
 from sampletones_tools.checkout import is_checkout
 from sampletones_tools.codec.study.accounting import rows as accounting
 from sampletones_tools.codec.study.manifest import StudyManifest
@@ -13,7 +14,6 @@ from sampletones_tools.codec.study.measure import Measurement
 from sampletones_tools.codec.study.report import aggregate
 from sampletones_tools.codec.study.report import rows as songs
 from sampletones_tools.codec.study.report import verdicts
-from sampletones_tools.codec.study.report.writers import markdown_table, write_csv
 from sampletones_tools.codec.study.variants.production import BASELINE_NAME
 from sampletones_tools.codec.study.variants.variant import Variant
 
@@ -88,25 +88,21 @@ def write_run(
     accounting_rows = [
         accounting.account(measurement, compressed) for measurement, compressed in _written(measurements)
     ]
+    song_table = Table(columns=songs.COLUMNS, rows=tuple(row.cells for row in song_rows))
+    verdict_table = Table(columns=verdicts.COLUMNS, rows=tuple(row.cells for row in verdict_rows))
     manifest.save(directory / MANIFEST_JSON)
-    write_csv(directory / REPORT_CSV, songs.COLUMNS, [row.cells for row in song_rows])
-    write_csv(directory / VERDICTS_CSV, verdicts.COLUMNS, [row.cells for row in verdict_rows])
-    write_csv(directory / ACCOUNTING_CSV, accounting.COLUMNS, [row.cells for row in accounting_rows])
-    lines = _header(manifest, variants)
-    lines.extend(("## Variants", "", *_variants_table(variants), ""))
-    lines.extend(
-        (
-            "## Verdicts",
-            "",
-            verdicts.RULE,
-            "",
-            *markdown_table(verdicts.COLUMNS, [row.cells for row in verdict_rows]),
-            "",
-        )
+    song_table.write_csv(directory / REPORT_CSV)
+    verdict_table.write_csv(directory / VERDICTS_CSV)
+    Table(columns=accounting.COLUMNS, rows=tuple(row.cells for row in accounting_rows)).write_csv(
+        directory / ACCOUNTING_CSV
     )
-    lines.extend(("## Groups", "", *markdown_table(aggregate.COLUMNS, [row.cells for row in group_rows]), ""))
-    lines.extend(("## Songs", "", *markdown_table(songs.COLUMNS, [row.cells for row in song_rows]), ""))
-    lines.extend(("## Accounting", "", *_accounting_table(accounting_rows), ""))
+    lines = _header(manifest, variants)
+    lines.extend(("## Variants", "", *_variants_table(variants).markdown_lines(), ""))
+    lines.extend(("## Verdicts", "", verdicts.RULE, "", *verdict_table.markdown_lines(), ""))
+    group_table = Table(columns=aggregate.COLUMNS, rows=tuple(row.cells for row in group_rows))
+    lines.extend(("## Groups", "", *group_table.markdown_lines(), ""))
+    lines.extend(("## Songs", "", *song_table.markdown_lines(), ""))
+    lines.extend(("## Accounting", "", *_accounting_table(accounting_rows).markdown_lines(), ""))
     (directory / REPORT_MARKDOWN).write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -137,16 +133,16 @@ def _header(
     ]
 
 
-def _variants_table(variants: Sequence[Variant]) -> List[str]:
+def _variants_table(variants: Sequence[Variant]) -> Table:
     columns = ("variant", "hypothesis", "kind", "driver")
-    cells = [(variant.name, variant.hypothesis, variant.kind.value, variant.note) for variant in variants]
-    return markdown_table(columns, cells)
+    cells = tuple((variant.name, variant.hypothesis, variant.kind.value, variant.note) for variant in variants)
+    return Table(columns=columns, rows=cells)
 
 
-def _accounting_table(rows: Sequence[accounting.AccountingRow]) -> List[str]:
+def _accounting_table(rows: Sequence[accounting.AccountingRow]) -> Table:
     columns = ("group", "song", "variant", "block", "dictionary", "idle bytes", "bend bytes")
     labels = tuple(f"{label} {name}" for label, name in accounting.HYPOTHESES)
-    cells = [
+    cells = tuple(
         (
             row.group,
             row.song,
@@ -158,5 +154,5 @@ def _accounting_table(rows: Sequence[accounting.AccountingRow]) -> List[str]:
             *(row.share(finding.saving) for finding in row.findings),
         )
         for row in rows
-    ]
-    return markdown_table((*columns, *labels), cells)
+    )
+    return Table(columns=(*columns, *labels), rows=cells)
