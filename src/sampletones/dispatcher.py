@@ -9,10 +9,10 @@ DESCRIPTION: Final[str] = "SampleToNES turns recordings into NES instruments and
 DEFAULT_COMMAND: Final[str] = "run"
 COMMAND_FIELD: Final[str] = "command"
 COMMAND_METAVAR: Final[str] = "<command>"
-DEVELOPER_GUIDE: Final[str] = "docs/development/tooling.md"
 EPILOG: Final[str] = (
     f"Run '{PROGRAM} {COMMAND_METAVAR} --help' for a command's options. The commands for developing "
-    f"SampleToNES run from a checkout as 'uv run {PROGRAM} {COMMAND_METAVAR}'; {DEVELOPER_GUIDE} lists them."
+    "SampleToNES follow the ones for using it; one that needs the repository says so and names the "
+    f"'uv run {PROGRAM} {COMMAND_METAVAR}' line to run from a checkout."
 )
 
 

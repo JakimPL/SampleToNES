@@ -1,16 +1,15 @@
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Optional, Tuple
 
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.text import listed_items
 from sampletones_tools.codec.study.corpus.build import build_corpus
-from sampletones_tools.codec.study.manifest import NO_SOURCE, StudyManifest, StudySource
+from sampletones_tools.codec.study.manifest import StudyManifest, StudySource
 from sampletones_tools.codec.study.measure import Measurement, measure
+from sampletones_tools.codec.study.plan import StudyPlan
 from sampletones_tools.codec.study.report.run import run_directory, write_run
-from sampletones_tools.codec.study.variants.baselines import Baselines
-from sampletones_tools.codec.study.variants.registry import EVERY_VARIANT, selected_variants
+from sampletones_tools.codec.study.variants.registry import EVERY_VARIANT
 from sampletones_tools.codec.study.variants.strategy import STRATEGY_ORDER, depth_measurements
-from sampletones_tools.codec.study.variants.variant import Variant
 
 
 def variant_names(stated: Optional[str]) -> Tuple[str, ...]:
@@ -41,12 +40,9 @@ def resolve_manifest(
         variants: The names of the variants every song is encoded under, unless a manifest states them.
 
     Raises:
-        ValueError: If neither a manifest nor a source is named, no manifest stands at the path,
-            or the manifest breaks one of its bounds.
+        ValueError: If no manifest stands at the path, a source names nothing, or the manifest
+            names no source or breaks one of its bounds.
     """
-    if path is None and not projects and not reconstructions:
-        raise ValueError(NO_SOURCE)
-
     if path is not None and not path.is_file():
         raise ValueError(f"No manifest at {path}.")
 
@@ -62,29 +58,14 @@ def resolve_manifest(
     )
 
 
-def study_variants(names: Sequence[str]) -> Tuple[Variant, ...]:
-    """The variants a run encodes under, the baseline first, over production encodings of their own.
+def run_study(plan: StudyPlan, output: Optional[Path]) -> Path:
+    """Encodes every song of the plan's manifest under every variant it names and writes the run.
+
+    The corpus is read before the run's directory is made, so a source that fails to read leaves
+    the output untouched.
 
     Args:
-        names: The names a manifest states, or ``all``.
-
-    Raises:
-        ValueError: If a name is registered to no variant.
-    """
-    return selected_variants(names, Baselines())
-
-
-def run_study(
-    manifest: StudyManifest,
-    variants: Sequence[Variant],
-    output: Optional[Path],
-) -> Path:
-    """Encodes every song of the manifest under every variant and writes the run.
-
-    Args:
-        manifest: What is measured.
-        variants: The variants every song is encoded under, as ``study_variants`` selects them
-            from the manifest's names.
+        plan: What is measured and the variants it is encoded under.
         output: The directory the run writes into, or ``None`` for a stamped one under the
             documents.
 
@@ -94,12 +75,12 @@ def run_study(
     Raises:
         ValueError: If a variant writes a song as streams that play back differently.
     """
+    corpus = build_corpus(plan.manifest)
     directory = run_directory(output)
-    corpus = build_corpus(manifest)
 
     measurements: List[Measurement] = []
     for song in corpus:
-        for variant in variants:
+        for variant in plan.variants:
             if not variant.applies(song):
                 continue
 
@@ -116,8 +97,7 @@ def run_study(
 
     write_run(
         directory,
-        manifest,
-        variants,
+        plan,
         measurements,
         depth_measurements(measurements, STRATEGY_ORDER),
     )

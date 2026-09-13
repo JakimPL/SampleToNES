@@ -3,10 +3,7 @@ from typing import Final, Self, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-NO_SOURCE: Final[str] = (
-    "The study reads the files it is given: name a project with --project, a stem file or a directory of "
-    "stems with --reconstruction, or a manifest a run wrote with --manifest."
-)
+NAMES_A_SOURCE: Final[str] = "A study measures at least one project or reconstruction."
 
 
 class StudySource(BaseModel):
@@ -21,6 +18,16 @@ class StudySource(BaseModel):
 
     label: str
     path: Path
+
+    @model_validator(mode="after")
+    def _names_a_file_or_directory(self) -> Self:
+        """Raises:
+        ValueError: If nothing stands at the path.
+        """
+        if not self.path.exists():
+            raise ValueError(f"No file at {self.path}.")
+
+        return self
 
     @classmethod
     def at(cls, path: Path) -> Self:
@@ -58,7 +65,7 @@ class StudyManifest(BaseModel):
         ValueError: If the manifest names neither a project nor a reconstruction.
         """
         if not self.projects and not self.reconstructions:
-            raise ValueError(NO_SOURCE)
+            raise ValueError(NAMES_A_SOURCE)
 
         return self
 

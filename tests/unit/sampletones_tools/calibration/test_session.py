@@ -5,9 +5,8 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
-from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
 from sampletones_tools.calibration.session import (
-    OUTPUT_DIRECTORY,
+    OUTPUT_ROOT,
     CalibrationRequest,
     default_output,
     floats_named,
@@ -45,7 +44,7 @@ class TestDefaultOutput:
     def test_a_run_lands_in_a_timestamped_directory_under_the_documents(self) -> None:
         output = default_output()
 
-        assert output.parent == USER_PATH_DOCUMENTS / OUTPUT_DIRECTORY
+        assert output.parent == OUTPUT_ROOT
         assert datetime.strptime(output.name, RUN_STAMP)
 
 

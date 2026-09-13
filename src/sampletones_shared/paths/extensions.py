@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Final, Tuple
 
 EXT_FILE_JSON: Final[str] = ".json"
@@ -23,3 +24,8 @@ EXT_FILES_AUDIO: Final[Tuple[str, ...]] = (
     EXT_FILE_AIFF,
     EXT_FILE_AU,
 )
+
+
+def is_audio_file(path: Path, extensions: Tuple[str, ...] = EXT_FILES_AUDIO) -> bool:
+    """Whether a path names a recording a run converts."""
+    return path.is_file() and path.suffix.lower() in extensions

@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 import pytest
 
-from sampletones.dispatcher import DEFAULT_COMMAND, DEVELOPER_GUIDE, build_parser, dispatch
+from sampletones.dispatcher import COMMAND_METAVAR, DEFAULT_COMMAND, PROGRAM, build_parser, dispatch
 from sampletones_shared.application import SAMPLETONES_NAME_VERSION
 from sampletones_shared.command import Command
 
@@ -35,11 +35,10 @@ class TestBuildParser:
         assert leaving.value.code == 0
         assert SAMPLETONES_NAME_VERSION in capsys.readouterr().out
 
-    def test_the_listing_says_where_the_developer_commands_run_and_what_lists_them(self) -> None:
+    def test_the_listing_names_the_line_a_developer_command_runs_from_a_checkout(self) -> None:
         listing = " ".join(build_parser((_command("first", []),)).format_help().split())
 
-        assert "uv run sampletones" in listing
-        assert DEVELOPER_GUIDE in listing
+        assert f"uv run {PROGRAM} {COMMAND_METAVAR}" in listing
 
     def test_every_command_is_listed_with_its_help(self) -> None:
         parser = build_parser((_command("first", []), _command("second", [])))

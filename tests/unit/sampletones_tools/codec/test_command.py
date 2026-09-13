@@ -1,19 +1,20 @@
+import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, List, Optional, Sequence, Tuple
+from typing import Final, List, Optional, Tuple
 
 import pytest
 
 from sampletones.commands.registry import COMMANDS
 from sampletones.dispatcher import dispatch
-from sampletones_tools.codec.command import DEFAULT_LENGTHEN_SECONDS
+from sampletones_tools.codec.command import DEFAULT_LENGTHEN_SECONDS, NO_SOURCE
 from sampletones_tools.codec.report.session import CompressionReport
-from sampletones_tools.codec.study.manifest import StudyManifest
+from sampletones_tools.codec.study.plan import StudyPlan
 from sampletones_tools.codec.study.variants.production import BASELINE_NAME
 from sampletones_tools.codec.study.variants.registry import EVERY_VARIANT
-from sampletones_tools.codec.study.variants.variant import Variant
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.files import empty_file
 
 RUNNER: Final[str] = "sampletones_tools.codec.study.session.run_study"
 REPORTER: Final[str] = "sampletones_tools.codec.report.session.run_report"
@@ -21,11 +22,31 @@ REPORTER: Final[str] = "sampletones_tools.codec.report.session.run_report"
 
 class RecordedStudy:
     def __init__(self) -> None:
-        self.runs: List[Tuple[StudyManifest, Tuple[str, ...], Optional[Path]]] = []
+        self.runs: List[Tuple[StudyPlan, Optional[Path]]] = []
 
-    def __call__(self, manifest: StudyManifest, variants: Sequence[Variant], output: Optional[Path]) -> Path:
-        self.runs.append((manifest, tuple(variant.name for variant in variants), output))
+    def __call__(self, plan: StudyPlan, output: Optional[Path]) -> Path:
+        self.runs.append((plan, output))
         return output if output is not None else Path("run")
+
+
+@dataclass(frozen=True)
+class StudySources:
+    project: Path
+    reconstruction: Path
+
+
+@pytest.fixture(name="study")
+def study_fixture(monkeypatch: pytest.MonkeyPatch) -> RecordedStudy:
+    recorded = RecordedStudy()
+    monkeypatch.setattr(RUNNER, recorded)
+    return recorded
+
+
+@pytest.fixture(name="sources")
+def sources_fixture(tmp_path: Path) -> StudySources:
+    reconstruction = tmp_path / "stems" / "two"
+    reconstruction.mkdir(parents=True)
+    return StudySources(project=empty_file(tmp_path / "songs", "one.stp"), reconstruction=reconstruction)
 
 
 class TestCodecReport:
@@ -65,21 +86,19 @@ class TestCodecReport:
 class TestCodecStudy:
     def test_the_sources_and_the_sweep_are_read_from_the_options(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        study: RecordedStudy,
+        sources: StudySources,
         tmp_path: Path,
     ) -> None:
-        study = RecordedStudy()
-        monkeypatch.setattr(RUNNER, study)
-
         status = dispatch(
             COMMANDS,
             [
                 "codec",
                 "study",
                 "--project",
-                "songs/one.stp",
+                str(sources.project),
                 "--reconstruction",
-                "stems/two",
+                str(sources.reconstruction),
                 "--variants",
                 "wide-hold",
                 "--lengthen",
@@ -90,31 +109,26 @@ class TestCodecStudy:
         )
 
         assert status == 0
-        manifest, variants, output = study.runs[0]
-        assert [source.path for source in manifest.projects] == [Path("songs/one.stp")]
-        assert [source.path for source in manifest.reconstructions] == [Path("stems/two")]
-        assert manifest.variants == ("wide-hold",)
-        assert variants == (BASELINE_NAME, "wide-hold")
-        assert manifest.lengthen_seconds == 30
+        plan, output = study.runs[0]
+        assert [source.path for source in plan.manifest.projects] == [sources.project]
+        assert [source.path for source in plan.manifest.reconstructions] == [sources.reconstruction]
+        assert plan.manifest.variants == ("wide-hold",)
+        assert [variant.name for variant in plan.variants] == [BASELINE_NAME, "wide-hold"]
+        assert plan.manifest.lengthen_seconds == 30
         assert output == tmp_path
 
-    def test_a_run_naming_no_source_is_refused_with_the_way_to_name_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        study = RecordedStudy()
-        monkeypatch.setattr(RUNNER, study)
-
-        with pytest.raises(SystemExit, match="reads the files it is given"):
+    def test_a_run_naming_no_source_is_refused_with_the_way_to_name_one(self, study: RecordedStudy) -> None:
+        with pytest.raises(SystemExit, match=re.escape(NO_SOURCE)):
             dispatch(COMMANDS, ["codec", "study"])
 
+        assert all(flag in NO_SOURCE for flag in ("--project", "--reconstruction", "--manifest"))
         assert study.runs == []
 
-    def test_the_lengthening_defaults_to_its_constant(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        study = RecordedStudy()
-        monkeypatch.setattr(RUNNER, study)
-
-        assert dispatch(COMMANDS, ["codec", "study", "--project", "songs/one.stp"]) == 0
-        manifest, _, output = study.runs[0]
-        assert manifest.lengthen_seconds == DEFAULT_LENGTHEN_SECONDS
-        assert manifest.variants == (EVERY_VARIANT,)
+    def test_the_lengthening_defaults_to_its_constant(self, study: RecordedStudy, sources: StudySources) -> None:
+        assert dispatch(COMMANDS, ["codec", "study", "--project", str(sources.project)]) == 0
+        plan, output = study.runs[0]
+        assert plan.manifest.lengthen_seconds == DEFAULT_LENGTHEN_SECONDS
+        assert plan.manifest.variants == (EVERY_VARIANT,)
         assert output is None
 
     def test_an_action_is_required(self) -> None:
@@ -132,21 +146,25 @@ class TestRefusedStudies(BaseTestSuite):
 
     test_cases = (
         TestCase(label="an unknown variant", argv=("--variants", "bogus"), refusal="No variant is called bogus"),
-        TestCase(label="no lengthening", argv=("--lengthen", "0"), refusal="lengthen_seconds: Input should be"),
-        TestCase(label="a missing manifest", argv=("--manifest", "absent.json"), refusal="No manifest at"),
+        TestCase(label="no lengthening", argv=("--lengthen", "0"), refusal="lengthen_seconds"),
+        TestCase(label="a missing manifest", argv=("--manifest", "{directory}/absent.json"), refusal="No manifest at"),
+        TestCase(label="a missing project", argv=("--project", "{directory}/absent.stp"), refusal="No file at"),
+        TestCase(label="a broken manifest", argv=("--manifest", "{directory}/broken.json"), refusal="JSON"),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_a_run_asking_the_impossible_is_refused_in_one_line_before_it_starts(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        study: RecordedStudy,
+        sources: StudySources,
+        tmp_path: Path,
         test_case: TestCase,
     ) -> None:
-        study = RecordedStudy()
-        monkeypatch.setattr(RUNNER, study)
+        (tmp_path / "broken.json").write_text("{", encoding="utf-8")
+        argv = [argument.format(directory=tmp_path) for argument in test_case.argv]
 
         with pytest.raises(SystemExit, match=test_case.refusal) as leaving:
-            dispatch(COMMANDS, ["codec", "study", "--project", "songs/one.stp", *test_case.argv])
+            dispatch(COMMANDS, ["codec", "study", "--project", str(sources.project), *argv])
 
         assert len(str(leaving.value).splitlines()) == 1
         assert study.runs == []

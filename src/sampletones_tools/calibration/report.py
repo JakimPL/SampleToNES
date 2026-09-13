@@ -7,8 +7,8 @@ import numpy as np
 from sampletones_shared.utils.tables import Table
 from sampletones_tools.calibration.runner import CalibrationRow
 
-CSV_COLUMNS: Final[Tuple[str, ...]] = ("variant", "item", "category", "referee", "score")
 VARIANT_COLUMN: Final[str] = "variant"
+CSV_COLUMNS: Final[Tuple[str, ...]] = (VARIANT_COLUMN, "item", "category", "referee", "score")
 OVERALL_COLUMN: Final[str] = "overall"
 
 

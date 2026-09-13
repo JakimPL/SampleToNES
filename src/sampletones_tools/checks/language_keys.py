@@ -26,12 +26,12 @@ from sampletones_tools.checks.source.classes import declared_subclasses
 from sampletones_tools.checks.source.index import source_index
 from sampletones_tools.checks.source.lookups import LookupSite, tree_lookups
 from sampletones_tools.checks.source.modules import discover_modules, module_name
-from sampletones_tools.checks.source.packages import package_directory
+from sampletones_tools.checks.source.packages import source_package_directory
 from sampletones_tools.checks.source.values import EnumMembers, EnumTable
 
 EnumPredicate = Callable[[object], bool]
 
-APPLICATION_PACKAGE: Final[Path] = package_directory("sampletones_application")
+APPLICATION_PACKAGE: Final[Path] = source_package_directory("sampletones_application")
 
 RECEIVER_TYPE: Final[str] = "LanguageManager"
 ELEMENT_BASE: Final[str] = AbstractElement.__name__

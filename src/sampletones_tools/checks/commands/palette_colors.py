@@ -8,7 +8,7 @@ from sampletones_shared.command import Command
 NAME: Final[str] = "palette-colors"
 HELP: Final[str] = "hold every color to a palette token until it is drawn with"
 PACKAGE_HELP: Final[str] = "package whose color reads to check; without it, the application package"
-CONFIG_HELP: Final[str] = (
+CONFIG_DIRECTORY_HELP: Final[str] = (
     "shipped configuration package whose colors must name palette tokens; without it, the shipped one"
 )
 PALETTES_HELP: Final[str] = "directory holding the palettes, where color values belong; without it, the shipped one"
@@ -25,7 +25,7 @@ class PaletteColorsArguments:
 
 def configure(parser: ArgumentParser) -> None:
     parser.add_argument("--package", type=Path, default=None, help=PACKAGE_HELP)
-    parser.add_argument("--config-directory", type=Path, default=None, help=CONFIG_HELP)
+    parser.add_argument("--config-directory", type=Path, default=None, help=CONFIG_DIRECTORY_HELP)
     parser.add_argument("--palettes", type=Path, default=None, help=PALETTES_HELP)
 
 

@@ -19,7 +19,7 @@ from sampletones_tools.runs import stamped_run_directory
 DEFAULT_METHODS: Final[Tuple[SpectrumMethod, ...]] = (SpectrumMethod.FFT, SpectrumMethod.CQT)
 DEFAULT_PERCEPTUAL_EXPONENTS: Final[Tuple[float, ...]] = (1.0,)
 BASE_BLEND: Final[Tuple[float, ...]] = ()
-OUTPUT_DIRECTORY: Final[str] = "calibration"
+OUTPUT_ROOT: Final[Path] = USER_PATH_DOCUMENTS / "calibration"
 CORPUS_DIRECTORY: Final[str] = "corpus"
 CSV_REPORT: Final[str] = "report.csv"
 MARKDOWN_REPORT: Final[str] = "report.md"
@@ -66,7 +66,7 @@ def floats_named(stated: Optional[str], default: Sequence[float]) -> List[float]
 
 def default_output() -> Path:
     """A timestamped run directory under the user's calibration documents."""
-    return stamped_run_directory(USER_PATH_DOCUMENTS / OUTPUT_DIRECTORY)
+    return stamped_run_directory(OUTPUT_ROOT)
 
 
 class CalibrationRequest(BaseModel):

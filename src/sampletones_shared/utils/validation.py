@@ -55,7 +55,7 @@ def describe_failure(error: ValueError) -> str:
     Renders a refused value the way a command line reports it, one line per problem.
 
     A reason a validator raised keeps its own words, and a broken constraint is named by the
-    field it binds, so a person reads what to change in place of Pydantic's diagnostic layout.
+    field it binds, so a person reads what to change and where.
 
     Args:
         error: The failure, a Pydantic validation error or a plain ``ValueError``.

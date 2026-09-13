@@ -125,7 +125,7 @@ command `make setup` installs is a wheel and refuses the guarded ones the same w
 imports pillow, NumPy and the like inside `run`, and a test imports the registry in a subprocess and
 asserts that only the command, registry and package modules of the tools load and no heavy library
 does, since a startup failure in any tool module would break every invocation, the GUI included. A
-command reports a refused value in one line: `describe_failure` in
+command reports each refused value on a line of its own: `describe_failure` in
 `sampletones_shared/utils/validation.py` renders a validation error the way a person reads it. The
 editable install puts `src/` on the path whole, so a checkout
 sees the tools package whatever the wheel lists; hatchling's `dev-mode-exact` stays off for that

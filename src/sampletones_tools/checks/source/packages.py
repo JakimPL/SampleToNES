@@ -3,7 +3,7 @@ from pathlib import Path
 from sampletones_shared.paths.source import SOURCE_ROOT
 
 
-def package_directory(name: str, *parts: str) -> Path:
+def source_package_directory(name: str, *parts: str) -> Path:
     """The directory a package occupies, named by path rather than by import.
 
     A source check reads the tree it checks, so taking a package from the source root keeps the

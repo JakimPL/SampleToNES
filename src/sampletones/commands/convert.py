@@ -55,7 +55,7 @@ def run(arguments: Namespace) -> int:
     )
 
     from sampletones_core.headless.config import load_config
-    from sampletones_core.headless.conversion.console import pairing_lines
+    from sampletones_core.headless.conversion.pairing import pairing_lines
     from sampletones_core.headless.conversion.request import (
         ConversionRequest,
         channels_named,

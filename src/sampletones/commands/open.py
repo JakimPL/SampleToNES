@@ -32,11 +32,11 @@ def run(arguments: Namespace) -> int:
     """
     given = OpenArguments(path=arguments.path, config=arguments.config)
 
-    from sampletones_core.reconstructions.converter.paths import is_audio_file
     from sampletones_shared.paths.extensions import (
         EXT_FILE_LIBRARY,
         EXT_FILE_PROJECT,
         EXT_FILE_RECONSTRUCTION,
+        is_audio_file,
     )
 
     if not given.path.is_file():

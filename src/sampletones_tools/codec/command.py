@@ -31,6 +31,10 @@ VARIANTS_HELP: Final[str] = (
     "variants every song is encoded under, comma separated; without it every one, and the baseline always runs"
 )
 DEFAULT_LENGTHEN_SECONDS: Final[int] = 180
+NO_SOURCE: Final[str] = (
+    "The study reads the files it is given: name a project with --project, a stem file or a directory of "
+    "stems with --reconstruction, or a manifest a run wrote with --manifest."
+)
 
 
 @dataclass(frozen=True)
@@ -103,16 +107,16 @@ def _study(given: StudyArguments) -> int:
     """Measures the sources a run names.
 
     Raises:
-        SystemExit: If the run names neither a source nor a manifest, the manifest is missing or
-            broken, the lengthening is below one second, or a variant is unknown.
+        SystemExit: If the run names neither a source nor a manifest, a source or the manifest is
+            missing, the manifest is broken, the lengthening is below one second, or a variant is
+            unknown.
     """
+    if given.manifest is None and not given.projects and not given.reconstructions:
+        raise SystemExit(NO_SOURCE)
+
     from sampletones_shared.utils.validation import describe_failure
-    from sampletones_tools.codec.study.session import (
-        resolve_manifest,
-        run_study,
-        study_variants,
-        variant_names,
-    )
+    from sampletones_tools.codec.study.plan import plan_study
+    from sampletones_tools.codec.study.session import resolve_manifest, run_study, variant_names
 
     try:
         manifest = resolve_manifest(
@@ -122,11 +126,11 @@ def _study(given: StudyArguments) -> int:
             lengthen_seconds=given.lengthen,
             variants=variant_names(given.variants),
         )
-        variants = study_variants(manifest.variants)
+        plan = plan_study(manifest)
     except ValueError as error:
         raise SystemExit(describe_failure(error)) from error
 
-    run_study(manifest, variants, given.output)
+    run_study(plan, given.output)
     return 0
 
 

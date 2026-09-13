@@ -28,11 +28,11 @@ from sampletones_application.utils.gui.shortcuts.ids import (
     ShortcutId,
 )
 from sampletones_tools.checks.source.modules import SourceModule, parse_module
-from sampletones_tools.checks.source.packages import package_directory
+from sampletones_tools.checks.source.packages import source_package_directory
 
 SHORTCUTS_MODULE: Final[Path] = Path(ids_module.__file__)
 ELEMENTS_MODULE: Final[Path] = Path(settings_module.__file__)
-SHELL_MODULE: Final[Path] = package_directory("sampletones_application") / "shell.py"
+SHELL_MODULE: Final[Path] = source_package_directory("sampletones_application") / "shell.py"
 
 SCHEME_ENCODING: Final[str] = "utf-8"
 SCHEME_BINDINGS_FIELD: Final[str] = "bindings"

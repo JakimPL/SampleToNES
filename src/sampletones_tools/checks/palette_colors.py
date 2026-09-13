@@ -10,9 +10,9 @@ from typing import Final, List, NamedTuple, Tuple, Union
 from sampletones_shared.logger import logger
 from sampletones_tools.checks.source.modules import SourceModule, discover_modules
 from sampletones_tools.checks.source.nodes import terminal_name
-from sampletones_tools.checks.source.packages import package_directory
+from sampletones_tools.checks.source.packages import source_package_directory
 
-APPLICATION_PACKAGE: Final[Path] = package_directory("sampletones_application")
+APPLICATION_PACKAGE: Final[Path] = source_package_directory("sampletones_application")
 
 HEX_COLOR: Final[re.Pattern[str]] = re.compile(r"[\"']#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?[\"']")
 

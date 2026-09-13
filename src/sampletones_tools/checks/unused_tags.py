@@ -7,10 +7,10 @@ from sampletones_shared.paths.source import REPOSITORY_ROOT, SOURCE_ROOT
 from sampletones_tools.checks.paths import SCRIPTS_ROOT
 from sampletones_tools.checks.source.constants import module_constants
 from sampletones_tools.checks.source.modules import SourceModule, discover_modules
-from sampletones_tools.checks.source.packages import package_directory
+from sampletones_tools.checks.source.packages import source_package_directory
 from sampletones_tools.checks.source.references import count_identifier_loads
 
-TAGS_PACKAGE: Final[Path] = package_directory("sampletones_application", "tags")
+TAGS_PACKAGE: Final[Path] = source_package_directory("sampletones_application", "tags")
 REFERENCE_ROOTS: Final[Tuple[Path, ...]] = (
     SOURCE_ROOT,
     REPOSITORY_ROOT / "tests",

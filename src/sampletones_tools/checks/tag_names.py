@@ -24,9 +24,9 @@ from sampletones_tools.checks.source.modules import (
     parse_module,
 )
 from sampletones_tools.checks.source.nodes import terminal_name
-from sampletones_tools.checks.source.packages import package_directory
+from sampletones_tools.checks.source.packages import source_package_directory
 
-TAGS_PACKAGE: Final[Path] = package_directory("sampletones_application", "tags")
+TAGS_PACKAGE: Final[Path] = source_package_directory("sampletones_application", "tags")
 
 TAG_PREFIX: Final[str] = "TAG"
 TAG_NAME_CLASS: Final[str] = "TagName"

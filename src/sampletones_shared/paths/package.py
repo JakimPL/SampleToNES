@@ -7,9 +7,8 @@ def package_directory(package: str) -> Path:
 
     The import system's own record of where the package lives places it, which holds in a
     checkout, in an installed copy and in a bundle. PyInstaller unpacks a package's collected data
-    into a directory of the package's name, which a package the application never imports as code
-    reaches as a namespace package, so the location is read from the spec whatever kind of
-    package answers.
+    into a directory of the package's name, which a data package reaches as a namespace package,
+    so the location is read from the spec whatever kind of package answers.
 
     Args:
         package: The package's dotted name.
@@ -19,6 +18,7 @@ def package_directory(package: str) -> Path:
 
     Raises:
         FileNotFoundError: If no package of that name is importable.
+        ModuleNotFoundError: If a package the dotted name passes through is absent.
     """
     spec = find_spec(package)
     if spec is None or spec.submodule_search_locations is None:

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from sampletones_core.constants.enums import DEFAULT_CHANNELS
-from sampletones_core.headless.conversion.console import describe_stem, pairing_lines
+from sampletones_core.headless.conversion.pairing import describe_stem, pairing_lines
 from sampletones_core.headless.conversion.request import ConversionRequest, classic_setup
 from tests.unit.sampletones_core.headless.conversion.stems import recording, two_stems
 

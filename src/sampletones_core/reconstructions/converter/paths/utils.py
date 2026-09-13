@@ -10,6 +10,7 @@ from sampletones_core.reconstructions.naming.derive import derive_name
 from sampletones_shared.paths.extensions import (
     EXT_FILE_RECONSTRUCTION,
     EXT_FILES_AUDIO,
+    is_audio_file,
 )
 from sampletones_shared.utils.system.paths import to_path
 
@@ -92,11 +93,6 @@ def walk_entries(input_directory: Path) -> Iterator[Path]:
     may stop partway — reads the tree through this and decides for itself what each entry is.
     """
     return input_directory.rglob("*")
-
-
-def is_audio_file(path: Path, extensions: Tuple[str, ...] = EXT_FILES_AUDIO) -> bool:
-    """Whether a path names a recording a run converts."""
-    return path.is_file() and path.suffix.lower() in extensions
 
 
 def walk_audio_files(

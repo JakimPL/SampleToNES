@@ -2,9 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from sampletones_tools.codec.study.manifest import StudyManifest, StudySource
+from sampletones_tools.codec.study.manifest import NAMES_A_SOURCE, StudyManifest, StudySource
 from sampletones_tools.codec.study.session import resolve_manifest, variant_names
 from sampletones_tools.codec.study.variants.registry import EVERY_VARIANT
+from tests.suite.files import empty_file
 
 
 class TestVariantNames:
@@ -16,22 +17,26 @@ class TestVariantNames:
 
 
 class TestResolveManifest:
-    def test_sources_named_outright_are_measured(self) -> None:
+    def test_sources_named_outright_are_measured(self, tmp_path: Path) -> None:
+        project = empty_file(tmp_path / "songs", "one.stp")
+        stems = tmp_path / "stems" / "two"
+        stems.mkdir(parents=True)
+
         manifest = resolve_manifest(
             None,
-            projects=(Path("songs/one.stp"),),
-            reconstructions=(Path("stems/two"),),
+            projects=(project,),
+            reconstructions=(stems,),
             lengthen_seconds=30,
             variants=("wide-hold",),
         )
 
-        assert manifest.projects == (StudySource(label="one", path=Path("songs/one.stp")),)
-        assert manifest.reconstructions == (StudySource(label="two", path=Path("stems/two")),)
+        assert manifest.projects == (StudySource(label="one", path=project),)
+        assert manifest.reconstructions == (StudySource(label="two", path=stems),)
         assert manifest.lengthen_seconds == 30
         assert manifest.variants == ("wide-hold",)
 
     def test_a_run_naming_no_source_and_no_manifest_is_refused(self) -> None:
-        with pytest.raises(ValueError, match="reads the files it is given"):
+        with pytest.raises(ValueError, match=NAMES_A_SOURCE):
             resolve_manifest(
                 None,
                 projects=(),
@@ -52,7 +57,7 @@ class TestResolveManifest:
 
     def test_a_manifest_file_is_measured_as_it_stands(self, tmp_path: Path) -> None:
         written = StudyManifest(
-            projects=(StudySource(label="one", path=Path("songs/one.stp")),),
+            projects=(StudySource.at(empty_file(tmp_path, "one.stp")),),
             reconstructions=(),
             lengthen_seconds=45,
             variants=("wide-hold",),
@@ -73,26 +78,22 @@ class TestResolveManifest:
     def test_sources_named_outright_replace_a_manifest_s_own_and_keep_its_sweep(self, tmp_path: Path) -> None:
         path = tmp_path / "manifest.json"
         StudyManifest(
-            projects=(StudySource(label="one", path=Path("songs/one.stp")),),
+            projects=(StudySource.at(empty_file(tmp_path, "one.stp")),),
             reconstructions=(),
             lengthen_seconds=45,
             variants=("wide-hold",),
         ).save(path)
+        stems = tmp_path / "stems" / "two"
+        stems.mkdir(parents=True)
 
         manifest = resolve_manifest(
             path,
             projects=(),
-            reconstructions=(Path("stems/two"),),
+            reconstructions=(stems,),
             lengthen_seconds=30,
             variants=(EVERY_VARIANT,),
         )
 
         assert manifest.projects == ()
-        assert manifest.reconstructions == (StudySource(label="two", path=Path("stems/two")),)
+        assert manifest.reconstructions == (StudySource(label="two", path=stems),)
         assert (manifest.lengthen_seconds, manifest.variants) == (45, ("wide-hold",))
-
-
-class TestStudyManifest:
-    def test_a_manifest_naming_no_source_is_refused(self) -> None:
-        with pytest.raises(ValueError, match="reads the files it is given"):
-            StudyManifest(projects=(), reconstructions=(), lengthen_seconds=45, variants=("wide-hold",))
