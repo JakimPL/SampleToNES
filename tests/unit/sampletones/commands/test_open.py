@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -44,7 +45,7 @@ class TestOpen:
         monkeypatch.setattr(LAUNCHER, application)
         path = _file(tmp_path, "song.wav")
 
-        with pytest.raises(SystemExit, match=f"sampletones convert {path}"):
+        with pytest.raises(SystemExit, match=re.escape(f"sampletones convert {path}")):
             dispatch(COMMANDS, ["open", str(path)])
 
         assert application.starts == []
