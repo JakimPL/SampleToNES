@@ -11,9 +11,9 @@ from sampletones_core.constants.enums import (
     SpectrumMethod,
 )
 from sampletones_core.fft import Window
+from sampletones_core.headless.library import generate_library
 from sampletones_core.library import InstructionLibrary
 from sampletones_core.reconstructions import Reconstructor
-from sampletones_core.scripts.library import generate_library
 from sampletones_shared.logger import logger
 
 from .corpus.item import CorpusItem

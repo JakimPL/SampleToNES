@@ -123,15 +123,16 @@ Your configuration, instruction libraries (`.ins`), and reconstructions (`.stn`)
 
 ### Command line
 
-You can run without the GUI to use a custom config, generate an instruction library, or reconstruct a file:
+Every operation is a named command, and `sampletones` alone starts the interface:
 
 ```sh
-sampletones --config <config-path>                                      # run with a custom config
-sampletones --generate --config <config-path>                           # generate an instruction library
-sampletones <audio-path> --config <config-path> --output <output-path>  # reconstruct an audio file
+sampletones run --config <config-path>                            # start with a custom config
+sampletones open <project-path>                                   # start with a project, reconstruction or library loaded
+sampletones convert <audio-path> --config <config-path> -o <out>  # reconstruct a recording without the GUI
+sampletones library --config <config-path>                        # generate an instruction library
 ```
 
-Run `sampletones --help` for all options.
+Run `sampletones --help` for the commands and `sampletones <command> --help` for a command's options.
 
 ## Documentation
 

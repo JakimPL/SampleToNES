@@ -59,6 +59,21 @@ to the player, which is the record a channel edited down to empty envelopes reac
 as well. A file naming a stream for the channels it plays alone reads as the whole
 four, with the rest coming back standing by.
 
+The stems setup is also what `sampletones convert --stems` reads, written as JSON with the
+same fields: one entry per recording, in the order the recordings are given, each naming the
+channels it may occupy and the ones it bends; a hierarchy listing the stem ids by precedence
+level; and a channel cap. Two recordings, the first on the pulses and the second on the rest:
+
+```json
+{
+  "entries": [
+    {"id": 0, "settings": {"channels": ["pulse1", "pulse2"], "bends": ["pulse1", "pulse2"]}},
+    {"id": 1, "settings": {"channels": ["triangle", "noise"], "bends": ["triangle"]}}
+  ],
+  "hierarchy": {"levels": [[0], [1]]}
+}
+```
+
 ## Detached reconstructions
 
 A reconstruction normally remembers the path to its source audio. Embedding one

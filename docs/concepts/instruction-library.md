@@ -52,7 +52,7 @@ representation so their spectra are directly comparable.
 ## Generating and exploring
 
 Generate a library from the _Instructions_ tab, or on the command line with
-`sampletones --generate`. Generation renders every instruction and stores its
+`sampletones library`. Generation renders every instruction and stores its
 waveform and spectrum; a configuration that has no library yet is also built
 automatically the first time a reconstruction needs it. Regenerating a library
 that already exists replaces it.

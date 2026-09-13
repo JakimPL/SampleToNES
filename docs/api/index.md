@@ -77,13 +77,13 @@ A reconstruction searches an [instruction library](../formats/instruction-librar
 
 ```python
 from sampletones import Config
-from sampletones_core.scripts.library import generate_library
+from sampletones_core.headless.library import generate_library
 
 config = Config.load("config.json")
 generate_library(config)  # renders every instruction and writes the .ins library
 ```
 
-The same step is reached from the application's _Instructions_ tab, or on the command line with `sampletones --generate --config config.json`.
+The same step is reached from the application's _Instructions_ tab, or on the command line with `sampletones library --config config.json`.
 
 ### Reconstruct a sample
 

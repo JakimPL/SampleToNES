@@ -90,7 +90,7 @@ jobs:
 
       - name: Check the wheel carries every resource it needs at startup
         shell: bash
-        run: sampletones --self-check
+        run: sampletones self-check
 
   bundle:
     name: Standalone bundle (${{ matrix.platform }})

@@ -91,7 +91,7 @@ class TestBuildBundle:
         assert "import tkinter" in runner.lines[4]
         assert runner.lines[5].endswith(bundle.ICONS_SCRIPT)
         assert "PyInstaller" in runner.lines[6]
-        assert runner.lines[7] == f"{launcher} --self-check"
+        assert runner.lines[7] == f"{launcher} self-check"
         assert all((launcher.parent / notice).read_text() == notice for notice in bundle.NOTICES)
 
     def test_a_bundle_pyinstaller_never_wrote_is_reported(self, tmp_path: Path) -> None:
@@ -131,7 +131,7 @@ class TestBuildBundle:
                 root,
                 platform,
                 bundle.BundleOptions(release=False, gpu=False),
-                runner=RecordingRunner({"--self-check": 1}, leave_behind),
+                runner=RecordingRunner({"self-check": 1}, leave_behind),
                 environment={},
             )
 

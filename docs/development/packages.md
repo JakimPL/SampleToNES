@@ -48,7 +48,7 @@ graph TD
 | `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats | `sampletones_shared`, `sampletones_synthesis` |
 | `sampletones_player` | The NES player: the register model, the re-clocking schedule, the 6502 driver and the NSF file | `sampletones_shared`, `sampletones_core` |
 | `sampletones_application` | The DearPyGui front end | `sampletones_shared`, `sampletones_core`, `sampletones_player` |
-| `sampletones` | The command-line entry point and the startup self-check | `sampletones_shared`, `sampletones_core`, `sampletones_application` |
+| `sampletones` | The command-line entry: the dispatcher, the commands and the startup self-check | `sampletones_shared`, `sampletones_core`, `sampletones_application` |
 
 Third-party imports are the package author's own choice and stand outside this table.
 
