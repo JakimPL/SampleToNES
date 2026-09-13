@@ -9,7 +9,7 @@ from sampletones_application.categories.exports import (
     EXPORT_SAMPLE_MENU_LABELS,
     INSTRUMENT_EXPORT_FORMATS,
 )
-from sampletones_application.exports import build_export_backends
+from sampletones_application.exports import ExportBackends
 from sampletones_application.utils.gui.shortcuts.ids import (
     PROJECT_EXPORT_SHORTCUT_IDS,
     SAMPLE_EXPORT_SHORTCUT_IDS,
@@ -21,7 +21,7 @@ from sampletones_core.exports.scope import ExportScope
 
 @pytest.fixture(name="backends")
 def backends_fixture() -> Dict[ExportFormat, ExportBackend]:
-    return build_export_backends()
+    return ExportBackends.build().by_format
 
 
 def formats_supporting(

@@ -46,7 +46,7 @@ The name you type also names the instrument in the tracker:
 | Export | The name you type | What the app saves |
 | --- | --- | --- |
 | **Instruments** panel ▸ **Export instrument...** | the file | one file, and the instrument inside it has the same name |
-| **Reconstruction ▸ Export instruments** | the set | one file per channel, each named `<name> (channel)`. For `.nsf`, one file with the name you typed |
+| **Reconstruction ▸ Export instruments** | the set | one file per channel, each named `<name> (channel)`. For `.nsf`, one file, and its title is set in the **Export NSF program** window |
 | **File ▸ Export** | the file | one file with the whole song |
 
 For example, exporting a reconstruction named `Kick` to FamiTracker instruments saves

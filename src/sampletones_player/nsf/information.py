@@ -24,6 +24,11 @@ def fit_field(text: str) -> str:
     return text.encode(TEXT_ENCODING)[:STRING_TEXT_SIZE].decode(TEXT_ENCODING, errors="ignore")
 
 
+def field_size(text: str) -> int:
+    """The bytes ``text`` takes in a header string field, ahead of its terminator."""
+    return len(text.encode(TEXT_ENCODING))
+
+
 class NSFInformation(BaseModel):
     """The three text fields an NSF header carries, shown by the players that read them.
 

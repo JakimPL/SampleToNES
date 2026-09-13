@@ -10,7 +10,7 @@ from sampletones_application.coordinators.export import instrument as instrument
 from sampletones_application.coordinators.export.instrument import (
     InstrumentExportCoordinator,
 )
-from sampletones_application.exports import build_export_backends
+from sampletones_application.exports import ExportBackends
 from sampletones_application.logic.export.instrument.source import (
     ExportableInstrument,
     exportable_instrument,
@@ -39,7 +39,7 @@ def _source() -> InstrumentSource:
 def logic() -> MagicMock:
     mock = MagicMock()
     mock.suggested_directory = REMEMBERED_DIRECTORY
-    mock.backends = build_export_backends()
+    mock.backends = ExportBackends.build().by_format
     return mock
 
 

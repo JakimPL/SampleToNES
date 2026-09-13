@@ -262,10 +262,10 @@ volume and duty turn over together and a split pays two opcodes for what one cov
 and the pitch index earns its place twice, 5 % directly and a further 12 % through the
 transposition it makes possible.
 
-An export chooses how far down these layers it goes. Its four compression schemes are the
-layers read in order: *None* spells every plane out as literals, *Runs* adds holds,
-*Instruments* adds the phrases the instruments seed, played transposed, and *Full search* is
-the whole codec. A lighter scheme finishes sooner and takes more room, and every one of them
+An export chooses how far down these layers it goes. The **Level** it is written at names the
+layers read in order: *None* spells every plane out as literals, *Held sounds* adds holds,
+*Samples* adds the phrases the project's samples seed, played transposed, and *Full search* is
+the whole codec. A lighter level finishes sooner and takes more room, and every one of them
 plays the same song.
 
 ## 7. Limitations

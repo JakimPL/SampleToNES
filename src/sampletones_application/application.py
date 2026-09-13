@@ -20,6 +20,8 @@ from sampletones_application.coordinators.export import (
     InstrumentExportCoordinator,
     SongExportCoordinator,
 )
+from sampletones_application.coordinators.export.nsf import NSFExportCoordinator
+from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -38,10 +40,11 @@ from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
 from sampletones_application.coordinators.tabs.sequencer.coordinator import SequencerTabCoordinator
-from sampletones_application.exports import build_export_backends
+from sampletones_application.exports import ExportBackends
 from sampletones_application.layout import LayoutConfig, load_layout_config
 from sampletones_application.logic.export import SongExportLogic
 from sampletones_application.logic.export.instrument.logic import InstrumentExportLogic
+from sampletones_application.logic.export.nsf.logic import NSFExportLogic
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.instruction.library_manager import (
@@ -117,6 +120,7 @@ from sampletones_application.ui.panels.dialogs.display_settings import (
 )
 from sampletones_application.ui.panels.dialogs.export import GUIExportWindow
 from sampletones_application.ui.panels.dialogs.keybindings import GUIKeybindingsWindow
+from sampletones_application.ui.panels.dialogs.nsf import GUINSFExportWindow
 from sampletones_application.ui.panels.dialogs.project_properties import (
     GUIProjectPropertiesWindow,
 )
@@ -172,6 +176,7 @@ from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.voice import samples
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
+from sampletones_player.export.backend import NSFBackend
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
     SAMPLETONES_GROUP,
@@ -263,7 +268,9 @@ class Application:
         self.retune_service: SampleRetuneService = SampleRetuneService(priority=_priority)
         self.retune_service.subscribe(self._on_retune_result)
 
-        self.export_backends: Dict[ExportFormat, ExportBackend] = build_export_backends()
+        backends = ExportBackends.build()
+        self.nsf_backend: NSFBackend = backends.nsf
+        self.export_backends: Dict[ExportFormat, ExportBackend] = backends.by_format
 
         self.project_manager: ProjectManager = ProjectManager()
         self.project_controller: ProjectController = ProjectController(self.project_manager)
@@ -340,6 +347,15 @@ class Application:
             key_router=self.key_router,
             shortcut_source=self._shortcut_source,
         )
+        self.nsf_export_window: GUINSFExportWindow = GUINSFExportWindow(
+            layout=self.layout.settings,
+            path_colors=self.layout.general.colors.paths,
+            text_colors=self.layout.general.colors.text,
+            language_manager=self.language_manager,
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+            status_bar=self.status_bar,
+        )
         self.project_properties_window: GUIProjectPropertiesWindow = GUIProjectPropertiesWindow(
             layout=self.layout.project_properties,
             language_manager=self.language_manager,
@@ -398,13 +414,29 @@ class Application:
             language_manager=self.language_manager,
         )
 
+        self._nsf_exports = NSFExportCoordinator(
+            NSFExportLogic(
+                self.project_controller,
+                self.session_manager,
+                self.export_service,
+                self.nsf_backend,
+                is_operation_active=self._is_operation_active,
+            ),
+            window=self.nsf_export_window,
+            language_manager=self.language_manager,
+            on_activity_changed=self._on_dialog_activity_changed,
+        )
+        self._format_setups: Dict[ExportFormat, ExportSetup] = {
+            ExportFormat.NSF: self._nsf_exports,
+        }
+
         self._project_coordinator = ProjectCoordinator(
             self.project_controller,
             self.project_manager,
             self.session_manager,
             self.export_service,
             export_backends=self.export_backends,
-            format_setups={},
+            format_setups=self._format_setups,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
             on_tab_switch=self._set_current_tab,
@@ -448,7 +480,7 @@ class Application:
             browser_manager=self.browser_manager,
             export_service=self.export_service,
             export_backends=self.export_backends,
-            format_setups={},
+            format_setups=self._format_setups,
             on_load_reconstruction_with_confirmation=self._reconstruction_coordinator.load_with_confirmation,
             on_change_audio_state=self._update_menu,
             on_favorite_changed=self._repaint_reconstruction_favorites,
@@ -570,7 +602,7 @@ class Application:
             window=self.render_window,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
-            on_activity_changed=self._on_render_activity_changed,
+            on_activity_changed=self._on_dialog_activity_changed,
         )
 
         self._export_logic = SongExportLogic(
@@ -977,6 +1009,7 @@ class Application:
             self._main_tab.is_converter_active()
             or self._instructions_tab.is_library_generating()
             or self._render_coordinator.is_active
+            or self._nsf_exports.is_active
             or self.export_service.is_running()
         )
 
@@ -1003,12 +1036,12 @@ class Application:
         self._instructions_tab.refresh_generate_button()
         self._update_menu()
 
-    def _on_render_activity_changed(self) -> None:
-        """Follows a render claiming the application and handing it back.
+    def _on_dialog_activity_changed(self) -> None:
+        """Follows a render or an NSF export setup claiming the application and handing it back.
 
-        What a render occupies is the same ground a conversion or a library generation occupies,
-        so its edges reach the same busy state — the action buttons of each tab, the converter's
-        own view, and the menu entries that would start another exclusive operation.
+        What either dialog occupies is the same ground a conversion or a library generation
+        occupies, so its edges reach the same busy state — the action buttons of each tab, the
+        converter's own view, and the menu entries that would start another exclusive operation.
         """
         self._refresh_busy_state()
         self._main_tab.refresh_converter_view()

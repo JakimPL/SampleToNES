@@ -3,7 +3,7 @@ from typing import Final
 
 import pytest
 
-from sampletones_player.nsf.information import TEXT_ENCODING, NSFInformation, fit_field
+from sampletones_player.nsf.information import TEXT_ENCODING, NSFInformation, field_size, fit_field
 from sampletones_player.specification.nsf import STRING_FIELD_SIZE, STRING_TEXT_SIZE
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -39,6 +39,14 @@ class TestFitField(BaseTestSuite):
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
     def test_the_text_leaves_room_for_the_terminator(self, test_case: TestCase) -> None:
         assert len(fit_field(test_case.text).encode(TEXT_ENCODING)) < STRING_FIELD_SIZE
+
+
+class TestFieldSize:
+    def test_a_wide_character_takes_the_bytes_it_is_encoded_in(self) -> None:
+        assert field_size(SHORT_TEXT + WIDE_CHARACTER) == len(SHORT_TEXT) + len(WIDE_CHARACTER.encode(TEXT_ENCODING))
+
+    def test_a_fitted_text_takes_the_field_at_most(self) -> None:
+        assert field_size(fit_field(WIDE_CHARACTER * STRING_FIELD_SIZE)) <= STRING_TEXT_SIZE
 
 
 class TestNSFInformation:

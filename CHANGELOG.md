@@ -3,6 +3,7 @@
 ## v0.3.2
 
 * Added NSF player and export.
+* Added an NSF export window to choose the channels, repeat, compression and text of a program.
 * Added stems conversion: mix several recordings into one reconstruction.
 * Matched each stem against its own recording, so a stem plays what was recorded on it.
 * Added a per-source channel cap.

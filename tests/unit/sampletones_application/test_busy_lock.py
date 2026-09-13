@@ -16,6 +16,7 @@ def _application(
     converter_running: bool = False,
     library_generating: bool = False,
     rendering: bool = False,
+    setting_up_nsf: bool = False,
     exporting: bool = False,
 ) -> Application:
     """An application with only the attributes the busy methods touch, bypassing the full composition
@@ -28,6 +29,8 @@ def _application(
     application._reconstructions_tab = MagicMock()
     application._render_coordinator = MagicMock()
     application._render_coordinator.is_active = rendering
+    application._nsf_exports = MagicMock()
+    application._nsf_exports.is_active = setting_up_nsf
     application.export_service = MagicMock()
     application.export_service.is_running.return_value = exporting
     application._update_menu = MagicMock()
@@ -46,6 +49,9 @@ class TestBusySourceOfTruth:
 
     def test_busy_while_song_renders(self) -> None:
         assert _application(rendering=True)._is_operation_active() is True
+
+    def test_busy_while_an_nsf_export_is_set_up(self) -> None:
+        assert _application(setting_up_nsf=True)._is_operation_active() is True
 
     def test_busy_while_an_export_writes(self) -> None:
         assert _application(exporting=True)._is_operation_active() is True
@@ -101,7 +107,7 @@ class TestBusyRefreshPropagation:
         application._refresh_busy_state()
         application._update_menu.assert_called_once_with()
 
-    def test_a_render_edge_refreshes_the_converter_view(self) -> None:
+    def test_a_dialog_edge_refreshes_the_converter_view(self) -> None:
         application = _application()
-        application._on_render_activity_changed()
+        application._on_dialog_activity_changed()
         application._main_tab.refresh_converter_view.assert_called_once_with()

@@ -7,8 +7,9 @@ from sampletones_application.view_model.shared.nsf.choices import NSFExportChoic
 from sampletones_application.view_model.shared.nsf.offer import NSFExportOffer
 from sampletones_application.view_model.shared.nsf.repeat import NSFRepeat
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.parallelization import ETAEstimator
 from sampletones_player.compression.scheme import CompressionScheme
+from sampletones_player.nsf.information import field_size
+from sampletones_player.specification.nsf import STRING_TEXT_SIZE
 
 
 class NSFExportViewModel(BaseModel, frozen=True):
@@ -71,12 +72,20 @@ class NSFExportViewModel(BaseModel, frozen=True):
         return channel in self.choices.channels
 
     def length_label(self, template: str) -> str:
-        """How long the song plays for and the ticks it takes, as ``template`` states them."""
+        """How long the song plays for, in seconds and in ticks, as ``template`` states it."""
         return template.format(
-            duration=ETAEstimator.format_duration(self.duration_seconds),
+            seconds=self.duration_seconds,
             ticks=self.ticks,
             rate=self.nes_frequency,
         )
+
+    def text_size_label(self, text: str, template: str) -> str:
+        """The bytes ``text`` takes in its header field against the room there, as ``template`` states them."""
+        return template.format(used=field_size(text), room=STRING_TEXT_SIZE)
+
+    def loop_frame_label(self, template: str) -> str:
+        """The order frame a repeat returns to, as ``template`` states it."""
+        return template.format(frame=self.choices.loop_frame)
 
     def frame_count_label(self, template: str) -> str:
         """The frames the song is laid out in, as ``template`` states them."""

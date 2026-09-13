@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from sampletones_application.exports import build_export_backends
+from sampletones_application.exports import ExportBackends
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import (
@@ -105,7 +105,7 @@ def mock_export_backends() -> Dict[ExportFormat, MagicMock]:
     the registry's backend declares and leaves only the writing to the mock.
     """
     backends: Dict[ExportFormat, MagicMock] = {}
-    for export_format, backend in build_export_backends().items():
+    for export_format, backend in ExportBackends.build().by_format.items():
         stub = MagicMock()
         stub.supported_scopes = backend.supported_scopes
         stub.extension.side_effect = backend.extension

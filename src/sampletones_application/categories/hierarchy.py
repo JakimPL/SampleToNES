@@ -100,3 +100,4 @@ class Panel(StrEnum):
     PROPERTIES = auto()
     RENDER = auto()
     EXPORT = auto()
+    NSF = auto()
