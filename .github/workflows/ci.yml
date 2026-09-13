@@ -74,6 +74,16 @@ jobs:
       - name: Install the development environment
         run: uv sync --group dev
 
-      - name: Run the doctests, the covered suite and the benchmarks
+      - name: Run the doctests
         shell: bash
-        run: ${{ runner.os == 'Windows' && 'python' || 'python3' }} scripts/run_tests.py --workers auto
+        run: ${{ runner.os == 'Windows' && 'python' || 'python3' }} scripts/run_tests.py doctests
+
+      - name: Run the test suite with coverage
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: ${{ runner.os == 'Windows' && 'python' || 'python3' }} scripts/run_tests.py suite --workers auto
+
+      - name: Run the benchmarks
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: ${{ runner.os == 'Windows' && 'python' || 'python3' }} scripts/run_tests.py benchmarks

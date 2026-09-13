@@ -1,39 +1,43 @@
 import argparse
 import os
 import sys
-from typing import Final, Optional, Sequence, Tuple
+from typing import Dict, Final, Sequence, Tuple
 
-from bootstrap.passes import Pass, run_passes
+from bootstrap.passes import Pass
 from bootstrap.processes import run
 from bootstrap.repository import repository_root
 
-DOCTESTS: Final[str] = "doctests"
 SUITE: Final[str] = "suite"
+DOCTESTS: Final[str] = "doctests"
 BENCHMARKS: Final[str] = "benchmarks"
 DEFAULT_WORKERS: Final[str] = "6"
 PYTEST: Final[Tuple[str, ...]] = ("uv", "run", "python", "-m", "pytest")
 
 
-def planned_passes(workers: str) -> Tuple[Pass, ...]:
-    """The passes of a test run, in order: the doctests, the covered suite, the benchmarks.
+def planned_passes(workers: str) -> Dict[str, Pass]:
+    """The passes a test run is made of, by name: the covered suite, the doctests, the benchmarks.
 
-    The covered suite runs across ``workers`` pytest workers. The benchmarks run last, serial,
-    uncovered and with their output shown, so a measured duration is the code's own cost and
-    its reading reaches the terminal.
+    Each pass is a target and a hook of its own, so a failure names the pass it belongs to. The
+    covered suite runs across ``workers`` pytest workers. The benchmarks run serial, uncovered
+    and with their output shown, so a measured duration is the code's own cost and its reading
+    reaches the terminal.
 
     Args:
         workers: The worker count for the covered suite, or ``auto`` for one per processor.
+
+    Returns:
+        Dict[str, Pass]: Every pass, under its name.
     """
-    return (
-        Pass(
-            DOCTESTS,
-            "Running doctests...",
-            (*PYTEST, "src/", "--doctest-modules", "--no-cov"),
-        ),
+    passes = (
         Pass(
             SUITE,
             "Running pytest with coverage...",
             (*PYTEST, "-n", workers, "--cov", "--ignore=tests/benchmarks"),
+        ),
+        Pass(
+            DOCTESTS,
+            "Running doctests...",
+            (*PYTEST, "src/", "--doctest-modules", "--no-cov"),
         ),
         Pass(
             BENCHMARKS,
@@ -41,17 +45,13 @@ def planned_passes(workers: str) -> Tuple[Pass, ...]:
             (*PYTEST, "tests/benchmarks", "--no-cov", "-s"),
         ),
     )
-
-
-def selected(passes: Sequence[Pass], only: Optional[str]) -> Tuple[Pass, ...]:
-    """The passes a run performs: all of them, or the one ``only`` names."""
-    return tuple(current for current in passes if only is None or current.name == only)
+    return {current.name: current for current in passes}
 
 
 def main(argv: Sequence[str]) -> int:
-    """Runs the doctests, the covered suite and the benchmarks, and reports which failed."""
-    parser = argparse.ArgumentParser(description="Run the SampleToNES tests.")
-    parser.add_argument("--only", choices=(DOCTESTS, SUITE, BENCHMARKS), help="run one pass alone")
+    """Runs one pass of the tests and exits with the status pytest gave it."""
+    parser = argparse.ArgumentParser(description="Run one pass of the SampleToNES tests.")
+    parser.add_argument("name", choices=(SUITE, DOCTESTS, BENCHMARKS), help="the pass to run")
     parser.add_argument(
         "--workers",
         default=DEFAULT_WORKERS,
@@ -59,18 +59,14 @@ def main(argv: Sequence[str]) -> int:
     )
     arguments = parser.parse_args(list(argv))
 
-    failed = run_passes(
-        selected(planned_passes(arguments.workers), arguments.only),
-        root=repository_root(),
-        runner=run,
+    chosen = planned_passes(arguments.workers)[arguments.name]
+    print(chosen.announcement)
+    return run(
+        chosen.command,
+        cwd=repository_root(),
         environment=os.environ,
+        quiet=False,
     )
-    if failed:
-        print(f"Tests failed: {', '.join(failed)}.")
-        return 1
-
-    print("All tests passed.")
-    return 0
 
 
 if __name__ == "__main__":

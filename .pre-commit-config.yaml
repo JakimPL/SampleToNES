@@ -117,9 +117,28 @@ repos:
         stages:
           - pre-push
 
-      - id: pytest
-        name: pytest
+      - id: test
+        name: test
         entry: make test
+        language: system
+        types:
+          - python
+        stages:
+          - pre-push
+        pass_filenames: false
+
+      - id: test-docs
+        name: test docs
+        entry: make test-docs
+        language: system
+        files: ^src/.*\.py$
+        stages:
+          - pre-push
+        pass_filenames: false
+
+      - id: benchmarks
+        name: benchmarks
+        entry: make benchmarks
         language: system
         types:
           - python

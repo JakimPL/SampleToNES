@@ -1,53 +1,80 @@
+from dataclasses import dataclass
+from typing import Tuple
+
 import pytest
 
+from tests.suite.base import BaseTestSuite
 from tests.suite.bootstrap import RecordingRunner
+from tests.suite.case import BaseRegularTestCase
 from tests.suite.scripts import load_script
 
 run_tests = load_script("run_tests.py")
 
 
 class TestPlannedPasses:
-    def test_the_doctests_run_first_and_the_benchmarks_last(self) -> None:
-        passes = run_tests.planned_passes("6")
+    def test_every_pass_is_found_under_its_name(self) -> None:
+        passes = run_tests.planned_passes(run_tests.DEFAULT_WORKERS)
 
-        assert [current.name for current in passes] == ["doctests", "suite", "benchmarks"]
-        assert "--doctest-modules" in passes[0].command
-        assert passes[1].command[-4:] == ("-n", "6", "--cov", "--ignore=tests/benchmarks")
-        assert "--no-cov" in passes[2].command
-        assert "-s" in passes[2].command
+        assert all(name == current.name for name, current in passes.items())
+        assert set(passes) == {run_tests.SUITE, run_tests.DOCTESTS, run_tests.BENCHMARKS}
 
+    def test_the_suite_is_covered_across_the_workers_and_leaves_the_benchmarks_out(self) -> None:
+        command = run_tests.planned_passes("auto")[run_tests.SUITE].command
 
-class TestSelected:
-    def test_a_name_keeps_one_pass(self) -> None:
-        passes = run_tests.planned_passes("6")
+        assert command[-4:] == ("-n", "auto", "--cov", "--ignore=tests/benchmarks")
 
-        assert run_tests.selected(passes, "suite") == (passes[1],)
-        assert run_tests.selected(passes, None) == passes
+    def test_the_doctests_read_the_sources_uncovered(self) -> None:
+        command = run_tests.planned_passes(run_tests.DEFAULT_WORKERS)[run_tests.DOCTESTS].command
+
+        assert "--doctest-modules" in command
+        assert "--no-cov" in command
+
+    def test_the_benchmarks_run_serial_uncovered_and_show_their_readings(self) -> None:
+        command = run_tests.planned_passes(run_tests.DEFAULT_WORKERS)[run_tests.BENCHMARKS].command
+
+        assert "tests/benchmarks" in command
+        assert "--no-cov" in command
+        assert "-s" in command
+        assert "-n" not in command
 
 
 class TestMain:
-    def test_only_runs_the_named_pass(
+    def test_the_named_pass_runs_alone(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        runner = RecordingRunner({}, None)
+        monkeypatch.setattr(run_tests, "run", runner)
+
+        assert run_tests.main([run_tests.DOCTESTS]) == 0
+        assert runner.lines == [
+            " ".join(run_tests.planned_passes(run_tests.DEFAULT_WORKERS)[run_tests.DOCTESTS].command)
+        ]
+
+    def test_the_status_is_pytest_s_own(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(run_tests, "run", RecordingRunner({"pytest": 5}, None))
+
+        assert run_tests.main([run_tests.SUITE, "--workers", "auto"]) == 5
+
+
+class TestRefusedPasses(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        argv: Tuple[str, ...]
+
+    test_cases = (
+        TestCase(label="a missing pass", argv=()),
+        TestCase(label="an unknown pass", argv=("everything",)),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_pass_outside_the_three_is_refused_before_anything_runs(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
+        test_case: TestCase,
     ) -> None:
         runner = RecordingRunner({}, None)
         monkeypatch.setattr(run_tests, "run", runner)
 
-        assert run_tests.main(["--only", "benchmarks"]) == 0
-        assert len(runner.lines) == 1
-        assert "tests/benchmarks" in runner.lines[0]
-        assert "All tests passed." in capsys.readouterr().out
+        with pytest.raises(SystemExit) as exit_info:
+            run_tests.main(test_case.argv)
 
-    def test_a_failing_pass_stops_nothing_and_is_named(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        runner = RecordingRunner({"--doctest-modules": 1}, None)
-        monkeypatch.setattr(run_tests, "run", runner)
-
-        assert run_tests.main(["--workers", "auto"]) == 1
-        assert len(runner.lines) == 3
-        assert "-n auto" in runner.lines[1]
-        assert "Tests failed: doctests." in capsys.readouterr().out
+        assert exit_info.value.code == 2
+        assert runner.lines == []

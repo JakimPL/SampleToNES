@@ -130,7 +130,7 @@ reason.
 | `system_dependencies.py` | `make system-deps` | Installs the system packages: apt on Debian-based Linux, Homebrew on macOS, nothing on Windows |
 | `build_environment.py` | CI | Prints the compiler flags a macOS build exports, one `KEY=VALUE` per line |
 | `clean.py` | `make clean` | Removes the build outputs, the coverage reports and the bytecode caches |
-| `run_tests.py` | `make test`, `make benchmarks` | Runs the doctests, the covered suite across six workers, and the benchmarks, every pass whatever the earlier ones reported; `--only` picks one pass and `--workers` sets the count |
+| `run_tests.py` | `make test`, `make test-docs`, `make benchmarks` | Runs one pass of the tests, named on its command line: `suite`, the covered suite across six workers (`--workers` sets the count); `doctests`; or `benchmarks`, serial and uncovered. Each pass is a target, a pre-push hook and a CI step of its own, so a failure names its pass |
 | `lint.py` | `make lint` | Runs mypy over the files `pyproject.toml` configures and pylint over `src/` and `scripts/`; `--mypy` or `--pylint` picks one, and named paths narrow both |
 | `formatting.py` | `make format` | Runs isort, then black, over `src/`, `tests/` and `scripts/`, or over the paths named |
 | `hooks.py` | `make pre-commit` | Installs the git hooks pre-commit runs at commit and at push |
@@ -159,7 +159,7 @@ interpreter (`preflight.py`), and the platforms (`platforms/`).
 | Where a build installs | `scripts/bootstrap/venv_build.py` |
 | What a bundle has to carry before it is built | `scripts/bootstrap/preflight.py` |
 | The PyInstaller invocation | `scripts/bundle.py` |
-| The passes `make test` runs, and their order | `scripts/run_tests.py` |
+| The test passes and the command each runs | `scripts/run_tests.py` |
 | What `make lint` and `make format` sweep | `scripts/lint.py`, `scripts/formatting.py` |
 | The GPU extra a machine gets | `scripts/detect_cuda.py` |
 | What a release bundle is held to | `scripts/ci/checks/bundle.py` |
