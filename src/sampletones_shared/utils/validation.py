@@ -3,12 +3,14 @@ from __future__ import annotations
 import copy
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Generic, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Final, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 from pydantic import BaseModel, ValidationError
+from pydantic_core import ErrorDetails
 
 ModelTypeT = TypeVar("ModelTypeT", bound=BaseModel)
 Location = Tuple[Union[str, int], ...]
+VALUE_ERROR: Final[str] = "value_error"
 
 
 @dataclass(frozen=True)
@@ -46,6 +48,35 @@ def flatten_location(location: Location) -> str:
             parts.append(item)
 
     return "".join(parts)
+
+
+def describe_failure(error: ValueError) -> str:
+    """
+    Renders a refused value the way a command line reports it, one line per problem.
+
+    A reason a validator raised keeps its own words, and a broken constraint is named by the
+    field it binds, so a person reads what to change in place of Pydantic's diagnostic layout.
+
+    Args:
+        error: The failure, a Pydantic validation error or a plain ``ValueError``.
+
+    Returns:
+        str: The reasons, one per line.
+    """
+    match error:
+        case ValidationError():
+            return "\n".join(_describe_detail(detail) for detail in error.errors())
+        case _:
+            return str(error)
+
+
+def _describe_detail(detail: ErrorDetails) -> str:
+    context = detail.get("ctx")
+    if detail["type"] == VALUE_ERROR and context is not None:
+        return str(context["error"])
+
+    location = flatten_location(tuple(detail["loc"]))
+    return f"{location}: {detail['msg']}" if location else detail["msg"]
 
 
 def validate_with_recovery(

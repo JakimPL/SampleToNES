@@ -21,10 +21,6 @@ class RecordedSuite:
         return [directory / "sampletones.svg"]
 
 
-def _refuse(command: str) -> None:
-    raise AssertionError(f"the checkout guard ran for {command}")
-
-
 class TestIcons:
     def test_without_a_directory_the_shipped_icons_are_written_from_a_checkout(
         self,
@@ -42,10 +38,16 @@ class TestIcons:
         assert guarded == ["icons"]
         assert f"Wrote {ICONS_DIRECTORY / 'sampletones.svg'}" in capsys.readouterr().out
 
-    def test_a_directory_of_its_own_needs_no_checkout(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_a_directory_of_its_own_is_written_from_a_checkout_too(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
         suite = RecordedSuite()
+        guarded: List[str] = []
         monkeypatch.setattr(WRITER, suite)
-        monkeypatch.setattr(GUARD, _refuse)
+        monkeypatch.setattr(GUARD, guarded.append)
 
         assert dispatch(COMMANDS, ["icons", "--directory", str(tmp_path)]) == 0
         assert [directory for directory, _ in suite.writes] == [tmp_path]
+        assert guarded == ["icons"]

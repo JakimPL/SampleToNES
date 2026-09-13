@@ -59,6 +59,7 @@ def run(arguments: Namespace) -> int:
 
     from sampletones_core.headless.config import load_config
     from sampletones_core.headless.conversion import channels_named
+    from sampletones_shared.utils.validation import describe_failure
     from sampletones_tools.calibration.session import (
         BASE_BLEND,
         DEFAULT_PERCEPTUAL_EXPONENTS,
@@ -79,7 +80,7 @@ def run(arguments: Namespace) -> int:
             channels=channels_named(given.channels),
         )
     except ValueError as error:
-        raise SystemExit(str(error)) from error
+        raise SystemExit(describe_failure(error)) from error
 
     calibrate(request)
     return 0

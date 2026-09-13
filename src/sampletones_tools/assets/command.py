@@ -24,17 +24,17 @@ def configure(parser: ArgumentParser) -> None:
 def run(arguments: Namespace) -> int:
     """Writes the icon suite and reports each file produced.
 
-    Writing the icons the package ships needs a checkout, since that is where the package is.
+    The suite is rasterized with Pillow, which the project environment carries, so the command
+    runs from a checkout wherever it writes.
 
     Raises:
-        SystemExit: If the run writes the shipped icons outside a checkout.
+        SystemExit: If the run happens outside a checkout.
     """
     given = IconsArguments(directory=arguments.directory)
 
     from sampletones_tools.checkout import require_checkout
 
-    if given.directory is None:
-        require_checkout(NAME)
+    require_checkout(NAME)
 
     from sampletones_tools.assets.mark.specification import Mark
     from sampletones_tools.assets.mark.suite import write_icon_suite

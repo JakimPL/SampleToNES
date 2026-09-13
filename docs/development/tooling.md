@@ -70,7 +70,7 @@ arguments. Each command turns its arguments into a frozen record, field by field
 |---|---|
 | `run [--config FILE]` | Starts the application |
 | `open PATH [--config FILE]` | Starts the application with a `.stp` project, a `.stn` reconstruction or an `.ins` library loaded; a recording is refused with the `convert` line to run instead |
-| `convert SOURCE... [-o FILE] [--config FILE] [--channels LIST \| --stems FILE]` | Reconstructs recordings into one `.stn` file, or every recording under one directory file by file. `--stems` names a JSON file holding the setup the `.stn` record stores, its entries paired with the sources in order; the pairing is printed before the run |
+| `convert SOURCE... [-o FILE] [--config FILE] [--channels LIST \| --stems FILE]` | Reconstructs recordings into one `.stn` file, or every recording under one directory file by file. `--stems` names a JSON file holding the setup the `.stn` record stores, its entries paired with the sources in order; the pairing is printed before the run, and a missing source, a file other than a recording or a missing stems file is refused first |
 | `library [--config FILE]` | Generates the instruction library for a configuration |
 | `self-check` | Verifies that the build's imports, bundled resources and configuration files are usable |
 
@@ -88,7 +88,7 @@ The developer commands, listed by `sampletones_tools/registry.py` and run as
 | `codec report -o DIR` | Compresses the synthetic corpus under every layer of the codec and writes the report the format's constants are settled from, as CSV and Markdown |
 | `codec study [--manifest FILE] [--project FILE]... [--reconstruction PATH]... [-o DIR] [--lengthen SECONDS] [--variants LIST]` | Encodes the projects and stems it is given, or the ones a manifest names, under every candidate change to the codec and writes the sizes, the times, a verdict per candidate and the manifest that repeats the run; without `-o` the run lands under Documents/SampleToNES/compression |
 | `driver [--directory DIR]` | Assembles the NES player driver with cc65 and prints the layout the build produced; without `--directory` it writes the driver the package ships, which needs a checkout |
-| `icons [--directory DIR]` | Writes the icon suite from the mark; without `--directory` it writes the icons the package ships, which needs a checkout |
+| `icons [--directory DIR]` | Writes the icon suite from the mark, into `--directory` or over the icons the package ships. Needs a checkout |
 | `nsf render --directory DIR [--tail SECONDS]` | Renders every exported `.nsf` file in the directory to a wave beside it, through ffmpeg's libgme demuxer |
 
 ## The tools package
@@ -103,7 +103,8 @@ developer command does there:
 - **The checkout guard.** `sampletones_tools/checkout.py` holds `require_checkout(command)`: the
   repository root must hold `pyproject.toml` beside `src/`, or the command exits naming
   `uv run sampletones <command>` in a checkout. Every developer command that reads or writes the
-  repository calls it first. A command that measures the code on this machine runs anywhere.
+  repository calls it first, and so does one that needs a development dependency, as `icons` needs
+  Pillow. A command that measures the code on this machine runs anywhere.
 - **No default derived from the repository.** An emitter takes a required `--output`; a measurement
   defaults to the user's Documents. Nothing a developer command writes lands beside an installed
   package.
@@ -115,9 +116,11 @@ developer command does there:
 
 Developer commands are run as `uv run sampletones <command>` from a checkout; the `sampletones`
 command `make setup` installs is a wheel and refuses the guarded ones the same way. A command module
-imports pillow, py65 and the like inside `run`, and a test imports the registry in a subprocess and
-asserts they stay out of `sys.modules`, since a startup failure in any tool module would break every
-invocation, the GUI included. The editable install puts `src/` on the path whole, so a checkout
+imports pillow, NumPy and the like inside `run`, and a test imports the registry in a subprocess and
+asserts that only the command, registry and package modules of the tools load and no heavy library
+does, since a startup failure in any tool module would break every invocation, the GUI included. A
+command reports a refused value in one line: `describe_failure` in
+`sampletones_shared/utils/validation.py` renders a validation error the way a person reads it. The editable install puts `src/` on the path whole, so a checkout
 sees the tools package whatever the wheel lists; hatchling's `dev-mode-exact` stays off for that
 reason.
 

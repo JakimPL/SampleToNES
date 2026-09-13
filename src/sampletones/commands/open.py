@@ -32,20 +32,20 @@ def run(arguments: Namespace) -> int:
     """
     given = OpenArguments(path=arguments.path, config=arguments.config)
 
+    from sampletones_core.reconstructions.converter.paths import is_audio_file
     from sampletones_shared.paths.extensions import (
         EXT_FILE_LIBRARY,
         EXT_FILE_PROJECT,
         EXT_FILE_RECONSTRUCTION,
-        EXT_FILES_AUDIO,
     )
 
     if not given.path.is_file():
         raise SystemExit(f"No file at {given.path}.")
 
-    suffix = given.path.suffix.lower()
-    if suffix in EXT_FILES_AUDIO:
+    if is_audio_file(given.path):
         raise SystemExit(f"{given.path} is a recording; run: sampletones convert {given.path}")
 
+    suffix = given.path.suffix.lower()
     if suffix not in (EXT_FILE_PROJECT, EXT_FILE_RECONSTRUCTION, EXT_FILE_LIBRARY):
         raise SystemExit(
             f"{given.path} is neither a {EXT_FILE_PROJECT} project, a {EXT_FILE_RECONSTRUCTION} "

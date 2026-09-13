@@ -76,8 +76,12 @@ class TestLoadStems:
         path = tmp_path / "stems.json"
         path.write_text("[]", encoding="utf-8")
 
-        with pytest.raises(TypeError, match="must hold a mapping"):
+        with pytest.raises(ValueError, match="must hold a mapping"):
             load_stems(path)
+
+    def test_a_missing_file_is_refused_by_its_path(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="No stems file at"):
+            load_stems(tmp_path / "absent.json")
 
     def test_a_mapping_that_is_no_setup_is_refused(self, tmp_path: Path) -> None:
         path = tmp_path / "stems.json"
@@ -136,6 +140,22 @@ class TestConversionRequest:
                 sources=(tmp_path,),
                 stems=classic_setup(DEFAULT_CHANNELS),
                 output_path=tmp_path / "out.stn",
+            )
+
+    def test_a_missing_source_is_refused_by_its_path(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="No file at"):
+            ConversionRequest(
+                sources=(tmp_path / "absent.wav",),
+                stems=classic_setup(DEFAULT_CHANNELS),
+                output_path=None,
+            )
+
+    def test_a_file_other_than_a_recording_is_refused(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="is no recording"):
+            ConversionRequest(
+                sources=(_recording(tmp_path, "song.stp"),),
+                stems=classic_setup(DEFAULT_CHANNELS),
+                output_path=None,
             )
 
     def test_no_source_is_refused(self) -> None:

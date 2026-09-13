@@ -40,7 +40,7 @@ def selected_variants(
         Tuple[Variant, ...]: The baseline, then the named variants in the order given.
 
     Raises:
-        KeyError: If a name is registered to no variant.
+        ValueError: If a name is registered to no variant.
     """
     registered = variants(baselines)
     if EVERY_VARIANT in names:
@@ -48,7 +48,9 @@ def selected_variants(
 
     unknown = [name for name in names if name not in registered]
     if unknown:
-        raise KeyError(f"no variant is called {', '.join(unknown)}; the registry holds {', '.join(registered)}")
+        raise ValueError(
+            f"No variant is called {', '.join(unknown)}; the variants are {', '.join(registered)} or {EVERY_VARIANT}."
+        )
 
     chosen = [registered[name] for name in names if name != BASELINE_NAME]
     return (registered[BASELINE_NAME], *chosen)

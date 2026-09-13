@@ -43,8 +43,8 @@ def run(arguments: Namespace) -> int:
     """Reconstructs the sources under the stems setup the options describe.
 
     Raises:
-        SystemExit: If a channel is unknown, the stems file is no setup, or the sources and the
-            setup pair up wrong.
+        SystemExit: If a source is missing or no recording, a channel is unknown, the stems file
+            is missing or no setup, or the sources and the setup pair up wrong.
     """
     given = ConvertArguments(
         sources=tuple(arguments.sources),
@@ -63,12 +63,13 @@ def run(arguments: Namespace) -> int:
         reconstruct,
     )
     from sampletones_shared.array import report_array_backend
+    from sampletones_shared.utils.validation import describe_failure
 
     try:
         stems = load_stems(given.stems) if given.stems is not None else classic_setup(channels_named(given.channels))
         request = ConversionRequest(sources=given.sources, stems=stems, output_path=given.output)
-    except (TypeError, ValueError) as error:
-        raise SystemExit(str(error)) from error
+    except ValueError as error:
+        raise SystemExit(describe_failure(error)) from error
 
     for line in request.pairing():
         print(line)

@@ -117,6 +117,32 @@ class TestConvert:
 
         assert reconstruction.requests == []
 
+    def test_a_missing_source_is_refused_in_one_line(
+        self, reconstruction: RecordedReconstruction, tmp_path: Path
+    ) -> None:
+        with pytest.raises(SystemExit) as leaving:
+            dispatch(COMMANDS, ["convert", str(tmp_path / "absent.wav")])
+
+        assert str(leaving.value) == f"No file at {tmp_path / 'absent.wav'}."
+        assert reconstruction.requests == []
+
+    def test_a_project_is_refused_as_no_recording(self, reconstruction: RecordedReconstruction, tmp_path: Path) -> None:
+        project = _recording(tmp_path, "song.stp")
+
+        with pytest.raises(SystemExit, match="is no recording") as leaving:
+            dispatch(COMMANDS, ["convert", str(project)])
+
+        assert len(str(leaving.value).splitlines()) == 1
+        assert reconstruction.requests == []
+
+    def test_a_missing_stems_file_is_refused(self, reconstruction: RecordedReconstruction, tmp_path: Path) -> None:
+        source = _recording(tmp_path, "song.wav")
+
+        with pytest.raises(SystemExit, match="No stems file at"):
+            dispatch(COMMANDS, ["convert", str(source), "--stems", str(tmp_path / "absent.json")])
+
+        assert reconstruction.requests == []
+
     def test_channels_and_stems_exclude_each_other(self, tmp_path: Path) -> None:
         source = _recording(tmp_path, "song.wav")
 

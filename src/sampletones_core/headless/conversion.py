@@ -21,11 +21,12 @@ from sampletones_core.reconstructions.converter import (
     ReconstructionConverter,
     reconstruct_job,
 )
-from sampletones_core.reconstructions.converter.paths import group_output_path
+from sampletones_core.reconstructions.converter.paths import group_output_path, is_audio_file
 from sampletones_core.reconstructions.progress import ReconstructionProgress
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_shared.logger import logger, null_logger
+from sampletones_shared.paths.extensions import EXT_FILES_AUDIO
 from sampletones_shared.utils.serialization import load_json
 
 BAR_STEPS: Final[int] = 1000
@@ -63,12 +64,15 @@ def load_stems(path: Path) -> StemsConfig:
     """The stems setup a JSON file holds, validated the way the ``.stn`` record is.
 
     Raises:
-        TypeError: If the file holds anything other than a mapping.
-        ValueError: If the mapping is no stems setup.
+        ValueError: If no file stands at the path, the file holds anything other than a JSON
+            mapping, or the mapping is no stems setup.
     """
+    if not path.is_file():
+        raise ValueError(f"No stems file at {path}.")
+
     loaded = load_json(path)
     if not isinstance(loaded, dict):
-        raise TypeError(f"Stems file {path} must hold a mapping, got {type(loaded).__name__}")
+        raise ValueError(f"Stems file {path} must hold a mapping, got {type(loaded).__name__}.")
 
     return StemsConfig.model_validate(loaded)
 
@@ -112,10 +116,21 @@ class ConversionRequest(BaseModel):
     @model_validator(mode="after")
     def _sources_are_recordings_or_one_directory(self) -> Self:
         """Raises:
-        ValueError: If a directory stands among several sources.
+        ValueError: If a directory stands among several sources, or a source names nothing or
+            a file other than a recording.
         """
-        if self.directory is None and any(source.is_dir() for source in self.sources):
-            raise ValueError("Sources are recordings, or one directory alone.")
+        if self.directory is not None:
+            return self
+
+        for source in self.sources:
+            if source.is_dir():
+                raise ValueError("Sources are recordings, or one directory alone.")
+
+            if not source.exists():
+                raise ValueError(f"No file at {source}.")
+
+            if not is_audio_file(source):
+                raise ValueError(f"{source} is no recording; a source is a {', '.join(EXT_FILES_AUDIO)} file.")
 
         return self
 

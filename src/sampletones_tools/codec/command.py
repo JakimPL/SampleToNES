@@ -6,7 +6,7 @@ from typing import Final, Optional, Tuple
 from sampletones_shared.command import Command
 
 NAME: Final[str] = "codec"
-HELP: Final[str] = "measure the song codec on the synthetic corpus or on songs of this machine"
+HELP: Final[str] = "measure the song codec on the synthetic corpus or on the songs named"
 ACTION_FIELD: Final[str] = "action"
 ACTION_METAVAR: Final[str] = "<action>"
 REPORT: Final[str] = "report"
@@ -102,11 +102,14 @@ def _study(given: StudyArguments) -> int:
     """Measures the sources a run names.
 
     Raises:
-        SystemExit: If the run names neither a source nor a manifest.
+        SystemExit: If the run names neither a source nor a manifest, the manifest is missing or
+            broken, the lengthening is below one second, or a variant is unknown.
     """
+    from sampletones_shared.utils.validation import describe_failure
     from sampletones_tools.codec.study.session import (
         resolve_manifest,
         run_study,
+        study_variants,
         variant_names,
     )
 
@@ -118,10 +121,11 @@ def _study(given: StudyArguments) -> int:
             lengthen_seconds=given.lengthen,
             variants=variant_names(given.variants),
         )
+        variants = study_variants(manifest.variants)
     except ValueError as error:
-        raise SystemExit(str(error)) from error
+        raise SystemExit(describe_failure(error)) from error
 
-    run_study(manifest, given.output)
+    run_study(manifest, variants, given.output)
     return 0
 
 

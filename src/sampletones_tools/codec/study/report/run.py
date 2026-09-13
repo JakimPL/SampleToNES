@@ -6,6 +6,7 @@ from typing import Final, Iterator, List, Optional, Sequence, Tuple
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_shared.paths.source import REPOSITORY_ROOT
 from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
+from sampletones_tools.checkout import is_checkout
 from sampletones_tools.codec.study.accounting import rows as accounting
 from sampletones_tools.codec.study.manifest import StudyManifest
 from sampletones_tools.codec.study.measure import Measurement
@@ -41,14 +42,25 @@ def run_directory(output: Optional[Path]) -> Path:
 
 
 def commit_hash() -> str:
-    """The short hash of the commit the repository stands at, or a marker where git answers nothing."""
-    completed = subprocess.run(
-        ["git", "rev-parse", "--short", "HEAD"],
-        capture_output=True,
-        text=True,
-        check=False,
-        cwd=REPOSITORY_ROOT,
-    )
+    """The short hash of the commit the checkout stands at, which dates the run's report.
+
+    An installed copy has no checkout of its own around it, and a machine may run without git, so
+    either records ``unknown``.
+    """
+    if not is_checkout(REPOSITORY_ROOT):
+        return UNKNOWN_COMMIT
+
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=REPOSITORY_ROOT,
+        )
+    except FileNotFoundError:
+        return UNKNOWN_COMMIT
+
     return completed.stdout.strip() or UNKNOWN_COMMIT
 
 
