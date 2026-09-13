@@ -164,6 +164,7 @@ files = [
     "src/sampletones_player",
     "src/sampletones_shared",
     "src/sampletones_synthesis",
+    "scripts",
 ]
 exclude = ["tests"]
 disallow_subclassing_any = true

@@ -10,10 +10,10 @@ before adding a script or a make target. Which packages may import which is
 
 **1. Two interpreters, two kinds of script.** A *bootstrap script* runs on the system interpreter,
 before or beside the project environment: it creates the environment, installs system packages,
-builds the standalone bundle, cleans the tree. It imports the standard library and the other
-bootstrap modules, nothing else, so it runs on a machine that has Python and nothing more. A
-*tool script* runs inside the project environment, through `uv run`, and imports the project's
-packages freely.
+builds the standalone bundle, cleans the tree, and runs the tests, the linters and the formatters
+the environment provides. It imports the standard library and the other bootstrap modules,
+nothing else, so it runs on a machine that has Python and nothing more. A *tool script* runs
+inside the project environment, through `uv run`, and imports the project's packages freely.
 
 **2. A bootstrap script installs nothing into the interpreter it runs on.** Every package a build
 installs lands in `.venv-build`, a virtual environment of its own, and pip is told to refuse any
@@ -45,14 +45,19 @@ that does the work and passes its flag. The two shell files at the root, `instal
 | `system_dependencies.py` | `make system-deps` | Installs the system packages: apt on Debian-based Linux, Homebrew on macOS, nothing on Windows |
 | `build_environment.py` | CI | Prints the compiler flags a macOS build exports, one `KEY=VALUE` per line |
 | `clean.py` | `make clean` | Removes the build outputs, the coverage reports and the bytecode caches |
+| `run_tests.py` | `make test`, `make benchmarks` | Runs the doctests, the covered suite across six workers, and the benchmarks, every pass whatever the earlier ones reported; `--only` picks one pass and `--workers` sets the count |
+| `lint.py` | `make lint` | Runs mypy over the files `pyproject.toml` configures and pylint over `src/` and `scripts/`; `--mypy` or `--pylint` picks one, and named paths narrow both |
+| `formatting.py` | `make format` | Runs isort, then black, over `src/`, `tests/` and `scripts/`, or over the paths named |
+| `hooks.py` | `make pre-commit` | Installs the git hooks pre-commit runs at commit and at push |
 | `detect_cuda.py` | via `setup_environment.py` | Maps the driver's CUDA version to the CuPy extra |
 | `runtime_hooks/release_environment.py` | build input | The PyInstaller runtime hook that gives a release bundle its deployment defaults |
 | `ci/` | the release workflow | The gates a release passes: the tag matches the version, the bundle ships its notices and starts |
 
 `scripts/bootstrap/` holds what they share: the repository root (`repository.py`), the
 interpreter version check (`interpreter.py`), running a command and holding it to success
-(`processes.py`), the build environment and the installs into it (`venv_build.py`), the
-preflight of the build interpreter (`preflight.py`), and the platforms (`platforms/`).
+(`processes.py`), a run of named passes that reports every failure at once (`passes.py`), the
+build environment and the installs into it (`venv_build.py`), the preflight of the build
+interpreter (`preflight.py`), and the platforms (`platforms/`).
 
 ## The tool scripts
 
@@ -69,5 +74,7 @@ the make target that names each. The checks are also pre-commit hooks;
 | Where a build installs | `scripts/bootstrap/venv_build.py` |
 | What a bundle has to carry before it is built | `scripts/bootstrap/preflight.py` |
 | The PyInstaller invocation | `scripts/bundle.py` |
+| The passes `make test` runs, and their order | `scripts/run_tests.py` |
+| What `make lint` and `make format` sweep | `scripts/lint.py`, `scripts/formatting.py` |
 | The GPU extra a machine gets | `scripts/detect_cuda.py` |
 | What a release bundle is held to | `scripts/ci/checks/bundle.py` |

@@ -1,6 +1,7 @@
-.PHONY: help setup install build release system-deps run clean pre-commit test benchmarks \
-	ftm-samples nsf-samples nsf-render compression-report compression-study icons player check-import-boundary check-tag-names check-unused-tags check-rendered-literals \
-	check-language-keys check-palette-colors check-shortcut-actions calibration lint pylint mypy format
+.PHONY: help setup install system-deps build release run clean pre-commit test benchmarks lint format \
+	ftm-samples nsf-samples nsf-render compression-report compression-study icons player calibration \
+	check-import-boundary check-tag-names check-unused-tags check-rendered-literals check-language-keys \
+	check-palette-colors check-shortcut-actions
 
 ifeq ($(OS),Windows_NT)
 ifeq ($(MSYSTEM),)
@@ -13,27 +14,11 @@ UNAME_S := $(shell uname -s)
 endif
 
 ifeq ($(UNAME_S),Windows)
-	SCRIPTS_DIR := scripts/windows
-	SCRIPT_EXT := .bat
-	RUN_SCRIPT :=
 	PYTHON := python
+	Q :=
 else
-	SCRIPTS_DIR := scripts/linux
-	SCRIPT_EXT := .sh
-	RUN_SCRIPT := bash
 	PYTHON := python3
-endif
-
-ifeq ($(UNAME_S),Windows)
-script = $(subst /,\,$(SCRIPTS_DIR)/$(1)$(SCRIPT_EXT))
-else
-script = $(RUN_SCRIPT) $(SCRIPTS_DIR)/$(1)$(SCRIPT_EXT)
-endif
-
-ifeq ($(UNAME_S),Windows)
-Q :=
-else
-Q := "
+	Q := "
 endif
 
 GPU ?= auto
@@ -45,7 +30,7 @@ help:
 	@echo $(Q)  make system-deps - Install system packages required to build and run (apt on Debian-based Linux, Homebrew on macOS)$(Q)
 	@echo $(Q)  make build       - Compile standalone executable (development deployment config: DEBUG, strict history)$(Q)
 	@echo $(Q)  make release     - Compile standalone executable with the release deployment config (INFO, self-healing history)$(Q)
-	@echo $(Q)  make test        - Run unit tests with coverage$(Q)
+	@echo $(Q)  make test        - Run the doctests, the covered suite and the benchmarks$(Q)
 	@echo $(Q)  make benchmarks  - Run the measured-duration suite on its own$(Q)
 	@echo $(Q)  make ftm-samples - Emit example .ftm files to build/ftm via the integration suite$(Q)
 	@echo $(Q)  make nsf-samples - Emit example .nsf files to build/nsf via the integration suite$(Q)
@@ -56,7 +41,7 @@ help:
 	@echo $(Q)  make player      - Assemble the NES player driver with cc65$(Q)
 	@echo $(Q)  make calibration - Score the reconstruction corpus; the report lands in Documents/SampleToNES/calibration$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
-	@echo $(Q)  make lint        - Run linting (pylint, mypy)$(Q)
+	@echo $(Q)  make lint        - Run mypy and pylint (ARGS=--mypy or ARGS=--pylint for one of them)$(Q)
 	@echo $(Q)  make format      - Auto-format code (isort, black)$(Q)
 	@echo $(Q)  make run         - Run SampleToNES application$(Q)
 
@@ -83,13 +68,19 @@ clean:
 	$(PYTHON) scripts/clean.py
 
 pre-commit:
-	$(call script,dev/pre_commit)
+	$(PYTHON) scripts/hooks.py
 
 test:
-	$(call script,dev/tests)
+	$(PYTHON) scripts/run_tests.py
 
 benchmarks:
-	uv run python -m pytest tests/benchmarks --no-cov -s
+	$(PYTHON) scripts/run_tests.py --only benchmarks
+
+lint:
+	$(PYTHON) scripts/lint.py $(ARGS)
+
+format:
+	$(PYTHON) scripts/formatting.py
 
 ftm-samples: export SAMPLETONES_FTM_OUTPUT_DIR := build/ftm
 ftm-samples:
@@ -138,15 +129,3 @@ check-shortcut-actions:
 
 calibration:
 	uv run scripts/calibration.py
-
-lint:
-	$(call script,dev/lint)
-
-pylint:
-	$(call script,dev/pylint)
-
-mypy:
-	$(call script,dev/mypy)
-
-format:
-	$(call script,dev/format)

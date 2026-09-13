@@ -1,5 +1,6 @@
 import shlex
 import subprocess
+import sys
 from pathlib import Path
 from typing import Mapping, Protocol, Sequence
 
@@ -26,7 +27,9 @@ def run(
 ) -> int:
     """Runs a command in ``cwd`` under ``environment`` and answers with its exit status.
 
-    A quiet run keeps the command's output to itself, which is what a probe asks for.
+    A quiet run keeps the command's output to itself, which is what a probe asks for. Whatever
+    the script printed reaches the terminal before the command's own output, so a log read
+    through a pipe keeps the announcements ahead of what they announce.
 
     Args:
         command: The program and its arguments.
@@ -37,6 +40,7 @@ def run(
     Returns:
         int: The command's exit status.
     """
+    sys.stdout.flush()
     completed = subprocess.run(
         list(command),
         cwd=str(cwd),

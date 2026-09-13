@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -17,6 +18,21 @@ class TestRun:
         )
 
         assert status == 3
+
+    def test_what_the_script_printed_leads_the_command_s_output(
+        self,
+        tmp_path: Path,
+        capfd: pytest.CaptureFixture[str],
+    ) -> None:
+        print("before")
+        run(
+            (sys.executable, "-c", "print('inside')"),
+            cwd=tmp_path,
+            environment=os.environ,
+            quiet=False,
+        )
+
+        assert capfd.readouterr().out == "before\ninside\n"
 
 
 class TestExpectSuccess:
