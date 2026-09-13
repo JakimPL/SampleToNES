@@ -1,8 +1,11 @@
 # Python API
 
-This page is for using _SampleToNES_ as a library from your own Python code. Everything you need is re-exported from the top-level `sampletones` package — its facade — so `from sampletones import ...` is the whole public surface. Consult this page when you want to render instructions, generate a library, or run and export a reconstruction outside the application.
+This page is for using _SampleToNES_ as a library in your own Python code. Use it to render instructions, generate a library, or run and export a reconstruction outside the application.
 
-A few lower-level helpers used in the examples (`write_wave`, `generate_library`) are not part of the facade; they are imported from `sampletones_core` with their full path, as shown.
+Names come from two packages:
+
+- The names in the table below come from `sampletones`: `from sampletones import ...`.
+- The examples also use a few helpers from `sampletones_core`: `write_wave`, `generate_library`, `DEFAULT_CHANNELS`, and the FamiTracker instrument writers. Import them with the full path each example shows.
 
 ## Public surface
 
@@ -121,15 +124,19 @@ reconstruction = Reconstruction.load("reconstruction.stn")
 
 ### Export instruments
 
-`Reconstruction.export` returns the per-channel [features](../formats/instruction-libraries.md), one entry per channel, and each set saves as a FamiTracker `.fti` instrument:
+`Reconstruction.export` returns the [envelopes](../formats/famitracker.md#b-the-2a03-instrument) of each channel. `build_instrument` turns one channel's envelopes into a FamiTracker instrument, and `write_fti` saves it as an `.fti` file:
 
 ```python
 from sampletones import Reconstruction
+from sampletones_core.formats.famitracker.builder import build_instrument
+from sampletones_core.formats.famitracker.instrument import write_fti
+from sampletones_core.formats.famitracker.specification.instruments import STANDALONE_INSTRUMENT_INDEX
 
 reconstruction = Reconstruction.load("reconstruction.stn")
 
-for name, features in reconstruction.export().items():
-    features.save(f"{name}.fti", instrument_name=str(name))
+for channel, features in reconstruction.export().items():
+    instrument = build_instrument(STANDALONE_INSTRUMENT_INDEX, channel.value, features)
+    write_fti(f"{channel.value}.fti", instrument)
 ```
 
-This writes one `.fti` per channel. A complete FamiTracker `.ftm` module is assembled from a project in the application, not from a single reconstruction — see [FamiTracker formats](../formats/famitracker.md).
+This writes one `.fti` per channel, named after the channel. A complete FamiTracker `.ftm` module is assembled from a project in the application, not from a single reconstruction — see [FamiTracker formats](../formats/famitracker.md).

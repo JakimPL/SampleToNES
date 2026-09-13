@@ -111,7 +111,7 @@ Both grids take a **selection** — a rectangle of cells you copy, cut, paste, a
 delete in one go. Hold `Shift` and press the arrow keys to reach out from the
 cursor, or drag the pointer across the cells; `Shift`+click carries the selection to
 the cell you click. Dragging past the edge of a grid scrolls it along, so a selection
-can run further than the screen shows. Any plain move, and `Escape`, puts the
+can run further than the screen shows. Any plain move, and `Esc`, puts the
 selection away again.
 
 | Key | Action |
@@ -186,10 +186,10 @@ throughout the tab:
 | `Shift+Space` | Play from the start |
 | `Ctrl+Space` | Play from the frame currently shown |
 | `Ctrl+Shift+Space` | Play from the cursor's row in the pattern grid |
-| `Escape` | Stop |
+| `Esc` | Stop |
 | `Ctrl+L` | **Loop song** — start the song over each time it reaches the end |
 
-`Escape` silences everything, including a sample preview. The same commands sit on
+`Esc` silences everything, including a sample preview. The same commands sit on
 the **Playback** menu and the transport buttons.
 
 ## Following the playhead
@@ -246,8 +246,8 @@ after voices exist re-times how they all play back, so it asks **Change NES
 frequency** first (with a **Don't ask again** option).
 
 The project's title, author, and comment — which carry into the exported module —
-are set in **Project properties**, from the button or **File ▸ Project
-properties...**, along with the meter the song is counted in.
+are set in **File ▸ Project properties...**, along with the meter the song is
+counted in.
 
 **First highlight** and **Second highlight** are that meter: how many rows make a
 beat, and how many make a bar. The tracker tints the row that opens each one. The
@@ -267,8 +267,8 @@ Every change is undoable. The **History** panel on the right shows the stack, wi
 **Undo** and **Redo** (also on the **Edit** menu); click any entry to jump straight
 to that point.
 
-When the song is ready, **Export as FamiTracker module** (or **File ▸ Export
-FamiTracker module...**) writes the `.ftm`. See
+When the song is ready, **File ▸ Export ▸ FamiTracker module...** writes the
+`.ftm`. See
 [FamiTracker export](../formats/famitracker.md) for what the module contains and
 the limits it respects.
 

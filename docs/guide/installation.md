@@ -1,77 +1,80 @@
 # Installation
 
-There are two ways to run _SampleToNES_: a **standalone build** (the easiest, and
-all most people need) and **running from source** (for development, and on macOS).
-GPU acceleration is optional.
+You can install _SampleToNES_ in three ways:
 
-## Requirements
+- **Download a release.** This is the easiest way on Windows and Linux.
+- **Install from PyPI.** This works on Windows, macOS and Linux.
+- **Run from source.** Use this to change the code or to build the app yourself.
 
-Everyone needs:
+GPU acceleration is optional. The last section of this page explains it.
 
-- A supported operating system: Windows, macOS, or Linux
-- [Python 3.12 or newer](https://www.python.org/downloads/)
+## Download a release
 
-Some setups need a little more — each is covered in the relevant section below:
+1. Open the [releases page](https://github.com/JakimPL/SampleToNES/releases).
+2. Download the file for your system: Windows or Linux.
+3. Extract the file.
+4. Start `sampletones` in the extracted folder. On Windows, double-click `sampletones.exe`.
 
-- **On Linux**, a few system packages are required to build or run: the Tk
-  file-dialog and PortAudio audio libraries. Install them with `make system-deps`.
-- **On macOS**, audio playback is compiled against PortAudio on install, so the
-  library comes from [Homebrew](https://brew.sh): `make system-deps` installs it.
-  Tk and the graphics libraries arrive with the official Python installer.
-- **On Windows**, the official Python installer and the packaged dependencies
-  cover everything.
-- **Running from source** also needs [uv](https://docs.astral.sh/uv/).
-- **GPU acceleration** needs an NVIDIA GPU with a current driver. The matching CuPy
-  build is installed for you, so the driver is all you need — on Linux and Windows alike.
+On Linux, you may need to make the file executable first: `chmod +x sampletones`.
 
-## Standalone build
+## Install from PyPI
 
-A ready-to-run executable built on your machine. You only need Python 3.12.
+You need [Python 3.12 or newer](https://www.python.org/downloads/).
 
-### Windows
+On Linux and macOS, install the audio and file dialog libraries first:
 
-1. Install Python 3.12.
-2. Double-click `install.bat`. It builds `bin\sampletones.exe`.
-3. Double-click `bin\sampletones.exe` to start.
+```sh
+sudo apt-get install libportaudio2 libasound2 python3-tk    # Debian and Ubuntu
+brew install portaudio                                      # macOS
+```
 
-### Linux
+Then install _SampleToNES_ in an environment of its own, and start it:
 
-1. Install the audio and file-dialog system packages: `make system-deps` (or run
-   `python3 scripts/system_dependencies.py`).
-2. Install Python 3.12, then run `./install.sh` in a terminal. It builds a
-   `bin/sampletones` executable.
-3. Run `./bin/sampletones` to start.
+```sh
+uv tool install sampletones      # or: pipx install sampletones
+sampletones
+```
+
+You can also run `pip install sampletones` inside an active virtual environment.
 
 ## Run from source
 
-For development, and the way to run on macOS. Requires [uv](https://docs.astral.sh/uv/)
-— and, on Linux and macOS, the system packages from the requirements above:
+You need:
+
+- [Python 3.12 or newer](https://www.python.org/downloads/)
+- [uv](https://docs.astral.sh/uv/)
+- `make`
+
+Get the code and set it up:
 
 ```sh
-make system-deps    # Linux and macOS: install the system libraries
-make setup          # create the environment and install the sampletones command
-make run            # run the app
+git clone https://github.com/JakimPL/SampleToNES.git
+cd SampleToNES
+make system-deps    # Linux and macOS: installs the system libraries
+make setup          # creates the environment and installs the sampletones command
+make run            # starts the app
 ```
 
-To update the global command after pulling new changes, re-run `make setup`.
+After you pull new changes, run `make setup` again.
+
+### Build a standalone app
+
+On Windows and Linux, you can build a standalone app from the source code:
+
+- **Windows**: double-click `install.bat`. It builds `bin\sampletones.exe`.
+- **Linux**: run `make system-deps`, then `./install.sh`. It builds `bin/sampletones`.
 
 ## GPU acceleration
 
-_SampleToNES_ can use an NVIDIA GPU (via [CuPy](https://cupy.dev/) and CUDA) to
-speed up instruction-library generation and reconstruction. `make setup` detects
-your NVIDIA driver and installs the matching CuPy build automatically:
+_SampleToNES_ can use an NVIDIA graphics card to build libraries and convert recordings faster. It
+needs an NVIDIA card with a current driver, on Windows or Linux. On macOS, the app uses the CPU.
 
-```sh
-make setup          # installs GPU support when a supported driver is present
-make setup GPU=0    # forces the CPU (NumPy) backend
-```
-
-A current NVIDIA driver is all you need: the CUDA components ship with the CuPy
-build, on Linux and Windows alike. Detection reads the driver's CUDA version —
-version 12 and newer use the default build, version 11 uses a legacy build. On
-macOS, _SampleToNES_ runs on the CPU.
+- **From source**: `make setup` checks your NVIDIA driver and installs the matching GPU support.
+  `make setup GPU=0` installs the app without GPU support.
+- **From PyPI**: add the `gpu` extra, `uv tool install "sampletones[gpu]"`. If your driver supports
+  CUDA 11 only, use the `gpu-cuda11` extra instead.
 
 ---
 
-Once it runs, [Getting started](getting-started.md) walks through your first
+Once the app runs, [Getting started](getting-started.md) walks you through your first
 reconstruction and your first song.

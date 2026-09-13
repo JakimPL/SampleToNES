@@ -33,11 +33,11 @@ A folder represents all the recordings inside it. Its checkbox shows their chann
 
 Click the checkbox to change the channel for all recordings in the folder. To change the channel for one recording, open the folder first: click the marker next to the folder name, or double-click the folder name. Each recording inside then has its own checkboxes.
 
-The **Source settings** card has two more settings. **Drive** sets how hard the channels are pushed. It applies to the whole conversion.
+The **Source settings** card has **Drive**, which sets how hard the channels are pushed. It applies to the whole conversion.
 
-Below it, the card shows the name of the recording you selected in the list and a checkbox for each of its channels. **Pulse 1**, **Pulse 2**, and **Triangle** also have a **bend** checkbox. This tunes each note to the recording's exact pitch. Noise has no bend.
+Below **Drive**, the card shows the name of the recording you selected in the list and a checkbox for each of its channels. **Pulse 1**, **Pulse 2**, and **Triangle** also have a **bend** checkbox. This tunes each note to the recording's exact pitch. Noise has no bend.
 
-**Channels per source** limits how many channels one recording can use at the same time, from 1 to 4. Set it to 1 to make each recording use one channel.
+**Channels per source** is on the **Converter** card, below the list. It limits how many channels one recording can use at the same time, from 1 to 4. Set it to 1 to make each recording use one channel.
 
 ## One reconstruction each, or one mix from all
 

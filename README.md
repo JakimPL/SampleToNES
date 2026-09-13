@@ -37,79 +37,19 @@ It supports:
 
 ## Installation
 
-### Standalone bundle
+You can install _SampleToNES_ in three ways:
 
-The easiest way to use _SampleToNES_ is to download the release package for your platform from the
-[releases page](https://github.com/JakimPL/SampleToNES/releases), extract it, and run
-`sampletones` from inside the extracted folder. On Linux you may need `chmod +x sampletones`.
+- **Download a release** for Windows or Linux from the [releases page](https://github.com/JakimPL/SampleToNES/releases), extract it, and start `sampletones`.
+- **Install from PyPI** on Windows, macOS or Linux. You need Python 3.12 or newer:
 
-### Requirements
+  ```sh
+  uv tool install sampletones      # or: pipx install sampletones
+  sampletones
+  ```
 
-- Windows, macOS, or Linux
-- Python 3.12 or newer (https://www.python.org/downloads/)
+- **Run from source** with Python 3.12 or newer and [uv](https://docs.astral.sh/uv/): `make system-deps`, `make setup`, then `make run`.
 
-### From PyPI
-
-The quickest way to get the `sampletones` command. Because _SampleToNES_ is an application
-rather than a library, installing it into its own isolated environment is recommended:
-
-```sh
-uv tool install sampletones      # or: pipx install sampletones
-sampletones                      # launch the GUI
-```
-
-A plain `pip install sampletones` into an active virtual environment works too.
-
-To install with GPU support, request the `gpu` extra (see [GPU acceleration](#gpu-acceleration)):
-
-```sh
-uv tool install "sampletones[gpu]"
-```
-
-On Linux and macOS, audio playback and file dialogs rely on system libraries that come from
-the platform's package manager. Install them first:
-
-```sh
-sudo apt-get install libportaudio2 libasound2 python3-tk    # Debian/Ubuntu
-brew install portaudio                                      # macOS
-```
-### Building the executable yourself
-
-You only need Python 3.12.
-
-#### Windows
-
-1. Install Python 3.12.
-2. Double-click `install.bat`. It builds `bin\sampletones.exe`.
-3. Double-click `bin\sampletones.exe` to start.
-
-#### Linux
-
-1. Install the audio and file-dialog system packages: `make system-deps` (or run `python3 scripts/system_dependencies.py`).
-2. Install Python 3.12, then run `./install.sh` in a terminal. It builds a `bin/sampletones` executable.
-3. Run `./bin/sampletones` to start.
-
-### Run from source
-
-For development. Requires [uv](https://docs.astral.sh/uv/) (and, on Linux, the system packages from the Linux steps above):
-
-```sh
-make setup      # create the environment and install the sampletones command
-make run        # run the app
-```
-
-To update the global command after pulling new changes, re-run `make setup` (or `uv tool install --force .`).
-
-### GPU acceleration
-
-_SampleToNES_ can use an NVIDIA GPU (via [_CuPy_](https://cupy.dev/) and CUDA) to speed up instruction-library generation and reconstruction. `make setup` detects your NVIDIA driver and installs the matching CuPy build automatically:
-
-```sh
-make setup          # installs GPU support when a supported driver is present
-make setup GPU=0    # forces the CPU (NumPy) backend
-```
-
-A current NVIDIA driver is all you need — the CUDA components ship with the CuPy build, on Linux and Windows alike. On macOS the app runs on the CPU.
+An NVIDIA graphics card can speed up conversion. The [installation guide](https://github.com/JakimPL/SampleToNES/blob/main/docs/guide/installation.md) covers the system libraries each way needs, GPU support, and building a standalone app yourself.
 
 ## Usage
 
@@ -132,11 +72,11 @@ sampletones convert <audio-path> --config <config-path> -o <out>  # reconstruct 
 sampletones library --config <config-path>                        # generate an instruction library
 ```
 
-Run `sampletones --help` for the commands and `sampletones <command> --help` for a command's options.
+Run `sampletones --help` for the commands and `sampletones <command> --help` for a command's options. The [command-line guide](https://github.com/JakimPL/SampleToNES/blob/main/docs/guide/command-line.md) explains them.
 
 ## Documentation
 
-Internals — the reconstruction algorithms, file formats, the Python API, and developer notes — live in [`docs/`](https://github.com/JakimPL/SampleToNES/tree/main/docs).
+The [user guide](https://github.com/JakimPL/SampleToNES/tree/main/docs/guide) explains how to use the app, step by step. The rest of [`docs/`](https://github.com/JakimPL/SampleToNES/tree/main/docs) covers the reconstruction algorithms, the file formats, the Python API and the developer notes.
 
 ## License
 
