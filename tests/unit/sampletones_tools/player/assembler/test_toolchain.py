@@ -5,14 +5,14 @@ from typing import Final
 
 import pytest
 
-from sampletones_player.driver.assembler.toolchain import (
+from sampletones_shared.exceptions import DriverBuildError, ToolchainMissingError
+from sampletones_shared.utils.system.system import System
+from sampletones_tools.player.assembler.toolchain import (
     ASSEMBLER,
     INSTALL_HINTS,
     LINKER,
     Toolchain,
 )
-from sampletones_shared.exceptions import DriverBuildError, ToolchainMissingError
-from sampletones_shared.utils.system.system import System
 from tests.suite.base import BaseTestSuite
 
 FAILING_PROGRAM: Final[str] = "import sys; sys.stderr.write('boom'); sys.exit(1)"

@@ -7,7 +7,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import BYTE_VALUES
 from sampletones_player.specification.registers import PULSE1_TIMER_HIGH, TIMER_HIGH_SHIFT
-from sampletones_player.trace.trace import RegisterTrace
+from sampletones_tools.player.trace.trace import RegisterTrace
 from tests.integration.nsf.console.instructions import channel_values, timer_value
 from tests.integration.nsf.console.machine import register_file
 from tests.integration.nsf.console.session import captured_trace, play_calls_covering

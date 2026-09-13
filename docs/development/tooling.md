@@ -82,6 +82,8 @@ The developer commands, listed by `sampletones_tools/registry.py` and run as
 | Command | What it does |
 |---|---|
 | `calibration [--config FILE] [-o DIR] [--methods LIST] [--perceptual-exponents LIST] [--temporal-weights LIST] [--channels LIST]` | Reconstructs the calibration corpus under every variant of the sweep, scores it with every referee, and writes the reports; without `-o` the run lands in a timestamped directory under Documents/SampleToNES/calibration |
+| `driver [--directory DIR]` | Assembles the NES player driver with cc65 and prints the layout the build produced; without `--directory` it writes the driver the package ships, which needs a checkout |
+| `nsf render --directory DIR [--tail SECONDS]` | Renders every exported `.nsf` file in the directory to a wave beside it, through ffmpeg's libgme demuxer |
 
 More join as the tools they run move into the package.
 
@@ -137,9 +139,8 @@ interpreter (`preflight.py`), and the platforms (`platforms/`).
 
 ## The tool scripts
 
-`compression_study.py`, `nsf_render.py`, `player.py`, `assets/icons.py` and the checks under
-`checks/` import the project's packages and run inside its environment, from the make target
-that names each. The checks are also pre-commit hooks;
+`compression_study.py`, `assets/icons.py` and the checks under `checks/` import the project's
+packages and run inside its environment, from the make target that names each. The checks are also pre-commit hooks;
 [architecture](architecture.md#enforcement) lists them.
 
 ## Who governs what

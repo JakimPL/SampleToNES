@@ -16,7 +16,7 @@ from sampletones_player.specification.driver import (
 class DriverImage(BaseModel):
     """The assembled player, paired with the addresses it lays out.
 
-    The 6502 program that plays a song is written in assembly, built once by ``make player`` and
+    The 6502 program that plays a song is written in assembly, built once by ``sampletones driver`` and
     committed beside its sources, so exporting an NSF needs no assembler. Pairing the bytes with
     their addresses is what lets the exporter name the routines in an NSF header and place the
     song where the driver looks for it.

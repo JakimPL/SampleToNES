@@ -9,8 +9,8 @@ from sampletones_player.specification.registers import (
     APU_FRAME_COUNTER,
     FIRST_CHANNEL_REGISTER,
 )
-from sampletones_player.trace.trace import RegisterTrace
-from sampletones_player.trace.write import RegisterWrite
+from sampletones_tools.player.trace.trace import RegisterTrace
+from sampletones_tools.player.trace.write import RegisterWrite
 
 RETURN_SENTINEL: Final[int] = 0xFFF0
 STACK_PAGE: Final[int] = 0x0100

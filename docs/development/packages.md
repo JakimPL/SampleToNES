@@ -51,7 +51,7 @@ graph TD
 | `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats | `sampletones_shared` |
 | `sampletones_player` | The NES player: the register model, the re-clocking schedule, the 6502 driver and the NSF file | `sampletones_shared`, `sampletones_core` |
 | `sampletones_application` | The DearPyGui front end | `sampletones_shared`, `sampletones_core`, `sampletones_player` |
-| `sampletones_tools` | Everything a developer runs and the application does not: analytic waveform synthesis, the calibration harness, and the developer commands that run them | `sampletones_shared`, `sampletones_assets`, `sampletones_core`, `sampletones_player`, `sampletones_application` |
+| `sampletones_tools` | Everything a developer runs and the application does not: analytic waveform synthesis, the calibration harness, the driver toolchain and the register trace, and the developer commands that run them | `sampletones_shared`, `sampletones_assets`, `sampletones_core`, `sampletones_player`, `sampletones_application` |
 | `sampletones` | The command-line entry: the dispatcher, the commands and the startup self-check | `sampletones_shared`, `sampletones_core`, `sampletones_application`, `sampletones_tools` |
 
 Third-party imports are the package author's own choice and stand outside this table.
@@ -101,18 +101,19 @@ them.
 | `compression/` | The planes a song separates into, the dictionary its tokens name, and the codec that reads them both ways | `specification/`, `registers/` |
 | `song.py` | `Song` — the compressed planes, the timer table, the schedule and the loop point as one value | `clock/`, `registers/`, `compression/` |
 | `builder.py` | The song a reconstruction or an export request plays as, its instructions encoded, its planes compressed and its rate scheduled | `song.py`, `registers/`, `clock/`, `compression/` |
-| `trace/` | `RegisterTrace` — what the driver is expected to write, call by call | `song.py`, `specification/` |
 | `nsf/` | The song block, the header and the `.nsf` file the console loads | `song.py`, `specification/`, `compression/`, `driver/` |
 | `driver/` | The assembled 6502 driver and the addresses its build reports | `specification/` |
-| `driver/assembler/` | The cc65 build: the layout, the toolchain, the linker map reader and the builder | `driver/`, `specification/` |
 | `export.py` | `NSFBackend` — the export seam answered in `.nsf` files, holding the driver every one of them carries and saying which stage a run is in | `builder.py`, `nsf/`, `driver/`, `compression/` |
 
-### The build toolchain is a developer tool
+### The toolchain and the oracle live with the tools
 
-`driver/assembler/` runs `ca65` and `ld65` over `driver/assembly/` to produce the committed
-`driver/binary/driver.bin`. It is reached from `scripts/player.py` and from the tests, and the wheel
-carries the binary alone — so a module of the shipped tree that imported it would break an installed
-copy, and no unit above declares it. The developer toolchain it needs is described in
+`sampletones_tools/player/assembler/` runs `ca65` and `ld65` over the assembly sources, their
+includes and the linker configuration in `sampletones_tools/player/assembly/`, read as package
+data, to produce the committed `driver/binary/driver.bin`; `uv run sampletones driver` runs it,
+and the tests rebuild the sources and hold the committed image to them wherever cc65 is
+installed. `sampletones_tools/player/trace/` holds `RegisterTrace`, what the driver is expected
+to write call by call, which the emulator tests hold the assembled driver to. The application
+ships the binary alone. The toolchain the build needs is described in
 [`dependencies.md`](dependencies.md).
 
 ---

@@ -22,8 +22,8 @@ from sampletones_player.specification.registers import (
     SWEEP_DISABLED,
     TRIANGLE_TIMER_HIGH,
 )
-from sampletones_player.trace.trace import RegisterTrace
-from sampletones_player.trace.write import RegisterWrite
+from sampletones_tools.player.trace.trace import RegisterTrace
+from sampletones_tools.player.trace.write import RegisterWrite
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 from tests.suite.player import (

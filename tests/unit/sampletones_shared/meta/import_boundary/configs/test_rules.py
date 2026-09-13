@@ -23,14 +23,11 @@ CORE: Final[str] = "sampletones_core"
 PLAYER: Final[str] = "sampletones_player"
 TOOLS: Final[str] = "sampletones_tools"
 ENTRY: Final[str] = "sampletones"
-ASSEMBLER: Final[str] = "sampletones_player.driver.assembler"
 
 VISUAL_IMPORT: Final[str] = "import dearpygui.dearpygui as dpg\n"
 CONTRACT_IMPORT: Final[str] = "from sampletones_application.services.result import ServiceResult\n"
 PLAIN_IMPORT: Final[str] = "from sampletones_core.project.project import Project\n"
 PLAYER_IMPORT: Final[str] = "from sampletones_player.song import Song\n"
-ASSEMBLER_IMPORT: Final[str] = "from sampletones_player.driver.assembler.builder import build_driver\n"
-DRIVER_IMPORT: Final[str] = "from sampletones_player.driver.image import DriverImage\n"
 TOOLS_IMPORT: Final[str] = "from sampletones_tools.registry import DEVELOPER_COMMANDS\n"
 PANEL_SUFFIX: Final[str] = "def build() -> None:\n    dpg.add_group(parent=SUF_PANEL_LEFT)\n"
 THIRD_PARTY_IMPORT: Final[str] = "import numpy\n"
@@ -90,10 +87,6 @@ class TestPlayerGraph:
     def test_the_specification_is_the_layer_everything_stands_on(self) -> None:
         assert self.LAYERS["specification"] == ()
 
-    def test_the_build_toolchain_is_reached_from_no_shipped_module(self) -> None:
-        """`driver/assembler/` stays outside the wheel, so an import of it breaks an installed copy."""
-        assert all("driver/assembler" not in layers for layers in self.LAYERS.values())
-
     def test_the_driver_is_reached_through_the_file_that_writes_the_nsf(self) -> None:
         assert "driver" in self.LAYERS["nsf"]
 
@@ -146,16 +139,6 @@ class TestDeclaredRules:
 
     def test_the_console_player_reading_the_engine_is_left_alone(self, tmp_path: Path) -> None:
         write_module(tmp_path / PLAYER / "nsf", "file.py", PLAIN_IMPORT)
-
-        assert reported(tmp_path) == []
-
-    def test_a_shipped_module_reaching_the_build_toolchain_is_reported(self, tmp_path: Path) -> None:
-        write_module(tmp_path / PLAYER / "nsf", "file.py", ASSEMBLER_IMPORT)
-
-        assert reported(tmp_path) == [ASSEMBLER]
-
-    def test_the_build_toolchain_reads_the_driver_it_assembles(self, tmp_path: Path) -> None:
-        write_module(tmp_path / PLAYER / "driver" / "assembler", "builder.py", DRIVER_IMPORT)
 
         assert reported(tmp_path) == []
 

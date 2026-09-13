@@ -1,5 +1,5 @@
 .PHONY: help setup install system-deps build release run clean pre-commit test benchmarks lint format \
-	ftm-samples nsf-samples nsf-render compression-report compression-study icons player \
+	ftm-samples nsf-samples compression-report compression-study icons \
 	check-import-boundary check-tag-names check-unused-tags check-rendered-literals check-language-keys \
 	check-palette-colors check-shortcut-actions
 
@@ -34,11 +34,9 @@ help:
 	@echo $(Q)  make benchmarks  - Run the measured-duration suite on its own$(Q)
 	@echo $(Q)  make ftm-samples - Emit example .ftm files to build/ftm via the integration suite$(Q)
 	@echo $(Q)  make nsf-samples - Emit example .nsf files to build/nsf via the integration suite$(Q)
-	@echo $(Q)  make nsf-render  - Render the .nsf files in build/nsf to waves with ffmpeg$(Q)
 	@echo $(Q)  make compression-report - Measure the song codec into build/compression$(Q)
 	@echo $(Q)  make compression-study - Measure the song codec over the projects and stems on this machine; the report lands in Documents/SampleToNES/compression (ARGS=--quick for a short run)$(Q)
 	@echo $(Q)  make icons       - Generate the icon suite into src/sampletones_assets/icons$(Q)
-	@echo $(Q)  make player      - Assemble the NES player driver with cc65$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
 	@echo $(Q)  make lint        - Run mypy and pylint (ARGS=--mypy or ARGS=--pylint for one of them)$(Q)
 	@echo $(Q)  make format      - Auto-format code (isort, black)$(Q)
@@ -89,9 +87,6 @@ nsf-samples: export SAMPLETONES_NSF_OUTPUT_DIR := build/nsf
 nsf-samples:
 	uv run python -m pytest tests/integration/nsf
 
-nsf-render: nsf-samples
-	uv run scripts/nsf_render.py
-
 compression-report: export SAMPLETONES_COMPRESSION_OUTPUT_DIR := build/compression
 compression-report:
 	uv run python -m pytest tests/integration/nsf/test_compression_report.py
@@ -101,9 +96,6 @@ compression-study:
 
 icons:
 	uv run --group assets python scripts/assets/icons.py
-
-player:
-	uv run scripts/player.py
 
 check-import-boundary:
 	uv run scripts/checks/import_boundary.py --all

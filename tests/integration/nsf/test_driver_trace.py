@@ -11,7 +11,7 @@ from sampletones_player.song import Song
 from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.nsf import PROGRAM_SIZE
 from sampletones_player.specification.song import STEP_FRACTION_OFFSET, STEP_WHOLE_OFFSET
-from sampletones_player.trace.trace import RegisterTrace
+from sampletones_tools.player.trace.trace import RegisterTrace
 from tests.integration.nsf.console.session import (
     TRAILING_CALLS,
     captured_trace,

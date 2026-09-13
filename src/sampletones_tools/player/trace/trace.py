@@ -21,7 +21,7 @@ from sampletones_player.specification.registers import (
     SILENCED_REGISTER,
     SWEEP_DISABLED,
 )
-from sampletones_player.trace.write import RegisterWrite
+from sampletones_tools.player.trace.write import RegisterWrite
 
 FIRST_TICK: Final[int] = 0
 

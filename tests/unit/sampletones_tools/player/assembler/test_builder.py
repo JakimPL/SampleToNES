@@ -5,8 +5,6 @@ from typing import Final
 import pytest
 
 from sampletones_player.driver.addresses import DriverAddresses
-from sampletones_player.driver.assembler.builder import build_driver, verify_addresses
-from sampletones_player.driver.assembler.toolchain import ASSEMBLER
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.specification.driver import (
     DRIVER_CODE_NAME,
@@ -15,6 +13,8 @@ from sampletones_player.specification.driver import (
     LOAD_ADDRESS,
 )
 from sampletones_shared.exceptions import DriverBuildError
+from sampletones_tools.player.assembler.builder import build_driver, verify_addresses
+from sampletones_tools.player.assembler.toolchain import ASSEMBLER
 from tests.suite.base import BaseTestSuite
 
 DISPLACEMENT: Final[int] = 0x0100
@@ -57,7 +57,7 @@ class TestTheDriverBuild(BaseTestSuite):
     """The committed driver against the sources it is built from."""
 
     def test_the_committed_driver_matches_its_sources(self, built_driver: DriverImage) -> None:
-        message = f"{DRIVER_CODE_NAME} is behind its sources: run `make player`"
+        message = f"{DRIVER_CODE_NAME} is behind its sources: run `uv run sampletones driver`"
         assert built_driver.code == DriverImage.load().code, message
 
     def test_the_linker_lays_the_driver_out_where_it_is_declared(self, built_driver: DriverImage) -> None:

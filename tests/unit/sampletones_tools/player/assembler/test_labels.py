@@ -3,7 +3,9 @@ from typing import Final
 
 import pytest
 
-from sampletones_player.driver.assembler.labels import (
+from sampletones_player.specification.driver import INIT_ADDRESS, LOAD_ADDRESS, PLAY_ADDRESS
+from sampletones_shared.exceptions import DriverBuildError
+from sampletones_tools.player.assembler.labels import (
     INIT_SYMBOL,
     LOAD_SYMBOL,
     PLAY_SYMBOL,
@@ -11,8 +13,6 @@ from sampletones_player.driver.assembler.labels import (
     read_addresses,
     read_labels,
 )
-from sampletones_player.specification.driver import INIT_ADDRESS, LOAD_ADDRESS, PLAY_ADDRESS
-from sampletones_shared.exceptions import DriverBuildError
 from tests.suite.base import BaseTestSuite
 
 LABELS_NAME: Final[str] = "driver.labels"

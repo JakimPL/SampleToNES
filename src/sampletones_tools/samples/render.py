@@ -1,11 +1,8 @@
-#!/usr/bin/env python3
-
-import argparse
 import struct
 import subprocess
-import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Final, List, Sequence
+from typing import Dict, Final, List
 
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.specification.clock import (
@@ -18,6 +15,7 @@ from sampletones_player.specification.song import (
     STEP_WHOLE_OFFSET,
     TOTAL_TICKS_OFFSET,
 )
+from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.paths.extensions import EXT_FILE_NSF, EXT_FILE_WAVE
 from sampletones_shared.utils.system.programs import (
     locate_program,
@@ -25,8 +23,6 @@ from sampletones_shared.utils.system.programs import (
 )
 from sampletones_shared.utils.system.system import System
 
-SAMPLES_DIRECTORY: Final[Path] = Path("build") / "nsf"
-TAIL_SECONDS: Final[float] = 0.5
 FFMPEG: Final[str] = "ffmpeg"
 GME_FORMAT: Final[str] = "libgme"
 WORD: Final[str] = "<H"
@@ -37,6 +33,25 @@ INSTALL_HINTS: Final[Dict[System, str]] = {
     System.MACOS: "brew install ffmpeg",
     System.WINDOWS: "install ffmpeg from https://ffmpeg.org and add its bin directory to PATH",
 }
+
+
+class RenderingError(SampleToNESError):
+    """Rendering stopped: ffmpeg is absent or carries no libgme demuxer, or a file was rejected."""
+
+
+@dataclass(frozen=True)
+class RenderedWave:
+    """One exported file rendered to a wave beside it.
+
+    Attributes:
+        source: The `.nsf` file played.
+        destination: The wave written.
+        seconds: How much of the song the wave holds, the tail included.
+    """
+
+    source: Path
+    destination: Path
+    seconds: float
 
 
 def decodes_exports() -> bool:
@@ -58,6 +73,22 @@ def decodes_exports() -> bool:
         check=True,
     )
     return GME_FORMAT in reported.stdout
+
+
+def require_renderer() -> None:
+    """Holds a render to an ffmpeg that decodes exported files.
+
+    Raises:
+        RenderingError: If ffmpeg is absent, naming how this system installs it, or carries no
+            libgme demuxer.
+    """
+    if locate_program(FFMPEG) is None:
+        raise RenderingError(missing_program_message(FFMPEG, RENDER_PURPOSE, INSTALL_HINTS))
+
+    if not decodes_exports():
+        raise RenderingError(
+            f"{FFMPEG} reports no {GME_FORMAT} demuxer; rendering needs a build made with --enable-libgme"
+        )
 
 
 def song_seconds(data: bytes, code_length: int) -> float:
@@ -110,62 +141,35 @@ def render(source: Path, destination: Path, seconds: float) -> None:
     )
 
 
-def main(argv: Sequence[str]) -> int:
-    """Renders every exported file in a directory to a wave beside it."""
+def render_directory(directory: Path, tail_seconds: float) -> List[RenderedWave]:
+    """Renders every exported file in a directory to a wave beside it.
 
-    parser = argparse.ArgumentParser(
-        description="Render exported .nsf files to waves with ffmpeg's libgme demuxer.",
-    )
-    parser.add_argument(
-        "--directory",
-        type=Path,
-        default=SAMPLES_DIRECTORY,
-        help="directory holding the exported .nsf files",
-    )
-    parser.add_argument(
-        "--tail",
-        type=float,
-        default=TAIL_SECONDS,
-        help="seconds to keep past the end of each song",
-    )
-    arguments = parser.parse_args(list(argv))
+    Args:
+        directory: The directory holding the `.nsf` files.
+        tail_seconds: How much to keep past the end of each song.
 
-    if locate_program(FFMPEG) is None:
-        print(missing_program_message(FFMPEG, RENDER_PURPOSE, INSTALL_HINTS), file=sys.stderr)
-        return 1
+    Returns:
+        List[RenderedWave]: The waves written, in path order.
 
-    if not decodes_exports():
-        print(
-            f"{FFMPEG} reports no {GME_FORMAT} demuxer; rendering needs a build made with --enable-libgme",
-            file=sys.stderr,
-        )
-        return 1
-
-    sources: List[Path] = sorted(arguments.directory.glob(f"*{EXT_FILE_NSF}"))
+    Raises:
+        RenderingError: If ffmpeg is unusable, the directory holds no exported file, or ffmpeg
+            rejects one.
+    """
+    require_renderer()
+    sources = sorted(directory.glob(f"*{EXT_FILE_NSF}"))
     if not sources:
-        print(
-            f"no {EXT_FILE_NSF} files in {arguments.directory}; run make nsf-samples first",
-            file=sys.stderr,
-        )
-        return 1
+        raise RenderingError(f"no {EXT_FILE_NSF} files in {directory}")
 
     code_length = len(DriverImage.load().code)
+    rendered: List[RenderedWave] = []
     for source in sources:
         destination = source.with_suffix(EXT_FILE_WAVE)
-        seconds = song_seconds(source.read_bytes(), code_length) + arguments.tail
+        seconds = song_seconds(source.read_bytes(), code_length) + tail_seconds
         try:
             render(source, destination, seconds)
         except subprocess.CalledProcessError as error:
-            print(
-                f"{FFMPEG} rejected {source}: exit status {error.returncode}",
-                file=sys.stderr,
-            )
-            return 1
+            raise RenderingError(f"{FFMPEG} rejected {source}: exit status {error.returncode}") from error
 
-        print(f"{destination}  {seconds:.3f} s")
+        rendered.append(RenderedWave(source=source, destination=destination, seconds=seconds))
 
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+    return rendered

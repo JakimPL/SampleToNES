@@ -74,11 +74,12 @@ that come with them. `scripts/ci/checks/bundle.py` holds the release bundles to 
 
 ## NES player driver
 
-The player that runs on the console is 6502 assembly, and `src/sampletones_player/driver` holds it
-in three parts: `assembly/` carries the sources, their includes and the linker configuration,
-`binary/` carries the assembled `driver.bin`, and `assembler/` carries the Python that turns one
-into the other. `make player` runs `scripts/player.py` over that package, so the build behaves the
-same on every system the project supports.
+The player that runs on the console is 6502 assembly, held in three parts:
+`src/sampletones_tools/player/assembly/` carries the sources, their includes and the linker
+configuration, `src/sampletones_tools/player/assembler/` carries the Python that assembles them,
+and `src/sampletones_player/driver/binary/` carries the assembled `driver.bin` the application
+ships. `uv run sampletones driver` runs the build, so it behaves the same on every system the
+project supports.
 
 Assembling needs `ca65` and `ld65` from [cc65](https://cc65.github.io/) — on Debian and Ubuntu,
 `sudo apt install cc65`, and a build names the equivalent for whichever system it runs on when the
@@ -88,7 +89,7 @@ The assembled `driver.bin` is committed, so a checkout carries the player and ex
 needs no assembler. A jump table leads the image, which fixes the addresses an NSF header names
 whatever the driver's length, so the exporter states them from `specification/driver.py` and a
 build holds the linker's own labels to them before it writes anything. Editing the assembly means
-running `make player` again and committing what it writes; the driver's test suite rebuilds the
+running `uv run sampletones driver` again and committing what it writes; the driver's test suite rebuilds the
 sources and holds the committed image to them wherever cc65 is installed. The wheel carries the
 assembled image alone, which is all an installed copy reads.
 
@@ -108,7 +109,7 @@ is a developer dependency, outside both the wheel and the bundles, and its BSD l
 project's own terms untouched.
 
 Listening to a real APU needs [ffmpeg](https://ffmpeg.org/) carrying the `libgme` demuxer, which
-is a build option rather than a given: `make nsf-render` asks the installed ffmpeg which demuxers
+is a build option rather than a given: `uv run sampletones nsf render` asks the installed ffmpeg which demuxers
 it holds and names this system's install command before it decodes anything. It exports the example
 files and renders each one to a wave beside it, its length read out of the song block the file
 carries. That is an ear rather than a gate: the register trace is what the driver answers to, and
@@ -120,14 +121,14 @@ Three tools serve the player, each reached by one command:
 
 | Tool | Run by | Installed with | Reaches |
 | --- | --- | --- | --- |
-| cc65 (`ca65`, `ld65`) | `make player` | the system's package manager | the machine assembling the driver |
+| cc65 (`ca65`, `ld65`) | `sampletones driver` | the system's package manager | the machine assembling the driver |
 | py65 | `make test` | `uv sync --group dev` | the `dev` dependency group |
-| ffmpeg with `libgme` | `make nsf-render` | the system's package manager | the machine listening to an export |
+| ffmpeg with `libgme` | `sampletones nsf render` | the system's package manager | the machine listening to an export |
 
 `scripts/system_dependencies.py` carries what building and running the application needs, and the
 workflows install the `dev` group, so py65 is the one of the three CI
 reaches — the suite verifies the driver through it alone. cc65 and ffmpeg stay on the machine of
-whoever runs `make player` or `make nsf-render`, and a workflow that assembles the driver or renders
+whoever runs `sampletones driver` or `sampletones nsf render`, and a workflow that assembles the driver or renders
 a wave is what would put them in those scripts. The application itself calls neither: an export is
 written by the package's own code, from the committed `driver.bin`.
 

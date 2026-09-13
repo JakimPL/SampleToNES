@@ -3,7 +3,7 @@
 This document governs `sampletones_player`: the 6502 driver an exported `.nsf` carries, the
 codec that fits a song into the console's program area, and the chain that holds both to
 what the application plays. Read it before changing the assembly under
-`driver/assembly/`, anything under `compression/`, or the way a song is built in
+`sampletones_tools/player/assembly/`, anything under `compression/`, or the way a song is built in
 `builder.py`. The byte layout the two sides meet on is [the NSF format](../formats/nsf.md);
 where the package sits among the others is [package layers](packages.md).
 
@@ -159,7 +159,7 @@ The chain runs from the register values upward, and each link is held on its own
 | The driver's arithmetic | a song stating a bend outright, held to the divider each tick is meant to sound at |
 | The audio | a captured trace re-rendered against the reconstruction's own approximation |
 | The whole export | a project exported, played on the emulator, and read back as the instructions the sequencer sounds |
-| Listening | `make nsf-samples` then `make nsf-render`, or any NSF player |
+| Listening | `make nsf-samples` then `uv run sampletones nsf render --directory build/nsf`, or any NSF player |
 | Speed | `make benchmarks` — the encoder's own cost on the shapes that scale worst |
 
 The audio comparison is the one that catches a mistake the trace would let through: the
@@ -168,9 +168,9 @@ the reconstruction was built as.
 
 ## Building the driver
 
-`make player` assembles the sources with cc65 and writes `driver/binary/driver.bin`, which
-is committed beside them — exporting an `.nsf` needs no assembler, and the wheel carries the
-binary alone.
+`uv run sampletones driver` assembles the sources under `sampletones_tools/player/assembly/`
+with cc65 and writes `sampletones_player/driver/binary/driver.bin`, which is committed —
+exporting an `.nsf` needs no assembler, and the application ships the binary alone.
 
 The link line names our own configuration and our own object files, with the CPU stated
 outright. That is the guardrail that keeps the shipped image entirely ours: reaching for a

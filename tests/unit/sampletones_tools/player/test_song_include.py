@@ -1,4 +1,5 @@
 import ast
+from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Dict, Final
 
@@ -6,7 +7,6 @@ import pytest
 
 from sampletones_player.compression.pitch import PITCH_COUNT
 from sampletones_player.compression.planes.order import PlaneOrder
-from sampletones_player.driver.assembler.layout import INCLUDE_DIRECTORY
 from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.compression import (
     OPCODE_SIZE,
@@ -31,6 +31,7 @@ from sampletones_player.specification.song import (
     TIMER_TABLE_OFFSET,
     TOTAL_TICKS_OFFSET,
 )
+from sampletones_tools.player.assembler.layout import INCLUDE_DIRECTORY, assembly
 
 SONG_INCLUDE: Final[str] = "song.inc"
 HEXADECIMAL_MARKER: Final[str] = "$"
@@ -81,7 +82,7 @@ def _value(node: ast.expr, defined: Dict[str, int]) -> int:
     raise ValueError(f"an equate reads {ast.dump(node)}, which the include holds no form for")
 
 
-def read_equates(path: Path) -> Dict[str, int]:
+def read_equates(path: Traversable) -> Dict[str, int]:
     """Reads the constants an assembly include states, each over the ones stated before it.
 
     The driver and the exporter read one song block, so what the assembly believes about the
@@ -108,7 +109,7 @@ def read_equates(path: Path) -> Dict[str, int]:
 
 @pytest.fixture(name="equates", scope="module")
 def equates_fixture() -> Dict[str, int]:
-    return read_equates(INCLUDE_DIRECTORY / SONG_INCLUDE)
+    return read_equates(assembly() / INCLUDE_DIRECTORY / SONG_INCLUDE)
 
 
 class TestTheDriverReadsTheBlockTheExporterWrites:

@@ -20,8 +20,6 @@ player:
     compression: [specification, registers]
     song.py: [clock, registers, compression]
     builder.py: [song.py, registers, clock, compression]
-    trace: [song.py, specification]
     nsf: [song.py, specification, compression, driver]
     export.py: [builder.py, nsf, driver, compression]
     driver: [specification]
-    driver/assembler: [driver, specification]
