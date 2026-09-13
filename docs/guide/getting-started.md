@@ -1,8 +1,7 @@
 # Getting started
 
-Two quick paths through _SampleToNES_: turning a sound into FamiTracker
-instruments, and building a whole song. Both assume it is already
-[installed](installation.md).
+This page shows two quick ways to start: turning a sound into FamiTracker instruments, and building
+a song. First, [install](installation.md) _SampleToNES_.
 
 ## Reconstruct a sound into FamiTracker instruments
 
@@ -10,8 +9,8 @@ instruments, and building a whole song. Both assume it is already
 2. In the **Filesystem** browser, double-click an audio file (WAV, MP3, FLAC,
    OGG, AIFF, or AU) — or Ctrl-click a folder, to reconstruct every audio file
    inside it.
-3. Optionally click the recording in the list and choose which channels it uses
-   under **Source settings**, and adjust **General settings**. Each recording
+3. If you want, click the recording in the list and check the channels it may use
+   under **Source settings**, and change **General settings**. Each recording
    needs at least one channel.
 4. Click the button under **Output** to start the conversion. The first time you
    convert with a given set of settings, the [instruction

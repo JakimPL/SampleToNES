@@ -15,17 +15,17 @@ The **Converter** card lists the recordings a conversion uses. Add them from the
 
 Turn on **Playback ▸ Autoplay** (`Ctrl+P`) to play a recording with a single click. This lets you listen through a folder before adding anything from it. With Autoplay off, right-click a recording and choose **Play**.
 
-Adding a folder opens a small window while the folder is read. **Stop** ends the search and leaves the list as it was. A folder with no recordings inside it says so and adds nothing.
+Adding a folder opens a small window while the app reads the folder. **Stop** ends the search and keeps the list as it was. If the folder has no recordings, the window says so and the list stays the same.
 
 **x** removes a row from the list. Removing a folder removes every recording in it.
 
-Click a row to select it. The **Source settings** card then shows that recording. Right-clicking a row selects it as well. Press `Del` to remove the selected row. Closing a folder that holds the selected recording clears the selection.
+Click a row to select it. The **Source settings** card then shows that recording. Right-clicking a row selects it as well. Press `Del` to remove the selected row. Closing a folder that contains the selected recording clears the selection.
 
 ## Choosing which channels a recording uses
 
 The NES has four sound channels: **Pulse 1**, **Pulse 2**, **Triangle**, and **Noise**. Every recording in the list has a checkbox for each channel. Check the channels that the recording may use. Press `1` to `4` to switch a channel on or off for the selected row.
 
-A folder represents all the recordings inside it. Its checkbox shows their channel assignments:
+A folder's checkboxes show the channels of all the recordings inside it:
 
 - checked if all recordings use the channel,
 - filled with the channel's color if only some recordings use it,
@@ -41,23 +41,23 @@ Below **Drive**, the card shows the name of the recording you selected in the li
 
 ## One reconstruction each, or one mix from all
 
-**Output**, at the top of the **Converter** card, decides what the conversion produces:
+**Output**, at the top of the **Converter** card, sets what the conversion makes:
 
 - **One per recording** — each recording in the list becomes its own reconstruction. Recordings added with a folder are saved in a matching folder structure.
 - **One from all** — all recordings are mixed into a single reconstruction. Folders are replaced by the recordings inside them.
 
 A mix can hold up to eight recordings. If you switch to **One from all** with more than eight recordings in the list, a dialog asks which ones to mix. The same dialog opens when you add a folder with more recordings than the mix has room for.
 
-The dialog lists the same rows as the card and shows how many recordings you have selected. Double-click a row to hear the recording. **Add** becomes available when your selection fits. A full mix cannot accept more recordings, so uncheck one before checking another.
+The dialog lists the same rows as the card and shows how many recordings you selected. Double-click a row to hear the recording. **Add** becomes available when your selection fits. When the mix is full, uncheck a recording before you check another one.
 
-Once a mix has two or more recordings, the rows are grouped into **levels**. A level decides which recordings choose their channels first. Everything on level 1 is given channels before anything on level 2. This lets a lead melody take the channels it needs before a background part does.
+When a mix has two or more recordings, the rows are grouped into **levels**. Levels set which recordings get their channels first. Recordings on level 1 get channels before recordings on level 2. This lets a lead melody take the channels it needs before a background part does.
 
 Drag a row onto another row to put them on the same level. Drag it into the gap between levels to give it a level of its own. You can also right-click a row to use the same commands.
 
-**Order** decides how the levels take turns:
+**Order** sets how the levels take turns:
 
 - **Round robin** — every level gets a turn in each round.
-- **Strict** — one level is filled before the next one chooses.
+- **Strict** — one level gets all its channels before the next level chooses.
 
 ## Running a conversion
 
@@ -67,13 +67,13 @@ Click the button under **Output** to start the conversion. The button's label te
 
 When the conversion finishes, click **Load** to open the result on the **Reconstruction** tab, where you can [listen to it and export it](reconstruction.md). After a conversion of several recordings, the button reads **Open** instead.
 
-The first conversion with a given set of settings builds the [instruction library](../concepts/instruction-library.md) it needs. This takes a while. Later conversions with the same settings reuse the library.
+The first conversion with new settings builds the [instruction library](../concepts/instruction-library.md) for those settings. This takes a while. Later conversions with the same settings use the same library.
 
 ## The instruction library
 
 The **Instructions** tab (`F4`) builds and browses the [instruction library](../concepts/instruction-library.md), the catalog of NES tones that a conversion searches.
 
-A conversion builds the library it needs on its own, so you rarely need to go there. The tab is useful for building a library before a long session and for exploring what your settings can produce.
+A conversion builds the library it needs by itself, so you rarely need this tab. Use it to build a library before a long session, or to explore the sounds your settings can make.
 
 Select an instruction to see its **Waveform** and **Spectrum**. This lets you see and hear a single NES tone on its own.
 

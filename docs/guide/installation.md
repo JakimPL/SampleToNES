@@ -70,7 +70,7 @@ _SampleToNES_ can use an NVIDIA graphics card to build libraries and convert rec
 needs an NVIDIA card with a current driver, on Windows or Linux. On macOS, the app uses the CPU.
 
 - **From source**: `make setup` checks your NVIDIA driver and installs the matching GPU support.
-  `make setup GPU=0` installs the app without GPU support.
+  `make setup GPU=0` installs the app for the CPU alone.
 - **From PyPI**: add the `gpu` extra, `uv tool install "sampletones[gpu]"`. If your driver supports
   CUDA 11 only, use the `gpu-cuda11` extra instead.
 

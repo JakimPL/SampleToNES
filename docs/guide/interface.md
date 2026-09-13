@@ -9,7 +9,7 @@ _SampleToNES_ has four tabs. Use `F1` to `F4` to switch between them:
 
 You usually work through the tabs in this order. Convert your files on **Main**. When the conversion finishes, click **Load** to open the result on **Reconstruction**. From there, **Add to Sequencer** adds the reconstruction to a song.
 
-The **Instructions** tab is optional. It lets you explore individual _instructions_ — the unit blocks produced by the NES sound processor.
+The **Instructions** tab is optional. Use it to explore single _instructions_: the smallest sounds the NES sound chip makes.
 
 ## The menus
 
@@ -26,7 +26,7 @@ Each menu covers one kind of work:
 Two items are easy to miss:
 
 - **View ▸ Show advanced settings** shows the **Advanced settings** card on the **Main** tab. It contains the generation method, feature scaling, worker count, and library and output folders. [Configuration](configuration.md) explains each one.
-- **Playback ▸ Audio settings...** chooses the device, sample rate, and buffer size you listen through. These are separate from **Sample rate** and **NES frequency** on the **Main** tab. Those settings decide how the audio is reconstructed.
+- **Playback ▸ Audio settings...** chooses the device, sample rate, and buffer size you listen through. **Sample rate** and **NES frequency** on the **Main** tab are different settings: they set how the audio is converted.
 
 Project properties belong to a project and are covered in the [sequencer guide](sequencer.md).
 

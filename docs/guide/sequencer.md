@@ -1,307 +1,281 @@
 # The sequencer
 
-The **Sequencer** tab is a tracker: it arranges voices into a song across the four
-NES channels and exports it as a FamiTracker
-[module](../formats/famitracker.md) (`.ftm`). It works on a
-[project](../formats/projects.md), so start one with **File ▸ New project** (or
-open an existing `.stp`). The pattern grid and order sit in the center, a browser
-for pulling in reconstructions on the left, and the module settings, voice list,
-and undo history on the right.
+The **Sequencer** tab (`F3`) is a tracker. You use it to arrange voices into a song on the four NES
+channels. You can export the song as a FamiTracker [module](../formats/famitracker.md) (`.ftm`),
+play it back, or render it to audio.
+
+The sequencer works on a [project](../formats/projects.md). Choose **File ▸ New project** to start
+one, or open an existing `.stp` file.
 
 ## Voices: samples and instruments
 
-A song is built from **voices**, and there are two kinds. A **sample** is a
-reconstruction brought in as something a row can play. An **instrument** is written by
-hand — envelopes with no recording behind them — for the melodies and basses you write
-yourself. Both sit in the **Voices** list on the right, numbered together, and a
-mark at the front of each row says which kind it is. The mark carries a color as well
-as a shape — amber for a sample, magenta for an instrument — and the same two colors
-name a voice in the pattern grid and in the history, so the two kinds read apart
-wherever one is named.
+A song plays **voices**. There are two kinds:
 
-Four ways bring a voice in, and the **Voice** menu holds all four:
+- A **sample** is a reconstruction that the song plays.
+- An **instrument** is a sound you write by hand. Use instruments for melodies and bass lines.
 
-| Way in | What arrives |
-|--------|--------------|
-| **New instrument** | An instrument holding a note at full volume, ready to place and hear |
-| **Add sample from file...** | A reconstruction saved anywhere on disk, as a sample |
+Both kinds are in the **Voices** list, numbered together.
+
+The **Voice** menu adds a voice in four ways:
+
+| Menu item | What it adds |
+|-----------|--------------|
+| **New instrument** | An instrument that plays a note at full volume, ready to place and hear |
+| **Add sample from file...** | A reconstruction file from anywhere on your disk, as a sample |
 | **Import instrument...** | A FamiTracker instrument file (`.fti`), as an instrument |
-| **Add to Sequencer** | The reconstruction the **Reconstruction** tab holds, as a sample |
+| **Add to Sequencer** | The reconstruction open on the **Reconstruction** tab, as a sample |
 
-The first three also sit at the top of the **Voices** list, and on the list's own
-menu — right-click below the rows to reach it. **Add to Sequencer** is on the
-**Browser** on the Sequencer tab (right-click a reconstruction) and on the
-**Reconstruction** tab. If a reconstruction was made at a different NES frequency
-than the project and the project already has voices, _SampleToNES_ warns with
-**Different NES frequency**; **Add anyway** adds it regardless.
+The first three items are also at the top of the **Voices** list. Right-click below the rows of
+the list to open the same menu.
 
-A new instrument starts out holding a note at full volume, so you can place it and
-hear it straight away; give it the sound you want on the **Reconstruction** tab
-(right-click ▸ **Edit**). See [editing instruments](reconstruction.md#editing-instruments).
-An imported `.fti` arrives with the volume, arpeggio, and duty-cycle envelopes the
-file states, and **Instrument imported** names anything the file held on a tracker's
-own terms that the voice leaves behind — see [reading an instrument
+**Add to Sequencer** is also on the **Reconstruction** tab. On the Sequencer tab, right-click a
+reconstruction in the **Browser** to find it.
+
+If a reconstruction uses a different NES frequency than the project, the app shows **Different
+NES frequency**. Click **Add anyway** to add it.
+
+To change how a new instrument sounds, right-click it and choose **Edit**. The instrument opens on
+the **Reconstruction** tab. See [editing instruments](reconstruction.md#editing-instruments).
+
+An imported `.fti` file keeps its volume, arpeggio and duty cycle sequences. **Instrument
+imported** lists any other settings of the file, which the instrument leaves out. See [reading an instrument
 file](../formats/famitracker.md#c-reading-an-instrument-file).
 
-**New instrument from ▸ _channel_** on a sample's menu writes what one of its channels
-plays into an instrument of its own, so a recorded part becomes envelopes you edit by
-hand.
+A sample's right-click menu has **New instrument from**. Choose a channel to copy what the sample
+plays on that channel into a new instrument you can edit.
 
-Right-click any voice to **Edit**, **Rename**, **Duplicate**, **Remove**, or reorder it.
-**Export instrument...** writes the voice out as a `.fti` another tracker reads — a
-sample holds one instrument per channel it plays, so it asks which. The **Edit** menu
-carries the same actions for the voice you have picked. The right-click menu also names
-how much room the voice takes on the NES — a sample's total and then each channel it
-plays, and an instrument's single figure. The figures are in bytes, and they count what a
-FamiTracker export saves. Removing a voice that patterns still use asks first, because it
-clears every row that references it.
+Right-click any voice to use these commands:
 
-Hovering a row says what that voice is in one line: its name, whether it is a sample or
-an instrument, the channels a sample plays, and the room it takes.
+- **Edit**, **Rename**, **Duplicate** and **Remove**.
+- Commands that move the voice up or down the list.
+- **Export instrument...**, which saves the voice as an `.fti` file. A sample has one instrument
+  per channel, so the app asks which channel to export.
+
+The **Edit** menu has the same commands for the voice you selected.
+
+The right-click menu also shows how many bytes the voice takes on the NES. For a sample, it shows
+the total and the size of each channel.
+
+If patterns still use a voice, removing the voice asks you first. Removing it clears every row
+that uses it.
+
+Hover over a voice to see its name, its kind, its channels and its size.
 
 ## Writing a pattern
 
-The **Tracker** grid is the pattern editor. Each row is one step in time; the
-columns are the **Sample** and the four channels — **Pulse 1**, **Pulse 2**,
-**Triangle**, **Noise** — each carrying a voice, a pitch, and a volume. Click a cell
-and type its value. Right-clicking a cell opens the rest of the operations — **Set
-voice**, **Note off**, **Clear cell** and **Clear row**, transpose and volume
-adjustments, **Play from here** to audition from the cursor row, and **Play from
-this frame** to start at the top of the shown frame.
+The **Tracker** grid is the pattern editor. Each row is one step in time. The grid has a
+**Sample** column and a column for each channel: **Pulse 1**, **Pulse 2**, **Triangle** and
+**Noise**. Each channel column has a voice, a pitch and a volume.
 
-The **Sample** column places a sample across every channel its reconstruction
-covers, and clears the rest of the row. It takes samples alone: an instrument sounds
-on the one channel that names it, so **Set voice** lists instruments there grayed out,
-and a number typed over one leaves the cell reading what it held. Name an instrument
-in the channel column you want it on.
+Click a cell and type its value.
 
-A cell holding a voice wears that voice's color — amber for a sample, magenta for an
-instrument — while an empty cell, a cut, and a `?` where the **Sample** column's
-channels disagree read in a plain gray. Silencing a channel dims its cells and keeps
-those colors, so a muted column stays as readable as the rest.
+Right-click a cell for more commands:
 
-## Reading and typing a pitch
+- **Set voice** chooses the voice for the cell.
+- **Note off** stops the note.
+- **Clear cell** and **Clear row** empty the cell or the whole row.
+- Transpose and volume commands change the pitch and volume.
+- **Play from here** plays from the row you clicked.
+- **Play from this frame** plays from the top of the frame on screen.
 
-A pitch cell holds one number, and it reads in the terms of the voice the channel is
-carrying. A sample was converted at a pitch of its own, so its cells read as steps
-from it — `+00` plays it as recorded, `+0C` an octave up. An instrument sounds at
-whatever note a row names it with, so its cells read as the notes they sound — `C-4`,
-`A#3`.
-A row that only bends a note reads the same way as the row that started it.
+The **Sample** column places a sample on every channel the sample uses, and clears the other
+channels of the row. The **Sample** column takes samples only. To place an instrument, use the
+column of the channel you want it on.
 
-Type a note into an instrument's cell piano-style: the bottom two rows of the keyboard are
-one octave (`Z` `S` `X` `D` `C` …) and the two above them the next (`Q` `2` `W` `3`
-`E` …). **Octave** above the grid says where the bottom row opens. The keys work on
-a sample's cell too, writing the step that reaches the note you pressed. The noise
-channel selects one of sixteen periods rather than a note, so its cells are typed as
-a signed value.
+A `?` in the **Sample** column means the channels of that row play different voices.
+
+## Typing a pitch
+
+A pitch cell shows a number. What the number means depends on the voice:
+
+- For a sample, the number is a step from the pitch the sample was recorded at. `+00` plays the
+  sample as recorded. `+0C` plays it one octave higher.
+- For an instrument, the number is a note, such as `C-4` or `A#3`.
+
+Type notes on your keyboard like a piano:
+
+- The bottom two rows of keys play one octave: `Z` `S` `X` `D` `C` and so on.
+- The two rows above them play the next octave: `Q` `2` `W` `3` `E` and so on.
+
+**Octave**, above the grid, sets the octave of the bottom row. The same keys work in a sample's
+cell and type the step that plays the note you pressed.
+
+The noise channel has sixteen sounds in place of notes. Type a noise cell as a signed step, such as
+`+03` or `-02`.
 
 ## Arranging the song
 
-A song plays a sequence of patterns, and the **Order** grid sets that sequence —
-one column per position, with a row for the master and each channel. Type an entry
-to place a pattern, or right-click a frame for the rest: **Duplicate** repeats the
-frame with the patterns it already plays, **Clone** gives the copy patterns of its
-own so you can change it on its own, and **Insert frame**, **Clear frame**,
-**Remove**, the moves, and **Play from this frame** do what they say.
+A song plays patterns in a sequence. The **Order** grid sets that sequence. Each column is one
+position in the song. The grid has a row for the **Master** and a row for each channel.
 
-## Working on a block
+Type a pattern number in the **Order** grid to place a pattern. Right-click a frame for more
+commands:
 
-Both grids take a **selection** — a rectangle of cells you copy, cut, paste, and
-delete in one go. Hold `Shift` and press the arrow keys to reach out from the
-cursor, or drag the pointer across the cells; `Shift`+click carries the selection to
-the cell you click. Dragging past the edge of a grid scrolls it along, so a selection
-can run further than the screen shows. Any plain move, and `Esc`, puts the
-selection away again.
+- **Duplicate** repeats the frame with the same patterns.
+- **Clone** repeats the frame with new copies of its patterns, so you can change them separately.
+- **Insert frame**, **Clear frame** and **Remove** add, empty and delete frames.
+- **Play from this frame** plays from that frame.
+
+## Selecting, copying and pasting
+
+You can select a block of cells in both grids, then copy, cut, paste or delete it.
+
+To select cells:
+
+- Hold `Shift` and press the arrow keys.
+- Drag across the cells with the mouse.
+- `Shift`+click a cell to extend the selection to it.
+
+Dragging past the edge of a grid scrolls the grid. Any plain arrow key, or `Esc`, clears the
+selection.
 
 | Key | Action |
 |-----|--------|
-| `Shift`+arrows | Reach the selection out a cell at a time |
-| `Shift+Home` / `Shift+End` | Reach it to the first or the last row (tracker) or position (order) |
+| `Shift`+arrows | Extend the selection by one cell |
+| `Shift+Home` / `Shift+End` | Extend the selection to the first or last row (tracker) or position (order) |
 | `Ctrl+A` | Select the whole frame, or the whole order |
-| `Ctrl+Shift+A` | Select the column you are in (tracker), or your channel's row (order) |
-| `Ctrl+Alt+A` | Select the subcolumn you are in (tracker) |
+| `Ctrl+Shift+A` | Select your column (tracker), or your channel's row (order) |
+| `Ctrl+Alt+A` | Select your subcolumn (tracker) |
 | `Ctrl+C` | Copy |
-| `Ctrl+X` | Cut — copy, then empty what was selected |
-| `Ctrl+V` | Paste, starting at the cursor |
+| `Ctrl+X` | Cut |
+| `Ctrl+V` | Paste at the cursor |
 | `Del` | Empty the selection |
 
-Copy, cut, paste and delete act on the cell the cursor stands on when nothing is
-selected, so copying one cell needs no selection first. All four sit on each grid's
-right-click menu: raised inside a selection they act on the whole of it, raised
-anywhere else on the cell you clicked. Each grid keeps its own copy, so a tracker
-block pastes into the tracker and an order block into the order.
+With nothing selected, copy, cut, paste and delete work on the cell under the cursor. The same
+commands are on each grid's right-click menu. Right-click inside a selection to use them on the
+whole selection.
 
-The **Select** keys work from the cell you are on and reach the whole length of the
-grid. They sit on the right-click menu too.
+Each grid has its own copy. A block copied in the tracker pastes into the tracker, and a block
+copied in the order pastes into the order.
 
-A paste is anchored: the block starts at the cell you paste onto and lands the rest
-down and to the right of it.
+A paste starts at the cursor and fills down and to the right:
 
-In the **Tracker**, a block keeps the kinds of the cells it came from — a transpose
-lands in a transpose, a volume in a volume, whichever column you paste onto — and
-whatever reaches past the last row or the last column is left out. A cell reading
-`?`, where the **Sample** column's channels disagree, passes over its target and
-leaves what was there; an empty cell empties it.
+- In the **Tracker**, each cell keeps its kind. A volume pastes into a volume column, wherever you
+  paste. Cells past the last row or column are dropped. A `?` cell leaves the target cell as it
+  was.
+- In the **Order**, a paste past the last frame adds frames to the song. A paste stops at the
+  **Noise** row.
 
-In the **Order**, a block pasted past the last frame grows the song to hold it, and
-one reaching past the **Noise** row stops there. The **Master** row copies the index
-its channels share and reads `?` when they differ, which pasted leaves each channel
-as it was.
+Emptying cells keeps the rows and frames. Every copy, cut, paste and delete is one step in the
+history, so one **Undo** reverses it.
 
-Emptying cells keeps the rows and frames they sit in, and every block action is one
-step in the history, so a single **Undo** takes it all back.
+A copy also goes to your clipboard as text. You can paste a block into another open window of
+_SampleToNES_, or into a message. Voices are copied by their number in the **Voices** list, so in
+another project the block plays the voices with those numbers.
 
-A copy also goes to your desktop's clipboard as plain text, so a block carries between
-two open windows of _SampleToNES_ — copy in one, paste in the other — and you can paste
-one into a message to show someone what you wrote. Anything else on the clipboard
-leaves you with the last block you copied here. Notes travel by their number in the
-**Voices** list, so a block pasted into another project plays whichever voice holds
-that number there.
+## Transpose and volume
 
-## Transposing and shading
-
-In the **Tracker**, transpose and volume move whatever the selection covers, so a
-run of rows nudges together.
+In the **Tracker**, transpose and volume keys change every cell in the selection.
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+Up` / `Ctrl+Down` | Transpose a semitone |
-| `Ctrl+Shift+Up` / `Ctrl+Shift+Down` | Transpose an octave |
-| `Alt+Up` / `Alt+Down` | Volume a step |
-| `Alt+Shift+Up` / `Alt+Shift+Down` | Volume four steps |
+| `Ctrl+Up` / `Ctrl+Down` | Transpose by a semitone |
+| `Ctrl+Shift+Up` / `Ctrl+Shift+Down` | Transpose by an octave |
+| `Alt+Up` / `Alt+Down` | Change the volume by one step |
+| `Alt+Shift+Up` / `Alt+Shift+Down` | Change the volume by four steps |
 
-Control carries pitch, Alt carries volume, and Shift makes the step the bigger one.
-With nothing selected they act on the cell the cursor stands on, and the same
-commands sit on the right-click menu with these keys beside them.
+With nothing selected, the keys change the cell under the cursor. The same commands are on the
+right-click menu.
 
 ## Playing the song
 
-The transport below the grid plays the song, and the keyboard drives playback
-throughout the tab:
+The transport under the grid plays the song. These keys work anywhere on the tab:
 
 | Key | Action |
 |-----|--------|
-| `Space` | Play, or pause and resume what is playing |
+| `Space` | Play, or pause and resume |
 | `Shift+Space` | Play from the start |
-| `Ctrl+Space` | Play from the frame currently shown |
-| `Ctrl+Shift+Space` | Play from the cursor's row in the pattern grid |
+| `Ctrl+Space` | Play from the frame on screen |
+| `Ctrl+Shift+Space` | Play from the cursor's row |
 | `Esc` | Stop |
-| `Ctrl+L` | **Loop song** — start the song over each time it reaches the end |
+| `Ctrl+L` | **Loop song**: start the song again when it ends |
 
-`Esc` silences everything, including a sample preview. The same commands sit on
-the **Playback** menu and the transport buttons.
+`Esc` also stops a sample preview. The same commands are on the **Playback** menu.
 
-## Following the playhead
+## Following the playback
 
-**Playback ▸ Follow playback** chooses how far the view travels with the sounding
-row. Each mode carries a key of its own, so you can change your mind while the song
-plays, and the choice is remembered for the next time you launch:
+**Playback ▸ Follow playback** chooses whether the view moves with the song. The app remembers your
+choice.
 
-| Mode | Key | Where the view goes |
+| Mode | Key | What the view does |
 |------|-----|---------------------|
-| **Follow rows** | `Ctrl+F` | Scrolls the pattern grid to keep the sounding row on screen, and shows the frame being played |
-| **Follow patterns** | `Ctrl+Shift+F` | Shows the frame being played, and leaves the scroll where you put it |
-| **Don't follow** | `Ctrl+Alt+F` | Holds the view where you put it |
+| **Follow rows** | `Ctrl+F` | Scrolls the tracker to the playing row, and shows the playing frame |
+| **Follow patterns** | `Ctrl+Shift+F` | Shows the playing frame, and keeps your scroll position |
+| **Don't follow** | `Ctrl+Alt+F` | Stays where you put it |
 
-The **Order** grid marks the frame being played under every mode, and the tracker
-marks the sounding row of the frame it shows — so a held view still shows the
-playhead each time the song passes through the frame you are editing.
-**Follow rows** is the one that moves the grid while you play, which is what makes
-the other two the modes to type in: they hold the view still under your cursor while
-the song runs.
+In every mode, the **Order** grid marks the playing frame, and the tracker marks the playing row.
+Use **Follow patterns** or **Don't follow** to type while the song plays.
 
-## Listening to one channel at a time
+## Muting channels
 
-Channel names are switches. Click **Triangle** at the top of the tracker to silence
-that channel: its name grays, its column and its row in the **Order** grid go
-neutral, and its notes dim — still readable, still editable, just not sounding.
-Click the name again to bring it back. The same click works on the channel's name
-in the **Order** grid, and both grids show every change, so a channel looks the same
-wherever you see it.
+Click a channel's name at the top of the tracker to mute the channel. Click the name again to
+unmute it. The channel names in the **Order** grid work the same way.
 
 | Gesture | Action |
 |---------|--------|
-| Click a channel's name | Silence it, or bring it back |
-| `Ctrl`+click a channel's name | Solo it — silence the other three; `Ctrl`+click again returns the mix you had |
-| Click **Sample** (tracker) or **Master** (order) | Silence every channel, or bring them all back |
-| Right-click any name | The same actions as a menu |
+| Click a channel's name | Mute or unmute the channel |
+| `Ctrl`+click a channel's name | Solo the channel. `Ctrl`+click again to restore the previous mix |
+| Click **Sample** (tracker) or **Master** (order) | Mute or unmute every channel |
+| Right-click a name | The same commands as a menu |
 
-The **Playback ▸ Channels** submenu carries the same mix: a check marks each channel
-that sounds, and **Unmute all channels** returns the whole set. `1` to `4` do the
-same from the keyboard, one key per channel, wherever the grids are not holding your
-cursor — inside them the digits enter values.
+**Playback ▸ Channels** shows which channels play. **Unmute all channels** unmutes all four. Keys
+`1` to `4` mute and unmute a channel when the cursor is outside the grids. Inside the grids, the
+digit keys type values.
 
-Muting is for listening only. The song keeps every channel, so saving, exporting a
-module, and undo all work on the full arrangement, and a mute survives undo and
-redo. Toggling during playback is heard within about a quarter second. Opening,
-creating, or closing a project starts a fresh listening session with every channel
-audible.
+Muting changes only what you hear. Saving, exporting, rendering and undo use every channel. Opening,
+creating or closing a project unmutes all channels.
 
 ## Timing and properties
 
-Set the song's timing in **Module options** on the right: **Rows** per pattern,
-**Tempo**, **Speed**, and the **NES frequency**. Changing the **NES frequency**
-after voices exist re-times how they all play back, so it asks **Change NES
-frequency** first (with a **Don't ask again** option).
+**Module options** sets the song's timing: **Rows** per pattern, **Tempo**, **Speed** and **NES
+frequency**. If the project has voices, changing **NES frequency** changes how they play, so the
+app asks **Change NES frequency** first. Check **Don't ask again** to skip the question.
 
-The project's title, author, and comment — which carry into the exported module —
-are set in **File ▸ Project properties...**, along with the meter the song is
-counted in.
+**File ▸ Project properties...** sets the title, the author and the comment. The exported module
+includes them.
 
-**First highlight** and **Second highlight** are that meter: how many rows make a
-beat, and how many make a bar. The tracker tints the row that opens each one. The
-bar divided by the beat is how many beats you hear in a bar, so the default 4 and
-16 give four beats of four rows — common time. Waltz time keeps the four-row beat
-and shortens the bar to 12, for three beats. The beat is what the tempo counts, so
-the two together say how fast the song is felt as well as how it looks.
+**Project properties** also sets the meter:
 
-The meter also places the song's timing. Most tempos ask for a row length the engine
-can only reach on average, so the rows of a bar differ a little: the meter gives the
-extra time to the row that opens the bar, then to the row that opens each beat, which
-keeps the beat audible where you expect it.
+- **First highlight** is the number of rows in a beat.
+- **Second highlight** is the number of rows in a bar.
+
+The tracker marks the first row of each beat and each bar. The defaults, 4 and 16, give four beats
+of four rows in a bar. For waltz time, set **Second highlight** to 12, which gives three beats.
+
+The tempo counts beats, so the meter also changes how fast the song feels. [Tempo as a
+groove](../formats/bitphase.md#d-tempo-as-a-groove) explains how the app spreads a tempo over the
+rows.
 
 ## Undo and export
 
-Every change is undoable. The **History** panel on the right shows the stack, with
-**Undo** and **Redo** (also on the **Edit** menu); click any entry to jump straight
-to that point.
+You can undo every change. The **History** panel lists your changes. **Undo** and **Redo** are also
+on the **Edit** menu. Click a change in the **History** panel to go back to that point.
 
-When the song is ready, **File ▸ Export ▸ FamiTracker module...** writes the
-`.ftm`. See
-[FamiTracker export](../formats/famitracker.md) for what the module contains and
-the limits it respects.
+To export the song:
 
-**File ▸ Export ▸ NSF program...** writes the song as an `.nsf` instead: a program
-the console itself plays, carrying its own player, so it needs no tracker to sound.
-The console holds one program in 32 KB, so a long song can outgrow it — the export
-says so rather than writing a file that plays part of itself. See
-[NSF export](../formats/nsf.md) for what the file holds, and
-[song compression](../concepts/compression.md) for how a song of minutes is fitted
-into that space.
+- **File ▸ Export ▸ FamiTracker module...** saves an `.ftm` file. See [FamiTracker
+  export](../formats/famitracker.md) for its contents and limits.
+- **File ▸ Export ▸ Bitphase project...** saves a `.btp` file.
+- **File ▸ Export ▸ NSF program...** saves an `.nsf` file, which the NES or an NSF player plays
+  directly. An NSF program has room for 32 KB, so the app tells you when a song is too long. See [NSF
+  export](../formats/nsf.md) and [song compression](../concepts/compression.md).
 
 ## Rendering to audio
 
-A module is for a tracker. To get a file anyone can play, use **File ▸ Render
-song...** (`Ctrl+Shift+E`), which writes the whole song as audio.
-
-The dialog holds the choices:
+**File ▸ Render song...** (`Ctrl+Shift+E`) saves the whole song as an audio file that any player
+opens.
 
 | Setting | What it does |
 |---------|--------------|
-| **Format** | **WAV** for the full-quality file, **MP3** for a smaller one |
-| **Sample rate** | How many samples a second the file holds; 44100 Hz is the usual choice |
-| **Bit depth** (WAV) | How finely each sample is stored. 16-bit PCM is the usual choice; 8-bit is there for the crunch the NES itself has |
-| **Bitrate** (MP3) | How much the file spends per second — higher sounds better and takes more room. What is on offer depends on the sample rate, so the list follows when you change it |
-| **Normalize peak** | Lifts the whole song so its loudest moment reaches full scale, keeping the balance between channels as it was |
-| **File** | Where it is written. **Browse...** opens the save dialog, clicking the path shows where the file is going in your file manager, and the folder you pick is offered again next time |
+| **Format** | **WAV** for full quality, **MP3** for a smaller file |
+| **Sample rate** | Samples per second. 44100 Hz is the usual choice |
+| **Bit depth** (WAV) | 16-bit PCM is the usual choice. 8-bit sounds rougher, like the NES |
+| **Bitrate** (MP3) | A higher bitrate sounds better and makes a larger file. The choices depend on the sample rate |
+| **Normalize peak** | Makes the song louder until its loudest moment reaches full volume, keeping the balance between channels |
+| **File** | Where the file is saved. **Browse...** opens the save dialog. Click the path to open its folder |
 
-**Length** tells you how long the file will be before you start. **Render** begins,
-and a bar reports how far it has got; **Cancel** stops it and leaves the file
-unwritten. When it finishes, _SampleToNES_ shows the file it wrote — click the path
-to open its folder.
+**Length** shows how long the file will be. Click **Render** to start. **Cancel** stops the render
+and saves no file. When the render finishes, click the path to open its folder.
 
-A render takes the song itself, once through, with every channel sounding: muting
-and **Loop song** are for listening and stay out of the file. It is one of the long
-jobs that run alone, so the item is unavailable while a conversion or a library
-generation is going, and those wait for a render in the same way.
+A render plays the song once, with every channel, whatever you muted or looped. While a render
+runs, conversions and library builds wait, and a render waits for them in the same way.

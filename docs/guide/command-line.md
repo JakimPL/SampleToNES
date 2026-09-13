@@ -1,7 +1,7 @@
 # Command line
 
-You can run _SampleToNES_ from a terminal. Use it to convert recordings without opening the
-window, to build an instruction library, or to open a file in the app.
+You can run _SampleToNES_ from a terminal. Use it to convert recordings in the terminal, to build
+an instruction library, or to open a file in the app.
 
 ## Getting the command
 
@@ -37,7 +37,7 @@ describes them.
 
 - `--config <file>` or `-c <file>` uses a configuration file. It works with `run`, `open`,
   `convert` and `library`. Without it, the app uses your saved configuration, or the built-in
-  defaults if you have not saved one.
+  defaults until you save one.
 - `--output <file>` or `-o <file>` sets where `convert` saves the reconstruction. Without it, the
   reconstruction goes to the reconstructions folder of your configuration.
 - `--channels <list>` sets the channels `convert` may use, for example `--channels pulse1,pulse2`.
