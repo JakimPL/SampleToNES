@@ -2,9 +2,11 @@ import struct
 
 import pytest
 
+from sampletones_core.constants.enums import ALL_CHANNELS
 from sampletones_core.project.project import Project
 from sampletones_core.timing import SongTiming
 from sampletones_player.builder import song_from_project
+from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
@@ -23,7 +25,12 @@ def read_word(data: bytes, offset: int) -> int:
 @pytest.fixture
 def project_song(integration_project: Project) -> Song:
     """The song the console plays the integration project's arrangement as."""
-    return song_from_project(integration_project, loop_tick=None)
+    return song_from_project(
+        integration_project,
+        channels=ALL_CHANNELS,
+        loop_tick=None,
+        scheme=CompressionScheme.SEARCH,
+    )
 
 
 class TestTheProjectReachesTheConsole:

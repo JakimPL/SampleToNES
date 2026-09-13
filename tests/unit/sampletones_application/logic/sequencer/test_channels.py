@@ -4,13 +4,12 @@ from typing import Callable, FrozenSet, List, Tuple
 import pytest
 
 from sampletones_application.logic.sequencer.channels import (
-    ALL_CHANNELS,
     SequencerChannelsLogic,
 )
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from tests.suite.case import BaseTestCase
 
 Gesture = Callable[[SequencerChannelsLogic], None]

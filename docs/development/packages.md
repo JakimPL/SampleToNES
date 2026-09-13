@@ -101,7 +101,7 @@ them.
 | `builder.py` | The song a reconstruction or an export request plays as, its instructions encoded, its planes compressed and its rate scheduled | `song.py`, `registers/`, `clock/`, `compression/` |
 | `nsf/` | The song block, the header and the `.nsf` file the console loads | `song.py`, `specification/`, `compression/`, `driver/` |
 | `driver/` | The assembled 6502 driver and the addresses its build reports | `specification/` |
-| `export.py` | `NSFBackend` — the export seam answered in `.nsf` files, holding the driver every one of them carries and saying which stage a run is in | `builder.py`, `nsf/`, `driver/`, `compression/` |
+| `export/` | `NSFBackend` — the export seam answered in `.nsf` files, writing each request as the program its source states or the one a user chose (`NSFProgram`: channels, repeat, compression scheme and header text), holding the driver every file carries and saying which stage a run is in | `builder.py`, `song.py`, `nsf/`, `driver/`, `compression/` |
 
 ### The toolchain and the oracle live with the tools
 

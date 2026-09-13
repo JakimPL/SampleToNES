@@ -5,6 +5,7 @@ import pytest
 
 from sampletones_core.project.voices.sample import Sample
 from sampletones_player.builder import song_from_reconstruction
+from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
@@ -99,7 +100,7 @@ class TestAReClockedStreamPlaysTheSameTicks(BaseTestSuite):
         sample: Sample,
     ) -> None:
         reclocked = sample.reconstruction.with_nes_frequency(test_case.expected)
-        song = song_from_reconstruction(reclocked, loop_tick=None)
+        song = song_from_reconstruction(reclocked, loop_tick=None, scheme=CompressionScheme.SEARCH)
 
         trace = captured_trace(song, sample_information(sample.name))
         assert trace == RegisterTrace.from_song(song, play_calls_covering(song))
@@ -116,7 +117,9 @@ class TestAReClockedStreamPlaysTheSameTicks(BaseTestSuite):
         available = PROGRAM_SIZE - len(driver_image.code)
 
         block = song_to_bytes(song, available)
-        reclocked_block = song_to_bytes(song_from_reconstruction(reclocked, loop_tick=None), available)
+        reclocked_block = song_to_bytes(
+            song_from_reconstruction(reclocked, loop_tick=None, scheme=CompressionScheme.SEARCH), available
+        )
 
         assert block[STEP_FRACTION_OFFSET + WORD_SIZE :] == reclocked_block[STEP_FRACTION_OFFSET + WORD_SIZE :]
         assert block[:STEP_WHOLE_OFFSET] == reclocked_block[:STEP_WHOLE_OFFSET]
@@ -151,9 +154,9 @@ class TestARepeatingSongComesRoundWhereTheModelSaysItDoes(BaseTestSuite):
     @staticmethod
     def repeating(sample: Sample, test_case: "TestCase") -> Song:
         reclocked = sample.reconstruction.with_nes_frequency(test_case.nes_frequency)
-        ticks = song_from_reconstruction(reclocked, loop_tick=None).ticks
+        ticks = song_from_reconstruction(reclocked, loop_tick=None, scheme=CompressionScheme.SEARCH).ticks
         loop_tick = ticks - test_case.remaining if test_case.remaining else ticks // 2
-        return song_from_reconstruction(reclocked, loop_tick=loop_tick)
+        return song_from_reconstruction(reclocked, loop_tick=loop_tick, scheme=CompressionScheme.SEARCH)
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
     def test_the_driver_writes_what_the_model_states(

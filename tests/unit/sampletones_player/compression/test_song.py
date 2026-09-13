@@ -3,6 +3,7 @@ from typing import Final, Optional, Tuple
 import pytest
 
 from sampletones_player.compression.dictionary.phrase import Phrase
+from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.compression.song import compress_song, decompress_song
 from sampletones_player.registers.streams import ChannelStreams
 from tests.suite.player import (
@@ -27,7 +28,7 @@ NO_SEEDS: Final[Tuple[Phrase, ...]] = ()
 
 def played(
     streams: ChannelStreams,
-    loop_tick: Optional[int] = None,
+    loop_tick: Optional[int],
 ) -> ChannelStreams:
     return decompress_song(
         compress_song(
@@ -35,6 +36,7 @@ def played(
             PLAYER_PITCHES,
             seeds=NO_SEEDS,
             loop_tick=loop_tick,
+            scheme=CompressionScheme.SEARCH,
         ),
         PLAYER_PITCHES,
     )
@@ -45,14 +47,14 @@ class TestTheSongPlaysBackTheRegistersItWasCompressedFrom:
 
     def test_every_tick_writes_the_registers_it_was_given(self) -> None:
         streams = resting_streams((SOUNDING, OCTAVE_UP, RESTING))
-        rebuilt = played(streams)
+        rebuilt = played(streams, None)
         assert [rebuilt.at(tick) for tick in range(streams.ticks)] == [
             streams.at(tick) for tick in range(streams.ticks)
         ]
 
     def test_a_channel_running_out_early_is_carried_to_the_songs_length(self) -> None:
         streams = resting_streams((SOUNDING, OCTAVE_UP, RESTING))
-        rebuilt = played(streams)
+        rebuilt = played(streams, None)
         assert len(rebuilt.noise) == streams.ticks
         assert set(rebuilt.noise) == {streams.noise[0]}
 
@@ -68,18 +70,20 @@ class TestASongThatRepeatsReEntersItsStreams:
             PLAYER_PITCHES,
             seeds=NO_SEEDS,
             loop_tick=MIDDLE_TICK,
+            scheme=CompressionScheme.SEARCH,
         )
         played_once = compress_song(
             streams,
             PLAYER_PITCHES,
             seeds=NO_SEEDS,
             loop_tick=None,
+            scheme=CompressionScheme.SEARCH,
         )
         assert looped.size > played_once.size
 
     def test_the_song_writes_the_same_registers_either_way(self) -> None:
         streams = resting_streams((SOUNDING,) * HELD_TICKS)
-        assert played(streams, MIDDLE_TICK) == played(streams)
+        assert played(streams, MIDDLE_TICK) == played(streams, None)
 
 
 class TestAPlaneNamesPitchesTheTableSounds:
@@ -93,4 +97,5 @@ class TestAPlaneNamesPitchesTheTableSounds:
                 PLAYER_PITCHES,
                 seeds=NO_SEEDS,
                 loop_tick=None,
+                scheme=CompressionScheme.SEARCH,
             )

@@ -3,7 +3,7 @@ from typing import Dict
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.registry import build_tracker_backends
-from sampletones_player.export import NSFBackend
+from sampletones_player.export.backend import NSFBackend
 
 
 def build_export_backends() -> Dict[ExportFormat, ExportBackend]:
@@ -19,5 +19,5 @@ def build_export_backends() -> Dict[ExportFormat, ExportBackend]:
     """
     return {
         **build_tracker_backends(),
-        ExportFormat.NSF: NSFBackend(),
+        ExportFormat.NSF: NSFBackend.stated(),
     }

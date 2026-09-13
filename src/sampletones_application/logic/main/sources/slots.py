@@ -2,14 +2,12 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Final, FrozenSet, Tuple
 
 from sampletones_application.constants.sources import SettingsField
-from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName, ordered_channels
+from sampletones_core.constants.enums import ALL_CHANNELS, TONE_CHANNELS, ChannelName, ordered_channels
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 SettingsReader = Callable[[StemSettings], FrozenSet[ChannelName]]
 SettingsWriter = Callable[[StemSettings, FrozenSet[ChannelName]], StemSettings]
 SettingsOffer = Callable[[StemSettings], FrozenSet[ChannelName]]
-
-ALL_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
 
 
 def _channels_of(settings: StemSettings) -> FrozenSet[ChannelName]:

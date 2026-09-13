@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.audio.mixing import mix
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from sampletones_core.exporters.naming import instrument_slice_name
 from sampletones_core.exports.request import (
     InstrumentExport,
@@ -19,13 +19,16 @@ from sampletones_core.project.project import Project
 from sampletones_core.project.tuning import tuning_from_project
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.timers.utils import get_timer_table
+from sampletones_core.timing import SongTiming
 from sampletones_player.builder import (
     SONG_START,
     instructions_from_instruments,
     song_from_project,
     song_from_sample,
 )
-from sampletones_player.export import NSFBackend
+from sampletones_player.compression.scheme import CompressionScheme
+from sampletones_player.export.backend import NSFBackend
+from sampletones_player.export.program import NSFProgram
 from sampletones_player.registers.playable import playable
 from sampletones_player.song import Song
 from sampletones_player.specification.nsf import NSF_MAGIC
@@ -40,6 +43,7 @@ from tests.integration.nsf.console.session import (
 ChannelInstructions = Dict[ChannelName, List[InstructionUnion]]
 
 PROJECT_ARTIFACT: Final[str] = "song"
+LOOP_FRAME: Final[int] = 1
 
 
 def resting(instruction: InstructionUnion) -> InstructionUnion:
@@ -84,7 +88,7 @@ def sample_request(sample: Sample) -> SampleExport:
 
 @pytest.fixture(scope="module")
 def backend() -> NSFBackend:
-    return NSFBackend()
+    return NSFBackend.stated()
 
 
 @pytest.fixture(scope="module")
@@ -119,7 +123,13 @@ def played(
     """What the console sounds when it plays each written file, read back out of its register writes."""
     played: Dict[str, ChannelInstructions] = {}
     for name, destination in exported.items():
-        song = song_from_sample(requests[name])
+        program = NSFProgram.for_sample(requests[name])
+        song = song_from_sample(
+            requests[name],
+            channels=program.channels,
+            loop_tick=program.loop_tick,
+            scheme=program.scheme,
+        )
         trace = captured_file_trace(destination.read_bytes(), song)
         played[name] = instructions_from_trace(
             trace,
@@ -196,7 +206,12 @@ class TestTheConsoleSoundsTheRequest:
 @pytest.fixture(scope="module")
 def project_song(integration_project: Project) -> Song:
     """The song the console plays the integration project's arrangement as."""
-    return song_from_project(integration_project, SONG_START)
+    return song_from_project(
+        integration_project,
+        channels=ALL_CHANNELS,
+        loop_tick=SONG_START,
+        scheme=CompressionScheme.SEARCH,
+    )
 
 
 @pytest.fixture(scope="module")
@@ -256,4 +271,89 @@ class TestTheBackendWritesAWholeSong:
             assert len(sounded) > ticks
             assert [resting(instruction) for instruction in sounded[ticks : 2 * ticks]] == [
                 resting(instruction) for instruction in sounded[:ticks]
+            ]
+
+
+def chosen_file(
+    backend: NSFBackend,
+    project: Project,
+    program: NSFProgram,
+    directory: Path,
+) -> Path:
+    """The integration project written as ``program`` through the backend the application registers."""
+    destination = directory / f"{PROJECT_ARTIFACT}{EXT_FILE_NSF}"
+    backend.choosing(program).write_project(destination, ProjectExport(project=project))
+    return destination
+
+
+def sounded_program(
+    data: bytes,
+    project_song: Song,
+    project: Project,
+    ticks: int,
+) -> ChannelInstructions:
+    """What the console sounds over ``ticks`` of a written program, read back as instructions."""
+    trace = captured_run(data, play_calls_reaching(project_song, ticks))
+    return instructions_from_trace(trace, get_timer_table(tuning_from_project(project)))
+
+
+class TestTheConsoleSoundsTheChosenProgram:
+    """A program the user settled reaches the APU as it was settled."""
+
+    def test_a_channel_left_out_rests_while_the_others_play_the_arrangement(
+        self,
+        backend: NSFBackend,
+        integration_project: Project,
+        project_song: Song,
+        tmp_path: Path,
+    ) -> None:
+        program = NSFProgram.for_project(integration_project).model_copy(
+            update={"channels": ALL_CHANNELS - {ChannelName.NOISE}}
+        )
+        data = chosen_file(backend, integration_project, program, tmp_path).read_bytes()
+        played = sounded_program(data, project_song, integration_project, project_song.ticks)
+
+        for channel, instructions in song_instructions(integration_project).items():
+            sounded = played[channel][: len(instructions)]
+            if channel == ChannelName.NOISE:
+                assert not any(instruction.on for instruction in sounded)
+            else:
+                assert [resting(instruction) for instruction in sounded] == [
+                    resting(playable(instruction)) for instruction in instructions
+                ]
+
+    def test_a_song_written_without_compression_sounds_the_arrangement(
+        self,
+        backend: NSFBackend,
+        integration_project: Project,
+        project_song: Song,
+        tmp_path: Path,
+    ) -> None:
+        program = NSFProgram.for_project(integration_project).model_copy(update={"scheme": CompressionScheme.NONE})
+        data = chosen_file(backend, integration_project, program, tmp_path).read_bytes()
+        played = sounded_program(data, project_song, integration_project, project_song.ticks)
+
+        for channel, instructions in song_instructions(integration_project).items():
+            assert [resting(instruction) for instruction in played[channel][: len(instructions)]] == [
+                resting(playable(instruction)) for instruction in instructions
+            ]
+
+    def test_a_song_repeating_from_a_frame_comes_round_to_that_frame(
+        self,
+        backend: NSFBackend,
+        integration_project: Project,
+        project_song: Song,
+        tmp_path: Path,
+    ) -> None:
+        """The calls past the arrangement's end sound the frame the program returns to, onward."""
+        loop_tick = SongTiming.from_project(integration_project).frame_tick(LOOP_FRAME)
+        program = NSFProgram.for_project(integration_project).model_copy(update={"loop_tick": loop_tick})
+        data = chosen_file(backend, integration_project, program, tmp_path).read_bytes()
+        ticks = project_song.ticks
+        played = sounded_program(data, project_song, integration_project, 2 * ticks)
+
+        repeated = ticks - loop_tick
+        for sounded in played.values():
+            assert [resting(instruction) for instruction in sounded[ticks : ticks + repeated]] == [
+                resting(instruction) for instruction in sounded[loop_tick:ticks]
             ]

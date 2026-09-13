@@ -1,6 +1,7 @@
 from math import ceil
 from pathlib import Path
 
+from sampletones_core.constants.enums import ALL_CHANNELS
 from sampletones_core.performance import song_instructions
 from sampletones_core.project.container import ProjectContainer
 from sampletones_core.project.project import Project
@@ -69,7 +70,7 @@ def _song(
         group=group,
         source=source,
         planes=planes_from_streams(streams, pitches),
-        seeds=phrases_from_project(project, tuning),
+        seeds=phrases_from_project(project, tuning, ALL_CHANNELS),
         pitches=pitches,
     )
 

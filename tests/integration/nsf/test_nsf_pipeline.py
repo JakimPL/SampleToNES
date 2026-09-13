@@ -8,6 +8,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_player.builder import song_from_reconstruction
+from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.file import write_nsf
 from sampletones_player.nsf.song import song_to_bytes
@@ -66,7 +67,7 @@ class TestNsfPipeline:
         driver_image: DriverImage,
     ) -> None:
         for name, sample in instrument_catalog.items():
-            song = song_from_reconstruction(sample.reconstruction, loop_tick=None)
+            song = song_from_reconstruction(sample.reconstruction, loop_tick=None, scheme=CompressionScheme.SEARCH)
             write_nsf(nsf_paths[name], song, sample_information(name), driver_image)
             assert nsf_paths[name].read_bytes()[: len(NSF_MAGIC)] == NSF_MAGIC
 
@@ -146,7 +147,11 @@ class TestAStoredReconstructionExportsTheSameFile:
     ) -> None:
         stored = tmp_path / f"{sample.name}{EXT_FILE_RECONSTRUCTION}"
         sample.reconstruction.save(stored)
-        reloaded = song_from_reconstruction(Reconstruction.load(stored), loop_tick=None)
+        reloaded = song_from_reconstruction(
+            Reconstruction.load(stored),
+            loop_tick=None,
+            scheme=CompressionScheme.SEARCH,
+        )
 
         information = sample_information(sample.name)
         before = tmp_path / "before.nsf"

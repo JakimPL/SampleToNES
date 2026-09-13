@@ -262,6 +262,12 @@ volume and duty turn over together and a split pays two opcodes for what one cov
 and the pitch index earns its place twice, 5 % directly and a further 12 % through the
 transposition it makes possible.
 
+An export chooses how far down these layers it goes. Its four compression schemes are the
+layers read in order: *None* spells every plane out as literals, *Runs* adds holds,
+*Instruments* adds the phrases the instruments seed, played transposed, and *Full search* is
+the whole codec. A lighter scheme finishes sooner and takes more room, and every one of them
+plays the same song.
+
 ## 7. Limitations
 
 - **The search reads a dense plane only so far.** A reconstruction whose planes turn over

@@ -41,6 +41,7 @@ from sampletones_player.specification.nsf import (
     SONG_COUNT,
     SONG_COUNT_OFFSET,
     STRING_FIELD_SIZE,
+    STRING_TEXT_SIZE,
     TITLE_OFFSET,
     VERSION_OFFSET,
 )
@@ -149,10 +150,11 @@ class TestHeaderStrings(BaseTestSuite):
         field = read_string(header(), test_case.offset)
         assert field == test_case.expected.encode("utf-8").ljust(STRING_FIELD_SIZE, b"\x00")
 
-    def test_text_longer_than_the_field_is_written_as_much_as_fits(self) -> None:
+    def test_text_longer_than_the_field_is_written_as_much_as_fits_before_its_terminator(self) -> None:
+        """A player reads each field up to its NUL, so the field keeps a byte for one."""
         overlong = "A" * (STRING_FIELD_SIZE * 2)
         data = header_to_bytes(NSFInformation(title=overlong, artist=ARTIST), ADDRESSES)
-        assert read_string(data, TITLE_OFFSET) == overlong.encode("utf-8")[:STRING_FIELD_SIZE]
+        assert read_string(data, TITLE_OFFSET) == overlong.encode("utf-8")[:STRING_TEXT_SIZE] + b"\x00"
 
     def test_the_fields_stand_back_to_back(self) -> None:
         assert (ARTIST_OFFSET - TITLE_OFFSET, COPYRIGHT_OFFSET - ARTIST_OFFSET) == (

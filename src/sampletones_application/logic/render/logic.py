@@ -5,7 +5,6 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.project.controller import ProjectController
-from sampletones_application.logic.sequencer.channels import ALL_CHANNELS
 from sampletones_application.logic.sequencer.playback.synthesizer import (
     RowSynthesizer,
     SongLength,
@@ -31,6 +30,7 @@ from sampletones_core.audio.writers import (
     available_audio_formats,
     available_depths,
 )
+from sampletones_core.constants.enums import ALL_CHANNELS
 from sampletones_core.parallelization import ETAEstimator
 from sampletones_shared.constants.project import DEFAULT_EXPORT_NAME
 from sampletones_shared.logger import logger

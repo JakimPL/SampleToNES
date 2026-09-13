@@ -1,4 +1,4 @@
-from typing import Dict, Final, Mapping, Optional, Sequence, Tuple
+from typing import AbstractSet, Dict, Final, Mapping, Optional, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.maps import CHANNEL_TO_EXPORTER_MAP
@@ -16,6 +16,7 @@ from sampletones_player.clock.schedule import PlaySchedule
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.progress.report import CodecReporter
+from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.compression.seeds import phrases_from_project
 from sampletones_player.registers.channel import channel_registers
 from sampletones_player.registers.streams import ChannelStreams
@@ -55,7 +56,9 @@ def streams_from_instructions(
 
 def song_from_reconstruction(
     reconstruction: Reconstruction,
+    *,
     loop_tick: Optional[int],
+    scheme: CompressionScheme,
     report: CodecReporter = silent_reporter,
 ) -> Song:
     """Builds the song the console plays a reconstruction as.
@@ -70,6 +73,7 @@ def song_from_reconstruction(
     Args:
         reconstruction: The reconstruction to play.
         loop_tick: The tick the song returns to once it ends, or ``None`` where it stops there.
+        scheme: The layers of the codec the song is written with.
         report: Hears what the codec holds each time it looks up, and answers whether the
             compression goes on.
 
@@ -91,6 +95,7 @@ def song_from_reconstruction(
         schedule=PlaySchedule.from_parameters(reconstruction.config.nes_frequency),
         loop_tick=loop_tick,
         seeds=NO_SEEDS,
+        scheme=scheme,
         report=report,
     )
 
@@ -149,6 +154,10 @@ def _repeats(instrument: InstrumentExport) -> bool:
 
 def song_from_sample(
     request: SampleExport,
+    *,
+    channels: AbstractSet[ChannelName],
+    loop_tick: Optional[int],
+    scheme: CompressionScheme,
     report: CodecReporter = silent_reporter,
 ) -> Song:
     """Builds the song the console plays an export request as.
@@ -158,10 +167,14 @@ def song_from_sample(
     envelopes advance at, which the driver re-clocks to the rate the console calls it at.
 
     The request sounds each of its slices once, so the search fills the dictionary from what the
-    streams themselves repeat.
+    streams themselves repeat. The slices on the channels the song sounds are the ones played, and
+    every other channel rests throughout.
 
     Args:
         request: The slices to play together.
+        channels: The channels the song sounds.
+        loop_tick: The tick the song returns to once it ends, or ``None`` where it stops there.
+        scheme: The layers of the codec the song is written with.
         report: Hears what the codec holds each time it looks up, and answers whether the
             compression goes on.
 
@@ -171,24 +184,31 @@ def song_from_sample(
     Raises:
         OperationCanceled: If ``report`` withdraws the compression.
         TypeError: If a channel's stream holds an instruction another channel sounds.
-        ValueError: If two slices name the same channel.
+        ValueError: If two slices name the same channel, or ``loop_tick`` lies outside the song's
+            ticks.
     """
     return Song.from_streams(
         streams=streams_from_instructions(
-            instructions_from_instruments(request.instruments),
+            instructions_from_instruments(
+                [instrument for instrument in request.instruments if instrument.channel in channels]
+            ),
             get_timer_table(request.tuning),
         ),
         pitches=PitchTable.from_tuning(request.tuning),
         schedule=PlaySchedule.from_parameters(request.nes_frequency),
-        loop_tick=loop_tick_from_instruments(request.instruments),
+        loop_tick=loop_tick,
         seeds=NO_SEEDS,
+        scheme=scheme,
         report=report,
     )
 
 
 def song_from_project(
     project: Project,
+    *,
+    channels: AbstractSet[ChannelName],
     loop_tick: Optional[int],
+    scheme: CompressionScheme,
     report: CodecReporter = silent_reporter,
     walk: WalkReporter = silent_reporter,
 ) -> Song:
@@ -201,11 +221,14 @@ def song_from_project(
     holds, the tuning its pitches become timers under.
 
     A row plays a sample the project already holds, so the samples themselves seed the dictionary
-    and every row naming one reaches the stream as a token naming that entry.
+    and every row naming one reaches the stream as a token naming that entry. The channels the song
+    sounds are the ones that play and seed it, and every other channel rests throughout.
 
     Args:
         project: The project whose song is played.
+        channels: The channels the song sounds.
         loop_tick: The tick the song returns to once it ends, or ``None`` where it stops there.
+        scheme: The layers of the codec the song is written with.
         report: Hears what the codec holds each time it looks up, and answers whether the
             compression goes on.
         walk: Hears how far the song has been played out, and answers whether the walk goes on.
@@ -220,14 +243,16 @@ def song_from_project(
             reconstructed against tunings that differ.
     """
     tuning = tuning_from_project(project)
+    instructions = song_instructions(project, walk)
     return Song.from_streams(
         streams=streams_from_instructions(
-            song_instructions(project, walk),
+            {channel: stream for channel, stream in instructions.items() if channel in channels},
             get_timer_table(tuning),
         ),
         pitches=PitchTable.from_tuning(tuning),
         schedule=PlaySchedule.from_parameters(project.settings.nes_frequency),
         loop_tick=loop_tick,
-        seeds=phrases_from_project(project, tuning),
+        seeds=phrases_from_project(project, tuning, channels),
+        scheme=scheme,
         report=report,
     )

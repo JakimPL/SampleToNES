@@ -89,6 +89,8 @@ class CQTWindow(StrEnum):
     RECTANGULAR = "rectangular"
 
 
+ALL_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
+
 TONE_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(
     {
         ChannelName.PULSE1,

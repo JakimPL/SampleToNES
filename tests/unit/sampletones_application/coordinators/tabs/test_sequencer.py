@@ -25,10 +25,7 @@ from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.history.snapshot import HistoryEntry
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_application.logic.sequencer.channels import (
-    ALL_CHANNELS,
-    SequencerChannelsLogic,
-)
+from sampletones_application.logic.sequencer.channels import SequencerChannelsLogic
 from sampletones_application.logic.sequencer.history_detail import (
     SequencerHistoryDetail,
 )
@@ -62,7 +59,7 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetailRole,
     HistoryDetailSegment,
 )
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.voice import ImportedVoice, InstrumentOmission
 from sampletones_core.project.song_position import SongPosition

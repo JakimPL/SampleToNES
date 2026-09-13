@@ -3,10 +3,9 @@ from typing import Callable, Final, FrozenSet, Optional
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from sampletones_shared.utils.callbacks import CallbackMixin
 
-ALL_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
 _NO_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset()
 
 
