@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 import sampletones_config
+import sampletones_tools.corpus.config
 from sampletones_shared.paths.package import package_directory
 
 
@@ -14,7 +15,10 @@ class TestPackageDirectory:
         assert (directory / "application").is_dir()
 
     def test_a_nested_package_is_placed_by_its_own_location(self) -> None:
-        assert package_directory("sampletones_tools.corpus.config").name == "config"
+        assert (
+            package_directory("sampletones_tools.corpus.config")
+            == Path(sampletones_tools.corpus.config.__file__).parent
+        )
 
     def test_a_directory_of_data_alone_is_placed_as_a_namespace_package(
         self,

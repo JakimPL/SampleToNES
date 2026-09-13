@@ -9,7 +9,7 @@ from sampletones_core.headless.conversion import runners
 from sampletones_core.headless.conversion.request import ConversionRequest, classic_setup
 from sampletones_core.headless.conversion.runners import reconstruct
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
-from tests.unit.sampletones_core.headless.conversion.stems import recording
+from tests.suite.files import empty_file
 
 
 class TestReconstruct:
@@ -23,7 +23,7 @@ class TestReconstruct:
             calls.append((sources, output_path))
 
         monkeypatch.setattr(runners, "reconstruct_sources", reconstruct_sources)
-        source = recording(tmp_path, "song.wav")
+        source = empty_file(tmp_path, "song.wav")
         request = ConversionRequest(
             sources=(source,), stems=classic_setup(DEFAULT_CHANNELS), output_path=tmp_path / "x.stn"
         )

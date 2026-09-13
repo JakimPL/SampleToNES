@@ -25,12 +25,6 @@ except SystemExit:
 """
 
 
-def _file(tmp_path: Path, name: str) -> Path:
-    path = tmp_path / name
-    path.write_bytes(b"")
-    return path
-
-
 class TestOpen:
     @pytest.mark.parametrize(
         ("name", "field"),
@@ -45,7 +39,7 @@ class TestOpen:
     ) -> None:
         application = RecordedApplication()
         monkeypatch.setattr(LAUNCHER, application)
-        path = _file(tmp_path, name)
+        path = empty_file(tmp_path, name)
 
         assert dispatch(COMMANDS, ["open", str(path), "--config", "custom.json"]) == 0
         start = application.starts[0]
@@ -58,7 +52,7 @@ class TestOpen:
     def test_a_recording_is_pointed_at_convert(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         application = RecordedApplication()
         monkeypatch.setattr(LAUNCHER, application)
-        path = _file(tmp_path, "song.wav")
+        path = empty_file(tmp_path, "song.wav")
 
         with pytest.raises(SystemExit, match=re.escape(f"sampletones convert {path}")):
             dispatch(COMMANDS, ["open", str(path)])
@@ -66,7 +60,7 @@ class TestOpen:
         assert application.starts == []
 
     def test_a_file_of_another_kind_is_refused(self, tmp_path: Path) -> None:
-        path = _file(tmp_path, "notes.txt")
+        path = empty_file(tmp_path, "notes.txt")
 
         with pytest.raises(SystemExit, match="neither"):
             dispatch(COMMANDS, ["open", str(path)])

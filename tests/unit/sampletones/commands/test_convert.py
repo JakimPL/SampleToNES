@@ -13,6 +13,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from tests.suite.files import empty_file
 
 RECONSTRUCTION = "sampletones_core.headless.conversion.runners.reconstruct"
 LOADER = "sampletones_core.headless.config.load_config"
@@ -35,12 +36,6 @@ def reconstruction_fixture(monkeypatch: pytest.MonkeyPatch) -> RecordedReconstru
     return recorded
 
 
-def _recording(tmp_path: Path, name: str) -> Path:
-    path = tmp_path / name
-    path.write_bytes(b"")
-    return path
-
-
 def _two_stems() -> StemsConfig:
     return StemsConfig(
         entries=[
@@ -59,7 +54,7 @@ def _two_stems() -> StemsConfig:
 
 class TestConvert:
     def test_the_channels_named_become_one_stem(self, reconstruction: RecordedReconstruction, tmp_path: Path) -> None:
-        source = _recording(tmp_path, "song.wav")
+        source = empty_file(tmp_path, "song.wav")
         output = tmp_path / "song.stn"
 
         status = dispatch(COMMANDS, ["convert", str(source), "--channels", "pulse1,pulse2", "-o", str(output)])
@@ -75,7 +70,7 @@ class TestConvert:
         reconstruction: RecordedReconstruction,
         tmp_path: Path,
     ) -> None:
-        source = _recording(tmp_path, "song.wav")
+        source = empty_file(tmp_path, "song.wav")
 
         assert dispatch(COMMANDS, ["convert", str(source)]) == 0
         assert reconstruction.requests[0].stems == classic_setup(DEFAULT_CHANNELS)
@@ -87,8 +82,8 @@ class TestConvert:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        bass = _recording(tmp_path, "bass.wav")
-        lead = _recording(tmp_path, "lead.wav")
+        bass = empty_file(tmp_path, "bass.wav")
+        lead = empty_file(tmp_path, "lead.wav")
         stems = _two_stems()
         setup = tmp_path / "stems.json"
         setup.write_text(json.dumps(stems.model_dump(mode="json")), encoding="utf-8")
@@ -100,7 +95,7 @@ class TestConvert:
         assert "lead.wav: stem 1 on triangle, bending triangle" in printed
 
     def test_a_setup_pairing_wrong_is_refused(self, reconstruction: RecordedReconstruction, tmp_path: Path) -> None:
-        source = _recording(tmp_path, "song.wav")
+        source = empty_file(tmp_path, "song.wav")
         setup = tmp_path / "stems.json"
         setup.write_text(json.dumps(_two_stems().model_dump(mode="json")), encoding="utf-8")
 
@@ -110,7 +105,7 @@ class TestConvert:
         assert reconstruction.requests == []
 
     def test_an_unknown_channel_is_refused(self, reconstruction: RecordedReconstruction, tmp_path: Path) -> None:
-        source = _recording(tmp_path, "song.wav")
+        source = empty_file(tmp_path, "song.wav")
 
         with pytest.raises(SystemExit, match="Unknown channel 'pulse3'"):
             dispatch(COMMANDS, ["convert", str(source), "--channels", "pulse3"])
@@ -127,7 +122,7 @@ class TestConvert:
         assert reconstruction.requests == []
 
     def test_a_project_is_refused_as_no_recording(self, reconstruction: RecordedReconstruction, tmp_path: Path) -> None:
-        project = _recording(tmp_path, "song.stp")
+        project = empty_file(tmp_path, "song.stp")
 
         with pytest.raises(SystemExit, match="is no recording") as leaving:
             dispatch(COMMANDS, ["convert", str(project)])
@@ -136,7 +131,7 @@ class TestConvert:
         assert reconstruction.requests == []
 
     def test_a_missing_stems_file_is_refused(self, reconstruction: RecordedReconstruction, tmp_path: Path) -> None:
-        source = _recording(tmp_path, "song.wav")
+        source = empty_file(tmp_path, "song.wav")
 
         with pytest.raises(SystemExit, match="No stems file at"):
             dispatch(COMMANDS, ["convert", str(source), "--stems", str(tmp_path / "absent.json")])
@@ -144,7 +139,7 @@ class TestConvert:
         assert reconstruction.requests == []
 
     def test_channels_and_stems_exclude_each_other(self, tmp_path: Path) -> None:
-        source = _recording(tmp_path, "song.wav")
+        source = empty_file(tmp_path, "song.wav")
 
         with pytest.raises(SystemExit) as leaving:
             dispatch(COMMANDS, ["convert", str(source), "--channels", "pulse1", "--stems", "stems.json"])

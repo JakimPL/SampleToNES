@@ -10,7 +10,8 @@ from sampletones_core.headless.conversion.request import (
     classic_setup,
     load_stems,
 )
-from tests.unit.sampletones_core.headless.conversion.stems import recording, two_stems
+from tests.suite.files import empty_file
+from tests.unit.sampletones_core.headless.conversion.stems import two_stems
 
 
 class TestChannelsNamed:
@@ -62,9 +63,9 @@ class TestLoadStems:
 
 
 class TestConversionRequest:
-    def test_recordings_pair_with_the_entries_in_order(self, tmp_path: Path) -> None:
-        bass = recording(tmp_path, "bass.wav")
-        drums = recording(tmp_path, "drums.wav")
+    def test_recordings_name_no_directory(self, tmp_path: Path) -> None:
+        bass = empty_file(tmp_path, "bass.wav")
+        drums = empty_file(tmp_path, "drums.wav")
 
         request = ConversionRequest(sources=(bass, drums), stems=two_stems(), output_path=None)
 
@@ -87,7 +88,7 @@ class TestConversionRequest:
 
     def test_a_count_mismatch_is_refused(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="1 sources for 2 stems"):
-            ConversionRequest(sources=(recording(tmp_path, "bass.wav"),), stems=two_stems(), output_path=None)
+            ConversionRequest(sources=(empty_file(tmp_path, "bass.wav"),), stems=two_stems(), output_path=None)
 
     def test_a_directory_under_several_stems_is_refused(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="under one stem; the setup holds 2"):
@@ -95,7 +96,7 @@ class TestConversionRequest:
 
     def test_a_directory_among_recordings_is_refused(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="one directory alone"):
-            ConversionRequest(sources=(recording(tmp_path, "bass.wav"), tmp_path), stems=two_stems(), output_path=None)
+            ConversionRequest(sources=(empty_file(tmp_path, "bass.wav"), tmp_path), stems=two_stems(), output_path=None)
 
     def test_an_output_path_for_a_directory_is_refused(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="an output path names the one file"):
@@ -116,7 +117,7 @@ class TestConversionRequest:
     def test_a_file_other_than_a_recording_is_refused(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="is no recording"):
             ConversionRequest(
-                sources=(recording(tmp_path, "song.stp"),),
+                sources=(empty_file(tmp_path, "song.stp"),),
                 stems=classic_setup(DEFAULT_CHANNELS),
                 output_path=None,
             )
