@@ -12,7 +12,8 @@ from sampletones_shared.meta.import_boundary.configs.rules import ImportBoundary
 from sampletones_shared.meta.import_boundary.graph import reached_units
 from sampletones_shared.meta.import_boundary.rule import BoundaryRule
 from sampletones_shared.meta.import_boundary.scope import rule_modules
-from sampletones_shared.paths.source import SOURCE_ROOT
+from sampletones_shared.meta.import_boundary.standalone import check_standalone
+from sampletones_shared.paths.source import SCRIPTS_ROOT, SOURCE_ROOT
 from tests.suite.source import swept_paths, write_module
 
 BOUNDARIES: Final[ImportBoundaryRules] = ImportBoundaryRules.load()
@@ -29,6 +30,7 @@ PLAYER_IMPORT: Final[str] = "from sampletones_player.song import Song\n"
 ASSEMBLER_IMPORT: Final[str] = "from sampletones_player.driver.assembler.builder import build_driver\n"
 DRIVER_IMPORT: Final[str] = "from sampletones_player.driver.image import DriverImage\n"
 PANEL_SUFFIX: Final[str] = "def build() -> None:\n    dpg.add_group(parent=SUF_PANEL_LEFT)\n"
+THIRD_PARTY_IMPORT: Final[str] = "import numpy\n"
 
 
 def reached_modules(rule: BoundaryRule) -> List[Path]:
@@ -108,6 +110,7 @@ class TestNamedGroups:
                     ),
                 ),
                 tokens=(),
+                standalone=(),
             )
 
 
@@ -151,6 +154,24 @@ class TestDeclaredRules:
         assert len(reported(tmp_path)) == 1
 
 
+class TestStandaloneRules:
+    """The scripts that run on the system interpreter, held to the standard library."""
+
+    def test_the_scripts_tree_holds_to_the_rule(self) -> None:
+        assert check_standalone(SCRIPTS_ROOT, BOUNDARIES.standalone, None) == []
+
+    def test_a_bootstrap_script_reaching_a_third_party_package_is_reported(self, tmp_path: Path) -> None:
+        write_module(tmp_path, "bundle.py", THIRD_PARTY_IMPORT)
+
+        reported = check_standalone(tmp_path, BOUNDARIES.standalone, None)
+
+        assert [violation.kind for violation in reported] == [rule.message for rule in BOUNDARIES.standalone]
+
+    def test_every_excluded_glob_names_a_script_still_in_the_tree(self) -> None:
+        """A tool that moved into the project takes its exclusion with it."""
+        assert all(list(SCRIPTS_ROOT.glob(glob)) for rule in BOUNDARIES.standalone for glob in rule.excluding)
+
+
 class TestRuleCoverage:
     """A rule naming no module of the tree reads as a clean tree, so each one reaches something."""
 
@@ -162,3 +183,10 @@ class TestRuleCoverage:
 
     def test_every_token_rule_reaches_a_module(self) -> None:
         assert all(list((SOURCE_ROOT / rule.root).glob(rule.pattern)) for rule in BOUNDARIES.tokens)
+
+    def test_every_standalone_rule_reaches_a_script(self) -> None:
+        swept = swept_paths(SCRIPTS_ROOT)
+
+        assert all(
+            rule_modules(SCRIPTS_ROOT, rule.pattern, rule.excluding, swept, None) for rule in BOUNDARIES.standalone
+        )

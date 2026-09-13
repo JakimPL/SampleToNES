@@ -19,13 +19,17 @@ Token rules additionally forbid a regex within a file glob, enforcing contracts 
 express — e.g. that panels never compose a column suffix (`SUF_PANEL_*`) or parent into another
 panel's container.
 
+A standalone rule holds the bootstrap scripts under `scripts/` to the standard library and the
+tree they sit in, since they run on the system interpreter before the project environment exists,
+and reports a name in that tree that stands in for a standard-library module.
+
 `sampletones_config/boundaries/` declares what the boundaries are and
 `sampletones_shared/meta/import_boundary/` holds how they are read and reported; this script runs
-them over a source tree and prints what they find.
+them over the source and scripts trees and prints what they find.
 
 Usage:
     python scripts/checks/import_boundary.py [files...]   # check specific files
-    python scripts/checks/import_boundary.py --all        # run all rules against the source tree
+    python scripts/checks/import_boundary.py --all        # run all rules against both trees
 """
 
 import argparse
@@ -35,7 +39,8 @@ from typing import List, Sequence
 
 from sampletones_shared.meta.import_boundary.check import check_boundaries
 from sampletones_shared.meta.import_boundary.configs.rules import ImportBoundaryRules
-from sampletones_shared.paths.source import SOURCE_ROOT
+from sampletones_shared.meta.import_boundary.standalone import check_standalone
+from sampletones_shared.paths.source import SCRIPTS_ROOT, SOURCE_ROOT
 
 
 def main(argv: Sequence[str]) -> int:
@@ -52,7 +57,7 @@ def main(argv: Sequence[str]) -> int:
     parser.add_argument(
         "--all",
         action="store_true",
-        help=f"check every module under {SOURCE_ROOT.name}/ instead of named files",
+        help=f"check every module under {SOURCE_ROOT.name}/ and {SCRIPTS_ROOT.name}/ instead of named files",
     )
     parser.add_argument(
         "--source",
@@ -60,17 +65,26 @@ def main(argv: Sequence[str]) -> int:
         default=SOURCE_ROOT,
         help="source root the rule roots are named within",
     )
+    parser.add_argument(
+        "--scripts",
+        type=Path,
+        default=SCRIPTS_ROOT,
+        help="scripts tree the standalone rules are written against",
+    )
     arguments = parser.parse_args(list(argv))
 
     files: List[Path] = arguments.files
     selection = None if arguments.all else {path.resolve() for path in files}
     boundaries = ImportBoundaryRules.load()
-    violations = check_boundaries(
-        arguments.source,
-        boundaries.boundary_rules(),
-        boundaries.tokens,
-        selection,
-    )
+    violations = [
+        *check_boundaries(
+            arguments.source,
+            boundaries.boundary_rules(),
+            boundaries.tokens,
+            selection,
+        ),
+        *check_standalone(arguments.scripts, boundaries.standalone, selection),
+    ]
     if not violations:
         return 0
 

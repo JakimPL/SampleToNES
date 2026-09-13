@@ -1,4 +1,4 @@
-from sampletones_shared.paths.source import REPOSITORY_ROOT, SOURCE_ROOT
+from sampletones_shared.paths.source import REPOSITORY_ROOT, SCRIPTS_ROOT, SOURCE_ROOT
 
 PROJECT_FILE = "pyproject.toml"
 SHARED_PACKAGE = "sampletones_shared"
@@ -18,4 +18,9 @@ class TestRepositoryRoot:
         assert (REPOSITORY_ROOT / PROJECT_FILE).is_file()
 
     def test_the_repository_root_holds_the_scripts_the_checks_run_from(self) -> None:
-        assert (REPOSITORY_ROOT / "scripts" / "checks").is_dir()
+        assert (SCRIPTS_ROOT / "checks").is_dir()
+
+
+class TestScriptsRoot:
+    def test_the_scripts_root_holds_the_bootstrap_tree(self) -> None:
+        assert (SCRIPTS_ROOT / "bootstrap" / "__init__.py").is_file()

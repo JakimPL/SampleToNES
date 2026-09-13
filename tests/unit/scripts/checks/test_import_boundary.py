@@ -12,6 +12,7 @@ APPLICATION: Final[str] = "sampletones_application"
 
 VISUAL_IMPORT: Final[str] = "import dearpygui.dearpygui as dpg\n"
 PLAIN_IMPORT: Final[str] = "from sampletones_core.project.project import Project\n"
+THIRD_PARTY_IMPORT: Final[str] = "import numpy\n"
 
 
 class TestMain:
@@ -31,6 +32,23 @@ class TestMain:
         error = capsys.readouterr().err
         assert f"{path}:1" in error
         assert "dearpygui" in error
+
+    def test_a_bootstrap_script_reaching_past_the_standard_library_is_reported(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        write_module(tmp_path / "src" / APPLICATION / "logic", "clean.py", PLAIN_IMPORT)
+        path = write_module(tmp_path / "scripts", "bundle.py", THIRD_PARTY_IMPORT)
+
+        exit_code = check_import_boundary.main(
+            ["--all", "--source", str(tmp_path / "src"), "--scripts", str(tmp_path / "scripts")],
+        )
+
+        assert exit_code == 1
+        error = capsys.readouterr().err
+        assert f"{path}:1" in error
+        assert "system interpreter" in error
 
     def test_named_files_narrow_the_run_to_themselves(
         self,

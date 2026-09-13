@@ -12,7 +12,9 @@ before adding a script or a make target. Which packages may import which is
 before or beside the project environment: it creates the environment, installs system packages,
 builds the standalone bundle, cleans the tree, and runs the tests, the linters and the formatters
 the environment provides. It imports the standard library and the other bootstrap modules,
-nothing else, so it runs on a machine that has Python and nothing more. A *tool script* runs
+nothing else, so it runs on a machine that has Python and nothing more. The import boundary
+check holds the tree to that: `sampletones_config/boundaries/standalone.yaml` names the scripts,
+and an import beyond the standard library and the tree fails the hook. A *tool script* runs
 inside the project environment, through `uv run`, and imports the project's packages freely.
 
 **2. A bootstrap script installs nothing into the interpreter it runs on.** Every package a build
@@ -70,6 +72,7 @@ the make target that names each. The checks are also pre-commit hooks;
 
 | Concern | Owner |
 |---|---|
+| What a bootstrap script may import | `sampletones_config/boundaries/standalone.yaml` |
 | What differs between systems | `scripts/bootstrap/platforms/` |
 | Where a build installs | `scripts/bootstrap/venv_build.py` |
 | What a bundle has to carry before it is built | `scripts/bootstrap/preflight.py` |

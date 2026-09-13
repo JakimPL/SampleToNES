@@ -1,0 +1,13 @@
+- pattern: "**/*.py"
+  excluding:
+    - "calibration.py"
+    - "compression_study.py"
+    - "nsf_render.py"
+    - "player.py"
+    - "assets/**/*.py"
+    - "checks/**/*.py"
+    - "codec_study/**/*.py"
+  reserved: [build, test, tests]
+  message: >-
+    a bootstrap script runs on the system interpreter, so it imports the standard library and
+    the scripts tree alone; code that needs the project environment is a tool, run through uv

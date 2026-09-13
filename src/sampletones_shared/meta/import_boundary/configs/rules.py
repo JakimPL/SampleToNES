@@ -7,6 +7,7 @@ from sampletones_shared.meta.import_boundary.configs.general import GeneralBound
 from sampletones_shared.meta.import_boundary.configs.paths import BOUNDARIES_DIRECTORY
 from sampletones_shared.meta.import_boundary.graph import LayerGraph
 from sampletones_shared.meta.import_boundary.rule import BoundaryRule
+from sampletones_shared.meta.import_boundary.standalone import StandaloneRule
 from sampletones_shared.meta.import_boundary.token import TokenRule
 from sampletones_shared.utils.serialization import load_yaml_model_dir
 
@@ -14,17 +15,19 @@ from sampletones_shared.utils.serialization import load_yaml_model_dir
 class ImportBoundaryRules(BaseModel):
     """Every boundary the source tree is held to, as the shipped configuration states it.
 
-    The declaration comes in three forms, each a fragment of its own. A layer graph names a tree
+    The declaration comes in four forms, each a fragment of its own. A layer graph names a tree
     of modules and what each unit may import, and amounts to one rule per unit. A boundary
     declaration names one directory and the imports it stays clear of. A token rule names a
-    spelling a tree keeps out. The general vocabulary holds the prefix sets the declarations draw
-    on, so a set several of them reach for is written once.
+    spelling a tree keeps out. A standalone rule names the scripts that run on the system
+    interpreter and holds them to the standard library. The general vocabulary holds the prefix
+    sets the declarations draw on, so a set several of them reach for is written once.
 
     Attributes:
         general: The names the declarations are written in.
         graphs: Each layer graph the source tree divides into, under the name the documents give it.
         rules: The boundaries written directly.
         tokens: The spellings kept out of the trees they name.
+        standalone: The scripts held to the standard library and the tree they sit in.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -33,6 +36,7 @@ class ImportBoundaryRules(BaseModel):
     graphs: Dict[str, LayerGraph]
     rules: Tuple[BoundaryDeclaration, ...]
     tokens: Tuple[TokenRule, ...]
+    standalone: Tuple[StandaloneRule, ...]
 
     @model_validator(mode="after")
     def _validate_every_named_group_is_declared(self) -> Self:

@@ -169,9 +169,9 @@ sites across `application.py` and the tab coordinators that read it, and the ~10
 that import `SchedulingBehavior` as a type.
 
 Boundaries is the domain a developer tool reads. It states the layer graphs the packages
-divide into, the imports each part of the application stays clear of, and the spellings a
-tree keeps out, and `scripts/checks/import_boundary.py` runs it over the source tree on every
-commit. A declaration draws on the named prefix groups `general.yaml` holds, so a set several
+divide into, the imports each part of the application stays clear of, the spellings a tree
+keeps out, and the standard-library rule the bootstrap scripts under `scripts/` hold to, and
+`scripts/checks/import_boundary.py` runs it over the source and scripts trees on every commit. A declaration draws on the named prefix groups `general.yaml` holds, so a set several
 rules reach for is written once and each rule names it, and a name reaching no group is
 refused as the domain is read. The bundle carries the domain because `--add-data` copies
 `sampletones_config` whole — the terms `calibration/` already ships on.

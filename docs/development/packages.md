@@ -123,4 +123,12 @@ Three parts share the work. `sampletones_config/boundaries/` states what the bou
 `sampletones_shared/meta/import_boundary/` validates that statement and holds the mechanism —
 reading a module line by line, resolving a unit to the modules it owns, deriving a rule from a graph
 and reporting what crosses it — beside the source layer the other checks read the tree through.
-`scripts/checks/import_boundary.py` runs them over a source tree and prints what they find.
+`scripts/checks/import_boundary.py` runs them over the source and scripts trees and prints what
+they find.
+
+The scripts tree is held to a rule of its own, `boundaries/standalone.yaml`. A bootstrap script
+runs on the system interpreter, so it imports the standard library and the scripts tree itself,
+and a name in that tree that stands in for a standard-library module is reported too, since the
+tree sits on the import path. The tool scripts still under `scripts/` are excluded by name until
+each moves into the project, and an exclusion naming no file fails the tests, so a move takes its
+exclusion with it. [Tooling](tooling.md) states the principle.
