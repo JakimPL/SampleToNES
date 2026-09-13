@@ -5,7 +5,10 @@ from pydantic import PlainValidator, ValidationInfo
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.literal import LiteralColor
 from sampletones_application.utils.palette.colors.named import NamedColor
-from sampletones_application.utils.palette.reference import PaletteReference, is_reference
+from sampletones_application.utils.palette.reference import (
+    PaletteReference,
+    is_reference,
+)
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_shared.utils.color import parse_hex_color
 
@@ -47,7 +50,9 @@ def _written_color(value: object, info: ValidationInfo) -> BaseColor:
         return value
 
     if not isinstance(value, str):
-        raise ValueError(f"A color is written as a palette reference or a hex literal, got {type(value)}")
+        raise ValueError(  # noqa: TRY004
+            f"A color is written as a palette reference or a hex literal, got {type(value)}"
+        )
 
     text = value.strip()
     color: BaseColor

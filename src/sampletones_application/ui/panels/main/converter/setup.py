@@ -102,15 +102,20 @@ class ConverterSetup(CallbackMixin):
                 )
                 FontRegistry.bind_to_item(cap_input, Font.MONO)
 
-            with dpg.group(tag=TAG_MAIN_CONVERTER_GROUP_ORDER, show=False):
-                with labeled_field(self._language_manager["main.converter.label.hierarchy_mode"], self._label_width):
-                    dpg.add_combo(
-                        items=list(self._hierarchy_labels.values()),
-                        tag=TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
-                        width=self._input_width,
-                        default_value=self._hierarchy_labels[DEFAULT_STEMS_HIERARCHY_MODE],
-                        callback=self._on_hierarchy_mode_edited,
-                    )
+            with (
+                dpg.group(tag=TAG_MAIN_CONVERTER_GROUP_ORDER, show=False),
+                labeled_field(
+                    self._language_manager["main.converter.label.hierarchy_mode"],
+                    self._label_width,
+                ),
+            ):
+                dpg.add_combo(
+                    items=list(self._hierarchy_labels.values()),
+                    tag=TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
+                    width=self._input_width,
+                    default_value=self._hierarchy_labels[DEFAULT_STEMS_HIERARCHY_MODE],
+                    callback=self._on_hierarchy_mode_edited,
+                )
 
         dpg.bind_item_handler_registry(TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP, self._settings_handler_tag)
         self._attach_tooltips()

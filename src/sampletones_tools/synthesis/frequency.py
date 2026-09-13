@@ -18,7 +18,9 @@ def _require_hertz(value: Any) -> Any:
         ValueError: If the value is an integer.
     """
     if isinstance(value, int) and not isinstance(value, bool):
-        raise ValueError("An integer frequency specification is a MIDI pitch and must lie in the pitch range")
+        raise ValueError(  # noqa: TRY004
+            "An integer frequency specification is a MIDI pitch and must lie in the pitch range"
+        )
 
     return value
 

@@ -1,3 +1,4 @@
+import itertools
 from typing import Final, Sequence
 
 from sampletones_player.specification.compression import TokenTag
@@ -25,7 +26,7 @@ def set_holds(tokens: Sequence[ReadToken]) -> Finding:
         Finding: The bytes such pairs take, and the bytes a two-byte token would spare.
     """
     finding = NOTHING
-    for token, following in zip(tokens, tokens[1:]):
+    for token, following in itertools.pairwise(tokens):
         if token.tag is TokenTag.LITERAL and len(token.payload) == SINGLE_VALUE and following.tag is TokenTag.HOLD:
             now = token.size + following.size
             finding += Finding(now, now - SET_HOLD_SIZE)

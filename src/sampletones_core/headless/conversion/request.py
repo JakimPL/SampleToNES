@@ -11,7 +11,9 @@ from sampletones_core.constants.enums import (
     ordered_channels,
 )
 from sampletones_core.reconstructions.converter.paths import is_audio_file
-from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import (
+    StemsConfig,
+)
 from sampletones_shared.paths.extensions import EXT_FILES_AUDIO
 from sampletones_shared.utils.serialization import load_json
 from sampletones_shared.utils.text import listed_items
@@ -55,7 +57,7 @@ def load_stems(path: Path) -> StemsConfig:
 
     loaded = load_json(path)
     if not isinstance(loaded, dict):
-        raise ValueError(f"Stems file {path} must hold a mapping, got {type(loaded).__name__}.")
+        raise ValueError(f"Stems file {path} must hold a mapping, got {type(loaded).__name__}.")  # noqa: TRY004
 
     return StemsConfig.model_validate(loaded)
 

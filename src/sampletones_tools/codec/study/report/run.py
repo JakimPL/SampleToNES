@@ -124,8 +124,10 @@ def _header(
         "",
         f"Commit: {commit_hash()}",
         f"Date: {datetime.now(UTC).isoformat(timespec='seconds')}",
-        f"Manifest: {MANIFEST_JSON}, {len(manifest.projects)} projects lengthened to "
-        f"{manifest.lengthen_seconds} s, {len(manifest.reconstructions)} reconstruction sources",
+        (
+            f"Manifest: {MANIFEST_JSON}, {len(manifest.projects)} projects lengthened to "
+            f"{manifest.lengthen_seconds} s, {len(manifest.reconstructions)} reconstruction sources"
+        ),
         f"Variants: {named}",
         "",
         "Each accounting share is the saving a hypothesis would reach, as a share of the whole song block.",

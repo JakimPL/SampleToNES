@@ -146,18 +146,20 @@ class GUIExportWindow(GUIDialogWindow):
         stands centered in the window, and both are drawn in the figure's font, which is the font
         the ring takes its size from, so the ring sits level with the line beside it.
         """
-        with dpg.group(
-            tag=TAG_SETTINGS_EXPORT_GROUP_WORKING,
-            show=False,
+        with (
+            dpg.group(
+                tag=TAG_SETTINGS_EXPORT_GROUP_WORKING,
+                show=False,
+            ),
+            centered(),
+            dpg.group(horizontal=True),
         ):
-            with centered():
-                with dpg.group(horizontal=True):
-                    dpg.add_loading_indicator(
-                        style=RING_STYLE,
-                        radius=self._indicator.radius,
-                        thickness=self._indicator.thickness,
-                    )
-                    dpg.add_text("", tag=TAG_SETTINGS_EXPORT_TEXT_FIGURE)
+            dpg.add_loading_indicator(
+                style=RING_STYLE,
+                radius=self._indicator.radius,
+                thickness=self._indicator.thickness,
+            )
+            dpg.add_text("", tag=TAG_SETTINGS_EXPORT_TEXT_FIGURE)
 
         FontRegistry.bind_to_item(
             TAG_SETTINGS_EXPORT_GROUP_WORKING,

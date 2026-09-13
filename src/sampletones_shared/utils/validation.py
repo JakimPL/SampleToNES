@@ -153,7 +153,7 @@ class _RecoveringValidator(Generic[ModelTypeT]):
         node: Any = container
         length = 0
         for index, key in enumerate(location):
-            if isinstance(node, Mapping) and key in node:
+            if isinstance(node, Mapping) and key in node:  # noqa: SIM114
                 node = node[key]
             elif isinstance(node, list) and isinstance(key, int) and -len(node) <= key < len(node):
                 node = node[key]
