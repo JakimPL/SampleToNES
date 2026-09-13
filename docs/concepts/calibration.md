@@ -31,7 +31,7 @@ It has three moving parts:
   range. Each probe is a `sampletones_tools.synthesis` voice — oscillators, envelopes
   and filters composed from one shared, exactly-rendered configuration
   vocabulary — built from the probe families in
-  `sampletones_config/calibration/corpus.yaml`. Each category isolates one kind of decision the criterion must get
+  `sampletones_tools/calibration/config/corpus.yaml`. Each category isolates one kind of decision the criterion must get
   right — pitch, timbre, noise balance, attack sharpness, level tracking — and
   the fixed seed makes every run bit-identical, so scores are comparable across
   runs and code changes.
@@ -51,7 +51,7 @@ It has three moving parts:
   resolves with a single frame length. Band energies are floored at a fixed
   audibility range below the reference's loudest band, so the score reflects
   audible content and holds steady under a common gain. Its tuning is a
-  `RefereeConfig` loaded from `sampletones_config/calibration/referee.yaml`.
+  `RefereeConfig` loaded from `sampletones_tools/calibration/config/referee.yaml`.
   When the [zimtohrli](https://github.com/google/zimtohrli) binary is installed
   it joins automatically as a second, psychoacoustic referee.
 

@@ -44,7 +44,7 @@ class RefereeConfig(BaseModel, frozen=True):
         Load the packaged referee tuning.
 
         Returns:
-            The referee configuration validated from `sampletones_config/calibration/referee.yaml`.
+            The referee configuration validated from `sampletones_tools/calibration/config/referee.yaml`.
 
         Raises:
             TypeError: If the configuration file holds anything other than a mapping.

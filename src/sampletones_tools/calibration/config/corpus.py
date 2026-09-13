@@ -18,7 +18,7 @@ class CorpusConfig(BaseModel, frozen=True):
 
     Every probe is synthesized at unit scale and multiplied by the corpus
     amplitude, so the per-class parameters compose under one loudness
-    convention. Values are loaded from the packaged `calibration/corpus.yaml`,
+    convention. Values are loaded from the `corpus.yaml` beside this model,
     so corpus content stays reproducible across calibration runs while
     remaining adjustable in one place.
     """
@@ -62,7 +62,7 @@ class CorpusConfig(BaseModel, frozen=True):
         Load the packaged corpus tuning.
 
         Returns:
-            The corpus configuration validated from `sampletones_config/calibration/corpus.yaml`.
+            The corpus configuration validated from `sampletones_tools/calibration/config/corpus.yaml`.
 
         Raises:
             TypeError: If the configuration file holds anything other than a mapping.
