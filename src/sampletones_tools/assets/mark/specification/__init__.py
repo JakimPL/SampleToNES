@@ -30,7 +30,7 @@ class Mark(BaseModel, extra="forbid", frozen=True):
         """Load the packaged mark definition.
 
         Returns:
-            The mark validated from `sampletones_tools/assets/mark/mark.yaml`.
+            The mark validated from `sampletones_tools/assets/mark/config/mark.yaml`.
 
         Raises:
             TypeError: If the definition file holds anything other than a mapping.

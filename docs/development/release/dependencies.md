@@ -54,7 +54,7 @@ Dialogs open through the XDG desktop portal (`org.freedesktop.portal.FileChooser
 ## Application icon
 
 The icon suite in `src/sampletones_assets/icons` is generated from the mark declared in
-`src/sampletones_tools/assets/mark`: `mark.yaml` carries the geometry, colors and rasterization
+`src/sampletones_tools/assets/mark/config`: `mark.yaml` carries the geometry, colors and rasterization
 settings, validated as a `Mark`, and `template.svg` is the vector the rendered geometry fills. The
 tools package writes the whole suite — the vector `sampletones.svg` and the rasters the application
 ships, `sampletones.png` and the multi-resolution `sampletones.ico` — and `uv run sampletones icons`

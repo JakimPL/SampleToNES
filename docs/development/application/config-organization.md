@@ -39,8 +39,9 @@ So the data carries the values and the consumer carries the meaning, and the two
 on their own terms.
 
 Data only a developer tool reads ships with that tool, beside the schema reading it: the
-calibration tuning sits in `sampletones_tools/calibration/config/` and the synthetic corpus in
-`sampletones_tools/corpus/config/`, each placed by `package_directory`. `sampletones_config`
+calibration tuning sits in `sampletones_tools/calibration/config/`, the synthetic corpus in
+`sampletones_tools/corpus/config/` and the application mark in `sampletones_tools/assets/mark/config/`,
+each placed by `package_directory`. `sampletones_config`
 holds what the application reads and the import boundaries, which state the repository's
 package layers for every tree and which [package layers](../packages.md) refers to.
 
