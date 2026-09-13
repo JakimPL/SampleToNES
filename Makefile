@@ -1,5 +1,5 @@
 .PHONY: help setup install system-deps build release run clean pre-commit test benchmarks lint format \
-	ftm-samples nsf-samples nsf-render compression-report compression-study icons player calibration \
+	ftm-samples nsf-samples nsf-render compression-report compression-study icons player \
 	check-import-boundary check-tag-names check-unused-tags check-rendered-literals check-language-keys \
 	check-palette-colors check-shortcut-actions
 
@@ -39,7 +39,6 @@ help:
 	@echo $(Q)  make compression-study - Measure the song codec over the projects and stems on this machine; the report lands in Documents/SampleToNES/compression (ARGS=--quick for a short run)$(Q)
 	@echo $(Q)  make icons       - Generate the icon suite into src/sampletones_assets/icons$(Q)
 	@echo $(Q)  make player      - Assemble the NES player driver with cc65$(Q)
-	@echo $(Q)  make calibration - Score the reconstruction corpus; the report lands in Documents/SampleToNES/calibration$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
 	@echo $(Q)  make lint        - Run mypy and pylint (ARGS=--mypy or ARGS=--pylint for one of them)$(Q)
 	@echo $(Q)  make format      - Auto-format code (isort, black)$(Q)
@@ -126,6 +125,3 @@ check-palette-colors:
 
 check-shortcut-actions:
 	uv run scripts/checks/shortcut_actions.py
-
-calibration:
-	uv run scripts/calibration.py

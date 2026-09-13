@@ -74,9 +74,16 @@ arguments. Each command turns its arguments into a frozen record, field by field
 | `self-check` | Verifies that the build's imports, bundled resources and configuration files are usable |
 
 `--version` and `--help` are flags of the entry itself. The headless runs behind `convert` and
-`library` live in `sampletones_core/headless/`, where the calibration reuses them. The developer
-commands are listed by `sampletones_tools/registry.py` and join as the tools they run move into
-that package.
+`library` live in `sampletones_core/headless/`, where the calibration reuses them.
+
+The developer commands, listed by `sampletones_tools/registry.py` and run as
+`uv run sampletones <command>` from a checkout:
+
+| Command | What it does |
+|---|---|
+| `calibration [--config FILE] [-o DIR] [--methods LIST] [--perceptual-exponents LIST] [--temporal-weights LIST] [--channels LIST]` | Reconstructs the calibration corpus under every variant of the sweep, scores it with every referee, and writes the reports; without `-o` the run lands in a timestamped directory under Documents/SampleToNES/calibration |
+
+More join as the tools they run move into the package.
 
 ## The tools package
 
@@ -130,9 +137,9 @@ interpreter (`preflight.py`), and the platforms (`platforms/`).
 
 ## The tool scripts
 
-`calibration.py`, `compression_study.py`, `nsf_render.py`, `player.py`, `assets/icons.py` and
-the checks under `checks/` import the project's packages and run inside its environment, from
-the make target that names each. The checks are also pre-commit hooks;
+`compression_study.py`, `nsf_render.py`, `player.py`, `assets/icons.py` and the checks under
+`checks/` import the project's packages and run inside its environment, from the make target
+that names each. The checks are also pre-commit hooks;
 [architecture](architecture.md#enforcement) lists them.
 
 ## Who governs what

@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_yaml_model
-from sampletones_synthesis.voice.voice import Voice
+from sampletones_tools.synthesis.voice.voice import Voice
 
 
 class SynthConfig(BaseModel):

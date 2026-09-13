@@ -21,7 +21,6 @@ graph TD
     APP["sampletones_application\n(GUI)"]
     PLAYER["sampletones_player\n(NES player)"]
     CORE["sampletones_core\n(reconstruction engine)"]
-    SYNTH["sampletones_synthesis\n(waveform synthesis)"]
     ASSETS["sampletones_assets\n(mark and fonts)"]
     SHARED["sampletones_shared\n(facts and helpers)"]
     CONFIG["sampletones_config\n(shipped YAML)"]
@@ -37,9 +36,7 @@ graph TD
     APP --> PLAYER
     APP --> CORE
     PLAYER --> CORE
-    CORE --> SYNTH
     ASSETS --> SHARED
-    SYNTH --> SHARED
     CORE --> SHARED
     PLAYER --> SHARED
     APP --> SHARED
@@ -51,11 +48,10 @@ graph TD
 | `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, the source layer the checks read the tree through, and the schema these boundaries are declared in | — |
 | `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, calibration, and these boundaries themselves — reached as package data rather than by import | — |
 | `sampletones_assets` | The application mark and the bundled fonts, with the code that draws the mark | `sampletones_shared` |
-| `sampletones_synthesis` | Analytic waveform synthesis: oscillators, envelopes, layers and voices | `sampletones_shared` |
-| `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats | `sampletones_shared`, `sampletones_synthesis` |
+| `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats | `sampletones_shared` |
 | `sampletones_player` | The NES player: the register model, the re-clocking schedule, the 6502 driver and the NSF file | `sampletones_shared`, `sampletones_core` |
 | `sampletones_application` | The DearPyGui front end | `sampletones_shared`, `sampletones_core`, `sampletones_player` |
-| `sampletones_tools` | Everything a developer runs and the application does not: the developer commands and the libraries behind them | `sampletones_shared`, `sampletones_assets`, `sampletones_core`, `sampletones_player`, `sampletones_application` |
+| `sampletones_tools` | Everything a developer runs and the application does not: analytic waveform synthesis, the calibration harness, and the developer commands that run them | `sampletones_shared`, `sampletones_assets`, `sampletones_core`, `sampletones_player`, `sampletones_application` |
 | `sampletones` | The command-line entry: the dispatcher, the commands and the startup self-check | `sampletones_shared`, `sampletones_core`, `sampletones_application`, `sampletones_tools` |
 
 Third-party imports are the package author's own choice and stand outside this table.

@@ -69,10 +69,6 @@ class TestPackageGraph:
     def test_the_console_player_reads_the_reconstruction_engine(self) -> None:
         assert CORE in self.LAYERS[PLAYER]
 
-    def test_the_synthesis_package_stands_below_the_reconstruction_engine(self) -> None:
-        """Equal temperament sits in `sampletones_shared`, so synthesis reaches no engine module."""
-        assert CORE not in reached_units(self.LAYERS, "sampletones_synthesis")
-
     def test_the_entry_is_the_one_importer_of_the_tools(self) -> None:
         """The wheel carries the tools, and the command line is where a developer reaches them."""
         assert {unit for unit, layers in self.LAYERS.items() if TOOLS in layers} == {ENTRY}

@@ -1,6 +1,5 @@
 - pattern: "**/*.py"
   excluding:
-    - "calibration.py"
     - "compression_study.py"
     - "nsf_render.py"
     - "player.py"

@@ -8,7 +8,7 @@ programmatic role is to be importable so consumers can resolve its directory
 The schema that validates each file lives in the **consuming** package:
 
 - `sampletones_application` — layout, theme, palettes, language, behavior, deployment.
-- `sampletones_core` — calibration.
+- `sampletones_tools` — calibration.
 - `sampletones_shared` — the import boundaries and the loader primitives.
 
 The data package must not import a schema, and a schema package must not inline data.

@@ -32,7 +32,7 @@ empty `__init__.py`. Each schema lives with its reader:
 
 - `sampletones_application` owns the layout, theme, palettes, keybindings, language,
   behavior, and deployment schemas.
-- `sampletones_core` owns the calibration schemas.
+- `sampletones_tools` owns the calibration schemas.
 - `sampletones_shared` owns the import-boundary schemas and the loader primitives
   (`load_yaml_model`, `load_yaml_model_dir`).
 
@@ -133,7 +133,7 @@ each value sits in the tree stays in the factory.
 | Application | `application/` | `DeploymentConfig` (`sampletones_application/config/deployment/`) | `DeploymentConfig.load()`, with `SAMPLETONES_*` env overrides |
 | Behavior | `behavior/` | `BehaviorConfig` (`sampletones_application/layout/behavior.py`) | folded into `LayoutConfig.behavior` by `load_layout_config` |
 | Boundaries | `boundaries/` | `ImportBoundaryRules` (`sampletones_shared/meta/import_boundary/configs/`) | `ImportBoundaryRules.load()` |
-| Calibration | `calibration/` | `CorpusConfig`, `RefereeConfig` (`sampletones_core/calibration/config/`) | each model's own `.load()` |
+| Calibration | `calibration/` | `CorpusConfig`, `RefereeConfig` (`sampletones_tools/calibration/config/`) | each model's own `.load()` |
 | Keybindings | `keybindings/` | `ShortcutScheme` (`sampletones_application/utils/gui/shortcuts/`) | `ShortcutCatalog.load()`, indexed by scheme name |
 | Language | `lang/` | `LanguageManager` (`sampletones_application/categories/`) | flat string map keyed `page.panel.text_type.element`, each key validated at load |
 | Layout | `layout/` | `LayoutConfig` (`sampletones_application/layout/config.py`) | `load_layout_config` (`layout/loader.py`) |

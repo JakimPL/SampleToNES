@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Optional
 
-from sampletones.commands.options import add_config_option
 from sampletones_shared.command import Command
+from sampletones_shared.options import add_config_option
 
 NAME: Final[str] = "run"
 HELP: Final[str] = "start the application"
