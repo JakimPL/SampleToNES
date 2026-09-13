@@ -2,10 +2,10 @@ import itertools
 from string import Template
 from typing import Dict
 
-from sampletones_assets.mark.paths import TEMPLATE_PATH
-from sampletones_assets.mark.specification import Mark
-from sampletones_assets.mark.specification.point import Point
-from sampletones_assets.mark.specification.waves import MarkSine, MarkSquare
+from sampletones_tools.assets.mark.paths import TEMPLATE_PATH
+from sampletones_tools.assets.mark.specification import Mark
+from sampletones_tools.assets.mark.specification.point import Point
+from sampletones_tools.assets.mark.specification.waves import MarkSine, MarkSquare
 
 
 def _number(value: float) -> str:

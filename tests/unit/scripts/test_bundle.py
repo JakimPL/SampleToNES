@@ -89,9 +89,8 @@ class TestBuildBundle:
         assert ".[build]" in runner.lines[2]
         assert "import pyaudio" in runner.lines[3]
         assert "import tkinter" in runner.lines[4]
-        assert runner.lines[5].endswith(bundle.ICONS_SCRIPT)
-        assert "PyInstaller" in runner.lines[6]
-        assert runner.lines[7] == f"{launcher} self-check"
+        assert "PyInstaller" in runner.lines[5]
+        assert runner.lines[6] == f"{launcher} self-check"
         assert all((launcher.parent / notice).read_text() == notice for notice in bundle.NOTICES)
 
     def test_a_bundle_pyinstaller_never_wrote_is_reported(self, tmp_path: Path) -> None:

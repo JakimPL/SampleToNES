@@ -18,11 +18,9 @@ BUNDLE_NAME: Final[str] = "sampletones"
 DISTRIBUTION: Final[str] = "bin"
 ENTRY: Final[str] = "src/sampletones/__main__.py"
 RELEASE_HOOK: Final[str] = "scripts/runtime_hooks/release_environment.py"
-ICONS_SCRIPT: Final[str] = "scripts/assets/icons.py"
 SELF_CHECK: Final[str] = "self-check"
 BUILD_EXTRA: Final[str] = "build"
 GPU_EXTRA: Final[str] = "gpu"
-GROUPS: Final[Tuple[str, ...]] = ("assets",)
 DATA: Final[Tuple[Tuple[str, str], ...]] = (
     ("src/sampletones_assets/icons", "assets/icons"),
     ("src/sampletones_assets/fonts", "assets/fonts"),
@@ -159,7 +157,6 @@ def build_bundle(
         root,
         python,
         extras=extras(options),
-        groups=GROUPS,
         runner=runner,
         environment=environment,
     )
@@ -171,9 +168,6 @@ def build_bundle(
         cwd=root,
         environment=environment,
     )
-    print("Generating the icon suite...")
-    expect_success(runner, (str(python), ICONS_SCRIPT), cwd=root, environment=environment)
-
     distribution = root / DISTRIBUTION
     remove_previous(distribution)
     print("Building executable...")

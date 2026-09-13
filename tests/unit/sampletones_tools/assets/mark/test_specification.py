@@ -4,7 +4,7 @@ from typing import Any, Dict, Final
 import pytest
 from pydantic import ValidationError
 
-from sampletones_assets.mark.specification import Mark
+from sampletones_tools.assets.mark.specification import Mark
 from tests.suite.case import BaseRegularTestCase
 
 VALID_FRAME: Final[Dict[str, Any]] = {

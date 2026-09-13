@@ -25,7 +25,7 @@ class TestBuildEnvironment:
 
 
 class TestInstall:
-    def test_pip_is_upgraded_then_the_package_installed_with_its_extras_and_groups(self, tmp_path: Path) -> None:
+    def test_pip_is_upgraded_then_the_package_installed_with_its_extras(self, tmp_path: Path) -> None:
         runner = RecordingRunner({}, None)
         python = tmp_path / "python"
 
@@ -33,20 +33,19 @@ class TestInstall:
             tmp_path,
             python,
             extras=("build", "gpu"),
-            groups=("assets",),
             runner=runner,
             environment={"PATH": "/usr/bin"},
         )
 
         assert runner.lines == [
             f"{python} -m pip install --upgrade pip",
-            f"{python} -m pip install .[build,gpu] --group assets",
+            f"{python} -m pip install .[build,gpu]",
         ]
 
     def test_every_install_refuses_an_interpreter_outside_a_virtual_environment(self, tmp_path: Path) -> None:
         runner = RecordingRunner({}, None)
 
-        install(tmp_path, tmp_path / "python", extras=("build",), groups=(), runner=runner, environment={})
+        install(tmp_path, tmp_path / "python", extras=("build",), runner=runner, environment={})
 
         assert all(recorded.environment["PIP_REQUIRE_VIRTUALENV"] == "1" for recorded in runner.commands)
 

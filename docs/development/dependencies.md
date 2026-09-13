@@ -53,20 +53,21 @@ Dialogs open through the XDG desktop portal (`org.freedesktop.portal.FileChooser
 
 ## Application icon
 
-The icon suite in `src/sampletones_assets/icons` is generated from the mark declared beside it in
-`src/sampletones_assets/mark`: `mark.yaml` carries the geometry, colors and rasterization
+The icon suite in `src/sampletones_assets/icons` is generated from the mark declared in
+`src/sampletones_tools/assets/mark`: `mark.yaml` carries the geometry, colors and rasterization
 settings, validated as a `Mark`, and `template.svg` is the vector the rendered geometry fills. The
-package writes the whole suite — the vector `sampletones.svg` and the rasters the application
-ships, `sampletones.png` and the multi-resolution `sampletones.ico` — and `scripts/assets/icons.py`
+tools package writes the whole suite — the vector `sampletones.svg` and the rasters the application
+ships, `sampletones.png` and the multi-resolution `sampletones.ico` — and `uv run sampletones icons`
 points it at the directory the icons are shipped from. Rasterization uses Pillow, declared in the
-`assets` dependency group.
+`assets` dependency group, which the `dev` group includes.
 
 The whole suite is committed, so a plain checkout carries the icons the application opens its window
-with, and every wheel, bundle and test run finds them where they lie. `make icons` writes them again
-from the mark, and the `icons` pre-push hook writes them for a push that touches either directory,
-holding the committed files to what the mark describes. CI runs that same hook.
+with, and every wheel, bundle and test run finds them where they lie. `uv run sampletones icons`
+writes them again from the mark, and the `icons` pre-push hook writes them for a push that touches
+either directory, holding the committed files to what the mark describes. CI runs that same hook.
 
-Pillow is a build-time tool, and the bundle script passes `--exclude-module PIL` to hold it to that:
+Pillow is a developer tool the build environment never installs, and the bundle script passes
+`--exclude-module PIL` besides, to hold it to that:
 `pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is
 installed, and PyInstaller follows that import into the bundle. The application reads its icons as
 files, so the exclusion spares every bundle Pillow's extension modules and the imaging libraries

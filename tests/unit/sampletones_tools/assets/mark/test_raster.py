@@ -2,9 +2,9 @@ from typing import Final, Tuple
 
 import pytest
 
-from sampletones_assets.mark.raster import MarkRaster
-from sampletones_assets.mark.specification import Mark
 from sampletones_shared.utils.color import parse_hex_color
+from sampletones_tools.assets.mark.raster import MarkRaster
+from sampletones_tools.assets.mark.specification import Mark
 
 CORNER: Final[Tuple[int, int]] = (0, 0)
 ALPHA: Final[int] = 3

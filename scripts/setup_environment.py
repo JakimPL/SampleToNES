@@ -13,7 +13,6 @@ GPU_AUTO: Final[str] = "auto"
 GPU_OFF: Final[str] = "0"
 DEFAULT_GPU: Final[str] = GPU_AUTO
 DEVELOPMENT_GROUP: Final[str] = "dev"
-ICONS_COMMAND: Final[Sequence[str]] = ("uv", "run", "--group", "assets", "python", "scripts/assets/icons.py")
 DARWIN: Final[str] = "Darwin"
 ARCHFLAGS: Final[str] = "ARCHFLAGS"
 
@@ -56,7 +55,6 @@ def setup_commands(extra: Optional[str]) -> List[List[str]]:
 
     return [
         synchronize,
-        list(ICONS_COMMAND),
         ["uv", "tool", "install", "--force", package],
     ]
 

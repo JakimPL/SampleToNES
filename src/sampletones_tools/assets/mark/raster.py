@@ -2,10 +2,10 @@ from typing import Final, Tuple
 
 from PIL import Image, ImageDraw
 
-from sampletones_assets.mark.geometry import sine_points, square_rectangles
-from sampletones_assets.mark.specification import Mark
 from sampletones_shared.types.application import ColorRGBA
 from sampletones_shared.utils.color import parse_hex_color, with_alpha_fraction
+from sampletones_tools.assets.mark.geometry import sine_points, square_rectangles
+from sampletones_tools.assets.mark.specification import Mark
 
 TRANSPARENT: Final[ColorRGBA] = (0, 0, 0, 0)
 OPAQUE: Final[int] = 255

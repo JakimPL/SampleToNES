@@ -18,15 +18,15 @@ class TestSetupCommands:
     def test_the_cpu_backend_synchronizes_and_installs_the_bare_package(self) -> None:
         commands = setup_environment.setup_commands(None)
 
+        assert len(commands) == 2
         assert commands[0] == ["uv", "sync", "--group", "dev"]
-        assert commands[1][-1].endswith("icons.py")
-        assert commands[2] == ["uv", "tool", "install", "--force", "."]
+        assert commands[1] == ["uv", "tool", "install", "--force", "."]
 
     def test_a_gpu_extra_reaches_both_installs(self) -> None:
         commands = setup_environment.setup_commands("gpu")
 
         assert commands[0] == ["uv", "sync", "--group", "dev", "--extra", "gpu"]
-        assert commands[2] == ["uv", "tool", "install", "--force", ".[gpu]"]
+        assert commands[1] == ["uv", "tool", "install", "--force", ".[gpu]"]
 
 
 class TestSetupEnvironmentVariables:

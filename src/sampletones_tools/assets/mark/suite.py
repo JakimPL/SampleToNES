@@ -3,14 +3,14 @@ from typing import List, Tuple
 
 from PIL import Image
 
-from sampletones_assets.mark.raster import MarkRaster
-from sampletones_assets.mark.specification import Mark
-from sampletones_assets.mark.vector import render_vector
 from sampletones_shared.paths.resources import (
     ICON_UNIX_FILENAME,
     ICON_VECTOR_FILENAME,
     ICON_WIN_FILENAME,
 )
+from sampletones_tools.assets.mark.raster import MarkRaster
+from sampletones_tools.assets.mark.specification import Mark
+from sampletones_tools.assets.mark.vector import render_vector
 
 
 def _resized(master: Image.Image, size: int) -> Image.Image:

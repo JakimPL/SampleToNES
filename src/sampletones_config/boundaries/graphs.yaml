@@ -2,7 +2,7 @@ packages:
   layers:
     sampletones_shared: []
     sampletones_config: []
-    sampletones_assets: [sampletones_shared]
+    sampletones_assets: []
     sampletones_core: [sampletones_shared]
     sampletones_player: [sampletones_shared, sampletones_core]
     sampletones_application: [sampletones_shared, sampletones_core, sampletones_player]

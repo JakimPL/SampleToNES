@@ -83,6 +83,7 @@ The developer commands, listed by `sampletones_tools/registry.py` and run as
 |---|---|
 | `calibration [--config FILE] [-o DIR] [--methods LIST] [--perceptual-exponents LIST] [--temporal-weights LIST] [--channels LIST]` | Reconstructs the calibration corpus under every variant of the sweep, scores it with every referee, and writes the reports; without `-o` the run lands in a timestamped directory under Documents/SampleToNES/calibration |
 | `driver [--directory DIR]` | Assembles the NES player driver with cc65 and prints the layout the build produced; without `--directory` it writes the driver the package ships, which needs a checkout |
+| `icons [--directory DIR]` | Writes the icon suite from the mark; without `--directory` it writes the icons the package ships, which needs a checkout |
 | `nsf render --directory DIR [--tail SECONDS]` | Renders every exported `.nsf` file in the directory to a wave beside it, through ffmpeg's libgme demuxer |
 
 More join as the tools they run move into the package.
@@ -119,7 +120,7 @@ reason.
 | Script | Target | What it does |
 |---|---|---|
 | `bundle.py` | `make build`, `make release` | Creates `.venv-build`, installs the package with the `build` extra, checks the interpreter carries PortAudio (and Tk, for a release), writes the bundle with PyInstaller, runs its self-check, and copies the notices beside a release |
-| `setup_environment.py` | `make setup` | Reads the NVIDIA driver, synchronizes the development environment with the matching GPU extra, writes the icons, installs the global `sampletones` command |
+| `setup_environment.py` | `make setup` | Reads the NVIDIA driver, synchronizes the development environment with the matching GPU extra, installs the global `sampletones` command |
 | `system_dependencies.py` | `make system-deps` | Installs the system packages: apt on Debian-based Linux, Homebrew on macOS, nothing on Windows |
 | `build_environment.py` | CI | Prints the compiler flags a macOS build exports, one `KEY=VALUE` per line |
 | `clean.py` | `make clean` | Removes the build outputs, the coverage reports and the bytecode caches |
@@ -139,8 +140,8 @@ interpreter (`preflight.py`), and the platforms (`platforms/`).
 
 ## The tool scripts
 
-`compression_study.py`, `assets/icons.py` and the checks under `checks/` import the project's
-packages and run inside its environment, from the make target that names each. The checks are also pre-commit hooks;
+`compression_study.py` and the checks under `checks/` import the project's packages and run
+inside its environment, from the make target that names each. The checks are also pre-commit hooks;
 [architecture](architecture.md#enforcement) lists them.
 
 ## Who governs what

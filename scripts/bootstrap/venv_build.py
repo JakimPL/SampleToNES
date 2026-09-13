@@ -7,7 +7,6 @@ from bootstrap.processes import Runner, expect_success
 
 BUILD_ENVIRONMENT: Final[str] = ".venv-build"
 PIP_REQUIRE_VIRTUALENV: Final[str] = "PIP_REQUIRE_VIRTUALENV"
-GROUP_FLAG: Final[str] = "--group"
 
 
 def build_environment(
@@ -50,11 +49,10 @@ def install(
     python: Path,
     *,
     extras: Sequence[str],
-    groups: Sequence[str],
     runner: Runner,
     environment: Mapping[str, str],
 ) -> None:
-    """Installs the package with ``extras`` and ``groups`` into the environment ``python`` runs.
+    """Installs the package with ``extras`` into the environment ``python`` runs.
 
     Pip is told to refuse any interpreter outside a virtual environment, so an install reaches
     the build environment alone.
@@ -63,7 +61,6 @@ def install(
         root: The repository, which is the package installed.
         python: The build environment's interpreter.
         extras: The optional-dependency extras installed with the package.
-        groups: The dependency groups installed beside it.
         runner: What runs the commands.
         environment: The variables the commands see.
     """
@@ -76,10 +73,9 @@ def install(
         environment=guarded,
     )
     print(f"Installing with extras: {','.join(extras)}")
-    group_flags = [flag for group in groups for flag in (GROUP_FLAG, group)]
     expect_success(
         runner,
-        (str(python), "-m", "pip", "install", f".[{','.join(extras)}]", *group_flags),
+        (str(python), "-m", "pip", "install", f".[{','.join(extras)}]"),
         cwd=root,
         environment=guarded,
     )

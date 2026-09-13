@@ -1,5 +1,5 @@
 .PHONY: help setup install system-deps build release run clean pre-commit test benchmarks lint format \
-	ftm-samples nsf-samples compression-report compression-study icons \
+	ftm-samples nsf-samples compression-report compression-study \
 	check-import-boundary check-tag-names check-unused-tags check-rendered-literals check-language-keys \
 	check-palette-colors check-shortcut-actions
 
@@ -36,7 +36,6 @@ help:
 	@echo $(Q)  make nsf-samples - Emit example .nsf files to build/nsf via the integration suite$(Q)
 	@echo $(Q)  make compression-report - Measure the song codec into build/compression$(Q)
 	@echo $(Q)  make compression-study - Measure the song codec over the projects and stems on this machine; the report lands in Documents/SampleToNES/compression (ARGS=--quick for a short run)$(Q)
-	@echo $(Q)  make icons       - Generate the icon suite into src/sampletones_assets/icons$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
 	@echo $(Q)  make lint        - Run mypy and pylint (ARGS=--mypy or ARGS=--pylint for one of them)$(Q)
 	@echo $(Q)  make format      - Auto-format code (isort, black)$(Q)
@@ -93,9 +92,6 @@ compression-report:
 
 compression-study:
 	uv run scripts/compression_study.py $(ARGS)
-
-icons:
-	uv run --group assets python scripts/assets/icons.py
 
 check-import-boundary:
 	uv run scripts/checks/import_boundary.py --all

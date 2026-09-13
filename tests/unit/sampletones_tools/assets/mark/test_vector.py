@@ -1,9 +1,9 @@
 from importlib.resources import files
 from pathlib import Path
 
-from sampletones_assets.mark.specification import Mark
-from sampletones_assets.mark.vector import render_vector
 from sampletones_shared.paths.resources import ICON_VECTOR_FILENAME
+from sampletones_tools.assets.mark.specification import Mark
+from sampletones_tools.assets.mark.vector import render_vector
 
 PLACEHOLDER_PREFIX = "$"
 REPLACEMENT_COLOR = "#010203"

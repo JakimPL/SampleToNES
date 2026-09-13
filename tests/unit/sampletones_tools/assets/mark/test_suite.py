@@ -3,13 +3,13 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from sampletones_assets.mark.specification import Mark
-from sampletones_assets.mark.suite import write_icon_suite
 from sampletones_shared.paths.resources import (
     ICON_UNIX_FILENAME,
     ICON_VECTOR_FILENAME,
     ICON_WIN_FILENAME,
 )
+from sampletones_tools.assets.mark.specification import Mark
+from sampletones_tools.assets.mark.suite import write_icon_suite
 
 RGBA_MODE = "RGBA"
 ICO_SIZES_KEY = "sizes"

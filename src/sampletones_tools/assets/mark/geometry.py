@@ -2,8 +2,8 @@ import itertools
 from dataclasses import dataclass
 from typing import List
 
-from sampletones_assets.mark.specification.point import CubicCurve, Point
-from sampletones_assets.mark.specification.waves import MarkSine, MarkSquare
+from sampletones_tools.assets.mark.specification.point import CubicCurve, Point
+from sampletones_tools.assets.mark.specification.waves import MarkSine, MarkSquare
 
 
 @dataclass(frozen=True)

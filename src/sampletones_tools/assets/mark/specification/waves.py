@@ -3,7 +3,7 @@ from typing import Self, Tuple
 
 from pydantic import BaseModel, Field, PositiveFloat, model_validator
 
-from sampletones_assets.mark.specification.point import CubicCurve, Point
+from sampletones_tools.assets.mark.specification.point import CubicCurve, Point
 
 
 class MarkSine(BaseModel, extra="forbid", frozen=True):

@@ -109,9 +109,9 @@ repos:
 
       - id: icons
         name: icons
-        entry: uv run python scripts/assets/icons.py
+        entry: uv run sampletones icons
         language: system
-        files: ^src/sampletones_assets/(icons|mark)/
+        files: ^src/(sampletones_assets/icons|sampletones_tools/assets/mark)/
         pass_filenames: false
         verbose: true
         stages:
