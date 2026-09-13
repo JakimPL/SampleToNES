@@ -82,6 +82,7 @@ The developer commands, listed by `sampletones_tools/registry.py` and run as
 | Command | What it does |
 |---|---|
 | `calibration [--config FILE] [-o DIR] [--methods LIST] [--perceptual-exponents LIST] [--temporal-weights LIST] [--channels LIST]` | Reconstructs the calibration corpus under every variant of the sweep, scores it with every referee, and writes the reports; without `-o` the run lands in a timestamped directory under Documents/SampleToNES/calibration |
+| `check <name> [options]` | Holds the tree to one of its checks: `import-boundary`, `language-keys`, `palette-colors`, `rendered-literals`, `shortcut-actions`, `tag-names`, `unused-tags`; each is a pre-commit hook, and [architecture](architecture.md#enforcement) says what each holds. Needs a checkout |
 | `driver [--directory DIR]` | Assembles the NES player driver with cc65 and prints the layout the build produced; without `--directory` it writes the driver the package ships, which needs a checkout |
 | `icons [--directory DIR]` | Writes the icon suite from the mark; without `--directory` it writes the icons the package ships, which needs a checkout |
 | `nsf render --directory DIR [--tail SECONDS]` | Renders every exported `.nsf` file in the directory to a wave beside it, through ffmpeg's libgme demuxer |
@@ -140,9 +141,8 @@ interpreter (`preflight.py`), and the platforms (`platforms/`).
 
 ## The tool scripts
 
-`compression_study.py` and the checks under `checks/` import the project's packages and run
-inside its environment, from the make target that names each. The checks are also pre-commit hooks;
-[architecture](architecture.md#enforcement) lists them.
+`compression_study.py` imports the project's packages and runs inside its environment, from the
+make target that names it.
 
 ## Who governs what
 
@@ -150,6 +150,7 @@ inside its environment, from the make target that names each. The checks are als
 |---|---|
 | Which commands the entry offers | `src/sampletones/commands/registry.py` |
 | Which developer commands exist | `src/sampletones_tools/registry.py` |
+| Which checks the tree is held to | `src/sampletones_tools/checks/registry.py` |
 | Whether a command runs outside a checkout | `src/sampletones_tools/checkout.py` |
 | What a command is | `src/sampletones_shared/command.py` |
 | What a bootstrap script may import | `sampletones_config/boundaries/standalone.yaml` |

@@ -1,7 +1,6 @@
 - pattern: "**/*.py"
   excluding:
     - "compression_study.py"
-    - "checks/**/*.py"
     - "codec_study/**/*.py"
   reserved: [build, test, tests]
   message: >-

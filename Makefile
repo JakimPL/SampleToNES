@@ -1,7 +1,5 @@
 .PHONY: help setup install system-deps build release run clean pre-commit test benchmarks lint format \
-	ftm-samples nsf-samples compression-report compression-study \
-	check-import-boundary check-tag-names check-unused-tags check-rendered-literals check-language-keys \
-	check-palette-colors check-shortcut-actions
+	ftm-samples nsf-samples compression-report compression-study
 
 ifeq ($(OS),Windows_NT)
 ifeq ($(MSYSTEM),)
@@ -92,24 +90,3 @@ compression-report:
 
 compression-study:
 	uv run scripts/compression_study.py $(ARGS)
-
-check-import-boundary:
-	uv run scripts/checks/import_boundary.py --all
-
-check-tag-names:
-	uv run scripts/checks/tag_names.py --all
-
-check-unused-tags:
-	uv run scripts/checks/unused_tags.py
-
-check-rendered-literals:
-	uv run scripts/checks/rendered_literals.py
-
-check-language-keys:
-	uv run scripts/checks/language_keys.py
-
-check-palette-colors:
-	uv run scripts/checks/palette_colors.py
-
-check-shortcut-actions:
-	uv run scripts/checks/shortcut_actions.py

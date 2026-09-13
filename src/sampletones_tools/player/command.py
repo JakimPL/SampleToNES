@@ -31,14 +31,15 @@ def run(arguments: Namespace) -> int:
     """
     given = DriverArguments(directory=arguments.directory)
 
-    from sampletones_shared.exceptions.player import DriverBuildError
     from sampletones_tools.checkout import require_checkout
-    from sampletones_tools.player.assembler.builder import build_driver
-    from sampletones_tools.player.assembler.layout import BINARY_DIRECTORY
-    from sampletones_tools.player.assembler.report import layout_lines
 
     if given.directory is None:
         require_checkout(NAME)
+
+    from sampletones_shared.exceptions.player import DriverBuildError
+    from sampletones_tools.player.assembler.builder import build_driver
+    from sampletones_tools.player.assembler.layout import BINARY_DIRECTORY
+    from sampletones_tools.player.assembler.report import layout_lines
 
     try:
         image = build_driver(given.directory if given.directory is not None else BINARY_DIRECTORY)

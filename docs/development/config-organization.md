@@ -32,9 +32,8 @@ empty `__init__.py`. Each schema lives with its reader:
 
 - `sampletones_application` owns the layout, theme, palettes, keybindings, language,
   behavior, and deployment schemas.
-- `sampletones_tools` owns the calibration schemas.
-- `sampletones_shared` owns the import-boundary schemas and the loader primitives
-  (`load_yaml_model`, `load_yaml_model_dir`).
+- `sampletones_tools` owns the calibration and the import-boundary schemas.
+- `sampletones_shared` owns the loader primitives (`load_yaml_model`, `load_yaml_model_dir`).
 
 So the data carries the values and the consumer carries the meaning, and the two evolve
 on their own terms.
@@ -132,7 +131,7 @@ each value sits in the tree stays in the factory.
 |--------|-----------|--------------|------------------|
 | Application | `application/` | `DeploymentConfig` (`sampletones_application/config/deployment/`) | `DeploymentConfig.load()`, with `SAMPLETONES_*` env overrides |
 | Behavior | `behavior/` | `BehaviorConfig` (`sampletones_application/layout/behavior.py`) | folded into `LayoutConfig.behavior` by `load_layout_config` |
-| Boundaries | `boundaries/` | `ImportBoundaryRules` (`sampletones_shared/meta/import_boundary/configs/`) | `ImportBoundaryRules.load()` |
+| Boundaries | `boundaries/` | `ImportBoundaryRules` (`sampletones_tools/checks/boundary/configs/`) | `ImportBoundaryRules.load()` |
 | Calibration | `calibration/` | `CorpusConfig`, `RefereeConfig` (`sampletones_tools/calibration/config/`) | each model's own `.load()` |
 | Keybindings | `keybindings/` | `ShortcutScheme` (`sampletones_application/utils/gui/shortcuts/`) | `ShortcutCatalog.load()`, indexed by scheme name |
 | Language | `lang/` | `LanguageManager` (`sampletones_application/categories/`) | flat string map keyed `page.panel.text_type.element`, each key validated at load |
@@ -171,7 +170,7 @@ that import `SchedulingBehavior` as a type.
 Boundaries is the domain a developer tool reads. It states the layer graphs the packages
 divide into, the imports each part of the application stays clear of, the spellings a tree
 keeps out, and the standard-library rule the bootstrap scripts under `scripts/` hold to, and
-`scripts/checks/import_boundary.py` runs it over the source and scripts trees on every commit. A declaration draws on the named prefix groups `general.yaml` holds, so a set several
+`sampletones check import-boundary` runs it over the source and scripts trees on every commit. A declaration draws on the named prefix groups `general.yaml` holds, so a set several
 rules reach for is written once and each rule names it, and a name reaching no group is
 refused as the domain is read. The bundle carries the domain because `--add-data` copies
 `sampletones_config` whole — the terms `calibration/` already ships on.

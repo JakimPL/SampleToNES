@@ -44,13 +44,13 @@ graph TD
 
 | Package | Purpose | May import |
 |---------|---------|------------|
-| `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, the source layer the checks read the tree through, and the schema these boundaries are declared in | — |
+| `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, and the command type the entry and the tools share | — |
 | `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, calibration, and these boundaries themselves — reached as package data rather than by import | — |
 | `sampletones_assets` | The application icons and the bundled fonts, reached as package data | — |
 | `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats | `sampletones_shared` |
 | `sampletones_player` | The NES player: the register model, the re-clocking schedule, the 6502 driver and the NSF file | `sampletones_shared`, `sampletones_core` |
 | `sampletones_application` | The DearPyGui front end | `sampletones_shared`, `sampletones_core`, `sampletones_player` |
-| `sampletones_tools` | Everything a developer runs and the application does not: analytic waveform synthesis, the calibration harness, the driver toolchain and the register trace, the mark the icons are drawn from, and the developer commands that run them | `sampletones_shared`, `sampletones_assets`, `sampletones_core`, `sampletones_player`, `sampletones_application` |
+| `sampletones_tools` | Everything a developer runs and the application does not: analytic waveform synthesis, the calibration harness, the driver toolchain and the register trace, the mark the icons are drawn from, the source checks, and the developer commands that run them | `sampletones_shared`, `sampletones_assets`, `sampletones_core`, `sampletones_player`, `sampletones_application` |
 | `sampletones` | The command-line entry: the dispatcher, the commands and the startup self-check | `sampletones_shared`, `sampletones_core`, `sampletones_application`, `sampletones_tools` |
 
 Third-party imports are the package author's own choice and stand outside this table.
@@ -122,7 +122,7 @@ ships the binary alone. The toolchain the build needs is described in
 `sampletones_config/boundaries/graphs.yaml` declares both graphs as layer tables — each unit and the
 units it may import — and the rule the check runs derives from them: every unit a table leaves out is
 out of reach, so an edge is declared before it is taken. The hook audits the whole source tree on
-every commit (`make check-import-boundary`), which means adding an edge to a table is how a new
+every commit (`uv run sampletones check import-boundary --all`), which means adding an edge to a table is how a new
 dependency is opened, and removing one enumerates the work of closing it.
 
 Five token rules hold the shipped packages to the tools edge a second way: a module of
@@ -135,11 +135,11 @@ undeclared is refused, and so is a graph whose units reach themselves, since a u
 level only where the units stand in an order.
 
 Three parts share the work. `sampletones_config/boundaries/` states what the boundaries are.
-`sampletones_shared/meta/import_boundary/` validates that statement and holds the mechanism —
+`sampletones_tools/checks/boundary/` validates that statement and holds the mechanism —
 reading a module line by line, resolving a unit to the modules it owns, deriving a rule from a graph
-and reporting what crosses it — beside the source layer the other checks read the tree through.
-`scripts/checks/import_boundary.py` runs them over the source and scripts trees and prints what
-they find.
+and reporting what crosses it — beside the source layer the other checks read the tree through,
+`sampletones_tools/checks/source/`. `sampletones check import-boundary` runs them over the source
+and scripts trees and prints what they find.
 
 The scripts tree is held to a rule of its own, `boundaries/standalone.yaml`. A bootstrap script
 runs on the system interpreter, so it imports the standard library and the scripts tree itself,

@@ -93,6 +93,10 @@ jobs:
         shell: bash
         run: sampletones self-check
 
+      - name: Check a developer command refuses to run outside a checkout
+        shell: bash
+        run: sampletones check import-boundary --all 2>&1 | grep "runs from a checkout"
+
   bundle:
     name: Standalone bundle (${{ matrix.platform }})
     if: startsWith(github.ref, 'refs/tags/v')

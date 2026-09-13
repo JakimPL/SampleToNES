@@ -31,13 +31,14 @@ def run(arguments: Namespace) -> int:
     """
     given = IconsArguments(directory=arguments.directory)
 
-    from sampletones_tools.assets.mark.specification import Mark
-    from sampletones_tools.assets.mark.suite import write_icon_suite
-    from sampletones_tools.assets.paths import ICONS_DIRECTORY
     from sampletones_tools.checkout import require_checkout
 
     if given.directory is None:
         require_checkout(NAME)
+
+    from sampletones_tools.assets.mark.specification import Mark
+    from sampletones_tools.assets.mark.suite import write_icon_suite
+    from sampletones_tools.assets.paths import ICONS_DIRECTORY
 
     for path in write_icon_suite(given.directory if given.directory is not None else ICONS_DIRECTORY, Mark.load()):
         print(f"Wrote {path}")
