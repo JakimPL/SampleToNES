@@ -13,7 +13,7 @@ class TestLinux:
     def test_apt_is_updated_before_the_packages_are_installed(self) -> None:
         commands = Linux().system_packages()
 
-        assert [command[:2] for command in commands] == [("sudo", "apt-get"), ("sudo", "apt-get")]
+        assert [command[:3] for command in commands] == [("sudo", "apt-get", "update"), ("sudo", "apt-get", "install")]
         assert "portaudio19-dev" in commands[1]
         assert "python3-tk" in commands[1]
         assert Linux().missing_package_manager() is None
@@ -23,5 +23,5 @@ class TestLinux:
         assert Linux().build_flags(machine="x86_64") == ()
 
     def test_the_driver_is_looked_up_on_the_path_alone(self) -> None:
-        assert Linux().cuda
+        assert Linux().cpu_backend_reason is None
         assert Linux().nvidia_smi_locations({"SystemRoot": "C:/Windows"}) == ()

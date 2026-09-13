@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pytest
 
-from bootstrap.platforms import macos
 from bootstrap.platforms.linux import Linux
 from bootstrap.platforms.macos import ARCHFLAGS, MacOS
 from bootstrap.project import DEVELOPMENT_GROUP, GPU_CUDA11_EXTRA, GPU_EXTRA
@@ -53,12 +52,7 @@ class TestSetupCommands:
 
 
 class TestSetUpEnvironment:
-    def test_macos_runs_the_commands_on_its_native_architecture(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        monkeypatch.setattr(macos.shutil, "which", lambda name: None)
+    def test_macos_runs_the_commands_on_its_native_architecture(self, tmp_path: Path) -> None:
         runner = RecordingRunner({}, None)
 
         setup_environment.set_up_environment(

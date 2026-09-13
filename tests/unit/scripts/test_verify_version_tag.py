@@ -1,10 +1,12 @@
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 
 from bootstrap.layout import repository_root
-from bootstrap.project import read_project
+from bootstrap.project import TAG_PREFIX, read_project
 from tests.suite.base import BaseTestSuite
+from tests.suite.bootstrap import write_project
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.scripts import load_script
 
@@ -30,14 +32,31 @@ class TestVersionFromTag(BaseTestSuite):
         assert verify_version_tag.version_from_tag(test_case.tag) == test_case.expected
 
 
+class TestTagFailure:
+    def test_the_tag_naming_the_project_version_passes(self, tmp_path: Path) -> None:
+        project = read_project(write_project(tmp_path))
+
+        assert verify_version_tag.tag_failure(project.tag, project) is None
+
+    def test_a_tag_naming_another_version_names_both(self, tmp_path: Path) -> None:
+        project = read_project(write_project(tmp_path))
+        tag = f"{project.tag}.post9"
+
+        failure = verify_version_tag.tag_failure(tag, project)
+
+        assert failure is not None
+        assert tag in failure
+        assert project.version in failure
+
+
 class TestMain:
     def test_the_tag_naming_the_project_version_passes(self) -> None:
         version = read_project(repository_root()).version
 
-        assert verify_version_tag.main(["--tag", f"{verify_version_tag.TAG_PREFIX}{version}"]) == 0
+        assert verify_version_tag.main(["--tag", f"{TAG_PREFIX}{version}"]) == 0
 
     def test_a_tag_naming_another_version_is_annotated_as_an_error(self, capsys: pytest.CaptureFixture[str]) -> None:
         version = read_project(repository_root()).version
 
-        assert verify_version_tag.main(["--tag", f"{verify_version_tag.TAG_PREFIX}{version}.post9"]) == 1
+        assert verify_version_tag.main(["--tag", f"{TAG_PREFIX}{version}.post9"]) == 1
         assert capsys.readouterr().out.startswith("::error::")

@@ -1,12 +1,11 @@
 import argparse
 import os
 import sys
-from pathlib import Path
-from typing import Dict, Final, Mapping, Sequence, Tuple
+from typing import Dict, Final, Sequence, Tuple
 
-from bootstrap.layout import repository_root
-from bootstrap.passes import Pass
-from bootstrap.processes import Runner, run
+from bootstrap.layout import BENCHMARKS_DIRECTORY, SOURCE_DIRECTORY, repository_root
+from bootstrap.passes import Pass, run_pass
+from bootstrap.processes import run
 
 SUITE: Final[str] = "suite"
 DOCTESTS: Final[str] = "doctests"
@@ -33,48 +32,26 @@ def planned_passes(workers: str) -> Dict[str, Pass]:
         Pass(
             SUITE,
             "Running pytest with coverage...",
-            (*PYTEST, "-n", workers, "--cov", "--ignore=tests/benchmarks"),
+            (*PYTEST, "-n", workers, "--cov", f"--ignore={BENCHMARKS_DIRECTORY}"),
         ),
         Pass(
             DOCTESTS,
             "Running doctests...",
-            (*PYTEST, "src/", "--doctest-modules", "--no-cov"),
+            (*PYTEST, SOURCE_DIRECTORY, "--doctest-modules", "--no-cov"),
         ),
         Pass(
             BENCHMARKS,
             "Running benchmarks...",
-            (*PYTEST, "tests/benchmarks", "--no-cov", "-s"),
+            (*PYTEST, BENCHMARKS_DIRECTORY, "--no-cov", "-s"),
         ),
     )
     return {current.name: current for current in passes}
 
 
-def run_pass(
-    chosen: Pass,
-    root: Path,
-    *,
-    runner: Runner,
-    environment: Mapping[str, str],
-) -> int:
-    """Announces one pass and runs it from the repository root.
-
-    Args:
-        chosen: The pass.
-        root: The repository.
-        runner: What runs the pass.
-        environment: The variables pytest sees.
-
-    Returns:
-        int: The status pytest exited with.
-    """
-    print(chosen.announcement)
-    return runner(chosen.command, cwd=root, environment=environment, quiet=False)
-
-
 def main(argv: Sequence[str]) -> int:
     """Runs one pass of the tests and exits with the status pytest gave it."""
     parser = argparse.ArgumentParser(description="Run one pass of the SampleToNES tests.")
-    parser.add_argument("name", choices=(SUITE, DOCTESTS, BENCHMARKS), help="the pass to run")
+    parser.add_argument("name", choices=tuple(planned_passes(DEFAULT_WORKERS)), help="the pass to run")
     parser.add_argument(
         "--workers",
         default=DEFAULT_WORKERS,
@@ -84,7 +61,7 @@ def main(argv: Sequence[str]) -> int:
 
     return run_pass(
         planned_passes(arguments.workers)[arguments.name],
-        repository_root(),
+        root=repository_root(),
         runner=run,
         environment=os.environ,
     )

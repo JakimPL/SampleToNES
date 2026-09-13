@@ -12,8 +12,8 @@ class Platform(Protocol):
         """The name ``platform.system()`` reports for the system."""
 
     @property
-    def cuda(self) -> bool:
-        """Whether an NVIDIA driver with CUDA can run on the system."""
+    def cpu_backend_reason(self) -> Optional[str]:
+        """Why the system runs the CPU backend whatever its hardware, or ``None`` where CUDA can run."""
 
     def interpreter(self, environment: Path) -> Path:
         """The interpreter a virtual environment at ``environment`` runs.

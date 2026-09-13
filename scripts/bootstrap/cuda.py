@@ -17,19 +17,13 @@ QUERY_ARGUMENTS: Final[Tuple[Tuple[str, ...], ...]] = ((), ("-q",))
 
 @dataclass(frozen=True, kw_only=True)
 class CudaDetection:
-    """The NVIDIA driver capability observed on the host and the CuPy extra it maps to.
+    """The CuPy extra the host's NVIDIA driver maps to, and what was found to choose it.
 
     Attributes:
-        system: The system the detection ran on.
-        nvidia_smi: The driver's ``nvidia-smi``, where one was found.
-        cuda_version: The newest CUDA version the driver supports, as ``(major, minor)``.
         extra: The optional-dependency extra matching the driver, or ``None`` for the CPU backend.
         reason: One line saying what was found and what it selects.
     """
 
-    system: str
-    nvidia_smi: Optional[Path]
-    cuda_version: Optional[Tuple[int, int]]
     extra: Optional[str]
     reason: str
 
@@ -133,31 +127,16 @@ def detect(platform: Platform, environment: Mapping[str, str]) -> CudaDetection:
     Returns:
         CudaDetection: What was found and the extra it selects.
     """
-    if not platform.cuda:
-        return CudaDetection(
-            system=platform.name,
-            nvidia_smi=None,
-            cuda_version=None,
-            extra=None,
-            reason=f"NVIDIA CUDA runs on Linux and Windows; on {platform.name}, keeping the CPU (NumPy) backend.",
-        )
+    if platform.cpu_backend_reason is not None:
+        return CudaDetection(extra=None, reason=platform.cpu_backend_reason)
 
     nvidia_smi = find_nvidia_smi(platform, environment)
     if nvidia_smi is None:
         return CudaDetection(
-            system=platform.name,
-            nvidia_smi=None,
-            cuda_version=None,
             extra=None,
             reason="No NVIDIA driver detected (nvidia-smi is absent); keeping the CPU (NumPy) backend.",
         )
 
     cuda_version = query_driver_cuda_version(nvidia_smi)
     extra = select_extra(cuda_version)
-    return CudaDetection(
-        system=platform.name,
-        nvidia_smi=nvidia_smi,
-        cuda_version=cuda_version,
-        extra=extra,
-        reason=_describe(cuda_version=cuda_version, extra=extra),
-    )
+    return CudaDetection(extra=extra, reason=_describe(cuda_version=cuda_version, extra=extra))

@@ -119,7 +119,6 @@ profile = "black"
 line_length = 120
 known_first_party = [
     "bootstrap",
-    "ci",
     "sampletones",
     "sampletones_application",
     "sampletones_assets",

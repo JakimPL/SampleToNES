@@ -19,10 +19,11 @@ command's name says what it does, in plain words.
 runs on the system interpreter, before or beside the environment: it creates the environment,
 installs system packages, builds the standalone bundle, cleans the tree, and runs the tests, the
 linters and the formatters the environment provides. It imports the standard library and the other
-bootstrap modules, nothing else, so it runs on a machine that has Python and nothing more, and it
-installs nothing into the interpreter it runs on: every package a build installs lands in
-`.venv-build`, a virtual environment of its own, and pip is told to refuse any interpreter outside
-one. System packages are a step of their own, `make system-deps`, the only one that asks for
+bootstrap modules, nothing else, so it runs on a machine that has Python 3.12 or newer and nothing
+more. Importing `scripts/bootstrap/` checks that version before anything else, so an older
+interpreter is told the version and where to download it. A bootstrap script installs nothing into
+the interpreter it runs on: every package a build installs lands in `.venv-build`, a virtual
+environment of its own, and pip is told to refuse any interpreter outside one. System packages are a step of their own, `make system-deps`, the only one that asks for
 administrator rights. The import boundary check holds the tree to the rule:
 `sampletones_config/boundaries/standalone.yaml` names the scripts, and an import beyond the
 standard library and the tree fails the hook.
@@ -165,8 +166,9 @@ reason.
 - `venv_build.py`, `preflight.py`: the build environment and the installs into it, and the
   preflight of the build interpreter.
 
-Every script's work is a function taking the runner and the variables; `main` parses the arguments
-and passes in the real ones, and the tests pass a `RecordingRunner`.
+Every script's work is a function taking what it reads: the repository root, the platform, and for
+a script running commands the runner and the variables. `main` parses the arguments and passes in
+the real ones, and the tests pass a temporary repository and a `RecordingRunner`.
 
 ## Who governs what
 

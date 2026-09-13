@@ -34,8 +34,8 @@ class Windows:
         return WINDOWS
 
     @property
-    def cuda(self) -> bool:
-        return True
+    def cpu_backend_reason(self) -> Optional[str]:
+        return None
 
     def interpreter(self, environment: Path) -> Path:
         return environment.joinpath(*WINDOWS_INTERPRETER)

@@ -1,6 +1,5 @@
 import pytest
 
-from bootstrap.platforms import macos
 from bootstrap.platforms.linux import Linux
 from bootstrap.platforms.macos import MacOS
 from tests.suite.scripts import load_script
@@ -17,7 +16,7 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         monkeypatch.setattr(build_environment, "current_platform", MacOS)
-        monkeypatch.setattr(macos, "homebrew_prefix", lambda package: PORTAUDIO_PREFIX)
+        monkeypatch.setattr(MacOS, "homebrew_prefix", staticmethod(lambda package: PORTAUDIO_PREFIX))
         monkeypatch.setattr(build_environment.running, "machine", lambda: "arm64")
 
         assert build_environment.main([]) == 0

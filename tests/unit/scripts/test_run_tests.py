@@ -1,11 +1,10 @@
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Tuple
 
 import pytest
 
+from bootstrap.layout import BENCHMARKS_DIRECTORY
 from tests.suite.base import BaseTestSuite
-from tests.suite.bootstrap import RecordingRunner
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.scripts import load_script
 
@@ -22,7 +21,7 @@ class TestPlannedPasses:
     def test_the_suite_is_covered_across_the_workers_and_leaves_the_benchmarks_out(self) -> None:
         command = run_tests.planned_passes("auto")[run_tests.SUITE].command
 
-        assert command[-4:] == ("-n", "auto", "--cov", "--ignore=tests/benchmarks")
+        assert command[-4:] == ("-n", "auto", "--cov", f"--ignore={BENCHMARKS_DIRECTORY}")
 
     def test_the_doctests_read_the_sources_uncovered(self) -> None:
         command = run_tests.planned_passes(run_tests.DEFAULT_WORKERS)[run_tests.DOCTESTS].command
@@ -33,25 +32,10 @@ class TestPlannedPasses:
     def test_the_benchmarks_run_serial_uncovered_and_show_their_readings(self) -> None:
         command = run_tests.planned_passes(run_tests.DEFAULT_WORKERS)[run_tests.BENCHMARKS].command
 
-        assert "tests/benchmarks" in command
+        assert BENCHMARKS_DIRECTORY in command
         assert "--no-cov" in command
         assert "-s" in command
         assert "-n" not in command
-
-
-class TestRunPass:
-    def test_the_pass_runs_from_the_repository(self, tmp_path: Path) -> None:
-        runner = RecordingRunner({}, None)
-        chosen = run_tests.planned_passes(run_tests.DEFAULT_WORKERS)[run_tests.DOCTESTS]
-
-        assert run_tests.run_pass(chosen, tmp_path, runner=runner, environment={}) == 0
-        assert runner.lines == [" ".join(chosen.command)]
-        assert runner.commands[0].cwd == tmp_path
-
-    def test_the_status_is_pytest_s_own(self, tmp_path: Path) -> None:
-        chosen = run_tests.planned_passes("auto")[run_tests.SUITE]
-
-        assert run_tests.run_pass(chosen, tmp_path, runner=RecordingRunner({"pytest": 5}, None), environment={}) == 5
 
 
 class TestRefusedPasses(BaseTestSuite):

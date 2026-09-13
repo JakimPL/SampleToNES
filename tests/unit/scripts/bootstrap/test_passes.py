@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from bootstrap.passes import Pass, run_passes
+from bootstrap.passes import Pass, run_pass, run_passes
 from tests.suite.bootstrap import RecordingRunner
 
 PASSES = (
@@ -10,6 +10,23 @@ PASSES = (
     Pass("second", "Second...", ("second", "command")),
     Pass("third", "Third...", ("third", "command")),
 )
+
+
+class TestRunPass:
+    def test_the_pass_is_announced_and_run_from_the_repository(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+    ) -> None:
+        runner = RecordingRunner({}, None)
+
+        assert run_pass(PASSES[0], root=tmp_path, runner=runner, environment={}) == 0
+        assert runner.lines == ["first command"]
+        assert runner.commands[0].cwd == tmp_path
+        assert capsys.readouterr().out == "First...\n"
+
+    def test_the_status_is_the_command_s_own(self, tmp_path: Path) -> None:
+        assert run_pass(PASSES[1], root=tmp_path, runner=RecordingRunner({"second": 5}, None), environment={}) == 5
 
 
 class TestRunPasses:

@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import Dict, Final, Mapping, Optional, Sequence, Tuple
 
 from bootstrap.platforms.bundling import Bundling
+from bootstrap.platforms.unix import unix_interpreter
 
 LINUX: Final[str] = "Linux"
-POSIX_INTERPRETER: Final[Tuple[str, str]] = ("bin", "python")
 PNG_ICON: Final[str] = "src/sampletones_assets/icons/sampletones.png"
 SYSTEM_PACKAGES: Final[Tuple[str, ...]] = (
     "libportaudio2",
@@ -39,24 +39,19 @@ BUNDLING: Final[Bundling] = Bundling(
 )
 
 
-def posix_interpreter(environment: Path) -> Path:
-    """The interpreter a POSIX virtual environment at ``environment`` runs."""
-    return environment.joinpath(*POSIX_INTERPRETER)
-
-
 class Linux:
-    """A Debian-based Linux: packages through apt, a launcher without an extension."""
+    """A Debian-based Linux: packages through apt, and a launcher named after the project alone."""
 
     @property
     def name(self) -> str:
         return LINUX
 
     @property
-    def cuda(self) -> bool:
-        return True
+    def cpu_backend_reason(self) -> Optional[str]:
+        return None
 
     def interpreter(self, environment: Path) -> Path:
-        return posix_interpreter(environment)
+        return unix_interpreter(environment)
 
     def bundling(self) -> Bundling:
         return BUNDLING

@@ -23,5 +23,5 @@ class TestWindows:
     def test_the_driver_s_fixed_locations_are_read_from_the_variables_that_are_set(self) -> None:
         locations = Windows().nvidia_smi_locations({"SystemRoot": "C:/Windows"})
 
-        assert Windows().cuda
+        assert Windows().cpu_backend_reason is None
         assert locations == (Path("C:/Windows", "System32", "nvidia-smi.exe"),)

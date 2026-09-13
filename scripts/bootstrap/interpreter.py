@@ -8,15 +8,16 @@ DOWNLOADS: Final[str] = "https://www.python.org/downloads/"
 def require_python(version: Tuple[int, int]) -> None:
     """Holds the interpreter running the script to ``version`` or newer.
 
+    Importing ``bootstrap`` runs it first, so an older interpreter is told the version it needs
+    before a script reaches the standard library that version brings.
+
     Args:
-        version: The oldest major and minor version the operation runs on.
+        version: The oldest major and minor version the scripts run on.
 
     Raises:
         SystemExit: If the interpreter is older, naming where a newer one is downloaded.
     """
-    running = sys.version_info
-    if (running.major, running.minor) >= version:
-        print(f"Detected Python version: {running.major}.{running.minor}.{running.micro}")
+    if tuple(sys.version_info[:2]) >= version:
         return
 
     major, minor = version
@@ -24,3 +25,8 @@ def require_python(version: Tuple[int, int]) -> None:
         f"ERROR: Python {major}.{minor} or newer is required.\n"
         f"Please install Python {major}.{minor}+ from {DOWNLOADS}"
     )
+
+
+def running_version() -> str:
+    """The version of the interpreter running the script, as ``major.minor.micro``."""
+    return ".".join(str(part) for part in sys.version_info[:3])

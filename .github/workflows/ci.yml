@@ -52,6 +52,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.12", "3.13"]
+    env:
+      PYTHON: ${{ matrix.os == 'windows-latest' && 'python' || 'python3' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -72,18 +74,19 @@ jobs:
           python3 scripts/build_environment.py >> "$GITHUB_ENV"
 
       - name: Install the development environment
+        id: environment
         run: uv sync --group dev
 
       - name: Run the doctests
         shell: bash
-        run: ${{ runner.os == 'Windows' && 'python' || 'python3' }} scripts/run_tests.py doctests
+        run: $PYTHON scripts/run_tests.py doctests
 
       - name: Run the test suite with coverage
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.environment.outcome == 'success' }}
         shell: bash
-        run: ${{ runner.os == 'Windows' && 'python' || 'python3' }} scripts/run_tests.py suite --workers auto
+        run: $PYTHON scripts/run_tests.py suite --workers auto
 
       - name: Run the benchmarks
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.environment.outcome == 'success' }}
         shell: bash
-        run: ${{ runner.os == 'Windows' && 'python' || 'python3' }} scripts/run_tests.py benchmarks
+        run: $PYTHON scripts/run_tests.py benchmarks

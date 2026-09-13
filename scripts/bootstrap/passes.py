@@ -7,7 +7,7 @@ from bootstrap.processes import Runner
 
 @dataclass(frozen=True)
 class Pass:
-    """One step of a run that reports every failure at once: named, announced, run as one command.
+    """One named command a script announces and runs from the repository root.
 
     Attributes:
         name: What the step is called in the report and on the command line.
@@ -18,6 +18,28 @@ class Pass:
     name: str
     announcement: str
     command: Tuple[str, ...]
+
+
+def run_pass(
+    current: Pass,
+    *,
+    root: Path,
+    runner: Runner,
+    environment: Mapping[str, str],
+) -> int:
+    """Announces one pass and runs its command from the repository.
+
+    Args:
+        current: The pass.
+        root: The repository, which the command runs in.
+        runner: What runs the command.
+        environment: The variables the command sees.
+
+    Returns:
+        int: The status the command exited with.
+    """
+    print(current.announcement)
+    return runner(current.command, cwd=root, environment=environment, quiet=False)
 
 
 def run_passes(
@@ -43,9 +65,7 @@ def run_passes(
     """
     failed: List[str] = []
     for current in passes:
-        print(current.announcement)
-        status = runner(current.command, cwd=root, environment=environment, quiet=False)
-        if status != 0:
+        if run_pass(current, root=root, runner=runner, environment=environment) != 0:
             failed.append(current.name)
 
     return failed

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Final, List, Mapping, Sequence, Tuple
 
 from bootstrap.files import remove_path
-from bootstrap.interpreter import REQUIRED_VERSION, require_python
+from bootstrap.interpreter import running_version
 from bootstrap.layout import BUILD_TOOLS, DISTRIBUTION, NOTICES, RELEASE_HOOK, repository_root
 from bootstrap.platforms.bundling import Bundling
 from bootstrap.platforms.factory import current_platform
@@ -197,7 +197,7 @@ def main(argv: Sequence[str]) -> int:
     arguments = parser.parse_args(list(argv))
     options = BundleOptions(release=arguments.release, gpu=arguments.gpu)
 
-    require_python(REQUIRED_VERSION)
+    print(f"Detected Python version: {running_version()}")
     build_bundle(
         repository_root(),
         current_platform(),

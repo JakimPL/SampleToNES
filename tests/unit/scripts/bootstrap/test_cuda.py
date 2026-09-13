@@ -211,7 +211,7 @@ class TestDetect:
         detection = cuda.detect(MacOS(), {})
 
         assert detection.extra is None
-        assert detection.cuda_version is None
+        assert detection.reason == MacOS().cpu_backend_reason
 
     def test_no_driver_keeps_cpu(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(cuda.shutil, "which", lambda name: None)
@@ -219,7 +219,7 @@ class TestDetect:
         detection = cuda.detect(Linux(), {})
 
         assert detection.extra is None
-        assert detection.nvidia_smi is None
+        assert cuda.NVIDIA_SMI in detection.reason
 
     def test_selects_gpu_for_cuda12_driver(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(cuda.shutil, "which", lambda name: "/usr/bin/nvidia-smi")
@@ -227,5 +227,5 @@ class TestDetect:
 
         detection = cuda.detect(Linux(), {})
 
-        assert detection.cuda_version == (12, 4)
         assert detection.extra == GPU_EXTRA
+        assert "12.4" in detection.reason

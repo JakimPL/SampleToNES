@@ -4,10 +4,10 @@ import sys
 from pathlib import Path
 from typing import Final, Mapping, Sequence, Tuple
 
-from bootstrap.layout import repository_root
+from bootstrap.layout import SOURCE_DIRECTORY, repository_root
 from bootstrap.processes import Runner, expect_success, run
 
-FORMATTED_TREES: Final[Tuple[str, ...]] = ("src", "tests", "scripts")
+FORMATTED_TREES: Final[Tuple[str, ...]] = (SOURCE_DIRECTORY, "tests", "scripts")
 ISORT: Final[Tuple[str, ...]] = ("uv", "run", "python", "-m", "isort")
 BLACK: Final[Tuple[str, ...]] = ("uv", "run", "python", "-m", "black")
 

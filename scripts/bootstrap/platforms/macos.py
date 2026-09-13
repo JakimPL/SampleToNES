@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, Final, Mapping, Optional, Sequence
 
 from bootstrap.platforms.bundling import Bundling
-from bootstrap.platforms.linux import posix_interpreter
+from bootstrap.platforms.unix import unix_interpreter
 
 DARWIN: Final[str] = "Darwin"
 HOMEBREW: Final[str] = "brew"
@@ -21,36 +21,15 @@ NO_BUNDLE: Final[str] = (
     "\n"
     "See docs/guide/installation.md for the full steps."
 )
-
-
-def homebrew_prefix(package: str) -> str:
-    """Where Homebrew installed ``package``, or empty where Homebrew or the package is absent."""
-    if shutil.which(HOMEBREW) is None:
-        return ""
-
-    completed = subprocess.run(
-        [HOMEBREW, "--prefix", package],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if completed.returncode != 0:
-        return ""
-
-    return completed.stdout.strip()
-
-
-def architecture_flag(machine: str) -> str:
-    """The flag compiling an extension for the machine's own architecture alone."""
-    return f"-arch {machine}"
+CPU_BACKEND: Final[str] = "NVIDIA CUDA is available on Linux and Windows; on macOS, keeping the CPU (NumPy) backend."
 
 
 class MacOS:
     """macOS: PortAudio through Homebrew, and the application run from source.
 
     Homebrew's PortAudio carries the machine's own architecture while a python.org interpreter
-    compiles for both, so the setup and a build pin ``ARCHFLAGS`` to the native one. NVIDIA CUDA
-    has no driver on the system, so the CPU backend is the one it runs.
+    compiles for both, so the setup and a build pin ``ARCHFLAGS`` to the native one. The CPU backend
+    is the one it runs, as NVIDIA ships CUDA for Linux and Windows.
     """
 
     @property
@@ -58,11 +37,33 @@ class MacOS:
         return DARWIN
 
     @property
-    def cuda(self) -> bool:
-        return False
+    def cpu_backend_reason(self) -> Optional[str]:
+        return CPU_BACKEND
+
+    @staticmethod
+    def homebrew_prefix(package: str) -> str:
+        """Where Homebrew installed ``package``, or empty where Homebrew or the package is absent."""
+        if shutil.which(HOMEBREW) is None:
+            return ""
+
+        completed = subprocess.run(
+            [HOMEBREW, "--prefix", package],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            return ""
+
+        return completed.stdout.strip()
+
+    @staticmethod
+    def architecture_flag(machine: str) -> str:
+        """The flag compiling an extension for the machine's own architecture alone."""
+        return f"-arch {machine}"
 
     def interpreter(self, environment: Path) -> Path:
-        return posix_interpreter(environment)
+        return unix_interpreter(environment)
 
     def bundling(self) -> Bundling:
         raise SystemExit(NO_BUNDLE)
@@ -80,7 +81,7 @@ class MacOS:
         return ((HOMEBREW, "install", PORTAUDIO),)
 
     def setup_variables(self, base: Mapping[str, str], *, machine: str) -> Dict[str, str]:
-        return {**base, ARCHFLAGS: architecture_flag(machine)}
+        return {**base, ARCHFLAGS: self.architecture_flag(machine)}
 
     def build_flags(self, *, machine: str) -> Sequence[str]:
         """The flags compiling audio playback against Homebrew's PortAudio on the native architecture.
@@ -88,7 +89,7 @@ class MacOS:
         Raises:
             SystemExit: If Homebrew reports no PortAudio prefix.
         """
-        prefix = homebrew_prefix(PORTAUDIO)
+        prefix = self.homebrew_prefix(PORTAUDIO)
         if not prefix:
             raise SystemExit(
                 "ERROR: Homebrew is required to locate the PortAudio headers and library.\n"
@@ -98,7 +99,7 @@ class MacOS:
         return (
             f"CFLAGS=-I{prefix}/include",
             f"LDFLAGS=-L{prefix}/lib",
-            f"{ARCHFLAGS}={architecture_flag(machine)}",
+            f"{ARCHFLAGS}={self.architecture_flag(machine)}",
         )
 
     def nvidia_smi_locations(self, environment: Mapping[str, str]) -> Sequence[Path]:

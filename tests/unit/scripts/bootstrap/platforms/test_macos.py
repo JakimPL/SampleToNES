@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from bootstrap.platforms import macos
-from bootstrap.platforms.macos import ARCHFLAGS, HOMEBREW, HOMEBREW_SITE, PORTAUDIO, MacOS
+from bootstrap.platforms.macos import ARCHFLAGS, CPU_BACKEND, HOMEBREW, HOMEBREW_SITE, PORTAUDIO, MacOS
 
 PORTAUDIO_PREFIX = "/opt/homebrew/opt/portaudio"
 
@@ -38,7 +38,7 @@ class TestMacOS:
         assert variables == {"PATH": "/usr/bin", ARCHFLAGS: "-arch arm64"}
 
     def test_a_build_compiles_against_homebrew_s_portaudio(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(macos, "homebrew_prefix", lambda package: PORTAUDIO_PREFIX)
+        monkeypatch.setattr(MacOS, "homebrew_prefix", staticmethod(lambda package: PORTAUDIO_PREFIX))
 
         assert MacOS().build_flags(machine="arm64") == (
             f"CFLAGS=-I{PORTAUDIO_PREFIX}/include",
@@ -47,13 +47,13 @@ class TestMacOS:
         )
 
     def test_a_build_without_homebrew_s_portaudio_is_refused(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(macos, "homebrew_prefix", lambda package: "")
+        monkeypatch.setattr(MacOS, "homebrew_prefix", staticmethod(lambda package: ""))
 
         with pytest.raises(SystemExit, match="Homebrew"):
             MacOS().build_flags(machine="arm64")
 
     def test_the_cpu_backend_is_the_one_it_runs(self) -> None:
-        assert not MacOS().cuda
+        assert MacOS().cpu_backend_reason == CPU_BACKEND
         assert MacOS().nvidia_smi_locations({}) == ()
 
 
@@ -61,4 +61,4 @@ class TestHomebrewPrefix:
     def test_without_homebrew_the_prefix_is_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(macos.shutil, "which", lambda name: None)
 
-        assert macos.homebrew_prefix(PORTAUDIO) == ""
+        assert MacOS.homebrew_prefix(PORTAUDIO) == ""

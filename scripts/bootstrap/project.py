@@ -14,6 +14,7 @@ NAMED_GROUPS: Final[Tuple[str, ...]] = (DEVELOPMENT_GROUP,)
 ENTRY_SEPARATOR: Final[str] = ":"
 MODULE_SEPARATOR: Final[str] = "."
 MODULE_SUFFIX: Final[str] = ".py"
+TAG_PREFIX: Final[str] = "v"
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,11 @@ class Project:
     def entry_script(self) -> str:
         """The entry module as a path from the repository root, which PyInstaller starts from."""
         return f"{SOURCE_DIRECTORY}/{self.entry_module.replace(MODULE_SEPARATOR, '/')}{MODULE_SUFFIX}"
+
+    @property
+    def tag(self) -> str:
+        """The tag a release of this version is published under, such as ``v0.3.0``."""
+        return f"{TAG_PREFIX}{self.version}"
 
 
 def parse_project(document: Dict[str, Any]) -> Project:

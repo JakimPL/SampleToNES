@@ -5,14 +5,16 @@ from typing import List
 import pytest
 
 from bootstrap.layout import BUNDLES, DISTRIBUTION
-from bootstrap.project import read_project
+from bootstrap.platforms.macos import MacOS
+from bootstrap.platforms.windows import Windows
+from bootstrap.project import TAG_PREFIX, read_project
 from tests.suite.bootstrap import PROJECT_NAME, PROJECT_VERSION, write_project
 from tests.suite.scripts import load_script
 
 archive_bundle = load_script("archive_bundle.py")
 
 LABEL = "windows-x86_64"
-ROOT = f"{PROJECT_NAME}-v{PROJECT_VERSION}-{LABEL}"
+ROOT = f"{PROJECT_NAME}-{TAG_PREFIX}{PROJECT_VERSION}-{LABEL}"
 
 LAUNCHER = "sampletones.exe"
 LIBRARY = "_internal/python312.dll"
@@ -105,30 +107,27 @@ class TestArchiveRoot:
         assert archive_bundle.archive_root(read_project(write_project(tmp_path)), LABEL) == ROOT
 
 
-class TestMain:
-    def test_the_release_bundle_is_archived_into_the_bundles_directory(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
-    ) -> None:
+class TestArchiveRelease:
+    def test_the_release_bundle_is_archived_into_the_bundles_directory(self, tmp_path: Path) -> None:
         root = write_project(tmp_path / "repository")
-        source = root / DISTRIBUTION / PROJECT_NAME
-        source.mkdir(parents=True)
-        (source / LAUNCHER).write_bytes(b"MZ")
-        monkeypatch.setattr(archive_bundle, "repository_root", lambda: root)
+        launcher = Windows().bundling().launcher(root / DISTRIBUTION, name=PROJECT_NAME, release=True)
+        launcher.parent.mkdir(parents=True)
+        launcher.write_bytes(b"MZ")
 
-        assert archive_bundle.main(["--label", LABEL]) == 0
-        assert _names(root / BUNDLES / f"{ROOT}.zip") == [f"{ROOT}/{LAUNCHER}"]
+        assert archive_bundle.archive_release(root, Windows(), label=LABEL) == 0
+        assert _names(root / BUNDLES / f"{ROOT}.zip") == [f"{ROOT}/{launcher.name}"]
 
     def test_a_missing_bundle_is_annotated_and_writes_no_archive(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         root = write_project(tmp_path)
-        monkeypatch.setattr(archive_bundle, "repository_root", lambda: root)
 
-        assert archive_bundle.main(["--label", LABEL]) == 1
+        assert archive_bundle.archive_release(root, Windows(), label=LABEL) == 1
         assert "::error::" in capsys.readouterr().out
         assert not (root / BUNDLES).exists()
+
+    def test_a_system_without_bundles_is_refused(self, tmp_path: Path) -> None:
+        with pytest.raises(SystemExit, match="make setup"):
+            archive_bundle.archive_release(write_project(tmp_path), MacOS(), label=LABEL)

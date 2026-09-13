@@ -39,7 +39,7 @@ def bundle_failures(
 ) -> List[str]:
     """What keeps the release bundle under ``root`` from shipping, each as a line of its own.
 
-    The bundle ships its notices, carries none of the build-time tooling they leave out, and
+    The bundle ships its notices, carries the application and its runtime dependencies alone, and
     offers a launcher that starts.
 
     Args:
