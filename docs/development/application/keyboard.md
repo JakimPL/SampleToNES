@@ -6,7 +6,7 @@ declared and shown. It governs `utils/gui/keyboard/`, `utils/gui/shortcuts/`, th
 `sampletones_config/keybindings/`, and the menu surfaces that print an action. Consult it when
 giving a panel keys of its own, adding a shortcut, or putting an action on a menu.
 
-The design truths it realizes are principles 12 and 14 of [`architecture.md`](architecture.md):
+The design truths it realizes are principles 12 and 14 of [`architecture.md`](../architecture.md):
 one dispatcher owns the keyboard, and an action is declared once. This document holds the
 mechanism behind both.
 
@@ -136,7 +136,7 @@ holds every shipped scheme to the same action set.
 ## Actions
 
 Declaring an action is a chain of four links, and the `shortcut-actions` check holds every one of
-them (see [`architecture.md`](architecture.md) § Enforcement):
+them (see [`architecture.md`](../architecture.md) § Enforcement):
 
 | Link | Where | What it states |
 |------|-------|----------------|

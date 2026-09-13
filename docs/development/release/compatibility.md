@@ -9,9 +9,9 @@ The upgrades live in `sampletones_core/compatibility` and run at the load
 boundary of each format, before deserialization. The formats' own documents
 describe their stored shape and versioning:
 
-- [`formats/reconstructions.md`](../formats/reconstructions.md)
-- [`formats/instruction-libraries.md`](../formats/instruction-libraries.md)
-- [`formats/projects.md`](../formats/projects.md)
+- [`formats/reconstructions.md`](../../formats/reconstructions.md)
+- [`formats/instruction-libraries.md`](../../formats/instruction-libraries.md)
+- [`formats/projects.md`](../../formats/projects.md)
 
 ## Principles
 

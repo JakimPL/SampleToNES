@@ -7,8 +7,8 @@ and both grids — the tracker's pattern rows and the order's frames — carry t
 This document states the rules those gestures follow, how a block leaves the app as text,
 how a selection is drawn, and how a grid's actions reach the menus and the keyboard that
 fire them. The layering they sit in is
-[Architecture](architecture.md); the conventions the code is held to are the
-[coding guidelines](guidelines.md).
+[Architecture](../architecture.md); the conventions the code is held to are the
+[coding guidelines](../guidelines.md).
 
 ## Three vocabularies, kept apart
 
@@ -123,7 +123,7 @@ SampleToNES/1 order rows=1 positions=0..1
 The form and its reading live in `logic/sequencer/clipboard/`, which deals in blocks and
 strings alone; the desktop's clipboard is reached through
 `utils/gui/clipboard.py::TextClipboard`, one more piece of external behavior standing behind
-a protocol ([Architecture](architecture.md), principle 11). The sequencer coordinator wires
+a protocol ([Architecture](../architecture.md), principle 11). The sequencer coordinator wires
 the two.
 
 **A field prints what the grid prints in its cell**, which is what carries the three states
@@ -172,7 +172,7 @@ needs no selection made first, and a menu raised inside a selection acts on the 
 
 One builder means an action added to a grid appears at every door, and the accelerator
 **Edit** prints is the one that grid answers to, since a binding is declared once and every
-reader of it reads that entry ([Architecture](architecture.md), principle 12).
+reader of it reads that entry ([Architecture](../architecture.md), principle 12).
 
 `EditRouter` (`coordinators/edit/`) is the menu-side counterpart of the `KeyRouter` the
 keyboard runs through. Each surface states whether it owns the editing gestures at this

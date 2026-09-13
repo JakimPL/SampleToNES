@@ -6,7 +6,7 @@ are held to the source whole-tree by a pre-commit hook, and both keep in one pla
 otherwise be restated at every use. Consult this document when adding a string the reader sees, or a
 widget another module reaches.
 
-The design truths it realizes are principles 8 and 9 of [`architecture.md`](architecture.md): all
+The design truths it realizes are principles 8 and 9 of [`architecture.md`](../architecture.md): all
 display text comes from `LanguageManager`, and `tags/` holds only DPG identifiers. This document
 holds the grammar behind both.
 

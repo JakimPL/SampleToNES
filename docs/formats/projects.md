@@ -70,7 +70,7 @@ _SampleToNES_ requires that version to match the one it supports and declines an
 incompatible file rather than misreading it. A file written at a version the
 upgrade chain reaches is migrated in memory to the current shape before
 deserialization (see
-[Data compatibility](../development/compatibility.md)). Unknown or extra fields
+[Data compatibility](../development/release/compatibility.md)). Unknown or extra fields
 within a matching version are ignored, which leaves room for the format to grow.
 
 The current format version is 1.1. It gathers the pool under `voices`, each record

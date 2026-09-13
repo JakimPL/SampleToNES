@@ -255,7 +255,7 @@ silences them.
    channels a stem newly reaches, and closing the document empties the card.
 6. **Listening choices stay out of the document.** The ticked set is session
    state, like every choice that shapes what is heard — see
-   [Playback](../development/playback.md). Saving the reconstruction records
+   [Playback](../development/application/playback.md). Saving the reconstruction records
    the assignment, never the selection. So is the banding: collapsing the levels
    changes how the card draws, never what it describes.
 7. **Removing a recording edits the document.** Where a box steers listening,

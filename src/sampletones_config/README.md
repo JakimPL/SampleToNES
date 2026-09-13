@@ -29,4 +29,4 @@ The data package must not import a schema, and a schema package must not inline 
 
 The rules for where a value belongs, how the directories nest, and how each domain is
 loaded are prescriptive and documented in
-[`docs/development/config-organization.md`](../../docs/development/config-organization.md).
+[`docs/development/application/config-organization.md`](../../docs/development/application/config-organization.md).

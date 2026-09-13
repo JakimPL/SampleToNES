@@ -2,7 +2,7 @@
 
 This document describes the design of `sampletones_application` — the GUI front-end of _SampleToNES_. It is prescriptive: it states the contracts each layer must honor, in the form they are enforced, and the rationale behind them. Use it as the reference when deciding where new code belongs.
 
-Concrete classes and modules appear throughout as **examples** that anchor a rule; the rules bind every instance, named or not. Known deviations from these contracts are tracked in `docs/development/bugs-and-todos.md`. Coding-level rules live in `docs/development/guidelines.md`; the undo subsystem has its own design document, `docs/development/undo.md`, the audio transport has `docs/development/playback.md`, the reconstruction browser has `docs/development/browser.md`, the YAML configuration package has `docs/development/config-organization.md`, how a long operation says how far it has come has `docs/development/progress.md`, the keyboard and the actions it reaches have `docs/development/keyboard.md`, the identifier vocabularies have `docs/development/vocabularies.md`, colors and palettes have `docs/development/palette.md`, and the packages the repository divides into have `docs/development/packages.md`.
+Concrete classes and modules appear throughout as **examples** that anchor a rule; the rules bind every instance, named or not. Known deviations from these contracts are tracked in `docs/development/bugs-and-todos.md`. Coding-level rules live in `docs/development/guidelines.md`; the undo subsystem has its own design document, `docs/development/application/undo.md`, the audio transport has `docs/development/application/playback.md`, the reconstruction browser has `docs/development/application/browser.md`, the YAML configuration package has `docs/development/application/config-organization.md`, how a long operation says how far it has come has `docs/development/progress.md`, the keyboard and the actions it reaches have `docs/development/application/keyboard.md`, the identifier vocabularies have `docs/development/application/vocabularies.md`, colors and palettes have `docs/development/application/palette.md`, and the packages the repository divides into have `docs/development/packages.md`.
 
 ---
 
@@ -67,7 +67,7 @@ This decouples widget construction (which happens during `create_panel()`) from 
 
 ### 6. DearPyGui's context belongs to the render thread
 
-The thread that created the DearPyGui context is the only one that may build, configure, or destroy an item, and an item freed from another thread is freed with no Python thread state — a crash rather than a glitch. So work reaching the interface from anywhere else arrives on that thread first, through a crossing named for what it carries: a background result is queued for the render loop to drain, a worker's touch of a widget goes through `on_render_thread`, and a gesture DearPyGui gathered is run at the top of a frame. A crossing that would hold the frames up puts its waiting on a thread of its own, and work that needs a drawn frame names the frame it is picked up on. The four crossings, the helpers that make them, and the hazard each one answers are in [`render-thread.md`](render-thread.md).
+The thread that created the DearPyGui context is the only one that may build, configure, or destroy an item, and an item freed from another thread is freed with no Python thread state — a crash rather than a glitch. So work reaching the interface from anywhere else arrives on that thread first, through a crossing named for what it carries: a background result is queued for the render loop to drain, a worker's touch of a widget goes through `on_render_thread`, and a gesture DearPyGui gathered is run at the top of a frame. A crossing that would hold the frames up puts its waiting on a thread of its own, and work that needs a drawn frame names the frame it is picked up on. The four crossings, the helpers that make them, and the hazard each one answers are in [`render-thread.md`](application/render-thread.md).
 
 ### 7. Construction flows from the composition root
 
@@ -77,11 +77,11 @@ The thread that created the DearPyGui context is the only one that may build, co
 
 ### 8. All display text comes from `LanguageManager`
 
-Every user-visible string is looked up on `LanguageManager` by the key the language file spells — `page.panel.text_type.element` — and resolves at the point of use, so a language change takes effect on the next read. `en.yaml` is a flat map keyed exactly this way, which makes the text system the single source of truth, lets a reader hold a key against the language file by eye, and enables future localization. A lookup states its key in a form the `language-keys` hook can read, so every key the code spells names an entry and every entry the file holds is reached. The grammar, the forms a lookup takes, and where each element enum lives are in [`vocabularies.md`](vocabularies.md). Log messages are developer-facing and exempt.
+Every user-visible string is looked up on `LanguageManager` by the key the language file spells — `page.panel.text_type.element` — and resolves at the point of use, so a language change takes effect on the next read. `en.yaml` is a flat map keyed exactly this way, which makes the text system the single source of truth, lets a reader hold a key against the language file by eye, and enables future localization. A lookup states its key in a form the `language-keys` hook can read, so every key the code spells names an entry and every entry the file holds is reached. The grammar, the forms a lookup takes, and where each element enum lives are in [`vocabularies.md`](application/vocabularies.md). Log messages are developer-facing and exempt.
 
 ### 9. `tags/` holds only DPG identifiers
 
-The `tags/` package contains only DPG widget string identifiers: `TAG_*` whole tags, and `SUF_*`/`PRE_*` fragments that compose into them. Dimensions, colors, timings, and display strings live in YAML configuration loaded at startup (`layout/`). Every tag reaches its final spelling through one composer, and a constant's name states the tag it composes, which the `tag-names` hook holds it to. The composer, the `TagName` spelling, and the rules a fragment follows are in [`vocabularies.md`](vocabularies.md).
+The `tags/` package contains only DPG widget string identifiers: `TAG_*` whole tags, and `SUF_*`/`PRE_*` fragments that compose into them. Dimensions, colors, timings, and display strings live in YAML configuration loaded at startup (`layout/`). Every tag reaches its final spelling through one composer, and a constant's name states the tag it composes, which the `tag-names` hook holds it to. The composer, the `TagName` spelling, and the rules a fragment follows are in [`vocabularies.md`](application/vocabularies.md).
 
 ### 10. Exclusive operations expose a lifecycle-accurate active state
 
@@ -108,17 +108,17 @@ DearPyGui gives every key handler the same global reach, so priority and consume
 
 A binding is declared once and read by everyone who prints or fires it: `ShortcutId` names the action together with the category that answers it, and the scheme under `sampletones_config/keybindings/` decides the combination, so a printed key and the handler behind it stay in step by construction.
 
-The router is constructed at the composition root and injected into every consumer (principle 7). The scopes, the focus query, the modal stack, the key vocabulary, and how a scheme is chosen, layered, and edited are in [`keyboard.md`](keyboard.md).
+The router is constructed at the composition root and injected into every consumer (principle 7). The scopes, the focus query, the modal stack, the key vocabulary, and how a scheme is chosen, layered, and edited are in [`keyboard.md`](application/keyboard.md).
 
 ### 13. A color is a token, resolved where it is drawn
 
-A color is written as a palette token and stays one until it reaches DearPyGui. `BaseColor` (`utils/palette/colors/`) carries what was written, and its `rgba` property answers with the palette active at the moment of the read, so whoever holds the color follows a palette swap. Every annotation names `BaseColor`; the read happens where the value is handed to a widget, and what a consumer keeps is the token. What DearPyGui has already taken a copy of is registered with `PaletteBindings` rather than remembered by whoever set it, so a palette change is one switch. The `palette-colors` hook holds all three rules (see Enforcement); the color forms and the switch itself are in [`palette.md`](palette.md).
+A color is written as a palette token and stays one until it reaches DearPyGui. `BaseColor` (`utils/palette/colors/`) carries what was written, and its `rgba` property answers with the palette active at the moment of the read, so whoever holds the color follows a palette swap. Every annotation names `BaseColor`; the read happens where the value is handed to a widget, and what a consumer keeps is the token. What DearPyGui has already taken a copy of is registered with `PaletteBindings` rather than remembered by whoever set it, so a palette change is one switch. The `palette-colors` hook holds all three rules (see Enforcement); the color forms and the switch itself are in [`palette.md`](application/palette.md).
 
 ### 14. An action is declared once; whoever shows it prints it
 
 An **action** is one `ShortcutId` — the name a key press, a menu item, and a context item all reach one behavior by. Declaring one is a chain of four links: the action and the category that answers it, its keys in every shipped scheme, the one call it makes, and the label the keybindings editor lists it by. The `shortcut-actions` check holds every link (see Enforcement).
 
-A menu item is a view of an action: `ShortcutManager.add_menu_item(shortcut_id, ...)` takes both the accelerator and the call from the action and keeps the item under it, so a rebind re-prints the key already on screen. A set of actions several menus show is stated by one builder belonging to whoever owns them, and each door decides where to print it. A menu whose contents follow a selection states them when it is opened. The four links, the kinds of action that state their call differently, and the mechanism behind a restated menu are in [`keyboard.md`](keyboard.md).
+A menu item is a view of an action: `ShortcutManager.add_menu_item(shortcut_id, ...)` takes both the accelerator and the call from the action and keeps the item under it, so a rebind re-prints the key already on screen. A set of actions several menus show is stated by one builder belonging to whoever owns them, and each door decides where to print it. A menu whose contents follow a selection states them when it is opened. The four links, the kinds of action that state their call differently, and the mechanism behind a restated menu are in [`keyboard.md`](application/keyboard.md).
 
 ---
 
@@ -207,9 +207,9 @@ They read the source as an AST through the source layer in `sampletones_tools/ch
 
 *Logic objects* (e.g. `ConverterLogic`) orchestrate multi-step workflows within a feature area. They subscribe to services and translate service results into view model updates.
 
-`logic/history/` implements the session-scoped undo engine (`HistoryManager`); its invariants and mechanics are documented in `docs/development/undo.md`.
+`logic/history/` implements the session-scoped undo engine (`HistoryManager`); its invariants and mechanics are documented in `docs/development/application/undo.md`.
 
-`logic/reconstruction/browser/` builds the tree of reconstructions both browser tabs render (`BrowserManager`); its pipeline, node vocabulary and shaping rules are documented in `docs/development/browser.md`.
+`logic/reconstruction/browser/` builds the tree of reconstructions both browser tabs render (`BrowserManager`); its pipeline, node vocabulary and shaping rules are documented in `docs/development/application/browser.md`.
 
 **Contracts:**
 - Logic classes produce view models and may therefore import `view_model/`; they import neither `ui/` nor `coordinators/`.
@@ -245,7 +245,7 @@ They read the source as an AST through the source layer in `sampletones_tools/ch
 
 There are two coordinator kinds:
 
-*Domain coordinators* manage a cross-cutting concern that spans the whole application lifecycle — e.g. `ProjectCoordinator` (project file I/O, save confirmations), `PlaybackRouter` (the single transport over the shared output device, acting on the active tab's source or the engaged one — see `docs/development/playback.md`), or `EditRouter` (the single edit surface behind the menu bar's Edit menu, which shows the actions of the grid holding the cursor — see `docs/development/sequencer-blocks.md`).
+*Domain coordinators* manage a cross-cutting concern that spans the whole application lifecycle — e.g. `ProjectCoordinator` (project file I/O, save confirmations), `PlaybackRouter` (the single transport over the shared output device, acting on the active tab's source or the engaged one — see `docs/development/application/playback.md`), or `EditRouter` (the single edit surface behind the menu bar's Edit menu, which shows the actions of the grid holding the cursor — see `docs/development/application/sequencer-blocks.md`).
 
 *Tab coordinators* own everything for one tab: they instantiate its panels, logic objects, and tab-scoped services, wire their callbacks together, and provide `create_tab()` — the single method that builds the DPG widget tree for that tab. Tab coordinators present a narrow public API of intent-level methods (`set_input_path`, `display_reconstruction`, …) and keep their panels and logic objects private.
 

@@ -2,7 +2,7 @@
 
 These rules govern the Python in this repository. They complement
 `docs/development/architecture.md` (ownership and layering) and
-`docs/development/config-organization.md` (configuration).
+`docs/development/application/config-organization.md` (configuration).
 
 ## General
 
@@ -19,7 +19,7 @@ These rules govern the Python in this repository. They complement
 1. Prefer `pathlib.Path` over `os.path`.
 1. Separate function options with `*`, and choose positional arguments intentionally.
 1. Change internal APIs, configs, and data shapes freely; preserve backward compatibility only when the user explicitly asks.
-1. Move a stored data version once per release. The version a build writes between releases is still being written, so a further change to that format extends the upgrade step already pending — one step carries the whole distance from the version the last release shipped. See `compatibility.md`.
+1. Move a stored data version once per release. The version a build writes between releases is still being written, so a further change to that format extends the upgrade step already pending — one step carries the whole distance from the version the last release shipped. See [data compatibility](release/compatibility.md).
 1. Run `pre-commit` on new files after each change.
 
 ## Ownership
@@ -75,6 +75,7 @@ These rules govern the Python in this repository. They complement
 ## Documents
 
 1. A document under `docs/` explains a subsystem to someone about to change it. Open by stating what it governs and when to consult it, so a reader learns in one paragraph whether they are in the right place.
+1. A development document sits beside what it governs. The top of `docs/development/` holds what spans the repository's packages; `application/` holds what governs the graphical application alone, and `release/` what a release ships and keeps compatible. `docs/index.md` lists every document under the heading of its directory.
 1. Lead with principles, then mechanics. A principle is a design truth you reason from; state the principles first, and let concrete conventions and reference tables follow as the way each principle is realized.
 1. Keep principles, conventions, and descriptions distinct. A principle is a reason; a convention is a handy mechanic that serves it; a description is a fact about how something works. A convention promoted to a principle, or a principle buried in a description, misleads the reader about what is load-bearing.
 1. Prefer a few strong principles to many narrow rules. When several rules are facets of one idea, state the idea once and derive them. A growing list of ad-hoc rules signals a principle that has gone unstated.

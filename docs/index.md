@@ -57,25 +57,34 @@ worked examples.
 
 ## Development
 
-The [**development**](development/) section is for contributors.
+The [**development**](development/) section is for contributors. The documents at its top
+span the whole repository; the documents about the graphical application and about a release
+each have a directory of their own.
 
 - [Architecture](development/architecture.md) — the application's layers and the contracts between them.
 - [Package layers](development/packages.md) — the packages the repository divides into, and the order they import each other in.
-- [Undo engine](development/undo.md) — the design of the undo/redo subsystem.
-- [Sequencer blocks](development/sequencer-blocks.md) — the rules copy, cut, paste and delete follow on both grids.
-- [Keyboard and actions](development/keyboard.md) — how a press reaches behavior, and how an action is declared and shown.
-- [Identifier vocabularies](development/vocabularies.md) — the keys display text is looked up by, and the tags DearPyGui knows a widget by.
-- [Colors and palettes](development/palette.md) — how a color is written, composed, and handed to DearPyGui.
-- [The render thread](development/render-thread.md) — how work reaches DearPyGui from another thread, and what each crossing costs.
-- [Playback](development/playback.md) — the audio transport shared by every view, and rendering the song to a file.
-- [Progress](development/progress.md) — how a long operation says how far it has come, in one process and across the pool's workers.
-- [Console player](development/player.md) — the 6502 driver an `.nsf` carries, the codec that fits a song beside it, and how both are verified.
-- [Reconstruction browser](development/browser.md) — how a reconstructions directory becomes the tree both browser tabs render, and what narrows it.
-- [Configuration](development/config-organization.md) — how the YAML configuration package is laid out.
+- [Tooling](development/tooling.md) — the `sampletones` command, the tools package and the bootstrap scripts: what each runs on and what it may import.
 - [Coding guidelines](development/guidelines.md) — conventions for the codebase.
-- [Dependencies](development/dependencies.md) — the libraries _SampleToNES_ builds on.
-- [Tooling](development/tooling.md) — the scripts and the Makefile: what runs on the system interpreter, what runs in the project environment.
+- [Console player](development/player.md) — the 6502 driver an `.nsf` carries, the codec that fits a song beside it, and how both are verified.
+- [Progress](development/progress.md) — how a long operation says how far it has come, in one process and across the pool's workers.
 - [Bugs and to-dos](development/bugs-and-todos.md) — the working ledger of known gaps.
+
+### The application
+
+- [Undo engine](development/application/undo.md) — the design of the undo/redo subsystem.
+- [Sequencer blocks](development/application/sequencer-blocks.md) — the rules copy, cut, paste and delete follow on both grids.
+- [Keyboard and actions](development/application/keyboard.md) — how a press reaches behavior, and how an action is declared and shown.
+- [Identifier vocabularies](development/application/vocabularies.md) — the keys display text is looked up by, and the tags DearPyGui knows a widget by.
+- [Colors and palettes](development/application/palette.md) — how a color is written, composed, and handed to DearPyGui.
+- [The render thread](development/application/render-thread.md) — how work reaches DearPyGui from another thread, and what each crossing costs.
+- [Playback](development/application/playback.md) — the audio transport shared by every view, and rendering the song to a file.
+- [Reconstruction browser](development/application/browser.md) — how a reconstructions directory becomes the tree both browser tabs render, and what narrows it.
+- [Configuration](development/application/config-organization.md) — how the YAML configuration package is laid out.
+
+### Releases
+
+- [Data compatibility](development/release/compatibility.md) — the upgrades that bring a file an older version saved up to the current format as it loads.
+- [Dependencies](development/release/dependencies.md) — the libraries _SampleToNES_ builds on.
 
 ## Glossary
 

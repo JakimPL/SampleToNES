@@ -12,7 +12,7 @@ The core depends on common Python packages:
 * `librosa`
 * `cupy` (optional; enables the GPU backend, with the build selected for your NVIDIA driver)
 
-See [GPU acceleration](../guide/installation.md#gpu-acceleration) for enabling it.
+See [GPU acceleration](../../guide/installation.md#gpu-acceleration) for enabling it.
 
 ## Serialization
 

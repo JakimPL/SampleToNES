@@ -113,7 +113,7 @@ and the tests rebuild the sources and hold the committed image to them wherever 
 installed. `sampletones_tools/player/trace/` holds `RegisterTrace`, what the driver is expected
 to write call by call, which the emulator tests hold the assembled driver to. The application
 ships the binary alone. The toolchain the build needs is described in
-[`dependencies.md`](dependencies.md).
+[`dependencies.md`](release/dependencies.md).
 
 ---
 

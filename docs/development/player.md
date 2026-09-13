@@ -179,4 +179,4 @@ package distributes. A build also holds the linker's own labels against the addr
 exporter states without one, so the committed image and the header describing it cannot
 drift apart.
 
-Installing cc65 is covered in [dependencies](dependencies.md).
+Installing cc65 is covered in [dependencies](release/dependencies.md).

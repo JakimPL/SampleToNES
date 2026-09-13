@@ -4,7 +4,7 @@ This document describes how a color is written, composed, and handed to DearPyGu
 palette change costs. It governs `utils/palette/` and `utils/gui/palette/`. Consult it when adding a
 color the interface draws with, or a shade the interface derives from one.
 
-The design truth it realizes is principle 13 of [`architecture.md`](architecture.md): a color is a
+The design truth it realizes is principle 13 of [`architecture.md`](../architecture.md): a color is a
 token, resolved where it is drawn. This document holds the mechanism.
 
 ---
@@ -37,4 +37,4 @@ DearPyGui holds as table state.
 
 The `palette-colors` hook holds all three rules — an attribute assigned a resolved `rgba`, a theme
 color filled outside the palette bindings, and a hex literal in the shipped configuration outside
-`palettes/` (see [`architecture.md`](architecture.md) § Enforcement).
+`palettes/` (see [`architecture.md`](../architecture.md) § Enforcement).

@@ -6,7 +6,7 @@ its context, and what each crossing costs. It governs `utils/gui/render_thread.p
 a worker thread has something to show, when a gesture rebuilds widgets, or when work needs a frame
 to have been drawn first.
 
-The design truth it realizes is principle 6 of [`architecture.md`](architecture.md): DearPyGui's
+The design truth it realizes is principle 6 of [`architecture.md`](../architecture.md): DearPyGui's
 context belongs to the render thread. This document holds the mechanism.
 
 ---

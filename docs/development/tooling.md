@@ -1,9 +1,10 @@
 # Tooling
 
-This document governs how the repository is run: the `sampletones` command and what it offers,
-the scripts under `scripts/`, and the `Makefile`. Read it before adding a command, a script or a
-make target. Which packages may import which is [package layers](packages.md); the libraries and
-tools the scripts reach for are [dependencies](dependencies.md).
+This document governs how the repository is run: the `sampletones` command and what it offers, the
+tools package behind its developer commands, the scripts under `scripts/`, and the `Makefile`. Read
+it before adding a command, a tool, a script or a make target. Which packages may import which is
+[package layers](packages.md); the libraries and tools the scripts reach for are
+[dependencies](release/dependencies.md).
 
 ## Principles
 
