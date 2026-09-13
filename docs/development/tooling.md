@@ -83,6 +83,7 @@ The developer commands, listed by `sampletones_tools/registry.py` and run as
 |---|---|
 | `calibration [--config FILE] [-o DIR] [--methods LIST] [--perceptual-exponents LIST] [--temporal-weights LIST] [--channels LIST]` | Reconstructs the calibration corpus under every variant of the sweep, scores it with every referee, and writes the reports; without `-o` the run lands in a timestamped directory under Documents/SampleToNES/calibration |
 | `check <name> [options]` | Holds the tree to one of its checks: `import-boundary`, `language-keys`, `palette-colors`, `rendered-literals`, `shortcut-actions`, `tag-names`, `unused-tags`; each is a pre-commit hook, and [architecture](architecture.md#enforcement) says what each holds. Needs a checkout |
+| `codec study [--manifest FILE] [--project FILE]... [--reconstruction PATH]... [-o DIR] [--lengthen SECONDS] [--variants LIST] [--quick]` | Encodes the projects and stems on this machine under every candidate change to the codec and writes the sizes, the times and a verdict per candidate; without `-o` the run lands under Documents/SampleToNES/compression |
 | `driver [--directory DIR]` | Assembles the NES player driver with cc65 and prints the layout the build produced; without `--directory` it writes the driver the package ships, which needs a checkout |
 | `icons [--directory DIR]` | Writes the icon suite from the mark; without `--directory` it writes the icons the package ships, which needs a checkout |
 | `nsf render --directory DIR [--tail SECONDS]` | Renders every exported `.nsf` file in the directory to a wave beside it, through ffmpeg's libgme demuxer |
@@ -138,11 +139,6 @@ interpreter version check (`interpreter.py`), running a command and holding it t
 (`processes.py`), a run of named passes that reports every failure at once (`passes.py`), the
 build environment and the installs into it (`venv_build.py`), the preflight of the build
 interpreter (`preflight.py`), and the platforms (`platforms/`).
-
-## The tool scripts
-
-`compression_study.py` imports the project's packages and runs inside its environment, from the
-make target that names it.
 
 ## Who governs what
 

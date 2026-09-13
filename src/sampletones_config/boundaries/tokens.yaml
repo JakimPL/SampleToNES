@@ -20,27 +20,6 @@
     only the layout primitives own depth (TabColumns binds the column, card() binds the card),
     and a panel binds only semantic themes
 
-- root: sampletones_core
-  pattern: "**/*.py"
-  forbidden: '\bcodec_study\b'
-  message: >-
-    sampletones_core is shipped code; the compression study harness (scripts/codec_study) stays
-    outside it, and a finding it earns lands as production code of its own
-
-- root: sampletones_player
-  pattern: "**/*.py"
-  forbidden: '\bcodec_study\b'
-  message: >-
-    sampletones_player is shipped code; the compression study harness (scripts/codec_study) stays
-    outside it, and a finding it earns lands as production code of its own
-
-- root: sampletones_shared
-  pattern: "**/*.py"
-  forbidden: '\bcodec_study\b'
-  message: >-
-    sampletones_shared is shipped code; the compression study harness (scripts/codec_study) stays
-    outside it, and a finding it earns lands as production code of its own
-
 - root: sampletones_application
   pattern: "**/*.py"
   forbidden: '\bsampletones_tools\b'

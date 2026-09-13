@@ -1,5 +1,5 @@
 .PHONY: help setup install system-deps build release run clean pre-commit test benchmarks lint format \
-	ftm-samples nsf-samples compression-report compression-study
+	ftm-samples nsf-samples compression-report
 
 ifeq ($(OS),Windows_NT)
 ifeq ($(MSYSTEM),)
@@ -33,7 +33,6 @@ help:
 	@echo $(Q)  make ftm-samples - Emit example .ftm files to build/ftm via the integration suite$(Q)
 	@echo $(Q)  make nsf-samples - Emit example .nsf files to build/nsf via the integration suite$(Q)
 	@echo $(Q)  make compression-report - Measure the song codec into build/compression$(Q)
-	@echo $(Q)  make compression-study - Measure the song codec over the projects and stems on this machine; the report lands in Documents/SampleToNES/compression (ARGS=--quick for a short run)$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
 	@echo $(Q)  make lint        - Run mypy and pylint (ARGS=--mypy or ARGS=--pylint for one of them)$(Q)
 	@echo $(Q)  make format      - Auto-format code (isort, black)$(Q)
@@ -87,6 +86,3 @@ nsf-samples:
 compression-report: export SAMPLETONES_COMPRESSION_OUTPUT_DIR := build/compression
 compression-report:
 	uv run python -m pytest tests/integration/nsf/test_compression_report.py
-
-compression-study:
-	uv run scripts/compression_study.py $(ARGS)
