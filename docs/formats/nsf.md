@@ -16,7 +16,7 @@ and the song that driver plays.
 
 Every constant named here has a counterpart under
 `sampletones_player/specification/`, and the assembly reads the same figures from
-`driver/assembly/include/song.inc`. The two are held against each other by a test, so a
+`sampletones_tools/player/assembly/include/song.inc`. The two are held against each other by a test, so a
 change made in one file and forgotten in the other is reported by name.
 
 ## A. The file

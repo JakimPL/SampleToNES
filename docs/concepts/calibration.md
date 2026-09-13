@@ -6,13 +6,13 @@ spectral/temporal blend, the Viterbi transition weights — and their best value
 an empirical question. **Calibration** answers it with a repeatable experiment:
 reconstruct a fixed probe corpus under several candidate configurations and let
 independent judges score the results, so configuration decisions rest on measured
-quality and targeted listening. The harness lives in `sampletones_core.calibration`
-and runs as a script:
+quality and targeted listening. The harness lives in `sampletones_tools.calibration`
+and runs as a developer command from a checkout:
 
 ```
-python scripts/calibration.py [--config <base>] [--methods fft,cqt]
+uv run sampletones calibration [--config <base>] [--methods fft,cqt]
     [--perceptual-exponents 0.5,1.0] [--temporal-weights 0.1,0.3]
-    [--channels pulse1,triangle,noise]
+    [--channels pulse1,triangle,noise] [--output <directory>]
 ```
 
 The base configuration comes from `--config` when given; otherwise the saved
@@ -28,10 +28,10 @@ It has three moving parts:
   signals in six categories: steady tones across the pitch range, pulse timbres
   of several duty cycles, white and dark noise, tone-plus-noise mixes,
   percussive transients (snare, kick, pluck) and a crescendo probing the dynamic
-  range. Each probe is a `sampletones_synthesis` voice — oscillators, envelopes
+  range. Each probe is a `sampletones_tools.synthesis` voice — oscillators, envelopes
   and filters composed from one shared, exactly-rendered configuration
   vocabulary — built from the probe families in
-  `sampletones_config/calibration/corpus.yaml`. Each category isolates one kind of decision the criterion must get
+  `sampletones_tools/calibration/config/corpus.yaml`. Each category isolates one kind of decision the criterion must get
   right — pitch, timbre, noise balance, attack sharpness, level tracking — and
   the fixed seed makes every run bit-identical, so scores are comparable across
   runs and code changes.
@@ -51,7 +51,7 @@ It has three moving parts:
   resolves with a single frame length. Band energies are floored at a fixed
   audibility range below the reference's loudest band, so the score reflects
   audible content and holds steady under a common gain. Its tuning is a
-  `RefereeConfig` loaded from `sampletones_config/calibration/referee.yaml`.
+  `RefereeConfig` loaded from `sampletones_tools/calibration/config/referee.yaml`.
   When the [zimtohrli](https://github.com/google/zimtohrli) binary is installed
   it joins automatically as a second, psychoacoustic referee.
 

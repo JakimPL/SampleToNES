@@ -406,5 +406,5 @@ Package map:
 | audio I/O and level             | `sampletones_core.audio`                             |
 | tracker export                  | `sampletones_core.exporters`                         |
 | pitch refinement                | `sampletones_core.reconstructions.reconstructor.refinement` |
-| criterion calibration           | `sampletones_core.calibration`                       |
-| analytic waveform synthesis     | `sampletones_synthesis`                              |
+| criterion calibration           | `sampletones_tools.calibration`                      |
+| analytic waveform synthesis     | `sampletones_tools.synthesis`                        |

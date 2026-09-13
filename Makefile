@@ -1,173 +1,70 @@
-.PHONY: help setup install build release system-deps run clean pre-commit test benchmarks \
-	ftm-samples nsf-samples nsf-render compression-report icons player check-import-boundary check-tag-names check-unused-tags check-rendered-literals \
-	check-language-keys check-palette-colors check-shortcut-actions calibration lint pylint mypy format
+.PHONY: help setup install system-deps build release run clean pre-commit test test-docs benchmarks lint format
 
 ifeq ($(OS),Windows_NT)
-ifeq ($(MSYSTEM),)
-UNAME_S := Windows
+PYTHON := python
 else
-UNAME_S := $(shell uname -s)
-endif
-else
-UNAME_S := $(shell uname -s)
+PYTHON := python3
 endif
 
-ifeq ($(UNAME_S),Windows)
-	SCRIPTS_DIR := scripts/windows
-	SCRIPT_EXT := .bat
-	RUN_SCRIPT :=
-	BUILD_SCRIPT := install.bat
-	EXECUTABLE := sampletones.exe
-	PYTHON := python
-else
-	SCRIPTS_DIR := scripts/linux
-	SCRIPT_EXT := .sh
-	RUN_SCRIPT := bash
-	BUILD_SCRIPT := ./install.sh
-	EXECUTABLE := sampletones
-	PYTHON := python3
-endif
-
-ifeq ($(UNAME_S),Windows)
-script = $(subst /,\,$(SCRIPTS_DIR)/$(1)$(SCRIPT_EXT))
-else
-script = $(RUN_SCRIPT) $(SCRIPTS_DIR)/$(1)$(SCRIPT_EXT)
-endif
-
-ifeq ($(UNAME_S),Windows)
+ifeq ($(OS)$(MSYSTEM),Windows_NT)
 Q :=
 else
 Q := "
 endif
 
-BUILD_COMMAND := $(RUN_SCRIPT) $(BUILD_SCRIPT)
-RELEASE_COMMAND := $(RUN_SCRIPT) $(BUILD_SCRIPT) --release
-SYSTEM_DEPS_COMMAND := bash scripts/linux/build/dependencies.sh
-SETUP_ENV :=
-
-ifeq ($(UNAME_S),Darwin)
-	MACOS_NO_BUNDLE := bash scripts/macos/build/no_bundle.sh
-	BUILD_COMMAND := $(MACOS_NO_BUNDLE) 'make build'
-	RELEASE_COMMAND := $(MACOS_NO_BUNDLE) 'make release'
-	SYSTEM_DEPS_COMMAND := bash scripts/macos/build/dependencies.sh
-	SETUP_ENV := ARCHFLAGS="-arch $(shell uname -m)"
-endif
-
 GPU ?= auto
-GPU_EXTRA :=
-ifeq ($(filter 0,$(GPU)),)
-ifneq ($(filter setup,$(MAKECMDGOALS)),)
-	GPU_EXTRA := $(shell $(PYTHON) scripts/detect_cuda.py --extra)
-endif
-endif
 
 help:
 	@echo $(Q)Available targets:$(Q)
 	@echo $(Q)  make setup       - Set up development environment (uv); GPU auto-detected, GPU=0 forces CPU$(Q)
 	@echo $(Q)  make pre-commit  - Install pre-commit hooks$(Q)
-	@echo $(Q)  make system-deps - Install system packages required to build and run (Debian-based, or Homebrew on macOS)$(Q)
+	@echo $(Q)  make system-deps - Install system packages required to build and run (apt on Debian-based Linux, Homebrew on macOS)$(Q)
 	@echo $(Q)  make build       - Compile standalone executable (development deployment config: DEBUG, strict history)$(Q)
 	@echo $(Q)  make release     - Compile standalone executable with the release deployment config (INFO, self-healing history)$(Q)
-	@echo $(Q)  make test        - Run unit tests with coverage$(Q)
-	@echo $(Q)  make benchmarks  - Run the measured-duration suite on its own$(Q)
-	@echo $(Q)  make ftm-samples - Emit example .ftm files to build/ftm via the integration suite$(Q)
-	@echo $(Q)  make nsf-samples - Emit example .nsf files to build/nsf via the integration suite$(Q)
-	@echo $(Q)  make nsf-render  - Render the .nsf files in build/nsf to waves with ffmpeg$(Q)
-	@echo $(Q)  make compression-report - Measure the song codec into build/compression$(Q)
-	@echo $(Q)  make icons       - Generate the icon suite into src/sampletones_assets/icons$(Q)
-	@echo $(Q)  make player      - Assemble the NES player driver with cc65$(Q)
-	@echo $(Q)  make calibration - Score the reconstruction corpus; the report lands in Documents/SampleToNES/calibration$(Q)
+	@echo $(Q)  make test        - Run the test suite with coverage$(Q)
+	@echo $(Q)  make test-docs   - Run the doctests$(Q)
+	@echo $(Q)  make benchmarks  - Run the measured-duration suite$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
-	@echo $(Q)  make lint        - Run linting (pylint, mypy)$(Q)
+	@echo $(Q)  make lint        - Run mypy and pylint (ARGS=--mypy or ARGS=--pylint for one of them)$(Q)
 	@echo $(Q)  make format      - Auto-format code (isort, black)$(Q)
 	@echo $(Q)  make run         - Run SampleToNES application$(Q)
 
 setup:
-	$(SETUP_ENV) uv sync --group dev $(if $(GPU_EXTRA),--extra $(GPU_EXTRA),)
-	$(MAKE) icons
-	$(SETUP_ENV) uv tool install --force $(if $(GPU_EXTRA),".[$(GPU_EXTRA)]",.)
+	$(PYTHON) scripts/setup_environment.py --gpu $(GPU)
 
 install:
 	$(MAKE) setup
 	$(MAKE) build
 
 build:
-	$(BUILD_COMMAND)
+	$(PYTHON) scripts/bundle.py
 
 release:
-	$(RELEASE_COMMAND)
+	$(PYTHON) scripts/bundle.py --release
 
 system-deps:
-	$(SYSTEM_DEPS_COMMAND)
+	$(PYTHON) scripts/system_dependencies.py
 
 run:
 	uv run sampletones
 
 clean:
-	$(call script,build/clean)
+	$(PYTHON) scripts/clean.py
 
 pre-commit:
-	$(call script,dev/pre_commit)
+	$(PYTHON) scripts/hooks.py
 
 test:
-	$(call script,dev/tests)
+	$(PYTHON) scripts/run_tests.py suite
+
+test-docs:
+	$(PYTHON) scripts/run_tests.py doctests
 
 benchmarks:
-	uv run python -m pytest tests/benchmarks --no-cov -s
-
-ftm-samples: export SAMPLETONES_FTM_OUTPUT_DIR := build/ftm
-ftm-samples:
-	uv run python -m pytest tests/integration/famitracker
-
-nsf-samples: export SAMPLETONES_NSF_OUTPUT_DIR := build/nsf
-nsf-samples:
-	uv run python -m pytest tests/integration/nsf
-
-nsf-render: nsf-samples
-	uv run scripts/nsf_render.py
-
-compression-report: export SAMPLETONES_COMPRESSION_OUTPUT_DIR := build/compression
-compression-report:
-	uv run python -m pytest tests/integration/nsf/test_compression_report.py
-
-icons:
-	uv run --group assets python scripts/assets/icons.py
-
-player:
-	uv run scripts/player.py
-
-check-import-boundary:
-	uv run scripts/checks/import_boundary.py --all
-
-check-tag-names:
-	uv run scripts/checks/tag_names.py --all
-
-check-unused-tags:
-	uv run scripts/checks/unused_tags.py
-
-check-rendered-literals:
-	uv run scripts/checks/rendered_literals.py
-
-check-language-keys:
-	uv run scripts/checks/language_keys.py
-
-check-palette-colors:
-	uv run scripts/checks/palette_colors.py
-
-check-shortcut-actions:
-	uv run scripts/checks/shortcut_actions.py
-
-calibration:
-	uv run scripts/calibration.py
+	$(PYTHON) scripts/run_tests.py benchmarks
 
 lint:
-	$(call script,dev/lint)
-
-pylint:
-	$(call script,dev/pylint)
-
-mypy:
-	$(call script,dev/mypy)
+	$(PYTHON) scripts/lint.py $(ARGS)
 
 format:
-	$(call script,dev/format)
+	$(PYTHON) scripts/formatting.py

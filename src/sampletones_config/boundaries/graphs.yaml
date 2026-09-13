@@ -2,12 +2,12 @@ packages:
   layers:
     sampletones_shared: []
     sampletones_config: []
-    sampletones_assets: [sampletones_shared]
-    sampletones_synthesis: [sampletones_shared]
-    sampletones_core: [sampletones_shared, sampletones_synthesis]
+    sampletones_assets: []
+    sampletones_core: [sampletones_shared]
     sampletones_player: [sampletones_shared, sampletones_core]
     sampletones_application: [sampletones_shared, sampletones_core, sampletones_player]
-    sampletones: [sampletones_shared, sampletones_core, sampletones_application]
+    sampletones_tools: [sampletones_shared, sampletones_core, sampletones_player, sampletones_application]
+    sampletones: [sampletones_shared, sampletones_core, sampletones_application, sampletones_tools]
 
 player:
   root: sampletones_player
@@ -20,8 +20,6 @@ player:
     compression: [specification, registers]
     song.py: [clock, registers, compression]
     builder.py: [song.py, registers, clock, compression]
-    trace: [song.py, specification]
     nsf: [song.py, specification, compression, driver]
     export.py: [builder.py, nsf, driver, compression]
     driver: [specification]
-    driver/assembler: [driver, specification]

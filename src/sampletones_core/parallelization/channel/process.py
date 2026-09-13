@@ -54,7 +54,7 @@ class ProcessProgressChannel:
 
     def __init__(self) -> None:
         self._manager: SyncManager = multiprocessing.get_context(SPAWN_CONTEXT).Manager()
-        self._reports: "queue.Queue[TaskReport]" = self._manager.Queue()
+        self._reports: queue.Queue[TaskReport] = self._manager.Queue()
         self._withdrawn: threading.Event = self._manager.Event()
 
     def reporter(self, index: int) -> StepReporter:

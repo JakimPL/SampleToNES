@@ -24,7 +24,7 @@ SOFTWARE.
 
 The MIT license above covers the SampleToNES source code and the application
 icons under `src/sampletones_assets/icons/`, which are drawn from the mark
-declared in `src/sampletones_assets/mark/`.
+declared in `src/sampletones_tools/assets/mark/`.
 
 Font files bundled under `src/sampletones_assets/fonts/` are the work of third
 parties and remain under their own licenses (SIL Open Font License 1.1 and the

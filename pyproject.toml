@@ -99,10 +99,6 @@ build-backend = "hatchling.build"
 conflicts = [[{ extra = "gpu" }, { extra = "gpu-cuda11" }]]
 
 [tool.hatch.build.targets.wheel]
-exclude = [
-    "src/sampletones_player/driver/assembler",
-    "src/sampletones_player/driver/assembly",
-]
 packages = [
     "src/sampletones",
     "src/sampletones_application",
@@ -111,7 +107,7 @@ packages = [
     "src/sampletones_core",
     "src/sampletones_player",
     "src/sampletones_shared",
-    "src/sampletones_synthesis",
+    "src/sampletones_tools",
 ]
 
 [tool.black]
@@ -122,6 +118,7 @@ target-version = ["py312"]
 profile = "black"
 line_length = 120
 known_first_party = [
+    "bootstrap",
     "sampletones",
     "sampletones_application",
     "sampletones_assets",
@@ -129,12 +126,12 @@ known_first_party = [
     "sampletones_core",
     "sampletones_player",
     "sampletones_shared",
-    "sampletones_synthesis",
+    "sampletones_tools",
 ]
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
-pythonpath = ["."]
+pythonpath = [".", "scripts"]
 
 [tool.coverage.run]
 source = [
@@ -143,7 +140,7 @@ source = [
     "sampletones_core",
     "sampletones_player",
     "sampletones_shared",
-    "sampletones_synthesis",
+    "sampletones_tools",
 ]
 
 [tool.coverage.report]
@@ -160,7 +157,8 @@ files = [
     "src/sampletones_core",
     "src/sampletones_player",
     "src/sampletones_shared",
-    "src/sampletones_synthesis",
+    "src/sampletones_tools",
+    "scripts",
 ]
 exclude = ["tests"]
 disallow_subclassing_any = true

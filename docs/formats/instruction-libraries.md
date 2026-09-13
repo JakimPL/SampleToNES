@@ -8,7 +8,7 @@ it is built, see [Instruction library](../concepts/instruction-library.md); this
 page documents the file.
 
 Libraries are generated from the _Instructions_ tab (or with
-`sampletones --generate`) and stored in the documents folder.
+`sampletones library`) and stored in the documents folder.
 
 ## Contents
 

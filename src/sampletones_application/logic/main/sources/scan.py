@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import Callable, Final, List, Optional, Tuple
 
 from sampletones_application.utils.parallelization.thread import concurrent
-from sampletones_core.reconstructions.converter.paths import is_audio_file, walk_entries
+from sampletones_core.reconstructions.converter.paths import walk_entries
+from sampletones_shared.paths.extensions import is_audio_file
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 

@@ -45,6 +45,7 @@ from sampletones_core.formats.bitphase.specification.patterns import (
 )
 from sampletones_core.project.project import Project
 from sampletones_core.timing import Meter, RowRate, calculate_groove
+from sampletones_tools.samples.bitphase import GROOVE_TEMPO, at_tempo
 from tests.suite.bitphase import (
     BITPHASE_NO_EFFECTS,
     LoadedEffect,
@@ -56,7 +57,6 @@ from tests.suite.bitphase import (
 )
 
 EXPECTED_INSTRUMENT_COUNT: Final[int] = 5
-GROOVE_TEMPO: Final[int] = 210
 PLAYED_CHANNELS: Final[List[int]] = [
     int(ChannelIndex.SQUARE1),
     int(ChannelIndex.SQUARE2),
@@ -73,17 +73,6 @@ def every_row(document: LoadedProject) -> List[LoadedRow]:
 def note_index(note: LoadedNote) -> int:
     """The tuning-table index Bitphase's pattern processor reads back from a note cell."""
     return note.name - int(NoteName.C) + (note.octave - FIRST_OCTAVE) * NOTE_RANGE
-
-
-def at_tempo(project: Project, tempo: int) -> Project:
-    """The same project played at another tempo, leaving the session-wide fixture as it is."""
-    return Project(
-        metadata=project.metadata,
-        info=project.info,
-        settings=project.settings.model_copy(update={"tempo": tempo}),
-        voices=project.voices,
-        song=project.song,
-    )
 
 
 @pytest.fixture

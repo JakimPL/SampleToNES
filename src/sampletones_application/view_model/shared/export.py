@@ -79,6 +79,14 @@ class SongExportViewModel(BaseModel, frozen=True):
         return not self.traveling
 
     @property
+    def figure_visible(self) -> bool:
+        """Whether the figure stands beside the turning indicator, which words to state earn.
+
+        A stage with nothing to state leaves the indicator alone, centered on its own width.
+        """
+        return bool(self.figure)
+
+    @property
     def progress_overlay(self) -> str:
         """The percentage label rendered over the progress bar, derived from the fraction."""
         return format_percent(self.progress)

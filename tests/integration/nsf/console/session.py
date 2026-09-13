@@ -4,7 +4,7 @@ from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.file import nsf_to_bytes
 from sampletones_player.nsf.information import NSFInformation
 from sampletones_player.song import Song
-from sampletones_player.trace.trace import RegisterTrace
+from sampletones_tools.player.trace.trace import RegisterTrace
 from tests.integration.nsf.console.machine import Console
 
 TRAILING_CALLS: Final[int] = 2

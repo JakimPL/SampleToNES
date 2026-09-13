@@ -1,11 +1,11 @@
 # SampleToNES documentation
 
-_SampleToNES_ approximates an audio sample using only the sound channels of the
-NES's 2A03 chip — two pulse waves, a triangle and noise — and lets you arrange
-the results into a song and export them to [FamiTracker](glossary.md#famitracker),
-to [Bitphase](glossary.md#bitphase), or as an `.nsf` program the console itself plays.
-This is the documentation for using it, understanding how it works, and building
-on it.
+_SampleToNES_ rebuilds an audio sample from the sound channels of the NES's 2A03 chip: two pulse
+waves, a triangle and noise. You can arrange the results into a song. You can export them to
+[FamiTracker](glossary.md#famitracker), to [Bitphase](glossary.md#bitphase), or as an `.nsf` program
+the NES plays.
+
+This documentation explains how to use the app, how it works, and how to build on it.
 
 The sections below are grouped by what you want to do. They assume different
 starting points: the guide needs no prior knowledge, the concepts and formats
@@ -16,7 +16,7 @@ sections are written for programmers.
 
 The [**guide**](guide/) walks through the application from installation onward.
 
-- [Installation](guide/installation.md) — the standalone build, running from source, and GPU acceleration.
+- [Installation](guide/installation.md) — a release download, PyPI, running from source, and GPU acceleration.
 - [Getting started](guide/getting-started.md) — your first reconstruction and your first song.
 - [The interface](guide/interface.md) — the four tabs, the menus, and the keyboard shortcuts.
 - [Converting audio](guide/converting.md) — the Main tab: gathering recordings, choosing channels, and running a conversion.
@@ -57,24 +57,34 @@ worked examples.
 
 ## Development
 
-The [**development**](development/) section is for contributors.
+The [**development**](development/) section is for contributors. The documents at its top cover
+the whole repository. The documents about the graphical application and about releases have
+directories of their own.
 
 - [Architecture](development/architecture.md) — the application's layers and the contracts between them.
 - [Package layers](development/packages.md) — the packages the repository divides into, and the order they import each other in.
-- [Undo engine](development/undo.md) — the design of the undo/redo subsystem.
-- [Sequencer blocks](development/sequencer-blocks.md) — the rules copy, cut, paste and delete follow on both grids.
-- [Keyboard and actions](development/keyboard.md) — how a press reaches behavior, and how an action is declared and shown.
-- [Identifier vocabularies](development/vocabularies.md) — the keys display text is looked up by, and the tags DearPyGui knows a widget by.
-- [Colors and palettes](development/palette.md) — how a color is written, composed, and handed to DearPyGui.
-- [The render thread](development/render-thread.md) — how work reaches DearPyGui from another thread, and what each crossing costs.
-- [Playback](development/playback.md) — the audio transport shared by every view, and rendering the song to a file.
-- [Progress](development/progress.md) — how a long operation says how far it has come, in one process and across the pool's workers.
-- [Console player](development/player.md) — the 6502 driver an `.nsf` carries, the codec that fits a song beside it, and how both are verified.
-- [Reconstruction browser](development/browser.md) — how a reconstructions directory becomes the tree both browser tabs render, and what narrows it.
-- [Configuration](development/config-organization.md) — how the YAML configuration package is laid out.
+- [Tooling](development/tooling.md) — the `sampletones` command, the tools package and the bootstrap scripts: what each runs on and what it may import.
 - [Coding guidelines](development/guidelines.md) — conventions for the codebase.
-- [Dependencies](development/dependencies.md) — the libraries _SampleToNES_ builds on.
+- [Console player](development/player.md) — the 6502 driver an `.nsf` carries, the codec that fits a song beside it, and how both are verified.
+- [Progress](development/progress.md) — how a long operation reports its progress, in one process and across the pool's workers.
 - [Bugs and to-dos](development/bugs-and-todos.md) — the working ledger of known gaps.
+
+### The application
+
+- [Undo engine](development/application/undo.md) — the design of the undo/redo subsystem.
+- [Sequencer blocks](development/application/sequencer-blocks.md) — the rules copy, cut, paste and delete follow on both grids.
+- [Keyboard and actions](development/application/keyboard.md) — how a press reaches behavior, and how an action is declared and shown.
+- [Identifier vocabularies](development/application/vocabularies.md) — the keys display text is looked up by, and the tags DearPyGui knows a widget by.
+- [Colors and palettes](development/application/palette.md) — how a color is written, composed, and handed to DearPyGui.
+- [The render thread](development/application/render-thread.md) — how work reaches DearPyGui from another thread, and what each crossing costs.
+- [Playback](development/application/playback.md) — the audio transport shared by every view, and rendering the song to a file.
+- [Reconstruction browser](development/application/browser.md) — how a reconstructions directory becomes the tree both browser tabs render, and what narrows it.
+- [Configuration](development/application/config-organization.md) — how the YAML configuration package is laid out.
+
+### Releases
+
+- [Data compatibility](development/release/compatibility.md) — how a file saved by an older version is upgraded to the current format when it loads.
+- [Dependencies](development/release/dependencies.md) — the libraries _SampleToNES_ builds on.
 
 ## Glossary
 

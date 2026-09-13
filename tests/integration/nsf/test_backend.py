@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Final, List, Optional
+from typing import Dict, Final, List
 
 import numpy as np
 import pytest
@@ -36,7 +36,6 @@ from tests.integration.nsf.console.session import (
     captured_run,
     play_calls_reaching,
 )
-from tests.integration.output import resolve_output_path
 
 ChannelInstructions = Dict[ChannelName, List[InstructionUnion]]
 
@@ -204,7 +203,6 @@ def project_song(integration_project: Project) -> Song:
 def project_file(
     backend: NSFBackend,
     integration_project: Project,
-    nsf_output_dir: Optional[Path],
     tmp_path_factory: pytest.TempPathFactory,
 ) -> Path:
     """The whole arrangement written through the backend the application registers.
@@ -212,11 +210,7 @@ def project_file(
     It joins the samples in the emitted artifacts, so the arrangement can be listened to
     beside the instruments it is built from.
     """
-    destination = resolve_output_path(
-        nsf_output_dir,
-        tmp_path_factory.mktemp("nsf-project"),
-        f"{PROJECT_ARTIFACT}{EXT_FILE_NSF}",
-    )
+    destination = tmp_path_factory.mktemp("nsf-project") / f"{PROJECT_ARTIFACT}{EXT_FILE_NSF}"
     backend.write_project(destination, ProjectExport(project=integration_project))
     return destination
 

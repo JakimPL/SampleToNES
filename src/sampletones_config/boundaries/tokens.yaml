@@ -19,3 +19,38 @@
     ui/panels must not bind a structural depth theme (TAG_GLOBAL_THEME_PANEL_SURFACE/GROUND);
     only the layout primitives own depth (TabColumns binds the column, card() binds the card),
     and a panel binds only semantic themes
+
+- root: sampletones_application
+  pattern: "**/*.py"
+  forbidden: '\bsampletones_tools\b'
+  message: >-
+    sampletones_application is shipped code and names no tool; the command line is the one importer of
+    sampletones_tools
+
+- root: sampletones_core
+  pattern: "**/*.py"
+  forbidden: '\bsampletones_tools\b'
+  message: >-
+    sampletones_core is shipped code and names no tool; the command line is the one importer of
+    sampletones_tools
+
+- root: sampletones_player
+  pattern: "**/*.py"
+  forbidden: '\bsampletones_tools\b'
+  message: >-
+    sampletones_player is shipped code and names no tool; the command line is the one importer of
+    sampletones_tools
+
+- root: sampletones_shared
+  pattern: "**/*.py"
+  forbidden: '\bsampletones_tools\b'
+  message: >-
+    sampletones_shared is shipped code and names no tool; the command line is the one importer of
+    sampletones_tools
+
+- root: sampletones_assets
+  pattern: "**/*.py"
+  forbidden: '\bsampletones_tools\b'
+  message: >-
+    sampletones_assets is shipped code and names no tool; the command line is the one importer of
+    sampletones_tools

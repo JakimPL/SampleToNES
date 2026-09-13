@@ -3,8 +3,8 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Iterable, Set
 
-from sampletones_shared.meta.source.bindings.scopes import Scope
-from sampletones_shared.meta.source.modules import source_paths
+from sampletones_tools.checks.source.bindings.scopes import Scope
+from sampletones_tools.checks.source.modules import source_paths
 
 
 def parse_source(source: str) -> ast.Module:

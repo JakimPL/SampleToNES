@@ -112,7 +112,7 @@ CUDA components from their publishers straight to your machine.
 
 ## Build-time tooling
 
-The application icons are drawn by `sampletones_assets.mark` and rasterized with
+The application icons are drawn by `sampletones_tools.assets.mark` and rasterized with
 [Pillow](https://pypi.org/project/Pillow/), which is under the
 [MIT-CMU license](https://github.com/python-pillow/Pillow/blob/main/LICENSE). Pillow belongs
 to the `assets` dependency group alone, so `pip`/`uv` installs it on the machine that

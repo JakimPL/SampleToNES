@@ -8,8 +8,8 @@ programmatic role is to be importable so consumers can resolve its directory
 The schema that validates each file lives in the **consuming** package:
 
 - `sampletones_application` — layout, theme, palettes, language, behavior, deployment.
-- `sampletones_core` — calibration.
-- `sampletones_shared` — the import boundaries and the loader primitives.
+- `sampletones_tools` — the import boundaries.
+- `sampletones_shared` — the loader primitives.
 
 The data package must not import a schema, and a schema package must not inline data.
 
@@ -19,8 +19,7 @@ The data package must not import a schema, and a schema package must not inline 
 |-----------|---------|--------------|
 | `application/` | Deployment-time environment knobs | `DeploymentConfig` |
 | `behavior/` | Non-visual runtime behavior | `BehaviorConfig` |
-| `boundaries/` | The imports the source tree is held to | `ImportBoundaryRules` |
-| `calibration/` | DSP calibration tuning | `CorpusConfig`, `RefereeConfig` |
+| `boundaries/` | The imports the source and scripts trees are held to | `ImportBoundaryRules` |
 | `keybindings/` | The key combinations each named action answers | `ShortcutScheme` |
 | `lang/` | Interface strings (i18n) | `LanguageManager` |
 | `layout/` | UI geometry, dimensions, fonts | `LayoutConfig` |
@@ -29,4 +28,4 @@ The data package must not import a schema, and a schema package must not inline 
 
 The rules for where a value belongs, how the directories nest, and how each domain is
 loaded are prescriptive and documented in
-[`docs/development/config-organization.md`](../../docs/development/config-organization.md).
+[`docs/development/application/config-organization.md`](../../docs/development/application/config-organization.md).

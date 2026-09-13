@@ -35,7 +35,7 @@ repos:
     hooks:
       - id: import-boundary
         name: import boundary
-        entry: uv run scripts/checks/import_boundary.py --all
+        entry: uv run sampletones check import-boundary --all
         language: system
         types: [python]
         pass_filenames: false
@@ -43,7 +43,7 @@ repos:
 
       - id: unused-tags
         name: unused tags
-        entry: uv run scripts/checks/unused_tags.py
+        entry: uv run sampletones check unused-tags
         language: system
         types: [python]
         pass_filenames: false
@@ -51,7 +51,7 @@ repos:
 
       - id: rendered-literals
         name: rendered literals
-        entry: uv run scripts/checks/rendered_literals.py
+        entry: uv run sampletones check rendered-literals
         language: system
         files: ^tests/.*\.py$
         pass_filenames: false
@@ -59,7 +59,7 @@ repos:
 
       - id: tag-names
         name: tag names
-        entry: uv run scripts/checks/tag_names.py --all
+        entry: uv run sampletones check tag-names --all
         language: system
         types: [python]
         pass_filenames: false
@@ -67,7 +67,7 @@ repos:
 
       - id: palette-colors
         name: palette colors
-        entry: uv run scripts/checks/palette_colors.py
+        entry: uv run sampletones check palette-colors
         language: system
         files: (^src/sampletones_application/.*\.py|^src/sampletones_config/.*\.yaml)$
         pass_filenames: false
@@ -75,7 +75,7 @@ repos:
 
       - id: language-keys
         name: language keys
-        entry: uv run scripts/checks/language_keys.py
+        entry: uv run sampletones check language-keys
         language: system
         files: (\.py|^src/sampletones_config/lang/.*\.yaml)$
         pass_filenames: false
@@ -83,7 +83,7 @@ repos:
 
       - id: shortcut-actions
         name: shortcut actions
-        entry: uv run scripts/checks/shortcut_actions.py
+        entry: uv run sampletones check shortcut-actions
         language: system
         files: (\.py|^src/sampletones_config/keybindings/.*\.yaml)$
         pass_filenames: false
@@ -109,17 +109,36 @@ repos:
 
       - id: icons
         name: icons
-        entry: uv run python scripts/assets/icons.py
+        entry: uv run sampletones icons
         language: system
-        files: ^src/sampletones_assets/(icons|mark)/
+        files: ^src/(sampletones_assets/icons|sampletones_tools/assets/mark)/
         pass_filenames: false
         verbose: true
         stages:
           - pre-push
 
-      - id: pytest
-        name: pytest
+      - id: test
+        name: test
         entry: make test
+        language: system
+        types:
+          - python
+        stages:
+          - pre-push
+        pass_filenames: false
+
+      - id: test-docs
+        name: test docs
+        entry: make test-docs
+        language: system
+        files: ^src/.*\.py$
+        stages:
+          - pre-push
+        pass_filenames: false
+
+      - id: benchmarks
+        name: benchmarks
+        entry: make benchmarks
         language: system
         types:
           - python

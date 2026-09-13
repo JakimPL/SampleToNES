@@ -5,13 +5,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import pytest
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_core.configs import Config
 from sampletones_shared.utils.validation import (
     Location,
+    describe_failure,
     flatten_location,
     validate_with_recovery,
 )
@@ -207,6 +208,40 @@ class TestFlattenLocation(BaseTestSuite):
     )
     def test_flatten(self, test_case: TestCase) -> None:
         assert flatten_location(test_case.location) == test_case.expected
+
+
+class Refusing(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    leaf: Leaf
+    count: int = Field(ge=1)
+
+    @field_validator("count")
+    @classmethod
+    def _count_is_odd(cls, count: int) -> int:
+        if count % 2 == 0:
+            raise ValueError(f"The count {count} is even.")
+
+        return count
+
+
+class TestDescribeFailure:
+    def test_a_plain_value_error_reads_as_its_message(self) -> None:
+        assert describe_failure(ValueError("No file at song.wav.")) == "No file at song.wav."
+
+    def test_a_raised_reason_keeps_its_own_words(self) -> None:
+        with pytest.raises(ValidationError) as failure:
+            Refusing(leaf=Leaf(), count=2)
+
+        assert describe_failure(failure.value) == "The count 2 is even."
+
+    def test_each_broken_constraint_is_one_line_naming_its_field(self) -> None:
+        with pytest.raises(ValidationError) as failure:
+            Refusing.model_validate({"leaf": {"value": 11}, "count": 0})
+
+        lines = describe_failure(failure.value).splitlines()
+
+        assert [line.split(":")[0] for line in lines] == ["leaf.value", "count"]
 
 
 class TestRecoveryOnRealModels:

@@ -3,7 +3,7 @@
 This document governs `sampletones_player`: the 6502 driver an exported `.nsf` carries, the
 codec that fits a song into the console's program area, and the chain that holds both to
 what the application plays. Read it before changing the assembly under
-`driver/assembly/`, anything under `compression/`, or the way a song is built in
+`sampletones_tools/player/assembly/`, anything under `compression/`, or the way a song is built in
 `builder.py`. The byte layout the two sides meet on is [the NSF format](../formats/nsf.md);
 where the package sits among the others is [package layers](packages.md).
 
@@ -38,8 +38,19 @@ planes it writes, and every row playing it becomes a token naming that entry. Se
 what the samples leave uncovered.
 
 **Every layer earns its place on measured ground.** Each stage of the codec can be switched
-off on its own, and `make compression-report` writes what each one saves across a corpus of
+off on its own, and `uv run sampletones codec report` writes what each one saves across a corpus of
 songs. The format's constants are settled from that report rather than from argument.
+
+**A change to the codec is measured before it is built.** `uv run sampletones codec study` reads the
+projects and stems named on its command line, encodes every song under every candidate change,
+and writes the sizes, the times, a verdict per candidate and the manifest that repeats the run
+under `Documents/SampleToNES/compression`. A candidate is one of two things. A new way of choosing
+tokens is encoded and played back by the production codec itself. A new token grammar is
+priced in bytes by a study parser, which first has to reproduce the production parser's
+bytes on today's grammar. The rule is printed in the report: a candidate earns a production
+layer when it saves 3% over the projects or 5% over the reconstructions and grows no song by
+more than 1%. The study lives under `sampletones_tools/codec/study`, outside the shipped
+packages.
 
 ## The song a file carries
 
@@ -140,14 +151,15 @@ The chain runs from the register values upward, and each link is held on its own
 |---|---|
 | The codec is lossless | every encoding decodes to the planes it was written from, over a corpus |
 | The codec is safe | a plane the codec finds nothing in stays within its literal bound |
-| The ratio | `make compression-report` — bytes per tick and ticks that fit, per layer |
+| The ratio | `uv run sampletones codec report` — bytes per tick and ticks that fit, per layer |
+| What a change would save | `uv run sampletones codec study` — the projects and stems it is given, under every candidate change, with a verdict each |
 | The byte layout | a hand-built song serializes to expected bytes |
 | The assembly agrees with the specification | the include's equates are read and compared field by field |
 | The driver behaves | the assembled image on a 6502 emulator against `RegisterTrace.from_song`, over several rates and over songs that repeat |
 | The driver's arithmetic | a song stating a bend outright, held to the divider each tick is meant to sound at |
 | The audio | a captured trace re-rendered against the reconstruction's own approximation |
 | The whole export | a project exported, played on the emulator, and read back as the instructions the sequencer sounds |
-| Listening | `make nsf-samples` then `make nsf-render`, or any NSF player |
+| Listening | `uv run sampletones nsf samples -o build/nsf` then `uv run sampletones nsf render --directory build/nsf`, or any NSF player |
 | Speed | `make benchmarks` — the encoder's own cost on the shapes that scale worst |
 
 The audio comparison is the one that catches a mistake the trace would let through: the
@@ -156,9 +168,9 @@ the reconstruction was built as.
 
 ## Building the driver
 
-`make player` assembles the sources with cc65 and writes `driver/binary/driver.bin`, which
-is committed beside them — exporting an `.nsf` needs no assembler, and the wheel carries the
-binary alone.
+`uv run sampletones driver` assembles the sources under `sampletones_tools/player/assembly/`
+with cc65 and writes `sampletones_player/driver/binary/driver.bin`, which is committed —
+exporting an `.nsf` needs no assembler, and the application ships the binary alone.
 
 The link line names our own configuration and our own object files, with the CPU stated
 outright. That is the guardrail that keeps the shipped image entirely ours: reaching for a
@@ -167,4 +179,4 @@ package distributes. A build also holds the linker's own labels against the addr
 exporter states without one, so the committed image and the header describing it cannot
 drift apart.
 
-Installing cc65 is covered in [dependencies](dependencies.md).
+Installing cc65 is covered in [dependencies](release/dependencies.md).

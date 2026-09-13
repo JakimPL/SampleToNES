@@ -13,7 +13,7 @@ from sampletones_player.specification.song import (
     TOTAL_TICKS_OFFSET,
 )
 from sampletones_shared.exceptions import SongTooLargeError
-from tests.integration.nsf.songs import RECORD_BYTES_PER_TICK, available_bytes
+from sampletones_tools.codec.report.songs import RECORD_BYTES_PER_TICK, available_bytes
 
 
 def read_word(data: bytes, offset: int) -> int:

@@ -27,7 +27,7 @@ jobs:
           enable-cache: true
 
       - name: Install system libraries
-        run: bash scripts/linux/build/dependencies.sh
+        run: python3 scripts/system_dependencies.py
 
       - name: Install the development environment
         run: uv sync --group dev
@@ -52,6 +52,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.12", "3.13"]
+    env:
+      PYTHON: ${{ matrix.os == 'windows-latest' && 'python' || 'python3' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -63,22 +65,28 @@ jobs:
 
       - name: Install system libraries (Linux)
         if: runner.os == 'Linux'
-        run: bash scripts/linux/build/dependencies.sh
+        run: python3 scripts/system_dependencies.py
 
       - name: Install system libraries (macOS)
         if: runner.os == 'macOS'
         run: |
-          bash scripts/macos/build/dependencies.sh
-          bash scripts/macos/build/build_env.sh >> "$GITHUB_ENV"
+          python3 scripts/system_dependencies.py
+          python3 scripts/build_environment.py >> "$GITHUB_ENV"
 
       - name: Install the development environment
+        id: environment
         run: uv sync --group dev
 
-      - name: Run doctests
-        run: uv run python -m pytest src/ --doctest-modules --no-cov
+      - name: Run the doctests
+        shell: bash
+        run: $PYTHON scripts/run_tests.py doctests
 
-      - name: Run the unit and integration suites with coverage
-        run: uv run python -m pytest -n auto --cov --ignore=tests/benchmarks
+      - name: Run the test suite with coverage
+        if: ${{ !cancelled() && steps.environment.outcome == 'success' }}
+        shell: bash
+        run: $PYTHON scripts/run_tests.py suite --workers auto
 
       - name: Run the benchmarks
-        run: uv run python -m pytest tests/benchmarks --no-cov
+        if: ${{ !cancelled() && steps.environment.outcome == 'success' }}
+        shell: bash
+        run: $PYTHON scripts/run_tests.py benchmarks

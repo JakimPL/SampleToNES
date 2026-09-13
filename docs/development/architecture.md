@@ -2,7 +2,7 @@
 
 This document describes the design of `sampletones_application` — the GUI front-end of _SampleToNES_. It is prescriptive: it states the contracts each layer must honor, in the form they are enforced, and the rationale behind them. Use it as the reference when deciding where new code belongs.
 
-Concrete classes and modules appear throughout as **examples** that anchor a rule; the rules bind every instance, named or not. Known deviations from these contracts are tracked in `docs/development/bugs-and-todos.md`. Coding-level rules live in `docs/development/guidelines.md`; the undo subsystem has its own design document, `docs/development/undo.md`, the audio transport has `docs/development/playback.md`, the reconstruction browser has `docs/development/browser.md`, the YAML configuration package has `docs/development/config-organization.md`, how a long operation says how far it has come has `docs/development/progress.md`, the keyboard and the actions it reaches have `docs/development/keyboard.md`, the identifier vocabularies have `docs/development/vocabularies.md`, colors and palettes have `docs/development/palette.md`, and the packages the repository divides into have `docs/development/packages.md`.
+Concrete classes and modules appear throughout as **examples** that anchor a rule; the rules bind every instance, named or not. Known deviations from these contracts are tracked in `docs/development/bugs-and-todos.md`. Coding-level rules live in `docs/development/guidelines.md`; the undo subsystem has its own design document, `docs/development/application/undo.md`, the audio transport has `docs/development/application/playback.md`, the reconstruction browser has `docs/development/application/browser.md`, the YAML configuration package has `docs/development/application/config-organization.md`, how a long operation says how far it has come has `docs/development/progress.md`, the keyboard and the actions it reaches have `docs/development/application/keyboard.md`, the identifier vocabularies have `docs/development/application/vocabularies.md`, colors and palettes have `docs/development/application/palette.md`, and the packages the repository divides into have `docs/development/packages.md`.
 
 ---
 
@@ -41,7 +41,7 @@ These principles govern every structural decision in the codebase.
 
 Each layer imports only from the layers below it. Coordinators, at the top, reach every layer they orchestrate. The UI layer knows only view models and shared utilities. Logic owns domain state and produces view models. Services, at the bottom of the application stack, know only the core libraries and thread-safe utilities — a service is driven through a logic-side `Protocol` and reports through its result-contract types, so even logic reaches a service only through inversion.
 
-The load-bearing prohibitions: nothing in `logic/` or `services/` imports `ui/` or `coordinators/`, and `services/` imports neither `logic/` nor `view_model/`. The authoritative import matrix is the **May import / Must not import** pair in each Layer Reference section below; the boundary script enforces it (see Enforcement).
+The load-bearing prohibitions: nothing in `logic/` or `services/` imports `ui/` or `coordinators/`, and `services/` imports neither `logic/` nor `view_model/`. The authoritative import matrix is the **May import / Must not import** pair in each Layer Reference section below; the boundary check enforces it (see Enforcement).
 
 ### 2. DPG stays in the visual layers
 
@@ -67,7 +67,7 @@ This decouples widget construction (which happens during `create_panel()`) from 
 
 ### 6. DearPyGui's context belongs to the render thread
 
-The thread that created the DearPyGui context is the only one that may build, configure, or destroy an item, and an item freed from another thread is freed with no Python thread state — a crash rather than a glitch. So work reaching the interface from anywhere else arrives on that thread first, through a crossing named for what it carries: a background result is queued for the render loop to drain, a worker's touch of a widget goes through `on_render_thread`, and a gesture DearPyGui gathered is run at the top of a frame. A crossing that would hold the frames up puts its waiting on a thread of its own, and work that needs a drawn frame names the frame it is picked up on. The four crossings, the helpers that make them, and the hazard each one answers are in [`render-thread.md`](render-thread.md).
+The thread that created the DearPyGui context is the only one that may build, configure, or destroy an item, and an item freed from another thread is freed with no Python thread state — a crash rather than a glitch. So work reaching the interface from anywhere else arrives on that thread first, through a crossing named for what it carries: a background result is queued for the render loop to drain, a worker's touch of a widget goes through `on_render_thread`, and a gesture DearPyGui gathered is run at the top of a frame. A crossing that would hold the frames up puts its waiting on a thread of its own, and work that needs a drawn frame names the frame it is picked up on. The four crossings, the helpers that make them, and the hazard each one answers are in [`render-thread.md`](application/render-thread.md).
 
 ### 7. Construction flows from the composition root
 
@@ -77,11 +77,11 @@ The thread that created the DearPyGui context is the only one that may build, co
 
 ### 8. All display text comes from `LanguageManager`
 
-Every user-visible string is looked up on `LanguageManager` by the key the language file spells — `page.panel.text_type.element` — and resolves at the point of use, so a language change takes effect on the next read. `en.yaml` is a flat map keyed exactly this way, which makes the text system the single source of truth, lets a reader hold a key against the language file by eye, and enables future localization. A lookup states its key in a form the `language-keys` hook can read, so every key the code spells names an entry and every entry the file holds is reached. The grammar, the forms a lookup takes, and where each element enum lives are in [`vocabularies.md`](vocabularies.md). Log messages are developer-facing and exempt.
+Every user-visible string is looked up on `LanguageManager` by the key the language file spells — `page.panel.text_type.element` — and resolves at the point of use, so a language change takes effect on the next read. `en.yaml` is a flat map keyed exactly this way, which makes the text system the single source of truth, lets a reader hold a key against the language file by eye, and enables future localization. A lookup states its key in a form the `language-keys` hook can read, so every key the code spells names an entry and every entry the file holds is reached. The grammar, the forms a lookup takes, and where each element enum lives are in [`vocabularies.md`](application/vocabularies.md). Log messages are developer-facing and exempt.
 
 ### 9. `tags/` holds only DPG identifiers
 
-The `tags/` package contains only DPG widget string identifiers: `TAG_*` whole tags, and `SUF_*`/`PRE_*` fragments that compose into them. Dimensions, colors, timings, and display strings live in YAML configuration loaded at startup (`layout/`). Every tag reaches its final spelling through one composer, and a constant's name states the tag it composes, which the `tag-names` hook holds it to. The composer, the `TagName` spelling, and the rules a fragment follows are in [`vocabularies.md`](vocabularies.md).
+The `tags/` package contains only DPG widget string identifiers: `TAG_*` whole tags, and `SUF_*`/`PRE_*` fragments that compose into them. Dimensions, colors, timings, and display strings live in YAML configuration loaded at startup (`layout/`). Every tag reaches its final spelling through one composer, and a constant's name states the tag it composes, which the `tag-names` hook holds it to. The composer, the `TagName` spelling, and the rules a fragment follows are in [`vocabularies.md`](application/vocabularies.md).
 
 ### 10. Exclusive operations expose a lifecycle-accurate active state
 
@@ -98,7 +98,7 @@ A new exclusive operation joins by contributing its `is_active` to the authority
 
 Where behavior depends on the operating system, the desktop environment, or an external command-line tool, that variation is expressed as a `Protocol` with one implementation per target, chosen by a runtime factory — never as platform branches scattered through the callers. The factory probes availability (`locate_program`) and environment (`System.current()`, `XDG_CURRENT_DESKTOP`) and returns the implementation that fits; callers depend only on the Protocol and read identically on every platform.
 
-Each tool's quirks stay sealed inside its own implementation and are named in that class's docstring, where a reader meets them beside the code they explain; the guarantee callers depend on — that a saved file carries one of the offered extensions — is enforced once in the API layer above every backend. `utils/file_dialogs/` applies this to native file dialogs: a `FileDialogBackend` Protocol in `protocol.py`, with desktop-portal, `kdialog`, `zenity`, and `tkinter` implementations under `backends/`, selected by `select_file_dialog_backend()`. `sampletones_core/calibration/referee/` follows the same shape with its `build_referees()` factory.
+Each tool's quirks stay sealed inside its own implementation and are named in that class's docstring, where a reader meets them beside the code they explain; the guarantee callers depend on — that a saved file carries one of the offered extensions — is enforced once in the API layer above every backend. `utils/file_dialogs/` applies this to native file dialogs: a `FileDialogBackend` Protocol in `protocol.py`, with desktop-portal, `kdialog`, `zenity`, and `tkinter` implementations under `backends/`, selected by `select_file_dialog_backend()`. `sampletones_tools/calibration/referee/` follows the same shape with its `build_referees()` factory.
 
 Ordering the implementations is part of the factory's job: where several are available, the one that expresses the most wins. A save offering several file types is answered by the portal because it alone reports which type was chosen, so an export names its format in the type selector; a backend answering with a name alone leaves the extension to be read from the name, and the API layer settles it either way.
 
@@ -108,17 +108,17 @@ DearPyGui gives every key handler the same global reach, so priority and consume
 
 A binding is declared once and read by everyone who prints or fires it: `ShortcutId` names the action together with the category that answers it, and the scheme under `sampletones_config/keybindings/` decides the combination, so a printed key and the handler behind it stay in step by construction.
 
-The router is constructed at the composition root and injected into every consumer (principle 7). The scopes, the focus query, the modal stack, the key vocabulary, and how a scheme is chosen, layered, and edited are in [`keyboard.md`](keyboard.md).
+The router is constructed at the composition root and injected into every consumer (principle 7). The scopes, the focus query, the modal stack, the key vocabulary, and how a scheme is chosen, layered, and edited are in [`keyboard.md`](application/keyboard.md).
 
 ### 13. A color is a token, resolved where it is drawn
 
-A color is written as a palette token and stays one until it reaches DearPyGui. `BaseColor` (`utils/palette/colors/`) carries what was written, and its `rgba` property answers with the palette active at the moment of the read, so whoever holds the color follows a palette swap. Every annotation names `BaseColor`; the read happens where the value is handed to a widget, and what a consumer keeps is the token. What DearPyGui has already taken a copy of is registered with `PaletteBindings` rather than remembered by whoever set it, so a palette change is one switch. The `palette-colors` hook holds all three rules (see Enforcement); the color forms and the switch itself are in [`palette.md`](palette.md).
+A color is written as a palette token and stays one until it reaches DearPyGui. `BaseColor` (`utils/palette/colors/`) carries what was written, and its `rgba` property answers with the palette active at the moment of the read, so whoever holds the color follows a palette swap. Every annotation names `BaseColor`; the read happens where the value is handed to a widget, and what a consumer keeps is the token. What DearPyGui has already taken a copy of is registered with `PaletteBindings` rather than remembered by whoever set it, so a palette change is one switch. The `palette-colors` hook holds all three rules (see Enforcement); the color forms and the switch itself are in [`palette.md`](application/palette.md).
 
 ### 14. An action is declared once; whoever shows it prints it
 
 An **action** is one `ShortcutId` — the name a key press, a menu item, and a context item all reach one behavior by. Declaring one is a chain of four links: the action and the category that answers it, its keys in every shipped scheme, the one call it makes, and the label the keybindings editor lists it by. The `shortcut-actions` check holds every link (see Enforcement).
 
-A menu item is a view of an action: `ShortcutManager.add_menu_item(shortcut_id, ...)` takes both the accelerator and the call from the action and keeps the item under it, so a rebind re-prints the key already on screen. A set of actions several menus show is stated by one builder belonging to whoever owns them, and each door decides where to print it. A menu whose contents follow a selection states them when it is opened. The four links, the kinds of action that state their call differently, and the mechanism behind a restated menu are in [`keyboard.md`](keyboard.md).
+A menu item is a view of an action: `ShortcutManager.add_menu_item(shortcut_id, ...)` takes both the accelerator and the call from the action and keeps the item under it, so a rebind re-prints the key already on screen. A set of actions several menus show is stated by one builder belonging to whoever owns them, and each door decides where to print it. A menu whose contents follow a selection states them when it is opened. The four links, the kinds of action that state their call differently, and the mechanism behind a restated menu are in [`keyboard.md`](application/keyboard.md).
 
 ---
 
@@ -126,20 +126,20 @@ A menu item is a view of an action: `ShortcutManager.add_menu_item(shortcut_id, 
 
 Two mechanisms keep the codebase aligned with this document.
 
-**Import-expressible contracts are enforced by a check.** `sampletones_config/boundaries/rules.yaml` states one rule per layer, mirroring the **Must not import** lists in the Layer Reference; the Layer Reference is the source of truth, and a divergence between it and the configuration is itself a defect. The same domain holds the order the repository's packages import each other in, and the layering inside `sampletones_player`, both declared as layer tables in `docs/development/packages.md`. `sampletones_config/boundaries/` declares what the boundaries are, `sampletones_shared/meta/import_boundary/` holds how they are read and reported, and `scripts/checks/import_boundary.py` (a pre-commit hook, also run via `make check-import-boundary`) runs them over the source tree. A rule names the prefixes it reaches through the groups `boundaries/general.yaml` declares, so the interface several layers stay clear of is written once and each rule names it. Where a layer may consume another layer's data contract while its implementation stays out of reach (logic and the service result types), the rule names the contracts group that stays in reach. The hook audits the entire source tree on every commit (`--all`), so strengthening a rule surfaces violations in files a commit never touched. That property sets the working idiom for structural refactors: turn the stricter rule on first, and let the failing hook enumerate the remaining work.
+**Import-expressible contracts are enforced by a check.** `sampletones_config/boundaries/rules.yaml` states one rule per layer, mirroring the **Must not import** lists in the Layer Reference; the Layer Reference is the source of truth, and a divergence between it and the configuration is itself a defect. The same domain holds the order the repository's packages import each other in, and the layering inside `sampletones_player`, both declared as layer tables in `docs/development/packages.md`. `sampletones_config/boundaries/` declares what the boundaries are, `sampletones_tools/checks/boundary/` holds how they are read and reported, and `sampletones check import-boundary` (a pre-commit hook, run as `uv run sampletones check import-boundary --all`) runs them over the source and scripts trees. A rule names the prefixes it reaches through the groups `boundaries/general.yaml` declares, so the interface several layers stay clear of is written once and each rule names it. Where a layer may consume another layer's data contract while its implementation stays out of reach (logic and the service result types), the rule names the contracts group that stays in reach. The hook audits the entire source tree on every commit (`--all`), so strengthening a rule surfaces violations in files a commit never touched. That property sets the working idiom for structural refactors: turn the stricter rule on first, and let the failing hook enumerate the remaining work.
 
-**The identifier vocabularies, the declarations that complete them, and the shapes a case may not take are enforced the same way.** Further scripts under `scripts/checks/` run whole-tree as pre-commit hooks, each also available as a `make check-*` target:
+**The identifier vocabularies, the declarations that complete them, and the shapes a case may not take are enforced the same way.** Further checks, each a `sampletones check <name>` command under `sampletones_tools/checks/`, run whole-tree as pre-commit hooks:
 
-| Hook | Script | What it holds |
-|------|--------|---------------|
-| `language-keys` | `language_keys.py` | Code and `en.yaml` against each other, in both directions: a literal key names an entry, every entry is reached by some lookup, and a lookup states values the check can read (principle 8) |
-| `tag-names` | `tag_names.py` | A tag constant's name against the tag it composes (principle 9) |
-| `unused-tags` | `unused_tags.py` | Every `TAG_*`/`SUF_*`/`PRE_*` the `tags/` package declares against the reads of it across `src/`, `tests/`, and `scripts/`, where an import alone stands at no reads |
-| `palette-colors` | `palette_colors.py` | A color as a token up to the moment it is drawn with: an attribute assigned a resolved `rgba`, a theme color filled outside the palette bindings, and a hex literal in the shipped configuration outside `palettes/` (principle 13) |
-| `shortcut-actions` | `shortcut_actions.py` | Every action against the links it needs: a combination in every shipped scheme, a name the keybindings editor lists it by, and — for an application-scope action — the call it makes, whether its own binding or a family (principle 14) |
-| `rendered-literals` | `rendered_literals.py` | A case against the text it renders: an equality holding `str(...)` or an f-string against a written-out string pins whatever the platform or the build decided (`guidelines.md` § Tests) |
+| Hook | Command | What it holds |
+|------|---------|---------------|
+| `language-keys` | `check language-keys` | Code and `en.yaml` against each other, in both directions: a literal key names an entry, every entry is reached by some lookup, and a lookup states values the check can read (principle 8) |
+| `tag-names` | `check tag-names --all` | A tag constant's name against the tag it composes (principle 9) |
+| `unused-tags` | `check unused-tags` | Every `TAG_*`/`SUF_*`/`PRE_*` the `tags/` package declares against the reads of it across `src/`, `tests/`, and `scripts/`, where an import alone stands at no reads |
+| `palette-colors` | `check palette-colors` | A color as a token up to the moment it is drawn with: an attribute assigned a resolved `rgba`, a theme color filled outside the palette bindings, and a hex literal in the shipped configuration outside `palettes/` (principle 13) |
+| `shortcut-actions` | `check shortcut-actions` | Every action against the links it needs: a combination in every shipped scheme, a name the keybindings editor lists it by, and — for an application-scope action — the call it makes, whether its own binding or a family (principle 14) |
+| `rendered-literals` | `check rendered-literals` | A case against the text it renders: an equality holding `str(...)` or an f-string against a written-out string pins whatever the platform or the build decided (`guidelines.md` § Tests) |
 
-They read the source as an AST through the shared layer in `sampletones_shared/meta/source/`, which discovers modules, resolves the receiver a subscript sits on, and expands an enum-annotated key part to its members; the palette and shortcut checks read the shipped YAML beside it. That layer derives each package directory from its own location and reports a root it finds nothing at, so a check that sweeps nothing fails loudly where it would otherwise pass clean. Because the checks are global by nature — a dead entry and an unread fragment are both absences — the hooks pass whole-tree rather than filenames.
+They read the source as an AST through the source layer in `sampletones_tools/checks/source/`, which discovers modules, resolves the receiver a subscript sits on, and expands an enum-annotated key part to its members; the palette and shortcut checks read the shipped YAML beside it. That layer derives each package directory from its own location and reports a root it finds nothing at, so a check that sweeps nothing fails loudly where it would otherwise pass clean. Because the checks are global by nature — a dead entry and an unread fragment are both absences — the hooks pass whole-tree rather than filenames.
 
 **Behavioral contracts are enforced by review.** Contracts a grep cannot see — where state lives, which methods touch DPG, how errors travel — are upheld in code review against this document. A change that alters one of them lands with the edit stating the new contract, and one that knowingly leaves a distance behind lands with an entry in `docs/development/bugs-and-todos.md § Architecture` — `guidelines.md` § Documents holds that rule. The ledger, not the codebase, is the memory of what is currently out of line.
 
@@ -166,7 +166,7 @@ They read the source as an AST through the shared layer in `sampletones_shared/m
 | Path | Role |
 |------|------|
 | `ui/elements/` | Reusable low-level widgets: `GUIPanel` (the panel base class), `GUIWindow` (modal variant), buttons, tables, graphs, trees, fonts, the status bar, and `MenuSection` — a run of menu items restated each time its menu is opened |
-| `ui/elements/layout/` | Reusable layout primitives: `TabColumns` (the tab column scaffold), the `card()` context manager and the `well()` inset region, driven declaratively by tab coordinators |
+| `ui/elements/layout/` | Reusable layout primitives: `TabColumns` (the tab column scaffold), the `card()` context manager and the `well()` inset region, driven declaratively by tab coordinators, and `centered()`, which stands content in the middle of the width it is offered |
 | `ui/panels/` | Domain-level composite panels, organized by feature area |
 | `ui/themes/` | DPG themes and per-widget style helpers |
 | `ui/resources/` | Icons and image resources loaded at startup |
@@ -207,9 +207,9 @@ They read the source as an AST through the shared layer in `sampletones_shared/m
 
 *Logic objects* (e.g. `ConverterLogic`) orchestrate multi-step workflows within a feature area. They subscribe to services and translate service results into view model updates.
 
-`logic/history/` implements the session-scoped undo engine (`HistoryManager`); its invariants and mechanics are documented in `docs/development/undo.md`.
+`logic/history/` implements the session-scoped undo engine (`HistoryManager`); its invariants and mechanics are documented in `docs/development/application/undo.md`.
 
-`logic/reconstruction/browser/` builds the tree of reconstructions both browser tabs render (`BrowserManager`); its pipeline, node vocabulary and shaping rules are documented in `docs/development/browser.md`.
+`logic/reconstruction/browser/` builds the tree of reconstructions both browser tabs render (`BrowserManager`); its pipeline, node vocabulary and shaping rules are documented in `docs/development/application/browser.md`.
 
 **Contracts:**
 - Logic classes produce view models and may therefore import `view_model/`; they import neither `ui/` nor `coordinators/`.
@@ -245,7 +245,7 @@ They read the source as an AST through the shared layer in `sampletones_shared/m
 
 There are two coordinator kinds:
 
-*Domain coordinators* manage a cross-cutting concern that spans the whole application lifecycle — e.g. `ProjectCoordinator` (project file I/O, save confirmations), `PlaybackRouter` (the single transport over the shared output device, acting on the active tab's source or the engaged one — see `docs/development/playback.md`), or `EditRouter` (the single edit surface behind the menu bar's Edit menu, which shows the actions of the grid holding the cursor — see `docs/development/sequencer-blocks.md`).
+*Domain coordinators* manage a cross-cutting concern that spans the whole application lifecycle — e.g. `ProjectCoordinator` (project file I/O, save confirmations), `PlaybackRouter` (the single transport over the shared output device, acting on the active tab's source or the engaged one — see `docs/development/application/playback.md`), or `EditRouter` (the single edit surface behind the menu bar's Edit menu, which shows the actions of the grid holding the cursor — see `docs/development/application/sequencer-blocks.md`).
 
 *Tab coordinators* own everything for one tab: they instantiate its panels, logic objects, and tab-scoped services, wire their callbacks together, and provide `create_tab()` — the single method that builds the DPG widget tree for that tab. Tab coordinators present a narrow public API of intent-level methods (`set_input_path`, `display_reconstruction`, …) and keep their panels and logic objects private.
 

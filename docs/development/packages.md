@@ -17,22 +17,24 @@ has come — inside one process and across the pool's workers — is [`progress.
 ```mermaid
 graph TD
     ENTRY["sampletones\n(entry point)"]
+    TOOLS["sampletones_tools\n(developer tools)"]
     APP["sampletones_application\n(GUI)"]
     PLAYER["sampletones_player\n(NES player)"]
     CORE["sampletones_core\n(reconstruction engine)"]
-    SYNTH["sampletones_synthesis\n(waveform synthesis)"]
-    ASSETS["sampletones_assets\n(mark and fonts)"]
+    ASSETS["sampletones_assets\n(icons and fonts)"]
     SHARED["sampletones_shared\n(facts and helpers)"]
     CONFIG["sampletones_config\n(shipped YAML)"]
 
     ENTRY --> APP
     ENTRY --> CORE
+    ENTRY --> TOOLS
+    TOOLS --> APP
+    TOOLS --> PLAYER
+    TOOLS --> CORE
+    TOOLS --> SHARED
     APP --> PLAYER
     APP --> CORE
     PLAYER --> CORE
-    CORE --> SYNTH
-    ASSETS --> SHARED
-    SYNTH --> SHARED
     CORE --> SHARED
     PLAYER --> SHARED
     APP --> SHARED
@@ -41,16 +43,22 @@ graph TD
 
 | Package | Purpose | May import |
 |---------|---------|------------|
-| `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, the source layer the checks read the tree through, and the schema these boundaries are declared in | — |
-| `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, calibration, and these boundaries themselves — reached as package data rather than by import | — |
-| `sampletones_assets` | The application mark and the bundled fonts, with the code that draws the mark | `sampletones_shared` |
-| `sampletones_synthesis` | Analytic waveform synthesis: oscillators, envelopes, layers and voices | `sampletones_shared` |
-| `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats | `sampletones_shared`, `sampletones_synthesis` |
+| `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, and the command type the entry and the tools share | — |
+| `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, behavior, deployment, and these boundaries themselves — reached as package data rather than by import | — |
+| `sampletones_assets` | The application icons and the bundled fonts, reached as package data | — |
+| `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats | `sampletones_shared` |
 | `sampletones_player` | The NES player: the register model, the re-clocking schedule, the 6502 driver and the NSF file | `sampletones_shared`, `sampletones_core` |
 | `sampletones_application` | The DearPyGui front end | `sampletones_shared`, `sampletones_core`, `sampletones_player` |
-| `sampletones` | The command-line entry point and the startup self-check | `sampletones_shared`, `sampletones_core`, `sampletones_application` |
+| `sampletones_tools` | Everything a developer runs and the application does not: analytic waveform synthesis, the calibration harness, the driver toolchain and the register trace, the mark the icons are drawn from, the source checks, the synthetic corpus with its sample emitters, and the developer commands that run them | `sampletones_shared`, `sampletones_core`, `sampletones_player`, `sampletones_application` |
+| `sampletones` | The command-line entry: the dispatcher, the commands and the startup self-check | `sampletones_shared`, `sampletones_core`, `sampletones_application`, `sampletones_tools` |
 
 Third-party imports are the package author's own choice and stand outside this table.
+
+**The tools package is reached from the command line alone.** `sampletones_tools` holds what a
+developer runs and the application never imports: the developer commands and the libraries behind
+them. `sampletones` is its one importer, appending the developer commands to the user commands, so
+the wheel and the bundle carry the tools and no shipped package depends on them.
+[Tooling](tooling.md) states what a tool is and what a developer command does in an installed copy.
 
 **The reconstruction engine stands below the console player.** A reconstruction is produced, saved
 and exported to a tracker with `sampletones_player` absent from the process, which is what lets the
@@ -91,19 +99,20 @@ them.
 | `compression/` | The planes a song separates into, the dictionary its tokens name, and the codec that reads them both ways | `specification/`, `registers/` |
 | `song.py` | `Song` — the compressed planes, the timer table, the schedule and the loop point as one value | `clock/`, `registers/`, `compression/` |
 | `builder.py` | The song a reconstruction or an export request plays as, its instructions encoded, its planes compressed and its rate scheduled | `song.py`, `registers/`, `clock/`, `compression/` |
-| `trace/` | `RegisterTrace` — what the driver is expected to write, call by call | `song.py`, `specification/` |
 | `nsf/` | The song block, the header and the `.nsf` file the console loads | `song.py`, `specification/`, `compression/`, `driver/` |
 | `driver/` | The assembled 6502 driver and the addresses its build reports | `specification/` |
-| `driver/assembler/` | The cc65 build: the layout, the toolchain, the linker map reader and the builder | `driver/`, `specification/` |
 | `export.py` | `NSFBackend` — the export seam answered in `.nsf` files, holding the driver every one of them carries and saying which stage a run is in | `builder.py`, `nsf/`, `driver/`, `compression/` |
 
-### The build toolchain is a developer tool
+### The toolchain and the oracle live with the tools
 
-`driver/assembler/` runs `ca65` and `ld65` over `driver/assembly/` to produce the committed
-`driver/binary/driver.bin`. It is reached from `scripts/player.py` and from the tests, and the wheel
-carries the binary alone — so a module of the shipped tree that imported it would break an installed
-copy, and no unit above declares it. The developer toolchain it needs is described in
-[`dependencies.md`](dependencies.md).
+`sampletones_tools/player/assembler/` runs `ca65` and `ld65` over the assembly sources, their
+includes and the linker configuration in `sampletones_tools/player/assembly/`, read as package
+data, to produce the committed `driver/binary/driver.bin`; `uv run sampletones driver` runs it,
+and the tests rebuild the sources and hold the committed image to them wherever cc65 is
+installed. `sampletones_tools/player/trace/` holds `RegisterTrace`, what the driver is expected
+to write call by call, which the emulator tests hold the assembled driver to. Exporting reads the
+assembled binary; the wheel carries the assembly sources beside it, inside the tools package. The
+toolchain the build needs is described in [`dependencies.md`](release/dependencies.md).
 
 ---
 
@@ -112,15 +121,26 @@ copy, and no unit above declares it. The developer toolchain it needs is describ
 `sampletones_config/boundaries/graphs.yaml` declares both graphs as layer tables — each unit and the
 units it may import — and the rule the check runs derives from them: every unit a table leaves out is
 out of reach, so an edge is declared before it is taken. The hook audits the whole source tree on
-every commit (`make check-import-boundary`), which means adding an edge to a table is how a new
+every commit (`uv run sampletones check import-boundary --all`), which means adding an edge to a table is how a new
 dependency is opened, and removing one enumerates the work of closing it.
+
+Five token rules hold the shipped packages to the tools edge a second way: a module of
+`sampletones_application`, `sampletones_core`, `sampletones_player`, `sampletones_shared` or
+`sampletones_assets` that spells `sampletones_tools` at all is reported, so the edge is closed in
+words as well as in imports.
 
 A graph answers for its own well-formedness as it is read: a unit reaching a unit the graph leaves
 undeclared is refused, and so is a graph whose units reach themselves, since a unit's layers state a
 level only where the units stand in an order.
 
 Three parts share the work. `sampletones_config/boundaries/` states what the boundaries are.
-`sampletones_shared/meta/import_boundary/` validates that statement and holds the mechanism —
+`sampletones_tools/checks/boundary/` validates that statement and holds the mechanism —
 reading a module line by line, resolving a unit to the modules it owns, deriving a rule from a graph
-and reporting what crosses it — beside the source layer the other checks read the tree through.
-`scripts/checks/import_boundary.py` runs them over a source tree and prints what they find.
+and reporting what crosses it — beside the source layer the other checks read the tree through,
+`sampletones_tools/checks/source/`. `sampletones check import-boundary` runs them over the source
+and scripts trees and prints what they find.
+
+The scripts tree is held to a rule of its own, `boundaries/standalone.yaml`. A bootstrap script
+runs on the system interpreter, so it imports the standard library and the scripts tree itself,
+and a name in that tree that stands in for a standard-library module is reported too, since the
+tree sits on the import path. [Tooling](tooling.md) states the principle.

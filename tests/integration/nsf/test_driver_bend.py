@@ -7,11 +7,11 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import BYTE_VALUES
 from sampletones_player.specification.registers import PULSE1_TIMER_HIGH, TIMER_HIGH_SHIFT
-from sampletones_player.trace.trace import RegisterTrace
+from sampletones_tools.player.trace.trace import RegisterTrace
 from tests.integration.nsf.console.instructions import channel_values, timer_value
 from tests.integration.nsf.console.machine import register_file
 from tests.integration.nsf.console.session import captured_trace, play_calls_covering
-from tests.integration.nsf.exports import exported_information
+from tests.integration.nsf.header import sample_information
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 from tests.suite.player import PLAYER_PITCHES, bent_song
@@ -35,7 +35,7 @@ def sounded_dividers(song: Song) -> List[int]:
     Returns:
         List[int]: One divider per tick the song covers, in order.
     """
-    trace = captured_trace(song, exported_information(SONG_NAME))
+    trace = captured_trace(song, sample_information(SONG_NAME))
     dividers = []
     for registers in register_file(trace):
         values = channel_values(registers, ChannelName.PULSE1)
@@ -96,7 +96,7 @@ class TestTheDriverSoundsTheDividerABendPlaneNames(BaseTestSuite):
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
     def test_the_model_states_the_writes_the_driver_makes(self, test_case: TestCase) -> None:
         song = bent_song(test_case.pitch_index, test_case.bends, NTSC_RATE)
-        trace = captured_trace(song, exported_information(SONG_NAME))
+        trace = captured_trace(song, sample_information(SONG_NAME))
         assert trace == RegisterTrace.from_song(song, play_calls_covering(song))
 
 
@@ -127,7 +127,7 @@ class TestABendCrossingTheTimersHighHalf:
         halves = [(divider + bend) >> TIMER_HIGH_SHIFT for bend in self.BENDS]
         crossings = sum(1 for earlier, later in zip(halves, halves[1:]) if earlier != later)
 
-        trace = captured_trace(crossing, exported_information(SONG_NAME))
+        trace = captured_trace(crossing, sample_information(SONG_NAME))
         written = [write for writes in trace.play_calls for write in writes if write.address == PULSE1_TIMER_HIGH]
         assert crossings
         assert len(written) == crossings

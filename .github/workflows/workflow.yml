@@ -32,10 +32,7 @@ jobs:
 
       - name: Verify tag matches project version
         if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          python3 scripts/ci/checks/version_tag.py \
-            --tag "$GITHUB_REF_NAME" \
-            --project-version "$(uv version --short)"
+        run: python3 scripts/verify_version_tag.py --tag "$GITHUB_REF_NAME"
 
       - name: Build sdist and wheel
         run: uv build
@@ -78,8 +75,8 @@ jobs:
       - name: Install PortAudio (macOS)
         if: runner.os == 'macOS'
         run: |
-          bash repository/scripts/macos/build/dependencies.sh
-          bash repository/scripts/macos/build/build_env.sh >> "$GITHUB_ENV"
+          python3 repository/scripts/system_dependencies.py
+          python3 repository/scripts/build_environment.py >> "$GITHUB_ENV"
 
       - name: Install the wheel and check the entry point
         shell: bash
@@ -87,10 +84,19 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install dist/*.whl
           sampletones --version
+          sampletones --help
 
       - name: Check the wheel carries every resource it needs at startup
         shell: bash
-        run: sampletones --self-check
+        run: sampletones self-check
+
+      - name: Check a developer command refuses to run outside a checkout
+        shell: bash
+        run: |
+          if refusal=$(sampletones check import-boundary --all 2>&1); then
+            exit 1
+          fi
+          grep "runs from a checkout" <<< "$refusal"
 
   bundle:
     name: Standalone bundle (${{ matrix.platform }})
@@ -114,38 +120,19 @@ jobs:
 
       - name: Install system libraries (Linux)
         if: runner.os == 'Linux'
-        run: bash scripts/linux/build/dependencies.sh
+        run: python scripts/system_dependencies.py
 
-      - name: Create the build environment the bundle scripts expect
+      - name: Build the bundle
         shell: bash
-        run: |
-          python -m venv .venv-build
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            venv_python=.venv-build/Scripts/python.exe
-          else
-            venv_python=.venv-build/bin/python
-          fi
-          "$venv_python" -m pip install --upgrade pip
-          "$venv_python" -m pip install ".[build]" --group assets
-
-      - name: Build the bundle (Linux)
-        if: runner.os == 'Linux'
-        run: bash scripts/linux/build/build.sh --release
-
-      - name: Build the bundle (Windows)
-        if: runner.os == 'Windows'
-        shell: cmd
-        run: scripts\windows\build\build.bat --release
+        run: python scripts/bundle.py --release
 
       - name: Check the bundle runs and carries its notices
         shell: bash
-        run: python scripts/ci/checks/bundle.py bin/sampletones
+        run: python scripts/verify_bundle.py
 
       - name: Zip the bundle
         shell: bash
-        run: |
-          name="sampletones-${GITHUB_REF_NAME}-${{ matrix.platform }}"
-          python scripts/ci/zip_bundle.py bin/sampletones "bundles/${name}.zip" --root "${name}"
+        run: python scripts/archive_bundle.py --label "${{ matrix.platform }}"
 
       - uses: actions/upload-artifact@v7
         with:

@@ -13,10 +13,11 @@ dist/
 wheels/
 /bin/
 /build/
+/bundles/
 
 sampletones
 !src/sampletones
-!tests/sampletones
+!tests/unit/sampletones
 
 *.pyc
 *.pyo

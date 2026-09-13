@@ -537,24 +537,26 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         means choosing which one reads it. The choice belongs to the reader listening rather than
         to the voice, so it stays on the panel and reaches no document.
         """
-        with dpg.group(
-            tag=self.audition_group_tag,
-            parent=window_tag,
-            show=False,
-        ):
-            with labeled_field(
+        with (
+            dpg.group(
+                tag=self.audition_group_tag,
+                parent=window_tag,
+                show=False,
+            ),
+            labeled_field(
                 self._language_manager["reconstructions.instruments.label.audition"],
                 self._pitch_stepper_style.dimensions.label_width,
                 parent=self.audition_group_tag,
-            ):
-                dpg.add_radio_button(
-                    items=[self._generator_labels[generator_name] for generator_name in GeneratorName],
-                    tag=self.audition_tag,
-                    default_value=self._generator_labels[AUDITION_GENERATOR],
-                    callback=self._on_audition_generator_changed,
-                    horizontal=True,
-                )
-                FontRegistry.bind_to_item(self.audition_tag, Font.REGULAR_SMALL)
+            ),
+        ):
+            dpg.add_radio_button(
+                items=[self._generator_labels[generator_name] for generator_name in GeneratorName],
+                tag=self.audition_tag,
+                default_value=self._generator_labels[AUDITION_GENERATOR],
+                callback=self._on_audition_generator_changed,
+                horizontal=True,
+            )
+            FontRegistry.bind_to_item(self.audition_tag, Font.REGULAR_SMALL)
 
         self._status_bar.bind_to_item(
             self.audition_tag,

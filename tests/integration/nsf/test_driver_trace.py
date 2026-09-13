@@ -11,7 +11,7 @@ from sampletones_player.song import Song
 from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.nsf import PROGRAM_SIZE
 from sampletones_player.specification.song import STEP_FRACTION_OFFSET, STEP_WHOLE_OFFSET
-from sampletones_player.trace.trace import RegisterTrace
+from sampletones_tools.player.trace.trace import RegisterTrace
 from tests.integration.nsf.console.session import (
     TRAILING_CALLS,
     captured_trace,
@@ -19,7 +19,7 @@ from tests.integration.nsf.console.session import (
     play_calls_covering,
     play_calls_reaching,
 )
-from tests.integration.nsf.exports import exported_information
+from tests.integration.nsf.header import sample_information
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 
@@ -33,7 +33,7 @@ ROUNDS: Final[int] = 4
 @pytest.fixture
 def trace(song: Song, sample: Sample) -> RegisterTrace:
     """Every APU write the assembled driver makes over a full run of the sample."""
-    return captured_trace(song, exported_information(sample.name))
+    return captured_trace(song, sample_information(sample.name))
 
 
 @pytest.fixture
@@ -101,7 +101,7 @@ class TestAReClockedStreamPlaysTheSameTicks(BaseTestSuite):
         reclocked = sample.reconstruction.with_nes_frequency(test_case.expected)
         song = song_from_reconstruction(reclocked, loop_tick=None)
 
-        trace = captured_trace(song, exported_information(sample.name))
+        trace = captured_trace(song, sample_information(sample.name))
         assert trace == RegisterTrace.from_song(song, play_calls_covering(song))
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
@@ -166,7 +166,7 @@ class TestARepeatingSongComesRoundWhereTheModelSaysItDoes(BaseTestSuite):
         covered = song.ticks + test_case.expected * (song.ticks - song.loop_tick)
         calls = play_calls_reaching(song, covered)
 
-        trace = captured_trace_over(song, exported_information(sample.name), calls)
+        trace = captured_trace_over(song, sample_information(sample.name), calls)
         assert trace == RegisterTrace.from_song(song, calls)
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
@@ -181,5 +181,5 @@ class TestARepeatingSongComesRoundWhereTheModelSaysItDoes(BaseTestSuite):
         covered = song.ticks + test_case.expected * (song.ticks - song.loop_tick)
         calls = play_calls_reaching(song, covered)
 
-        trace = captured_trace_over(song, exported_information(sample.name), calls)
+        trace = captured_trace_over(song, sample_information(sample.name), calls)
         assert any(writes for writes in trace.play_calls[-TRAILING_CALLS:])

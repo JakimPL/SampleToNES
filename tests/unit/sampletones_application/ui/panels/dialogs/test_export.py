@@ -116,6 +116,11 @@ class TestHowTheStageUnderWayReads:
     def test_the_figure_reaches_the_reader(self, window: GUIExportWindow) -> None:
         render(window, traveling=False, figure=SIZE)
         assert dpg.get_value(TAG_SETTINGS_EXPORT_TEXT_FIGURE) == SIZE
+        assert shown(TAG_SETTINGS_EXPORT_TEXT_FIGURE)
+
+    def test_a_stage_with_nothing_to_state_leaves_the_indicator_alone(self, window: GUIExportWindow) -> None:
+        render(window, traveling=False, figure="")
+        assert not shown(TAG_SETTINGS_EXPORT_TEXT_FIGURE)
 
 
 class TestStoppingARun:

@@ -21,13 +21,13 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
-from tests.integration.assets.reconstruction import (
+from sampletones_tools.corpus.catalog import build_mini_library
+from tests.suite.stems import (
     STEM_A_ID,
     STEM_B_ID,
     STEM_C_ID,
     STEM_RECORDING_DURATION_SECONDS,
     THREE_STEM_CHANNELS,
-    build_mini_library,
     three_stem_config,
     three_stem_reconstruction_config,
     write_three_stem_recordings,

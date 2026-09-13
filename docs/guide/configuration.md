@@ -1,51 +1,41 @@
 # Configuration
 
-_SampleToNES_ reconstructs audio according to a **generation configuration**: the
-sample rate, the NES frequency, how the audio is analyzed, and how candidates are
-scored. The settings you change most often are on the **Main** tab. The rest are
-in the configuration file, for when you want to go deeper.
+_SampleToNES_ converts audio with a **generation configuration**. The configuration sets the sample
+rate, the NES frequency, how the audio is analyzed and how sounds are compared. The settings you
+change most often are on the **Main** tab. The configuration file has the rest.
 
-Channels are not part of the configuration. The NES has four sound channels —
-**Pulse 1**, **Pulse 2**, **Triangle**, and **Noise** — and you choose which of
-them each recording uses in the converter's list, every time you set up a
+You choose the channels each recording uses in the converter's list, each time you set up a
 conversion. See [choosing which channels a recording
 uses](converting.md#choosing-which-channels-a-recording-uses).
 
-## From the interface
+## Settings on the Main tab
 
-Three cards on the **Main** tab hold the everyday settings:
+Three cards on the **Main** tab have the everyday settings:
 
-- **General settings** — **Normalize audio** and **Quantize audio**, and the
-  **Sample rate** and **NES frequency** that a library is built for.
-- **Source settings** — **Drive**, which sets how hard the channels are pushed,
-  and the channels and bends of the recording you selected in the converter's
-  list.
-- **Advanced settings** — **Method** and **Feature scaling**, which set how the
-  audio's frequency content is measured and weighted (see [Reconstruction
-  algorithms](../concepts/reconstruction.md)); the **Workers** count; and the
-  instruction library and output folders. Choose **View ▸ Show advanced
-  settings** to display this card.
+- **General settings**: **Normalize audio**, **Quantize audio**, and the **Sample rate** and **NES
+  frequency** a library is built for.
+- **Source settings**: **Drive**, which sets how hard the channels are pushed, and the channels and
+  bends of the recording you selected in the converter's list.
+- **Advanced settings**: **Method** and **Feature scaling**, which set how the app measures the
+  frequencies in the audio, the number of **Workers**, and the library and output folders. Choose
+  **View ▸ Show advanced settings** to show this card. [Reconstruction
+  algorithms](../concepts/reconstruction.md) explains **Method** and **Feature scaling**.
 
-Changing any of these updates your configuration, which is saved to `config.json`
-(see [Where your files live](files.md)).
+The app saves your changes to `config.json`. See [Where your files live](files.md).
 
-## In the configuration file
+## The configuration file
 
-The configuration holds more than the interface shows. You can edit the finer
-controls directly in `config.json`: the
-[selector](../concepts/reconstruction.md) (greedy or Viterbi), the phase aligner,
-the scoring weights and distance metric, the number of candidates kept per frame,
-and so on. The [configuration file
-reference](../formats/configuration.md) lists every section and key, and
-[Reconstruction algorithms](../concepts/reconstruction.md) explains what they do
-and lists the defaults.
+`config.json` has more settings than the **Main** tab shows. For example, you can change:
 
-You can also load and save whole configurations from the **Reconstruction** menu
-(**Load generation settings...** and **Save generation settings...**), or point
-the app at one on the [command line](command-line.md) with `--config`.
+- the [selector](../concepts/reconstruction.md), greedy or Viterbi
+- the phase aligner
+- the scoring weights and the distance measure
+- the number of candidates kept for each frame
 
-## Deployment settings
+The [configuration file reference](../formats/configuration.md) lists every setting.
+[Reconstruction algorithms](../concepts/reconstruction.md) explains what each one does, and lists
+the defaults.
 
-Two settings — the log level and strict history checking — are decided when the
-application is packaged, so they are not part of your configuration. They exist
-for development and support.
+To load or save a whole configuration, use **Reconstruction ▸ Load generation settings...** and
+**Reconstruction ▸ Save generation settings...**. On the [command line](command-line.md), add
+`--config` to a command.
