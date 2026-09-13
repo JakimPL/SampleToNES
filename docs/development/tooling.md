@@ -64,7 +64,10 @@ script.
 runs the one named; `commands/` holds one module per command and `commands/registry.py` lists
 them. A command is a frozen `Command` (`sampletones_shared/command.py`): its name, one line of
 help, the function adding its options to a parser, and the function running it over the parsed
-arguments. Each command turns its arguments into a frozen record, field by field, before it works.
+arguments. Each command turns its arguments into a frozen record, field by field, before it works; a
+command with actions, such as `codec`, reads the action first and builds the record that action takes.
+A command writing files names their directory `--output` (`-o`), and an option naming an input says
+what it reads, so `--config` is a configuration file wherever it appears.
 
 | Command | What it does |
 |---|---|
@@ -87,8 +90,8 @@ The developer commands, listed by `sampletones_tools/registry.py` and run as
 | `btp samples -o DIR`, `ftm samples -o DIR`, `nsf samples -o DIR` | Builds the synthetic corpus and writes it as example files: the arrangement as two Bitphase documents (at its tempo and as a groove), the arrangement as a FamiTracker module, or each sample and the arrangement as `.nsf` programs |
 | `codec report -o DIR` | Compresses the synthetic corpus under every layer of the codec and writes the report the format's constants are settled from, as CSV and Markdown |
 | `codec study [--manifest FILE] [--project FILE]... [--reconstruction PATH]... [-o DIR] [--lengthen SECONDS] [--variants LIST]` | Encodes the projects and stems it is given, or the ones a manifest names, under every candidate change to the codec and writes the sizes, the times, a verdict per candidate and the manifest that repeats the run; without `-o` the run lands under Documents/SampleToNES/compression |
-| `driver [--directory DIR]` | Assembles the NES player driver with cc65 and prints the layout the build produced; without `--directory` it writes the driver the package ships, which needs a checkout |
-| `icons [--directory DIR]` | Writes the icon suite from the mark, into `--directory` or over the icons the package ships. Needs a checkout |
+| `driver [-o DIR]` | Assembles the NES player driver with cc65 and prints the layout the build produced; without `-o` it writes the driver the package ships, which needs a checkout |
+| `icons [-o DIR]` | Writes the icon suite from the mark, into `-o` or over the icons the package ships. Needs a checkout |
 | `nsf render --directory DIR [--tail SECONDS]` | Renders every exported `.nsf` file in the directory to a wave beside it, through ffmpeg's libgme demuxer |
 
 ## The tools package

@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -6,11 +7,13 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
 from sampletones_tools.calibration.session import (
+    OUTPUT_DIRECTORY,
     CalibrationRequest,
     default_output,
     floats_named,
     methods_named,
 )
+from sampletones_tools.runs import RUN_STAMP
 
 
 class TestMethodsNamed:
@@ -42,8 +45,8 @@ class TestDefaultOutput:
     def test_a_run_lands_in_a_timestamped_directory_under_the_documents(self) -> None:
         output = default_output()
 
-        assert output.parent == USER_PATH_DOCUMENTS / "calibration"
-        assert output.name.startswith("run-")
+        assert output.parent == USER_PATH_DOCUMENTS / OUTPUT_DIRECTORY
+        assert datetime.strptime(output.name, RUN_STAMP)
 
 
 class TestCalibrationRequest:

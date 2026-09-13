@@ -29,7 +29,7 @@ from sampletones_player.specification.song import (
     TOTAL_TICKS_OFFSET,
 )
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
-from sampletones_tools.samples.nsf import exported_information
+from tests.integration.nsf.header import sample_information
 
 
 def song_block(data: bytes, image: DriverImage) -> bytes:
@@ -52,7 +52,7 @@ def exported(
     driver_image: DriverImage,
 ) -> bytes:
     destination = nsf_paths[sample.name]
-    write_nsf(destination, song, exported_information(sample.name), driver_image)
+    write_nsf(destination, song, sample_information(sample.name), driver_image)
     return destination.read_bytes()
 
 
@@ -67,7 +67,7 @@ class TestNsfPipeline:
     ) -> None:
         for name, sample in instrument_catalog.items():
             song = song_from_reconstruction(sample.reconstruction, loop_tick=None)
-            write_nsf(nsf_paths[name], song, exported_information(name), driver_image)
+            write_nsf(nsf_paths[name], song, sample_information(name), driver_image)
             assert nsf_paths[name].read_bytes()[: len(NSF_MAGIC)] == NSF_MAGIC
 
     def test_the_file_carries_the_shipped_driver(self, exported: bytes, driver_image: DriverImage) -> None:
@@ -148,7 +148,7 @@ class TestAStoredReconstructionExportsTheSameFile:
         sample.reconstruction.save(stored)
         reloaded = song_from_reconstruction(Reconstruction.load(stored), loop_tick=None)
 
-        information = exported_information(sample.name)
+        information = sample_information(sample.name)
         before = tmp_path / "before.nsf"
         after = tmp_path / "after.nsf"
         write_nsf(before, song, information, driver_image)

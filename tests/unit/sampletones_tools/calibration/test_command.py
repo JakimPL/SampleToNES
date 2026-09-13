@@ -8,7 +8,7 @@ from sampletones.dispatcher import dispatch
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import DEFAULT_CHANNELS, ChannelName, SpectrumMethod
 from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
-from sampletones_tools.calibration.session import CalibrationRequest
+from sampletones_tools.calibration.session import OUTPUT_DIRECTORY, CalibrationRequest
 
 CALIBRATE = "sampletones_tools.calibration.session.calibrate"
 LOADER = "sampletones_core.headless.config.load_config"
@@ -68,7 +68,7 @@ class TestCalibration:
         assert request.perceptual_exponents == [1.0]
         assert request.temporal_weights == []
         assert request.channels == list(DEFAULT_CHANNELS)
-        assert request.output.parent == USER_PATH_DOCUMENTS / "calibration"
+        assert request.output.parent == USER_PATH_DOCUMENTS / OUTPUT_DIRECTORY
 
     def test_an_unknown_method_is_refused(self, calibration: RecordedCalibration) -> None:
         with pytest.raises(SystemExit, match="Unknown spectrum method"):

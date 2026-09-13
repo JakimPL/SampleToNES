@@ -10,13 +10,12 @@ from sampletones_player.nsf.information import NSFInformation
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 from sampletones_tools.corpus.build import Corpus
 
-ARTIST: Final[str] = "Integration"
 SONG_NAME: Final[str] = "song"
 
 
-def exported_information(name: str) -> NSFInformation:
-    """The header text an exported sample carries."""
-    return NSFInformation(title=name, artist=ARTIST)
+def exported_information(name: str, author: str) -> NSFInformation:
+    """The header text an exported sample carries: its own name, by the author of the arrangement."""
+    return NSFInformation(title=name, artist=author)
 
 
 def write_samples(corpus: Corpus, output: Path) -> List[Path]:
@@ -36,7 +35,7 @@ def write_samples(corpus: Corpus, output: Path) -> List[Path]:
         write_nsf(
             destination,
             song_from_reconstruction(sample.reconstruction, loop_tick=None),
-            exported_information(name),
+            exported_information(name, corpus.project.info.author),
             image,
         )
         written.append(destination)

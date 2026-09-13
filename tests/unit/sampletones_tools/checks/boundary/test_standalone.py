@@ -14,7 +14,6 @@ MESSAGE: Final[str] = "a bootstrap script imports the standard library and the t
 
 RULE: Final[StandaloneRule] = StandaloneRule(
     pattern="**/*.py",
-    excluding=("tools/**/*.py",),
     reserved=("tests",),
     message=MESSAGE,
 )
@@ -101,11 +100,11 @@ class TestCheckStandalone:
 
         assert kinds(tmp_path) == []
 
-    def test_an_excluded_script_is_left_to_the_project_environment(self, tmp_path: Path) -> None:
+    def test_a_script_in_a_subdirectory_is_held_to_the_rule(self, tmp_path: Path) -> None:
         _tree(tmp_path)
-        write_module(tmp_path / "tools", "calibration.py", THIRD_PARTY)
+        write_module(tmp_path / "ci", "archive.py", THIRD_PARTY)
 
-        assert kinds(tmp_path) == []
+        assert kinds(tmp_path) == [MESSAGE]
 
     def test_the_shadowing_names_lead_the_imports(self, tmp_path: Path) -> None:
         _tree(tmp_path)

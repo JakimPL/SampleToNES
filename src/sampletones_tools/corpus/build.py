@@ -1,10 +1,11 @@
 from dataclasses import dataclass
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Dict
 
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.voices.sample import Sample
-from sampletones_shared.types.path import Pathlike
 from sampletones_tools.corpus.catalog import CatalogSpec, build_catalog
 from sampletones_tools.corpus.module import ModuleConfig
 from sampletones_tools.corpus.song import SongSpec, build_song
@@ -47,16 +48,18 @@ def build_project(
     return project
 
 
-def build_corpus(tmp_dir: Pathlike) -> Corpus:
+def build_synthetic_corpus() -> Corpus:
     """Renders, reconstructs and arranges the corpus the package describes.
 
-    Args:
-        tmp_dir: Where the rendered recordings are written before they are reconstructed.
+    The recordings are rendered into a temporary directory of the build's own, which is gone once
+    their reconstructions are made.
 
     Returns:
         Corpus: The samples and the arrangement.
     """
-    catalog = build_catalog(CatalogSpec.load(), SynthConfig.load(), tmp_dir=tmp_dir)
+    with TemporaryDirectory() as recordings:
+        catalog = build_catalog(CatalogSpec.load(), SynthConfig.load(), tmp_dir=Path(recordings))
+
     return Corpus(
         catalog=catalog,
         project=build_project(catalog, ModuleConfig.load(), SongSpec.load()),

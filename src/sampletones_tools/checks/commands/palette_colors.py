@@ -19,13 +19,13 @@ class PaletteColorsArguments:
     """What a palette check is given: the package, the configuration and the palettes."""
 
     package: Optional[Path]
-    config: Optional[Path]
+    config_directory: Optional[Path]
     palettes: Optional[Path]
 
 
 def configure(parser: ArgumentParser) -> None:
     parser.add_argument("--package", type=Path, default=None, help=PACKAGE_HELP)
-    parser.add_argument("--config", type=Path, default=None, help=CONFIG_HELP)
+    parser.add_argument("--config-directory", type=Path, default=None, help=CONFIG_HELP)
     parser.add_argument("--palettes", type=Path, default=None, help=PALETTES_HELP)
 
 
@@ -33,7 +33,7 @@ def run(arguments: Namespace) -> int:
     """Reports every color the application stores resolved or the configuration writes out."""
     given = PaletteColorsArguments(
         package=arguments.package,
-        config=arguments.config,
+        config_directory=arguments.config_directory,
         palettes=arguments.palettes,
     )
 
@@ -47,7 +47,7 @@ def run(arguments: Namespace) -> int:
 
     findings = check_colors(
         given.package if given.package is not None else APPLICATION_PACKAGE,
-        given.config if given.config is not None else CONFIG_DIRECTORY,
+        given.config_directory if given.config_directory is not None else CONFIG_DIRECTORY,
         given.palettes if given.palettes is not None else PALETTES_DIRECTORY,
     )
     return report(findings)

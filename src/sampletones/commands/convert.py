@@ -55,13 +55,14 @@ def run(arguments: Namespace) -> int:
     )
 
     from sampletones_core.headless.config import load_config
-    from sampletones_core.headless.conversion import (
+    from sampletones_core.headless.conversion.console import pairing_lines
+    from sampletones_core.headless.conversion.request import (
         ConversionRequest,
         channels_named,
         classic_setup,
         load_stems,
-        reconstruct,
     )
+    from sampletones_core.headless.conversion.runners import reconstruct
     from sampletones_shared.array import report_array_backend
     from sampletones_shared.utils.validation import describe_failure
 
@@ -71,7 +72,7 @@ def run(arguments: Namespace) -> int:
     except ValueError as error:
         raise SystemExit(describe_failure(error)) from error
 
-    for line in request.pairing():
+    for line in pairing_lines(request):
         print(line)
 
     report_array_backend()

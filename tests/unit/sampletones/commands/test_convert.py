@@ -8,13 +8,13 @@ from sampletones.commands.registry import COMMANDS
 from sampletones.dispatcher import dispatch
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import DEFAULT_CHANNELS, ChannelName
-from sampletones_core.headless.conversion import ConversionRequest, classic_setup
+from sampletones_core.headless.conversion.request import ConversionRequest, classic_setup
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
-RECONSTRUCTION = "sampletones_core.headless.conversion.reconstruct"
+RECONSTRUCTION = "sampletones_core.headless.conversion.runners.reconstruct"
 LOADER = "sampletones_core.headless.config.load_config"
 
 

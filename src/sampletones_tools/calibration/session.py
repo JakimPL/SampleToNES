@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final, List, Optional, Sequence, Tuple
 
@@ -8,22 +7,22 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_shared.logger import logger
 from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
+from sampletones_shared.utils.text import listed_items
 from sampletones_tools.calibration.config.corpus import CorpusConfig
 from sampletones_tools.calibration.corpus.synthesis import build_corpus
 from sampletones_tools.calibration.corpus.writer import write_corpus
 from sampletones_tools.calibration.referee.factory import build_referees
 from sampletones_tools.calibration.report import write_csv, write_markdown
 from sampletones_tools.calibration.runner import build_variants, evaluate_variants
+from sampletones_tools.runs import stamped_run_directory
 
 DEFAULT_METHODS: Final[Tuple[SpectrumMethod, ...]] = (SpectrumMethod.FFT, SpectrumMethod.CQT)
 DEFAULT_PERCEPTUAL_EXPONENTS: Final[Tuple[float, ...]] = (1.0,)
 BASE_BLEND: Final[Tuple[float, ...]] = ()
 OUTPUT_DIRECTORY: Final[str] = "calibration"
-RUN_STAMP: Final[str] = "run-%Y%m%d-%H%M%S"
 CORPUS_DIRECTORY: Final[str] = "corpus"
 CSV_REPORT: Final[str] = "report.csv"
 MARKDOWN_REPORT: Final[str] = "report.md"
-LIST_SEPARATOR: Final[str] = ","
 
 
 def methods_named(stated: Optional[str]) -> List[SpectrumMethod]:
@@ -35,9 +34,8 @@ def methods_named(stated: Optional[str]) -> List[SpectrumMethod]:
     if stated is None:
         return list(DEFAULT_METHODS)
 
-    names = [name.strip() for name in stated.split(LIST_SEPARATOR) if name.strip()]
     methods: List[SpectrumMethod] = []
-    for name in names:
+    for name in listed_items(stated):
         try:
             methods.append(SpectrumMethod(name))
         except ValueError as error:
@@ -57,7 +55,7 @@ def floats_named(stated: Optional[str], default: Sequence[float]) -> List[float]
         return list(default)
 
     values: List[float] = []
-    for value in (piece.strip() for piece in stated.split(LIST_SEPARATOR) if piece.strip()):
+    for value in listed_items(stated):
         try:
             values.append(float(value))
         except ValueError as error:
@@ -68,7 +66,7 @@ def floats_named(stated: Optional[str], default: Sequence[float]) -> List[float]
 
 def default_output() -> Path:
     """A timestamped run directory under the user's calibration documents."""
-    return USER_PATH_DOCUMENTS / OUTPUT_DIRECTORY / datetime.now(UTC).strftime(RUN_STAMP)
+    return stamped_run_directory(USER_PATH_DOCUMENTS / OUTPUT_DIRECTORY)
 
 
 class CalibrationRequest(BaseModel):

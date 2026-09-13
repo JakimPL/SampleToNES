@@ -7,6 +7,7 @@ import pytest
 from sampletones.commands.registry import COMMANDS
 from sampletones.dispatcher import dispatch
 from sampletones_tools.codec.command import DEFAULT_LENGTHEN_SECONDS
+from sampletones_tools.codec.report.session import CompressionReport
 from sampletones_tools.codec.study.manifest import StudyManifest
 from sampletones_tools.codec.study.variants.production import BASELINE_NAME
 from sampletones_tools.codec.study.variants.registry import EVERY_VARIANT
@@ -36,9 +37,14 @@ class TestCodecReport:
     ) -> None:
         outputs: List[Path] = []
 
-        def run_report(output: Path) -> Tuple[Path, Path]:
+        def run_report(output: Path) -> CompressionReport:
             outputs.append(output)
-            return output / "report.csv", output / "report.md"
+            return CompressionReport(
+                entries=(),
+                encodings=(),
+                csv_path=output / "report.csv",
+                markdown_path=output / "report.md",
+            )
 
         monkeypatch.setattr(REPORTER, run_report)
 

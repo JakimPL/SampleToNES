@@ -40,6 +40,16 @@ class TestResolveManifest:
                 variants=(EVERY_VARIANT,),
             )
 
+    def test_a_manifest_missing_from_its_path_is_refused(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="No manifest at"):
+            resolve_manifest(
+                tmp_path / "absent.json",
+                projects=(),
+                reconstructions=(),
+                lengthen_seconds=30,
+                variants=(EVERY_VARIANT,),
+            )
+
     def test_a_manifest_file_is_measured_as_it_stands(self, tmp_path: Path) -> None:
         written = StudyManifest(
             projects=(StudySource(label="one", path=Path("songs/one.stp")),),

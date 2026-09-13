@@ -52,7 +52,7 @@ class TestDriver:
         monkeypatch.setattr(BUILDER, build)
         monkeypatch.setattr(GUARD, _refuse)
 
-        assert dispatch(COMMANDS, ["driver", "--directory", str(tmp_path)]) == 0
+        assert dispatch(COMMANDS, ["driver", "--output", str(tmp_path)]) == 0
         assert build.destinations == [tmp_path]
 
     def test_a_failing_build_is_reported(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -62,4 +62,4 @@ class TestDriver:
         monkeypatch.setattr(BUILDER, fail)
 
         with pytest.raises(SystemExit, match="ca65 failed"):
-            dispatch(COMMANDS, ["driver", "--directory", str(tmp_path)])
+            dispatch(COMMANDS, ["driver", "--output", str(tmp_path)])

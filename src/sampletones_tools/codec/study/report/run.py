@@ -16,9 +16,9 @@ from sampletones_tools.codec.study.report import rows as songs
 from sampletones_tools.codec.study.report import verdicts
 from sampletones_tools.codec.study.variants.production import BASELINE_NAME
 from sampletones_tools.codec.study.variants.variant import Variant
+from sampletones_tools.runs import stamped_run_directory
 
 DEFAULT_OUTPUT_ROOT: Final[Path] = USER_PATH_DOCUMENTS / "compression"
-RUN_STAMP: Final[str] = "run-%Y%m%d-%H%M%S"
 REPORT_CSV: Final[str] = "report.csv"
 REPORT_MARKDOWN: Final[str] = "report.md"
 ACCOUNTING_CSV: Final[str] = "accounting.csv"
@@ -36,7 +36,7 @@ def run_directory(output: Optional[Path]) -> Path:
     Returns:
         Path: The directory.
     """
-    directory = output or DEFAULT_OUTPUT_ROOT / datetime.now(UTC).strftime(RUN_STAMP)
+    directory = output or stamped_run_directory(DEFAULT_OUTPUT_ROOT)
     directory.mkdir(parents=True, exist_ok=True)
     return directory
 

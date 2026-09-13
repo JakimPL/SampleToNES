@@ -46,7 +46,6 @@ class StandaloneRule(BaseModel):
 
     Attributes:
         pattern: Glob naming the scripts the rule reaches, written against the tree's root.
-        excluding: Globs naming the scripts the rule leaves to the project environment.
         reserved: Names the tree keeps clear of beyond the standard library's.
         message: What the rule holds, printed where a script imports past it.
     """
@@ -54,7 +53,6 @@ class StandaloneRule(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     pattern: str
-    excluding: Tuple[str, ...] = ()
     reserved: Tuple[str, ...] = ()
     message: str
 
@@ -140,7 +138,7 @@ def check_standalone(
     local = local_names(tree)
     violations: List[Violation] = []
     for rule in rules:
-        paths = rule_modules(tree, rule.pattern, rule.excluding, swept, selection)
+        paths = rule_modules(tree, rule.pattern, (), swept, selection)
         violations.extend(rule.shadowing(tree, paths))
         violations.extend(violation for path in paths for violation in rule.violations(path, local))
 

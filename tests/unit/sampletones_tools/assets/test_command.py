@@ -48,6 +48,6 @@ class TestIcons:
         monkeypatch.setattr(WRITER, suite)
         monkeypatch.setattr(GUARD, guarded.append)
 
-        assert dispatch(COMMANDS, ["icons", "--directory", str(tmp_path)]) == 0
+        assert dispatch(COMMANDS, ["icons", "--output", str(tmp_path)]) == 0
         assert [directory for directory, _ in suite.writes] == [tmp_path]
         assert guarded == ["icons"]

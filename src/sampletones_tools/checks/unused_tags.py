@@ -3,7 +3,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Dict, Final, List, NamedTuple, Sequence, Tuple
 
-from sampletones_shared.paths.source import REPOSITORY_ROOT, SCRIPTS_ROOT, SOURCE_ROOT
+from sampletones_shared.paths.source import REPOSITORY_ROOT, SOURCE_ROOT
+from sampletones_tools.checks.paths import SCRIPTS_ROOT
 from sampletones_tools.checks.source.constants import module_constants
 from sampletones_tools.checks.source.modules import SourceModule, discover_modules
 from sampletones_tools.checks.source.packages import package_directory

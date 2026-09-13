@@ -7,18 +7,18 @@ from sampletones_shared.command import Command
 
 NAME: Final[str] = "driver"
 HELP: Final[str] = "assemble the NES player driver with cc65"
-DIRECTORY_HELP: Final[str] = "the directory receiving the assembled driver; without it, the driver the package ships"
+OUTPUT_HELP: Final[str] = "the directory receiving the assembled driver; without it, the driver the package ships"
 
 
 @dataclass(frozen=True)
 class DriverArguments:
     """What a driver build is given: where the image goes, if anywhere but the package."""
 
-    directory: Optional[Path]
+    output: Optional[Path]
 
 
 def configure(parser: ArgumentParser) -> None:
-    parser.add_argument("--directory", type=Path, default=None, help=DIRECTORY_HELP)
+    parser.add_argument("--output", "-o", type=Path, default=None, help=OUTPUT_HELP)
 
 
 def run(arguments: Namespace) -> int:
@@ -27,13 +27,13 @@ def run(arguments: Namespace) -> int:
     Writing the driver the package ships needs a checkout, since that is where the package is.
 
     Raises:
-        SystemExit: If the build runs outside a checkout without a directory of its own, or fails.
+        SystemExit: If the build runs outside a checkout without an output of its own, or fails.
     """
-    given = DriverArguments(directory=arguments.directory)
+    given = DriverArguments(output=arguments.output)
 
     from sampletones_tools.checkout import require_checkout
 
-    if given.directory is None:
+    if given.output is None:
         require_checkout(NAME)
 
     from sampletones_shared.exceptions.player import DriverBuildError
@@ -42,7 +42,7 @@ def run(arguments: Namespace) -> int:
     from sampletones_tools.player.assembler.report import layout_lines
 
     try:
-        image = build_driver(given.directory if given.directory is not None else BINARY_DIRECTORY)
+        image = build_driver(given.output if given.output is not None else BINARY_DIRECTORY)
     except DriverBuildError as error:
         raise SystemExit(str(error)) from error
 

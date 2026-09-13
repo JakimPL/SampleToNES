@@ -39,8 +39,9 @@ def run(arguments: Namespace) -> int:
         scripts=arguments.scripts,
     )
 
-    from sampletones_shared.paths.source import SCRIPTS_ROOT, SOURCE_ROOT
+    from sampletones_shared.paths.source import SOURCE_ROOT
     from sampletones_tools.checks.import_boundary import check_imports, report
+    from sampletones_tools.checks.paths import SCRIPTS_ROOT
 
     selection = None if given.everything else {path.resolve() for path in given.files}
     violations = check_imports(

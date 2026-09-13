@@ -15,8 +15,8 @@ def available_bytes(driver_image: DriverImage) -> int:
 def lengthened(project: Project, frames: int) -> Project:
     """``project`` with its order repeated to ``frames`` positions, over the same samples.
 
-    The song is copied rather than edited so the session's own project keeps the arrangement
-    every other case reads.
+    The lengthened song is a copy of its own, so ``project`` keeps its arrangement for every other
+    reader.
     """
     longer = Project.create(
         rows_per_pattern=project.song.rows_per_pattern,

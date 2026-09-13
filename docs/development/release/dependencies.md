@@ -92,7 +92,8 @@ whatever the driver's length, so the exporter states them from `specification/dr
 build holds the linker's own labels to them before it writes anything. Editing the assembly means
 running `uv run sampletones driver` again and committing what it writes; the driver's test suite rebuilds the
 sources and holds the committed image to them wherever cc65 is installed. The wheel carries the
-assembled image alone, which is all an installed copy reads.
+assembled image, which is what exporting reads, and the assembly sources inside the tools package,
+so `sampletones driver -o DIR` assembles the driver from an installed copy too.
 
 cc65 is distributed under the zlib license, and the driver stays clear of it: the link line names
 our own object files and our own `nsf.cfg`, so nothing of cc65's start-up code or libraries reaches
@@ -111,9 +112,9 @@ project's own terms untouched.
 
 Listening to a real APU needs [ffmpeg](https://ffmpeg.org/) carrying the `libgme` demuxer, which
 is a build option rather than a given: `uv run sampletones nsf render` asks the installed ffmpeg which demuxers
-it holds and names this system's install command before it decodes anything. It exports the example
-files and renders each one to a wave beside it, its length read out of the song block the file
-carries. That is an ear rather than a gate: the register trace is what the driver answers to, and
+it holds and names this system's install command before it decodes anything. `nsf samples -o DIR`
+writes the example files, and `nsf render --directory DIR` renders each one to a wave beside it, its
+length read out of the song block the file carries. That is an ear rather than a gate: the register trace is what the driver answers to, and
 the wave is what a person listens to.
 
 ### The player's tools

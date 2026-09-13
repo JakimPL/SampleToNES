@@ -1,8 +1,7 @@
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Callable, List
 
-from sampletones_tools.corpus.build import Corpus, build_corpus
+from sampletones_tools.corpus.build import Corpus, build_synthetic_corpus
 
 Emitter = Callable[[Corpus, Path], List[Path]]
 
@@ -17,8 +16,6 @@ def emit_samples(output: Path, emitter: Emitter) -> List[Path]:
     Returns:
         List[Path]: The files the emitter wrote.
     """
-    with TemporaryDirectory() as recordings:
-        corpus = build_corpus(Path(recordings))
-
+    corpus = build_synthetic_corpus()
     output.mkdir(parents=True, exist_ok=True)
     return emitter(corpus, output)

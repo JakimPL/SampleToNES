@@ -1,41 +1,43 @@
+import csv
 from math import ceil
-from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 import pytest
 
-from sampletones_core.project.project import Project
-from sampletones_core.project.voices.sample import Sample
 from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.planes.rebuild import streams_from_planes
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.specification.compression import MAX_LITERAL_BYTES
 from sampletones_player.specification.song import SONG_HEADER_SIZE
-from sampletones_tools.codec.report.corpus import LONG_ARRANGEMENT, CorpusEntry, corpus_entries
+from sampletones_shared.utils.tables import Table
+from sampletones_tools.codec.report import session
+from sampletones_tools.codec.report.corpus import LONG_ARRANGEMENT
 from sampletones_tools.codec.report.encoding import (
     LITERALS,
+    PLANE_VARIANTS,
+    RECORDS,
+    REGISTER_PLANES,
     SEARCH,
+    SPLIT_CONTROL,
     Encoding,
-    encode_corpus,
-    report_rows,
 )
-from sampletones_tools.codec.report.session import write_report
+from sampletones_tools.codec.report.session import CompressionReport, run_report
 from sampletones_tools.codec.report.songs import available_bytes
+from sampletones_tools.corpus.build import Corpus
 
 
 @pytest.fixture(scope="module")
-def corpus(
-    instrument_catalog: Dict[str, Sample],
-    integration_project: Project,
-) -> Tuple[CorpusEntry, ...]:
-    """The songs the report measures: each sample alone, the arrangement at two lengths, and a dense minute."""
-    return corpus_entries(instrument_catalog, integration_project)
+def report(synthetic_corpus: Corpus, tmp_path_factory: pytest.TempPathFactory) -> CompressionReport:
+    """The report ``codec report`` writes, over the session's corpus in place of a build of its own."""
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(session, "build_synthetic_corpus", lambda: synthetic_corpus)
+        return run_report(tmp_path_factory.mktemp("compression_report"))
 
 
 @pytest.fixture(scope="module")
-def encodings(corpus: Tuple[CorpusEntry, ...]) -> Tuple[Encoding, ...]:
+def encodings(report: CompressionReport) -> Tuple[Encoding, ...]:
     """Every corpus song compressed under every variant of the codec."""
-    return encode_corpus(corpus)
+    return report.encodings
 
 
 class TestTheCodecAnswersWithTheSongItWasGiven:
@@ -109,15 +111,19 @@ class TestTheProgramAreaHoldsAWholeSong:
 class TestTheReportStatesWhatEachLayerSaves:
     """The measurements the format's constants are settled from."""
 
-    def test_the_report_is_written(
-        self,
-        corpus: Tuple[CorpusEntry, ...],
-        encodings: Tuple[Encoding, ...],
-        driver_image: DriverImage,
-        tmp_path: Path,
-    ) -> None:
-        space = available_bytes(driver_image)
-        csv_path, markdown_path = write_report(corpus, encodings, space, tmp_path)
-        rows = report_rows(corpus, encodings, space)
-        assert csv_path.read_text(encoding="utf-8").count("\n") == len(rows) + 1
-        assert markdown_path.exists()
+    def test_the_report_holds_the_baselines_then_every_variant_per_song(self, report: CompressionReport) -> None:
+        with report.csv_path.open(encoding="utf-8", newline="") as handle:
+            header, *rows = list(csv.reader(handle))
+
+        variants: Dict[str, List[str]] = {}
+        for row in rows:
+            variants.setdefault(row[header.index("corpus")], []).append(row[header.index("variant")])
+
+        assert list(variants) == [entry.name for entry in report.entries]
+        assert all(
+            listed == [RECORDS, REGISTER_PLANES, SPLIT_CONTROL, *(name for name, _ in PLANE_VARIANTS)]
+            for listed in variants.values()
+        )
+        table = Table(columns=tuple(header), rows=tuple(tuple(row) for row in rows)).markdown_lines()
+        document = report.markdown_path.read_text(encoding="utf-8").splitlines()
+        assert document[document.index(table[0]) : document.index(table[0]) + len(table)] == table

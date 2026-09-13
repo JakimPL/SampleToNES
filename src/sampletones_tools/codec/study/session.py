@@ -1,7 +1,8 @@
 from pathlib import Path
-from typing import Final, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 from sampletones_shared.logger import logger
+from sampletones_shared.utils.text import listed_items
 from sampletones_tools.codec.study.corpus.build import build_corpus
 from sampletones_tools.codec.study.manifest import NO_SOURCE, StudyManifest, StudySource
 from sampletones_tools.codec.study.measure import Measurement, measure
@@ -11,15 +12,13 @@ from sampletones_tools.codec.study.variants.registry import EVERY_VARIANT, selec
 from sampletones_tools.codec.study.variants.strategy import STRATEGY_ORDER, depth_measurements
 from sampletones_tools.codec.study.variants.variant import Variant
 
-LIST_SEPARATOR: Final[str] = ","
-
 
 def variant_names(stated: Optional[str]) -> Tuple[str, ...]:
     """The variants a run encodes under: the ones named, comma separated, or every one."""
     if stated is None:
         return (EVERY_VARIANT,)
 
-    return tuple(name.strip() for name in stated.split(LIST_SEPARATOR) if name.strip())
+    return tuple(listed_items(stated))
 
 
 def resolve_manifest(

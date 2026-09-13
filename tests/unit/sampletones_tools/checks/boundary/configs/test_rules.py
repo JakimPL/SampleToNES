@@ -5,7 +5,7 @@ from typing import Dict, Final, List, Tuple
 import pytest
 from pydantic import ValidationError
 
-from sampletones_shared.paths.source import SCRIPTS_ROOT, SOURCE_ROOT
+from sampletones_shared.paths.source import SOURCE_ROOT
 from sampletones_tools.checks.boundary.check import check_boundaries
 from sampletones_tools.checks.boundary.configs.declaration import BoundaryDeclaration
 from sampletones_tools.checks.boundary.configs.general import GeneralBoundaries
@@ -14,6 +14,7 @@ from sampletones_tools.checks.boundary.graph import reached_units
 from sampletones_tools.checks.boundary.rule import BoundaryRule
 from sampletones_tools.checks.boundary.scope import rule_modules
 from sampletones_tools.checks.boundary.standalone import check_standalone
+from sampletones_tools.checks.paths import SCRIPTS_ROOT
 from tests.suite.source import swept_paths, write_module
 
 BOUNDARIES: Final[ImportBoundaryRules] = ImportBoundaryRules.load()
@@ -174,10 +175,6 @@ class TestStandaloneRules:
 
         assert [violation.kind for violation in reported] == [rule.message for rule in BOUNDARIES.standalone]
 
-    def test_every_excluded_glob_names_a_script_still_in_the_tree(self) -> None:
-        """A tool that moved into the project takes its exclusion with it."""
-        assert all(list(SCRIPTS_ROOT.glob(glob)) for rule in BOUNDARIES.standalone for glob in rule.excluding)
-
 
 class TestRuleCoverage:
     """A rule naming no module of the tree reads as a clean tree, so each one reaches something."""
@@ -194,6 +191,4 @@ class TestRuleCoverage:
     def test_every_standalone_rule_reaches_a_script(self) -> None:
         swept = swept_paths(SCRIPTS_ROOT)
 
-        assert all(
-            rule_modules(SCRIPTS_ROOT, rule.pattern, rule.excluding, swept, None) for rule in BOUNDARIES.standalone
-        )
+        assert all(rule_modules(SCRIPTS_ROOT, rule.pattern, (), swept, None) for rule in BOUNDARIES.standalone)

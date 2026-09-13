@@ -92,7 +92,8 @@ def run(arguments: Namespace) -> int:
 def _report(given: ReportArguments) -> int:
     from sampletones_tools.codec.report.session import run_report
 
-    for path in run_report(given.output):
+    report = run_report(given.output)
+    for path in (report.csv_path, report.markdown_path):
         print(f"Wrote {path}")
 
     return 0
