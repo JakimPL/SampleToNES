@@ -11,37 +11,41 @@ PIP_REQUIRE_VIRTUALENV: Final[str] = "PIP_REQUIRE_VIRTUALENV"
 
 def build_environment(
     root: Path,
+    platform: Platform,
     *,
     runner: Runner,
     environment: Mapping[str, str],
 ) -> Path:
-    """The virtual environment a bundle is built in, created under ``root`` where it is missing.
+    """The interpreter of the virtual environment a bundle is built in, created under ``root`` where it is missing.
 
     Every package a build installs lands here, so the interpreter running the script stays as
-    it was found.
+    it was found. An environment is present once its interpreter is; a directory an interrupted
+    creation left behind is cleared and created again.
 
     Args:
         root: The repository.
+        platform: The system, which places the interpreter inside the environment.
         runner: What runs the command creating the environment.
         environment: The variables the command sees.
 
     Returns:
-        Path: The environment's directory.
+        Path: The environment's interpreter.
     """
     directory = root / BUILD_ENVIRONMENT
-    if directory.is_dir():
+    python = platform.interpreter(directory)
+    if python.is_file():
         print("Virtual environment already exists.")
-        return directory
+        return python
 
     print("Creating virtual environment...")
     expect_success(
         runner,
-        (sys.executable, "-m", "venv", str(directory)),
+        (sys.executable, "-m", "venv", "--clear", str(directory)),
         cwd=root,
         environment=environment,
     )
     print("Virtual environment created.")
-    return directory
+    return python
 
 
 def install(
@@ -80,11 +84,3 @@ def install(
         environment=guarded,
     )
     print("sampletones Python package installed successfully.")
-
-
-def interpreter(
-    root: Path,
-    platform: Platform,
-) -> Path:
-    """The interpreter of the build environment under ``root``."""
-    return platform.interpreter(root / BUILD_ENVIRONMENT)

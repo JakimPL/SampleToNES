@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 from typing import Final, Optional, Sequence
 
@@ -43,6 +44,9 @@ class MacOS:
         return posix_launcher(distribution, release=release)
 
     def missing_package_manager(self) -> Optional[str]:
+        if shutil.which(HOMEBREW) is not None:
+            return None
+
         return (
             "ERROR: Homebrew is required to install the macOS system dependencies.\n"
             f"Install it from {HOMEBREW_SITE}, then run this script again."

@@ -1,21 +1,15 @@
 .PHONY: help setup install system-deps build release run clean pre-commit test benchmarks lint format
 
 ifeq ($(OS),Windows_NT)
-ifeq ($(MSYSTEM),)
-UNAME_S := Windows
+PYTHON := python
 else
-UNAME_S := $(shell uname -s)
-endif
-else
-UNAME_S := $(shell uname -s)
+PYTHON := python3
 endif
 
-ifeq ($(UNAME_S),Windows)
-	PYTHON := python
-	Q :=
+ifeq ($(OS)$(MSYSTEM),Windows_NT)
+Q :=
 else
-	PYTHON := python3
-	Q := "
+Q := "
 endif
 
 GPU ?= auto

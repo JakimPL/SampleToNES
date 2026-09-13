@@ -61,14 +61,9 @@ def check_build_interpreter(
         environment: The variables the probes see.
 
     Raises:
-        SystemExit: If the interpreter is missing, cannot play audio, or a release lacks Tk.
+        SystemExit: If the interpreter cannot play audio, or a release lacks Tk.
     """
     print("Checking the build environment...")
-    if not python.is_file():
-        raise SystemExit(
-            f"ERROR: build interpreter not found at {python}.\nRun 'make build' to create the build environment."
-        )
-
     if not can_import(python, PYAUDIO, runner=runner, cwd=cwd, environment=environment):
         raise SystemExit(
             "ERROR: the build interpreter cannot import pyaudio, so the bundle would carry no audio playback.\n"

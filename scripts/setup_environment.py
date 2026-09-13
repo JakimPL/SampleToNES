@@ -2,7 +2,7 @@ import argparse
 import os
 import platform as running
 import sys
-from typing import Dict, Final, List, Mapping, Optional, Sequence
+from typing import Dict, Final, List, Mapping, Optional, Sequence, Tuple
 
 import detect_cuda
 
@@ -11,6 +11,12 @@ from bootstrap.repository import repository_root
 
 GPU_AUTO: Final[str] = "auto"
 GPU_OFF: Final[str] = "0"
+GPU_CHOICES: Final[Tuple[str, ...]] = (
+    GPU_AUTO,
+    GPU_OFF,
+    detect_cuda.EXTRA_GPU,
+    detect_cuda.EXTRA_GPU_CUDA11,
+)
 DEFAULT_GPU: Final[str] = GPU_AUTO
 DEVELOPMENT_GROUP: Final[str] = "dev"
 DARWIN: Final[str] = "Darwin"
@@ -83,7 +89,8 @@ def main(argv: Sequence[str]) -> int:
     parser.add_argument(
         "--gpu",
         default=DEFAULT_GPU,
-        help="auto to match the NVIDIA driver, 0 for the CPU backend, or the name of a GPU extra",
+        choices=GPU_CHOICES,
+        help="auto to match the NVIDIA driver, 0 for the CPU backend, or the GPU extra to install",
     )
     arguments = parser.parse_args(list(argv))
 

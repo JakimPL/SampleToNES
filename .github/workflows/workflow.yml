@@ -95,7 +95,11 @@ jobs:
 
       - name: Check a developer command refuses to run outside a checkout
         shell: bash
-        run: sampletones check import-boundary --all 2>&1 | grep "runs from a checkout"
+        run: |
+          if refusal=$(sampletones check import-boundary --all 2>&1); then
+            exit 1
+          fi
+          grep "runs from a checkout" <<< "$refusal"
 
   bundle:
     name: Standalone bundle (${{ matrix.platform }})

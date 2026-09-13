@@ -12,7 +12,7 @@ from bootstrap.platforms.protocol import Platform
 from bootstrap.preflight import check_build_interpreter
 from bootstrap.processes import Runner, expect_success, run
 from bootstrap.repository import repository_root
-from bootstrap.venv_build import build_environment, install, interpreter
+from bootstrap.venv_build import build_environment, install
 
 BUNDLE_NAME: Final[str] = "sampletones"
 DISTRIBUTION: Final[str] = "bin"
@@ -151,8 +151,12 @@ def build_bundle(
     if options.release:
         print("Release build: onedir bundle, injecting release deployment configuration")
 
-    build_environment(root, runner=runner, environment=environment)
-    python = interpreter(root, platform)
+    python = build_environment(
+        root,
+        platform,
+        runner=runner,
+        environment=environment,
+    )
     install(
         root,
         python,

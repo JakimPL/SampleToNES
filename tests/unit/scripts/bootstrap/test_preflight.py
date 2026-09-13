@@ -9,9 +9,7 @@ from tests.suite.bootstrap import RecordingRunner
 
 @pytest.fixture
 def python(tmp_path: Path) -> Path:
-    interpreter = tmp_path / "python"
-    interpreter.write_text("")
-    return interpreter
+    return tmp_path / "python"
 
 
 class TestCanImport:
@@ -24,17 +22,6 @@ class TestCanImport:
 
 
 class TestCheckBuildInterpreter:
-    def test_a_missing_interpreter_is_refused(self, tmp_path: Path) -> None:
-        with pytest.raises(SystemExit, match="build interpreter not found"):
-            check_build_interpreter(
-                tmp_path / "absent",
-                Linux(),
-                release=False,
-                runner=RecordingRunner({}, None),
-                cwd=tmp_path,
-                environment={},
-            )
-
     def test_an_interpreter_without_audio_playback_is_refused_with_the_platform_s_advice(
         self,
         python: Path,

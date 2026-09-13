@@ -3,9 +3,10 @@ from pathlib import Path
 
 import pytest
 
+from bootstrap.platforms import macos
 from bootstrap.platforms.factory import platform_named
 from bootstrap.platforms.linux import Linux
-from bootstrap.platforms.macos import MacOS
+from bootstrap.platforms.macos import HOMEBREW, HOMEBREW_SITE, MacOS
 from bootstrap.platforms.windows import Windows
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -88,8 +89,20 @@ class TestSystemPackages:
         assert "python3-tk" in commands[1]
 
     def test_macos_installs_portaudio_through_homebrew(self) -> None:
-        assert MacOS().system_packages() == (("brew", "install", "portaudio"),)
-        assert MacOS().missing_package_manager() is not None
+        assert MacOS().system_packages() == ((HOMEBREW, "install", "portaudio"),)
+
+    def test_macos_with_homebrew_has_its_package_manager(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(macos.shutil, "which", lambda name: f"/opt/homebrew/bin/{name}")
+
+        assert MacOS().missing_package_manager() is None
+
+    def test_macos_without_homebrew_names_where_to_get_it(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(macos.shutil, "which", lambda name: None)
+
+        refusal = MacOS().missing_package_manager()
+
+        assert refusal is not None
+        assert HOMEBREW_SITE in refusal
 
     def test_windows_installs_nothing(self) -> None:
         assert Windows().system_packages() == ()

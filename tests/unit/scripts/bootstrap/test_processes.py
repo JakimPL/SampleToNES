@@ -32,7 +32,7 @@ class TestRun:
             quiet=False,
         )
 
-        assert capfd.readouterr().out == "before\ninside\n"
+        assert capfd.readouterr().out.splitlines() == ["before", "inside"]
 
 
 class TestExpectSuccess:

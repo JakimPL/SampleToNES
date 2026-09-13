@@ -1,3 +1,6 @@
+import pytest
+
+from tests.suite.bootstrap import RecordingRunner
 from tests.suite.scripts import load_script
 
 setup_environment = load_script("setup_environment.py")
@@ -12,6 +15,24 @@ class TestGpuExtra:
 
     def test_auto_on_macos_keeps_the_cpu_backend(self) -> None:
         assert setup_environment.gpu_extra("auto", system="Darwin") is None
+
+
+class TestMain:
+    def test_a_gpu_choice_outside_the_extras_is_refused_before_anything_runs(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        runner = RecordingRunner({}, None)
+        monkeypatch.setattr(setup_environment, "run", runner)
+
+        with pytest.raises(SystemExit) as exit_info:
+            setup_environment.main(["--gpu", "1"])
+
+        refusal = capsys.readouterr().err
+        assert exit_info.value.code == 2
+        assert runner.lines == []
+        assert all(choice in refusal for choice in setup_environment.GPU_CHOICES)
 
 
 class TestSetupCommands:
