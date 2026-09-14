@@ -532,6 +532,96 @@ class TestActivePhases(BaseTestSuite):
         assert (_phase(converter_logic), converter_logic.is_active) == (ConversionPhase.IDLE, False)
 
 
+class TestTheSetupARunHolds(BaseTestSuite):
+    """A conversion converts what it was started from, so the setup rests until the run settles."""
+
+    @staticmethod
+    def _waiting(converter_logic: ConverterLogic, tmp_path: Path) -> Path:
+        """A conversion standing on one gathered recording, which is what a gesture then meets."""
+        source = _aimed_at_a_recording(converter_logic, tmp_path)
+        with patch(SCHEDULING):
+            converter_logic.start_conversion(confirmed=True)
+
+        assert _phase(converter_logic) == ConversionPhase.WAITING
+        return source
+
+    @staticmethod
+    def _channels_of(converter_logic: ConverterLogic, path: Path) -> FrozenSet[ChannelName]:
+        """The channels the setup holds on ``path``, read from the setup rather than from a view.
+
+        A run under way emits no view of the setup, so a case watching the setup through the run
+        reads the rows the converter answers with.
+        """
+        held = [row.channels for row in converter_logic.gathered_rows if row.path == path]
+        assert len(held) == 1
+        return held[0]
+
+    def test_a_channel_key_leaves_the_run_converting_what_it_started_on(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        source = _aimed_at_a_recording(converter_logic, tmp_path)
+        converter_logic.select_row(source, SourceKind.RECORDING)
+        self._waiting(converter_logic, tmp_path)
+        held = self._channels_of(converter_logic, source)
+
+        converter_logic.toggle_channel(ChannelName.TRIANGLE)
+
+        assert self._channels_of(converter_logic, source) == held
+
+    def test_a_recording_stays_gathered_through_the_run(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        source = self._waiting(converter_logic, tmp_path)
+
+        converter_logic.remove_source(source)
+
+        assert converter_logic.gathered_paths == (source,)
+
+    def test_the_output_switch_rests_through_the_run(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        self._waiting(converter_logic, tmp_path)
+
+        converter_logic.set_output(OutputKind.MIXED)
+
+        assert converter_logic.mixes is False
+
+    def test_a_reconstruct_request_leaves_the_gathered_recordings_alone(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        """A **Reconstruct** names its own recording, which lets the whole setup go where it runs."""
+        source = self._waiting(converter_logic, tmp_path)
+        other = tmp_path / "take.wav"
+        other.touch()
+
+        converter_logic.convert_recording(other)
+
+        assert converter_logic.gathered_paths == (source,)
+
+    def test_the_row_a_reader_inspects_still_moves(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        """The settings card reads whatever row a reader points it at, run or no run."""
+        source = self._waiting(converter_logic, tmp_path)
+
+        converter_logic.select_row(source, SourceKind.RECORDING)
+        inspected = converter_logic.inspected_source
+
+        converter_logic.clear_selection()
+
+        assert (inspected is not None, converter_logic.inspected_source) == (True, None)
+
+
 class TestGatheringRecordings(BaseTestSuite):
     """The rows a reader gathers, as the panel reads them back."""
 

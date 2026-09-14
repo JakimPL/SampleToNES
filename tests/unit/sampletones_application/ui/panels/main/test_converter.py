@@ -704,6 +704,22 @@ class TestTheMovesAMixOffers(BaseTestSuite):
 
         assert list(moves) == [self._label(ConverterStemMoveElements.CONTEXT_REMOVE_STEM)]
 
+    def test_a_mix_of_one_recording_offers_removal_alone(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        """One recording is its own order, so the list draws no levels and the menu names no move
+        over them."""
+        panel, _reported = build(layout_config)
+        kick = row("kick")
+        panel.update_view(view(kick, output=OutputKind.MIXED))
+
+        moves = self._moves(panel, kick, registered)
+
+        assert list(moves) == [self._label(ConverterStemMoveElements.CONTEXT_REMOVE_STEM)]
+
     def test_a_mix_offers_every_move_a_row_can_make(
         self,
         dpg_context: None,

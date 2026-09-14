@@ -79,8 +79,6 @@ class GUIConverterPanel(GUIPanel):
             language_manager=language_manager,
             status_bar=status_bar,
         )
-        self._banded = False
-
         self.on_convert_requested: Optional[VoidCallback] = None
         self.on_cancel_requested: Optional[VoidCallback] = None
         self.on_output_changed: Optional[Callable[[OutputKind], None]] = None
@@ -141,7 +139,6 @@ class GUIConverterPanel(GUIPanel):
         return bool(dpg.get_item_configuration(self.tag)["show"])
 
     def update_view(self, view_model: ConverterViewModel) -> None:
-        self._banded = view_model.mixes
         self._action.update_view(view_model)
         self._summary.update_view(view_model)
         self._setup.update_view(view_model)
@@ -173,7 +170,7 @@ class GUIConverterPanel(GUIPanel):
         self._listing.on_source_dropped_on_level = lambda path, position: self.call(
             self.on_source_dropped_on_level, path, position
         )
-        self._listing.on_menu_requested = self._show_menu
+        self._listing.on_menu_requested = self._menus.show
 
         self._menus.on_source_played = lambda path: self.call(self.on_source_played, path)
         self._menus.on_source_removed = lambda path: self.call(self.on_source_removed, path)
@@ -182,10 +179,6 @@ class GUIConverterPanel(GUIPanel):
         self._menus.on_source_isolated = lambda path: self.call(self.on_source_isolated, path)
         self._menus.on_folder_removed = lambda path: self.call(self.on_folder_removed, path)
         self._menus.on_folder_toggled = self._toggle_folder
-
-    def _show_menu(self, key: str) -> None:
-        """The moves a menu offers follow the run being set up, which decides what a move means."""
-        self._menus.show(key, banded=self._banded)
 
     def _toggle_folder(self, root: Path) -> None:
         """Whether a folder stands open is the list's own memory, so the menu asks the list."""

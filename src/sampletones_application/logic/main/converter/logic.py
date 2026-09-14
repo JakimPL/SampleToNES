@@ -191,7 +191,7 @@ class ConverterLogic(CallbackMixin):
         for path in paths:
             gathering = self._joined(gathering, self._gathered(path))
 
-        self._settle(self._state.with_gathering(gathering))
+        self._rewrite(self._state.with_gathering(gathering))
 
     def gather_folder(self, root: Path, found: Sequence[Path]) -> None:
         """Gathers a folder standing for the recordings ``found`` below it.
@@ -205,7 +205,7 @@ class ConverterLogic(CallbackMixin):
             self.gather_recordings(found)
             return
 
-        self._settle(self._state.with_gathering(self._gathering_folder(root, found)))
+        self._rewrite(self._state.with_gathering(self._gathering_folder(root, found)))
 
     def convert_recording(self, path: Path) -> None:
         """Converts exactly the recording the reader named, which is what a Reconstruct asks for."""
@@ -221,7 +221,7 @@ class ConverterLogic(CallbackMixin):
 
     def _replace_setup(self) -> None:
         """Lets whatever was gathered go, since a Reconstruct names what it converts on its own."""
-        self._settle(
+        self._rewrite(
             self._state.with_settings(self._settings.with_output(OutputKind.PER_RECORDING)).with_gathering(
                 Gathering.empty()
             )
@@ -237,11 +237,11 @@ class ConverterLogic(CallbackMixin):
 
     def remove_source(self, path: Path) -> None:
         """Takes one gathered recording out of the setup."""
-        self._settle(self._state.with_gathering(self._state.gathering.remove(SourceKey.recording(path))))
+        self._rewrite(self._state.with_gathering(self._state.gathering.remove(SourceKey.recording(path))))
 
     def remove_folder(self, root: Path) -> None:
         """Takes a folder out of the setup, along with every recording it stands for."""
-        self._settle(self._state.with_gathering(self._state.gathering.remove(SourceKey.folder(root))))
+        self._rewrite(self._state.with_gathering(self._state.gathering.remove(SourceKey.folder(root))))
 
     @property
     def settings_slots(self) -> Tuple[SettingsSlotViewModel, ...]:
@@ -271,7 +271,7 @@ class ConverterLogic(CallbackMixin):
 
         slot = SLOTS_BY_FIELD[field]
         held = self._inspected_agreement(slot, channel_name).settles_to
-        self._settle(self._state.with_gathering(self._state.gathering.settled(selected, slot, channel_name, held)))
+        self._rewrite(self._state.with_gathering(self._state.gathering.settled(selected, slot, channel_name, held)))
 
     def toggle_channel(self, channel_name: ChannelName) -> None:
         """Settles one channel on the row a reader picked out, which the channel's key reaches.
@@ -285,7 +285,7 @@ class ConverterLogic(CallbackMixin):
     def set_source_channels(self, path: Path, channels: FrozenSet[ChannelName]) -> None:
         """Names the channels one recording may take, which is the whole of what it reaches."""
         gathering = self._state.gathering.written(path, CHANNEL_SLOT, channels)
-        self._settle(self._state.with_gathering(gathering))
+        self._rewrite(self._state.with_gathering(gathering))
 
     def toggle_folder_channel(self, root: Path, channel_name: ChannelName) -> None:
         """Settles one channel on every recording a folder stands for, in one gesture.
@@ -294,7 +294,7 @@ class ConverterLogic(CallbackMixin):
         the whole folder on it, so one gesture always moves the group somewhere.
         """
         gathering = self._state.gathering.toggled(SourceKey.folder(root), CHANNEL_SLOT, channel_name)
-        self._settle(self._state.with_gathering(gathering))
+        self._rewrite(self._state.with_gathering(gathering))
 
     def move_source_within_level(self, path: Path, offset: int) -> None:
         """Moves a recording past the neighbor it shares a level with."""
@@ -330,7 +330,7 @@ class ConverterLogic(CallbackMixin):
         settled = (
             gathering.mixing_only(gathering.recordings[: gathering.ceiling]) if output.mixes else gathering.unmixed()
         )
-        self._settle(self._state.with_settings(self._settings.with_output(output)).with_gathering(settled))
+        self._rewrite(self._state.with_settings(self._settings.with_output(output)).with_gathering(settled))
 
     def mix_only(self, paths: Sequence[Path]) -> None:
         """Names the recordings a mix converts, gathering each one the list has still to take up.
@@ -342,7 +342,7 @@ class ConverterLogic(CallbackMixin):
         """
         gathering = self._state.gathering
         mixed = tuple(self._standing(gathering, path) for path in tuple(paths)[: gathering.ceiling])
-        self._settle(
+        self._rewrite(
             self._state.with_settings(self._settings.with_output(OutputKind.MIXED)).with_gathering(
                 gathering.mixing_only(mixed)
             )
@@ -350,11 +350,11 @@ class ConverterLogic(CallbackMixin):
 
     def set_channel_cap(self, channel_cap: int) -> None:
         """Names how many channels one recording may hold in a frame, for every conversion."""
-        self._settle(self._state.with_settings(self._settings.with_channel_cap(channel_cap)))
+        self._rewrite(self._state.with_settings(self._settings.with_channel_cap(channel_cap)))
 
     def set_hierarchy_mode(self, hierarchy_mode: HierarchyMode) -> None:
         """Names how the levels take turns: round by round, or one level exhausted before the next."""
-        self._settle(self._state.with_settings(self._settings.with_hierarchy_mode(hierarchy_mode)))
+        self._rewrite(self._state.with_settings(self._settings.with_hierarchy_mode(hierarchy_mode)))
 
     def start_conversion(self, confirmed: bool = False) -> None:
         """Starts the run the current setup describes, asking first where it would write over work.
@@ -452,7 +452,20 @@ class ConverterLogic(CallbackMixin):
         if not self.mixes:
             return
 
-        self._settle(self._state.with_gathering(self._state.gathering.with_levels(levels)))
+        self._rewrite(self._state.with_gathering(self._state.gathering.with_levels(levels)))
+
+    def _rewrite(self, state: ConverterState) -> None:
+        """Takes up a setup a gesture rewrote, which a run holding that setup leaves as it stands.
+
+        A conversion converts what it was started from, so the whole of the setup — what is
+        gathered, the levels it picks on, and the choices that shape the run — is the run's for as
+        long as it holds resources, whichever gesture reaches it. The row a reader inspects is
+        theirs throughout, so a pick settles on its own.
+        """
+        if not self.live:
+            return
+
+        self._settle(state)
 
     def _settle(self, state: ConverterState) -> None:
         """Takes up a rewritten setup and follows it wherever it reaches.

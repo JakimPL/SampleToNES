@@ -202,20 +202,6 @@ again.
 
 ## Bugs
 
-* A mix of one recording offers five moves that can never be taken. `update_view` in
-  `ui/panels/main/converter/panel.py` reads `self._banded = view_model.mixes`, while the list bands
-  on `collapse_levels = not mixes_several` (`view_model/main/converter.py`). With **Mixed** named
-  and one recording gathered, the menu is built banded over a list drawn collapsed, so
-  `_moves(row, banded=True)` answers with every level item and each of them disabled. Reading
-  `mixes_several` there is the whole of it: the menu and the list would then answer one question.
-
-* A channel key pressed during a conversion rewrites the setup with nothing on screen.
-  `toggle_slot` in `logic/main/converter/logic.py` settles the choice whatever the run is doing,
-  and `_settle` emits a view while `not self.is_active`, so `1`–`4` mid-run move the gathering and
-  the reader meets it once the run closes. The boxes beside a row already draw with `enabled=live`,
-  which is what holds the pointer to the same rule; the guard `toggle_slot` wants is that rule,
-  read from `live`.
-
 * The removal key reaches a row a collapsed converter card is hiding. `GUIStemsList.picked_key`
   answers with the row the reading holds picked out, which a collapsed card keeps, so `Del` takes
   the picked recording off a list the reader has put away. The Source settings card names that row

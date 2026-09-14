@@ -267,6 +267,15 @@ class GUIStemsList(CallbackMixin):
         return self._view.selected_key
 
     @property
+    def rearranges(self) -> bool:
+        """Whether the rows can be reordered, which the levels a row moves between are what decide.
+
+        A gesture reaching the order from outside the row's own drag — a menu item — asks this, so
+        the moves a reader is offered are the moves the list is drawing the bands for.
+        """
+        return self._offer.drags(self._view)
+
+    @property
     def lets_a_row_go(self) -> bool:
         """Whether a row may be taken out: the list is live, and it holds more than it keeps.
 
