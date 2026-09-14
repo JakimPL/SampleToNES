@@ -1,4 +1,4 @@
-from typing import Iterator
+from typing import Any, Iterator, List, Tuple
 from unittest.mock import patch
 
 import pytest
@@ -13,7 +13,7 @@ from sampletones_application.layout.behavior.scheduling.scheduling import (
 )
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
-from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.types.callback import Callback, VoidCallback
 
 
 @pytest.fixture(autouse=True)
@@ -65,3 +65,32 @@ def scheduling() -> SchedulingBehavior:
         emit=SchedulingEmit(priority=0, batch_size=128),
         queue_budget_seconds=0.005,
     )
+
+
+class HeldQueue:
+    """The render loop's queue, holding what another thread hands over until a case drains it."""
+
+    def __init__(self) -> None:
+        self._held: List[Tuple[Callback, Tuple[Any, ...]]] = []
+
+    def add(self, callback: Callback, *args: Any, **_scheduling: Any) -> None:
+        self._held.append((callback, args))
+
+    @property
+    def held(self) -> int:
+        """How many callbacks stand queued."""
+        return len(self._held)
+
+    def drain(self) -> None:
+        """Runs what stands queued in the order it arrived, along with what running it queues."""
+        while self._held:
+            callback, args = self._held.pop(0)
+            callback(*args)
+
+
+@pytest.fixture
+def held_queue(monkeypatch: pytest.MonkeyPatch) -> HeldQueue:
+    """``CallbackQueue.add`` holding each callback until the case drains the queue."""
+    queue = HeldQueue()
+    monkeypatch.setattr(CallbackQueue, "add", queue.add)
+    return queue

@@ -1,23 +1,22 @@
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Final, List, Tuple
+from typing import Any, Callable, Dict, Final, List
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
+from sampletones_application.logic.instruction import library_manager as library_manager_module
 from sampletones_application.logic.instruction.library import LibraryLogic
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
 from sampletones_application.paths import LANG_EN
-from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.instruction.library import (
     LibraryPanelViewModel,
 )
-from sampletones_application.view_model.main.updates import AdvancedSettingsUpdate
 from sampletones_core.parallelization import TaskStatus
 from sampletones_shared.exceptions import (
     DeserializationError,
@@ -28,9 +27,9 @@ from sampletones_shared.exceptions import (
     LoadLibraryError,
     UnhandledLibraryError,
 )
-from sampletones_shared.types.callback import Callback
+from tests.suite.application import HeldQueue
 from tests.suite.language import FakeLanguageManager
-from tests.suite.library import WrittenLibrary
+from tests.suite.library import OTHER_LIBRARIES, WrittenLibrary, aim_library_directory
 
 LOAD_ERROR_KEY: Final[str] = "instructions.library.message.status_load_error"
 FILE_NOT_FOUND_KEY: Final[str] = "instructions.library.message.status_file_not_found"
@@ -42,7 +41,6 @@ DESERIALIZATION_ERROR_KEY: Final[str] = "instructions.library.message.status_des
 INCOMPATIBLE_VERSION_KEY: Final[str] = "instructions.library.template.incompatible_version_template"
 GENERATION_CANCELED_KEY: Final[str] = "instructions.library.message.status_generation_canceled"
 GENERATED_INSTRUCTIONS: Final[int] = 8
-OTHER_LIBRARIES: Final[str] = "other_libraries"
 
 TEXTS: Final[Dict[str, str]] = {
     INCOMPATIBLE_VERSION_KEY: "got {} expected {}",
@@ -282,28 +280,6 @@ class TestGenerationEmits:
         assert view_model.generate_button_label == "Generate"
 
 
-class RenderLoop:
-    """The render loop's queue, holding what another thread hands over until a case drains it."""
-
-    def __init__(self) -> None:
-        self._held: List[Tuple[Callback, Tuple[Any, ...]]] = []
-
-    def add(
-        self,
-        callback: Callback,
-        *args: Any,
-        priority: int = 0,
-        delay: int = 0,
-    ) -> None:
-        self._held.append((callback, args))
-
-    def drain(self) -> None:
-        """Run what stands queued in the order it arrived, along with what running it queues."""
-        while self._held:
-            callback, args = self._held.pop(0)
-            callback(*args)
-
-
 class TreeLock:
     """The lock the catalog's tree shares with a generation, counted the way the tree counts it."""
 
@@ -321,10 +297,19 @@ class TreeLock:
 
 
 class Creator:
-    """A library creator whose workers have finished, standing where the manager keeps it."""
+    """A library creator whose workers have finished, holding the reports it was handed."""
 
     total_instructions = GENERATED_INSTRUCTIONS
     completed_instructions = GENERATED_INSTRUCTIONS
+
+    def __init__(self, _config: Any, _window: Any) -> None:
+        self.callbacks: Dict[str, Callable[..., None]] = {}
+
+    def set_callbacks(self, **callbacks: Callable[..., None]) -> None:
+        self.callbacks.update(callbacks)
+
+    def start(self) -> None:
+        pass
 
     def shutdown(self) -> None:
         pass
@@ -337,21 +322,27 @@ class Catalog:
     logic: LibraryLogic
     manager: InstructionsLibraryManager
     config_manager: ConfigManager
-    loop: RenderLoop
+    queue: HeldQueue
     lock: TreeLock
     rebuilds_under_lock: List[bool] = field(default_factory=list)
     views: List[LibraryPanelViewModel] = field(default_factory=list)
 
+    @property
+    def creator(self) -> Creator:
+        creator = self.manager.creator
+        assert isinstance(creator, Creator)
+        return creator
+
     def start_generation(self) -> None:
-        """Stand a creator up and take its start report, which is where the generation takes the lock."""
-        self.manager._creator = Creator()
-        self.manager.on_generation_start()
-        self.loop.drain()
+        """Ask for a generation and take the start report its creator sends."""
+        self.logic.generate_library()
+        self.creator.callbacks["on_start"]()
+        self.queue.drain()
 
     def write_library(self) -> None:
-        """Save the library and report it complete from a thread of its own, as a creator's monitor does."""
+        """Report the library complete from a thread of its own, as a creator's monitor does."""
         worker = threading.Thread(
-            target=self.manager._complete_generation,
+            target=self.creator.callbacks["on_completed"],
             args=((self.config_manager.key, WrittenLibrary()),),
         )
         worker.start()
@@ -359,9 +350,12 @@ class Catalog:
 
 
 @pytest.fixture
-def catalog(config_manager: ConfigManager, monkeypatch: pytest.MonkeyPatch) -> Catalog:
-    loop = RenderLoop()
-    monkeypatch.setattr(CallbackQueue, "add", loop.add)
+def catalog(
+    config_manager: ConfigManager,
+    held_queue: HeldQueue,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Catalog:
+    monkeypatch.setattr(library_manager_module, "InstructionsLibraryCreator", Creator)
     manager = InstructionsLibraryManager(config_manager, language_manager=MagicMock())
     logic = LibraryLogic(
         config_manager,
@@ -372,27 +366,40 @@ def catalog(config_manager: ConfigManager, monkeypatch: pytest.MonkeyPatch) -> C
     lock = TreeLock()
     logic.configure_lock(lock.lock, lock.unlock, lock.locked)
     config_manager.add_config_change_callback(logic.follow_config)
-    catalog = Catalog(logic=logic, manager=manager, config_manager=config_manager, loop=loop, lock=lock)
+    catalog = Catalog(logic=logic, manager=manager, config_manager=config_manager, queue=held_queue, lock=lock)
     logic.on_rebuild_tree_needed = lambda: catalog.rebuilds_under_lock.append(lock.locked())
     logic.on_view_changed = catalog.views.append
     return catalog
 
 
-def _aim_library_directory(config_manager: ConfigManager, directory: Path) -> None:
-    config_manager.apply_advanced_settings(
-        AdvancedSettingsUpdate(
-            max_workers=config_manager.config.general.max_workers,
-            spectrum_method=config_manager.config.library.spectrum_method,
-            transformation_gamma=config_manager.config.library.transformation_gamma,
-            library_directory=directory,
-            reconstructions_directory=config_manager.get_reconstructions_directory(),
-        )
-    )
+def _complete(catalog: Catalog) -> None:
+    catalog.write_library()
+
+
+def _cancel(catalog: Catalog) -> None:
+    catalog.creator.callbacks["on_progress"](TaskStatus.CANCELED, MagicMock())
+    catalog.creator.callbacks["on_canceled"]()
+
+
+def _fail(catalog: Catalog) -> None:
+    catalog.creator.callbacks["on_error"](RuntimeError("generation failed"))
+
+
+ENDINGS: Final = pytest.mark.parametrize(
+    "ending",
+    [_complete, _cancel, _fail],
+    ids=["completed", "canceled", "failed"],
+)
 
 
 class TestAGenerationClosing:
     """A generation reports from the creator's threads, and the render loop takes each report up:
     the close lets the tree lock go, then reads the catalog the library was written into."""
+
+    def test_the_lock_is_taken_when_the_generation_is_asked_for(self, catalog: Catalog) -> None:
+        catalog.logic.generate_library()
+
+        assert (catalog.manager.is_generating(), catalog.lock.locked()) == (True, True)
 
     def test_the_close_waits_for_the_render_loop(self, catalog: Catalog) -> None:
         catalog.start_generation()
@@ -409,7 +416,7 @@ class TestAGenerationClosing:
         catalog.start_generation()
         catalog.write_library()
 
-        catalog.loop.drain()
+        catalog.queue.drain()
 
         assert catalog.rebuilds_under_lock == [False]
 
@@ -417,30 +424,23 @@ class TestAGenerationClosing:
         catalog.start_generation()
         catalog.write_library()
 
-        catalog.loop.drain()
+        catalog.queue.drain()
 
         assert catalog.logic.is_library_loaded(catalog.config_manager.key) is True
         assert catalog.views[-1].generate_button_label == "Regenerate"
 
-    def test_a_report_after_the_close_leaves_the_idle_status(self, catalog: Catalog) -> None:
-        catalog.start_generation()
-        catalog.write_library()
-        catalog.loop.drain()
-        closed = catalog.views[-1]
-
-        catalog.manager.on_generation_progress(TaskStatus.COMPLETED, MagicMock())
-        catalog.loop.drain()
-
-        assert catalog.views[-1] == closed
-
-    def test_a_canceled_generation_paints_the_idle_controls(self, catalog: Catalog) -> None:
+    @ENDINGS
+    def test_every_ending_paints_the_idle_controls(self, catalog: Catalog, ending: Any) -> None:
         catalog.start_generation()
 
-        catalog.manager.on_generation_progress(TaskStatus.CANCELED, MagicMock())
-        catalog.manager.on_generation_canceled()
-        catalog.loop.drain()
+        ending(catalog)
+        catalog.queue.drain()
 
-        assert (catalog.views[-1].is_generating, catalog.lock.locked()) == (False, False)
+        assert (catalog.manager.is_generating(), catalog.views[-1].is_generating, catalog.lock.locked()) == (
+            False,
+            False,
+            False,
+        )
 
 
 class TestTheCatalogFollowingTheConfiguration:
@@ -450,30 +450,48 @@ class TestTheCatalogFollowingTheConfiguration:
     def test_another_directory_is_read_afresh(self, catalog: Catalog, tmp_path: Path) -> None:
         other = tmp_path / OTHER_LIBRARIES
 
-        _aim_library_directory(catalog.config_manager, other)
+        aim_library_directory(catalog.config_manager, other)
 
         assert (catalog.manager.library_directory, catalog.rebuilds_under_lock) == (other, [False])
 
     def test_the_same_directory_repaints_over_what_is_loaded(self, catalog: Catalog) -> None:
         catalog.manager._library.save_data(catalog.config_manager.key, WrittenLibrary())
 
-        _aim_library_directory(catalog.config_manager, catalog.config_manager.get_library_directory())
+        aim_library_directory(catalog.config_manager, catalog.config_manager.get_library_directory())
 
         assert catalog.rebuilds_under_lock == []
         assert catalog.views[-1].generate_button_label == "Regenerate"
 
-    def test_a_change_during_a_generation_waits_for_its_close(self, catalog: Catalog, tmp_path: Path) -> None:
-        standing = catalog.manager.library_directory
+    @ENDINGS
+    def test_a_change_during_a_generation_stands_whatever_the_generation_came_to(
+        self,
+        catalog: Catalog,
+        ending: Any,
+        tmp_path: Path,
+    ) -> None:
+        other = tmp_path / OTHER_LIBRARIES
         catalog.start_generation()
-        painted = len(catalog.views)
 
-        _aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        aim_library_directory(catalog.config_manager, other)
+        ending(catalog)
+        catalog.queue.drain()
 
-        assert (catalog.manager.library_directory, catalog.rebuilds_under_lock, len(catalog.views)) == (
-            standing,
-            [],
-            painted,
-        )
+        assert catalog.manager.library_directory == catalog.config_manager.get_library_directory() == other
+
+    def test_a_library_generated_across_a_change_lands_where_the_generation_started(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        started_in = catalog.config_manager.get_library_directory()
+        catalog.start_generation()
+
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        catalog.write_library()
+        catalog.queue.drain()
+
+        assert (started_in / catalog.config_manager.key.filename).exists()
+        assert catalog.logic.library_exists_for_key(catalog.config_manager.key) is False
 
 
 class TestCanceledStatusLanguageKey:

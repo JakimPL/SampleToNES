@@ -195,13 +195,15 @@ class GUITreePanel(GUIPanel, ABC):
         collect: Callable[[], List[NodeSpec]],
         *,
         root_tag: str,
+        retry: Optional[VoidCallback],
         on_finished: Optional[VoidCallback] = None,
     ) -> None:
         """Rebuild the subtree under ``root_tag``: prepare it off-thread, emit it on the main thread.
 
         Runs on the background traversal worker and walks through five steps:
 
-        1. A rebuild already in flight holds the lock, so return and let it finish.
+        1. A lock already held — a rebuild in flight, a load, a generation — keeps ``retry`` for its
+           release, which asks for this rebuild again once the tree stands free.
         2. Acquire the lock; responsibility for releasing it passes to the emit pipeline.
         3. ``refresh`` updates the model and the filter is resolved against it, then
            ``collect`` resolves it into a flat :class:`NodeSpec` list -- every per-node
@@ -214,10 +216,9 @@ class GUITreePanel(GUIPanel, ABC):
 
         A failure before the handoff releases the lock so the tree stays interactive.
         """
-        if self.locked:
+        if not self._logic.lock_unless_locked(retry):
             return
 
-        self.lock()
         handed_off = False
         try:
             refresh()

@@ -166,6 +166,7 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
             lambda: None,
             lambda: self._collect_subtree_specs(node, node_tag),
             root_tag=node_tag,
+            retry=None,
         )
 
     def _collect_subtree_specs(

@@ -9,6 +9,7 @@ from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SourceKind
+from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.logic.main.converter.logic import ConverterLogic
 from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.services.conversion.result import ConversionResult
@@ -85,7 +86,7 @@ def converter_logic(
     )
     logic.on_view_changed = MagicMock()
     logic.generate_library = MagicMock()
-    logic.is_library_available = lambda: False
+    logic.library_readiness = lambda directory, key: LibraryReadiness.PREPARING
     return logic
 
 
@@ -118,7 +119,7 @@ def _listed(converter_logic: ConverterLogic, *names: str) -> None:
 
 def _started_plan(converter_logic: ConverterLogic, service: MagicMock) -> GroupConversion:
     """The plan the converter hands the service once the library it waits for is ready."""
-    converter_logic.is_library_available = lambda: True
+    converter_logic.library_readiness = lambda directory, key: LibraryReadiness.READY
     with patch(SCHEDULING):
         converter_logic.start_conversion(confirmed=True)
 
@@ -188,6 +189,27 @@ class TestCancelDuringLibraryGeneration(BaseTestSuite):
 
         converter_logic.on_view_changed.assert_not_called()
         scheduled.assert_called_once()
+
+    def test_a_library_missing_once_the_generation_ends_gives_the_request_up(
+        self,
+        converter_logic: ConverterLogic,
+        service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """A generation that failed or was canceled elsewhere leaves nothing to wait for."""
+        on_canceled = MagicMock()
+        converter_logic.on_canceled = on_canceled
+        _aimed_at_a_recording(converter_logic, tmp_path)
+
+        with patch(SCHEDULING):
+            converter_logic.start_conversion()
+            converter_logic.library_readiness = lambda directory, key: LibraryReadiness.MISSING
+
+            converter_logic._wait_for_library_and_start()
+
+        service.start.assert_not_called()
+        on_canceled.assert_called_once_with()
+        assert _phase(converter_logic) == ConversionPhase.CANCELED
 
 
 class TestNoChannelsGuard(BaseTestSuite):

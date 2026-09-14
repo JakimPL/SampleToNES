@@ -8,11 +8,10 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
+from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.view_model.main.updates import AdvancedSettingsUpdate
 from sampletones_core.library import InstructionLibraryKey
-from tests.suite.library import WrittenLibrary
-
-OTHER_LIBRARIES = "other_libraries"
+from tests.suite.library import OTHER_LIBRARIES, WrittenLibrary
 
 
 @pytest.fixture
@@ -118,15 +117,15 @@ class TestCompleteGeneration:
         self,
         library_manager: InstructionsLibraryManager,
     ) -> None:
-        library_manager._library = MagicMock()
-        library_manager._library.save_data.side_effect = PermissionError("save failed")
+        library = MagicMock()
+        library.save_data.side_effect = PermissionError("save failed")
         error_callback = MagicMock()
         completed_callback = MagicMock()
         library_manager.on_generation_error = error_callback
         library_manager.on_generation_completed = completed_callback
 
         with pytest.raises(PermissionError):
-            library_manager._complete_generation((MagicMock(), MagicMock()))
+            library_manager._complete_generation(library, (MagicMock(), MagicMock()))
 
         error_callback.assert_called_once()
         completed_callback.assert_not_called()
@@ -135,13 +134,13 @@ class TestCompleteGeneration:
         self,
         library_manager: InstructionsLibraryManager,
     ) -> None:
-        library_manager._library = MagicMock()
-        library_manager._library.save_data.side_effect = RuntimeError("unexpected")
+        library = MagicMock()
+        library.save_data.side_effect = RuntimeError("unexpected")
         error_callback = MagicMock()
         library_manager.on_generation_error = error_callback
 
         with pytest.raises(RuntimeError):
-            library_manager._complete_generation((MagicMock(), MagicMock()))
+            library_manager._complete_generation(library, (MagicMock(), MagicMock()))
 
         error_callback.assert_not_called()
 
@@ -154,10 +153,63 @@ class TestCompleteGeneration:
         library_manager.on_generation_completed = completed_callback
         key = MagicMock()
 
-        library_manager._complete_generation((key, MagicMock()))
+        library_manager._complete_generation(library_manager._library, (key, MagicMock()))
 
         assert library_manager._current_library_key is key
         completed_callback.assert_called_once()
+
+    def test_a_library_lands_where_its_generation_started(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        started_in = library_manager._library
+        library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
+
+        library_manager._complete_generation(started_in, (config_manager.key, WrittenLibrary()))
+
+        assert started_in.get_path(config_manager.key).exists()
+        assert (library_manager.does_library_exist(config_manager.key), library_manager.current_library_key) == (
+            False,
+            None,
+        )
+
+
+class TestTheLibraryAConversionWaitsFor:
+    """A conversion waits out a generation, then takes the library or gives the request up."""
+
+    def test_a_generation_under_way_is_waited_out(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        _create_library_file(library_manager, config_manager.key)
+        library_manager._creator = CreatorEndingItsRun(library_manager)
+
+        readiness = library_manager.library_readiness(config_manager.get_library_directory(), config_manager.key)
+
+        assert readiness == LibraryReadiness.PREPARING
+
+    def test_a_library_on_disk_with_no_generation_is_ready(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        _create_library_file(library_manager, config_manager.key)
+
+        readiness = library_manager.library_readiness(config_manager.get_library_directory(), config_manager.key)
+
+        assert readiness == LibraryReadiness.READY
+
+    def test_a_library_missing_with_no_generation_is_missing(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        readiness = library_manager.library_readiness(config_manager.get_library_directory(), config_manager.key)
+
+        assert readiness == LibraryReadiness.MISSING
 
 
 class CreatorEndingItsRun:

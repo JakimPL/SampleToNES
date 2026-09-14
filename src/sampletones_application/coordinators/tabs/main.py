@@ -333,7 +333,7 @@ class MainTabCoordinator:
             self._ttl_progress,
         )
         self._converter_logic.on_target_exists = self._confirm_overwriting_target
-        self._converter_logic.is_library_available = library_manager.is_library_available_for_config
+        self._converter_logic.library_readiness = library_manager.library_readiness
         self._converter_logic.cancel_library_generation = library_manager.cancel_generation
         self._converter_logic.on_load_file = self._hooks.on_load_file
         self._converter_logic.on_load_directory = self._hooks.on_load_directory

@@ -134,7 +134,9 @@ date, collects the rows into specs, and hands them to `TreeEmitter`, which clear
 stages the new ones in budget-sized batches so interactive callbacks run between slices. The
 completion callback shows the empty state where one is called for, runs the panel's hook, and releases
 the lock. Because a browser is asked to rebuild from either tab and from several places in the
-application, exactly one rebuild is in flight at a time.
+application, exactly one rebuild is in flight at a time. A whole-tree rebuild asked for while the lock
+is held — by another rebuild, a library load or a library generation — is kept for the release, which
+asks for it again once the tree stands free; the latest request is the one kept.
 
 **A row's tag** (`compose_node_tag`, `ui/elements/tree/tag.py`) joins the names above it, which reads
 the row back to whoever inspects the widget tree, and appends a digest over the exact path of

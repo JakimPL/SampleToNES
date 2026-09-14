@@ -1,8 +1,10 @@
+from functools import partial
 from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
+from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
@@ -180,7 +182,30 @@ class InstructionsLibraryManager(CallbackMixin):
     def is_library_available_for_config(self) -> bool:
         return self.library_exists_for_key(self._config_manager.key)
 
+    def library_readiness(
+        self,
+        directory: Path,
+        key: InstructionLibraryKey,
+    ) -> LibraryReadiness:
+        """Where the library ``key`` names under ``directory`` stands for a conversion waiting on it.
+
+        A generation writes its file while it runs, so the file counts only once the generation has
+        been released; a library still missing then is one the conversion will not get.
+        """
+        if self.is_generating():
+            return LibraryReadiness.PREPARING
+
+        if (directory / key.filename).exists():
+            return LibraryReadiness.READY
+
+        return LibraryReadiness.MISSING
+
     def generate_library(self, config: Config, window: Window) -> None:
+        """Starts a generation that writes into the catalog standing at the moment it is asked for.
+
+        The library directory may move while the generation runs; the library still lands where the
+        generation was started, which is where the configuration it was started from points.
+        """
         self._creator = InstructionsLibraryCreator(config, window)
 
         _primary = self.on_generation_progress
@@ -194,7 +219,7 @@ class InstructionsLibraryManager(CallbackMixin):
 
         self._creator.set_callbacks(
             on_start=self.on_generation_start,
-            on_completed=self._complete_generation,
+            on_completed=partial(self._complete_generation, self._library),
             on_error=self.on_generation_error,
             on_canceled=self.on_generation_canceled,
             on_progress=_on_progress,
@@ -204,15 +229,22 @@ class InstructionsLibraryManager(CallbackMixin):
 
     def _complete_generation(
         self,
+        library: InstructionLibrary,
         result: Tuple[InstructionLibraryKey, InstructionLibraryData],
     ) -> None:
+        """Writes the generated library into ``library``, the catalog the generation was started in.
+
+        The library becomes the current one only where the catalog still stands there.
+        """
         key, library_data = result
         try:
-            self._library.save_data(key, library_data)
-            self._current_library_key = key
+            library.save_data(key, library_data)
         except OSError as exception:
             self.call(self.on_generation_error, exception)
             raise
+
+        if library is self._library:
+            self._current_library_key = key
 
         self.call(self.on_generation_completed)
 

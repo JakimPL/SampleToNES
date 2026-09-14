@@ -7,6 +7,7 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
+from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.logic.main.converter.destination import Destination
 from sampletones_application.logic.main.converter.gathering import Gathering
 from sampletones_application.logic.main.converter.messages import ConverterMessages
@@ -54,6 +55,7 @@ from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter import ConversionPlan
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import NoFilesToProcessError
@@ -116,7 +118,7 @@ class ConverterLogic(CallbackMixin):
         self.on_canceled: Optional[VoidCallback] = None
         self.generate_library: Optional[VoidCallback] = None
         self.cancel_library_generation: Optional[VoidCallback] = None
-        self.is_library_available: Optional[Callable[[], bool]] = None
+        self.library_readiness: Optional[Callable[[Path, InstructionLibraryKey], LibraryReadiness]] = None
 
     @property
     def mixes(self) -> bool:
@@ -516,17 +518,30 @@ class ConverterLogic(CallbackMixin):
         return plan.existing_targets(self._config_manager.config)
 
     def _wait_for_library_and_start(self) -> None:
+        """Begins the run once the library it converts against is ready.
+
+        A generation preparing the library is waited out; a library still missing once no
+        generation holds it is one the run will not get, so the request is given up.
+        """
         if self._run.phase != ConversionPhase.WAITING:
             return
 
-        if not self.call(self.is_library_available):
-            CallbackQueue.add(
-                self._wait_for_library_and_start,
-                priority=self._scheduling.priorities.schedule,
-                delay=self._scheduling.delays.schedule,
-            )
-        else:
-            self._begin_conversion()
+        readiness = self.call(
+            self.library_readiness,
+            self._config_manager.get_library_directory(),
+            self._config_manager.key,
+        )
+        match readiness:
+            case LibraryReadiness.READY:
+                self._begin_conversion()
+            case LibraryReadiness.MISSING:
+                self._run.abandon()
+            case _:
+                CallbackQueue.add(
+                    self._wait_for_library_and_start,
+                    priority=self._scheduling.priorities.schedule,
+                    delay=self._scheduling.delays.schedule,
+                )
 
     def _begin_conversion(self) -> None:
         plan = conversion_plan(self._state)

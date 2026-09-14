@@ -159,14 +159,11 @@ class LibraryLogic(CallbackMixin):
         """Follows a configuration change, reading the catalog afresh where the change names another
         library directory and repainting the status otherwise.
 
-        A generation writes into the directory it started with and reads the configured one as it
-        closes, so a change arriving while it runs is taken up then.
+        A generation writes into the catalog it was started in, so the catalog follows a change at
+        once, whatever is running; the tree it lists is drawn once the generation lets its lock go.
         """
-        if self._library_manager.is_generating():
-            return
-
         if self._library_manager.library_directory != self._config_manager.get_library_directory():
-            self.refresh_libraries()
+            self.refresh_libraries(load_if_needed=False)
             return
 
         self.update_status()
@@ -253,6 +250,7 @@ class LibraryLogic(CallbackMixin):
             self.call(self.on_load_error, exception, self._msg_window_not_available)
             return
 
+        self._do_lock()
         self._library_manager.generate_library(config, window)
         self._emit_view(self._language_manager["instructions.library.message.status_generating"])
 
@@ -382,7 +380,6 @@ class LibraryLogic(CallbackMixin):
             self._do_unlock()
 
     def _on_generation_start(self) -> None:
-        self._do_lock()
         assert self._library_manager.creator is not None, "Library manager creator is not initialized"
         self._eta_estimator = ETAEstimator(self._library_manager.creator.total_instructions)
         self.call(self.on_generation_state_changed)
@@ -392,14 +389,7 @@ class LibraryLogic(CallbackMixin):
         task_status: TaskStatus,
         task_progress: TaskProgress,
     ) -> None:
-        """Paints a report of the generation under way.
-
-        The creator goes on reporting while its pool winds down, so a report reaching a generation
-        already closed leaves the idle status the close painted.
-        """
-        if not self._library_manager.is_generating():
-            return
-
+        """Paints a report of the generation under way."""
         match task_status:
             case TaskStatus.COMPLETED:
                 self._emit_view(self._language_manager["instructions.library.message.status_saving"], progress=1.0)
@@ -430,30 +420,24 @@ class LibraryLogic(CallbackMixin):
         self._emit_view(status_text, progress=task_progress.fraction)
 
     def _on_generation_completed(self) -> None:
+        """Closes the generation and reads the catalog again, which lists the library it wrote."""
         self.call(self.on_generation_completed)
-        self._finalize_generation()
+        self._close_generation()
+        self.refresh_libraries(load_if_needed=False)
 
     def _on_generation_error(self, exception: Exception) -> None:
         self.call(self.on_generation_error, exception)
-        self._finalize_generation_error()
+        self._close_generation()
+        self.update_status()
 
     def _on_generation_canceled(self) -> None:
         self.call(self.on_generation_canceled)
-        self._finalize_generation()
-
-    def _finalize_generation(self) -> None:
-        """Closes a generation and reads the catalog again, which lists the library it wrote and
-        loads it for the configuration."""
-        self._close_generation()
-        self.refresh_libraries()
-
-    def _finalize_generation_error(self) -> None:
         self._close_generation()
         self.update_status()
 
     def _close_generation(self) -> None:
-        """Lets the creator go along with the tree lock the generation held, which loading a library
-        and rebuilding the tree both yield to."""
+        """Lets the creator go along with the tree lock the generation took when it was asked for,
+        which loading a library and rebuilding the tree both yield to."""
         self._library_manager.release_creator()
         self._do_unlock()
         self.call(self.on_generation_state_changed)
