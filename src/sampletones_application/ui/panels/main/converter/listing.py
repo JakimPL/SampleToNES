@@ -141,6 +141,11 @@ class ConverterListing(CallbackMixin):
         if row is not None:
             self.call(self.on_row_selected, Path(key), row.kind)
 
+    @property
+    def keys_active(self) -> bool:
+        """Whether a key reaching the row picked out answers, which the channel keys ask as well."""
+        return self._keys_active()
+
     def _keys_active(self) -> bool:
         """Whether the list owns the next key, which the row it holds picked out is what decides."""
         return panel_scope_active(

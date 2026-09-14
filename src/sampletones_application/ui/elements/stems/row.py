@@ -137,6 +137,9 @@ class StemRowRenderer:
         if self._offer.removal:
             dpg_configure_item(self._tags.row(row.key, SUF_BUTTON), enabled=live and self.releasable(view_model))
 
+        if row.stands_for_a_folder:
+            dpg_configure_item(self._tags.row(row.key, SUF_TWISTY), enabled=live)
+
     def releasable(self, view_model: StemsListViewModel) -> bool:
         """Whether a row may leave, which a list holding on to its last one answers by its count.
 

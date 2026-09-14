@@ -299,8 +299,8 @@ class MainTabCoordinator:
             on_directory_add_requested=self._on_directory_add_requested,
             on_file_add_requested=self._on_file_add_requested,
             can_add_stems=self._can_add_stems,
-            on_reconstruct_file=self._request_reconstruct_file,
-            on_reconstruct_directory=self._request_reconstruct_directory,
+            on_reconstruct_file=self.request_reconstruct_file,
+            on_reconstruct_directory=self.request_reconstruct_directory,
             on_load_reconstruction=self._hooks.on_load_reconstruction,
             on_load_library=self._hooks.on_load_library,
             on_set_as_library_directory=self._handle_select_library_directory,
@@ -382,13 +382,15 @@ class MainTabCoordinator:
         self._update_source_panel_view()
         self._hooks.on_busy_state_changed()
 
-    def _request_reconstruct_file(self, filepath: Path) -> None:
+    def request_reconstruct_file(self, filepath: Path) -> None:
+        """Converts the recording a Reconstruct named, asking first where it drops what was gathered."""
         if self._notify_converter_running():
             return
 
         self._replacing_the_setup(lambda: self._hooks.on_reconstruct_file(filepath))
 
-    def _request_reconstruct_directory(self, directory_path: Path) -> None:
+    def request_reconstruct_directory(self, directory_path: Path) -> None:
+        """Converts the folder a Reconstruct named, asking first where it drops what was gathered."""
         if self._notify_converter_running():
             return
 
@@ -795,7 +797,14 @@ class MainTabCoordinator:
         self._explorer_panel.refresh()
 
     def toggle_channel(self, channel: ChannelName) -> None:
-        """Settles one channel on the recording or folder the reader has picked out of the list."""
+        """Settles one channel on the recording or folder the reader has picked out of the list.
+
+        The key reaches the pick on the same terms as the list's own keys, so it rests while the
+        card stands collapsed.
+        """
+        if not self._converter_panel.keys_active:
+            return
+
         self._converter_logic.toggle_channel(channel)
 
     def toggle_advanced_settings(self) -> None:

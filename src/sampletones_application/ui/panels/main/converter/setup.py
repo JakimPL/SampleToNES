@@ -123,14 +123,15 @@ class ConverterSetup(CallbackMixin):
     def update_view(self, view_model: ConverterViewModel) -> None:
         """Draw the setup the view names onto the widgets standing for it."""
         dpg_set_value(TAG_MAIN_CONVERTER_RADIO_MODE, self._mode_labels[view_model.output])
-        dpg_configure_item(TAG_MAIN_CONVERTER_RADIO_MODE, enabled=not view_model.is_active)
+        dpg_configure_item(TAG_MAIN_CONVERTER_RADIO_MODE, enabled=view_model.live)
         dpg_configure_item(TAG_MAIN_CONVERTER_GROUP_CONTROLS, show=view_model.listed)
         dpg_configure_item(
             TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP,
             max_value=view_model.max_channel_cap,
-            enabled=not view_model.is_active,
+            enabled=view_model.live,
         )
         dpg_set_value(TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP, view_model.channel_cap)
+        dpg_configure_item(TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE, enabled=view_model.live)
         dpg_set_value(
             TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
             self._hierarchy_labels[view_model.hierarchy_mode],

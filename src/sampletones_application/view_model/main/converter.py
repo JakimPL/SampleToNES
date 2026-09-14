@@ -84,6 +84,11 @@ class ConverterViewModel(BaseModel, frozen=True):
         return self.phase in ACTIVE_PHASES
 
     @property
+    def live(self) -> bool:
+        """Whether the setup answers gestures, which a conversion holding resources holds still."""
+        return not self.is_active
+
+    @property
     def subpanel_visible(self) -> bool:
         return self.phase != ConversionPhase.IDLE
 
@@ -133,7 +138,7 @@ class ConverterViewModel(BaseModel, frozen=True):
             muted_channels=frozenset(),
             picked_keys=frozenset(),
             picking_room=None,
-            live=not self.is_active,
+            live=self.live,
             collapse_levels=not self.mixes_several,
             selected_key=self.selected_key,
         )

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, FrozenSet, List
+from typing import Any, Callable, FrozenSet, List, Tuple
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -82,7 +82,7 @@ def converter_logic(
         service,
         scheduling=scheduling,
         language_manager=FakeLanguageManager(TEXTS),  # type: ignore[arg-type]
-        is_operation_active=lambda: False,
+        is_operation_active=lambda: logic.is_active,
     )
     logic.on_view_changed = MagicMock()
     logic.generate_library = MagicMock()
@@ -628,20 +628,85 @@ class TestTheSetupARunHolds(BaseTestSuite):
 
         assert converter_logic.gathered_paths == (source,)
 
-    def test_the_row_a_reader_inspects_still_moves(
+    def test_a_reconstruct_during_another_operation_leaves_the_setup_standing(
         self,
         converter_logic: ConverterLogic,
         tmp_path: Path,
     ) -> None:
-        """The settings card reads whatever row a reader points it at, run or no run."""
-        source = self._waiting(converter_logic, tmp_path)
+        """A library generation holds the resources too, and a Reconstruct reaching the converter
+        meanwhile leaves what the reader gathered."""
+        source = _aimed_at_a_recording(converter_logic, tmp_path)
+        other = tmp_path / "take.wav"
+        other.touch()
+        converter_logic._is_operation_active = lambda: True
 
+        converter_logic.convert_recording(other)
+        converter_logic.convert_folder(tmp_path, [other])
+
+        assert converter_logic.gathered_paths == (source,)
+
+    def test_the_row_a_reader_inspects_rests_with_the_list(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        """The list stands inert through a run, so the row the card names stays the row drawn picked."""
+        source = _aimed_at_a_recording(converter_logic, tmp_path)
         converter_logic.select_row(source, SourceKind.RECORDING)
-        inspected = converter_logic.inspected_source
+        self._waiting(converter_logic, tmp_path)
 
         converter_logic.clear_selection()
 
-        assert (inspected is not None, converter_logic.inspected_source) == (True, None)
+        assert (converter_logic.inspected_source is not None, _view(converter_logic).selected_key) == (
+            True,
+            str(source),
+        )
+
+    def test_a_waiting_run_begins_from_the_settings_it_was_asked_with(
+        self,
+        converter_logic: ConverterLogic,
+        service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        self._waiting(converter_logic, tmp_path)
+        asked_with = converter_logic._config_manager.config
+        converter_logic._config_manager.config = asked_with.model_copy(
+            update={"generation": asked_with.generation.model_copy(update={"drive": 2.0})}
+        )
+        converter_logic.library_readiness = lambda directory, key: LibraryReadiness.READY
+
+        converter_logic._wait_for_library_and_start()
+
+        assert service.start.call_args.args[0].generation.drive == asked_with.generation.drive
+
+    def test_a_waiting_run_looks_for_its_library_where_it_was_asked_to(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        self._waiting(converter_logic, tmp_path)
+        asked_for = (
+            Path(converter_logic._config_manager.config.general.library_directory),
+            converter_logic._config_manager.key,
+        )
+        looked_for: List[Tuple[Path, Any]] = []
+        converter_logic._config_manager.config = converter_logic._config_manager.config.model_copy(
+            update={
+                "general": converter_logic._config_manager.config.general.model_copy(
+                    update={"library_directory": str(tmp_path / "elsewhere")}
+                )
+            }
+        )
+
+        def readiness(directory: Path, key: Any) -> LibraryReadiness:
+            looked_for.append((directory, key))
+            return LibraryReadiness.PREPARING
+
+        converter_logic.library_readiness = readiness
+        with patch(SCHEDULING):
+            converter_logic._wait_for_library_and_start()
+
+        assert looked_for == [asked_for]
 
 
 class TestGatheringRecordings(BaseTestSuite):

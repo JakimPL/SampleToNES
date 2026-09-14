@@ -12,6 +12,7 @@ from sampletones_application.logic.main.converter.destination import Destination
 from sampletones_application.logic.main.converter.gathering import Gathering
 from sampletones_application.logic.main.converter.messages import ConverterMessages
 from sampletones_application.logic.main.converter.run import (
+    ConversionRequest,
     ConversionRun,
     ConversionServiceProtocol,
     ConversionSuccess,
@@ -53,7 +54,6 @@ from sampletones_application.view_model.main.source import (
 )
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_application.view_model.shared.stems import StemRowViewModel
-from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter import ConversionPlan
@@ -68,7 +68,7 @@ class ConverterLogic(CallbackMixin):
     """What the Main tab's converter offers, and the one place its parts are settled against.
 
     The setup a reader builds is one value (:class:`ConverterState`), and every gesture rewrites a
-    part of it and hands the whole back to ``_settle``, which follows it wherever it reaches: the
+    part of it and hands the whole back to ``_rewrite``, which follows it wherever it reaches: the
     destination the run now names, and the view the panel draws. The run itself is held apart, so
     a conversion under way reports where it stands without knowing what it was set up from.
     """
@@ -210,13 +210,23 @@ class ConverterLogic(CallbackMixin):
         self._rewrite(self._state.with_gathering(self._gathering_folder(root, found)))
 
     def convert_recording(self, path: Path) -> None:
-        """Converts exactly the recording the reader named, which is what a Reconstruct asks for."""
+        """Converts exactly the recording the reader named, which is what a Reconstruct asks for.
+
+        The setup is replaced only where a conversion may start, so a Reconstruct reaching the
+        converter while another operation runs leaves what the reader gathered standing.
+        """
+        if self._declines_to_start():
+            return
+
         self._replace_setup()
         self.gather_recordings([path])
         self.start_conversion()
 
     def convert_folder(self, root: Path, found: Sequence[Path]) -> None:
         """Converts the recordings ``found`` below a folder, writing one reconstruction apiece."""
+        if self._declines_to_start():
+            return
+
         self._replace_setup()
         self.gather_folder(root, found)
         self.start_conversion()
@@ -231,11 +241,11 @@ class ConverterLogic(CallbackMixin):
 
     def select_row(self, path: Path, kind: SourceKind) -> None:
         """Names the row a reader is inspecting, which the settings card edits."""
-        self._settle(self._state.with_selected(SourceKey(kind=kind, path=path)))
+        self._rewrite(self._state.with_selected(SourceKey(kind=kind, path=path)))
 
     def clear_selection(self) -> None:
         """Lets the inspected row go, which leaves the settings card and the keys with none."""
-        self._settle(self._state.with_selected(None))
+        self._rewrite(self._state.with_selected(None))
 
     def remove_source(self, path: Path) -> None:
         """Takes one gathered recording out of the setup."""
@@ -364,8 +374,7 @@ class ConverterLogic(CallbackMixin):
         ``confirmed`` states that the reader has already answered for the file standing at the
         target, which is what lets the prompt's answer come back and run.
         """
-        if self._is_operation_active():
-            logger.warning("A conversion or library generation is already in progress")
+        if self._declines_to_start():
             return
 
         if not self._state.gathering.count:
@@ -382,9 +391,24 @@ class ConverterLogic(CallbackMixin):
             self.call(self.on_target_exists, standing_targets)
             return
 
-        self._run.wait()
+        self._run.wait(
+            ConversionRequest(
+                config=self._config_manager.config.model_copy(),
+                plan=plan,
+                reconstruction_name=self._state.destination.reconstruction_name,
+                library_key=self._config_manager.key,
+            )
+        )
         self.call(self.generate_library)
         self._wait_for_library_and_start()
+
+    def _declines_to_start(self) -> bool:
+        """Whether another exclusive operation holds the resources a conversion would take."""
+        if not self._is_operation_active():
+            return False
+
+        logger.warning("A conversion or library generation is already in progress")
+        return True
 
     def cancel(self) -> None:
         if self._run.is_running:
@@ -457,31 +481,24 @@ class ConverterLogic(CallbackMixin):
         self._rewrite(self._state.with_gathering(self._state.gathering.with_levels(levels)))
 
     def _rewrite(self, state: ConverterState) -> None:
-        """Takes up a setup a gesture rewrote, which a run holding that setup leaves as it stands.
+        """Takes up a setup a gesture rewrote and follows it wherever it reaches.
 
-        A conversion converts what it was started from, so the whole of the setup — what is
-        gathered, the levels it picks on, and the choices that shape the run — is the run's for as
-        long as it holds resources, whichever gesture reaches it. The row a reader inspects is
-        theirs throughout, so a pick settles on its own.
-        """
-        if not self.live:
-            return
-
-        self._settle(state)
-
-    def _settle(self, state: ConverterState) -> None:
-        """Takes up a rewritten setup and follows it wherever it reaches.
+        The list stands inert while a conversion holds resources, so every gesture — a pick
+        included — is held to the same rule the drawn list keeps: the setup the reader sees is the
+        setup the logic holds. The run itself converts the request it was started from.
 
         A mix names its destination after the recordings that take part, so the path the panel
         shows follows every gesture; a settled run returns to idle, since the screen has moved on
         from the setup it reported.
         """
+        if not self.live:
+            return
+
         self._remember(state.settings)
         self._state = self._redirected(state.selecting(state.selected))
         self._rows = self._read_rows()
-        if not self.is_active:
-            self._run.return_to_idle()
-            self._emit(self._messages.idle, 0.0)
+        self._run.return_to_idle()
+        self._emit(self._messages.idle, 0.0)
 
     def _remember(self, settings: RunSettings) -> None:
         """Write down the shape of the run, so a launch opens where the last one left off.
@@ -518,22 +535,23 @@ class ConverterLogic(CallbackMixin):
         return plan.existing_targets(self._config_manager.config)
 
     def _wait_for_library_and_start(self) -> None:
-        """Begins the run once the library it converts against is ready.
+        """Begins the run once the library its request converts against is ready.
 
         A generation preparing the library is waited out; a library still missing once no
         generation holds it is one the run will not get, so the request is given up.
         """
-        if self._run.phase != ConversionPhase.WAITING:
+        request = self._run.request
+        if self._run.phase != ConversionPhase.WAITING or request is None:
             return
 
         readiness = self.call(
             self.library_readiness,
-            self._config_manager.get_library_directory(),
-            self._config_manager.key,
+            request.library_directory,
+            request.library_key,
         )
         match readiness:
             case LibraryReadiness.READY:
-                self._begin_conversion()
+                self._run.begin(request)
             case LibraryReadiness.MISSING:
                 self._run.abandon()
             case _:
@@ -542,15 +560,6 @@ class ConverterLogic(CallbackMixin):
                     priority=self._scheduling.priorities.schedule,
                     delay=self._scheduling.delays.schedule,
                 )
-
-    def _begin_conversion(self) -> None:
-        plan = conversion_plan(self._state)
-        if plan is None:
-            logger.warning("Nothing is selected to convert")
-            return
-
-        config: Config = self._config_manager.config.model_copy()
-        self._run.begin(config, plan, self._state.destination.reconstruction_name)
 
     def _on_report(self, report: RunReport) -> None:
         self._emit(report.status_text, report.progress, running_input=report.input_path)

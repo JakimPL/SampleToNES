@@ -127,6 +127,11 @@ class GUIConverterPanel(GUIPanel):
         return self._listing.stems_list
 
     @property
+    def keys_active(self) -> bool:
+        """Whether a key reaching the row picked out answers: the tab in front, the card open."""
+        return self._listing.keys_active
+
+    @property
     def input_path_text(self) -> Optional[GUIPathText]:
         """The line naming the recording a running conversion is on."""
         return self._summary.input_path_text

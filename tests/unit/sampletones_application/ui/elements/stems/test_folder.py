@@ -139,14 +139,18 @@ def folder(name: str, *, holds: int) -> StemRowViewModel:
     )
 
 
-def view(*rows: StemRowViewModel, selected_key: Optional[str] = None) -> StemsListViewModel:
+def view(
+    *rows: StemRowViewModel,
+    selected_key: Optional[str] = None,
+    live: bool = True,
+) -> StemsListViewModel:
     return StemsListViewModel(
         rows=rows,
         channels_in_play=CHANNELS,
         muted_channels=frozenset(),
         picked_keys=frozenset(),
         picking_room=None,
-        live=True,
+        live=live,
         collapse_levels=True,
         selected_key=selected_key,
     )
@@ -253,6 +257,18 @@ class TestOpeningAFolder(BaseTestSuite):
         press(twisty_of(sources))
         for held in sources.held:
             assert dpg.does_item_exist(name_of(held))
+
+    def test_the_marker_rests_while_the_list_is_inert(self, stems_list: GUIStemsList) -> None:
+        """A run holds the list still, so a folder stays as it was drawn and the pick inside it stays."""
+        sources = folder("sources", holds=3)
+        stems_list.update_view(view(sources, live=False))
+
+        press(twisty_of(sources))
+
+        assert (dpg.get_item_configuration(twisty_of(sources))["enabled"], dpg.does_item_exist(region_of(sources))) == (
+            False,
+            False,
+        )
 
     def test_the_marker_closes_it_again(self, stems_list: GUIStemsList) -> None:
         sources = folder("sources", holds=3)

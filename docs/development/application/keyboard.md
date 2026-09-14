@@ -34,7 +34,7 @@ Three priorities order the whole application:
 | Priority | Scope | Active when | Behavior |
 |----------|-------|-------------|-----------|
 | `MODAL` (100) | the open dialog's navigator | a modal dialog holds the keyboard | routes Tab/Enter/Escape to the dialog's focus ring and claims every press, so a dialog owns the keyboard exclusively while it is shown |
-| `PANEL` (60) | a sub-panel the keys are meant for — the sequencer's tracker grid, the order list, the voices, the converter's list of gathered recordings, the instruments panel while an audition is open | its tab is in front and the sub-panel holds what the keys act on: a cursor, a row picked out, or an open audition | handles the keys its own category names and yields the combinations it does not own so a higher-reaching shortcut still wins |
+| `PANEL` (60) | a sub-panel the keys are meant for — the sequencer's tracker grid, the order list, the voices, the converter's list of gathered recordings, the instruments panel while an audition is open | its tab is in front, its card stands open, and the sub-panel holds what the keys act on: a cursor, a row picked out, or an open audition | handles the keys its own category names and yields the combinations it does not own so a higher-reaching shortcut still wins |
 | `SHORTCUT` (40) | application shortcuts (`ShortcutManager`) | always | fires the matching shortcut while no field is being edited, or whenever the shortcut is `field_transparent` |
 
 The router offers a panel the key ahead of the shortcut scope, so a panel returns `False` on any
@@ -42,13 +42,16 @@ combination it does not own — the grid yields every `Ctrl`-modified press — 
 field-transparent shortcuts such as `Ctrl+PgDn` / `Ctrl+PgUp` tab-switching reach the shortcut
 scope while a grid cursor is set.
 
-### A panel scope answers on its own tab
+### A panel scope answers on its own tab, from an open card
 
-A cursor, a picked row and an open audition all outlive a move to another tab, so a panel is given
-the predicate that reports whether its tab is the one in front and reads it at the moment of the
-press, the way focus is read. The composition root resolves the tab and the scope composes the
-answer into its `active`, which keeps the fact in one place and leaves the router's contract — the
-scope decides whether it wants the key — as it stands.
+A cursor, a picked row and an open audition all outlive a move to another tab and a collapsed card,
+so a panel is given the predicate that reports whether its tab is the one in front and reads it, with
+its card's collapse, at the moment of the press, the way focus is read. The composition root resolves
+the tab and the scope composes the answer into its `active`, which keeps the fact in one place and
+leaves the router's contract — the scope decides whether it wants the key — as it stands.
+
+A shortcut reaching a panel's selection from the `SHORTCUT` scope asks the panel the same question:
+the channel keys reach the converter's picked row only while its list would take a key itself.
 
 ### Focus is pulled, not pushed
 

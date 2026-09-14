@@ -23,11 +23,13 @@ from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_BUTTON
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_BUTTON_ACTION,
+    TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
     TAG_MAIN_CONVERTER_GROUP_CONTROLS,
     TAG_MAIN_CONVERTER_GROUP_CONVERT,
     TAG_MAIN_CONVERTER_GROUP_INPUT,
     TAG_MAIN_CONVERTER_GROUP_ORDER,
     TAG_MAIN_CONVERTER_GROUP_SUMMARY,
+    TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP,
     TAG_MAIN_CONVERTER_RADIO_MODE,
     TAG_MAIN_CONVERTER_TEXT_STEMS_HINT,
     TAG_MAIN_CONVERTER_WINDOW_STEMS,
@@ -57,6 +59,11 @@ from tests.suite.gestures import CLICKED, click_row_name
 from tests.suite.shortcuts import rebound_source, shipped_source
 
 ROOT_TAG = "test_root"
+SETUP_CHOICES = (
+    TAG_MAIN_CONVERTER_RADIO_MODE,
+    TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP,
+    TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
+)
 LANGUAGE_MANAGER = LanguageManager(LANG_EN)
 ACTION_LABEL = "Convert 2 recordings"
 STATUS_TEXT = "No tasks in progress."
@@ -314,6 +321,20 @@ class TestTheRunControls:
 
         assert not shows(TAG_MAIN_CONVERTER_GROUP_ORDER)
 
+    def test_every_choice_rests_while_a_run_holds_the_setup(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        panel, _reported = build(layout_config)
+
+        panel.update_view(view(row("kick"), row("snare"), output=OutputKind.MIXED, phase=ConversionPhase.RUNNING))
+
+        assert {tag: dpg.get_item_configuration(tag)["enabled"] for tag in SETUP_CHOICES} == dict.fromkeys(
+            SETUP_CHOICES,
+            False,
+        )
+
     def test_they_stand_below_the_list(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         build(layout_config)
         body = dpg.get_item_children(dpg.get_item_parent(TAG_MAIN_CONVERTER_WINDOW_STEMS), 1)
@@ -445,6 +466,18 @@ class TestTheKeysTheListClaims:
 
         assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is False
         assert (removed, panel.stems_list.picked_key) == ([], kick.key)
+
+    def test_the_channel_keys_read_the_card_standing_away(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The channel keys reach the pick from the application's shortcuts, on the list's terms."""
+        panel, _reported = build(layout_config, collapsed=True)
+        kick = row("kick")
+        panel.update_view(view(kick, selected_key=kick.key))
+
+        assert panel.keys_active is False
 
     def test_a_press_rests_while_the_list_stands_inert(
         self,
@@ -741,6 +774,20 @@ class TestTheMovesAMixOffers(BaseTestSuite):
         moves = self._moves(panel, kick, registered)
 
         assert list(moves) == [self._label(ConverterStemMoveElements.CONTEXT_REMOVE_STEM)]
+
+    def test_a_running_mix_offers_no_move_it_would_take(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        panel, _reported = build(layout_config)
+        kick = row("kick")
+        panel.update_view(view(kick, row("snare"), output=OutputKind.MIXED, phase=ConversionPhase.RUNNING))
+
+        moves = self._moves(panel, kick, registered)
+
+        assert not any(moves.values())
 
     def test_a_mix_offers_every_move_a_row_can_make(
         self,

@@ -287,9 +287,10 @@ class GUIStemsList(CallbackMixin):
         """Whether the rows can be reordered, which the levels a row moves between are what decide.
 
         A gesture reaching the order from outside the row's own drag — a menu item — asks this, so
-        the moves a reader is offered are the moves the list is drawing the bands for.
+        the moves a reader is offered are the moves the list is drawing the bands for, while the
+        list is live.
         """
-        return self._offer.drags(self._view)
+        return self._view.live and self._offer.drags(self._view)
 
     @property
     def lets_a_row_go(self) -> bool:
@@ -309,8 +310,12 @@ class GUIStemsList(CallbackMixin):
 
         A folder closing over the row picked out takes that row off the list, so the pick is
         reported as gone and the reading that comes back names none. This is the one gesture that
-        moves a pick without landing on a row, which is what keeps the pick and the rows in step.
+        moves a pick without landing on a row, which is what keeps the pick and the rows in step,
+        and like every pick it answers only while the list is live.
         """
+        if not self._view.live:
+            return
+
         closing = self._open_folders.stands_open(key) and self._holds_picked(key)
         self._open_folders.toggle(key)
         self.update_view(self._view)

@@ -969,8 +969,6 @@ class Application:
             logger.warning("A conversion or library generation is already in progress; cannot start a new one")
             return
 
-        self._instructions_tab.ensure_library_loaded()
-
         filepath = open_file_dialog(
             title=self.language_manager["global.dialog.title.reconstruct_file"],
             initial_directory=self.session_manager.get_audio_input_path(),
@@ -988,8 +986,6 @@ class Application:
         if self._is_operation_active():
             logger.warning("A conversion or library generation is already in progress; cannot start a new one")
             return
-
-        self._instructions_tab.ensure_library_loaded()
 
         directory = select_directory_dialog(
             title=self.language_manager["global.dialog.title.reconstruct_directory"],
@@ -1076,7 +1072,7 @@ class Application:
 
     @ignore_none_path
     def _handle_reconstruct_file(self, filepath: Path) -> None:
-        self._reconstruct_file(filepath)
+        self._main_tab.request_reconstruct_file(filepath)
 
     def _reconstruct_directory(self, directory_path: Path) -> None:
         self._main_tab.convert_path(directory_path)
@@ -1086,7 +1082,7 @@ class Application:
 
     @ignore_none_path
     def _handle_reconstruct_directory(self, directory_path: Path) -> None:
-        self._reconstruct_directory(directory_path)
+        self._main_tab.request_reconstruct_directory(directory_path)
 
     def _on_playback_error(self, exception: Exception) -> None:
         logger.error_with_traceback(exception, "Playback error occurred")

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.logic.main.converter.run import (
+    ConversionRequest,
     ConversionRun,
     ConversionSuccess,
     RunReport,
@@ -25,6 +26,15 @@ from tests.suite.base import BaseTestSuite
 from tests.unit.sampletones_application.logic.main.converter.texts import messages
 
 WRITTEN: Tuple[Path, ...] = (Path("/reconstructions/kick.stn"),)
+
+
+def _request(reconstruction_name: str) -> ConversionRequest:
+    return ConversionRequest(
+        config=Config(),
+        plan=MagicMock(),
+        reconstruction_name=reconstruction_name,
+        library_key=MagicMock(),
+    )
 
 
 def _library_progress(completed: int, total: int) -> ConversionResult:
@@ -55,8 +65,9 @@ class Driver:
         self._handler(result)
 
     def begin(self, reconstruction_name: str = "kick") -> None:
-        self.run.wait()
-        self.run.begin(Config(), MagicMock(), reconstruction_name)
+        request = _request(reconstruction_name)
+        self.run.wait(request)
+        self.run.begin(request)
 
 
 @pytest.fixture
@@ -71,7 +82,7 @@ class TestWhereARunStands(BaseTestSuite):
         assert (driver.run.phase, driver.run.is_active) == (ConversionPhase.IDLE, False)
 
     def test_a_request_waits_for_the_library_it_converts_against(self, driver: Driver) -> None:
-        driver.run.wait()
+        driver.run.wait(_request("kick"))
 
         assert (driver.run.phase, driver.run.is_active) == (ConversionPhase.WAITING, True)
 
@@ -114,7 +125,7 @@ class TestWhereARunStands(BaseTestSuite):
 
 class TestWhatARunReports(BaseTestSuite):
     def test_a_request_says_it_is_waiting(self, driver: Driver) -> None:
-        driver.run.wait()
+        driver.run.wait(_request("kick"))
 
         assert driver.reports[-1].status_text == "main.converter.message.status_waiting"
 
@@ -151,7 +162,7 @@ class TestWhatARunReports(BaseTestSuite):
         assert driver.run.phase == ConversionPhase.CANCELING
 
     def test_library_progress_moves_the_bar_while_waiting(self, driver: Driver) -> None:
-        driver.run.wait()
+        driver.run.wait(_request("kick"))
 
         driver.reports_from_service(ServiceStarted(total=1))
         driver.reports_from_service(_library_progress(completed=3, total=4))
@@ -196,7 +207,7 @@ class TestWhatACompletedRunHandsOver(BaseTestSuite):
         driver.run.on_canceled.assert_called_once_with()
 
     def test_a_request_given_up_before_the_service_took_it_cancels_all_the_same(self, driver: Driver) -> None:
-        driver.run.wait()
+        driver.run.wait(_request("kick"))
 
         driver.run.abandon()
 
