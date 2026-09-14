@@ -6,8 +6,10 @@ import pytest
 
 from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.elements.sequencer import SequencerVoicesElements
+from sampletones_application.tags.sequencer import TAG_SEQUENCER_VOICES_PANEL
 from sampletones_application.ui.elements import context_menu as context_menu_module
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.panels.sequencer.voices import menu as menu_module
 from sampletones_application.ui.panels.sequencer.voices import panel as panel_module
 from sampletones_application.ui.panels.sequencer.voices.menu import VoicesMenu
@@ -156,6 +158,7 @@ def _panel(
     take — so a case naming a position names the same one however the voice is stocked.
     """
     panel = GUISequencerVoicesPanel.__new__(GUISequencerVoicesPanel)
+    GUIPanel.__init__(panel, tag=TAG_SEQUENCER_VOICES_PANEL)
     panel._language_manager = _Labels()
     panel._shortcuts = shipped_source()
     panel._entries = ENTRIES

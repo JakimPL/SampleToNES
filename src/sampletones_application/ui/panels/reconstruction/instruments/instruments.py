@@ -589,6 +589,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             tab_active=self._tab_active,
             router=self._router,
             holds=self._audition_open,
+            card_open=not self.collapsed,
         )
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:

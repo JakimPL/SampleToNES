@@ -685,3 +685,23 @@ class TestTheNoteKeys:
         )
         panel.update_view(ONE_INSTRUMENT)
         assert panel._audition_keys_active() is False
+
+    def test_a_rail_put_away_keeps_the_keys_from_the_panel(
+        self,
+        layout_config: LayoutConfig,
+        key_router: MagicMock,
+    ) -> None:
+        """A rail collapsed to its edge keeps the instrument it had open, and sounds no note."""
+        panel = GUIReconstructionInstrumentsPanel(
+            pitch_stepper_style=PitchStepperStyle.from_general(layout_config.general),
+            copy_width=layout_config.general.buttons.copy_width,
+            feature_colors=layout_config.general.colors.features,
+            layout_graphs=layout_config.graphs,
+            initial_collapsed=True,
+            language_manager=LanguageManager(LANG_EN),
+            status_bar=MagicMock(),
+            key_router=key_router,
+            tab_active=lambda: True,
+        )
+        panel.update_view(ONE_INSTRUMENT)
+        assert panel._audition_keys_active() is False

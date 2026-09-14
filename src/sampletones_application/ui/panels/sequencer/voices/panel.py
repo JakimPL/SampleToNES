@@ -468,9 +468,10 @@ class GUISequencerVoicesPanel(GUIPanel):
         """Whether the voices panel owns the next key, which the voice it holds selected decides.
 
         A name being edited claims every press on its own, so Escape reaches the rename it would
-        cancel rather than the field that holds the keyboard.
+        cancel rather than the field that holds the keyboard. The card put away rests ahead of
+        that, since a rename hidden with the card is one the reader has stepped away from.
         """
-        if not self._tab_active():
+        if not self._tab_active() or self.collapsed:
             return False
 
         if self._editing_voice_id is not None:
@@ -480,6 +481,7 @@ class GUISequencerVoicesPanel(GUIPanel):
             tab_active=self._tab_active,
             router=self._router,
             holds=self._selected_voice_id is not None,
+            card_open=not self.collapsed,
         )
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:

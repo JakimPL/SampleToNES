@@ -63,6 +63,7 @@ class GUIConverterPanel(GUIPanel):
             key_router=key_router,
             shortcut_source=shortcut_source,
             tab_active=tab_active,
+            card_open=lambda: not self.collapsed,
         )
         self._menus = ConverterMenus(
             stems_list=self._listing.stems_list,

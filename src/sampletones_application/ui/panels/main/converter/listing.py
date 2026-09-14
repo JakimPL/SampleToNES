@@ -46,9 +46,10 @@ class ConverterListing(CallbackMixin):
     becomes the path the logic answers for — including the two a folder answers differently:
     removing one takes everything it holds, and its box settles every recording under it.
 
-    A row picked out puts the list on the keyboard: while the Main tab is in front and no field
-    holds the keys, the list answers the presses its own category names and yields every other, so
-    a press it has no action for still reaches the application's shortcuts.
+    A row picked out puts the list on the keyboard: while the Main tab is in front, while the card
+    stands open and while no field holds the keys, the list answers the presses its own category
+    names and yields every other, so a press it has no action for still reaches the application's
+    shortcuts.
     """
 
     def __init__(
@@ -61,11 +62,13 @@ class ConverterListing(CallbackMixin):
         key_router: KeyRouter,
         shortcut_source: ShortcutSource,
         tab_active: ActivePredicate,
+        card_open: ActivePredicate,
     ) -> None:
         self._language_manager = language_manager
         self._router = key_router
         self._shortcuts = shortcut_source
         self._tab_active = tab_active
+        self._card_open = card_open
         self._stems_list = GUIStemsList(
             prefix=PRE_MAIN_CONVERTER_STEMS,
             layout=stems_layout,
@@ -144,6 +147,7 @@ class ConverterListing(CallbackMixin):
             tab_active=self._tab_active,
             router=self._router,
             holds=self._stems_list.picked_key is not None,
+            card_open=self._card_open(),
         )
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:

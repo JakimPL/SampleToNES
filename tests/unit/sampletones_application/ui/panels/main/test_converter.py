@@ -169,13 +169,19 @@ def build(
     key_router: Optional[KeyRouter] = None,
     tab_active: ActivePredicate = lambda: True,
     shortcut_source: Optional[ShortcutSource] = None,
+    collapsed: bool = False,
 ) -> Tuple[GUIConverterPanel, List[OutputKind]]:
-    """The card as the application builds it, over the output switch it reports."""
+    """The card as the application builds it, over the output switch it reports.
+
+    ``collapsed`` opens the card put away, which is how a reader who collapsed it last session
+    meets it.
+    """
     panel = GUIConverterPanel(
         layout=layout_config.tabs.main.converter,
         stems_layout=layout_config.general.stems,
         inputs=layout_config.general.inputs,
         path_colors=layout_config.general.colors.paths,
+        initial_collapsed=collapsed,
         language_manager=LANGUAGE_MANAGER,
         status_bar=GUIStatusBar(),
         key_router=key_router if key_router is not None else KeyRouter(),
@@ -423,6 +429,22 @@ class TestTheKeysTheListClaims:
 
         assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is False
         assert removed == []
+
+    def test_a_press_rests_while_the_card_stands_away(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A card put away keeps the row it holds picked out, and lets the key travel on."""
+        router = KeyRouter()
+        panel, _reported = build(layout_config, key_router=router, collapsed=True)
+        removed: List[Path] = []
+        panel.on_source_removed = removed.append
+        kick = row("kick")
+        panel.update_view(view(kick, selected_key=kick.key))
+
+        assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is False
+        assert (removed, panel.stems_list.picked_key) == ([], kick.key)
 
     def test_a_press_rests_while_the_list_stands_inert(
         self,
