@@ -10,6 +10,7 @@ from sampletones_core.generators import (
 )
 from sampletones_core.instructions import InstructionUnion
 
+from .approximation import Approximation, WaveformApproximation
 from .candidates import CandidateProvider
 from .phase import PhaseAligner
 from .scorer import Scorer
@@ -19,7 +20,7 @@ from .scorer import Scorer
 class ScoredCandidate:
     instruction: InstructionUnion
     cost: float
-    approximation: Fragment
+    approximation: Approximation
 
 
 Column = Tuple[ScoredCandidate, ...]
@@ -51,15 +52,16 @@ class FrameMatcher:
     ) -> List[ScoredCandidate]:
         """
         Score candidates in two stages: a phase-independent spectral shortlist, then a
-        full ranking with the temporal term evaluated on each phase-aligned candidate.
+        full ranking with the temporal term each candidate's approximation measures.
 
         The shortlist ranks every candidate by the spectral term alone, which compares
         phase-averaged features and is therefore immune to how the candidate waveform
-        happens to be phased. Each of the ``top_k`` shortlisted candidates is then built
-        at its best phase against the target and receives the full criterion cost, so
-        the temporal term measures waveform shape at the aligned phase. The aligned
-        phase stands in for the rendered phase, which keeps oscillator continuity
-        across frames.
+        happens to be phased. Each of the ``top_k`` shortlisted candidates then receives
+        the full criterion cost. A candidate whose frames repeat one waveform shape is
+        built at its best phase against the target, so the temporal term measures that
+        shape, and the aligned phase stands in for the rendered phase. A candidate whose
+        frames show different stretches of a sequence renders whatever stretch the channel
+        has reached, so its temporal term is the loss expected over every phase.
 
         The shortlist is drawn by spectral rank, so scoring one generator class alone
         returns every candidate of that class that a wider scoring would have kept, and
@@ -70,7 +72,7 @@ class FrameMatcher:
             remaining_generator_classes: Generators still available for this fragment.
 
         Returns:
-            The shortlisted candidates with their aligned costs, best first.
+            The shortlisted candidates with their full costs, best first.
         """
         valid_instructions, candidate_approximations = self.candidate_provider.candidates(remaining_generator_classes)
         spectral_costs = self.scorer.spectral_costs(
@@ -91,7 +93,7 @@ class FrameMatcher:
                 instruction,
                 generator,
             )
-            cost = self.scorer.aligned_cost(
+            cost = self.scorer.candidate_cost(
                 fragment,
                 float(spectral_costs[index]),
                 approximation,
@@ -116,15 +118,27 @@ class FrameMatcher:
         fragment: Fragment,
         instruction: InstructionUnion,
         generator: GeneratorUnion,
-    ) -> Fragment:
+    ) -> Approximation:
         """
-        Builds one candidate fragment for scoring: the phase-aligned waveform when
-        best-phase search is enabled, or the generator's library approximation.
-        """
-        if self.config.generation.calculation.find_best_phase:
-            return self.phase_aligner.align(fragment, instruction)
+        Builds one candidate's approximation for scoring.
 
-        return self.candidate_provider.get_approximation(
-            instruction,
-            generator,
+        A candidate whose frames repeat one waveform shape is measured by that shape: at its
+        best phase against the target when best-phase search is enabled, or as the generator's
+        library approximation. A candidate whose frames show different stretches of a sequence
+        is measured by its expected contribution, whatever the search setting.
+        """
+        if not self.candidate_provider.library_data[instruction].frames_share_shape(generator):
+            return self.candidate_provider.get_expected_approximation(
+                instruction,
+                generator,
+            )
+
+        if self.config.generation.calculation.find_best_phase:
+            return WaveformApproximation(self.phase_aligner.align(fragment, instruction))
+
+        return WaveformApproximation(
+            self.candidate_provider.get_approximation(
+                instruction,
+                generator,
+            )
         )

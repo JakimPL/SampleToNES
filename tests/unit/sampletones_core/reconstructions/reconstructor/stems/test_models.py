@@ -12,6 +12,7 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
+from sampletones_core.reconstructions.reconstructor.approximation import WaveformApproximation
 from sampletones_core.reconstructions.reconstructor.matching import ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.stems.assignment.track import TrackAssignment
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
@@ -50,9 +51,15 @@ def _choice(
         stem_id=stem_id,
         channel_name=channel_name,
         instruction=instruction,
-        approximation=fragment,
+        approximation=WaveformApproximation(fragment),
         cost=FRAME_COST,
-        column=(ScoredCandidate(instruction=instruction, cost=FRAME_COST, approximation=fragment),),
+        column=(
+            ScoredCandidate(
+                instruction=instruction,
+                cost=FRAME_COST,
+                approximation=WaveformApproximation(fragment),
+            ),
+        ),
     )
 
 
@@ -61,7 +68,13 @@ def _rest(config: Config) -> StemRest:
     instruction = NoiseInstruction.null_instruction()
     return StemRest(
         channel_name=ChannelName.NOISE,
-        column=(ScoredCandidate(instruction=instruction, cost=RESTING_FRAME_COST, approximation=fragment),),
+        column=(
+            ScoredCandidate(
+                instruction=instruction,
+                cost=RESTING_FRAME_COST,
+                approximation=WaveformApproximation(fragment),
+            ),
+        ),
     )
 
 

@@ -18,6 +18,8 @@ from sampletones_core.instructions import (
 )
 from sampletones_core.library import InstructionLibraryData
 
+from .approximation import ExpectedApproximation
+
 SerializedInstructions = Tuple[Tuple[InstructionClassName, bytes], ...]
 CachedApproximations = Callable[[SerializedInstructions, Tuple[GeneratorUnion, ...]], Fragment]
 
@@ -57,6 +59,21 @@ class CandidateProvider:
             generator.initials,
         )
         return fragment * self.config.generation.drive
+
+    def get_expected_approximation(
+        self,
+        instruction: InstructionUnion,
+        generator: GeneratorUnion,
+    ) -> ExpectedApproximation:
+        """The candidate's contribution averaged over every phase its library sample holds."""
+        library_fragment = self.library_data[instruction]
+        return ExpectedApproximation(
+            rendering=self.get_approximation(instruction, generator),
+            feature=library_fragment.feature,
+            mean=library_fragment.sample.mean,
+            variance=library_fragment.sample.variance,
+            drive=self.config.generation.drive,
+        )
 
     def _get_approximations(
         self,

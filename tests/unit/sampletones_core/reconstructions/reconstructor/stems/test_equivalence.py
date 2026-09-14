@@ -128,7 +128,7 @@ class TestLatticeWidthLeavesOwnership:
         assert narrow.resting == wide.resting
         for narrow_choice, wide_choice in zip(narrow.choices, wide.choices):
             assert narrow_choice.instruction == wide_choice.instruction
-            _assert_same_fragment(narrow_choice.approximation, wide_choice.approximation)
+            _assert_same_fragment(narrow_choice.approximation.rendering, wide_choice.approximation.rendering)
             assert len(wide_choice.column) >= len(narrow_choice.column)
 
 
@@ -237,7 +237,7 @@ def _assert_same_picks(
     for channel_name, candidate in baseline.items():
         choice = assignment.by_channel[channel_name]
         assert choice.instruction == candidate.instruction
-        _assert_same_fragment(choice.approximation, candidate.approximation)
+        _assert_same_fragment(choice.approximation.rendering, candidate.approximation.rendering)
 
 
 def _assert_same_fragment(left: Fragment, right: Fragment) -> None:

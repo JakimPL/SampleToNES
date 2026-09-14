@@ -60,8 +60,8 @@ configuration key.
 
 | Key | Meaning | Values |
 | --- | --- | --- |
-| `find_best_phase` | align each candidate to the target's phase before scoring | `true` / `false` |
-| `fast_difference` | compare spectral features only, skipping a re-analysis of the residual | `true` / `false` |
+| `find_best_phase` | align each candidate whose frames repeat one waveform shape to the target's phase before scoring | `true` / `false` |
+| `fast_difference` | for a pick whose frames repeat one shape, `true` differences the spectral features and `false` analyzes the residual waveform again | `true` / `false` |
 | `phase_aligner` | how the best phase is found | `sliding_rmse` / `cross_correlation` |
 
 ### `generation.weights`

@@ -27,6 +27,10 @@ class TonalGenerator(Generator[TonalInstructionT, PhaseTimer], ABC):
             pitch: frequency_to_timer(frequency) for pitch, frequency in self.frequency_table.items()
         }
 
+    def frames_share_shape(self, instruction: TonalInstructionT) -> bool:
+        """A note repeats one period of its waveform, so each frame is that shape at some phase."""
+        return True
+
     def set_timer(self, instruction: TonalInstructionT) -> None:
         if instruction.on:
             self.timer.timer = self.get_timer(instruction.pitch, instruction.timer_offset)

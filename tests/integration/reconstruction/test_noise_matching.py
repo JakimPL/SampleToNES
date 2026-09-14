@@ -23,6 +23,13 @@ from sampletones_core.reconstructions import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 
 NOISE_ONLY: Final[List[ChannelName]] = [ChannelName.NOISE]
+EVERY_CHANNEL: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE]
+TONAL_PITCH: Final[int] = 69
+TONAL_NEIGHBORHOOD: Final[range] = range(TONAL_PITCH - 2, TONAL_PITCH + 3)
+WHITE_NOISE_SEED: Final[int] = 11
+WHITE_NOISE_DEVIATION: Final[float] = 0.3
+WHITE_NOISE_SECONDS: Final[float] = 1.0
+EDGE_FRAMES: Final[int] = 1
 QUIET_VOLUMES: Final[range] = range(1, 4)
 SHORTEST_PERIODS: Final[range] = range(NUM_PERIODS - 4, NUM_PERIODS)
 NOISE_SEED: Final[int] = 5
@@ -77,6 +84,50 @@ def _burst_then_hiss(path: Path, config: Config) -> Path:
 
     write_wave(path, config.library.sample_rate, audio)
     return path
+
+
+def _every_channel_library(config: Config) -> InstructionLibrary:
+    """Every noise instruction beside the notes around one pitch, so a tonal answer stands within reach."""
+    window = Window.from_config(config)
+    extractor = get_feature_extractor(config, window)
+
+    data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = {}
+    for channel_name, generator in get_generators_by_channels(config, EVERY_CHANNEL).items():
+        for instruction in generator.get_possible_instructions():
+            if channel_name != ChannelName.NOISE and instruction.on and instruction.pitch not in TONAL_NEIGHBORHOOD:
+                continue
+
+            data[instruction] = InstructionLibraryFragment.create(generator, instruction, extractor)
+
+    library = InstructionLibrary()
+    library.data[library.create_key(config, window)] = InstructionLibraryData.create(config, data)
+    return library
+
+
+def _white_noise(path: Path, config: Config) -> Path:
+    sample_rate = config.library.sample_rate
+    count = int(sample_rate * WHITE_NOISE_SECONDS)
+    audio = np.random.default_rng(WHITE_NOISE_SEED).normal(0.0, WHITE_NOISE_DEVIATION, count)
+
+    write_wave(path, sample_rate, audio)
+    return path
+
+
+class TestWhiteNoise:
+    def test_white_noise_sounds_on_the_noise_channel(self, tmp_path: Path) -> None:
+        """
+        White noise resembles the noise channel's contribution on average, so the noise channel
+        carries it through.
+        """
+        config = Config()
+        path = _white_noise(tmp_path / "white.wav", config)
+        reconstructor = Reconstructor(config, frozenset(EVERY_CHANNEL), library=_every_channel_library(config))
+
+        reconstruction = reconstructor.reconstruct([path], StemsConfig.single_entry(EVERY_CHANNEL, []))
+
+        assert reconstruction is not None
+        interior = reconstruction.instructions[ChannelName.NOISE][EDGE_FRAMES:-EDGE_FRAMES]
+        assert all(instruction.on for instruction in interior)
 
 
 class TestAHissBelowTheSpectrumFloor:

@@ -9,7 +9,7 @@ import pytest
 
 from sampletones_core.configs import Config, MetricConfig, WeightsConfig
 from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
-from sampletones_core.fft import Window
+from sampletones_core.fft import CyclicArray, Window
 from sampletones_core.reconstructions.criterion import Criterion
 from sampletones_shared.array import to_numpy
 from tests.suite.base import BaseTestSuite
@@ -20,6 +20,9 @@ HISS_LEVEL: Final[float] = 1e-7
 QUIET_NOISE_LEVEL: Final[float] = 1e-6
 LOUD_LEVEL: Final[float] = 0.3
 SINGLE_PRECISION_TOLERANCE: Final[float] = 1e-3
+CYCLE_SAMPLES: Final[int] = 97
+CANDIDATE_SEED: Final[int] = 7
+CONSTANT_LEVEL: Final[float] = 0.05
 
 
 def _criterion_with_distance(
@@ -124,6 +127,50 @@ class TestCriterionTemporalLoss:
         candidate = np.full((1, config.frame_length), 0.1, dtype=np.float32)
         loss = float(to_numpy(criterion.temporal_loss(audio, candidate))[0])
         assert loss == pytest.approx(0.1 / criterion.temporal_level_floor, rel=1e-5)
+
+
+class TestCriterionExpectedTemporalLoss:
+    """
+    A candidate standing at every phase alike is measured by the loss its phases average to, which
+    its mean and variance state.
+    """
+
+    def test_the_expected_loss_is_the_mean_square_over_every_shift(
+        self,
+        criterion: Criterion,
+        config: Config,
+    ) -> None:
+        generator = np.random.default_rng(CANDIDATE_SEED)
+        sample = CyclicArray(
+            array=(0.3 * generator.standard_normal(CYCLE_SAMPLES) + 0.1).astype(np.float32),
+            sample_rate=config.library.sample_rate,
+        )
+        target = generator.standard_normal(config.frame_length)
+        mean_squares = [
+            np.mean((target - sample.get_fragment(shift, config.frame_length)) ** 2) for shift in range(sample.length)
+        ]
+        level = max(float(np.sqrt(np.mean(target**2))), criterion.temporal_level_floor)
+
+        loss = float(to_numpy(criterion.expected_temporal_loss(target, sample.mean, sample.variance))[0])
+
+        assert loss == pytest.approx(float(np.sqrt(np.mean(mean_squares))) / level, rel=1e-5)
+
+    def test_a_candidate_holding_one_level_expects_the_loss_it_scores(
+        self,
+        criterion: Criterion,
+        config: Config,
+    ) -> None:
+        target = np.random.default_rng(CANDIDATE_SEED).standard_normal(config.frame_length)
+        candidate = np.full((1, config.frame_length), CONSTANT_LEVEL)
+
+        scored = float(to_numpy(criterion.temporal_loss(target, candidate))[0])
+        expected = float(to_numpy(criterion.expected_temporal_loss(target, CONSTANT_LEVEL, 0.0))[0])
+
+        assert expected == pytest.approx(scored, rel=1e-6)
+
+    def test_2d_reference_raises_value_error(self, criterion: Criterion, config: Config) -> None:
+        with pytest.raises(ValueError):
+            criterion.expected_temporal_loss(np.zeros((2, config.frame_length)), 0.0, 0.0)
 
 
 class TestCriterionGetLossWeights:

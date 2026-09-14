@@ -7,7 +7,7 @@ from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.array import xp
 
 from .spectral import calculate_spectral_loss, weighted_reference_energy
-from .temporal import calculate_temporal_loss
+from .temporal import calculate_expected_temporal_loss, calculate_temporal_loss
 from .weights import calculate_spectral_weights
 
 
@@ -93,6 +93,31 @@ class Criterion:
         return calculate_temporal_loss(
             audio,
             approximation,
+            level_floor=self.temporal_level_floor,
+        )
+
+    def expected_temporal_loss(
+        self,
+        audio: xp.ndarray,
+        expectation: float,
+        variance: float,
+    ) -> xp.ndarray:
+        """
+        Level-normalized RMS difference expected between the target and a candidate standing at
+        every phase alike, read off the candidate's mean and variance.
+
+        Args:
+            audio: Target waveform.
+            expectation: The candidate's mean level.
+            variance: The candidate's variance about its mean.
+
+        Returns:
+            The loss, as a stack of one.
+        """
+        return calculate_expected_temporal_loss(
+            audio,
+            expectation,
+            variance,
             level_floor=self.temporal_level_floor,
         )
 

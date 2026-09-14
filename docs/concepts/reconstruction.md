@@ -178,11 +178,16 @@ cost = α · spectral + β · temporal          (default α = 0.8, β = 0.2)
   energy beyond it). Bins are weighted by their span in auditory critical bands (the
   ERB scale) times the K-weighting loudness curve (ITU-R BS.1770), so each bin counts
   in proportion to the hearing resolution and loudness contribution it represents.
-- **temporal** is the RMS difference between the target *waveform* and the candidate
-  rendered at its best phase against the target, normalized by the target frame's own
-  level. Evaluating it at the aligned phase makes it measure waveform *shape* — a
-  property the magnitude spectrum discards — while keeping the spectral/temporal
-  blend stable across frame loudness.
+- **temporal** measures the target *waveform* against what the candidate renders at any
+  phase, normalized by the target frame's own level so the spectral/temporal blend
+  holds across frame loudness. A candidate whose frames repeat one waveform shape — a
+  note, or noise whose register cycle fits inside a frame — is measured by the RMS
+  difference at its best phase against the target, which makes the term measure
+  waveform *shape*, a property the magnitude spectrum discards. A candidate whose
+  frames show different stretches of a pseudo-random sequence is measured by the
+  difference expected over every phase: for a candidate `c` with mean `μ` and
+  variance `σ²` played at drive `d`,
+  `E mean((t − d·c)²) = mean((t − d·μ)²) + d²·σ²`, whose root normalizes as above.
 
 A lower cost is a better match. The criterion evaluates many candidates at once and,
 on machines with a GPU, runs on the array backend in `sampletones_shared`.
@@ -204,9 +209,12 @@ assignment builds columns to exactly that width.
 
 Candidates are scored in two stages: every candidate is first ranked by the
 phase-independent spectral term, and the best `top_k` are then re-scored with the
-full criterion, whose temporal term is evaluated on the candidate aligned to the
-target (`find_best_phase`). The aligned phase stands in for the rendered phase,
-which keeps each oscillator continuous across frames.
+full criterion. A candidate whose frames repeat one shape has its temporal term
+evaluated on the candidate aligned to the target (`find_best_phase`); the aligned
+phase stands in for the rendered phase, which keeps each oscillator continuous across
+frames. A candidate whose frames show different stretches of a sequence renders
+whatever stretch its channel has reached, so it is scored at its expected temporal
+term whatever `find_best_phase` says.
 
 ### 5.1 Assigning channels
 
@@ -218,9 +226,15 @@ residual[source] = that source's own frame, for every source that sounds in it
 while a source may still take a channel and free is non-empty:
     pick the single (source, channel, instruction) covering the most of
         residual[source], across every channel that source may still take
-    subtract its rendered contribution from residual[source]
+    subtract its contribution from residual[source]
     assign it and remove that channel from `free`
 ```
+
+A pick's contribution is what it renders when its frames repeat one shape: the
+residual loses the aligned waveform, and its feature is measured again or differenced
+as `fast_difference` says. A pick whose frames show different stretches of a sequence
+contributes uncorrelated sound, so the residual loses its mean level from the waveform
+and its phase-averaged power from the spectrum.
 
 Every pick lets whichever channel fits that source's residual best go first. Where
 several channels share one generator kind, the lowest free channel of that kind

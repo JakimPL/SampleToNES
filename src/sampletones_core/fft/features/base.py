@@ -83,6 +83,35 @@ class FeatureExtractor(ABC):
             config=self.config,
         )
 
+    def remove_expectation(
+        self,
+        target: Fragment,
+        expectation: float,
+        feature: Histogram,
+        gain: float,
+    ) -> Fragment:
+        """Residual fragment after removing a contribution uncorrelated with `target`.
+
+        Such a contribution takes its mean level out of the waveform and its power out of the
+        spectrum, so the residual keeps the target's shape and whatever power the contribution
+        leaves uncovered, whichever way the residual feature is otherwise measured.
+
+        Args:
+            target: Fragment the contribution is removed from.
+            expectation: Mean level of the contribution.
+            feature: Feature of the contribution at unit gain.
+            gain: Power gain of the contribution.
+
+        Returns:
+            Fragment: The residual.
+        """
+        return Fragment(
+            audio=target.audio - expectation,
+            feature=self.transformer.remove_power(target.feature, feature, gain),
+            windowed_audio=target.windowed_audio - expectation * self.window.envelope,
+            config=target.config,
+        )
+
     @abstractmethod
     def _frame_features(
         self,

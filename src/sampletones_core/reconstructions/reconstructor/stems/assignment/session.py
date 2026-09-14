@@ -20,6 +20,7 @@ from sampletones_core.generators import (
     get_generator_by_instruction,
     get_remaining_generator_classes,
 )
+from sampletones_core.reconstructions.reconstructor.approximation import WaveformApproximation
 from sampletones_core.reconstructions.reconstructor.matching import (
     Column,
     FrameMatcher,
@@ -161,9 +162,9 @@ class AssignmentSession:
             self.choices.append(choice)
             self.used_channels[choice.stem_id] += 1
             self.free_channels.remove(choice.channel_name)
-            self.residuals[choice.stem_id] = self.extractor.subtract(
+            self.residuals[choice.stem_id] = choice.approximation.residual(
                 self.residuals[choice.stem_id],
-                choice.approximation,
+                self.extractor,
             )
             picked_this_visit.add(choice.stem_id)
 
@@ -250,7 +251,7 @@ class AssignmentSession:
         return ScoredCandidate(
             instruction=instruction,
             cost=RESTING_FRAME_COST,
-            approximation=silent,
+            approximation=WaveformApproximation(silent),
         )
 
     def _sounding_stems(self) -> FrozenSet[int]:

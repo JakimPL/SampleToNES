@@ -318,7 +318,7 @@ class Reconstructor:
             announce(report, ReconstructionStage.RENDERING, position, frames)
             for channel_name in self.state.channel_names:
                 candidate = streams[channel_name][position]
-                self._record(channel_name, candidate.instruction, candidate.approximation.audio)
+                self._record(channel_name, candidate.instruction, candidate.approximation.rendering.audio)
 
         announce(report, ReconstructionStage.RENDERING, frames, frames)
 

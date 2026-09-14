@@ -60,6 +60,16 @@ class CyclicArray(DataModel):
     def length(self) -> int:
         return len(self.array)
 
+    @property
+    def mean(self) -> float:
+        """The level a shift of the sample averages to, since a shift reaches every sample alike."""
+        return float(np.mean(self.array, dtype=np.float64))
+
+    @property
+    def variance(self) -> float:
+        """The spread of the sample about its mean, which any shift of it carries."""
+        return float(np.var(self.array, dtype=np.float64))
+
     @field_serializer("array")
     def _serialize_array(self, array: np.ndarray) -> SerializedData:
         return serialize_array(array)

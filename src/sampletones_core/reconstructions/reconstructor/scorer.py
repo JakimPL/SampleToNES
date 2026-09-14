@@ -5,6 +5,7 @@ from sampletones_core.fft import Fragment, Window
 from sampletones_shared.array import CUPY_AVAILABLE, to_numpy, xp
 
 from ..criterion import Criterion
+from .approximation import Approximation
 
 
 class Scorer:
@@ -12,9 +13,8 @@ class Scorer:
     Scores candidate approximations against a target fragment in two stages.
 
     `spectral_costs` ranks the whole candidate stack by the phase-independent
-    spectral term, producing the shortlist. `aligned_cost` completes the criterion
-    for one shortlisted candidate, evaluating the temporal term on the candidate's
-    phase-aligned waveform so it reflects the waveform shape at its best phase alignment.
+    spectral term, producing the shortlist. `candidate_cost` completes the criterion
+    for one shortlisted candidate with the temporal term its approximation measures.
     """
 
     def __init__(self, config: Config, window: Window, signal_length: int) -> None:
@@ -65,31 +65,28 @@ class Scorer:
         energy = self.criterion.reference_energy(xp.asarray(target.feature.values))
         return float(to_numpy(energy).reshape(-1)[0])
 
-    def aligned_cost(
+    def candidate_cost(
         self,
         target: Fragment,
         spectral_cost: float,
-        approximation: Fragment,
+        approximation: Approximation,
     ) -> float:
         """
-        Full criterion cost of one candidate, with the temporal term evaluated on the
-        candidate's aligned waveform.
+        Full criterion cost of one candidate, with the temporal term the candidate's
+        approximation measures against the target.
 
-        Combines the already-computed spectral cost with the temporal loss between the
-        target and the aligned approximation, using the configured loss blend.
+        Combines the already-computed spectral cost with that temporal loss, using the
+        configured loss blend.
 
         Args:
             target: Target fragment to match.
             spectral_cost: The candidate's spectral cost from `spectral_costs`.
-            approximation: The candidate fragment built at its best phase.
+            approximation: The candidate as the matching built it for this target.
 
         Returns:
             The blended criterion cost.
         """
-        temporal = self.criterion.temporal_loss(
-            xp.asarray(target.audio),
-            xp.asarray(approximation.audio),
-        )
+        temporal = approximation.temporal_loss(target, self.criterion)
         combined = self.criterion.combine_losses(spectral_cost, temporal)
         return float(to_numpy(combined)[0])
 

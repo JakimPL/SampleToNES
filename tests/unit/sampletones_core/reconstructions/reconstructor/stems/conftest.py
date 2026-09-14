@@ -49,7 +49,7 @@ def greedy_baseline(
         generator = get_generator_by_instruction(best.instruction, remaining_generator_classes)
         channel_name = ChannelName(generator.name)
         answers[channel_name] = best
-        residual = extractor.subtract(residual, best.approximation)
+        residual = best.approximation.residual(residual, extractor)
         del remaining_channels[channel_name]
 
     return answers

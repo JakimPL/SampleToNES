@@ -83,6 +83,10 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
             config=config,
         )
 
+    def frames_share_shape(self, generator: Generator[InstructionT, Any]) -> bool:
+        """Whether every frame this entry's instruction plays on ``generator`` repeats one waveform shape."""
+        return generator.frames_share_shape(self.instruction)
+
     def get(
         self,
         generator: Generator[InstructionT, Any],

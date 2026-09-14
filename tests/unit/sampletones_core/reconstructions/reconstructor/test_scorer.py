@@ -10,6 +10,7 @@ from sampletones_core.fft import Fragment, Window
 from sampletones_core.generators import get_remaining_generator_classes
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryData
+from sampletones_core.reconstructions.reconstructor.approximation import WaveformApproximation
 from sampletones_core.reconstructions.reconstructor.scorer import Scorer
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 
@@ -58,7 +59,7 @@ class TestSpectralCosts:
         np.testing.assert_allclose(shifted_costs, costs, rtol=1e-6)
 
 
-class TestAlignedCost:
+class TestCandidateCost:
     def test_alignment_forgives_the_target_phase(
         self,
         worker: ReconstructorWorker,
@@ -79,8 +80,8 @@ class TestAlignedCost:
         aligned = worker.phase_aligner.align(shifted_target, instruction)
         unaligned = library_fragment.get_fragment(0, config, window)
 
-        aligned_cost = worker.scorer.aligned_cost(shifted_target, 0.0, aligned)
-        unaligned_cost = worker.scorer.aligned_cost(shifted_target, 0.0, unaligned)
+        aligned_cost = worker.scorer.candidate_cost(shifted_target, 0.0, WaveformApproximation(aligned))
+        unaligned_cost = worker.scorer.candidate_cost(shifted_target, 0.0, WaveformApproximation(unaligned))
 
         assert aligned_cost == pytest.approx(0.0, abs=1e-4)
         assert aligned_cost < unaligned_cost
@@ -99,7 +100,7 @@ class TestAlignedCost:
         aligned = worker.phase_aligner.align(target, instruction)
 
         spectral_cost = 0.5
-        cost = worker.scorer.aligned_cost(target, spectral_cost, aligned)
+        cost = worker.scorer.candidate_cost(target, spectral_cost, WaveformApproximation(aligned))
         assert cost == pytest.approx(worker.scorer.criterion.alpha * spectral_cost, abs=1e-5)
 
 

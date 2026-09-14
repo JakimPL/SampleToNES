@@ -102,3 +102,13 @@ class TestTriangleBend:
         generator.set_timer(TriangleInstruction(on=True, pitch=PITCH, detune=-3))
 
         assert generator.timer.timer == generator.timer_table[PITCH] - 3
+
+
+class TestTonalFramesShareShape:
+    def test_every_note_repeats_one_shape(self, config: Config) -> None:
+        """A note plays one period of its waveform over and over, so any frame of it is that shape
+        at some phase."""
+        for generator in (PulseGenerator(config, ChannelName.PULSE1), TriangleGenerator(config, ChannelName.TRIANGLE)):
+            assert all(
+                generator.frames_share_shape(instruction) for instruction in generator.get_possible_instructions()
+            )

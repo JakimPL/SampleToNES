@@ -214,3 +214,39 @@ class TestNoiseVolume:
         high = generator(NoiseInstruction(on=True, period=8, volume=MAX_VOLUME, short=False))
         ratio = np.mean(np.abs(high)) / np.mean(np.abs(low))
         assert ratio == pytest.approx(MAX_VOLUME / 7, rel=0.02)
+
+
+class TestNoiseFramesShareShape:
+    """A noise frame repeats one shape while the register's whole cycle fits inside the frame."""
+
+    def test_silence_repeats_its_shape(self, generator: NoiseGenerator) -> None:
+        assert generator.frames_share_shape(NoiseInstruction.null_instruction())
+
+    @pytest.mark.parametrize("short", [False, True], ids=["long", "short"])
+    def test_a_mode_shares_its_shape_where_its_cycle_fits_in_a_frame(
+        self,
+        generator: NoiseGenerator,
+        short: bool,
+    ) -> None:
+        for period in range(len(NOISE_PERIODS)):
+            instruction = NoiseInstruction(on=True, period=period, volume=MAX_VOLUME, short=short)
+            fits = generator.timer.cycle_samples(short, period) <= generator.frame_length
+
+            assert generator.frames_share_shape(instruction) == fits
+
+    def test_the_long_cycle_outlasts_a_frame_at_every_period(self, generator: NoiseGenerator) -> None:
+        """The long register cycles through a sequence tens of thousands of steps long, which a frame
+        shows only a stretch of however fast the register steps."""
+        assert not any(
+            generator.frames_share_shape(NoiseInstruction(on=True, period=period, volume=MAX_VOLUME, short=False))
+            for period in range(len(NOISE_PERIODS))
+        )
+
+    def test_a_longer_frame_takes_in_a_longer_cycle(self, generator: NoiseGenerator) -> None:
+        instruction = NoiseInstruction(on=True, period=PERIODIC_PERIOD, volume=MAX_VOLUME, short=True)
+        cycle = generator.timer.cycle_samples(instruction.short, instruction.period)
+        assert not generator.frames_share_shape(instruction)
+
+        generator.frame_length = int(np.ceil(cycle))
+
+        assert generator.frames_share_shape(instruction)

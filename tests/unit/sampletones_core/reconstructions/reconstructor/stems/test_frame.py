@@ -333,7 +333,7 @@ class TestColumns:
             assert len(rest.column) == SINGLE_STATE_LATTICE_WIDTH
             candidate = rest.column[0]
             assert candidate.instruction == channels[rest.channel_name].get_instruction_type().null_instruction()
-            assert not np.any(np.asarray(candidate.approximation.audio))
+            assert not np.any(np.asarray(candidate.approximation.rendering.audio))
 
 
 class TestChannelCap:
