@@ -14,7 +14,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
-from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.hover import HoverWatch
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.colors.base import BaseColor
@@ -69,6 +69,7 @@ class GUIPathText(CallbackMixin):
         self.handler_tag = compose_tag(tag, SUF_HANDLER_REGISTRY)
         self.group_tag = compose_tag(tag, SUF_GROUP)
         self.tooltip_tag = compose_tag(tag, SUF_TOOLTIP)
+        self._hover = HoverWatch(self._paint_hover)
 
         self._create_text()
         self._create_handler()
@@ -110,21 +111,22 @@ class GUIPathText(CallbackMixin):
 
         with dpg.item_handler_registry(tag=self.handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_clicked)
-            dpg.add_item_hover_handler(callback=self._on_hover)
+            dpg.add_item_hover_handler(callback=self._hover.report)
 
         dpg.bind_item_handler_registry(self.tag, self.handler_tag)
 
-    def _on_hover(self) -> None:
-        if dpg.does_item_exist(self.tag):
-            if dpg.is_item_hovered(self.tag):
-                self._status_bar.set(self._status_message)
-                dpg_set_palette_color(self.tag, self.hover_color)
-                FrameCallbackManager.set_frame_callback(
-                    self._on_hover,
-                    2,
-                )
-            else:
-                dpg_set_palette_color(self.tag, self.color)
+    def _paint_hover(self) -> bool:
+        if not dpg.does_item_exist(self.tag):
+            return False
+
+        hovered = bool(dpg.is_item_hovered(self.tag))
+        if hovered:
+            self._status_bar.set(self._status_message)
+            dpg_set_palette_color(self.tag, self.hover_color)
+        else:
+            dpg_set_palette_color(self.tag, self.color)
+
+        return hovered
 
     def _on_clicked(self) -> None:
         if not self.path.exists():
