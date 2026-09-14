@@ -51,7 +51,7 @@ class StemsTags:
 
     @property
     def drawn(self) -> str:
-        """The handler reporting the body drawn, standing on while a settle waits for the list."""
+        """The handler reporting each frame the body is drawn in, standing on while the list settles."""
         return compose_tag(self.body, SUF_HANDLER_DRAWN)
 
     @property

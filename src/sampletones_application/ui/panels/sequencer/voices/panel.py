@@ -18,6 +18,7 @@ from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_VOICES_THEME_ROW,
     TAG_SEQUENCER_VOICES_WINDOW,
 )
+from sampletones_application.ui.elements.context_menu import context_menu_under_pointer
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -471,17 +472,14 @@ class GUISequencerVoicesPanel(GUIPanel):
         cancel rather than the field that holds the keyboard. The card put away rests ahead of
         that, since a rename hidden with the card is one the reader has stepped away from.
         """
-        if not self._tab_active() or self.collapsed:
-            return False
-
         if self._editing_voice_id is not None:
-            return True
+            return self._tab_active() and self.card_open()
 
         return panel_scope_active(
             tab_active=self._tab_active,
             router=self._router,
             holds=self._selected_voice_id is not None,
-            card_open=not self.collapsed,
+            card_open=self.card_open,
         )
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
@@ -622,12 +620,13 @@ class GUISequencerVoicesPanel(GUIPanel):
         FrameCallbackManager.set_frame_callback(self._show_list_menu)
 
     def _pointer_within_list(self) -> bool:
-        """Whether the pointer stands over the voice list.
+        """Whether the pointer stands over the voice list, with no menu open above it there.
 
         The button above the list is laid out in the card that holds them both, so where the
-        button was drawn places the list on screen as well.
+        button was drawn places the list on screen as well. A press landing on a menu raised over
+        the list is the menu's.
         """
-        return dpg_pointer_within_window(
+        return not context_menu_under_pointer() and dpg_pointer_within_window(
             TAG_SEQUENCER_VOICES_WINDOW,
             TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT,
         )

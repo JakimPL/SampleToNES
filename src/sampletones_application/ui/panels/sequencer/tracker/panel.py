@@ -1391,7 +1391,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             tab_active=self._tab_active,
             router=self._router,
             holds=self._input_state.cursor is not None,
-            card_open=not self.collapsed,
+            card_open=self.card_open,
         )
 
     # TODO: to extract common parts [_on_key_pressed]

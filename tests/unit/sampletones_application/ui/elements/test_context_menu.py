@@ -41,3 +41,27 @@ class TestTheApplicationHoldsOneContextMenu:
 
         items = dpg.get_item_children(TAG_GLOBAL_CONTEXT_WINDOW, 1)
         assert [dpg.get_item_label(item) for item in items] == ["latest"]
+
+    def test_a_dismissed_popup_opens_again_for_the_next_menu(self, dpg_context: None) -> None:
+        with context_menu():
+            dpg.add_menu_item(label="earlier")
+        dpg.configure_item(TAG_GLOBAL_CONTEXT_WINDOW, show=False)
+
+        with context_menu():
+            dpg.add_menu_item(label="latest")
+
+        assert dpg.get_item_configuration(TAG_GLOBAL_CONTEXT_WINDOW)["show"] is True
+
+    def test_a_menu_takes_the_place_of_one_still_open(self, dpg_context: None) -> None:
+        """A menu raised over one still standing builds into the popup already shown."""
+        with context_menu():
+            dpg.add_menu_item(label="earlier")
+        standing = dpg.get_alias_id(TAG_GLOBAL_CONTEXT_WINDOW)
+
+        with context_menu():
+            dpg.add_menu_item(label="latest")
+
+        assert (dpg.get_alias_id(TAG_GLOBAL_CONTEXT_WINDOW), dpg.get_item_configuration(standing)["show"]) == (
+            standing,
+            True,
+        )

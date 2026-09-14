@@ -6,7 +6,7 @@ def panel_scope_active(
     tab_active: ActivePredicate,
     router: KeyRouter,
     holds: bool,
-    card_open: bool,
+    card_open: ActivePredicate,
 ) -> bool:
     """Whether a panel scope owns the next key.
 
@@ -21,4 +21,4 @@ def panel_scope_active(
     dialog claims keys above this priority in the router, which is what holds every panel off
     while one stands open.
     """
-    return tab_active() and card_open and holds and not router.is_field_focused
+    return tab_active() and card_open() and holds and not router.is_field_focused

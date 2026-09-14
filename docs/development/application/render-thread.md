@@ -17,7 +17,9 @@ Services execute long-running work on background threads and post each result to
 with a priority; the main-thread render loop drains the due results each frame within a per-frame
 time budget (`scheduling.queue_budget_seconds`), so a large backlog spreads across frames while
 rendering continues. Every background result reaches UI state this way, and applying one to UI state
-directly from the worker thread is forbidden.
+directly from the worker thread is forbidden. A logic object hearing a worker's report — a library
+generation, the audio device's position — posts its own handler to the queue the same way, since the
+logic layer reaches the queue and leaves `utils/gui` to the visual layers.
 
 ## Work arriving from a worker crosses through `on_render_thread`
 
@@ -56,6 +58,11 @@ Reading a laid-out size or letting a configuration take effect needs a frame to 
 it, while the drain runs between frames rather than inside one.
 `FrameCallbackManager.set_frame_callback` (`utils/gui/frame.py`) names the frame the work is picked
 up on, and is how a callback waits for one.
+
+Work that needs a particular item drawn waits on that item instead: an item visible handler reports
+each frame DearPyGui draws the item in and no frame it stands hidden in — a collapsed card, a tab in
+the back — so standing the handler on and off makes it the clock of work that follows the item on
+screen. The stems list settles its windowed region this way.
 
 The drain is what makes the wait a scheduled one. The render thread inside a drain is between frames
 rather than inside one, which makes the next frame the drain's own to reach, so `dpg.split_frame`

@@ -38,7 +38,7 @@ class TestWhatAPanelScopeAnswersTo(BaseTestSuite):
             tab_active=lambda: test_case.tab_active,
             router=KeyRouter(),
             holds=test_case.holds,
-            card_open=test_case.card_open,
+            card_open=lambda: test_case.card_open,
         )
 
         assert active is test_case.expected
@@ -51,7 +51,7 @@ class TestWhatAPanelScopeAnswersTo(BaseTestSuite):
             tab_active=lambda: True,
             router=KeyRouter(),
             holds=True,
-            card_open=True,
+            card_open=lambda: True,
         )
 
         assert active is False

@@ -25,7 +25,6 @@ from sampletones_application.ui.elements.stems.offer import StemsListOffer
 from sampletones_application.ui.elements.stems.row import StemRowRenderer
 from sampletones_application.ui.elements.stems.tags import StemsTags
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
-from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
     StemsListViewModel,
@@ -70,7 +69,6 @@ class GUIStemsList(CallbackMixin):
             overscan=layout.window_overscan,
             opening=float(layout.name_height),
         )
-        self._settling = False
         self._region = WindowedRegion(
             tag=self._tags.well,
             geometry=self._geometry,
@@ -189,14 +187,15 @@ class GUIStemsList(CallbackMixin):
         self._create_watch()
 
     def _create_watch(self) -> None:
-        """Watch the body for the frame it is drawn in, which is where a settle put off resumes.
+        """Watch the body for the frames it is drawn in, which are the frames the list settles on.
 
-        The watch stands off from the start and reports nothing until a settle finds the list put
-        away, so a list on screen carries no handler running each frame.
+        DearPyGui reports an item visible on every frame it is drawn in and on no other, so the
+        watch is the settle's clock: it stands on while a region has something to settle, runs the
+        pass on each frame the list is on screen, and waits through the frames it is put away.
         """
         dpg_delete_item(self._tags.body_handlers)
         with dpg.item_handler_registry(tag=self._tags.body_handlers):
-            dpg.add_item_visible_handler(tag=self._tags.drawn, callback=self._on_drawn, show=False)
+            dpg.add_item_visible_handler(tag=self._tags.drawn, callback=self._settle, show=False)
 
         dpg.bind_item_handler_registry(self._region.body, self._tags.body_handlers)
 
@@ -334,31 +333,22 @@ class GUIStemsList(CallbackMixin):
         return self._region.settling or self._folders.following
 
     def _settle_soon(self) -> None:
-        """Ask to read the drawn rows back once the frame that placed them has been rendered.
+        """Ask to read the drawn rows back on the frames the list is drawn in from here on.
 
         The list keeps this going for as long as a region it drew is holding rows back, so a
         region refills itself rather than waiting on a frame hook an owner remembered to wire. A
-        list short enough to be drawn whole asks for nothing after the frame that placed it.
+        list short enough to be drawn whole stops after the frame that placed it.
         """
-        if self._settling:
-            return
-
-        self._settling = True
-        FrameCallbackManager.set_frame_callback(self._settle)
+        dpg_configure_item(self._tags.drawn, show=True)
 
     def _settle(self) -> None:
-        """Read back what the regions drew, refill the ones a scroll has moved on from, and keep
-        watching for as long as one of them holds rows it has yet to build.
+        """Read back what the regions drew, refill the ones a scroll has moved on from, and stop
+        watching once none of them holds rows it has yet to build.
 
-        A list put away has nothing true to read and no scroll to follow, so the pass waits for
-        the frame the list is drawn in again and costs nothing until then. The open folders stand
-        inside the list's body, so they wait with it.
+        The watch runs this only on a frame the list was drawn in, so what it reads measures true
+        and a list put away costs nothing until it is back on screen. The open folders stand inside
+        the list's body, so they settle with it.
         """
-        self._settling = False
-        if not self._region.drawn:
-            dpg_configure_item(self._tags.drawn, show=True)
-            return
-
         if self._region.settle() and self._windows(self._view):
             self._draw_window(self._view)
             self._repaint(self._view)
@@ -369,10 +359,5 @@ class GUIStemsList(CallbackMixin):
             if row is not None:
                 self._folders.repaint(row, self._view)
 
-        if self._following:
-            self._settle_soon()
-
-    def _on_drawn(self) -> None:
-        """Take the settle up again on the first frame the list is back on screen, and stop watching."""
-        dpg_configure_item(self._tags.drawn, show=False)
-        self._settle_soon()
+        if not self._following:
+            dpg_configure_item(self._tags.drawn, show=False)

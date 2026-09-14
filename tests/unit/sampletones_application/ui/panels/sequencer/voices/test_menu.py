@@ -726,6 +726,16 @@ class TestWhichDoorAnswersAPress:
 
         assert build_recorder.widgets == []
 
+    def test_a_press_on_a_menu_open_over_the_list_is_the_menus(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        fixture = _panel(monkeypatch)
+        monkeypatch.setattr(panel_module, "dpg_pointer_within_window", lambda _window, _anchor: True)
+        monkeypatch.setattr(panel_module, "context_menu_under_pointer", lambda: True)
+
+        assert fixture.panel._pointer_within_list() is False
+
     def test_a_press_beyond_the_list_asks_for_no_menu(
         self,
         monkeypatch: pytest.MonkeyPatch,

@@ -8,8 +8,8 @@ HOVER_RECHECK_FRAMES: Final[int] = 2
 class HoverWatch:
     """Holds a hover look on items for as long as the pointer rests on them.
 
-    DearPyGui reports a hover on every frame the pointer stands over an item and reports its leaving
-    not at all, so the watch reads the hover again a couple of frames on while it lasts. Every report
+    DearPyGui reports a hover on every frame the pointer stands over an item, so the watch reads the
+    hover again a couple of frames on while it lasts, which is how it sees the pointer leave. Every report
     arriving meanwhile joins the reading already under way, which keeps one frame callback waiting
     however long the pointer rests.
 
@@ -29,6 +29,12 @@ class HoverWatch:
         self._check()
 
     def _check(self) -> None:
-        self._watching = self._paint()
-        if self._watching:
+        """Paints the look the pointer's place calls for and waits for the next reading while it rests.
+
+        The watch counts as under way only once the next reading is waiting, so a paint that fails
+        leaves the next report free to start it again.
+        """
+        self._watching = False
+        if self._paint():
             FrameCallbackManager.set_frame_callback(self._check, HOVER_RECHECK_FRAMES)
+            self._watching = True

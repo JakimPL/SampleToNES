@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import ClassVar, Dict, Iterator
+from typing import ClassVar, Dict, Final, Iterator
 
 import dearpygui.dearpygui as dpg
 
@@ -13,6 +13,8 @@ from sampletones_application.utils.gui.palette.binding import (
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_shared.types.application import Sender
 
+PRUNE_FLOOR: Final[int] = 256
+
 
 class PaletteBindings:
     """Every color DearPyGui holds a copy of, and the token each copy came from.
@@ -23,11 +25,14 @@ class PaletteBindings:
     :meth:`apply` hands DearPyGui the value each token carries now.
 
     One argument of one item holds one color, so binding it again replaces what is recorded
-    for it: an item recolored on every hover stays a single entry.
+    for it: an item recolored on every hover stays a single entry. Items come and go with every
+    menu and every rebuild, so the registry lets the deleted ones go whenever it has doubled since
+    it last did, which keeps it to the items alive at a cost spread over the binds.
     """
 
     _arguments: ClassVar[Dict[ArgumentKey, ArgumentBinding]] = {}
     _theme_colors: ClassVar[Dict[Sender, ThemeColorBinding]] = {}
+    _pruned_at: ClassVar[int] = PRUNE_FLOOR
 
     @classmethod
     def bind(
@@ -45,6 +50,7 @@ class PaletteBindings:
         )
         binding.push()
         cls._arguments[item, argument] = binding
+        cls._prune_once_doubled()
 
     @classmethod
     def bind_theme_color(cls, item: Sender, color: BaseColor) -> None:
@@ -53,19 +59,34 @@ class PaletteBindings:
             item=item,
             color=color,
         )
+        cls._prune_once_doubled()
 
     @classmethod
     def apply(cls) -> None:
         """Hands DearPyGui the value every registered token carries now.
 
-        Bindings whose item has since been deleted are dropped, so the registry tracks the
-        items that are alive and a long session's worth of transient widgets leaves nothing
-        behind.
+        Bindings whose item has since been deleted are dropped first, so only live items are
+        colored.
         """
-        cls._arguments = {key: binding for key, binding in cls._arguments.items() if cls._is_live(binding)}
-        cls._theme_colors = {key: binding for key, binding in cls._theme_colors.items() if cls._is_live(binding)}
+        cls._prune()
         for binding in cls.bindings():
             binding.push()
+
+    @classmethod
+    def _prune_once_doubled(cls) -> None:
+        if cls._size() >= 2 * cls._pruned_at:
+            cls._prune()
+
+    @classmethod
+    def _prune(cls) -> None:
+        """Lets go of the bindings whose item has been deleted."""
+        cls._arguments = {key: binding for key, binding in cls._arguments.items() if cls._is_live(binding)}
+        cls._theme_colors = {key: binding for key, binding in cls._theme_colors.items() if cls._is_live(binding)}
+        cls._pruned_at = max(PRUNE_FLOOR, cls._size())
+
+    @classmethod
+    def _size(cls) -> int:
+        return len(cls._arguments) + len(cls._theme_colors)
 
     @classmethod
     def bindings(cls) -> Iterator[PaletteBinding]:
@@ -76,6 +97,7 @@ class PaletteBindings:
     def clear(cls) -> None:
         cls._arguments.clear()
         cls._theme_colors.clear()
+        cls._pruned_at = PRUNE_FLOOR
 
     @staticmethod
     def _is_live(binding: PaletteBinding) -> bool:

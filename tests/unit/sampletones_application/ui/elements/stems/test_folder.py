@@ -44,7 +44,7 @@ from sampletones_application.view_model.shared.stems import (
 )
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
-from tests.suite.frames import Frames
+from tests.suite.frames import DrawnFrames
 from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
 
 ROOT_TAG = "test_root"
@@ -511,7 +511,7 @@ class TestARecordingThatLeavesAFolder(BaseTestSuite):
         assert dpg.get_item_label(name_of(sources)) == named("sources", holds=2)
 
     @staticmethod
-    def _settled(stems_list: GUIStemsList, frames: Frames, *, holds: int) -> StemRowViewModel:
+    def _settled(stems_list: GUIStemsList, frames: DrawnFrames, *, holds: int) -> StemRowViewModel:
         """An open folder standing at the height its recordings ask for, as a run of frames leaves it.
 
         A region reads what it holds back the frame after the rows are placed and sizes itself to
@@ -531,7 +531,7 @@ class TestARecordingThatLeavesAFolder(BaseTestSuite):
     def test_one_of_them_leaving_asks_for_the_frame_that_reads_the_folder_back(
         self,
         stems_list: GUIStemsList,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """The region is filled again where the recording stood, so what room its rows now ask for
         is read back once the frame that placed them has been rendered."""
@@ -544,7 +544,7 @@ class TestARecordingThatLeavesAFolder(BaseTestSuite):
     def test_the_folder_comes_down_to_the_room_its_recordings_now_ask_for(
         self,
         stems_list: GUIStemsList,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """A folder whose recordings outgrow its region stands at its ceiling and scrolls them;
         with one fewer they fit, and the frame that reads them back is what stands it at their
@@ -860,7 +860,7 @@ class TestAFolderFollowingItsReader(BaseTestSuite):
     def test_a_scroll_into_one_brings_the_recordings_it_reaches_in(
         self,
         stems_list: GUIStemsList,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """The folder's own region follows the reader, so the list around it keeps its widgets."""
         sources = self._opened(stems_list)
@@ -876,7 +876,7 @@ class TestAFolderFollowingItsReader(BaseTestSuite):
     def test_the_folder_s_own_row_stays_where_it_stood(
         self,
         stems_list: GUIStemsList,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """A scroll inside a folder is answered inside it, so the rows around it are left be."""
         sources = self._opened(stems_list)

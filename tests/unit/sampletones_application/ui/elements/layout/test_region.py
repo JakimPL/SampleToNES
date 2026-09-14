@@ -113,25 +113,6 @@ def reserves(region: WindowedRegion) -> Tuple[int, int]:
     )
 
 
-class TestWhetherTheRegionWasDrawn(BaseTestSuite):
-    """A region measures true only from a frame it stood on screen in, which DearPyGui reports."""
-
-    def test_a_region_on_screen_reads_as_drawn(self, region: WindowedRegion) -> None:
-        with patch.object(dpg, "is_item_visible", return_value=True):
-            assert region.drawn is True
-
-    def test_a_region_put_away_reads_as_undrawn(self, region: WindowedRegion) -> None:
-        with patch.object(dpg, "is_item_visible", return_value=False):
-            assert region.drawn is False
-
-    def test_a_region_taken_down_reads_as_undrawn(self, region: WindowedRegion) -> None:
-        """A body a window closing took down is no widget to ask, so the region answers for it."""
-        dpg.delete_item(ROOT_TAG)
-
-        with patch.object(dpg, "is_item_visible", return_value=True):
-            assert region.drawn is False
-
-
 class TestAShortList(BaseTestSuite):
     """A list the region can show whole is built whole, with no room reserved either side."""
 

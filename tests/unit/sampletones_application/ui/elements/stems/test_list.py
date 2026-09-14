@@ -49,7 +49,7 @@ from sampletones_application.view_model.shared.stems import (
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.callback import Callback
 from tests.suite.base import BaseTestSuite
-from tests.suite.frames import Frames
+from tests.suite.frames import DrawnFrames
 from tests.suite.gestures import CLICKED, DOUBLE_CLICKED, HOVERED, click_row_name, handler_of
 
 ROOT_TAG = "test_root"
@@ -1177,7 +1177,7 @@ class TestThePickALongListHolds(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         stems_list = build(layout_config)
         rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
@@ -1302,7 +1302,7 @@ class TestTheListSettlingItsWell(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """The rows outside the window are built as the reader reaches them, so the pass goes on."""
         stems_list = build(layout_config)
@@ -1318,7 +1318,7 @@ class TestTheListSettlingItsWell(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """One pass answers for whatever the list has drawn by the time it runs, so a run of
         readings between two frames leaves one pass rather than one apiece."""
@@ -1335,7 +1335,7 @@ class TestTheListSettlingItsWell(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         stems_list = build(layout_config)
         rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
@@ -1351,7 +1351,7 @@ class TestTheListSettlingItsWell(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """A list short enough to stand whole has nothing left to build, so it stops watching."""
         stems_list = build(layout_config)
@@ -1367,7 +1367,7 @@ class TestTheListSettlingItsWell(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """The window follows the reader, so rows they scrolled to are built and the ones behind go."""
         stems_list = build(layout_config)
@@ -1382,48 +1382,23 @@ class TestTheListSettlingItsWell(BaseTestSuite):
         assert self._drawn(rows, REACHED_ROW)
         assert not self._drawn(rows, EARLY_ROW)
 
-    @staticmethod
-    def _watching() -> bool:
-        """Whether the list is waiting on the frame it is drawn in, which its watch standing on says."""
-        return bool(dpg.get_item_configuration(TAGS.drawn)["show"])
-
-    def test_a_list_put_away_asks_for_no_frame(
+    def test_a_list_put_away_keeps_its_watch_and_does_no_work(
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
-        """A list holding rows back keeps no pass going while its card is collapsed or its tab is
-        in the back, and watches for the frame it comes back in instead."""
+        """A list holding rows back settles on no frame while its card is collapsed or its tab is in
+        the back, and its watch stands waiting for the frame it comes back in."""
         stems_list = build(layout_config)
         rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
         stems_list.update_view(view(*rows, collapse_levels=True))
+        frames.on_screen = False
 
-        with placed(self._built(rows)), patch.object(dpg, "is_item_visible", return_value=False):
+        with placed(self._built(rows)), patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL):
             frames.render(SETTLING_FRAMES)
 
-        assert (frames.pending, self._watching()) == (0, True)
-
-    def test_a_list_put_away_keeps_the_rows_it_stood_with(
-        self,
-        dpg_context: None,
-        layout_config: LayoutConfig,
-        frames: Frames,
-    ) -> None:
-        """A list off screen reads no scroll, so the rows it built stay until a reader can see it."""
-        stems_list = build(layout_config)
-        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
-        stems_list.update_view(view(*rows, collapse_levels=True))
-        with placed(self._built(rows)):
-            frames.render()
-
-        with (
-            placed(self._built(rows)),
-            patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL),
-            patch.object(dpg, "is_item_visible", return_value=False),
-        ):
-            frames.render()
-
+        assert frames.pending == 1
         assert self._drawn(rows, EARLY_ROW)
         assert not self._drawn(rows, REACHED_ROW)
 
@@ -1431,15 +1406,20 @@ class TestTheListSettlingItsWell(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
-        """The first frame the list is drawn in resumes the pass, and the watch stands off again."""
+        """The first frame the list is drawn in again follows the scroll made while it was away."""
         stems_list = build(layout_config)
         rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
         stems_list.update_view(view(*rows, collapse_levels=True))
-        with placed(self._built(rows)), patch.object(dpg, "is_item_visible", return_value=False):
+        with placed(self._built(rows)):
+            frames.render()
+        frames.on_screen = False
+        with placed(self._built(rows)), patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL):
             frames.render()
 
-        dpg.get_item_callback(TAGS.drawn)()
+        frames.on_screen = True
+        with placed(self._built(rows)), patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL):
+            frames.render()
 
-        assert (frames.pending, self._watching()) == (1, False)
+        assert self._drawn(rows, REACHED_ROW)

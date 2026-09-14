@@ -152,7 +152,7 @@ class ConverterListing(CallbackMixin):
             tab_active=self._tab_active,
             router=self._router,
             holds=self._stems_list.picked_key is not None,
-            card_open=self._card_open(),
+            card_open=self._card_open,
         )
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:

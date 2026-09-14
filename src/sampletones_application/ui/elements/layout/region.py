@@ -118,16 +118,6 @@ class WindowedRegion:
         return bool(dpg.does_item_exist(self._body_tag))
 
     @property
-    def drawn(self) -> bool:
-        """The region's body stood on screen in the frame last rendered, so what it holds measures true.
-
-        A region put away — the card around it collapsed, its tab in the back, its owner hiding
-        it — keeps the sizes it last stood at, so a settle reads a region only from a frame it was
-        drawn in.
-        """
-        return self.standing and bool(dpg.is_item_visible(self._body_tag))
-
-    @property
     def settling(self) -> bool:
         """The region stands as something other than it will, so whoever drew it settles it again.
 

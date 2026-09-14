@@ -1,4 +1,4 @@
-from typing import List
+from typing import Final, List
 
 import pytest
 
@@ -6,7 +6,7 @@ from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.hover import HOVER_RECHECK_FRAMES, HoverWatch
 from tests.suite.frames import Frames
 
-RESTING_FRAMES = 12
+RESTING_FRAMES: Final[int] = 12
 
 
 class Pointer:
@@ -14,9 +14,13 @@ class Pointer:
 
     def __init__(self) -> None:
         self.over = True
+        self.failing = False
         self.painted: List[bool] = []
 
     def paint(self) -> bool:
+        if self.failing:
+            raise RuntimeError("the item painted is gone")
+
         self.painted.append(self.over)
         return self.over
 
@@ -80,3 +84,18 @@ class TestTheHoverAWatchHolds:
         watch.report()
 
         assert (pointer.painted, frames.pending) == ([True, False, True], 1)
+
+    def test_a_paint_that_failed_leaves_the_next_report_free_to_watch(self, frames: Frames) -> None:
+        """An item taken down under the watch fails its paint, and the pointer resting elsewhere is
+        still watched."""
+        pointer = Pointer()
+        watch = HoverWatch(pointer.paint)
+        watch.report()
+        pointer.failing = True
+        with pytest.raises(RuntimeError):
+            frames.render(HOVER_RECHECK_FRAMES)
+        pointer.failing = False
+
+        watch.report()
+
+        assert frames.pending == 1
