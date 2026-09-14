@@ -135,9 +135,9 @@ def _check_export_backends() -> str:
     A backend reads the resources it writes with as it is built, so this is where a build
     shipping without one — the player's assembled driver among them — names what is missing.
     """
-    from sampletones_application.exports import build_export_backends
+    from sampletones_application.exports import ExportBackends
 
-    return ", ".join(sorted(build_export_backends()))
+    return ", ".join(sorted(ExportBackends.build().by_format))
 
 
 def _check_file_dialog_backend() -> str:

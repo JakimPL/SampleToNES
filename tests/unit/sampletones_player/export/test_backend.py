@@ -1,10 +1,10 @@
 import struct
 from pathlib import Path
-from typing import Final
+from typing import Final, FrozenSet, Optional
 
 import pytest
 
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.progress import ExportProgress
@@ -18,17 +18,21 @@ from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.timing import SongTiming
-from sampletones_player.builder import SONG_START, song_from_project
+from sampletones_player.builder import SONG_START
+from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
-from sampletones_player.export import NSFBackend
+from sampletones_player.export.backend import NSFBackend
+from sampletones_player.export.program import NSFProgram
+from sampletones_player.nsf.information import NSFInformation
 from sampletones_player.specification.nsf import (
     ARTIST_OFFSET,
+    COPYRIGHT_OFFSET,
     HEADER_SIZE,
     PROGRAM_SIZE,
     STRING_FIELD_SIZE,
     TITLE_OFFSET,
 )
-from sampletones_player.specification.song import LOOP_TICK_OFFSET
+from sampletones_player.specification.song import LOOP_TICK_OFFSET, NO_LOOP, TOTAL_TICKS_OFFSET
 from sampletones_shared.exceptions import OperationCanceled, SongTooLargeError
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 from tests.suite.performance import (
@@ -56,6 +60,10 @@ PROJECT_AUTHOR: Final[str] = "Jakim"
 ROWS_PER_PATTERN: Final[int] = 4
 WITHDRAWN_WHILE_WALKING: Final[int] = 1
 WITHDRAWN_WHILE_COMPRESSING: Final[int] = 2
+CHOSEN_TITLE: Final[str] = "Rainy Day Theme"
+CHOSEN_ARTIST: Final[str] = "J. Kowalski"
+CHOSEN_COPYRIGHT: Final[str] = "2026 J. Kowalski"
+REPEATED_TICKS: Final[int] = 48
 
 
 def lead_slice(name: str, frames: int) -> InstrumentExport:
@@ -109,10 +117,15 @@ def bass_slice(name: str, frames: int) -> InstrumentExport:
     )
 
 
-def written_loop_tick(data: bytes) -> int:
-    """The tick a written program comes round to, read out of the song block behind the driver."""
+def song_word(data: bytes, offset: int) -> int:
+    """A word of a written program's song header, read out of the block behind the driver."""
     block = data[HEADER_SIZE + len(DriverImage.load().code) :]
-    return int(struct.unpack_from("<H", block, LOOP_TICK_OFFSET)[0])
+    return int(struct.unpack_from("<H", block, offset)[0])
+
+
+def written_loop_tick(data: bytes) -> int:
+    """The tick a written program comes round to."""
+    return song_word(data, LOOP_TICK_OFFSET)
 
 
 def read_field(data: bytes, offset: int) -> str:
@@ -121,7 +134,7 @@ def read_field(data: bytes, offset: int) -> str:
 
 @pytest.fixture(name="backend")
 def backend_fixture() -> NSFBackend:
-    return NSFBackend()
+    return NSFBackend.stated()
 
 
 class TestSeam:
@@ -276,9 +289,8 @@ class TestWriteProject:
         project = drum_project()
         destination = tmp_path / FILENAME
         backend.write_project(destination, ProjectExport(project=project))
-        groove = SongTiming.from_project(project).groove()
-        expected = project.song.order_length() * groove.total_ticks
-        assert song_from_project(project, SONG_START).ticks == expected
+        expected = SongTiming.from_project(project).frame_tick(project.song.order_length())
+        assert song_word(destination.read_bytes(), TOTAL_TICKS_OFFSET) == expected
 
     def test_the_program_repeats_from_its_first_tick(
         self,
@@ -328,8 +340,7 @@ class TestWhatAProjectRunSaysAboutItself:
         backend.write_project(tmp_path / FILENAME, ProjectExport(project=project), reporter)
 
         walked = [report for report in reporter.reports if report.stage == ExportStage.WALKING]
-        groove = SongTiming.from_project(project).groove()
-        expected = project.song.order_length() * groove.total_ticks
+        expected = SongTiming.from_project(project).frame_tick(project.song.order_length())
         assert walked
         assert [report.total for report in walked] == [expected] * len(walked)
         assert walked[-1].completed == expected
@@ -412,3 +423,87 @@ class TestWithdrawingARun:
 
         assert reporter.last.stage == ExportStage.COMPRESSING
         assert not destination.exists()
+
+
+def chosen_program(
+    *,
+    channels: FrozenSet[ChannelName],
+    loop_tick: Optional[int],
+    scheme: CompressionScheme,
+) -> NSFProgram:
+    return NSFProgram(
+        information=NSFInformation(
+            title=CHOSEN_TITLE,
+            artist=CHOSEN_ARTIST,
+            copyright=CHOSEN_COPYRIGHT,
+        ),
+        channels=channels,
+        loop_tick=loop_tick,
+        scheme=scheme,
+    )
+
+
+def repeated_sample() -> SampleExport:
+    """A reconstruction holding one note, which every scheme past the first writes as a run."""
+    return player_sample(
+        SAMPLE_NAME,
+        (lead_slice("lead", REPEATED_TICKS), bass_slice("bass", REPEATED_TICKS)),
+        nes_frequency=NTSC_FREQUENCY,
+    )
+
+
+class TestAChosenProgram:
+    """A program the user settled before the run is the one the file carries."""
+
+    @pytest.mark.parametrize(
+        ("offset", "expected"),
+        [
+            (TITLE_OFFSET, CHOSEN_TITLE),
+            (ARTIST_OFFSET, CHOSEN_ARTIST),
+            (COPYRIGHT_OFFSET, CHOSEN_COPYRIGHT),
+        ],
+        ids=["title", "artist", "copyright"],
+    )
+    def test_the_file_is_listed_under_the_chosen_text(
+        self,
+        backend: NSFBackend,
+        tmp_path: Path,
+        offset: int,
+        expected: str,
+    ) -> None:
+        destination = tmp_path / FILENAME
+        program = chosen_program(channels=ALL_CHANNELS, loop_tick=SONG_START, scheme=CompressionScheme.SEARCH)
+        backend.choosing(program).write_project(destination, ProjectExport(project=drum_project()))
+        assert read_field(destination.read_bytes(), offset) == expected
+
+    def test_a_song_chosen_to_play_once_stops_at_its_end(self, backend: NSFBackend, tmp_path: Path) -> None:
+        destination = tmp_path / FILENAME
+        program = chosen_program(channels=ALL_CHANNELS, loop_tick=None, scheme=CompressionScheme.SEARCH)
+        backend.choosing(program).write_project(destination, ProjectExport(project=drum_project()))
+        assert written_loop_tick(destination.read_bytes()) == NO_LOOP
+
+    def test_a_reconstruction_repeats_where_the_program_says(self, backend: NSFBackend, tmp_path: Path) -> None:
+        """The slices play once, and the program asks for them to come round all the same."""
+        destination = tmp_path / FILENAME
+        program = chosen_program(channels=ALL_CHANNELS, loop_tick=SONG_START, scheme=CompressionScheme.SEARCH)
+        backend.choosing(program).write_sample(destination, repeated_sample())
+        assert written_loop_tick(destination.read_bytes()) == SONG_START
+
+    def test_a_lighter_scheme_writes_a_larger_file(self, backend: NSFBackend, tmp_path: Path) -> None:
+        spelled_out = tmp_path / "none.nsf"
+        runs = tmp_path / "runs.nsf"
+        for destination, scheme in ((spelled_out, CompressionScheme.NONE), (runs, CompressionScheme.RUNS)):
+            program = chosen_program(channels=ALL_CHANNELS, loop_tick=None, scheme=scheme)
+            backend.choosing(program).write_sample(destination, repeated_sample())
+
+        assert len(spelled_out.read_bytes()) > len(runs.read_bytes())
+
+    def test_choosing_a_program_leaves_the_backend_it_came_from_as_it_was(
+        self,
+        backend: NSFBackend,
+        tmp_path: Path,
+    ) -> None:
+        destination = tmp_path / FILENAME
+        backend.choosing(chosen_program(channels=ALL_CHANNELS, loop_tick=None, scheme=CompressionScheme.NONE))
+        backend.write_project(destination, ProjectExport(project=drum_project()))
+        assert read_field(destination.read_bytes(), TITLE_OFFSET) == PROJECT_TITLE

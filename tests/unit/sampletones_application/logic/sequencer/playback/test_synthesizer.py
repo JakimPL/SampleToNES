@@ -5,11 +5,10 @@ import numpy as np
 import pytest
 
 from sampletones_application.logic.project.controller import ProjectController
-from sampletones_application.logic.sequencer.channels import ALL_CHANNELS
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
-from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName, FeatureKey
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
 from sampletones_core.performance import ChannelPerformance

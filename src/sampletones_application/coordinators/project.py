@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Mapping, Optional, Tuple
 
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
@@ -12,6 +12,7 @@ from sampletones_application.categories.exports import EXPORT_PROJECT_ELEMENTS
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.services.export.error import ExportError
@@ -70,6 +71,7 @@ class ProjectCoordinator:
         export_service: ExportService,
         *,
         export_backends: Dict[ExportFormat, ExportBackend],
+        format_setups: Mapping[ExportFormat, ExportSetup],
         dialogs: DialogsRenderer,
         language_manager: LanguageManager,
         on_tab_switch: Callback,
@@ -80,6 +82,7 @@ class ProjectCoordinator:
         self._session_manager = session_manager
         self._export_service = export_service
         self._export_backends = export_backends
+        self._format_setups = format_setups
         self._dialogs = dialogs
         self._language_manager = language_manager
         self._on_tab_switch = on_tab_switch
@@ -198,12 +201,20 @@ class ProjectCoordinator:
         return get_filename(name, extension)
 
     def export_project_dialog(self, export_format: ExportFormat) -> None:
-        """Prompts for a destination and writes the open project in ``export_format``.
+        """Writes the open project in ``export_format``, asking first for what the format leaves open.
+
+        A format with a setup of its own opens it, and that setup asks for the destination with
+        the rest of its choices. Every other format asks for the destination through the save
+        dialog.
 
         Args:
             export_format: The format the project is written in.
         """
         if not self._project_controller.is_open:
+            return
+
+        if export_format in self._format_setups:
+            self._format_setups[export_format].open_project()
             return
 
         backend = self._export_backends[export_format]

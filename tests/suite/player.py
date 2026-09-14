@@ -26,6 +26,7 @@ from sampletones_player.compression.planes.channel import TonePlanes
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.separate import planes_from_streams
 from sampletones_player.compression.planes.song import SongPlanes
+from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.compression.tokens.literal import LiteralToken
 from sampletones_player.registers.noise import NoiseRegisters
 from sampletones_player.registers.pulse import PulseRegisters
@@ -135,6 +136,7 @@ def player_song(
         schedule=PlaySchedule.from_parameters(nes_frequency),
         loop_tick=loop_tick,
         seeds=(),
+        scheme=CompressionScheme.SEARCH,
     )
 
 

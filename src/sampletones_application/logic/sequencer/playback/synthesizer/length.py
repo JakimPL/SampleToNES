@@ -28,12 +28,11 @@ class SongLength:
     def measure(cls, project: Project, *, sample_rate: int) -> Self:
         """The length ``project`` runs to when rendered at ``sample_rate``.
 
-        Every pattern holds the song's row count, so one groove covers the whole order and the
-        tick total is that groove's, once for each position the order plays.
+        The song ends where the frame one past the order's last would start, which is the tick
+        total the walk through the song reaches.
         """
-        groove = SongTiming.from_project(project).groove()
         return cls(
-            ticks=project.song.order_length() * groove.total_ticks,
+            ticks=SongTiming.from_project(project).frame_tick(project.song.order_length()),
             rates=EngineRates.from_project(project, sample_rate),
         )
 

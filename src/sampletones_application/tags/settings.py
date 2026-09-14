@@ -390,6 +390,132 @@ TAG_SETTINGS_PROPERTIES_BUTTON_CANCEL = TagName(
     Widget.BUTTON,
     "cancel",
 )
+TAG_SETTINGS_NSF_WINDOW = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.WINDOW,
+    "nsf",
+)
+TAG_SETTINGS_NSF_INPUT_TITLE = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.INPUT,
+    "title",
+)
+TAG_SETTINGS_NSF_INPUT_ARTIST = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.INPUT,
+    "artist",
+)
+TAG_SETTINGS_NSF_INPUT_COPYRIGHT = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.INPUT,
+    "copyright",
+)
+TAG_SETTINGS_NSF_INPUT_LOOP_FRAME = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.INPUT,
+    "loop_frame",
+)
+TAG_SETTINGS_NSF_TEXT_TITLE_SIZE = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "title_size",
+)
+TAG_SETTINGS_NSF_TEXT_ARTIST_SIZE = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "artist_size",
+)
+TAG_SETTINGS_NSF_TEXT_COPYRIGHT_SIZE = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "copyright_size",
+)
+TAG_SETTINGS_NSF_CHECKBOX_CHANNEL = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.CHECKBOX,
+    "channel",
+)
+TAG_SETTINGS_NSF_TEXT_NO_CHANNEL = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "no_channel",
+)
+TAG_SETTINGS_NSF_COMBO_REPEAT = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.COMBO,
+    "repeat",
+)
+TAG_SETTINGS_NSF_GROUP_LOOP_FRAME = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.GROUP,
+    "loop_frame",
+)
+TAG_SETTINGS_NSF_TEXT_FRAME_COUNT = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "frame_count",
+)
+TAG_SETTINGS_NSF_TEXT_LENGTH = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "length",
+)
+TAG_SETTINGS_NSF_COMBO_SCHEME = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.COMBO,
+    "scheme",
+)
+TAG_SETTINGS_NSF_TEXT_SCHEME_DESCRIPTION = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "scheme_description",
+)
+TAG_SETTINGS_NSF_GROUP_DESTINATION = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.GROUP,
+    "destination",
+)
+TAG_SETTINGS_NSF_PATH_DESTINATION = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.PATH,
+    "destination",
+)
+TAG_SETTINGS_NSF_BUTTON_BROWSE = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.BUTTON,
+    "browse",
+)
+TAG_SETTINGS_NSF_BUTTON_CANCEL = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.BUTTON,
+    "cancel",
+)
+TAG_SETTINGS_NSF_BUTTON_EXPORT = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.BUTTON,
+    "export",
+)
 TAG_SETTINGS_EXPORT_WINDOW = TagName(
     Page.SETTINGS,
     Panel.EXPORT,

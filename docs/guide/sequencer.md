@@ -260,6 +260,21 @@ To export the song:
   directly. An NSF program has room for 32 KB, so the app tells you when a song is too long. See [NSF
   export](../formats/nsf.md) and [song compression](../concepts/compression.md).
 
+## Exporting an NSF program
+
+**File ▸ Export ▸ NSF program...** opens the **Export NSF program** window. Click **Export** without
+changing anything to save the whole song, repeating from the start.
+
+| Setting | What it does |
+|---------|--------------|
+| **Title**, **Artist**, **Copyright** | The text an NSF player shows. Each one holds 31 bytes |
+| **Channels** | The channels the program plays. A channel you clear stays silent. Select at least one |
+| **Repeat** | **Play once** stops at the end. **From the start** plays the song again. **From a frame** goes back to the order frame you type in **Frame**, numbered as in the order list |
+| **Level** | How much the song is compressed. **None** exports fastest and makes the largest file. **Full search** is the slowest and makes the smallest file |
+| **File** | Where the file is saved. **Browse...** opens the save dialog |
+
+**Export** closes the window and shows the export's progress.
+
 ## Rendering to audio
 
 **File ▸ Render song...** (`Ctrl+Shift+E`) saves the whole song as an audio file that any player

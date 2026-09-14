@@ -54,7 +54,7 @@ You export a reconstruction from the **Reconstruction** menu:
 
 - **Export instruments ▸ FamiTracker instruments...** writes one `.fti` file per channel.
 - **Export instruments ▸ Bitphase presets...** writes the same instruments as `.json`.
-- **Export instruments ▸ NSF program...** writes a single `.nsf` file that plays the whole reconstruction on a NES.
+- **Export instruments ▸ NSF program...** opens the **Export NSF program** window and writes a single `.nsf` file that plays the whole reconstruction on a NES. The window works as it does [in the sequencer](sequencer.md#exporting-an-nsf-program). A reconstruction has no order frames, so **Repeat** has no **From a frame**. It has no samples either, so **Level** has no **Samples**. You can only select the channels the reconstruction uses.
 - **Export to WAV...** renders the audio using the channel and stem checkboxes you have set.
 
 **Export instrument...** in the **Instruments** panel writes only the channel you are looking at, in whichever format you choose in the save dialog. See [where your files live](files.md#naming-exported-files).

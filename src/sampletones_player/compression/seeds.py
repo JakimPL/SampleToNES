@@ -1,5 +1,6 @@
-from typing import List, Tuple
+from typing import AbstractSet, List, Tuple
 
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.maps import CHANNEL_TO_EXPORTER_MAP
 from sampletones_core.exporters.slices import iterate_voice_slices
 from sampletones_core.project.project import Project
@@ -15,6 +16,7 @@ from sampletones_shared.music import Tuning
 def phrases_from_project(
     project: Project,
     tuning: Tuning,
+    channels: AbstractSet[ChannelName],
 ) -> Tuple[Phrase, ...]:
     """The phrases a project's own instruments offer the dictionary.
 
@@ -24,11 +26,13 @@ def phrases_from_project(
     row asks for.
 
     A plane holding one value throughout offers the dictionary nothing a hold covers more
-    cheaply, so the slices seed the planes that turn over.
+    cheaply, so the slices seed the planes that turn over. The rows of a song play the slices on
+    the channels it sounds, so those are the slices that seed it.
 
     Args:
         project: The project whose samples the song plays.
         tuning: Where concert pitch sits, which decides the timer each pitch sounds at.
+        channels: The channels the song sounds.
 
     Returns:
         Tuple[Phrase, ...]: The phrases, in instrument-table order.
@@ -38,6 +42,9 @@ def phrases_from_project(
     phrases: List[Phrase] = []
     for voice_slice in iterate_voice_slices(project):
         channel = voice_slice.channel
+        if channel not in channels:
+            continue
+
         played = {channel: CHANNEL_TO_EXPORTER_MAP[channel].from_features(voice_slice.features)}
         planes = channel_planes(
             channel,

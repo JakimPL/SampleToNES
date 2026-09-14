@@ -29,7 +29,9 @@ change made in one file and forgotten in the other is reported by name.
 
 The header is NSF version 1: the magic `NESM\x1a`, one song, the load, init and play
 addresses, three 32-byte text fields, and the NTSC play period. The text fields carry the
-name of what was exported, its author and the copyright. Written by `nsf/header.py`.
+title, the artist and the copyright an export states. Each is UTF-8 ending in a NUL, so it
+holds `STRING_TEXT_SIZE` bytes of text, cut on a character boundary; `nsf/information.py`
+states that cut, and `nsf/header.py` writes the header.
 
 The driver's entry points lead its image as a pair of jumps, so `init` answers at the load
 address and `play` three bytes later whatever the driver's own length. That is what lets
@@ -140,6 +142,10 @@ begins a token on every plane, and that token names its values outright rather t
 leaning on the value the plane had reached. Coming round is then a matter of pointing each
 plane at the byte the header states and clearing what it was playing.
 
+The tick a song returns to is the export's choice: its first tick, the first tick of an
+order frame, or none at all, in which case the header states `$FFFF` and the song stops at
+its end.
+
 ## C. What the planes hold
 
 The planes are written in this order, and each group belongs to one channel:
@@ -160,6 +166,10 @@ The planes are written in this order, and each group belongs to one channel:
 
 Splitting a channel's registers apart is what gives each plane something to repeat: a
 volume envelope and a pitch line are separate series that turn over at their own rates.
+
+**Every channel's planes are in every block.** A channel an export leaves out holds its
+silent values from the first tick to the last, which a hold covers in a few bytes, so the
+driver reads the same layout whichever channels a song sounds.
 
 **The noise channel reads no bend.** It selects one of sixteen fixed periods, so there is
 no finer grid for a bend to reach, and the plane it would hold is left out of the block.

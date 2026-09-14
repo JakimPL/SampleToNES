@@ -2,7 +2,7 @@ from typing import Final, Tuple
 
 import pytest
 
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from sampletones_core.project.project import Project
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.compression.pitch import PitchTable
@@ -39,7 +39,7 @@ def slice_planes(project: Project) -> ChannelPlanes:
 
 
 def _offered(project: Project) -> Tuple[bytes, ...]:
-    return tuple(phrase.body for phrase in phrases_from_project(project, TUNING))
+    return tuple(phrase.body for phrase in phrases_from_project(project, TUNING, ALL_CHANNELS))
 
 
 class TestTheInstrumentsSeedTheDictionary:
@@ -65,4 +65,10 @@ class TestTheInstrumentsSeedTheDictionary:
 
     def test_a_project_holding_no_sample_offers_nothing(self, project: Project) -> None:
         project.voices.clear()
-        assert phrases_from_project(project, TUNING) == ()
+        assert phrases_from_project(project, TUNING, ALL_CHANNELS) == ()
+
+    def test_a_slice_on_a_channel_the_song_leaves_out_offers_nothing(self, project: Project) -> None:
+        """The slice plays on a channel the song rests, so no row of the song ever names it."""
+        sounding = ALL_CHANNELS - {ChannelName.PULSE1}
+        assert _offered(project)
+        assert phrases_from_project(project, TUNING, sounding) == ()

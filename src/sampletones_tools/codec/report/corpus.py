@@ -3,7 +3,7 @@ from math import ceil
 from random import Random
 from typing import Dict, Final, List, Tuple
 
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from sampletones_core.constants.general import MAX_DUTY_CYCLE, MAX_PERIOD, MAX_VOLUME
 from sampletones_core.instructions import (
     InstructionUnion,
@@ -27,6 +27,7 @@ from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.separate import planes_from_streams
 from sampletones_player.compression.planes.song import SongPlanes
+from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.compression.seeds import phrases_from_project
 from sampletones_player.song import Song
 from sampletones_shared.music import Tuning
@@ -99,8 +100,12 @@ def sample_entries(
         entries.append(
             CorpusEntry(
                 name=name,
-                song=song_from_reconstruction(sample.reconstruction, loop_tick=None),
-                seeds=phrases_from_project(_sample_project(sample, settings), tuning),
+                song=song_from_reconstruction(
+                    sample.reconstruction,
+                    loop_tick=None,
+                    scheme=CompressionScheme.SEARCH,
+                ),
+                seeds=phrases_from_project(_sample_project(sample, settings), tuning, ALL_CHANNELS),
                 tuning=tuning,
             )
         )
@@ -124,8 +129,13 @@ def arrangement_entry(
     tuning = tuning_from_project(project)
     return CorpusEntry(
         name=name,
-        song=song_from_project(project, loop_tick=None),
-        seeds=phrases_from_project(project, tuning),
+        song=song_from_project(
+            project,
+            channels=ALL_CHANNELS,
+            loop_tick=None,
+            scheme=CompressionScheme.SEARCH,
+        ),
+        seeds=phrases_from_project(project, tuning, ALL_CHANNELS),
         tuning=tuning,
     )
 
@@ -219,6 +229,7 @@ def reconstruction_entry(name: str, seconds: int) -> CorpusEntry:
             schedule=PlaySchedule.from_parameters(RECONSTRUCTION_FREQUENCY),
             loop_tick=None,
             seeds=NO_SEEDS,
+            scheme=CompressionScheme.SEARCH,
         ),
         seeds=NO_SEEDS,
         tuning=tuning,

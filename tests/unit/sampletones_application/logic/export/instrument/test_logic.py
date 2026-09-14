@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from sampletones_application.exports import build_export_backends
+from sampletones_application.exports import ExportBackends
 from sampletones_application.logic.export.instrument.logic import InstrumentExportLogic
 from sampletones_application.logic.export.instrument.source import (
     exportable_instrument,
@@ -61,7 +61,7 @@ def export_service() -> MagicMock:
 def export_backends() -> Dict[ExportFormat, MagicMock]:
     """Stands in for the real backends while declaring the scopes and extensions they do."""
     backends: Dict[ExportFormat, MagicMock] = {}
-    for export_format, backend in build_export_backends().items():
+    for export_format, backend in ExportBackends.build().by_format.items():
         stub = MagicMock()
         stub.supported_scopes = backend.supported_scopes
         stub.extension.side_effect = backend.extension

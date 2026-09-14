@@ -11,6 +11,7 @@ from sampletones_player.compression.matches.matcher import PhraseMatcher
 from sampletones_player.compression.options import CodecOptions
 from sampletones_player.compression.parse.plane import parse_plane
 from sampletones_player.compression.planes.song import SongPlanes
+from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.registers.streams import ChannelStreams
 from sampletones_player.specification.registers import DUTY_CYCLE_SHIFT
 from sampletones_tools.codec.report.corpus import CorpusEntry
@@ -25,23 +26,10 @@ RECORDS: Final[str] = "records"
 REGISTER_PLANES: Final[str] = "register planes"
 SPLIT_CONTROL: Final[str] = "split control"
 CONTROL_LEVEL_MASK: Final[int] = 0x3F
-HOLDS_OPTIONS: Final[CodecOptions] = CodecOptions(
-    holds=True,
-    phrases=False,
-    transposition=False,
-    search=False,
-)
+HOLDS_OPTIONS: Final[CodecOptions] = CompressionScheme.RUNS.options
 
 PLANE_VARIANTS: Final[Tuple[Tuple[str, CodecOptions], ...]] = (
-    (
-        LITERALS,
-        CodecOptions(
-            holds=False,
-            phrases=False,
-            transposition=False,
-            search=False,
-        ),
-    ),
+    (LITERALS, CompressionScheme.NONE.options),
     (HOLDS, HOLDS_OPTIONS),
     (
         INSTRUMENTS,
@@ -52,24 +40,8 @@ PLANE_VARIANTS: Final[Tuple[Tuple[str, CodecOptions], ...]] = (
             search=False,
         ),
     ),
-    (
-        TRANSPOSITION,
-        CodecOptions(
-            holds=True,
-            phrases=True,
-            transposition=True,
-            search=False,
-        ),
-    ),
-    (
-        SEARCH,
-        CodecOptions(
-            holds=True,
-            phrases=True,
-            transposition=True,
-            search=True,
-        ),
-    ),
+    (TRANSPOSITION, CompressionScheme.INSTRUMENTS.options),
+    (SEARCH, CompressionScheme.SEARCH.options),
 )
 
 

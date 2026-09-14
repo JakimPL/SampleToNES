@@ -190,7 +190,7 @@ They read the source as an AST through the source layer in `sampletones_tools/ch
 
 **Naming convention:** `<Feature><Component>ViewModel`, e.g. `ConverterViewModel`, `SequencerTrackerViewModel`.
 
-**May import:** `constants/`, `sampletones_core` types, `sampletones_shared`, Python standard library.
+**May import:** `constants/`, `sampletones_core` and `sampletones_player` types, `sampletones_shared`, Python standard library.
 **Must not import:** `ui/`, `coordinators/`, `logic/`, `services/`, `config/`.
 
 ---
@@ -218,7 +218,7 @@ They read the source as an AST through the source layer in `sampletones_tools/ch
 - Session objects are simple state machines; they fire `on_state_changed` when they transition, without knowing who listens.
 - A logic object that drives a service declares a logic-side `Protocol` of exactly the calls it needs (e.g. `ConversionServiceProtocol`) and receives the real service from its coordinator or the composition root; structural typing keeps the dependency inverted.
 
-**May import:** `sampletones_core`, `sampletones_shared`, `view_model/`, `utils/`, `categories/`, `layout/`, `config/`, and the service **result contract modules** (`services/result.py`, `services/*/result.py`) so handlers can type the tagged unions they match on.
+**May import:** `sampletones_core`, `sampletones_player`, `sampletones_shared`, `view_model/`, `utils/`, `categories/`, `layout/`, `config/`, and the service **result contract modules** (`services/result.py`, `services/*/result.py`) so handlers can type the tagged unions they match on.
 **Must not import:** `ui/`, `coordinators/`, service implementation modules.
 
 ---
@@ -257,6 +257,7 @@ There are two coordinator kinds:
 - A coordinator holds no domain state. It delegates reads and writes to the managers and controllers it was given; what it caches is presentation wiring — resolved language strings, panels, logic objects, callbacks.
 - Callbacks received from `Application` as constructor parameters are stored and forwarded as-is. A wrapper is sanctioned where a contract requires an intent-level guard — a busy-authority start-time guard (principle 10) wrapping an operation's entry point — and that guard is the whole of what the wrapper holds. A wrapper that renames a call, reorders its arguments, or adds a step of its own is the coordinator taking on work that belongs to the logic object the call reaches.
 - Error dialogs, confirmations, and notices are presented here, with text resolved from `LanguageManager` here (see the Error Handling Policy).
+- An export format with choices of its own opens its setup where the save dialog would otherwise ask for the file. The composition root builds one mapping from each such format to its `ExportSetup` (`coordinators/export/setup.py`), and every surface offering an export consults it first, so a surface names no format and a format gains a setup in one place.
 
 **May import:** `ui/`, `view_model/`, `logic/`, `services/`, `utils/`, `categories/`, `layout/`, `config/`.
 **Must not import:** `application.py`, `shell.py`.

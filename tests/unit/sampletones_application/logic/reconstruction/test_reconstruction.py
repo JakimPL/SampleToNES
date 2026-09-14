@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from sampletones_application.exports import build_export_backends
+from sampletones_application.exports import ExportBackends
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import (
@@ -105,7 +105,7 @@ def mock_export_backends() -> Dict[ExportFormat, MagicMock]:
     the registry's backend declares and leaves only the writing to the mock.
     """
     backends: Dict[ExportFormat, MagicMock] = {}
-    for export_format, backend in build_export_backends().items():
+    for export_format, backend in ExportBackends.build().by_format.items():
         stub = MagicMock()
         stub.supported_scopes = backend.supported_scopes
         stub.extension.side_effect = backend.extension
@@ -828,6 +828,47 @@ class TestReconstructionPanelLogicExportInstruments:
         )
         backend = mock_export_service.export_sample.call_args.args[1]
         assert backend is mock_export_backends[case.export_format]
+
+
+class TestReconstructionPanelLogicSampleRequest:
+    """A format setting its export up in a dialog of its own names the slices before a destination
+    exists, so the request carries the reconstruction's own name."""
+
+    def test_with_no_data_raises_assertion_error(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+    ) -> None:
+        with pytest.raises(AssertionError):
+            panel_logic.sample_request()
+
+    def test_the_request_is_named_after_the_reconstruction(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = loaded_data
+
+        request = panel_logic.sample_request()
+
+        assert request.name == loaded_data.name
+        assert [instrument.name for instrument in request.instruments] == [f"{loaded_data.name} (pulse1)"]
+
+    def test_the_request_holds_the_slices_a_confirmed_export_writes(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+        mock_export_service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = loaded_data
+        panel_logic.handle_export_instruments_confirmed(
+            tmp_path / f"{loaded_data.name}{EXT_FILE_INSTRUMENT}",
+            ExportFormat.FAMITRACKER,
+        )
+
+        assert panel_logic.sample_request() == mock_export_service.export_sample.call_args.args[2]
 
 
 class TestReconstructionPanelLogicExportWav:

@@ -43,8 +43,9 @@ def song_instructions(
         OperationCanceled: If ``report`` withdraws the walk.
     """
     song = project.song
-    groove = SongTiming.from_project(project).groove()
-    total = groove.total_ticks * song.order_length()
+    timing = SongTiming.from_project(project)
+    groove = timing.groove()
+    total = timing.frame_tick(song.order_length())
     performances = {channel_name: ChannelPerformance() for channel_name in ChannelName.items()}
     streams: Dict[ChannelName, List[InstructionUnion]] = {channel_name: [] for channel_name in ChannelName.items()}
 

@@ -4,7 +4,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from sampletones_application.coordinators import project as project_module
 from sampletones_application.coordinators.project import ProjectCoordinator
+from sampletones_core.exports.format import ExportFormat
 from sampletones_shared.exceptions import (
     IncompatibleProjectVersionError,
     IncorrectReconstructionDataError,
@@ -13,6 +15,7 @@ from sampletones_shared.exceptions import (
     NotAValidArchiveError,
     UnhandledProjectError,
 )
+from sampletones_shared.paths.extensions import EXT_FILE_MODULE
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -25,6 +28,7 @@ def project_coordinator() -> ProjectCoordinator:
         MagicMock(),
         MagicMock(),
         export_backends={},
+        format_setups={},
         dialogs=MagicMock(),
         language_manager=MagicMock(),
         on_tab_switch=MagicMock(),
@@ -152,3 +156,70 @@ class TestProjectManualLoadSurfacesErrors(BaseTestSuite):
 
         project_coordinator._dialogs.show_error.assert_called_once_with(test_case.failure)
         project_coordinator._session_manager.set_current_project.assert_not_called()
+
+
+class TestAFormatWithASetupOpensIt:
+    """A format asking for its own choices opens its setup where the save dialog would, and every
+    other format asks for the destination alone."""
+
+    @pytest.fixture
+    def setup(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def save_dialog(self, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+        dialog = MagicMock(return_value=None)
+        monkeypatch.setattr(project_module, "save_file_dialog", dialog)
+        return dialog
+
+    @pytest.fixture
+    def coordinator(self, setup: MagicMock) -> ProjectCoordinator:
+        backend = MagicMock()
+        backend.extension.return_value = EXT_FILE_MODULE
+        return ProjectCoordinator(
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            export_backends={ExportFormat.FAMITRACKER: backend},
+            format_setups={ExportFormat.NSF: setup},
+            dialogs=MagicMock(),
+            language_manager=MagicMock(),
+            on_tab_switch=MagicMock(),
+            on_session_state_changed=MagicMock(),
+        )
+
+    def test_a_format_with_a_setup_opens_it(
+        self,
+        coordinator: ProjectCoordinator,
+        setup: MagicMock,
+        save_dialog: MagicMock,
+    ) -> None:
+        coordinator.export_project_dialog(ExportFormat.NSF)
+
+        setup.open_project.assert_called_once_with()
+        save_dialog.assert_not_called()
+
+    def test_a_format_asking_for_the_file_alone_opens_the_save_dialog(
+        self,
+        coordinator: ProjectCoordinator,
+        setup: MagicMock,
+        save_dialog: MagicMock,
+    ) -> None:
+        coordinator.export_project_dialog(ExportFormat.FAMITRACKER)
+
+        save_dialog.assert_called_once()
+        setup.open_project.assert_not_called()
+
+    def test_a_closed_project_opens_nothing(
+        self,
+        coordinator: ProjectCoordinator,
+        setup: MagicMock,
+        save_dialog: MagicMock,
+    ) -> None:
+        coordinator._project_controller.is_open = False
+
+        coordinator.export_project_dialog(ExportFormat.NSF)
+
+        setup.open_project.assert_not_called()
+        save_dialog.assert_not_called()

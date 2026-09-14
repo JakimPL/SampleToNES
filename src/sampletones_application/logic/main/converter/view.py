@@ -7,7 +7,6 @@ from sampletones_application.logic.main.converter.gathering import Gathering
 from sampletones_application.logic.main.converter.state import ConverterState
 from sampletones_application.logic.main.sources.row import SourceRow
 from sampletones_application.logic.main.sources.slots import (
-    ALL_CHANNELS,
     CHANNEL_SLOT,
     SETTINGS_SLOTS,
     SettingsSlot,
@@ -19,7 +18,7 @@ from sampletones_application.view_model.main.source import (
 )
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_application.view_model.shared.stems import StemRowViewModel
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 

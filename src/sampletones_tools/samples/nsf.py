@@ -3,8 +3,9 @@ from typing import Final, List
 
 from sampletones_core.exports.request import ProjectExport
 from sampletones_player.builder import song_from_reconstruction
+from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
-from sampletones_player.export import NSFBackend
+from sampletones_player.export.backend import NSFBackend
 from sampletones_player.nsf.file import write_nsf
 from sampletones_player.nsf.information import NSFInformation
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
@@ -34,14 +35,18 @@ def write_samples(corpus: Corpus, output: Path) -> List[Path]:
         destination = output / f"{name}{EXT_FILE_NSF}"
         write_nsf(
             destination,
-            song_from_reconstruction(sample.reconstruction, loop_tick=None),
+            song_from_reconstruction(
+                sample.reconstruction,
+                loop_tick=None,
+                scheme=CompressionScheme.SEARCH,
+            ),
             exported_information(name, corpus.project.info.author),
             image,
         )
         written.append(destination)
 
     arrangement = output / f"{SONG_NAME}{EXT_FILE_NSF}"
-    NSFBackend().write_project(
+    NSFBackend.stated().write_project(
         arrangement,
         ProjectExport(project=corpus.project),
     )

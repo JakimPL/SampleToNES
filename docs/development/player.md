@@ -65,6 +65,14 @@ from: `song_from_reconstruction` sounds a reconstruction's own instructions,
 whole arrangement out row by row through the same walk the sequencer sounds a song with.
 The last of those is the one that seeds the dictionary from the project's samples.
 
+**A program states what an export chooses.** `NSFProgram` holds the channels a song sounds,
+the tick it returns to, the `CompressionScheme` it is written with and the header text, and
+the builders take the first three explicitly. `NSFProgram.for_project` and
+`NSFProgram.for_sample` state what an export writes when nobody chose otherwise, and the
+export dialog opens on the same values. `NSFBackend` answers the export seam either with those
+stated programs or, through `choosing`, with one a user settled, so the service that runs an
+export stays free of anything the format decides.
+
 A project carries no tuning of its own — each sample was reconstructed against one — so the
 samples state it by agreeing on it, and a project whose samples disagree is refused rather
 than sounded half in tune.

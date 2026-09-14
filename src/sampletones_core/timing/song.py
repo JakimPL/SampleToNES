@@ -44,3 +44,18 @@ class SongTiming:
             minimum_ticks=MIN_TICKS_PER_ROW,
             maximum_ticks=MAX_TICKS_PER_ROW,
         )
+
+    def frame_tick(self, frame: int) -> int:
+        """The engine tick order frame ``frame`` starts on.
+
+        Every pattern holds the song's row count, so each frame the order plays lasts one groove
+        and a frame starts once that many grooves have played. The frame one past the order's last
+        is where the song ends, so its tick is the length of the whole song.
+
+        Args:
+            frame: The order position, counted from 0.
+
+        Returns:
+            int: The ticks the order plays before ``frame`` begins.
+        """
+        return self.groove().total_ticks * frame
