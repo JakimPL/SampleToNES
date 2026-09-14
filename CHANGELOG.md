@@ -5,6 +5,7 @@
 * Added NSF player and export.
 * Added stems conversion: to mix several recordings into one reconstruction.
 * Bumped the reconstruction data-version to `2.2` with backward compatibility for `2.1`.
+* Bumped the library data-version to `2.1` with backward compatibility for `2.0`.
 
 ## v0.3.1 [2026-08-18]
 

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import StrEnum
 from functools import partial
-from typing import Optional, Tuple, Type, Union
+from typing import Final, Optional, Tuple, Type, Union
 from unittest.mock import patch
 
 import numpy as np
@@ -1909,3 +1909,41 @@ class TestMean(BaseTestSuite):
             assert_array_equal(result.edges, test_case.expected.edges)
             assert_array_equal(result.values, test_case.expected.values)
             assert_array_equal(result.values, test_case.expected.values)
+
+
+class TestMeanOfSpectra(BaseTestSuite):
+    """
+    Features average as the spectra they describe: the mean of transformed features is the
+    transform of the mean spectrum, at every gamma.
+    """
+
+    EDGES: Final[np.ndarray] = np.array([0.0, 50.0, 150.0, 400.0], dtype=np.float32)
+    SPECTRA: Final[Tuple[np.ndarray, ...]] = (
+        np.array([1e-4, 2e-2, 0.5], dtype=np.float32),
+        np.array([3e-3, 1e-5, 0.9], dtype=np.float32),
+        np.array([0.0, 4e-3, 0.1], dtype=np.float32),
+    )
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        gamma: int
+
+    test_cases = (
+        TestCase(label="identity", gamma=0),
+        TestCase(label="intermediate", gamma=50),
+        TestCase(label="logarithmic", gamma=100),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_mean_transforms_the_mean_spectrum(self, test_case: TestCase) -> None:
+        transformer = FFTTransformer.from_gamma(gamma=test_case.gamma, sample_rate=44100)
+        features = [transformer.forward(Histogram(edges=self.EDGES, values=values)) for values in self.SPECTRA]
+        mean_spectrum = Histogram(edges=self.EDGES, values=np.mean(self.SPECTRA, axis=0, dtype=np.float32))
+
+        result = transformer.mean(features)
+
+        np.testing.assert_allclose(result.values, transformer.forward(mean_spectrum).values, rtol=1e-4)

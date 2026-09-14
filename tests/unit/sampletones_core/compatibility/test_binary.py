@@ -1,4 +1,7 @@
+from typing import Any, Dict, Final
+
 import msgpack
+import numpy as np
 
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.compatibility.upgrade import upgrade_binary
@@ -6,6 +9,17 @@ from sampletones_shared.application import (
     SAMPLETONES_LIBRARY_DATA_VERSION,
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
 )
+
+FEATURE_EDGES: Final[bytes] = np.array([0.0, 10.0, 30.0], dtype=np.float32).tobytes()
+FEATURE_VALUES: Final[bytes] = np.array([0.5, 3.0], dtype=np.float32).tobytes()
+
+
+def _library_at_2_0(spectrum_method: str) -> Dict[str, Any]:
+    return {
+        "metadata": {"library_data_version": "2.0"},
+        "config": {"spectrum_method": spectrum_method, "transformation_gamma": 100},
+        "items": [{"fragment": {"feature": {"edges": FEATURE_EDGES, "values": FEATURE_VALUES}}}],
+    }
 
 
 class TestUpgradeBinary:
@@ -63,3 +77,19 @@ class TestUpgradeBinary:
         assert data["stems_data"]["config"]["entries"][0]["settings"]["channels"] == ["pulse1", "noise"]
         assert data["config"]["metadata"]["reconstruction_data_version"] == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
         assert data["metadata"]["reconstruction_data_version"] == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
+
+    def test_library_upgrade_restates_windowed_features_and_stamps(self) -> None:
+        binary = msgpack.packb(_library_at_2_0("fft"), use_bin_type=True)
+
+        data = msgpack.unpackb(upgrade_binary(ObjectKind.LIBRARY, binary), raw=False)
+
+        assert data["items"][0]["fragment"]["feature"]["values"] != FEATURE_VALUES
+        assert data["metadata"]["library_data_version"] == SAMPLETONES_LIBRARY_DATA_VERSION
+
+    def test_library_upgrade_stamps_a_constant_q_library_as_it_stands(self) -> None:
+        binary = msgpack.packb(_library_at_2_0("cqt"), use_bin_type=True)
+
+        data = msgpack.unpackb(upgrade_binary(ObjectKind.LIBRARY, binary), raw=False)
+
+        assert data["items"][0]["fragment"]["feature"]["values"] == FEATURE_VALUES
+        assert data["metadata"]["library_data_version"] == SAMPLETONES_LIBRARY_DATA_VERSION

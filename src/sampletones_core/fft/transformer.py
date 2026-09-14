@@ -16,6 +16,7 @@ from sampletones_shared.types.array import (
     Numeric,
     NumericClasses,
 )
+from sampletones_shared.utils.transformations.functions import arithmetic_mean
 from sampletones_shared.utils.transformations.morpher import LogMorpher
 from sampletones_shared.utils.transformations.transformation import (
     Transformation,
@@ -432,7 +433,8 @@ class FFTTransformer(BaseModel):
 
             `[ mean(feature₁ ^ (1 / a), feature₂ ^ (1 / a), ..., featureₙ ^ (1 / a)) ] ^ a`
 
-        Requires all edges to be consistent.
+        The spectra are averaged and the average transformed, so the mean feature is the feature of
+        the mean power at every gamma. Requires all edges to be consistent.
 
         Args:
             features (Sequence[Histogram]): Input FFT features.
@@ -448,5 +450,4 @@ class FFTTransformer(BaseModel):
         if not features:
             raise ValueError("At least one feature is required to compute the mean")
 
-        divisor = self.forward(len(features))
-        return self.reduce(np.add, *features).apply_with(lambda x: np.divide(x, divisor, out=x, casting="unsafe"))
+        return self.apply(arithmetic_mean, *features)

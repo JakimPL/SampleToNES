@@ -85,12 +85,13 @@ screen from the worker process it is made in.
 Before any reconstruction, `sampletones_core.library` precomputes a **library**: for
 every possible instruction it renders the waveform its generator produces and stores
 the corresponding spectral feature. Because NES waveforms are periodic, a
-candidate's feature is computed as an average over many phase offsets, which makes
-it essentially phase-independent — matching then compares spectral *shape* rather
-than an accident of alignment. The library is keyed by the parameters that affect
-it (sample rate, frame size, spectrum method, gamma, …) so a configuration change
-produces a fresh library. See [Instruction library](instruction-library.md) for
-the library as an artifact — how it is generated, explored and keyed.
+candidate's feature is computed from its power spectrum averaged over many phase
+offsets, which makes it essentially phase-independent — matching then compares
+spectral *shape* rather than an accident of alignment. The library is keyed by the
+parameters that affect it (sample rate, frame size, spectrum method, gamma, …) so a
+configuration change produces a fresh library. See
+[Instruction library](instruction-library.md) for the library as an artifact — how it
+is generated, explored and keyed.
 
 ### 3.2 Spectrum methods: FFT, log-FFT and CQT
 
@@ -144,7 +145,10 @@ Yeo-Johnson-family transform (`sampletones_core.fft.transformer`) controlled by 
 Intermediate values interpolate smoothly. Higher gamma compresses the dynamic range,
 emphasizing quiet spectral detail relative to loud peaks. The transform is applied
 identically to target and candidate features, so it re-weights the comparison rather
-than changing what is represented.
+than changing what is represented. Arithmetic on features — a library candidate's
+average over phases, a residual's difference — is carried out on the power spectra
+they describe and transformed afterward, so its result is the feature of that power
+at every gamma.
 
 ### 3.4 The working level (coefficient)
 

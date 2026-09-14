@@ -65,6 +65,12 @@ mapping for `.stn` and `.ins`, the JSON document for `project.json`. The
 transform steps reshape that payload — renaming the fields whose names changed
 between versions, and adjusting the values they hold where the shape demands it.
 
+A step also restates a value an older version computed, wherever the stored value
+determines the current one in closed form: `compatibility/library/v2_1.py` recovers
+each windowed candidate's mean spectrum from the feature data version 2.0 averaged in
+feature space. Such a step holds its own copies of the constants that computation
+used, so it reads the files of its version the same whatever later builds set them to.
+
 ### A completed upgrade stamps the version it reached
 
 A payload whose chain ran carries the new version in the same field it declares
@@ -84,7 +90,8 @@ untouched.
 - `compatibility/<format>/__init__.py` — that format's `UPDATES` tuple. The
   reconstruction chain currently holds the 2.1→2.2 step
   (`compatibility/reconstruction/v2_2.py`), the project chain the 1.0→1.1 step
-  (`compatibility/project/v1_1.py`), and the library chain is empty.
+  (`compatibility/project/v1_1.py`), and the library chain the 2.0→2.1 step
+  (`compatibility/library/v2_1.py`).
 
 ### Version fields
 
