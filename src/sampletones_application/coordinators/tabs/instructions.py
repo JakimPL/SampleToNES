@@ -217,7 +217,7 @@ class InstructionsTabCoordinator:
         self._instruction_choice_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._instruction_parameters_panel.set_collapse_handler(self._on_card_collapse_changed)
 
-        config_manager.add_config_change_callback(self._library_logic.update_status)
+        config_manager.add_config_change_callback(self._library_logic.follow_config)
 
         self._library_logic.set_callbacks(
             on_apply_library_config=config_manager.apply_library_config,

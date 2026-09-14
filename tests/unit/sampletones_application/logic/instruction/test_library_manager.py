@@ -9,21 +9,14 @@ from sampletones_application.logic.instruction.library_manager import (
 )
 from sampletones_application.view_model.main.updates import AdvancedSettingsUpdate
 from sampletones_core.library import InstructionLibraryKey
+from tests.suite.library import WrittenLibrary
+
+OTHER_LIBRARIES = "other_libraries"
 
 
 @pytest.fixture
-def config_manager(tmp_path: Path) -> ConfigManager:
-    return ConfigManager(tmp_path / "config.json")
-
-
-@pytest.fixture
-def library_manager(
-    config_manager: ConfigManager,
-    tmp_path: Path,
-) -> InstructionsLibraryManager:
-    manager = InstructionsLibraryManager(config_manager, language_manager=MagicMock())
-    manager.set_library_directory(tmp_path / "libraries")
-    return manager
+def library_manager(config_manager: ConfigManager) -> InstructionsLibraryManager:
+    return InstructionsLibraryManager(config_manager, language_manager=MagicMock())
 
 
 def _set_transformation_gamma(config_manager: ConfigManager, gamma: int) -> None:
@@ -82,6 +75,34 @@ class TestConversionLibraryReadiness:
         _create_library_file(library_manager, config_manager.key)
 
         assert library_manager.is_library_available_for_config() is True
+
+
+class TestTheDirectoryTheCatalogStandsAt:
+    """The catalog holds the libraries it loaded for as long as it reads the same directory."""
+
+    def test_the_directory_it_stands_at_keeps_what_it_loaded(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        library_manager._library.save_data(config_manager.key, WrittenLibrary())
+
+        library_manager.set_library_directory(config_manager.get_library_directory())
+
+        assert library_manager.is_library_loaded(config_manager.key) is True
+
+    def test_another_directory_starts_with_nothing_loaded(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        library_manager._library.save_data(config_manager.key, WrittenLibrary())
+        other = tmp_path / OTHER_LIBRARIES
+
+        library_manager.set_library_directory(other)
+
+        assert (library_manager.library_directory, library_manager._library.data) == (other, {})
 
 
 class TestCompleteGeneration:

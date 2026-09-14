@@ -59,9 +59,14 @@ class InstructionsLibraryManager(CallbackMixin):
         self.on_generation_error: Optional[OnGenerationErrorCallback] = None
         self.on_generation_canceled: Optional[VoidCallback] = None
 
+    @property
+    def library_directory(self) -> Path:
+        return to_path(self._library.directory)
+
     def set_library_directory(self, directory: Path) -> None:
-        self._library = InstructionLibrary(directory=str(directory))
-        self.gather_available_libraries()
+        """Roots the catalog at ``directory``, which keeps the libraries loaded from where it already stands."""
+        if directory != self.library_directory:
+            self._library = InstructionLibrary(directory=str(directory))
 
     def gather_available_libraries(self) -> Dict[InstructionLibraryKey, str]:
         library_directory = to_path(self._library.directory)

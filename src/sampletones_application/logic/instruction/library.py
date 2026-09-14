@@ -1,4 +1,4 @@
-import threading
+from functools import partial
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -7,6 +7,7 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
+from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.instruction.library import (
     LibraryPanelViewModel,
 )
@@ -47,6 +48,12 @@ OnApplyLibraryConfigCallback = Callable[[InstructionLibraryKey], None]
 
 
 class LibraryLogic(CallbackMixin):
+    """The Instructions tab's library catalog, and the generation that writes a library into it.
+
+    A generation reports from the creator's own threads, so each report is queued for the render
+    loop and taken there, where the catalog and the tree lock stand.
+    """
+
     def __init__(
         self,
         config_manager: ConfigManager,
@@ -60,7 +67,6 @@ class LibraryLogic(CallbackMixin):
         self._library_manager = library_manager
         self._is_operation_active = is_operation_active
         self._eta_estimator: Optional[ETAEstimator] = None
-        self._status_lock = threading.Lock()
 
         self._lock_function: Optional[VoidCallback] = None
         self._unlock_function: Optional[VoidCallback] = None
@@ -81,11 +87,11 @@ class LibraryLogic(CallbackMixin):
         self._msg_load_error = language_manager["instructions.library.message.status_load_error"]
 
         self._library_manager.set_callbacks(
-            on_generation_start=self._on_generation_start,
-            on_generation_progress=self._on_generation_progress,
-            on_generation_completed=self._on_generation_completed,
-            on_generation_error=self._on_generation_error,
-            on_generation_canceled=self._on_generation_canceled,
+            on_generation_start=partial(CallbackQueue.add, self._on_generation_start),
+            on_generation_progress=partial(CallbackQueue.add, self._on_generation_progress),
+            on_generation_completed=partial(CallbackQueue.add, self._on_generation_completed),
+            on_generation_error=partial(CallbackQueue.add, self._on_generation_error),
+            on_generation_canceled=partial(CallbackQueue.add, self._on_generation_canceled),
         )
 
     def configure_lock(
@@ -148,6 +154,22 @@ class LibraryLogic(CallbackMixin):
         self._library_manager.gather_available_libraries()
         self._sync_with_config_key(load_if_needed=load_if_needed)
         self.call(self.on_rebuild_tree_needed)
+
+    def follow_config(self) -> None:
+        """Follows a configuration change, reading the catalog afresh where the change names another
+        library directory and repainting the status otherwise.
+
+        A generation writes into the directory it started with and reads the configured one as it
+        closes, so a change arriving while it runs is taken up then.
+        """
+        if self._library_manager.is_generating():
+            return
+
+        if self._library_manager.library_directory != self._config_manager.get_library_directory():
+            self.refresh_libraries()
+            return
+
+        self.update_status()
 
     def remove_library(self, library_key: InstructionLibraryKey) -> Path:
         filepath = self._library_manager.get_path(library_key)
@@ -240,12 +262,15 @@ class LibraryLogic(CallbackMixin):
     def _sync_with_config_key(self, load_if_needed: bool = True) -> None:
         config_key = self._config_manager.key
         matching_key = self._library_manager.sync_with_config_key(config_key)
-        if matching_key:
-            self._set_current_library(
-                matching_key,
-                load_if_needed=load_if_needed,
-                apply_config=False,
-            )
+        if matching_key is None:
+            self.update_status()
+            return
+
+        self._set_current_library(
+            matching_key,
+            load_if_needed=load_if_needed,
+            apply_config=False,
+        )
 
     def _set_current_library(
         self,
@@ -367,16 +392,23 @@ class LibraryLogic(CallbackMixin):
         task_status: TaskStatus,
         task_progress: TaskProgress,
     ) -> None:
-        with self._status_lock:
-            match task_status:
-                case TaskStatus.COMPLETED:
-                    self._emit_view(self._language_manager["instructions.library.message.status_saving"], progress=1.0)
-                case TaskStatus.FAILED:
-                    self._emit_view(self._language_manager["instructions.library.message.status_generation_failed"])
-                case TaskStatus.CANCELED:
-                    self._emit_view(self._language_manager["instructions.library.message.status_generation_canceled"])
-                case TaskStatus.RUNNING:
-                    self._update_progress_state(task_progress)
+        """Paints a report of the generation under way.
+
+        The creator goes on reporting while its pool winds down, so a report reaching a generation
+        already closed leaves the idle status the close painted.
+        """
+        if not self._library_manager.is_generating():
+            return
+
+        match task_status:
+            case TaskStatus.COMPLETED:
+                self._emit_view(self._language_manager["instructions.library.message.status_saving"], progress=1.0)
+            case TaskStatus.FAILED:
+                self._emit_view(self._language_manager["instructions.library.message.status_generation_failed"])
+            case TaskStatus.CANCELED:
+                self._emit_view(self._language_manager["instructions.library.message.status_generation_canceled"])
+            case TaskStatus.RUNNING:
+                self._update_progress_state(task_progress)
 
     def _update_progress_state(self, task_progress: TaskProgress) -> None:
         creator = self._library_manager.creator
@@ -410,25 +442,21 @@ class LibraryLogic(CallbackMixin):
         self._finalize_generation()
 
     def _finalize_generation(self) -> None:
-        try:
-            self._library_manager.cleanup_creator()
-            self._set_current_library(
-                self._config_manager.key,
-                load_if_needed=True,
-                apply_config=False,
-            )
-            self.refresh_libraries()
-        finally:
-            self._do_unlock()
-            self.call(self.on_generation_state_changed)
+        """Closes a generation and reads the catalog again, which lists the library it wrote and
+        loads it for the configuration."""
+        self._close_generation()
+        self.refresh_libraries()
 
     def _finalize_generation_error(self) -> None:
-        try:
-            self._library_manager.cleanup_creator()
-            self.update_status()
-        finally:
-            self._do_unlock()
-            self.call(self.on_generation_state_changed)
+        self._close_generation()
+        self.update_status()
+
+    def _close_generation(self) -> None:
+        """Lets the creator go along with the tree lock the generation held, which loading a library
+        and rebuilding the tree both yield to."""
+        self._library_manager.cleanup_creator()
+        self._do_unlock()
+        self.call(self.on_generation_state_changed)
 
     def _emit_view(
         self,

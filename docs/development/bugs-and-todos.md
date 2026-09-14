@@ -202,6 +202,5 @@ again.
 
 ## Bugs
 
-* No refreshing after library generation
 * Misaligned dialog boxes sizes at initialization
 * Audible noise instructions when matching near-silent samples for FFT γ0
