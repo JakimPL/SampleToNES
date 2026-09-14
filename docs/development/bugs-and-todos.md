@@ -202,13 +202,6 @@ again.
 
 ## Bugs
 
-* A windowed list keeps a settle pass alive for as long as it holds rows back, including while its
-  card is collapsed and the list is hidden. `GUIStemsList._settle_soon` re-arms while `_following`
-  is true, and `WindowedRegion.standing` asks only that the body item exists, so a gathering of a
-  few hundred recordings reconfigures two widgets every frame for the rest of the run. DearPyGui
-  offers no scroll callback, so the pass itself is the design; what it wants is the same drawn
-  visibility reading the removal key above needs, which is why the two are recorded together.
-
 * No refreshing after library generation
 * Misaligned dialog boxes sizes at initialization
 * Audible noise instructions when matching near-silent samples for FFT γ0

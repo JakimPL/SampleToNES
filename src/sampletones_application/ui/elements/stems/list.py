@@ -1,6 +1,8 @@
 from functools import partial
 from typing import Optional, Tuple
 
+import dearpygui.dearpygui as dpg
+
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.glyphs.common import CommonGlyphs
@@ -22,6 +24,7 @@ from sampletones_application.ui.elements.stems.messages import StemsMessages
 from sampletones_application.ui.elements.stems.offer import StemsListOffer
 from sampletones_application.ui.elements.stems.row import StemRowRenderer
 from sampletones_application.ui.elements.stems.tags import StemsTags
+from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
@@ -172,7 +175,7 @@ class GUIStemsList(CallbackMixin):
         return self.on_menu_requested is not None
 
     def create(self, parent: str, *, show: bool = True) -> None:
-        """Build the list's recessed region and the handlers its rows share.
+        """Build the list's recessed region, the handlers its rows share, and the watch over its body.
 
         A list built again stands on none of the widgets it drew before — a window raised a second
         time takes its whole tree down between one opening and the next — so what it remembers
@@ -183,6 +186,19 @@ class GUIStemsList(CallbackMixin):
         self._folders.forget()
         self._gestures.create_handlers()
         self._region.create(parent, show=show)
+        self._create_watch()
+
+    def _create_watch(self) -> None:
+        """Watch the body for the frame it is drawn in, which is where a settle put off resumes.
+
+        The watch stands off from the start and reports nothing until a settle finds the list put
+        away, so a list on screen carries no handler running each frame.
+        """
+        dpg_delete_item(self._tags.body_handlers)
+        with dpg.item_handler_registry(tag=self._tags.body_handlers):
+            dpg.add_item_visible_handler(tag=self._tags.drawn, callback=self._on_drawn, show=False)
+
+        dpg.bind_item_handler_registry(self._region.body, self._tags.body_handlers)
 
     def update_view(self, view_model: StemsListViewModel) -> None:
         """Take up a new reading of the setup: draw what it reshapes, repaint the rows either way.
@@ -327,8 +343,17 @@ class GUIStemsList(CallbackMixin):
 
     def _settle(self) -> None:
         """Read back what the regions drew, refill the ones a scroll has moved on from, and keep
-        watching for as long as one of them holds rows it has yet to build."""
+        watching for as long as one of them holds rows it has yet to build.
+
+        A list put away has nothing true to read and no scroll to follow, so the pass waits for
+        the frame the list is drawn in again and costs nothing until then. The open folders stand
+        inside the list's body, so they wait with it.
+        """
         self._settling = False
+        if not self._region.drawn:
+            dpg_configure_item(self._tags.drawn, show=True)
+            return
+
         if self._region.settle() and self._windows(self._view):
             self._draw_window(self._view)
             self._repaint(self._view)
@@ -341,3 +366,8 @@ class GUIStemsList(CallbackMixin):
 
         if self._following:
             self._settle_soon()
+
+    def _on_drawn(self) -> None:
+        """Take the settle up again on the first frame the list is back on screen, and stop watching."""
+        dpg_configure_item(self._tags.drawn, show=False)
+        self._settle_soon()

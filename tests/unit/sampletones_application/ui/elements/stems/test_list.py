@@ -1381,3 +1381,65 @@ class TestTheListSettlingItsWell(BaseTestSuite):
 
         assert self._drawn(rows, REACHED_ROW)
         assert not self._drawn(rows, EARLY_ROW)
+
+    @staticmethod
+    def _watching() -> bool:
+        """Whether the list is waiting on the frame it is drawn in, which its watch standing on says."""
+        return bool(dpg.get_item_configuration(TAGS.drawn)["show"])
+
+    def test_a_list_put_away_asks_for_no_frame(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: Frames,
+    ) -> None:
+        """A list holding rows back keeps no pass going while its card is collapsed or its tab is
+        in the back, and watches for the frame it comes back in instead."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        with placed(self._built(rows)), patch.object(dpg, "is_item_visible", return_value=False):
+            frames.render(SETTLING_FRAMES)
+
+        assert (frames.pending, self._watching()) == (0, True)
+
+    def test_a_list_put_away_keeps_the_rows_it_stood_with(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: Frames,
+    ) -> None:
+        """A list off screen reads no scroll, so the rows it built stay until a reader can see it."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+        with placed(self._built(rows)):
+            frames.render()
+
+        with (
+            placed(self._built(rows)),
+            patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL),
+            patch.object(dpg, "is_item_visible", return_value=False),
+        ):
+            frames.render()
+
+        assert self._drawn(rows, EARLY_ROW)
+        assert not self._drawn(rows, REACHED_ROW)
+
+    def test_a_list_drawn_again_takes_its_pass_up(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: Frames,
+    ) -> None:
+        """The first frame the list is drawn in resumes the pass, and the watch stands off again."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+        with placed(self._built(rows)), patch.object(dpg, "is_item_visible", return_value=False):
+            frames.render()
+
+        dpg.get_item_callback(TAGS.drawn)()
+
+        assert (frames.pending, self._watching()) == (1, False)
