@@ -12,6 +12,7 @@ from sampletones_shared.utils.system.paths import (
     first_missing,
     get_directory,
     get_filename,
+    nearest_directory,
     open_directory_in_explorer_linux,
     open_file_in_explorer_linux,
     open_path_in_explorer,
@@ -43,6 +44,24 @@ class TestFirstMissing:
         second.touch()
 
         assert first_missing((first, second)) is None
+
+
+class TestNearestDirectory:
+    def test_a_standing_directory_answers_itself(self, tmp_path: Path) -> None:
+        assert nearest_directory(tmp_path) == tmp_path
+
+    def test_a_missing_path_answers_the_closest_directory_above_it(self, tmp_path: Path) -> None:
+        assert nearest_directory(tmp_path / "gone" / "deeper") == tmp_path
+
+    def test_a_file_answers_the_directory_holding_it(self, tmp_path: Path) -> None:
+        file = tmp_path / "song.wav"
+        file.touch()
+
+        assert nearest_directory(file) == tmp_path
+
+    def test_a_path_with_no_standing_directory_answers_none(self, tmp_path: Path) -> None:
+        with patch.object(Path, "is_dir", return_value=False):
+            assert nearest_directory(tmp_path / "drive" / "audio") is None
 
 
 class TestToPaths:

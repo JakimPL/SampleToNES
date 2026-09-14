@@ -18,6 +18,14 @@ class Favorites(BaseModel):
         else:
             self.paths.add(path)
 
+    def forget_missing(self) -> None:
+        """Keeps the favorites still standing on the disk.
+
+        A star is taken off from the row it marks, so a favorite whose file has gone leaves with
+        the file.
+        """
+        self.paths = {path for path in self.paths if path.exists()}
+
     @field_serializer("paths")
     def serialize_paths(self, paths: Set[Path]) -> List[str]:
         return [str(path) for path in paths]

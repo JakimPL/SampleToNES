@@ -41,3 +41,14 @@ class ApplicationState(BaseModel):
         default_factory=LastPaths,
         description="The last used file system paths.",
     )
+
+    def reconcile_with_disk(self) -> None:
+        """Holds every path the session remembers to what the disk holds now.
+
+        A session file outlives the files and folders it names, so a run reads it against the disk
+        before anything is shown: the open files still standing are restored, each remembered folder
+        stands where a dialog can open it, and the explorer reopens the folders that are still there.
+        """
+        self.current.forget_missing()
+        self.last_paths.relocate_missing()
+        self.expanded_directories = [directory for directory in self.expanded_directories if directory.is_dir()]

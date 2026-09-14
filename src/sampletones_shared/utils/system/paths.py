@@ -198,6 +198,27 @@ def get_directory(path: Pathlike) -> Path:
     return path if path.is_dir() else path.parent
 
 
+def nearest_directory(path: Path) -> Optional[Path]:
+    """
+    Returns the directory standing closest to a path: the path itself, or the nearest one above it.
+
+    A location remembered from an earlier session may have gone from the disk since, and the
+    closest folder still standing on its way is the one that keeps the reader nearest to it.
+
+    Args:
+        path: The location to begin from.
+
+    Returns:
+        Optional[Path]: The nearest standing directory, or ``None`` when no directory on the path
+            stands, as for a drive that is gone.
+    """
+    for directory in (path, *path.parents):
+        if directory.is_dir():
+            return directory
+
+    return None
+
+
 def to_paths(
     location: Optional[Union[Pathlike, Tuple[Pathlike, ...]]],
 ) -> Tuple[Path, ...]:

@@ -13,6 +13,7 @@ class ApplicationStateManager:
     def __init__(self, path: Path) -> None:
         self.path: Path = path
         self.state: ApplicationState = self._load()
+        self.state.reconcile_with_disk()
 
     def _load(self) -> ApplicationState:
         if not self.path.exists():

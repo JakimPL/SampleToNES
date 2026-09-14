@@ -23,6 +23,7 @@ from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import (
     DEFAULT_MAX_FILENAME_DISPLAY,
+    nearest_directory,
     open_path_in_explorer,
     shorten_filename,
     shorten_path,
@@ -195,8 +196,4 @@ class GUIDestinationPathText(GUIPathText):
         if self.path.exists():
             return self.path
 
-        for directory in self.path.parents:
-            if directory.is_dir():
-                return directory
-
-        return None
+        return nearest_directory(self.path)
