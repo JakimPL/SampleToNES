@@ -202,23 +202,6 @@ again.
 
 ## Bugs
 
-* A reconstruction written by an earlier 0.3.2 build cannot be opened, and the pending upgrade step
-  is not where that is answered. The record stamped data version 2.2 while a stem entry still stated
-  its channels on the entry itself; the entry now carries a `StemSettings`, and a step from 2.1
-  never runs on a file already stamped 2.2. Data version 2.2 therefore means the current shape, and
-  a file stamped 2.2 in the earlier one is a mid-development artifact rather than a release the
-  format owes compatibility to — the files that existed were removed. What a release shipped is
-  unaffected: a v0.3.1 file carries data version 2.1 and no stems record, so the step synthesizes
-  one in the current shape. The lesson holds for the rest of 0.3.2: a shape that moves between
-  releases moves inside the pending step, and a build writing the pending version writes the shape
-  that step produces.
-
-* Every right-click leaves a popup window behind. `ui/elements/context_menu.py` opens an untagged
-  `dpg.window(popup=True)` that nothing deletes, so the item tree grows by a menu's worth of widgets
-  and their captured closures per gesture, for the life of the run. It is shared by the converter's
-  list, the file browsers and the samples panel. The popup needs a tag of its own per panel and a
-  deletion before it is built again.
-
 * A mix of one recording offers five moves that can never be taken. `update_view` in
   `ui/panels/main/converter/panel.py` reads `self._banded = view_model.mixes`, while the list bands
   on `collapse_levels = not mixes_several` (`view_model/main/converter.py`). With **Mixed** named

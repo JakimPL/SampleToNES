@@ -8,6 +8,12 @@ TAG_GLOBAL_WINDOW_MAIN = TagName(
     Widget.WINDOW,
     "main",
 )
+TAG_GLOBAL_CONTEXT_WINDOW = TagName(
+    Page.GLOBAL,
+    Panel.CONTEXT,
+    Widget.WINDOW,
+    "context",
+)
 TAG_GLOBAL_TABS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

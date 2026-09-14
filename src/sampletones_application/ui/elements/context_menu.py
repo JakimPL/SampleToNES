@@ -5,8 +5,10 @@ from typing import Iterator, Optional, Sequence, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.tags.general import TAG_GLOBAL_CONTEXT_WINDOW
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.utils.gui.dpg import dpg_delete_item
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.colors.base import BaseColor
@@ -20,8 +22,14 @@ def context_menu() -> Iterator[None]:
 
     Every panel's context menu shares this popup style, so routing them through one
     builder keeps them from drifting apart.
+
+    One context menu stands open at a time, so the application holds a single popup: each menu
+    takes the place of the one before it, and the widgets and closures a dismissed menu held go
+    with it.
     """
+    dpg_delete_item(TAG_GLOBAL_CONTEXT_WINDOW)
     with dpg.window(
+        tag=TAG_GLOBAL_CONTEXT_WINDOW,
         popup=True,
         no_move=True,
         no_resize=True,
