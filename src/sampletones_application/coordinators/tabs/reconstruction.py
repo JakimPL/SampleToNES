@@ -15,7 +15,7 @@ from sampletones_application.coordinators.export.instrument import (
 )
 from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
-from sampletones_application.coordinators.playback.guard import GuardedPlayer
+from sampletones_application.coordinators.playback.guard import GuardedSamplePlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
@@ -216,7 +216,7 @@ class ReconstructionTabCoordinator:
             audio_device_manager,
             on_change_audio_state,
         )
-        self._guarded_player = GuardedPlayer(
+        self._guarded_player = GuardedSamplePlayer(
             self._reconstruction_player_logic,
             dialogs=dialogs,
             error_message=language_manager["global.player.message.audio_playback_error"],

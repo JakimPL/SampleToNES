@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from sampletones_application.coordinators.playback.guard import GuardedPlayer
+from sampletones_application.coordinators.playback.guard import GuardedPlayer, GuardedSamplePlayer
 from sampletones_shared.exceptions import PlaybackError
 
 GUARDED_COMMANDS = ("play", "pause_or_resume")
@@ -52,6 +52,38 @@ class TestGuardedCommands:
         getattr(player_logic, command).side_effect = exception
 
         getattr(guarded_player, command)()
+
+        dialogs.show_error.assert_called_once_with(exception, "playback failed")
+
+
+class TestGuardedPlayFrom:
+    """A sample player takes the playhead to a sample under the same guard the transport commands keep."""
+
+    @pytest.fixture
+    def guarded_sample_player(self, player_logic: MagicMock, dialogs: MagicMock) -> GuardedSamplePlayer:
+        return GuardedSamplePlayer(player_logic, dialogs=dialogs, error_message="playback failed")
+
+    def test_delegates_the_sample_to_the_logic(
+        self,
+        guarded_sample_player: GuardedSamplePlayer,
+        player_logic: MagicMock,
+        dialogs: MagicMock,
+    ) -> None:
+        guarded_sample_player.play_from(400)
+
+        player_logic.play_from.assert_called_once_with(400)
+        dialogs.show_error.assert_not_called()
+
+    def test_playback_error_becomes_a_dialog(
+        self,
+        guarded_sample_player: GuardedSamplePlayer,
+        player_logic: MagicMock,
+        dialogs: MagicMock,
+    ) -> None:
+        exception = PlaybackError("device unavailable")
+        player_logic.play_from.side_effect = exception
+
+        guarded_sample_player.play_from(400)
 
         dialogs.show_error.assert_called_once_with(exception, "playback failed")
 

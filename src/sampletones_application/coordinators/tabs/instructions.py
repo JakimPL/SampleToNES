@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.coordinators.playback.guard import GuardedPlayer
+from sampletones_application.coordinators.playback.guard import GuardedSamplePlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.logic.instruction.details import (
     InstructionDetailsPanelLogic,
@@ -172,7 +172,7 @@ class InstructionsTabCoordinator:
             audio_device_manager,
             on_audio_state_changed,
         )
-        self._guarded_player = GuardedPlayer(
+        self._guarded_player = GuardedSamplePlayer(
             self._instruction_player_logic,
             dialogs=dialogs,
             error_message=language_manager["global.player.message.audio_playback_error"],

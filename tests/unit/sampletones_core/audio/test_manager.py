@@ -1,4 +1,5 @@
 import threading
+from dataclasses import dataclass
 from typing import Callable, Final, List
 from unittest.mock import MagicMock, patch
 
@@ -7,6 +8,8 @@ import pytest
 
 from sampletones_core.audio.manager import AudioDeviceManager
 from sampletones_shared.exceptions import PlaybackError
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 _LOW = 0
 _HIGH = 1
@@ -132,6 +135,43 @@ class TestPriorityArbitration:
             manager.play(np.zeros(4, dtype=np.float32), priority=_HIGH)
 
         thread.assert_called_once()
+
+
+class TestPlaybackStart(BaseTestSuite):
+    """Playback begins at the sample asked for, placed before the thread writing it starts."""
+
+    AUDIO_LENGTH: Final[int] = 8
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        start: int
+        expected: int
+
+    test_cases = (
+        TestCase(start=5, expected=5, label="within_the_audio"),
+        TestCase(start=-3, expected=0, label="before_the_audio_clamps_to_its_beginning"),
+        TestCase(start=AUDIO_LENGTH + 4, expected=AUDIO_LENGTH, label="past_the_audio_clamps_to_its_end"),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_playback_begins_at_the_start_asked_for(self, test_case: TestCase) -> None:
+        manager = _manager()
+        manager.stop = MagicMock()
+        positions_at_thread_start: List[int] = []
+
+        def thread(**_kwargs: object) -> MagicMock:
+            started = MagicMock()
+            started.start.side_effect = lambda: positions_at_thread_start.append(manager._position)
+            return started
+
+        with patch("sampletones_core.audio.manager.threading.Thread", side_effect=thread):
+            manager.play(np.zeros(self.AUDIO_LENGTH, dtype=np.float32), start=test_case.start)
+
+        assert positions_at_thread_start == [test_case.expected]
 
 
 class TestOwnership:

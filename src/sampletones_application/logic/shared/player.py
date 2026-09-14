@@ -4,6 +4,7 @@ from sampletones_application.logic.shared.audio_player import AudioPlayer
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.player import PlayerViewModel
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.audio import START_OF_AUDIO
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -31,10 +32,20 @@ class PlayerLogic(CallbackMixin):
         self._emit_view()
 
     def play(self) -> None:
-        try:
-            self._audio_player.play()
-        finally:
-            self._emit_view()
+        self._play(start=START_OF_AUDIO)
+
+    def play_from(self, position: int) -> None:
+        """Puts the playhead at a sample: an engaged player moves there and goes on sounding or stays
+        paused, and an idle one starts sounding from there.
+
+        Args:
+            position: The sample the playhead is put at, clamped to the audio.
+        """
+        if self._audio_player.is_playing:
+            self._audio_player.seek(position)
+            return
+
+        self._play(start=position)
 
     def pause(self) -> None:
         self._audio_player.pause()
@@ -68,6 +79,12 @@ class PlayerLogic(CallbackMixin):
     def is_engaged(self) -> bool:
         """Whether this player owns the live output, sounding or held paused."""
         return self._audio_player.is_playing
+
+    def _play(self, *, start: int) -> None:
+        try:
+            self._audio_player.play(start=start)
+        finally:
+            self._emit_view()
 
     def _on_position_changed(self, position: int) -> None:
         self._emit_view()

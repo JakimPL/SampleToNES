@@ -11,6 +11,7 @@ import pyaudio
 from sampletones_core.constants.audio import (
     DEFAULT_BUFFER_SIZE,
     SAMPLE_RATES,
+    START_OF_AUDIO,
     BufferSize,
     SampleRate,
 )
@@ -521,6 +522,7 @@ class AudioDeviceManager(CallbackMixin):
         update: bool = True,
         priority: int = 0,
         owner: Optional[Any] = None,
+        start: int = START_OF_AUDIO,
     ) -> bool:
         """
         Play audio data.
@@ -539,6 +541,8 @@ class AudioDeviceManager(CallbackMixin):
             priority: Output-request priority; higher wins. Callers assign the meaning.
             owner: Identity of the caller owning this playback, matched by :meth:`replace_audio`
                 to swap the live buffer only while its own audio is the one playing.
+            start: The sample playback begins at, clamped to the audio. It is placed before the
+                playback thread starts, so the first buffer written is the one beginning there.
 
         Returns:
             bool: Whether this request took the output, which is what a caller following its own
@@ -560,7 +564,7 @@ class AudioDeviceManager(CallbackMixin):
 
         with self._lock:
             self._audio_data = audio.astype(np.float32)
-            self._position = 0
+            self._position = max(0, min(start, len(self._audio_data)))
             self._playing = True
             self._output_owner = owner
             self._active_priority = priority

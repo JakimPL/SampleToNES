@@ -55,13 +55,28 @@ class AudioPlayer(CallbackMixin):
         if position == 0:
             self._notify_audio_state_changed()
 
-    def set_position(self, position: int) -> None:
-        if self.audio_data.is_loaded():
-            self._set_current_position(position)
-            self.audio_device_manager.set_position(position)
-            self.call(self.on_position_changed, position)
+    def seek(self, position: int) -> None:
+        """Moves this player's own playback to a sample, whether it sounds or stands paused.
 
-    def play(self) -> None:
+        The device reports positions as it writes, and a paused one writes nothing, so the player
+        reports the sample it moved to, which carries the mark there during a pause as well.
+
+        Args:
+            position: The sample to move to, clamped to the audio.
+        """
+        if not self.is_playing:
+            return
+
+        self._set_current_position(position)
+        self.audio_device_manager.set_position(self._current_position)
+        self.call(self.on_position_changed, self._current_position)
+
+    def play(self, *, start: int) -> None:
+        """Takes the output and sounds the loaded audio from a sample.
+
+        Args:
+            start: The sample playback begins at, clamped to the audio.
+        """
         if not self.audio_data.is_loaded():
             self._notify_audio_state_changed()
             return
@@ -76,6 +91,7 @@ class AudioPlayer(CallbackMixin):
                 audio,
                 priority=PlaybackPriority.NORMAL,
                 owner=self,
+                start=start,
             )
         except ValueError as exception:
             raise PlaybackError(f"Audio playback failed: {exception}") from exception
