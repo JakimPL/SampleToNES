@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config, MetricConfig, WeightsConfig
+from sampletones_core.constants.algorithm import SPECTRUM_FLOOR
 from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
 from sampletones_core.fft import CyclicArray, Window
 from sampletones_core.reconstructions.criterion import Criterion
@@ -18,8 +19,7 @@ from tests.suite.case import BaseRegularTestCase
 LONG_SIGNAL_LENGTH: Final[int] = 1 << 20
 HISS_LEVEL: Final[float] = 1e-7
 QUIET_NOISE_LEVEL: Final[float] = 1e-6
-LOUD_LEVEL: Final[float] = 0.3
-SINGLE_PRECISION_TOLERANCE: Final[float] = 1e-3
+SECOND_ORDER_TOLERANCE: Final[float] = 1e-3
 CYCLE_SAMPLES: Final[int] = 97
 CANDIDATE_SEED: Final[int] = 7
 CONSTANT_LEVEL: Final[float] = 0.05
@@ -282,8 +282,11 @@ class TestCriterionSpectralLoss:
 
 class TestCriterionBetaDivergenceAtTheFloor(BaseTestSuite):
     """
-    Spectra lying below the spectrum floor score in single precision as they do in double, which
-    keeps the losses of near-silent frames apart.
+    Spectra lying far below the spectrum floor score by the divergence their small difference
+    carries, which keeps the losses of near-silent frames apart in single-precision features.
+
+    A relative difference `u` diverges by about `u² / 2`, so a candidate one hiss level away from a
+    hiss reference costs `(c - r)² / 2` over the floored spectrum raised to `β - 2`.
     """
 
     @dataclass(frozen=True, kw_only=True)
@@ -296,23 +299,12 @@ class TestCriterionBetaDivergenceAtTheFloor(BaseTestSuite):
         TestCase(label="kullback_leibler", beta=1.0),
     )
 
-    @staticmethod
-    def _floor_spectra(bins: int) -> Tuple[np.ndarray, np.ndarray]:
-        candidates = np.stack(
-            [
-                np.zeros(bins),
-                np.full(bins, QUIET_NOISE_LEVEL),
-                np.full(bins, LOUD_LEVEL),
-            ]
-        )
-        return _hiss(bins), candidates
-
     @pytest.mark.parametrize(
         "test_case",
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_single_precision_scores_as_double_precision(
+    def test_a_hiss_scores_its_second_order_divergence(
         self,
         config: Config,
         window: Window,
@@ -320,11 +312,16 @@ class TestCriterionBetaDivergenceAtTheFloor(BaseTestSuite):
         test_case: TestCase,
     ) -> None:
         criterion = _criterion_with_distance(config, window, SpectralDistance.BETA_DIVERGENCE, beta=test_case.beta)
-        reference, candidates = self._floor_spectra(bins)
+        reference = np.full(bins, HISS_LEVEL, dtype=np.float32)
+        candidate = np.full((1, bins), 2 * HISS_LEVEL, dtype=np.float32)
+        weights = to_numpy(criterion.weights).reshape(-1).astype(np.float64)
+        floored = HISS_LEVEL + SPECTRUM_FLOOR
+        per_bin = HISS_LEVEL**2 / 2 * floored ** (test_case.beta - 2)
+        expected = np.sum(weights * per_bin) / (np.sum(weights * HISS_LEVEL) + SPECTRUM_FLOOR)
 
-        single = to_numpy(criterion.spectral_loss(reference.astype(np.float32), candidates.astype(np.float32)))
-        double = to_numpy(criterion.spectral_loss(reference, candidates))
-        np.testing.assert_allclose(single, double, rtol=SINGLE_PRECISION_TOLERANCE)
+        loss = to_numpy(criterion.spectral_loss(reference, candidate))
+
+        np.testing.assert_allclose(loss, [expected], rtol=SECOND_ORDER_TOLERANCE)
 
 
 class TestCriterionCqtAxis:

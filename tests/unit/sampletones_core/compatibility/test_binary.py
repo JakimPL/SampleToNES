@@ -12,6 +12,7 @@ from sampletones_shared.application import (
 
 FEATURE_EDGES: Final[bytes] = np.array([0.0, 10.0, 30.0], dtype=np.float32).tobytes()
 FEATURE_VALUES: Final[bytes] = np.array([0.5, 3.0], dtype=np.float32).tobytes()
+REPAIRED_VALUES: Final[np.ndarray] = np.array([0.06483728, 0.6872635], dtype=np.float32)
 
 
 def _library_at_2_0(spectrum_method: str) -> Dict[str, Any]:
@@ -83,7 +84,8 @@ class TestUpgradeBinary:
 
         data = msgpack.unpackb(upgrade_binary(ObjectKind.LIBRARY, binary), raw=False)
 
-        assert data["items"][0]["fragment"]["feature"]["values"] != FEATURE_VALUES
+        repaired = np.frombuffer(data["items"][0]["fragment"]["feature"]["values"], dtype=np.float32)
+        np.testing.assert_allclose(repaired, REPAIRED_VALUES, rtol=1e-6)
         assert data["metadata"]["library_data_version"] == SAMPLETONES_LIBRARY_DATA_VERSION
 
     def test_library_upgrade_stamps_a_constant_q_library_as_it_stands(self) -> None:

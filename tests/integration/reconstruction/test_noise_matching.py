@@ -21,6 +21,7 @@ from sampletones_core.library import (
 )
 from sampletones_core.reconstructions import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from tests.suite.analysis import analyzed_config
 
 NOISE_ONLY: Final[List[ChannelName]] = [ChannelName.NOISE]
 EVERY_CHANNEL: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE]
@@ -48,8 +49,7 @@ class Converted:
 
 
 def _config(method: SpectrumMethod) -> Config:
-    base = Config()
-    return base.model_copy(update={"library": base.library.model_copy(update={"spectrum_method": method})})
+    return analyzed_config(method, gamma=Config().library.transformation_gamma)
 
 
 def _library(config: Config) -> InstructionLibrary:
@@ -113,6 +113,30 @@ def _white_noise(path: Path, config: Config) -> Path:
     return path
 
 
+@pytest.fixture(
+    scope="module",
+    params=list(SpectrumMethod),
+    ids=lambda method: method.value,
+)
+def converted(
+    request: pytest.FixtureRequest,
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Converted:
+    """A burst, a gap and a hiss reconstructed on the noise channel alone, once per spectrum method."""
+    config = _config(request.param)
+    path = _burst_then_hiss(tmp_path_factory.mktemp("hiss") / "hiss.wav", config)
+    reconstructor = Reconstructor(config, frozenset(NOISE_ONLY), library=_library(config))
+    reconstruction = reconstructor.reconstruct([path], StemsConfig.single_entry(NOISE_ONLY, []))
+    assert reconstruction is not None
+
+    frame_length = config.library.frame_length
+    working_level = reconstructor.load_audio(path) / reconstruction.coefficient
+    return Converted(
+        hiss_frames=working_level[frame_length * HISS.start : frame_length * HISS.stop].reshape(HISS_FRAMES, -1),
+        instructions=reconstruction.instructions[ChannelName.NOISE],
+    )
+
+
 class TestWhiteNoise:
     def test_white_noise_sounds_on_the_noise_channel(self, tmp_path: Path) -> None:
         """
@@ -136,29 +160,6 @@ class TestAHissBelowTheSpectrumFloor:
     level, where the noise the channel plays stands further from it than silence does. The gap
     before it leaves the channel resting, so the hiss is what decides whether the channel sounds.
     """
-
-    @pytest.fixture(
-        scope="class",
-        params=list(SpectrumMethod),
-        ids=lambda method: method.value,
-    )
-    def converted(
-        self,
-        request: pytest.FixtureRequest,
-        tmp_path_factory: pytest.TempPathFactory,
-    ) -> Converted:
-        config = _config(request.param)
-        path = _burst_then_hiss(tmp_path_factory.mktemp("hiss") / "hiss.wav", config)
-        reconstructor = Reconstructor(config, frozenset(NOISE_ONLY), library=_library(config))
-        reconstruction = reconstructor.reconstruct([path], StemsConfig.single_entry(NOISE_ONLY, []))
-        assert reconstruction is not None
-
-        frame_length = config.library.frame_length
-        working_level = reconstructor.load_audio(path) / reconstruction.coefficient
-        return Converted(
-            hiss_frames=working_level[frame_length * HISS.start : frame_length * HISS.stop].reshape(HISS_FRAMES, -1),
-            instructions=reconstruction.instructions[ChannelName.NOISE],
-        )
 
     def test_every_hiss_frame_passes_the_activity_gate(self, converted: Converted) -> None:
         assert float(np.abs(converted.hiss_frames).max(axis=1).min()) >= STEM_ACTIVITY_FLOOR

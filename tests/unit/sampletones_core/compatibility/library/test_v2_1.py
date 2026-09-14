@@ -19,6 +19,7 @@ from sampletones_core.compatibility.library.v2_1 import PHASES_PER_SAMPLE, updat
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.fft.transformer import FFTTransformer
 from sampletones_core.structures.histogram import Histogram
+from tests.suite.analysis import REPAIR_TOLERANCE
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 
@@ -26,7 +27,6 @@ SAMPLE_RATE: Final[int] = 44100
 BINS: Final[int] = 6
 SEED: Final[int] = 3
 EDGES_VALUES: Final[np.ndarray] = np.array([0.0, 20.0, 60.0, 100.0, 180.0, 300.0, 500.0], dtype=np.float32)
-REPAIR_TOLERANCE: Final[float] = 1e-4
 INSTRUCTION_DATA: Final[Dict[str, Any]] = {"instruction_class": "PulseInstruction", "instruction": {"pitch": 57}}
 
 
@@ -94,7 +94,8 @@ class TestAWindowedLibraryRepairsToTheMeanSpectrum(BaseTestSuite):
         spectra = _phase_spectra()
         payload = _payload(test_case.method, test_case.gamma, _averaged_as_2_0(transformer, spectra))
 
-        expected = transformer.mean([transformer.forward(spectrum) for spectrum in spectra])
+        mean_values = np.mean([spectrum.values for spectrum in spectra], axis=0, dtype=np.float64)
+        expected = transformer.forward(Histogram(edges=EDGES_VALUES, values=mean_values.astype(np.float32)))
 
         np.testing.assert_allclose(_stored_values(update(payload)), expected.values, rtol=REPAIR_TOLERANCE)
 

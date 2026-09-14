@@ -119,25 +119,27 @@ def _beta_divergence(
     """
     Per-bin beta-divergence of the floored candidates from the floored reference.
 
-    Every branch reads the divergence off the relative difference of the two spectra, so its
-    rounding follows the size of the divergence, and a spectrum lying at the floor is measured as
-    finely as a loud one. The general branch divides by `beta - 1`, which magnifies its rounding
-    as `beta` nears one, and computes in double precision.
+    Every branch reads the divergence off the relative difference `u` of the two spectra, in double
+    precision, and returns it in the reference's precision. The divergence of a small `u` is about
+    `u² / 2` while its rounding stays near machine epsilon times `|u|`, so double precision measures
+    a candidate whose spectrum differs from the reference by a millionth as finely as a loud one.
     """
+    precision = reference.dtype
+    reference = reference.astype(xp.float64)
+    candidates = candidates.astype(xp.float64)
     floored_reference = reference + SPECTRUM_FLOOR
     floored_candidates = candidates + SPECTRUM_FLOOR
 
     if beta == 1.0:
-        return floored_reference * _log_excess((candidates - reference) / floored_reference)
+        divergence = floored_reference * _log_excess((candidates - reference) / floored_reference)
+    elif beta == 0.0:
+        divergence = _log_excess((reference - candidates) / floored_candidates)
+    else:
+        relative = (reference - candidates) / floored_candidates
+        excess = xp.expm1(beta * xp.log1p(relative)) - beta * relative
+        divergence = floored_candidates**beta * excess / (beta * (beta - 1.0))
 
-    if beta == 0.0:
-        return _log_excess((reference - candidates) / floored_candidates)
-
-    floored_candidates = floored_candidates.astype(xp.float64)
-    relative = (reference.astype(xp.float64) - candidates) / floored_candidates
-    excess = xp.expm1(beta * xp.log1p(relative)) - beta * relative
-    divergence = floored_candidates**beta * excess / (beta * (beta - 1.0))
-    return divergence.astype(reference.dtype)
+    return divergence.astype(precision)
 
 
 def _log_excess(relative: xp.ndarray) -> xp.ndarray:

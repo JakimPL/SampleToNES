@@ -83,9 +83,22 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
             config=config,
         )
 
-    def frames_share_shape(self, generator: Generator[InstructionT, Any]) -> bool:
-        """Whether every frame this entry's instruction plays on ``generator`` repeats one waveform shape."""
-        return generator.frames_share_shape(self.instruction)
+    def frames_share_shape(
+        self,
+        *,
+        frame_length: int,
+        sample_rate: int,
+    ) -> bool:
+        """Whether every frame this entry plays repeats one waveform shape at some phase.
+
+        A note repeats one period of its waveform. Noise repeats one shape while the register's
+        whole cycle, `sample_rate / frequency` samples, fits inside a frame; a longer cycle shows each
+        frame a different stretch of the sequence.
+        """
+        if self.generator_class != GeneratorClassName.NOISE_GENERATOR:
+            return True
+
+        return self.frequency * frame_length >= sample_rate
 
     def get(
         self,

@@ -16,7 +16,6 @@ from sampletones_shared.types.array import (
     Numeric,
     NumericClasses,
 )
-from sampletones_shared.utils.transformations.functions import arithmetic_mean
 from sampletones_shared.utils.transformations.morpher import LogMorpher
 from sampletones_shared.utils.transformations.transformation import (
     Transformation,
@@ -454,31 +453,3 @@ class FFTTransformer(BaseModel):
         """
         feature1, feature2 = self.to_features((feature_or_scalar1, feature_or_scalar2))
         return self.apply(lambda feature1, feature2: feature1 / feature2, feature1, feature2)
-
-    def mean(
-        self,
-        features: Sequence[Histogram],
-    ) -> Histogram:
-        """
-        Calculate the mean of multiple FFT features with transformations.
-
-            `[ mean(feature₁ ^ (1 / a), feature₂ ^ (1 / a), ..., featureₙ ^ (1 / a)) ] ^ a`
-
-        The spectra are averaged and the average transformed, so the mean feature is the feature of
-        the mean power at every gamma. Requires all edges to be consistent.
-
-        Args:
-            features (Sequence[Histogram]): Input FFT features.
-
-        Returns:
-            Histogram: Mean FFT feature.
-
-        Raises:
-            ValueError: If no features are provided.
-            ValueError: If Histogram features have inconsistent edges.
-            TypeError: If any of the features is not a Histogram.
-        """
-        if not features:
-            raise ValueError("At least one feature is required to compute the mean")
-
-        return self.apply(arithmetic_mean, *features)

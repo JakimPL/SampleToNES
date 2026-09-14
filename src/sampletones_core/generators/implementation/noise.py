@@ -52,17 +52,6 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
 
         return output
 
-    def frames_share_shape(self, instruction: NoiseInstruction) -> bool:
-        """A noise frame repeats one shape while the register's whole cycle fits inside it.
-
-        A cycle longer than a frame shows each frame a different stretch of the sequence, and a
-        silent channel repeats silence.
-        """
-        if not instruction.on:
-            return True
-
-        return self.timer.cycle_samples(instruction.short, instruction.period) <= self.frame_length
-
     def set_timer(self, instruction: NoiseInstruction) -> None:
         if instruction.on:
             self.timer.short = instruction.short

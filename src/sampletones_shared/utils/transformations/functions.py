@@ -30,20 +30,6 @@ def energy(x: ArrayOrNumeric) -> ArrayOrNumeric:
     return array
 
 
-def arithmetic_mean(*arrays: ArrayOrNumeric) -> ArrayOrNumeric:
-    """
-    Computes the element-wise arithmetic mean of the arguments.
-
-    Args:
-        *arrays: Values or arrays of one shape.
-
-    Returns:
-        The mean of the arguments at each element.
-    """
-    array: ArrayOrNumeric = np.mean(np.stack(arrays), axis=0)
-    return array
-
-
 def exp(x: ArrayOrNumeric) -> ArrayOrNumeric:
     """
     Computes the element-wise natural exponential `e^x`.

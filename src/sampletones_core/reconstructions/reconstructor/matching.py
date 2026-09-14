@@ -127,7 +127,11 @@ class FrameMatcher:
         library approximation. A candidate whose frames show different stretches of a sequence
         is measured by its expected contribution, whatever the search setting.
         """
-        if not self.candidate_provider.library_data[instruction].frames_share_shape(generator):
+        library_fragment = self.candidate_provider.library_data[instruction]
+        if not library_fragment.frames_share_shape(
+            frame_length=self.config.library.frame_length,
+            sample_rate=self.config.library.sample_rate,
+        ):
             return self.candidate_provider.get_expected_approximation(
                 instruction,
                 generator,

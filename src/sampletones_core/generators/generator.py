@@ -135,20 +135,6 @@ class Generator(ABC, Generic[InstructionT, TimerT]):
             self.previous_instruction = instruction
 
     @abstractmethod
-    def frames_share_shape(self, instruction: InstructionT) -> bool:
-        """Whether every frame the instruction plays repeats one waveform shape at some phase.
-
-        A frame starts wherever the oscillator stands, so a rendering lined up with a target speaks
-        for the frames the instruction plays only while those frames repeat one shape.
-
-        Args:
-            instruction: The command whose frames are compared.
-
-        Returns:
-            bool: True where any frame is a phase shift of any other.
-        """
-
-    @abstractmethod
     def set_timer(self, instruction: InstructionT) -> None:
         """Configures the timer to sound the given instruction.
 

@@ -4,18 +4,16 @@ from typing import Final
 import numpy as np
 import pytest
 
-from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.fft.features import get_feature_extractor
 from sampletones_core.generators import PulseGenerator
-from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions.criterion import Criterion
 from sampletones_shared.array import to_numpy
+from tests.suite.analysis import LIBRARY_TONE, analyzed_config
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 
-TONE: Final[PulseInstruction] = PulseInstruction(on=True, pitch=57, volume=12, duty_cycle=2)
 TILED_FRAMES: Final[int] = 12
 EDGE_FRAMES: Final[int] = 1
 SIGNAL_LENGTH: Final[int] = 1 << 20
@@ -54,17 +52,10 @@ class TestAToneScoresItsOwnEntry(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_every_frame_of_a_tone_matches_its_reference_feature(self, test_case: TestCase) -> None:
-        base = Config()
-        config = base.model_copy(
-            update={
-                "library": base.library.model_copy(
-                    update={"spectrum_method": test_case.method, "transformation_gamma": test_case.gamma}
-                )
-            }
-        )
+        config = analyzed_config(test_case.method, gamma=test_case.gamma)
         window = Window.from_config(config)
         extractor = get_feature_extractor(config, window)
-        sample = PulseGenerator(config, ChannelName.PULSE1).generate_sample(TONE)
+        sample = PulseGenerator(config, ChannelName.PULSE1).generate_sample(LIBRARY_TONE)
 
         reference = extractor.reference_feature(sample)
         frames = extractor.extract(np.asarray(sample.get_fragment(0, config.library.frame_length * TILED_FRAMES)))

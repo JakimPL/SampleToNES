@@ -38,6 +38,7 @@ class CandidateProvider:
     library_data: InstructionLibraryData
 
     _cached_approximations: CachedApproximations = field(init=False)
+    _moments: Dict[InstructionUnion, Tuple[float, float]] = field(init=False, default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "_cached_approximations", self._build_cached_approximations())
@@ -66,14 +67,24 @@ class CandidateProvider:
         generator: GeneratorUnion,
     ) -> ExpectedApproximation:
         """The candidate's contribution averaged over every phase its library sample holds."""
-        library_fragment = self.library_data[instruction]
+        mean, variance = self._sample_moments(instruction)
         return ExpectedApproximation(
             rendering=self.get_approximation(instruction, generator),
-            feature=library_fragment.feature,
-            mean=library_fragment.sample.mean,
-            variance=library_fragment.sample.variance,
+            feature=self.library_data[instruction].feature,
+            mean=mean,
+            variance=variance,
             drive=self.config.generation.drive,
         )
+
+    def _sample_moments(self, instruction: InstructionUnion) -> Tuple[float, float]:
+        """The mean and the variance of the instruction's library sample, read once per library."""
+        moments = self._moments.get(instruction)
+        if moments is None:
+            sample = self.library_data[instruction].sample
+            moments = (sample.mean, sample.variance)
+            self._moments[instruction] = moments
+
+        return moments
 
     def _get_approximations(
         self,

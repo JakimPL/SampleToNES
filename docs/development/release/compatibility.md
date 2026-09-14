@@ -67,9 +67,10 @@ between versions, and adjusting the values they hold where the shape demands it.
 
 A step also restates a value an older version computed, wherever the stored value
 determines the current one in closed form: `compatibility/library/v2_1.py` recovers
-each windowed candidate's mean spectrum from the feature data version 2.0 averaged in
-feature space. Such a step holds its own copies of the constants that computation
-used, so it reads the files of its version the same whatever later builds set them to.
+each windowed candidate's mean spectrum from the `f(ΣS) / f(N)` data version 2.0
+stored for its phase spectra `S`. Such a step holds its own copies of the computation
+and the constants it used, so it reads the files of its version the same whatever
+later builds make of them.
 
 ### A completed upgrade stamps the version it reached
 
