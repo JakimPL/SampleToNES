@@ -454,7 +454,7 @@ class LibraryLogic(CallbackMixin):
     def _close_generation(self) -> None:
         """Lets the creator go along with the tree lock the generation held, which loading a library
         and rebuilding the tree both yield to."""
-        self._library_manager.cleanup_creator()
+        self._library_manager.release_creator()
         self._do_unlock()
         self.call(self.on_generation_state_changed)
 

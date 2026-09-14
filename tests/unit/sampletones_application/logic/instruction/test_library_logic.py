@@ -326,7 +326,7 @@ class Creator:
     total_instructions = GENERATED_INSTRUCTIONS
     completed_instructions = GENERATED_INSTRUCTIONS
 
-    def cleanup(self) -> None:
+    def shutdown(self) -> None:
         pass
 
 

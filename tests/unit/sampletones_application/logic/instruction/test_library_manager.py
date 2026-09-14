@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 from unittest.mock import MagicMock
 
 import pytest
@@ -157,3 +158,29 @@ class TestCompleteGeneration:
 
         assert library_manager._current_library_key is key
         completed_callback.assert_called_once()
+
+
+class CreatorEndingItsRun:
+    """A creator that notes whether its generation still read as in progress while it ended."""
+
+    def __init__(self, manager: InstructionsLibraryManager) -> None:
+        self._manager = manager
+        self.generating_while_ending: List[bool] = []
+
+    def shutdown(self) -> None:
+        self.generating_while_ending.append(self._manager.is_generating())
+
+
+class TestReleasingTheCreator:
+    """A generation reads as in progress until its creator has ended the pool it ran on."""
+
+    def test_the_generation_reads_as_in_progress_until_the_creator_has_ended(
+        self,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        creator = CreatorEndingItsRun(library_manager)
+        library_manager._creator = creator
+
+        library_manager.release_creator()
+
+        assert (creator.generating_while_ending, library_manager.is_generating()) == ([True], False)

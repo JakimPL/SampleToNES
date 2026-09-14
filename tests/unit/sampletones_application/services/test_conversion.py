@@ -286,7 +286,7 @@ class TestConversionServiceETA:
         assert results[-1].eta_seconds is not None
         assert results[-1].eta_seconds > 0
 
-    def test_eta_estimator_reset_on_cleanup(
+    def test_eta_estimator_reset_on_release(
         self,
         service: Service,
     ) -> None:
@@ -294,35 +294,30 @@ class TestConversionServiceETA:
         callbacks["on_start"]()
         assert conversion_service._eta_estimator is not None
 
-        conversion_service.cleanup()
+        conversion_service.release()
 
         assert conversion_service._eta_estimator is None
 
 
 class TestConversionServiceLifecycle:
-    def test_cleanup_resets_converter(self, service: Service) -> None:
-        conversion_service, _, _, _ = service
-        conversion_service.cleanup()
+    def test_a_release_ends_the_converter_run_before_letting_it_go(self, service: Service) -> None:
+        conversion_service, converter, _, _ = service
+
+        conversion_service.release()
+
+        converter.shutdown.assert_called_once_with()
         assert conversion_service._converter is None
 
-    def test_cleanup_disposes_running_converter(
+    def test_a_new_run_releases_the_converter_the_last_one_left(
         self,
+        mock_converter_class: MockConverterClass,
         service: Service,
     ) -> None:
         conversion_service, converter, _, _ = service
-        converter.is_running.return_value = True
-        conversion_service.cleanup()
-        converter.cleanup.assert_called_once()
-        assert conversion_service._converter is None
 
-    def test_shutdown_tears_down_converter_synchronously(
-        self,
-        service: Service,
-    ) -> None:
-        conversion_service, converter, _, _ = service
-        conversion_service.shutdown()
-        converter.shutdown.assert_called_once()
-        assert conversion_service._converter is None
+        conversion_service.start(MagicMock(), MagicMock())
+
+        converter.shutdown.assert_called_once_with()
 
     def test_is_running_true_when_converter_running(
         self,

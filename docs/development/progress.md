@@ -129,7 +129,7 @@ file in between.
 | Weighing a job's stage and carrying it to the run | `JobReporter` (`reconstructions/converter/progress.py`) |
 | The line between a run and its tasks | `sampletones_core/parallelization/channel/` |
 | Where the running tasks stand, and dropping a finished one | `TaskSteps` (`parallelization/steps.py`) |
-| Opening the channel, reading it, and reaping it | `TaskProcessor` (`parallelization/processor.py`) |
+| Ending the pool, opening the channel, reading it, and reaping it | `TaskProcessor` (`parallelization/processor.py`) |
 | How long a run has left, from what it has covered | `ETAEstimator` (`parallelization/progress.py`) |
 | Turning a run's account into a result the application reads | `ConversionService` (`services/conversion/`) |
 | The bar, and the taskbar the run also reports to | `ConversionRun` (`logic/main/converter/run.py`) |
@@ -142,10 +142,17 @@ arrived may be read after it. `TaskSteps` records the tasks the run has counted 
 later reports go, which is what keeps a task's own progress and the run's completed count from
 describing the same work twice — and keeps the reading inside the run it describes.
 
-### The channel's lifetime
+### The pool's and the channel's lifetime
 
-The channel is a process of its own, opened on the first task that asks for a line and reaped once
-the run ends, whatever became of it. A run whose tasks report nothing never opens one.
+The run's monitor thread is the one owner of its pool. However the run ends, the monitor ends the
+pool — a finished pool winds down, a canceled or failed one is stopped — reaps its workers, closes
+the channel, and only then announces the outcome. `cancel()` withdraws the run and leaves the rest to
+the monitor; `shutdown()` cancels a run still going and returns once the monitor has finished. The
+owner of a run (`InstructionsLibraryManager`, `ConversionService`) lets it go only after
+`shutdown()` returns, so an operation reads as active until no worker of it is left.
+
+The channel is a process of its own, opened on the first task that asks for a line and closed after
+the pool, since the workers hold proxies to it. A run whose tasks report nothing never opens one.
 
 ### Adding an operation that reports
 

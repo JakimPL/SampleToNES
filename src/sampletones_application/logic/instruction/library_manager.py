@@ -217,11 +217,11 @@ class InstructionsLibraryManager(CallbackMixin):
         self.call(self.on_generation_completed)
 
     def is_generating(self) -> bool:
-        """A generation is in progress from the moment a creator is started until it is cleaned up.
+        """A generation is in progress from the moment a creator is started until it is released.
 
-        Creator presence is the source of truth: it spans the saving and finalizing step that runs
-        after the worker thread clears its own ``is_running`` flag, so the generation reads as in
-        progress right up to cleanup.
+        Creator presence is the source of truth: it spans the saving step that runs after the
+        workers have ended and the release that follows the announcement, so the generation reads
+        as in progress right up to the moment nothing of it is left running.
         """
         return self._creator is not None
 
@@ -244,18 +244,15 @@ class InstructionsLibraryManager(CallbackMixin):
         if self._creator:
             self._creator.cancel()
 
-    def cleanup_creator(self) -> None:
-        if self._creator:
-            self._creator.cleanup()
-            self._creator = None
+    def release_creator(self) -> None:
+        """Ends the creator's run and lets the creator go once its pool has ended.
 
-    def shutdown(self) -> None:
-        """Tears the library creator's process pool down synchronously for application exit.
-
-        A conversion generates its library first, so this pool is the one still spawning
-        workers when a run is canceled and the window is closed; this blocks until it has
-        stopped so the process reaps its workers before releasing shared resources."""
-        if self._creator:
+        The generation reads as in progress until then, so nothing that waits on it — a conversion
+        preparing its library, a new generation, the application's exit — meets a worker still
+        alive. A creator that has announced its outcome has already ended its pool, so this returns
+        at once; at exit it cancels a generation still under way and waits for its workers.
+        """
+        if self._creator is not None:
             self._creator.shutdown()
             self._creator = None
 

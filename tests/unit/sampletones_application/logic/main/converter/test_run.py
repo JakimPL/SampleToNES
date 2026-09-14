@@ -210,4 +210,4 @@ class TestWhatACompletedRunHandsOver(BaseTestSuite):
         driver.run.close()
 
         assert (driver.run.written, driver.run.phase) == ((), ConversionPhase.IDLE)
-        driver.service.cleanup.assert_called_once()
+        driver.service.release.assert_called_once()

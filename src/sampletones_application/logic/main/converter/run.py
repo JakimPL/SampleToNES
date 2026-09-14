@@ -65,9 +65,7 @@ class ConversionServiceProtocol(Protocol):
 
     def cancel(self) -> None: ...
 
-    def cleanup(self) -> None: ...
-
-    def shutdown(self) -> None: ...
+    def release(self) -> None: ...
 
     def is_running(self) -> bool: ...
 
@@ -146,7 +144,7 @@ class ConversionRun(CallbackMixin):
     def close(self) -> None:
         """Lets the run go, whatever it came to, and returns to idle."""
         try:
-            self._service.cleanup()
+            self._service.release()
         finally:
             self._system_progress.clear()
             self._written = ()
@@ -157,8 +155,8 @@ class ConversionRun(CallbackMixin):
         self._phase = ConversionPhase.IDLE
 
     def cleanup(self) -> None:
-        """Shuts the service down, which is the end of every run this object could hold."""
-        self._service.shutdown()
+        """Releases the service, which is the end of every run this object could hold."""
+        self._service.release()
         self._system_progress.clear()
 
     def _on_service_result(self, result: ConversionResult) -> None:

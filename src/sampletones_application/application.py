@@ -1735,7 +1735,7 @@ class Application:
             stop_background_workers()
             self._playback_router.shutdown()
             self._main_tab.cleanup()
-            self.library_manager.shutdown()
+            self.library_manager.release_creator()
             save_failed = self._save_config()
 
             self._persist_application_state()

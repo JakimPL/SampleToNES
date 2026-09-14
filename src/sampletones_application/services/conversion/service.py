@@ -40,10 +40,11 @@ class ConversionService(ServiceBase[ConversionResult]):
         self._eta_estimator: Optional[ETAEstimator] = None
 
     def start(self, config: Config, plan: ConversionPlan) -> None:
-        if self._converter is not None and self._converter.is_running():
+        if self.is_running():
             logger.warning("Conversion is already in progress")
             return
 
+        self.release()
         self._converter = ReconstructionConverter(config=config, plan=plan)
         self._converter.set_callbacks(
             on_start=self._on_start,
@@ -58,18 +59,13 @@ class ConversionService(ServiceBase[ConversionResult]):
         if self._converter and self._converter.is_running():
             self._converter.cancel()
 
-    def cleanup(self) -> None:
-        if self._converter is not None:
-            self._converter.cleanup()
-            self._converter = None
+    def release(self) -> None:
+        """Ends the converter's run and lets the converter go once its pool has ended.
 
-        self._eta_estimator = None
-
-    def shutdown(self) -> None:
-        """Tears the converter's process pool down synchronously for application exit.
-
-        The pool spawns its workers, so the process must reap them before it releases
-        the shared resources they depend on; this blocks until the pool has stopped."""
+        A converter that has announced its outcome has already ended its pool, so this returns at
+        once; a run still under way is canceled and its workers waited for, which is what the
+        application's exit asks.
+        """
         if self._converter is not None:
             self._converter.shutdown()
             self._converter = None

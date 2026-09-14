@@ -14,7 +14,6 @@ class TaskStatus(Enum):
     FAILED = "FAILED"
     CANCELING = "CANCELING"
     CANCELED = "CANCELED"
-    CLEANING_UP = "CLEANING_UP"
 
 
 class TaskStep(BaseModel):
