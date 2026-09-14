@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Callable, Optional
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors.channel import ChannelColors
@@ -29,6 +29,7 @@ class GUIInstructionWaveformPanel(GUIPanel):
         self._language_manager = language_manager
         self._status_bar = status_bar
         self.display: GUIWaveformGraph
+        self.on_position_clicked: Optional[Callable[[int], None]] = None
 
         super().__init__(
             tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM,
@@ -53,6 +54,10 @@ class GUIInstructionWaveformPanel(GUIPanel):
                 language_manager=self._language_manager,
                 status_bar=self._status_bar,
             )
+            self.display.on_position_clicked = self._on_position_clicked
+
+    def _on_position_clicked(self, position: int) -> None:
+        self.call(self.on_position_clicked, position)
 
     def set_display_height(self, height: int) -> None:
         self.display.set_height(height)

@@ -16,7 +16,6 @@
 * Drag and drop
 * Multiple Reconstruction views
 * In-project sample selection in Reconstruction view
-* Playing a fragment by clicking on a waveform
 * Application installation progress bar
 
 ### Tracker
@@ -200,6 +199,12 @@ again.
   stands against `trace` this way, and `ui/elements/graphs/layers/array.py` did against `array`
   until it was given a package of its own. Giving each directory an `__init__.py` closes the
   whole class.
+* A sample source's playhead reaches its waveform from the audio thread. The device reports each
+  position from `AudioPlaybackWorker`, and `AudioPlayer._on_device_position_changed` hands it through
+  `PlayerLogic` to the plot's `set_position`, which configures the indicator where the report
+  arrived — the crossing principle 6 routes through `on_render_thread`. A click moving the playhead
+  reports from the render thread, so the two meet at the indicator; the instrument audition already
+  posts its positions through `CallbackQueue`, which is the shape the player's reports take too.
 
 ## Bugs
 

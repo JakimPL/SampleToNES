@@ -75,6 +75,6 @@ The **Instructions** tab (`F4`) builds and browses the [instruction library](../
 
 A conversion builds the library it needs by itself, so you rarely need this tab. Use it to build a library before a long session, or to explore the sounds your settings can make.
 
-Select an instruction to see its **Waveform** and **Spectrum**. This lets you see and hear a single NES tone on its own.
+Select an instruction to see its **Waveform** and **Spectrum**. This lets you see and hear a single NES tone on its own. Click the waveform to play the tone from that point.
 
 **Generate library** builds a library for your current settings. Once a library is loaded, the button reads **Regenerate instructions**.

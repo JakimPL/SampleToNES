@@ -1,5 +1,7 @@
 from dataclasses import dataclass
-from typing import Dict, FrozenSet, List
+from types import SimpleNamespace
+from typing import Any, Dict, FrozenSet, List
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -371,3 +373,28 @@ class TestTheCardAnInstrumentIsDrawnOn:
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS: True,
         }
         assert len(harness.waveform.drawn) == 1
+
+
+class TestWaveformClicks:
+    """A click on the waveform leaves the card as the sample it pointed at."""
+
+    def test_the_sample_a_click_names_reaches_the_panel_hook(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        graphs: List[SimpleNamespace] = []
+
+        def graph(**_kwargs: Any) -> SimpleNamespace:
+            graphs.append(SimpleNamespace(on_position_clicked=None))
+            return graphs[-1]
+
+        monkeypatch.setattr(plot_module, "GUIWaveformGraph", graph)
+        panel = GUIReconstructionPlotPanel.__new__(GUIReconstructionPlotPanel)
+        panel._layout_graphs = MagicMock()
+        panel._language_manager = MagicMock()
+        panel._status_bar = MagicMock()
+        monkeypatch.setattr(GUIReconstructionPlotPanel, "_body_container", "body", raising=False)
+        clicked: List[int] = []
+        panel.on_position_clicked = clicked.append
+
+        panel._create_waveform_display()
+        graphs[0].on_position_clicked(420)
+
+        assert clicked == [420]

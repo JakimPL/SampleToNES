@@ -1,5 +1,7 @@
+import math
+from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -9,6 +11,7 @@ from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.graphs import (
     SUF_GRAPH_THEME,
+    SUF_HANDLER_MOUSE,
     SUF_WAVEFORM_OVERLAY,
     SUF_WAVEFORM_POSITION_INDICATOR,
     TAG_GLOBAL_GRAPH_THEME_INDICATOR,
@@ -44,6 +47,14 @@ class SeriesShade(StrEnum):
     DIMMED = "dimmed"
 
 
+@dataclass(frozen=True)
+class WaveformPress:
+    """A left press on the plot: the sample under the pointer and the screen point it went down at."""
+
+    sample: float
+    screen: Tuple[float, float]
+
+
 class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     tag: str
     parent: str
@@ -74,6 +85,10 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
         self.position_indicator_tag = compose_tag(tag, SUF_WAVEFORM_POSITION_INDICATOR)
         self.overlay_rectangle_tag = compose_tag(tag, SUF_WAVEFORM_OVERLAY)
+        self.mouse_handler_tag = compose_tag(tag, SUF_HANDLER_MOUSE)
+
+        self.on_position_clicked: Optional[Callable[[int], None]] = None
+        self._press: Optional[WaveformPress] = None
 
         self.indicator_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_INDICATOR)
         self.overlay_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_OVERLAY)
@@ -139,6 +154,42 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
         self._bind_event_handler()
         self._update_axes_limits()
+
+    def _setup_handlers(self) -> None:
+        super()._setup_handlers()
+        dpg.add_item_clicked_handler(
+            button=dpg.mvMouseButton_Left,
+            callback=self._on_pressed,
+            parent=self.event_handler_tag,
+        )
+        with dpg.handler_registry(tag=self.mouse_handler_tag):
+            dpg.add_mouse_release_handler(
+                button=dpg.mvMouseButton_Left,
+                callback=self._on_released,
+            )
+
+    def _on_pressed(self) -> None:
+        sample, _amplitude = dpg.get_plot_mouse_pos()
+        screen_x, screen_y = dpg.get_mouse_pos(local=False)
+        self._press = WaveformPress(sample=sample, screen=(screen_x, screen_y))
+
+    def _on_released(self) -> None:
+        """Reports the sample a click on the plot pointed at.
+
+        A left drag pans the view, so a press reads as a click when the pointer comes up within the
+        click travel of where it went down. The release arrives wherever the pointer is, so the press
+        made on the plot is what names the sample. A click names a sample of the audio a recording or
+        an instruction plays, so it is reported while the graph draws one of them.
+        """
+        press = self._press
+        self._press = None
+        if press is None or self.current_data is None:
+            return
+
+        screen_x, screen_y = dpg.get_mouse_pos(local=False)
+        travel = math.hypot(screen_x - press.screen[0], screen_y - press.screen[1])
+        if travel <= self._layout.waveform.click_travel:
+            self.call(self.on_position_clicked, round(press.sample))
 
     def set_overlay_range(self, start: float = 0.0, end: float = 0.0) -> None:
         self._set_overlay_rectangle(x_start=start, x_end=end)
@@ -377,9 +428,13 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._update_display()
 
     def clear(self) -> None:
+        """Empties the plot down to the two marks it keeps for whatever it draws next: the position
+        indicator and the overlay rectangle, both of which live among the axis's children."""
         self._reconstruction_dimmed = False
         self.clear_layers()
         dpg_delete_children(self.y_axis_tag)
+        self.current_position = 0
+        self._add_position_indicator()
         self._set_overlay_rectangle()
 
     def set_autoscale(self, autoscale: bool) -> None:

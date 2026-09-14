@@ -54,6 +54,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
         self._frame_length: Optional[int] = None
 
         self.on_channels_changed: Optional[Callable[[List[ChannelName]], None]] = None
+        self.on_position_clicked: Optional[Callable[[int], None]] = None
 
         self.autoscale_tag = compose_tag(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT, SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE
@@ -188,6 +189,10 @@ class GUIReconstructionPlotPanel(GUIPanel):
             language_manager=self._language_manager,
             status_bar=self._status_bar,
         )
+        self.waveform_display.on_position_clicked = self._on_position_clicked
+
+    def _on_position_clicked(self, position: int) -> None:
+        self.call(self.on_position_clicked, position)
 
     def _create_channel_checkboxes(self) -> None:
         generator_labels = {

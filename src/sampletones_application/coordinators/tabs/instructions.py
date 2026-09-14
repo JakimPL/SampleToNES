@@ -195,6 +195,7 @@ class InstructionsTabCoordinator:
         self._spectrum_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._graph_panels: List[_StackedGraphPanel] = [self._waveform_panel, self._spectrum_panel]
         self._instruction_player_logic.on_position_changed = self._waveform_panel.set_position
+        self._waveform_panel.on_position_clicked = self._guarded_player.play_from
         self._instruction_details_logic = InstructionDetailsPanelLogic(
             library_manager,
             layout=layout.instructions,

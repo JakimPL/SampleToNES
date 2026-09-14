@@ -20,6 +20,8 @@ To keep frequently used reconstructions within reach, right-click a reconstructi
 
 The **Source** card switches playback between **Reconstruction** and **Original audio**, so you can compare the two. The **Waveform** card has a checkbox for each channel. Keys `1` to `4` switch the same checkboxes.
 
+Click the waveform to play from that point. While playback is paused, a click moves the playback position. Drag the waveform to move the view.
+
 ## Hearing what each recording contributed
 
 The **Stems** card lists the recordings used to build a reconstruction. It groups them by the level each one was given. Every row has a checkbox for each channel that the recording used, and the checkbox at the front toggles all of them.

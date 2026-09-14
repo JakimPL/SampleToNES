@@ -109,6 +109,12 @@ The transport's verbs are reached identically from the Playback menu, the toolba
 | `Ctrl+Shift+Space` | Play from here | Sequencer panels: plays the song from the cursor's row. |
 | `Escape` | Stop | Silences everything — the engaged source and any preview — from any tab. |
 
+**A click on a waveform puts the playhead at a sample.** The Reconstructions and Instructions
+waveforms draw the audio their tab's own source plays, so a click reaches that source at the sample
+under the pointer: an idle source starts sounding there, and an engaged one moves there and goes on
+sounding or stays paused. A left drag pans the view, so a press reads as a click while the pointer
+comes up within the waveform layout's `click_travel` of where it went down.
+
 Because the target prefers the active tab's own source, `Space` controls what the user is looking at
 whenever that screen can play something, and reaches the source already sounding on a screen that
 plays nothing of its own: the Main tab, an empty Reconstruction or Instructions tab, the Sequencer
@@ -259,6 +265,7 @@ terminating would reclaim.
 | The device, its stream, and arbitration between requests | `AudioDeviceManager` (`sampletones_core/audio/`) |
 | The ranking that settles a contest for the device | `PlaybackPriority` (`logic/shared/`) |
 | The verbs, target resolution, and the registry of sources | `coordinators/playback/router.py` |
+| Putting a sample source's playhead at a clicked sample | `PlayerLogic.play_from` (`logic/shared/player.py`) |
 | Winding every source down ahead of backend teardown | `PlaybackRouter.shutdown()` (`coordinators/playback/router.py`) |
 | A source's engagement reporting | the transport's player protocol, implemented per source |
 | Error presentation for a source's failures | `GuardedPlayer` (`coordinators/playback/guard.py`) |

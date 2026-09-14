@@ -245,6 +245,7 @@ class ReconstructionTabCoordinator:
         self._reconstruction_plot_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._reconstruction_stems_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._reconstruction_player_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
+        self._reconstruction_plot_panel.on_position_clicked = self._guarded_player.play_from
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
             session_manager,
             reconstruction_manager,
