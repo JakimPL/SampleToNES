@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Final
+from dataclasses import dataclass
+from typing import Final, Tuple
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -11,8 +12,14 @@ from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.reconstructions.criterion import Criterion
 from sampletones_shared.array import to_numpy
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 LONG_SIGNAL_LENGTH: Final[int] = 1 << 20
+HISS_LEVEL: Final[float] = 1e-7
+QUIET_NOISE_LEVEL: Final[float] = 1e-6
+LOUD_LEVEL: Final[float] = 0.3
+SINGLE_PRECISION_TOLERANCE: Final[float] = 1e-3
 
 
 def _criterion_with_distance(
@@ -31,6 +38,10 @@ def _criterion_with_distance(
     return Criterion(updated_config, window, LONG_SIGNAL_LENGTH)
 
 
+def _hiss(bins: int) -> np.ndarray:
+    return np.linspace(0.5, 1.5, bins) * HISS_LEVEL
+
+
 @pytest.fixture(scope="module")
 def config() -> Config:
     return Config()
@@ -44,6 +55,11 @@ def window(config: Config) -> Window:
 @pytest.fixture(scope="module")
 def criterion(config: Config, window: Window) -> Criterion:
     return Criterion(config, window, LONG_SIGNAL_LENGTH)
+
+
+@pytest.fixture(scope="module")
+def bins(criterion: Criterion) -> int:
+    return int(criterion.weights.shape[-1])
 
 
 class TestCriterionTemporalLoss:
@@ -140,10 +156,6 @@ class TestCriterionGetLossWeights:
 
 
 class TestCriterionSpectralLoss:
-    @pytest.fixture
-    def bins(self, criterion: Criterion) -> int:
-        return int(criterion.weights.shape[-1])
-
     def test_beta_divergence_is_zero_for_identical_spectrum(
         self,
         config: Config,
@@ -198,6 +210,74 @@ class TestCriterionSpectralLoss:
         distant = reference + np.float32(0.5)
         loss = criterion.spectral_loss(reference, np.stack([close, distant]))
         assert float(loss[0]) < float(loss[1])
+
+    def test_a_hiss_below_the_floor_scores_silence_closer_than_quiet_noise(
+        self,
+        config: Config,
+        window: Window,
+        bins: int,
+    ) -> None:
+        """
+        A hiss lying far below the spectrum floor sits nearer silence than a louder noise, so silence
+        stays among the candidates a quiet frame keeps.
+        """
+        criterion = _criterion_with_distance(config, window, SpectralDistance.BETA_DIVERGENCE, beta=1.0)
+        reference = _hiss(bins).astype(np.float32)
+        candidates = np.stack(
+            [
+                np.zeros(bins, dtype=np.float32),
+                np.full(bins, QUIET_NOISE_LEVEL, dtype=np.float32),
+            ]
+        )
+        silence, quiet_noise = to_numpy(criterion.spectral_loss(reference, candidates))
+        assert silence < quiet_noise
+
+
+class TestCriterionBetaDivergenceAtTheFloor(BaseTestSuite):
+    """
+    Spectra lying below the spectrum floor score in single precision as they do in double, which
+    keeps the losses of near-silent frames apart.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        beta: float
+
+    test_cases = (
+        TestCase(label="itakura_saito", beta=0.0),
+        TestCase(label="general", beta=0.5),
+        TestCase(label="kullback_leibler", beta=1.0),
+    )
+
+    @staticmethod
+    def _floor_spectra(bins: int) -> Tuple[np.ndarray, np.ndarray]:
+        candidates = np.stack(
+            [
+                np.zeros(bins),
+                np.full(bins, QUIET_NOISE_LEVEL),
+                np.full(bins, LOUD_LEVEL),
+            ]
+        )
+        return _hiss(bins), candidates
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_single_precision_scores_as_double_precision(
+        self,
+        config: Config,
+        window: Window,
+        bins: int,
+        test_case: TestCase,
+    ) -> None:
+        criterion = _criterion_with_distance(config, window, SpectralDistance.BETA_DIVERGENCE, beta=test_case.beta)
+        reference, candidates = self._floor_spectra(bins)
+
+        single = to_numpy(criterion.spectral_loss(reference.astype(np.float32), candidates.astype(np.float32)))
+        double = to_numpy(criterion.spectral_loss(reference, candidates))
+        np.testing.assert_allclose(single, double, rtol=SINGLE_PRECISION_TOLERANCE)
 
 
 class TestCriterionCqtAxis:

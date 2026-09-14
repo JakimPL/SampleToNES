@@ -203,4 +203,3 @@ again.
 ## Bugs
 
 * Misaligned dialog boxes sizes at initialization
-* Audible noise instructions when matching near-silent samples for FFT γ0
