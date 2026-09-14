@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import Any, Dict, Final, List, Tuple
+from typing import Any, Dict, List, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -7,10 +7,6 @@ import pytest
 from sampletones_application.ui.elements.graphs import waveform as waveform_module
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.utils.palette.colors.written import LiteralColor
-
-CLICK_TRAVEL: Final[float] = 4.0
-PRESS_SCREEN: Final[Tuple[float, float]] = (300.0, 200.0)
-PRESS_SAMPLE: Final[float] = 420.6
 
 
 class _FakeDPG:
@@ -215,83 +211,29 @@ class TestWaveformReconstructionDim:
         graph._status_bar.set.assert_called_with("")
 
 
-class Pointer:
-    """The mouse as the plot reads it: the sample under it and where it stands on screen."""
+class TestAClickReportsASampleOfDrawnAudio:
+    """The graph reports the sample a click named while it draws the audio a player plays."""
 
-    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        self.sample = PRESS_SAMPLE
-        self.screen = PRESS_SCREEN
-        monkeypatch.setattr(waveform_module.dpg, "get_plot_mouse_pos", lambda: (self.sample, 0.0))
-        monkeypatch.setattr(waveform_module.dpg, "get_mouse_pos", lambda local: self.screen)
+    @staticmethod
+    def _graph_reporting_clicks() -> Tuple[GUIWaveformGraph, List[int]]:
+        graph = _graph()
+        graph.current_data = MagicMock()
+        clicked: List[int] = []
+        graph.on_position_clicked = clicked.append
+        return graph, clicked
 
+    def test_a_click_reports_the_nearest_sample(self) -> None:
+        graph, clicked = self._graph_reporting_clicks()
 
-@pytest.fixture
-def pointer(monkeypatch: pytest.MonkeyPatch) -> Pointer:
-    return Pointer(monkeypatch)
+        graph._on_plot_clicked(420.6)
 
+        assert clicked == [421]
 
-def _clickable_graph() -> Tuple[GUIWaveformGraph, List[int]]:
-    graph = _graph()
-    graph._layout = SimpleNamespace(waveform=SimpleNamespace(click_travel=CLICK_TRAVEL))  # type: ignore[assignment]
-    graph.current_data = MagicMock()
-    graph._press = None
-    clicked: List[int] = []
-    graph.on_position_clicked = clicked.append
-    return graph, clicked
-
-
-class TestAClickPlacesThePlayhead:
-    """A press that comes up where it went down is a click at the sample under it; a drag pans."""
-
-    def test_a_click_reports_the_sample_under_the_press(self, pointer: Pointer) -> None:
-        graph, clicked = _clickable_graph()
-
-        graph._on_pressed()
-        graph._on_released()
-
-        assert clicked == [round(PRESS_SAMPLE)]
-
-    def test_a_click_within_the_travel_reports_the_sample_under_the_press(self, pointer: Pointer) -> None:
-        graph, clicked = _clickable_graph()
-
-        graph._on_pressed()
-        pointer.sample = PRESS_SAMPLE + 100
-        pointer.screen = (PRESS_SCREEN[0] + CLICK_TRAVEL, PRESS_SCREEN[1])
-        graph._on_released()
-
-        assert clicked == [round(PRESS_SAMPLE)]
-
-    def test_a_drag_past_the_travel_reports_nothing(self, pointer: Pointer) -> None:
-        graph, clicked = _clickable_graph()
-
-        graph._on_pressed()
-        pointer.screen = (PRESS_SCREEN[0] - 3 * CLICK_TRAVEL, PRESS_SCREEN[1])
-        graph._on_released()
-
-        assert clicked == []
-
-    def test_a_release_with_no_press_on_the_plot_reports_nothing(self, pointer: Pointer) -> None:
-        graph, clicked = _clickable_graph()
-
-        graph._on_released()
-
-        assert clicked == []
-
-    def test_a_press_is_spent_by_its_release(self, pointer: Pointer) -> None:
-        graph, clicked = _clickable_graph()
-
-        graph._on_pressed()
-        graph._on_released()
-        graph._on_released()
-
-        assert clicked == [round(PRESS_SAMPLE)]
-
-    def test_a_click_on_a_graph_drawing_no_audio_reports_nothing(self, pointer: Pointer) -> None:
-        graph, clicked = _clickable_graph()
+    def test_a_click_on_a_graph_drawing_no_audio_reports_nothing(self) -> None:
+        graph, clicked = self._graph_reporting_clicks()
         graph.current_data = None
 
-        graph._on_pressed()
-        graph._on_released()
+        graph._on_plot_clicked(420.6)
 
         assert clicked == []
 

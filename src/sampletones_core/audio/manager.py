@@ -768,6 +768,22 @@ class AudioDeviceManager(CallbackMixin):
         with self._lock:
             return self._playing and self._output_owner is owner
 
+    def position_of(self, owner: Any) -> int:
+        """Where ``owner``'s playback stands, sounding or held paused.
+
+        The position is read under the same lock a seek writes it under, so a caller drawing a mark
+        from it draws the latest seek, while a position reported earlier may already be behind it.
+
+        Returns:
+            int: The sample the playback has reached, or the start of the audio while ``owner`` holds
+                no output.
+        """
+        with self._lock:
+            if self._playing and self._output_owner is owner:
+                return self._position
+
+            return START_OF_AUDIO
+
     def open_output_stream(
         self,
         *,

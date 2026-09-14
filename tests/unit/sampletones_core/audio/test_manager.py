@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.audio.manager import AudioDeviceManager
+from sampletones_core.constants.audio import START_OF_AUDIO
 from sampletones_shared.exceptions import PlaybackError
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -206,6 +207,36 @@ class TestOwnership:
         manager._playing = True
 
         assert manager.is_owned_by(object()) is False
+
+
+class TestPositionOfAnOwner:
+    """A source reads where its own playback stands, and the start of the audio for anyone else's."""
+
+    def test_the_owner_reads_the_position_its_playback_reached(self) -> None:
+        manager = _manager()
+        owner = object()
+        manager._output_owner = owner
+        manager._playing = True
+        manager._position = 640
+
+        assert manager.position_of(owner) == 640
+
+    def test_another_source_reads_the_start_of_the_audio(self) -> None:
+        manager = _manager()
+        manager._output_owner = object()
+        manager._playing = True
+        manager._position = 640
+
+        assert manager.position_of(object()) == START_OF_AUDIO
+
+    def test_an_owner_whose_playback_ended_reads_the_start_of_the_audio(self) -> None:
+        manager = _manager()
+        owner = object()
+        manager._output_owner = owner
+        manager._playing = False
+        manager._position = 640
+
+        assert manager.position_of(owner) == START_OF_AUDIO
 
 
 class TestBackendTeardown:

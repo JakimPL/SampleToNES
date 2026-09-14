@@ -1,9 +1,10 @@
 from typing import Callable, Optional
 
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
+from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, START_OF_AUDIO
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -20,14 +21,14 @@ class AudioPlayer(CallbackMixin):
     ):
         self.audio_device_manager = audio_device_manager
         self.audio_data: AudioData = AudioData.empty(sample_rate)
-        self._current_position: int = 0
 
         self.on_position_changed = on_position_changed
         self.on_change_audio_state = on_change_audio_state
 
     @property
     def current_position(self) -> int:
-        return self._current_position
+        """Where this player's own playback stands on the device, sounding or held paused."""
+        return self.audio_device_manager.position_of(self)
 
     def load_audio_data(self, audio_data: AudioData) -> None:
         self.audio_data = audio_data
@@ -38,21 +39,27 @@ class AudioPlayer(CallbackMixin):
         self.stop()
         self.audio_data = AudioData.empty(self.audio_data.sample_rate)
 
-    def _set_current_position(self, position: int) -> None:
-        self._current_position = max(
-            0,
-            min(
-                position,
-                self.audio_data.samples,
-            ),
-        )
-
     def _on_device_position_changed(self, position: int) -> None:
-        if self.audio_data.is_loaded():
-            self._set_current_position(position)
-            self.call(self.on_position_changed, position)
+        """Carries a report from the thread writing the audio to the render thread.
 
-        if position == 0:
+        The mark the report moves is a widget, so the report crosses the way every background result
+        does. The device reports the start of the audio once, as it winds down, and a position past
+        it after each buffer it writes.
+        """
+        CallbackQueue.add(self._report_position, position == START_OF_AUDIO)
+
+    def _report_position(self, wound_down: bool) -> None:
+        """Reports where the playback stands, read as the report arrives on the render thread.
+
+        A report travels while the reader may seek, so the position is read from the device where the
+        report arrives, and a report overtaken by a seek draws the seek. A playback winding down is
+        also when the transport's labels follow the state it left.
+
+        Args:
+            wound_down: Whether the report is the device's last for the playback.
+        """
+        self.call(self.on_position_changed, self.current_position)
+        if wound_down:
             self._notify_audio_state_changed()
 
     def seek(self, position: int) -> None:
@@ -67,9 +74,8 @@ class AudioPlayer(CallbackMixin):
         if not self.is_playing:
             return
 
-        self._set_current_position(position)
-        self.audio_device_manager.set_position(self._current_position)
-        self.call(self.on_position_changed, self._current_position)
+        self.audio_device_manager.set_position(position)
+        self.call(self.on_position_changed, self.current_position)
 
     def play(self, *, start: int) -> None:
         """Takes the output and sounds the loaded audio from a sample.
@@ -108,10 +114,7 @@ class AudioPlayer(CallbackMixin):
 
     def stop(self) -> None:
         self.audio_device_manager.stop()
-        if self.audio_data.is_loaded():
-            self._current_position = 0
-
-        self.call(self.on_position_changed, 0)
+        self.call(self.on_position_changed, START_OF_AUDIO)
         self._notify_audio_state_changed()
 
     @property

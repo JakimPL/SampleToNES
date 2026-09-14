@@ -66,6 +66,11 @@ output, and the audition starts following only when it did, so one that yields t
 reader asked for leaves that playback's mark where it is. The device reports a final zero as it
 winds down, which takes the mark off the card.
 
+A report comes from the thread writing the audio and the mark is a widget, so every report crosses to
+the render thread before it moves anything (architecture principle 6). A source's player reads where
+its own playback stands when the report arrives, which is what lets a seek made in the meantime stand:
+the mark shows the device as it is, and a report that set out before the seek draws the seek.
+
 **Intentional playback** — the audio a tab is built around: a reconstruction's audio, an
 instruction's audio, or the sequencer song. It is owned by the source that started it, and it is
 resumable, seekable, and stoppable. One intentional source at most is engaged at any moment.
@@ -112,8 +117,12 @@ The transport's verbs are reached identically from the Playback menu, the toolba
 **A click on a waveform puts the playhead at a sample.** The Reconstructions and Instructions
 waveforms draw the audio their tab's own source plays, so a click reaches that source at the sample
 under the pointer: an idle source starts sounding there, and an engaged one moves there and goes on
-sounding or stays paused. A left drag pans the view, so a press reads as a click while the pointer
-comes up within the waveform layout's `click_travel` of where it went down.
+sounding or stays paused. Two other gestures share the left button, and each keeps its own meaning:
+a drag pans the view, so a press reads as a click while the pointer comes up within the waveform
+layout's `click_travel` of where it went down, and a double-click fits the view to the audio, so a
+click is reported once it can no longer begin one. The double-click is the one ImGui recognizes, read
+on the press that completes it, so the playhead and the view each answer exactly the gesture meant for
+them (`PlotClickGesture`, `ui/elements/graphs/click.py`).
 
 Because the target prefers the active tab's own source, `Space` controls what the user is looking at
 whenever that screen can play something, and reaches the source already sounding on a screen that

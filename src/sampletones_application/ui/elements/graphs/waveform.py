@@ -1,5 +1,3 @@
-import math
-from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -17,6 +15,7 @@ from sampletones_application.tags.graphs import (
     TAG_GLOBAL_GRAPH_THEME_INDICATOR,
     TAG_GLOBAL_GRAPH_THEME_OVERLAY,
 )
+from sampletones_application.ui.elements.graphs.click import PlotClickGesture
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.array import ArrayLayer
 from sampletones_application.ui.elements.graphs.layers.instruction import (
@@ -45,14 +44,6 @@ class SeriesShade(StrEnum):
 
     FULL = "full"
     DIMMED = "dimmed"
-
-
-@dataclass(frozen=True)
-class WaveformPress:
-    """A left press on the plot: the sample under the pointer and the screen point it went down at."""
-
-    sample: float
-    screen: Tuple[float, float]
 
 
 class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
@@ -88,7 +79,10 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.mouse_handler_tag = compose_tag(tag, SUF_HANDLER_MOUSE)
 
         self.on_position_clicked: Optional[Callable[[int], None]] = None
-        self._press: Optional[WaveformPress] = None
+        self._click = PlotClickGesture(
+            click_travel=layout.waveform.click_travel,
+            on_clicked=self._on_plot_clicked,
+        )
 
         self.indicator_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_INDICATOR)
         self.overlay_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_OVERLAY)
@@ -159,37 +153,25 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         super()._setup_handlers()
         dpg.add_item_clicked_handler(
             button=dpg.mvMouseButton_Left,
-            callback=self._on_pressed,
+            callback=self._click.press,
             parent=self.event_handler_tag,
         )
         with dpg.handler_registry(tag=self.mouse_handler_tag):
             dpg.add_mouse_release_handler(
                 button=dpg.mvMouseButton_Left,
-                callback=self._on_released,
+                callback=self._click.release,
             )
 
-    def _on_pressed(self) -> None:
-        sample, _amplitude = dpg.get_plot_mouse_pos()
-        screen_x, screen_y = dpg.get_mouse_pos(local=False)
-        self._press = WaveformPress(sample=sample, screen=(screen_x, screen_y))
-
-    def _on_released(self) -> None:
+    def _on_plot_clicked(self, sample: float) -> None:
         """Reports the sample a click on the plot pointed at.
 
-        A left drag pans the view, so a press reads as a click when the pointer comes up within the
-        click travel of where it went down. The release arrives wherever the pointer is, so the press
-        made on the plot is what names the sample. A click names a sample of the audio a recording or
-        an instruction plays, so it is reported while the graph draws one of them.
+        A click names a sample of the audio a recording or an instruction plays, so it is reported
+        while the graph draws one of them.
         """
-        press = self._press
-        self._press = None
-        if press is None or self.current_data is None:
+        if self.current_data is None:
             return
 
-        screen_x, screen_y = dpg.get_mouse_pos(local=False)
-        travel = math.hypot(screen_x - press.screen[0], screen_y - press.screen[1])
-        if travel <= self._layout.waveform.click_travel:
-            self.call(self.on_position_clicked, round(press.sample))
+        self.call(self.on_position_clicked, round(sample))
 
     def set_overlay_range(self, start: float = 0.0, end: float = 0.0) -> None:
         self._set_overlay_rectangle(x_start=start, x_end=end)
