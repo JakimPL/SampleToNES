@@ -2,11 +2,14 @@ from types import SimpleNamespace
 from typing import Any, Dict, List, Tuple
 from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 
 from sampletones_application.ui.elements.graphs import waveform as waveform_module
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.utils.palette.colors.written import LiteralColor
+
+VOICE_SAMPLES = 64
 
 
 class _FakeDPG:
@@ -212,27 +215,46 @@ class TestWaveformReconstructionDim:
 
 
 class TestAClickReportsASampleOfDrawnAudio:
-    """The graph reports the sample a click named while it draws the audio a player plays."""
+    """The graph reports the sample a click named while it draws the audio its player sounds."""
 
     @staticmethod
-    def _graph_reporting_clicks() -> Tuple[GUIWaveformGraph, List[int]]:
+    def _graph_reporting_clicks(monkeypatch: pytest.MonkeyPatch) -> Tuple[GUIWaveformGraph, List[int]]:
         graph = _graph()
         graph.current_data = MagicMock()
+        graph._plays_what_it_draws = True
+        graph._default_x_range = (0.0, 1.0)
+        graph._default_y_range = (-1.0, 1.0)
+        graph._layout = SimpleNamespace(waveform=SimpleNamespace(max_display_points=VOICE_SAMPLES))
+        monkeypatch.setattr(graph, "add_layer", lambda _layer: None)
+        monkeypatch.setattr(graph, "_update_display", lambda: None)
         clicked: List[int] = []
         graph.on_position_clicked = clicked.append
         return graph, clicked
 
-    def test_a_click_reports_the_nearest_sample(self) -> None:
-        graph, clicked = self._graph_reporting_clicks()
+    def test_a_click_reports_the_nearest_sample(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        graph, clicked = self._graph_reporting_clicks(monkeypatch)
 
         graph._on_plot_clicked(420.6)
 
         assert clicked == [421]
 
-    def test_a_click_on_a_graph_drawing_no_audio_reports_nothing(self) -> None:
-        graph, clicked = self._graph_reporting_clicks()
-        graph.current_data = None
+    def test_a_voice_drawn_in_place_of_the_audio_takes_no_click(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A hand-written voice's waveform is none of the audio the tab's player sounds."""
+        graph, clicked = self._graph_reporting_clicks(monkeypatch)
 
+        graph.load_voice_waveform(
+            np.zeros(VOICE_SAMPLES, dtype=np.float32),
+            name="voice",
+            color=LiteralColor((255, 255, 255, 255)),
+        )
+        graph._on_plot_clicked(420.6)
+
+        assert clicked == []
+
+    def test_a_graph_emptied_takes_no_click(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        graph, clicked = self._graph_reporting_clicks(monkeypatch)
+
+        graph.clear_layers()
         graph._on_plot_clicked(420.6)
 
         assert clicked == []

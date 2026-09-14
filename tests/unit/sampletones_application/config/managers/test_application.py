@@ -16,48 +16,24 @@ from sampletones_application.constants.playback import FollowMode
 from sampletones_core.data.metadata import Metadata
 
 
-def _standing_favorite(directory: Path) -> Path:
-    favorite = directory / "favorite.wav"
-    favorite.touch()
-    return favorite
-
-
 class TestApplicationConfigManagerRecovery:
     def test_incompatible_master_gain_preserves_favorites(self, tmp_path: Path) -> None:
         path = tmp_path / "config.yaml"
-        favorite = _standing_favorite(tmp_path)
-        path.write_text(yaml.safe_dump({"audio": {"master_gain": 5.0}, "favorites": {"paths": [str(favorite)]}}))
+        path.write_text(yaml.safe_dump({"audio": {"master_gain": 5.0}, "favorites": {"paths": ["/x/y"]}}))
 
         manager = ApplicationConfigManager(path)
 
         assert manager.config.audio.master_gain == ApplicationConfig().audio.master_gain
-        assert favorite in manager.favorites
+        assert Path("/x/y") in manager.favorites
 
     def test_invalid_history_budget_recovers_to_default(self, tmp_path: Path) -> None:
         path = tmp_path / "config.yaml"
-        favorite = _standing_favorite(tmp_path)
-        path.write_text(yaml.safe_dump({"history": {"budget": 0}, "favorites": {"paths": [str(favorite)]}}))
+        path.write_text(yaml.safe_dump({"history": {"budget": 0}, "favorites": {"paths": ["/x/y"]}}))
 
         manager = ApplicationConfigManager(path)
 
         assert manager.config.history.budget == ApplicationConfig().history.budget
-        assert favorite in manager.favorites
-
-
-class TestApplicationConfigManagerFavorites:
-    """A favorite outlives the file it marks, so a run reads the list against the disk as it loads."""
-
-    def test_a_favorite_the_disk_has_lost_is_dropped(self, tmp_path: Path) -> None:
-        path = tmp_path / "config.yaml"
-        favorite = _standing_favorite(tmp_path)
-        folder = tmp_path / "folder"
-        folder.mkdir()
-        gone = tmp_path / "gone.stn"
-        path.write_text(yaml.safe_dump({"favorites": {"paths": [str(favorite), str(folder), str(gone)]}}))
-
-        manager = ApplicationConfigManager(path)
-
-        assert manager.favorites == {favorite, folder}
+        assert Path("/x/y") in manager.favorites
 
 
 class TestApplicationConfigManagerPlayback:
@@ -144,13 +120,12 @@ class TestApplicationConfigManagerPlatformScheme:
         """A file written before the preference existed reaches the choice a fresh one makes."""
         monkeypatch.setattr(platform, "system", lambda: "Darwin")
         path = tmp_path / "config.yaml"
-        favorite = _standing_favorite(tmp_path)
-        path.write_text(yaml.safe_dump({"favorites": {"paths": [str(favorite)]}}))
+        path.write_text(yaml.safe_dump({"favorites": {"paths": ["/x/y"]}}))
 
         manager = ApplicationConfigManager(path)
 
         assert manager.shortcut_scheme_name == MACOS_SCHEME_NAME
-        assert favorite in manager.favorites
+        assert Path("/x/y") in manager.favorites
 
     def test_a_stored_scheme_stands_on_a_mac(
         self,

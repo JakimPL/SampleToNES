@@ -484,18 +484,35 @@ class AudioDeviceManager(CallbackMixin):
         """
         self.set_callbacks(_position_callback=callback)
 
-    def set_position(self, position: int) -> None:
+    def set_position(
+        self,
+        position: int,
+        *,
+        owner: Optional[Any],
+    ) -> bool:
         """
-        Seek to a specific position in the audio.
+        Seek ``owner``'s playback to a specific position in the audio.
 
-        The position is clamped to valid range [0, audio_length].
+        Ownership is checked under the lock the seek writes under, so a playback another source
+        took over in the meantime stays where it is.
 
         Args:
-            position: Target position in samples.
+            position: Target position in samples, clamped to the audio.
+            owner: Identity that must match the active playback's owner for the seek to apply.
+
+        Returns:
+            bool: Whether ``owner``'s playback was moved.
         """
         with self._lock:
-            if self._audio_data is not None:
-                self._position = max(0, min(position, len(self._audio_data)))
+            if not self._playing or self._audio_data is None or self._output_owner is not owner:
+                return False
+
+            self._position = self._clamped_position(position, len(self._audio_data))
+            return True
+
+    @staticmethod
+    def _clamped_position(position: int, length: int) -> int:
+        return max(START_OF_AUDIO, min(position, length))
 
     def play_file(
         self,
@@ -564,7 +581,7 @@ class AudioDeviceManager(CallbackMixin):
 
         with self._lock:
             self._audio_data = audio.astype(np.float32)
-            self._position = max(0, min(start, len(self._audio_data)))
+            self._position = self._clamped_position(start, len(self._audio_data))
             self._playing = True
             self._output_owner = owner
             self._active_priority = priority

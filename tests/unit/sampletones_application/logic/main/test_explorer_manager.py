@@ -108,6 +108,20 @@ class TestTheShapeASessionLeft:
         assert not manager.is_directory_open(paths[NOTES])
         assert rows_below(manager.tree, paths[NOTES]) == []
 
+    def test_a_folder_gone_for_now_stays_remembered(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A folder on a drive unplugged for one run comes back open once the drive does."""
+        paths = write_corpus(tmp_path)
+        gone = tmp_path / "gone"
+        manager = build_manager(tmp_path, {paths[MUSIC], gone}, monkeypatch)
+
+        manager.refresh_tree()
+
+        assert manager.open_directories >= {paths[MUSIC], gone}
+
 
 class TestReadingApartFromStandingOpen:
     """A folder read once and then folded away is loaded and closed, and comes back closed."""

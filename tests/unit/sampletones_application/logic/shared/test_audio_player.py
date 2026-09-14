@@ -1,13 +1,13 @@
-from typing import Any, Final, List, Tuple
-from unittest.mock import MagicMock, patch
+from typing import Final, List, Tuple
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
 from sampletones_application.logic.shared.audio_player import AudioPlayer
-from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, START_OF_AUDIO
+from tests.suite.application import HeldQueue
 from tests.suite.device import FakeAudioDevice
 
 AUDIO_LENGTH: Final[int] = 100
@@ -40,7 +40,7 @@ def device() -> FakeAudioDevice:
 
 @pytest.fixture
 def player(device: FakeAudioDevice) -> AudioPlayer:
-    player = AudioPlayer(device)  # type: ignore[arg-type]
+    player = AudioPlayer(device)
     player.load_audio_data(AudioData.from_array(np.zeros(AUDIO_LENGTH, dtype=np.float32), DEFAULT_SAMPLE_RATE))
     return player
 
@@ -85,14 +85,6 @@ class TestSeekMovesItsOwnPlayback:
         assert player.current_position == 40
         assert reports.positions == [40]
 
-    def test_a_seek_past_the_audio_reports_its_end(self, player: AudioPlayer) -> None:
-        player.play(start=START_OF_AUDIO)
-        reports = Reports(player)
-
-        player.seek(AUDIO_LENGTH + 50)
-
-        assert reports.positions == [AUDIO_LENGTH]
-
     def test_a_seek_leaves_the_output_another_owner_holds_where_it_is(
         self,
         player: AudioPlayer,
@@ -101,11 +93,14 @@ class TestSeekMovesItsOwnPlayback:
         device.play(np.zeros(AUDIO_LENGTH, dtype=np.float32), priority=0, owner=object(), start=70)
         reports = Reports(player)
 
-        player.seek(40)
+        moved = player.seek(40)
 
-        assert device.position == 70
-        assert player.current_position == START_OF_AUDIO
-        assert reports.positions == []
+        assert (moved, device.position, player.current_position, reports.positions) == (
+            False,
+            70,
+            START_OF_AUDIO,
+            [],
+        )
 
 
 class TestPlayStartsWhereItIsAsked:
@@ -119,42 +114,36 @@ class TestPlayStartsWhereItIsAsked:
 class TestDeviceReportsCrossToTheRenderThread:
     """A report from the playback thread waits for the render loop, and reads the device when it runs."""
 
-    @staticmethod
-    def _queued(player: AudioPlayer, position: int) -> List[Tuple[Any, ...]]:
-        queued: List[Tuple[Any, ...]] = []
-        with patch.object(
-            CallbackQueue, "add", side_effect=lambda callback, *args, **_kwargs: queued.append((callback, *args))
-        ):
-            player._on_device_position_changed(position)
-
-        return queued
-
     def test_a_report_reaches_the_listeners_only_once_the_render_loop_runs_it(
         self,
         player: AudioPlayer,
         device: FakeAudioDevice,
+        held_queue: HeldQueue,
     ) -> None:
         player.play(start=START_OF_AUDIO)
         device.position = 64
         reports = Reports(player)
 
-        queued = self._queued(player, 64)
+        player._on_device_position_changed(64)
         assert reports.positions == []
 
-        for callback, *arguments in queued:
-            callback(*arguments)
+        held_queue.drain()
 
         assert reports.positions == [64]
 
-    def test_a_report_overtaken_by_a_seek_reports_the_seek(self, player: AudioPlayer, device: FakeAudioDevice) -> None:
+    def test_a_report_overtaken_by_a_seek_reports_the_seek(
+        self,
+        player: AudioPlayer,
+        device: FakeAudioDevice,
+        held_queue: HeldQueue,
+    ) -> None:
         player.play(start=START_OF_AUDIO)
         device.position = 64
-        queued = self._queued(player, 64)
+        player._on_device_position_changed(64)
         player.seek(40)
         reports = Reports(player)
 
-        for callback, *arguments in queued:
-            callback(*arguments)
+        held_queue.drain()
 
         assert reports.positions == [40]
 

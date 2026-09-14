@@ -69,7 +69,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             height=self.height,
             anti_aliased=True,
             no_mouse_pos=True,
-            fit_button=False,
+            fit_button=dpg.mvMouseButton_Left,
             pan_button=-1,
         ):
             dpg.add_plot_axis(

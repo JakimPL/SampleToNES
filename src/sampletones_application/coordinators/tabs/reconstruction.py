@@ -15,7 +15,7 @@ from sampletones_application.coordinators.export.instrument import (
 )
 from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
-from sampletones_application.coordinators.playback.guard import GuardedSamplePlayer
+from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
@@ -216,7 +216,7 @@ class ReconstructionTabCoordinator:
             audio_device_manager,
             on_change_audio_state,
         )
-        self._guarded_player = GuardedSamplePlayer(
+        self._guarded_player = GuardedPlayer(
             self._reconstruction_player_logic,
             dialogs=dialogs,
             error_message=language_manager["global.player.message.audio_playback_error"],
@@ -245,7 +245,7 @@ class ReconstructionTabCoordinator:
         self._reconstruction_plot_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._reconstruction_stems_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._reconstruction_player_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
-        self._reconstruction_plot_panel.on_position_clicked = self._guarded_player.play_from
+        self._reconstruction_plot_panel.on_position_clicked = self._play_from
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
             session_manager,
             reconstruction_manager,
@@ -546,6 +546,10 @@ class ReconstructionTabCoordinator:
         self._reconstruction_plot_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._reconstruction_stems_panel.create_panel(parent)
+
+    def _play_from(self, position: int) -> None:
+        """Sounds the audio from the sample a click on the waveform pointed at."""
+        self._guarded_player.run_guarded(partial(self._reconstruction_player_logic.play_from, position))
 
     def _on_card_collapse_changed(
         self,

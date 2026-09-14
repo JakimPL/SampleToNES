@@ -15,9 +15,3 @@ class AudioPlayerProtocol(Protocol):
     def is_engaged(self) -> bool: ...
 
     def is_loaded(self) -> bool: ...
-
-
-class SamplePlayerProtocol(AudioPlayerProtocol, Protocol):
-    """A transport player sounding one stretch of audio, which a reader can point at a sample of."""
-
-    def play_from(self, position: int) -> None: ...

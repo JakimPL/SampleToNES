@@ -41,11 +41,8 @@ class PlayerLogic(CallbackMixin):
         Args:
             position: The sample the playhead is put at, clamped to the audio.
         """
-        if self._audio_player.is_playing:
-            self._audio_player.seek(position)
-            return
-
-        self._play(start=position)
+        if not self._audio_player.seek(position):
+            self._play(start=position)
 
     def pause(self) -> None:
         self._audio_player.pause()

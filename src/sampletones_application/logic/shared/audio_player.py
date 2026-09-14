@@ -62,7 +62,7 @@ class AudioPlayer(CallbackMixin):
         if wound_down:
             self._notify_audio_state_changed()
 
-    def seek(self, position: int) -> None:
+    def seek(self, position: int) -> bool:
         """Moves this player's own playback to a sample, whether it sounds or stands paused.
 
         The device reports positions as it writes, and a paused one writes nothing, so the player
@@ -70,12 +70,15 @@ class AudioPlayer(CallbackMixin):
 
         Args:
             position: The sample to move to, clamped to the audio.
-        """
-        if not self.is_playing:
-            return
 
-        self.audio_device_manager.set_position(position)
+        Returns:
+            bool: Whether this player held the output, and so moved its own playback.
+        """
+        if not self.audio_device_manager.set_position(position, owner=self):
+            return False
+
         self.call(self.on_position_changed, self.current_position)
+        return True
 
     def play(self, *, start: int) -> None:
         """Takes the output and sounds the loaded audio from a sample.

@@ -248,8 +248,9 @@ at a time as the reader opens one, so `ExplorerManager` holds two facts about a 
 children have been read, and whether its row stands open. They part company — a folder read and then
 folded away is loaded and closed — and the open one is the shape a session writes to
 `ApplicationState.expanded_directories`. A refresh reads down to each remembered folder through
-`_expand_path_to`, reading every folder it needs once, and the session hands the manager the folders
-still standing on the disk (`ApplicationState.reconcile_with_disk`).
+`_expand_path_to`, reading every folder it needs once. A remembered folder the disk no longer holds is
+read down to as far as it still stands and stays remembered, so a drive unplugged for one run opens
+where it was left once it is back.
 
 **What the mode costs.** Resolving it walks the model once per rebuild, on the tree worker, testing each
 row with `is_node_favorite` and `has_favorite_ancestor` — set lookups over `filepath.parents` — and the

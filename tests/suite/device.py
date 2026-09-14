@@ -49,9 +49,12 @@ class FakeAudioDevice:
         self.paused = False
         self.position = START_OF_AUDIO
 
-    def set_position(self, position: int) -> None:
-        if self.audio is not None:
-            self.position = self._clamped(position)
+    def set_position(self, position: int, *, owner: Optional[Any]) -> bool:
+        if self.audio is None or not self.is_owned_by(owner):
+            return False
+
+        self.position = self._clamped(position)
+        return True
 
     def is_owned_by(self, owner: Any) -> bool:
         return owner is not None and self.owner is owner

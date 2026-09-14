@@ -19,7 +19,6 @@ class ApplicationConfigManager:
     def __init__(self, path: Path) -> None:
         self.path: Path = path
         self.config: ApplicationConfig = self._load()
-        self.config.favorites.forget_missing()
 
     def _load(self) -> ApplicationConfig:
         if not self.path.exists():

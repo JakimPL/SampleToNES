@@ -116,13 +116,19 @@ The transport's verbs are reached identically from the Playback menu, the toolba
 
 **A click on a waveform puts the playhead at a sample.** The Reconstructions and Instructions
 waveforms draw the audio their tab's own source plays, so a click reaches that source at the sample
-under the pointer: an idle source starts sounding there, and an engaged one moves there and goes on
-sounding or stays paused. Two other gestures share the left button, and each keeps its own meaning:
-a drag pans the view, so a press reads as a click while the pointer comes up within the waveform
-layout's `click_travel` of where it went down, and a double-click fits the view to the audio, so a
-click is reported once it can no longer begin one. The double-click is the one ImGui recognizes, read
-on the press that completes it, so the playhead and the view each answer exactly the gesture meant for
-them (`PlotClickGesture`, `ui/elements/graphs/click.py`).
+under the pointer: an engaged source moves there and goes on sounding or stays paused, and an idle
+one starts sounding there. The seek and the ownership it depends on are read under one lock, so a
+source another has taken the output from starts sounding rather than moving a playback it lost. A
+waveform drawing a voice's own audio draws nothing its player sounds, so it takes no click and its
+hint names none.
+
+The left button carries three gestures. A drag pans the view, so a press reads as a click while the
+pointer comes up within the waveform layout's `click_travel` of where it went down. A double-click
+fits the view to the audio (the plot's `fit_button`), so a click is reported once its double-click
+window has closed. The double-click is the one ImGui recognizes, read on the press that completes it,
+and every press following it within the window belongs to the same burst, so the playhead and the
+view each answer exactly the gesture meant for them (`PlotClickGesture`,
+`ui/elements/graphs/gesture.py`).
 
 Because the target prefers the active tab's own source, `Space` controls what the user is looking at
 whenever that screen can play something, and reaches the source already sounding on a screen that

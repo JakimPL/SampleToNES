@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Type
+from typing import Type
 from unittest.mock import patch
 
 import pytest
@@ -7,7 +7,6 @@ import yaml
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.state import ApplicationStateManager
-from sampletones_application.config.session.state.paths import LastPaths
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_application.tags.reconstructions import TAG_RECONSTRUCTIONS_BROWSER_PANEL
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_BROWSER_PANEL
@@ -44,98 +43,6 @@ class TestApplicationStateManagerInit:
         manager = ApplicationStateManager(Path("/nonexistent/path/state.yaml"))
 
         assert isinstance(manager.state, ApplicationState)
-
-
-class TestApplicationStateManagerHeldToTheDisk:
-    """A session file outlives what it names, so a run reads it against the disk as it loads."""
-
-    @staticmethod
-    def _load(tmp_path: Path, state: Dict[str, Any]) -> ApplicationStateManager:
-        path = tmp_path / "state.yaml"
-        path.write_text(yaml.safe_dump(state))
-        return ApplicationStateManager(path)
-
-    def test_an_open_file_the_disk_has_lost_is_forgotten(self, tmp_path: Path) -> None:
-        manager = self._load(
-            tmp_path,
-            {
-                "current": {
-                    "reconstruction": str(tmp_path / "gone.stn"),
-                    "project": str(tmp_path / "gone.stp"),
-                }
-            },
-        )
-
-        assert manager.current_reconstruction is None
-        assert manager.current_project is None
-
-    def test_an_open_file_still_standing_is_restored(self, tmp_path: Path) -> None:
-        reconstruction = tmp_path / "kept.stn"
-        project = tmp_path / "kept.stp"
-        reconstruction.touch()
-        project.touch()
-
-        manager = self._load(
-            tmp_path,
-            {"current": {"reconstruction": str(reconstruction), "project": str(project)}},
-        )
-
-        assert manager.current_reconstruction == reconstruction
-        assert manager.current_project == project
-
-    def test_a_folder_standing_where_an_open_file_was_is_forgotten(self, tmp_path: Path) -> None:
-        replaced = tmp_path / "replaced.stn"
-        replaced.mkdir()
-
-        manager = self._load(tmp_path, {"current": {"reconstruction": str(replaced)}})
-
-        assert manager.current_reconstruction is None
-
-    def test_a_last_folder_the_disk_has_lost_moves_to_the_nearest_one_standing(self, tmp_path: Path) -> None:
-        kept = tmp_path / "audio"
-        kept.mkdir()
-
-        manager = self._load(
-            tmp_path,
-            {"last_paths": {"audio_input": str(kept / "gone" / "deeper"), "project": str(kept / "gone")}},
-        )
-
-        assert manager.get_audio_input_path() == kept
-        assert manager.get_project_path() == kept
-
-    def test_a_last_folder_still_standing_stays(self, tmp_path: Path) -> None:
-        kept = tmp_path / "instruments"
-        kept.mkdir()
-
-        manager = self._load(tmp_path, {"last_paths": {"instrument": str(kept)}})
-
-        assert manager.get_instrument_path() == kept
-
-    def test_a_last_folder_with_nothing_standing_on_its_way_takes_the_default(self, tmp_path: Path) -> None:
-        """A drive that is gone leaves no folder above the path, so the folder a new profile opens in answers."""
-        with patch(
-            "sampletones_application.config.session.state.paths.nearest_directory",
-            return_value=None,
-        ):
-            manager = self._load(tmp_path, {"last_paths": {"audio": str(tmp_path / "drive" / "audio")}})
-
-        assert manager.get_audio_path() == LastPaths().audio
-
-    def test_an_explorer_folder_the_disk_has_lost_is_dropped(self, tmp_path: Path) -> None:
-        kept = tmp_path / "music"
-        kept.mkdir()
-
-        manager = self._load(tmp_path, {"expanded_directories": [str(kept), str(tmp_path / "gone")]})
-
-        assert manager.expanded_directories == {kept}
-
-    def test_a_file_standing_where_an_explorer_folder_was_is_dropped(self, tmp_path: Path) -> None:
-        replaced = tmp_path / "replaced"
-        replaced.touch()
-
-        manager = self._load(tmp_path, {"expanded_directories": [str(replaced)]})
-
-        assert manager.expanded_directories == set()
 
 
 class TestApplicationStateManagerWindowProperties:
@@ -385,8 +292,6 @@ class TestApplicationStateManagerSave:
     def test_save_and_reload_preserves_the_folders_the_explorer_stands_open(self, tmp_path: Path) -> None:
         """The folders the reader walked into return on the next launch, read down to as they were."""
         path = tmp_path / "state.yaml"
-        (tmp_path / "music").mkdir()
-        (tmp_path / "notes").mkdir()
         manager = ApplicationStateManager(path)
         manager.set_expanded_directories({tmp_path / "music", tmp_path / "notes"})
         manager.save()

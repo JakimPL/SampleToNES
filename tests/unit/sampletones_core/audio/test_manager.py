@@ -175,6 +175,53 @@ class TestPlaybackStart(BaseTestSuite):
         assert positions_at_thread_start == [test_case.expected]
 
 
+class TestSeekingAPlayback(BaseTestSuite):
+    """A seek moves the playback of the owner asking for it, clamped to the audio, under one lock."""
+
+    AUDIO_LENGTH: Final[int] = 8
+
+    @staticmethod
+    def _playing(owner: object, length: int) -> AudioDeviceManager:
+        manager = _manager()
+        manager._audio_data = np.zeros(length, dtype=np.float32)
+        manager._playing = True
+        manager._output_owner = owner
+        return manager
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        position: int
+        expected: int
+
+    test_cases = (
+        TestCase(position=5, expected=5, label="within_the_audio"),
+        TestCase(position=-3, expected=0, label="before_the_audio_clamps_to_its_beginning"),
+        TestCase(position=AUDIO_LENGTH + 4, expected=AUDIO_LENGTH, label="past_the_audio_clamps_to_its_end"),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_owner_moves_its_playback(self, test_case: TestCase) -> None:
+        owner = object()
+        manager = self._playing(owner, self.AUDIO_LENGTH)
+
+        moved = manager.set_position(test_case.position, owner=owner)
+
+        assert (moved, manager.position_of(owner)) == (True, test_case.expected)
+
+    def test_another_owner_leaves_the_playback_where_it_stands(self) -> None:
+        owner = object()
+        manager = self._playing(owner, self.AUDIO_LENGTH)
+        manager._position = 3
+
+        moved = manager.set_position(5, owner=object())
+
+        assert (moved, manager.position_of(owner)) == (False, 3)
+
+
 class TestOwnership:
     """Ownership tells a source's own playback apart from a preview or another source's output."""
 

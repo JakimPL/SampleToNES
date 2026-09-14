@@ -15,7 +15,7 @@ from sampletones_application.tags.graphs import (
     TAG_GLOBAL_GRAPH_THEME_INDICATOR,
     TAG_GLOBAL_GRAPH_THEME_OVERLAY,
 )
-from sampletones_application.ui.elements.graphs.click import PlotClickGesture
+from sampletones_application.ui.elements.graphs.gesture import PlotClickGesture
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.array import ArrayLayer
 from sampletones_application.ui.elements.graphs.layers.instruction import (
@@ -34,6 +34,7 @@ from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_application.utils.palette.colors.grayscale import GrayscaleColor
 from sampletones_application.view_model.shared.waveform_data import WaveformData
+from sampletones_core.constants.audio import START_OF_AUDIO
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.library import InstructionLibraryFragment
 from sampletones_shared.types.application import Sender
@@ -88,6 +89,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.overlay_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_OVERLAY)
 
         self.current_data: Optional[Union[InstructionLibraryFragment[Any], WaveformData]] = None
+        self._plays_what_it_draws = False
         self._series_themes: Dict[BaseColor, str] = {}
         self.current_position: int = 0
 
@@ -120,7 +122,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             anti_aliased=True,
             no_mouse_pos=True,
             no_box_select=True,
-            fit_button=False,
+            fit_button=dpg.mvMouseButton_Left,
             horizontal_mod=dpg.mvKey_LShift,
             pan_button=dpg.mvMouseButton_Left,
             zoom_rate=self.zoom_factor,
@@ -166,12 +168,17 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         """Reports the sample a click on the plot pointed at.
 
         A click names a sample of the audio a recording or an instruction plays, so it is reported
-        while the graph draws one of them.
+        while the graph draws the audio its player sounds.
         """
-        if self.current_data is None:
+        if not self._plays_what_it_draws:
             return
 
         self.call(self.on_position_clicked, round(sample))
+
+    def clear_layers(self) -> None:
+        """Empties the plot of what it draws, which leaves a click nothing to sound until a load."""
+        super().clear_layers()
+        self._plays_what_it_draws = False
 
     def set_overlay_range(self, start: float = 0.0, end: float = 0.0) -> None:
         self._set_overlay_rectangle(x_start=start, x_end=end)
@@ -181,7 +188,13 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._status_bar.set(
             self._msg_regenerating
             if self._reconstruction_dimmed
-            else self._language_manager["global.graph.message.waveform_navigation"]
+            else self._language_manager[
+                (
+                    "global.graph.message.waveform_playable_navigation"
+                    if self._plays_what_it_draws
+                    else "global.graph.message.waveform_navigation"
+                )
+            ]
         )
 
     def _set_overlay_rectangle(self, x_start: float = 0.0, x_end: float = 0.0) -> None:
@@ -219,7 +232,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         """
         self.clear_layers()
         self.current_data = fragment
-        self.current_position = 0
+        self._plays_what_it_draws = True
+        self.current_position = START_OF_AUDIO
 
         self.add_layer(
             InstructionLayer(
@@ -329,6 +343,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._reconstruction_dimmed = False
         self.clear_layers()
         self.current_data = waveform_data
+        self._plays_what_it_draws = True
         for layer in self._display_layers(waveform_data, selected_channels):
             self.add_layer(layer)
 
@@ -410,12 +425,12 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._update_display()
 
     def clear(self) -> None:
-        """Empties the plot down to the two marks it keeps for whatever it draws next: the position
+        """Empties the plot down to the marks it keeps for whatever it draws next: the position
         indicator and the overlay rectangle, both of which live among the axis's children."""
         self._reconstruction_dimmed = False
         self.clear_layers()
         dpg_delete_children(self.y_axis_tag)
-        self.current_position = 0
+        self.current_position = START_OF_AUDIO
         self._add_position_indicator()
         self._set_overlay_rectangle()
 

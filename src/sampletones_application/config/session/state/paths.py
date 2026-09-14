@@ -8,7 +8,6 @@ from sampletones_shared.paths.user import (
     PROJECTS_DIRECTORY,
     RECONSTRUCTIONS_DIRECTORY,
 )
-from sampletones_shared.utils.system.paths import nearest_directory
 
 
 class LastPaths(BaseModel):
@@ -52,27 +51,3 @@ class LastPaths(BaseModel):
     )
     def serialize_paths(self, path: Path) -> str:
         return str(path)
-
-    def relocate_missing(self) -> None:
-        """Moves each remembered folder that has left the disk to the nearest folder standing above it.
-
-        A dialog opens where the reader last worked, so a folder removed since opens it at the
-        closest folder on the way there, and a folder on a drive that is gone opens it where a new
-        profile would.
-        """
-        defaults = LastPaths()
-        self.library = self._standing_directory(self.library, defaults.library)
-        self.reconstruction = self._standing_directory(self.reconstruction, defaults.reconstruction)
-        self.audio_input = self._standing_directory(self.audio_input, defaults.audio_input)
-        self.config = self._standing_directory(self.config, defaults.config)
-        self.instrument = self._standing_directory(self.instrument, defaults.instrument)
-        self.audio = self._standing_directory(self.audio, defaults.audio)
-        self.project = self._standing_directory(self.project, defaults.project)
-
-    @staticmethod
-    def _standing_directory(path: Path, default: Path) -> Path:
-        directory = nearest_directory(path)
-        if directory is None:
-            return default
-
-        return directory

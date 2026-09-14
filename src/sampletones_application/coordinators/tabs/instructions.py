@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 from typing import Callable, List, Optional, Protocol
 
@@ -6,7 +7,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.coordinators.playback.guard import GuardedSamplePlayer
+from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.logic.instruction.details import (
     InstructionDetailsPanelLogic,
@@ -172,7 +173,7 @@ class InstructionsTabCoordinator:
             audio_device_manager,
             on_audio_state_changed,
         )
-        self._guarded_player = GuardedSamplePlayer(
+        self._guarded_player = GuardedPlayer(
             self._instruction_player_logic,
             dialogs=dialogs,
             error_message=language_manager["global.player.message.audio_playback_error"],
@@ -195,7 +196,7 @@ class InstructionsTabCoordinator:
         self._spectrum_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._graph_panels: List[_StackedGraphPanel] = [self._waveform_panel, self._spectrum_panel]
         self._instruction_player_logic.on_position_changed = self._waveform_panel.set_position
-        self._waveform_panel.on_position_clicked = self._guarded_player.play_from
+        self._waveform_panel.on_position_clicked = self._play_from
         self._instruction_details_logic = InstructionDetailsPanelLogic(
             library_manager,
             layout=layout.instructions,
@@ -354,6 +355,10 @@ class InstructionsTabCoordinator:
         self._spectrum_panel.clear_layers()
         self._instruction_details_logic.clear_display()
         self._instruction_player_logic.clear_audio()
+
+    def _play_from(self, position: int) -> None:
+        """Sounds the audio from the sample a click on the waveform pointed at."""
+        self._guarded_player.run_guarded(partial(self._instruction_player_logic.play_from, position))
 
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
         """Persists a center-column card's collapsed state so it restores on the next launch."""

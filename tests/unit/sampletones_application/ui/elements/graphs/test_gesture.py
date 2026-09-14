@@ -1,15 +1,18 @@
-from typing import Final, List, Tuple
+import math
+from typing import Final, List, Optional, Tuple
 
 import pytest
 
-from sampletones_application.ui.elements.graphs import click as click_module
-from sampletones_application.ui.elements.graphs.click import (
+from sampletones_application.ui.elements.graphs import gesture as gesture_module
+from sampletones_application.ui.elements.graphs.gesture import (
     DOUBLE_CLICK_SECONDS,
     PlotClickGesture,
 )
 from sampletones_shared.types.callback import VoidCallback
 
 CLICK_TRAVEL: Final[float] = 4.0
+DOUBLE_CLICK: Final[int] = 2
+DOUBLE_CLICK_DISTANCE: Final[float] = 6.0
 PRESS_SAMPLE: Final[float] = 420.6
 PRESS_SCREEN: Final[Tuple[float, float]] = (300.0, 200.0)
 TAP_SECONDS: Final[float] = 0.05
@@ -18,26 +21,28 @@ TAP_SECONDS: Final[float] = 0.05
 class Mouse:
     """The pointer and the clock as the gesture reads them, with the frames it waits on run by hand.
 
-    A press within the double-click window of the one before it, at the spot it went down, is the
-    second half of a double-click, as ImGui recognizes one.
+    Presses count up while each lands within the double-click window and distance of the one before
+    it, and the press counted second is the double-click, as ImGui recognizes one: a third press in
+    the same burst is none.
     """
 
     def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self.time = 10.0
         self.sample = PRESS_SAMPLE
         self.screen = PRESS_SCREEN
-        self.double_clicked = False
+        self.clicks = 0
+        self._last_press: Optional[Tuple[float, Tuple[float, float]]] = None
         self._armed: List[VoidCallback] = []
-        monkeypatch.setattr(click_module.dpg, "get_total_time", lambda: self.time)
-        monkeypatch.setattr(click_module.dpg, "get_plot_mouse_pos", lambda: (self.sample, 0.0))
-        monkeypatch.setattr(click_module.dpg, "get_mouse_pos", lambda local: self.screen)
+        monkeypatch.setattr(gesture_module.dpg, "get_total_time", lambda: self.time)
+        monkeypatch.setattr(gesture_module.dpg, "get_plot_mouse_pos", lambda: (self.sample, 0.0))
+        monkeypatch.setattr(gesture_module.dpg, "get_mouse_pos", lambda local: self.screen)
         monkeypatch.setattr(
-            click_module.dpg,
+            gesture_module.dpg,
             "is_mouse_button_double_clicked",
-            lambda button: self.double_clicked,
+            lambda button: self.clicks == DOUBLE_CLICK,
         )
         monkeypatch.setattr(
-            click_module.FrameCallbackManager,
+            gesture_module.FrameCallbackManager,
             "set_frame_callback",
             lambda callback, frame_count=1: self._armed.append(callback),
         )
@@ -49,8 +54,23 @@ class Mouse:
         for callback in armed:
             callback()
 
-    def tap(self, gesture: PlotClickGesture) -> None:
+    @property
+    def waiting(self) -> int:
+        """How many readings the gesture has asked the next frame for."""
+        return len(self._armed)
+
+    def press(self, gesture: PlotClickGesture) -> None:
+        within = (
+            self._last_press is not None
+            and self.time - self._last_press[0] < DOUBLE_CLICK_SECONDS
+            and math.dist(self.screen, self._last_press[1]) < DOUBLE_CLICK_DISTANCE
+        )
+        self.clicks = self.clicks + 1 if within else 1
+        self._last_press = (self.time, self.screen)
         gesture.press()
+
+    def tap(self, gesture: PlotClickGesture) -> None:
+        self.press(gesture)
         self.time += TAP_SECONDS
         gesture.release()
 
@@ -102,7 +122,7 @@ class TestAClickWaitsForTheDoubleClickWindow:
         gesture: PlotClickGesture,
         clicked: List[float],
     ) -> None:
-        gesture.press()
+        mouse.press(gesture)
         mouse.time += 2 * DOUBLE_CLICK_SECONDS
         gesture.release()
 
@@ -114,7 +134,7 @@ class TestAClickWaitsForTheDoubleClickWindow:
         gesture: PlotClickGesture,
         clicked: List[float],
     ) -> None:
-        gesture.press()
+        mouse.press(gesture)
         mouse.sample = PRESS_SAMPLE + 100
         mouse.screen = (PRESS_SCREEN[0] + CLICK_TRAVEL, PRESS_SCREEN[1])
         gesture.release()
@@ -130,7 +150,8 @@ class TestAClickWaitsForTheDoubleClickWindow:
     ) -> None:
         mouse.tap(gesture)
         mouse.sample = PRESS_SAMPLE + 300
-        gesture.press()
+        mouse.screen = (PRESS_SCREEN[0] + 10 * DOUBLE_CLICK_DISTANCE, PRESS_SCREEN[1])
+        mouse.press(gesture)
 
         assert clicked == [PRESS_SAMPLE]
 
@@ -145,9 +166,22 @@ class TestADoubleClickReportsNothing:
         clicked: List[float],
     ) -> None:
         mouse.tap(gesture)
-        mouse.double_clicked = True
         mouse.tap(gesture)
-        mouse.double_clicked = False
+        mouse.wait(DOUBLE_CLICK_SECONDS)
+        mouse.wait(DOUBLE_CLICK_SECONDS)
+
+        assert clicked == []
+
+    def test_a_third_click_in_the_burst_reports_nothing(
+        self,
+        mouse: Mouse,
+        gesture: PlotClickGesture,
+        clicked: List[float],
+    ) -> None:
+        """ImGui counts the third press of a burst as no double-click, and it is still the burst."""
+        mouse.tap(gesture)
+        mouse.tap(gesture)
+        mouse.tap(gesture)
         mouse.wait(DOUBLE_CLICK_SECONDS)
         mouse.wait(DOUBLE_CLICK_SECONDS)
 
@@ -160,9 +194,7 @@ class TestADoubleClickReportsNothing:
         clicked: List[float],
     ) -> None:
         mouse.tap(gesture)
-        mouse.double_clicked = True
         mouse.tap(gesture)
-        mouse.double_clicked = False
         mouse.wait(DOUBLE_CLICK_SECONDS)
 
         mouse.sample = PRESS_SAMPLE + 300
@@ -172,6 +204,22 @@ class TestADoubleClickReportsNothing:
         assert clicked == [PRESS_SAMPLE + 300]
 
 
+class TestOneWaitStands:
+    def test_clicks_in_turn_leave_one_reading_waiting(
+        self,
+        mouse: Mouse,
+        gesture: PlotClickGesture,
+        clicked: List[float],
+    ) -> None:
+        """A second click arriving while the first waits reports the first and joins the same wait."""
+        mouse.tap(gesture)
+        mouse.time += DOUBLE_CLICK_SECONDS
+        mouse.sample = PRESS_SAMPLE + 300
+        mouse.tap(gesture)
+
+        assert (clicked, mouse.waiting) == ([PRESS_SAMPLE], 1)
+
+
 class TestADragReportsNothing:
     def test_a_press_coming_up_past_the_travel_reports_nothing(
         self,
@@ -179,7 +227,7 @@ class TestADragReportsNothing:
         gesture: PlotClickGesture,
         clicked: List[float],
     ) -> None:
-        gesture.press()
+        mouse.press(gesture)
         mouse.screen = (PRESS_SCREEN[0] - 3 * CLICK_TRAVEL, PRESS_SCREEN[1])
         gesture.release()
         mouse.wait(DOUBLE_CLICK_SECONDS)

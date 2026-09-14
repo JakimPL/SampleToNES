@@ -1,8 +1,9 @@
+from typing import List
 from unittest.mock import MagicMock
 
 import pytest
 
-from sampletones_application.coordinators.playback.guard import GuardedPlayer, GuardedSamplePlayer
+from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_shared.exceptions import PlaybackError
 
 GUARDED_COMMANDS = ("play", "pause_or_resume")
@@ -56,53 +57,23 @@ class TestGuardedCommands:
         dialogs.show_error.assert_called_once_with(exception, "playback failed")
 
 
-class TestGuardedPlayFrom:
-    """A sample player takes the playhead to a sample under the same guard the transport commands keep."""
+class TestAGuardedRun:
+    """A command beyond the transport runs under the same boundary the transport commands keep."""
 
-    @pytest.fixture
-    def guarded_sample_player(self, player_logic: MagicMock, dialogs: MagicMock) -> GuardedSamplePlayer:
-        return GuardedSamplePlayer(player_logic, dialogs=dialogs, error_message="playback failed")
+    def test_the_command_runs(self, guarded_player: GuardedPlayer, dialogs: MagicMock) -> None:
+        ran: List[int] = []
 
-    def test_delegates_the_sample_to_the_logic(
-        self,
-        guarded_sample_player: GuardedSamplePlayer,
-        player_logic: MagicMock,
-        dialogs: MagicMock,
-    ) -> None:
-        guarded_sample_player.play_from(400)
+        guarded_player.run_guarded(lambda: ran.append(400))
 
-        player_logic.play_from.assert_called_once_with(400)
+        assert ran == [400]
         dialogs.show_error.assert_not_called()
 
-    def test_playback_error_becomes_a_dialog(
-        self,
-        guarded_sample_player: GuardedSamplePlayer,
-        player_logic: MagicMock,
-        dialogs: MagicMock,
-    ) -> None:
+    def test_playback_error_becomes_a_dialog(self, guarded_player: GuardedPlayer, dialogs: MagicMock) -> None:
         exception = PlaybackError("device unavailable")
-        player_logic.play_from.side_effect = exception
 
-        guarded_sample_player.play_from(400)
+        def failing() -> None:
+            raise exception
+
+        guarded_player.run_guarded(failing)
 
         dialogs.show_error.assert_called_once_with(exception, "playback failed")
-
-
-class TestPassThroughs:
-    """Stop and the status queries delegate without a guard, matching the logic's own surface."""
-
-    def test_stop_delegates(self, guarded_player: GuardedPlayer, player_logic: MagicMock) -> None:
-        guarded_player.stop()
-
-        player_logic.stop.assert_called_once_with()
-
-    def test_queries_reflect_the_logic(self, guarded_player: GuardedPlayer, player_logic: MagicMock) -> None:
-        player_logic.is_playing.return_value = True
-        player_logic.is_paused.return_value = False
-        player_logic.is_engaged.return_value = True
-        player_logic.is_loaded.return_value = True
-
-        assert guarded_player.is_playing() is True
-        assert guarded_player.is_paused() is False
-        assert guarded_player.is_engaged() is True
-        assert guarded_player.is_loaded() is True

@@ -26,19 +26,3 @@ class Current(BaseModel):
             return None
 
         return str(value)
-
-    def forget_missing(self) -> None:
-        """Lets go of a reconstruction or project whose file has left the disk since it was open.
-
-        A run restores what the last one had open, so each pointer is held to a file that stands and
-        the run opens on what is there to open.
-        """
-        self.reconstruction = self._standing_file(self.reconstruction)
-        self.project = self._standing_file(self.project)
-
-    @staticmethod
-    def _standing_file(path: Optional[Path]) -> Optional[Path]:
-        if path is None or not path.is_file():
-            return None
-
-        return path
