@@ -4,3 +4,6 @@ band_count: 40
 low_frequency: 30.0
 energy_floor: 1.0e-10
 audibility_range_decibels: 60.0
+compression_exponent: 0.3
+dynamic_range_decibels: 60.0
+level_matching: true

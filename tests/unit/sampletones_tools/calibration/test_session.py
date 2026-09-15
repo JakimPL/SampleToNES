@@ -1,30 +1,39 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, List
 
 import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
+from sampletones_tools.calibration.corpus.item import CorpusItem
+from sampletones_tools.calibration.layout import CSV_REPORT, MARKDOWN_REPORT
+from sampletones_tools.calibration.referee.protocol import Referee
+from sampletones_tools.calibration.runner import CalibrationRow, CalibrationVariant
 from sampletones_tools.calibration.session import (
     OUTPUT_ROOT,
     CalibrationRequest,
+    base_configuration,
+    calibrate,
     default_output,
     floats_named,
     methods_named,
 )
 from sampletones_tools.runs import RUN_STAMP
 
+EVALUATE = "sampletones_tools.calibration.session.evaluate_variants"
+
 
 class TestMethodsNamed:
-    def test_nothing_named_is_fft_and_cqt(self) -> None:
-        assert methods_named(None) == [SpectrumMethod.FFT, SpectrumMethod.CQT]
+    def test_nothing_named_is_the_default(self) -> None:
+        assert methods_named(None, (SpectrumMethod.LOG_SPACED_FFT,)) == [SpectrumMethod.LOG_SPACED_FFT]
 
     def test_names_are_read_in_order(self) -> None:
-        assert methods_named("cqt, fft") == [SpectrumMethod.CQT, SpectrumMethod.FFT]
+        assert methods_named("cqt, fft", ()) == [SpectrumMethod.CQT, SpectrumMethod.FFT]
 
     def test_an_unknown_method_is_refused_with_the_known_ones(self) -> None:
         with pytest.raises(ValueError, match="Unknown spectrum method 'dct'; the methods are"):
-            methods_named("fft,dct")
+            methods_named("fft,dct", ())
 
 
 class TestFloatsNamed:
@@ -46,6 +55,51 @@ class TestDefaultOutput:
 
         assert output.parent == OUTPUT_ROOT
         assert datetime.strptime(output.name, RUN_STAMP)
+
+
+class TestBaseConfiguration:
+    def test_without_a_file_the_run_measures_the_default_settings(self) -> None:
+        assert base_configuration(None) == Config()
+
+    def test_a_file_is_read_as_it_stands(self, tmp_path: Path) -> None:
+        defaults = Config()
+        saved = defaults.model_copy(update={"general": defaults.general.model_copy(update={"max_workers": 3})})
+        path = tmp_path / "config.json"
+        saved.save(path)
+
+        assert base_configuration(path).general.max_workers == 3
+
+
+class TestCalibrate:
+    def test_a_run_returns_its_report_beside_the_table_of_scores(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        def evaluated(
+            variants: List[CalibrationVariant],
+            items: List[CorpusItem],
+            item_paths: Dict[str, Path],
+            referees: List[Referee],
+            run_directory: Path,
+        ) -> List[CalibrationRow]:
+            return []
+
+        monkeypatch.setattr(EVALUATE, evaluated)
+        request = CalibrationRequest(
+            base=Config(),
+            output=tmp_path / "run",
+            methods=[SpectrumMethod.FFT],
+            perceptual_exponents=[1.0],
+            temporal_weights=[],
+            channels=[ChannelName.PULSE1],
+        )
+
+        report = calibrate(request)
+
+        assert report == tmp_path / "run" / MARKDOWN_REPORT
+        assert report.is_file()
+        assert (tmp_path / "run" / CSV_REPORT).is_file()
 
 
 class TestCalibrationRequest:

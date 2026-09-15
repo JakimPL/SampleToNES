@@ -11,9 +11,25 @@ noise:
   white_level: 0.5
 mix:
   noise_levels: [0.05, 0.15]
+  bass_frequency: 55.0
+  hat_period_seconds: 0.25
+  hat_decay_seconds: 0.008
+  hat_level: 0.4
 transient:
   snare_decay_seconds: 0.15
   kick_decay_seconds: 0.25
   kick_sweep_frequencies: [150.0, 50.0]
   attack_seconds: 0.005
   attack_tone_decay_seconds: 0.3
+dynamics:
+  burst_seconds: 0.2
+  hiss_level: 0.09
+polyphony:
+  chord_frequencies: [220.0, 277.18, 329.63]
+  melody_frequencies: [440.0, 523.25, 659.25, 880.0, 659.25, 523.25]
+  note_seconds: 0.25
+  note_decay_seconds: 0.4
+  snare_period_seconds: 0.5
+  snare_delay_seconds: 0.25
+  snare_decay_seconds: 0.04
+  snare_level: 0.35

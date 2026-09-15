@@ -147,13 +147,14 @@ channel only when the gain in match quality outweighs the cost of the change.
 ### Calibration
 
 A repeatable experiment that tunes the criterion's settings by reconstructing a
-fixed test set and scoring the results. See [Calibration](concepts/calibration.md).
+fixed test set and scoring the results. See [Calibration](tools/calibration.md).
 
 ### Referee / corpus
 
 Terms from calibration: a *referee* is an independent audio-distance judge that
 scores a reconstruction against its original; the *corpus* is the fixed set of
-synthetic test sounds every configuration is run against.
+synthetic test sounds every configuration is run against; a *render* is one
+reconstruction of a corpus sound, written as a WAV file for listening.
 
 ## Tracker and export
 

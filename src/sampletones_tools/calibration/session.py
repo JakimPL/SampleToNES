@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Final, List, Optional, Sequence, Tuple
+from typing import Final, List, Optional, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -11,28 +11,23 @@ from sampletones_shared.utils.text import listed_items
 from sampletones_tools.calibration.config.corpus import CorpusConfig
 from sampletones_tools.calibration.corpus.synthesis import build_corpus
 from sampletones_tools.calibration.corpus.writer import write_corpus
+from sampletones_tools.calibration.layout import CORPUS_DIRECTORY, CSV_REPORT, MARKDOWN_REPORT
 from sampletones_tools.calibration.referee.factory import build_referees
 from sampletones_tools.calibration.report import write_csv, write_markdown
 from sampletones_tools.calibration.runner import build_variants, evaluate_variants
 from sampletones_tools.runs import stamped_run_directory
 
-DEFAULT_METHODS: Final[Tuple[SpectrumMethod, ...]] = (SpectrumMethod.FFT, SpectrumMethod.CQT)
-DEFAULT_PERCEPTUAL_EXPONENTS: Final[Tuple[float, ...]] = (1.0,)
-BASE_BLEND: Final[Tuple[float, ...]] = ()
 OUTPUT_ROOT: Final[Path] = USER_PATH_DOCUMENTS / "calibration"
-CORPUS_DIRECTORY: Final[str] = "corpus"
-CSV_REPORT: Final[str] = "report.csv"
-MARKDOWN_REPORT: Final[str] = "report.md"
 
 
-def methods_named(stated: Optional[str]) -> List[SpectrumMethod]:
-    """The spectrum methods a run evaluates: the ones named, comma separated, or FFT and CQT.
+def methods_named(stated: Optional[str], default: Sequence[SpectrumMethod]) -> List[SpectrumMethod]:
+    """The spectrum methods a run evaluates: the ones named, comma separated, or ``default``.
 
     Raises:
         ValueError: If a name is none of the spectrum methods.
     """
     if stated is None:
-        return list(DEFAULT_METHODS)
+        return list(default)
 
     methods: List[SpectrumMethod] = []
     for name in listed_items(stated):
@@ -62,6 +57,15 @@ def floats_named(stated: Optional[str], default: Sequence[float]) -> List[float]
             raise ValueError(f"Not a number: {value!r}.") from error
 
     return values
+
+
+def base_configuration(path: Optional[Path]) -> Config:
+    """The configuration a run measures: the file named, or the program's packaged defaults.
+
+    A run with no file measures the same settings on every machine, whatever the application has
+    saved, so its figures compare with any other such run.
+    """
+    return Config.load(path) if path is not None else Config()
 
 
 def default_output() -> Path:
@@ -98,10 +102,10 @@ class CalibrationRequest(BaseModel):
 
 
 def calibrate(request: CalibrationRequest) -> Path:
-    """Reconstructs the corpus under every variant, scores it with every referee and writes the reports.
+    """Reconstructs the corpus under every variant, scores it, and writes the renders and the reports.
 
     Returns:
-        Path: The directory holding the corpus, ``report.csv`` and ``report.md``.
+        Path: The markdown report, which sits in the run directory beside the renders.
     """
     base = request.pinned_base()
     request.output.mkdir(parents=True, exist_ok=True)
@@ -121,9 +125,9 @@ def calibrate(request: CalibrationRequest) -> Path:
     logger.info(
         f"Evaluating {len(variants)} variants x {len(items)} items x {len(referees)} referees on {channel_names}"
     )
-    rows = evaluate_variants(variants, items, item_paths, referees)
+    rows = evaluate_variants(variants, items, item_paths, referees, request.output)
 
     write_csv(rows, request.output / CSV_REPORT)
-    write_markdown(rows, request.output / MARKDOWN_REPORT)
-    logger.info(f"Report written to {request.output}")
-    return request.output
+    report = request.output / MARKDOWN_REPORT
+    write_markdown(rows, report)
+    return report

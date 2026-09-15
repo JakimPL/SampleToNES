@@ -81,13 +81,16 @@ starts carrying.
   recording turns up is a different answer from a folder that holds none, which is what that branch
   says today.
 * Calibrating the pitch refinement. `generation.refinement`'s confidence threshold, change weight
-  and window are chosen by hand; `docs/concepts/calibration.md`'s experiment measures the criterion
+  and window are chosen by hand; `docs/tools/calibration.md`'s experiment measures the criterion
   blend and could measure these beside it. The change weight is the one with an audible trade-off:
   it decides how large a one-frame excursion the walk follows rather than absorbs, which is
   vibrato against jitter.
 
 ### Technical
 
+* Leading the calibration report with `mr-loudness-dB`. `build_referees` puts `mr-auditory-dB`
+  first, which reads silence as closer to a tone than any render, until by-ear ratings of a sweep
+  hold the loudness-weighted referee at ρ ≥ 0.6 in every category.
 * API documentation
 * Code documentation
 * A backward-compatibility corpus of files older builds actually wrote. Every upgrade step is

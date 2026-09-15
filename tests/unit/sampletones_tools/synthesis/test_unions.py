@@ -5,8 +5,10 @@ import pytest
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from sampletones_tools.synthesis.envelopes.exponential_decay import ExponentialDecayEnvelope
+from sampletones_tools.synthesis.envelopes.gate import GateEnvelope
 from sampletones_tools.synthesis.envelopes.linear_attack import LinearAttackEnvelope
 from sampletones_tools.synthesis.envelopes.linear_ramp import LinearRampEnvelope
+from sampletones_tools.synthesis.envelopes.periodic_decay import PeriodicDecayEnvelope
 from sampletones_tools.synthesis.envelopes.types import EnvelopeUnion
 from sampletones_tools.synthesis.oscillators.exponential_glide import ExponentialGlideOscillator
 from sampletones_tools.synthesis.oscillators.geometric_sweep import GeometricSweepOscillator
@@ -91,6 +93,18 @@ DISCRIMINATION_CASES: Final[Tuple[DiscriminationCase, ...]] = (
         adapter=ENVELOPE_ADAPTER,
         payload={"kind": "linear_ramp"},
         expected_type=LinearRampEnvelope,
+    ),
+    DiscriminationCase(
+        name="gate",
+        adapter=ENVELOPE_ADAPTER,
+        payload={"kind": "gate", "start_seconds": 0.25, "end_seconds": 0.5},
+        expected_type=GateEnvelope,
+    ),
+    DiscriminationCase(
+        name="periodic_decay",
+        adapter=ENVELOPE_ADAPTER,
+        payload={"kind": "periodic_decay", "period_seconds": 0.25, "time_constant_seconds": 0.01, "delay_seconds": 0.0},
+        expected_type=PeriodicDecayEnvelope,
     ),
 )
 

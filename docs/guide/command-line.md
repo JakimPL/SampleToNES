@@ -31,7 +31,8 @@ Add `--help` to any command to see its options.
 
 `sampletones --help` also lists commands for developing _SampleToNES_, such as `check` and
 `codec`. They run from a copy of the source code, and [Tooling](../development/tooling.md)
-describes them.
+describes them. `sampletones calibration` measures how well the app reconstructs a set of reference
+sounds; [Calibration](../tools/calibration.md) explains how to run it and read the results.
 
 ## Options
 

@@ -5,8 +5,10 @@ from pydantic import BaseModel, Field
 from sampletones_shared.utils.serialization import load_yaml_model
 from sampletones_tools.calibration.paths import CORPUS_CONFIG_PATH
 
+from .dynamics import DynamicsConfig
 from .mix import MixConfig
 from .noise import NoiseConfig
+from .polyphony import PolyphonyConfig
 from .timbre import TimbreConfig
 from .tone import ToneConfig
 from .transient import TransientConfig
@@ -54,6 +56,12 @@ class CorpusConfig(BaseModel, frozen=True):
     )
     transient: TransientConfig = Field(
         description="Percussive probes.",
+    )
+    dynamics: DynamicsConfig = Field(
+        description="The level probe beside the crescendo.",
+    )
+    polyphony: PolyphonyConfig = Field(
+        description="Probes holding more than one voice.",
     )
 
     @classmethod

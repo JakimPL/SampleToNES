@@ -95,6 +95,12 @@ These rules govern the Python in this repository. They complement
 1. Write for a reader with no picture of the screen. Name a control by the label the application ships, read from the language file, rather than by where it sits.
 1. Write in plain, direct English. Short sentences carrying one fact each, the noun repeated rather than replaced by a pronoun, and a bulleted list wherever the page states several things of one kind. Use everyday verbs — *shows*, *changes*, *opens*, *removes*, *click* — in place of this repository's own vocabulary (*settles*, *holds*, *answers*, *stands for*, *reaches*), which names concepts a reader of the guide has never met.
 
+## Tools
+
+1. `docs/tools/` is written for someone running a command that measures _SampleToNES_ or produces examples, in an installed copy or a checkout. A page per tool says what the tool is for, how to run it with no options, what it writes, every custom use, and how it works last.
+1. A tool's options are explained on its page. [Tooling](tooling.md) lists the commands in one line each and links to the page.
+1. The guide's writing rules hold: plain, direct English, short sentences, and a list wherever the page states several things of one kind.
+
 ## Tests
 
 1. A test file mirrors the ownership of the code it exercises.

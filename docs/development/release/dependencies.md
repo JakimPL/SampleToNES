@@ -73,6 +73,14 @@ installed, and PyInstaller follows that import into the bundle. The application 
 files, so the exclusion spares every bundle Pillow's extension modules and the imaging libraries
 that come with them. `scripts/verify_bundle.py` holds the release bundles to it.
 
+## Calibration
+
+The calibration harness scores renders with referees of its own, built on `numpy` and `scipy`. The
+`calibration` dependency group adds [Zimtohrli](https://github.com/google/zimtohrli), a
+psychoacoustic model, as a second opinion. The group is declared for Linux, where its referee is
+verified, and stays out of `dev`: `uv sync --group calibration`, with the extras the environment
+already uses named beside it, installs it. See [Calibration](../../tools/calibration.md).
+
 ## NES player driver
 
 The player that runs on the console is 6502 assembly, held in three parts:

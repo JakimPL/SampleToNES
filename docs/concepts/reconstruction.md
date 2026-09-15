@@ -7,7 +7,7 @@ without prior knowledge of the codebase, while pointing at the packages that
 implement each part.
 
 The tunable choices described here are set empirically; the experiment that
-picks them is described in [Calibration](calibration.md).
+picks them is described in [Calibration](../tools/calibration.md).
 
 ## 1. The problem
 

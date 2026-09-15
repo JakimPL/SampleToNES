@@ -55,7 +55,8 @@ launcher's name and extension, the icon, the package manager, the compiler flags
 needs) sits behind one `Platform` protocol with an implementation per system, chosen by a factory
 from `platform.system()`. A script never branches on the operating system itself, and a system the
 project does not build on is refused by name. The Makefile is the developer's index, one line per
-target: a target names the script that does the work and passes its flag. The two shell files at
+target: a target names the script that does the work and passes its flag, or, for `run` and
+`calibration`, the `sampletones` command it starts with no options. The two shell files at
 the root, `install.sh` and `install.bat`, exist for the double-click path and call the same bundle
 script.
 
@@ -101,7 +102,7 @@ The developer commands, listed by `sampletones_tools/registry.py` and run as
 
 | Command | What it does |
 |---|---|
-| `calibration [--config FILE] [-o DIR] [--methods LIST] [--perceptual-exponents LIST] [--temporal-weights LIST] [--channels LIST]` | Reconstructs the calibration corpus under every variant of the sweep, scores it with every referee, and writes the reports; without `-o` the run lands in a timestamped directory under Documents/SampleToNES/calibration |
+| `calibration [--config FILE] [-o DIR] [--methods LIST] [--perceptual-exponents LIST] [--temporal-weights LIST] [--channels LIST]` | Measures how the program reconstructs the reference sounds under the packaged suite, or the parts of it the options replace, and writes the renders and the report; `make calibration` runs it with no options; without `-o` the run lands in a timestamped directory under Documents/SampleToNES/calibration. [Calibration](../tools/calibration.md) explains every use |
 | `check <name> [options]` | Holds the tree to one of its checks: `import-boundary`, `language-keys`, `palette-colors`, `rendered-literals`, `shortcut-actions`, `tag-names`, `unused-tags`; each is a pre-commit hook, and [architecture](architecture.md#enforcement) says what each holds. Needs a checkout |
 | `btp samples -o DIR`, `ftm samples -o DIR`, `nsf samples -o DIR` | Builds the synthetic corpus and writes it as example files: the arrangement as two Bitphase documents (at its tempo and as a groove), the arrangement as a FamiTracker module, or each sample and the arrangement as `.nsf` programs |
 | `codec report -o DIR` | Compresses the synthetic corpus under every layer of the codec and writes the report the format's constants are settled from, as CSV and Markdown |

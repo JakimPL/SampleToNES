@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Final, FrozenSet, List, Optional
+from typing import Dict, Final, FrozenSet, List, Mapping, Optional, Tuple
 
 import numpy as np
 
@@ -12,12 +12,14 @@ from sampletones_core.constants.enums import (
 )
 from sampletones_core.fft import Window
 from sampletones_core.headless.library import generate_library
+from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibrary
-from sampletones_core.reconstructions import Reconstructor
+from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_shared.logger import logger
 
 from .corpus.item import CorpusItem
-from .referee.protocol import Referee
+from .referee.protocol import Judgment, Referee
+from .renders import RenderRecord, sounding_timelines, write_recording, write_render
 
 CALIBRATION_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(DEFAULT_CHANNELS)
 
@@ -34,6 +36,7 @@ class CalibrationRow:
     item: str
     category: str
     referee: str
+    component: str
     score: float
 
 
@@ -124,50 +127,94 @@ def evaluate_variants(
     items: List[CorpusItem],
     item_paths: Dict[str, Path],
     referees: List[Referee],
+    run_directory: Path,
 ) -> List[CalibrationRow]:
     """
-    Reconstruct the corpus under every variant and score the results.
+    Reconstruct the corpus under every variant, score the results and keep what was heard.
 
     Each corpus item is reconstructed with the variant's configuration and every
-    referee scores the approximation against the preprocessed original, both on the
-    common scale set by the working-level coefficient.
+    referee judges the approximation against the preprocessed original, both on the
+    common scale set by the working-level coefficient. The render, the recording it
+    reconstructs and a record of the scores and the sounding frames are written under
+    the run directory, so a render can be heard and read again after the run.
 
     Args:
         variants: Labeled configurations to evaluate.
         items: Corpus items, carrying the category used in reports.
         item_paths: Written WAV path per corpus item name.
         referees: Referees scoring each reconstruction.
+        run_directory: The directory the run writes its renders and recordings into.
 
     Returns:
-        One row per (variant, item, referee).
+        One row per (variant, item, referee, reading).
     """
     rows: List[CalibrationRow] = []
     for variant in variants:
         ensure_library(variant.config)
         reconstructor = Reconstructor(variant.config, CALIBRATION_CHANNELS)
-        for item in items:
+        sample_rate = variant.config.library.sample_rate
+        for position, item in enumerate(items):
             path = item_paths[item.name]
             reconstruction = reconstructor(path)
             if reconstruction is None:
                 logger.info(f"[{variant.label}] {item.name}: reconstruction unavailable")
                 continue
 
-            reference = reconstructor.load_audio(path) / reconstruction.coefficient
-            estimate = np.asarray(reconstruction.approximation, dtype=np.float64)
-            length = min(reference.shape[0], estimate.shape[0])
+            reference, estimate = _compared_signals(reconstructor.load_audio(path), reconstruction)
+            judgments = {referee.name: referee.judge(reference, estimate) for referee in referees}
+            silence = {referee.name: referee.judge(reference, np.zeros_like(reference)).score for referee in referees}
+            rows.extend(_rows(variant, item, judgments))
 
-            for referee in referees:
-                score = referee.score(reference[:length], estimate[:length])
-                rows.append(
-                    CalibrationRow(
-                        variant=variant.label,
-                        item=item.name,
-                        category=item.category,
-                        referee=referee.name,
-                        score=score,
-                    )
-                )
-
+            write_recording(run_directory, item.name, reference * reconstruction.coefficient, sample_rate)
+            write_render(
+                run_directory,
+                RenderRecord(
+                    variant=variant.label,
+                    item=item.name,
+                    position=position,
+                    category=item.category,
+                    timelines=sounding_timelines(_played_instructions(reconstruction)),
+                    judgments={name: judgment.readings() for name, judgment in judgments.items()},
+                    silence=silence,
+                ),
+                estimate * reconstruction.coefficient,
+                sample_rate,
+            )
             logger.info(f"[{variant.label}] {item.name}: scored")
 
     return rows
+
+
+def _compared_signals(
+    recording: np.ndarray,
+    reconstruction: Reconstruction,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """The recording and its approximation on the working-level scale, cut to a common length."""
+    reference = recording / reconstruction.coefficient
+    estimate = np.asarray(reconstruction.approximation, dtype=np.float64)
+    length = min(reference.shape[0], estimate.shape[0])
+    return reference[:length], estimate[:length]
+
+
+def _played_instructions(reconstruction: Reconstruction) -> Dict[ChannelName, List[InstructionUnion]]:
+    instructions = reconstruction.instructions
+    return {channel_name: instructions[channel_name] for channel_name in reconstruction.playing_channels}
+
+
+def _rows(
+    variant: CalibrationVariant,
+    item: CorpusItem,
+    judgments: Mapping[str, Judgment],
+) -> List[CalibrationRow]:
+    return [
+        CalibrationRow(
+            variant=variant.label,
+            item=item.name,
+            category=item.category,
+            referee=referee,
+            component=component,
+            score=value,
+        )
+        for referee, judgment in judgments.items()
+        for component, value in judgment.readings().items()
+    ]

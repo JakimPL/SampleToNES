@@ -36,7 +36,13 @@ reconstruction. It is written to be read without the source code.
 - [Instruction library](concepts/instruction-library.md) — the catalog of NES sounds the search draws from.
 - [Song compression](concepts/compression.md) — how a whole song is fitted into the space an NES program has for it.
 - [Project](concepts/project.md) — a whole composition: a song and the reconstructions it is built from.
-- [Calibration](concepts/calibration.md) — how the reconstruction's settings are tuned by experiment.
+
+## Tools
+
+The [**tools**](tools/) section explains the commands that measure _SampleToNES_ or produce
+examples: how to run each one with no options, what it writes, and every custom use.
+
+- [Calibration](tools/calibration.md) — how well the reconstruction reproduces a set of reference sounds, with every reconstruction written out to listen to.
 
 ## File formats
 
