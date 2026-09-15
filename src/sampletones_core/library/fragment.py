@@ -20,7 +20,6 @@ from sampletones_core.instructions import InstructionData, InstructionT
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.exceptions import InstructionTypeMismatchError
 from sampletones_shared.types.data import (
-    Initials,
     ReducedObject,
     SerializedData,
 )
@@ -99,17 +98,6 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
             return True
 
         return self.frequency * frame_length >= sample_rate
-
-    def get(
-        self,
-        generator: Generator[InstructionT, Any],
-        config: Config,
-        window: Window,
-        initials: Initials = None,
-    ) -> Fragment:
-        generator.set_timer(self.instruction)
-        shift = generator.timer.calculate_offset(initials)
-        return self.get_fragment(shift, config, window)
 
     @property
     def data(self) -> np.ndarray:

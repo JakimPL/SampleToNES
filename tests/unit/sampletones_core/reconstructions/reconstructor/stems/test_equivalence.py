@@ -10,6 +10,11 @@ from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.library import InstructionLibraryData
+from sampletones_core.reconstructions.reconstructor.approximation import (
+    Approximation,
+    ExpectedApproximation,
+    WaveformApproximation,
+)
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher, ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -128,7 +133,7 @@ class TestLatticeWidthLeavesOwnership:
         assert narrow.resting == wide.resting
         for narrow_choice, wide_choice in zip(narrow.choices, wide.choices):
             assert narrow_choice.instruction == wide_choice.instruction
-            _assert_same_fragment(narrow_choice.approximation.rendering, wide_choice.approximation.rendering)
+            _assert_same_approximation(narrow_choice.approximation, wide_choice.approximation)
             assert len(wide_choice.column) >= len(narrow_choice.column)
 
 
@@ -237,7 +242,19 @@ def _assert_same_picks(
     for channel_name, candidate in baseline.items():
         choice = assignment.by_channel[channel_name]
         assert choice.instruction == candidate.instruction
-        _assert_same_fragment(choice.approximation.rendering, candidate.approximation.rendering)
+        _assert_same_approximation(choice.approximation, candidate.approximation)
+
+
+def _assert_same_approximation(left: Approximation, right: Approximation) -> None:
+    """Two approximations measure a candidate alike: one rendering, or one expectation."""
+    match left, right:
+        case WaveformApproximation(), WaveformApproximation():
+            _assert_same_fragment(left.rendering, right.rendering)
+        case ExpectedApproximation(), ExpectedApproximation():
+            assert (left.mean, left.variance, left.drive) == (right.mean, right.variance, right.drive)
+            np.testing.assert_array_equal(left.feature.values, right.feature.values)
+        case _:
+            raise AssertionError(f"{type(left).__name__} measures what {type(right).__name__} does not")
 
 
 def _assert_same_fragment(left: Fragment, right: Fragment) -> None:

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, Final, List, Tuple
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import (
@@ -8,10 +8,7 @@ from sampletones_core.constants.enums import (
     InstructionClassName,
 )
 from sampletones_core.fft import Fragment, Window
-from sampletones_core.generators import (
-    GeneratorUnion,
-    get_generator_by_instruction,
-)
+from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import (
     INSTRUCTION_CLASS_MAP,
     InstructionUnion,
@@ -21,7 +18,8 @@ from sampletones_core.library import InstructionLibraryData
 from .approximation import ExpectedApproximation
 
 SerializedInstructions = Tuple[Tuple[InstructionClassName, bytes], ...]
-CachedApproximations = Callable[[SerializedInstructions, Tuple[GeneratorUnion, ...]], Fragment]
+CachedApproximations = Callable[[SerializedInstructions], Fragment]
+START_OF_SAMPLE: Final[int] = 0
 
 
 @lru_cache(maxsize=16)
@@ -48,28 +46,18 @@ class CandidateProvider:
         remaining_generator_classes: Dict[GeneratorClassName, GeneratorUnion],
     ) -> Tuple[Tuple[InstructionUnion, ...], Fragment]:
         valid_instructions = tuple(self.library_data.filter(tuple(remaining_generator_classes)).keys())
-        approximations = self._get_approximations(valid_instructions, remaining_generator_classes)
+        approximations = self._get_approximations(valid_instructions)
         return valid_instructions, approximations
 
-    def get_approximation(self, instruction: InstructionUnion, generator: GeneratorUnion) -> Fragment:
-        library_fragment = self.library_data[instruction]
-        fragment = library_fragment.get(
-            generator,
-            self.config,
-            self.window,
-            generator.initials,
-        )
+    def get_approximation(self, instruction: InstructionUnion) -> Fragment:
+        """The candidate's library sample from its own start, played at the configured drive."""
+        fragment = self.library_data[instruction].get_fragment(START_OF_SAMPLE, self.config, self.window)
         return fragment * self.config.generation.drive
 
-    def get_expected_approximation(
-        self,
-        instruction: InstructionUnion,
-        generator: GeneratorUnion,
-    ) -> ExpectedApproximation:
+    def get_expected_approximation(self, instruction: InstructionUnion) -> ExpectedApproximation:
         """The candidate's contribution averaged over every phase its library sample holds."""
         mean, variance = self._sample_moments(instruction)
         return ExpectedApproximation(
-            rendering=self.get_approximation(instruction, generator),
             feature=self.library_data[instruction].feature,
             mean=mean,
             variance=variance,
@@ -86,34 +74,16 @@ class CandidateProvider:
 
         return moments
 
-    def _get_approximations(
-        self,
-        valid_instructions: Tuple[InstructionUnion, ...],
-        remaining_generator_classes: Dict[GeneratorClassName, GeneratorUnion],
-    ) -> Fragment:
-        serialized_instructions = serialize_instructions(valid_instructions)
-        remaining_generators = tuple(remaining_generator_classes.values())
-        return self._cached_approximations(serialized_instructions, remaining_generators)
+    def _get_approximations(self, valid_instructions: Tuple[InstructionUnion, ...]) -> Fragment:
+        return self._cached_approximations(serialize_instructions(valid_instructions))
 
     def _build_cached_approximations(self) -> CachedApproximations:
         @lru_cache(maxsize=16)
-        def cached(
-            serialized_instructions: SerializedInstructions,
-            remaining_generators: Tuple[GeneratorUnion, ...],
-        ) -> Fragment:
-            remaining_generator_classes = dict(
-                zip(
-                    (generator.class_name() for generator in remaining_generators),
-                    remaining_generators,
-                )
-            )
+        def cached(serialized_instructions: SerializedInstructions) -> Fragment:
             approximations: List[Fragment] = []
             for instruction_class_name, serialized_instruction in serialized_instructions:
-                instruction_class = INSTRUCTION_CLASS_MAP[instruction_class_name]
-                instruction = instruction_class.deserialize(serialized_instruction)
-                generator = get_generator_by_instruction(instruction, remaining_generator_classes)
-                approximation = self.get_approximation(instruction, generator)
-                approximations.append(approximation)
+                instruction = INSTRUCTION_CLASS_MAP[instruction_class_name].deserialize(serialized_instruction)
+                approximations.append(self.get_approximation(instruction))
 
             return Fragment.stack(approximations).to_cupy()
 

@@ -32,6 +32,7 @@ STEM_IDS: Final = "stem_ids"
 INSTRUCTIONS: Final = "instructions"
 
 CHANNELS: Final = "channels"
+FINAL_REGENERATION: Final = "final_regeneration"
 GENERATOR: Final = "generator"
 NAME: Final = "name"
 

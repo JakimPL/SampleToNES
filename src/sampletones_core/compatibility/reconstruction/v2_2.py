@@ -1,4 +1,4 @@
-from typing import Any, Final
+from typing import Any, Final, FrozenSet
 
 from sampletones_core.compatibility.fields import (
     APPROXIMATIONS_DATA,
@@ -10,6 +10,7 @@ from sampletones_core.compatibility.fields import (
     CHANNELS,
     CONFIG,
     ENTRIES,
+    FINAL_REGENERATION,
     GENERATION,
     GENERATOR_NAME,
     GENERATORS,
@@ -37,6 +38,7 @@ from sampletones_shared.types.data import SerializedData
 
 SOURCE_DATA_VERSION: Final[str] = "2.1"
 TARGET_DATA_VERSION: Final[str] = "2.2"
+RETIRED_GENERATION_SETTINGS: Final[FrozenSet[str]] = frozenset({CHANNELS, FINAL_REGENERATION})
 
 
 def _normalized_audio_filepath(data: SerializedData) -> Any:
@@ -132,11 +134,12 @@ def _with_default_stems_record(data: SerializedData) -> SerializedData:
     return updated
 
 
-def _without_configured_channels(data: SerializedData) -> SerializedData:
-    """The embedded config with its channel list dropped, now the stems record carries it.
+def _without_retired_generation_settings(data: SerializedData) -> SerializedData:
+    """The embedded config with the generation settings 2.2 retired dropped.
 
     Which channels a run hands out is the setup's to state, so the configuration holds the
-    settings that shaped the library and nothing about the channels themselves.
+    settings that shaped the library and nothing about the channels themselves; and a frame is
+    always recorded as its instruction renders, so the choice to record the matched audio goes.
     """
     config = data.get(CONFIG)
     if not isinstance(config, dict):
@@ -149,7 +152,7 @@ def _without_configured_channels(data: SerializedData) -> SerializedData:
     updated = dict(data)
     updated[CONFIG] = {
         **config,
-        GENERATION: {key: value for key, value in generation.items() if key != CHANNELS},
+        GENERATION: {key: value for key, value in generation.items() if key not in RETIRED_GENERATION_SETTINGS},
     }
     return updated
 
@@ -164,14 +167,15 @@ def update(data: SerializedData) -> SerializedData:
     records the source audio as one path per stem, and carries the single-entry stems
     record every reconstruction states, down to the settings each stem is converted
     with: the channels it takes, and the ones it carries toward its own recording. The
-    channel selection moves onto that record, so the embedded configuration lets it go.
+    channel selection moves onto that record, so the embedded configuration lets it go, along
+    with the retired choice to record the matched audio.
     """
     updated = dict(data)
     updated = _renamed_stream_keys(updated)
     updated = _stamped_embedded_config(updated)
     updated = _normalized_source_paths(updated)
     updated = _with_default_stems_record(updated)
-    return _without_configured_channels(updated)
+    return _without_retired_generation_settings(updated)
 
 
 V2_2: Final[VersionUpdate] = VersionUpdate(

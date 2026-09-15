@@ -168,7 +168,7 @@ class TestHowACandidateIsMeasured(BaseTestSuite):
             ]
         )
 
-        approximation = worker.matcher.build_approximation(synthetic_fragment, noise, channels[ChannelName.NOISE])
+        approximation = worker.matcher.build_approximation(synthetic_fragment, noise)
         cost = float(to_numpy(approximation.temporal_loss(synthetic_fragment, criterion))[0])
 
         assert cost == pytest.approx(averaged, rel=AVERAGE_TOLERANCE)
@@ -184,14 +184,10 @@ class TestHowACandidateIsMeasured(BaseTestSuite):
     ) -> None:
         searching = _searching(config, window, channels, library_data, True)
         keeping = _searching(config, window, channels, library_data, False)
-        generator = get_generator_by_instruction(
-            audible_instruction,
-            get_remaining_generator_classes(dict(channels)),
-        )
         criterion = searching.scorer.criterion
 
-        searched = searching.matcher.build_approximation(synthetic_fragment, audible_instruction, generator)
-        kept = keeping.matcher.build_approximation(synthetic_fragment, audible_instruction, generator)
+        searched = searching.matcher.build_approximation(synthetic_fragment, audible_instruction)
+        kept = keeping.matcher.build_approximation(synthetic_fragment, audible_instruction)
 
         assert float(to_numpy(searched.temporal_loss(synthetic_fragment, criterion))[0]) <= float(
             to_numpy(kept.temporal_loss(synthetic_fragment, criterion))[0]

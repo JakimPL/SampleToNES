@@ -12,14 +12,10 @@ from ..criterion import Criterion
 class Approximation(Protocol):
     """What a candidate contributes to a frame it is scored on.
 
-    A candidate renders audio, costs something against the target over time, and leaves part of
-    the target for the channels still to answer. How it does the last two depends on what its
-    frames have in common, so the matching asks the approximation rather than its waveform.
+    A candidate costs something against the target over time and leaves part of the target for the
+    channels still to answer, and how it does both depends on what its frames have in common, so
+    the matching asks the approximation for each.
     """
-
-    @property
-    def rendering(self) -> Fragment:
-        """The audio the candidate renders for the frame."""
 
     def temporal_loss(self, target: Fragment, criterion: Criterion) -> xp.ndarray:
         """The temporal term of the candidate's cost against ``target``, as a stack of one."""
@@ -53,21 +49,19 @@ class WaveformApproximation:
 class ExpectedApproximation:
     """A candidate measured by what it contributes on average over the phases a frame starts on.
 
-    A candidate whose frames show different stretches of a pseudo-random sequence renders whatever
-    stretch the channel has reached, since each frame continues the sequence from where the last
-    one left it. Its temporal term is the loss expected over every phase, and the target keeps
-    what an uncorrelated contribution leaves of it: its level beyond the candidate's mean, and its
-    power beyond the candidate's power.
+    A candidate whose frames show different stretches of a pseudo-random sequence plays whichever
+    stretch the channel's register has reached when the frame is rendered, which the decoded path
+    settles after the matching. Its temporal term is the loss expected over every phase, and the target keeps what
+    an uncorrelated contribution leaves of it: its level beyond the candidate's mean, and its power
+    beyond the candidate's power.
 
     Attributes:
-        rendering: The audio the candidate renders from the channel's carried state.
         feature: The candidate's phase-averaged feature at unit drive.
         mean: The mean level of the candidate's sample at unit drive.
         variance: The variance of the candidate's sample at unit drive.
         drive: The amplitude the candidate plays at.
     """
 
-    rendering: Fragment
     feature: Histogram
     mean: float
     variance: float

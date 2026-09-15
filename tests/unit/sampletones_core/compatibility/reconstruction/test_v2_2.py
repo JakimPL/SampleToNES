@@ -46,6 +46,11 @@ class TestReconstructionV2_2:
             {"id": 0, SETTINGS: {CHANNELS: ["pulse1", "noise"], BENDS: []}}
         ]
 
+    def test_the_retired_choice_to_record_the_matched_audio_goes(self) -> None:
+        data = {"config": {"generation": {"final_regeneration": False, "drive": 1.0}}}
+
+        assert update(data)["config"]["generation"] == {"drive": 1.0}
+
     def test_stamps_the_embedded_config_metadata(self) -> None:
         data = {"config": {"metadata": {"reconstruction_data_version": "2.1"}}}
 

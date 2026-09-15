@@ -210,11 +210,11 @@ assignment builds columns to exactly that width.
 Candidates are scored in two stages: every candidate is first ranked by the
 phase-independent spectral term, and the best `top_k` are then re-scored with the
 full criterion. A candidate whose frames repeat one shape has its temporal term
-evaluated on the candidate aligned to the target (`find_best_phase`); the aligned
-phase stands in for the rendered phase, which keeps each oscillator continuous across
-frames. A candidate whose frames show different stretches of a sequence renders
-whatever stretch its channel has reached, so it is scored at its expected temporal
-term whatever `find_best_phase` says.
+evaluated on its waveform aligned to the target when `find_best_phase` is on, and on its
+library sample from the start otherwise; either phase stands in for the one the
+generator reaches when the frame is rendered. A candidate whose frames show different
+stretches of a sequence renders whatever stretch its channel has reached, so it is
+scored at its expected temporal term whatever `find_best_phase` says.
 
 ### 5.1 Assigning channels
 
@@ -370,8 +370,10 @@ once it is asked for, and hold for a whole run.
 
 Once instructions are chosen, each one is rendered back through its generator
 (`sampletones_core.generators`), which carries oscillator phase across frames so
-there are no clicks at frame boundaries; an "off" instruction yields silence for that
-channel and frame. The per-channel renderings are concatenated and summed into the
+there are no clicks at frame boundaries, and resets it on a new note where
+`reset_phase` says so; an "off" instruction yields silence for that channel and frame.
+The reconstruction records exactly this rendering, so what it shows is what an export
+plays. The per-channel renderings are concatenated and summed into the
 final approximation, and the `Reconstruction` keeps both the audio and the
 per-channel instruction streams (which can be exported to a tracker format via
 `sampletones_core.exporters`). The coefficient from §3.4 is stored so the

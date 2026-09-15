@@ -204,6 +204,4 @@ again.
 
 * Misaligned dialog boxes sizes at initialization
 * `Fragment.__mul__` scales a fragment's feature linearly by the drive, where the power a feature describes scales by the drive's square.
-* `Reconstructor._record` scales the matched audio by the drive when `final_regeneration` is off, though the matching already rendered it at that drive.
-* A render's explicit `initials` override the reset `reset_phase` makes, and `LFSRTimer.calculate_offset` indexes the whole register cycle while a long noise sample in the library holds only its middle second.
 * A residual reads what a pick adds beyond the target as power still to cover — `FFTTransformer.subtract` takes `|·|` and a re-analyzed residual measures magnitude — so a later channel adds sound where an earlier pick overshot.

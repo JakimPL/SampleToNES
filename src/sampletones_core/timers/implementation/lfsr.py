@@ -134,11 +134,6 @@ class LFSRTimer(Timer):
         index = int(self.lfsr_tables[self.short].lfsr_to_index[lfsr])
         return index if index != OFF_CYCLE else CYCLE_START
 
-    def calculate_offset(self, initials: Initials = None) -> int:
-        lfsr, clock = initials if initials is not None else (1, 0.0)
-        index = self.resolve_index(lfsr)
-        return int(np.ceil(index / self._clocks_per_sample - clock))
-
     def generate_frame(self, save: bool = True) -> np.ndarray:
         tables = self.lfsr_tables[self.short]
         length = self.lfsr_period

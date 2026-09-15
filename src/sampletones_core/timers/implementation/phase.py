@@ -46,10 +46,6 @@ class PhaseTimer(Timer):
 
         return self.generate_frame(save=save)
 
-    def calculate_offset(self, initials: Initials = None) -> int:
-        phase = initials[0] if initials is not None else 0.0
-        return round(self.sample_rate / self._real_frequency * phase)
-
     def generate_frame(self, save: bool = True) -> np.ndarray:
         indices = np.arange(self.frame_length, dtype=np.float32) + 1
         delta = self.phase_increment / self._timer_ticks * self._cycles_per_sample

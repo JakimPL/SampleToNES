@@ -32,9 +32,6 @@ class Timer(ABC):
     @abstractmethod
     def initials(self) -> Tuple[Any, ...]: ...
 
-    @abstractmethod
-    def calculate_offset(self, initials: Initials = None) -> int: ...
-
     def prepare_frame(self, window: Optional[Window] = None) -> np.ndarray:
         length = self.frame_length if window is None else window.size
         return np.zeros(length, dtype=np.float32)

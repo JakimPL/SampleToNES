@@ -54,7 +54,6 @@ configuration key.
 | --- | --- | --- |
 | `drive` | how hard the channels are pushed (alias: `mixer`) | 0 < value ≤ 5 |
 | `reset_phase` | reset oscillator phase within each instruction | `true` / `false` |
-| `final_regeneration` | re-render the chosen instructions at the end to keep oscillators continuous | `true` / `false` |
 
 ### `generation.calculation`
 

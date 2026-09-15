@@ -308,17 +308,16 @@ class Reconstructor:
             assignment.drop(channel_name)
 
     def _record_streams(self, streams: Streams, report: ReconstructionReporter) -> None:
-        """Folds the decoded streams into the state, one frame at a time.
+        """Renders the decoded streams into the state, one frame at a time.
 
-        Frame order is what carries a generator's oscillator phase from one frame into the
-        next, which is the continuity final regeneration renders against.
+        Frame order is what carries a generator's oscillator state from one frame into the next,
+        so each channel plays its streams the way the NES would.
         """
         frames = self._frame_count(streams)
         for position in range(frames):
             announce(report, ReconstructionStage.RENDERING, position, frames)
             for channel_name in self.state.channel_names:
-                candidate = streams[channel_name][position]
-                self._record(channel_name, candidate.instruction, candidate.approximation.rendering.audio)
+                self._record(channel_name, streams[channel_name][position].instruction)
 
         announce(report, ReconstructionStage.RENDERING, frames, frames)
 
@@ -447,28 +446,15 @@ class Reconstructor:
         self,
         channel_name: ChannelName,
         instruction: InstructionUnion,
-        matched_audio: np.ndarray,
     ) -> None:
-        """Appends one frame of one channel to the reconstruction state.
+        """Appends one frame of one channel, rendered from its instruction at the configured drive.
 
-        Regenerates the frame from its instruction when final regeneration is enabled, which
-        carries the oscillator's phase into the next frame, otherwise keeps the audio the match
-        was made on. Either one is scaled by the configured drive.
+        The generator carries its oscillator state into the next frame, and resets it where the
+        configuration resets the phase on a new note, as the renderer of a whole channel does.
         """
         generator: GeneratorUnion = self.channels[channel_name]
-        if self.config.generation.final_regeneration:
-            approximation = (
-                generator(
-                    instruction,  # type: ignore[arg-type]
-                    initials=generator.initials,
-                    save=True,
-                )
-                * self.config.generation.drive
-            )
-        else:
-            approximation = matched_audio * self.config.generation.drive
-
-        self.state.append(channel_name, instruction, approximation)
+        rendered = generator(instruction, save=True)  # type: ignore[arg-type]
+        self.state.append(channel_name, instruction, rendered * self.config.generation.drive)
 
     def reset_generators(self) -> None:
         """Resets every channel's generator so the next reconstruction starts fresh."""

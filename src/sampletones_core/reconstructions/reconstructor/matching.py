@@ -4,10 +4,7 @@ from typing import Dict, List, Tuple
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.fft import Fragment
-from sampletones_core.generators import (
-    GeneratorUnion,
-    get_generator_by_instruction,
-)
+from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import InstructionUnion
 
 from .approximation import Approximation, WaveformApproximation
@@ -84,14 +81,9 @@ class FrameMatcher:
         scored: List[ScoredCandidate] = []
         for index in shortlist:
             instruction = valid_instructions[index]
-            generator = get_generator_by_instruction(
-                instruction,
-                remaining_generator_classes,
-            )
             approximation = self.build_approximation(
                 fragment,
                 instruction,
-                generator,
             )
             cost = self.scorer.candidate_cost(
                 fragment,
@@ -117,7 +109,6 @@ class FrameMatcher:
         self,
         fragment: Fragment,
         instruction: InstructionUnion,
-        generator: GeneratorUnion,
     ) -> Approximation:
         """
         Builds one candidate's approximation for scoring.
@@ -132,17 +123,9 @@ class FrameMatcher:
             frame_length=self.config.library.frame_length,
             sample_rate=self.config.library.sample_rate,
         ):
-            return self.candidate_provider.get_expected_approximation(
-                instruction,
-                generator,
-            )
+            return self.candidate_provider.get_expected_approximation(instruction)
 
         if self.config.generation.calculation.find_best_phase:
             return WaveformApproximation(self.phase_aligner.align(fragment, instruction))
 
-        return WaveformApproximation(
-            self.candidate_provider.get_approximation(
-                instruction,
-                generator,
-            )
-        )
+        return WaveformApproximation(self.candidate_provider.get_approximation(instruction))

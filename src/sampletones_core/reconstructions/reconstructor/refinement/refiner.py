@@ -58,13 +58,8 @@ class PitchRefiner:
 
     @property
     def active(self) -> bool:
-        """Whether this run bends its notes.
-
-        A run keeping the audio each frame was matched on would write a bend it never sounds, so
-        the refinement acts where the chosen instructions are rendered afresh and some stem asks
-        for a bend.
-        """
-        return bool(self.stems.bent_channels) and self.config.generation.final_regeneration
+        """Whether this run bends its notes, which some stem asking for a bend decides."""
+        return bool(self.stems.bent_channels)
 
     def refine(
         self,

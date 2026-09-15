@@ -5,7 +5,6 @@ from sampletones_core.constants.algorithm import (
     DIVERGENCE_BETA,
     DRIVE,
     FAST_DIFFERENCE,
-    FINAL_REGENERATION,
     FIND_BEST_PHASE,
     MAX_DRIVE,
     PERCEPTUAL_EXPONENT,
@@ -105,7 +104,6 @@ class GenerationConfig(DataModel):
     )
 
     reset_phase: bool = Field(default=RESET_PHASE)
-    final_regeneration: bool = Field(default=FINAL_REGENERATION)
 
     calculation: CalculationConfig = Field(default_factory=CalculationConfig)
     weights: WeightsConfig = Field(default_factory=WeightsConfig)

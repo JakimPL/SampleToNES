@@ -47,7 +47,6 @@ FAST_DIFFERENCE: Final[bool] = False
 PHASE_ALIGNER: Final[PhaseAlignerName] = PhaseAlignerName.CROSS_CORRELATION
 
 RESET_PHASE: Final[bool] = False
-FINAL_REGENERATION: Final[bool] = True
 SPECTRAL_LOSS_WEIGHT: Final[float] = 0.80
 TEMPORAL_LOSS_WEIGHT: Final[float] = 0.20
 

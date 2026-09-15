@@ -13,6 +13,7 @@ from sampletones_core.constants.enums import (
 )
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.generators import MIXER_LEVELS
+from sampletones_core.generators.render import render_channels
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -205,8 +206,8 @@ class TestReconstructorCall:
         assert isinstance(result, Reconstruction)
 
 
-class TestReconstructorFinalRegeneration:
-    """What a frame records: the instruction rendered afresh, or the audio it was matched on."""
+class TestTheAudioAReconstructionRecords:
+    """A frame records its instruction rendered afresh, which is the audio the channel plays."""
 
     def _tone_path(self, tmp_path: Path, config: Config, synthetic_fragment: Fragment) -> Path:
         from sampletones_core.audio import write_wave
@@ -215,25 +216,14 @@ class TestReconstructorFinalRegeneration:
         write_wave(audio_path, config.library.sample_rate, np.tile(synthetic_fragment.audio, 3).astype(np.float32))
         return audio_path
 
-    def _reconstructor(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        final_regeneration: bool,
-    ) -> Reconstructor:
-        updated_config = config.model_copy(
-            update={"generation": config.generation.model_copy(update={"final_regeneration": final_regeneration})}
-        )
-        return _make_reconstructor(updated_config, library_data)
-
-    def test_final_regeneration_reruns_every_channel_generator(
+    def test_every_channel_generator_renders_the_frames_it_records(
         self,
         config: Config,
         library_data: InstructionLibraryData,
         synthetic_fragment: Fragment,
         tmp_path: Path,
     ) -> None:
-        reconstructor = self._reconstructor(config, library_data, final_regeneration=True)
+        reconstructor = _make_reconstructor(config, library_data)
 
         reconstruction = reconstructor(self._tone_path(tmp_path, config, synthetic_fragment))
 
@@ -242,16 +232,29 @@ class TestReconstructorFinalRegeneration:
             generator = reconstructor.channels[channel_name]
             assert generator.previous_instruction is reconstruction.instructions[channel_name][-1]
 
-    def test_without_final_regeneration_the_matched_audio_stands(
+    @pytest.mark.parametrize("reset_phase", [False, True], ids=["carried_phase", "reset_phase"])
+    def test_the_recorded_audio_is_what_the_channels_render(
         self,
         config: Config,
         library_data: InstructionLibraryData,
         synthetic_fragment: Fragment,
         tmp_path: Path,
+        reset_phase: bool,
     ) -> None:
-        reconstructor = self._reconstructor(config, library_data, final_regeneration=False)
+        """The phase a new note starts on follows the configuration in both, so an export plays what
+        the reconstruction shows."""
+        resetting = config.model_copy(
+            update={"generation": config.generation.model_copy(update={"reset_phase": reset_phase})}
+        )
+        reconstructor = _make_reconstructor(resetting, library_data)
 
-        reconstruction = reconstructor(self._tone_path(tmp_path, config, synthetic_fragment))
+        reconstruction = reconstructor(self._tone_path(tmp_path, resetting, synthetic_fragment))
 
         assert reconstruction is not None
-        assert all(generator.previous_instruction is None for generator in reconstructor.channels.values())
+        rendered = render_channels(reconstruction.instructions, resetting)
+        for channel_name in reconstruction.playing_channels:
+            np.testing.assert_allclose(
+                reconstruction.approximations[channel_name],
+                rendered[channel_name] * resetting.generation.drive,
+                atol=1e-6,
+            )
