@@ -281,19 +281,19 @@ def active_frame_level(
     audibility_floor: float = COEFFICIENT_AUDIBILITY_FLOOR,
 ) -> float:
     """
-    Robust reference level for normalization.
+    Robust RMS level of the typical audible frame.
 
-    Returns the ``percentile``-th percentile of the per-frame peak amplitudes over
-    frames whose peak exceeds ``audibility_floor`` times the global peak. Anchoring to
-    the typical audible frame keeps the reference stable when the signal holds a lone
-    loud transient or long stretches of silence. Falls back to the global peak when no
-    frame is audible or the audio is shorter than one frame.
+    Returns the ``percentile``-th percentile of the per-frame RMS levels over frames whose
+    level exceeds ``audibility_floor`` times the loudest frame's. Anchoring to the typical
+    audible frame keeps the reference stable when the signal holds a lone loud transient or
+    long stretches of silence, and measuring RMS states how much sound a frame carries, which
+    is what a channel's volume renders. Audio shorter than one frame reads as its own RMS level.
 
     Args:
         audio: Input audio array.
         frame_length: Number of samples per frame.
-        percentile: Percentile of the audible per-frame peaks to return.
-        audibility_floor: Fraction of the global peak below which a frame is silence.
+        percentile: Percentile of the audible per-frame levels to return.
+        audibility_floor: Fraction of the loudest frame's level below which a frame is silence.
 
     Returns:
         The robust level, or 0.0 for empty or silent audio.
@@ -302,23 +302,21 @@ def active_frame_level(
     if audio.size == 0:
         return 0.0
 
-    peak = float(np.max(np.abs(audio)))
-    if peak == 0.0:
-        return 0.0
-
-    frame_count = audio.shape[0] // frame_length
+    samples = audio.astype(np.float64)
+    frame_count = samples.shape[0] // frame_length
     if frame_count == 0:
-        return peak
+        return float(np.sqrt(np.mean(np.square(samples))))
 
-    frames = audio[: frame_count * frame_length].reshape(
+    frames = samples[: frame_count * frame_length].reshape(
         frame_count,
         frame_length,
     )
-    frame_peaks = np.max(np.abs(frames), axis=1)
-    audible = frame_peaks[frame_peaks > audibility_floor * peak]
-    if audible.size == 0:
-        return peak
+    frame_levels = np.sqrt(np.mean(np.square(frames), axis=1))
+    loudest = float(np.max(frame_levels))
+    if loudest == 0.0:
+        return 0.0
 
+    audible = frame_levels[frame_levels > audibility_floor * loudest]
     return float(np.percentile(audible, percentile))
 
 

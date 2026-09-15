@@ -66,17 +66,6 @@ class StemsConfig(DataModel):
         """Every channel some stem may occupy, which is the set an assignment puts in play."""
         return frozenset(channel for entry in self.entries for channel in entry.settings.channels)
 
-    @property
-    def frame_budget(self) -> int:
-        """The most channels that can sound in one frame under this setup.
-
-        Each stem holds at most ``channel_cap`` channels per frame and every held channel is one
-        of the covered ones, so the smaller of the two bounds is what a frame can reach. The
-        working level is measured against this budget, which keeps a capped run's target within
-        what its channels render.
-        """
-        return min(len(self.covered_channels), len(self.entries) * self.channel_cap)
-
     @model_validator(mode="after")
     def _validate_unique_entry_ids(self) -> Self:
         ids = [entry.id for entry in self.entries]

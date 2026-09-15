@@ -50,8 +50,9 @@ A `.stn` file holds:
 * **stems assignment** — the stems setup the reconstruction was built under and,
   per channel, the source holding each frame (`stems_data`). Every reconstruction
   carries one: a conversion from a single file records one stem covering every
-  channel it plays. A frame no source took records the resting stem id, `-1`,
-  which is what a channel sounds where a channel cap or a hierarchy left it free.
+  channel it plays. A frame whose channel is silent records the resting stem id,
+  `-1`: a frame no source took, where a channel cap or a hierarchy left it free, and a
+  frame the decoding settled on a silent instruction.
 
 A channel standing by rests at a reference pitch of its own, so the first envelope
 written into it sounds on a mid-range note, and it leaves every dimension it offers

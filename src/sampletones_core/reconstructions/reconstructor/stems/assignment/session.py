@@ -52,6 +52,7 @@ class StemOffer:
     shortlist: Tuple[ScoredCandidate, ...]
     generator_classes: Dict[GeneratorClassName, GeneratorUnion]
     residual_energy: float
+    silence_cost: float
 
     @property
     def candidate(self) -> ScoredCandidate:
@@ -61,12 +62,13 @@ class StemOffer:
     def bid(self) -> float:
         """How much of what this stem still holds its best candidate covers.
 
-        A cost is a fraction of its own target's energy, so two stems' costs stand on different
-        scales and comparing them alone would hand a channel to whichever recording is easiest to
-        approximate. Weighting the cost by the energy behind it states the covering in absolute
-        terms, so the channel goes to the stem with the most sound left to render.
+        The covering is how far the candidate's cost falls below the cost of leaving the residual
+        silent. A cost is a fraction of its own target's energy, so two stems' costs stand on
+        different scales and comparing them alone would hand a channel to whichever recording is
+        easiest to approximate. Weighting the covering by the energy behind it states it in
+        absolute terms, so the channel goes to the stem with the most sound left to render.
         """
-        return self.residual_energy * max(0.0, 1.0 - self.candidate.cost)
+        return self.residual_energy * (self.silence_cost - self.candidate.cost)
 
     @property
     def class_restricted(self) -> bool:
@@ -194,6 +196,7 @@ class AssignmentSession:
                 shortlist=tuple(scored),
                 generator_classes=remaining_generator_classes,
                 residual_energy=self.matcher.reference_energy(self.residuals[stem_id]),
+                silence_cost=self.matcher.silence_cost(self.residuals[stem_id]),
             )
             if best is None or offer.bid > best.bid:
                 best = offer

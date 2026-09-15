@@ -126,26 +126,6 @@ class TestStemsConfigViews:
         stems = _stems_config()
         assert stems.covered_channels == frozenset({ChannelName.PULSE1, ChannelName.NOISE})
 
-    def test_frame_budget_stops_at_the_covered_channels(self) -> None:
-        stems = _stems_config()
-        assert stems.frame_budget == len(stems.covered_channels)
-
-    def test_frame_budget_stops_at_the_cap(self) -> None:
-        stems = StemsConfig(
-            entries=[
-                StemEntry(
-                    id=0,
-                    settings=StemSettings(
-                        channels=[ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE],
-                        bends=bending_channels([ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE]),
-                    ),
-                )
-            ],
-            hierarchy=StemsHierarchy(levels=[[0]]),
-            channel_cap=1,
-        )
-        assert stems.frame_budget == 1
-
 
 class TestSingleEntry:
     def test_names_one_stem_over_every_channel(self) -> None:
@@ -160,4 +140,3 @@ class TestSingleEntry:
         channels = [ChannelName.PULSE1, ChannelName.TRIANGLE]
         stems = StemsConfig.single_entry(channels, bending_channels(channels), channel_cap=1)
         assert stems.channel_cap == 1
-        assert stems.frame_budget == 1

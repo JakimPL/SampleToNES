@@ -105,6 +105,10 @@ class FrameMatcher:
         """How much sound a target holds, in the units the scoring measures its cost in."""
         return self.scorer.reference_energy(fragment)
 
+    def silence_cost(self, fragment: Fragment) -> float:
+        """What leaving a target silent costs, on the scale its candidates are scored on."""
+        return self.scorer.silence_cost(fragment)
+
     def build_approximation(
         self,
         fragment: Fragment,

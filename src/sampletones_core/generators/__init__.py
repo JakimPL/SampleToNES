@@ -5,6 +5,7 @@ from .implementation.triangle import TriangleGenerator
 from .maps import (
     CHANNEL_CLASSES,
     CLASS_NAME_TO_GENERATOR_MAP,
+    FULL_SCALE_RMS_LEVELS,
     GENERATOR_CLASS_MAP,
     GENERATOR_TO_CLASS_NAME_MAP,
     GENERATOR_TO_INSTRUCTION_MAP,
@@ -31,6 +32,7 @@ from .utils import (
 __all__ = [
     "CHANNEL_CLASSES",
     "CLASS_NAME_TO_GENERATOR_MAP",
+    "FULL_SCALE_RMS_LEVELS",
     "GENERATOR_CLASS_MAP",
     "GENERATOR_TO_CLASS_NAME_MAP",
     "GENERATOR_TO_INSTRUCTION_MAP",

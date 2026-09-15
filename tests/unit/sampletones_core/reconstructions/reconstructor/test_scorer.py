@@ -104,6 +104,36 @@ class TestCandidateCost:
         assert cost == pytest.approx(worker.scorer.criterion.alpha * spectral_cost, abs=1e-5)
 
 
+class TestSilenceCost:
+    def test_silence_costs_what_a_silent_candidate_costs(
+        self,
+        worker: ReconstructorWorker,
+        synthetic_fragment: Fragment,
+    ) -> None:
+        """Silence stands on the scale candidates are scored on, as the candidate whose frame is empty."""
+        silent = synthetic_fragment.silence()
+        spectral_cost = float(worker.scorer.spectral_costs(synthetic_fragment, Fragment.stack([silent]))[0])
+
+        expected = worker.scorer.candidate_cost(synthetic_fragment, spectral_cost, WaveformApproximation(silent))
+
+        assert worker.scorer.silence_cost(synthetic_fragment) == pytest.approx(expected, rel=1e-5)
+
+    def test_the_source_instruction_improves_on_silence(
+        self,
+        worker: ReconstructorWorker,
+        library_data: InstructionLibraryData,
+        audible_instruction: InstructionUnion,
+        config: Config,
+        window: Window,
+    ) -> None:
+        target = library_data[audible_instruction].get_fragment(0, config, window)
+        aligned = worker.phase_aligner.align(target, audible_instruction)
+
+        assert worker.scorer.candidate_cost(target, 0.0, WaveformApproximation(aligned)) < worker.scorer.silence_cost(
+            target
+        )
+
+
 class TestTopK:
     def test_top_k_is_ascending(
         self,

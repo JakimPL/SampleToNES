@@ -98,8 +98,8 @@ match to the original sample.
 
 ### Working level (coefficient)
 
-A single scale factor applied to the input so its typical loudness lands in the
-amplitude range the NES channels can reproduce.
+A single scale factor applied to the input so its typical frame plays at the level
+one NES channel renders at full volume.
 
 ## Analysis and scoring
 

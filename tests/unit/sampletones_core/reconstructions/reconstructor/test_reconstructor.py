@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Final, List
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -9,15 +11,24 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
+    ChannelName,
+    GeneratorClassName,
     bending_channels,
 )
 from sampletones_core.fft import Fragment, Window
-from sampletones_core.generators import MIXER_LEVELS
+from sampletones_core.generators import FULL_SCALE_RMS_LEVELS
 from sampletones_core.generators.render import render_channels
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_shared.exceptions import NoLibraryDataError
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
+
+TRIANGLE_LEVEL: Final[float] = FULL_SCALE_RMS_LEVELS[GeneratorClassName.TRIANGLE_GENERATOR]
+SINE_FRAMES: Final[int] = 30
+SINE_AMPLITUDE: Final[float] = 0.8
+SINE_CYCLES_PER_FRAME: Final[int] = 4
 
 
 def _make_reconstructor(config: Config, library_data: InstructionLibraryData) -> Reconstructor:
@@ -68,7 +79,7 @@ class TestReconstructorGetCoefficient:
         reconstructor = _make_reconstructor(config, library_data)
         audio = np.ones(config.library.frame_length, dtype=np.float32) * 0.5
         coefficient = reconstructor.get_coefficient(audio, _full_setup(config))
-        assert coefficient == pytest.approx(0.5 / _total_mixer(reconstructor))
+        assert coefficient == pytest.approx(0.5 / TRIANGLE_LEVEL)
 
     def test_coefficient_is_robust_to_a_lone_transient(
         self,
@@ -77,12 +88,11 @@ class TestReconstructorGetCoefficient:
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
         frame_length = config.library.frame_length
-        total_mixer = _total_mixer(reconstructor)
         audio = np.full(frame_length * 24, 0.05, dtype=np.float32)
         audio[:frame_length] = 1.0
         coefficient = reconstructor.get_coefficient(audio, _full_setup(config))
-        assert coefficient == pytest.approx(0.05 / total_mixer, rel=1e-3)
-        assert coefficient < 1.0 / total_mixer
+        assert coefficient == pytest.approx(0.05 / TRIANGLE_LEVEL, rel=1e-3)
+        assert coefficient < 1.0 / TRIANGLE_LEVEL
 
     def test_louder_audio_produces_larger_coefficient(
         self,
@@ -95,29 +105,71 @@ class TestReconstructorGetCoefficient:
         loud = np.ones(config.library.frame_length, dtype=np.float32) * 0.9
         assert reconstructor.get_coefficient(loud, setup) > reconstructor.get_coefficient(quiet, setup)
 
-    def test_a_capped_setup_anchors_to_what_one_frame_reaches(
+    def test_a_steady_sine_lands_at_the_level_a_full_volume_triangle_plays(
         self,
         config: Config,
         library_data: InstructionLibraryData,
     ) -> None:
-        """One channel per frame reaches one channel's weight, so that is what the level is measured against."""
         reconstructor = _make_reconstructor(config, library_data)
-        channels = list(DEFAULT_CHANNELS)
-        capped = StemsConfig.single_entry(channels, bending_channels(channels), channel_cap=1)
+        frame_length = config.library.frame_length
+        phase = np.arange(frame_length * SINE_FRAMES) * SINE_CYCLES_PER_FRAME / frame_length
+        sine = (SINE_AMPLITUDE * np.sin(2.0 * np.pi * phase)).astype(np.float32)
+
+        scaled = sine / reconstructor.get_coefficient(sine, _full_setup(config))
+
+        level = float(np.sqrt(np.mean(np.square(scaled.astype(np.float64)))))
+        assert level == pytest.approx(TRIANGLE_LEVEL, rel=1e-2)
+
+
+class TestReconstructorWorkingLevel(BaseTestSuite):
+    """The working level is the full-scale RMS level of the quietest tone channel a setup covers."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        channels: List[ChannelName]
+        anchor: GeneratorClassName
+
+    test_cases = (
+        TestCase(
+            label="triangle_among_the_tone_channels",
+            channels=[ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE],
+            anchor=GeneratorClassName.TRIANGLE_GENERATOR,
+        ),
+        TestCase(
+            label="pulse_without_the_triangle",
+            channels=[ChannelName.PULSE1, ChannelName.NOISE],
+            anchor=GeneratorClassName.PULSE_GENERATOR,
+        ),
+        TestCase(
+            label="noise_without_a_tone_channel",
+            channels=[ChannelName.NOISE],
+            anchor=GeneratorClassName.NOISE_GENERATOR,
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_level_follows_the_covered_channels(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+        test_case: TestCase,
+    ) -> None:
+        reconstructor = _make_reconstructor(config, library_data)
+        setup = StemsConfig.single_entry(test_case.channels, bending_channels(test_case.channels))
         audio = np.ones(config.library.frame_length, dtype=np.float32) * 0.5
 
-        loudest = max(MIXER_LEVELS[generator.class_name()] for generator in reconstructor.channels.values())
-
-        assert reconstructor.get_coefficient(audio, capped) == pytest.approx(0.5 / loudest)
+        assert reconstructor.get_coefficient(audio, setup) == pytest.approx(
+            0.5 / FULL_SCALE_RMS_LEVELS[test_case.anchor]
+        )
 
 
 def _full_setup(config: Config) -> StemsConfig:
     channels = list(DEFAULT_CHANNELS)
     return StemsConfig.single_entry(channels, bending_channels(channels))
-
-
-def _total_mixer(reconstructor: Reconstructor) -> float:
-    return sum(MIXER_LEVELS[generator.class_name()] for generator in reconstructor.channels.values())
 
 
 class TestReconstructorGetFragments:

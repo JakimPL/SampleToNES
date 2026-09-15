@@ -65,6 +65,27 @@ class Scorer:
         energy = self.criterion.reference_energy(xp.asarray(target.feature.values))
         return float(to_numpy(energy).reshape(-1)[0])
 
+    def silence_cost(self, target: Fragment) -> float:
+        """
+        Full criterion cost of leaving a target silent, the cost every candidate improves on.
+
+        Silence is scored as a candidate whose feature and waveform are zero, through the same
+        spectral and temporal terms and the same blend, so a candidate's cost reads against it on
+        one scale.
+
+        Args:
+            target: Target fragment to measure.
+
+        Returns:
+            The blended criterion cost of silence.
+        """
+        feature = xp.asarray(target.feature.values)
+        audio = xp.asarray(target.audio)
+        spectral = self.criterion.spectral_loss(feature, xp.zeros_like(feature)[None, :])
+        temporal = self.criterion.temporal_loss(audio, xp.zeros_like(audio)[None, :])
+        combined = self.criterion.combine_losses(spectral, temporal)
+        return float(to_numpy(combined).reshape(-1)[0])
+
     def candidate_cost(
         self,
         target: Fragment,

@@ -50,8 +50,8 @@ input through a fixed sequence of stages:
    optionally clean it up (normalize, quantize). Several sources load together, so
    one scale drawn from the peak of their sum holds them at the balance they were
    captured in.
-2. **Set a working level** — scale the whole signal so its typical loudness sits in
-   the range the NES channels can reproduce, keeping quiet passages matchable (§3.4).
+2. **Set a working level** — scale the whole signal so its typical frame plays at the
+   level one channel renders at full volume, keeping quiet passages matchable (§3.4).
 3. **Fragment** it into short, fixed-length frames
    (`sampletones_core.fft.fragment`); from here on each channel holds one
    instruction per frame.
@@ -152,14 +152,19 @@ at every gamma.
 
 ### 3.4 The working level (coefficient)
 
-A single **coefficient** scales the input before matching so that its typical
-loudness lands in the amplitude range the NES channels span. It anchors to a
-*robust* level — a high percentile of the per-frame peak amplitudes over the audible
-frames (`active_frame_level` in `sampletones_core.audio`) — rather than to the single
-loudest sample. Anchoring to the peak would let one transient (a kick, a click)
-push the rest of the signal below the quietest note the hardware can play, leaving
-most frames un-matchable; anchoring to a robust level keeps the bulk of the signal
-within reach while a lone transient simply saturates to the loudest available note.
+A single **coefficient** scales the input before matching so that its typical frame
+plays at the level one channel renders at full volume. The typical frame is a
+*robust* level — a high percentile of the per-frame RMS levels over the audible frames
+(`active_frame_level` in `sampletones_core.audio`) — so a lone transient (a kick, a
+click) saturates to the loudest available note while the bulk of the signal stays
+within reach of the quietest one. RMS measures how much sound a frame carries, which
+is what a channel's volume renders, whatever the waveform's crest.
+
+That level is brought to the full-scale RMS level of the quietest tone channel the
+setup covers — the triangle, whose RMS level is its peak over √3; a pulse, which swings
+between two levels, when no triangle is covered; the noise channel for a noise-only
+setup. A steady tone then lands at what a single tone channel renders whole, so one
+channel can answer it, and louder frames call on more channels.
 
 ## 4. Scoring a candidate: the criterion
 
@@ -280,7 +285,9 @@ and more musical than the greedy output. It is the default.
 
 A resting frame reaches the decoder as a column of one, so a channel that no source
 took sits in the path as the off state it is, and coming back on costs what any other
-on/off change costs.
+on/off change costs. A frame the decoder settles on a silent instruction is released to
+the resting stem, so the resting stem id and the silence name the same frames, and a
+channel decoded silent throughout stands by.
 
 ## 6. Refining the pitch
 

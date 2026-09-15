@@ -8,13 +8,14 @@ from sampletones_core.audio import active_frame_level, common_length, load_audio
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
 from sampletones_core.constants.enums import (
+    TONE_CHANNELS,
     ChannelName,
     bending_channels,
     ordered_channels,
 )
 from sampletones_core.fft import FragmentedAudio, Window
 from sampletones_core.generators import (
-    MIXER_LEVELS,
+    FULL_SCALE_RMS_LEVELS,
     GeneratorUnion,
     get_generators_by_channels,
 )
@@ -164,9 +165,10 @@ class Reconstructor:
         announce(report, ReconstructionStage.LOADING, FRAMES_PREPARED, PREPARATIONS)
         worker = self._build_worker(common_length(recordings))
         assignment = self._assign_stem_frames(prepared.frames, stems_config, worker, report)
-        self._drop_resting_channels(assignment)
         announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
         streams = worker.decoder.decode(assignment.lattices)
+        assignment.release_silent(streams)
+        self._drop_resting_channels(assignment, streams)
         streams = self._refiner(stems_config).refine(streams, assignment.stem_ids, prepared.recordings)
         self._record_streams(streams, report)
         return Reconstruction.from_state(
@@ -296,16 +298,17 @@ class Reconstructor:
         """The frames every recording answers, which they share by sharing a length."""
         return min((len(fragments) for fragments in stem_frames.values()), default=0)
 
-    def _drop_resting_channels(self, assignment: TrackAssignment) -> None:
+    def _drop_resting_channels(self, assignment: TrackAssignment, streams: Streams) -> None:
         """Leaves the channels that sound, releasing those that rested through every frame.
 
-        A channel no stem ever took describes nothing, so it stands by: the state releases its
-        stream and the record names it no more, which is what keeps a silent channel out of
-        every export.
+        A channel whose decoded stream sounds in no frame describes nothing, so it stands by: the
+        state releases its stream and the record names it no more, which is what keeps a silent
+        channel out of every export.
         """
         for channel_name in assignment.resting_channels:
             self.state.drop(channel_name)
             assignment.drop(channel_name)
+            del streams[channel_name]
 
     def _record_streams(self, streams: Streams, report: ReconstructionReporter) -> None:
         """Renders the decoded streams into the state, one frame at a time.
@@ -365,14 +368,16 @@ class Reconstructor:
         stems_config: StemsConfig,
     ) -> float:
         """
-        Working-level coefficient that scales the input into the range one frame spans.
+        Working-level coefficient that brings the input's typical frame to what one channel renders.
 
-        The reference anchors to the robust active-frame level using the configured
-        percentile and audibility floor, and is floored at `MINIMUM_AUDIO_LEVEL` so
-        a fully silent input yields a finite coefficient. The range it is measured against
-        is what the setup's frame budget reaches: the loudest mixer weights among the covered
-        channels, as many of them as one frame can hold, so a capped run targets a level its
-        channels render.
+        The typical frame is the robust active-frame RMS level under the configured percentile
+        and audibility floor, floored at `MINIMUM_AUDIO_LEVEL` so a fully silent input yields a
+        finite coefficient. It is brought to the full-scale RMS level of the quietest tone
+        channel the setup covers, or of the quietest covered channel when the setup covers no
+        tone channel. A steady tone then plays at a level a single tone channel renders whole,
+        so one channel can answer it, and louder frames call on more channels. A pulse and the
+        noise swing between two levels, so their RMS level is their peak; a triangle's is its
+        peak over the square root of three.
 
         Args:
             audio: The prepared input audio.
@@ -381,7 +386,6 @@ class Reconstructor:
         Returns:
             float: The positive scale factor the input is divided by before matching.
         """
-        total = self._frame_mixer_total(stems_config)
         level = max(
             active_frame_level(
                 audio,
@@ -391,16 +395,13 @@ class Reconstructor:
             ),
             MINIMUM_AUDIO_LEVEL,
         )
-        return float(level / total)
+        return float(level / self._working_level(stems_config))
 
-    def _frame_mixer_total(self, stems_config: StemsConfig) -> float:
-        """The mixer weight one frame reaches: the loudest covered channels, up to the budget."""
-        covered = stems_config.covered_channels
-        levels = sorted(
-            (MIXER_LEVELS[generator.class_name()] for name, generator in self.channels.items() if name in covered),
-            reverse=True,
-        )
-        return sum(levels[: stems_config.frame_budget])
+    def _working_level(self, stems_config: StemsConfig) -> float:
+        """The full-scale RMS level of the quietest covered tone channel, or covered channel without one."""
+        covered = [name for name in self.channels if name in stems_config.covered_channels]
+        anchors = [name for name in covered if name in TONE_CHANNELS] or covered
+        return min(FULL_SCALE_RMS_LEVELS[self.channels[name].class_name()] for name in anchors)
 
     def get_fragments(self, audio: np.ndarray) -> FragmentedAudio:
         """Frames the audio into the fragments matched against the library.

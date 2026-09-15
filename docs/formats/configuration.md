@@ -21,8 +21,8 @@ Audio preprocessing and housekeeping.
 | `quantize` | quantize (bit-crush) the input | `true` / `false` |
 | `quantization_levels` | number of levels when quantizing | integer ≥ 3 |
 | `min_pitch`, `max_pitch` | lowest and highest pitch the reconstruction may use | 1–127 |
-| `coefficient_percentile` | percentile of frame levels used to set the [working level](../concepts/reconstruction.md) | 0–100 |
-| `coefficient_audibility_floor` | floor applied when estimating the working level | 0 < value ≤ 1 |
+| `coefficient_percentile` | percentile of the frames' RMS levels used to set the [working level](../concepts/reconstruction.md) | 0–100 |
+| `coefficient_audibility_floor` | fraction of the loudest frame's level below which a frame is left out of the working level | 0 < value ≤ 1 |
 | `max_workers` | worker processes used during reconstruction | integer ≥ 1 |
 | `library_directory` | where instruction libraries are stored | path |
 | `reconstructions_directory` | where reconstructions are written (alias: `output_directory`) | path |

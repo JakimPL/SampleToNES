@@ -32,6 +32,7 @@ WHITE_NOISE_DEVIATION: Final[float] = 0.3
 WHITE_NOISE_SECONDS: Final[float] = 1.0
 EDGE_FRAMES: Final[int] = 1
 QUIET_VOLUMES: Final[range] = range(1, 4)
+LOUD_VOLUMES: Final[range] = range(12, 16)
 SHORTEST_PERIODS: Final[range] = range(NUM_PERIODS - 4, NUM_PERIODS)
 NOISE_SEED: Final[int] = 5
 BURST_FRAMES: Final[int] = 12
@@ -53,8 +54,8 @@ def _config(method: SpectrumMethod) -> Config:
 
 
 def _library(config: Config) -> InstructionLibrary:
-    """The noise channel's silence and its quietest instructions at the shortest periods, the noise
-    standing nearest a hiss."""
+    """The noise channel's silence and its quietest and loudest instructions at the shortest periods,
+    so a burst and a hiss both find the noise standing nearest them."""
     window = Window.from_config(config)
     extractor = get_feature_extractor(config, window)
     generator = get_generators_by_channels(config, NOISE_ONLY)[ChannelName.NOISE]
@@ -62,7 +63,8 @@ def _library(config: Config) -> InstructionLibrary:
     data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = {
         instruction: InstructionLibraryFragment.create(generator, instruction, extractor)
         for instruction in generator.get_possible_instructions()
-        if not instruction.on or (instruction.volume in QUIET_VOLUMES and instruction.period in SHORTEST_PERIODS)
+        if not instruction.on
+        or (instruction.volume in (*QUIET_VOLUMES, *LOUD_VOLUMES) and instruction.period in SHORTEST_PERIODS)
     }
 
     library = InstructionLibrary()
@@ -154,11 +156,11 @@ class TestWhiteNoise:
         assert all(instruction.on for instruction in interior)
 
 
-class TestAHissBelowTheSpectrumFloor:
+class TestAHissAfterABurst:
     """
-    A hiss loud enough to pass the activity gate lies far below the spectrum floor at the working
-    level, where the noise the channel plays stands further from it than silence does. The gap
-    before it leaves the channel resting, so the hiss is what decides whether the channel sounds.
+    The working level brings the burst to the noise channel's full-scale level, and the hiss keeps
+    its distance below it, which lands among the quietest volumes the channel plays. The gap before
+    it leaves the channel resting, so the hiss is what decides whether the channel sounds.
     """
 
     def test_every_hiss_frame_passes_the_activity_gate(self, converted: Converted) -> None:
@@ -167,5 +169,9 @@ class TestAHissBelowTheSpectrumFloor:
     def test_the_burst_sounds_on_the_noise_channel(self, converted: Converted) -> None:
         assert all(instruction.on for instruction in converted.instructions[:BURST_FRAMES])
 
-    def test_the_hiss_leaves_the_noise_channel_silent(self, converted: Converted) -> None:
-        assert not any(instruction.on for instruction in converted.instructions[HISS])
+    def test_the_hiss_sounds_quieter_than_the_burst(self, converted: Converted) -> None:
+        burst_volume = max(instruction.volume for instruction in converted.instructions[:BURST_FRAMES])
+        hiss = converted.instructions[HISS]
+
+        assert all(instruction.on for instruction in hiss)
+        assert all(instruction.volume < burst_volume for instruction in hiss)

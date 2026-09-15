@@ -1,3 +1,4 @@
+import math
 from typing import Dict, Final
 
 from sampletones_core.constants.enums import (
@@ -65,5 +66,11 @@ GENERATOR_TO_INSTRUCTION_MAP: Final[Dict[GeneratorTypeUnion, InstructionTypeUnio
 MIXER_LEVELS: Final[Dict[GeneratorClassName, float]] = {
     GeneratorClassName.PULSE_GENERATOR: MIXER_PULSE,
     GeneratorClassName.TRIANGLE_GENERATOR: MIXER_TRIANGLE,
+    GeneratorClassName.NOISE_GENERATOR: MIXER_NOISE,
+}
+
+FULL_SCALE_RMS_LEVELS: Final[Dict[GeneratorClassName, float]] = {
+    GeneratorClassName.PULSE_GENERATOR: MIXER_PULSE,
+    GeneratorClassName.TRIANGLE_GENERATOR: MIXER_TRIANGLE / math.sqrt(3.0),
     GeneratorClassName.NOISE_GENERATOR: MIXER_NOISE,
 }

@@ -65,8 +65,10 @@ Every channel the setup covers leaves a frame either picked or **resting**. A
 resting channel holds its channel's null instruction over a silent frame and
 records the resting stem id, so instruction streams, rendered approximations and
 the per-frame stem record all run parallel to the frames they describe: frame
-*i* of a channel is frame *i* of the recording. A channel that rests through
-every frame stands by instead, carrying no stream at all.
+*i* of a channel is frame *i* of the recording. A frame the decoder settles on a
+silent instruction records the resting stem id too, so the id and the silence name
+the same frames. A channel that rests through every frame stands by instead, carrying
+no stream at all.
 
 This is what makes a channel cap and a hierarchy usable. Without it, a frame a
 cap left unclaimed would shorten that channel's streams and carry its later
@@ -97,8 +99,9 @@ channels per frame.
 A cost is a fraction of its own recording's energy, so two stems' costs stand on
 different scales and comparing them alone would hand a channel to whichever
 recording is easiest to approximate. Within a level, an offer is therefore ranked
-by the energy its candidate covers — the cost weighted by the energy behind it — so
-the channel reaches the stem with the most sound waiting. Precedence between levels
+by the energy its candidate covers — how far its cost falls below the cost of leaving
+the recording silent, weighted by the energy behind it — so the channel reaches the
+stem with the most sound waiting. Precedence between levels
 stays the hierarchy's, which is what a reader arranges the levels to say.
 
 ### 9. Ties resolve deterministically
@@ -115,19 +118,13 @@ the assignment against an independent restatement of that reconstruction —
 identical choices, instructions, and approximations — so the one pipeline serves
 the single-sample case exactly as it stands.
 
-### 11. The working level follows the frame budget
+### 11. The working level follows the covered channels
 
-A frame reaches as loud as the channels that may sound in it, so the level the
-mix is scaled to is measured against the mixer weights of the loudest covered
-channels, as many of them as one frame holds:
-
-```
-budget = min(covered channels, stems x channel cap)
-```
-
-A capped run therefore targets a level its channels can actually render, and a
-setup whose budget covers every channel measures against the same total the
-single-sample pipeline always did.
+The mix is scaled so its typical frame plays at the full-scale RMS level of the
+quietest tone channel the setup covers, or of the quietest covered channel when it
+covers no tone channel (see [Reconstruction §3.4](reconstruction.md)). One channel
+renders that level whole, so a capped run targets a level its channels reach, and
+every setup measures against the channel a single recording would be answered by.
 
 ## Mechanics
 
@@ -150,7 +147,7 @@ reader sets a run up in, the entry the run records, and a later reader of that
 record all state the same thing. It validates its own consistency — unique ids, a hierarchy naming every
 entry exactly once, a cap of at least one — so an inconsistent setup can be
 neither built nor stored, and it derives the views the run reads (`entries_by_id`,
-`covered_channels`, `frame_budget`).
+`covered_channels`).
 
 The assignment lives in `reconstructor/stems/assignment/`:
 
@@ -161,7 +158,8 @@ The assignment lives in `reconstructor/stems/assignment/`:
 - `AssignmentSession` carries one frame's progress — each stem's residual, the free
   channels, the per-stem counts, and the stems sounding in the frame — and runs the
   hierarchy's mode. It ranks a level's offers by `StemOffer.bid`, the energy a
-  candidate covers, which the matcher measures through `reference_energy`;
+  candidate covers, which the matcher measures through `reference_energy` and
+  `silence_cost`;
 - `TrackAssignment` gathers the frames into what the rest of the run reads: the
   lattice each channel offers the decoder, and the stem owning each of its
   frames.
