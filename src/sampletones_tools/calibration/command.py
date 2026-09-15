@@ -8,7 +8,7 @@ from sampletones_shared.command import Command
 NAME: Final[str] = "calibration"
 HELP: Final[str] = "measure how the program reconstructs the reference sounds and write the renders and a report"
 OUTPUT_HELP: Final[str] = (
-    "the directory the run writes into; without it, a timestamped directory under " "Documents/SampleToNES/calibration"
+    "the directory the run writes into; without it, a timestamped directory under Documents/SampleToNES/calibration"
 )
 CONFIG_HELP: Final[str] = "the configuration file to measure; without it, the program's default settings"
 METHODS_HELP: Final[str] = "spectrum methods to measure, comma separated; without it, the suite's methods"

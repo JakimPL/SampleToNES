@@ -76,7 +76,7 @@ gpu-cuda11 = [
 
 [dependency-groups]
 assets = ["pillow>=11,<13"]
-calibration = ["zimtohrli>=0.2.1,<0.3; sys_platform == 'linux'"]
+calibration = ["zimtohrli>=0.2.1,<0.3"]
 dev = [
     { include-group = "assets" },
     "black==26.5.1",

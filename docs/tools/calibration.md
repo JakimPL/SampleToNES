@@ -36,8 +36,8 @@ With no options, the run measures the program's default settings under the packa
 The same run on another machine or another version gives figures that compare directly, because
 the reference sounds are generated from a fixed seed.
 
-The results go into a new folder under `Documents/SampleToNES/calibration/`, named by the date and
-time the run started, for example `run-20260915-124501`. When the run ends, it prints a link to
+The results go into a new folder inside the `calibration` folder of your
+[SampleToNES folder](../guide/files.md), named by the date and time the run started, for example `run-20260915-124501`. When the run ends, it prints a link to
 the report.
 
 ## What a run writes
@@ -91,12 +91,12 @@ Each option replaces one part of the default run. The rest stays as the suite se
 
 | Option | What it changes | Example |
 |---|---|---|
-| `--config FILE` | Measures the settings in a configuration file instead of the defaults | `--config ~/Documents/SampleToNES/config.json` measures your saved settings |
+| `--config FILE` | Measures the settings in a configuration file instead of the defaults | the `config.json` in your [SampleToNES folder](../guide/files.md) holds your saved settings |
 | `--methods LIST` | The spectrum methods measured | `--methods cqt` |
 | `--channels LIST` | The channels every variant reconstructs with | `--channels pulse1,pulse2,triangle,noise` |
 | `--perceptual-exponents LIST` | The perceptual exponents measured, one variant each | `--perceptual-exponents 0.5,1` |
 | `--temporal-weights LIST` | The temporal loss weights measured, one variant each | `--temporal-weights 0.1,0.3` |
-| `-o DIR`, `--output DIR` | The folder the run writes into | `-o ~/calibration/before` |
+| `-o DIR`, `--output DIR` | The folder the run writes into | `-o before` |
 
 Lists are comma separated. Several lists multiply: `--methods fft,cqt --perceptual-exponents
 0.5,1` measures four variants, and the run takes about four times as long as one variant.
@@ -107,9 +107,9 @@ The default suite is the file `sampletones_tools/calibration/config/suite.yaml` 
 
 ## Compare runs
 
-1. Run calibration into a folder of its own, for example `-o ~/calibration/before`.
+1. Run calibration into a folder of its own, for example `-o before`.
 2. Change what you want to compare: install another version, or pass another `--config`.
-3. Run calibration again into another folder, for example `-o ~/calibration/after`.
+3. Run calibration again into another folder, for example `-o after`.
 4. Compare the two `report.md` files, and play the same render from both folders.
 
 Both runs generate the same reference sounds, so every score and every render compares directly.

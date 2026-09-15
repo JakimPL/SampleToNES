@@ -1838,7 +1838,7 @@ assets = [
     { name = "pillow" },
 ]
 calibration = [
-    { name = "zimtohrli", marker = "sys_platform == 'linux' or (extra == 'extra-11-sampletones-gpu' and extra == 'extra-11-sampletones-gpu-cuda11')" },
+    { name = "zimtohrli" },
 ]
 dev = [
     { name = "black" },
@@ -1885,7 +1885,7 @@ provides-extras = ["build", "gpu", "gpu-cuda11"]
 
 [package.metadata.requires-dev]
 assets = [{ name = "pillow", specifier = ">=11,<13" }]
-calibration = [{ name = "zimtohrli", marker = "sys_platform == 'linux'", specifier = ">=0.2.1,<0.3" }]
+calibration = [{ name = "zimtohrli", specifier = ">=0.2.1,<0.3" }]
 dev = [
     { name = "black", specifier = "==26.5.1" },
     { name = "isort", specifier = "==8.0.1" },

@@ -77,9 +77,10 @@ that come with them. `scripts/verify_bundle.py` holds the release bundles to it.
 
 The calibration harness scores renders with referees of its own, built on `numpy` and `scipy`. The
 `calibration` dependency group adds [Zimtohrli](https://github.com/google/zimtohrli), a
-psychoacoustic model, as a second opinion. The group is declared for Linux, where its referee is
-verified, and stays out of `dev`: `uv sync --group calibration`, with the extras the environment
-already uses named beside it, installs it. See [Calibration](../../tools/calibration.md).
+psychoacoustic model, as a second opinion. PyPI carries its wheels for Windows, Intel macOS and
+x86-64 Linux, and other systems compile it on install. The group stays out of `dev`:
+`uv sync --group calibration`, with the extras the environment already uses named beside it,
+installs it. See [Calibration](../../tools/calibration.md).
 
 ## NES player driver
 
