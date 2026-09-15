@@ -5,11 +5,13 @@ from sampletones_core.compatibility.fields import (
     ASSIGNMENTS,
     AUDIO_FILEPATH,
     BENDS,
+    CALCULATION,
     CHANNEL_CAP,
     CHANNEL_NAME,
     CHANNELS,
     CONFIG,
     ENTRIES,
+    FAST_DIFFERENCE,
     FINAL_REGENERATION,
     GENERATION,
     GENERATOR_NAME,
@@ -39,6 +41,7 @@ from sampletones_shared.types.data import SerializedData
 SOURCE_DATA_VERSION: Final[str] = "2.1"
 TARGET_DATA_VERSION: Final[str] = "2.2"
 RETIRED_GENERATION_SETTINGS: Final[FrozenSet[str]] = frozenset({CHANNELS, FINAL_REGENERATION})
+RETIRED_CALCULATION_SETTINGS: Final[FrozenSet[str]] = frozenset({FAST_DIFFERENCE})
 
 
 def _normalized_audio_filepath(data: SerializedData) -> Any:
@@ -138,8 +141,9 @@ def _without_retired_generation_settings(data: SerializedData) -> SerializedData
     """The embedded config with the generation settings 2.2 retired dropped.
 
     Which channels a run hands out is the setup's to state, so the configuration holds the
-    settings that shaped the library and nothing about the channels themselves; and a frame is
-    always recorded as its instruction renders, so the choice to record the matched audio goes.
+    settings that shaped the library and nothing about the channels themselves. A frame is always
+    recorded as its instruction renders, and a windowed method measures a residual from its
+    waveform, so the choices to record the matched audio and to difference features instead go.
     """
     config = data.get(CONFIG)
     if not isinstance(config, dict):
@@ -152,9 +156,20 @@ def _without_retired_generation_settings(data: SerializedData) -> SerializedData
     updated = dict(data)
     updated[CONFIG] = {
         **config,
-        GENERATION: {key: value for key, value in generation.items() if key not in RETIRED_GENERATION_SETTINGS},
+        GENERATION: {
+            key: _without_retired_calculation_settings(value) if key == CALCULATION else value
+            for key, value in generation.items()
+            if key not in RETIRED_GENERATION_SETTINGS
+        },
     }
     return updated
+
+
+def _without_retired_calculation_settings(calculation: Any) -> Any:
+    if not isinstance(calculation, dict):
+        return calculation
+
+    return {key: value for key, value in calculation.items() if key not in RETIRED_CALCULATION_SETTINGS}
 
 
 def update(data: SerializedData) -> SerializedData:
@@ -168,7 +183,7 @@ def update(data: SerializedData) -> SerializedData:
     record every reconstruction states, down to the settings each stem is converted
     with: the channels it takes, and the ones it carries toward its own recording. The
     channel selection moves onto that record, so the embedded configuration lets it go, along
-    with the retired choice to record the matched audio.
+    with the retired choices to record the matched audio and to difference the residual's features.
     """
     updated = dict(data)
     updated = _renamed_stream_keys(updated)

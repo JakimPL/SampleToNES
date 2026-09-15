@@ -52,8 +52,8 @@ through a passage from sounding that passage on the channels it holds elsewhere.
 
 A pick scores each eligible stem's candidates against what is left of that stem's
 own frame, with the same two-stage criterion the single-sample pipeline uses
-(`FrameMatcher`), takes the winning offer across the active level, subtracts its
-approximation from that stem's residual, and consumes the channel. Picks continue
+(`FrameMatcher`), takes the winning offer across the active level, removes its
+contribution from that stem's residual, and consumes the channel. Picks continue
 until every stem channel is assigned, or caps and free channels are exhausted.
 Each stem carrying a residual of its own is what keeps its later picks from
 re-approximating what its earlier picks already cover, while leaving what the other

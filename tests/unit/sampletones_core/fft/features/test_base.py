@@ -23,18 +23,9 @@ MEAN_LEVEL: Final[float] = 0.02
 POWER_GAIN: Final[float] = 0.5
 
 
-def _extractor(method: SpectrumMethod, fast_difference: bool) -> FeatureExtractor:
+def _extractor(method: SpectrumMethod) -> FeatureExtractor:
     base = Config()
-    config = base.model_copy(
-        update={
-            "library": base.library.model_copy(update={"spectrum_method": method}),
-            "generation": base.generation.model_copy(
-                update={
-                    "calculation": base.generation.calculation.model_copy(update={"fast_difference": fast_difference})
-                }
-            ),
-        }
-    )
+    config = base.model_copy(update={"library": base.library.model_copy(update={"spectrum_method": method})})
     return get_feature_extractor(config, Window.from_config(config))
 
 
@@ -77,7 +68,7 @@ class TestRemovingAnExpectation(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_the_waveform_keeps_its_shape_beyond_the_mean(self, test_case: TestCase) -> None:
-        extractor = _extractor(test_case.method, fast_difference=False)
+        extractor = _extractor(test_case.method)
         target = _target(extractor)
 
         residual = extractor.remove_expectation(target, MEAN_LEVEL, _contribution_feature(extractor), POWER_GAIN)
@@ -95,7 +86,7 @@ class TestRemovingAnExpectation(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_the_spectrum_keeps_the_power_beyond_the_contribution(self, test_case: TestCase) -> None:
-        extractor = _extractor(test_case.method, fast_difference=False)
+        extractor = _extractor(test_case.method)
         target = _target(extractor)
         contribution = _contribution_feature(extractor)
 
@@ -108,20 +99,3 @@ class TestRemovingAnExpectation(BaseTestSuite):
         )
         expected = transformer.forward(Histogram(edges=target.feature.edges, values=left.astype(np.float32)))
         np.testing.assert_allclose(residual.feature.values, expected.values, rtol=1e-4, atol=1e-7)
-
-    @pytest.mark.parametrize(
-        "test_case",
-        test_cases,
-        ids=lambda test_case: test_case.label,
-    )
-    def test_the_residual_stands_the_same_with_fast_difference_on(self, test_case: TestCase) -> None:
-        measured = _extractor(test_case.method, fast_difference=False)
-        fast = _extractor(test_case.method, fast_difference=True)
-
-        slow_residual = measured.remove_expectation(
-            _target(measured), MEAN_LEVEL, _contribution_feature(measured), POWER_GAIN
-        )
-        fast_residual = fast.remove_expectation(_target(fast), MEAN_LEVEL, _contribution_feature(fast), POWER_GAIN)
-
-        np.testing.assert_array_equal(fast_residual.feature.values, slow_residual.feature.values)
-        np.testing.assert_array_equal(fast_residual.audio, slow_residual.audio)

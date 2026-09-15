@@ -230,7 +230,8 @@ class TestTheAudioAReconstructionRecords:
         assert reconstruction is not None
         for channel_name in reconstruction.playing_channels:
             generator = reconstructor.channels[channel_name]
-            assert generator.previous_instruction is reconstruction.instructions[channel_name][-1]
+            sounding = [instruction for instruction in reconstruction.instructions[channel_name] if instruction.on]
+            assert generator.previous_instruction is sounding[-1]
 
     @pytest.mark.parametrize("reset_phase", [False, True], ids=["carried_phase", "reset_phase"])
     def test_the_recorded_audio_is_what_the_channels_render(

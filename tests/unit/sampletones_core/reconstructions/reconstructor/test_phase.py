@@ -7,6 +7,7 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.fft import Fragment, Window
+from sampletones_core.fft.features import get_feature_extractor
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstructor.phase import (
@@ -28,8 +29,9 @@ class TestPhaseAlignerEquivalence:
         window: Window,
         library_data: InstructionLibraryData,
     ) -> None:
-        sliding = SlidingRmsePhaseAligner(config, window, library_data)
-        cross_correlation = CrossCorrelationPhaseAligner(config, window, library_data)
+        extractor = get_feature_extractor(config, window)
+        sliding = SlidingRmsePhaseAligner(config, window, library_data, extractor)
+        cross_correlation = CrossCorrelationPhaseAligner(config, window, library_data, extractor)
 
         active_instructions = [instruction for instruction in library_data.keys() if instruction.on]
         assert active_instructions
@@ -60,10 +62,11 @@ class TestPhaseAlignerDrive:
         """
         drive = 2.0
         driven_config = config.model_copy(update={"generation": config.generation.model_copy(update={"drive": drive})})
-        aligner = aligner_class(driven_config, window, library_data)
+        extractor = get_feature_extractor(driven_config, window)
+        aligner = aligner_class(driven_config, window, library_data, extractor)
 
         library_fragment = library_data[audible_instruction]
-        target = library_fragment.get_fragment(library_fragment.length // 4, config, window) * drive
+        target = extractor.amplified(library_fragment.get_fragment(library_fragment.length // 4, config, window), drive)
         aligned = aligner.align(target, audible_instruction)
 
         assert _rmse(target, aligned) == pytest.approx(0.0, abs=1e-4)

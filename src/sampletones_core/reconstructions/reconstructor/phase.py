@@ -8,6 +8,7 @@ from scipy.signal import fftconvolve
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import PhaseAlignerName
 from sampletones_core.fft import Fragment, Window
+from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryData
 
@@ -18,10 +19,12 @@ class PhaseAligner(ABC):
         config: Config,
         window: Window,
         library_data: InstructionLibraryData,
+        extractor: FeatureExtractor,
     ) -> None:
         self.config = config
         self.window = window
         self.library_data = library_data
+        self.extractor = extractor
 
     @abstractmethod
     def align(self, fragment: Fragment, instruction: InstructionUnion) -> Fragment: ...
@@ -44,7 +47,7 @@ class SlidingRmsePhaseAligner(PhaseAligner):
 
         rmse = np.sqrt((remainder**2).mean(axis=1))
         best_shift = int(np.argmin(rmse))
-        return library_fragment.get_fragment(best_shift, self.config, self.window) * drive
+        return self.extractor.amplified(library_fragment.get_fragment(best_shift, self.config, self.window), drive)
 
 
 class CrossCorrelationPhaseAligner(PhaseAligner):
@@ -68,7 +71,7 @@ class CrossCorrelationPhaseAligner(PhaseAligner):
         window_energy = self._sliding_energy(array, frame_length)
         cost = drive * window_energy - 2.0 * correlation
         best_shift = int(np.argmin(cost))
-        return library_fragment.get_fragment(best_shift, self.config, self.window) * drive
+        return self.extractor.amplified(library_fragment.get_fragment(best_shift, self.config, self.window), drive)
 
     @staticmethod
     def _sliding_energy(array: np.ndarray, frame_length: int) -> np.ndarray:

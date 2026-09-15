@@ -145,7 +145,7 @@ class TestSoundingStems:
         )
 
         assignment = assign_frame(
-            {0: synthetic_fragment * 0.0, 1: synthetic_fragment},
+            {0: synthetic_fragment.silence(), 1: synthetic_fragment},
             stems_config,
             channels,
             matcher,
@@ -165,7 +165,7 @@ class TestSoundingStems:
     ) -> None:
         """Every covered channel still answers the frame, each holding its null instruction."""
         stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, len(DEFAULT_CHANNELS))
-        silent = synthetic_fragment * 0.0
+        silent = synthetic_fragment.silence()
 
         assignment = assign_frame(
             {0: silent},
@@ -208,7 +208,7 @@ class TestBidsWithinALevel:
         sound is waiting. The winner follows the recordings, not the place a stem holds.
         """
         quiet = synthetic_fragment
-        loud = synthetic_fragment * LOUDER_STEM_SCALE
+        loud = extractor.amplified(synthetic_fragment, LOUDER_STEM_SCALE)
         assert self._pulse_cost(quiet, channels, matcher) < self._pulse_cost(loud, channels, matcher)
 
         stems_config = _config(
@@ -250,7 +250,7 @@ class TestBidsWithinALevel:
         )
 
         assignment = assign_frame(
-            {0: synthetic_fragment, 1: synthetic_fragment * LOUDER_STEM_SCALE},
+            {0: synthetic_fragment, 1: extractor.amplified(synthetic_fragment, LOUDER_STEM_SCALE)},
             stems_config,
             channels,
             matcher,

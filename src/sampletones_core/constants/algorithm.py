@@ -43,7 +43,6 @@ LIBRARY_PHASES_PER_SAMPLE: Final[int] = 100
 TRANSFORMATION_GAMMA: Final[int] = 0
 MAX_TRANSFORMATION_GAMMA: Final[int] = 100
 FIND_BEST_PHASE: Final[bool] = True
-FAST_DIFFERENCE: Final[bool] = False
 PHASE_ALIGNER: Final[PhaseAlignerName] = PhaseAlignerName.CROSS_CORRELATION
 
 RESET_PHASE: Final[bool] = False

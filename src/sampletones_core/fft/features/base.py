@@ -62,6 +62,22 @@ class FeatureExtractor(ABC):
             for windowed_audio, feature in zip(windowed_frames, features)
         ]
 
+    def amplified(self, fragment: Fragment, drive: float) -> Fragment:
+        """The fragment played ``drive`` times as loud.
+
+        A waveform scales by the drive and the power a feature describes by its square, so the
+        feature is scaled as power through the transform, in double precision.
+        """
+        power_gain = drive**2
+        precision = fragment.feature.values.dtype
+        feature = self.transformer.apply(lambda power: power * power_gain, fragment.feature.astype(np.float64))
+        return Fragment(
+            audio=fragment.audio * drive,
+            feature=feature.astype(precision),
+            windowed_audio=fragment.windowed_audio * drive,
+            config=fragment.config,
+        )
+
     def subtract(self, target: Fragment, approximation: Fragment) -> Fragment:
         """Residual fragment after removing `approximation` from `target`."""
         if target.audio.shape != approximation.audio.shape:

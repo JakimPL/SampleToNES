@@ -231,10 +231,10 @@ while a source may still take a channel and free is non-empty:
 ```
 
 A pick's contribution is what it renders when its frames repeat one shape: the
-residual loses the aligned waveform, and its feature is measured again or differenced
-as `fast_difference` says. A pick whose frames show different stretches of a sequence
-contributes uncorrelated sound, so the residual loses its mean level from the waveform
-and its phase-averaged power from the spectrum.
+residual loses the aligned waveform, and its feature is measured again from the residual
+waveform on the windowed methods and differenced on the constant-Q. A pick whose frames
+show different stretches of a sequence contributes uncorrelated sound, so the residual
+loses its mean level from the waveform and its phase-averaged power from the spectrum.
 
 Every pick lets whichever channel fits that source's residual best go first. Where
 several channels share one generator kind, the lowest free channel of that kind

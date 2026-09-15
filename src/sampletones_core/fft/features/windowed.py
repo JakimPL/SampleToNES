@@ -44,9 +44,6 @@ class WindowedFeatureExtractor(FeatureExtractor):
         approximation: Fragment,
         windowed_audio: np.ndarray,
     ) -> Histogram:
-        if self.config.generation.calculation.fast_difference:
-            return self.transformer.subtract(target.feature, approximation.feature)
-
         return self._windowed_feature(windowed_audio)
 
     def _windowed_feature(self, windowed_audio: np.ndarray) -> Histogram:

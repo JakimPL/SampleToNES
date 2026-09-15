@@ -4,7 +4,6 @@ from sampletones_core.constants.algorithm import (
     DECODER_TOP_K,
     DIVERGENCE_BETA,
     DRIVE,
-    FAST_DIFFERENCE,
     FIND_BEST_PHASE,
     MAX_DRIVE,
     PERCEPTUAL_EXPONENT,
@@ -35,7 +34,6 @@ class CalculationConfig(DataModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     find_best_phase: bool = Field(default=FIND_BEST_PHASE)
-    fast_difference: bool = Field(default=FAST_DIFFERENCE)
     phase_aligner: PhaseAlignerName = Field(default=PHASE_ALIGNER)
 
 

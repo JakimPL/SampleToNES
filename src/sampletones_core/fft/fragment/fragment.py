@@ -65,14 +65,16 @@ class Fragment:
             config=first_fragment.config,
         )
 
-    def __mul__(self, scalar: float) -> Self:
-        audio = self.audio * scalar
-        windowed_audio = self.windowed_audio * scalar
-        feature = self.feature * scalar
+    def silence(self) -> Self:
+        """The same frame holding no sound: every waveform and every feature value at zero.
+
+        Every feature transform takes no power to zero, so the silent feature needs no transform.
+        """
+        module = get_array_module(self.audio)
         return self.__class__(
-            audio=audio,
-            feature=feature,
-            windowed_audio=windowed_audio,
+            audio=module.zeros_like(self.audio),
+            feature=Histogram(edges=self.feature.edges, values=module.zeros_like(self.feature.values)),
+            windowed_audio=module.zeros_like(self.windowed_audio),
             config=self.config,
         )
 

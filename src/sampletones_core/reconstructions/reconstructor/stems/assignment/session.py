@@ -237,7 +237,7 @@ class AssignmentSession:
         if not self.free_channels:
             return ()
 
-        silent = next(iter(self.fragments.values())) * 0.0
+        silent = next(iter(self.fragments.values())).silence()
         return tuple(
             StemRest(
                 channel_name=channel_name,

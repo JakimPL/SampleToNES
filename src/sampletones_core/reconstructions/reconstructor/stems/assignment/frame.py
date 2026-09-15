@@ -23,8 +23,8 @@ def assign_frame(
     Assigns one frame's channels to stems, one pick at a time.
 
     Every pick scores a stem's candidates against what is left of that stem's own frame,
-    takes the cheapest choice across the active level, subtracts its approximation from
-    that stem's residual, and consumes its channel. Scoring each stem against its own
+    takes the cheapest choice across the active level, removes its contribution from that
+    stem's residual, and consumes its channel. Scoring each stem against its own
     recording is what makes the channel a stem wins carry that recording's sound. Levels
     pick in the hierarchy's mode: round-based gives every level's stems one channel per
     round in level order, strict exhausts each level before the next. Each stem holds at

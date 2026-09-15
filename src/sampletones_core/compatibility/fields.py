@@ -33,6 +33,8 @@ INSTRUCTIONS: Final = "instructions"
 
 CHANNELS: Final = "channels"
 FINAL_REGENERATION: Final = "final_regeneration"
+CALCULATION: Final = "calculation"
+FAST_DIFFERENCE: Final = "fast_difference"
 GENERATOR: Final = "generator"
 NAME: Final = "name"
 

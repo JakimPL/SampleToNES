@@ -8,6 +8,7 @@ from sampletones_core.constants.enums import (
     InstructionClassName,
 )
 from sampletones_core.fft import Fragment, Window
+from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import (
     INSTRUCTION_CLASS_MAP,
@@ -34,6 +35,7 @@ class CandidateProvider:
     config: Config
     window: Window
     library_data: InstructionLibraryData
+    extractor: FeatureExtractor
 
     _cached_approximations: CachedApproximations = field(init=False)
     _moments: Dict[InstructionUnion, Tuple[float, float]] = field(init=False, default_factory=dict)
@@ -52,7 +54,7 @@ class CandidateProvider:
     def get_approximation(self, instruction: InstructionUnion) -> Fragment:
         """The candidate's library sample from its own start, played at the configured drive."""
         fragment = self.library_data[instruction].get_fragment(START_OF_SAMPLE, self.config, self.window)
-        return fragment * self.config.generation.drive
+        return self.extractor.amplified(fragment, self.config.generation.drive)
 
     def get_expected_approximation(self, instruction: InstructionUnion) -> ExpectedApproximation:
         """The candidate's contribution averaged over every phase its library sample holds."""
