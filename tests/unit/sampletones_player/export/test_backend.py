@@ -52,7 +52,6 @@ from tests.suite.progress import RecordingReporter, reported_stages
 NTSC_FREQUENCY: Final[int] = 60
 SOUNDING_TICKS: Final[int] = 8
 BASS_PITCH: Final[int] = 45
-OVERLONG_TICKS: Final[int] = 8192
 FILENAME: Final[str] = "reconstruction.nsf"
 SAMPLE_NAME: Final[str] = "Amen"
 PROJECT_TITLE: Final[str] = "Demo"
@@ -77,28 +76,16 @@ def lead_slice(name: str, frames: int) -> InstrumentExport:
 
 
 def overlong_sample() -> SampleExport:
-    """A reconstruction whose channels turn over at every tick, so its song outgrows the console."""
+    """A reconstruction turning over at every tick, for as many ticks as the program area holds
+    bytes, so its song outgrows the console.
+    """
     return player_sample(
         SAMPLE_NAME,
         (
             player_instrument(
                 "lead",
                 ChannelName.PULSE1,
-                varied_features(OVERLONG_TICKS, PLAYER_REFERENCE_PITCH, duty_cycle=True),
-                nes_frequency=NTSC_FREQUENCY,
-                loop=False,
-            ),
-            player_instrument(
-                "harmony",
-                ChannelName.PULSE2,
-                varied_features(OVERLONG_TICKS, PLAYER_REFERENCE_PITCH, duty_cycle=True),
-                nes_frequency=NTSC_FREQUENCY,
-                loop=False,
-            ),
-            player_instrument(
-                "bass",
-                ChannelName.TRIANGLE,
-                varied_features(OVERLONG_TICKS, BASS_PITCH, duty_cycle=False),
+                varied_features(PROGRAM_SIZE, PLAYER_REFERENCE_PITCH, duty_cycle=True),
                 nes_frequency=NTSC_FREQUENCY,
                 loop=False,
             ),

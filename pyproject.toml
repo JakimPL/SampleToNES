@@ -135,6 +135,7 @@ addopts = "--import-mode=importlib"
 pythonpath = [".", "scripts"]
 
 [tool.coverage.run]
+core = "sysmon"
 source = [
     "sampletones_application",
     "sampletones_assets",

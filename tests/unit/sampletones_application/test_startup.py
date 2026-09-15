@@ -60,10 +60,12 @@ from sampletones_application.utils.parallelization.background import (
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_application.view_model.main.converter import ConversionPhase, ConverterViewModel
 from sampletones_application.view_model.shared.stems import StemRowViewModel
+from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.converter.paths import get_audio_files
 from sampletones_core.structures.tree import FileSystemNode, NodeType
+from sampletones_shared.paths.user import CONFIG_PATH, LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
@@ -136,6 +138,29 @@ def _profile(directory: Path) -> UserProfile:
     )
 
 
+def _settings(directory: Path) -> Path:
+    """Writes the settings a run starts on: the shipped defaults, with the instruction library and
+    the reconstructions held in the test's own directory.
+
+    A startup lists the reconstructions and loads the library from the directories its settings
+    name, so a run reads only the files a test places beside it.
+    """
+    config = Config()
+    general = config.general.model_copy(
+        update={
+            "library_directory": str(directory / LIBRARY_DIRECTORY.name),
+            "reconstructions_directory": str(directory / RECONSTRUCTIONS_DIRECTORY.name),
+        }
+    )
+    path = directory / CONFIG_PATH.name
+    config.model_copy(update={"general": general}).save(path)
+    return path
+
+
+def _application(directory: Path) -> Application:
+    return Application(profile=_profile(directory), config_path=_settings(directory))
+
+
 class TestGUIStartup:
     @pytest.fixture(autouse=True)
     def dpg_context(self) -> Generator[Any, Application, Any]:
@@ -150,7 +175,7 @@ class TestGUIStartup:
             for display_patch in _display_patches():
                 stack.enter_context(display_patch)
 
-            Application(profile=_profile(tmp_path))
+            _application(tmp_path)
 
     def test_initializes_where_nothing_can_play(self, tmp_path: Path) -> None:
         """Editing a song, exporting a module and rendering to a file need no output device.
@@ -164,7 +189,7 @@ class TestGUIStartup:
                 stack.enter_context(display_patch)
             stack.enter_context(_no_audio_devices())
 
-            Application(profile=_profile(tmp_path))
+            _application(tmp_path)
 
 
 @pytest.fixture
@@ -175,7 +200,7 @@ def app(tmp_path: Path) -> Generator[Any, Application, Any]:
             for display_patch in _display_patches():
                 stack.enter_context(display_patch)
 
-            yield Application(profile=_profile(tmp_path))
+            yield _application(tmp_path)
     finally:
         stop_background_workers()
         SingleThreadExecutor.reset_shutdown()
@@ -213,7 +238,7 @@ class TestKeybindingPreferences:
                         return_value=REBOUND_UNDO,
                     )
                 )
-                yield Application(profile=_profile(tmp_path))
+                yield _application(tmp_path)
         finally:
             stop_background_workers()
             SingleThreadExecutor.reset_shutdown()
