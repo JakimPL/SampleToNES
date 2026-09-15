@@ -1,23 +1,35 @@
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import List, Tuple
+
+import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.fft import Fragment
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import InstructionUnion
+from sampletones_shared.array import to_numpy, xp
 
-from .approximation import Approximation, WaveformApproximation
-from .candidates import CandidateProvider
+from .candidates import CandidateProvider, ClassCandidates
+from .contribution import Contribution
+from .mix import FrameMix
 from .phase import PhaseAligner
 from .scorer import Scorer
 
 
 @dataclass(frozen=True)
 class ScoredCandidate:
+    """
+    One alternative for a channel in one frame.
+
+    Attributes:
+        instruction: What the channel plays.
+        cost: The frame's cost with this alternative sounding beside the stem's other picks.
+        contribution: What this alternative adds to the frame.
+    """
+
     instruction: InstructionUnion
     cost: float
-    approximation: Approximation
+    contribution: Contribution
 
 
 Column = Tuple[ScoredCandidate, ...]
@@ -26,11 +38,12 @@ Column = Tuple[ScoredCandidate, ...]
 @dataclass(frozen=True)
 class FrameMatcher:
     """
-    Matches one target fragment against candidates of given generator classes.
+    Scores one channel's candidates in a target fragment with the stem's other picks sounding.
 
     Carries the matching machinery the stems assignment works from: the two-stage criterion
-    scoring and the per-candidate approximation build. What the scoring produces is a column
-    of alternatives, which the assignment turns into ownership and the decoder into a stream.
+    scoring and the per-candidate contribution build. What the scoring produces is a column of
+    alternatives on one scale, the channel's silence among them, which the assignment turns into
+    ownership and the decoder into a stream.
     """
 
     config: Config
@@ -42,94 +55,135 @@ class FrameMatcher:
     def top_k(self) -> int:
         return self.config.generation.decoder.top_k
 
-    def score_candidates(
-        self,
-        fragment: Fragment,
-        remaining_generator_classes: Dict[GeneratorClassName, GeneratorUnion],
-    ) -> List[ScoredCandidate]:
+    def score_column(self, target: Fragment, generator: GeneratorUnion, mix: FrameMix) -> Column:
         """
-        Score candidates in two stages: a phase-independent spectral shortlist, then a
-        full ranking with the temporal term each candidate's approximation measures.
+        Score one generator class's candidates in two stages, each added to ``mix``.
 
-        The shortlist ranks every candidate by the spectral term alone, which compares
-        phase-averaged features and is therefore immune to how the candidate waveform
-        happens to be phased. Each of the ``top_k`` shortlisted candidates then receives
-        the full criterion cost. A candidate whose frames repeat one waveform shape is
-        built at its best phase against the target, so the temporal term measures that
-        shape, and the aligned phase stands in for the rendered phase. A candidate whose
-        frames show different stretches of a sequence renders whatever stretch the channel
-        has reached, so its temporal term is the loss expected over every phase.
-
-        The shortlist is drawn by spectral rank, so scoring one generator class alone
-        returns every candidate of that class that a wider scoring would have kept, and
-        with it whichever of them the wider scoring picked.
+        Every candidate's power is added to the mix and the result ranked by the spectral term,
+        which compares phase-averaged powers and is therefore immune to how the waveforms happen
+        to be phased. The ``top_k`` best and the class's silent instruction then receive the full
+        cost of the frame with them sounding. A candidate whose frames repeat one waveform shape
+        adds its rendering at its best phase against what the mix leaves of the target's waveform,
+        or its library sample from the start when best-phase search is off. A candidate whose
+        frames show different stretches of a sequence adds its mean level and its variance.
 
         Args:
-            fragment: Target fragment to match.
-            remaining_generator_classes: Generators still available for this fragment.
+            target: Target fragment to match.
+            generator: The generator whose class is scored.
+            mix: What the stem's other picks sound in the frame.
 
         Returns:
-            The shortlisted candidates with their full costs, best first.
+            The shortlisted candidates with their frame costs, best first, silence ahead of an
+            equal cost.
+
+        Raises:
+            ValueError: If the library lacks the class's silent instruction.
         """
-        valid_instructions, candidate_approximations = self.candidate_provider.candidates(remaining_generator_classes)
-        spectral_costs = self.scorer.spectral_costs(
-            fragment,
-            candidate_approximations,
+        candidates = self.candidate_provider.candidates({generator.class_name(): generator})
+        mixed = self.candidate_provider.features_of(candidates.powers + xp.asarray(mix.power))
+        spectral_costs = self.scorer.spectral_costs(target, mixed)
+        shortlist = self._shortlist(spectral_costs, candidates, generator)
+
+        residual = mix.residual_waveform(target)
+        powers = np.asarray(to_numpy(candidates.powers[xp.asarray(shortlist)]), dtype=np.float64)
+        contributions = [
+            self.contribution(candidates.instructions[index], residual, power)
+            for index, power in zip(shortlist, powers)
+        ]
+        costs = self.scorer.frame_costs(
+            target,
+            spectral_costs[shortlist],
+            np.stack([mix.expectation + contribution.expectation for contribution in contributions]),
+            np.array([mix.variance + contribution.variance for contribution in contributions]),
         )
-        shortlist = Scorer.top_k(spectral_costs, self.top_k)
+        scored = [
+            ScoredCandidate(instruction=candidates.instructions[index], cost=float(cost), contribution=contribution)
+            for index, cost, contribution in zip(shortlist, costs, contributions)
+        ]
+        scored.sort(key=lambda candidate: (candidate.cost, candidate.instruction.on))
+        return tuple(scored)
 
-        scored: List[ScoredCandidate] = []
-        for index in shortlist:
-            instruction = valid_instructions[index]
-            approximation = self.build_approximation(
-                fragment,
-                instruction,
-            )
-            cost = self.scorer.candidate_cost(
-                fragment,
-                float(spectral_costs[index]),
-                approximation,
-            )
-            scored.append(
-                ScoredCandidate(
-                    instruction=instruction,
-                    cost=cost,
-                    approximation=approximation,
-                )
-            )
-
-        scored.sort(key=lambda candidate: candidate.cost)
-        return scored
+    def mix_cost(self, target: Fragment, mix: FrameMix) -> float:
+        """The frame's cost with ``mix`` sounding alone, on the scale columns are scored on."""
+        features = self.candidate_provider.features_of(xp.asarray(mix.power)[None, :])
+        spectral_costs = self.scorer.spectral_costs(target, features)
+        costs = self.scorer.frame_costs(target, spectral_costs, mix.expectation[None, :], np.array([mix.variance]))
+        return float(costs[0])
 
     def reference_energy(self, fragment: Fragment) -> float:
         """How much sound a target holds, in the units the scoring measures its cost in."""
         return self.scorer.reference_energy(fragment)
 
-    def silence_cost(self, fragment: Fragment) -> float:
-        """What leaving a target silent costs, on the scale its candidates are scored on."""
-        return self.scorer.silence_cost(fragment)
-
-    def build_approximation(
-        self,
-        fragment: Fragment,
-        instruction: InstructionUnion,
-    ) -> Approximation:
+    def contribution(self, instruction: InstructionUnion, residual: np.ndarray, power: np.ndarray) -> Contribution:
         """
-        Builds one candidate's approximation for scoring.
+        What one candidate adds to a frame whose waveform the mix leaves as ``residual``.
 
-        A candidate whose frames repeat one waveform shape is measured by that shape: at its
-        best phase against the target when best-phase search is enabled, or as the generator's
-        library approximation. A candidate whose frames show different stretches of a sequence
-        is measured by its expected contribution, whatever the search setting.
+        Args:
+            instruction: The candidate.
+            residual: What the frame's waveform holds beyond the stem's other picks.
+            power: The candidate's power density per bin at the configured drive.
+
+        Returns:
+            Contribution: The candidate's power, expected waveform and variance.
         """
         library_fragment = self.candidate_provider.library_data[instruction]
         if not library_fragment.frames_share_shape(
             frame_length=self.config.library.frame_length,
             sample_rate=self.config.library.sample_rate,
         ):
-            return self.candidate_provider.get_expected_approximation(instruction)
+            mean, variance = self.candidate_provider.expected_moments(instruction)
+            return Contribution(power=power, expectation=np.full(residual.shape[0], mean), variance=variance)
 
         if self.config.generation.calculation.find_best_phase:
-            return WaveformApproximation(self.phase_aligner.align(fragment, instruction))
+            waveform = self.phase_aligner.align(residual, instruction)
+        else:
+            waveform = self.candidate_provider.library_waveform(instruction)
 
-        return WaveformApproximation(self.candidate_provider.get_approximation(instruction))
+        return Contribution(power=power, expectation=waveform, variance=0.0)
+
+    def _shortlist(
+        self,
+        spectral_costs: np.ndarray,
+        candidates: ClassCandidates,
+        generator: GeneratorUnion,
+    ) -> List[int]:
+        """The ``top_k`` best spectral costs, with the class's silence among them.
+
+        Raises:
+            ValueError: If the library lacks the class's silent instruction.
+        """
+        silence = generator.get_instruction_type().null_instruction()
+        if silence not in candidates.instructions:
+            raise ValueError(f"The library lacks the silent instruction of {generator.class_name()}")
+
+        shortlist = [int(index) for index in Scorer.top_k(spectral_costs, self.top_k)]
+        silent_index = candidates.instructions.index(silence)
+        if silent_index not in shortlist:
+            shortlist.append(silent_index)
+
+        return shortlist
+
+
+def column_of(scored: Column, width: int) -> Column:
+    """
+    The alternatives a decoder reading ``width`` of them chooses among.
+
+    A column wider than one keeps the channel's silence, standing in for the last kept
+    alternative when the silence ranks below them, so a decoder can always rest the channel.
+
+    Args:
+        scored: A column best first.
+        width: How many alternatives the decoder reads.
+
+    Returns:
+        Column: The best ``width`` alternatives.
+    """
+    kept = scored[:width]
+    if width == 1 or any(not candidate.instruction.on for candidate in kept):
+        return kept
+
+    silence = next((candidate for candidate in scored if not candidate.instruction.on), None)
+    if silence is None:
+        return kept
+
+    return (*kept[:-1], silence)

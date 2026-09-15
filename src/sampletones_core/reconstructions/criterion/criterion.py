@@ -99,20 +99,22 @@ class Criterion:
     def expected_temporal_loss(
         self,
         audio: xp.ndarray,
-        expectation: float,
-        variance: float,
+        expectation: Union[float, xp.ndarray],
+        variance: Union[float, xp.ndarray],
     ) -> xp.ndarray:
         """
-        Level-normalized RMS difference expected between the target and a candidate standing at
-        every phase alike, read off the candidate's mean and variance.
+        Level-normalized RMS difference expected between the target and candidates known up to a
+        spread about the waveform they are expected to render.
 
         Args:
             audio: Target waveform.
-            expectation: The candidate's mean level.
-            variance: The candidate's variance about its mean.
+            expectation: The expected waveforms, one candidate per row, or one waveform or level
+                every candidate shares.
+            variance: The per-sample variance of each candidate, or one variance every candidate
+                shares.
 
         Returns:
-            The loss, as a stack of one.
+            One loss per candidate.
         """
         return calculate_expected_temporal_loss(
             audio,

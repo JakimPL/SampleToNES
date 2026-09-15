@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from sampletones_core.constants.algorithm import SPECTRUM_FLOOR
+from sampletones_core.constants.algorithm import CRITERION_DYNAMIC_RANGE_DECIBELS, SPECTRUM_FLOOR
 from sampletones_core.constants.enums import SpectralDistance
 from sampletones_shared.array import xp
 
@@ -19,8 +19,9 @@ def calculate_spectral_loss(
     Weighted spectral distance between a target feature and candidate features.
 
     The per-bin distances are weighted and normalized by the target's own weighted
-    energy, so the score reflects spectral shape at every target level. The
-    `SPECTRUM_FLOOR` in the denominator keeps the ratio finite for silent targets.
+    energy, so the score reflects spectral shape at every target level. Both the
+    divergence and the normalization measure power above the target's `spectral_floor`,
+    which keeps the ratio finite for silent targets.
 
     Args:
         reference: Target feature values, one dimension.
@@ -38,6 +39,7 @@ def calculate_spectral_loss(
         ValueError: If the spectral distance is unsupported.
     """
     reference, candidates, weights = _prepare(reference, candidates, weights)
+    floor = spectral_floor(reference)
 
     match distance:
         case SpectralDistance.SQUARED:
@@ -56,6 +58,7 @@ def calculate_spectral_loss(
                     reference,
                     candidates,
                     divergence_beta,
+                    floor,
                 ),
                 axis=-1,
             )
@@ -63,7 +66,27 @@ def calculate_spectral_loss(
             raise ValueError(f"Unsupported spectral distance: {distance}")
 
     denominator = weighted_reference_energy(reference, weights, distance=distance)
-    return numerator / (denominator + SPECTRUM_FLOOR)
+    return numerator / (denominator + floor)
+
+
+def spectral_floor(reference: xp.ndarray) -> xp.ndarray:
+    """
+    The power a bin of the target's frame is measured above, set by that frame's loudest bin.
+
+    The floor sits `CRITERION_DYNAMIC_RANGE_DECIBELS` under the loudest bin, so a candidate's
+    addition is charged wherever it stays audible beside what the frame sounds, at every frame
+    loudness: quiet noise under a loud tone costs what it adds, and noise filling a frame costs
+    what it leaves out. A frame whose loudest bin lies under `SPECTRUM_FLOOR` is measured from
+    that level, which keeps the floor positive for a silent frame.
+
+    Args:
+        reference: Target feature values.
+
+    Returns:
+        The floor, as a scalar on the active array backend.
+    """
+    loudest = xp.maximum(xp.max(reference), SPECTRUM_FLOOR)
+    return loudest * 10.0 ** (-CRITERION_DYNAMIC_RANGE_DECIBELS / 10.0)
 
 
 def weighted_reference_energy(
@@ -115,6 +138,7 @@ def _beta_divergence(
     reference: xp.ndarray,
     candidates: xp.ndarray,
     beta: float,
+    floor: xp.ndarray,
 ) -> xp.ndarray:
     """
     Per-bin beta-divergence of the floored candidates from the floored reference.
@@ -127,8 +151,9 @@ def _beta_divergence(
     precision = reference.dtype
     reference = reference.astype(xp.float64)
     candidates = candidates.astype(xp.float64)
-    floored_reference = reference + SPECTRUM_FLOOR
-    floored_candidates = candidates + SPECTRUM_FLOOR
+    floor = xp.asarray(floor, dtype=xp.float64)
+    floored_reference = reference + floor
+    floored_candidates = candidates + floor
 
     if beta == 1.0:
         divergence = floored_reference * _log_excess((candidates - reference) / floored_reference)

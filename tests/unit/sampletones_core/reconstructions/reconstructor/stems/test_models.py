@@ -12,7 +12,7 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
-from sampletones_core.reconstructions.reconstructor.approximation import WaveformApproximation
+from sampletones_core.reconstructions.reconstructor.contribution import Contribution
 from sampletones_core.reconstructions.reconstructor.matching import ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.stems.assignment.track import TrackAssignment
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
@@ -33,6 +33,10 @@ def _fragment(config: Config) -> Fragment:
     )
 
 
+def _silence(fragment: Fragment) -> Contribution:
+    return Contribution.silence(len(fragment.feature.values), fragment.audio.shape[0])
+
+
 def _choices(config: Config) -> Tuple[StemChoice, StemChoice]:
     fragment = _fragment(config)
     return (
@@ -50,14 +54,11 @@ def _choice(
     return StemChoice(
         stem_id=stem_id,
         channel_name=channel_name,
-        instruction=instruction,
-        approximation=WaveformApproximation(fragment),
-        cost=FRAME_COST,
         column=(
             ScoredCandidate(
                 instruction=instruction,
                 cost=FRAME_COST,
-                approximation=WaveformApproximation(fragment),
+                contribution=_silence(fragment),
             ),
         ),
     )
@@ -72,7 +73,7 @@ def _rest(config: Config) -> StemRest:
             ScoredCandidate(
                 instruction=instruction,
                 cost=RESTING_FRAME_COST,
-                approximation=WaveformApproximation(fragment),
+                contribution=_silence(fragment),
             ),
         ),
     )

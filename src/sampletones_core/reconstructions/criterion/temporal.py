@@ -1,3 +1,5 @@
+from typing import Union
+
 from sampletones_shared.array import xp
 
 from .alignment import align_candidates
@@ -38,27 +40,29 @@ def calculate_temporal_loss(
 
 def calculate_expected_temporal_loss(
     audio: xp.ndarray,
-    expectation: float,
-    variance: float,
+    expectation: Union[float, xp.ndarray],
+    variance: Union[float, xp.ndarray],
     *,
     level_floor: float,
 ) -> xp.ndarray:
     """
-    RMS difference expected between a waveform and a candidate taken at a phase chosen at random.
+    RMS difference expected between a waveform and candidates known up to a spread about a waveform.
 
-    A candidate standing at every phase alike contributes its mean at each sample and its spread
-    about that mean, so the expected squared difference is the squared difference from the mean
-    plus the variance. The root of that expectation normalizes by the target's level as
-    `calculate_temporal_loss` does, so the two losses stand on one scale.
+    A candidate's expectation is the waveform it is expected to render: its rendering at a known
+    phase, or the mean level of a candidate standing at every phase alike. Its variance is its
+    spread about that expectation, so the expected squared difference is the squared difference
+    from the expectation plus the variance. The root of that expectation normalizes by the target's
+    level as `calculate_temporal_loss` does, so the two losses stand on one scale.
 
     Args:
         audio: Target waveform, one dimension.
-        expectation: The candidate's mean level.
-        variance: The candidate's variance about its mean.
+        expectation: The expected waveforms, one candidate per row, or one waveform or level every
+            candidate shares.
+        variance: The per-sample variance of each candidate, or one variance every candidate shares.
         level_floor: Lowest target level the loss normalizes by.
 
     Returns:
-        The loss, as a stack of one.
+        One loss per candidate.
 
     Raises:
         ValueError: If the target has more than one dimension.
@@ -67,6 +71,10 @@ def calculate_expected_temporal_loss(
     if reference.ndim != 1:
         raise ValueError("audio must be 1D")
 
-    mean_square = xp.mean(xp.square(reference - expectation)) + variance
+    expected = xp.asarray(expectation)
+    if expected.ndim < 2:
+        expected = xp.reshape(expected, (1, -1))
+
+    mean_square = xp.mean(xp.square(reference[None, :] - expected), axis=-1) + xp.reshape(xp.asarray(variance), (-1,))
     level = xp.sqrt(xp.mean(xp.square(reference)))
-    return xp.reshape(xp.sqrt(mean_square) / xp.maximum(level, level_floor), (1,))
+    return xp.sqrt(mean_square) / xp.maximum(level, level_floor)

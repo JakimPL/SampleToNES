@@ -17,14 +17,15 @@ from tests.suite.case import BaseAutolabelTestCase
 TILED_FRAMES: Final[int] = 12
 EDGE_FRAMES: Final[int] = 1
 SIGNAL_LENGTH: Final[int] = 1 << 20
-OWN_ENTRY_COST: Final[float] = 1e-3
+OWN_ENTRY_SHARE: Final[float] = 1e-3
 
 
 class TestAToneScoresItsOwnEntry(BaseTestSuite):
     """
     A pulse tone repeats one waveform, so every frame of it carries the spectrum its phases average
-    to, and its library entry scores each frame as a match at every gamma. The frames at either end
-    are read across the edge of the audio, so the interior is where the tone stands whole.
+    to, and its library entry scores each frame as a match at every gamma: a sliver of what silence
+    costs the frame. The frames at either end are read across the edge of the audio, so the interior
+    is where the tone stands whole.
     """
 
     @dataclass(frozen=True, kw_only=True)
@@ -60,9 +61,11 @@ class TestAToneScoresItsOwnEntry(BaseTestSuite):
         reference = extractor.reference_feature(sample)
         frames = extractor.extract(np.asarray(sample.get_fragment(0, config.library.frame_length * TILED_FRAMES)))
         criterion = Criterion(config, window, SIGNAL_LENGTH)
-        costs = [
+        silence = reference.values * 0.0
+        shares = [
             float(to_numpy(criterion.spectral_loss(frame.feature, reference))[0])
+            / float(to_numpy(criterion.spectral_loss(frame.feature, silence))[0])
             for frame in frames[EDGE_FRAMES:-EDGE_FRAMES]
         ]
 
-        assert max(costs) < OWN_ENTRY_COST
+        assert max(shares) < OWN_ENTRY_SHARE

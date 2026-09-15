@@ -44,7 +44,7 @@ class ReconstructorWorker:
         feature_extractor = get_feature_extractor(self.config, self.window)
         candidate_provider = CandidateProvider(self.config, self.window, self.library_data, feature_extractor)
         phase_aligner_class = PHASE_ALIGNERS[self.config.generation.calculation.phase_aligner]
-        phase_aligner = phase_aligner_class(self.config, self.window, self.library_data, feature_extractor)
+        phase_aligner = phase_aligner_class(self.config, self.window, self.library_data)
         matcher = FrameMatcher(
             config=self.config,
             candidate_provider=candidate_provider,

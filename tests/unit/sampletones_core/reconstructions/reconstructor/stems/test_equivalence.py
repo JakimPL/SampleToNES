@@ -10,11 +10,7 @@ from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.library import InstructionLibraryData
-from sampletones_core.reconstructions.reconstructor.approximation import (
-    Approximation,
-    ExpectedApproximation,
-    WaveformApproximation,
-)
+from sampletones_core.reconstructions.reconstructor.contribution import Contribution
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher, ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -24,9 +20,10 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.settings impor
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 
-from .conftest import greedy_baseline, shared_frames
+from .conftest import audible_instruction_of, frame_objective_baseline, rendered_fragment, shared_frames
 
 RANDOM_SEEDS: Final[Tuple[int, ...]] = (11, 23, 47, 89, 131, 197)
+COST_TOLERANCE: Final[float] = 1e-5
 
 
 def _config(
@@ -48,12 +45,11 @@ def _config(
 
 
 class TestSingleStemEquivalence:
-    def test_matches_the_greedy_baseline_exactly(
+    def test_matches_the_frame_objective_baseline(
         self,
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         stems_config = _config({0: channels}, [[0]], HierarchyMode.STRICT, len(channels))
 
@@ -62,21 +58,18 @@ class TestSingleStemEquivalence:
             stems_config,
             channels,
             matcher,
-            extractor,
             SINGLE_STATE_LATTICE_WIDTH,
         )
-        baseline = greedy_baseline(synthetic_fragment, channels, matcher, extractor)
+        baseline = frame_objective_baseline(synthetic_fragment, channels, matcher)
 
-        assert len(assignment.choices) == len(channels)
-        assert len(baseline) == len(channels)
-        _assert_same_picks(assignment, baseline)
+        assert [choice.channel_name for choice in assignment.choices] == list(baseline)
+        _assert_same_heads(assignment, baseline)
 
     def test_matches_the_baseline_with_all_four_channels(
         self,
         synthetic_fragment: Fragment,
         all_channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         stems_config = _config({0: all_channels}, [[0]], HierarchyMode.STRICT, len(all_channels))
 
@@ -85,25 +78,54 @@ class TestSingleStemEquivalence:
             stems_config,
             all_channels,
             matcher,
-            extractor,
             SINGLE_STATE_LATTICE_WIDTH,
         )
-        baseline = greedy_baseline(synthetic_fragment, all_channels, matcher, extractor)
+        baseline = frame_objective_baseline(synthetic_fragment, all_channels, matcher)
 
-        assert len(assignment.choices) == len(all_channels)
-        assert len(baseline) == len(all_channels)
-        _assert_same_picks(assignment, baseline)
+        assert [choice.channel_name for choice in assignment.choices] == list(baseline)
+        _assert_same_heads(assignment, baseline)
+
+    def test_matches_the_baseline_on_a_frame_two_channels_sound(
+        self,
+        config: Config,
+        extractor: FeatureExtractor,
+        library_data: InstructionLibraryData,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        """A frame a pulse and the triangle sound together takes several picks and a second pass."""
+        fragment = rendered_fragment(
+            config,
+            extractor,
+            {
+                channel_name: audible_instruction_of(library_data, channels[channel_name])
+                for channel_name in (ChannelName.PULSE1, ChannelName.TRIANGLE)
+            },
+        )
+        stems_config = _config({0: channels}, [[0]], HierarchyMode.STRICT, len(channels))
+
+        assignment = assign_frame(
+            shared_frames(fragment, stems_config),
+            stems_config,
+            channels,
+            matcher,
+            SINGLE_STATE_LATTICE_WIDTH,
+        )
+        baseline = frame_objective_baseline(fragment, channels, matcher)
+
+        assert sum(choice.sounding for choice in assignment.choices) >= 2
+        assert [choice.channel_name for choice in assignment.choices] == list(baseline)
+        _assert_same_heads(assignment, baseline)
 
 
 class TestLatticeWidthLeavesOwnership:
-    """A wider lattice grows what the decoder may choose from, and the picks stay put."""
+    """A wider lattice grows what the decoder may choose from, and the heads stay put."""
 
-    def test_ownership_and_picks_hold_across_widths(
+    def test_ownership_and_heads_hold_across_widths(
         self,
         synthetic_fragment: Fragment,
         all_channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         stems_config = _config(
             {0: [ChannelName.PULSE1, ChannelName.TRIANGLE], 1: [ChannelName.PULSE2, ChannelName.NOISE]},
@@ -117,7 +139,6 @@ class TestLatticeWidthLeavesOwnership:
             stems_config,
             all_channels,
             matcher,
-            extractor,
             SINGLE_STATE_LATTICE_WIDTH,
         )
         wide = assign_frame(
@@ -125,7 +146,6 @@ class TestLatticeWidthLeavesOwnership:
             stems_config,
             all_channels,
             matcher,
-            extractor,
             matcher.top_k,
         )
 
@@ -133,7 +153,7 @@ class TestLatticeWidthLeavesOwnership:
         assert narrow.resting == wide.resting
         for narrow_choice, wide_choice in zip(narrow.choices, wide.choices):
             assert narrow_choice.instruction == wide_choice.instruction
-            _assert_same_approximation(narrow_choice.approximation, wide_choice.approximation)
+            _assert_same_contribution(narrow_choice.contribution, wide_choice.contribution)
             assert len(wide_choice.column) >= len(narrow_choice.column)
 
 
@@ -143,12 +163,11 @@ class TestStrictDisjointStems:
         audible_fragments: List[Fragment],
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         """Two stems sounding differently each answer their own frame over their own channels.
 
-        A stem's picks are the greedy reconstruction of the sound it contributes, so the channels
-        it holds carry that recording and the other stem takes no part in them.
+        A stem's choices are the frame objective of the sound it contributes, so the channels it
+        holds carry that recording and the other stem takes no part in them.
         """
         assert len(audible_fragments) >= 2
         first_fragment, second_fragment = audible_fragments[0], audible_fragments[-1]
@@ -158,8 +177,8 @@ class TestStrictDisjointStems:
         }
         subset_noise = {ChannelName.NOISE: channels[ChannelName.NOISE]}
 
-        expected = dict(greedy_baseline(first_fragment, subset_pulse_triangle, matcher, extractor))
-        expected.update(greedy_baseline(second_fragment, subset_noise, matcher, extractor))
+        expected = dict(frame_objective_baseline(first_fragment, subset_pulse_triangle, matcher))
+        expected.update(frame_objective_baseline(second_fragment, subset_noise, matcher))
 
         stems_config = _config(
             {0: subset_pulse_triangle, 1: subset_noise},
@@ -173,12 +192,11 @@ class TestStrictDisjointStems:
             stems_config,
             channels,
             matcher,
-            extractor,
             SINGLE_STATE_LATTICE_WIDTH,
         )
 
-        assert len(assignment.choices) == len(channels)
-        _assert_same_picks(assignment, expected)
+        assert set(assignment.by_channel) == set(expected)
+        _assert_same_heads(assignment, expected)
 
 
 class TestRandomizedDifferential:
@@ -202,7 +220,6 @@ class TestRandomizedDifferential:
             stems_config,
             all_channels,
             matcher,
-            extractor,
             SINGLE_STATE_LATTICE_WIDTH,
         )
         repeat = assign_frame(
@@ -210,7 +227,6 @@ class TestRandomizedDifferential:
             stems_config,
             all_channels,
             matcher,
-            extractor,
             SINGLE_STATE_LATTICE_WIDTH,
         )
 
@@ -228,59 +244,23 @@ class TestRandomizedDifferential:
             assert choice.channel_name in stems_config.entries_by_id[choice.stem_id].settings.channel_set
         assert all(count <= stems_config.channel_cap for count in counts.values())
 
-        if stems_config.hierarchy.mode == HierarchyMode.STRICT:
-            _assert_strict_ordering(assignment, stems_config.hierarchy)
 
-
-def _assert_same_picks(
+def _assert_same_heads(
     assignment: StemFrameAssignment,
     baseline: Dict[ChannelName, ScoredCandidate],
 ) -> None:
-    assert [choice.channel_name for choice in assignment.choices] == list(baseline.keys())
-    assert set(assignment.by_channel) == set(baseline)
-
     for channel_name, candidate in baseline.items():
         choice = assignment.by_channel[channel_name]
         assert choice.instruction == candidate.instruction
-        _assert_same_approximation(choice.approximation, candidate.approximation)
+        assert choice.cost == pytest.approx(candidate.cost, abs=COST_TOLERANCE)
+        _assert_same_contribution(choice.contribution, candidate.contribution)
 
 
-def _assert_same_approximation(left: Approximation, right: Approximation) -> None:
-    """Two approximations measure a candidate alike: one rendering, or one expectation."""
-    match left, right:
-        case WaveformApproximation(), WaveformApproximation():
-            _assert_same_fragment(left.rendering, right.rendering)
-        case ExpectedApproximation(), ExpectedApproximation():
-            assert (left.mean, left.variance, left.drive) == (right.mean, right.variance, right.drive)
-            np.testing.assert_array_equal(left.feature.values, right.feature.values)
-        case _:
-            raise AssertionError(f"{type(left).__name__} measures what {type(right).__name__} does not")
-
-
-def _assert_same_fragment(left: Fragment, right: Fragment) -> None:
-    np.testing.assert_array_equal(np.asarray(left.audio), np.asarray(right.audio))
-    np.testing.assert_array_equal(
-        np.asarray(left.windowed_audio),
-        np.asarray(right.windowed_audio),
-    )
-    np.testing.assert_array_equal(
-        np.asarray(left.feature.values),
-        np.asarray(right.feature.values),
-    )
-
-
-def _assert_strict_ordering(
-    assignment: StemFrameAssignment,
-    hierarchy: StemsHierarchy,
-) -> None:
-    first_positions = [
-        index for index, choice in enumerate(assignment.choices) if choice.stem_id in hierarchy.levels[0]
-    ]
-    second_positions = [
-        index for index, choice in enumerate(assignment.choices) if choice.stem_id in hierarchy.levels[1]
-    ]
-    if first_positions and second_positions:
-        assert max(first_positions) < min(second_positions)
+def _assert_same_contribution(left: Contribution, right: Contribution) -> None:
+    """Two contributions add the same sound: one power, one expected waveform, one variance."""
+    np.testing.assert_allclose(left.power, right.power, rtol=1e-6, atol=1e-12)
+    np.testing.assert_allclose(left.expectation, right.expectation, rtol=1e-6, atol=1e-9)
+    assert left.variance == pytest.approx(right.variance)
 
 
 def _choice_keys(choices: Tuple[StemChoice, ...]) -> Tuple[Tuple[int, ChannelName], ...]:

@@ -207,4 +207,3 @@ again.
 
 * Misaligned dialog boxes sizes at initialization
 * `Fragment.__mul__` scales a fragment's feature linearly by the drive, where the power a feature describes scales by the drive's square.
-* A residual reads what a pick adds beyond the target as power still to cover — `FFTTransformer.subtract` takes `|·|` and a re-analyzed residual measures magnitude — so a later channel adds sound where an earlier pick overshot.

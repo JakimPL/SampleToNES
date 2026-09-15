@@ -8,17 +8,22 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config, MetricConfig, WeightsConfig
-from sampletones_core.constants.algorithm import SPECTRUM_FLOOR
+from sampletones_core.constants.algorithm import CRITERION_DYNAMIC_RANGE_DECIBELS, SPECTRUM_FLOOR
 from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
 from sampletones_core.fft import CyclicArray, Window
 from sampletones_core.reconstructions.criterion import Criterion
+from sampletones_core.reconstructions.criterion.spectral import spectral_floor
 from sampletones_shared.array import to_numpy
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
 LONG_SIGNAL_LENGTH: Final[int] = 1 << 20
-HISS_LEVEL: Final[float] = 1e-7
-QUIET_NOISE_LEVEL: Final[float] = 1e-6
+SILENT_FRAME_FLOOR: Final[float] = SPECTRUM_FLOOR * 10.0 ** (-CRITERION_DYNAMIC_RANGE_DECIBELS / 10.0)
+HISS_LEVEL: Final[float] = SILENT_FRAME_FLOOR / 1e5
+QUIET_NOISE_LEVEL: Final[float] = 10.0 * HISS_LEVEL
+TONE_POWER: Final[float] = 0.03
+ADDED_NOISE_POWER: Final[float] = 1e-5
+AUDIBLE_ADDITION_COST: Final[float] = 1e-3
 SECOND_ORDER_TOLERANCE: Final[float] = 1e-3
 CYCLE_SAMPLES: Final[int] = 97
 CANDIDATE_SEED: Final[int] = 7
@@ -265,8 +270,8 @@ class TestCriterionSpectralLoss:
         bins: int,
     ) -> None:
         """
-        A hiss lying far below the spectrum floor sits nearer silence than a louder noise, so silence
-        stays among the candidates a quiet frame keeps.
+        A hiss lying far below a silent frame's floor sits nearer silence than a louder noise, so
+        silence stays among the candidates a quiet frame keeps.
         """
         criterion = _criterion_with_distance(config, window, SpectralDistance.BETA_DIVERGENCE, beta=1.0)
         reference = _hiss(bins).astype(np.float32)
@@ -282,7 +287,7 @@ class TestCriterionSpectralLoss:
 
 class TestCriterionBetaDivergenceAtTheFloor(BaseTestSuite):
     """
-    Spectra lying far below the spectrum floor score by the divergence their small difference
+    Spectra lying far below a silent frame's floor score by the divergence their small difference
     carries, which keeps the losses of near-silent frames apart in single-precision features.
 
     A relative difference `u` diverges by about `u² / 2`, so a candidate one hiss level away from a
@@ -315,13 +320,41 @@ class TestCriterionBetaDivergenceAtTheFloor(BaseTestSuite):
         reference = np.full(bins, HISS_LEVEL, dtype=np.float32)
         candidate = np.full((1, bins), 2 * HISS_LEVEL, dtype=np.float32)
         weights = to_numpy(criterion.weights).reshape(-1).astype(np.float64)
-        floored = HISS_LEVEL + SPECTRUM_FLOOR
+        floored = HISS_LEVEL + SILENT_FRAME_FLOOR
         per_bin = HISS_LEVEL**2 / 2 * floored ** (test_case.beta - 2)
-        expected = np.sum(weights * per_bin) / (np.sum(weights * HISS_LEVEL) + SPECTRUM_FLOOR)
+        expected = np.sum(weights * per_bin) / (np.sum(weights * HISS_LEVEL) + SILENT_FRAME_FLOOR)
 
         loss = to_numpy(criterion.spectral_loss(reference, candidate))
 
         np.testing.assert_allclose(loss, [expected], rtol=SECOND_ORDER_TOLERANCE)
+
+
+class TestSpectralFloor:
+    def test_the_floor_follows_the_frame_s_loudest_bin(self, bins: int) -> None:
+        quiet = np.linspace(0.0, 1e-2, bins, dtype=np.float32)
+        loud = 100.0 * quiet
+
+        assert float(to_numpy(spectral_floor(loud))) == pytest.approx(100.0 * float(to_numpy(spectral_floor(quiet))))
+
+    def test_a_silent_frame_keeps_a_positive_floor(self, bins: int) -> None:
+        assert float(to_numpy(spectral_floor(np.zeros(bins, dtype=np.float32)))) == pytest.approx(SILENT_FRAME_FLOOR)
+
+    def test_quiet_noise_under_a_loud_tone_costs_what_it_adds(
+        self,
+        config: Config,
+        window: Window,
+        bins: int,
+    ) -> None:
+        """Noise far quieter than a tone but audible beside it makes a covering of the tone cost more."""
+        criterion = _criterion_with_distance(config, window, SpectralDistance.BETA_DIVERGENCE, beta=1.0)
+        tone = np.zeros(bins, dtype=np.float32)
+        tone[bins // 4] = TONE_POWER
+        with_noise = tone + np.float32(ADDED_NOISE_POWER)
+
+        alone, noisy = to_numpy(criterion.spectral_loss(tone, np.stack([tone, with_noise])))
+
+        assert alone == pytest.approx(0.0, abs=1e-9)
+        assert noisy > AUDIBLE_ADDITION_COST
 
 
 class TestCriterionCqtAxis:

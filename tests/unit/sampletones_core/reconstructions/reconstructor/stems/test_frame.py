@@ -3,6 +3,7 @@ from typing import Dict, Final, List, Sequence, Tuple
 import numpy as np
 import pytest
 
+from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
@@ -10,10 +11,12 @@ from sampletones_core.constants.enums import (
     HierarchyMode,
     bending_channels,
 )
-from sampletones_core.fft import Fragment
+from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
-from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
+from sampletones_core.library import InstructionLibraryData
+from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher, column_of
+from sampletones_core.reconstructions.reconstructor.mix import FrameMix
 from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
@@ -21,8 +24,9 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy impo
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
+from sampletones_core.structures.histogram import Histogram
 
-from .conftest import shared_frames
+from .conftest import audible_instruction_of, rendered_fragment, shared_frames
 
 DEFAULT_CHANNELS: List[ChannelName] = [ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE]
 LOUDER_STEM_SCALE: Final[float] = 4.0
@@ -49,7 +53,6 @@ def _assign(
     stems_config: StemsConfig,
     channels: Dict[ChannelName, GeneratorUnion],
     matcher: FrameMatcher,
-    extractor: FeatureExtractor,
     lattice_width: int = SINGLE_STATE_LATTICE_WIDTH,
 ) -> StemFrameAssignment:
     return assign_frame(
@@ -57,7 +60,6 @@ def _assign(
         stems_config,
         channels,
         matcher,
-        extractor,
         lattice_width,
     )
 
@@ -68,11 +70,10 @@ class TestAssignFrameValidation:
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         stems_config = _config({0: [ChannelName.PULSE2]}, [[0]], HierarchyMode.STRICT, 1)
         with pytest.raises(ValueError, match="the run was not built for"):
-            _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+            _assign(synthetic_fragment, stems_config, channels, matcher)
 
 
 class TestFrameCompleteness:
@@ -83,11 +84,10 @@ class TestFrameCompleteness:
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, 1)
 
-        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher)
 
         assert len(assignment.choices) == 1
         assert set(assignment.by_channel) | set(assignment.resting) == stems_config.covered_channels
@@ -98,11 +98,10 @@ class TestFrameCompleteness:
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, len(DEFAULT_CHANNELS))
 
-        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher)
 
         assert assignment.resting == ()
         assert set(assignment.by_channel) == stems_config.covered_channels
@@ -112,11 +111,10 @@ class TestFrameCompleteness:
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         stems_config = _config({0: [ChannelName.PULSE1]}, [[0]], HierarchyMode.STRICT, 1)
 
-        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher)
 
         assert set(assignment.by_channel) == {ChannelName.PULSE1}
         assert assignment.resting == ()
@@ -130,7 +128,6 @@ class TestSoundingStems:
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         """A silent stem picking first passes, so the channel reaches the stem behind it.
 
@@ -145,11 +142,10 @@ class TestSoundingStems:
         )
 
         assignment = assign_frame(
-            {0: synthetic_fragment.silence(), 1: synthetic_fragment},
+            {0: _silent(synthetic_fragment), 1: synthetic_fragment},
             stems_config,
             channels,
             matcher,
-            extractor,
             SINGLE_STATE_LATTICE_WIDTH,
         )
 
@@ -161,18 +157,16 @@ class TestSoundingStems:
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         """Every covered channel still answers the frame, each holding its null instruction."""
         stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, len(DEFAULT_CHANNELS))
-        silent = synthetic_fragment.silence()
+        silent = _silent(synthetic_fragment)
 
         assignment = assign_frame(
             {0: silent},
             stems_config,
             channels,
             matcher,
-            extractor,
             SINGLE_STATE_LATTICE_WIDTH,
         )
 
@@ -182,17 +176,8 @@ class TestSoundingStems:
             assert not rest.column[0].instruction.on
 
 
-class TestBidsWithinALevel:
-    """Two stems sharing a level compete for a channel by what each still has to render."""
-
-    def _pulse_cost(
-        self,
-        fragment: Fragment,
-        channels: Dict[ChannelName, GeneratorUnion],
-        matcher: FrameMatcher,
-    ) -> float:
-        pulse = channels[ChannelName.PULSE1]
-        return matcher.score_candidates(fragment, {pulse.class_name(): pulse})[0].cost
+class TestImprovementsWithinALevel:
+    """Two stems sharing a level compete for a channel by how much of their sound it covers."""
 
     def test_the_louder_stem_takes_the_channel(
         self,
@@ -201,15 +186,14 @@ class TestBidsWithinALevel:
         matcher: FrameMatcher,
         extractor: FeatureExtractor,
     ) -> None:
-        """The louder recording wins the channel though the quieter one is the closer match.
+        """The louder recording wins the channel where both are covered alike.
 
-        A cost is a fraction of its own recording's energy, so the quiet stem scores the better
-        cost; weighting that cost by the energy behind it is what sends the channel where more
-        sound is waiting. The winner follows the recordings, not the place a stem holds.
+        A cost is a fraction of its own recording's energy, so the two stems lower their costs by
+        the same fraction; weighting that lowering by the energy behind it is what sends the channel
+        where more sound is waiting. The winner follows the recordings, not the place a stem holds.
         """
         quiet = synthetic_fragment
         loud = extractor.amplified(synthetic_fragment, LOUDER_STEM_SCALE)
-        assert self._pulse_cost(quiet, channels, matcher) < self._pulse_cost(loud, channels, matcher)
 
         stems_config = _config(
             {0: [ChannelName.PULSE1], 1: [ChannelName.PULSE1]},
@@ -224,7 +208,6 @@ class TestBidsWithinALevel:
                 stems_config,
                 channels,
                 matcher,
-                extractor,
                 SINGLE_STATE_LATTICE_WIDTH,
             )
 
@@ -239,7 +222,7 @@ class TestBidsWithinALevel:
     ) -> None:
         """Levels pick in the order they are listed, so the first level takes the channel.
 
-        Bids settle a level's own competition; precedence between levels stays the hierarchy's,
+        Improvements settle a level's own competition; precedence between levels stays the hierarchy's,
         which is what a reader arranges the levels to say.
         """
         stems_config = _config(
@@ -254,7 +237,6 @@ class TestBidsWithinALevel:
             stems_config,
             channels,
             matcher,
-            extractor,
             SINGLE_STATE_LATTICE_WIDTH,
         )
 
@@ -269,11 +251,10 @@ class TestColumns:
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, len(DEFAULT_CHANNELS))
 
-        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher)
 
         for choice in assignment.choices:
             assert len(choice.column) == SINGLE_STATE_LATTICE_WIDTH
@@ -284,13 +265,12 @@ class TestColumns:
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         """A wider column reaches the winning channel's own candidates, the pick among them."""
         stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, len(DEFAULT_CHANNELS))
         width = matcher.top_k
 
-        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor, width)
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, width)
 
         for choice in assignment.choices:
             instructions = [candidate.instruction for candidate in choice.column]
@@ -303,17 +283,19 @@ class TestColumns:
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         stems_config = _config({0: [ChannelName.PULSE1]}, [[0]], HierarchyMode.STRICT, 1)
 
-        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor, matcher.top_k)
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, matcher.top_k)
 
         column = assignment.by_channel[ChannelName.PULSE1].column
-        pulse_class = channels[ChannelName.PULSE1].class_name()
-        expected = matcher.score_candidates(synthetic_fragment, {pulse_class: channels[ChannelName.PULSE1]})
+        expected = matcher.score_column(
+            synthetic_fragment,
+            channels[ChannelName.PULSE1],
+            FrameMix.empty(synthetic_fragment),
+        )
         assert [candidate.instruction for candidate in column] == [
-            candidate.instruction for candidate in expected[: matcher.top_k]
+            candidate.instruction for candidate in column_of(expected, matcher.top_k)
         ]
 
     def test_a_resting_channel_holds_its_null_instruction_alone(
@@ -321,19 +303,18 @@ class TestColumns:
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         """A rest is a column of one, so a channel no stem took still answers its frame."""
         stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, 1)
 
-        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor, matcher.top_k)
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, matcher.top_k)
 
         assert assignment.rests
         for rest in assignment.rests:
             assert len(rest.column) == SINGLE_STATE_LATTICE_WIDTH
             candidate = rest.column[0]
             assert candidate.instruction == channels[rest.channel_name].get_instruction_type().null_instruction()
-            assert not np.any(np.asarray(candidate.approximation.rendering.audio))
+            assert not np.any(candidate.contribution.expectation)
 
 
 class TestChannelCap:
@@ -342,25 +323,38 @@ class TestChannelCap:
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         for cap, expected_count in ((1, 1), (2, 2), (5, 3)):
             stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, cap)
-            assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+            assignment = _assign(synthetic_fragment, stems_config, channels, matcher)
             assert len(assignment.choices) == expected_count
             assert {choice.stem_id for choice in assignment.choices} == {0}
             assert len(assignment.resting) == len(DEFAULT_CHANNELS) - expected_count
+
+    def test_no_more_channels_sound_than_the_cap_allows(
+        self,
+        config: Config,
+        extractor: FeatureExtractor,
+        library_data: InstructionLibraryData,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        """A frame every channel could answer sounds as many channels as the cap allows at most."""
+        fragment = _every_kind(config, extractor, library_data, channels)
+        for cap in (1, 2):
+            stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, cap)
+            assignment = _assign(fragment, stems_config, channels, matcher, matcher.top_k)
+            assert sum(choice.sounding for choice in assignment.choices) <= cap
 
     def test_round_robin_mode_respects_the_cap(
         self,
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.ROUND_ROBIN, 2)
 
-        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher)
 
         assert len(assignment.choices) == 2
         assert len(assignment.resting) == 1
@@ -372,7 +366,6 @@ class TestTieBreakDeterminism:
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         entries = {0: [ChannelName.PULSE1], 1: [ChannelName.PULSE1]}
 
@@ -381,7 +374,6 @@ class TestTieBreakDeterminism:
             _config(entries, [[0, 1]], HierarchyMode.STRICT, 1),
             channels,
             matcher,
-            extractor,
         )
         assert [(choice.stem_id, choice.channel_name) for choice in first.choices] == [(0, ChannelName.PULSE1)]
 
@@ -390,7 +382,6 @@ class TestTieBreakDeterminism:
             _config(entries, [[1, 0]], HierarchyMode.STRICT, 1),
             channels,
             matcher,
-            extractor,
         )
         assert [(choice.stem_id, choice.channel_name) for choice in swapped.choices] == [(1, ChannelName.PULSE1)]
 
@@ -399,7 +390,6 @@ class TestTieBreakDeterminism:
         synthetic_fragment: Fragment,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
     ) -> None:
         stems_config = _config(
             {0: [ChannelName.PULSE1, ChannelName.TRIANGLE], 1: [ChannelName.NOISE]},
@@ -408,64 +398,162 @@ class TestTieBreakDeterminism:
             2,
         )
 
-        first = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
-        second = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+        first = _assign(synthetic_fragment, stems_config, channels, matcher)
+        second = _assign(synthetic_fragment, stems_config, channels, matcher)
 
         assert _choice_keys(first.choices) == _choice_keys(second.choices)
         assert first.resting == second.resting
 
 
 class TestHierarchyOrdering:
-    def test_strict_mode_exhausts_the_first_level_before_the_next(
+    """Levels take their channels in the hierarchy's mode, each stem answering its own sound."""
+
+    def _frames(
         self,
-        synthetic_fragment: Fragment,
-        channels: Dict[ChannelName, GeneratorUnion],
-        matcher: FrameMatcher,
+        config: Config,
         extractor: FeatureExtractor,
-    ) -> None:
-        stems_config = _config(
-            {0: [ChannelName.PULSE1, ChannelName.TRIANGLE], 1: [ChannelName.NOISE]},
+        library_data: InstructionLibraryData,
+        channels: Dict[ChannelName, GeneratorUnion],
+    ) -> Dict[int, Fragment]:
+        pulse_and_triangle = {
+            channel_name: audible_instruction_of(library_data, channels[channel_name])
+            for channel_name in (ChannelName.PULSE1, ChannelName.TRIANGLE)
+        }
+        pulse = {ChannelName.PULSE1: audible_instruction_of(library_data, channels[ChannelName.PULSE1])}
+        return {
+            0: rendered_fragment(config, extractor, pulse_and_triangle),
+            1: rendered_fragment(config, extractor, pulse),
+        }
+
+    def _stems(self, mode: HierarchyMode) -> StemsConfig:
+        return _config(
+            {0: [ChannelName.PULSE1, ChannelName.TRIANGLE], 1: [ChannelName.PULSE2]},
             [[0], [1]],
-            HierarchyMode.STRICT,
+            mode,
             2,
         )
 
-        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
+    def test_strict_mode_exhausts_the_first_level_before_the_next(
+        self,
+        config: Config,
+        extractor: FeatureExtractor,
+        library_data: InstructionLibraryData,
+        all_channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        assignment = assign_frame(
+            self._frames(config, extractor, library_data, all_channels),
+            self._stems(HierarchyMode.STRICT),
+            all_channels,
+            matcher,
+            SINGLE_STATE_LATTICE_WIDTH,
+        )
 
         assert [choice.stem_id for choice in assignment.choices] == [0, 0, 1]
         assert {choice.channel_name for choice in assignment.choices[:2]} == {
             ChannelName.PULSE1,
             ChannelName.TRIANGLE,
         }
-        assert assignment.choices[2].channel_name == ChannelName.NOISE
+        assert assignment.choices[2].channel_name == ChannelName.PULSE2
+        assert all(choice.sounding for choice in assignment.choices)
 
     def test_round_robin_mode_alternates_levels_each_round(
         self,
-        synthetic_fragment: Fragment,
-        channels: Dict[ChannelName, GeneratorUnion],
-        matcher: FrameMatcher,
+        config: Config,
         extractor: FeatureExtractor,
+        library_data: InstructionLibraryData,
+        all_channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
     ) -> None:
-        stems_config = _config(
-            {0: [ChannelName.PULSE1, ChannelName.TRIANGLE], 1: [ChannelName.NOISE]},
-            [[0], [1]],
-            HierarchyMode.ROUND_ROBIN,
-            2,
+        assignment = assign_frame(
+            self._frames(config, extractor, library_data, all_channels),
+            self._stems(HierarchyMode.ROUND_ROBIN),
+            all_channels,
+            matcher,
+            SINGLE_STATE_LATTICE_WIDTH,
         )
 
-        assignment = _assign(synthetic_fragment, stems_config, channels, matcher, extractor)
-
         assert [choice.stem_id for choice in assignment.choices] == [0, 1, 0]
-        assert assignment.choices[1].channel_name == ChannelName.NOISE
+        assert assignment.choices[1].channel_name == ChannelName.PULSE2
         assert {assignment.choices[0].channel_name, assignment.choices[2].channel_name} == {
             ChannelName.PULSE1,
             ChannelName.TRIANGLE,
         }
-        assert assignment.by_channel.keys() == {
-            ChannelName.PULSE1,
-            ChannelName.TRIANGLE,
-            ChannelName.NOISE,
-        }
+
+
+class TestPicksThatStop:
+    """A channel sounds where it lowers the frame's cost, and holds its silence elsewhere."""
+
+    def test_a_frame_one_channel_renders_whole_sounds_that_channel_alone(
+        self,
+        config: Config,
+        window: Window,
+        library_data: InstructionLibraryData,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        """The triangle's own frame costs nothing with the triangle sounding, so no other channel lowers it."""
+        stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, len(DEFAULT_CHANNELS))
+
+        assignment = _assign(
+            self._triangle_frame(config, window, library_data, channels), stems_config, channels, matcher, matcher.top_k
+        )
+
+        assert [choice.channel_name for choice in assignment.choices if choice.sounding] == [ChannelName.TRIANGLE]
+        assert assignment.resting == ()
+
+    def test_a_declined_channel_keeps_its_alternatives_headed_by_silence(
+        self,
+        config: Config,
+        window: Window,
+        library_data: InstructionLibraryData,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, len(DEFAULT_CHANNELS))
+
+        assignment = _assign(
+            self._triangle_frame(config, window, library_data, channels), stems_config, channels, matcher, matcher.top_k
+        )
+
+        declined = [choice for choice in assignment.choices if not choice.sounding]
+        assert declined
+        for choice in declined:
+            assert len(choice.column) > 1
+            assert any(candidate.instruction.on for candidate in choice.column)
+
+    @staticmethod
+    def _triangle_frame(
+        config: Config,
+        window: Window,
+        library_data: InstructionLibraryData,
+        channels: Dict[ChannelName, GeneratorUnion],
+    ) -> Fragment:
+        triangle = audible_instruction_of(library_data, channels[ChannelName.TRIANGLE])
+        return library_data[triangle].get_fragment(0, config, window)
+
+
+def _silent(fragment: Fragment) -> Fragment:
+    """The same frame holding no sound."""
+    return Fragment(
+        audio=np.zeros_like(np.asarray(fragment.audio)),
+        feature=Histogram(edges=fragment.feature.edges, values=np.zeros_like(np.asarray(fragment.feature.values))),
+        windowed_audio=np.zeros_like(np.asarray(fragment.windowed_audio)),
+        config=fragment.config,
+    )
+
+
+def _every_kind(
+    config: Config,
+    extractor: FeatureExtractor,
+    library_data: InstructionLibraryData,
+    channels: Dict[ChannelName, GeneratorUnion],
+) -> Fragment:
+    return rendered_fragment(
+        config,
+        extractor,
+        {channel_name: audible_instruction_of(library_data, generator) for channel_name, generator in channels.items()},
+    )
 
 
 def _choice_keys(choices: Sequence[StemChoice]) -> Tuple[Tuple[int, ChannelName], ...]:

@@ -1785,38 +1785,3 @@ class TestDivide(BaseTestSuite):
             assert isinstance(test_case.expected, Histogram)
             assert_array_equal(result.edges, test_case.expected.edges)
             assert_array_equal(result.values, test_case.expected.values)
-
-
-class TestRemovePower(BaseTestSuite):
-    """Taking out an uncorrelated contribution leaves each bin the power it holds beyond that contribution."""
-
-    EDGES: Final[np.ndarray] = np.array([0.0, 50.0, 150.0, 400.0], dtype=np.float32)
-    TARGET: Final[np.ndarray] = np.array([0.5, 0.2, 0.01], dtype=np.float32)
-    REMOVED: Final[np.ndarray] = np.array([0.1, 0.3, 0.0], dtype=np.float32)
-    GAIN: Final[float] = 2.0
-    LEFT: Final[np.ndarray] = np.array([0.3, 0.0, 0.01], dtype=np.float32)
-
-    @dataclass(frozen=True, kw_only=True)
-    class TestCase(BaseRegularTestCase):
-        gamma: int
-
-    test_cases = (
-        TestCase(label="identity", gamma=0),
-        TestCase(label="intermediate", gamma=50),
-        TestCase(label="logarithmic", gamma=100),
-    )
-
-    @pytest.mark.parametrize(
-        "test_case",
-        test_cases,
-        ids=lambda test_case: test_case.label,
-    )
-    def test_the_power_beyond_the_contribution_remains(self, test_case: TestCase) -> None:
-        transformer = FFTTransformer.from_gamma(gamma=test_case.gamma, sample_rate=44100)
-        target = transformer.forward(Histogram(edges=self.EDGES, values=self.TARGET))
-        removed = transformer.forward(Histogram(edges=self.EDGES, values=self.REMOVED))
-
-        result = transformer.remove_power(target, removed, self.GAIN)
-
-        expected = transformer.forward(Histogram(edges=self.EDGES, values=self.LEFT))
-        np.testing.assert_allclose(result.values, expected.values, rtol=1e-4, atol=1e-6)

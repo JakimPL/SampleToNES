@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Tuple
-
 import numpy as np
 import pytest
 
@@ -10,30 +8,29 @@ from sampletones_core.fft import Fragment, Window
 from sampletones_core.generators import get_remaining_generator_classes
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryData
-from sampletones_core.reconstructions.reconstructor.approximation import WaveformApproximation
+from sampletones_core.reconstructions.reconstructor.candidates import ClassCandidates
 from sampletones_core.reconstructions.reconstructor.scorer import Scorer
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 
 
-def _candidate_approximations(
-    worker: ReconstructorWorker,
-) -> Tuple[Tuple[InstructionUnion, ...], Fragment]:
-    remaining_generator_classes = get_remaining_generator_classes(dict(worker.channels))
-    return worker.candidate_provider.candidates(remaining_generator_classes)
+def _candidates(worker: ReconstructorWorker) -> ClassCandidates:
+    return worker.candidate_provider.candidates(get_remaining_generator_classes(dict(worker.channels)))
 
 
 class TestSpectralCosts:
-    def test_library_waveform_scores_its_source_instruction_at_zero(
+    def test_library_feature_scores_its_source_instruction_at_zero(
         self,
         worker: ReconstructorWorker,
         audible_instruction: InstructionUnion,
         synthetic_fragment: Fragment,
     ) -> None:
-        instructions, candidates = _candidate_approximations(worker)
-        costs = worker.scorer.spectral_costs(synthetic_fragment, candidates)
-        source_index = instructions.index(audible_instruction)
+        candidates = _candidates(worker)
+        costs = worker.scorer.spectral_costs(
+            synthetic_fragment, worker.candidate_provider.features_of(candidates.powers)
+        )
+        source_index = candidates.instructions.index(audible_instruction)
 
-        assert costs.shape == (len(instructions),)
+        assert costs.shape == (len(candidates.instructions),)
         assert float(costs[source_index]) == pytest.approx(0.0, abs=1e-5)
 
     def test_costs_are_independent_of_the_target_phase(
@@ -48,90 +45,52 @@ class TestSpectralCosts:
         Spectral costs compare phase-averaged features, so the same waveform rendered
         at two phases receives identical costs.
         """
-        instruction = audible_instruction
-        library_fragment = library_data[instruction]
+        library_fragment = library_data[audible_instruction]
         target = library_fragment.get_fragment(0, config, window)
         shifted_target = library_fragment.get_fragment(library_fragment.length // 4, config, window)
+        features = worker.candidate_provider.features_of(_candidates(worker).powers)
 
-        _, candidates = _candidate_approximations(worker)
-        costs = worker.scorer.spectral_costs(target, candidates)
-        shifted_costs = worker.scorer.spectral_costs(shifted_target, candidates)
+        costs = worker.scorer.spectral_costs(target, features)
+        shifted_costs = worker.scorer.spectral_costs(shifted_target, features)
         np.testing.assert_allclose(shifted_costs, costs, rtol=1e-6)
 
 
-class TestCandidateCost:
-    def test_alignment_forgives_the_target_phase(
-        self,
-        worker: ReconstructorWorker,
-        library_data: InstructionLibraryData,
-        audible_instruction: InstructionUnion,
-        config: Config,
-        window: Window,
-    ) -> None:
-        """
-        The aligned cost evaluates the temporal term at the candidate's best phase
-        against the target, so a phase-shifted rendering of the candidate itself
-        scores at zero while the unaligned rendering carries the phase accident.
-        """
-        instruction = audible_instruction
-        library_fragment = library_data[instruction]
-        shifted_target = library_fragment.get_fragment(library_fragment.length // 4, config, window)
-
-        aligned = worker.phase_aligner.align(shifted_target, instruction)
-        unaligned = library_fragment.get_fragment(0, config, window)
-
-        aligned_cost = worker.scorer.candidate_cost(shifted_target, 0.0, WaveformApproximation(aligned))
-        unaligned_cost = worker.scorer.candidate_cost(shifted_target, 0.0, WaveformApproximation(unaligned))
-
-        assert aligned_cost == pytest.approx(0.0, abs=1e-4)
-        assert aligned_cost < unaligned_cost
-
-    def test_blends_spectral_and_temporal_terms_with_the_configured_weights(
-        self,
-        worker: ReconstructorWorker,
-        library_data: InstructionLibraryData,
-        audible_instruction: InstructionUnion,
-        config: Config,
-        window: Window,
-    ) -> None:
-        instruction = audible_instruction
-        library_fragment = library_data[instruction]
-        target = library_fragment.get_fragment(0, config, window)
-        aligned = worker.phase_aligner.align(target, instruction)
-
-        spectral_cost = 0.5
-        cost = worker.scorer.candidate_cost(target, spectral_cost, WaveformApproximation(aligned))
-        assert cost == pytest.approx(worker.scorer.criterion.alpha * spectral_cost, abs=1e-5)
-
-
-class TestSilenceCost:
-    def test_silence_costs_what_a_silent_candidate_costs(
+class TestFrameCosts:
+    def test_the_target_s_own_waveform_costs_nothing_over_time(
         self,
         worker: ReconstructorWorker,
         synthetic_fragment: Fragment,
     ) -> None:
-        """Silence stands on the scale candidates are scored on, as the candidate whose frame is empty."""
-        silent = synthetic_fragment.silence()
-        spectral_cost = float(worker.scorer.spectral_costs(synthetic_fragment, Fragment.stack([silent]))[0])
+        audio = np.asarray(synthetic_fragment.audio, dtype=np.float64)
 
-        expected = worker.scorer.candidate_cost(synthetic_fragment, spectral_cost, WaveformApproximation(silent))
+        costs = worker.scorer.frame_costs(synthetic_fragment, np.zeros(1), audio[None, :], np.zeros(1))
 
-        assert worker.scorer.silence_cost(synthetic_fragment) == pytest.approx(expected, rel=1e-5)
+        assert float(costs[0]) == pytest.approx(0.0, abs=1e-6)
 
-    def test_the_source_instruction_improves_on_silence(
+    def test_blends_spectral_and_temporal_terms_with_the_configured_weights(
         self,
         worker: ReconstructorWorker,
-        library_data: InstructionLibraryData,
-        audible_instruction: InstructionUnion,
-        config: Config,
-        window: Window,
+        synthetic_fragment: Fragment,
     ) -> None:
-        target = library_data[audible_instruction].get_fragment(0, config, window)
-        aligned = worker.phase_aligner.align(target, audible_instruction)
+        audio = np.asarray(synthetic_fragment.audio, dtype=np.float64)
+        spectral_cost = 0.5
 
-        assert worker.scorer.candidate_cost(target, 0.0, WaveformApproximation(aligned)) < worker.scorer.silence_cost(
-            target
-        )
+        cost = worker.scorer.frame_costs(synthetic_fragment, np.array([spectral_cost]), audio[None, :], np.zeros(1))
+
+        assert float(cost[0]) == pytest.approx(worker.scorer.criterion.alpha * spectral_cost, abs=1e-5)
+
+    def test_a_spread_costs_what_its_variance_adds(
+        self,
+        worker: ReconstructorWorker,
+        synthetic_fragment: Fragment,
+    ) -> None:
+        """A mix known up to a spread costs more over time than the same mix rendered exactly."""
+        audio = np.asarray(synthetic_fragment.audio, dtype=np.float64)
+        expectations = np.stack([audio, audio])
+
+        exact, spread = worker.scorer.frame_costs(synthetic_fragment, np.zeros(2), expectations, np.array([0.0, 1e-3]))
+
+        assert exact < spread
 
 
 class TestTopK:
@@ -140,8 +99,8 @@ class TestTopK:
         worker: ReconstructorWorker,
         synthetic_fragment: Fragment,
     ) -> None:
-        _, candidates = _candidate_approximations(worker)
-        costs = worker.scorer.spectral_costs(synthetic_fragment, candidates)
+        features = worker.candidate_provider.features_of(_candidates(worker).powers)
+        costs = worker.scorer.spectral_costs(synthetic_fragment, features)
         indices = Scorer.top_k(costs, 3)
         assert int(indices[0]) == int(np.argmin(costs))
         assert bool(np.all(np.diff(costs[indices]) >= 0.0))
@@ -151,7 +110,7 @@ class TestTopK:
         worker: ReconstructorWorker,
         synthetic_fragment: Fragment,
     ) -> None:
-        _, candidates = _candidate_approximations(worker)
-        costs = worker.scorer.spectral_costs(synthetic_fragment, candidates)
+        features = worker.candidate_provider.features_of(_candidates(worker).powers)
+        costs = worker.scorer.spectral_costs(synthetic_fragment, features)
         indices = Scorer.top_k(costs, costs.shape[0] + 10)
         assert indices.shape[0] == costs.shape[0]

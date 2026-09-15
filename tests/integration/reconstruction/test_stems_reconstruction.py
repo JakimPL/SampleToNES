@@ -337,17 +337,21 @@ class TestRemovingAStem:
     def test_the_channels_it_alone_held_stand_by(self, tmp_path: Path) -> None:
         """A channel every remaining recording passes over describes no frame at all.
 
-        The channels stem c alone sounded come from the recorded assignment, so the test states
-        what a removal does to them rather than which channels this material happened to reach.
+        The stem removed is one that alone sounded some channel, read from the recorded assignment,
+        so the test states what a removal does to such channels rather than which channels this
+        material happened to reach.
         """
         reconstruction, _paths, _config = self._three_stems(tmp_path)
         assignments = reconstruction.stems_data.assignments_by_channel
-        held_alone = tuple(
-            channel for channel, stem_ids in assignments.items() if set(stem_ids) - {RESTING_STEM_ID} == {STEM_C_ID}
-        )
-        assert held_alone
+        held_alone_by = {
+            stem_id: tuple(
+                channel for channel, stem_ids in assignments.items() if set(stem_ids) - {RESTING_STEM_ID} == {stem_id}
+            )
+            for stem_id in (STEM_A_ID, STEM_B_ID, STEM_C_ID)
+        }
+        removed_id, held_alone = next((stem_id, held) for stem_id, held in held_alone_by.items() if held)
 
-        remaining = without_stem(reconstruction, STEM_C_ID)
+        remaining = without_stem(reconstruction, removed_id)
 
         assert set(remaining.playing_channels) == set(assignments) - set(held_alone)
         for channel in held_alone:

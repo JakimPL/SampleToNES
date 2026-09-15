@@ -20,11 +20,10 @@ class FeatureExtractor(ABC):
     method.
 
     A single extractor produces the matching target's per-frame features
-    (`extract`), a stationary candidate's reference feature (`reference_feature`),
-    and the residual feature left after removing a candidate (`subtract`). Routing
-    the target and the library through the same extractor is what keeps the two
-    directly comparable, and confines all spectrum-method branching to the extractor
-    chosen for the configuration.
+    (`extract`) and a stationary candidate's reference feature (`reference_feature`).
+    Routing the target and the library through the same extractor is what keeps the
+    two directly comparable, and confines all spectrum-method branching to the
+    extractor chosen for the configuration.
     """
 
     def __init__(self, config: Config, window: Window) -> None:
@@ -78,56 +77,6 @@ class FeatureExtractor(ABC):
             config=fragment.config,
         )
 
-    def subtract(self, target: Fragment, approximation: Fragment) -> Fragment:
-        """Residual fragment after removing `approximation` from `target`."""
-        if target.audio.shape != approximation.audio.shape:
-            raise ValueError("Fragments must have the same shape to be subtracted")
-
-        if (
-            target.config.library != approximation.config.library
-            or target.config.generation.calculation != approximation.config.generation.calculation
-        ):
-            raise ValueError("Both fragments must have the same config to be subtracted")
-
-        windowed_audio = target.windowed_audio - approximation.windowed_audio
-        audio = target.audio - approximation.audio
-        feature = self._residual_feature(target, approximation, windowed_audio)
-        return Fragment(
-            audio=audio,
-            feature=feature,
-            windowed_audio=windowed_audio,
-            config=self.config,
-        )
-
-    def remove_expectation(
-        self,
-        target: Fragment,
-        expectation: float,
-        feature: Histogram,
-        gain: float,
-    ) -> Fragment:
-        """Residual fragment after removing a contribution uncorrelated with `target`.
-
-        Such a contribution takes its mean level out of the waveform and its power out of the
-        spectrum, so the residual keeps the target's shape and whatever power the contribution
-        leaves uncovered, whichever way the residual feature is otherwise measured.
-
-        Args:
-            target: Fragment the contribution is removed from.
-            expectation: Mean level of the contribution.
-            feature: Feature of the contribution at unit gain.
-            gain: Power gain of the contribution.
-
-        Returns:
-            Fragment: The residual.
-        """
-        return Fragment(
-            audio=target.audio - expectation,
-            feature=self.transformer.remove_power(target.feature, feature, gain),
-            windowed_audio=target.windowed_audio - expectation * self.window.envelope,
-            config=target.config,
-        )
-
     @abstractmethod
     def _frame_features(
         self,
@@ -139,12 +88,3 @@ class FeatureExtractor(ABC):
     @abstractmethod
     def reference_feature(self, sample: CyclicArray) -> Histogram:
         """Steady-state feature of a stationary, periodic candidate sample."""
-
-    @abstractmethod
-    def _residual_feature(
-        self,
-        target: Fragment,
-        approximation: Fragment,
-        windowed_audio: np.ndarray,
-    ) -> Histogram:
-        """Feature of the residual, given the already-differenced window."""

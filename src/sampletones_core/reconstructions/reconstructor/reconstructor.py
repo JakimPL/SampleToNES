@@ -285,7 +285,6 @@ class Reconstructor:
                     stems_config,
                     self.channels,
                     worker.matcher,
-                    worker.feature_extractor,
                     worker.decoder.lattice_width,
                 )
             )

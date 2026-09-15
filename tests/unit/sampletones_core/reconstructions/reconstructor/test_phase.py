@@ -6,8 +6,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.fft import Fragment, Window
-from sampletones_core.fft.features import get_feature_extractor
+from sampletones_core.fft import Window
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstructor.phase import (
@@ -17,8 +16,8 @@ from sampletones_core.reconstructions.reconstructor.phase import (
 )
 
 
-def _rmse(target: Fragment, aligned: Fragment) -> float:
-    difference = np.asarray(target.audio) - np.asarray(aligned.audio)
+def _rmse(target: np.ndarray, aligned: np.ndarray) -> float:
+    difference = np.asarray(target, dtype=np.float64) - np.asarray(aligned, dtype=np.float64)
     return float(np.sqrt(np.mean(difference**2)))
 
 
@@ -29,15 +28,14 @@ class TestPhaseAlignerEquivalence:
         window: Window,
         library_data: InstructionLibraryData,
     ) -> None:
-        extractor = get_feature_extractor(config, window)
-        sliding = SlidingRmsePhaseAligner(config, window, library_data, extractor)
-        cross_correlation = CrossCorrelationPhaseAligner(config, window, library_data, extractor)
+        sliding = SlidingRmsePhaseAligner(config, window, library_data)
+        cross_correlation = CrossCorrelationPhaseAligner(config, window, library_data)
 
         active_instructions = [instruction for instruction in library_data.keys() if instruction.on]
         assert active_instructions
 
         for instruction in active_instructions:
-            target = library_data[instruction].get_fragment(0, config, window)
+            target = library_data[instruction].get_fragment(0, config, window).audio
             sliding_rmse = _rmse(target, sliding.align(target, instruction))
             cross_correlation_rmse = _rmse(target, cross_correlation.align(target, instruction))
 
@@ -62,11 +60,26 @@ class TestPhaseAlignerDrive:
         """
         drive = 2.0
         driven_config = config.model_copy(update={"generation": config.generation.model_copy(update={"drive": drive})})
-        extractor = get_feature_extractor(driven_config, window)
-        aligner = aligner_class(driven_config, window, library_data, extractor)
+        aligner = aligner_class(driven_config, window, library_data)
 
         library_fragment = library_data[audible_instruction]
-        target = extractor.amplified(library_fragment.get_fragment(library_fragment.length // 4, config, window), drive)
+        target = drive * library_fragment.get_fragment(library_fragment.length // 4, config, window).audio
         aligned = aligner.align(target, audible_instruction)
 
         assert _rmse(target, aligned) == pytest.approx(0.0, abs=1e-4)
+
+    def test_the_sliding_energy_of_a_candidate_is_read_once(
+        self,
+        config: Config,
+        window: Window,
+        library_data: InstructionLibraryData,
+        audible_instruction: InstructionUnion,
+    ) -> None:
+        aligner = CrossCorrelationPhaseAligner(config, window, library_data)
+        target = library_data[audible_instruction].get_fragment(0, config, window).audio
+
+        first = aligner.align(target, audible_instruction)
+        second = aligner.align(0.5 * target, audible_instruction)
+
+        assert len(aligner._energies) == 1  # pylint: disable=protected-access
+        np.testing.assert_allclose(first, second)

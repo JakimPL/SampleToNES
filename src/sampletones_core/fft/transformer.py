@@ -379,37 +379,6 @@ class FFTTransformer(BaseModel):
             feature2,
         )
 
-    def remove_power(
-        self,
-        feature: Histogram,
-        removed: Histogram,
-        gain: float,
-    ) -> Histogram:
-        """
-        The feature of the power left once an uncorrelated contribution is taken out.
-
-            `[ max(feature ^ (1 / a) - gain ⋅ removed ^ (1 / a), 0) ] ^ a`
-
-        Powers of uncorrelated signals add, so taking one out subtracts its power, and what a bin
-        holds beyond the contribution is what remains in it.
-
-        Args:
-            feature: FFT feature the contribution is taken from.
-            removed: FFT feature of the contribution at unit gain.
-            gain: Power gain the contribution is taken out at.
-
-        Returns:
-            Histogram: Resulting FFT feature.
-
-        Raises:
-            ValueError: If the features have different edges.
-        """
-        return self.apply(
-            lambda power, removed_power: np.maximum(power - gain * removed_power, 0.0),
-            feature,
-            removed,
-        )
-
     def multiply(self, *features_or_scalars: Union[Numeric, Histogram]) -> Histogram:
         """
         Multiply an FFT feature by another features/scalars with transformations.

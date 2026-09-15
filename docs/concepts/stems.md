@@ -48,20 +48,22 @@ can render, and stands aside in the rest. A channel a passing stem leaves free g
 to a stem that does sound there, or rests. This is what keeps a recording quiet
 through a passage from sounding that passage on the channels it holds elsewhere.
 
-### 4. One greedy pick at a time
+### 4. One pick at a time, while a pick helps
 
-A pick scores each eligible stem's candidates against what is left of that stem's
-own frame, with the same two-stage criterion the single-sample pipeline uses
-(`FrameMatcher`), takes the winning offer across the active level, removes its
-contribution from that stem's residual, and consumes the channel. Picks continue
-until every stem channel is assigned, or caps and free channels are exhausted.
-Each stem carrying a residual of its own is what keeps its later picks from
-re-approximating what its earlier picks already cover, while leaving what the other
-stems sound out of it.
+A pick scores each eligible stem's candidates by the cost of that stem's own frame
+with the candidate sounding beside the stem's earlier picks, with the same two-stage
+criterion the single-sample pipeline uses (`FrameMatcher`), takes the winning offer
+across the active level, adds it to that stem's mix, and consumes the channel. Picks
+continue while an offer lowers a frame's cost and caps and free channels remain. A
+channel no pick took goes, silent, to the first sounding stem in hierarchy order that
+may still hold it, and every held channel is then scored once more with its stem's other
+channels sounding. Each stem carrying a mix of its own is what keeps its later picks
+from re-approximating what its earlier picks already cover, while leaving what the
+other stems sound out of it.
 
 ### 5. A frame is answered whole
 
-Every channel the setup covers leaves a frame either picked or **resting**. A
+Every channel the setup covers leaves a frame either held by a stem or **resting**. A
 resting channel holds its channel's null instruction over a silent frame and
 records the resting stem id, so instruction streams, rendered approximations and
 the per-frame stem record all run parallel to the frames they describe: frame
@@ -78,10 +80,10 @@ recording it was matched against.
 ### 6. Ownership and decoding compose
 
 The assignment answers *which stem owns which channel this frame*; the decoder
-answers *what that channel plays across frames*. Each pick leaves the channel it
-won a column of candidates, as wide as the configured decoder reads, and the
-decoder chooses one candidate per frame from those columns — greedily, or along
-the lowest-cost path through the whole lattice. A resting frame reaches the
+answers *what that channel plays across frames*. Each held channel leaves the frame
+with a column of candidates, its silence among them, as wide as the configured
+decoder reads, and the decoder chooses one candidate per frame from those columns —
+greedily, or along the lowest-cost path through the whole lattice. A resting frame reaches the
 decoder as a column of one, so a channel a cap left free sits in the path as the
 off state it is. See [Reconstruction §5](reconstruction.md) for the decoders
 themselves.
@@ -99,9 +101,8 @@ channels per frame.
 A cost is a fraction of its own recording's energy, so two stems' costs stand on
 different scales and comparing them alone would hand a channel to whichever
 recording is easiest to approximate. Within a level, an offer is therefore ranked
-by the energy its candidate covers — how far its cost falls below the cost of leaving
-the recording silent, weighted by the energy behind it — so the channel reaches the
-stem with the most sound waiting. Precedence between levels
+by how far its head lowers the stem's frame cost, weighted by the energy behind it,
+so the channel reaches the stem whose sound it covers most. Precedence between levels
 stays the hierarchy's, which is what a reader arranges the levels to say.
 
 ### 9. Ties resolve deterministically
@@ -112,10 +113,10 @@ channel and a rerun assigns the same way every time.
 
 ### 10. The single-sample case stays exact
 
-One stem covering every enabled channel, with a cap at the channel count,
-reproduces the classic greedy reconstruction pick for pick. Property tests hold
-the assignment against an independent restatement of that reconstruction —
-identical choices, instructions, and approximations — so the one pipeline serves
+One stem covering every enabled channel, with a cap at the channel count, is the
+single-sample reconstruction. Property tests hold the assignment against an
+independent restatement of the frame objective that scores every candidate alone —
+identical choices, instructions, costs and contributions — so the one pipeline serves
 the single-sample case exactly as it stands.
 
 ### 11. The working level follows the covered channels
@@ -155,11 +156,11 @@ The assignment lives in `reconstructor/stems/assignment/`:
   setup against the run's channels, and answers the frame whole: the picks in the
   order they were made, each with its candidate column, together with the channels
   left resting;
-- `AssignmentSession` carries one frame's progress — each stem's residual, the free
-  channels, the per-stem counts, and the stems sounding in the frame — and runs the
-  hierarchy's mode. It ranks a level's offers by `StemOffer.bid`, the energy a
-  candidate covers, which the matcher measures through `reference_energy` and
-  `silence_cost`;
+- `AssignmentSession` carries one frame's progress — each stem's `FrameMix` and frame
+  cost, the free channels, the per-stem counts, and the stems sounding in the frame —
+  and runs the hierarchy's mode, then settles the declined channels and scores every
+  choice once more. It ranks a level's offers by `StemOffer.improvement`, which the
+  matcher measures through `score_column`, `mix_cost` and `reference_energy`;
 - `TrackAssignment` gathers the frames into what the rest of the run reads: the
   lattice each channel offers the decoder, and the stem owning each of its
   frames.

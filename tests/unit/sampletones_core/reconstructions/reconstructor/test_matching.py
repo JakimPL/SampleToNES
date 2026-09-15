@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Final
+from typing import Any, Dict, Final
 
 import numpy as np
 import pytest
@@ -10,13 +10,12 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
-from sampletones_core.generators import (
-    GeneratorUnion,
-    get_generator_by_instruction,
-    get_remaining_generator_classes,
-)
-from sampletones_core.instructions import InstructionUnion, NoiseInstruction
-from sampletones_core.library import InstructionLibraryData
+from sampletones_core.generators import GeneratorUnion, get_generator_by_instruction, get_remaining_generator_classes
+from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction
+from sampletones_core.library import InstructionLibraryData, InstructionLibraryFragment
+from sampletones_core.reconstructions.reconstructor.contribution import Contribution
+from sampletones_core.reconstructions.reconstructor.matching import ScoredCandidate, column_of
+from sampletones_core.reconstructions.reconstructor.mix import FrameMix
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 from sampletones_shared.array import to_numpy, xp
 from tests.suite.base import BaseTestSuite
@@ -25,6 +24,8 @@ from tests.suite.case import BaseRegularTestCase
 WORKER_SIGNAL_LENGTH: Final[int] = 1 << 20
 AVERAGED_SHIFTS: Final[int] = 400
 AVERAGE_TOLERANCE: Final[float] = 0.05
+SOUNDING_COST: Final[float] = 0.2
+SILENT_COST: Final[float] = 0.5
 
 
 def _long_noise(library_data: InstructionLibraryData) -> NoiseInstruction:
@@ -55,20 +56,34 @@ def _searching(
     )
 
 
-class TestTwoStageScoring:
-    def test_shortlist_is_ranked_by_candidate_cost_best_first(
+def _generator_of(worker: ReconstructorWorker, instruction: InstructionUnion) -> GeneratorUnion:
+    return get_generator_by_instruction(instruction, get_remaining_generator_classes(dict(worker.channels)))
+
+
+def _temporal_loss(worker: ReconstructorWorker, target: Fragment, contribution: Contribution) -> float:
+    loss = worker.scorer.criterion.expected_temporal_loss(
+        xp.asarray(target.audio, dtype=xp.float64),
+        xp.asarray(contribution.expectation),
+        contribution.variance,
+    )
+    return float(to_numpy(loss)[0])
+
+
+class TestScoreColumn:
+    def test_a_column_is_ranked_by_frame_cost_with_the_channel_s_silence_among_it(
         self,
         worker: ReconstructorWorker,
         synthetic_fragment: Fragment,
     ) -> None:
-        remaining_generator_classes = get_remaining_generator_classes(dict(worker.channels))
-        scored = worker.matcher.score_candidates(synthetic_fragment, remaining_generator_classes)
+        for generator in get_remaining_generator_classes(dict(worker.channels)).values():
+            column = worker.matcher.score_column(synthetic_fragment, generator, FrameMix.empty(synthetic_fragment))
 
-        assert 0 < len(scored) <= worker.matcher.top_k
-        costs = [candidate.cost for candidate in scored]
-        assert costs == sorted(costs)
+            costs = [candidate.cost for candidate in column]
+            assert costs == sorted(costs)
+            assert len(column) <= worker.matcher.top_k + 1
+            assert any(not candidate.instruction.on for candidate in column)
 
-    def test_phase_shifted_target_selects_its_source_instruction_at_near_zero_cost(
+    def test_a_phase_shifted_rendering_wins_its_class_at_near_zero_cost(
         self,
         worker: ReconstructorWorker,
         library_data: InstructionLibraryData,
@@ -77,45 +92,74 @@ class TestTwoStageScoring:
         window: Window,
     ) -> None:
         """
-        A target that is a phase-shifted rendering of a library instruction wins with
-        a near-zero cost: the spectral shortlist is phase-independent, and the
-        temporal term is evaluated on the candidate aligned to the target, so the
-        phase accident carries no penalty.
+        The spectral shortlist is phase-independent and the candidate's waveform is aligned to the
+        target, so the phase accident carries no penalty.
         """
-        instruction = audible_instruction
-        library_fragment = library_data[instruction]
+        library_fragment = library_data[audible_instruction]
         shifted_target = library_fragment.get_fragment(library_fragment.length // 4, config, window)
 
-        remaining_generator_classes = get_remaining_generator_classes(dict(worker.channels))
-        scored = worker.matcher.score_candidates(shifted_target, remaining_generator_classes)
+        column = worker.matcher.score_column(
+            shifted_target,
+            _generator_of(worker, audible_instruction),
+            FrameMix.empty(shifted_target),
+        )
 
-        assert scored[0].instruction == instruction
-        assert scored[0].cost == pytest.approx(0.0, abs=1e-3)
+        assert column[0].instruction == audible_instruction
+        assert column[0].cost == pytest.approx(0.0, abs=1e-3)
 
-
-class TestClassRestrictedShortlist:
-    def test_one_class_keeps_the_candidate_a_wider_scoring_picked(
+    def test_silence_costs_what_the_mix_alone_costs(
         self,
         worker: ReconstructorWorker,
         synthetic_fragment: Fragment,
     ) -> None:
-        """Scoring one generator class alone reaches the winner the wider scoring picked.
+        mix = FrameMix.empty(synthetic_fragment)
+        generator = next(iter(get_remaining_generator_classes(dict(worker.channels)).values()))
 
-        The shortlist is drawn by spectral rank, so a candidate that outranked every other
-        class's candidates outranks its own class's rejects too. That is what lets a frame's
-        ownership be settled across classes while the column the decoder reads holds the
-        winning channel's own alternatives.
-        """
-        wide_classes = get_remaining_generator_classes(dict(worker.channels))
-        winner = worker.matcher.score_candidates(synthetic_fragment, wide_classes)[0]
-        generator = get_generator_by_instruction(winner.instruction, wide_classes)
+        column = worker.matcher.score_column(synthetic_fragment, generator, mix)
 
-        column = worker.matcher.score_candidates(
-            synthetic_fragment,
-            {generator.class_name(): generator},
+        silence = next(candidate for candidate in column if not candidate.instruction.on)
+        assert silence.cost == pytest.approx(worker.matcher.mix_cost(synthetic_fragment, mix), rel=1e-6)
+
+    def test_a_sound_the_mix_already_holds_is_left_silent(
+        self,
+        worker: ReconstructorWorker,
+        library_data: InstructionLibraryData,
+        audible_instruction: InstructionUnion,
+        config: Config,
+        window: Window,
+    ) -> None:
+        """Adding what the frame already sounds costs more than silence, so the channel's head is its silence."""
+        target = library_data[audible_instruction].get_fragment(0, config, window)
+        generator = _generator_of(worker, audible_instruction)
+        covering = worker.matcher.score_column(target, generator, FrameMix.empty(target))[0]
+
+        column = worker.matcher.score_column(target, generator, FrameMix.of(target, [covering.contribution]))
+
+        assert not column[0].instruction.on
+
+    def test_a_library_without_the_class_s_silence_is_refused(
+        self,
+        config: Config,
+        window: Window,
+        channels: Dict[ChannelName, GeneratorUnion],
+        extractor: FeatureExtractor,
+        synthetic_fragment: Fragment,
+    ) -> None:
+        pulse = channels[ChannelName.PULSE1]
+        data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = {
+            instruction: InstructionLibraryFragment.create(pulse, instruction, extractor)
+            for instruction in list(pulse.get_possible_instructions())[1:3]
+        }
+        worker = ReconstructorWorker(
+            config=config,
+            window=window,
+            channels={ChannelName.PULSE1: pulse},
+            library_data=InstructionLibraryData.create(config, data),
+            signal_length=WORKER_SIGNAL_LENGTH,
         )
 
-        assert winner.instruction in [candidate.instruction for candidate in column]
+        with pytest.raises(ValueError, match="lacks the silent instruction"):
+            worker.matcher.score_column(synthetic_fragment, pulse, FrameMix.empty(synthetic_fragment))
 
 
 class TestHowACandidateIsMeasured(BaseTestSuite):
@@ -168,10 +212,15 @@ class TestHowACandidateIsMeasured(BaseTestSuite):
             ]
         )
 
-        approximation = worker.matcher.build_approximation(synthetic_fragment, noise)
-        cost = float(to_numpy(approximation.temporal_loss(synthetic_fragment, criterion))[0])
+        contribution = worker.matcher.contribution(
+            noise,
+            np.asarray(synthetic_fragment.audio, dtype=np.float64),
+            worker.candidate_provider.power_of(noise),
+        )
 
-        assert cost == pytest.approx(averaged, rel=AVERAGE_TOLERANCE)
+        assert _temporal_loss(worker, synthetic_fragment, contribution) == pytest.approx(
+            averaged, rel=AVERAGE_TOLERANCE
+        )
 
     def test_a_note_searched_for_costs_no_more_than_at_its_library_phase(
         self,
@@ -184,11 +233,34 @@ class TestHowACandidateIsMeasured(BaseTestSuite):
     ) -> None:
         searching = _searching(config, window, channels, library_data, True)
         keeping = _searching(config, window, channels, library_data, False)
-        criterion = searching.scorer.criterion
+        residual = np.asarray(synthetic_fragment.audio, dtype=np.float64)
+        power = searching.candidate_provider.power_of(audible_instruction)
 
-        searched = searching.matcher.build_approximation(synthetic_fragment, audible_instruction)
-        kept = keeping.matcher.build_approximation(synthetic_fragment, audible_instruction)
+        searched = searching.matcher.contribution(audible_instruction, residual, power)
+        kept = keeping.matcher.contribution(audible_instruction, residual, power)
 
-        assert float(to_numpy(searched.temporal_loss(synthetic_fragment, criterion))[0]) <= float(
-            to_numpy(kept.temporal_loss(synthetic_fragment, criterion))[0]
+        assert _temporal_loss(searching, synthetic_fragment, searched) <= _temporal_loss(
+            keeping, synthetic_fragment, kept
         )
+
+
+class TestColumnOf:
+    def _column(self) -> tuple[ScoredCandidate, ...]:
+        silence = Contribution.silence(1, 1)
+        return (
+            ScoredCandidate(PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=1), SOUNDING_COST, silence),
+            ScoredCandidate(PulseInstruction(on=True, pitch=61, volume=8, duty_cycle=1), SOUNDING_COST, silence),
+            ScoredCandidate(PulseInstruction.null_instruction(), SILENT_COST, silence),
+        )
+
+    def test_a_single_state_decoder_reads_the_head_alone(self) -> None:
+        column = self._column()
+        assert column_of(column, 1) == column[:1]
+
+    def test_a_wider_column_keeps_the_channel_s_silence(self) -> None:
+        column = self._column()
+        assert column_of(column, 2) == (column[0], column[2])
+
+    def test_a_column_already_holding_its_silence_keeps_its_order(self) -> None:
+        column = self._column()
+        assert column_of(column, 3) == column

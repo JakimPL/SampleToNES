@@ -146,7 +146,7 @@ Intermediate values interpolate smoothly. Higher gamma compresses the dynamic ra
 emphasizing quiet spectral detail relative to loud peaks. The transform is applied
 identically to target and candidate features, so it re-weights the comparison rather
 than changing what is represented. Arithmetic on features — a library candidate's
-average over phases, a residual's difference — is carried out on the power spectra
+average over phases, the mix of a frame's picks — is carried out on the power spectra
 they describe and transformed afterward, so its result is the feature of that power
 at every gamma.
 
@@ -178,21 +178,24 @@ cost = α · spectral + β · temporal          (default α = 0.8, β = 0.2)
 - **spectral** compares the two frequency features with a perceptually-weighted
   distance, normalized by the target's own energy so the score is about *shape*. The
   per-bin distance is configurable — squared error, absolute error, or (the default)
-  a **β-divergence** (a Kullback–Leibler-style measure that, for partials above the
-  spectral floor, penalizes leaving target energy uncovered more strongly than adding
-  energy beyond it). Bins are weighted by their span in auditory critical bands (the
-  ERB scale) times the K-weighting loudness curve (ITU-R BS.1770), so each bin counts
-  in proportion to the hearing resolution and loudness contribution it represents.
-- **temporal** measures the target *waveform* against what the candidate renders at any
-  phase, normalized by the target frame's own level so the spectral/temporal blend
-  holds across frame loudness. A candidate whose frames repeat one waveform shape — a
-  note, or noise whose register cycle fits inside a frame — is measured by the RMS
-  difference at its best phase against the target, which makes the term measure
-  waveform *shape*, a property the magnitude spectrum discards. A candidate whose
-  frames show different stretches of a pseudo-random sequence is measured by the
-  difference expected over every phase: for a candidate `c` with mean `μ` and
-  variance `σ²` played at drive `d`,
-  `E mean((t − d·c)²) = mean((t − d·μ)²) + d²·σ²`, whose root normalizes as above.
+  a **β-divergence** (a Kullback–Leibler-style measure that penalizes leaving target
+  energy uncovered more strongly than adding energy beyond it). Both sides are
+  measured above a **floor 60 dB under the frame's loudest bin**, so an addition costs
+  what it adds wherever it stays audible beside what the frame sounds — quiet noise
+  under a loud tone — and a frame of noise costs what a channel leaves out of it.
+  Bins are weighted by their span in auditory critical bands (the ERB scale) times the
+  K-weighting loudness curve (ITU-R BS.1770), so each bin counts in proportion to the
+  hearing resolution and loudness contribution it represents.
+- **temporal** measures the target *waveform* against what the frame's channels are
+  expected to render, normalized by the target frame's own level so the
+  spectral/temporal blend holds across frame loudness. A candidate whose frames repeat
+  one waveform shape — a note, or noise whose register cycle fits inside a frame —
+  renders its waveform at its best phase against what the other channels leave of the
+  target, which makes the term measure waveform *shape*, a property the magnitude
+  spectrum discards. A candidate whose frames show different stretches of a
+  pseudo-random sequence renders its mean level with a spread about it: for waveforms
+  expected to sum to `E` with a per-sample variance `V`,
+  `E mean((t − x)²) = mean((t − E)²) + V`, whose root normalizes as above.
 
 A lower cost is a better match. The criterion evaluates many candidates at once and,
 on machines with a GPU, runs on the array backend in `sampletones_shared`.
@@ -212,52 +215,60 @@ that channel may sound there, best first. The decoder reads those columns into o
 candidate per frame. Each decoder states how wide a column it reads, and the
 assignment builds columns to exactly that width.
 
-Candidates are scored in two stages: every candidate is first ranked by the
-phase-independent spectral term, and the best `top_k` are then re-scored with the
-full criterion. A candidate whose frames repeat one shape has its temporal term
-evaluated on its waveform aligned to the target when `find_best_phase` is on, and on its
-library sample from the start otherwise; either phase stands in for the one the
-generator reaches when the frame is rendered. A candidate whose frames show different
-stretches of a sequence renders whatever stretch its channel has reached, so it is
-scored at its expected temporal term whatever `find_best_phase` says.
+A candidate is scored by the **frame's cost with it sounding** beside the picks its source
+already holds in that frame, the channel's silence among the candidates. The picks add up
+to a **mix**: their phase-averaged power spectra add, and so do the waveforms they are
+expected to render and their variances. Scoring runs in two stages: every candidate of
+one channel's kind is added to the mix and ranked by the phase-independent spectral term,
+and the best `top_k` together with the kind's silence are then re-scored with the full
+criterion. A candidate whose frames repeat one shape adds its waveform aligned to what
+the mix leaves of the target when `find_best_phase` is on, and its library sample from
+the start otherwise; either phase stands in for the one the generator reaches when the
+frame is rendered. A candidate whose frames show different stretches of a sequence
+renders whatever stretch its channel has reached, so it adds its mean level and its
+variance whatever `find_best_phase` says. The scored candidates, best first and silence
+ahead of an equal cost, form the channel's column; `top_k` sets how many of them a wide
+decoder reads.
 
 ### 5.1 Assigning channels
 
-A frame is assigned one pick at a time:
+A frame is assigned one pick at a time, for as long as a pick lowers a frame's cost:
 
 ```
 free = {channels the setup covers}
-residual[source] = that source's own frame, for every source that sounds in it
+mix[source] = nothing, cost[source] = the cost of silence, for every source that sounds
 while a source may still take a channel and free is non-empty:
-    pick the single (source, channel, instruction) covering the most of
-        residual[source], across every channel that source may still take
-    subtract its contribution from residual[source]
-    assign it and remove that channel from `free`
+    for every source and every channel kind it may still take:
+        column = that kind's candidates scored with mix[source] sounding
+    take the (source, channel) whose column head sounds and lowers cost[source] the most,
+        weighted by the energy of the source's frame; stop when none does
+    add the head to mix[source], set cost[source] to the head's cost
+give every channel still free to the first sounding source that may hold it, headed by silence
+score every held channel once more with its source's other channels sounding
 ```
 
-A pick's contribution is what it renders when its frames repeat one shape: the
-residual loses the aligned waveform, and its feature is measured again from the residual
-waveform on the windowed methods and differenced on the constant-Q. A pick whose frames
-show different stretches of a sequence contributes uncorrelated sound, so the residual
-loses its mean level from the waveform and its phase-averaged power from the spectrum.
-
-Every pick lets whichever channel fits that source's residual best go first. Where
-several channels share one generator kind, the lowest free channel of that kind
-represents it during scoring, so successive picks over one kind land on the lowest free
-channel. A channel still free when the picks end **rests**: it holds its channel's null
-instruction for that frame, which is what keeps every channel's stream in step with
-the frames it describes.
+A frame one channel renders whole therefore sounds one channel: once the triangle covers
+a sine, adding a pulse or the noise raises the cost, and those channels hold their
+silence. Where several channels share one generator kind, the lowest free channel of that
+kind represents it during scoring, so successive picks over one kind land on the lowest
+free channel. A channel no pick took keeps its column, headed by its silence, so the
+decoder may still sound it where the frames around ask for it; it counts against its
+source's cap, so no decoded frame sounds more channels than the cap allows. The last
+pass lets a channel taken early fall silent where the later channels cover its sound, or
+sound where they leave room. A channel no source may hold **rests**: it holds its
+channel's null instruction for that frame, which is what keeps every channel's stream in
+step with the frames it describes.
 
 A source takes a channel in the frames its own audio reaches a level a channel can
 render, and stands aside in the rest, so a frame it is silent in leaves its channels
 resting.
 
 A classic single-file conversion is one source covering every enabled channel, so the
-one residual is the frame itself and the loop assigns every channel in each frame the
-source sounds in. Several sources, a precedence hierarchy and a per-source channel cap
-are the general case, described in [Stems reconstruction](stems.md); there each residual
-holds one source's own sound, which is what makes the channel a source wins carry that
-source's material.
+one mix answers the frame itself and every channel in each frame the source sounds in is
+held, sounding or silent. Several sources, a precedence hierarchy and a per-source
+channel cap are the general case, described in [Stems reconstruction](stems.md); there
+each mix answers one source's own sound, which is what makes the channel a source wins
+carry that source's material.
 
 ### 5.2 Greedy decoding
 
@@ -269,7 +280,8 @@ leads — audible as jitter even where every individual frame is well matched.
 ### 5.3 Viterbi decoding
 
 The Viterbi decoder weighs a frame's candidates against the frames around them. It
-reads `top_k` candidates per column, forming a lattice of states over time, and
+reads `top_k` candidates per column, the channel's silence kept among them, forming a
+lattice of states over time, and
 finds, per channel, the lowest-cost **path** through that lattice, where the path
 cost combines:
 

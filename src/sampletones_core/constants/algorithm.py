@@ -18,6 +18,7 @@ from sampletones_core.constants.general import (
 # Matching floors
 
 SPECTRUM_FLOOR: Final[float] = (MIN_VOLUME / MAX_VOLUME) ** 2
+CRITERION_DYNAMIC_RANGE_DECIBELS: Final[float] = 60.0
 TEMPORAL_LEVEL_FLOOR: Final[float] = MIN_VOLUME / MAX_VOLUME
 
 # Input preprocessing

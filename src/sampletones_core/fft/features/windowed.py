@@ -7,7 +7,6 @@ import numpy as np
 from sampletones_core.constants.algorithm import LIBRARY_PHASES_PER_SAMPLE
 from sampletones_core.structures.histogram import Histogram
 
-from ..fragment.fragment import Fragment
 from ..window.cyclic import CyclicArray
 from .base import FeatureExtractor
 
@@ -37,14 +36,6 @@ class WindowedFeatureExtractor(FeatureExtractor):
         mean_values = np.mean([spectrum.values for spectrum in spectra], axis=0, dtype=np.float64)
         mean_spectrum = Histogram(edges=spectra[0].edges.astype(np.float64), values=mean_values)
         return self.transformer.forward(mean_spectrum).astype(np.float32)
-
-    def _residual_feature(
-        self,
-        target: Fragment,
-        approximation: Fragment,
-        windowed_audio: np.ndarray,
-    ) -> Histogram:
-        return self._windowed_feature(windowed_audio)
 
     def _windowed_feature(self, windowed_audio: np.ndarray) -> Histogram:
         """
