@@ -3,7 +3,6 @@ from typing import Any, Dict, Final, Optional, Tuple
 
 import numpy as np
 
-from sampletones_core.constants.algorithm import RESET_PHASE
 from sampletones_core.constants.general import (
     APU_CLOCK,
     MAX_LFSR,
@@ -79,7 +78,7 @@ class LFSRTimer(Timer):
         self,
         sample_rate: int,
         nes_frequency: int,
-        reset_phase: bool = RESET_PHASE,
+        reset_phase: bool,
     ) -> None:
         super().__init__(sample_rate, nes_frequency, reset_phase)
 

@@ -1,10 +1,10 @@
 from typing import Tuple
 
-from sampletones_core.constants.algorithm import CRITERION_DYNAMIC_RANGE_DECIBELS, SPECTRUM_FLOOR
 from sampletones_core.constants.enums import SpectralDistance
 from sampletones_shared.array import xp
 
 from .alignment import align_candidates
+from .metric import SpectralMetric
 
 
 def calculate_spectral_loss(
@@ -12,23 +12,22 @@ def calculate_spectral_loss(
     candidates: xp.ndarray,
     weights: xp.ndarray,
     *,
-    distance: SpectralDistance,
-    divergence_beta: float,
+    metric: SpectralMetric,
 ) -> xp.ndarray:
     """
     Weighted spectral distance between a target feature and candidate features.
 
-    The per-bin distances are weighted and normalized by the target's own weighted
-    energy, so the score reflects spectral shape at every target level. Both the
-    divergence and the normalization measure power above the target's `spectral_floor`,
-    which keeps the ratio finite for silent targets.
+    The per-bin distances are weighted and put on a scale of their own: an energy distance
+    divides by the target's own weighted energy, and the decibel distance by the weight it
+    counted and the range it reads within, so either score reflects spectral shape at every
+    target level. Every side measures power above the target's `spectral_floor`, which keeps
+    the reading finite for silent targets.
 
     Args:
         reference: Target feature values, one dimension.
         candidates: Candidate feature values, one candidate per row.
         weights: Per-bin weights of the configuration.
-        distance: Per-bin distance family.
-        divergence_beta: Beta parameter of the beta-divergence distance.
+        metric: The distance family and the scale bins are measured on.
 
     Returns:
         One loss per candidate.
@@ -39,9 +38,11 @@ def calculate_spectral_loss(
         ValueError: If the spectral distance is unsupported.
     """
     reference, candidates, weights = _prepare(reference, candidates, weights)
-    floor = spectral_floor(reference)
+    floor = spectral_floor(reference, metric=metric)
 
-    match distance:
+    match metric.distance:
+        case SpectralDistance.LOUDNESS_DECIBELS:
+            return _loudness_loss(reference, candidates, weights, floor, metric)
         case SpectralDistance.SQUARED:
             numerator = xp.sqrt(
                 xp.sum(
@@ -57,36 +58,37 @@ def calculate_spectral_loss(
                 * _beta_divergence(
                     reference,
                     candidates,
-                    divergence_beta,
+                    metric.divergence_beta,
                     floor,
                 ),
                 axis=-1,
             )
         case _:
-            raise ValueError(f"Unsupported spectral distance: {distance}")
+            raise ValueError(f"Unsupported spectral distance: {metric.distance}")
 
-    denominator = weighted_reference_energy(reference, weights, distance=distance)
+    denominator = weighted_reference_energy(reference, weights, distance=metric.distance)
     return numerator / (denominator + floor)
 
 
-def spectral_floor(reference: xp.ndarray) -> xp.ndarray:
+def spectral_floor(reference: xp.ndarray, *, metric: SpectralMetric) -> xp.ndarray:
     """
     The power a bin of the target's frame is measured above, set by that frame's loudest bin.
 
-    The floor sits `CRITERION_DYNAMIC_RANGE_DECIBELS` under the loudest bin, so a candidate's
-    addition is charged wherever it stays audible beside what the frame sounds, at every frame
-    loudness: quiet noise under a loud tone costs what it adds, and noise filling a frame costs
-    what it leaves out. A frame whose loudest bin lies under `SPECTRUM_FLOOR` is measured from
-    that level, which keeps the floor positive for a silent frame.
+    The floor sits the metric's dynamic range under the loudest bin, so a candidate's addition is
+    charged wherever it stays audible beside what the frame sounds, at every frame loudness: quiet
+    noise under a loud tone costs what it adds, and noise filling a frame costs what it leaves out.
+    A frame whose loudest bin lies under the metric's silence floor is measured from that level,
+    which keeps the floor positive for a silent frame.
 
     Args:
         reference: Target feature values.
+        metric: The scale the frame is measured on.
 
     Returns:
         The floor, as a scalar on the active array backend.
     """
-    loudest = xp.maximum(xp.max(reference), SPECTRUM_FLOOR)
-    return loudest * 10.0 ** (-CRITERION_DYNAMIC_RANGE_DECIBELS / 10.0)
+    loudest = xp.maximum(xp.max(reference), metric.silence_floor)
+    return loudest * 10.0 ** (-metric.dynamic_range_decibels / 10.0)
 
 
 def weighted_reference_energy(
@@ -116,7 +118,7 @@ def weighted_reference_energy(
     match distance:
         case SpectralDistance.SQUARED:
             return xp.sqrt(xp.sum(weights * reference**2, axis=-1))
-        case SpectralDistance.ABSOLUTE | SpectralDistance.BETA_DIVERGENCE:
+        case SpectralDistance.ABSOLUTE | SpectralDistance.BETA_DIVERGENCE | SpectralDistance.LOUDNESS_DECIBELS:
             return xp.sum(weights * reference, axis=-1)
         case _:
             raise ValueError(f"Unsupported spectral distance: {distance}")
@@ -170,3 +172,32 @@ def _beta_divergence(
 def _log_excess(relative: xp.ndarray) -> xp.ndarray:
     """`u - log(1 + u)`, the divergence of a ratio `1 + u` from one, which vanishes quadratically at `u = 0`."""
     return relative - xp.log1p(relative)
+
+
+def _loudness_loss(
+    reference: xp.ndarray,
+    candidates: xp.ndarray,
+    weights: xp.ndarray,
+    floor: xp.ndarray,
+    metric: SpectralMetric,
+) -> xp.ndarray:
+    """
+    Mean decibel difference per bin, each bin counting as loudly as it plays.
+
+    A bin's error is how far the candidate stands from the target in decibels, both measured above
+    the frame's floor, so the reading is bounded by the metric's dynamic range. The bin counts
+    by the louder of the two sides, raised to the metric's loudness exponent, which charges a candidate
+    for what it adds as much as for what it leaves out. Dividing by the counted weight and by the
+    dynamic range puts the loss on the unit scale, where one is the frame's whole range.
+    """
+    precision = reference.dtype
+    reference = reference.astype(xp.float64)
+    candidates = candidates.astype(xp.float64)
+    floor = xp.asarray(floor, dtype=xp.float64)
+    loudest = floor * 10.0 ** (metric.dynamic_range_decibels / 10.0)
+
+    errors = 10.0 * xp.log10((candidates + floor) / (reference + floor))
+    louder = xp.maximum(xp.maximum(reference, candidates), floor) / loudest
+    heard = weights * louder**metric.loudness_exponent
+    loss = xp.sum(heard * xp.abs(errors), axis=-1) / (xp.sum(heard, axis=-1) * metric.dynamic_range_decibels)
+    return loss.astype(precision)

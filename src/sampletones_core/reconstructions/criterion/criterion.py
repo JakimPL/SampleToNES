@@ -1,11 +1,11 @@
 from typing import Tuple, Union
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import SpectralDistance
 from sampletones_core.fft import Window
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.array import xp
 
+from .metric import SpectralMetric
 from .spectral import calculate_spectral_loss, weighted_reference_energy
 from .temporal import calculate_expected_temporal_loss, calculate_temporal_loss
 from .weights import calculate_spectral_weights
@@ -27,8 +27,7 @@ class Criterion:
         self.alpha, self.beta = _validate_loss_blend(config)
 
         metric = config.generation.metric
-        self.spectral_distance = SpectralDistance(metric.spectral_distance)
-        self.divergence_beta = float(metric.beta)
+        self.metric = SpectralMetric.from_config(metric)
         self.temporal_level_floor = float(metric.temporal_level_floor)
         self.weights = calculate_spectral_weights(config, window, signal_length)
 
@@ -51,8 +50,7 @@ class Criterion:
             _feature_values(feature),
             _feature_values(approximation_feature),
             self.weights,
-            distance=self.spectral_distance,
-            divergence_beta=self.divergence_beta,
+            metric=self.metric,
         )
 
     def reference_energy(self, feature: Union[xp.ndarray, Histogram]) -> xp.ndarray:
@@ -68,7 +66,7 @@ class Criterion:
         return weighted_reference_energy(
             _feature_values(feature),
             self.weights,
-            distance=self.spectral_distance,
+            distance=self.metric.distance,
         )
 
     def temporal_loss(

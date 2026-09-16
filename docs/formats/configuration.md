@@ -11,6 +11,10 @@ The file has three sections — `general`, `library`, and `generation` — plus 
 `metadata` block that records the application version and is managed
 automatically. Unknown keys are rejected, so every key must be one of those below.
 
+A key you leave out keeps its shipped value. The shipped values of the
+`generation` section are listed in `sampletones_core/configs/generation.yaml` in
+the package, which is where they are set for every copy of the program.
+
 ## `general`
 
 Audio preprocessing and housekeeping.
@@ -73,10 +77,13 @@ configuration key.
 
 | Key | Meaning | Values |
 | --- | --- | --- |
-| `spectral_distance` | per-bin spectral distance | `squared` / `absolute` / `beta_divergence` |
+| `spectral_distance` | per-bin spectral distance | `squared` / `absolute` / `beta_divergence` / `loudness_decibels` |
 | `beta` | β for the β-divergence | ≥ 0 |
 | `perceptual_exponent` | exponent on the loudness weighting | ≥ 0 |
-| `temporal_level_floor` | floor for the temporal term's normalization | > 0 |
+| `temporal_level_floor` | floor for the temporal term's normalization, as a share of what one channel plays at full volume | > 0 |
+| `silence_floor` | the power a frame quieter than it is measured from, which keeps a silent frame's score finite | > 0 |
+| `dynamic_range_decibels` | how far under a frame's loudest bin the comparison reaches | > 0 |
+| `loudness_exponent` | how loudly a quiet bin counts under `loudness_decibels`: 1 counts a bin by its level, and a smaller value lifts quiet bins toward the loud ones | > 0 |
 
 ### `generation.decoder`
 
@@ -85,6 +92,14 @@ configuration key.
 | `selector` | search strategy | `greedy` / `viterbi` |
 | `top_k` | candidates kept per channel per frame | integer ≥ 1 |
 | `pitch_weight`, `volume_weight`, `timbre_weight`, `on_off_weight` | Viterbi transition costs for changing each dimension | ≥ 0 |
+
+### `generation.refinement`
+
+| Key | Meaning | Values |
+| --- | --- | --- |
+| `confidence` | share of a frame's energy its harmonics must hold for its pitch reading to count | 0–1 |
+| `change_weight` | divider steps of reading error worth avoiding one change of bend | ≥ 0 |
+| `window` | frames on either side whose readings a frame may settle on | integer ≥ 0 |
 
 ## Editing the file
 

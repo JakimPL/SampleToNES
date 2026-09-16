@@ -177,12 +177,17 @@ cost = α · spectral + β · temporal          (default α = 0.8, β = 0.2)
 
 - **spectral** compares the two frequency features with a perceptually-weighted
   distance, normalized by the target's own energy so the score is about *shape*. The
-  per-bin distance is configurable — squared error, absolute error, or (the default)
-  a **β-divergence** (a Kullback–Leibler-style measure that penalizes leaving target
-  energy uncovered more strongly than adding energy beyond it). Both sides are
-  measured above a **floor 60 dB under the frame's loudest bin**, so an addition costs
+  per-bin distance is configurable — squared error, absolute error, a **β-divergence**
+  (the default: a Kullback–Leibler-style measure that penalizes leaving target energy
+  uncovered more strongly than adding energy beyond it), or a **decibel difference**,
+  which reads each bin's error in decibels and counts the bin by how loudly it plays,
+  so what a candidate adds costs as much as what it leaves out. Both sides are measured
+  above a **floor the configured dynamic range sets under the frame's loudest bin**
+  (`generation.metric.dynamic_range_decibels`, 60 dB as shipped), so an addition costs
   what it adds wherever it stays audible beside what the frame sounds — quiet noise
-  under a loud tone — and a frame of noise costs what a channel leaves out of it.
+  under a loud tone — and a frame of noise costs what a channel leaves out of it. A
+  frame quieter than `generation.metric.silence_floor` is measured from that level,
+  which keeps a silent frame's score finite.
   Bins are weighted by their span in auditory critical bands (the ERB scale) times the
   K-weighting loudness curve (ITU-R BS.1770), so each bin counts in proportion to the
   hearing resolution and loudness contribution it represents.

@@ -38,8 +38,9 @@ empty `__init__.py`. Each schema lives with its reader:
 So the data carries the values and the consumer carries the meaning, and the two evolve
 on their own terms.
 
-Data only a developer tool reads ships with that tool, beside the schema reading it: the
-calibration tuning sits in `sampletones_tools/calibration/config/`, the synthetic corpus in
+Data a package reads ships with that package, beside the schema reading it: the matching
+defaults every reconstruction starts from sit in `sampletones_core/configs/generation.yaml`,
+the calibration tuning in `sampletones_tools/calibration/config/`, the synthetic corpus in
 `sampletones_tools/corpus/config/` and the application mark in `sampletones_tools/assets/mark/config/`,
 each placed by `package_directory`. `sampletones_config`
 holds what the application reads and the import boundaries, which state the repository's

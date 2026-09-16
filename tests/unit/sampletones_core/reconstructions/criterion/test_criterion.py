@@ -8,17 +8,20 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config, MetricConfig, WeightsConfig
-from sampletones_core.constants.algorithm import CRITERION_DYNAMIC_RANGE_DECIBELS, SPECTRUM_FLOOR
 from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
 from sampletones_core.fft import CyclicArray, Window
 from sampletones_core.reconstructions.criterion import Criterion
+from sampletones_core.reconstructions.criterion.metric import SpectralMetric
 from sampletones_core.reconstructions.criterion.spectral import spectral_floor
 from sampletones_shared.array import to_numpy
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
 LONG_SIGNAL_LENGTH: Final[int] = 1 << 20
-SILENT_FRAME_FLOOR: Final[float] = SPECTRUM_FLOOR * 10.0 ** (-CRITERION_DYNAMIC_RANGE_DECIBELS / 10.0)
+SHIPPED_METRIC: Final[SpectralMetric] = SpectralMetric.from_config(Config().generation.metric)
+SILENT_FRAME_FLOOR: Final[float] = SHIPPED_METRIC.silence_floor * 10.0 ** (
+    -SHIPPED_METRIC.dynamic_range_decibels / 10.0
+)
 HISS_LEVEL: Final[float] = SILENT_FRAME_FLOOR / 1e5
 QUIET_NOISE_LEVEL: Final[float] = 10.0 * HISS_LEVEL
 TONE_POWER: Final[float] = 0.03
@@ -334,10 +337,14 @@ class TestSpectralFloor:
         quiet = np.linspace(0.0, 1e-2, bins, dtype=np.float32)
         loud = 100.0 * quiet
 
-        assert float(to_numpy(spectral_floor(loud))) == pytest.approx(100.0 * float(to_numpy(spectral_floor(quiet))))
+        assert float(to_numpy(spectral_floor(loud, metric=SHIPPED_METRIC))) == pytest.approx(
+            100.0 * float(to_numpy(spectral_floor(quiet, metric=SHIPPED_METRIC)))
+        )
 
     def test_a_silent_frame_keeps_a_positive_floor(self, bins: int) -> None:
-        assert float(to_numpy(spectral_floor(np.zeros(bins, dtype=np.float32)))) == pytest.approx(SILENT_FRAME_FLOOR)
+        assert float(
+            to_numpy(spectral_floor(np.zeros(bins, dtype=np.float32), metric=SHIPPED_METRIC))
+        ) == pytest.approx(SILENT_FRAME_FLOOR)
 
     def test_quiet_noise_under_a_loud_tone_costs_what_it_adds(
         self,

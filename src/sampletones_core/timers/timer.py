@@ -3,7 +3,7 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
-from sampletones_core.constants.algorithm import MAX_SAMPLE_LENGTH, MIN_SAMPLE_LENGTH, RESET_PHASE
+from sampletones_core.constants.algorithm import MAX_SAMPLE_LENGTH, MIN_SAMPLE_LENGTH
 from sampletones_core.fft import CyclicArray, Window
 from sampletones_shared.types.data import Initials
 
@@ -13,7 +13,7 @@ class Timer(ABC):
         self,
         sample_rate: int,
         nes_frequency: int,
-        reset_phase: bool = RESET_PHASE,
+        reset_phase: bool,
     ):
         self._real_frequency: float = 0.0
         self.sample_rate: int = sample_rate

@@ -12,6 +12,7 @@ def get_frequency_table(config: Config) -> Dict[int, float]:
     timer = PhaseTimer(
         sample_rate=config.library.sample_rate,
         nes_frequency=config.library.nes_frequency,
+        reset_phase=config.generation.reset_phase,
     )
     tuning = config.library.tuning
     frequencies = {}

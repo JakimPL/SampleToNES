@@ -2,7 +2,6 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
-from sampletones_core.constants.algorithm import RESET_PHASE
 from sampletones_core.constants.general import APU_CLOCK
 from sampletones_shared.types.data import Initials
 
@@ -15,7 +14,7 @@ class PhaseTimer(Timer):
         self,
         sample_rate: int,
         nes_frequency: int,
-        reset_phase: bool = RESET_PHASE,
+        reset_phase: bool,
         phase_increment: float = 1.0,
     ) -> None:
         super().__init__(sample_rate, nes_frequency, reset_phase)
