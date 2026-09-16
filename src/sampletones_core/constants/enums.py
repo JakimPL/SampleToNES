@@ -61,7 +61,6 @@ class SpectralDistance(StrEnum):
     SQUARED = "squared"
     ABSOLUTE = "absolute"
     BETA_DIVERGENCE = "beta_divergence"
-    LOUDNESS_DECIBELS = "loudness_decibels"
 
 
 class PhaseAlignerName(StrEnum):

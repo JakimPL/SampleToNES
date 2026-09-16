@@ -33,13 +33,10 @@ class MetricConfig(DataModel):
         perceptual_exponent: The power the loudness curve weighting each bin is raised to.
         temporal_level_floor: The quietest level the temporal term normalizes by, as a share of
             what one channel plays at full volume.
-        silence_floor: The power a frame is measured from where its own bins lie under it, which
+        silence_floor: The power a frame whose own bins lie under it is measured from, which
             holds a silent frame's cost finite.
-        dynamic_range_decibels: How far under a frame's loudest bin its floor sits, which sets the
-            range every bin is measured within.
-        loudness_exponent: The power a bin's level is raised to where the distance counts it by how
-            loudly it plays; one counts a bin by its level, and a smaller value lifts quiet bins
-            toward the loud ones.
+        dynamic_range_decibels: How far under a frame's loudest bin its floor sits, which sets how
+            quiet a bin stays worth covering.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True, use_enum_values=True, validate_default=True)
@@ -50,7 +47,6 @@ class MetricConfig(DataModel):
     temporal_level_floor: float = Field(default=generation_default("metric", "temporal_level_floor"), gt=0.0)
     silence_floor: float = Field(default=generation_default("metric", "silence_floor"), gt=0.0)
     dynamic_range_decibels: float = Field(default=generation_default("metric", "dynamic_range_decibels"), gt=0.0)
-    loudness_exponent: float = Field(default=generation_default("metric", "loudness_exponent"), gt=0.0)
 
 
 class DecoderConfig(DataModel):

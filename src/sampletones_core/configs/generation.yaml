@@ -16,7 +16,6 @@ metric:
   temporal_level_floor: 0.06666666666666667
   silence_floor: 0.0044444444444444444
   dynamic_range_decibels: 60.0
-  loudness_exponent: 1.0
 
 decoder:
   selector: viterbi

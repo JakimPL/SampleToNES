@@ -17,11 +17,9 @@ def calculate_spectral_loss(
     """
     Weighted spectral distance between a target feature and candidate features.
 
-    The per-bin distances are weighted and put on a scale of their own: an energy distance
-    divides by the target's own weighted energy, and the decibel distance by the weight it
-    counted and the range it reads within, so either score reflects spectral shape at every
-    target level. Every side measures power above the target's `spectral_floor`, which keeps
-    the reading finite for silent targets.
+    The per-bin distances are weighted and divided by the target's own weighted energy, so a
+    score reflects spectral shape at every target level. Every side measures power above the
+    target's `spectral_floor`, which keeps the reading finite for silent targets.
 
     Args:
         reference: Target feature values, one dimension.
@@ -41,8 +39,6 @@ def calculate_spectral_loss(
     floor = spectral_floor(reference, metric=metric)
 
     match metric.distance:
-        case SpectralDistance.LOUDNESS_DECIBELS:
-            return _loudness_loss(reference, candidates, weights, floor, metric)
         case SpectralDistance.SQUARED:
             numerator = xp.sqrt(
                 xp.sum(
@@ -118,7 +114,7 @@ def weighted_reference_energy(
     match distance:
         case SpectralDistance.SQUARED:
             return xp.sqrt(xp.sum(weights * reference**2, axis=-1))
-        case SpectralDistance.ABSOLUTE | SpectralDistance.BETA_DIVERGENCE | SpectralDistance.LOUDNESS_DECIBELS:
+        case SpectralDistance.ABSOLUTE | SpectralDistance.BETA_DIVERGENCE:
             return xp.sum(weights * reference, axis=-1)
         case _:
             raise ValueError(f"Unsupported spectral distance: {distance}")
@@ -172,32 +168,3 @@ def _beta_divergence(
 def _log_excess(relative: xp.ndarray) -> xp.ndarray:
     """`u - log(1 + u)`, the divergence of a ratio `1 + u` from one, which vanishes quadratically at `u = 0`."""
     return relative - xp.log1p(relative)
-
-
-def _loudness_loss(
-    reference: xp.ndarray,
-    candidates: xp.ndarray,
-    weights: xp.ndarray,
-    floor: xp.ndarray,
-    metric: SpectralMetric,
-) -> xp.ndarray:
-    """
-    Mean decibel difference per bin, each bin counting as loudly as it plays.
-
-    A bin's error is how far the candidate stands from the target in decibels, both measured above
-    the frame's floor, so the reading is bounded by the metric's dynamic range. The bin counts
-    by the louder of the two sides, raised to the metric's loudness exponent, which charges a candidate
-    for what it adds as much as for what it leaves out. Dividing by the counted weight and by the
-    dynamic range puts the loss on the unit scale, where one is the frame's whole range.
-    """
-    precision = reference.dtype
-    reference = reference.astype(xp.float64)
-    candidates = candidates.astype(xp.float64)
-    floor = xp.asarray(floor, dtype=xp.float64)
-    loudest = floor * 10.0 ** (metric.dynamic_range_decibels / 10.0)
-
-    errors = 10.0 * xp.log10((candidates + floor) / (reference + floor))
-    louder = xp.maximum(xp.maximum(reference, candidates), floor) / loudest
-    heard = weights * louder**metric.loudness_exponent
-    loss = xp.sum(heard * xp.abs(errors), axis=-1) / (xp.sum(heard, axis=-1) * metric.dynamic_range_decibels)
-    return loss.astype(precision)

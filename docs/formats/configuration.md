@@ -77,13 +77,12 @@ configuration key.
 
 | Key | Meaning | Values |
 | --- | --- | --- |
-| `spectral_distance` | per-bin spectral distance | `squared` / `absolute` / `beta_divergence` / `loudness_decibels` |
+| `spectral_distance` | per-bin spectral distance | `squared` / `absolute` / `beta_divergence` |
 | `beta` | β for the β-divergence | ≥ 0 |
 | `perceptual_exponent` | exponent on the loudness weighting | ≥ 0 |
 | `temporal_level_floor` | floor for the temporal term's normalization, as a share of what one channel plays at full volume | > 0 |
 | `silence_floor` | the power a frame quieter than it is measured from, which keeps a silent frame's score finite | > 0 |
 | `dynamic_range_decibels` | how far under a frame's loudest bin the comparison reaches | > 0 |
-| `loudness_exponent` | how loudly a quiet bin counts under `loudness_decibels`: 1 counts a bin by its level, and a smaller value lifts quiet bins toward the loud ones | > 0 |
 
 ### `generation.decoder`
 

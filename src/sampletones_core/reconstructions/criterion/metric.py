@@ -18,15 +18,12 @@ class SpectralMetric:
         divergence_beta: The beta of the beta-divergence distance.
         silence_floor: The power a frame whose own bins lie under it is measured from.
         dynamic_range_decibels: How far under the loudest bin the frame's floor sits.
-        loudness_exponent: The power a bin's level is raised to where the distance counts it by how
-            loudly it plays.
     """
 
     distance: SpectralDistance
     divergence_beta: float
     silence_floor: float
     dynamic_range_decibels: float
-    loudness_exponent: float
 
     @classmethod
     def from_config(cls, metric: MetricConfig) -> Self:
@@ -36,5 +33,4 @@ class SpectralMetric:
             divergence_beta=float(metric.beta),
             silence_floor=float(metric.silence_floor),
             dynamic_range_decibels=float(metric.dynamic_range_decibels),
-            loudness_exponent=float(metric.loudness_exponent),
         )
