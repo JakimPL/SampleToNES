@@ -5,6 +5,7 @@ T = TypeVar("T")
 
 NOTHING_TO_DO: Final[int] = 0
 NOTHING_UNDER_WAY: Final[float] = 0.0
+SINGLE_ITEM: Final[int] = 1
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,11 @@ class ServiceProgress(Generic[T]):
     current_item: Optional[T] = None
     eta_seconds: Optional[float] = None
     partial: float = NOTHING_UNDER_WAY
+
+    @property
+    def is_single(self) -> bool:
+        """The operation is measured in one item, whose own progress is the whole of the reading."""
+        return self.total <= SINGLE_ITEM
 
     @property
     def fraction(self) -> float:

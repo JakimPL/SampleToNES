@@ -54,20 +54,24 @@ Both carriers use it: `StageProgress` in the application services, and `JobRepor
 conversion, which throttles on the worker side so the line between processes carries only what a
 bar can be redrawn at.
 
-### 4. A run reads as the items it finished plus the part of the one under way
+### 4. A run reads in one unit, and the run's own size picks which
 
-An operation counts the items it is measured in — files, samples, jobs. An item that reports its own
-progress makes the count alone a poor reading: a conversion of one recording stands at nothing out
-of one for its whole length. Both layers therefore carry the same pair:
+An operation counts the items it is measured in — files, samples, jobs. Where it is measured in
+many, that count is the reading: the items are what a reader recognizes, and a run holding several
+of them under way at once has no one item to follow. Where it is measured in one, the count stands
+at nothing out of one for the run's whole length, so the reading is the part of that one item done,
+which the item reports itself.
+
+Both layers carry the same pair, and each answers through `is_single` which of the two it is:
 
 | Layer | Type | The counts | The work under way |
 |-------|------|-----------|--------------------|
 | Core | `TaskProgress` | `completed` / `total` | `steps`, one per running task |
 | Application | `ServiceProgress` | `completed` / `total` | `partial`, in items |
 
-and both derive `fraction` from them. The counts keep naming the items a reader recognizes — a
-status line still reads *Progress: 2/5 files* — while every bar in the application draws
-`fraction`, so one reading answers for a batch of files and for a single reconstruction alike.
+and both derive `fraction` from them. The layer that turns a run's account into a result states the
+unit that run reads in — `ConversionService` does it for a conversion — so the count a status line
+prints, the stage it names, the bar it draws and the estimate beside it all answer in that one unit.
 
 ### 5. A task reaching another process reports over a channel
 
@@ -131,7 +135,7 @@ file in between.
 | Where the running tasks stand, and dropping a finished one | `TaskSteps` (`parallelization/steps.py`) |
 | Ending the pool, opening the channel, reading it, and reaping it | `TaskProcessor` (`parallelization/processor.py`) |
 | How long a run has left, from what it has covered | `ETAEstimator` (`parallelization/progress.py`) |
-| Turning a run's account into a result the application reads | `ConversionService` (`services/conversion/`) |
+| Turning a run's account into a result the application reads, in the unit its size picks | `ConversionService` (`services/conversion/`) |
 | The bar, and the taskbar the run also reports to | `ConversionRun` (`logic/main/converter/run.py`) |
 | The status line and the stage's name | `ConverterMessages` (`logic/main/converter/messages.py`) |
 
