@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH
+from sampletones_core.constants.algorithm import ALL_STEMS_CHANNEL_CAP, SINGLE_STATE_LATTICE_WIDTH
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     ChannelName,
@@ -40,11 +40,13 @@ def _config(
 ) -> StemsConfig:
     return StemsConfig(
         entries=[
-            StemEntry(id=stem_id, settings=StemSettings(channels=channels, bends=bending_channels(channels)))
+            StemEntry(
+                id=stem_id,
+                settings=StemSettings(channels=channels, bends=bending_channels(channels), channel_cap=channel_cap),
+            )
             for stem_id, channels in entries.items()
         ],
         hierarchy=StemsHierarchy(levels=levels, mode=mode),
-        channel_cap=channel_cap,
     )
 
 
@@ -324,7 +326,7 @@ class TestChannelCap:
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
     ) -> None:
-        for cap, expected_count in ((1, 1), (2, 2), (5, 3)):
+        for cap, expected_count in ((1, 1), (2, 2), (ALL_STEMS_CHANNEL_CAP, 3)):
             stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, cap)
             assignment = _assign(synthetic_fragment, stems_config, channels, matcher)
             assert len(assignment.choices) == expected_count
@@ -358,6 +360,59 @@ class TestChannelCap:
 
         assert len(assignment.choices) == 2
         assert len(assignment.resting) == 1
+
+
+class TestPerStemCount:
+    """Each stem holds at most the count its own settings allow, whatever the stems beside it allow."""
+
+    def test_each_stem_holds_to_its_own_count(
+        self,
+        config: Config,
+        extractor: FeatureExtractor,
+        library_data: InstructionLibraryData,
+        all_channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        fragment = _every_kind(config, extractor, library_data, all_channels)
+        stems_config = StemsConfig(
+            entries=[
+                StemEntry(
+                    id=0,
+                    settings=StemSettings(channels=[ChannelName.PULSE1, ChannelName.TRIANGLE], bends=[], channel_cap=1),
+                ),
+                StemEntry(
+                    id=1,
+                    settings=StemSettings(channels=[ChannelName.PULSE2, ChannelName.NOISE], bends=[], channel_cap=2),
+                ),
+            ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
+        )
+
+        assignment = assign_frame(
+            {0: fragment, 1: fragment},
+            stems_config,
+            all_channels,
+            matcher,
+            SINGLE_STATE_LATTICE_WIDTH,
+        )
+
+        held = {stem_id: [choice for choice in assignment.choices if choice.stem_id == stem_id] for stem_id in (0, 1)}
+        assert len(held[0]) == 1
+        assert len(held[1]) == 2
+        assert set(assignment.by_channel) | set(assignment.resting) == stems_config.covered_channels
+
+    def test_a_count_above_the_channels_held_sounds_the_channels_held(
+        self,
+        synthetic_fragment: Fragment,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        stems_config = _config({0: [ChannelName.PULSE1]}, [[0]], HierarchyMode.STRICT, ALL_STEMS_CHANNEL_CAP)
+
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher)
+
+        assert [choice.channel_name for choice in assignment.choices] == [ChannelName.PULSE1]
+        assert assignment.resting == ()
 
 
 class TestTieBreakDeterminism:

@@ -14,6 +14,7 @@ from sampletones_core.instructions import InstructionUnion, NoiseInstruction, Pu
 from sampletones_core.library import InstructionLibrary, InstructionLibraryData, InstructionLibraryFragment
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from tests.suite.analysis import analyzed_config
 
 EVERY_CHANNEL: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE]
@@ -74,7 +75,9 @@ def reconstructed_tone(request: pytest.FixtureRequest, tmp_path_factory: pytest.
     config = analyzed_config(request.param, gamma=Config().library.transformation_gamma)
     path = _tone(tmp_path_factory.mktemp("tone") / "tone.wav", config)
     reconstructor = Reconstructor(config, frozenset(EVERY_CHANNEL), library=_library(config))
-    reconstruction = reconstructor.reconstruct([path], StemsConfig.single_entry(EVERY_CHANNEL, []))
+    reconstruction = reconstructor.reconstruct(
+        [path], StemsConfig.single_entry(StemSettings(channels=EVERY_CHANNEL, bends=[]))
+    )
     assert reconstruction is not None
     return reconstruction
 

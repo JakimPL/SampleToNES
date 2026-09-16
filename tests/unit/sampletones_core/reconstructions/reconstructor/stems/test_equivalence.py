@@ -35,12 +35,16 @@ def _config(
     return StemsConfig(
         entries=[
             StemEntry(
-                id=stem_id, settings=StemSettings(channels=list(channels), bends=bending_channels(list(channels)))
+                id=stem_id,
+                settings=StemSettings(
+                    channels=list(channels),
+                    bends=bending_channels(list(channels)),
+                    channel_cap=channel_cap,
+                ),
             )
             for stem_id, channels in entries.items()
         ],
         hierarchy=StemsHierarchy(levels=levels, mode=mode),
-        channel_cap=channel_cap,
     )
 
 
@@ -242,7 +246,8 @@ class TestRandomizedDifferential:
         for choice in assignment.choices:
             counts[choice.stem_id] = counts.get(choice.stem_id, 0) + 1
             assert choice.channel_name in stems_config.entries_by_id[choice.stem_id].settings.channel_set
-        assert all(count <= stems_config.channel_cap for count in counts.values())
+        for stem_id, count in counts.items():
+            assert count <= stems_config.entries_by_id[stem_id].settings.channel_cap
 
 
 def _assert_same_heads(

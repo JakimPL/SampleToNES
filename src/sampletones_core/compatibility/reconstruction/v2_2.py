@@ -32,7 +32,7 @@ from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.compatibility.update import VersionUpdate
 from sampletones_core.compatibility.utils import renamed
 from sampletones_core.constants.algorithm import (
-    DEFAULT_STEMS_CHANNEL_CAP,
+    ALL_STEMS_CHANNEL_CAP,
     DEFAULT_STEMS_HIERARCHY_MODE,
 )
 from sampletones_shared.deployment.version import Version
@@ -58,9 +58,9 @@ def _normalized_audio_filepath(data: SerializedData) -> Any:
 def _default_stems_data(data: SerializedData) -> SerializedData:
     """The single-entry stems record a conversion predating stems carries.
 
-    One stem covers every enabled channel and owns every frame of each channel that plays,
-    which is the classic run's shape, so the synthesized record states what the
-    reconstruction is. It bends nothing, which is what a build writing this shape did.
+    One stem covers every enabled channel, sounds all of them at once and owns every frame of
+    each channel that plays, which is the classic run's shape, so the synthesized record states
+    what the reconstruction is. It bends nothing, which is what a build writing this shape did.
     """
     config = data.get(CONFIG)
     channels = config.get(GENERATION, {}).get(CHANNELS, []) if isinstance(config, dict) else []
@@ -76,9 +76,13 @@ def _default_stems_data(data: SerializedData) -> SerializedData:
     ]
     return {
         CONFIG: {
-            ENTRIES: [{ID: 0, SETTINGS: {CHANNELS: channels, BENDS: []}}],
+            ENTRIES: [
+                {
+                    ID: 0,
+                    SETTINGS: {CHANNELS: channels, BENDS: [], CHANNEL_CAP: ALL_STEMS_CHANNEL_CAP},
+                }
+            ],
             HIERARCHY: {LEVELS: [[0]], MODE: str(DEFAULT_STEMS_HIERARCHY_MODE)},
-            CHANNEL_CAP: DEFAULT_STEMS_CHANNEL_CAP,
         },
         ASSIGNMENTS: assignments,
     }
@@ -181,7 +185,8 @@ def update(data: SerializedData) -> SerializedData:
     ``channel_name``, stamps the embedded config's metadata with the new data version,
     records the source audio as one path per stem, and carries the single-entry stems
     record every reconstruction states, down to the settings each stem is converted
-    with: the channels it takes, and the ones it carries toward its own recording. The
+    with: the channels it takes, the ones it carries toward its own recording, and how
+    many of them it sounds at once. The
     channel selection moves onto that record, so the embedded configuration lets it go, along
     with the retired choices to record the matched audio and to difference the residual's features.
     """

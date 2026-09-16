@@ -5,7 +5,6 @@ import numpy as np
 
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import DEFAULT_STEMS_CHANNEL_CAP
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -44,29 +43,27 @@ def single_entry_stems_data(
         for channel_name, stream in instructions.items()
         if stream
     ]
-    return StemsData.single_entry(
-        channels,
-        bending_channels(channels),
-        assignments,
-    )
+    return StemsData.single_entry(StemSettings.covering(channels), assignments)
 
 
 def three_stem_config() -> StemsConfig:
     """Builds the three-stem setup the stems tests share.
 
     Stems a (pulse 1, triangle, noise) and b (pulse 2, triangle) pick on the first
-    hierarchy level, stem c (pulse 1, noise) on the second.
+    hierarchy level, stem c (pulse 1, noise) on the second, each sounding one channel at a time.
     """
     return StemsConfig(
         entries=[
-            StemEntry(id=stem_id, settings=StemSettings(channels=channels, bends=bending_channels(channels)))
+            StemEntry(
+                id=stem_id,
+                settings=StemSettings(channels=channels, bends=bending_channels(channels), channel_cap=1),
+            )
             for stem_id, channels in THREE_STEM_ENTRY_CHANNELS.items()
         ],
         hierarchy=StemsHierarchy(
             levels=[[STEM_A_ID, STEM_B_ID], [STEM_C_ID]],
             mode=HierarchyMode.STRICT,
         ),
-        channel_cap=1,
     )
 
 

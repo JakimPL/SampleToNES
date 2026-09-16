@@ -97,11 +97,15 @@ class TestStemsDataRoundTrip:
             entries=[
                 StemEntry(
                     id=0,
-                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                    settings=StemSettings(
+                        channels=[ChannelName.PULSE1],
+                        bends=bending_channels([ChannelName.PULSE1]),
+                        drives={ChannelName.PULSE1: 1.5},
+                        channel_cap=1,
+                    ),
                 )
             ],
             hierarchy=StemsHierarchy(levels=[[0]], mode=HierarchyMode.STRICT),
-            channel_cap=1,
         )
         stems_data = StemsData(
             config=stems_config,
@@ -150,7 +154,6 @@ class TestStemsDataRoundTrip:
                     ),
                 ],
                 hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
-                channel_cap=1,
             ),
             assignments=[],
         )
@@ -172,10 +175,8 @@ class TestStemsDataRoundTrip:
 
     def test_paths_numbering_the_entries_is_enforced(self) -> None:
         stems_data = StemsData.single_entry(
-            [ChannelName.PULSE1],
-            [ChannelName.PULSE1],
+            StemSettings(channels=[ChannelName.PULSE1], bends=[ChannelName.PULSE1], channel_cap=1),
             [ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
-            channel_cap=1,
         )
 
         with pytest.raises(ValidationError, match="one per stems entry"):
@@ -218,7 +219,6 @@ class TestSourcePaths:
                     ),
                 ],
                 hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
-                channel_cap=1,
             ),
             assignments=[],
         )

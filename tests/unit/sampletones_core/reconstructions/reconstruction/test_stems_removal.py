@@ -44,25 +44,29 @@ def _stems_config() -> StemsConfig:
         entries=[
             StemEntry(
                 id=STEM_A,
-                settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                settings=StemSettings(
+                    channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1]), channel_cap=1
+                ),
             ),
             StemEntry(
                 id=STEM_B,
                 settings=StemSettings(
                     channels=[ChannelName.PULSE1, ChannelName.NOISE],
                     bends=bending_channels([ChannelName.PULSE1, ChannelName.NOISE]),
+                    channel_cap=1,
                 ),
             ),
             StemEntry(
                 id=STEM_C,
-                settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                settings=StemSettings(
+                    channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1]), channel_cap=1
+                ),
             ),
         ],
         hierarchy=StemsHierarchy(
             levels=[[STEM_A], [STEM_B, STEM_C]],
             mode=HierarchyMode.STRICT,
         ),
-        channel_cap=1,
     )
 
 
@@ -147,11 +151,11 @@ class TestTheRecordedSetup:
 
         assert remaining.stems_data.config.hierarchy.levels == [[STEM_B, STEM_C]]
 
-    def test_the_picking_order_and_the_cap_carry_over(self, reconstruction: Reconstruction) -> None:
+    def test_the_picking_order_and_each_stems_count_carry_over(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_C)
 
         assert remaining.stems_data.config.hierarchy.mode == HierarchyMode.STRICT
-        assert remaining.stems_data.config.channel_cap == 1
+        assert all(entry.settings.channel_cap == 1 for entry in remaining.stems_data.config.entries)
 
     def test_the_removed_recordings_source_path_goes_from_its_position(
         self,
@@ -317,8 +321,7 @@ class TestARefusedRemoval:
             coefficient=1.0,
             audio_filepath=(RECORDINGS[STEM_A],),
             stems_data=StemsData.single_entry(
-                [ChannelName.PULSE1],
-                [ChannelName.PULSE1],
+                StemSettings(channels=[ChannelName.PULSE1], bends=[ChannelName.PULSE1]),
                 [
                     ChannelAssignment(
                         channel_name=ChannelName.PULSE1,

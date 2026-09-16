@@ -92,7 +92,6 @@ def _config_without(config: StemsConfig, stem_id: int) -> StemsConfig:
             levels=[level for level in levels if level],
             mode=config.hierarchy.mode,
         ),
-        channel_cap=config.channel_cap,
     )
 
 

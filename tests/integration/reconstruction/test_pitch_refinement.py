@@ -27,6 +27,7 @@ from sampletones_core.library import (
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstructor.refinement import refiner
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 PITCH: Final[int] = 60
 NEIGHBORHOOD: Final[range] = range(PITCH - 2, PITCH + 3)
@@ -99,7 +100,7 @@ def _reconstruct(config: Config, audio_path: Path, bends: List[ChannelName]) -> 
     reconstructor = Reconstructor(config, frozenset(PULSE_ONLY), library=_library(config))
     reconstruction = reconstructor.reconstruct(
         [audio_path],
-        StemsConfig.single_entry(PULSE_ONLY, bends),
+        StemsConfig.single_entry(StemSettings(channels=PULSE_ONLY, bends=bends)),
     )
     assert reconstruction is not None
     return reconstruction

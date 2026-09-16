@@ -10,7 +10,6 @@ from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
 from sampletones_core.constants.enums import (
     TONE_CHANNELS,
     ChannelName,
-    bending_channels,
     ordered_channels,
 )
 from sampletones_core.fft import FragmentedAudio, Window
@@ -39,6 +38,7 @@ from sampletones_core.reconstructions.reconstructor.state import ReconstructionS
 from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
 from sampletones_core.reconstructions.reconstructor.stems.assignment.track import TrackAssignment
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.exceptions import NoLibraryDataError
@@ -109,8 +109,8 @@ class Reconstructor:
         """Reconstructs an audio file into a :class:`Reconstruction`.
 
         The classic run is the stems pipeline's single-stem case: one stem covering
-        every channel this reconstructor was built for, on one precedence level, with
-        the cap at the channel count, so every one of them is assigned in every frame.
+        every channel this reconstructor was built for, on one precedence level,
+        sounding all of them at once, so every one of them is assigned in every frame.
 
         Args:
             path: Path to the audio file to reconstruct.
@@ -121,8 +121,7 @@ class Reconstructor:
         Raises:
             TypeError: If ``path`` is not a string or ``Path``.
         """
-        channels = list(self.channel_names)
-        stems_config = StemsConfig.single_entry(channels, bending_channels(channels))
+        stems_config = StemsConfig.single_entry(StemSettings.covering(list(self.channel_names)))
         return self.reconstruct([path], stems_config)
 
     def reconstruct(
@@ -136,7 +135,7 @@ class Reconstructor:
 
         Loads the stems onto one scale drawn from their mix, matches each stem's frames
         against the library on its own, and assigns each frame's channels to the stems
-        following the configured hierarchy and channel cap. A stem takes a channel where
+        following the configured hierarchy and each stem's own count. A stem takes a channel where
         its own recording sounds, so what the channel carries is that recording. The
         assignment leaves every channel in play a column of candidates per frame, which
         the configured decoder reads into the stream that channel plays. The per-frame
@@ -145,8 +144,8 @@ class Reconstructor:
         Args:
             paths: Paths to the stem audio files, one per stems entry.
             stems_config: The stems setup built for this process from the inputs:
-                the entries with their channels, the precedence hierarchy, and the
-                per-stem channel cap.
+                the entries with what each recording is converted with, and the
+                precedence hierarchy.
             report: Hears each stage of the run and answers whether it is still wanted.
 
         Returns:

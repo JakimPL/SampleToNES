@@ -5,11 +5,11 @@ from typing import Dict, List
 
 from pydantic import ConfigDict, Field
 
-from sampletones_core.constants.algorithm import ALL_STEMS_CHANNEL_CAP
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import DataModel
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 
 class StemsData(DataModel):
@@ -27,19 +27,12 @@ class StemsData(DataModel):
     @classmethod
     def single_entry(
         cls,
-        channels: List[ChannelName],
-        bends: List[ChannelName],
+        settings: StemSettings,
         assignments: List[ChannelAssignment],
-        *,
-        channel_cap: int = ALL_STEMS_CHANNEL_CAP,
     ) -> StemsData:
-        """The record of one stem covering ``channels``, bending ``bends``, under ``channel_cap``."""
+        """The record of one stem converted with ``settings``, holding the frames ``assignments`` name."""
         return cls(
-            config=StemsConfig.single_entry(
-                channels,
-                bends,
-                channel_cap=channel_cap,
-            ),
+            config=StemsConfig.single_entry(settings),
             assignments=assignments,
         )
 

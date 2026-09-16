@@ -3,6 +3,7 @@ from typing import Any, Dict
 from sampletones_core.compatibility.fields import (
     AUDIO_FILEPATH,
     BENDS,
+    CHANNEL_CAP,
     CHANNEL_NAME,
     CHANNELS,
     GENERATOR_NAME,
@@ -11,7 +12,7 @@ from sampletones_core.compatibility.fields import (
     STEMS_DATA,
 )
 from sampletones_core.compatibility.reconstruction.v2_2 import update
-from sampletones_core.constants.algorithm import DEFAULT_STEMS_CHANNEL_CAP
+from sampletones_core.constants.algorithm import ALL_STEMS_CHANNEL_CAP
 
 
 def _stream(extra: Dict[str, Any]) -> Dict[str, Any]:
@@ -43,7 +44,7 @@ class TestReconstructionV2_2:
         generation = upgraded["config"]["generation"]
         assert generation == {"drive": 1.0}
         assert upgraded[STEMS_DATA]["config"]["entries"] == [
-            {"id": 0, SETTINGS: {CHANNELS: ["pulse1", "noise"], BENDS: []}}
+            {"id": 0, SETTINGS: {CHANNELS: ["pulse1", "noise"], BENDS: [], CHANNEL_CAP: ALL_STEMS_CHANNEL_CAP}}
         ]
 
     def test_the_retired_choice_to_record_the_matched_audio_goes(self) -> None:
@@ -98,8 +99,10 @@ class TestReconstructionV2_2:
         upgraded = update(data)
 
         stems_data = upgraded[STEMS_DATA]
-        assert stems_data["config"]["entries"] == [{"id": 0, SETTINGS: {CHANNELS: ["pulse1", "noise"], BENDS: []}}]
-        assert stems_data["config"]["channel_cap"] == DEFAULT_STEMS_CHANNEL_CAP
+        assert stems_data["config"]["entries"] == [
+            {"id": 0, SETTINGS: {CHANNELS: ["pulse1", "noise"], BENDS: [], CHANNEL_CAP: ALL_STEMS_CHANNEL_CAP}}
+        ]
+        assert CHANNEL_CAP not in stems_data["config"]
         assert stems_data["assignments"] == [
             {CHANNEL_NAME: "pulse1", "stem_ids": [0, 0]},
         ]

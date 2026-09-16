@@ -41,7 +41,6 @@ def _stems(*entries: StemEntry) -> StemsConfig:
     return StemsConfig(
         entries=list(entries),
         hierarchy=StemsHierarchy(levels=[[entry.id for entry in entries]]),
-        channel_cap=len(TONES),
     )
 
 

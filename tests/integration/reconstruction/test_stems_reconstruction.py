@@ -7,7 +7,7 @@ import pytest
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_core.audio import mix, write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import DEFAULT_STEMS_CHANNEL_CAP, RESTING_STEM_ID
+from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     ChannelName,
@@ -43,8 +43,7 @@ _DISJOINT_AMPLITUDE: Final[float] = 0.5
 
 def _classic_stems(config: Config, *, channel_cap: int) -> StemsConfig:
     """One stem over every configured channel, carrying each of them that reads a bend."""
-    channels = list(DEFAULT_CHANNELS)
-    return StemsConfig.single_entry(channels, bending_channels(channels), channel_cap=channel_cap)
+    return StemsConfig.single_entry(StemSettings.covering(list(DEFAULT_CHANNELS)).with_channel_cap(channel_cap))
 
 
 def _frame_count(config: Config, duration_seconds: float) -> int:
@@ -54,18 +53,13 @@ def _frame_count(config: Config, duration_seconds: float) -> int:
 def _stems_config() -> StemsConfig:
     return StemsConfig(
         entries=[
-            StemEntry(
-                id=0, settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1]))
-            ),
-            StemEntry(
-                id=1, settings=StemSettings(channels=[ChannelName.NOISE], bends=bending_channels([ChannelName.NOISE]))
-            ),
+            StemEntry(id=0, settings=StemSettings.covering([ChannelName.PULSE1]).with_channel_cap(1)),
+            StemEntry(id=1, settings=StemSettings.covering([ChannelName.NOISE]).with_channel_cap(1)),
         ],
         hierarchy=StemsHierarchy(
             levels=[[0], [1]],
             mode=HierarchyMode.STRICT,
         ),
-        channel_cap=1,
     )
 
 
@@ -462,8 +456,7 @@ class TestClassicRunCarriesTheSingleEntryRecord:
         assert reconstruction.audio_filepath == (tone_path,)
         stems_data = reconstruction.stems_data
         assert stems_data.config.entries[0].id == 0
-        assert stems_data.config.entries[0].settings.channels == list(DEFAULT_CHANNELS)
-        assert stems_data.config.channel_cap == DEFAULT_STEMS_CHANNEL_CAP
+        assert stems_data.config.entries[0].settings == StemSettings.covering(list(DEFAULT_CHANNELS))
         for channel, stem_ids in stems_data.assignments_by_channel.items():
             assert set(stem_ids) <= {0, RESTING_STEM_ID}
             assert len(stem_ids) == len(reconstruction.instructions[channel])
@@ -570,7 +563,6 @@ class TestStemsCarryTheirOwnSound:
                 levels=[[index] for index in range(len(_DISJOINT_TONES))],
                 mode=HierarchyMode.ROUND_ROBIN,
             ),
-            channel_cap=len(channels),
         )
 
     def _reconstruct(self, tmp_path: Path) -> Tuple[Reconstruction, List[range], Config]:

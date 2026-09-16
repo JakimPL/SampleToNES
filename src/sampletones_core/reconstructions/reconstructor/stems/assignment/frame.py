@@ -27,7 +27,7 @@ def assign_frame(
     sounds one channel. Scoring each stem against its own recording is what makes the channel a
     stem wins carry that recording's sound. Levels pick in the hierarchy's mode: round-based gives
     every level's stems one channel per round in level order, strict exhausts each level before
-    the next. Each stem holds at most the setup's channel cap per frame.
+    the next. Each stem holds at most the count its own settings allow per frame.
 
     A channel no pick took goes to the first sounding stem that may hold it, headed by its silence,
     and every choice is then scored once more with the stem's other choices sounding. The frame is

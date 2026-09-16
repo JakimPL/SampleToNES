@@ -67,7 +67,7 @@ class ScoredChoice:
 class AssignmentSession:
     """
     Carries one frame assignment's mutable progress: each stem's mix and frame cost, the free
-    channels, and the per-stem channel counts.
+    channels, and how many channels each stem holds against the count its settings allow.
 
     A stem's mix is what its picks sound in its own frame, so a candidate is scored by the cost
     that frame reaches with the candidate sounding beside them, and the channel's silence is one
@@ -89,7 +89,7 @@ class AssignmentSession:
         self.channels = channels
         self.matcher = matcher
         self.lattice_width = lattice_width
-        self.channel_cap = stems_config.channel_cap
+        self.caps: Dict[int, int] = {entry.id: entry.settings.channel_cap for entry in stems_config.entries}
         covered = stems_config.covered_channels
         self.free_channels = [name for name in ChannelName.items() if name in covered]
         self.used_channels: Dict[int, int] = {entry.id: 0 for entry in stems_config.entries}
@@ -127,7 +127,9 @@ class AssignmentSession:
         )
 
     def _round_robin(self) -> None:
-        for _ in range(self.channel_cap):
+        """Gives every level one pick per round, for as many rounds as the largest count among the stems sounding."""
+        rounds = max((self.caps[stem_id] for stem_id in self.sounding), default=0)
+        for _ in range(rounds):
             for level in self.stems_config.hierarchy.levels:
                 if not self.free_channels:
                     return
@@ -152,9 +154,7 @@ class AssignmentSession:
             eligible = [
                 stem_id
                 for stem_id in level
-                if stem_id in self.sounding
-                and self.used_channels[stem_id] < self.channel_cap
-                and (repeat or stem_id not in picked_this_visit)
+                if stem_id in self.sounding and self._has_room(stem_id) and (repeat or stem_id not in picked_this_visit)
             ]
             if not eligible or not self.free_channels:
                 return
@@ -204,8 +204,8 @@ class AssignmentSession:
 
         The channel sounds nothing there, and its column keeps the alternatives a decoder may
         still sound when the frames around ask for the channel. A declined channel counts against
-        the stem's cap, so no decoded frame sounds more channels than the cap allows. A channel no
-        stem may hold stays free for the rests.
+        its stem's count, so no decoded frame sounds more channels than the stem allows. A channel
+        no stem may hold stays free for the rests.
         """
         for channel_name in list(self.free_channels):
             stem_id = self._settling_stem(channel_name)
@@ -276,18 +276,18 @@ class AssignmentSession:
             del self.columns[key]
 
     def _settling_stem(self, channel_name: ChannelName) -> Optional[int]:
-        """The first sounding stem in hierarchy order that allows ``channel_name`` and has cap left."""
+        """The first sounding stem in hierarchy order that allows ``channel_name`` and has room left."""
         for level in self.stems_config.hierarchy.levels:
             for stem_id in level:
                 allowed = self.stems_config.entries_by_id[stem_id].settings.channel_set
-                if (
-                    stem_id in self.sounding
-                    and channel_name in allowed
-                    and self.used_channels[stem_id] < self.channel_cap
-                ):
+                if stem_id in self.sounding and channel_name in allowed and self._has_room(stem_id):
                     return stem_id
 
         return None
+
+    def _has_room(self, stem_id: int) -> bool:
+        """Whether the stem holds fewer channels than the count its settings allow in one frame."""
+        return self.used_channels[stem_id] < self.caps[stem_id]
 
     def _rests(self) -> Tuple[StemRest, ...]:
         """The channels no stem holds, each holding its null instruction over a silent frame."""
