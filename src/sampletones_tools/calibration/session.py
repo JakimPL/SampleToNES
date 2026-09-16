@@ -95,11 +95,6 @@ class CalibrationRequest(BaseModel):
     temporal_weights: List[float]
     channels: List[ChannelName] = Field(min_length=1)
 
-    def pinned_base(self) -> Config:
-        """The base configuration reconstructing with the channels the run pins."""
-        generation = self.base.generation.model_copy(update={"channels": self.channels})
-        return self.base.model_copy(update={"generation": generation})
-
 
 def calibrate(request: CalibrationRequest) -> Path:
     """Reconstructs the corpus under every variant, scores it, and writes the renders and the reports.
@@ -107,15 +102,14 @@ def calibrate(request: CalibrationRequest) -> Path:
     Returns:
         Path: The markdown report, which sits in the run directory beside the renders.
     """
-    base = request.pinned_base()
     request.output.mkdir(parents=True, exist_ok=True)
 
-    sample_rate = base.library.sample_rate
+    sample_rate = request.base.library.sample_rate
     items = build_corpus(sample_rate, config=CorpusConfig.load())
     item_paths = write_corpus(items, request.output / CORPUS_DIRECTORY, sample_rate)
     referees = build_referees(sample_rate)
     variants = build_variants(
-        base,
+        request.base,
         request.methods,
         request.perceptual_exponents,
         request.temporal_weights,
@@ -125,7 +119,14 @@ def calibrate(request: CalibrationRequest) -> Path:
     logger.info(
         f"Evaluating {len(variants)} variants x {len(items)} items x {len(referees)} referees on {channel_names}"
     )
-    rows = evaluate_variants(variants, items, item_paths, referees, request.output)
+    rows = evaluate_variants(
+        variants,
+        items,
+        item_paths,
+        referees,
+        request.output,
+        frozenset(request.channels),
+    )
 
     write_csv(rows, request.output / CSV_REPORT)
     report = request.output / MARKDOWN_REPORT

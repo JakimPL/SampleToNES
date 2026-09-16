@@ -1,15 +1,11 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Final, FrozenSet, List, Mapping, Optional, Tuple
+from typing import Dict, FrozenSet, List, Mapping, Optional, Tuple
 
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import (
-    DEFAULT_CHANNELS,
-    ChannelName,
-    SpectrumMethod,
-)
+from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.headless.library import generate_library
 from sampletones_core.instructions import InstructionUnion
@@ -20,8 +16,6 @@ from sampletones_shared.logger import logger
 from .corpus.item import CorpusItem
 from .referee.protocol import Judgment, Referee
 from .renders import RenderRecord, sounding_timelines, write_recording, write_render
-
-CALIBRATION_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(DEFAULT_CHANNELS)
 
 
 @dataclass(frozen=True)
@@ -128,6 +122,7 @@ def evaluate_variants(
     item_paths: Dict[str, Path],
     referees: List[Referee],
     run_directory: Path,
+    channels: FrozenSet[ChannelName],
 ) -> List[CalibrationRow]:
     """
     Reconstruct the corpus under every variant, score the results and keep what was heard.
@@ -144,6 +139,7 @@ def evaluate_variants(
         item_paths: Written WAV path per corpus item name.
         referees: Referees scoring each reconstruction.
         run_directory: The directory the run writes its renders and recordings into.
+        channels: The channels every variant reconstructs with.
 
     Returns:
         One row per (variant, item, referee, reading).
@@ -151,7 +147,7 @@ def evaluate_variants(
     rows: List[CalibrationRow] = []
     for variant in variants:
         ensure_library(variant.config)
-        reconstructor = Reconstructor(variant.config, CALIBRATION_CHANNELS)
+        reconstructor = Reconstructor(variant.config, channels)
         sample_rate = variant.config.library.sample_rate
         for position, item in enumerate(items):
             path = item_paths[item.name]

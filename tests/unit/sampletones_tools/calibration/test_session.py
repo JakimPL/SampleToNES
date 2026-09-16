@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Callable, Dict, FrozenSet, List
 
 import pytest
 
@@ -76,16 +76,7 @@ class TestCalibrate:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def evaluated(
-            variants: List[CalibrationVariant],
-            items: List[CorpusItem],
-            item_paths: Dict[str, Path],
-            referees: List[Referee],
-            run_directory: Path,
-        ) -> List[CalibrationRow]:
-            return []
-
-        monkeypatch.setattr(EVALUATE, evaluated)
+        monkeypatch.setattr(EVALUATE, _evaluated([]))
         request = CalibrationRequest(
             base=Config(),
             output=tmp_path / "run",
@@ -101,20 +92,28 @@ class TestCalibrate:
         assert report.is_file()
         assert (tmp_path / "run" / CSV_REPORT).is_file()
 
-
-class TestCalibrationRequest:
-    def test_the_base_is_pinned_to_the_channels(self, tmp_path: Path) -> None:
+    def test_a_run_evaluates_with_the_channels_it_is_asked_for(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        asked: List[FrozenSet[ChannelName]] = []
+        monkeypatch.setattr(EVALUATE, _evaluated(asked))
         request = CalibrationRequest(
             base=Config(),
-            output=tmp_path,
+            output=tmp_path / "run",
             methods=[SpectrumMethod.FFT],
             perceptual_exponents=[1.0],
             temporal_weights=[],
-            channels=[ChannelName.PULSE1],
+            channels=[ChannelName.PULSE1, ChannelName.NOISE],
         )
 
-        assert request.pinned_base().generation.channels == [ChannelName.PULSE1]
+        calibrate(request)
 
+        assert asked == [frozenset({ChannelName.PULSE1, ChannelName.NOISE})]
+
+
+class TestCalibrationRequest:
     def test_an_empty_sweep_is_refused(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError):
             CalibrationRequest(
@@ -125,3 +124,18 @@ class TestCalibrationRequest:
                 temporal_weights=[],
                 channels=[ChannelName.PULSE1],
             )
+
+
+def _evaluated(asked: List[FrozenSet[ChannelName]]) -> Callable[..., List[CalibrationRow]]:
+    def evaluated(
+        variants: List[CalibrationVariant],
+        items: List[CorpusItem],
+        item_paths: Dict[str, Path],
+        referees: List[Referee],
+        run_directory: Path,
+        channels: FrozenSet[ChannelName],
+    ) -> List[CalibrationRow]:
+        asked.append(channels)
+        return []
+
+    return evaluated

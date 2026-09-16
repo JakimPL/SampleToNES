@@ -90,7 +90,13 @@ starts carrying.
 
 * Leading the calibration report with `mr-loudness-dB`. `build_referees` puts `mr-auditory-dB`
   first, which reads silence as closer to a tone than any render, until by-ear ratings of a sweep
-  hold the loudness-weighted referee at ρ ≥ 0.6 in every category.
+  hold the loudness-weighted referee at ρ ≥ 0.6 in every category. A listening round in September
+  2026 scored `polyphony-chord` 6–7 dB better on a render that had dropped the noise channel
+  entirely, so the bar in `docs/tools/calibration.md` stands unmet and the order stays as it is.
+* An axiom stating that a recording built with noise reconstructs with the noise channel sounding.
+  The corpus knows which items were synthesized from noise and the render records already hold the
+  per-channel timelines, so such a test would fence the criterion against noise deafness the way
+  `referee/test_axioms.py` fences the referees, without a listening round.
 * API documentation
 * Code documentation
 * A backward-compatibility corpus of files older builds actually wrote. Every upgrade step is
