@@ -15,7 +15,7 @@ from sampletones_shared.logger import logger
 
 from .corpus.item import CorpusItem
 from .referee.protocol import Judgment, Referee
-from .renders import RenderRecord, sounding_timelines, write_recording, write_render
+from .renders import RenderRecord, sounding_timelines, write_channel_renders, write_recording, write_render
 
 
 @dataclass(frozen=True)
@@ -176,6 +176,13 @@ def evaluate_variants(
                 estimate * reconstruction.coefficient,
                 sample_rate,
             )
+            write_channel_renders(
+                run_directory,
+                variant.label,
+                item.name,
+                _channel_audio(reconstruction, estimate.shape[0]),
+                sample_rate,
+            )
             logger.info(f"[{variant.label}] {item.name}: scored")
 
     return rows
@@ -190,6 +197,16 @@ def _compared_signals(
     estimate = np.asarray(reconstruction.approximation, dtype=np.float64)
     length = min(reference.shape[0], estimate.shape[0])
     return reference[:length], estimate[:length]
+
+
+def _channel_audio(reconstruction: Reconstruction, length: int) -> Dict[ChannelName, np.ndarray]:
+    """What each sounding channel contributes to the render, on the recording's scale and length."""
+    approximations = reconstruction.approximations
+    return {
+        channel_name: approximations[channel_name][:length] * reconstruction.coefficient
+        for channel_name in reconstruction.playing_channels
+        if channel_name in approximations
+    }
 
 
 def _played_instructions(reconstruction: Reconstruction) -> Dict[ChannelName, List[InstructionUnion]]:

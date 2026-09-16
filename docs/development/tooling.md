@@ -102,7 +102,8 @@ The developer commands, listed by `sampletones_tools/registry.py` and run as
 
 | Command | What it does |
 |---|---|
-| `calibration [--config FILE] [-o DIR] [--methods LIST] [--perceptual-exponents LIST] [--temporal-weights LIST] [--channels LIST]` | Measures how the program reconstructs the reference sounds under the packaged suite, or the parts of it the options replace, and writes the renders and the report; `make calibration` runs it with no options; without `-o` the run lands in a timestamped directory under Documents/SampleToNES/calibration. [Calibration](../tools/calibration.md) explains every use |
+| `calibration [--config FILE] [-o DIR] [--methods LIST] [--perceptual-exponents LIST] [--temporal-weights LIST] [--channels LIST] [--palette NAME] [--no-open]` | Measures how the program reconstructs the reference sounds under the packaged suite, or the parts of it the options replace, and writes the renders, the report and the page the renders are heard on; `make calibration` runs it with no options; without `-o` the run lands in a timestamped directory under Documents/SampleToNES/calibration |
+| `calibration --board RUN [RUN ...] [-o DIR] [--palette NAME] [--no-open]` | Builds one listening page over finished runs, measuring nothing; without `-o` the page lands in a timestamped directory under Documents/SampleToNES/calibration/pages. [Calibration](../tools/calibration.md) explains every use |
 | `check <name> [options]` | Holds the tree to one of its checks: `import-boundary`, `language-keys`, `palette-colors`, `rendered-literals`, `shortcut-actions`, `tag-names`, `unused-tags`; each is a pre-commit hook, and [architecture](architecture.md#enforcement) says what each holds. Needs a checkout |
 | `btp samples -o DIR`, `ftm samples -o DIR`, `nsf samples -o DIR` | Builds the synthetic corpus and writes it as example files: the arrangement as two Bitphase documents (at its tempo and as a groove), the arrangement as a FamiTracker module, or each sample and the arrangement as `.nsf` programs |
 | `codec report -o DIR` | Compresses the synthetic corpus under every layer of the codec and writes the report the format's constants are settled from, as CSV and Markdown |
@@ -123,6 +124,13 @@ the tools package; [package layers](packages.md) holds the edge. Two helpers car
   checkout. `icons` calls it for Pillow, a development dependency, as well as for the repository.
 - `package_directory` in `sampletones_shared/paths/package.py` places a package from the import
   system's own record, where PyInstaller unpacks each package's data beside its modules.
+
+A tool that writes a page ships that page's files as they are read. `calibration/board/static/`
+holds the markup, the stylesheet and the script, copied out byte for byte, and the builder writes
+the palette, the faces and the run's own contents beside them. The stylesheet names color tokens
+and the script names no measurement, so a page is edited in place and drawn in the application's
+palettes; a test holds every shipped file to reaching nothing beyond the page, which is what lets
+one open from a file.
 
 Developer commands are run as `uv run sampletones <command>` from a checkout; the `sampletones`
 command `make setup` installs is a wheel and refuses the guarded ones the same way. A command module
@@ -183,6 +191,7 @@ the real ones, and the tests pass a temporary repository and a `RecordingRunner`
 | Which checks the tree is held to | `src/sampletones_tools/checks/registry.py` |
 | Whether a command runs outside a checkout | `src/sampletones_tools/checkout.py` |
 | The synthetic corpus the emitters and the integration tests share | `src/sampletones_tools/corpus/` |
+| The page a calibration run is listened to on | `src/sampletones_tools/calibration/board/` |
 | What a command is | `src/sampletones_shared/command.py` |
 | What a bootstrap script may import | `sampletones_config/boundaries/standalone.yaml` |
 | What differs between systems | `scripts/bootstrap/platforms/` |

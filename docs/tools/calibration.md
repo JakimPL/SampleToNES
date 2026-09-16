@@ -2,7 +2,7 @@
 
 Calibration measures how well _SampleToNES_ reconstructs a fixed set of reference sounds. It
 converts each sound with each spectrum method, scores every result against the original, and
-writes every result as a WAV file you can listen to.
+writes a page you listen to the results on.
 
 Use it to:
 
@@ -38,30 +38,52 @@ the reference sounds are generated from a fixed seed.
 
 The results go into a new folder inside the `calibration` folder of your
 [SampleToNES folder](../guide/files.md), named by the date and time the run started, for example `run-20260915-124501`. When the run ends, it prints a link to
-the report.
+the report and opens the listening page.
 
 ## What a run writes
 
 | Path | Contents |
 |---|---|
+| `index.html` | the listening page, which opens by double-click |
 | `report.md` | the scores, as tables |
 | `report.csv` | every score, one per row, for your own analysis |
-| `renders/<variant>/` | each reconstruction as a WAV file, and a JSON file with its scores and the frames each channel plays |
+| `renders/<variant>/` | each reconstruction as a FLAC file, and a JSON file with its scores and the frames each channel plays |
+| `renders/<variant>/<sound>/` | the same reconstruction cut by channel, one file per combination |
 | `recordings/` | each reference sound, as the run prepared it for reconstruction |
 | `corpus/` | the reference sounds as generated |
+| `page/` | the stylesheet, the script and the palette the page reads |
+
+The audio is FLAC, which is lossless and about a third of the size the same audio takes as WAV. A
+default run writes around 35 MB. A run of four channels writes more, because a reconstruction of
+four channels has fourteen combinations to cut where one of three has six.
 
 A *variant* is one configuration the run measured, named after the settings that set it apart,
 for example `cqt-pe1` for the `cqt` method at perceptual exponent 1. A *render* is one reference
 sound as a variant reconstructed it.
 
-## Listen to the renders
+## Listen on the page
 
-Open the run folder and play the files in any audio player:
+Every run writes `index.html` and opens it when it ends. The page holds one row per reference
+sound and one column per variant. In each cell:
 
-- `recordings/tone-220hz.wav` is the reference sound;
-- `renders/cqt-pe1/tone-220hz.wav` is the same sound as the `cqt-pe1` variant reconstructed it.
+- **play** sounds the whole reconstruction, always from its beginning;
+- the number under it is the score, and the line below says how much of the distance between
+  silence and the recording that reconstruction covers, or **past silence** where silence scores
+  closer than the reconstruction does;
+- one bar per channel shows the frames that channel plays, in the channel's own color.
 
-A render plays at the same gain as its recording, so a render that sounds quieter is quieter.
+Beside each bar, **S** plays that channel alone and **M** plays every other channel, so you can
+hear what one channel contributes and what the rest sound like without it. Both are separate
+recordings the run wrote, so switching between them is exact.
+
+<kbd>Space</kbd> pauses and resumes, <kbd>&larr;</kbd> and <kbd>&rarr;</kbd> move across one
+sound's versions, and <kbd>&uarr;</kbd> and <kbd>&darr;</kbd> move to another sound.
+
+The page is drawn in the program's own colors. `--palette NAME` draws it in another of the
+program's palettes, and `--no-open` leaves it closed and prints its link alone.
+
+A render plays at the same gain as its recording, so a render that sounds quieter is quieter. You
+can also play any file in the run folder in an audio player of your own.
 
 Beside each render, a JSON file of the same name holds:
 
@@ -97,6 +119,8 @@ Each option replaces one part of the default run. The rest stays as the suite se
 | `--perceptual-exponents LIST` | The perceptual exponents measured, one variant each | `--perceptual-exponents 0.5,1` |
 | `--temporal-weights LIST` | The temporal loss weights measured, one variant each | `--temporal-weights 0.1,0.3` |
 | `-o DIR`, `--output DIR` | The folder the run writes into | `-o before` |
+| `--palette NAME` | The palette the listening page is drawn in | `--palette light` |
+| `--no-open` | Leaves the page closed | `--no-open` |
 
 Lists are comma separated. Several lists multiply: `--methods fft,cqt --perceptual-exponents
 0.5,1` measures four variants, and the run takes about four times as long as one variant.
@@ -110,7 +134,17 @@ The default suite is the file `sampletones_tools/calibration/config/suite.yaml` 
 1. Run calibration into a folder of its own, for example `-o before`.
 2. Change what you want to compare: install another version, or pass another `--config`.
 3. Run calibration again into another folder, for example `-o after`.
-4. Compare the two `report.md` files, and play the same render from both folders.
+4. Build one page over both:
+
+```
+sampletones calibration --board before after -o comparison
+```
+
+The page holds one tab per variant, with the runs side by side and the change between them in the
+last column. It carries the audio it plays, so the `comparison` folder moves as one piece. Without
+`-o` the page lands in a timestamped folder under `calibration/pages`.
+
+`--board` reads finished runs and measures nothing, so it takes none of the options that measure.
 
 Both runs generate the same reference sounds, so every score and every render compares directly.
 

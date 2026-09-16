@@ -8,6 +8,8 @@ from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_shared.logger import logger
 from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
 from sampletones_shared.utils.text import listed_items
+from sampletones_tools.calibration.board.palette import DEFAULT_PALETTE
+from sampletones_tools.calibration.board.session import BoardRequest, build_board
 from sampletones_tools.calibration.config.corpus import CorpusConfig
 from sampletones_tools.calibration.corpus.synthesis import build_corpus
 from sampletones_tools.calibration.corpus.writer import write_corpus
@@ -15,9 +17,10 @@ from sampletones_tools.calibration.layout import CORPUS_DIRECTORY, CSV_REPORT, M
 from sampletones_tools.calibration.referee.factory import build_referees
 from sampletones_tools.calibration.report import write_csv, write_markdown
 from sampletones_tools.calibration.runner import build_variants, evaluate_variants
-from sampletones_tools.runs import stamped_run_directory
+from sampletones_tools.runs import stamped_board_directory, stamped_run_directory
 
 OUTPUT_ROOT: Final[Path] = USER_PATH_DOCUMENTS / "calibration"
+BOARD_ROOT: Final[Path] = OUTPUT_ROOT / "pages"
 
 
 def methods_named(stated: Optional[str], default: Sequence[SpectrumMethod]) -> List[SpectrumMethod]:
@@ -73,6 +76,11 @@ def default_output() -> Path:
     return stamped_run_directory(OUTPUT_ROOT)
 
 
+def default_page_output() -> Path:
+    """A timestamped page directory under the user's calibration documents."""
+    return stamped_board_directory(BOARD_ROOT)
+
+
 class CalibrationRequest(BaseModel):
     """What a calibration run is asked for: the base configuration, the sweep and where it writes.
 
@@ -84,6 +92,7 @@ class CalibrationRequest(BaseModel):
         temporal_weights: The values of ``weights.temporal_loss_weight`` evaluated; empty keeps
             the base blend.
         channels: The channels every variant reconstructs with.
+        palette: The name of the palette the run's listening page is drawn in.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -94,13 +103,28 @@ class CalibrationRequest(BaseModel):
     perceptual_exponents: List[float] = Field(min_length=1)
     temporal_weights: List[float]
     channels: List[ChannelName] = Field(min_length=1)
+    palette: str = DEFAULT_PALETTE
 
 
-def calibrate(request: CalibrationRequest) -> Path:
-    """Reconstructs the corpus under every variant, scores it, and writes the renders and the reports.
+class CalibrationOutcome(BaseModel):
+    """What a calibration run leaves behind for a reader.
+
+    Attributes:
+        report: The markdown report, which sits in the run directory beside the renders.
+        page: The listening page, the file a reader opens to hear what the run made.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    report: Path
+    page: Path
+
+
+def calibrate(request: CalibrationRequest) -> CalibrationOutcome:
+    """Reconstructs the corpus under every variant, scores it, and writes the renders, reports and page.
 
     Returns:
-        Path: The markdown report, which sits in the run directory beside the renders.
+        CalibrationOutcome: The report and the listening page the run wrote.
     """
     request.output.mkdir(parents=True, exist_ok=True)
 
@@ -131,4 +155,11 @@ def calibrate(request: CalibrationRequest) -> Path:
     write_csv(rows, request.output / CSV_REPORT)
     report = request.output / MARKDOWN_REPORT
     write_markdown(rows, report)
-    return report
+    page = build_board(
+        BoardRequest(
+            runs=[request.output],
+            output=request.output,
+            palette=request.palette,
+        )
+    )
+    return CalibrationOutcome(report=report, page=page)
