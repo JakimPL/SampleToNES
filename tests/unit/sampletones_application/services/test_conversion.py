@@ -1,10 +1,11 @@
 from pathlib import Path
 from time import sleep
-from typing import Any, Callable, Dict, Iterator, List, Tuple, TypeAlias
+from typing import Any, Callable, Dict, Final, Iterator, List, Tuple, TypeAlias
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from sampletones_application.services.conversion.result import ConversionItem, ReconstructionStep
 from sampletones_application.services.conversion.service import ConversionService
 from sampletones_application.services.result import (
     ServiceCanceled,
@@ -15,9 +16,61 @@ from sampletones_application.services.result import (
     ServiceSuccess,
 )
 from sampletones_core.parallelization import TaskProgress, TaskStatus
+from sampletones_core.parallelization.task import TaskStep
+from sampletones_core.reconstructions.stage import ReconstructionStage
+from tests.suite.base import BaseTestSuite
 
 MockConverterClass: TypeAlias = Tuple[MagicMock, MagicMock, Dict[str, Callable[..., Any]]]
 Service: TypeAlias = Tuple[ConversionService, MagicMock, Dict[str, Callable[..., Any]], List[Any]]
+Reading: TypeAlias = Callable[[TaskProgress], ServiceProgress[ConversionItem]]
+
+SOURCE: Final[str] = "/audio/kick.wav"
+FRAMES: Final[int] = 1100
+ONE_RECONSTRUCTION: Final[int] = 1
+SEVERAL_RECONSTRUCTIONS: Final[int] = 5
+NOTHING_WRITTEN: Final[int] = 0
+ONE_WRITTEN: Final[int] = 1
+TWO_WRITTEN: Final[int] = 2
+SAMPLE_GAP: Final[float] = 0.02
+EARLY: Final[float] = 0.2
+HALFWAY: Final[float] = 0.5
+NEARLY_DONE: Final[float] = 0.9
+
+
+def _under_way(*fractions: float) -> Tuple[TaskStep, ...]:
+    """A step per reconstruction a run holds under way, each that far through its own frames."""
+    return tuple(
+        TaskStep(
+            stage=ReconstructionStage.MATCHING.value,
+            completed=round(fraction * FRAMES),
+            total=FRAMES,
+            fraction=fraction,
+        )
+        for fraction in fractions
+    )
+
+
+def _account(
+    total: int,
+    completed: int,
+    steps: Tuple[TaskStep, ...] = (),
+) -> TaskProgress:
+    """The account a run of ``total`` reconstructions gives of itself at one moment."""
+    return TaskProgress(total=total, completed=completed, current_item=SOURCE, steps=steps)
+
+
+def _run_of(service: Service, total: int) -> Reading:
+    """Starts a run writing ``total`` reconstructions and hands back its reading of each account."""
+    _, converter, callbacks, results = service
+    converter.total_tasks = total
+    callbacks["on_start"]()
+
+    def read(task_progress: TaskProgress) -> ServiceProgress[ConversionItem]:
+        results.clear()
+        callbacks["on_progress"](TaskStatus.RUNNING, task_progress)
+        return results[-1]
+
+    return read
 
 
 @pytest.fixture
@@ -297,6 +350,76 @@ class TestConversionServiceETA:
         conversion_service.release()
 
         assert conversion_service._eta_estimator is None
+
+
+class TestTheUnitARunReadsIn(BaseTestSuite):
+    """A run writing one reconstruction reads as that reconstruction; a batch reads as its files.
+
+    A batch holds as many reconstructions under way at once as it has workers, so what a reader
+    follows is the reconstructions written: the count, the bar and the estimate all answer in
+    files. A run writing one counts to one, so the part of that one reconstruction done is the
+    whole of the reading, and the stage it is at travels with it.
+    """
+
+    def test_a_run_of_one_reports_the_stage_its_reconstruction_is_at(self, service: Service) -> None:
+        read = _run_of(service, ONE_RECONSTRUCTION)
+        step = _under_way(HALFWAY)
+
+        reading = read(_account(ONE_RECONSTRUCTION, NOTHING_WRITTEN, step))
+
+        assert reading.current_item is not None
+        assert reading.current_item.step == ReconstructionStep(
+            stage=ReconstructionStage.MATCHING,
+            completed=step[0].completed,
+            total=step[0].total,
+        )
+
+    def test_a_run_of_one_reads_as_the_part_of_its_reconstruction_done(self, service: Service) -> None:
+        read = _run_of(service, ONE_RECONSTRUCTION)
+
+        reading = read(_account(ONE_RECONSTRUCTION, NOTHING_WRITTEN, _under_way(HALFWAY)))
+
+        assert reading.fraction == pytest.approx(HALFWAY)
+
+    def test_a_run_of_one_estimates_from_the_reconstruction_under_way(self, service: Service) -> None:
+        read = _run_of(service, ONE_RECONSTRUCTION)
+
+        read(_account(ONE_RECONSTRUCTION, NOTHING_WRITTEN, _under_way(EARLY)))
+        sleep(SAMPLE_GAP)
+        read(_account(ONE_RECONSTRUCTION, NOTHING_WRITTEN, _under_way(HALFWAY)))
+        sleep(SAMPLE_GAP)
+        reading = read(_account(ONE_RECONSTRUCTION, NOTHING_WRITTEN, _under_way(NEARLY_DONE)))
+
+        assert reading.eta_seconds is not None
+
+    def test_a_batch_names_the_recording_it_is_at_and_no_stage(self, service: Service) -> None:
+        read = _run_of(service, SEVERAL_RECONSTRUCTIONS)
+
+        reading = read(_account(SEVERAL_RECONSTRUCTIONS, TWO_WRITTEN, _under_way(EARLY, HALFWAY, NEARLY_DONE)))
+
+        assert reading.current_item is not None
+        assert reading.current_item.source == Path(SOURCE)
+        assert reading.current_item.step is None
+
+    def test_a_batch_reads_as_the_reconstructions_it_has_written(self, service: Service) -> None:
+        read = _run_of(service, SEVERAL_RECONSTRUCTIONS)
+
+        reading = read(_account(SEVERAL_RECONSTRUCTIONS, TWO_WRITTEN, _under_way(NEARLY_DONE, NEARLY_DONE)))
+
+        assert reading.fraction == pytest.approx(TWO_WRITTEN / SEVERAL_RECONSTRUCTIONS)
+
+    def test_a_batch_estimates_from_the_reconstructions_written(self, service: Service) -> None:
+        """Frames matched move a batch no nearer its end; a reconstruction written does."""
+        read = _run_of(service, SEVERAL_RECONSTRUCTIONS)
+
+        read(_account(SEVERAL_RECONSTRUCTIONS, ONE_WRITTEN, _under_way(EARLY, EARLY)))
+        sleep(SAMPLE_GAP)
+        matching = read(_account(SEVERAL_RECONSTRUCTIONS, ONE_WRITTEN, _under_way(NEARLY_DONE, NEARLY_DONE)))
+        sleep(SAMPLE_GAP)
+        written = read(_account(SEVERAL_RECONSTRUCTIONS, TWO_WRITTEN, _under_way(EARLY, EARLY)))
+
+        assert matching.eta_seconds is None
+        assert written.eta_seconds is not None
 
 
 class TestConversionServiceLifecycle:

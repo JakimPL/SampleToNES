@@ -8,7 +8,6 @@ from sampletones_application.view_model.main.converter import ACTIVE_PHASES, Con
 from sampletones_core.parallelization import ETAEstimator
 from sampletones_core.reconstructions.stage import ReconstructionStage
 
-SINGLE_JOB: Final[int] = 1
 SINGLE_SOURCE: Final[int] = 1
 
 
@@ -42,9 +41,9 @@ class ConverterMessages:
     ) -> str:
         """What the run is doing, how far it has come, and how long it has left.
 
-        A batch is many reconstructions and a count says where it stands; a single job counts to
-        one, so it names the document it is writing instead. Either way the reconstruction under
-        way says which stage it is in, which is the whole of what a reader watching one job has.
+        A run writing one reconstruction names the document it is making and the stage that
+        document is at, which is the whole of what a reader watching one reconstruction has. A
+        batch writes many at once, so a count of the ones written says where it stands.
         """
         return (
             self._run_text(progress, reconstruction_name) + self._stage_text(progress) + self._estimate_text(progress)
@@ -84,12 +83,14 @@ class ConverterMessages:
         progress: ServiceProgress[ConversionItem],
         reconstruction_name: str,
     ) -> str:
-        if progress.total > SINGLE_JOB:
-            return self._language_manager["main.converter.template.progress_template"].format(
-                progress.completed, progress.total
+        if progress.is_single:
+            return self._language_manager["main.converter.template.single_progress_template"].format(
+                reconstruction_name
             )
 
-        return self._language_manager["main.converter.template.single_progress_template"].format(reconstruction_name)
+        return self._language_manager["main.converter.template.progress_template"].format(
+            progress.completed, progress.total
+        )
 
     def _stage_text(self, progress: ServiceProgress[ConversionItem]) -> str:
         step = progress.current_item.step if progress.current_item is not None else None
