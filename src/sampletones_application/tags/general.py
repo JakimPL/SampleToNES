@@ -128,6 +128,30 @@ TAG_GLOBAL_THEME_SECONDARY_BUTTON = TagName(
     Widget.THEME,
     "secondary_button",
 )
+TAG_GLOBAL_THEME_STEP_BUTTON = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "step_button",
+)
+TAG_GLOBAL_THEME_STEP_BUTTON_LIT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "step_button_lit",
+)
+TAG_GLOBAL_THEME_STEP_BUTTON_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "step_button_partial",
+)
+TAG_GLOBAL_THEME_STEP_BUTTON_DIM = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "step_button_dim",
+)
 TAG_GLOBAL_THEME_DANGER_BUTTON = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -852,6 +876,7 @@ SUF_TEXT_FAVORITES = compose_tag(SUF_TEXT, "favorites")
 SUF_INPUT = "input"
 SUF_INPUT_SEARCH = compose_tag(SUF_INPUT, "search")
 SUF_CHECKBOX = "checkbox"
+SUF_SLIDER = "slider"
 SUF_CHECKBOX_FAVORITES = compose_tag(SUF_CHECKBOX, "favorites")
 SUF_STRIP = "strip"
 SUF_TABLE = "table"

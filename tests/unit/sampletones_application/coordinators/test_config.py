@@ -68,7 +68,7 @@ class TestPresentPendingLoadOutcomes:
         config_manager = _manager_with(
             ConfigRecovered(
                 source_version="1.0.0",
-                dropped=(("generation", "drive"), ("obsolete_field",)),
+                dropped=(("generation", "reset_phase"), ("obsolete_field",)),
             ),
             config_path=config_path,
         )
@@ -80,7 +80,7 @@ class TestPresentPendingLoadOutcomes:
         kwargs = coordinator._dialogs.show_config_recovery.call_args.kwargs
         assert kwargs["config_path"] == config_path
         assert kwargs["source_version"] == "1.0.0"
-        assert set(kwargs["properties"]) == {"generation.drive", "obsolete_field"}
+        assert set(kwargs["properties"]) == {"generation.reset_phase", "obsolete_field"}
         coordinator._dialogs.show_error.assert_not_called()
 
     @pytest.mark.parametrize("case", reason_cases, ids=lambda case: case.label)

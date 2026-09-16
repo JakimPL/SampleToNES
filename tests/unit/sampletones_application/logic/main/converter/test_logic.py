@@ -19,6 +19,7 @@ from sampletones_application.view_model.main.converter import (
     ConversionPhase,
     ConverterViewModel,
 )
+from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
@@ -121,7 +122,9 @@ def _listed(converter_logic: ConverterLogic, *names: str) -> None:
 
 def _card_channels(converter_logic: ConverterLogic) -> FrozenSet[ChannelName]:
     """The channels the settings card reads as held by every recording it inspects."""
-    return frozenset(channel.channel for channel in converter_logic.source_settings_view.channels if channel.used)
+    return frozenset(
+        channel.channel for channel in converter_logic.source_settings_view.channels if channel.use is Agreement.ALL
+    )
 
 
 def _started_plan(converter_logic: ConverterLogic, service: MagicMock) -> GroupConversion:

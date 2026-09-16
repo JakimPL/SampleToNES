@@ -160,10 +160,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
             mode = "" if view_model.hierarchy_mode is None else self._mode_labels[view_model.hierarchy_mode]
             dpg_set_value(
                 TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP,
-                self._setup_template.format(
-                    mode=mode,
-                    cap=view_model.channel_cap,
-                ),
+                self._setup_template.format(mode=mode),
             )
 
         dpg_configure_item(

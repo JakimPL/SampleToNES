@@ -104,12 +104,6 @@ TAG_MAIN_SOURCE_PANEL = TagName(
     Widget.PANEL,
     "source",
 )
-TAG_MAIN_SOURCE_SLIDER_DRIVE = TagName(
-    Page.MAIN,
-    Panel.SOURCE,
-    Widget.SLIDER,
-    "drive",
-)
 TAG_MAIN_ADVANCED_PANEL = TagName(
     Page.MAIN,
     Panel.ADVANCED,
@@ -243,36 +237,39 @@ TAG_MAIN_CONVERTER_GROUP_SUMMARY = TagName(
     "summary",
 )
 
-PRE_MAIN_SOURCE_SLOT = "slot"
-TAG_MAIN_SOURCE_TEXT_INSPECTING = TagName(
+PRE_MAIN_SOURCE_CHANNEL = compose_tag(
+    Page.MAIN,
+    Panel.SOURCE,
+    "channel",
+)
+PRE_MAIN_SOURCE_STEP = compose_tag(
+    Page.MAIN,
+    Panel.SOURCE,
+    "step",
+)
+TAG_MAIN_SOURCE_TEXT_SUBJECT = TagName(
     Page.MAIN,
     Panel.SOURCE,
     Widget.TEXT,
-    "inspecting",
+    "subject",
 )
-TAG_MAIN_SOURCE_TEXT_UNPICKED = TagName(
+TAG_MAIN_SOURCE_TOOLTIP_SUBJECT = TagName(
     Page.MAIN,
     Panel.SOURCE,
-    Widget.TEXT,
-    "unpicked",
+    Widget.TOOLTIP,
+    "subject",
 )
-TAG_MAIN_SOURCE_GROUP_GRID = TagName(
-    Page.MAIN,
-    Panel.SOURCE,
-    Widget.GROUP,
-    "grid",
-)
-TAG_MAIN_SOURCE_TABLE_GRID = TagName(
+TAG_MAIN_SOURCE_TABLE_CHANNELS = TagName(
     Page.MAIN,
     Panel.SOURCE,
     Widget.TABLE,
-    "grid",
+    "channels",
 )
-TAG_MAIN_CONVERTER_GROUP_CONTROLS = TagName(
+TAG_MAIN_SOURCE_GROUP_STEPS = TagName(
     Page.MAIN,
-    Panel.CONVERTER,
+    Panel.SOURCE,
     Widget.GROUP,
-    "controls",
+    "steps",
 )
 TAG_MAIN_CONVERTER_RADIO_MODE = TagName(
     Page.MAIN,
@@ -292,12 +289,6 @@ TAG_MAIN_CONVERTER_GROUP_INPUT = TagName(
     Widget.GROUP,
     "input",
 )
-TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP = TagName(
-    Page.MAIN,
-    Panel.CONVERTER,
-    Widget.INPUT,
-    "channel_cap",
-)
 TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE = TagName(
     Page.MAIN,
     Panel.CONVERTER,
@@ -309,12 +300,6 @@ TAG_MAIN_CONVERTER_TOOLTIP_MODE = TagName(
     Panel.CONVERTER,
     Widget.TOOLTIP,
     "mode",
-)
-TAG_MAIN_CONVERTER_TOOLTIP_CHANNEL_CAP = TagName(
-    Page.MAIN,
-    Panel.CONVERTER,
-    Widget.TOOLTIP,
-    "channel_cap",
 )
 TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE = TagName(
     Page.MAIN,

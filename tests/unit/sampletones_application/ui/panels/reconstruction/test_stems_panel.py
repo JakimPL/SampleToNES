@@ -130,7 +130,6 @@ def _view_model(
             collapse_levels=False,
         ),
         hierarchy_mode=hierarchy_mode,
-        channel_cap=2 if hierarchy_mode is not None else None,
     )
 
 
@@ -291,14 +290,13 @@ class TestStemsPanelLevels:
 
 
 class TestStemsPanelStates:
-    def test_the_setup_line_states_mode_and_cap(self, panel: GUIReconstructionStemsPanel) -> None:
+    def test_the_setup_line_states_the_mode(self, panel: GUIReconstructionStemsPanel) -> None:
         render(panel)
 
         panel.update_view(_view_model(_row(0, name="kick"), hierarchy_mode=HierarchyMode.STRICT))
 
         assert dpg.is_item_shown(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP)
         assert "Strict" in dpg.get_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP)
-        assert "2" in dpg.get_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP)
 
     def test_the_empty_state_shows_for_a_loaded_reconstruction_without_source(
         self,

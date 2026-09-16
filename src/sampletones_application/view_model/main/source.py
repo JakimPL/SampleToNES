@@ -46,8 +46,8 @@ class ChannelSettingsViewModel(BaseModel, frozen=True):
 
     @property
     def used(self) -> bool:
-        """Every inspected recording occupies the channel, which is what its drive belongs to."""
-        return self.use.reads_held
+        """An inspected recording occupies the channel, which is what its bend and its drive belong to."""
+        return self.use is not Agreement.NONE
 
     @property
     def bendable(self) -> bool:
@@ -57,7 +57,7 @@ class ChannelSettingsViewModel(BaseModel, frozen=True):
     @property
     def bend_offered(self) -> bool:
         """A bend is put to a reader here: the hardware reads one and a recording occupies it."""
-        return self.bendable and self.use is not Agreement.NONE
+        return self.bendable and self.used
 
     @property
     def drive_mixed(self) -> bool:

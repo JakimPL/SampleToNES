@@ -24,12 +24,10 @@ from sampletones_application.tags.general import SUF_BUTTON
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_BUTTON_ACTION,
     TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
-    TAG_MAIN_CONVERTER_GROUP_CONTROLS,
     TAG_MAIN_CONVERTER_GROUP_CONVERT,
     TAG_MAIN_CONVERTER_GROUP_INPUT,
     TAG_MAIN_CONVERTER_GROUP_ORDER,
     TAG_MAIN_CONVERTER_GROUP_SUMMARY,
-    TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP,
     TAG_MAIN_CONVERTER_RADIO_MODE,
     TAG_MAIN_CONVERTER_TEXT_STEMS_HINT,
     TAG_MAIN_CONVERTER_WINDOW_STEMS,
@@ -61,7 +59,6 @@ from tests.suite.shortcuts import rebound_source, shipped_source
 ROOT_TAG = "test_root"
 SETUP_CHOICES = (
     TAG_MAIN_CONVERTER_RADIO_MODE,
-    TAG_MAIN_CONVERTER_INPUT_CHANNEL_CAP,
     TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
 )
 LANGUAGE_MANAGER = LanguageManager(LANG_EN)
@@ -162,8 +159,6 @@ def view(
         other_operation_active=False,
         output=output,
         stem_sources=rows,
-        channel_cap=len(ChannelName),
-        max_channel_cap=len(ChannelName),
         hierarchy_mode=DEFAULT_STEMS_HIERARCHY_MODE,
         max_sources=8,
         selected_key=selected_key,
@@ -283,19 +278,12 @@ class TestTheActionButton:
 
 
 class TestTheRunControls:
-    """The choices answer for what the list holds, so they arrive with it."""
+    """The order answers for a mix of several recordings, so it arrives with the second of them."""
 
-    def test_they_stand_away_until_something_is_listed(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+    def test_it_stands_away_until_something_is_listed(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         build(layout_config)
 
-        assert not shows(TAG_MAIN_CONVERTER_GROUP_CONTROLS)
-
-    def test_they_arrive_with_the_first_recording(self, dpg_context: None, layout_config: LayoutConfig) -> None:
-        panel, _reported = build(layout_config)
-
-        panel.update_view(view(row("kick")))
-
-        assert shows(TAG_MAIN_CONVERTER_GROUP_CONTROLS)
+        assert not shows(TAG_MAIN_CONVERTER_GROUP_ORDER)
 
     def test_the_order_arrives_with_the_second_recording_of_a_mix(
         self,
@@ -335,12 +323,12 @@ class TestTheRunControls:
             False,
         )
 
-    def test_they_stand_below_the_list(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+    def test_it_stands_below_the_list(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         build(layout_config)
         body = dpg.get_item_children(dpg.get_item_parent(TAG_MAIN_CONVERTER_WINDOW_STEMS), 1)
 
         assert body.index(dpg.get_alias_id(TAG_MAIN_CONVERTER_WINDOW_STEMS)) < body.index(
-            dpg.get_alias_id(TAG_MAIN_CONVERTER_GROUP_CONTROLS)
+            dpg.get_alias_id(TAG_MAIN_CONVERTER_GROUP_ORDER)
         )
 
 

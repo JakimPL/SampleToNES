@@ -1,50 +1,37 @@
-from typing import Any, Callable, Optional
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.sources import SettingsField
 from sampletones_application.layout.general.inputs import InputsLayout
-from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.tabs.main.source import SourceSettingsLayout
-from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import (
-    SUF_HANDLER_REGISTRY,
-    TAG_GLOBAL_THEME_SECTION_HEADER,
-)
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_SECTION_HEADER
 from sampletones_application.tags.main import (
     TAG_MAIN_SOURCE_PANEL,
-    TAG_MAIN_SOURCE_SLIDER_DRIVE,
-    TAG_MAIN_SOURCE_TEXT_INSPECTING,
-    TAG_MAIN_SOURCE_TEXT_UNPICKED,
+    TAG_MAIN_SOURCE_TEXT_SUBJECT,
+    TAG_MAIN_SOURCE_TOOLTIP_SUBJECT,
 )
-from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.panels.main.source.grid import SettingsGrid
+from sampletones_application.ui.panels.main.source.rows import ChannelSettingsRows, DriveCallback, SlotCallback
+from sampletones_application.ui.panels.main.source.steps import ChannelCapSteps, StepCallback
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
-from sampletones_application.utils.gui.tooltip import show_tooltip
-from sampletones_application.utils.gui.widgets import clamp_widget_value
-from sampletones_application.view_model.main.source import (
-    InspectedSourceViewModel,
-    SourceSettingsPanelViewModel,
-)
-from sampletones_application.view_model.main.updates import GenerationSettingsUpdate
-from sampletones_core.constants.algorithm import MAX_DRIVE
+from sampletones_application.utils.gui.dpg import dpg_set_value
+from sampletones_application.utils.gui.tooltip import set_tooltip_visible, show_tooltip
+from sampletones_application.view_model.main.source import SourceSettingsPanelViewModel
 from sampletones_core.constants.enums import ChannelName
-from sampletones_shared.types.application import Sender
 
 
 class GUISourceSettingsPanel(GUIPanel):
-    """The source settings card: the drive a run holds to, and the choices the picked row is given.
+    """The source settings card: what one recording, one folder, or every new recording converts with.
 
-    Drive stands above the rule and answers for the run as a whole, so it is there whatever the
-    reader is looking at. Below the rule the card names the row picked out of the converter's
-    list and draws its choices as one row of that list's own grid; with nothing picked it says
-    which gesture picks one.
+    The card names what it edits — the row picked out of the converter's list, or the recordings a
+    reader adds next — and lays each channel out as a line of its own, with how many of them a
+    recording may sound at once below. It settles nothing itself: every gesture names the choice
+    and hands it on, and the card draws whatever reading it is given back.
     """
 
     def __init__(
@@ -53,126 +40,81 @@ class GUISourceSettingsPanel(GUIPanel):
         *,
         layout: SourceSettingsLayout,
         inputs: InputsLayout,
-        stems_layout: StemsListLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
         self._language_manager = language_manager
         self._view = initial_view
-        self._layout = layout
-        self._input_width = inputs.default_width
-        self._label_width = inputs.label_width
-        self._status_bar = status_bar
-        self._grid = SettingsGrid(layout=stems_layout, language_manager=language_manager)
-        self._msg_unpicked = language_manager["main.source.message.nothing_picked"]
-        self._tpl_folder = language_manager["global.stems.template.folder_row"]
-        self._item_handler_tag = compose_tag(TAG_MAIN_SOURCE_PANEL, SUF_HANDLER_REGISTRY)
-
-        self.on_generation_settings_changed: Optional[Callable[[GenerationSettingsUpdate], None]] = None
-        self.on_slot_toggled: Optional[Callable[[SettingsField, ChannelName], None]] = None
-
-        super().__init__(
-            tag=TAG_MAIN_SOURCE_PANEL,
-            height=layout.height,
+        self._rows = ChannelSettingsRows(layout=layout, language_manager=language_manager, status_bar=status_bar)
+        self._steps = ChannelCapSteps(
+            layout=layout,
+            inputs=inputs,
+            language_manager=language_manager,
+            status_bar=status_bar,
         )
-        self._enable_vertical_collapse(initial_collapsed=initial_collapsed)
+        self._lbl_new_recordings = language_manager["main.source.label.new_recordings"]
+        self._msg_new_recordings = language_manager["main.source.tooltip.tooltip_new_recordings"]
+        self._tpl_folder = language_manager["global.stems.template.folder_row"]
+
+        self.on_slot_toggled: Optional[SlotCallback] = None
+        self.on_drive_changed: Optional[DriveCallback] = None
+        self.on_channel_cap_changed: Optional[StepCallback] = None
+
+        super().__init__(tag=TAG_MAIN_SOURCE_PANEL)
+        self._enable_vertical_collapse(initial_collapsed=initial_collapsed, auto_height=True)
+        self._wire()
 
     def create_panel(self, parent: str) -> None:
-        self._setup_handlers()
         with self._collapsible_card(
             parent,
             self._language_manager["main.source.label.section_settings"],
             glyph=self._glyphs.headers.reconstruction,
             width=self.width,
+            no_scrollbar=True,
         ):
-            self._create_drive_slider()
-            dpg.add_separator()
             self._create_subject_line()
-            self._create_unpicked_hint()
-            self._grid.create(self._view)
-            self._create_tooltips()
+            self._rows.create(self._view)
+            self._steps.create()
 
-        self._grid.on_slot_toggled = self._on_slot_toggled
         self.update_view(self._view)
 
     def update_view(self, view_model: SourceSettingsPanelViewModel) -> None:
-        """Take up what the card now edits: the drive, the row picked out, and its choices."""
+        """Take up what the card now edits and draw every choice the way the recordings read."""
         self._view = view_model
-        dpg.set_value(TAG_MAIN_SOURCE_SLIDER_DRIVE, view_model.drive)
-        dpg_set_value(TAG_MAIN_SOURCE_TEXT_INSPECTING, self._subject_text(view_model.inspected))
-        dpg_configure_item(TAG_MAIN_SOURCE_TEXT_INSPECTING, show=view_model.inspecting)
-        dpg_configure_item(TAG_MAIN_SOURCE_TEXT_UNPICKED, show=not view_model.inspecting)
-        dpg_configure_item(self._grid.tag, show=view_model.inspecting)
-        self._grid.render(view_model)
-
-    def _setup_handlers(self) -> None:
-        with dpg.item_handler_registry(tag=self._item_handler_tag):
-            dpg.add_item_deactivated_handler(callback=self._on_parameter_change)
-            dpg.add_item_deactivated_after_edit_handler(callback=self._on_parameter_change)
-            dpg.add_item_edited_handler(callback=self._on_parameter_change)
+        dpg_set_value(TAG_MAIN_SOURCE_TEXT_SUBJECT, self._subject_text(view_model))
+        set_tooltip_visible(TAG_MAIN_SOURCE_TOOLTIP_SUBJECT, view_model.edits_new_recordings)
+        self._rows.render(view_model)
+        self._steps.render(view_model)
 
     def _create_subject_line(self) -> None:
-        """The row the card is editing, named the way the list names it."""
-        text = dpg.add_text(
-            self._subject_text(self._view.inspected),
-            tag=TAG_MAIN_SOURCE_TEXT_INSPECTING,
-        )
+        """What the card edits, named the way the list names a row."""
+        text = dpg.add_text(self._subject_text(self._view), tag=TAG_MAIN_SOURCE_TEXT_SUBJECT)
         FontRegistry.bind_to_item(text, Font.BOLD)
         ThemeRegistry.get(TAG_GLOBAL_THEME_SECTION_HEADER).bind_to_item(text)
+        show_tooltip(TAG_MAIN_SOURCE_TEXT_SUBJECT, self._msg_new_recordings, tag=TAG_MAIN_SOURCE_TOOLTIP_SUBJECT)
 
-    def _create_unpicked_hint(self) -> None:
-        """What to do to give the card something to edit, standing where the row's name stands."""
-        text = dpg.add_text(self._msg_unpicked, tag=TAG_MAIN_SOURCE_TEXT_UNPICKED, wrap=self.width)
-        FontRegistry.bind_to_item(text, Font.REGULAR_SMALL)
+    def _subject_text(self, view_model: SourceSettingsPanelViewModel) -> str:
+        subject = view_model.subject
+        if subject is None:
+            return self._lbl_new_recordings
 
-    def _subject_text(self, inspected: Optional[InspectedSourceViewModel]) -> str:
-        if inspected is None:
-            return ""
+        if subject.stands_for_a_folder:
+            return self._tpl_folder.format(name=subject.name, count=subject.holds)
 
-        if inspected.stands_for_a_folder:
-            return self._tpl_folder.format(name=inspected.name, count=inspected.holds)
+        return subject.name
 
-        return inspected.name
-
-    def _create_drive_slider(self) -> None:
-        with labeled_field(self._language_manager["main.source.label.slider_drive"], self._label_width):
-            dpg.add_slider_float(
-                tag=TAG_MAIN_SOURCE_SLIDER_DRIVE,
-                min_value=0.0,
-                max_value=MAX_DRIVE,
-                default_value=self._view.drive,
-                width=self._input_width,
-                format=self._layout.drive_format,
-            )
-
-        dpg.bind_item_handler_registry(
-            TAG_MAIN_SOURCE_SLIDER_DRIVE,
-            self._item_handler_tag,
-        )
-        self._status_bar.bind_to_item(
-            TAG_MAIN_SOURCE_SLIDER_DRIVE,
-            self._language_manager["global.status.message.input"],
-        )
-        FontRegistry.bind_to_item(
-            TAG_MAIN_SOURCE_SLIDER_DRIVE,
-            Font.MONO,
-        )
-
-    def _create_tooltips(self) -> None:
-        show_tooltip(
-            TAG_MAIN_SOURCE_SLIDER_DRIVE,
-            self._language_manager["main.source.tooltip.tooltip_drive"],
-        )
+    def _wire(self) -> None:
+        """Hand each section's reports on to the card's own hooks, which the coordinator wires."""
+        self._rows.on_slot_toggled = self._on_slot_toggled
+        self._rows.on_drive_changed = self._on_drive_changed
+        self._steps.on_channel_cap_changed = self._on_channel_cap_changed
 
     def _on_slot_toggled(self, field: SettingsField, channel_name: ChannelName) -> None:
         self.call(self.on_slot_toggled, field, channel_name)
 
-    def _on_parameter_change(self, _sender: Sender, _app_data: Any) -> None:
-        self._report_generation_settings()
+    def _on_drive_changed(self, channel_name: ChannelName, drive: float) -> None:
+        self.call(self.on_drive_changed, channel_name, drive)
 
-    def _report_generation_settings(self) -> None:
-        generation_update = GenerationSettingsUpdate(
-            drive=float(clamp_widget_value(TAG_MAIN_SOURCE_SLIDER_DRIVE)),
-        )
-        self.call(self.on_generation_settings_changed, generation_update)
+    def _on_channel_cap_changed(self, channel_cap: int) -> None:
+        self.call(self.on_channel_cap_changed, channel_cap)
