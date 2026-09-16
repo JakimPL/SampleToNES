@@ -1,10 +1,15 @@
 from pathlib import Path
+from typing import Final
 
-from sampletones_core.constants.enums import DEFAULT_CHANNELS
+from sampletones_core.constants.enums import DEFAULT_CHANNELS, ChannelName
 from sampletones_core.headless.conversion.pairing import describe_stem, pairing_lines
 from sampletones_core.headless.conversion.request import ConversionRequest, classic_setup
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from tests.suite.files import empty_file
 from tests.unit.sampletones_core.headless.conversion.stems import two_stems
+
+LOUD_DRIVE: Final[float] = 2.0
 
 
 class TestDescribeStem:
@@ -13,6 +18,19 @@ class TestDescribeStem:
 
         assert describe_stem(first) == "stem 0 on pulse1, pulse2, bending pulse1"
         assert describe_stem(second) == "stem 1 on noise"
+
+    def test_a_stem_names_a_count_below_its_channels_and_a_drive_off_unit(self) -> None:
+        entry = StemEntry(
+            id=0,
+            settings=StemSettings(
+                channels=[ChannelName.PULSE1, ChannelName.PULSE2],
+                bends=[],
+                drives={ChannelName.PULSE1: LOUD_DRIVE},
+                channel_cap=1,
+            ),
+        )
+
+        assert describe_stem(entry) == "stem 0 on pulse1, pulse2, 1 at once, driving pulse1 at 2.00"
 
 
 class TestPairingLines:

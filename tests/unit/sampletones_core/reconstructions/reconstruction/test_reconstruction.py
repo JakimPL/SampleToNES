@@ -48,6 +48,7 @@ from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import DIRECTORY_READ_ERRORS
 from tests.suite.stems import single_entry_stems_data
 
+_STORED_DRIVE: Final[float] = 2.0
 _RETUNED_FREQUENCY: Final[int] = DEFAULT_NES_FREQUENCY // 2
 _FASTER_FREQUENCY: Final[int] = DEFAULT_NES_FREQUENCY * 2
 
@@ -433,6 +434,7 @@ class TestVersionUpgradeOnLoad:
         channels = list(reconstruction.stems_data.config.entries[0].settings.channels)
         generation = data["config"]["generation"]
         generation["generators"] = [str(channel_name) for channel_name in channels]
+        generation["drive"] = _STORED_DRIVE
         config_metadata = data["config"].get("metadata")
         if isinstance(config_metadata, dict):
             config_metadata["reconstruction_data_version"] = "2.1"
@@ -442,8 +444,10 @@ class TestVersionUpgradeOnLoad:
         loaded = Reconstruction.load(path)
 
         stems_data = loaded.stems_data
+        settings = stems_data.config.entries[0].settings
         assert stems_data.config.entries[0].id == 0
-        assert stems_data.config.entries[0].settings.channels == channels
+        assert settings.channels == channels
+        assert settings.drives == {channel_name: _STORED_DRIVE for channel_name in channels}
         assert loaded.audio_filepath == reconstruction.audio_filepath
         for channel, stem_ids in stems_data.assignments_by_channel.items():
             assert len(stem_ids) == len(loaded.instructions[channel])

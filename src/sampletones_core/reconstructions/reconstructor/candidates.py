@@ -38,8 +38,8 @@ class ClassCandidates:
 
     Attributes:
         instructions: The candidates, in library order.
-        powers: One row per candidate: its power density per bin averaged over phase, at the
-            drive it plays at, on the active array backend.
+        powers: One row per candidate: its power density per bin averaged over phase, as its
+            library sample plays, on the active array backend.
     """
 
     instructions: Tuple[InstructionUnion, ...]
@@ -51,9 +51,11 @@ class CandidateProvider:
     """
     Serves the library's candidates in the forms the matching reads them in.
 
-    A candidate's power is read off its phase-averaged library feature once per library and
-    kept per generator class, so every frame mixes the same rows. Its waveform and its moments
-    are read where a shortlist asks for them.
+    Every quantity stands at the level the library sample plays, which the matching scales by
+    the drive the channel is asked for, so one set of rows serves every drive a run holds. A
+    candidate's power is read off its phase-averaged library feature once per library and kept
+    per generator class, so every frame mixes the same rows. Its waveform and its moments are
+    read where a shortlist asks for them.
     """
 
     config: Config
@@ -67,10 +69,6 @@ class CandidateProvider:
     def __post_init__(self) -> None:
         object.__setattr__(self, "_cached_powers", self._build_cached_powers())
 
-    @property
-    def drive(self) -> float:
-        return self.config.generation.drive
-
     @cached_property
     def widths(self) -> np.ndarray:
         """The width of every bin of the feature axis the library is described on."""
@@ -78,7 +76,7 @@ class CandidateProvider:
         return np.asarray(np.diff(feature.edges), dtype=np.float64)
 
     def candidates(self, generator_classes: Dict[GeneratorClassName, GeneratorUnion]) -> ClassCandidates:
-        """Every candidate of ``generator_classes``, with its power at the configured drive."""
+        """Every candidate of ``generator_classes``, with the power its library sample plays at."""
         instructions = tuple(self.library_data.filter(tuple(generator_classes)).keys())
         return ClassCandidates(
             instructions=instructions, powers=self._cached_powers(serialize_instructions(instructions))
@@ -89,22 +87,17 @@ class CandidateProvider:
         return self.extractor.transformer.forward(xp.asarray(powers)) * xp.asarray(self.widths)
 
     def power_of(self, instruction: InstructionUnion) -> np.ndarray:
-        """The candidate's power density per bin averaged over phase, at the configured drive."""
+        """The candidate's power density per bin averaged over phase, as its library sample plays."""
         values = np.asarray(self.library_data[instruction].feature.values, dtype=np.float64)
-        return np.asarray(self.extractor.transformer.backward(values / self.widths)) * self.drive**2
+        return np.asarray(self.extractor.transformer.backward(values / self.widths))
 
     def library_waveform(self, instruction: InstructionUnion) -> np.ndarray:
-        """The frame the candidate's library sample plays from its own start, at the configured drive."""
+        """The frame the candidate's library sample plays from its own start."""
         fragment = self.library_data[instruction].get_fragment(START_OF_SAMPLE, self.config, self.window)
-        return np.asarray(fragment.audio, dtype=np.float64) * self.drive
+        return np.asarray(fragment.audio, dtype=np.float64)
 
     def expected_moments(self, instruction: InstructionUnion) -> Tuple[float, float]:
-        """The mean level and the per-sample variance the candidate renders at, at the configured drive."""
-        mean, variance = self._sample_moments(instruction)
-        return self.drive * mean, self.drive**2 * variance
-
-    def _sample_moments(self, instruction: InstructionUnion) -> Tuple[float, float]:
-        """The mean and the variance of the instruction's library sample, read once per library."""
+        """The mean level and the per-sample variance of the candidate's library sample, read once per library."""
         moments = self._moments.get(instruction)
         if moments is None:
             sample = self.library_data[instruction].sample

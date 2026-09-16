@@ -307,6 +307,6 @@ class TestTheAudioAReconstructionRecords:
         for channel_name in reconstruction.playing_channels:
             np.testing.assert_allclose(
                 reconstruction.approximations[channel_name],
-                rendered[channel_name] * resetting.generation.drive,
+                rendered[channel_name],
                 atol=1e-6,
             )

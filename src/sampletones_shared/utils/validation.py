@@ -35,7 +35,7 @@ def flatten_location(location: Location) -> str:
     Renders a Pydantic error location as a dotted path for display.
 
     Mapping keys join with a dot and list indices append in brackets, so
-    ``("generation", "drive")`` becomes ``generation.drive`` and
+    ``("generation", "reset_phase")`` becomes ``generation.reset_phase`` and
     ``("generators", 2)`` becomes ``generators[2]``.
     """
     parts: List[str] = []

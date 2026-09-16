@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Final
 
 from sampletones_core.compatibility.fields import (
     AUDIO_FILEPATH,
@@ -6,17 +6,25 @@ from sampletones_core.compatibility.fields import (
     CHANNEL_CAP,
     CHANNEL_NAME,
     CHANNELS,
+    DRIVES,
     GENERATOR_NAME,
     INSTRUCTIONS,
     SETTINGS,
     STEMS_DATA,
 )
 from sampletones_core.compatibility.reconstruction.v2_2 import update
-from sampletones_core.constants.algorithm import ALL_STEMS_CHANNEL_CAP
+from sampletones_core.constants.algorithm import ALL_STEMS_CHANNEL_CAP, MAX_DRIVE, MIN_DRIVE, UNIT_DRIVE
+
+STORED_DRIVE: Final[float] = 2.5
 
 
 def _stream(extra: Dict[str, Any]) -> Dict[str, Any]:
     return {GENERATOR_NAME: "pulse1", "instructions": [], **extra}
+
+
+def _drives(upgraded: Dict[str, Any]) -> Dict[str, float]:
+    """The level the one synthesized entry gives each of its channels."""
+    return upgraded[STEMS_DATA]["config"]["entries"][0][SETTINGS][DRIVES]
 
 
 class TestReconstructionV2_2:
@@ -41,16 +49,51 @@ class TestReconstructionV2_2:
 
         upgraded = update(data)
 
-        generation = upgraded["config"]["generation"]
-        assert generation == {"drive": 1.0}
+        assert upgraded["config"]["generation"] == {}
         assert upgraded[STEMS_DATA]["config"]["entries"] == [
-            {"id": 0, SETTINGS: {CHANNELS: ["pulse1", "noise"], BENDS: [], CHANNEL_CAP: ALL_STEMS_CHANNEL_CAP}}
+            {
+                "id": 0,
+                SETTINGS: {
+                    CHANNELS: ["pulse1", "noise"],
+                    BENDS: [],
+                    DRIVES: {"pulse1": UNIT_DRIVE, "noise": UNIT_DRIVE},
+                    CHANNEL_CAP: ALL_STEMS_CHANNEL_CAP,
+                },
+            }
         ]
+
+    def test_the_stored_drive_reaches_every_channel_of_the_entry(self) -> None:
+        data = {"config": {"generation": {"channels": ["pulse1", "noise"], "drive": STORED_DRIVE}}}
+
+        upgraded = update(data)
+
+        assert upgraded["config"]["generation"] == {}
+        assert _drives(upgraded) == {"pulse1": STORED_DRIVE, "noise": STORED_DRIVE}
+
+    def test_a_drive_stored_under_its_older_name_is_read(self) -> None:
+        data = {"config": {"generation": {"channels": ["pulse1"], "mixer": STORED_DRIVE}}}
+
+        upgraded = update(data)
+
+        assert upgraded["config"]["generation"] == {}
+        assert _drives(upgraded) == {"pulse1": STORED_DRIVE}
+
+    def test_a_run_stating_no_drive_played_at_unit(self) -> None:
+        data = {"config": {"generation": {"channels": ["pulse1"]}}}
+
+        assert _drives(update(data)) == {"pulse1": UNIT_DRIVE}
+
+    def test_a_drive_outside_the_bounds_is_held_within_them(self) -> None:
+        quiet = {"config": {"generation": {"channels": ["pulse1"], "drive": MIN_DRIVE / 2}}}
+        loud = {"config": {"generation": {"channels": ["pulse1"], "drive": MAX_DRIVE * 2}}}
+
+        assert _drives(update(quiet)) == {"pulse1": MIN_DRIVE}
+        assert _drives(update(loud)) == {"pulse1": MAX_DRIVE}
 
     def test_the_retired_choice_to_record_the_matched_audio_goes(self) -> None:
         data = {"config": {"generation": {"final_regeneration": False, "drive": 1.0}}}
 
-        assert update(data)["config"]["generation"] == {"drive": 1.0}
+        assert update(data)["config"]["generation"] == {}
 
     def test_stamps_the_embedded_config_metadata(self) -> None:
         data = {"config": {"metadata": {"reconstruction_data_version": "2.1"}}}
@@ -78,6 +121,7 @@ class TestReconstructionV2_2:
         assert upgraded["id"] == "abc"
         assert upgraded[AUDIO_FILEPATH] == []
         assert upgraded[STEMS_DATA]["config"]["entries"][0][SETTINGS][CHANNELS] == []
+        assert _drives(upgraded) == {}
         assert upgraded[STEMS_DATA]["assignments"] == []
 
     def test_a_single_path_records_as_a_one_tuple(self) -> None:
@@ -100,7 +144,15 @@ class TestReconstructionV2_2:
 
         stems_data = upgraded[STEMS_DATA]
         assert stems_data["config"]["entries"] == [
-            {"id": 0, SETTINGS: {CHANNELS: ["pulse1", "noise"], BENDS: [], CHANNEL_CAP: ALL_STEMS_CHANNEL_CAP}}
+            {
+                "id": 0,
+                SETTINGS: {
+                    CHANNELS: ["pulse1", "noise"],
+                    BENDS: [],
+                    DRIVES: {"pulse1": UNIT_DRIVE, "noise": UNIT_DRIVE},
+                    CHANNEL_CAP: ALL_STEMS_CHANNEL_CAP,
+                },
+            }
         ]
         assert CHANNEL_CAP not in stems_data["config"]
         assert stems_data["assignments"] == [

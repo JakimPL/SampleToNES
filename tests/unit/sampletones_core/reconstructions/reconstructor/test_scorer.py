@@ -5,7 +5,6 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.fft import Fragment, Window
-from sampletones_core.generators import get_remaining_generator_classes
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstructor.candidates import ClassCandidates
@@ -14,7 +13,10 @@ from sampletones_core.reconstructions.reconstructor.worker import ReconstructorW
 
 
 def _candidates(worker: ReconstructorWorker) -> ClassCandidates:
-    return worker.candidate_provider.candidates(get_remaining_generator_classes(dict(worker.channels)))
+    """Every candidate of every kind the run hands out, stacked as one column would read them."""
+    return worker.candidate_provider.candidates(
+        {generator.class_name(): generator for generator in worker.channels.values()}
+    )
 
 
 class TestSpectralCosts:

@@ -106,10 +106,6 @@ class Config(DataModel):
         return Path(self.general.reconstructions_directory)
 
     @property
-    def drive(self) -> float:
-        return self.generation.drive
-
-    @property
     def normalize(self) -> bool:
         return self.general.normalize
 

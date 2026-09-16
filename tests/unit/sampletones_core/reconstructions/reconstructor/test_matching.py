@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Final
+from typing import Any, Dict, Final, List
 
 import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.algorithm import UNIT_DRIVE
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
-from sampletones_core.generators import GeneratorUnion, get_generator_by_instruction, get_remaining_generator_classes
+from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction
 from sampletones_core.library import InstructionLibraryData, InstructionLibraryFragment
 from sampletones_core.reconstructions.reconstructor.contribution import Contribution
@@ -20,8 +21,10 @@ from sampletones_core.reconstructions.reconstructor.worker import ReconstructorW
 from sampletones_shared.array import to_numpy, xp
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.fragments import amplified
 
 WORKER_SIGNAL_LENGTH: Final[int] = 1 << 20
+DRIVE: Final[float] = 2.0
 AVERAGED_SHIFTS: Final[int] = 400
 AVERAGE_TOLERANCE: Final[float] = 0.05
 SOUNDING_COST: Final[float] = 0.2
@@ -56,8 +59,18 @@ def _searching(
     )
 
 
+def _kinds(worker: ReconstructorWorker) -> List[GeneratorUnion]:
+    """One generator per kind the run hands out, the lowest channel of each standing for it."""
+    kinds: Dict[GeneratorClassName, GeneratorUnion] = {}
+    for generator in worker.channels.values():
+        kinds.setdefault(generator.class_name(), generator)
+
+    return list(kinds.values())
+
+
 def _generator_of(worker: ReconstructorWorker, instruction: InstructionUnion) -> GeneratorUnion:
-    return get_generator_by_instruction(instruction, get_remaining_generator_classes(dict(worker.channels)))
+    """The generator of the kind the instruction belongs to."""
+    return next(generator for generator in _kinds(worker) if generator.get_instruction_type() is type(instruction))
 
 
 def _temporal_loss(worker: ReconstructorWorker, target: Fragment, contribution: Contribution) -> float:
@@ -75,8 +88,13 @@ class TestScoreColumn:
         worker: ReconstructorWorker,
         synthetic_fragment: Fragment,
     ) -> None:
-        for generator in get_remaining_generator_classes(dict(worker.channels)).values():
-            column = worker.matcher.score_column(synthetic_fragment, generator, FrameMix.empty(synthetic_fragment))
+        for generator in _kinds(worker):
+            column = worker.matcher.score_column(
+                synthetic_fragment,
+                generator,
+                FrameMix.empty(synthetic_fragment),
+                drive=UNIT_DRIVE,
+            )
 
             costs = [candidate.cost for candidate in column]
             assert costs == sorted(costs)
@@ -102,6 +120,30 @@ class TestScoreColumn:
             shifted_target,
             _generator_of(worker, audible_instruction),
             FrameMix.empty(shifted_target),
+            drive=UNIT_DRIVE,
+        )
+
+        assert column[0].instruction == audible_instruction
+        assert column[0].cost == pytest.approx(0.0, abs=1e-3)
+
+    def test_a_driven_candidate_answers_a_target_playing_that_loud(
+        self,
+        worker: ReconstructorWorker,
+        library_data: InstructionLibraryData,
+        audible_instruction: InstructionUnion,
+        extractor: FeatureExtractor,
+        config: Config,
+        window: Window,
+    ) -> None:
+        """A candidate scored at a drive stands where its library sample played that loud stands."""
+        library_fragment = library_data[audible_instruction].get_fragment(0, config, window)
+        target = amplified(extractor, library_fragment, DRIVE)
+
+        column = worker.matcher.score_column(
+            target,
+            _generator_of(worker, audible_instruction),
+            FrameMix.empty(target),
+            drive=DRIVE,
         )
 
         assert column[0].instruction == audible_instruction
@@ -113,9 +155,9 @@ class TestScoreColumn:
         synthetic_fragment: Fragment,
     ) -> None:
         mix = FrameMix.empty(synthetic_fragment)
-        generator = next(iter(get_remaining_generator_classes(dict(worker.channels)).values()))
+        generator = _kinds(worker)[0]
 
-        column = worker.matcher.score_column(synthetic_fragment, generator, mix)
+        column = worker.matcher.score_column(synthetic_fragment, generator, mix, drive=UNIT_DRIVE)
 
         silence = next(candidate for candidate in column if not candidate.instruction.on)
         assert silence.cost == pytest.approx(worker.matcher.mix_cost(synthetic_fragment, mix), rel=1e-6)
@@ -131,9 +173,14 @@ class TestScoreColumn:
         """Adding what the frame already sounds costs more than silence, so the channel's head is its silence."""
         target = library_data[audible_instruction].get_fragment(0, config, window)
         generator = _generator_of(worker, audible_instruction)
-        covering = worker.matcher.score_column(target, generator, FrameMix.empty(target))[0]
+        covering = worker.matcher.score_column(target, generator, FrameMix.empty(target), drive=UNIT_DRIVE)[0]
 
-        column = worker.matcher.score_column(target, generator, FrameMix.of(target, [covering.contribution]))
+        column = worker.matcher.score_column(
+            target,
+            generator,
+            FrameMix.of(target, [covering.contribution]),
+            drive=UNIT_DRIVE,
+        )
 
         assert not column[0].instruction.on
 
@@ -159,7 +206,12 @@ class TestScoreColumn:
         )
 
         with pytest.raises(ValueError, match="lacks the silent instruction"):
-            worker.matcher.score_column(synthetic_fragment, pulse, FrameMix.empty(synthetic_fragment))
+            worker.matcher.score_column(
+                synthetic_fragment,
+                pulse,
+                FrameMix.empty(synthetic_fragment),
+                drive=UNIT_DRIVE,
+            )
 
 
 class TestHowACandidateIsMeasured(BaseTestSuite):
@@ -196,7 +248,6 @@ class TestHowACandidateIsMeasured(BaseTestSuite):
         noise = _long_noise(library_data)
         library_fragment = library_data[noise]
         criterion = worker.scorer.criterion
-        drive = config.generation.drive
         shifts = range(0, library_fragment.length, library_fragment.length // AVERAGED_SHIFTS)
         averaged = np.mean(
             [
@@ -204,7 +255,7 @@ class TestHowACandidateIsMeasured(BaseTestSuite):
                     to_numpy(
                         criterion.temporal_loss(
                             xp.asarray(synthetic_fragment.audio),
-                            xp.asarray(library_fragment.get_fragment(shift, config, window).audio * drive),
+                            xp.asarray(library_fragment.get_fragment(shift, config, window).audio * DRIVE),
                         )
                     )[0]
                 )
@@ -215,7 +266,8 @@ class TestHowACandidateIsMeasured(BaseTestSuite):
         contribution = worker.matcher.contribution(
             noise,
             np.asarray(synthetic_fragment.audio, dtype=np.float64),
-            worker.candidate_provider.power_of(noise),
+            worker.candidate_provider.power_of(noise) * DRIVE**2,
+            drive=DRIVE,
         )
 
         assert _temporal_loss(worker, synthetic_fragment, contribution) == pytest.approx(
@@ -236,8 +288,8 @@ class TestHowACandidateIsMeasured(BaseTestSuite):
         residual = np.asarray(synthetic_fragment.audio, dtype=np.float64)
         power = searching.candidate_provider.power_of(audible_instruction)
 
-        searched = searching.matcher.contribution(audible_instruction, residual, power)
-        kept = keeping.matcher.contribution(audible_instruction, residual, power)
+        searched = searching.matcher.contribution(audible_instruction, residual, power, drive=UNIT_DRIVE)
+        kept = keeping.matcher.contribution(audible_instruction, residual, power, drive=UNIT_DRIVE)
 
         assert _temporal_loss(searching, synthetic_fragment, searched) <= _temporal_loss(
             keeping, synthetic_fragment, kept

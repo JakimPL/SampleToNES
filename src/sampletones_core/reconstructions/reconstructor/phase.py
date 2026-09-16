@@ -24,13 +24,13 @@ class PhaseAligner(ABC):
         self.library_data = library_data
 
     @abstractmethod
-    def align(self, waveform: np.ndarray, instruction: InstructionUnion) -> np.ndarray:
-        """The frame the candidate renders at its best phase against ``waveform``, at the configured drive."""
+    def align(self, waveform: np.ndarray, instruction: InstructionUnion, drive: float) -> np.ndarray:
+        """The frame the candidate renders at its best phase against ``waveform``, playing at ``drive``."""
 
-    def _rendering(self, instruction: InstructionUnion, shift: int) -> np.ndarray:
-        """The candidate's frame starting ``shift`` samples into its library sample, at the configured drive."""
+    def _rendering(self, instruction: InstructionUnion, shift: int, drive: float) -> np.ndarray:
+        """The candidate's frame starting ``shift`` samples into its library sample, playing at ``drive``."""
         fragment = self.library_data[instruction].get_fragment(shift, self.config, self.window)
-        return np.asarray(fragment.audio, dtype=np.float64) * self.config.generation.drive
+        return np.asarray(fragment.audio, dtype=np.float64) * drive
 
     def _cycle(self, instruction: InstructionUnion) -> np.ndarray:
         """Two cycles of the candidate's library sample, which every shift of one frame reads from."""
@@ -44,13 +44,12 @@ class SlidingRmsePhaseAligner(PhaseAligner):
     candidate, and returns the candidate's frame at that shift.
     """
 
-    def align(self, waveform: np.ndarray, instruction: InstructionUnion) -> np.ndarray:
-        drive = self.config.generation.drive
+    def align(self, waveform: np.ndarray, instruction: InstructionUnion, drive: float) -> np.ndarray:
         windows = sliding_window_view(self._cycle(instruction), self.config.library.frame_length)
         remainder = np.asarray(waveform, dtype=np.float64) - drive * windows
 
         rmse = np.sqrt((remainder**2).mean(axis=1))
-        return self._rendering(instruction, int(np.argmin(rmse)))
+        return self._rendering(instruction, int(np.argmin(rmse)), drive)
 
 
 class CrossCorrelationPhaseAligner(PhaseAligner):
@@ -73,14 +72,13 @@ class CrossCorrelationPhaseAligner(PhaseAligner):
         super().__init__(config, window, library_data)
         self._energies: Dict[InstructionUnion, np.ndarray] = {}
 
-    def align(self, waveform: np.ndarray, instruction: InstructionUnion) -> np.ndarray:
-        drive = self.config.generation.drive
+    def align(self, waveform: np.ndarray, instruction: InstructionUnion, drive: float) -> np.ndarray:
         cycle = self._cycle(instruction)
         target = np.asarray(waveform, dtype=np.float64)
 
         correlation = fftconvolve(cycle, target[::-1], mode="valid")
         cost = drive * self._sliding_energy(instruction, cycle) - 2.0 * correlation
-        return self._rendering(instruction, int(np.argmin(cost)))
+        return self._rendering(instruction, int(np.argmin(cost)), drive)
 
     def _sliding_energy(self, instruction: InstructionUnion, cycle: np.ndarray) -> np.ndarray:
         energy = self._energies.get(instruction)

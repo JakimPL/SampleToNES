@@ -7,13 +7,14 @@ import pytest
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_core.audio import mix, write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import RESTING_STEM_ID
+from sampletones_core.constants.algorithm import RESTING_STEM_ID, UNIT_DRIVE
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     ChannelName,
     HierarchyMode,
     bending_channels,
 )
+from sampletones_core.generators import render_channels
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
@@ -39,6 +40,7 @@ _MIX_TOLERANCE: Final[float] = 1e-6  # float32 sums drift with accumulation orde
 _DISJOINT_DURATION_SECONDS: Final[float] = 0.9
 _DISJOINT_TONES: Final[Tuple[float, ...]] = (220.0, 440.0, 880.0)
 _DISJOINT_AMPLITUDE: Final[float] = 0.5
+_LOUD_DRIVE: Final[float] = 2.0
 
 
 def _classic_stems(config: Config, *, channel_cap: int) -> StemsConfig:
@@ -50,10 +52,12 @@ def _frame_count(config: Config, duration_seconds: float) -> int:
     return int(config.library.sample_rate * duration_seconds) // config.library.frame_length
 
 
-def _stems_config() -> StemsConfig:
+def _stems_config(tone_drive: float = UNIT_DRIVE) -> StemsConfig:
+    """A tone stem on the first pulse and a noise stem on the noise, each sounding one channel."""
+    tone = StemSettings.covering([ChannelName.PULSE1]).with_channel_cap(1).with_drive(ChannelName.PULSE1, tone_drive)
     return StemsConfig(
         entries=[
-            StemEntry(id=0, settings=StemSettings.covering([ChannelName.PULSE1]).with_channel_cap(1)),
+            StemEntry(id=0, settings=tone),
             StemEntry(id=1, settings=StemSettings.covering([ChannelName.NOISE]).with_channel_cap(1)),
         ],
         hierarchy=StemsHierarchy(
@@ -63,23 +67,28 @@ def _stems_config() -> StemsConfig:
     )
 
 
+def _disjoint_recordings(tmp_path: Path, config: Config) -> Tuple[Path, Path, int]:
+    """A steady tone and a noise burst of one length, written as two recordings."""
+    sample_rate = config.library.sample_rate
+    count = int(sample_rate * _DURATION_SECONDS)
+    time = np.arange(count) / sample_rate
+    tone = 0.5 * np.sin(2 * np.pi * _TONE_FREQUENCY * time)
+    rng = np.random.default_rng(93)
+    noise = rng.uniform(-0.3, 0.3, count)
+
+    tone_path = tmp_path / "tone.wav"
+    noise_path = tmp_path / "noise.wav"
+    write_wave(tone_path, sample_rate, tone)
+    write_wave(noise_path, sample_rate, noise)
+    return tone_path, noise_path, count
+
+
 class TestReconstructStems:
     def test_assigns_disjoint_stems_to_their_channels(self, tmp_path: Path) -> None:
         config = Config()
         library = build_mini_library(config)
         reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=library)
-
-        sample_rate = config.library.sample_rate
-        count = int(sample_rate * _DURATION_SECONDS)
-        time = np.arange(count) / sample_rate
-        tone = 0.5 * np.sin(2 * np.pi * _TONE_FREQUENCY * time)
-        rng = np.random.default_rng(93)
-        noise = rng.uniform(-0.3, 0.3, count)
-
-        tone_path = tmp_path / "tone.wav"
-        noise_path = tmp_path / "noise.wav"
-        write_wave(tone_path, sample_rate, tone)
-        write_wave(noise_path, sample_rate, noise)
+        tone_path, noise_path, count = _disjoint_recordings(tmp_path, config)
 
         reconstruction = reconstructor.reconstruct(
             [tone_path, noise_path],
@@ -106,6 +115,31 @@ class TestReconstructStems:
         assert len(assignments[ChannelName.NOISE]) == frame_count
         assert len(reconstruction.instructions[ChannelName.PULSE1]) == frame_count
         assert len(reconstruction.instructions[ChannelName.NOISE]) == frame_count
+
+    def test_each_channel_is_recorded_at_the_drive_its_stem_gives_it(self, tmp_path: Path) -> None:
+        """A channel plays the level its own stem asks for, whatever the stem beside it asks."""
+        config = Config()
+        library = build_mini_library(config)
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=library)
+        tone_path, noise_path, _ = _disjoint_recordings(tmp_path, config)
+
+        reconstruction = reconstructor.reconstruct(
+            [tone_path, noise_path],
+            _stems_config(_LOUD_DRIVE),
+        )
+
+        assert reconstruction is not None
+        rendered = render_channels(reconstruction.instructions, config)
+        np.testing.assert_allclose(
+            reconstruction.approximations[ChannelName.PULSE1],
+            rendered[ChannelName.PULSE1] * _LOUD_DRIVE,
+            atol=_MIX_TOLERANCE,
+        )
+        np.testing.assert_allclose(
+            reconstruction.approximations[ChannelName.NOISE],
+            rendered[ChannelName.NOISE],
+            atol=_MIX_TOLERANCE,
+        )
 
     def test_requires_one_path_per_entry(self, tmp_path: Path) -> None:
         config = Config()

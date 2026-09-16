@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, FrozenSet, List, Optional, Sequence, Set, Tuple
+from typing import Dict, FrozenSet, List, NamedTuple, Optional, Sequence, Set, Tuple
 
 import numpy as np
 
@@ -10,7 +10,7 @@ from sampletones_core.constants.enums import (
     HierarchyMode,
 )
 from sampletones_core.fft import Fragment
-from sampletones_core.generators import GeneratorUnion, get_remaining_generator_classes
+from sampletones_core.generators import GeneratorUnion
 from sampletones_core.reconstructions.reconstructor.contribution import Contribution
 from sampletones_core.reconstructions.reconstructor.matching import (
     Column,
@@ -19,6 +19,7 @@ from sampletones_core.reconstructions.reconstructor.matching import (
     column_of,
 )
 from sampletones_core.reconstructions.reconstructor.mix import FrameMix
+from sampletones_core.reconstructions.reconstructor.stems.assignment.columns import column_groups
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import (
     StemsConfig,
 )
@@ -41,7 +42,8 @@ class StemOffer:
     Attributes:
         stem_id: The stem making the offer.
         generator: The generator standing for the channel the stem would take.
-        column: The channel's candidates scored in the stem's frame, best first.
+        column: The channel's candidates scored in the stem's frame at the drive the stem gives
+            the channel, best first.
         improvement: How far the head lowers the stem's frame cost, weighted by the energy of the
             stem's frame.
     """
@@ -54,6 +56,14 @@ class StemOffer:
     @property
     def head(self) -> ScoredCandidate:
         return self.column[0]
+
+
+class ColumnKey(NamedTuple):
+    """What a scored column answers: one stem's kind of channel at one drive."""
+
+    stem_id: int
+    class_name: GeneratorClassName
+    drive: float
 
 
 @dataclass(frozen=True)
@@ -71,9 +81,11 @@ class AssignmentSession:
 
     A stem's mix is what its picks sound in its own frame, so a candidate is scored by the cost
     that frame reaches with the candidate sounding beside them, and the channel's silence is one
-    of the candidates. A channel is taken where it lowers a frame's cost, by the stem whose sound
-    it covers most. Only the free channels are shared: the stems compete for them, ordered by the
-    hierarchy, and the stems sounding in the frame are the ones that compete.
+    of the candidates. Every candidate plays at the drive the stem gives the channel, so one
+    column answers the channels of a kind the stem drives alike and the channels it drives apart
+    hold columns of their own. A channel is taken where it lowers a frame's cost, by the stem
+    whose sound it covers most. Only the free channels are shared: the stems compete for them,
+    ordered by the hierarchy, and the stems sounding in the frame are the ones that compete.
     """
 
     def __init__(
@@ -101,7 +113,7 @@ class AssignmentSession:
         self.energies: Dict[int, float] = {
             stem_id: matcher.reference_energy(fragments[stem_id]) for stem_id in self.sounding
         }
-        self.columns: Dict[Tuple[int, GeneratorClassName], Column] = {}
+        self.columns: Dict[ColumnKey, Column] = {}
         self.choices: List[ScoredChoice] = []
 
     def run(self) -> StemFrameAssignment:
@@ -178,16 +190,20 @@ class AssignmentSession:
         """
         best: Optional[StemOffer] = None
         for stem_id in stem_ids:
-            remaining_generator_classes = get_remaining_generator_classes(self._remaining_channels(stem_id))
-            for generator in remaining_generator_classes.values():
-                column = self._column(stem_id, generator)
+            for group in column_groups(self._remaining_channels(stem_id), self._drives(stem_id)):
+                column = self._column(stem_id, group.generator, group.drive)
                 head = column[0]
                 improvement = (self.frame_costs[stem_id] - head.cost) * self.energies[stem_id]
                 if not head.instruction.on or improvement <= 0.0:
                     continue
 
                 if best is None or improvement > best.improvement:
-                    best = StemOffer(stem_id=stem_id, generator=generator, column=column, improvement=improvement)
+                    best = StemOffer(
+                        stem_id=stem_id,
+                        generator=group.generator,
+                        column=column,
+                        improvement=improvement,
+                    )
 
         return best
 
@@ -212,7 +228,11 @@ class AssignmentSession:
             if stem_id is None:
                 continue
 
-            self._record(stem_id, channel_name, self._column(stem_id, self.channels[channel_name]))
+            self._record(
+                stem_id,
+                channel_name,
+                self._column(stem_id, self.channels[channel_name], self._drive_of(stem_id, channel_name)),
+            )
 
     def _sweep(self) -> None:
         """Scores every choice once more with the stem's other choices sounding beside it.
@@ -240,6 +260,7 @@ class AssignmentSession:
                 fragment,
                 self.channels[scored.choice.channel_name],
                 FrameMix.of(fragment, context),
+                drive=self._drive_of(stem_id, scored.choice.channel_name),
             )
             self.choices[index] = ScoredChoice(
                 choice=StemChoice(stem_id=stem_id, channel_name=scored.choice.channel_name, column=column),
@@ -261,18 +282,23 @@ class AssignmentSession:
         self.used_channels[stem_id] += 1
         self.free_channels.remove(channel_name)
 
-    def _column(self, stem_id: int, generator: GeneratorUnion) -> Column:
-        """The column of ``generator``'s class in the stem's frame, scored once per mix."""
-        key = (stem_id, generator.class_name())
+    def _column(self, stem_id: int, generator: GeneratorUnion, drive: float) -> Column:
+        """The column of ``generator``'s class at ``drive`` in the stem's frame, scored once per mix."""
+        key = ColumnKey(stem_id=stem_id, class_name=generator.class_name(), drive=drive)
         column = self.columns.get(key)
         if column is None:
-            column = self.matcher.score_column(self.fragments[stem_id], generator, self.mixes[stem_id])
+            column = self.matcher.score_column(
+                self.fragments[stem_id],
+                generator,
+                self.mixes[stem_id],
+                drive=drive,
+            )
             self.columns[key] = column
 
         return column
 
     def _forget_columns(self, stem_id: int) -> None:
-        for key in [key for key in self.columns if key[0] == stem_id]:
+        for key in [key for key in self.columns if key.stem_id == stem_id]:
             del self.columns[key]
 
     def _settling_stem(self, channel_name: ChannelName) -> Optional[int]:
@@ -284,6 +310,14 @@ class AssignmentSession:
                     return stem_id
 
         return None
+
+    def _drives(self, stem_id: int) -> Dict[ChannelName, float]:
+        """The level the stem gives each of the channels it occupies."""
+        return self.stems_config.entries_by_id[stem_id].settings.drives
+
+    def _drive_of(self, stem_id: int, channel_name: ChannelName) -> float:
+        """The level the stem gives one of the channels it occupies."""
+        return self._drives(stem_id)[channel_name]
 
     def _has_room(self, stem_id: int) -> bool:
         """Whether the stem holds fewer channels than the count its settings allow in one frame."""

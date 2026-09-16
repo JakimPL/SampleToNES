@@ -57,18 +57,18 @@ class TestConfigManagerInitialize:
             json.dumps(
                 {
                     "library": {"sample_rate": 22050},
-                    "generation": {"drive": -5.0},
+                    "generation": {"decoder": {"top_k": 0}},
                     "obsolete_field": 1,
                 }
             )
         )
         manager = _manager(path)
         assert manager.config.library.sample_rate == 22050
-        assert manager.config.generation.drive == Config().generation.drive
+        assert manager.config.generation.decoder.top_k == Config().generation.decoder.top_k
         [outcome] = manager.pending_load_outcomes
         assert isinstance(outcome, ConfigRecovered)
         dropped = set(outcome.dropped)
-        assert ("generation", "drive") in dropped
+        assert ("generation", "decoder", "top_k") in dropped
         assert ("obsolete_field",) in dropped
 
     def test_config_without_metadata_recovers(self, tmp_path: Path) -> None:
