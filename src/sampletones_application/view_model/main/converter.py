@@ -63,8 +63,6 @@ class ConverterViewModel(BaseModel, frozen=True):
     other_operation_active: bool
     output: OutputKind
     stem_sources: Tuple[StemRowViewModel, ...]
-    channel_cap: int
-    max_channel_cap: int
     hierarchy_mode: HierarchyMode
     max_sources: int
     selected_key: Optional[str]

@@ -35,7 +35,6 @@ def _two_entry_stems_data() -> StemsData:
                 ),
             ],
             hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
-            channel_cap=1,
         ),
         assignments=[],
     )

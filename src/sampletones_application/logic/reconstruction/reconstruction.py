@@ -389,7 +389,6 @@ class ReconstructionPanelLogic(CallbackMixin):
                 selected_key=None,
             ),
             hierarchy_mode=stems_data.config.hierarchy.mode,
-            channel_cap=stems_data.config.channel_cap,
         )
 
     def exportable_instrument(

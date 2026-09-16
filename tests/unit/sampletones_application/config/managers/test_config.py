@@ -2,8 +2,6 @@ import json
 from pathlib import Path
 from typing import List
 
-import pytest
-
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.outcome import (
     ConfigLoadFailure,
@@ -13,11 +11,10 @@ from sampletones_application.config.managers.outcome import (
 from sampletones_application.view_model.main.updates import (
     AdvancedSettingsUpdate,
     AudioSettingsUpdate,
-    GenerationSettingsUpdate,
     LibrarySettingsUpdate,
 )
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName, SpectrumMethod
+from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.library import InstructionLibraryKey
 
 
@@ -149,15 +146,6 @@ class TestConfigManagerApplySettings:
         )
         manager.apply_library_settings(update)
         assert manager.config.library.sample_rate == 22050
-
-    def test_apply_generation_settings_updates_drive(self, tmp_path: Path) -> None:
-        manager = _manager(tmp_path / "missing.json")
-        update = GenerationSettingsUpdate(
-            drive=0.5,
-            channels=[ChannelName.PULSE1],
-        )
-        manager.apply_generation_settings(update)
-        assert manager.config.generation.drive == pytest.approx(0.5)
 
     def test_apply_advanced_settings_updates_library_directory(
         self,

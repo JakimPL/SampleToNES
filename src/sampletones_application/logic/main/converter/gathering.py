@@ -7,7 +7,7 @@ from sampletones_application.logic.main.sources.key import SourceKey
 from sampletones_application.logic.main.sources.levels import MixLevels
 from sampletones_application.logic.main.sources.list import SourceList
 from sampletones_application.logic.main.sources.recording import Recording
-from sampletones_application.logic.main.sources.slots import SettingsSlot
+from sampletones_application.logic.main.sources.slots import SettingsChange, SettingsSlot
 from sampletones_core.constants.enums import ChannelName
 
 
@@ -122,6 +122,10 @@ class Gathering:
             return self
 
         return replace(self, sources=self.sources.written(recording.key, slot, value))
+
+    def changed(self, key: SourceKey, change: SettingsChange) -> Self:
+        """The setup with ``change`` made to the settings of every recording ``key`` stands for."""
+        return replace(self, sources=self.sources.changed(key, change))
 
     def settled(
         self,

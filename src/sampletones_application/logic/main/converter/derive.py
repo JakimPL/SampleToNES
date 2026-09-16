@@ -27,7 +27,6 @@ def derive_conversion_setup(
     sources: SourceList,
     levels: MixLevels,
     *,
-    channel_cap: int,
     hierarchy_mode: HierarchyMode,
 ) -> ConversionSetup:
     """Turns the levels a reader gathered into the recordings and the setup a conversion runs with.
@@ -45,7 +44,6 @@ def derive_conversion_setup(
         stems=StemsConfig(
             entries=entries,
             hierarchy=_hierarchy(playing, hierarchy_mode),
-            channel_cap=channel_cap,
         ),
     )
 

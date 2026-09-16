@@ -151,11 +151,10 @@ class TestReconstructionStemsViewModel:
             reconstruction_loaded=True,
             stems=EMPTY_STEMS,
             hierarchy_mode=HierarchyMode.STRICT,
-            channel_cap=2,
         )
 
         assert stems.show_setup_line
-        assert stems.channel_cap == 2
+        assert stems.hierarchy_mode is HierarchyMode.STRICT
 
     def test_the_empty_state_names_a_loaded_reconstruction_with_no_source(self) -> None:
         loaded = ReconstructionStemsViewModel(

@@ -1,16 +1,15 @@
 from dataclasses import dataclass, replace
 from functools import cached_property
 from pathlib import Path
-from typing import Callable, Dict, FrozenSet, Optional, Self, Tuple
+from typing import Dict, FrozenSet, Optional, Self, Tuple
 
 from sampletones_application.logic.main.sources.folder import Folder
 from sampletones_application.logic.main.sources.key import SourceKey
 from sampletones_application.logic.main.sources.recording import Recording
 from sampletones_application.logic.main.sources.row import SourceRow
-from sampletones_application.logic.main.sources.slots import SettingsSlot
+from sampletones_application.logic.main.sources.slots import SettingsChange, SettingsSlot
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 
 @dataclass(frozen=True)
@@ -130,6 +129,19 @@ class SourceList:
 
         return replace(self, rows=tuple(self._without_recording(key.path)))
 
+    def changed(self, key: SourceKey, change: SettingsChange) -> Self:
+        """The list with ``change`` made to the settings of every recording ``key`` stands for.
+
+        A folder changes by making the same edit to each recording it holds, so one gesture reads
+        the same whichever kind of row answered it. This is the one way a row's settings are
+        rewritten; whoever edits them states the edit and hands it here.
+        """
+        rows: Tuple[SourceRow, ...] = ()
+        for row in self.rows:
+            rows += self._row_with(row, key, change)
+
+        return replace(self, rows=rows)
+
     def settled(
         self,
         key: SourceKey,
@@ -137,12 +149,8 @@ class SourceList:
         channel_name: ChannelName,
         held: bool,
     ) -> Self:
-        """The list with ``channel_name`` settled in ``slot``, on every recording ``key`` stands for.
-
-        A folder settles by making the same edit to each recording it holds, so one gesture reads
-        the same whichever kind of row answered it.
-        """
-        return replace(self, rows=tuple(self._settled_rows(key, slot, channel_name, held)))
+        """The list with ``channel_name`` settled in ``slot``, on every recording ``key`` stands for."""
+        return self.changed(key, lambda settings: slot.settled(settings, channel_name, held))
 
     def written(
         self,
@@ -155,7 +163,7 @@ class SourceList:
         This is the gesture that hands a whole reading back at once, where ``settled`` answers one
         channel at a time.
         """
-        return replace(self, rows=tuple(self._rewritten_rows(key, slot, channels)))
+        return self.changed(key, lambda settings: slot.write(settings, channels))
 
     def toggled(
         self,
@@ -214,42 +222,11 @@ class SourceList:
 
         return rows
 
-    def _settled_rows(
-        self,
-        key: SourceKey,
-        slot: SettingsSlot,
-        channel_name: ChannelName,
-        held: bool,
-    ) -> Tuple[SourceRow, ...]:
-        return self._rows_with(
-            key,
-            lambda settings: slot.settled(settings, channel_name, held),
-        )
-
-    def _rewritten_rows(
-        self,
-        key: SourceKey,
-        slot: SettingsSlot,
-        channels: FrozenSet[ChannelName],
-    ) -> Tuple[SourceRow, ...]:
-        return self._rows_with(key, lambda settings: slot.write(settings, channels))
-
-    def _rows_with(
-        self,
-        key: SourceKey,
-        change: Callable[[StemSettings], StemSettings],
-    ) -> Tuple[SourceRow, ...]:
-        rows: Tuple[SourceRow, ...] = ()
-        for row in self.rows:
-            rows += self._row_with(row, key, change)
-
-        return rows
-
     def _row_with(
         self,
         row: SourceRow,
         key: SourceKey,
-        change: Callable[[StemSettings], StemSettings],
+        change: SettingsChange,
     ) -> Tuple[SourceRow, ...]:
         """The row as ``key`` leaves it.
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Sequence, Tuple
 
-from sampletones_application.logic.main.sources.derive import derive_conversion_setup
+from sampletones_application.logic.main.converter.derive import derive_conversion_setup
 from sampletones_application.logic.main.sources.levels import MixLevels
 from sampletones_application.logic.main.sources.list import SourceList
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
@@ -33,7 +33,6 @@ class TestWhatEachRecordingBringsToTheSetup(BaseTestSuite):
         setup = derive_conversion_setup(
             sources,
             levels,
-            channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )
 
@@ -48,7 +47,6 @@ class TestWhatEachRecordingBringsToTheSetup(BaseTestSuite):
         setup = derive_conversion_setup(
             sources,
             levels,
-            channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )
 
@@ -62,7 +60,6 @@ class TestTheSetupTheLevelsAmountTo(BaseTestSuite):
         setup = derive_conversion_setup(
             sources,
             levels,
-            channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )
 
@@ -74,7 +71,6 @@ class TestTheSetupTheLevelsAmountTo(BaseTestSuite):
         setup = derive_conversion_setup(
             sources,
             levels,
-            channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )
 
@@ -86,23 +82,36 @@ class TestTheSetupTheLevelsAmountTo(BaseTestSuite):
         setup = derive_conversion_setup(
             sources,
             levels,
-            channel_cap=1,
             hierarchy_mode=HierarchyMode.ROUND_ROBIN,
         )
 
         assert setup.sources == (_path("a"), _path("b"))
 
-    def test_the_cap_and_the_mode_travel_with_the_setup(self) -> None:
+    def test_the_mode_travels_with_the_setup(self) -> None:
         sources, levels = _gathered(["a"])
 
         setup = derive_conversion_setup(
             sources,
             levels,
-            channel_cap=2,
             hierarchy_mode=HierarchyMode.ROUND_ROBIN,
         )
 
-        assert (setup.stems.channel_cap, setup.stems.hierarchy.mode) == (2, HierarchyMode.ROUND_ROBIN)
+        assert setup.stems.hierarchy.mode == HierarchyMode.ROUND_ROBIN
+
+    def test_each_recording_carries_the_count_its_own_row_holds(self) -> None:
+        """A count belongs to the recording, so the entry it becomes states what its row said."""
+        sources = SourceList().add_recording(
+            recording(str(_path("lead")), [ChannelName.PULSE1, ChannelName.PULSE2], channel_cap=1)
+        )
+        levels = MixLevels.of([[_path("lead")]])
+
+        setup = derive_conversion_setup(
+            sources,
+            levels,
+            hierarchy_mode=HierarchyMode.STRICT,
+        )
+
+        assert setup.stems.entries[0].settings.channel_cap == 1
 
 
 class TestARecordingThatTakesNoPart(BaseTestSuite):
@@ -126,7 +135,6 @@ class TestARecordingThatTakesNoPart(BaseTestSuite):
         setup = derive_conversion_setup(
             sources,
             levels,
-            channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )
 
@@ -139,7 +147,6 @@ class TestARecordingThatTakesNoPart(BaseTestSuite):
         setup = derive_conversion_setup(
             sources,
             levels,
-            channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )
 
@@ -152,7 +159,6 @@ class TestARecordingThatTakesNoPart(BaseTestSuite):
         setup = derive_conversion_setup(
             sources,
             levels,
-            channel_cap=1,
             hierarchy_mode=HierarchyMode.STRICT,
         )
 

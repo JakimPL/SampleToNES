@@ -13,7 +13,6 @@ from sampletones_application.config.managers.outcome import (
 from sampletones_application.view_model.main.updates import (
     AdvancedSettingsUpdate,
     AudioSettingsUpdate,
-    GenerationSettingsUpdate,
     LibrarySettingsUpdate,
 )
 from sampletones_core.configs import Config
@@ -107,19 +106,6 @@ class ConfigManager:
             }
         )
         self.config = self.config.model_copy(update={"library": new_library})
-        self.window = Window.from_config(self.config)
-        self.update_gui()
-
-    def apply_generation_settings(
-        self,
-        update: GenerationSettingsUpdate,
-    ) -> None:
-        new_generation = self.config.generation.model_copy(update={"drive": update.drive})
-        self.config = self.config.model_copy(
-            update={
-                "generation": new_generation,
-            }
-        )
         self.window = Window.from_config(self.config)
         self.update_gui()
 

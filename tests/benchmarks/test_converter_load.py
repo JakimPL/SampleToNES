@@ -75,7 +75,6 @@ def state_of(root: Path, count: int) -> ConverterState:
         settings=RunSettings(
             joining=SETTINGS,
             output=OutputKind.PER_RECORDING,
-            channel_cap=len(ChannelName),
             hierarchy_mode=DEFAULT_STEMS_HIERARCHY_MODE,
         ),
         gathering=gathering_of(root, count),
