@@ -326,9 +326,10 @@ silences them.
 8. **The ribbon names what the record holds.** Under the waveform runs a lane per
    channel in play, divided into the stretches one recording holds throughout and
    painted in that recording's color, with a resting stretch showing the ground.
-   A recording takes its color from the place it holds on the record, so one
-   recording reads alike wherever it is drawn. The lanes stand only where more
-   than one recording is in play, since a document answering to a single
+   The recordings take a range of their own, so a color never reads as a
+   channel's. A recording takes its color from the place it holds on the record,
+   so one recording reads alike wherever it is drawn. The lanes stand only where
+   more than one recording is in play, since a document answering to a single
    recording has nothing to tell apart, and a stretch outside what the reader
    hears reads as a rest — the ribbon states what is heard, like every other
    reading.
