@@ -45,8 +45,12 @@ class StemsMessages:
 
     def row_explanation(self, row: StemRowViewModel) -> str:
         """What the row's hover states: where the source is, why it is grayed out where it
-        contributes nothing, and how it moves where the list lets it."""
-        lines = [str(row.path)]
+        contributes nothing, and how it moves where the list lets it.
+
+        A row the document remembers by name alone opens on that name, which is what a recording
+        an embedded sample was detached from reads as.
+        """
+        lines = [str(row.path) if row.path is not None else row.name]
         if row.stands_for_a_folder:
             lines.append(self._msg_folder)
         elif not row.available:

@@ -16,10 +16,6 @@ A `.stn` file holds:
 * **metadata** — the application name and version, and the reconstruction
   data-version used to check compatibility on load (see [Versioning](#versioning));
 * **id** — a unique identifier for the reconstruction;
-* **source audio** — one path per source recording, in the order the stems setup
-  lists them: a single path for a conversion from one file, several for a stems
-  mix, and empty where the reconstruction is
-  [detached](#detached-reconstructions);
 * **configuration** — a frozen snapshot of the
   [generation configuration](../guide/configuration.md) used, so the file records
   exactly how it was made: sample rate, NES frequency, enabled channels, spectrum
@@ -46,12 +42,18 @@ A `.stn` file holds:
   channel's, and the player keeps the value it already holds for them. A channel
   in play writes them all as it is built, and clearing an envelope in the
   instruments panel adds that dimension here;
-* **stems assignment** — the stems setup the reconstruction was built under and,
-  per channel, the source holding each frame (`stems_data`). Every reconstruction
-  carries one: a conversion from a single file records one stem covering every
-  channel it plays. A frame whose channel is silent records the resting stem id,
-  `-1`: a frame no source took, where a source's count of channels at once or a
-  hierarchy left it free, and a frame the decoding settled on a silent instruction.
+* **stems assignment** — the stems setup the reconstruction was built under, the
+  recording behind each entry, and, per channel, the source holding each frame
+  (`stems_data`). Every reconstruction carries one: a conversion from a single file
+  records one stem covering every channel it plays. A frame whose channel is silent
+  records the resting stem id, `-1`: a frame no source took, where a source's count
+  of channels at once or a hierarchy left it free, and a frame the decoding settled
+  on a silent instruction. A frame the reader wrote by hand records the authored
+  stem id, `-2`, which answers to no recording and stands through every removal;
+* **source audio** — per entry, the recording's name and the file it was read from,
+  in the order the stems setup lists them. The name belongs to the document and the
+  file to this machine, so a [detached](#detached-reconstructions) reconstruction
+  keeps every name and states no location.
 
 A channel standing by rests at a reference pitch of its own, so the first envelope
 written into it sounds on a mid-range note, and it leaves every dimension it offers
@@ -88,11 +90,13 @@ the rest as it stands:
 
 ## Detached reconstructions
 
-A reconstruction normally remembers the path to its source audio. Embedding one
-in a [project](projects.md) makes it part of a shareable artifact, where an
-absolute path on the author's machine means nothing to anyone else. Detaching
-clears that path while keeping the instructions and the stems assignment intact,
-so the reconstruction stays self-contained and a saved project stays portable.
+A reconstruction normally remembers the file each of its recordings was read from.
+Embedding one in a [project](projects.md) makes it part of a shareable artifact,
+where an absolute path on the author's machine means nothing to anyone else.
+Detaching lets those locations go while keeping the instructions, the stems
+assignment and every recording's name, so the reconstruction stays self-contained,
+a saved project stays portable, and the document still says which recordings it
+was built from.
 
 ## Versioning
 

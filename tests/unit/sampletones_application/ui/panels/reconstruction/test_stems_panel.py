@@ -101,6 +101,7 @@ def _row(
         partial_channels=frozenset(),
         bends=bends,
         key=str(stem_id),
+        name=name,
         path=Path(f"/audio/{name}.wav"),
         channels=channels,
         offered_channels=offered_channels,

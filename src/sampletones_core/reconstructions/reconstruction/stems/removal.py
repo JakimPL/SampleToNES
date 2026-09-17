@@ -1,5 +1,4 @@
-from pathlib import Path
-from typing import Dict, FrozenSet, List, Sequence, Tuple
+from typing import Dict, FrozenSet, List, Sequence
 
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
@@ -21,10 +20,9 @@ def without_stem(reconstruction: Reconstruction, stem_id: int) -> Reconstruction
     instructions and their owners, and the audio the document answers with is read afresh from
     what remains.
 
-    The entry leaves the recorded setup, taking its level along once that level holds nothing
-    else, and its source path leaves ``audio_filepath`` from the position it stood at. The
-    identifier, configuration, coefficient and metadata carry over, so the result is the same
-    document holding one recording fewer.
+    The entry leaves the recorded setup, taking its level and its recorded source along with
+    it, once that level holds nothing else. The identifier, configuration, coefficient and
+    metadata carry over, so the result is the same document holding one recording fewer.
 
     Args:
         reconstruction: The reconstruction the recording is taken out of.
@@ -53,20 +51,15 @@ def without_stem(reconstruction: Reconstruction, stem_id: int) -> Reconstruction
     return Reconstruction(
         metadata=reconstruction.metadata,
         id=reconstruction.id,
-        audio_filepath=_paths_without(reconstruction.audio_filepath, _position_of(config, stem_id)),
         config=reconstruction.config,
         instructions_data=[streams[channel_name] for channel_name in ChannelName.items()],
         stems_data=StemsData(
             config=_config_without(config, stem_id),
+            sources=[source for source in stems_data.sources if source.stem_id != stem_id],
             assignments=[item for item in assignments if item.channel_name not in resting],
         ),
         coefficient=reconstruction.coefficient,
     )
-
-
-def _position_of(config: StemsConfig, stem_id: int) -> int:
-    """Where the entry stands among the recorded ones, which is the source path it pairs with."""
-    return [entry.id for entry in config.entries].index(stem_id)
 
 
 def _config_without(config: StemsConfig, stem_id: int) -> StemsConfig:
@@ -79,11 +72,6 @@ def _config_without(config: StemsConfig, stem_id: int) -> StemsConfig:
             mode=config.hierarchy.mode,
         ),
     )
-
-
-def _paths_without(paths: Tuple[Path, ...], position: int) -> Tuple[Path, ...]:
-    """The recorded source paths with the one at ``position`` gone, empty staying empty."""
-    return tuple(path for index, path in enumerate(paths) if index != position)
 
 
 def _released_assignment(item: ChannelAssignment, released: Sequence[bool]) -> ChannelAssignment:

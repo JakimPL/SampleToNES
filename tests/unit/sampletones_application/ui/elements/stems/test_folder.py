@@ -106,6 +106,7 @@ def recording(path: Path, *, channels: FrozenSet[ChannelName] = frozenset(CHANNE
     return StemRowViewModel(
         key=str(path),
         kind=SourceKind.RECORDING,
+        name=path.stem,
         path=path,
         held=(),
         channels=channels,
@@ -125,6 +126,7 @@ def folder(name: str, *, holds: int) -> StemRowViewModel:
     return StemRowViewModel(
         key=str(root),
         kind=SourceKind.FOLDER,
+        name=root.name,
         path=root,
         held=tuple(recording(root / f"take_{index}.wav") for index in range(holds)),
         channels=frozenset(CHANNELS),

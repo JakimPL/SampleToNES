@@ -106,6 +106,7 @@ def row(
     return StemRowViewModel(
         key=str(path),
         kind=SourceKind.RECORDING,
+        name=path.stem,
         path=path,
         held=(),
         channels=frozenset({ChannelName.PULSE1}),
@@ -126,6 +127,7 @@ def folder(name: str, *, holds: int) -> StemRowViewModel:
     return StemRowViewModel(
         key=str(root),
         kind=SourceKind.FOLDER,
+        name=root.name,
         path=root,
         held=tuple(row(f"{name}/take_{index}") for index in range(holds)),
         channels=frozenset({ChannelName.PULSE1}),

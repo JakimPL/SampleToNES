@@ -48,6 +48,7 @@ from sampletones_core.exports.request import (
     SampleExport,
 )
 from sampletones_core.exports.scope import ExportScope
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.selection import (
     StemSelection,
 )
@@ -341,34 +342,32 @@ class ReconstructionPanelLogic(CallbackMixin):
         self,
         reconstruction_data: ReconstructionData,
     ) -> ReconstructionStemsViewModel:
-        """The recorded assignment as the stems list draws it, banded by the picking levels."""
+        """The recorded assignment as the stems list draws it, banded by the picking levels.
+
+        Each row reads as the recording the document remembers, so one whose file this machine
+        no longer names — a sample embedded in a project — keeps its name, its boxes and its
+        place among the levels. A document whose record names its recordings nowhere shows the
+        card's empty state.
+        """
         reconstruction = reconstruction_data.reconstruction
         stems_data = reconstruction.stems_data
-        source_paths = reconstruction.audio_filepath
-        if not source_paths:
+        if not stems_data.sources:
             return ReconstructionStemsViewModel(
                 reconstruction_loaded=True,
                 stems=EMPTY_STEMS_LIST,
             )
 
-        recordings = {entry.id: source_paths[index] for index, entry in enumerate(stems_data.config.entries)}
         entries = stems_data.config.entries_by_id
         levels = stems_data.config.hierarchy.levels
         rows = tuple(
-            StemRowViewModel(
-                key=str(stem_id),
-                kind=SourceKind.RECORDING,
-                path=recordings[stem_id],
-                held=(),
-                channels=self._stem_channels.get(stem_id, frozenset()),
-                partial_channels=frozenset(),
-                bends=entries[stem_id].settings.bend_set,
-                offered_channels=self._offered_stem_channels.get(stem_id, frozenset()),
-                available=recordings[stem_id].is_file(),
-                level=level_index,
-                position=position,
-                level_size=len(level),
-                level_count=len(levels),
+            self._stem_row(
+                stems_data,
+                entries[stem_id].settings.bend_set,
+                stem_id,
+                level_index,
+                position,
+                len(level),
+                len(levels),
             )
             for level_index, level in enumerate(levels)
             for position, stem_id in enumerate(level)
@@ -389,6 +388,35 @@ class ReconstructionPanelLogic(CallbackMixin):
                 selected_key=None,
             ),
             hierarchy_mode=stems_data.config.hierarchy.mode,
+        )
+
+    def _stem_row(
+        self,
+        stems_data: StemsData,
+        bends: FrozenSet[ChannelName],
+        stem_id: int,
+        level: int,
+        position: int,
+        level_size: int,
+        level_count: int,
+    ) -> StemRowViewModel:
+        """One recording's row: what it is called, where it lives, and the boxes it offers."""
+        source = stems_data.sources_by_id[stem_id]
+        return StemRowViewModel(
+            key=str(stem_id),
+            kind=SourceKind.RECORDING,
+            name=source.name,
+            path=source.path,
+            held=(),
+            channels=self._stem_channels.get(stem_id, frozenset()),
+            partial_channels=frozenset(),
+            bends=bends,
+            offered_channels=self._offered_stem_channels.get(stem_id, frozenset()),
+            available=source.path is not None and source.path.is_file(),
+            level=level,
+            position=position,
+            level_size=level_size,
+            level_count=level_count,
         )
 
     def exportable_instrument(

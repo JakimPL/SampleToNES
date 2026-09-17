@@ -8,6 +8,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.instructions import InstructionUnion
+from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -102,3 +103,25 @@ def write_three_stem_recordings(
         paths.append(path)
 
     return paths[0], paths[1], paths[2]
+
+
+def recorded_from(
+    reconstruction: Reconstruction,
+    paths: Sequence[Path],
+) -> Reconstruction:
+    """The document as though its recordings had been read from ``paths``, one per entry.
+
+    A test states the files a conversion would have read, and the record takes its sources from
+    them; the entries follow, so a document standing for several recordings holds an entry for
+    each of them over the channels it already plays.
+    """
+    settings = reconstruction.stems_data.config.entries[0].settings
+    config = StemsConfig(
+        entries=[StemEntry(id=stem_id, settings=settings) for stem_id in range(len(paths))],
+        hierarchy=StemsHierarchy(levels=[list(range(len(paths)))]),
+    )
+    stems_data = StemsData(
+        config=config,
+        assignments=reconstruction.stems_data.assignments,
+    ).with_sources(paths)
+    return reconstruction.model_copy(update={"stems_data": stems_data})

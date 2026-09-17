@@ -212,6 +212,11 @@ again.
 ## Bugs
 
 * Misaligned dialog boxes sizes at initialization
+* A reconstruction written before the recorded sources moved onto the stems record reads with
+  none of them, so the browser, original playback and the Stems card see a detached document
+  where the file names its recordings under the top-level `audio_filepath`. Folding those paths
+  onto `StemsData.sources` is what the reconstruction 2.2 conversion step still owes, along with
+  the per-entry drives and channel count a mid-branch 2.2 file carries at the top of its setup.
 * `ReconstructionStage.RENDERING` keeps the weight it was measured at while a conversion no longer
   renders, so a bar covers that share faster than the eight parts in a hundred `STAGE_WEIGHTS`
   gives it. Re-measuring the four stages over whole runs is what settles the new figures.

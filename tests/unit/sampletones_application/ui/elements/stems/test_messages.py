@@ -57,6 +57,7 @@ def recording(
     return StemRowViewModel(
         key=str(path),
         kind=SourceKind.RECORDING,
+        name=path.stem,
         path=path,
         held=(),
         channels=channels,
@@ -76,6 +77,7 @@ def folder(name: str = FOLDER_NAME, *, holds: int = HOLDS) -> StemRowViewModel:
     return StemRowViewModel(
         key=str(root),
         kind=SourceKind.FOLDER,
+        name=root.name,
         path=root,
         held=tuple(recording(f"{name}/take_{index}") for index in range(holds)),
         channels=frozenset(CHANNELS),

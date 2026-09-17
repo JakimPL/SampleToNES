@@ -35,6 +35,7 @@ def _row(
         partial_channels=frozenset(),
         bends=frozenset(),
         key=str(path),
+        name=path.stem,
         path=path,
         channels=channels,
         offered_channels=frozenset(ChannelName.items()),

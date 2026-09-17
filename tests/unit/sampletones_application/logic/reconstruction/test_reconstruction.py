@@ -40,6 +40,7 @@ from sampletones_shared.paths.extensions import (
     EXT_FILE_NSF,
 )
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.stems import recorded_from
 
 NO_EXTENSION: Final[str] = ""
 RETUNED_A4_FREQUENCY: Final[float] = 432.0
@@ -160,7 +161,7 @@ def data_with_original_audio(
         Config().library.sample_rate,
         np.ones(64, dtype=np.float32) * 0.5,
     )
-    reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (source_audio,)})
+    reconstruction = recorded_from(reconstruction_factory(), (source_audio,))
     return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
 
@@ -976,7 +977,6 @@ class TestReconstructionPanelLogicStemSelection:
         )
         stems_reconstruction = reconstruction.model_copy(
             update={
-                "audio_filepath": (tmp_path / "a.wav", tmp_path / "b.wav"),
                 "stems_data": StemsData(
                     config=stems_config,
                     assignments=[
@@ -985,7 +985,7 @@ class TestReconstructionPanelLogicStemSelection:
                             stem_ids=[0, 1] * (frame_count // 2) + ([0] if frame_count % 2 else []),
                         )
                     ],
-                ),
+                ).with_sources((tmp_path / "a.wav", tmp_path / "b.wav")),
             }
         )
         return ReconstructionData.from_reconstruction(stems_reconstruction, name="Sample")

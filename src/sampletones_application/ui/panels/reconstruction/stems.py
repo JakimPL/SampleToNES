@@ -181,5 +181,5 @@ class GUIReconstructionStemsPanel(GUIPanel):
     def _on_row_activated(self, key: str) -> None:
         """A clicked row shows its recording where it sits on disk, whichever way it now reads."""
         row = self._stems_list.row(key)
-        if row is not None and row.available:
+        if row is not None and row.available and row.path is not None:
             open_path_in_explorer(row.path)

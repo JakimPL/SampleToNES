@@ -216,10 +216,13 @@ frame order.
 quietest note any channel renders, measured against the working level.
 
 The record stored in a reconstruction (`stems_data`) holds the stems setup the
-assignment was made under and, per channel, the stem id holding each frame,
+assignment was made under, one `StemSource` per entry — the recording's name and
+the file it was read from — and, per channel, the stem id holding each frame,
 parallel to the instruction streams. Every reconstruction carries one. Together
-with the instruction streams it is the whole of what a `.stn` states, and
-`Reconstruction.approximations` reads the sound from the pair.
+with the instruction streams it is the whole of what a `.stn` states:
+`Reconstruction.approximations` reads the sound from the pair, and
+`Reconstruction.audio_filepath` reads the locations off the sources, answering
+with none once any recording has lost its own.
 
 The stems setup is built per conversion from the sources and the reader's
 choices and travels with the job; it is part of the request rather than of the
@@ -231,10 +234,12 @@ that decides per frame on the recorded streams, are future work.
 
 ## The recorded stems in the application
 
-A stems reconstruction records its stem paths under `audio_filepath` as a tuple,
-in entry order; the serialized form carries them in order. The application reads
-them through `source_paths`: empty once the reconstruction is detached from its
-origin, one path for a single source, the tuple for stems.
+A stems reconstruction records one source per entry, each naming its recording and
+the file it was read from. The application reads the locations through
+`source_paths`: one path for a single source, the tuple for stems, and empty once
+the reconstruction is detached from its origin. The names stay whatever happens to
+the locations, so a detached document still says which recordings it was built
+from.
 
 Opening the document loads the recorded stems through `load_stems`, the same call
 the conversion loads them with, so each one carries the level it holds in the mix
@@ -380,7 +385,8 @@ follows. Consult it when changing an edit path, the per-frame record, or what th
 
 7. **Detaching drops where a recording lives and keeps who played what.** A recording's name and
    the frames it holds belong to the document; its location on this machine belongs to this
-   machine. A reconstruction embedded in a project therefore keeps a working stems card.
+   machine. The record states both, so detaching lets each location go and keeps every name —
+   a reconstruction embedded in a project therefore keeps a working stems card.
 
 ### What the record holds
 

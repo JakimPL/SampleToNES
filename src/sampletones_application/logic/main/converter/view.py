@@ -176,6 +176,7 @@ def _row(placement: _Placement) -> StemRowViewModel:
     return StemRowViewModel(
         key=str(placement.path),
         kind=key.kind,
+        name=placement.path.name if key.names_folder else placement.path.stem,
         path=placement.path,
         held=_held(placement) if key.names_folder else (),
         channels=channels,
@@ -200,6 +201,7 @@ def _held(placement: _Placement) -> Tuple[StemRowViewModel, ...]:
         StemRowViewModel(
             key=str(recording.path),
             kind=recording.key.kind,
+            name=recording.path.stem,
             path=recording.path,
             held=(),
             channels=frozenset(CHANNEL_SLOT.read(recording.settings)),

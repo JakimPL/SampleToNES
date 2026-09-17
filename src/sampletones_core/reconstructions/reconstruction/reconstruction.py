@@ -5,7 +5,6 @@ from functools import cached_property
 from pathlib import Path
 from typing import (
     AbstractSet,
-    Any,
     Dict,
     Final,
     FrozenSet,
@@ -20,7 +19,7 @@ from typing import (
 from uuid import uuid4
 
 import numpy as np
-from pydantic import ConfigDict, Field, ValidationError, field_serializer, model_validator
+from pydantic import ConfigDict, Field, ValidationError, model_validator
 
 from sampletones_core.audio.mixing import mix
 from sampletones_core.compatibility.kind import ObjectKind
@@ -74,13 +73,6 @@ class Reconstruction(DataModel):
         ...,
         description="Unique identifier for the reconstruction",
     )
-    audio_filepath: Tuple[Path, ...] = Field(
-        ...,
-        description=(
-            "Location of the source audio: one path per stems entry, in entry order, and "
-            "empty once detached from the local origin"
-        ),
-    )
     config: Config = Field(
         ...,
         description="Configuration used for reconstruction",
@@ -98,13 +90,6 @@ class Reconstruction(DataModel):
         ...,
         description="Normalization coefficient used during reconstruction",
     )
-
-    @model_validator(mode="after")
-    def _validate_source_stem_parallel(self) -> Self:
-        if self.audio_filepath and len(self.audio_filepath) != len(self.stems_data.config.entries):
-            raise ValueError("The recorded source paths number one per stems entry")
-
-        return self
 
     @model_validator(mode="after")
     def _validate_record_answers_for_the_channels(self) -> Self:
@@ -162,6 +147,16 @@ class Reconstruction(DataModel):
 
         if stem_id in entries and channel_name not in entries[stem_id].settings.channel_set:
             raise ValueError(f"Frame {frame} gives stem {stem_id} the {channel_name} its settings leave out")
+
+    @property
+    def audio_filepath(self) -> Tuple[Path, ...]:
+        """Where the recordings behind this document live, in entry order.
+
+        The record names each recording and the file it was read from, so this reads the
+        locations off it: one path per recording while every one of them is still located, and
+        none at all once the document is detached from its origin.
+        """
+        return self.stems_data.paths
 
     @cached_property
     def approximations(self) -> Dict[ChannelName, np.ndarray]:
@@ -284,10 +279,9 @@ class Reconstruction(DataModel):
         return cls(
             id=uuid4().hex,
             instructions_data=instructions_data,
-            stems_data=stems_data,
+            stems_data=stems_data.with_sources(audio_filepath),
             config=config,
             coefficient=coefficient,
-            audio_filepath=audio_filepath,
         )
 
     @classmethod
@@ -357,6 +351,7 @@ class Reconstruction(DataModel):
         self.instructions_data = [streams[name] for name in ChannelName.items()]
         self.stems_data = StemsData(
             config=self.stems_data.config,
+            sources=self.stems_data.sources,
             assignments=self._assignments_with(channel_name, carried.stem_ids),
         )
         self._invalidate_derived_caches(self)
@@ -394,11 +389,12 @@ class Reconstruction(DataModel):
         """Drops the local source-audio location so the reconstruction becomes self-contained.
 
         Embedding a reconstruction in a project makes it part of a shareable artifact, where an
-        absolute path to the author's machine carries no meaning. Emptying ``audio_filepath``
-        keeps the reconstruction — its approximation and instructions — intact while removing the
-        local origin, so a saved project stays portable.
+        absolute path to the author's machine carries no meaning. Letting each recording's
+        location go keeps everything the document describes — its instructions, its per-frame
+        record and the name of every recording behind it — so a saved project stays portable and
+        still says what played where.
         """
-        self.audio_filepath = ()
+        self.stems_data = self.stems_data.detached()
 
     def with_nes_frequency(self, nes_frequency: int) -> Reconstruction:
         """Returns a copy retuned to ``nes_frequency`` by re-rendering its audio.
@@ -521,11 +517,3 @@ class Reconstruction(DataModel):
             )
 
         return features
-
-    @field_serializer("audio_filepath")
-    def _serialize_audio_filepath(
-        self,
-        audio_filepath: Tuple[Path, ...],
-        _info: Any,
-    ) -> List[str]:
-        return [str(path) for path in audio_filepath]

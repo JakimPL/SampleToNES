@@ -136,6 +136,7 @@ def row(
         partial_channels=frozenset(),
         bends=frozenset(),
         key=str(path),
+        name=path.stem,
         path=path,
         channels=channels,
         offered_channels=offered_channels,
@@ -219,6 +220,7 @@ def folder_row(
     return StemRowViewModel(
         key=str(path),
         kind=SourceKind.FOLDER,
+        name=path.name,
         path=path,
         held=tuple(row(f"{name}/held_{index}") for index in range(holds)),
         channels=channels,

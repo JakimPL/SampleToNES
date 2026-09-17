@@ -54,6 +54,7 @@ def recording_row(path: Path) -> StemRowViewModel:
     return StemRowViewModel(
         key=str(path),
         kind=SourceKind.RECORDING,
+        name=path.stem,
         path=path,
         held=(),
         channels=frozenset({ChannelName.PULSE1}),
@@ -73,6 +74,7 @@ def folder_row(root: Path, held: Sequence[Path]) -> StemRowViewModel:
     return StemRowViewModel(
         key=str(root),
         kind=SourceKind.FOLDER,
+        name=root.name,
         path=root,
         held=tuple(recording_row(path) for path in held),
         channels=frozenset({ChannelName.PULSE1}),
