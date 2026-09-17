@@ -335,6 +335,7 @@ class StemRowRenderer:
             label=self._lbl_remove,
             tag=self._tags.row(row.key, SUF_BUTTON),
             width=self._layout.remove_button_width,
+            height=self._layout.remove_button_width,
             user_data=row.key,
             callback=self._gestures.on_remove_button,
         )
