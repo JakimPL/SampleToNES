@@ -6,6 +6,7 @@ import pytest
 
 from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exporters import playing_channels
 from sampletones_core.instructions import InstructionUnion, TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstruction.stems.filter import filter_approximations
@@ -72,6 +73,15 @@ def _channel_with_a_rest(reconstruction: Reconstruction) -> ChannelName:
             return channel_name
 
     raise AssertionError("The conversion left no channel holding both a recording and a rest")
+
+
+def _earliest_ending_holder(reconstruction: Reconstruction, channel_name: ChannelName) -> int:
+    """The recording whose last frame on this channel comes first, so hearing it alone reads shorter."""
+    owners = _owners(reconstruction, channel_name)
+    return min(
+        _holders(reconstruction, channel_name),
+        key=lambda stem_id: max(frame for frame, owner in enumerate(owners) if owner == stem_id),
+    )
 
 
 def _frames_of(reconstruction: Reconstruction, channel_name: ChannelName, stem_id: int) -> List[int]:
@@ -276,11 +286,7 @@ class TestAChannelClearedWhileOneRecordingIsHeard:
         and the frames the edit reached rest inside it.
         """
         channel_name = _contested_channel(reconstruction)
-        owners = _owners(reconstruction, channel_name)
-        heard = min(
-            _holders(reconstruction, channel_name),
-            key=lambda stem_id: max(frame for frame, owner in enumerate(owners) if owner == stem_id),
-        )
+        heard = _earliest_ending_holder(reconstruction, channel_name)
         return channel_name, heard, _edited(reconstruction, channel_name, [], heard=frozenset({heard}))
 
     def test_the_recordings_left_out_keep_every_frame_they_held(self, reconstruction: Reconstruction) -> None:
@@ -402,6 +408,48 @@ class TestWhatASelectionLeaves:
                 else np.zeros(frame_length, dtype=filtered[channel_name].dtype)
             )
             np.testing.assert_array_equal(filtered[channel_name][window], expected)
+
+
+class TestTheEnvelopesASelectionShows:
+    """The envelopes read the heard part of a channel, which is what an export then writes."""
+
+    @staticmethod
+    def _selection(channel_name: ChannelName, stem_ids: AbstractSet[int]) -> StemSelection:
+        return StemSelection(
+            channels={name: frozenset(stem_ids) if name == channel_name else EVERY_STEM for name in ChannelName.items()}
+        )
+
+    def test_the_whole_selection_reads_the_document_itself(self, reconstruction: Reconstruction) -> None:
+        heard = reconstruction.export_heard(StemSelection.everywhere(EVERY_STEM, ChannelName.items()))
+
+        assert heard == reconstruction.export()
+
+    def test_a_recording_heard_alone_shows_its_own_frames(self, reconstruction: Reconstruction) -> None:
+        channel_name = _contested_channel(reconstruction)
+        held = _earliest_ending_holder(reconstruction, channel_name)
+        whole = reconstruction.export()[channel_name]
+
+        heard = reconstruction.export_heard(self._selection(channel_name, frozenset({held})))[channel_name]
+
+        assert heard.has_frames
+        assert heard.frame_count < whole.frame_count
+        assert heard.volume.items[0] == whole.volume.items[0]
+
+    def test_a_channel_with_nothing_heard_reads_as_standing_by(self, reconstruction: Reconstruction) -> None:
+        channel_name = _contested_channel(reconstruction)
+
+        heard = reconstruction.export_heard(self._selection(channel_name, frozenset()))
+
+        assert not heard[channel_name].has_frames
+        assert channel_name in playing_channels(reconstruction.export())
+
+    def test_the_channels_beside_it_read_as_they_stand(self, reconstruction: Reconstruction) -> None:
+        channel_name = _contested_channel(reconstruction)
+        whole = reconstruction.export()
+
+        heard = reconstruction.export_heard(self._selection(channel_name, frozenset()))
+
+        assert all(heard[name] == whole[name] for name in ChannelName.items() if name != channel_name)
 
 
 class TestTheDocumentThroughAFile:

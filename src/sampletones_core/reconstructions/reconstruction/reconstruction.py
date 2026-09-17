@@ -40,7 +40,9 @@ from sampletones_core.reconstructions.reconstruction.instructions import Instruc
 from sampletones_core.reconstructions.reconstruction.rendering import render_streams
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.filter import heard_instructions
 from sampletones_core.reconstructions.reconstruction.stems.ownership import UNHELD_STEM_IDS, carried_edit
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_shared.application import SAMPLETONES_RECONSTRUCTION_DATA_VERSION
@@ -502,16 +504,38 @@ class Reconstruction(DataModel):
         Returns:
             Dict[ChannelName, Features]: The envelope representation of each channel.
         """
+        return self._features_of(self.instructions)
+
+    def export_heard(self, selection: StemSelection) -> Dict[ChannelName, Features]:
+        """The envelopes of the part each channel plays for the recordings a reader hears.
+
+        The reading the waveform draws and the one an instrument is written from are the same
+        one, so what stands on screen is what an export writes. A channel every recording is
+        left out on describes no frame, which reads as standing by.
+
+        Args:
+            selection: The recordings the reader hears, channel by channel.
+
+        Returns:
+            Dict[ChannelName, Features]: The heard envelopes of each channel.
+        """
+        return self._features_of(heard_instructions(self.stems_data, self.instructions, selection))
+
+    def _features_of(
+        self,
+        instructions: Mapping[ChannelName, Sequence[InstructionUnion]],
+    ) -> Dict[ChannelName, Features]:
+        """The envelopes a set of streams exports, each read through the exporter its type names."""
         features: Dict[ChannelName, Features] = {}
         for name in ChannelName.items():
-            instructions = self.instructions[name]
-            exporter_class = self._exporter_class(name, instructions)
+            stream = list(instructions[name])
+            exporter_class = self._exporter_class(name, stream)
             exporter: ExporterUnion = exporter_class()
-            if instructions:
-                self._validate_instructions(exporter, instructions)
+            if stream:
+                self._validate_instructions(exporter, stream)
 
             features[name] = exporter.to_features(
-                instructions,  # type: ignore[arg-type]
+                stream,  # type: ignore[arg-type]
                 self.initial_pitches[name],
                 self.held_features[name],
             )
