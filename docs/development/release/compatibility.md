@@ -33,16 +33,23 @@ the transform itself. The steps of one format form a chain, registered in
 after the version it writes — `compatibility/reconstruction/v2_2.py` carries
 the step that writes reconstruction data version 2.2.
 
-That step shows the shape a whole step takes: it names each stored stream and
-approximation by its channel, names the embedded config's channel selection the
-same way and stamps that config with the target version, lists the source audio
-as one path per stem, and synthesizes the stems record every 2.2 file carries —
-one stem covering every enabled channel and holding every frame the file plays,
-which is what the conversion that wrote the file did. It also moves what the run
-once held globally onto each entry of that record: the config's drive reaches
-every channel an entry holds, its channel cap becomes the entry's own count, and
-the config lets both fields go. The step fills only what a payload lacks, so a
-record already carrying per-entry settings travels unchanged.
+That step shows the shape a whole step takes, and it is four operations wide. It
+lets the stored audio go, since a 2.2 reconstruction renders its channels from
+the instructions it keeps; it names each stored stream by the channel that plays
+it, where 2.1 named it by its generator; it stamps the configuration the file
+carries with the version its shape now matches, which the load contract reads
+alongside the outer metadata; and it states the record of the one recording the
+file answered to — the channels the run handed out and the level it drove them
+at, the file it was read from, and the frame-by-frame account of what it holds,
+where a frame that sounds answers to the recording and a silent one answers to
+rest.
+
+**A step owes only what a release wrote.** The shape a payload reaches is what
+the model reads, and a model reads the fields it declares: a key the current
+shape has no field for is never looked at, so a step that renames or removes one
+is doing nothing. The 2.1 step therefore leaves the retired configuration
+settings where they stand and spends its effort on the sections the document is
+read from.
 
 ### A version belongs to a release
 
@@ -129,8 +136,8 @@ take whichever route that comparison names.
    payload at the previous version and returns it at the new one.
 3. Append the step to the format's `UPDATES` tuple.
 4. Cover the step with unit tests under
-   `tests/unit/sampletones_core/compatibility/`, and with a loader test that
-   opens a payload written at the previous version.
+   `tests/unit/sampletones_core/compatibility/`, and hold it to the archived file
+   its base version names (see [The corpus](#the-corpus)).
 
 **The constant already stands ahead of the release.** The pending step is the
 one to widen: fold the new transform into the module named after that version,
@@ -140,9 +147,51 @@ tests to cover what was added. The version constant stays where it is.
 The engine stamps the new version once the chain runs, so a step module declares
 only its own transform.
 
+## The corpus
+
+A step tested against a payload the test builds itself is held only to the fields
+whoever wrote the test thought to name. `tests/data/compatibility` keeps one
+stored document per format per shipped data version, written by the build that
+shipped it, and `tests/integration/compatibility` opens each one through that
+format's own load entry point and holds the loaded model to the current shape.
+The corpus states its own rules in `tests/data/compatibility/README.md`.
+
+Two of those tests hold the corpus itself together: a file states the version its
+name says, and every registered step reads a version the corpus keeps. The second
+is what makes opening a step and archiving the file it reads one act rather than
+two.
+
+### Archiving a release
+
+From a checkout of the release, once the version constants have moved:
+
+```
+uv run sampletones compatibility
+```
+
+A version already archived stands as it was written, since replacing a file would
+restate history under a name that already means something.
+
+### Backfilling a release that predates the command
+
+Run the writer inside a worktree at that tag, keeping the port beside the files it
+wrote:
+
+```
+git worktree add <scratch>/<tag> <tag>
+cd <scratch>/<tag> && uv sync --frozen
+cp <checkout>/tests/data/compatibility/generators/<tag>.py .
+uv run python <tag>.py --output <checkout>/tests/data/compatibility
+cd <checkout> && git worktree remove --force <scratch>/<tag>
+```
+
+The sync runs in the worktree rather than against the current environment because
+a stored document names the release that wrote it, which the package's own
+installed metadata answers for.
+
 ## Verification
 
 - `uv run pytest tests/unit/sampletones_core/compatibility` covers the engine and
-  every registered step.
-- The format load tests open payloads at previous versions and hold the loaded
-  models against the current shape.
+  every registered step against payloads built for it.
+- `uv run pytest tests/integration/compatibility` opens the archived documents and
+  holds them to the shape this build reads.

@@ -108,18 +108,21 @@ current shape before deserialization (see
 [Data compatibility](../development/release/compatibility.md)); the application version
 is stored alongside the data version, for reference.
 
-The current data version is 2.2. Version 2.2 renamed the per-channel stream and
-approximation keys from `generator_name` to `channel_name`; the enum values
-stored inside (`pulse1`, `pulse2`, `triangle`, `noise`) never changed. It also
-records the source audio as one path per stem and carries the `stems_data` record
-on every reconstruction; a file written before either existed is read with its
-single path listed and a one-stem record synthesized from what it plays. The
-channel selection lives on that record — each entry states the settings its stem
-was converted with: the channels it held, the drive on each of them, and how many
-of them it sounded at once — so the embedded configuration carries the scoring
-settings alone. A file written before the entries carried drives is read with the
-drive its configuration stated written onto every channel each entry holds, and
-with the run's channel cap written onto every entry.
+The current data version is 2.2. Version 2.2 renders a channel's audio from the
+instructions it stores, where 2.1 kept the rendered waveform beside them, and
+names each stream by the channel that plays it, where 2.1 named it by its
+generator; the enum values stored inside (`pulse1`, `pulse2`, `triangle`,
+`noise`) never changed. It carries the `stems_data` record on every
+reconstruction, which is where the recordings behind the frames are named: each
+entry states the settings its stem was converted with — the channels it held, the
+drive on each of them, and how many of them it sounded at once — and the record
+names where each recording was read from, so the embedded configuration carries
+the scoring settings alone.
+
+A file written at 2.1 is read with its audio let go of and with a one-stem record
+built from what it states: one entry covering the channels its configuration
+handed out, driven at the level it stored, sourced from the recording it named,
+and holding every frame that sounds, while a silent frame answers to rest.
 
 ## Storage and export
 

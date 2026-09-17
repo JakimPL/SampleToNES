@@ -99,15 +99,11 @@ starts carrying.
   `referee/test_axioms.py` fences the referees, without a listening round.
 * API documentation
 * Code documentation
-* A backward-compatibility corpus of files older builds actually wrote. Every upgrade step is
-  exercised against a payload the test builds itself — hand-written mappings for the step, and,
-  for projects, a current document rewritten backward into the older shape — so a step is held
-  only to the fields it names. One archived `.stn`, `.ins` and `.stp` per shipped version, each
-  written by that version and exercising every feature it could store, would hold the whole
-  document to the chain and would catch a field that changed shape while no step named it.
-  Configuration and session state carry no version at all, so the same corpus would state what a
-  build is expected to make of a `state.yaml` an older one left behind. Reaches
-  `tests/unit/sampletones_core/compatibility/` and each format's load tests.
+* What a build makes of the configuration and the session state an older one left behind. Both
+  carry no version at all, so neither travels a chain and neither is archived beside the stored
+  formats, whose corpus is now `tests/data/compatibility`. A `state.yaml` naming a panel that has
+  since gone, or a configuration missing a setting added since, is read by whatever each loader
+  happens to do with it, which nothing states.
 * The element enums that outlived their keys. A lookup states its key literally, so an element
   enum is named only where a `_label(element)` helper takes one — `ui/menu.py`,
   `coordinators/project.py`, `coordinators/keybindings.py`, `ui/panels/dialogs/project_properties.py`
