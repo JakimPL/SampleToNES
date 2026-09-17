@@ -22,6 +22,8 @@ from sampletones_application.tags.graphs import (
     TAG_GLOBAL_GRAPH_THEME_INDICATOR,
     TAG_GLOBAL_GRAPH_THEME_OVERLAY,
 )
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.clock import ClockTick, clock_ticks
 from sampletones_application.ui.elements.graphs.gesture import PlotClickGesture
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
@@ -201,7 +203,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         The rows share the subplot's grid, so a lane begins and ends where the waveform's span
         does however wide the amplitude labels beside them run, and each takes the waveform's
         stretch through the linked axis, so zooming and panning carry them together. A row of its
-        own is what lets a lane print its channel's letter in that channel's color.
+        own is what lets a lane print its channel's letter in that channel's color, and the letter
+        is drawn in the smallest face the application carries, so it stands within its lane.
         """
         for channel_name, plot_tag in self.lane_plot_tags.items():
             with dpg.plot(
@@ -235,6 +238,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
                     ((channel_letter(self._language_manager, channel_name), LANE_LETTER_POSITION),),
                 )
 
+            FontRegistry.bind_to_item(plot_tag, Font.REGULAR_TINY)
             self._bind_lane_theme(channel_name, plot_tag)
 
     def _bind_lane_theme(self, channel_name: ChannelName, plot_tag: str) -> None:

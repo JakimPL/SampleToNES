@@ -68,6 +68,12 @@ TAG_GLOBAL_FONT_REGULAR = TagName(
     Widget.FONT,
     "regular",
 )
+TAG_GLOBAL_FONT_REGULAR_TINY = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.FONT,
+    "regular_tiny",
+)
 TAG_GLOBAL_FONT_REGULAR_SMALL = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

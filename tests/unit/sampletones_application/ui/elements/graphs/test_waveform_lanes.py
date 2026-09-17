@@ -14,6 +14,7 @@ from sampletones_application.paths import (
     PALETTES_DIRECTORY,
     THEME_DIRECTORY,
 )
+from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.themes.setup import setup_themes
@@ -22,11 +23,16 @@ from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_core.constants.enums import ChannelName
 
 
+@pytest.fixture(name="layout")
+def layout_fixture() -> LayoutConfig:
+    source = PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default)
+    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, source)
+
+
 @pytest.fixture(name="graph")
-def graph_fixture() -> Generator[GUIWaveformGraph, None, None]:
+def graph_fixture(layout: LayoutConfig) -> Generator[GUIWaveformGraph, None, None]:
     """A waveform graph on a live DearPyGui context, which is what holds the lane rows."""
     source = PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default)
-    layout: LayoutConfig = load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, source)
     dpg.create_context()
     try:
         setup_themes(THEME_DIRECTORY, source)
@@ -77,3 +83,16 @@ class TestTheRowsTheLanesAreDrawnIn:
 
         assert ratios[0] == float(graph.height)
         assert ratios[1:] == [11.0] * len(ChannelName.items())
+
+
+class TestTheFaceALaneIsMarkedIn:
+    """A lane one bar high prints its letter in the smallest face, so the letter stands within it."""
+
+    def test_every_lane_takes_the_tiny_face(self, graph: GUIWaveformGraph) -> None:
+        tiny = FontRegistry.get_tag(Font.REGULAR_TINY)
+
+        assert all(dpg.get_item_font(plot_tag) == tiny for plot_tag in graph.lane_plot_tags.values())
+
+    def test_the_letter_stands_shorter_than_the_lane_it_marks(self, layout: LayoutConfig) -> None:
+        """A letter taller than its lane would run into the lane above, so the face stays under it."""
+        assert FontRegistry.get_size(Font.REGULAR_TINY) <= layout.graphs.ribbon.lane_height
