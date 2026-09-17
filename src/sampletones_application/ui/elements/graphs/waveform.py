@@ -1,10 +1,12 @@
 from enum import StrEnum
-from typing import Any, Callable, Dict, Final, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Final, List, Mapping, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from sampletones_application.categories.context import channel_letter
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.graphs import (
@@ -55,7 +57,8 @@ class SeriesShade(StrEnum):
     DIMMED = "dimmed"
 
 
-WAVEFORM_ROWS: Final[int] = 2
+WAVEFORM_ROWS: Final[int] = 1 + len(ChannelName.items())
+LANE_LETTER_POSITION: Final[float] = 0.5
 SINGLE_COLUMN: Final[int] = 1
 COLLAPSED_LANE_WEIGHT: Final[float] = 0.001
 
@@ -73,11 +76,13 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         parent: str,
         *,
         layout: GraphsLayout,
+        channel_colors: ChannelColors,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
     ):
         self._language_manager = language_manager
         self._layout = layout
+        self._channel_colors = channel_colors
         self._status_bar = status_bar
 
         self._lbl_waveform_original = language_manager["global.graph.label.waveform_original"]
@@ -99,10 +104,15 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         )
 
         self.subplots_tag = compose_tag(tag, SUF_GRAPH_SUBPLOTS)
-        self.lane_plot_tag = compose_tag(tag, SUF_RIBBON_LANE, SUF_GRAPH_PLOT)
-        self.lane_x_axis_tag = compose_tag(self.lane_plot_tag, SUF_GRAPH_X_AXIS)
-        self.lane_y_axis_tag = compose_tag(self.lane_plot_tag, SUF_GRAPH_Y_AXIS)
-        self._lane_height: int = 0
+        self.lane_plot_tags: Dict[ChannelName, str] = {
+            channel_name: compose_tag(tag, SUF_RIBBON_LANE, channel_name.value, SUF_GRAPH_PLOT)
+            for channel_name in ChannelName.items()
+        }
+        self.lane_y_axis_tags: Dict[ChannelName, str] = {
+            channel_name: compose_tag(plot_tag, SUF_GRAPH_Y_AXIS)
+            for channel_name, plot_tag in self.lane_plot_tags.items()
+        }
+        self._lane_heights: Dict[ChannelName, int] = {channel_name: 0 for channel_name in ChannelName.items()}
 
         self.indicator_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_INDICATOR)
         self.overlay_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_OVERLAY)
@@ -142,7 +152,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
                 parent=self.tag,
                 width=self.width,
                 height=self.height,
-                row_ratios=[float(self.height), COLLAPSED_LANE_WEIGHT],
+                row_ratios=[float(self.height), *([COLLAPSED_LANE_WEIGHT] * len(ChannelName.items()))],
                 link_all_x=True,
                 no_title=True,
                 no_menus=True,
@@ -181,44 +191,64 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self._add_position_indicator()
             self._set_overlay_rectangle()
 
-        self._create_lane_row()
+        self._create_lane_rows()
         self._bind_event_handler()
         self._update_axes_limits()
 
-    def _create_lane_row(self) -> None:
-        """The row beneath the waveform whatever names its stretches is drawn in.
+    def _create_lane_rows(self) -> None:
+        """A row per channel beneath the waveform, each marked with the letter it stands for.
 
-        The row shares the subplot's grid, so its span begins and ends where the waveform's does
-        however wide the amplitude labels beside them run, and it takes the waveform's stretch
-        through the linked axis, so zooming and panning carry the two together.
+        The rows share the subplot's grid, so a lane begins and ends where the waveform's span
+        does however wide the amplitude labels beside them run, and each takes the waveform's
+        stretch through the linked axis, so zooming and panning carry them together. A row of its
+        own is what lets a lane print its channel's letter in that channel's color.
         """
-        with dpg.plot(
-            tag=self.lane_plot_tag,
-            parent=self.subplots_tag,
-            no_mouse_pos=True,
-            no_box_select=True,
-            no_menus=True,
-            no_title=True,
-            no_frame=True,
-        ):
-            dpg.add_plot_axis(
-                dpg.mvXAxis,
-                tag=self.lane_x_axis_tag,
-                parent=self.lane_plot_tag,
-                no_label=True,
-                no_tick_labels=True,
-                no_tick_marks=True,
-                no_gridlines=True,
+        for channel_name, plot_tag in self.lane_plot_tags.items():
+            with dpg.plot(
+                tag=plot_tag,
+                parent=self.subplots_tag,
+                no_mouse_pos=True,
+                no_box_select=True,
+                no_menus=True,
+                no_title=True,
+                no_frame=True,
+            ):
+                dpg.add_plot_axis(
+                    dpg.mvXAxis,
+                    tag=compose_tag(plot_tag, SUF_GRAPH_X_AXIS),
+                    parent=plot_tag,
+                    no_label=True,
+                    no_tick_labels=True,
+                    no_tick_marks=True,
+                    no_gridlines=True,
+                )
+                dpg.add_plot_axis(
+                    dpg.mvYAxis,
+                    tag=self.lane_y_axis_tags[channel_name],
+                    parent=plot_tag,
+                    no_label=True,
+                    no_tick_marks=True,
+                    no_gridlines=True,
+                )
+                dpg.set_axis_ticks(
+                    self.lane_y_axis_tags[channel_name],
+                    ((channel_letter(self._language_manager, channel_name), LANE_LETTER_POSITION),),
+                )
+
+            self._bind_lane_theme(channel_name, plot_tag)
+
+    def _bind_lane_theme(self, channel_name: ChannelName, plot_tag: str) -> None:
+        """Prints a lane's letter in the color the channel is drawn in everywhere else."""
+        theme_tag = compose_tag(plot_tag, SUF_GRAPH_THEME)
+        with dpg.theme(tag=theme_tag), dpg.theme_component(dpg.mvPlot):
+            dpg.add_theme_style(dpg.mvPlotStyleVar_PlotPadding, 0, 0, category=dpg.mvThemeCat_Plots)
+            dpg_add_palette_theme_color(
+                dpg.mvPlotCol_AxisText,
+                self._channel_colors.for_channel(channel_name),
+                category=dpg.mvThemeCat_Plots,
             )
-            dpg.add_plot_axis(
-                dpg.mvYAxis,
-                tag=self.lane_y_axis_tag,
-                parent=self.lane_plot_tag,
-                no_label=True,
-                no_tick_labels=True,
-                no_tick_marks=True,
-                no_gridlines=True,
-            )
+
+        dpg_bind_item_theme(plot_tag, theme_tag)
 
     def set_height(self, height: int) -> None:
         """Gives the waveform the height asked for, keeping the row beneath it at its own.
@@ -229,17 +259,20 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.height = height
         self._resize_rows()
 
-    def set_lane_height(self, height: int) -> None:
-        """Gives the row beneath the waveform the height it needs, closing it at nothing."""
-        self._lane_height = height
+    def set_lane_heights(self, heights: Mapping[ChannelName, int]) -> None:
+        """Gives each channel's row the height it needs, closing the ones with nothing to show."""
+        self._lane_heights = {channel_name: heights.get(channel_name, 0) for channel_name in ChannelName.items()}
         self._resize_rows()
 
     def _resize_rows(self) -> None:
-        """Hands the grid the room the waveform and the row beneath it take together."""
+        """Hands the grid the room the waveform and the rows beneath it take together."""
+        lanes = [
+            float(self._lane_heights[channel_name]) or COLLAPSED_LANE_WEIGHT for channel_name in ChannelName.items()
+        ]
         dpg_configure_item(
             self.subplots_tag,
-            height=self.height + self._lane_height,
-            row_ratios=[float(self.height), float(self._lane_height) or COLLAPSED_LANE_WEIGHT],
+            height=self.height + sum(self._lane_heights.values()),
+            row_ratios=[float(self.height), *lanes],
         )
 
     def _setup_handlers(self) -> None:

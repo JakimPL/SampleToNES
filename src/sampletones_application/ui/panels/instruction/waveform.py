@@ -51,6 +51,7 @@ class GUIInstructionWaveformPanel(GUIPanel):
                 tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_WAVEFORM,
                 parent=self._body_container,
                 layout=self._layout,
+                channel_colors=self._channel_colors,
                 language_manager=self._language_manager,
                 status_bar=self._status_bar,
             )

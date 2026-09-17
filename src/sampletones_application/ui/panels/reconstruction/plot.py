@@ -197,6 +197,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_RECONSTRUCTION_WAVEFORM,
             parent=self._body_container,
             layout=self._layout_graphs,
+            channel_colors=self._channel_colors,
             language_manager=self._language_manager,
             status_bar=self._status_bar,
         )
@@ -205,8 +206,8 @@ class GUIReconstructionPlotPanel(GUIPanel):
     def _create_ownership_ribbon(self) -> None:
         """The lanes naming the recording behind each stretch, painted in the waveform's own row."""
         self.ownership_ribbon = GUIOwnershipRibbon(
-            plot_tag=self.waveform_display.lane_plot_tag,
-            y_axis_tag=self.waveform_display.lane_y_axis_tag,
+            plot_tags=self.waveform_display.lane_plot_tags,
+            y_axis_tags=self.waveform_display.lane_y_axis_tags,
             layout=self._layout_graphs,
             stem_colors=self._stem_colors,
         )
@@ -220,7 +221,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
     def _draw_ownership(self, ribbon: OwnershipRibbonViewModel) -> None:
         """Paints the lanes and gives them the room they need under the waveform."""
         self.ownership_ribbon.update_view(ribbon)
-        self.waveform_display.set_lane_height(self.ownership_ribbon.height)
+        self.waveform_display.set_lane_heights(self.ownership_ribbon.lane_heights)
 
     def _on_position_clicked(self, position: int) -> None:
         self.call(self.on_position_clicked, position)

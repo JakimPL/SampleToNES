@@ -291,12 +291,12 @@ class _WaveformRecorder:
     def load_voice_waveform(self, audio: np.ndarray, *, name: str, color: object) -> None:
         self.drawn.append({"audio": audio, "name": name, "color": color})
 
-    def set_lane_height(self, height: int) -> None:
-        self.lane_heights.append(height)
+    def set_lane_heights(self, heights: Dict[ChannelName, int]) -> None:
+        self.lane_heights.append(sum(heights.values()))
 
 
 class _RibbonRecorder:
-    """Stands in for the ownership ribbon, standing as tall as the lanes it was last given."""
+    """Stands in for the ownership ribbon, giving each drawn channel a row of its own."""
 
     LANE_HEIGHT = 11
 
@@ -307,8 +307,9 @@ class _RibbonRecorder:
         self.painted.append(view_model)
 
     @property
-    def height(self) -> int:
-        return len(self.painted[-1].lanes) * self.LANE_HEIGHT if self.painted else 0
+    def lane_heights(self) -> Dict[ChannelName, int]:
+        drawn = [lane.channel_name for lane in self.painted[-1].lanes] if self.painted else []
+        return {channel_name: self.LANE_HEIGHT if channel_name in drawn else 0 for channel_name in ChannelName.items()}
 
 
 class InstrumentHarness:
@@ -455,6 +456,7 @@ class TestWaveformClicks:
         monkeypatch.setattr(plot_module, "GUIWaveformGraph", graph)
         panel = GUIReconstructionPlotPanel.__new__(GUIReconstructionPlotPanel)
         panel._layout_graphs = MagicMock()
+        panel._channel_colors = CHANNEL_COLORS
         panel._language_manager = MagicMock()
         panel._status_bar = MagicMock()
         monkeypatch.setattr(GUIReconstructionPlotPanel, "_body_container", "body", raising=False)

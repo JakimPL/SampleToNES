@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RibbonLayout(BaseModel, extra="forbid", frozen=True):
@@ -6,14 +6,8 @@ class RibbonLayout(BaseModel, extra="forbid", frozen=True):
 
     Attributes:
         lane_height: The height one channel's lane takes.
-        padding: The room the ribbon keeps around its lanes.
-        lane_gap: The share of a lane left as air beneath it, so the lanes read apart.
+        lane_gap: The share of a lane left as air around its bars, so the lanes read apart.
     """
 
-    lane_height: int
-    padding: int
-    lane_gap: float
-
-    def height(self, lanes: int) -> int:
-        """The height a ribbon of ``lanes`` lanes is drawn at."""
-        return lanes * self.lane_height + self.padding
+    lane_height: int = Field(gt=0)
+    lane_gap: float = Field(ge=0.0, lt=1.0)
