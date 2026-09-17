@@ -219,13 +219,26 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
                 no_gridlines=True,
             )
 
+    def set_height(self, height: int) -> None:
+        """Gives the waveform the height asked for, keeping the row beneath it at its own.
+
+        The plot stands in a grid, which takes its size from the container rather than from the
+        plot, so the height a caller asks for reaches the grid and the two rows share it.
+        """
+        self.height = height
+        self._resize_rows()
+
     def set_lane_height(self, height: int) -> None:
         """Gives the row beneath the waveform the height it needs, closing it at nothing."""
         self._lane_height = height
+        self._resize_rows()
+
+    def _resize_rows(self) -> None:
+        """Hands the grid the room the waveform and the row beneath it take together."""
         dpg_configure_item(
             self.subplots_tag,
-            height=self.height + height,
-            row_ratios=[float(self.height), float(height) or COLLAPSED_LANE_WEIGHT],
+            height=self.height + self._lane_height,
+            row_ratios=[float(self.height), float(self._lane_height) or COLLAPSED_LANE_WEIGHT],
         )
 
     def _setup_handlers(self) -> None:
