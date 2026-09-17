@@ -268,17 +268,20 @@ silences them.
 
 ### Principles
 
-1. **Selection filters what plays.** A ticked set projects the document rather
-   than mutating it: the waveform shows the ticked frames alone, the
-   reconstruction toggle plays them mixed, original playback plays the
-   recordings heard anywhere mixed, and WAV export writes the same filtered
-   projection. Each answer derives from the recorded per-channel assignment, so
-   a stem heard on one channel keeps its samples there and stays quiet on the
-   next.
+1. **Selection filters what plays, and scopes what is edited.** A ticked set
+   projects the document rather than mutating it: the waveform shows the ticked
+   frames alone, the reconstruction toggle plays them mixed, original playback
+   plays the recordings heard anywhere mixed, and WAV export writes the same
+   filtered projection. Each answer derives from the recorded per-channel
+   assignment, so a stem heard on one channel keeps its samples there and stays
+   quiet on the next. The same set says which frames an instrument edit writes —
+   see [Editing a stems reconstruction](#editing-a-stems-reconstruction).
 2. **A box stands where the choice reaches something.** A stem draws a box on a
-   channel exactly where the picker gave it a frame there, so every box the card
+   channel exactly where the record gives it a frame there, so every box the card
    offers changes what is heard. A stem the picker never chose offers none, and
-   its row reads as holding no frames.
+   its row reads as holding no frames. The frames a reader wrote by hand answer
+   to no recording, so they gather in a row of their own that reads and behaves
+   like any other.
 3. **Every stem starts heard everywhere it holds frames.** A freshly opened
    stems reconstruction ticks every box, which answers the full waveform and the
    full original — the unfiltered document.
@@ -297,10 +300,11 @@ silences them.
    the assignment, never the selection. So is the banding: collapsing the levels
    changes how the card draws, never what it describes.
 7. **Removing a recording edits the document.** Where a box steers listening,
-   the remove button rewrites what is described: the entry leaves the recorded
-   setup, its frames rest, and the change is asked about first and recorded in
-   the project history. A reconstruction holds at least one recording, so the
-   last row standing keeps its button held back.
+   the remove button rewrites what is described: the change is asked about first
+   and recorded in the project history, and what it releases is stated under
+   [Editing a stems reconstruction](#editing-a-stems-reconstruction). A
+   reconstruction holds at least one recording, so the last row standing keeps
+   its button held back.
 
 ### Mechanics
 
@@ -319,11 +323,98 @@ state.
 
 Removal runs through `without_stem`
 (`sampletones_core.reconstructions.reconstruction.stems.removal`), which returns
-a fresh reconstruction: the entry leaves the setup, taking its level along once
-that level holds nothing else; its source path leaves `audio_filepath` from the
-position it stood at; every frame it held states the silent instruction, zeroes
-its samples and takes `RESTING_STEM_ID`; a channel the removal empties stands
-by; and the mixed approximation is summed afresh. The tab coordinator hands the
-result on as a `ReconstructionEdit`, the payload both a regenerated instrument
-and a removed recording travel as, so one path rebinds the open document and
-records the edit against the project history.
+a fresh reconstruction holding what the rule under
+[Editing a stems reconstruction](#editing-a-stems-reconstruction) leaves. The tab
+coordinator hands the result on as a `ReconstructionEdit`, the payload both a
+regenerated instrument and a removed recording travel as, so one path rebinds the
+open document and records the edit against the project history.
+
+## Editing a stems reconstruction
+
+A conversion answers, per channel and frame, which recording plays there. Everything a reader
+does to the document afterward stands on that answer: the instruments panel rewrites what a
+channel plays, the stems card chooses what is heard, and the remove button takes a recording
+out. This section states the account of ownership all three keep, and the rules each gesture
+follows. Consult it when changing an edit path, the per-frame record, or what the card offers.
+
+### Principles
+
+1. **A frame has exactly one owner.** Every frame of a channel in play is held by one
+   recording, by the reader's own hand, or by nobody. The hardware reads one instruction per
+   channel per frame, so this is what the channel allows rather than a convention the code
+   adopts, and it is what makes the per-frame record a partition of the channel's frames. The
+   resting stem id names the frames nobody holds; the **authored** stem id names the frames the
+   reader wrote.
+
+2. **Rest and silence name the same frames.** A frame rests exactly when its instruction is
+   silent, which the conversion establishes and every later gesture keeps. A reader looking at
+   a silent frame and a reader looking at the record therefore learn the same thing, and the
+   rules below follow from it rather than choosing around it.
+
+3. **An edit rewrites what a frame plays, and leaves who plays it.** Ownership answers a
+   question an edit asks nothing about, so a frame carries its owner through any change to its
+   instruction. A frame takes an owner by coming into play and releases it by falling silent.
+   This is what lets a reader shape a recording's part while the document keeps its account of
+   where that part came from.
+
+4. **What is heard is what is edited.** The channels a recording is ticked on are one choice
+   serving two readings: the frames the waveform draws, and the frames an edit writes. A
+   recording switched off on a channel reads there and stays as it stands, so a reader reaches
+   one recording's part at a time through the card already in front of them.
+
+5. **The setup is the conversion's, and a removal alone rewrites it.** The entries, the levels,
+   the channels each recording may occupy, its bends, its drives and its count record how the
+   document was made. An edit leaves all of them as they stand. Taking a recording out is the
+   one gesture that changes them.
+
+6. **Detaching drops where a recording lives and keeps who played what.** A recording's name and
+   the frames it holds belong to the document; its location on this machine belongs to this
+   machine. A reconstruction embedded in a project therefore keeps a working stems card.
+
+### What the record holds
+
+The per-frame record answers for every channel in play, and these hold after every gesture:
+
+- a channel in play carries one owner per frame of its stream, each naming a recorded entry,
+  the resting stem id or the authored stem id;
+- a channel standing by carries no stream and no record at all;
+- a frame rests exactly where its instruction is silent;
+- a frame a recording holds lies on a channel that recording's settings occupy, while an
+  authored frame answers to no settings;
+- an entry holding no frame anywhere stays on the record, and its row reads as holding none.
+
+### What an edit carries
+
+An edit hands one channel a fresh set of envelopes, which become that channel's stream. Each
+frame's owner follows from the frame it was and the frame it becomes:
+
+| the frame | becomes |
+|---|---|
+| sounding before and after | its owner, unchanged |
+| sounding, edited silent | resting |
+| resting, edited into play | authored |
+| held by a recording the reader hears, edited into play | its owner, unchanged |
+| written past the end of the stream | authored where it sounds, resting where it stays silent |
+| dropped from the end of the stream | gone, together with its ownership |
+
+A stream edited down to no frame leaves its channel standing by, and one written back into play
+comes back wholly authored. The setup, the recorded sources, the identifier, the configuration
+and the working level stand throughout.
+
+**The scope an edit writes in** follows principle 4: a frame accepts a gesture where its owner
+is ticked on that channel, where it rests, and where it is authored. Every other frame draws
+dimmed and reads as it stands. The scope is the same selection the waveform filter reads, so
+one state answers both, and a reader narrowing what they hear narrows what they change with it.
+
+### What a removal releases
+
+Taking a recording out (`without_stem`) releases the frames it held: each states its channel's
+silent instruction and takes the resting stem id, and a channel the removal empties stands by.
+The entry and its source leave the record, a level the removal empties collapses, and the ids
+of the recordings that stay are left alone, so the record and a reader's selection both stay
+valid. A reconstruction holds at least one recording, so the last one standing keeps its place.
+
+An edit made before the removal changes nothing about it: the channel carries its record
+whatever was written into it, so the frames the recording held are released the way they would
+have been. The frames the reader authored answer to no recording and stand through every
+removal.
