@@ -221,6 +221,9 @@ again.
   a color per recording joins the palette along with it. Both this and the line above are questions
   of what DearPyGui draws, so they are settled with the application in front of the writer.
 * `ReconstructionManager` writes `_reconstruction_hash` and `_coefficient` and reads neither.
+* `ETAEstimator` states the mark for an estimate not yet measurable as a literal in
+  `sampletones_core`, where the language file the rest of the application reads its words from
+  is out of reach. Lifting the phrasing to the layer that shows it is what settles it.
 * `_on_bar_point_clicked` composes a raw-data tag the text field does not carry, so its write
   finds nothing and the field catches up only when the edit returns through the regeneration.
 * A reconstruction written before the recorded sources moved onto the stems record reads with

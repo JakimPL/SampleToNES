@@ -883,7 +883,7 @@ settings.nsf.message.scheme_search: "Every part of the song that repeats is save
 settings.nsf.template.text_size: "{used}/{room}"
 settings.nsf.template.frame: "{frame:02X}"
 settings.nsf.template.frame_count: "of {count:02X}"
-settings.nsf.template.length: "{seconds:.1f} seconds"
+settings.nsf.template.length: "{length}"
 settings.keybindings.title.window_title: "Keyboard shortcuts"
 settings.keybindings.title.application: "Application"
 settings.keybindings.title.sources: "Converter list"

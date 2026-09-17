@@ -10,6 +10,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.nsf.information import field_size
 from sampletones_player.specification.nsf import STRING_TEXT_SIZE
+from sampletones_shared.utils.time import format_span
 
 
 class NSFExportViewModel(BaseModel, frozen=True):
@@ -72,9 +73,9 @@ class NSFExportViewModel(BaseModel, frozen=True):
         return channel in self.choices.channels
 
     def length_label(self, template: str) -> str:
-        """How long the song plays for, in seconds and in ticks, as ``template`` states it."""
+        """How long the song plays for, as a span and in ticks, as ``template`` states it."""
         return template.format(
-            seconds=self.duration_seconds,
+            length=format_span(self.duration_seconds),
             ticks=self.ticks,
             rate=self.nes_frequency,
         )
