@@ -37,6 +37,7 @@ from sampletones_application.view_model.shared.stems import (
 )
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.configs.library import InstructionsLibraryConfig
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.naming import instrument_slice_name
@@ -320,6 +321,14 @@ class ReconstructionPanelLogic(CallbackMixin):
             channels={channel_name: frozenset(stem_ids) for channel_name, stem_ids in channels.items()}
         )
 
+    def heard_on(self, channel_name: ChannelName) -> FrozenSet[int]:
+        """The recordings the reader hears on one channel, which is the scope an edit writes in.
+
+        What is heard and what is edited are one choice, so an edit reaches exactly the frames
+        the waveform draws, and a recording switched off on this channel reads there as it stands.
+        """
+        return self._stem_selection.stems_for(channel_name)
+
     @staticmethod
     def _offered_channels(
         reconstruction_data: ReconstructionData,
@@ -327,13 +336,17 @@ class ReconstructionPanelLogic(CallbackMixin):
         """The channels each stem holds frames on, which is what its row offers a box for.
 
         A stem the picker never chose on a channel contributes nothing there whatever the
-        reader ticks, so the row draws a box exactly where the choice reaches something.
+        reader ticks, so the row draws a box exactly where the choice reaches something. The
+        frames the reader wrote gather under the authored stem, which offers its boxes the same
+        way and appears exactly where it holds a frame.
         """
         stems_data = reconstruction_data.reconstruction.stems_data
         offered: Dict[int, Set[ChannelName]] = {entry.id: set() for entry in stems_data.config.entries}
         for channel_name, stem_ids in stems_data.assignments_by_channel.items():
             for stem_id in set(stem_ids):
-                if stem_id in offered:
+                if stem_id == AUTHORED_STEM_ID:
+                    offered.setdefault(AUTHORED_STEM_ID, set()).add(channel_name)
+                elif stem_id in offered:
                     offered[stem_id].add(channel_name)
 
         return {stem_id: frozenset(channels) for stem_id, channels in offered.items()}
@@ -358,11 +371,11 @@ class ReconstructionPanelLogic(CallbackMixin):
             )
 
         entries = stems_data.config.entries_by_id
-        levels = stems_data.config.hierarchy.levels
+        levels = self._levels_with_edits(stems_data)
         rows = tuple(
             self._stem_row(
                 stems_data,
-                entries[stem_id].settings.bend_set,
+                entries[stem_id].settings.bend_set if stem_id in entries else frozenset(),
                 stem_id,
                 level_index,
                 position,
@@ -390,6 +403,18 @@ class ReconstructionPanelLogic(CallbackMixin):
             hierarchy_mode=stems_data.config.hierarchy.mode,
         )
 
+    def _levels_with_edits(self, stems_data: StemsData) -> List[List[int]]:
+        """The picking levels, with the frames the reader wrote standing in a level of their own.
+
+        The hierarchy orders the recordings a conversion picked between; what the reader wrote
+        answers to none of it, so it stands after them all wherever it holds a frame.
+        """
+        levels = [list(level) for level in stems_data.config.hierarchy.levels]
+        if AUTHORED_STEM_ID in self._offered_stem_channels:
+            levels.append([AUTHORED_STEM_ID])
+
+        return levels
+
     def _stem_row(
         self,
         stems_data: StemsData,
@@ -401,18 +426,18 @@ class ReconstructionPanelLogic(CallbackMixin):
         level_count: int,
     ) -> StemRowViewModel:
         """One recording's row: what it is called, where it lives, and the boxes it offers."""
-        source = stems_data.sources_by_id[stem_id]
+        source = stems_data.sources_by_id.get(stem_id)
         return StemRowViewModel(
             key=str(stem_id),
-            kind=SourceKind.RECORDING,
-            name=source.name,
-            path=source.path,
+            kind=SourceKind.RECORDING if source is not None else SourceKind.EDITS,
+            name=source.name if source is not None else "",
+            path=source.path if source is not None else None,
             held=(),
             channels=self._stem_channels.get(stem_id, frozenset()),
             partial_channels=frozenset(),
             bends=bends,
             offered_channels=self._offered_stem_channels.get(stem_id, frozenset()),
-            available=source.path is not None and source.path.is_file(),
+            available=source is not None and source.path is not None and source.path.is_file(),
             level=level,
             position=position,
             level_size=level_size,

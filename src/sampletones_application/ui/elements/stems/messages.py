@@ -38,6 +38,7 @@ class StemsMessages:
         self._msg_missing = language_manager["global.stems.message.missing_tooltip"]
         self._msg_unoffered = language_manager["global.stems.message.unoffered_tooltip"]
         self._msg_folder = language_manager["global.stems.message.folder_tooltip"]
+        self._msg_edits = language_manager["global.stems.message.edits_tooltip"]
 
     def reads(self, view_model: StemsListViewModel) -> None:
         """Takes up the view the list is drawing, which is what every answer is read from."""
@@ -51,7 +52,9 @@ class StemsMessages:
         an embedded sample was detached from reads as.
         """
         lines = [str(row.path) if row.path is not None else row.name]
-        if row.stands_for_a_folder:
+        if row.stands_for_edits:
+            lines.append(self._msg_edits)
+        elif row.stands_for_a_folder:
             lines.append(self._msg_folder)
         elif not row.available:
             lines.append(self._msg_missing)

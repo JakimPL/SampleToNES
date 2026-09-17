@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, Mapping, Optional, Sequence
+from typing import Callable, Dict, FrozenSet, Mapping, Optional, Sequence
 
 import dearpygui.dearpygui as dpg
 
@@ -746,6 +746,10 @@ class ReconstructionTabCoordinator:
             return
 
         self._browser_panel.refresh()
+
+    def heard_on(self, channel_name: ChannelName) -> FrozenSet[int]:
+        """The recordings the reader hears on one channel, which is what an edit there reaches."""
+        return self._reconstruction_panel_logic.heard_on(channel_name)
 
     def update_reconstruction(self) -> None:
         self._reconstruction_panel_logic.update_reconstruction()

@@ -1,4 +1,4 @@
-from typing import List, cast
+from typing import AbstractSet, List, cast
 
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.regeneration.result import (
@@ -19,6 +19,10 @@ from sampletones_core.reconstructions import Reconstruction
 
 class RegenerationService(ServiceBase[RegenerationResult]):
     """Recomputes one generator's instructions for a reconstruction.
+
+    An edit reaches the frames the reader hears on the channel, so ``heard`` travels with it:
+    a frame of a recording the reader left out stands as it is, which is what lets one
+    recording's part be shaped while the recordings beside it carry on.
 
     The result is a fresh reconstruction carrying the updated generator data; the
     source reconstruction is left intact. Producing a new object lets callers swap
@@ -42,6 +46,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         channel_name: ChannelName,
         feature_key: FeatureKey,
         features: Features,
+        heard: AbstractSet[int],
     ) -> bool:
         if self._canceled:
             return False
@@ -52,6 +57,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 channel_name,
                 feature_key,
                 features,
+                heard,
             )
         )
 
@@ -67,6 +73,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         channel_name: ChannelName,
         feature_key: FeatureKey,
         features: Features,
+        heard: AbstractSet[int],
     ) -> None:
         if self._canceled:
             self._emit(ServiceCanceled())
@@ -84,7 +91,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 instructions,
                 features.initial_pitch,
                 features.held_features,
-                heard=reconstruction.recorded_stem_ids,
+                heard=heard,
             )
             self._emit(
                 ServiceSuccess(

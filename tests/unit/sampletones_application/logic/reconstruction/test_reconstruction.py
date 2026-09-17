@@ -20,9 +20,10 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
 from sampletones_core.constants.enums import AudioSourceType, ChannelName, bending_channels
 from sampletones_core.exports.format import ExportFormat
-from sampletones_core.instructions import TriangleInstruction
+from sampletones_core.instructions import PulseInstruction, TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
@@ -1109,3 +1110,152 @@ class TestReconstructionPanelLogicStemSelection:
             panel_logic._stem_selection,
         )
         np.testing.assert_allclose(exported_audio, expected)
+
+
+class TestTheScopeAnEditWritesIn:
+    """What the reader hears on a channel is what an edit there reaches."""
+
+    @pytest.fixture(name="stems_data")
+    def stems_data_fixture(self, tmp_path: Path) -> ReconstructionData:
+        """Two recordings sharing the first pulse, a frame each, so both are heard there."""
+        channels = [ChannelName.PULSE1]
+        stems_config = StemsConfig(
+            entries=[
+                StemEntry(id=stem_id, settings=StemSettings(channels=channels, bends=bending_channels(channels)))
+                for stem_id in (0, 1)
+            ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]]),
+        )
+        stems_reconstruction = Reconstruction.create(
+            instructions={
+                ChannelName.PULSE1: [
+                    PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0),
+                    PulseInstruction(on=True, pitch=62, volume=8, duty_cycle=0),
+                ]
+            },
+            config=Config(),
+            coefficient=1.0,
+            audio_filepath=(tmp_path / "a.wav", tmp_path / "b.wav"),
+            stems_data=StemsData(
+                config=stems_config,
+                assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0, 1])],
+            ),
+        )
+        return ReconstructionData.from_reconstruction(stems_reconstruction, name="Sample")
+
+    def test_a_freshly_opened_document_lets_an_edit_reach_every_recording(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = stems_data
+
+        panel_logic.display_reconstruction()
+
+        assert panel_logic.heard_on(ChannelName.PULSE1) == frozenset({0, 1})
+
+    def test_a_recording_switched_off_leaves_the_scope(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = stems_data
+        panel_logic.display_reconstruction()
+
+        panel_logic.set_stem_channels(1, frozenset())
+
+        assert panel_logic.heard_on(ChannelName.PULSE1) == frozenset({0})
+
+    def test_a_channel_no_recording_is_heard_on_takes_no_edit(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = stems_data
+        panel_logic.display_reconstruction()
+
+        assert panel_logic.heard_on(ChannelName.TRIANGLE) == frozenset()
+
+
+class TestTheRowTheReadersOwnFramesStandIn:
+    """Frames the reader wrote answer to no recording, so they gather in a row of their own."""
+
+    @pytest.fixture(name="edited_data")
+    def edited_data_fixture(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> ReconstructionData:
+        reconstruction = reconstruction_factory()
+        channels = [ChannelName.PULSE1]
+        stems_config = StemsConfig(
+            entries=[StemEntry(id=0, settings=StemSettings(channels=channels, bends=bending_channels(channels)))],
+            hierarchy=StemsHierarchy(levels=[[0]]),
+        )
+        frames = len(reconstruction.instructions[ChannelName.PULSE1])
+        authored = reconstruction.model_copy(
+            update={
+                "stems_data": StemsData(
+                    config=stems_config,
+                    assignments=[
+                        ChannelAssignment(
+                            channel_name=ChannelName.PULSE1,
+                            stem_ids=[AUTHORED_STEM_ID] * frames,
+                        )
+                    ],
+                ).with_sources((tmp_path / "a.wav",)),
+            }
+        )
+        return ReconstructionData.from_reconstruction(authored, name="Sample")
+
+    def test_the_row_stands_after_every_recording(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        edited_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = edited_data
+        stems_views: List[ReconstructionStemsViewModel] = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        rows = stems_views[0].stems.rows
+        assert [row.key for row in rows] == ["0", str(AUTHORED_STEM_ID)]
+        assert rows[-1].level == rows[0].level + 1
+
+    def test_the_row_offers_the_channels_it_holds_frames_on(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        edited_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = edited_data
+        stems_views: List[ReconstructionStemsViewModel] = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        edits = stems_views[0].stems.row(str(AUTHORED_STEM_ID))
+        assert edits is not None
+        assert edits.offered_channels == frozenset({ChannelName.PULSE1})
+        assert edits.stands_for_edits
+
+    def test_a_removal_stands_outside_the_row(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        edited_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.current_reconstruction = edited_data
+        stems_views: List[ReconstructionStemsViewModel] = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        edits = stems_views[0].stems.row(str(AUTHORED_STEM_ID))
+        assert edits is not None
+        assert not edits.releasable

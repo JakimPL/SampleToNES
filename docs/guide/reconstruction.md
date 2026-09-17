@@ -28,9 +28,13 @@ The **Stems** card lists the recordings used to build a reconstruction. It group
 
 Uncheck a channel to silence it in the waveform, in playback, in the original audio and in a WAV export. This lets you hear what one recording added, channel by channel. The saved reconstruction keeps every channel, whatever you uncheck.
 
+The checkboxes also decide what an instrument edit changes. A frame belongs to the recording that played it, so an edit changes the frames of the recordings you have checked and leaves the rest alone. Uncheck a recording to shape one part of a channel without touching the others.
+
+Notes you write into silence belong to no recording. They gather in an **Edits** row below the recordings, with checkboxes of its own, and removing a recording leaves them alone.
+
 **Collapse levels** shows the whole list as one table.
 
-**x** at the end of a row removes that recording from the reconstruction. The app asks you to confirm first. The recording goes silent, its row disappears, and the change is saved when you save the reconstruction. A reconstruction needs at least one recording, so the **x** of the last row is disabled.
+**x** at the end of a row removes that recording from the reconstruction. The app asks you to confirm first. The recording goes silent, its row disappears, and the change is saved when you save the reconstruction. A reconstruction needs at least one recording, so the **x** of the last row is disabled. The **Edits** row has no **x**, because it names no recording.
 
 ## Editing instruments
 

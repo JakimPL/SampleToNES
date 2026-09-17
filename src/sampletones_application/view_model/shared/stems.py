@@ -79,6 +79,20 @@ class StemRowViewModel(BaseModel, frozen=True):
         return self.kind is SourceKind.FOLDER
 
     @property
+    def stands_for_edits(self) -> bool:
+        """The row stands for the frames the reader wrote, which no recording answers for."""
+        return self.kind is SourceKind.EDITS
+
+    @property
+    def releasable(self) -> bool:
+        """Whether the row names something a removal takes out of the document.
+
+        A removal takes a recording out of the recorded setup, so the frames the reader wrote
+        stand outside what it reaches.
+        """
+        return not self.stands_for_edits
+
+    @property
     def takes_part(self) -> bool:
         """The row holds a channel, so the list counts it in."""
         return bool(self.channels or self.partial_channels)

@@ -23,7 +23,7 @@ from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.stems import (
     ReconstructionStemsViewModel,
 )
-from sampletones_application.view_model.shared.stems import StemsListViewModel
+from sampletones_application.view_model.shared.stems import StemRowViewModel, StemsListViewModel
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.system.paths import open_path_in_explorer
@@ -56,6 +56,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
         self._lbl_empty = language_manager["reconstructions.reconstruction.label.stems_empty"]
         self._lbl_collapse = language_manager["reconstructions.reconstruction.label.collapse_levels"]
         self._setup_template = language_manager["reconstructions.reconstruction.template.stems_setup"]
+        self._lbl_edits = language_manager["global.stems.label.edits"]
         self._mode_labels = {
             HierarchyMode.ROUND_ROBIN: language_manager["reconstructions.reconstruction.label.stems_mode_round_robin"],
             HierarchyMode.STRICT: language_manager["reconstructions.reconstruction.label.stems_mode_strict"],
@@ -148,9 +149,25 @@ class GUIReconstructionStemsPanel(GUIPanel):
         )
 
     def _banded(self, stems: StemsListViewModel) -> StemsListViewModel:
-        """The list as the card draws it, under the banding the reader last asked for."""
+        """The list as the card draws it: the reader's banding, and the edits row named.
+
+        A row standing for the frames the reader wrote answers to no recording, so it takes its
+        name here rather than from the document.
+        """
         collapsed = bool(dpg.get_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS))
-        return stems.model_copy(update={"collapse_levels": collapsed})
+        return stems.model_copy(
+            update={
+                "collapse_levels": collapsed,
+                "rows": tuple(self._named(row) for row in stems.rows),
+            }
+        )
+
+    def _named(self, row: StemRowViewModel) -> StemRowViewModel:
+        """The row under the name it reads as, which the edits row takes from the language file."""
+        if not row.stands_for_edits:
+            return row
+
+        return row.model_copy(update={"name": self._lbl_edits})
 
     def _render_setup_line(
         self,

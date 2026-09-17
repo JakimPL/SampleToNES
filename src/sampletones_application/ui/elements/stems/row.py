@@ -1,3 +1,5 @@
+from typing import Optional
+
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
@@ -135,17 +137,24 @@ class StemRowRenderer:
             self._tone_master(row, view_model)
 
         if self._offer.removal:
-            dpg_configure_item(self._tags.row(row.key, SUF_BUTTON), enabled=live and self.releasable(view_model))
+            dpg_configure_item(
+                self._tags.row(row.key, SUF_BUTTON),
+                enabled=live and self.releasable(view_model, row),
+            )
 
         if row.stands_for_a_folder:
             dpg_configure_item(self._tags.row(row.key, SUF_TWISTY), enabled=live)
 
-    def releasable(self, view_model: StemsListViewModel) -> bool:
+    def releasable(self, view_model: StemsListViewModel, row: Optional[StemRowViewModel] = None) -> bool:
         """Whether a row may leave, which a list holding on to its last one answers by its count.
 
         The button on the row reads this, and so does every gesture reaching removal from outside
-        the row — a key press, a menu item — so one rule answers them all.
+        the row — a key press, a menu item — so one rule answers them all. A row naming something
+        a removal stands outside of answers for itself.
         """
+        if row is not None and not row.releasable:
+            return False
+
         return view_model.row_count > 1 or not self._offer.keeps_last_row
 
     def _create_master(

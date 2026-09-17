@@ -46,6 +46,7 @@ class TestRegenerationServicePipeline:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         assert len(results) == 1
@@ -61,6 +62,7 @@ class TestRegenerationServicePipeline:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         emitted = results[0].value
@@ -77,6 +79,7 @@ class TestRegenerationServicePipeline:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         approximation = reconstruction_data.reconstruction.approximations.get(
@@ -92,6 +95,7 @@ class TestRegenerationServicePipeline:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         instructions = reconstruction_data.reconstruction.get_channel_instructions(ChannelName.PULSE1)
@@ -107,7 +111,13 @@ class TestRegenerationServicePipeline:
         results: List[Any] = []
         service.subscribe(results.append)
 
-        service._run(reconstruction_data.reconstruction, ChannelName.PULSE1, FeatureKey.VOLUME, silenced)
+        service._run(
+            reconstruction_data.reconstruction,
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            silenced,
+            reconstruction_data.reconstruction.recorded_stem_ids,
+        )
 
         assert isinstance(results[0], ServiceSuccess)
         assert all(
@@ -124,6 +134,7 @@ class TestRegenerationServicePipeline:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             {},
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         assert len(results) == 1
@@ -139,6 +150,7 @@ class TestRegenerationServicePipeline:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         assert len(results) == 1
@@ -171,6 +183,7 @@ def _edit_arpeggio(context: ArpeggioEditContext, arpeggio: np.ndarray) -> None:
         ChannelName.PULSE1,
         FeatureKey.ARPEGGIO,
         edited,
+        context.reconstruction.recorded_stem_ids,
     )
 
     assert len(results) == 1
@@ -291,6 +304,7 @@ class TestRegenerationDeliveryThroughRealQueue:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         # The real queue defers delivery until a frame is pumped; nothing has run yet. This also fails
@@ -321,6 +335,7 @@ class TestRegenerationDeliveryThroughRealQueue:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         for _ in range(DELIVERY_BUDGET_FRAMES):

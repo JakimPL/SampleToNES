@@ -212,6 +212,10 @@ again.
 ## Bugs
 
 * Misaligned dialog boxes sizes at initialization
+* The instruments panel draws no per-frame ownership, so a bar outside what the reader hears reads
+  like any other and a gesture on it comes back where it stood with nothing said. A DearPyGui bar
+  series takes one color for the whole series, so showing it means a series per owner or a drawn
+  overlay beneath the plot.
 * A reconstruction written before the recorded sources moved onto the stems record reads with
   none of them, so the browser, original playback and the Stems card see a detached document
   where the file names its recordings under the top-level `audio_filepath`. Folding those paths
