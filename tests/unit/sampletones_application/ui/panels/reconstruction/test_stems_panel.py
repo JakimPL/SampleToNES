@@ -73,6 +73,7 @@ def dpg_context(layout_config: LayoutConfig) -> Iterator[None]:
 def panel(dpg_context: None, layout_config: LayoutConfig) -> GUIReconstructionStemsPanel:
     return GUIReconstructionStemsPanel(
         stems_layout=layout_config.general.stems,
+        stem_colors=layout_config.general.colors.stems,
         language_manager=LanguageManager(LANG_EN),
         status_bar=GUIStatusBar(),
     )
@@ -108,6 +109,7 @@ def _row(
         available=True,
         level=level,
         position=position,
+        record_position=position,
         level_size=level_size,
         level_count=level_count,
     )

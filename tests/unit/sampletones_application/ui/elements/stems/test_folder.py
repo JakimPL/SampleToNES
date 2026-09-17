@@ -92,6 +92,7 @@ def stems_list(dpg_context: None, layout_config: LayoutConfig) -> GUIStemsList:
         layout=layout_config.general.stems,
         ceiling=layout_config.general.stems.well_ceiling,
         glyphs=layout_config.glyphs.common,
+        stem_colors=layout_config.general.colors.stems,
         language_manager=LanguageManager(LANG_EN),
         status_bar=GUIStatusBar(),
         offer=GATHERED_SOURCES,
@@ -116,6 +117,7 @@ def recording(path: Path, *, channels: FrozenSet[ChannelName] = frozenset(CHANNE
         available=True,
         level=0,
         position=0,
+        record_position=None,
         level_size=1,
         level_count=1,
     )
@@ -136,6 +138,7 @@ def folder(name: str, *, holds: int) -> StemRowViewModel:
         available=True,
         level=0,
         position=0,
+        record_position=None,
         level_size=1,
         level_count=1,
     )
@@ -692,6 +695,7 @@ class TestWhereTheNamesOpen(BaseTestSuite):
             master=GATHERED_SOURCES.master_box,
             removable=GATHERED_SOURCES.removal,
             bends=GATHERED_SOURCES.bends,
+            swatch=GATHERED_SOURCES.swatch,
             folders=True,
         )
 

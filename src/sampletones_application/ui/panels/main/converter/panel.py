@@ -7,6 +7,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SourceKind
 from sampletones_application.layout.general.colors.path import PathColors
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.tabs.main.converter import ConverterLayout
@@ -46,6 +47,7 @@ class GUIConverterPanel(GUIPanel):
         stems_layout: StemsListLayout,
         inputs: InputsLayout,
         path_colors: PathColors,
+        stem_colors: StemColors,
         initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -58,6 +60,7 @@ class GUIConverterPanel(GUIPanel):
         self._listing = ConverterListing(
             stems_layout=stems_layout,
             glyphs=self._glyphs.common,
+            stem_colors=stem_colors,
             language_manager=language_manager,
             status_bar=status_bar,
             key_router=key_router,

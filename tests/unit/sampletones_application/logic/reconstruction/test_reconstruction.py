@@ -1068,6 +1068,23 @@ class TestReconstructionPanelLogicStemSelection:
         assert [(row.key, row.level, row.position) for row in rows] == [("0", 0, 0), ("1", 0, 1)]
         assert all(row.level_size == 2 and row.level_count == 1 for row in rows)
 
+    def test_a_row_carries_the_place_its_recording_holds_on_the_record(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        """The swatch beside a name and the stretches in the ribbon read one ordering."""
+        _open(mock_reconstruction_manager, stems_data)
+        stems_views = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        rows = {row.key: row for row in stems_views[0].stems.rows}
+        assert rows["0"].record_position == 0
+        assert rows["1"].record_position == 1
+
     def test_silencing_a_recording_filters_waveform_and_playback(
         self,
         panel_logic: ReconstructionPanelLogic,

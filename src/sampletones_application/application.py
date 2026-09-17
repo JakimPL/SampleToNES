@@ -322,6 +322,7 @@ class Application:
             layout=self.layout.tabs.main.converter,
             stems_layout=self.layout.general.stems,
             glyphs=self.layout.glyphs.common,
+            stem_colors=self.layout.general.colors.stems,
             language_manager=self.language_manager,
             status_bar=self.status_bar,
             title=self.language_manager["main.converter.title.stem_selection_dialog"],

@@ -186,6 +186,7 @@ def _row(placement: _Placement) -> StemRowViewModel:
         available=placement.path.is_dir() if key.names_folder else placement.path.is_file(),
         level=placement.level,
         position=placement.position,
+        record_position=None,
         level_size=placement.level_size,
         level_count=placement.level_count,
     )
@@ -211,6 +212,7 @@ def _held(placement: _Placement) -> Tuple[StemRowViewModel, ...]:
             available=recording.path.is_file(),
             level=placement.level,
             position=placement.position,
+            record_position=None,
             level_size=placement.level_size,
             level_count=placement.level_count,
         )

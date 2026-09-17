@@ -4,6 +4,7 @@ from typing import Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.glyphs.common import CommonGlyphs
 from sampletones_application.ui.elements.layout.geometry import RowGeometry
@@ -56,6 +57,7 @@ class GUIStemsList(CallbackMixin):
         layout: StemsListLayout,
         ceiling: int,
         glyphs: CommonGlyphs,
+        stem_colors: StemColors,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         offer: StemsListOffer,
@@ -95,6 +97,7 @@ class GUIStemsList(CallbackMixin):
             layout=layout,
             offer=offer,
             glyphs=glyphs,
+            stem_colors=stem_colors,
             open_folders=self._open_folders,
             language_manager=language_manager,
             messages=self._messages,

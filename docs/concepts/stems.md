@@ -334,7 +334,9 @@ silences them.
    lanes stand only where more than one recording is in play, since a document
    answering to a single recording has nothing to tell apart, and a stretch
    outside what the reader hears reads as a rest — the ribbon states what is
-   heard, like every other reading.
+   heard, like every other reading. Each row of the card leads with a square in
+   the color its recording is painted in, so a stretch on screen answers to a
+   name at a glance.
 
 ### Mechanics
 

@@ -1,8 +1,9 @@
-from typing import Optional
+from typing import Final, Optional
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.glyphs.common import CommonGlyphs
 from sampletones_application.tags.general import (
@@ -10,6 +11,7 @@ from sampletones_application.tags.general import (
     SUF_CHANNELS,
     SUF_CHECKBOX,
     SUF_GROUP,
+    SUF_SWATCH,
     SUF_TEXT,
     SUF_TOOLTIP,
     SUF_TWISTY,
@@ -36,13 +38,18 @@ from sampletones_application.ui.themes.channels import (
 )
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
     StemsListViewModel,
 )
 from sampletones_core.constants.enums import ChannelName
+from sampletones_shared.types.application import Sender
+
+SWATCH_FILL: Final[str] = "fill"
 
 
 class StemRowRenderer:
@@ -60,6 +67,7 @@ class StemRowRenderer:
         layout: StemsListLayout,
         offer: StemsListOffer,
         glyphs: CommonGlyphs,
+        stem_colors: StemColors,
         open_folders: OpenFolders,
         language_manager: LanguageManager,
         messages: StemsMessages,
@@ -68,6 +76,7 @@ class StemRowRenderer:
         self._tags = tags
         self._layout = layout
         self._offer = offer
+        self._stem_colors = stem_colors
         self._glyphs = glyphs
         self._open_folders = open_folders
         self._language_manager = language_manager
@@ -93,6 +102,9 @@ class StemRowRenderer:
 
             if self._offer.master_box:
                 self._create_master(row, view_model, columns)
+
+            if self._offer.swatch:
+                self._create_swatch(row)
 
             self._create_name(row, view_model, columns)
             for channel_name in view_model.channels_in_play:
@@ -129,6 +141,7 @@ class StemRowRenderer:
         dpg_set_value(self._tags.row(row.key, SUF_TOOLTIP), self._messages.row_explanation(row))
         row_theme = TAG_GLOBAL_THEME_STEMS_ROW if row.in_play else TAG_GLOBAL_THEME_STEMS_ROW_INERT
         ThemeRegistry.get(row_theme).bind_to_item(name_tag)
+        self._repaint_swatch(row)
 
         if self._offer.master_box:
             master_tag = self._tags.row(row.key, SUF_CHECKBOX)
@@ -156,6 +169,64 @@ class StemRowRenderer:
             return False
 
         return view_model.row_count > 1 or not self._offer.keeps_last_row
+
+    def _repaint_swatch(self, row: StemRowViewModel) -> None:
+        """Keeps the square reading as the place its recording now holds on the record."""
+        square = self._tags.row(row.key, SUF_SWATCH)
+        color = self._swatch_color(row)
+        if color is not None and dpg.does_item_exist(square):
+            self._paint_swatch(square, color)
+
+    def _create_swatch(self, row: StemRowViewModel) -> None:
+        """The color the recording is painted in, standing where the row opens.
+
+        A reader meets one color twice: on the stretches the recording holds in the ribbon and
+        here beside its name, so a bar answers to a row at a glance. A row standing for several
+        recordings leaves the square to the recordings themselves.
+        """
+        color = self._swatch_color(row)
+        if color is None:
+            dpg.add_spacer()
+            return
+
+        size = self._layout.swatch_size
+        with dpg.drawlist(width=size, height=self._layout.name_height):
+            top = self._swatch_top(size)
+            square = dpg.draw_rectangle(
+                (0.0, top),
+                (float(size), top + size),
+                tag=self._tags.row(row.key, SUF_SWATCH),
+            )
+
+        self._paint_swatch(square, color)
+
+    def _swatch_top(self, size: int) -> float:
+        """How far down its cell the square opens, so it stands in the middle of the row's band.
+
+        A row stands as tall as the name beside it plus the padding a cell keeps above and below,
+        while the square opens where that padding ends, so the padding is what it drops by.
+        """
+        return (self._layout.name_height - size) / 2.0 + self._layout.cell_padding
+
+    def _swatch_color(self, row: StemRowViewModel) -> Optional[BaseColor]:
+        """The color one row is known by, which the place its recording holds on the record picks.
+
+        The frames a reader wrote answer to no recording, so they take the color the ribbon paints
+        them in wherever they stand.
+        """
+        if row.stands_for_edits:
+            return self._stem_colors.authored
+
+        if row.record_position is None:
+            return None
+
+        return self._stem_colors.for_position(row.record_position)
+
+    @staticmethod
+    def _paint_swatch(square: Sender, color: BaseColor) -> None:
+        """Fills the square and rules its edge in one color, which the palette in place answers for."""
+        dpg_set_palette_color(square, color, argument=SWATCH_FILL)
+        dpg_set_palette_color(square, color)
 
     def _create_master(
         self,

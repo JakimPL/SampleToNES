@@ -229,5 +229,6 @@ class LevelBands:
             master=self._offer.master_box,
             removable=self._offer.removal,
             bends=self._offer.bends,
+            swatch=self._offer.swatch,
             folders=view_model.holds_folders,
         )

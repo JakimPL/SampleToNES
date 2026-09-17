@@ -3,6 +3,7 @@ from typing import Callable, FrozenSet, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.tags.reconstructions import (
     PRE_RECONSTRUCTION_STEMS,
@@ -38,15 +39,18 @@ class GUIReconstructionStemsPanel(GUIPanel):
     it holds frames on: ticking one keeps that channel's frames in what plays, and the leading
     box moves every channel the recording offers at once. A channel switched off for the whole
     reconstruction shows its boxes muted while they stay as clickable as any other, so the
-    reader's per-recording choice keeps standing. A click on a row shows the recording where it
-    sits on disk, and the button beside it asks to take the recording out of the reconstruction
-    for good. The list holds on to its last row, so one recording always stands.
+    reader's per-recording choice keeps standing. Each row leads with the color its recording is
+    painted in, so a stretch of the ribbon under the waveform answers to a name here at a glance.
+    A double-click on a row shows the recording where it sits on disk, and the button beside it
+    asks to take the recording out of the reconstruction for good. The list holds on to its last
+    row, so one recording always stands.
     """
 
     def __init__(
         self,
         *,
         stems_layout: StemsListLayout,
+        stem_colors: StemColors,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
@@ -68,6 +72,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
             layout=stems_layout,
             ceiling=stems_layout.well_ceiling,
             glyphs=self._glyphs.common,
+            stem_colors=stem_colors,
             language_manager=language_manager,
             status_bar=status_bar,
             offer=RECORDED_ASSIGNMENT,

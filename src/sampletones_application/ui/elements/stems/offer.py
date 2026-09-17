@@ -19,6 +19,9 @@ class StemsListOffer:
 
     ``picking`` states that the box beside a row picks the row for a mix rather than answering for
     its channels, which is the reading a list asking which recordings to mix draws.
+
+    ``swatch`` states that a row leads with the color its recording is drawn in, which a list
+    standing beside the ribbon draws so a name and the stretches it holds read as one.
     """
 
     master_box: bool
@@ -27,6 +30,7 @@ class StemsListOffer:
     dragging: bool
     bends: bool
     picking: bool
+    swatch: bool
 
     def drags(self, view_model: StemsListViewModel) -> bool:
         """Whether a row is dragged, which the bands a drag rearranges are what it takes.
@@ -45,6 +49,7 @@ GATHERED_SOURCES: Final[StemsListOffer] = StemsListOffer(
     dragging=True,
     bends=False,
     picking=False,
+    swatch=False,
 )
 
 RECORDED_ASSIGNMENT: Final[StemsListOffer] = StemsListOffer(
@@ -54,6 +59,7 @@ RECORDED_ASSIGNMENT: Final[StemsListOffer] = StemsListOffer(
     dragging=False,
     bends=True,
     picking=False,
+    swatch=True,
 )
 
 PICKED_SOURCES: Final[StemsListOffer] = StemsListOffer(
@@ -63,4 +69,5 @@ PICKED_SOURCES: Final[StemsListOffer] = StemsListOffer(
     dragging=False,
     bends=False,
     picking=True,
+    swatch=False,
 )

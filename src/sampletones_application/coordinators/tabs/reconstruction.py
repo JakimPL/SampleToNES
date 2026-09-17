@@ -238,6 +238,7 @@ class ReconstructionTabCoordinator:
         )
         self._reconstruction_stems_panel: GUIReconstructionStemsPanel = GUIReconstructionStemsPanel(
             stems_layout=layout.stems,
+            stem_colors=layout.stem_colors,
             language_manager=language_manager,
             status_bar=status_bar,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_STEMS),

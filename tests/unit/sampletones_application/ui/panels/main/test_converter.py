@@ -116,6 +116,7 @@ def row(
         available=True,
         level=level,
         position=position,
+        record_position=None,
         level_size=level_size,
         level_count=level_count,
     )
@@ -137,6 +138,7 @@ def folder(name: str, *, holds: int) -> StemRowViewModel:
         available=True,
         level=0,
         position=0,
+        record_position=None,
         level_size=1,
         level_count=1,
     )
@@ -185,6 +187,7 @@ def build(
         stems_layout=layout_config.general.stems,
         inputs=layout_config.general.inputs,
         path_colors=layout_config.general.colors.paths,
+        stem_colors=layout_config.general.colors.stems,
         initial_collapsed=collapsed,
         language_manager=LANGUAGE_MANAGER,
         status_bar=GUIStatusBar(),

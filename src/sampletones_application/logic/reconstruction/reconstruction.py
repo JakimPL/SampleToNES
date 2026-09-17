@@ -317,7 +317,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         answering to one recording alone has nothing to tell apart, so it offers no lanes.
         """
         stems_data = reconstruction_data.reconstruction.stems_data
-        positions = {entry.id: index for index, entry in enumerate(stems_data.config.entries)}
+        positions = self._record_positions(stems_data)
         if len(positions) < DISTINGUISHABLE_RECORDINGS:
             return OwnershipRibbonViewModel.empty()
 
@@ -331,6 +331,15 @@ class ReconstructionPanelLogic(CallbackMixin):
             frame_length=reconstruction_data.reconstruction.config.frame_length,
             total_frames=max((len(lane.runs) and lane.runs[-1].end_frame for lane in lanes), default=0),
         )
+
+    @staticmethod
+    def _record_positions(stems_data: StemsData) -> Dict[int, int]:
+        """Where each recording's entry stands on the record, which is what picks its color.
+
+        The ribbon and the row beside it read this one ordering, so a stretch and the name it
+        answers to are drawn in the same color.
+        """
+        return {entry.id: index for index, entry in enumerate(stems_data.config.entries)}
 
     def _ownership_lane(
         self,
@@ -381,11 +390,13 @@ class ReconstructionPanelLogic(CallbackMixin):
             )
 
         entries = stems_data.config.entries_by_id
+        positions = self._record_positions(stems_data)
         levels = self._levels_with_edits(stems_data)
         rows = tuple(
             self._stem_row(
                 stems_data,
                 entries[stem_id].settings.bend_set if stem_id in entries else frozenset(),
+                positions.get(stem_id),
                 stem_id,
                 level_index,
                 position,
@@ -429,6 +440,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self,
         stems_data: StemsData,
         bends: FrozenSet[ChannelName],
+        record_position: Optional[int],
         stem_id: int,
         level: int,
         position: int,
@@ -450,6 +462,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             available=source is not None and source.path is not None and source.path.is_file(),
             level=level,
             position=position,
+            record_position=record_position,
             level_size=level_size,
             level_count=level_count,
         )

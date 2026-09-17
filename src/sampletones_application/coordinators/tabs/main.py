@@ -260,6 +260,7 @@ class MainTabCoordinator:
             stems_layout=layout.stems,
             inputs=layout.inputs,
             path_colors=layout.path_colors,
+            stem_colors=layout.stem_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_CONVERTER_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,

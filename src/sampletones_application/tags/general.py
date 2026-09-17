@@ -879,6 +879,7 @@ SUF_CHECKBOX = "checkbox"
 SUF_SLIDER = "slider"
 SUF_CHECKBOX_FAVORITES = compose_tag(SUF_CHECKBOX, "favorites")
 SUF_STRIP = "strip"
+SUF_SWATCH = "swatch"
 SUF_TABLE = "table"
 SUF_TABLE_COLUMN = compose_tag(SUF_TABLE, "column")
 SUF_TABLE_GAP = compose_tag(SUF_TABLE, "gap")
