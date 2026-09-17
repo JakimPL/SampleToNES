@@ -27,6 +27,11 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 from sampletones_application.view_model.reconstruction.waveform import (
     InstrumentWaveformViewModel,
 )
+from sampletones_application.view_model.shared.ownership import (
+    OwnershipLaneViewModel,
+    OwnershipRibbonViewModel,
+    OwnershipRunViewModel,
+)
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -281,9 +286,29 @@ class _WaveformRecorder:
 
     def __init__(self) -> None:
         self.drawn: List[Dict[str, object]] = []
+        self.lane_heights: List[int] = []
 
     def load_voice_waveform(self, audio: np.ndarray, *, name: str, color: object) -> None:
         self.drawn.append({"audio": audio, "name": name, "color": color})
+
+    def set_lane_height(self, height: int) -> None:
+        self.lane_heights.append(height)
+
+
+class _RibbonRecorder:
+    """Stands in for the ownership ribbon, standing as tall as the lanes it was last given."""
+
+    LANE_HEIGHT = 11
+
+    def __init__(self) -> None:
+        self.painted: List[OwnershipRibbonViewModel] = []
+
+    def update_view(self, view_model: OwnershipRibbonViewModel) -> None:
+        self.painted.append(view_model)
+
+    @property
+    def height(self) -> int:
+        return len(self.painted[-1].lanes) * self.LANE_HEIGHT if self.painted else 0
 
 
 class InstrumentHarness:
@@ -294,16 +319,34 @@ class InstrumentHarness:
         monkeypatch.setattr(plot_module, "dpg_configure_item", self._configure)
 
         self.waveform = _WaveformRecorder()
+        self.ribbon = _RibbonRecorder()
         self.panel = GUIReconstructionPlotPanel.__new__(GUIReconstructionPlotPanel)
         self.panel._channel_colors = CHANNEL_COLORS
         self.panel.autoscale_tag = AUTOSCALE_TAG
         self.panel._frame_length = None
         self.panel.waveform_display = self.waveform
+        self.panel.ownership_ribbon = self.ribbon
+        self.panel._ownership = OwnershipRibbonViewModel.empty()
 
     def _configure(self, tag: str, **kwargs: object) -> None:
         show = kwargs.get("show")
         if isinstance(show, bool):
             self.shown[tag] = show
+
+
+def _ribbon(*channels: ChannelName) -> OwnershipRibbonViewModel:
+    """A ribbon standing for one lane per named channel, each holding a single stretch."""
+    return OwnershipRibbonViewModel(
+        lanes=tuple(
+            OwnershipLaneViewModel(
+                channel_name=channel_name,
+                runs=(OwnershipRunViewModel(start_frame=0, end_frame=2, stem_id=0, position=0),),
+            )
+            for channel_name in channels
+        ),
+        frame_length=FRAME_LENGTH,
+        total_frames=2,
+    )
 
 
 def _waveform(channel_name: ChannelName) -> InstrumentWaveformViewModel:
@@ -313,6 +356,30 @@ def _waveform(channel_name: ChannelName) -> InstrumentWaveformViewModel:
         audio=np.zeros(2 * FRAME_LENGTH),
         frame_length=FRAME_LENGTH,
     )
+
+
+class TestTheLanesUnderWhatTheCardDraws:
+    """The lanes describe a recording, so they stand only while the card shows one."""
+
+    def test_the_lanes_stand_down_for_a_voice(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        harness = InstrumentHarness(monkeypatch)
+        harness.panel.update_ownership(_ribbon(ChannelName.PULSE1, ChannelName.TRIANGLE))
+
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        assert harness.ribbon.painted[-1].lanes == ()
+        assert harness.waveform.lane_heights[-1] == 0
+
+    def test_the_lanes_return_with_the_recording(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        harness = InstrumentHarness(monkeypatch)
+        ribbon = _ribbon(ChannelName.PULSE1, ChannelName.TRIANGLE)
+        harness.panel.update_ownership(ribbon)
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        harness.panel.update_instrument_view(None)
+
+        assert harness.ribbon.painted[-1] == ribbon
+        assert harness.waveform.lane_heights[-1] == harness.waveform.lane_heights[0]
 
 
 class TestTheCardAnInstrumentIsDrawnOn:

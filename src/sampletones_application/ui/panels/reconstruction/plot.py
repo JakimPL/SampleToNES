@@ -57,6 +57,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
         self.waveform_display: GUIWaveformGraph
         self.ownership_ribbon: GUIOwnershipRibbon
+        self._ownership: OwnershipRibbonViewModel = OwnershipRibbonViewModel.empty()
         self._frame_length: Optional[int] = None
 
         self.on_channels_changed: Optional[Callable[[List[ChannelName]], None]] = None
@@ -124,8 +125,10 @@ class GUIReconstructionPlotPanel(GUIPanel):
         """
         self._show_recording_controls(shown=waveform is None)
         if waveform is None:
+            self._draw_ownership(self._ownership)
             return
 
+        self._draw_ownership(OwnershipRibbonViewModel.empty())
         self._frame_length = waveform.frame_length
         self.waveform_display.load_voice_waveform(
             waveform.audio,
@@ -156,8 +159,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
     def clear_waveform(self) -> None:
         self._frame_length = None
         self.waveform_display.clear()
-        self.ownership_ribbon.clear()
-        self.waveform_display.set_lane_height(self.ownership_ribbon.height)
+        self.update_ownership(OwnershipRibbonViewModel.empty())
 
     def set_waveform_top_source(self, audio_source: AudioSourceType) -> None:
         self.waveform_display.set_top_source(audio_source)
@@ -211,7 +213,12 @@ class GUIReconstructionPlotPanel(GUIPanel):
         self.ownership_ribbon.bind_theme()
 
     def update_ownership(self, ribbon: OwnershipRibbonViewModel) -> None:
-        """Repaints the lanes and gives them the room they need under the waveform."""
+        """Takes the lanes the open document answers for and paints them under its waveform."""
+        self._ownership = ribbon
+        self._draw_ownership(ribbon)
+
+    def _draw_ownership(self, ribbon: OwnershipRibbonViewModel) -> None:
+        """Paints the lanes and gives them the room they need under the waveform."""
         self.ownership_ribbon.update_view(ribbon)
         self.waveform_display.set_lane_height(self.ownership_ribbon.height)
 
