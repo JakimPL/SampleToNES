@@ -20,7 +20,7 @@ from sampletones_application.tags.graphs import (
     TAG_GLOBAL_GRAPH_THEME_INDICATOR,
     TAG_GLOBAL_GRAPH_THEME_OVERLAY,
 )
-from sampletones_application.ui.elements.graphs.clock import clock_ticks
+from sampletones_application.ui.elements.graphs.clock import ClockTick, clock_ticks
 from sampletones_application.ui.elements.graphs.gesture import PlotClickGesture
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.array import ArrayLayer
@@ -110,6 +110,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.current_data: Optional[Union[InstructionLibraryFragment[Any], WaveformData]] = None
         self._plays_what_it_draws = False
         self._sample_rate: int = 0
+        self._named_span: Optional[Tuple[float, float, int]] = None
         self._series_themes: Dict[BaseColor, str] = {}
         self.current_position: int = 0
 
@@ -523,6 +524,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         """Empties the plot down to the marks it keeps for whatever it draws next: the position
         indicator and the overlay rectangle, both of which live among the axis's children."""
         self._reconstruction_dimmed = False
+        self._sample_rate = 0
+        self._release_clock_ticks()
         self.clear_layers()
         dpg_delete_children(self.y_axis_tag)
         self.current_position = START_OF_AUDIO
@@ -669,20 +672,40 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         """Names each position along the time axis by the moment it stands at.
 
         The axis counts samples, so the stretch it covers turns into the seconds the recording
-        reaches there and the marks are placed across them. A plot drawing a fragment rather
-        than a recording counts samples alone and keeps the figures the axis states.
+        reaches there and the marks are placed across them. A plot drawing a fragment counts
+        samples alone, and the axis is handed back to the figures DearPyGui states for it.
         """
-        if self._sample_rate <= 0 or not dpg.does_item_exist(self.x_axis_tag):
+        if not dpg.does_item_exist(self.x_axis_tag):
             return
 
-        ticks = clock_ticks(
+        named = (start, end, self._sample_rate)
+        if named == self._named_span:
+            return
+
+        self._named_span = named
+        ticks = self._clock_ticks(start, end)
+        if ticks:
+            dpg.set_axis_ticks(self.x_axis_tag, tuple(ticks))
+        else:
+            dpg.reset_axis_ticks(self.x_axis_tag)
+
+    def _release_clock_ticks(self) -> None:
+        """Hands the axis back to the figures DearPyGui states for it, which an empty plot reads by."""
+        self._named_span = None
+        if dpg.does_item_exist(self.x_axis_tag):
+            dpg.reset_axis_ticks(self.x_axis_tag)
+
+    def _clock_ticks(self, start: float, end: float) -> List[ClockTick]:
+        """The marks the stretch between two sample positions carries, which a recording names."""
+        if self._sample_rate <= 0:
+            return []
+
+        return clock_ticks(
             seconds_from_samples(int(start), self._sample_rate),
             seconds_from_samples(int(end), self._sample_rate),
             self._sample_rate,
             self._layout.clock,
         )
-        if ticks:
-            dpg.set_axis_ticks(self.x_axis_tag, tuple(ticks))
 
     def _add_position_indicator(self) -> None:
         dpg_delete_item(self.position_indicator_tag)

@@ -99,6 +99,9 @@ class _Array:
 def _graph() -> GUIWaveformGraph:
     graph = GUIWaveformGraph.__new__(GUIWaveformGraph)
     graph.y_axis_tag = "axis"
+    graph.x_axis_tag = "time_axis"
+    graph._named_span = None
+    graph._sample_rate = 0
     graph.position_indicator_tag = "indicator"
     graph.overlay_rectangle_tag = "overlay"
     graph.layers = {}
