@@ -5,6 +5,10 @@
 * Added NSF player and export.
 * Added stems conversion: to mix several recordings into one reconstruction.
 * Improved clarity of reconstructions.
+* Reduced reconstruction files to a fraction of their size: a three-minute stems reconstruction
+  now takes about 2 MB where it took over 150 MB.
+* Fixed editing an instrument losing which recording played each frame. An edit now changes the
+  frames of the recordings you have checked on the Stems card and leaves the rest alone.
 * Bumped the reconstruction data-version to `2.2` with backward compatibility for `2.1`.
 * Bumped the library data-version to `2.1` with backward compatibility for `2.0`.
 

@@ -216,6 +216,11 @@ again.
   like any other and a gesture on it comes back where it stood with nothing said. A DearPyGui bar
   series takes one color for the whole series, so showing it means a series per owner or a drawn
   overlay beneath the plot.
+* The waveform names no recording, so which stretch came from which is read by ticking the boxes
+  rather than seen. A lane per playing channel beneath the plot, each frame painted with its
+  owner's color and drawn only where more than one recording is in play, is what answers it, and
+  a color per recording joins the palette along with it. Both this and the line above are questions
+  of what DearPyGui draws, so they are settled with the application in front of the writer.
 * A reconstruction written before the recorded sources moved onto the stems record reads with
   none of them, so the browser, original playback and the Stems card see a detached document
   where the file names its recordings under the top-level `audio_filepath`. Folding those paths
