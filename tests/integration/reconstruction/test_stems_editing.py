@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import AbstractSet, Dict, Final, FrozenSet, List, Sequence
+from typing import AbstractSet, Dict, Final, FrozenSet, List, Sequence, Tuple
 
 import numpy as np
 import pytest
@@ -259,6 +259,61 @@ class TestAChannelAnEditEmpties:
         edited = _edited(_edited(reconstruction, channel_name, []), channel_name, stream)
 
         assert _owners(edited, channel_name) == [AUTHORED_STEM_ID] * len(stream)
+
+
+class TestAChannelClearedWhileOneRecordingIsHeard:
+    """Clearing a channel reaches the recording the reader hears and leaves the others playing.
+
+    An edit shortens a channel as far as its scope reaches, so the stream runs through the last
+    frame a recording the reader left out still holds.
+    """
+
+    @staticmethod
+    def _cleared(reconstruction: Reconstruction) -> Tuple[ChannelName, int, Reconstruction]:
+        """The contested channel cleared while the recording ending earliest is heard alone.
+
+        Another recording therefore holds the channel's last frame, so the stream keeps running
+        and the frames the edit reached rest inside it.
+        """
+        channel_name = _contested_channel(reconstruction)
+        owners = _owners(reconstruction, channel_name)
+        heard = min(
+            _holders(reconstruction, channel_name),
+            key=lambda stem_id: max(frame for frame, owner in enumerate(owners) if owner == stem_id),
+        )
+        return channel_name, heard, _edited(reconstruction, channel_name, [], heard=frozenset({heard}))
+
+    def test_the_recordings_left_out_keep_every_frame_they_held(self, reconstruction: Reconstruction) -> None:
+        channel_name, heard, edited = self._cleared(reconstruction)
+        before = _owners(reconstruction, channel_name)
+        standing = [frame for frame, owner in enumerate(before) if owner not in (heard, RESTING_STEM_ID)]
+
+        assert standing
+        assert all(_owners(edited, channel_name)[frame] == before[frame] for frame in standing)
+        assert all(
+            edited.instructions[channel_name][frame] == reconstruction.instructions[channel_name][frame]
+            for frame in standing
+        )
+
+    def test_the_recording_the_reader_heard_rests_where_the_stream_runs_on(
+        self,
+        reconstruction: Reconstruction,
+    ) -> None:
+        channel_name, heard, edited = self._cleared(reconstruction)
+        owners = _owners(edited, channel_name)
+        released = [frame for frame in _frames_of(reconstruction, channel_name, heard) if frame < len(owners)]
+
+        assert released
+        assert all(owners[frame] == RESTING_STEM_ID for frame in released)
+        assert not any(edited.instructions[channel_name][frame].on for frame in released)
+
+    def test_the_channel_runs_through_the_last_frame_left_standing(self, reconstruction: Reconstruction) -> None:
+        channel_name, heard, edited = self._cleared(reconstruction)
+        before = _owners(reconstruction, channel_name)
+        last = max(frame for frame, owner in enumerate(before) if owner not in (heard, RESTING_STEM_ID))
+
+        assert len(_owners(edited, channel_name)) == last + 1
+        assert channel_name in edited.playing_channels
 
 
 class TestARecordingTakenOutAfterAnEdit:

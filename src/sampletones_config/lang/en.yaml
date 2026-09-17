@@ -495,7 +495,7 @@ reconstructions.reconstruction.message.locate_audio_failed: "Original audio file
 reconstructions.reconstruction.message.export_wav_success: "Reconstruction rendered successfully."
 reconstructions.reconstruction.message.export_wav_failed: "Reconstruction failed to save."
 reconstructions.reconstruction.label.stems: "Stems"
-reconstructions.reconstruction.label.stems_empty: "This reconstruction records no source"
+reconstructions.reconstruction.label.stems_empty: "This reconstruction has no sources"
 reconstructions.reconstruction.label.stems_mode_round_robin: "Round robin"
 reconstructions.reconstruction.label.stems_mode_strict: "Strict"
 reconstructions.reconstruction.template.stems_setup: "Mode: {mode}"

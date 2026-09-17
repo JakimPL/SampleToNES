@@ -117,11 +117,61 @@ class TestAnEditThatChangesTheFrameCount:
         assert carried.stem_ids == [STEM_A]
         assert carried.instructions == [_pulse(60)]
 
+    def test_a_frame_dropped_outside_the_scope_keeps_playing(self) -> None:
+        carried = carried_edit(
+            [_pulse(60), _pulse(62), _pulse(64)],
+            [STEM_A, STEM_B, STEM_B],
+            [_pulse(70)],
+            heard=frozenset({STEM_A}),
+        )
+
+        assert carried.instructions == [_pulse(70), _pulse(62), _pulse(64)]
+        assert carried.stem_ids == [STEM_A, STEM_B, STEM_B]
+
+    def test_a_frame_the_scope_reached_rests_where_the_stream_runs_on_without_it(self) -> None:
+        carried = carried_edit(
+            [_pulse(60), _pulse(62), _pulse(64)],
+            [STEM_A, STEM_A, STEM_B],
+            [],
+            heard=frozenset({STEM_A}),
+        )
+
+        assert carried.instructions == [_silence(), _silence(), _pulse(64)]
+        assert carried.stem_ids == [RESTING_STEM_ID, RESTING_STEM_ID, STEM_B]
+
+    def test_a_channel_shortened_within_its_scope_runs_exactly_as_far_as_the_edit_states(self) -> None:
+        carried = carried_edit(
+            [_pulse(60), _pulse(62), _pulse(64)],
+            [STEM_A, STEM_B, STEM_A],
+            [_pulse(70)],
+            heard=EVERY_STEM,
+        )
+
+        assert carried.instructions == [_pulse(70)]
+        assert carried.stem_ids == [STEM_A]
+
+    def test_a_resting_frame_past_the_edit_goes_whatever_is_heard(self) -> None:
+        carried = carried_edit(
+            [_pulse(60), _silence()],
+            [STEM_A, RESTING_STEM_ID],
+            [_pulse(70)],
+            heard=NOTHING_HEARD,
+        )
+
+        assert carried.instructions == [_pulse(60)]
+        assert carried.stem_ids == [STEM_A]
+
     def test_a_channel_edited_down_to_no_frame_carries_no_ownership(self) -> None:
         carried = carried_edit([_pulse(60)], [STEM_A], [], heard=EVERY_STEM)
 
         assert carried.instructions == []
         assert carried.stem_ids == []
+
+    def test_a_channel_edited_down_to_no_frame_outside_the_scope_stands_whole(self) -> None:
+        carried = carried_edit([_pulse(60)], [STEM_A], [], heard=NOTHING_HEARD)
+
+        assert carried.instructions == [_pulse(60)]
+        assert carried.stem_ids == [STEM_A]
 
     def test_a_channel_written_back_into_play_comes_back_the_readers_own(self) -> None:
         carried = carried_edit([], [], [_pulse(60), _silence()], heard=EVERY_STEM)

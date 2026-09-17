@@ -412,15 +412,18 @@ frame's owner follows from the frame it was and the frame it becomes:
 | resting, edited into play | authored |
 | resting, edited silent | resting |
 | written past the end of the stream | authored where it sounds, resting where it stays silent |
-| dropped from the end of the stream | gone, together with its ownership |
+| dropped from the end of the stream, within the scope | gone, together with its ownership |
+| dropped from the end of the stream, outside it | standing, in what it plays and who plays it |
 
 Rest and silence naming the same frames is what makes the table total: a frame's owner before
-the edit already says whether it sounded, so the three lines above the last two cover every
+the edit already says whether it sounded, so the three lines above the last three cover every
 frame the edit keeps.
 
-A stream edited down to no frame leaves its channel standing by, and one written back into play
-comes back wholly authored. The setup, the recorded sources, the identifier, the configuration
-and the working level stand throughout.
+An edit shortens a channel as far as its scope reaches. The stream therefore runs through the
+last frame standing outside that scope, the frames the edit did reach rest along the way, and a
+stream edited down to no frame leaves its channel standing by wherever the scope covered every
+one of them. A channel written back into play comes back wholly authored. The setup, the
+recorded sources, the identifier, the configuration and the working level stand throughout.
 
 **The scope an edit writes in** follows principle 5: a frame accepts a gesture where its owner
 is ticked on that channel, where it rests, and where it is authored. Every other frame draws
