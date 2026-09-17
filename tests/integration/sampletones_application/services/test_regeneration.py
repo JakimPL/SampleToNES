@@ -14,6 +14,13 @@ from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
+from tests.suite.stems import everything_heard
+
+
+def _heard_features(reconstruction: Reconstruction) -> FeatureData:
+    """The envelopes of the whole document, which is what a fresh reader hears."""
+    return FeatureData.heard(reconstruction, everything_heard(reconstruction))
+
 
 _real_queue_add = CallbackQueue.add
 
@@ -210,7 +217,7 @@ class TestArpeggioEditKeepsTheSamplePitch:
             reconstruction = reconstruction_data.reconstruction
             return ArpeggioEditContext(
                 reconstruction=reconstruction,
-                features=FeatureData.load(reconstruction)[ChannelName.PULSE1],
+                features=_heard_features(reconstruction)[ChannelName.PULSE1],
             )
 
         def check_the_starting_reference(context: ArpeggioEditContext) -> None:
@@ -222,7 +229,7 @@ class TestArpeggioEditKeepsTheSamplePitch:
             assert _pitches(context) == [BASE_PITCH + OCTAVE] + [BASE_PITCH] * 3
 
         def reload_the_edited_features(context: ArpeggioEditContext) -> None:
-            context.features = FeatureData.load(context.reconstruction)[ChannelName.PULSE1]
+            context.features = _heard_features(context.reconstruction)[ChannelName.PULSE1]
             assert context.features.initial_pitch == BASE_PITCH
             assert list(context.features.arpeggio.items) == [OCTAVE, 0]
 
@@ -231,7 +238,7 @@ class TestArpeggioEditKeepsTheSamplePitch:
             assert _pitches(context) == [BASE_PITCH] * 4
 
         def check_the_reference_held(context: ArpeggioEditContext) -> None:
-            reloaded = FeatureData.load(context.reconstruction)[ChannelName.PULSE1]
+            reloaded = _heard_features(context.reconstruction)[ChannelName.PULSE1]
             assert reloaded.initial_pitch == BASE_PITCH
             assert list(reloaded.arpeggio.items) == [0]
 

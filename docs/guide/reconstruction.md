@@ -26,7 +26,7 @@ Click the waveform to play from that point. While playback is paused, a click mo
 
 The **Stems** card lists the recordings used to build a reconstruction. It groups them by the level each one was given. Every row has a checkbox for each channel that the recording used, and the checkbox at the front toggles all of them.
 
-Uncheck a channel to silence it in the waveform, in playback, in the original audio and in a WAV export. This lets you hear what one recording added, channel by channel. The saved reconstruction keeps every channel, whatever you uncheck.
+Uncheck a channel to silence it in the waveform, in playback, in the original audio and in a WAV export. The **Instruments** panel follows too: it shows the envelopes of the part you are listening to, and the sizes it states measure that part. Uncheck every recording on a channel and the channel reads as empty. This lets you see and hear what one recording added, channel by channel. The saved reconstruction keeps every channel, whatever you uncheck.
 
 The checkboxes also decide what an instrument edit changes. A frame belongs to the recording that played it, so an edit changes the frames of the recordings you have checked and leaves the rest alone. Uncheck a recording to shape one part of a channel without touching the others.
 
@@ -62,6 +62,8 @@ You export a reconstruction from the **Reconstruction** menu:
 - **Export instruments ▸ Bitphase presets...** writes the same instruments as `.json`.
 - **Export instruments ▸ NSF program...** opens the **Export NSF program** window and writes a single `.nsf` file that plays the whole reconstruction on a NES. The window works as it does [in the sequencer](sequencer.md#exporting-an-nsf-program). A reconstruction has no order frames, so **Repeat** has no **From a frame**. It has no samples either, so **Level** has no **Samples**. You can only select the channels the reconstruction uses.
 - **Export to WAV...** renders the audio using the channel and stem checkboxes you have set.
+
+Every export writes what you see and hear: the instrument files hold the same part of each channel that the **Instruments** panel draws.
 
 **Export instrument...** in the **Instruments** panel writes only the channel you are looking at, in whichever format you choose in the save dialog. See [where your files live](files.md#naming-exported-files).
 

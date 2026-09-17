@@ -277,14 +277,23 @@ silences them.
 
 ### Principles
 
-1. **Selection filters what plays, and scopes what is edited.** A ticked set
-   projects the document rather than mutating it: the waveform shows the ticked
-   frames alone, the reconstruction toggle plays them mixed, original playback
-   plays the recordings heard anywhere mixed, and WAV export writes the same
-   filtered projection. Each answer derives from the recorded per-channel
-   assignment, so a stem heard on one channel keeps its samples there and stays
-   quiet on the next. The same set says which frames an instrument edit writes —
-   see [Editing a stems reconstruction](#editing-a-stems-reconstruction).
+1. **Selection filters what plays, shows what it filters, and scopes what is
+   edited.** A ticked set projects the document rather than mutating it: the
+   waveform shows the ticked frames alone, the reconstruction toggle plays them
+   mixed, original playback plays the recordings heard anywhere mixed, the
+   instruments panel draws the envelopes of that same part beside the figures
+   measuring it, and both WAV export and instrument export write what stands on
+   screen. Each answer derives from the recorded per-channel assignment, so a
+   stem heard on one channel keeps its samples there and stays quiet on the
+   next. The same set says which frames an instrument edit writes — see
+   [Editing a stems reconstruction](#editing-a-stems-reconstruction).
+
+   Two rules shape the reading. **A filtered reading states the frames it leaves
+   out rather than dropping them**, so the envelopes, the waveform and the record
+   line up column for column, and **it ends where it last sounds**, so a channel
+   every recording is left out on reads as standing by — its plot empty, its
+   figures at nothing and its instrument written nowhere. Together they make what
+   a reader sees, hears, edits and exports one and the same part of the document.
 2. **A box stands where the choice reaches something.** A stem draws a box on a
    channel exactly where the record gives it a frame there, so every box the card
    offers changes what is heard. A stem the picker never chose offers none, and

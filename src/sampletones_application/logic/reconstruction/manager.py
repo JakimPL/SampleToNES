@@ -6,6 +6,7 @@ from typing import Optional, Tuple
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.feature import FeatureData
+from sampletones_application.logic.reconstruction.listening import StemListening
 from sampletones_application.logic.reconstruction.session import ReconstructionSession
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.reconstructions import Reconstruction
@@ -33,6 +34,7 @@ class ReconstructionManager(CallbackMixin):
         self._session: ReconstructionSession = ReconstructionSession()
         self._current_reconstruction: Optional[ReconstructionData] = None
         self._current_features: Optional[FeatureData] = None
+        self._listening: StemListening = StemListening()
         self._reconstruction_hash: str = ""
         self._coefficient: float = 1.0
 
@@ -72,21 +74,37 @@ class ReconstructionManager(CallbackMixin):
     def _adopt_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
         """Makes ``reconstruction_data`` the open document and refreshes its derived state.
 
-        The coefficient and cached features track whichever reconstruction is open, so every
-        rebinding funnels through here to recompute them in one place.
+        The coefficient, the reader's listening choice and the cached features track whichever
+        reconstruction is open, so every rebinding funnels through here to recompute them in one
+        place. The listening is carried onto the new record before the features are read, so the
+        envelopes answer for the part the reader is listening to as it now stands.
         """
         self._current_reconstruction = reconstruction_data
         self._coefficient = reconstruction_data.reconstruction.coefficient
+        self._listening.adopt(reconstruction_data.reconstruction.stems_data)
         self._load_reconstruction_features()
 
     def _load_reconstruction_features(self) -> None:
+        """Reads the envelopes of the part the reader is listening to.
+
+        Raises:
+            RuntimeError: If no reconstruction is open to read.
+        """
         if self._current_reconstruction is None:
             raise RuntimeError("No reconstruction is loaded when trying to load features")
 
         reconstruction = self._current_reconstruction.reconstruction
-        feature_data = FeatureData.load(reconstruction)
-        self._current_features = feature_data
+        self._current_features = FeatureData.heard(reconstruction, self._listening.selection)
         self._reconstruction_hash = hash_model(reconstruction)
+
+    def refresh_features(self) -> None:
+        """Reads the envelopes again after a change to what the reader is listening to.
+
+        A box on the stems card moves which recordings a channel is heard on, and the plot,
+        the figures and an export all read from the same envelopes, so they follow it together.
+        """
+        if self._current_reconstruction is not None:
+            self._load_reconstruction_features()
 
     def save_reconstruction(self, filepath: Optional[Path] = None) -> bool:
         """Writes the open reconstruction to disk, reporting whether the write happened.
@@ -165,6 +183,7 @@ class ReconstructionManager(CallbackMixin):
     def close_reconstruction(self) -> None:
         self._current_reconstruction = None
         self._current_features = None
+        self._listening.release()
         self._reconstruction_hash = ""
         self._coefficient = 1.0
         self._session.mark_closed()
@@ -196,6 +215,11 @@ class ReconstructionManager(CallbackMixin):
     @property
     def current_features(self) -> Optional[FeatureData]:
         return self._current_features
+
+    @property
+    def listening(self) -> StemListening:
+        """Which recordings of the open document the reader is listening to."""
+        return self._listening
 
     @property
     def reconstruction(self) -> Optional[Reconstruction]:

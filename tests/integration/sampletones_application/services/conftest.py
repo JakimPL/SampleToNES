@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
@@ -61,12 +60,10 @@ def minimal_reconstruction(default_config, pulse_instructions) -> Reconstruction
 
 @pytest.fixture
 def reconstruction_data(default_config, minimal_reconstruction) -> ReconstructionData:
-    feature_data = FeatureData.load(minimal_reconstruction)
     return ReconstructionData(
         config=default_config,
         reconstruction=minimal_reconstruction,
         stem_audios=(),
-        feature_data=feature_data,
         filepath=Path("/dev/null"),
         name="null",
     )

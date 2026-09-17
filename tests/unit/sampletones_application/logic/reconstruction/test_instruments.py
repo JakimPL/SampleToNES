@@ -26,6 +26,13 @@ from sampletones_core.formats.famitracker.footprint import (
 )
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.reconstructions import Reconstruction
+from tests.suite.stems import everything_heard
+
+
+def _heard_features(reconstruction: Reconstruction) -> FeatureData:
+    """The envelopes of the whole document, which is what a fresh reader hears."""
+    return FeatureData.heard(reconstruction, everything_heard(reconstruction))
+
 
 HISTORY_BUDGET: Final[int] = 16
 
@@ -95,7 +102,7 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
         mock_reconstruction_manager: MagicMock,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        mock_reconstruction_manager.current_features = FeatureData.load(reconstruction_factory())
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
         instruments_logic.update_display()
@@ -107,7 +114,7 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
         mock_reconstruction_manager: MagicMock,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        feature_data = FeatureData.load(reconstruction_factory())
+        feature_data = _heard_features(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
         received: List[Optional[Dict[ChannelName, Features]]] = []
         instruments_logic.on_feature_data_changed = received.append
@@ -120,7 +127,7 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
         mock_reconstruction_manager: MagicMock,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        mock_reconstruction_manager.current_features = FeatureData.load(reconstruction_factory())
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
         instruments_logic.update_display()
@@ -147,7 +154,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         mock_reconstruction_manager: MagicMock,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        feature_data = FeatureData.load(reconstruction_factory())
+        feature_data = _heard_features(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
@@ -165,7 +172,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         """A reconstruction exports its instruments as one-shots, so that is the size shown."""
-        feature_data = FeatureData.load(reconstruction_factory())
+        feature_data = _heard_features(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
@@ -184,7 +191,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         """The typed envelope is measured at once, so the figure answers what is on screen."""
-        feature_data = FeatureData.load(reconstruction_factory())
+        feature_data = _heard_features(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
@@ -208,7 +215,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         """The regeneration owns the loaded envelopes, so the measurement reads them without writing."""
-        feature_data = FeatureData.load(reconstruction_factory())
+        feature_data = _heard_features(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
         loaded_volume = feature_data.channels[ChannelName.PULSE1].volume
 
@@ -227,7 +234,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         """A regenerated reconstruction refreshes the figures, leaving the edited envelopes displayed."""
-        mock_reconstruction_manager.current_features = FeatureData.load(reconstruction_factory())
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         received: List[ReconstructionInstrumentsViewModel] = []
         feature_updates: List[Optional[Dict[ChannelName, Features]]] = []
         instruments_logic.on_view_changed = received.append
@@ -289,7 +296,7 @@ class TestReconstructionInstrumentsLogicHandleEnvelope:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         """The panel states values and loop point together, so the update carries both."""
-        mock_reconstruction_manager.current_features = FeatureData.load(reconstruction_factory())
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         received: List[Features] = []
         instruments_logic.on_reconstruction_instrument_updated = lambda _channel, _key, features: received.append(
             features

@@ -233,12 +233,17 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             self._update_ranges()
 
     def _update_ranges(self) -> None:
+        """The span the bars are drawn across, which holds room for a pair of them throughout.
+
+        A dimension writing one value, or none at all, is drawn on the same grid as a long one,
+        so the axis keeps its marks and the plot reads as an empty stretch rather than a line.
+        """
         x_min = -0.5
         x_max = 1.0 + max(
             (layer.x_data.max() for layer in self.layers.values() if layer.x_data.size > 0),
             default=self._layout.graph.max_x,
         )
-        self.x_range = (x_min, x_max)
+        self.x_range = (x_min, max(x_max, x_min + self._layout.bar_plot.minimum_span))
         self._update_axes_limits()
 
     def _update_display(self) -> None:

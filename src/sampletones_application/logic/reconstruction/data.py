@@ -5,7 +5,6 @@ from typing import Dict, List, Optional, Self, Tuple
 
 import numpy as np
 
-from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.audio import load_stems, mix
 from sampletones_core.configs import Config
@@ -26,7 +25,6 @@ class ReconstructionData:
     config: Config
     reconstruction: Reconstruction
     stem_audios: Tuple[np.ndarray, ...]
-    feature_data: FeatureData
     filepath: Optional[Path]
 
     @classmethod
@@ -67,7 +65,6 @@ class ReconstructionData:
             self,
             reconstruction=reconstruction,
             config=reconstruction.config,
-            feature_data=FeatureData.load(reconstruction),
             filepath=filepath,
             name=self._derive_name(reconstruction, filepath),
         )
@@ -76,14 +73,13 @@ class ReconstructionData:
         """Rebinds this data to an edited reconstruction, keeping name and origin.
 
         An edit produces a fresh reconstruction object; the display name and file location
-        stand, so the reconstruction, its derived features and the recordings its entries
-        hold are what the rebind refreshes.
+        stand, so the reconstruction and the recordings its entries hold are what the rebind
+        refreshes.
         """
         return replace(
             self,
             reconstruction=reconstruction,
             config=reconstruction.config,
-            feature_data=FeatureData.load(reconstruction),
             stem_audios=self._recordings_for(reconstruction),
         )
 
@@ -108,14 +104,10 @@ class ReconstructionData:
         filepath: Optional[Path],
         name: str,
     ) -> Self:
-        stem_audios = cls._load_stem_audios(reconstruction)
-        feature_data = FeatureData.load(reconstruction)
-
         return cls(
             config=reconstruction.config,
             reconstruction=reconstruction,
-            stem_audios=stem_audios,
-            feature_data=feature_data,
+            stem_audios=cls._load_stem_audios(reconstruction),
             filepath=filepath,
             name=name,
         )

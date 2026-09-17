@@ -783,11 +783,17 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         config: FeaturePlotConfig,
         data: np.ndarray,
     ) -> Tuple[int, int, Optional[Tuple[int, ...]]]:
+        """The bounds and the ticks one dimension is drawn between.
+
+        A dimension reading around zero takes bounds from the widest value it writes, so an
+        envelope describing no frame stands at the floor the empty reading gives it and the
+        plot keeps a grid to draw on.
+        """
         y_min = config.y_min
         y_max = config.y_max
         y_ticks = config.y_ticks
         if y_min == -1.0 and y_max == -1.0:
-            max_abs_value = float(np.max(np.abs(data)))
+            max_abs_value = float(np.max(np.abs(data))) if data.size else 0.0
             y_min = -max_abs_value
             y_max = max_abs_value
 

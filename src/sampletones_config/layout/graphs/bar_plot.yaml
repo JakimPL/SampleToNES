@@ -3,3 +3,4 @@ min_y: 0.0
 max_y: 100.0
 bar_weight: 0.8
 hover_alpha: 80
+minimum_span: 2.0

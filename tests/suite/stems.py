@@ -11,6 +11,7 @@ from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
@@ -103,6 +104,14 @@ def write_three_stem_recordings(
         paths.append(path)
 
     return paths[0], paths[1], paths[2]
+
+
+def everything_heard(reconstruction: Reconstruction) -> StemSelection:
+    """The reader listening to every recording on every channel, as a fresh document reads."""
+    return StemSelection.everywhere(
+        frozenset(reconstruction.stems_data.config.entries_by_id),
+        ChannelName.items(),
+    )
 
 
 def recorded_from(

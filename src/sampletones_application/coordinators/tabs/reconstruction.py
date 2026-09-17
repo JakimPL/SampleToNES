@@ -288,6 +288,7 @@ class ReconstructionTabCoordinator:
 
         self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view
         self._reconstruction_panel_logic.on_stems_view_changed = self._reconstruction_stems_panel.update_view
+        self._reconstruction_panel_logic.on_heard_changed = self._reconstruction_instruments_logic.update_display
         self._reconstruction_panel_logic.on_audio_data_changed = self._on_audio_data_changed
         self._reconstruction_panel_logic.on_waveform_load_changed = self._reconstruction_plot_panel.load_waveform_data
         self._reconstruction_panel_logic.on_waveform_update_changed = (
