@@ -85,13 +85,13 @@ class StemsMessages:
     def _row_gestures(self, row: StemRowViewModel) -> Tuple[str, ...]:
         """What a reader can do to a recording, in the order the list offers it.
 
-        A list that sounds a row says so, since a double-click is the one gesture nothing on the
-        row draws; a list that neither drags nor reveals reads as the name alone.
+        A list that sounds or reveals a row says so, since a double-click is the one gesture
+        nothing on the row draws; a list that neither drags nor reveals reads as the name alone.
         """
         lines: Tuple[str, ...] = ()
         if self._offer.drags(self._view):
             lines += (self._language_manager["global.stems.message.status_row_drag"].format(name=row.name),)
-        if self._host.activatable:
+        if self._host.revealable:
             lines += (self._language_manager["global.stems.message.status_row_reveal"].format(name=row.name),)
 
         if self._host.playable:

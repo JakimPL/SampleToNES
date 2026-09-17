@@ -32,6 +32,7 @@ class Host:
 
     activatable: bool = False
     playable: bool = False
+    revealable: bool = False
     has_menu: bool = False
 
 
@@ -176,23 +177,21 @@ class TestWhatARowSaysAboutDragging(BaseTestSuite):
         assert (drag in line) is test_case.expected
 
 
-class TestWhatARowSaysAboutTheClickItTakes(BaseTestSuite):
-    """A click reaches the owner wherever one answers, so the line naming it stands beside the
-    drag rather than behind it."""
+class TestWhatARowSaysAboutTheDoubleClickItTakes(BaseTestSuite):
+    """A double-click reaches the owner wherever one answers, so the line naming it stands beside
+    the drag rather than behind it."""
 
-    def test_a_list_drawing_one_run_of_rows_names_the_click(self) -> None:
+    def test_a_list_drawing_one_run_of_rows_names_the_gesture(self) -> None:
         kick = recording()
 
-        line = messages(kick, collapse_levels=True, dragging=True, host=Host(activatable=True)).name(user_data=kick.key)
+        line = messages(kick, collapse_levels=True, dragging=True, host=Host(revealable=True)).name(user_data=kick.key)
 
         assert template("status_row_reveal").format(name=kick.name) in line
 
-    def test_a_banded_list_names_the_drag_and_the_click_together(self) -> None:
+    def test_a_banded_list_names_the_drag_and_the_gesture_together(self) -> None:
         kick = recording()
 
-        line = messages(kick, collapse_levels=False, dragging=True, host=Host(activatable=True)).name(
-            user_data=kick.key
-        )
+        line = messages(kick, collapse_levels=False, dragging=True, host=Host(revealable=True)).name(user_data=kick.key)
 
         assert template("status_row_drag").format(name=kick.name) in line
         assert template("status_row_reveal").format(name=kick.name) in line

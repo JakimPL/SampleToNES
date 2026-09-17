@@ -111,7 +111,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
             self._stems_list.create(self._body_container, show=False)
 
         self._stems_list.on_channels_changed = self._on_channels_changed
-        self._stems_list.on_row_activated = self._on_row_activated
+        self._stems_list.on_row_revealed = self._on_row_revealed
         self._stems_list.on_remove_requested = self._on_remove_requested
 
     def update_view(self, view_model: ReconstructionStemsViewModel) -> None:
@@ -195,8 +195,12 @@ class GUIReconstructionStemsPanel(GUIPanel):
     def _on_remove_requested(self, key: str) -> None:
         self.call(self.on_stem_remove_requested, int(key))
 
-    def _on_row_activated(self, key: str) -> None:
-        """A clicked row shows its recording where it sits on disk, whichever way it now reads."""
+    def _on_row_revealed(self, key: str) -> None:
+        """A double-clicked row shows its recording where it sits on disk.
+
+        Leaving the file browser to a deliberate gesture keeps a click free to pick a row, which
+        is what a reader does far more often.
+        """
         row = self._stems_list.row(key)
         if row is not None and row.available and row.path is not None:
             open_path_in_explorer(row.path)

@@ -26,6 +26,8 @@ Click the waveform to play from that point. While playback is paused, a click mo
 
 The **Stems** card lists the recordings used to build a reconstruction. It groups them by the level each one was given. Every row has a checkbox for each channel that the recording used, and the checkbox at the front toggles all of them.
 
+Double-click a row to show that recording in your file browser.
+
 Under the waveform is a row of colored bars, one line per channel. A letter at the left of each line names its channel: **P** for Pulse 1, **p** for Pulse 2, **T** for Triangle and **N** for Noise. Each bar shows which recording played that stretch, in the recording's own color; a dark stretch means nothing was played there. The bars appear when a reconstruction was built from more than one recording.
 
 Uncheck a channel to silence it in the waveform, in playback, in the original audio and in a WAV export. The **Instruments** panel follows too: it shows the envelopes of the part you are listening to, and the sizes it states measure that part. Uncheck every recording on a channel and the channel reads as empty. This lets you see and hear what one recording added, channel by channel. The saved reconstruction keeps every channel, whatever you uncheck.

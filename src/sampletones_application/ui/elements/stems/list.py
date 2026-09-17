@@ -133,6 +133,7 @@ class GUIStemsList(CallbackMixin):
         self.on_dropped_on_row: Optional[KeyPairCallback] = None
         self.on_dropped_on_level: Optional[KeyOffsetCallback] = None
         self.on_row_opened: Optional[StringCallback] = None
+        self.on_row_revealed: Optional[StringCallback] = None
         self.on_row_picked: Optional[StringCallback] = None
         self.on_selection_cleared: Optional[VoidCallback] = None
 
@@ -144,6 +145,7 @@ class GUIStemsList(CallbackMixin):
         self._gestures.on_dropped_on_row = lambda key, target: self.call(self.on_dropped_on_row, key, target)
         self._gestures.on_dropped_on_level = lambda key, position: self.call(self.on_dropped_on_level, key, position)
         self._gestures.on_row_opened = lambda key: self.call(self.on_row_opened, key)
+        self._gestures.on_row_revealed = lambda key: self.call(self.on_row_revealed, key)
         self._gestures.on_row_picked = lambda key: self.call(self.on_row_picked, key)
         self._gestures.on_folder_toggled = self.toggle_folder
 
@@ -166,6 +168,11 @@ class GUIStemsList(CallbackMixin):
     def playable(self) -> bool:
         """The owner sounds a recording, so a double-click on a row reaches something."""
         return self.on_row_opened is not None
+
+    @property
+    def revealable(self) -> bool:
+        """The owner shows a recording on disk, so a double-click on a row reaches something."""
+        return self.on_row_revealed is not None
 
     @property
     def has_menu(self) -> bool:
