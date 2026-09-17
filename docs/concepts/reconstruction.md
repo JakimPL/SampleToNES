@@ -252,11 +252,11 @@ score every held channel once more with its source's other channels sounding
 
 A frame one channel renders whole therefore sounds one channel: once the triangle covers
 a sine, adding a pulse or the noise raises the cost, and those channels hold their
-silence. Where several channels share one generator kind, the lowest free channel of that
-kind represents it during scoring, so successive picks over one kind land on the lowest
-free channel. A channel no pick took keeps its column, headed by its silence, so the
+silence. Where several channels share one generator kind at one drive, the lowest free channel
+of that group represents it during scoring, so successive picks over one kind land on the
+lowest free channel. A channel no pick took keeps its column, headed by its silence, so the
 decoder may still sound it where the frames around ask for it; it counts against its
-source's cap, so no decoded frame sounds more channels than the cap allows. The last
+source's count, so no decoded frame sounds more channels than that count. The last
 pass lets a channel taken early fall silent where the later channels cover its sound, or
 sound where they leave room. A channel no source may hold **rests**: it holds its
 channel's null instruction for that frame, which is what keeps every channel's stream in
@@ -268,10 +268,10 @@ resting.
 
 A classic single-file conversion is one source covering every enabled channel, so the
 one mix answers the frame itself and every channel in each frame the source sounds in is
-held, sounding or silent. Several sources, a precedence hierarchy and a per-source
-channel cap are the general case, described in [Stems reconstruction](stems.md); there
-each mix answers one source's own sound, which is what makes the channel a source wins
-carry that source's material.
+held, sounding or silent. Several sources, a precedence hierarchy, a drive per source
+channel and a per-source count of channels sounding at once are the general case,
+described in [Stems reconstruction](stems.md); there each mix answers one source's own
+sound, which is what makes the channel a source wins carry that source's material.
 
 ### 5.2 Greedy decoding
 

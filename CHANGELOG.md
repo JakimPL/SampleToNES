@@ -4,7 +4,7 @@
 
 * Added NSF player and export.
 * Added stems conversion: to mix several recordings into one reconstruction.
-* Improved reconstruction: a channel sounds only where it brings the frame closer to the recording, so a plain tone plays on one channel.
+* Improved clarity of reconstructions.
 * Bumped the reconstruction data-version to `2.2` with backward compatibility for `2.1`.
 * Bumped the library data-version to `2.1` with backward compatibility for `2.0`.
 

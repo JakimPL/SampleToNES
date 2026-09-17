@@ -51,8 +51,8 @@ A `.stn` file holds:
   per channel, the source holding each frame (`stems_data`). Every reconstruction
   carries one: a conversion from a single file records one stem covering every
   channel it plays. A frame whose channel is silent records the resting stem id,
-  `-1`: a frame no source took, where a channel cap or a hierarchy left it free, and a
-  frame the decoding settled on a silent instruction.
+  `-1`: a frame no source took, where a source's count of channels at once or a
+  hierarchy left it free, and a frame the decoding settled on a silent instruction.
 
 A channel standing by rests at a reference pitch of its own, so the first envelope
 written into it sounds on a mid-range note, and it leaves every dimension it offers
@@ -62,13 +62,25 @@ four, with the rest coming back standing by.
 
 The stems setup is also what `sampletones convert --stems` reads, written as JSON with the
 same fields: one entry per recording, in the order the recordings are given, each naming the
-channels it may occupy and the ones it bends; a hierarchy listing the stem ids by precedence
-level; and a channel cap. Two recordings, the first on the pulses and the second on the rest:
+channels it may occupy, the ones it bends, the `drives` it pushes each of them at and the
+`channel_cap` channels it may sound at once; and a hierarchy listing the stem ids by
+precedence level. An entry stating no `drives` is read at unit drive on every channel it
+holds, and one stating no `channel_cap` may sound all four. Two recordings, the first on the
+pulses with its second pulse pushed harder and held to one channel a frame, the second on
+the rest as it stands:
 
 ```json
 {
   "entries": [
-    {"id": 0, "settings": {"channels": ["pulse1", "pulse2"], "bends": ["pulse1", "pulse2"]}},
+    {
+      "id": 0,
+      "settings": {
+        "channels": ["pulse1", "pulse2"],
+        "bends": ["pulse1", "pulse2"],
+        "drives": {"pulse1": 1.0, "pulse2": 2.5},
+        "channel_cap": 1
+      }
+    },
     {"id": 1, "settings": {"channels": ["triangle", "noise"], "bends": ["triangle"]}}
   ],
   "hierarchy": {"levels": [[0], [1]]}
@@ -100,7 +112,11 @@ records the source audio as one path per stem and carries the `stems_data` recor
 on every reconstruction; a file written before either existed is read with its
 single path listed and a one-stem record synthesized from what it plays. The
 channel selection lives on that record — each entry states the settings its stem
-was converted with — so the embedded configuration carries none.
+was converted with: the channels it held, the drive on each of them, and how many
+of them it sounded at once — so the embedded configuration carries the scoring
+settings alone. A file written before the entries carried drives is read with the
+drive its configuration stated written onto every channel each entry holds, and
+with the run's channel cap written onto every entry.
 
 ## Storage and export
 

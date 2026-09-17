@@ -38,7 +38,11 @@ approximation by its channel, names the embedded config's channel selection the
 same way and stamps that config with the target version, lists the source audio
 as one path per stem, and synthesizes the stems record every 2.2 file carries —
 one stem covering every enabled channel and holding every frame the file plays,
-which is what the conversion that wrote the file did.
+which is what the conversion that wrote the file did. It also moves what the run
+once held globally onto each entry of that record: the config's drive reaches
+every channel an entry holds, its channel cap becomes the entry's own count, and
+the config lets both fields go. The step fills only what a payload lacks, so a
+record already carrying per-entry settings travels unchanged.
 
 ### A version belongs to a release
 

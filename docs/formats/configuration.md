@@ -47,16 +47,16 @@ change any of these and a different library is selected or generated.
 
 ## `generation`
 
-How candidates are scored. It carries a few top-level keys and groups the
-scoring controls into `calculation`, `weights`, `metric`, and `decoder`.
+How candidates are scored. It carries one top-level key and groups the scoring
+controls into `calculation`, `weights`, `metric`, `decoder`, and `refinement`.
 
-Which channels a conversion uses is stated by the conversion itself — per
-recording, in the converter — so it is a setting of the interface rather than a
-configuration key.
+Which channels a conversion uses, how hard each of them is pushed and how many of
+them a recording may sound at once are stated by the conversion itself — per
+recording, in the converter — so they are settings of the interface, recorded in
+the [stems setup](reconstructions.md) a reconstruction carries.
 
 | Key | Meaning | Values |
 | --- | --- | --- |
-| `drive` | how hard the channels are pushed (alias: `mixer`) | 0 < value ≤ 5 |
 | `reset_phase` | reset oscillator phase within each instruction | `true` / `false` |
 
 ### `generation.calculation`

@@ -33,11 +33,19 @@ A folder's checkboxes show the channels of all the recordings inside it:
 
 Click the checkbox to change the channel for all recordings in the folder. To change the channel for one recording, open the folder first: click the marker next to the folder name, or double-click the folder name. Each recording inside then has its own checkboxes.
 
-The **Source settings** card has **Drive**, which sets how hard the channels are pushed. It applies to the whole conversion.
+## Settings for one recording
 
-Below **Drive**, the card shows the name of the recording you selected in the list and a checkbox for each of its channels. **Pulse 1**, **Pulse 2**, and **Triangle** also have a **bend** checkbox. This tunes each note to the recording's exact pitch. Noise has no bend.
+The **Source settings** card sets how the recording you selected in the list uses its channels. It has one line per channel:
 
-**Channels per source** is on the **Converter** card, below the list. It limits how many channels one recording can use at the same time, from 1 to 4. Set it to 1 to make each recording use one channel.
+- **on** repeats the checkbox in the list, so you can also switch a channel there.
+- **bend** tunes each note to the recording's exact pitch. **Pulse 1**, **Pulse 2**, and **Triangle** have it; noise has none.
+- **drive** sets how hard the recording pushes that channel. `1.00` is the calibrated level, and up to `5.00` pushes it harder, which suits a part that sits quietly under the others. Drag the slider, or Ctrl-click it to type a value.
+
+**Channels at once**, below the lines, sets how many of its channels the recording may sound in a single frame. Set it to 1 to hear the recording on one channel at a time. It never sounds more channels than it uses.
+
+A folder shows what the recordings inside it agree on and reads **mixed** where they differ. Changing anything settles every recording in the folder on it.
+
+With no row selected, the card reads **New recordings** and holds the settings every recording you add starts with. The app remembers them between sessions.
 
 ## One reconstruction each, or one mix from all
 

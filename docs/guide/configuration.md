@@ -4,9 +4,9 @@ _SampleToNES_ converts audio with a **generation configuration**. The configurat
 rate, the NES frequency, how the audio is analyzed and how sounds are compared. The settings you
 change most often are on the **Main** tab. The configuration file has the rest.
 
-You choose the channels each recording uses in the converter's list, each time you set up a
-conversion. See [choosing which channels a recording
-uses](converting.md#choosing-which-channels-a-recording-uses).
+You choose the channels each recording uses, how hard it pushes each of them, and how many of
+them it sounds at once on the **Main** tab, each time you set up a conversion. See
+[settings for one recording](converting.md#settings-for-one-recording).
 
 ## Settings on the Main tab
 
@@ -14,8 +14,9 @@ Three cards on the **Main** tab have the everyday settings:
 
 - **General settings**: **Normalize audio**, **Quantize audio**, and the **Sample rate** and **NES
   frequency** a library is built for.
-- **Source settings**: **Drive**, which sets how hard the channels are pushed, and the channels and
-  bends of the recording you selected in the converter's list.
+- **Source settings**: the channels and bends of the recording you selected in the converter's
+  list, the drive each of those channels is pushed at, and how many of them the recording may
+  sound at once.
 - **Advanced settings**: **Method** and **Feature scaling**, which set how the app measures the
   frequencies in the audio, the number of **Workers**, and the library and output folders. Choose
   **View ▸ Show advanced settings** to show this card. [Reconstruction
