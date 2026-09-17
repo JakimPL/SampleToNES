@@ -265,6 +265,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             reconstruction_data.waveform_data(self._stem_selection),
             channels,
         )
+        self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         self._emit_audio_data()
 
     def set_stem_channels(

@@ -20,9 +20,10 @@ from sampletones_application.view_model.reconstruction.paths.state import (
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
+from sampletones_application.view_model.shared.ownership import OwnershipRibbonViewModel
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
 from sampletones_core.constants.enums import AudioSourceType, ChannelName, bending_channels
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.instructions import PulseInstruction, TriangleInstruction
@@ -1236,6 +1237,101 @@ class TestWhatTheEnvelopesShow:
         panel_logic.set_stem_channels(1, frozenset())
 
         assert len(reported) == 1
+
+
+class TestTheLanesTheRibbonStandsOn:
+    """The lanes answer for the channels the reader has on, and follow every choice that moves them."""
+
+    @pytest.fixture(name="stems_data")
+    def stems_data_fixture(self, tmp_path: Path) -> ReconstructionData:
+        """Two recordings, one holding the first pulse and one the triangle."""
+        pulse = [ChannelName.PULSE1]
+        triangle = [ChannelName.TRIANGLE]
+        stems_config = StemsConfig(
+            entries=[
+                StemEntry(id=0, settings=StemSettings(channels=pulse, bends=bending_channels(pulse))),
+                StemEntry(id=1, settings=StemSettings(channels=triangle, bends=bending_channels(triangle))),
+            ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]]),
+        )
+        stems_reconstruction = Reconstruction.create(
+            instructions={
+                ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)],
+                ChannelName.TRIANGLE: [TriangleInstruction(on=True, pitch=48)],
+            },
+            config=Config(),
+            coefficient=1.0,
+            audio_filepath=(tmp_path / "a.wav", tmp_path / "b.wav"),
+            stems_data=StemsData(
+                config=stems_config,
+                assignments=[
+                    ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0]),
+                    ChannelAssignment(channel_name=ChannelName.TRIANGLE, stem_ids=[1]),
+                ],
+            ),
+        )
+        return ReconstructionData.from_reconstruction(stems_reconstruction, name="Sample")
+
+    @staticmethod
+    def _ribbons(panel_logic: ReconstructionPanelLogic) -> List[OwnershipRibbonViewModel]:
+        received: List[OwnershipRibbonViewModel] = []
+        panel_logic.on_ownership_changed = received.append
+        return received
+
+    def test_a_lane_stands_for_every_channel_the_reader_has_on(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        received = self._ribbons(panel_logic)
+
+        panel_logic.display_reconstruction()
+
+        assert [lane.channel_name for lane in received[-1].lanes] == [ChannelName.PULSE1, ChannelName.TRIANGLE]
+
+    def test_a_channel_switched_off_leaves_the_lanes(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        received = self._ribbons(panel_logic)
+
+        panel_logic.set_selected_channels([ChannelName.PULSE1])
+
+        assert [lane.channel_name for lane in received[-1].lanes] == [ChannelName.PULSE1]
+
+    def test_a_recording_switched_off_leaves_its_stretches_resting(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        received = self._ribbons(panel_logic)
+
+        panel_logic.set_stem_channels(0, frozenset())
+
+        pulse_lane = next(lane for lane in received[-1].lanes if lane.channel_name == ChannelName.PULSE1)
+        assert [run.stem_id for run in pulse_lane.runs] == [RESTING_STEM_ID]
+
+    def test_a_document_answering_to_one_recording_offers_no_lanes(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, loaded_data)
+        received = self._ribbons(panel_logic)
+
+        panel_logic.display_reconstruction()
+
+        assert not received[-1].is_drawn
 
 
 class TestTheScopeAnEditWritesIn:
