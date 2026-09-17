@@ -68,6 +68,7 @@ class TestBuildInstrumentTable:
             arpeggiated,
             LEAD_PITCH,
             (),
+            heard=project_fixture.lead.reconstruction.recorded_stem_ids,
         )
 
         instruments, slots = build_instrument_table(project_fixture.project)

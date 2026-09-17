@@ -66,6 +66,7 @@ def make_pulse_reconstruction(
             list(instructions),
             reconstruction.initial_pitches[ChannelName.PULSE1],
             held_features,
+            heard=reconstruction.recorded_stem_ids,
         )
 
     return reconstruction

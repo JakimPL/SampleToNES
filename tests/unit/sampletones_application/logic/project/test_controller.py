@@ -634,6 +634,7 @@ class TestLiveLinkedReconstruction:
             new_instructions,
             72,
             (),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         stored = controller.project.voice(sample.id).reconstruction

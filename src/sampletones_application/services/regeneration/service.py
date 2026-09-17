@@ -84,6 +84,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 instructions,
                 features.initial_pitch,
                 features.held_features,
+                heard=reconstruction.recorded_stem_ids,
             )
             self._emit(
                 ServiceSuccess(

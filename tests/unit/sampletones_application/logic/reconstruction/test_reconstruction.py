@@ -402,6 +402,7 @@ class TestReconstructionPanelLogicPlayingChannels:
             [TriangleInstruction(on=True, pitch=48)],
             48,
             (),
+            heard=loaded_data.reconstruction.recorded_stem_ids,
         )
         received = self._received(panel_logic)
 
@@ -423,6 +424,7 @@ class TestReconstructionPanelLogicPlayingChannels:
             [],
             60,
             (),
+            heard=loaded_data.reconstruction.recorded_stem_ids,
         )
         received = self._received(panel_logic)
 

@@ -47,6 +47,7 @@ def _stand_by(sample: Sample, channel: ChannelName) -> None:
         [],
         sample.reconstruction.initial_pitches[channel],
         (FeatureKey.VOLUME, FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE),
+        heard=sample.reconstruction.recorded_stem_ids,
     )
 
 

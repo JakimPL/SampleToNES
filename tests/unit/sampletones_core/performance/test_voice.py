@@ -59,6 +59,7 @@ def _reconstruction(
         list(instructions),
         reconstruction.initial_pitches[channel_name],
         held_features,
+        heard=reconstruction.recorded_stem_ids,
     )
     return reconstruction
 

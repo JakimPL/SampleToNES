@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import Dict, Final, List, Optional, Sequence, Tuple
 
-import numpy as np
-
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.order import (
     OrderBlock,
@@ -19,7 +17,6 @@ from sampletones_application.view_model.sequencer.slot import SUBCOLUMNS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import (
-    DEFAULT_CHANNELS,
     ChannelName,
 )
 from sampletones_core.instructions import (
@@ -61,18 +58,16 @@ def sample_reconstruction(channels: Sequence[ChannelName]) -> Reconstruction:
     Each channel carries the instruction its own channel sounds, since the instruction type is
     what names the exporter a channel is read through — so a reading taken off this reconstruction
     is the reading the channel gives. The audio spans one frame per instruction, which keeps the
-    stems record the reconstruction carries parallel to the stored waveforms.
+    stems record the reconstruction carries parallel to the frames it describes.
     """
     config = Config()
-    length = config.library.frame_length
     instructions = {channel: [_instruction(channel)] for channel in channels}
-    approximations = {channel: np.zeros(length, dtype=np.float32) for channel in channels}
     return Reconstruction.create(
         instructions=instructions,
         config=config,
         coefficient=1.0,
         audio_filepath=(Path("/dev/null"),),
-        stems_data=single_entry_stems_data(list(DEFAULT_CHANNELS), instructions),
+        stems_data=single_entry_stems_data(list(channels), instructions),
     )
 
 

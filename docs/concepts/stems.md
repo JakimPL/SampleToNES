@@ -404,9 +404,13 @@ frame's owner follows from the frame it was and the frame it becomes:
 | sounding before and after | its owner, unchanged |
 | sounding, edited silent | resting |
 | resting, edited into play | authored |
-| held by a recording the reader hears, edited into play | its owner, unchanged |
+| resting, edited silent | resting |
 | written past the end of the stream | authored where it sounds, resting where it stays silent |
 | dropped from the end of the stream | gone, together with its ownership |
+
+Rest and silence naming the same frames is what makes the table total: a frame's owner before
+the edit already says whether it sounded, so the three lines above the last two cover every
+frame the edit keeps.
 
 A stream edited down to no frame leaves its channel standing by, and one written back into play
 comes back wholly authored. The setup, the recorded sources, the identifier, the configuration

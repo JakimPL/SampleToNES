@@ -1,0 +1,205 @@
+from dataclasses import dataclass
+from typing import AbstractSet, Final, FrozenSet, List, Sequence
+
+import pytest
+
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
+from sampletones_core.instructions import InstructionUnion, PulseInstruction
+from sampletones_core.reconstructions.reconstruction.stems.ownership import carried_edit, writes_reach
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
+
+STEM_A: Final[int] = 0
+STEM_B: Final[int] = 1
+EVERY_STEM: Final[FrozenSet[int]] = frozenset({STEM_A, STEM_B})
+NOTHING_HEARD: Final[FrozenSet[int]] = frozenset()
+
+
+def _pulse(pitch: int) -> PulseInstruction:
+    return PulseInstruction(on=True, pitch=pitch, volume=8, duty_cycle=0)
+
+
+def _silence() -> PulseInstruction:
+    return PulseInstruction.null_instruction()
+
+
+class TestTheOwnerAFrameLeavesAnEditWith(BaseTestSuite):
+    """A frame's owner follows from the frame it was and the frame it becomes.
+
+    Rest and silence name the same frames, so the three outcomes below cover every frame:
+    one that sounds through the edit keeps its owner, one the edit quiets rests, and one the
+    edit brings into play is the reader's own.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        owner: int
+        previous: InstructionUnion
+        proposed: InstructionUnion
+        expected: int
+
+    test_cases = (
+        TestCase(
+            label="a recording's frame edited to another note keeps its recording",
+            owner=STEM_A,
+            previous=_pulse(60),
+            proposed=_pulse(64),
+            expected=STEM_A,
+        ),
+        TestCase(
+            label="a recording's frame edited silent rests",
+            owner=STEM_A,
+            previous=_pulse(60),
+            proposed=_silence(),
+            expected=RESTING_STEM_ID,
+        ),
+        TestCase(
+            label="a resting frame edited into play is the reader's own",
+            owner=RESTING_STEM_ID,
+            previous=_silence(),
+            proposed=_pulse(60),
+            expected=AUTHORED_STEM_ID,
+        ),
+        TestCase(
+            label="a resting frame edited silent rests on",
+            owner=RESTING_STEM_ID,
+            previous=_silence(),
+            proposed=_silence(),
+            expected=RESTING_STEM_ID,
+        ),
+        TestCase(
+            label="a frame the reader wrote keeps the reader through another edit",
+            owner=AUTHORED_STEM_ID,
+            previous=_pulse(60),
+            proposed=_pulse(64),
+            expected=AUTHORED_STEM_ID,
+        ),
+        TestCase(
+            label="a frame the reader wrote rests once the reader quiets it",
+            owner=AUTHORED_STEM_ID,
+            previous=_pulse(60),
+            proposed=_silence(),
+            expected=RESTING_STEM_ID,
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_the_owner_the_frame_carries(self, test_case: TestCase) -> None:
+        carried = carried_edit(
+            [test_case.previous],
+            [test_case.owner],
+            [test_case.proposed],
+            heard=EVERY_STEM,
+        )
+
+        assert carried.stem_ids == [test_case.expected]
+
+
+class TestAnEditThatChangesTheFrameCount:
+    def test_frames_written_past_the_end_are_the_readers_own(self) -> None:
+        carried = carried_edit([_pulse(60)], [STEM_A], [_pulse(60), _pulse(62)], heard=EVERY_STEM)
+
+        assert carried.stem_ids == [STEM_A, AUTHORED_STEM_ID]
+
+    def test_a_silent_frame_written_past_the_end_rests(self) -> None:
+        carried = carried_edit([_pulse(60)], [STEM_A], [_pulse(60), _silence()], heard=EVERY_STEM)
+
+        assert carried.stem_ids == [STEM_A, RESTING_STEM_ID]
+
+    def test_frames_the_edit_drops_take_their_ownership_along(self) -> None:
+        carried = carried_edit(
+            [_pulse(60), _pulse(62)],
+            [STEM_A, STEM_B],
+            [_pulse(60)],
+            heard=EVERY_STEM,
+        )
+
+        assert carried.stem_ids == [STEM_A]
+        assert carried.instructions == [_pulse(60)]
+
+    def test_a_channel_edited_down_to_no_frame_carries_no_ownership(self) -> None:
+        carried = carried_edit([_pulse(60)], [STEM_A], [], heard=EVERY_STEM)
+
+        assert carried.instructions == []
+        assert carried.stem_ids == []
+
+    def test_a_channel_written_back_into_play_comes_back_the_readers_own(self) -> None:
+        carried = carried_edit([], [], [_pulse(60), _silence()], heard=EVERY_STEM)
+
+        assert carried.stem_ids == [AUTHORED_STEM_ID, RESTING_STEM_ID]
+
+
+class TestTheScopeAnEditWritesIn:
+    """A frame accepts a gesture where its owner is heard, where it rests, and where it is the reader's.
+
+    Every other frame reads as it stands, which is what lets one recording's part be shaped
+    while the recordings beside it carry on.
+    """
+
+    def test_a_frame_of_a_recording_the_reader_hears_takes_the_edit(self) -> None:
+        carried = carried_edit([_pulse(60)], [STEM_A], [_pulse(64)], heard=frozenset({STEM_A}))
+
+        assert carried.instructions == [_pulse(64)]
+        assert carried.stem_ids == [STEM_A]
+
+    def test_a_frame_of_a_recording_the_reader_left_out_stands_as_it_is(self) -> None:
+        carried = carried_edit([_pulse(60)], [STEM_A], [_pulse(64)], heard=frozenset({STEM_B}))
+
+        assert carried.instructions == [_pulse(60)]
+        assert carried.stem_ids == [STEM_A]
+
+    def test_a_resting_frame_takes_the_edit_whatever_is_heard(self) -> None:
+        carried = carried_edit([_silence()], [RESTING_STEM_ID], [_pulse(60)], heard=NOTHING_HEARD)
+
+        assert carried.instructions == [_pulse(60)]
+        assert carried.stem_ids == [AUTHORED_STEM_ID]
+
+    def test_a_frame_the_reader_wrote_takes_the_edit_whatever_is_heard(self) -> None:
+        carried = carried_edit([_pulse(60)], [AUTHORED_STEM_ID], [_pulse(64)], heard=NOTHING_HEARD)
+
+        assert carried.instructions == [_pulse(64)]
+        assert carried.stem_ids == [AUTHORED_STEM_ID]
+
+    def test_a_frame_written_past_the_end_takes_the_edit_whatever_is_heard(self) -> None:
+        carried = carried_edit([_pulse(60)], [STEM_A], [_pulse(60), _pulse(62)], heard=NOTHING_HEARD)
+
+        assert carried.instructions == [_pulse(60), _pulse(62)]
+        assert carried.stem_ids == [STEM_A, AUTHORED_STEM_ID]
+
+    def test_an_edit_the_scope_refuses_throughout_leaves_the_channel_as_it_stood(self) -> None:
+        previous = [_pulse(60), _pulse(62)]
+        stem_ids = [STEM_A, STEM_B]
+
+        carried = carried_edit(previous, stem_ids, [_silence(), _silence()], heard=NOTHING_HEARD)
+
+        assert carried.instructions == previous
+        assert carried.stem_ids == stem_ids
+
+    def test_an_edit_reaches_one_recordings_frames_and_leaves_the_others(self) -> None:
+        previous = [_pulse(60), _pulse(62), _silence()]
+        stem_ids = [STEM_A, STEM_B, RESTING_STEM_ID]
+
+        carried = carried_edit(
+            previous,
+            stem_ids,
+            [_pulse(70), _pulse(70), _pulse(70)],
+            heard=frozenset({STEM_A}),
+        )
+
+        assert carried.instructions == [_pulse(70), _pulse(62), _pulse(70)]
+        assert carried.stem_ids == [STEM_A, STEM_B, AUTHORED_STEM_ID]
+
+
+class TestTheFramesAnEditMayWrite:
+    @staticmethod
+    def _reach(stem_ids: Sequence[int], heard: AbstractSet[int]) -> List[bool]:
+        return writes_reach(stem_ids, heard)
+
+    def test_every_frame_is_reachable_while_every_recording_is_heard(self) -> None:
+        assert self._reach([STEM_A, STEM_B, RESTING_STEM_ID], EVERY_STEM) == [True, True, True]
+
+    def test_a_recording_left_out_holds_its_frames_back(self) -> None:
+        assert self._reach([STEM_A, STEM_B], frozenset({STEM_B})) == [False, True]
+
+    def test_resting_and_authored_frames_stay_reachable(self) -> None:
+        assert self._reach([RESTING_STEM_ID, AUTHORED_STEM_ID], NOTHING_HEARD) == [True, True]

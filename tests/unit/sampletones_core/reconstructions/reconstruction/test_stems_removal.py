@@ -74,7 +74,6 @@ def _reconstruction(
     owners: Mapping[ChannelName, Sequence[int]],
     *,
     instructions: Mapping[ChannelName, Sequence[InstructionUnion]],
-    approximations: Mapping[ChannelName, np.ndarray],
 ) -> Reconstruction:
     """A three-recording reconstruction whose frames are owned as ``owners`` states."""
     return Reconstruction.create(
@@ -123,12 +122,8 @@ def reconstruction() -> Reconstruction:
             ChannelName.NOISE: [STEM_B] * FRAME_COUNT,
         },
         instructions={
-            ChannelName.PULSE1: [_pulse(60), _pulse(61), _pulse(62), _pulse(63)],
+            ChannelName.PULSE1: [_pulse(60), _pulse(61), _pulse(62), PulseInstruction.null_instruction()],
             ChannelName.NOISE: [_noise() for _ in range(FRAME_COUNT)],
-        },
-        approximations={
-            ChannelName.PULSE1: _audio(PULSE_LEVEL),
-            ChannelName.NOISE: _audio(NOISE_LEVEL),
         },
     )
 
@@ -185,7 +180,7 @@ class TestTheReleasedFrames:
     def test_the_frames_it_held_state_silence(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_B)
 
-        assert _sounding(remaining, ChannelName.PULSE1) == [True, False, True, True]
+        assert _sounding(remaining, ChannelName.PULSE1) == [True, False, True, False]
 
     def test_the_frames_it_held_lose_their_samples(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_B)
@@ -200,6 +195,8 @@ class TestTheReleasedFrames:
             assert remaining.instructions[ChannelName.PULSE1][index] == (
                 reconstruction.instructions[ChannelName.PULSE1][index]
             )
+
+        for index in (0, 2):
             assert _frame(remaining.approximations[ChannelName.PULSE1], index).any()
 
     def test_the_channel_keeps_its_length(self, reconstruction: Reconstruction) -> None:
@@ -244,44 +241,15 @@ class TestAnEmptiedChannel:
                 ChannelName.NOISE: [RESTING_STEM_ID] * FRAME_COUNT,
             },
             instructions={
-                ChannelName.PULSE1: [_pulse(60), _pulse(61), _pulse(62), _pulse(63)],
-                ChannelName.NOISE: [_noise() for _ in range(FRAME_COUNT)],
-            },
-            approximations={
-                ChannelName.PULSE1: _audio(PULSE_LEVEL),
-                ChannelName.NOISE: _audio(NOISE_LEVEL),
+                ChannelName.PULSE1: [_pulse(60), _pulse(61), _pulse(62), PulseInstruction.null_instruction()],
+                ChannelName.NOISE: [NoiseInstruction.null_instruction() for _ in range(FRAME_COUNT)],
             },
         )
 
         remaining = without_stem(reconstruction, STEM_B)
 
-        assert _sounding(remaining, ChannelName.NOISE) == [True] * FRAME_COUNT
-        np.testing.assert_array_equal(
-            remaining.approximations[ChannelName.NOISE],
-            reconstruction.approximations[ChannelName.NOISE],
-        )
-
-    def test_a_channel_an_edit_re_derived_keeps_its_stream(self) -> None:
-        """A channel the assignment says nothing about is the editor's, so a removal passes it by."""
-        reconstruction = _reconstruction(
-            {ChannelName.PULSE1: [STEM_A, STEM_B, STEM_C, RESTING_STEM_ID]},
-            instructions={
-                ChannelName.PULSE1: [_pulse(60), _pulse(61), _pulse(62), _pulse(63)],
-                ChannelName.NOISE: [_noise() for _ in range(FRAME_COUNT)],
-            },
-            approximations={
-                ChannelName.PULSE1: _audio(PULSE_LEVEL),
-                ChannelName.NOISE: _audio(NOISE_LEVEL),
-            },
-        )
-
-        remaining = without_stem(reconstruction, STEM_B)
-
-        assert _sounding(remaining, ChannelName.NOISE) == [True] * FRAME_COUNT
-        np.testing.assert_array_equal(
-            remaining.approximations[ChannelName.NOISE],
-            reconstruction.approximations[ChannelName.NOISE],
-        )
+        assert _sounding(remaining, ChannelName.NOISE) == [False] * FRAME_COUNT
+        assert remaining.stems_data.assignments_by_channel[ChannelName.NOISE] == [RESTING_STEM_ID] * FRAME_COUNT
 
 
 class TestTheMixedApproximation:

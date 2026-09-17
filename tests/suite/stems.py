@@ -5,6 +5,7 @@ import numpy as np
 
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -15,6 +16,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy impo
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.types.path import Pathlike
 
+SINGLE_STEM_ID: Final[int] = 0
 STEM_A_ID: Final[int] = 0
 STEM_B_ID: Final[int] = 1
 STEM_C_ID: Final[int] = 2
@@ -37,9 +39,16 @@ def single_entry_stems_data(
     channels: List[ChannelName],
     instructions: Mapping[ChannelName, Sequence[InstructionUnion]],
 ) -> StemsData:
-    """The single-entry record for ``channels``, stem 0 owning each frame that plays and bending them."""
+    """The single-entry record for ``channels``, stem 0 owning each frame that sounds and bending them.
+
+    Rest and silence name the same frames, so a silent frame takes the resting stem id, which is
+    the shape a conversion records.
+    """
     assignments = [
-        ChannelAssignment(channel_name=channel_name, stem_ids=[0] * len(stream))
+        ChannelAssignment(
+            channel_name=channel_name,
+            stem_ids=[SINGLE_STEM_ID if instruction.on else RESTING_STEM_ID for instruction in stream],
+        )
         for channel_name, stream in instructions.items()
         if stream
     ]

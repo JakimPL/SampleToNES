@@ -11,6 +11,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
@@ -36,7 +37,7 @@ def _two_entry_stems_data() -> StemsData:
             ],
             hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
         ),
-        assignments=[],
+        assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
     )
 
 

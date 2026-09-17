@@ -153,7 +153,7 @@ class TestStemsDataRoundTrip:
                 ],
                 hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
             ),
-            assignments=[],
+            assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
         )
         reconstruction = Reconstruction.create(
             instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH)]},
@@ -214,7 +214,7 @@ class TestSourcePaths:
                 ],
                 hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
             ),
-            assignments=[],
+            assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
         )
         reconstruction = Reconstruction.create(
             instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH)]},
@@ -516,6 +516,7 @@ class TestInitialPitchReference:
             arpeggiated,
             _BASE_PITCH,
             (),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         features = reconstruction.export()[ChannelName.PULSE1]
@@ -531,6 +532,7 @@ class TestInitialPitchReference:
             [_pulse(_RESET_PITCH)],
             _RESET_PITCH,
             (),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         assert reconstruction.initial_pitches[ChannelName.PULSE1] == _RESET_PITCH
@@ -575,6 +577,7 @@ class TestHeldFeatures:
             [_pulse(_BASE_PITCH)] * 3,
             _BASE_PITCH,
             (FeatureKey.ARPEGGIO,),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         features = reconstruction.export()[ChannelName.PULSE1]
@@ -589,6 +592,7 @@ class TestHeldFeatures:
             [_pulse(_BASE_PITCH)] * 3,
             _BASE_PITCH,
             (FeatureKey.ARPEGGIO,),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         features = reconstruction.export()[ChannelName.PULSE1]
@@ -608,6 +612,7 @@ class TestHeldFeatures:
             [_pulse(_BASE_PITCH)] * 3,
             _BASE_PITCH,
             (FeatureKey.ARPEGGIO,),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         exported = reconstruction.export()
@@ -630,6 +635,7 @@ class TestHeldFeatures:
             [],
             resting_reference(ChannelName.PULSE1),
             resting_held_features(ChannelName.PULSE1),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         assert reconstruction.streams[ChannelName.PULSE1] == InstructionsItem.resting(ChannelName.PULSE1)
@@ -641,6 +647,7 @@ class TestHeldFeatures:
             [_pulse(_BASE_PITCH)] * 3,
             _BASE_PITCH,
             (FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE),
+            heard=reconstruction.recorded_stem_ids,
         )
         path = tmp_path / "held.stn"
 
@@ -690,6 +697,7 @@ class TestChannelSet:
             [],
             _BASE_PITCH,
             (FeatureKey.VOLUME, FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         assert reconstruction.playing_channels == ()
@@ -705,6 +713,7 @@ class TestChannelSet:
             [_pulse(_BASE_PITCH)] * 2,
             _BASE_PITCH,
             (),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         assert reconstruction.playing_channels == (ChannelName.PULSE1, ChannelName.PULSE2)
@@ -719,6 +728,7 @@ class TestChannelSet:
             [],
             _BASE_PITCH,
             (),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         assert reconstruction.approximations == {}
@@ -751,6 +761,7 @@ class TestChannelSet:
             [_pulse(_BASE_PITCH)],
             _BASE_PITCH,
             (),
+            heard=loaded.recorded_stem_ids,
         )
 
         assert [item.channel_name for item in loaded.instructions_data] == list(ChannelName.items())
@@ -815,6 +826,7 @@ class TestWithNesFrequency:
             [],
             _BASE_PITCH,
             (),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         retuned = reconstruction.with_nes_frequency(_RETUNED_FREQUENCY)

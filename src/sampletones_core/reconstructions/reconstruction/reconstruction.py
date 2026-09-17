@@ -4,9 +4,11 @@ import struct
 from functools import cached_property
 from pathlib import Path
 from typing import (
+    AbstractSet,
     Any,
     Dict,
     Final,
+    FrozenSet,
     Iterable,
     List,
     Mapping,
@@ -24,6 +26,7 @@ from sampletones_core.audio.mixing import mix
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.compatibility.upgrade import upgrade_binary
 from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.data import DataModel, Metadata, MetadataContract
 from sampletones_core.exporters import (
@@ -36,8 +39,11 @@ from sampletones_core.exporters import (
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.rendering import render_streams
+from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.ownership import UNHELD_STEM_IDS, carried_edit
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_shared.application import SAMPLETONES_RECONSTRUCTION_DATA_VERSION
 from sampletones_shared.exceptions import (
     IncompatibleReconstructionVersionError,
@@ -99,6 +105,63 @@ class Reconstruction(DataModel):
             raise ValueError("The recorded source paths number one per stems entry")
 
         return self
+
+    @model_validator(mode="after")
+    def _validate_record_answers_for_the_channels(self) -> Self:
+        """Holds the per-frame record to the channels it describes.
+
+        The record answers for the channels in play and for those alone, names one owner per
+        frame of each, and states silence and rest over the same frames. A frame a recording
+        holds lies on a channel that recording's settings occupy, while a frame the reader
+        wrote answers to no settings.
+
+        Raises:
+            ValueError: If the record names channels other than those in play, if a channel's
+                owners and frames differ in number, if a frame's owner names neither a recorded
+                entry nor rest nor the reader, if rest and silence name different frames, or if
+                a recording holds a channel its settings leave out.
+        """
+        entries = self.stems_data.config.entries_by_id
+        owned = self.stems_data.assignments_by_channel
+        playing = frozenset(self.playing_channels)
+        if frozenset(owned) != playing:
+            raise ValueError(f"The stems record names {sorted(owned)} where {sorted(playing)} play")
+
+        for channel_name in playing:
+            stream = self.instructions[channel_name]
+            stem_ids = owned[channel_name]
+            if len(stem_ids) != len(stream):
+                raise ValueError(
+                    f"The stems record gives {channel_name} {len(stem_ids)} owners for {len(stream)} frames"
+                )
+
+            for frame, (instruction, stem_id) in enumerate(zip(stream, stem_ids)):
+                self._validate_frame_owner(channel_name, frame, instruction, stem_id, entries)
+
+        return self
+
+    @staticmethod
+    def _validate_frame_owner(
+        channel_name: ChannelName,
+        frame: int,
+        instruction: InstructionUnion,
+        stem_id: int,
+        entries: Mapping[int, StemEntry],
+    ) -> None:
+        """Holds one frame's owner to the record's rules.
+
+        Raises:
+            ValueError: If the owner names nothing the setup knows, if rest and silence disagree,
+                or if a recording holds a channel its settings leave out.
+        """
+        if stem_id not in entries and stem_id not in UNHELD_STEM_IDS:
+            raise ValueError(f"Frame {frame} of {channel_name} names stem {stem_id}, which the setup leaves out")
+
+        if (stem_id == RESTING_STEM_ID) != (not instruction.on):
+            raise ValueError(f"Frame {frame} of {channel_name} states rest and silence over different frames")
+
+        if stem_id in entries and channel_name not in entries[stem_id].settings.channel_set:
+            raise ValueError(f"Frame {frame} gives stem {stem_id} the {channel_name} its settings leave out")
 
     @cached_property
     def approximations(self) -> Dict[ChannelName, np.ndarray]:
@@ -254,6 +317,8 @@ class Reconstruction(DataModel):
         instructions: List[InstructionUnion],
         initial_pitch: int,
         held_features: Iterable[FeatureKey],
+        *,
+        heard: AbstractSet[int],
     ) -> None:
         """Replaces one channel's instructions, reference pitch, and held dimensions.
 
@@ -262,23 +327,62 @@ class Reconstruction(DataModel):
         dimensions travel with them for the same reason: the frames state a value for every
         dimension, and this is what says which of them the instrument itself wrote.
 
-        The channel keeps its place among the streams however the edit leaves it, so one
-        cleared of every frame stands by and stays editable. Its audio is read afresh from the
-        stream it now carries.
+        The record follows the frames: each of them keeps the recording that held it, one the
+        edit quiets rests, and one it brings into play is the reader's own. ``heard`` names the
+        recordings the edit reaches on this channel, so a frame of a recording left out of it
+        stands as it is. A channel the edit clears of every frame stands by and stays editable;
+        its audio is read afresh from the stream it now carries.
+
+        Args:
+            channel_name: The channel the edit writes.
+            instructions: The stream the edit offers, one instruction per frame.
+            initial_pitch: The reference pitch the channel's arpeggio is measured against.
+            held_features: The dimensions the channel governs.
+            heard: The recordings the reader hears on this channel, which the edit reaches.
         """
+        carried = carried_edit(
+            self.instructions[channel_name],
+            self.stems_data.assignments_by_channel.get(channel_name, ()),
+            instructions,
+            heard=heard,
+        )
+
         streams = dict(self.streams)
         streams[channel_name] = InstructionsItem.create(
             channel_name=channel_name,
-            instructions=instructions,
+            instructions=carried.instructions,
             initial_pitch=initial_pitch,
             held_features=held_features,
         )
         self.instructions_data = [streams[name] for name in ChannelName.items()]
         self.stems_data = StemsData(
             config=self.stems_data.config,
-            assignments=[item for item in self.stems_data.assignments if item.channel_name != channel_name],
+            assignments=self._assignments_with(channel_name, carried.stem_ids),
         )
         self._invalidate_derived_caches(self)
+
+    def _assignments_with(
+        self,
+        channel_name: ChannelName,
+        stem_ids: List[int],
+    ) -> List[ChannelAssignment]:
+        """The per-channel record with one channel's owners replaced, in channel order.
+
+        A channel the edit leaves with no frame stands by, so it leaves the record along with
+        its stream.
+        """
+        replaced = {item.channel_name: item for item in self.stems_data.assignments}
+        if stem_ids:
+            replaced[channel_name] = ChannelAssignment(channel_name=channel_name, stem_ids=stem_ids)
+        else:
+            replaced.pop(channel_name, None)
+
+        return [replaced[name] for name in ChannelName.items() if name in replaced]
+
+    @property
+    def recorded_stem_ids(self) -> FrozenSet[int]:
+        """The recordings the document was built from, as a scope covering every one of them."""
+        return frozenset(self.stems_data.config.entries_by_id)
 
     def get_channel_instructions(
         self,
