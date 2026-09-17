@@ -14,6 +14,7 @@ class WaveformData:
     approximations: Dict[ChannelName, np.ndarray]
     coefficient: float
     frame_length: int
+    sample_rate: int
 
     def partials(self, channel_names: List[ChannelName]) -> np.ndarray:
         """Sums the selected generators' approximations, silent when none apply.

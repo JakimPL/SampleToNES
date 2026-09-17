@@ -23,6 +23,7 @@ def waveform_data(approximations: Dict[ChannelName, np.ndarray]) -> WaveformData
         approximations=approximations,
         coefficient=1.0,
         frame_length=2,
+        sample_rate=44100,
     )
 
 
@@ -69,6 +70,7 @@ class TestPartials:
             approximations={ChannelName.PULSE1: np.array([0.5, 0.5]), ChannelName.NOISE: approximation},
             coefficient=1.0,
             frame_length=2,
+            sample_rate=44100,
         )
 
         result = data.partials([ChannelName.PULSE1, ChannelName.NOISE])
@@ -84,6 +86,7 @@ class TestPartials:
             approximations={ChannelName.PULSE1: np.array([0.5, 0.5])},
             coefficient=1.0,
             frame_length=2,
+            sample_rate=44100,
         )
 
         result = data.partials([ChannelName.PULSE1])

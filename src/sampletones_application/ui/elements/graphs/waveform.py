@@ -15,6 +15,7 @@ from sampletones_application.tags.graphs import (
     TAG_GLOBAL_GRAPH_THEME_INDICATOR,
     TAG_GLOBAL_GRAPH_THEME_OVERLAY,
 )
+from sampletones_application.ui.elements.graphs.clock import clock_ticks
 from sampletones_application.ui.elements.graphs.gesture import PlotClickGesture
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.array import ArrayLayer
@@ -29,6 +30,7 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_children,
     dpg_delete_item,
 )
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.faded import FadedColor
@@ -38,6 +40,7 @@ from sampletones_core.constants.audio import START_OF_AUDIO
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.library import InstructionLibraryFragment
 from sampletones_shared.types.application import Sender
+from sampletones_shared.utils.time import seconds_from_samples
 
 
 class SeriesShade(StrEnum):
@@ -90,6 +93,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
         self.current_data: Optional[Union[InstructionLibraryFragment[Any], WaveformData]] = None
         self._plays_what_it_draws = False
+        self._sample_rate: int = 0
         self._series_themes: Dict[BaseColor, str] = {}
         self.current_position: int = 0
 
@@ -185,6 +189,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
     def _on_hover(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         super()._on_hover(sender, app_data, user_data)
+        FrameCallbackManager.set_frame_callback(self._restate_zoomed_clock_ticks)
         self._status_bar.set(
             self._msg_regenerating
             if self._reconstruction_dimmed
@@ -265,6 +270,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             color: The color the line is drawn in.
         """
         self._reconstruction_dimmed = False
+        self._sample_rate = 0
         self.clear_layers()
         self.add_layer(
             ArrayLayer(
@@ -343,9 +349,12 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._reconstruction_dimmed = False
         self.clear_layers()
         self.current_data = waveform_data
+        self._sample_rate = waveform_data.sample_rate
         self._plays_what_it_draws = True
         for layer in self._display_layers(waveform_data, selected_channels):
             self.add_layer(layer)
+
+        self._restate_clock_ticks(*self.x_range)
 
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:
         """Grays the reconstruction line while its audio is being regenerated, restoring it when done.
@@ -548,6 +557,46 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
         self._series_themes[color] = theme_tag
         return theme_tag
+
+    def _update_axes_limits(self) -> None:
+        """Takes the new bounds, then names the positions they put on screen.
+
+        The bounds are the graph's own, so the marks follow them the moment they are taken
+        rather than waiting for a frame to state them back.
+        """
+        super()._update_axes_limits()
+        self._restate_clock_ticks(*self.x_range)
+
+    def _restate_zoomed_clock_ticks(self) -> None:
+        """Names the positions across the stretch a reader has zoomed the plot to.
+
+        A zoom moves the axis rather than the graph's own bounds, so the stretch is read back
+        from the axis, a frame after the gesture that moved it has been drawn.
+        """
+        if not dpg.does_item_exist(self.x_axis_tag):
+            return
+
+        start, end = dpg.get_axis_limits(self.x_axis_tag)
+        self._restate_clock_ticks(float(start), float(end))
+
+    def _restate_clock_ticks(self, start: float, end: float) -> None:
+        """Names each position along the time axis by the moment it stands at.
+
+        The axis counts samples, so the stretch it covers turns into the seconds the recording
+        reaches there and the marks are placed across them. A plot drawing a fragment rather
+        than a recording counts samples alone and keeps the figures the axis states.
+        """
+        if self._sample_rate <= 0 or not dpg.does_item_exist(self.x_axis_tag):
+            return
+
+        ticks = clock_ticks(
+            seconds_from_samples(int(start), self._sample_rate),
+            seconds_from_samples(int(end), self._sample_rate),
+            self._sample_rate,
+            self._layout.clock,
+        )
+        if ticks:
+            dpg.set_axis_ticks(self.x_axis_tag, tuple(ticks))
 
     def _add_position_indicator(self) -> None:
         dpg_delete_item(self.position_indicator_tag)

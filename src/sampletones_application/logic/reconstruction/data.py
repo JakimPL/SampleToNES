@@ -242,6 +242,7 @@ class ReconstructionData:
             approximations=approximations,
             coefficient=self.reconstruction.coefficient,
             frame_length=self.reconstruction.config.frame_length,
+            sample_rate=self.reconstruction.config.sample_rate,
         )
 
     def get_partials(self, channel_names: List[ChannelName]) -> np.ndarray:

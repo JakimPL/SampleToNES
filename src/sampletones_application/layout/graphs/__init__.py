@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 
 from sampletones_application.layout.graphs.bar_plot import BarPlotLayout
+from sampletones_application.layout.graphs.clock import ClockLayout
 from sampletones_application.layout.graphs.colors import GraphColors
 from sampletones_application.layout.graphs.dimensions import GraphDimensions
 from sampletones_application.layout.graphs.graph import GraphRange
@@ -14,4 +15,5 @@ class GraphsLayout(BaseModel, extra="forbid", frozen=True):
     spectrum: SpectrumLayout
     graph: GraphRange
     bar_plot: BarPlotLayout
+    clock: ClockLayout
     colors: GraphColors
