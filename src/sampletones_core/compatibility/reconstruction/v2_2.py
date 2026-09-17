@@ -1,11 +1,12 @@
-from typing import Any, Final, FrozenSet
+from pathlib import Path
+from typing import Any, Final, List
 
 from sampletones_core.compatibility.fields import (
+    APPROXIMATION,
     APPROXIMATIONS_DATA,
     ASSIGNMENTS,
     AUDIO_FILEPATH,
     BENDS,
-    CALCULATION,
     CHANNEL_CAP,
     CHANNEL_NAME,
     CHANNELS,
@@ -13,23 +14,28 @@ from sampletones_core.compatibility.fields import (
     DRIVE,
     DRIVES,
     ENTRIES,
-    FAST_DIFFERENCE,
-    FINAL_REGENERATION,
     GENERATION,
     GENERATOR_NAME,
     GENERATORS,
     HIERARCHY,
     ID,
+    INSTRUCTION,
     INSTRUCTIONS,
     INSTRUCTIONS_DATA,
     LEVELS,
     METADATA,
     MIXER,
     MODE,
+    NAME,
+    ON,
+    PATH,
     RECONSTRUCTION_DATA_VERSION,
     SETTINGS,
+    SOURCES,
+    STEM_ID,
     STEM_IDS,
     STEMS_DATA,
+    UNION_DATA,
 )
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.compatibility.update import VersionUpdate
@@ -39,6 +45,7 @@ from sampletones_core.constants.algorithm import (
     DEFAULT_STEMS_HIERARCHY_MODE,
     MAX_DRIVE,
     MIN_DRIVE,
+    RESTING_STEM_ID,
     UNIT_DRIVE,
 )
 from sampletones_shared.deployment.version import Version
@@ -46,23 +53,103 @@ from sampletones_shared.types.data import SerializedData
 
 SOURCE_DATA_VERSION: Final[str] = "2.1"
 TARGET_DATA_VERSION: Final[str] = "2.2"
-RETIRED_GENERATION_SETTINGS: Final[FrozenSet[str]] = frozenset({CHANNELS, DRIVE, FINAL_REGENERATION, MIXER})
-RETIRED_CALCULATION_SETTINGS: Final[FrozenSet[str]] = frozenset({FAST_DIFFERENCE})
+SINGLE_STEM_ID: Final[int] = 0
+STORED_AUDIO: Final[tuple[str, str]] = (APPROXIMATION, APPROXIMATIONS_DATA)
 
 
-def _normalized_audio_filepath(data: SerializedData) -> Any:
-    raw = data.get(AUDIO_FILEPATH)
-    if raw is None:
-        return []
+def _without_the_stored_audio(data: SerializedData) -> SerializedData:
+    """The payload with the rendered audio let go of.
 
-    if isinstance(raw, list):
-        return raw
+    A reconstruction renders its channels from the instructions it stores, so the waveform a 2.1
+    file carried beside them describes nothing the document does not already say. Letting it go
+    first is also what keeps the rest of the step cheap: the audio is nearly the whole of such a
+    file, and every later transform would otherwise carry it along.
+    """
+    return {key: value for key, value in data.items() if key not in STORED_AUDIO}
 
-    return [raw]
+
+def _streams_named_by_channel(data: SerializedData) -> SerializedData:
+    """The payload with each stored stream named by the channel it plays.
+
+    Data version 2.1 keyed a stream by ``generator_name``; a channel is what the reconstruction
+    calls it now.
+    """
+    streams = data.get(INSTRUCTIONS_DATA)
+    if not isinstance(streams, list):
+        return data
+
+    updated = dict(data)
+    updated[INSTRUCTIONS_DATA] = [
+        renamed(stream, GENERATOR_NAME, CHANNEL_NAME) if isinstance(stream, dict) else stream for stream in streams
+    ]
+    return updated
+
+
+def _stamped_embedded_config(data: SerializedData) -> SerializedData:
+    """The payload whose embedded configuration states the version its shape now matches.
+
+    A reconstruction carries the configuration it was built under, and that configuration carries
+    metadata of its own. The load contract reads every metadata it meets, so the embedded one is
+    stamped alongside the outer.
+    """
+    config = data.get(CONFIG)
+    if not isinstance(config, dict):
+        return data
+
+    metadata = config.get(METADATA)
+    if not isinstance(metadata, dict) or not isinstance(metadata.get(RECONSTRUCTION_DATA_VERSION), str):
+        return data
+
+    updated = dict(data)
+    updated[CONFIG] = {
+        **config,
+        METADATA: {**metadata, RECONSTRUCTION_DATA_VERSION: TARGET_DATA_VERSION},
+    }
+    return updated
+
+
+def _with_the_stems_record(data: SerializedData) -> SerializedData:
+    """The payload carrying the record of the one recording a 2.1 conversion answered to.
+
+    A file written before the record states its channels and its drive in the configuration, and
+    names the recording it was built from beside them, so the record is read from those: one entry
+    covering every channel the run handed out, driven as it stored, holding every frame that
+    sounds, and naming the file it read.
+    """
+    updated = dict(data)
+    channels = _stored_channels(data)
+    drive = _stored_drive(data)
+    updated[STEMS_DATA] = {
+        CONFIG: {
+            ENTRIES: [
+                {
+                    ID: SINGLE_STEM_ID,
+                    SETTINGS: {
+                        CHANNELS: channels,
+                        BENDS: [],
+                        DRIVES: {channel: drive for channel in channels},
+                        CHANNEL_CAP: ALL_STEMS_CHANNEL_CAP,
+                    },
+                }
+            ],
+            HIERARCHY: {LEVELS: [[SINGLE_STEM_ID]], MODE: str(DEFAULT_STEMS_HIERARCHY_MODE)},
+        },
+        SOURCES: _recorded_sources(data),
+        ASSIGNMENTS: _frame_owners(data),
+    }
+    return updated
+
+
+def _stored_channels(data: SerializedData) -> List[Any]:
+    """The channels the run handed out, which a 2.1 file states in its configuration."""
+    config = data.get(CONFIG)
+    generation = config.get(GENERATION, {}) if isinstance(config, dict) else {}
+    channels = generation.get(GENERATORS) if isinstance(generation, dict) else None
+    return list(channels) if isinstance(channels, list) else []
 
 
 def _stored_drive(data: SerializedData) -> float:
-    """The level the recorded run played its channels at, held within the bounds a stem allows.
+    """The level the run played its channels at, held within the bounds a recording allows.
 
     A build before the setting was renamed stored it as ``mixer``, and one that stated it nowhere
     played at unit drive.
@@ -76,155 +163,70 @@ def _stored_drive(data: SerializedData) -> float:
     return min(max(float(stored), MIN_DRIVE), MAX_DRIVE)
 
 
-def _default_stems_data(data: SerializedData) -> SerializedData:
-    """The single-entry stems record a conversion predating stems carries.
+def _recorded_sources(data: SerializedData) -> List[SerializedData]:
+    """Where the one recording came from, named after the file the conversion read.
 
-    One stem covers every enabled channel, sounds all of them at once, drives each of them at the
-    level the run stored, and owns every frame of each channel that plays, which is the classic
-    run's shape, so the synthesized record states what the reconstruction is. It bends nothing,
-    which is what a build writing this shape did.
+    A document detached from its origin names no file, which a project carrying a reconstruction
+    stores, so such a payload records no source at all.
     """
-    config = data.get(CONFIG)
-    channels = config.get(GENERATION, {}).get(CHANNELS, []) if isinstance(config, dict) else []
-    drive = _stored_drive(data)
-    instructions_data = data.get(INSTRUCTIONS_DATA)
-    stream_items = instructions_data if isinstance(instructions_data, list) else []
-    assignments = [
+    stored = data.get(AUDIO_FILEPATH)
+    if not isinstance(stored, str) or not stored:
+        return []
+
+    return [{STEM_ID: SINGLE_STEM_ID, NAME: Path(stored).stem, PATH: stored}]
+
+
+def _frame_owners(data: SerializedData) -> List[SerializedData]:
+    """Per channel, the recording holding each frame: the one entry where it sounds, rest where not.
+
+    Rest and silence name the same frames, so the owners are read from the stream itself rather
+    than assumed, which is what makes the record answer for the document it describes.
+    """
+    streams = data.get(INSTRUCTIONS_DATA)
+    if not isinstance(streams, list):
+        return []
+
+    return [
         {
-            CHANNEL_NAME: item.get(CHANNEL_NAME),
-            STEM_IDS: [0] * len(item.get(INSTRUCTIONS, [])),
+            CHANNEL_NAME: stream.get(CHANNEL_NAME, stream.get(GENERATOR_NAME)),
+            STEM_IDS: [SINGLE_STEM_ID if _sounds(frame) else RESTING_STEM_ID for frame in stream[INSTRUCTIONS]],
         }
-        for item in stream_items
-        if isinstance(item, dict) and item.get(INSTRUCTIONS)
+        for stream in streams
+        if isinstance(stream, dict) and isinstance(stream.get(INSTRUCTIONS), list) and stream[INSTRUCTIONS]
     ]
-    return {
-        CONFIG: {
-            ENTRIES: [
-                {
-                    ID: 0,
-                    SETTINGS: {
-                        CHANNELS: channels,
-                        BENDS: [],
-                        DRIVES: {channel: drive for channel in channels},
-                        CHANNEL_CAP: ALL_STEMS_CHANNEL_CAP,
-                    },
-                }
-            ],
-            HIERARCHY: {LEVELS: [[0]], MODE: str(DEFAULT_STEMS_HIERARCHY_MODE)},
-        },
-        ASSIGNMENTS: assignments,
-    }
 
 
-def _renamed_stream_keys(data: SerializedData) -> SerializedData:
-    """The stream and approximation sections keyed by channel name."""
-    updated = dict(data)
-    for section in (APPROXIMATIONS_DATA, INSTRUCTIONS_DATA):
-        entries = data.get(section)
-        if isinstance(entries, list):
-            updated[section] = [renamed(item, GENERATOR_NAME, CHANNEL_NAME) for item in entries]
+def _sounds(frame: Any) -> bool:
+    """Whether one stored frame sounds, read from the instruction the stream holds for it.
 
-    return updated
-
-
-def _stamped_embedded_config(data: SerializedData) -> SerializedData:
-    """The embedded config named by channel and stamped with the target version."""
-    updated = dict(data)
-    config = data.get(CONFIG)
-    if not isinstance(config, dict):
-        return updated
-
-    updated_config = dict(config)
-    metadata = config.get(METADATA)
-    if isinstance(metadata, dict) and isinstance(
-        metadata.get(RECONSTRUCTION_DATA_VERSION),
-        str,
-    ):
-        updated_config[METADATA] = {
-            **metadata,
-            RECONSTRUCTION_DATA_VERSION: TARGET_DATA_VERSION,
-        }
-
-    generation = config.get(GENERATION)
-    if isinstance(generation, dict):
-        updated_config[GENERATION] = renamed(generation, GENERATORS, CHANNELS)
-
-    updated[CONFIG] = updated_config
-    return updated
-
-
-def _normalized_source_paths(data: SerializedData) -> SerializedData:
-    """The recorded source audio as one path per stem."""
-    updated = dict(data)
-    updated[AUDIO_FILEPATH] = _normalized_audio_filepath(data)
-    return updated
-
-
-def _with_default_stems_record(data: SerializedData) -> SerializedData:
-    """The single-entry stems record, present on every reconstruction."""
-    updated = dict(data)
-    if STEMS_DATA not in updated:
-        updated[STEMS_DATA] = _default_stems_data(updated)
-
-    return updated
-
-
-def _without_retired_generation_settings(data: SerializedData) -> SerializedData:
-    """The embedded config with the generation settings 2.2 retired dropped.
-
-    Which channels a run hands out and how hard it drives each of them are the setup's to state,
-    so the configuration holds the settings that shaped the library and nothing about the channels
-    themselves. A frame is always recorded as its instruction renders, and a windowed method
-    measures a residual from its waveform, so the choices to record the matched audio and to
-    difference features instead go.
+    A stream stores each frame as its instruction class beside the instruction itself, which the
+    payload tags and nests, so the flag every instruction carries is read from that nesting.
     """
-    config = data.get(CONFIG)
-    if not isinstance(config, dict):
-        return data
+    if not isinstance(frame, dict):
+        return False
 
-    generation = config.get(GENERATION)
-    if not isinstance(generation, dict):
-        return data
+    instruction = frame.get(INSTRUCTION)
+    if not isinstance(instruction, dict):
+        return False
 
-    updated = dict(data)
-    updated[CONFIG] = {
-        **config,
-        GENERATION: {
-            key: _without_retired_calculation_settings(value) if key == CALCULATION else value
-            for key, value in generation.items()
-            if key not in RETIRED_GENERATION_SETTINGS
-        },
-    }
-    return updated
-
-
-def _without_retired_calculation_settings(calculation: Any) -> Any:
-    if not isinstance(calculation, dict):
-        return calculation
-
-    return {key: value for key, value in calculation.items() if key not in RETIRED_CALCULATION_SETTINGS}
+    stored = instruction.get(UNION_DATA)
+    return bool(stored.get(ON)) if isinstance(stored, dict) else False
 
 
 def update(data: SerializedData) -> SerializedData:
-    """Names each stored stream and approximation by its channel.
+    """Reads a reconstruction the last release wrote as the document this build describes.
 
-    Data version 2.1 stored a channel's stream and approximation under the key
-    ``generator_name`` and the channel selection under
-    ``config.generation.generators``. Data version 2.2 names the streams
-    ``channel_name``, stamps the embedded config's metadata with the new data version,
-    records the source audio as one path per stem, and carries the single-entry stems
-    record every reconstruction states, down to the settings each stem is converted
-    with: the channels it takes, the ones it carries toward its own recording, how hard it drives
-    each of them, and how many of them it sounds at once. The channel selection and the drive move
-    onto that record, so the embedded configuration lets them go, along with the retired choices to
-    record the matched audio and to difference the residual's features.
+    Data version 2.1 stored the rendered audio beside the instructions, keyed each stream by
+    ``generator_name``, and stated in its configuration which channels a run handed out, how hard
+    it drove them, and the recording it was built from. Data version 2.2 renders its audio from the
+    instructions it keeps, names each stream by its channel, and carries the record of the
+    recordings behind its frames: the recording's own settings, where it was read from, and the
+    frame-by-frame account of what it holds, where a silent frame answers to rest.
     """
-    updated = dict(data)
-    updated = _renamed_stream_keys(updated)
+    updated = _without_the_stored_audio(data)
+    updated = _streams_named_by_channel(updated)
     updated = _stamped_embedded_config(updated)
-    updated = _normalized_source_paths(updated)
-    updated = _with_default_stems_record(updated)
-    return _without_retired_generation_settings(updated)
+    return _with_the_stems_record(updated)
 
 
 V2_2: Final[VersionUpdate] = VersionUpdate(

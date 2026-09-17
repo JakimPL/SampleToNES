@@ -59,8 +59,9 @@ class TestUpgradeBinary:
         binary = msgpack.packb(
             {
                 "metadata": {"reconstruction_data_version": "2.1"},
+                "approximation": [1.0, 2.0],
                 "approximations_data": [{"generator_name": "pulse1", "approximation": [1.0, 2.0]}],
-                "instructions_data": [],
+                "instructions_data": [{"generator_name": "pulse1", "instructions": []}],
                 "config": {
                     "metadata": {"reconstruction_data_version": "2.1"},
                     "generation": {"generators": ["pulse1", "noise"]},
@@ -72,9 +73,9 @@ class TestUpgradeBinary:
         upgraded = upgrade_binary(ObjectKind.RECONSTRUCTION, binary)
         data = msgpack.unpackb(upgraded, raw=False)
 
-        assert data["approximations_data"][0]["channel_name"] == "pulse1"
-        assert "generator_name" not in data["approximations_data"][0]
-        assert "channels" not in data["config"]["generation"]
+        assert "approximation" not in data
+        assert "approximations_data" not in data
+        assert data["instructions_data"][0]["channel_name"] == "pulse1"
         assert data["stems_data"]["config"]["entries"][0]["settings"]["channels"] == ["pulse1", "noise"]
         assert data["config"]["metadata"]["reconstruction_data_version"] == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
         assert data["metadata"]["reconstruction_data_version"] == SAMPLETONES_RECONSTRUCTION_DATA_VERSION

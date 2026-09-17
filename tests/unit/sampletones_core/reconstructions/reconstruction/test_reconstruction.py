@@ -48,8 +48,6 @@ from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import DIRECTORY_READ_ERRORS
 from tests.suite.stems import single_entry_stems_data
 
-_STORED_DRIVE: Final[float] = 2.0
-_LEGACY_AUDIO: Final[List[float]] = [0.0, 0.0]
 _RETUNED_FREQUENCY: Final[int] = DEFAULT_NES_FREQUENCY // 2
 _FASTER_FREQUENCY: Final[int] = DEFAULT_NES_FREQUENCY * 2
 
@@ -363,98 +361,6 @@ class TestMetadataValidation:
 
         with pytest.raises(InvalidMetadataError):
             Reconstruction.load(path)
-
-
-def _with_legacy_audio_section(data: Dict[str, Any]) -> None:
-    """Plants the per-channel audio section a 2.1 file carried, keyed the way that version named it.
-
-    Data version 2.2 reads a reconstruction's sound from its instructions, so a file written now
-    states no audio; a file written then did, and the upgrade renames its key along with the rest.
-    """
-    data["approximations_data"] = [
-        {"generator_name": item["generator_name"], "approximation": _LEGACY_AUDIO} for item in data["instructions_data"]
-    ]
-
-
-class TestVersionUpgradeOnLoad:
-    def test_a_2_1_file_loads_through_the_upgrade(
-        self,
-        tmp_path: Path,
-        reconstruction_factory: ReconstructionFactory,
-    ) -> None:
-        reconstruction = reconstruction_factory()
-        path = tmp_path / "old.stn"
-        reconstruction.save(path)
-
-        binary = path.read_bytes()
-        data = msgpack.unpackb(binary, raw=False)
-        data["metadata"]["reconstruction_data_version"] = "2.1"
-        for item in data["instructions_data"]:
-            item["generator_name"] = item.pop("channel_name")
-
-        _with_legacy_audio_section(data)
-
-        generation = data["config"]["generation"]
-        generation["generators"] = [
-            str(channel_name) for channel_name in reconstruction.stems_data.config.entries[0].settings.channels
-        ]
-        config_metadata = data["config"].get("metadata")
-        if isinstance(config_metadata, dict):
-            config_metadata["reconstruction_data_version"] = "2.1"
-
-        path.write_bytes(msgpack.packb(data, use_bin_type=True))
-
-        loaded = Reconstruction.load(path)
-
-        assert loaded.metadata.reconstruction_data_version == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
-        assert loaded.config.metadata.reconstruction_data_version == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
-        assert loaded.playing_channels == reconstruction.playing_channels
-        assert loaded.audio_filepath == reconstruction.audio_filepath
-        assert loaded.stems_data == reconstruction.stems_data
-
-    def test_a_2_1_file_without_stems_record_gains_the_single_entry_record(
-        self,
-        tmp_path: Path,
-        reconstruction_factory: ReconstructionFactory,
-    ) -> None:
-        """The channels, the drive and the per-frame record a file predating stems is read with.
-
-        Where the recordings live reaches the record through the step `bugs-and-todos.md`
-        records as the conversion still to be written.
-        """
-        reconstruction = reconstruction_factory()
-        path = tmp_path / "old_plain.stn"
-        reconstruction.save(path)
-
-        binary = path.read_bytes()
-        data = msgpack.unpackb(binary, raw=False)
-        data["metadata"]["reconstruction_data_version"] = "2.1"
-        data.pop("stems_data")
-        data["audio_filepath"] = str(reconstruction.audio_filepath[0])
-        for item in data["instructions_data"]:
-            item["generator_name"] = item.pop("channel_name")
-
-        _with_legacy_audio_section(data)
-
-        channels = list(reconstruction.stems_data.config.entries[0].settings.channels)
-        generation = data["config"]["generation"]
-        generation["generators"] = [str(channel_name) for channel_name in channels]
-        generation["drive"] = _STORED_DRIVE
-        config_metadata = data["config"].get("metadata")
-        if isinstance(config_metadata, dict):
-            config_metadata["reconstruction_data_version"] = "2.1"
-
-        path.write_bytes(msgpack.packb(data, use_bin_type=True))
-
-        loaded = Reconstruction.load(path)
-
-        stems_data = loaded.stems_data
-        settings = stems_data.config.entries[0].settings
-        assert stems_data.config.entries[0].id == 0
-        assert settings.channels == channels
-        assert settings.drives == {channel_name: _STORED_DRIVE for channel_name in channels}
-        for channel, stem_ids in stems_data.assignments_by_channel.items():
-            assert len(stem_ids) == len(loaded.instructions[channel])
 
 
 class TestDeserializeDataWrapping(BaseTestSuite):

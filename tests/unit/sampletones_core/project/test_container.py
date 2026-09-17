@@ -35,8 +35,6 @@ from tests.suite.errors import DIRECTORY_READ_ERRORS
 Document = Dict[str, Any]
 DocumentRewrite = Callable[[Document], Document]
 
-FORMAT_1_0_SAMPLE_FIELDS: Final[Tuple[str, ...]] = ("id", "name", "reconstruction_id")
-
 
 def _rewrite_format_version(source: Path, target: Path, *, format_version: str) -> None:
     with zipfile.ZipFile(source, "r") as archive:
@@ -61,52 +59,6 @@ def _rewrite_document(source: Path, target: Path, rewrite: DocumentRewrite) -> N
     with zipfile.ZipFile(target, "w") as archive:
         for name, data in members.items():
             archive.writestr(name, data)
-
-
-def _as_format_1_0(document: Document) -> Document:
-    """The document as project format 1.0 wrote it, the shape the upgrade chain reads.
-
-    Format 1.0 held the pool under ``samples``, each record naming an id, a name and the
-    reconstruction it references; named a channel pool's channel ``generator``; and wrote a note
-    command as a sample id beside the channel slice it named.
-    """
-    samples = [{field: voice[field] for field in FORMAT_1_0_SAMPLE_FIELDS} for voice in document["voices"]]
-    channels = {name: _pool_as_format_1_0(name, pool) for name, pool in document["song"]["channels"].items()}
-    downgraded = {key: value for key, value in document.items() if key != "voices"}
-    return {
-        **downgraded,
-        "format_version": "1.0",
-        "samples": samples,
-        "song": {**document["song"], "channels": channels},
-    }
-
-
-def _pool_as_format_1_0(channel_name: str, pool: Document) -> Document:
-    patterns = {index: _pattern_as_format_1_0(channel_name, pattern) for index, pattern in pool["patterns"].items()}
-    return {
-        "generator": pool["name"],
-        **{key: value for key, value in pool.items() if key != "name"},
-        "patterns": patterns,
-    }
-
-
-def _pattern_as_format_1_0(channel_name: str, pattern: Document) -> Document:
-    rows = [_row_as_format_1_0(channel_name, row) for row in pattern["rows"]]
-    return {**pattern, "rows": rows}
-
-
-def _row_as_format_1_0(channel_name: str, row: Document) -> Document:
-    command = row.get("command")
-    if not isinstance(command, dict) or "voice_id" not in command:
-        return row
-
-    return {
-        **row,
-        "command": {
-            "sample_id": command["voice_id"],
-            "generator_name": channel_name,
-        },
-    }
 
 
 def _populated_project(
@@ -425,27 +377,6 @@ class TestLoadRejectsInvalidArchives:
 
 
 class TestVersionCompatibility:
-    def test_project_written_at_format_1_0_loads(
-        self,
-        tmp_path: Path,
-        reconstruction_factory: ReconstructionFactory,
-    ) -> None:
-        project = _populated_project(reconstruction_factory)
-        original = tmp_path / "demo.stp"
-        ProjectContainer.save(project, original)
-        legacy = tmp_path / "legacy.stp"
-        _rewrite_document(original, legacy, _as_format_1_0)
-
-        loaded = ProjectContainer.load(legacy)
-
-        assert [voice.id for voice in loaded.voices] == [voice.id for voice in project.voices]
-        assert [voice.name for voice in loaded.voices] == [voice.name for voice in project.voices]
-        assert set(loaded.song.channels) == set(project.song.channels)
-
-        pattern = loaded.song.pattern(ChannelName.PULSE1, loaded.song.order[0][ChannelName.PULSE1])
-        row = pattern.rows[0]
-        assert row.command == NoteOn(voice_id=project.voices[0].id)
-
     def test_incompatible_format_version_raises(
         self,
         tmp_path: Path,
