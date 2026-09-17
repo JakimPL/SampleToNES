@@ -310,26 +310,30 @@ class ReconstructionPanelLogic(CallbackMixin):
         self,
         reconstruction_data: ReconstructionData,
     ) -> OwnershipRibbonViewModel:
-        """The recordings behind each stretch of what the reader is listening to.
+        """The recordings behind each stretch of what the document plays.
 
-        A lane stands for a channel the reader has on and paints the stretches the recordings
-        heard there hold, so the ribbon reads as the waveform above it sounds. A document
-        answering to one recording alone has nothing to tell apart, so it offers no lanes.
+        A lane stands for every channel the document plays, and paints the stretches the
+        recordings heard there hold, so the ribbon reads as the waveform above it sounds. A
+        channel the reader has switched off keeps its lane and stands empty, since the lanes
+        answer for the document while what fills them answers for the listening: the rows beneath
+        the waveform hold still while a reader picks their way through it. A document answering to
+        one recording alone has nothing to tell apart, so it offers no lanes.
         """
         stems_data = reconstruction_data.reconstruction.stems_data
         positions = self._record_positions(stems_data)
         if len(positions) < DISTINGUISHABLE_RECORDINGS:
             return OwnershipRibbonViewModel.empty()
 
+        owned = stems_data.assignments_by_channel
         lanes = tuple(
-            self._ownership_lane(channel_name, stems_data.assignments_by_channel[channel_name], positions)
-            for channel_name in self._selected_channels
-            if channel_name in stems_data.assignments_by_channel
+            self._ownership_lane(channel_name, owned[channel_name], positions)
+            for channel_name in self._in_channel_order(self._playing_channels)
+            if channel_name in owned
         )
         return OwnershipRibbonViewModel(
             lanes=lanes,
             frame_length=reconstruction_data.reconstruction.config.frame_length,
-            total_frames=max((len(lane.runs) and lane.runs[-1].end_frame for lane in lanes), default=0),
+            total_frames=max((len(owned[lane.channel_name]) for lane in lanes), default=0),
         )
 
     @staticmethod
@@ -347,7 +351,14 @@ class ReconstructionPanelLogic(CallbackMixin):
         stem_ids: Sequence[int],
         positions: Dict[int, int],
     ) -> OwnershipLaneViewModel:
-        """One channel's lane: the stretches it divides into, each under the recording heard on it."""
+        """One channel's lane: the stretches it divides into, each under the recording heard on it.
+
+        A channel the reader has switched off is not listened to at all, so its lane divides into
+        nothing and the row it stands in shows the ground it is laid on.
+        """
+        if channel_name not in self._selected_channels:
+            return OwnershipLaneViewModel(channel_name=channel_name, runs=())
+
         heard = self.heard_on(channel_name)
         return OwnershipLaneViewModel(
             channel_name=channel_name,

@@ -7,6 +7,8 @@ import numpy as np
 import pytest
 
 from sampletones_application.layout.general.colors.channel import ChannelColors
+from sampletones_application.layout.loader import load_layout_config
+from sampletones_application.paths import BEHAVIOR_DIRECTORY, LAYOUT_DIRECTORY, PALETTES_DIRECTORY
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS,
 )
@@ -14,7 +16,9 @@ from sampletones_application.ui.panels.reconstruction import plot as plot_module
 from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
 )
+from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.colors.written import LiteralColor
+from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
 )
@@ -296,11 +300,14 @@ class _WaveformRecorder:
 
 
 class _RibbonRecorder:
-    """Stands in for the ownership ribbon, giving each drawn channel a row of its own."""
+    """Stands in for the ownership ribbon, giving each drawn channel a row of its own.
 
-    LANE_HEIGHT = 11
+    The room a lane takes is read from the layout the application draws under, so the stand-in
+    follows the configured height rather than restating one of its own.
+    """
 
-    def __init__(self) -> None:
+    def __init__(self, lane_height: int) -> None:
+        self.lane_height = lane_height
         self.painted: List[OwnershipRibbonViewModel] = []
 
     def update_view(self, view_model: OwnershipRibbonViewModel) -> None:
@@ -309,7 +316,13 @@ class _RibbonRecorder:
     @property
     def lane_heights(self) -> Dict[ChannelName, int]:
         drawn = [lane.channel_name for lane in self.painted[-1].lanes] if self.painted else []
-        return {channel_name: self.LANE_HEIGHT if channel_name in drawn else 0 for channel_name in ChannelName.items()}
+        return {channel_name: self.lane_height if channel_name in drawn else 0 for channel_name in ChannelName.items()}
+
+
+def _configured_lane_height() -> int:
+    """The room one lane takes, read from the layout the application draws under."""
+    source = PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default)
+    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, source).graphs.ribbon.lane_height
 
 
 class InstrumentHarness:
@@ -320,7 +333,7 @@ class InstrumentHarness:
         monkeypatch.setattr(plot_module, "dpg_configure_item", self._configure)
 
         self.waveform = _WaveformRecorder()
-        self.ribbon = _RibbonRecorder()
+        self.ribbon = _RibbonRecorder(_configured_lane_height())
         self.panel = GUIReconstructionPlotPanel.__new__(GUIReconstructionPlotPanel)
         self.panel._channel_colors = CHANNEL_COLORS
         self.panel.autoscale_tag = AUTOSCALE_TAG

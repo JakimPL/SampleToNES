@@ -1257,7 +1257,7 @@ class TestWhatTheEnvelopesShow:
 
 
 class TestTheLanesTheRibbonStandsOn:
-    """The lanes answer for the channels the reader has on, and follow every choice that moves them."""
+    """The lanes answer for the channels the document plays, and what fills them for the listening."""
 
     @pytest.fixture(name="stems_data")
     def stems_data_fixture(self, tmp_path: Path) -> ReconstructionData:
@@ -1295,7 +1295,7 @@ class TestTheLanesTheRibbonStandsOn:
         panel_logic.on_ownership_changed = received.append
         return received
 
-    def test_a_lane_stands_for_every_channel_the_reader_has_on(
+    def test_a_lane_stands_for_every_channel_the_document_plays(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
@@ -1308,19 +1308,41 @@ class TestTheLanesTheRibbonStandsOn:
 
         assert [lane.channel_name for lane in received[-1].lanes] == [ChannelName.PULSE1, ChannelName.TRIANGLE]
 
-    def test_a_channel_switched_off_leaves_the_lanes(
+    def test_a_channel_switched_off_keeps_its_lane_and_stands_empty(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         stems_data: ReconstructionData,
     ) -> None:
+        """The rows beneath the waveform hold still while a reader picks their way through it."""
         _open(mock_reconstruction_manager, stems_data)
         panel_logic.display_reconstruction()
         received = self._ribbons(panel_logic)
 
         panel_logic.set_selected_channels([ChannelName.PULSE1])
 
-        assert [lane.channel_name for lane in received[-1].lanes] == [ChannelName.PULSE1]
+        lanes = {lane.channel_name: lane for lane in received[-1].lanes}
+        assert list(lanes) == [ChannelName.PULSE1, ChannelName.TRIANGLE]
+        assert lanes[ChannelName.TRIANGLE].runs == ()
+        assert lanes[ChannelName.PULSE1].runs
+
+    def test_the_lanes_stand_where_nothing_is_switched_on(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        """The ribbon measures the record, so its rows hold even with nothing to paint in them."""
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        received = self._ribbons(panel_logic)
+
+        panel_logic.set_selected_channels([])
+
+        ribbon = received[-1]
+        assert [lane.channel_name for lane in ribbon.lanes] == [ChannelName.PULSE1, ChannelName.TRIANGLE]
+        assert all(lane.runs == () for lane in ribbon.lanes)
+        assert ribbon.is_drawn
 
     def test_a_recording_switched_off_leaves_its_stretches_resting(
         self,
