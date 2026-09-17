@@ -1,10 +1,13 @@
 # Reconstructions
 
-A reconstruction is one converted audio sample: the NES
-[approximation](../glossary.md#approximation) of an original recording together
-with the per-channel instruction streams that produce it. It is stored as a
-`.stn` file. [Reconstruction algorithms](../concepts/reconstruction.md) explains
+A reconstruction is one converted audio sample: the per-channel instruction streams that
+produce the NES [approximation](../glossary.md#approximation) of an original recording. It is
+stored as a `.stn` file. [Reconstruction algorithms](../concepts/reconstruction.md) explains
 how one is produced; this page documents the file.
+
+The file states what is played rather than what it sounds like: the audio is rendered from the
+instructions whenever it is needed, which keeps a file to a few megabytes and keeps what the
+application shows in step with what an export plays.
 
 ## Contents
 
@@ -25,10 +28,6 @@ A `.stn` file holds:
   the single scale factor applied to the input so its loudness fit the NES
   channels' range. Storing it lets the reconstruction and the original be shown
   and played on a common scale;
-* **approximation** — the rendered NES audio: the sum of every channel's output,
-  the closest match to the original;
-* **per-channel approximations** — the audio each channel contributes on its own,
-  one waveform per channel that sounds;
 * **per-channel instructions** — the instruction stream each channel plays, one
   [instruction](../glossary.md#instruction) per frame. This is the data a
   FamiTracker export is built from. A reconstruction holds a stream for every one
@@ -92,8 +91,8 @@ the rest as it stands:
 A reconstruction normally remembers the path to its source audio. Embedding one
 in a [project](projects.md) makes it part of a shareable artifact, where an
 absolute path on the author's machine means nothing to anyone else. Detaching
-clears that path while keeping the approximation and instructions intact, so the
-reconstruction stays self-contained and a saved project stays portable.
+clears that path while keeping the instructions and the stems assignment intact,
+so the reconstruction stays self-contained and a saved project stays portable.
 
 ## Versioning
 
@@ -121,7 +120,8 @@ with the run's channel cap written onto every entry.
 ## Storage and export
 
 `.stn` files live in the documents folder. They are binary
-([MessagePack](https://msgpack.org/)) with the audio arrays embedded, so a file
-is self-contained. The instruction streams can be exported to a tracker — one
-instrument per channel, or a whole module — as described in
+([MessagePack](https://msgpack.org/)) and self-contained: everything needed to
+play a reconstruction is the instructions, the stems assignment and the frozen
+configuration the file carries. The instruction streams can be exported to a
+tracker — one instrument per channel, or a whole module — as described in
 [FamiTracker export](famitracker.md) and [Bitphase export](bitphase.md).

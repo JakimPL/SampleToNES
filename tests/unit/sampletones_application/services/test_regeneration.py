@@ -198,7 +198,7 @@ class TestRegenerationServiceRun:
 
         service._run(reconstruction, synthesis_mocks.channel_name, FeatureKey.VOLUME, features)
 
-        _, _, _, initial_pitch, held = reconstruction.model_copy.return_value.update_channel_data.call_args.args
+        _, _, initial_pitch, held = reconstruction.model_copy.return_value.update_channel_data.call_args.args
         assert initial_pitch == features.initial_pitch
         assert held == features.held_features
 
@@ -244,7 +244,7 @@ class TestRegenerationServiceRun:
         )
 
         call_args = reconstruction.model_copy.return_value.update_channel_data.call_args
-        assert call_args.args[3] == REFERENCE_PITCH
+        assert call_args.args[2] == REFERENCE_PITCH
 
     def test_run_carries_a_moved_reference_pitch(
         self,
@@ -258,20 +258,18 @@ class TestRegenerationServiceRun:
 
         service._run(reconstruction, synthesis_mocks.channel_name, FeatureKey.INITIAL_PITCH, moved)
 
-        _, _, _, initial_pitch, _ = reconstruction.model_copy.return_value.update_channel_data.call_args.args
+        _, _, initial_pitch, _ = reconstruction.model_copy.return_value.update_channel_data.call_args.args
         assert initial_pitch == REFERENCE_PITCH + 12
 
-    def test_run_calls_generator_for_each_instruction(
+    def test_run_hands_on_every_instruction_the_envelopes_describe(
         self,
         synthesis_mocks: SynthesisMocks,
         reconstruction: MockReconstruction,
         features: Features,
     ) -> None:
         extra_instruction = MagicMock()
-        synthesis_mocks.exporter.from_features.return_value = [
-            synthesis_mocks.instruction,
-            extra_instruction,
-        ]
+        stream = [synthesis_mocks.instruction, extra_instruction]
+        synthesis_mocks.exporter.from_features.return_value = stream
         service = RegenerationService()
 
         service._run(
@@ -281,7 +279,8 @@ class TestRegenerationServiceRun:
             features,
         )
 
-        assert synthesis_mocks.generator.call_count == 2
+        call_args = reconstruction.model_copy.return_value.update_channel_data.call_args
+        assert call_args.args[1] == stream
 
     def test_run_exception_emits_service_error(
         self,
@@ -293,7 +292,7 @@ class TestRegenerationServiceRun:
 
         exception = RuntimeError("synthesis failed")
         mock_exporter = MagicMock()
-        mock_exporter.get_generator_type.side_effect = exception
+        mock_exporter.from_features.side_effect = exception
 
         with patch(
             "sampletones_application.services.regeneration.service.CHANNEL_TO_EXPORTER_MAP",
@@ -317,7 +316,7 @@ class TestRegenerationServiceRun:
     ) -> None:
         service = RegenerationService()
         mock_exporter = MagicMock()
-        mock_exporter.get_generator_type.side_effect = RuntimeError("fail")
+        mock_exporter.from_features.side_effect = RuntimeError("fail")
 
         with patch(
             "sampletones_application.services.regeneration.service.CHANNEL_TO_EXPORTER_MAP",

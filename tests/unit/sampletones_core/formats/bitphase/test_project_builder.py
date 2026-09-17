@@ -69,8 +69,6 @@ def build_reconstruction(
 ) -> Reconstruction:
     approximations = {channel: np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32) for channel in instructions}
     return Reconstruction.create(
-        approximation=np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32),
-        approximations=approximations,
         instructions=instructions,
         config=Config(),
         coefficient=1.0,

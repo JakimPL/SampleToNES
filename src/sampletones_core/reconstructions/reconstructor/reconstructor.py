@@ -6,7 +6,7 @@ import numpy as np
 
 from sampletones_core.audio import active_frame_level, common_length, load_audio, load_stems, mix
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL, RESTING_STEM_ID, UNIT_DRIVE
+from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
 from sampletones_core.constants.enums import (
     TONE_CHANNELS,
     ChannelName,
@@ -15,10 +15,8 @@ from sampletones_core.constants.enums import (
 from sampletones_core.fft import FragmentedAudio, Window
 from sampletones_core.generators import (
     FULL_SCALE_RMS_LEVELS,
-    GeneratorUnion,
     get_generators_by_channels,
 )
-from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibrary, InstructionLibraryData
 from sampletones_core.reconstructions.progress import (
     FRAMES_PREPARED,
@@ -170,7 +168,7 @@ class Reconstructor:
         assignment.release_silent(streams)
         self._drop_resting_channels(assignment, streams)
         streams = self._refiner(stems_config).refine(streams, assignment.stem_ids, prepared.recordings)
-        self._record_streams(streams, assignment.stem_ids, stems_config, report)
+        self._record_streams(streams, report)
         return Reconstruction.from_state(
             self.state,
             self.config,
@@ -312,42 +310,20 @@ class Reconstructor:
     def _record_streams(
         self,
         streams: Streams,
-        stem_ids: Dict[ChannelName, List[int]],
-        stems_config: StemsConfig,
         report: ReconstructionReporter,
     ) -> None:
-        """Renders the decoded streams into the state, one frame at a time.
+        """Reads the decoded streams into the state, one frame at a time.
 
-        Every frame plays at the drive the stem owning it gives the channel, so a channel carries
-        each recording at the level that recording asks for, frame by frame.
-
-        Frame order is what carries a generator's oscillator state from one frame into the next,
-        so each channel plays its streams the way the NES would.
+        A reconstruction records the instructions its channels play, and reads its sound from
+        them, so this is where a run's answer is gathered.
         """
-        drives = {entry.id: entry.settings.drives for entry in stems_config.entries}
         frames = self._frame_count(streams)
         for position in range(frames):
             announce(report, ReconstructionStage.RENDERING, position, frames)
             for channel_name in self.state.channel_names:
-                self._record(
-                    channel_name,
-                    streams[channel_name][position].instruction,
-                    self._frame_drive(drives, stem_ids[channel_name][position], channel_name),
-                )
+                self.state.append(channel_name, streams[channel_name][position].instruction)
 
         announce(report, ReconstructionStage.RENDERING, frames, frames)
-
-    @staticmethod
-    def _frame_drive(
-        drives: Dict[int, Dict[ChannelName, float]],
-        stem_id: int,
-        channel_name: ChannelName,
-    ) -> float:
-        """The drive the stem owning a frame gives the channel; a resting frame plays at unit drive."""
-        if stem_id == RESTING_STEM_ID:
-            return UNIT_DRIVE
-
-        return drives[stem_id][channel_name]
 
     @staticmethod
     def _frame_count(streams: Streams) -> int:
@@ -467,21 +443,6 @@ class Reconstructor:
                 tuple(generator.class_name() for generator in self.channels.values()),
             ),
         )
-
-    def _record(
-        self,
-        channel_name: ChannelName,
-        instruction: InstructionUnion,
-        drive: float,
-    ) -> None:
-        """Appends one frame of one channel, rendered from its instruction and played at ``drive``.
-
-        The generator carries its oscillator state into the next frame, and resets it where the
-        configuration resets the phase on a new note, as the renderer of a whole channel does.
-        """
-        generator: GeneratorUnion = self.channels[channel_name]
-        rendered = generator(instruction, save=True)  # type: ignore[arg-type]
-        self.state.append(channel_name, instruction, rendered * drive)
 
     def reset_generators(self) -> None:
         """Resets every channel's generator so the next reconstruction starts fresh."""

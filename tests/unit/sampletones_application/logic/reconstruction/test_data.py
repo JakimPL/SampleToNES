@@ -302,8 +302,6 @@ class TestStemFilteredProjections:
             hierarchy=StemsHierarchy(levels=[[0, 1]]),
         )
         reconstruction = Reconstruction.create(
-            approximation=approximation,
-            approximations={ChannelName.PULSE1: approximation.copy()},
             instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)] * 2},
             config=config,
             coefficient=1.0,

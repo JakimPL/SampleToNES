@@ -400,7 +400,6 @@ class TestReconstructionPanelLogicPlayingChannels:
         loaded_data.reconstruction.update_channel_data(
             ChannelName.TRIANGLE,
             [TriangleInstruction(on=True, pitch=48)],
-            np.ones(64, dtype=np.float32),
             48,
             (),
         )
@@ -422,7 +421,6 @@ class TestReconstructionPanelLogicPlayingChannels:
         loaded_data.reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [],
-            np.zeros(0, dtype=np.float32),
             60,
             (),
         )

@@ -20,7 +20,7 @@ from uuid import uuid4
 import numpy as np
 from pydantic import ConfigDict, Field, ValidationError, field_serializer, model_validator
 
-from sampletones_core.audio.mixing import align, common_length, mix
+from sampletones_core.audio.mixing import mix
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.compatibility.upgrade import upgrade_binary
 from sampletones_core.configs import Config
@@ -33,10 +33,9 @@ from sampletones_core.exporters import (
     ExporterUnion,
     Features,
 )
-from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import InstructionUnion
-from sampletones_core.reconstructions.reconstruction.approximations import ApproximationsItem
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
+from sampletones_core.reconstructions.reconstruction.rendering import render_streams
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
 from sampletones_shared.application import SAMPLETONES_RECONSTRUCTION_DATA_VERSION
@@ -48,9 +47,8 @@ from sampletones_shared.exceptions import (
 )
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback
-from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils.serialization import load_binary, serialize_array
+from sampletones_shared.utils.serialization import load_binary
 
 RECONSTRUCTION_DATA_CONTRACT: Final[MetadataContract] = MetadataContract(
     label="Reconstruction data",
@@ -82,14 +80,6 @@ class Reconstruction(DataModel):
         description="Configuration used for reconstruction",
         frozen=True,
     )
-    approximation: np.ndarray = Field(
-        ...,
-        description="Audio approximation",
-    )
-    approximations_data: List[ApproximationsItem] = Field(
-        ...,
-        description="Approximations per channel",
-    )
     instructions_data: List[InstructionsItem] = Field(
         ...,
         description="Instructions per channel",
@@ -112,7 +102,19 @@ class Reconstruction(DataModel):
 
     @cached_property
     def approximations(self) -> Dict[ChannelName, np.ndarray]:
-        return {item.channel_name: item.approximation for item in self.approximations_data}
+        """The audio each channel in play renders, at the drive its owner gives each frame.
+
+        A reconstruction records the instructions a channel plays and the recording behind each
+        of its frames, so its sound is read from those rather than carried beside them. Reading
+        it here keeps one answer for the waveform, playback, an export and the mixed
+        approximation, and keeps a stored document to what it describes.
+        """
+        return render_streams(self.instructions, self.stems_data, self.config)
+
+    @cached_property
+    def approximation(self) -> np.ndarray:
+        """The whole reconstruction, summed from the channels that play."""
+        return mix(list(self.approximations.values()))
 
     @cached_property
     def streams(self) -> Dict[ChannelName, InstructionsItem]:
@@ -193,24 +195,12 @@ class Reconstruction(DataModel):
     @classmethod
     def create(
         cls,
-        approximation: np.ndarray,
-        approximations: Mapping[ChannelName, np.ndarray],
         instructions: Mapping[ChannelName, Sequence[InstructionUnion]],
         config: Config,
         coefficient: float,
         audio_filepath: Tuple[Path, ...],
         stems_data: StemsData,
     ) -> Self:
-        approximation = np.nan_to_num(approximation, nan=0.0)
-        approximations_data: List[ApproximationsItem] = [
-            ApproximationsItem(
-                channel_name=channel_name,
-                approximation=approximations[channel_name],
-            )
-            for channel_name in ChannelName.items()
-            if channel_name in approximations
-        ]
-
         instructions_data: List[InstructionsItem] = []
         for channel_name in ChannelName.items():
             channel_instructions = list(instructions.get(channel_name, ()))
@@ -230,8 +220,6 @@ class Reconstruction(DataModel):
 
         return cls(
             id=uuid4().hex,
-            approximation=approximation,
-            approximations_data=approximations_data,
             instructions_data=instructions_data,
             stems_data=stems_data,
             config=config,
@@ -248,20 +236,11 @@ class Reconstruction(DataModel):
         path: Tuple[Path, ...],
         stems_data: StemsData,
     ) -> Optional[Self]:
-        if all(len(approximation) == 0 for approximation in state.approximations.values()):
+        if all(not stream for stream in state.instructions.values()):
             logger.warning(f"Reconstruction for file: {path} is empty")
             return None
 
-        approximations = {
-            name: np.concatenate(state.approximations[name])
-            for name in state.approximations
-            if state.approximations[name]
-        }
-        approximation = mix(list(approximations.values()))
-
         return cls.create(
-            approximation=approximation,
-            approximations=approximations,
             instructions=state.instructions,
             config=config,
             coefficient=coefficient,
@@ -273,11 +252,10 @@ class Reconstruction(DataModel):
         self,
         channel_name: ChannelName,
         instructions: List[InstructionUnion],
-        partial_approximation: np.ndarray,
         initial_pitch: int,
         held_features: Iterable[FeatureKey],
     ) -> None:
-        """Replaces one channel's instructions, audio, reference pitch, and held dimensions.
+        """Replaces one channel's instructions, reference pitch, and held dimensions.
 
         The reference pitch travels with the instructions it produced, so a later export
         measures the arpeggio against the same base the edit was made from. The held
@@ -285,23 +263,9 @@ class Reconstruction(DataModel):
         dimension, and this is what says which of them the instrument itself wrote.
 
         The channel keeps its place among the streams however the edit leaves it, so one
-        cleared of every frame stands by and stays editable. Its rendered audio lasts as
-        long as it carries samples, which keeps silence out of the stored waveforms. The
-        edited channel leaves the stems record: the edit re-derives the stream, so the
-        conversion's per-frame ownership no longer applies to it.
+        cleared of every frame stands by and stays editable. Its audio is read afresh from the
+        stream it now carries.
         """
-        partial_approximation = np.trim_zeros(partial_approximation, trim="b")
-        rendered = {name: audio for name, audio in self.approximations.items() if name != channel_name}
-        if partial_approximation.size:
-            rendered[channel_name] = partial_approximation
-
-        max_length = max(
-            (len(np.trim_zeros(audio, trim="b")) for audio in rendered.values()),
-            default=0,
-        )
-
-        self.approximations_data = self._build_approximations_data(rendered, max_length)
-
         streams = dict(self.streams)
         streams[channel_name] = InstructionsItem.create(
             channel_name=channel_name,
@@ -315,7 +279,6 @@ class Reconstruction(DataModel):
             assignments=[item for item in self.stems_data.assignments if item.channel_name != channel_name],
         )
         self._invalidate_derived_caches(self)
-        self.approximation = mix([item.approximation for item in self.approximations_data])
 
     def get_channel_instructions(
         self,
@@ -348,54 +311,20 @@ class Reconstruction(DataModel):
         return self._resynthesized(self.config.with_library(nes_frequency=nes_frequency))
 
     def _resynthesized(self, config: Config) -> Reconstruction:
-        """Re-renders every channel's approximation from its instructions at ``config``.
+        """Returns a copy running at ``config``, which re-times the audio it reads.
 
-        Each instruction spans ``config.frame_length`` samples, so re-rendering at a new frame
-        length re-times the audio. The channels describing frames are rendered, padded to a
-        common length and summed; the mixer weight is baked into each channel's output, so a
-        plain sum reproduces the stored approximation shape. Drive is left at unity to match the
-        regeneration path.
+        Each instruction spans ``config.frame_length`` samples, so the same instructions read at
+        a new frame length sound over a new span. The instructions, the record and the
+        coefficient carry over.
         """
-        rendered = render_channels(self.instructions, config)
-        approximations_data = self._build_approximations_data(
-            rendered,
-            common_length(rendered.values()),
-        )
-        approximation = mix([item.approximation for item in approximations_data])
-
-        retuned: Reconstruction = self.model_copy(
-            update={
-                "config": config,
-                "approximations_data": approximations_data,
-                "approximation": approximation,
-            }
-        )
+        retuned: Reconstruction = self.model_copy(update={"config": config})
         self._invalidate_derived_caches(retuned)
         return retuned
 
     @staticmethod
-    def _build_approximations_data(
-        rendered: Mapping[ChannelName, np.ndarray],
-        length: int,
-    ) -> List[ApproximationsItem]:
-        """Brings each rendered channel's audio to ``length``, in channel order.
-
-        A shared length lets the per-channel arrays stack and sum into the mixed approximation,
-        and a fixed order keeps a stored reconstruction reading the same however an edit reached it.
-        """
-        names = [channel_name for channel_name in ChannelName.items() if channel_name in rendered]
-        aligned = align([rendered[channel_name] for channel_name in names], length)
-        return [
-            ApproximationsItem(
-                channel_name=channel_name,
-                approximation=audio,
-            )
-            for channel_name, audio in zip(names, aligned)
-        ]
-
-    @staticmethod
     def _invalidate_derived_caches(reconstruction: Reconstruction) -> None:
         """Drops the memoized per-channel views so they recompute from their backing data."""
+        reconstruction.__dict__.pop("approximation", None)
         reconstruction.__dict__.pop("approximations", None)
         reconstruction.__dict__.pop("streams", None)
         reconstruction.__dict__.pop("instructions", None)
@@ -488,14 +417,6 @@ class Reconstruction(DataModel):
             )
 
         return features
-
-    @field_serializer("approximation")
-    def _serialize_approximation(
-        self,
-        approximation: np.ndarray,
-        _info: Any,
-    ) -> SerializedData:
-        return serialize_array(approximation)
 
     @field_serializer("audio_filepath")
     def _serialize_audio_filepath(

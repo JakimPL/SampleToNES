@@ -68,8 +68,6 @@ def sample_reconstruction(channels: Sequence[ChannelName]) -> Reconstruction:
     instructions = {channel: [_instruction(channel)] for channel in channels}
     approximations = {channel: np.zeros(length, dtype=np.float32) for channel in channels}
     return Reconstruction.create(
-        approximation=np.zeros(length, dtype=np.float32),
-        approximations=approximations,
         instructions=instructions,
         config=config,
         coefficient=1.0,

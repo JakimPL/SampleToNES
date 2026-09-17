@@ -267,7 +267,7 @@ class TestTheAudioAReconstructionRecords:
         write_wave(audio_path, config.library.sample_rate, np.tile(synthetic_fragment.audio, 3).astype(np.float32))
         return audio_path
 
-    def test_every_channel_generator_renders_the_frames_it_records(
+    def test_every_channel_spans_the_frames_its_stream_describes(
         self,
         config: Config,
         library_data: InstructionLibraryData,
@@ -280,9 +280,8 @@ class TestTheAudioAReconstructionRecords:
 
         assert reconstruction is not None
         for channel_name in reconstruction.playing_channels:
-            generator = reconstructor.channels[channel_name]
-            sounding = [instruction for instruction in reconstruction.instructions[channel_name] if instruction.on]
-            assert generator.previous_instruction is sounding[-1]
+            frames = len(reconstruction.instructions[channel_name])
+            assert len(reconstruction.approximations[channel_name]) == frames * config.library.frame_length
 
     @pytest.mark.parametrize("reset_phase", [False, True], ids=["carried_phase", "reset_phase"])
     def test_the_recorded_audio_is_what_the_channels_render(

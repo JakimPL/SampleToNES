@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Final, List
+from typing import Any, Callable, Dict, Final, List
 from unittest.mock import patch
 
 import msgpack
@@ -49,6 +49,7 @@ from tests.suite.errors import DIRECTORY_READ_ERRORS
 from tests.suite.stems import single_entry_stems_data
 
 _STORED_DRIVE: Final[float] = 2.0
+_LEGACY_AUDIO: Final[List[float]] = [0.0, 0.0]
 _RETUNED_FREQUENCY: Final[int] = DEFAULT_NES_FREQUENCY // 2
 _FASTER_FREQUENCY: Final[int] = DEFAULT_NES_FREQUENCY * 2
 
@@ -65,8 +66,6 @@ def _pulse(pitch: int) -> PulseInstruction:
 
 def _reconstruction(instructions: List[PulseInstruction]) -> Reconstruction:
     return Reconstruction.create(
-        approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
-        approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
         instructions={ChannelName.PULSE1: instructions},
         config=Config(),
         coefficient=1.0,
@@ -118,8 +117,6 @@ class TestStemsDataRoundTrip:
             ],
         )
         reconstruction = Reconstruction.create(
-            approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
-            approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
             instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH), _pulse(_BASE_PITCH)]},
             config=Config(),
             coefficient=1.0,
@@ -159,8 +156,6 @@ class TestStemsDataRoundTrip:
             assignments=[],
         )
         reconstruction = Reconstruction.create(
-            approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
-            approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
             instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH)]},
             config=Config(),
             coefficient=1.0,
@@ -182,8 +177,6 @@ class TestStemsDataRoundTrip:
 
         with pytest.raises(ValidationError, match="one per stems entry"):
             Reconstruction.create(
-                approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
-                approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
                 instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH)]},
                 config=Config(),
                 coefficient=1.0,
@@ -224,8 +217,6 @@ class TestSourcePaths:
             assignments=[],
         )
         reconstruction = Reconstruction.create(
-            approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
-            approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
             instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH)]},
             config=Config(),
             coefficient=1.0,
@@ -374,6 +365,17 @@ class TestMetadataValidation:
             Reconstruction.load(path)
 
 
+def _with_legacy_audio_section(data: Dict[str, Any]) -> None:
+    """Plants the per-channel audio section a 2.1 file carried, keyed the way that version named it.
+
+    Data version 2.2 reads a reconstruction's sound from its instructions, so a file written now
+    states no audio; a file written then did, and the upgrade renames its key along with the rest.
+    """
+    data["approximations_data"] = [
+        {"generator_name": item["generator_name"], "approximation": _LEGACY_AUDIO} for item in data["instructions_data"]
+    ]
+
+
 class TestVersionUpgradeOnLoad:
     def test_a_2_1_file_loads_through_the_upgrade(
         self,
@@ -387,11 +389,10 @@ class TestVersionUpgradeOnLoad:
         binary = path.read_bytes()
         data = msgpack.unpackb(binary, raw=False)
         data["metadata"]["reconstruction_data_version"] = "2.1"
-        for item in data["approximations_data"]:
-            item["generator_name"] = item.pop("channel_name")
-
         for item in data["instructions_data"]:
             item["generator_name"] = item.pop("channel_name")
+
+        _with_legacy_audio_section(data)
 
         generation = data["config"]["generation"]
         generation["generators"] = [
@@ -407,7 +408,7 @@ class TestVersionUpgradeOnLoad:
 
         assert loaded.metadata.reconstruction_data_version == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
         assert loaded.config.metadata.reconstruction_data_version == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
-        assert set(loaded.approximations) == set(reconstruction.approximations)
+        assert loaded.playing_channels == reconstruction.playing_channels
         assert loaded.audio_filepath == reconstruction.audio_filepath
         assert loaded.stems_data == reconstruction.stems_data
 
@@ -425,11 +426,10 @@ class TestVersionUpgradeOnLoad:
         data["metadata"]["reconstruction_data_version"] = "2.1"
         data.pop("stems_data")
         data["audio_filepath"] = str(reconstruction.audio_filepath[0])
-        for item in data["approximations_data"]:
-            item["generator_name"] = item.pop("channel_name")
-
         for item in data["instructions_data"]:
             item["generator_name"] = item.pop("channel_name")
+
+        _with_legacy_audio_section(data)
 
         channels = list(reconstruction.stems_data.config.entries[0].settings.channels)
         generation = data["config"]["generation"]
@@ -514,7 +514,6 @@ class TestInitialPitchReference:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             arpeggiated,
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (),
         )
@@ -530,7 +529,6 @@ class TestInitialPitchReference:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [_pulse(_RESET_PITCH)],
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _RESET_PITCH,
             (),
         )
@@ -575,7 +573,6 @@ class TestHeldFeatures:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [_pulse(_BASE_PITCH)] * 3,
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (FeatureKey.ARPEGGIO,),
         )
@@ -590,7 +587,6 @@ class TestHeldFeatures:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [_pulse(_BASE_PITCH)] * 3,
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (FeatureKey.ARPEGGIO,),
         )
@@ -610,7 +606,6 @@ class TestHeldFeatures:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [_pulse(_BASE_PITCH)] * 3,
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (FeatureKey.ARPEGGIO,),
         )
@@ -633,7 +628,6 @@ class TestHeldFeatures:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [],
-            np.zeros(0, dtype=np.float32),
             resting_reference(ChannelName.PULSE1),
             resting_held_features(ChannelName.PULSE1),
         )
@@ -645,7 +639,6 @@ class TestHeldFeatures:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [_pulse(_BASE_PITCH)] * 3,
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE),
         )
@@ -695,7 +688,6 @@ class TestChannelSet:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [],
-            np.zeros(0, dtype=np.float32),
             _BASE_PITCH,
             (FeatureKey.VOLUME, FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE),
         )
@@ -711,7 +703,6 @@ class TestChannelSet:
         reconstruction.update_channel_data(
             ChannelName.PULSE2,
             [_pulse(_BASE_PITCH)] * 2,
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (),
         )
@@ -726,7 +717,6 @@ class TestChannelSet:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [],
-            np.zeros(0, dtype=np.float32),
             _BASE_PITCH,
             (),
         )
@@ -759,7 +749,6 @@ class TestChannelSet:
         loaded.update_channel_data(
             ChannelName.PULSE2,
             [_pulse(_BASE_PITCH)],
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (),
         )
@@ -824,7 +813,6 @@ class TestWithNesFrequency:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [],
-            np.zeros(0, dtype=np.float32),
             _BASE_PITCH,
             (),
         )

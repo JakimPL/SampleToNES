@@ -242,8 +242,6 @@ def player_reconstruction(
     """
     config = Config().with_library(nes_frequency=nes_frequency)
     return Reconstruction.create(
-        approximation=np.zeros(PLAYER_APPROXIMATION_SAMPLES, dtype=np.float32),
-        approximations={},
         instructions=instructions,
         config=config,
         coefficient=1.0,

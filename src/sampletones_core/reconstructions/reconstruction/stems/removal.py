@@ -1,13 +1,9 @@
 from pathlib import Path
 from typing import Dict, FrozenSet, List, Sequence, Tuple
 
-import numpy as np
-
-from sampletones_core.audio.mixing import mix
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import InstructionUnion
-from sampletones_core.reconstructions.reconstruction.approximations import ApproximationsItem
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -19,12 +15,11 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy impo
 def without_stem(reconstruction: Reconstruction, stem_id: int) -> Reconstruction:
     """The reconstruction with one recording taken out, the frames it held left resting.
 
-    A released frame states silence, zeroes the samples it rendered and takes
-    ``RESTING_STEM_ID`` in the assignment, which is the shape a capped run already records for
-    a frame every stem passed over. A channel the removal empties stands by, describing no
-    frame at all. Everything the removal leaves alone stands as it was — the frames of the
-    recordings that stay, sample for sample, and the stream of a channel that already rested
-    throughout — and the mixed approximation is summed afresh from what remains.
+    A released frame states silence and takes ``RESTING_STEM_ID``, which is the shape a capped
+    run already records for a frame every stem passed over. A channel the removal empties stands
+    by, describing no frame at all. The frames of the recordings that stay keep their
+    instructions and their owners, and the audio the document answers with is read afresh from
+    what remains.
 
     The entry leaves the recorded setup, taking its level along once that level holds nothing
     else, and its source path leaves ``audio_filepath`` from the position it stood at. The
@@ -54,25 +49,16 @@ def without_stem(reconstruction: Reconstruction, stem_id: int) -> Reconstruction
     resting = _emptied_channels(assignments, released)
 
     streams = _released_streams(reconstruction, released, resting)
-    approximations_data = [
-        ApproximationsItem(
-            channel_name=item.channel_name,
-            approximation=_released_audio(item, released, resting, reconstruction.config.frame_length),
-        )
-        for item in reconstruction.approximations_data
-    ]
 
     return Reconstruction(
         metadata=reconstruction.metadata,
         id=reconstruction.id,
         audio_filepath=_paths_without(reconstruction.audio_filepath, _position_of(config, stem_id)),
         config=reconstruction.config,
-        approximation=mix([item.approximation for item in approximations_data]),
-        approximations_data=approximations_data,
         instructions_data=[streams[channel_name] for channel_name in ChannelName.items()],
         stems_data=StemsData(
             config=_config_without(config, stem_id),
-            assignments=assignments,
+            assignments=[item for item in assignments if item.channel_name not in resting],
         ),
         coefficient=reconstruction.coefficient,
     )
@@ -131,8 +117,8 @@ def _released_streams(
 ) -> Dict[ChannelName, InstructionsItem]:
     """Every channel's stream as the removal leaves it, keyed by channel.
 
-    A channel the assignment says nothing about keeps its stream whole: an edit already
-    re-derived it, so the conversion's per-frame ownership stopped applying to it.
+    A channel the removal empties stands by, one it reaches states silence where the recording
+    held a frame, and one it reaches none of stands exactly as it did.
     """
     streams: Dict[ChannelName, InstructionsItem] = {}
     for channel_name, stream in reconstruction.streams.items():
@@ -166,39 +152,3 @@ def _released_stream(stream: InstructionsItem, released: Sequence[bool]) -> Inst
         initial_pitch=stream.initial_pitch,
         held_features=stream.held_features,
     )
-
-
-def _released_audio(
-    item: ApproximationsItem,
-    released: Dict[ChannelName, List[bool]],
-    resting: FrozenSet[ChannelName],
-    frame_length: int,
-) -> np.ndarray:
-    """The channel's rendered audio with the released frames silent.
-
-    A channel the removal empties comes back silent over its whole span, which keeps its
-    length among the stored waveforms while it sounds nothing.
-    """
-    if item.channel_name in resting:
-        return np.zeros_like(item.approximation)
-
-    if item.channel_name not in released:
-        return item.approximation
-
-    return _silenced(item.approximation, released[item.channel_name], frame_length)
-
-
-def _silenced(approximation: np.ndarray, released: Sequence[bool], frame_length: int) -> np.ndarray:
-    """The waveform with the samples of each released frame zeroed.
-
-    Frame ``i`` renders samples ``i * frame_length`` onward, so the per-frame flags spread
-    across the samples they cover. Samples past the last recorded frame keep their values.
-    """
-    silent = np.repeat(np.array(released, dtype=bool), frame_length)
-    span = min(len(silent), len(approximation))
-    mask = np.zeros(len(approximation), dtype=bool)
-    mask[:span] = silent[:span]
-
-    quiet = np.array(approximation, copy=True)
-    quiet[mask] = 0
-    return quiet

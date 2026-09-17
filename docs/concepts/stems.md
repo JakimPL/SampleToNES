@@ -199,23 +199,27 @@ The drive enters the run where the level matters. `CandidateProvider` serves the
 library's powers, waveforms and moments as they stand, and `FrameMatcher` scales
 them by the drive a column is scored at — powers and variances by its square,
 waveforms and means by the drive itself — so a run at unit drive costs what a run
-without drives costs. `Reconstructor._record_streams` then renders each frame at
-the drive the stem owning that channel gives it, and a resting frame renders at
-unit drive, being silent. Scoring and rendering therefore stand at one level: the
-instruction a frame records is the one chosen for the sound that frame makes.
+without drives costs. `render_streams`
+(`reconstruction/rendering.py`) then renders each frame at the drive the stem
+owning that channel gives it, reading the drive off the recorded entry, and a
+frame no recording holds renders at unit drive. Scoring and rendering therefore
+stand at one level: the instruction a frame records is the one chosen for the
+sound that frame makes, whenever that sound is read.
 
 `Reconstructor.reconstruct` loads the sources through `load_stems`, which brings
 them to one length and one scale, measures the working level on their mix, frames
 each of them, assigns every frame, releases the channels that rested throughout,
-decodes the remaining lattices, and folds the decoded streams into the state in
-frame order — the order each generator's oscillator phase is carried in.
+decodes the remaining lattices, and reads the decoded streams into the state in
+frame order.
 
 `STEM_ACTIVITY_FLOOR` is the level a stem's frame reaches to take a channel: the
 quietest note any channel renders, measured against the working level.
 
 The record stored in a reconstruction (`stems_data`) holds the stems setup the
 assignment was made under and, per channel, the stem id holding each frame,
-parallel to the instruction streams. Every reconstruction carries one.
+parallel to the instruction streams. Every reconstruction carries one. Together
+with the instruction streams it is the whole of what a `.stn` states, and
+`Reconstruction.approximations` reads the sound from the pair.
 
 The stems setup is built per conversion from the sources and the reader's
 choices and travels with the job; it is part of the request rather than of the
@@ -357,17 +361,24 @@ follows. Consult it when changing an edit path, the per-frame record, or what th
    This is what lets a reader shape a recording's part while the document keeps its account of
    where that part came from.
 
-4. **What is heard is what is edited.** The channels a recording is ticked on are one choice
+4. **A reconstruction records what is played and reads what is heard.** The document holds the
+   instruction each channel plays per frame, the recording behind each of those frames, the
+   setup they were chosen under and the working level. Its sound is read from those through the
+   generators, at the drive each frame's owner gives its channel, which is one answer serving
+   the waveform, playback, an export and the mixed approximation alike. A document therefore
+   states what it describes, and every gesture below is complete once it has settled the frames.
+
+5. **What is heard is what is edited.** The channels a recording is ticked on are one choice
    serving two readings: the frames the waveform draws, and the frames an edit writes. A
    recording switched off on a channel reads there and stays as it stands, so a reader reaches
    one recording's part at a time through the card already in front of them.
 
-5. **The setup is the conversion's, and a removal alone rewrites it.** The entries, the levels,
+6. **The setup is the conversion's, and a removal alone rewrites it.** The entries, the levels,
    the channels each recording may occupy, its bends, its drives and its count record how the
    document was made. An edit leaves all of them as they stand. Taking a recording out is the
    one gesture that changes them.
 
-6. **Detaching drops where a recording lives and keeps who played what.** A recording's name and
+7. **Detaching drops where a recording lives and keeps who played what.** A recording's name and
    the frames it holds belong to the document; its location on this machine belongs to this
    machine. A reconstruction embedded in a project therefore keeps a working stems card.
 
@@ -401,7 +412,7 @@ A stream edited down to no frame leaves its channel standing by, and one written
 comes back wholly authored. The setup, the recorded sources, the identifier, the configuration
 and the working level stand throughout.
 
-**The scope an edit writes in** follows principle 4: a frame accepts a gesture where its owner
+**The scope an edit writes in** follows principle 5: a frame accepts a gesture where its owner
 is ticked on that channel, where it rests, and where it is authored. Every other frame draws
 dimmed and reads as it stands. The scope is the same selection the waveform filter reads, so
 one state answers both, and a reader narrowing what they hear narrows what they change with it.
@@ -413,6 +424,10 @@ silent instruction and takes the resting stem id, and a channel the removal empt
 The entry and its source leave the record, a level the removal empties collapses, and the ids
 of the recordings that stay are left alone, so the record and a reader's selection both stay
 valid. A reconstruction holds at least one recording, so the last one standing keeps its place.
+
+A frame that stays keeps the instruction it played and the recording that held it. Its samples
+follow from principle 4: a channel the removal reached is read afresh, so its oscillator runs
+through the silence the removal left rather than through the notes it took away.
 
 An edit made before the removal changes nothing about it: the channel carries its record
 whatever was written into it, so the frames the recording held are released the way they would

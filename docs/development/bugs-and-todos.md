@@ -212,11 +212,9 @@ again.
 ## Bugs
 
 * Misaligned dialog boxes sizes at initialization
-* Re-rendering a reconstruction drops the drive its frames were converted at. A conversion records
-  each frame's approximation at the drive its stem gives that channel, while
-  `Reconstruction._resynthesized` (retuning into a project) and `RegenerationService._render` (an
-  instrument edit) render at unit drive, so a regenerated channel stands at unit level beside
-  channels still carrying theirs. The record holds what an answer needs — `stems_data` carries each
-  entry's drives and the stem owning each frame — so a re-render can read the drive per frame the
-  way `Reconstructor._record_streams` does. `performance/audition.py` previews an instrument at
-  unit drive as well, which is a choice worth stating either way once the re-render reads drives.
+* `ReconstructionStage.RENDERING` keeps the weight it was measured at while a conversion no longer
+  renders, so a bar covers that share faster than the eight parts in a hundred `STAGE_WEIGHTS`
+  gives it. Re-measuring the four stages over whole runs is what settles the new figures.
+* `performance/audition.py` previews an instrument at unit drive, where a reconstruction's own
+  frames sound at the drive their recording gives the channel. Which level a preview belongs at is
+  worth stating either way.

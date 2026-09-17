@@ -390,16 +390,20 @@ once it is asked for, and hold for a whole run.
 
 ## 7. Rendering and reassembly
 
-Once instructions are chosen, each one is rendered back through its generator
+A reconstruction is its instruction streams. Each one is rendered back through its generator
 (`sampletones_core.generators`), which carries oscillator phase across frames so
 there are no clicks at frame boundaries, and resets it on a new note where
-`reset_phase` says so; an "off" instruction yields silence for that channel and frame.
-The reconstruction records exactly this rendering, so what it shows is what an export
-plays. The per-channel renderings are concatenated and summed into the
-final approximation, and the `Reconstruction` keeps both the audio and the
-per-channel instruction streams (which can be exported to a tracker format via
-`sampletones_core.exporters`). The coefficient from §3.4 is stored so the
-reconstruction and the original can be shown and played on a common scale.
+`reset_phase` says so; an "off" instruction yields silence for that channel and frame. Each
+frame is rendered at the drive the source holding it gives its channel (see
+[Stems reconstruction](stems.md)), and the per-channel renderings are summed into the final
+approximation.
+
+The rendering is read on demand rather than carried beside the streams, so what a
+reconstruction shows is what an export plays by construction, and a `.stn` states the
+instructions, the per-frame ownership and the setup they were chosen under — a few megabytes
+where the audio would be a few hundred. `Reconstruction.approximations` is that reading; the
+coefficient from §3.4 is stored so the reconstruction and the original can be shown and played
+on a common scale.
 
 ## 8. Limitations
 

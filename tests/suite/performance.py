@@ -35,8 +35,6 @@ def _reconstruction(
     approximation = np.zeros(APPROXIMATION_LENGTH, dtype=np.float32)
     channel_instructions: Dict[ChannelName, List[InstructionUnion]] = {channel_name: instructions}
     return Reconstruction.create(
-        approximation=approximation,
-        approximations={channel_name: approximation},
         instructions=channel_instructions,
         config=Config(),
         coefficient=1.0,
@@ -66,7 +64,6 @@ def make_pulse_reconstruction(
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             list(instructions),
-            np.zeros(APPROXIMATION_LENGTH, dtype=np.float32),
             reconstruction.initial_pitches[ChannelName.PULSE1],
             held_features,
         )

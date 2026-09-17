@@ -343,20 +343,32 @@ class TestRemovingAStem:
         assert remaining.audio_filepath == (paths[0], paths[1])
 
     def test_the_frames_it_held_fall_silent_while_the_rest_stand(self, tmp_path: Path) -> None:
-        """A removal touches the removed recording's frames alone, sample for sample."""
+        """A removal reaches the removed recording's frames alone.
+
+        A released frame states silence and rests; a frame that stays keeps the instruction it
+        played and the recording that held it. The samples a frame sounds are read afresh from
+        the stream it now sits in, so the oscillator runs through the silence the removal left
+        rather than through the notes it took away.
+        """
         reconstruction, _paths, config = self._three_stems(tmp_path)
         frame_length = config.library.frame_length
         assignments = reconstruction.stems_data.assignments_by_channel
-        before = {channel: audio.copy() for channel, audio in reconstruction.approximations.items()}
+        before = {channel: list(stream) for channel, stream in reconstruction.instructions.items()}
 
         remaining = without_stem(reconstruction, STEM_C_ID)
 
         for channel, stem_ids in assignments.items():
+            if channel not in remaining.playing_channels:
+                continue
+
             audio = remaining.approximations[channel]
             for frame_index, stem_id in enumerate(stem_ids):
                 span = slice(frame_index * frame_length, (frame_index + 1) * frame_length)
-                expected = np.zeros(frame_length, dtype=np.float32) if stem_id == STEM_C_ID else before[channel][span]
-                np.testing.assert_array_equal(audio[span], expected)
+                if stem_id == STEM_C_ID:
+                    assert not remaining.instructions[channel][frame_index].on
+                    np.testing.assert_array_equal(audio[span], np.zeros(frame_length, dtype=np.float32))
+                else:
+                    assert remaining.instructions[channel][frame_index] == before[channel][frame_index]
 
             assert remaining.stems_data.assignments_by_channel[channel] == [
                 RESTING_STEM_ID if stem_id == STEM_C_ID else stem_id for stem_id in stem_ids
@@ -383,11 +395,8 @@ class TestRemovingAStem:
 
         assert set(remaining.playing_channels) == set(assignments) - set(held_alone)
         for channel in held_alone:
-            np.testing.assert_array_equal(
-                remaining.approximations[channel],
-                np.zeros_like(reconstruction.approximations[channel]),
-            )
-            assert set(remaining.stems_data.assignments_by_channel[channel]) == {RESTING_STEM_ID}
+            assert channel not in remaining.approximations
+            assert channel not in remaining.stems_data.assignments_by_channel
 
     def test_the_reduced_reconstruction_round_trips_through_the_file(self, tmp_path: Path) -> None:
         reconstruction, _paths, _config = self._three_stems(tmp_path)
@@ -401,22 +410,28 @@ class TestRemovingAStem:
         assert loaded.stems_data.config.hierarchy.levels == [[STEM_A_ID], [STEM_C_ID]]
         np.testing.assert_allclose(loaded.approximation, remaining.approximation, atol=_MIX_TOLERANCE)
 
-    def test_what_stays_plays_as_it_did_before(self, tmp_path: Path) -> None:
-        """A removal leaves the same audio the reader heard while listening to the stems that stay."""
+    def test_what_stays_plays_what_it_played_before(self, tmp_path: Path) -> None:
+        """A removal leaves every remaining recording playing the frames it played.
+
+        What a frame sounds is read from the stream it sits in, so a channel the removal
+        reached renders afresh around the silence it left; what the document states about the
+        recordings that stay — their frames and the recording behind each of them — carries over
+        whole.
+        """
         reconstruction, _paths, _config = self._three_stems(tmp_path)
-        data = ReconstructionData.from_reconstruction(reconstruction, name="three")
-        channels = list(reconstruction.stems_data.assignments_by_channel)
-        heard_before = data.waveform_data(
-            StemSelection.everywhere(frozenset({STEM_A_ID, STEM_B_ID}), channels)
-        ).approximation
+        before = {channel: list(stream) for channel, stream in reconstruction.instructions.items()}
+        assignments = reconstruction.stems_data.assignments_by_channel
 
         remaining = without_stem(reconstruction, STEM_C_ID)
-        reduced = ReconstructionData.from_reconstruction(remaining, name="two")
-        heard_after = reduced.waveform_data(
-            StemSelection.everywhere(frozenset({STEM_A_ID, STEM_B_ID}), channels)
-        ).approximation
 
-        np.testing.assert_allclose(heard_after, heard_before, atol=_MIX_TOLERANCE)
+        for channel, stem_ids in assignments.items():
+            if channel not in remaining.playing_channels:
+                continue
+
+            for frame_index, stem_id in enumerate(stem_ids):
+                if stem_id in (STEM_A_ID, STEM_B_ID):
+                    assert remaining.instructions[channel][frame_index] == before[channel][frame_index]
+                    assert remaining.stems_data.assignments_by_channel[channel][frame_index] == stem_id
 
 
 class TestStemsOriginalAudio:

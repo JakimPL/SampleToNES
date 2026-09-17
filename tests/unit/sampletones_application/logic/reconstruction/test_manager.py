@@ -403,8 +403,6 @@ class TestReconstructionManagerLocateOriginalAudio:
     ) -> None:
         missing_path = tmp_path / "ghost.wav"
         reconstruction = Reconstruction.create(
-            approximation=np.zeros(64, dtype=np.float32),
-            approximations={ChannelName.PULSE1: np.zeros(64, dtype=np.float32)},
             instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
             config=Config(),
             coefficient=1.0,
@@ -434,8 +432,6 @@ class TestReconstructionManagerLocateOriginalAudio:
         write_wave(first, Config().library.sample_rate, np.ones(64, dtype=np.float32))
         write_wave(second, Config().library.sample_rate, np.ones(64, dtype=np.float32))
         reconstruction = Reconstruction.create(
-            approximation=np.zeros(64, dtype=np.float32),
-            approximations={ChannelName.PULSE1: np.zeros(64, dtype=np.float32)},
             instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
             config=Config(),
             coefficient=1.0,
@@ -458,8 +454,6 @@ class TestReconstructionManagerLocateOriginalAudio:
         missing = tmp_path / "gone.wav"
         write_wave(present, Config().library.sample_rate, np.ones(64, dtype=np.float32))
         reconstruction = Reconstruction.create(
-            approximation=np.zeros(64, dtype=np.float32),
-            approximations={ChannelName.PULSE1: np.zeros(64, dtype=np.float32)},
             instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
             config=Config(),
             coefficient=1.0,

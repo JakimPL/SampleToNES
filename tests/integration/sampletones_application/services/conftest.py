@@ -48,8 +48,6 @@ def pulse_features(pulse_instructions) -> Features:
 def minimal_reconstruction(default_config, pulse_instructions) -> Reconstruction:
     length = 256
     return Reconstruction.create(
-        approximation=np.zeros(length, dtype=np.float32),
-        approximations={ChannelName.PULSE1: np.zeros(length, dtype=np.float32)},
         instructions={ChannelName.PULSE1: pulse_instructions},
         config=default_config,
         coefficient=1.0,
