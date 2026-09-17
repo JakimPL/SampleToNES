@@ -22,6 +22,7 @@ TAG_GLOBAL_GRAPH_THEME_OVERLAY = TagName(
 )
 
 SUF_GRAPH_PLOT = "plot"
+SUF_GRAPH_SUBPLOTS = "subplots"
 SUF_GRAPH_X_AXIS = "x_axis"
 SUF_GRAPH_Y_AXIS = "y_axis"
 SUF_GRAPH_LEGEND = "legend"
@@ -31,6 +32,8 @@ SUF_GRAPH_RAW_DATA = "raw_data"
 SUF_GRAPH_THEME = "theme"
 SUF_WAVEFORM_POSITION_INDICATOR = "position_indicator"
 SUF_WAVEFORM_OVERLAY = "overlay"
+SUF_RIBBON_LANE = "lane"
+SUF_RIBBON_RUN = "run"
 SUF_BAR_PLOT_ZERO_LINE = "zero_line"
 SUF_BAR_PLOT_HOVER_BAR = "hover_bar"
 SUF_HANDLER_MOUSE = compose_tag("handler", "mouse")

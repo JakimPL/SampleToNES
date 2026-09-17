@@ -20,6 +20,44 @@ class CarriedEdit:
     stem_ids: List[int]
 
 
+@dataclass(frozen=True)
+class OwnerRun:
+    """One stretch of a channel held by a single owner.
+
+    Attributes:
+        start: The first frame of the stretch.
+        end: The frame the stretch runs up to, one past its last.
+        stem_id: The stem holding every frame of it.
+    """
+
+    start: int
+    end: int
+    stem_id: int
+
+
+def owner_runs(stem_ids: Sequence[int]) -> List[OwnerRun]:
+    """The stretches a channel divides into, each held by one recording throughout.
+
+    A reader follows a recording by the stretches it holds rather than by frames, so the record
+    is read as the runs it is made of. The runs cover the channel end to end and meet without
+    overlapping, which is what the one-owner-per-frame rule gives them.
+
+    Args:
+        stem_ids: The stem holding each frame of the channel.
+
+    Returns:
+        List[OwnerRun]: The stretches, in the order they play.
+    """
+    runs: List[OwnerRun] = []
+    start = 0
+    for frame in range(1, len(stem_ids) + 1):
+        if frame == len(stem_ids) or stem_ids[frame] != stem_ids[start]:
+            runs.append(OwnerRun(start=start, end=frame, stem_id=stem_ids[start]))
+            start = frame
+
+    return runs
+
+
 def writes_reach(stem_ids: Sequence[int], heard: AbstractSet[int]) -> List[bool]:
     """Whether an edit reaches each frame of a channel.
 

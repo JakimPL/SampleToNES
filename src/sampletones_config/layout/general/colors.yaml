@@ -26,3 +26,15 @@ channels:
   pulse2: .channel_pulse2
   triangle: .channel_triangle
   noise: .channel_noise
+stems:
+  recordings:
+    - .stem_1
+    - .stem_2
+    - .stem_3
+    - .stem_4
+    - .stem_5
+    - .stem_6
+    - .stem_7
+    - .stem_8
+  authored: .stem_authored
+  rest: .stem_rest

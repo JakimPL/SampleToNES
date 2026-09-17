@@ -5,7 +5,12 @@ import pytest
 
 from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
-from sampletones_core.reconstructions.reconstruction.stems.ownership import carried_edit, writes_reach
+from sampletones_core.reconstructions.reconstruction.stems.ownership import (
+    OwnerRun,
+    carried_edit,
+    owner_runs,
+    writes_reach,
+)
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -253,3 +258,37 @@ class TestTheFramesAnEditMayWrite:
 
     def test_resting_and_authored_frames_stay_reachable(self) -> None:
         assert self._reach([RESTING_STEM_ID, AUTHORED_STEM_ID], NOTHING_HEARD) == [True, True]
+
+
+class TestTheStretchesAChannelDividesInto:
+    """A reader follows a recording by the stretches it holds, so the record reads as runs."""
+
+    def test_a_run_gathers_the_frames_one_recording_holds_in_a_row(self) -> None:
+        runs = owner_runs([STEM_A, STEM_A, STEM_B])
+
+        assert runs == [OwnerRun(start=0, end=2, stem_id=STEM_A), OwnerRun(start=2, end=3, stem_id=STEM_B)]
+
+    def test_a_recording_coming_back_takes_a_run_of_its_own(self) -> None:
+        runs = owner_runs([STEM_A, STEM_B, STEM_A])
+
+        assert [run.stem_id for run in runs] == [STEM_A, STEM_B, STEM_A]
+
+    def test_resting_and_authored_frames_take_runs_like_any_other(self) -> None:
+        runs = owner_runs([RESTING_STEM_ID, RESTING_STEM_ID, AUTHORED_STEM_ID])
+
+        assert runs == [
+            OwnerRun(start=0, end=2, stem_id=RESTING_STEM_ID),
+            OwnerRun(start=2, end=3, stem_id=AUTHORED_STEM_ID),
+        ]
+
+    def test_the_runs_cover_the_channel_end_to_end_without_overlapping(self) -> None:
+        stem_ids = [STEM_A, STEM_A, RESTING_STEM_ID, STEM_B, STEM_B, STEM_B]
+
+        runs = owner_runs(stem_ids)
+
+        assert runs[0].start == 0
+        assert runs[-1].end == len(stem_ids)
+        assert all(before.end == after.start for before, after in zip(runs, runs[1:]))
+
+    def test_a_channel_standing_by_divides_into_nothing(self) -> None:
+        assert owner_runs([]) == []

@@ -68,6 +68,17 @@ colors:
   channel_triangle_partial: "#0f528888"
   channel_noise_partial: "#4a4f5988"
 
+  stem_1: "#a8410a"
+  stem_2: "#0f5288"
+  stem_3: "#1f6b34"
+  stem_4: "#7a5c00"
+  stem_5: "#9c2f55"
+  stem_6: "#0d6b66"
+  stem_7: "#6b4a1e"
+  stem_8: "#414757"
+  stem_authored: "#5a2d8c"
+  stem_rest: "#aab0bb"
+
   tab: "#b9bfca"
   tab_hovered: "#a9b0bd"
   tab_active: "#f7f8fa"

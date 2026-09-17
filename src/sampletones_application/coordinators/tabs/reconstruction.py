@@ -231,6 +231,7 @@ class ReconstructionTabCoordinator:
         self._reconstruction_plot_panel: GUIReconstructionPlotPanel = GUIReconstructionPlotPanel(
             layout_graphs=layout.graphs,
             channel_colors=layout.channel_colors,
+            stem_colors=layout.stem_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -288,6 +289,7 @@ class ReconstructionTabCoordinator:
 
         self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view
         self._reconstruction_panel_logic.on_stems_view_changed = self._reconstruction_stems_panel.update_view
+        self._reconstruction_panel_logic.on_ownership_changed = self._reconstruction_plot_panel.update_ownership
         self._reconstruction_panel_logic.on_heard_changed = self._reconstruction_instruments_logic.update_display
         self._reconstruction_panel_logic.on_audio_data_changed = self._on_audio_data_changed
         self._reconstruction_panel_logic.on_waveform_load_changed = self._reconstruction_plot_panel.load_waveform_data

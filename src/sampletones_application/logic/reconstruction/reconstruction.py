@@ -7,6 +7,7 @@ from typing import (
     List,
     Optional,
     Protocol,
+    Sequence,
     Tuple,
 )
 
@@ -32,13 +33,18 @@ from sampletones_application.view_model.reconstruction.stems import (
     ReconstructionStemsViewModel,
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
+from sampletones_application.view_model.shared.ownership import (
+    OwnershipLaneViewModel,
+    OwnershipRibbonViewModel,
+    OwnershipRunViewModel,
+)
 from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
     StemsListViewModel,
 )
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.configs.library import InstructionsLibraryConfig
-from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.naming import instrument_slice_name
@@ -51,6 +57,7 @@ from sampletones_core.exports.request import (
 )
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.ownership import owner_runs
 from sampletones_core.reconstructions.reconstruction.stems.selection import (
     StemSelection,
 )
@@ -65,6 +72,7 @@ from sampletones_shared.utils.system.paths import (
 )
 
 EMPTY_STEMS_LIST: Final[StemsListViewModel] = StemsListViewModel.empty()
+DISTINGUISHABLE_RECORDINGS: Final[int] = 2
 
 
 class ExportServiceProtocol(Protocol):
@@ -125,6 +133,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self.on_locate_audio_not_found: Optional[PathCallback] = None
         self.on_stems_view_changed: Optional[Callable[[ReconstructionStemsViewModel], None]] = None
+        self.on_ownership_changed: Optional[Callable[[OwnershipRibbonViewModel], None]] = None
         self.on_heard_changed: Optional[VoidCallback] = None
 
     def display_reconstruction(self) -> None:
@@ -150,6 +159,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             reconstruction_data.waveform_data(self._stem_selection),
             self._selected_channels,
         )
+        self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         self._emit_audio_data()
 
     def update_reconstruction(self) -> None:
@@ -169,6 +179,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             reconstruction_data.waveform_data(self._stem_selection),
             self._selected_channels,
         )
+        self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         if self._current_audio_source != AudioSourceType.ORIGINAL:
             self._emit_audio_data()
 
@@ -281,6 +292,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             reconstruction_data.waveform_data(self._stem_selection),
             self._selected_channels,
         )
+        self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         self._emit_audio_data()
         self.call(self.on_heard_changed)
 
@@ -292,6 +304,53 @@ class ReconstructionPanelLogic(CallbackMixin):
     @property
     def _stem_selection(self) -> StemSelection:
         return self._listening.selection
+
+    def _build_ownership_ribbon(
+        self,
+        reconstruction_data: ReconstructionData,
+    ) -> OwnershipRibbonViewModel:
+        """The recordings behind each stretch of what the reader is listening to.
+
+        A lane stands for a channel the reader has on and paints the stretches the recordings
+        heard there hold, so the ribbon reads as the waveform above it sounds. A document
+        answering to one recording alone has nothing to tell apart, so it offers no lanes.
+        """
+        stems_data = reconstruction_data.reconstruction.stems_data
+        positions = {entry.id: index for index, entry in enumerate(stems_data.config.entries)}
+        if len(positions) < DISTINGUISHABLE_RECORDINGS:
+            return OwnershipRibbonViewModel.empty()
+
+        lanes = tuple(
+            self._ownership_lane(channel_name, stems_data.assignments_by_channel[channel_name], positions)
+            for channel_name in self._selected_channels
+            if channel_name in stems_data.assignments_by_channel
+        )
+        return OwnershipRibbonViewModel(
+            lanes=lanes,
+            frame_length=reconstruction_data.reconstruction.config.frame_length,
+            total_frames=max((len(lane.runs) and lane.runs[-1].end_frame for lane in lanes), default=0),
+        )
+
+    def _ownership_lane(
+        self,
+        channel_name: ChannelName,
+        stem_ids: Sequence[int],
+        positions: Dict[int, int],
+    ) -> OwnershipLaneViewModel:
+        """One channel's lane: the stretches it divides into, each under the recording heard on it."""
+        heard = self.heard_on(channel_name)
+        return OwnershipLaneViewModel(
+            channel_name=channel_name,
+            runs=tuple(
+                OwnershipRunViewModel(
+                    start_frame=run.start,
+                    end_frame=run.end,
+                    stem_id=run.stem_id if run.stem_id in heard or run.stem_id == AUTHORED_STEM_ID else RESTING_STEM_ID,
+                    position=positions.get(run.stem_id, 0),
+                )
+                for run in owner_runs(stem_ids)
+            ),
+        )
 
     def heard_on(self, channel_name: ChannelName) -> FrozenSet[int]:
         """The recordings the reader hears on one channel, which is the scope an edit writes in.

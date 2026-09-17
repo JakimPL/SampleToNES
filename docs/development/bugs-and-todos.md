@@ -215,11 +215,6 @@ again.
 * The instruments panel draws the part a reader hears, so a frame held by a recording left out
   reads as a rest rather than naming its owner. A DearPyGui bar series takes one color for the
   whole series, so naming it means a series per owner or a drawn overlay beneath the plot.
-* The waveform names no recording, so which stretch came from which is read by ticking the boxes
-  rather than seen. A lane per playing channel beneath the plot, each frame painted with its
-  owner's color and drawn only where more than one recording is in play, is what answers it, and
-  a color per recording joins the palette along with it. Both this and the line above are questions
-  of what DearPyGui draws, so they are settled with the application in front of the writer.
 * `ReconstructionManager` writes `_reconstruction_hash` and `_coefficient` and reads neither.
 * `ETAEstimator` states the mark for an estimate not yet measurable as a literal in
   `sampletones_core`, where the language file the rest of the application reads its words from

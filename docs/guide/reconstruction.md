@@ -26,6 +26,8 @@ Click the waveform to play from that point. While playback is paused, a click mo
 
 The **Stems** card lists the recordings used to build a reconstruction. It groups them by the level each one was given. Every row has a checkbox for each channel that the recording used, and the checkbox at the front toggles all of them.
 
+Under the waveform is a row of colored bars, one line per channel. Each bar shows which recording played that stretch, in the recording's own color; a dark stretch means nothing was played there. The bars appear when a reconstruction was built from more than one recording.
+
 Uncheck a channel to silence it in the waveform, in playback, in the original audio and in a WAV export. The **Instruments** panel follows too: it shows the envelopes of the part you are listening to, and the sizes it states measure that part. Uncheck every recording on a channel and the channel reads as empty. This lets you see and hear what one recording added, channel by channel. The saved reconstruction keeps every channel, whatever you uncheck.
 
 The checkboxes also decide what an instrument edit changes. A frame belongs to the recording that played it, so an edit changes the frames of the recordings you have checked and leaves the rest alone. Uncheck a recording to shape one part of a channel without touching the others.

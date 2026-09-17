@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Final, List, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -8,8 +8,13 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.graphs import (
+    SUF_GRAPH_PLOT,
+    SUF_GRAPH_SUBPLOTS,
     SUF_GRAPH_THEME,
+    SUF_GRAPH_X_AXIS,
+    SUF_GRAPH_Y_AXIS,
     SUF_HANDLER_MOUSE,
+    SUF_RIBBON_LANE,
     SUF_WAVEFORM_OVERLAY,
     SUF_WAVEFORM_POSITION_INDICATOR,
     TAG_GLOBAL_GRAPH_THEME_INDICATOR,
@@ -50,6 +55,11 @@ class SeriesShade(StrEnum):
     DIMMED = "dimmed"
 
 
+WAVEFORM_ROWS: Final[int] = 2
+SINGLE_COLUMN: Final[int] = 1
+COLLAPSED_LANE_WEIGHT: Final[float] = 0.001
+
+
 class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     tag: str
     parent: str
@@ -88,6 +98,12 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             on_clicked=self._on_plot_clicked,
         )
 
+        self.subplots_tag = compose_tag(tag, SUF_GRAPH_SUBPLOTS)
+        self.lane_plot_tag = compose_tag(tag, SUF_RIBBON_LANE, SUF_GRAPH_PLOT)
+        self.lane_x_axis_tag = compose_tag(self.lane_plot_tag, SUF_GRAPH_X_AXIS)
+        self.lane_y_axis_tag = compose_tag(self.lane_plot_tag, SUF_GRAPH_Y_AXIS)
+        self._lane_height: int = 0
+
         self.indicator_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_INDICATOR)
         self.overlay_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_OVERLAY)
 
@@ -117,19 +133,31 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         _min_y = self._layout.graph.min_y
         _max_y = self._layout.graph.max_y
 
-        with dpg.plot(
-            label=self.label,
-            tag=self.plot_tag,
-            parent=self.tag,
-            width=self.width,
-            height=self.height,
-            anti_aliased=True,
-            no_mouse_pos=True,
-            no_box_select=True,
-            fit_button=dpg.mvMouseButton_Left,
-            horizontal_mod=dpg.mvKey_LShift,
-            pan_button=dpg.mvMouseButton_Left,
-            zoom_rate=self.zoom_factor,
+        with (
+            dpg.subplots(
+                WAVEFORM_ROWS,
+                SINGLE_COLUMN,
+                tag=self.subplots_tag,
+                parent=self.tag,
+                width=self.width,
+                height=self.height,
+                row_ratios=[float(self.height), COLLAPSED_LANE_WEIGHT],
+                link_all_x=True,
+                no_title=True,
+                no_menus=True,
+                no_resize=True,
+            ),
+            dpg.plot(
+                label=self.label,
+                tag=self.plot_tag,
+                anti_aliased=True,
+                no_mouse_pos=True,
+                no_box_select=True,
+                fit_button=dpg.mvMouseButton_Left,
+                horizontal_mod=dpg.mvKey_LShift,
+                pan_button=dpg.mvMouseButton_Left,
+                zoom_rate=self.zoom_factor,
+            ),
         ):
             dpg.add_plot_legend(
                 tag=self.legend_tag,
@@ -152,8 +180,53 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self._add_position_indicator()
             self._set_overlay_rectangle()
 
+        self._create_lane_row()
         self._bind_event_handler()
         self._update_axes_limits()
+
+    def _create_lane_row(self) -> None:
+        """The row beneath the waveform whatever names its stretches is drawn in.
+
+        The row shares the subplot's grid, so its span begins and ends where the waveform's does
+        however wide the amplitude labels beside them run, and it takes the waveform's stretch
+        through the linked axis, so zooming and panning carry the two together.
+        """
+        with dpg.plot(
+            tag=self.lane_plot_tag,
+            parent=self.subplots_tag,
+            no_mouse_pos=True,
+            no_box_select=True,
+            no_menus=True,
+            no_title=True,
+            no_frame=True,
+        ):
+            dpg.add_plot_axis(
+                dpg.mvXAxis,
+                tag=self.lane_x_axis_tag,
+                parent=self.lane_plot_tag,
+                no_label=True,
+                no_tick_labels=True,
+                no_tick_marks=True,
+                no_gridlines=True,
+            )
+            dpg.add_plot_axis(
+                dpg.mvYAxis,
+                tag=self.lane_y_axis_tag,
+                parent=self.lane_plot_tag,
+                no_label=True,
+                no_tick_labels=True,
+                no_tick_marks=True,
+                no_gridlines=True,
+            )
+
+    def set_lane_height(self, height: int) -> None:
+        """Gives the row beneath the waveform the height it needs, closing it at nothing."""
+        self._lane_height = height
+        dpg_configure_item(
+            self.subplots_tag,
+            height=self.height + height,
+            row_ratios=[float(self.height), float(height) or COLLAPSED_LANE_WEIGHT],
+        )
 
     def _setup_handlers(self) -> None:
         super()._setup_handlers()
