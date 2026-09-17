@@ -139,9 +139,29 @@ class TestWhereTheReadingEnds:
 
         assert reading == []
 
+    def test_a_channel_that_only_rests_reads_as_standing_by(self) -> None:
+        """Every frame resting leaves nothing to read, whatever the reader is listening to."""
+        reading = _reading([_silence(), _silence()], [RESTING_STEM_ID, RESTING_STEM_ID], _heard(STEM_A, STEM_B))
+
+        assert reading == []
+
     def test_a_channel_standing_by_reads_as_it_stands(self) -> None:
         instructions: Dict[ChannelName, Sequence[InstructionUnion]] = {CHANNEL: []}
 
         reading = heard_instructions(_stems_data([]), instructions, _heard(STEM_A))
 
         assert reading[CHANNEL] == []
+
+
+class TestAStreamTheRecordDoesNotReachTheEndOf:
+    """A frame standing past the record answers to no recording, so the reader hears it."""
+
+    def test_a_frame_past_the_record_reads_through(self) -> None:
+        reading = _reading([_pulse(60), _pulse(62)], [STEM_B], _heard(STEM_A))
+
+        assert reading == [_silence(), _pulse(62)]
+
+    def test_a_record_running_past_the_stream_reads_the_stream(self) -> None:
+        reading = _reading([_pulse(60)], [STEM_A, STEM_B, STEM_B], _heard(STEM_A))
+
+        assert reading == [_pulse(60)]

@@ -84,6 +84,15 @@ def _earliest_ending_holder(reconstruction: Reconstruction, channel_name: Channe
     )
 
 
+def _latest_starting_holder(reconstruction: Reconstruction, channel_name: ChannelName) -> int:
+    """The recording whose first frame on this channel comes last, so the frames before it rest."""
+    owners = _owners(reconstruction, channel_name)
+    return max(
+        _holders(reconstruction, channel_name),
+        key=lambda stem_id: min(frame for frame, owner in enumerate(owners) if owner == stem_id),
+    )
+
+
 def _frames_of(reconstruction: Reconstruction, channel_name: ChannelName, stem_id: int) -> List[int]:
     return [frame for frame, held in enumerate(_owners(reconstruction, channel_name)) if held == stem_id]
 
@@ -419,10 +428,19 @@ class TestTheEnvelopesASelectionShows:
             channels={name: frozenset(stem_ids) if name == channel_name else EVERY_STEM for name in ChannelName.items()}
         )
 
-    def test_the_whole_selection_reads_the_document_itself(self, reconstruction: Reconstruction) -> None:
+    def test_every_sounding_channel_reads_the_document_itself(self, reconstruction: Reconstruction) -> None:
+        """A reader hearing everything reads each sounding channel as the document writes it.
+
+        A channel whose every frame rests reads as standing by instead, since the reading ends
+        where a channel last sounds.
+        """
+        whole = reconstruction.export()
+        sounding = {name: features for name, features in whole.items() if features.has_frames}
+        assert sounding
+
         heard = reconstruction.export_heard(StemSelection.everywhere(EVERY_STEM, ChannelName.items()))
 
-        assert heard == reconstruction.export()
+        assert {name: heard[name] for name in sounding} == sounding
 
     def test_a_recording_heard_alone_shows_its_own_frames(self, reconstruction: Reconstruction) -> None:
         channel_name = _contested_channel(reconstruction)
@@ -434,6 +452,19 @@ class TestTheEnvelopesASelectionShows:
         assert heard.has_frames
         assert heard.frame_count < whole.frame_count
         assert heard.volume.items[0] == whole.volume.items[0]
+
+    def test_the_frames_before_a_recording_starts_read_as_rest(self, reconstruction: Reconstruction) -> None:
+        """A recording heard alone keeps its own frames and rests where another one played."""
+        channel_name = _contested_channel(reconstruction)
+        held = _latest_starting_holder(reconstruction, channel_name)
+        owned = _frames_of(reconstruction, channel_name, held)
+        whole = reconstruction.export()[channel_name]
+        assert owned[0] > 0
+
+        heard = reconstruction.export_heard(self._selection(channel_name, frozenset({held})))[channel_name]
+
+        assert heard.volume.at(0) == 0
+        assert heard.volume.at(owned[0]) == whole.volume.at(owned[0])
 
     def test_a_channel_with_nothing_heard_reads_as_standing_by(self, reconstruction: Reconstruction) -> None:
         channel_name = _contested_channel(reconstruction)

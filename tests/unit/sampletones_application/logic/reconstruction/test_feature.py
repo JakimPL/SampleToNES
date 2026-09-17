@@ -61,7 +61,16 @@ class TestTheEnvelopesOfWhatIsHeard:
         reconstruction: Reconstruction,
         feature_data: FeatureData,
     ) -> None:
-        assert feature_data.channels == reconstruction.export()
+        """Each channel that sounds is read as the document writes it.
+
+        A channel whose every frame rests reads as standing by instead, since the reading ends
+        where a channel last sounds.
+        """
+        whole = reconstruction.export()
+        sounding = {name: features for name, features in whole.items() if features.has_frames}
+        assert sounding
+
+        assert {name: feature_data[name] for name in sounding} == sounding
 
     def test_a_channel_no_recording_is_heard_on_describes_no_frame(
         self,
