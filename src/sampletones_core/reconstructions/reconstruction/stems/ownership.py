@@ -4,7 +4,25 @@ from typing import AbstractSet, Final, FrozenSet, List, Sequence
 from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
 from sampletones_core.instructions import InstructionUnion
 
-UNHELD_STEM_IDS: Final[FrozenSet[int]] = frozenset({RESTING_STEM_ID, AUTHORED_STEM_ID})
+UNRECORDED_STEM_IDS: Final[FrozenSet[int]] = frozenset({RESTING_STEM_ID, AUTHORED_STEM_ID})
+
+
+def heard_frame(stem_id: int, heard: AbstractSet[int]) -> bool:
+    """Whether the reader hears the frame one stem holds.
+
+    A recording is heard where the reader keeps its box ticked, and the frames a reader wrote by
+    hand answer to a row of their own, so they follow that row's boxes like any other. A resting
+    frame belongs to no row, so it is always read and always within reach of an edit, which is
+    what lets a gesture write a note into silence.
+
+    Args:
+        stem_id: The stem holding the frame.
+        heard: The recordings the reader hears on that channel.
+
+    Returns:
+        bool: True where the frame is read, played and written.
+    """
+    return stem_id in heard or stem_id == RESTING_STEM_ID
 
 
 @dataclass(frozen=True)
@@ -61,9 +79,8 @@ def owner_runs(stem_ids: Sequence[int]) -> List[OwnerRun]:
 def writes_reach(stem_ids: Sequence[int], heard: AbstractSet[int]) -> List[bool]:
     """Whether an edit reaches each frame of a channel.
 
-    A frame accepts a gesture where the recording holding it is among the ones the reader
-    hears, where it rests, and where the reader wrote it, so narrowing what is heard narrows
-    what is changed with it.
+    A frame accepts a gesture where the reader hears it, so narrowing what is heard narrows what
+    is changed with it: what is drawn is what is written.
 
     Args:
         stem_ids: The stem holding each frame of the channel.
@@ -72,7 +89,7 @@ def writes_reach(stem_ids: Sequence[int], heard: AbstractSet[int]) -> List[bool]
     Returns:
         List[bool]: One flag per frame, true where an edit writes it.
     """
-    return [stem_id in heard or stem_id in UNHELD_STEM_IDS for stem_id in stem_ids]
+    return [heard_frame(stem_id, heard) for stem_id in stem_ids]
 
 
 def carried_edit(

@@ -41,7 +41,7 @@ from sampletones_core.reconstructions.reconstruction.rendering import render_str
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.filter import heard_instructions
-from sampletones_core.reconstructions.reconstruction.stems.ownership import UNHELD_STEM_IDS, carried_edit
+from sampletones_core.reconstructions.reconstruction.stems.ownership import UNRECORDED_STEM_IDS, carried_edit
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
@@ -141,7 +141,7 @@ class Reconstruction(DataModel):
             ValueError: If the owner names nothing the setup knows, if rest and silence disagree,
                 or if a recording holds a channel its settings leave out.
         """
-        if stem_id not in entries and stem_id not in UNHELD_STEM_IDS:
+        if stem_id not in entries and stem_id not in UNRECORDED_STEM_IDS:
             raise ValueError(f"Frame {frame} of {channel_name} names stem {stem_id}, which the setup leaves out")
 
         if (stem_id == RESTING_STEM_ID) != (not instruction.on):

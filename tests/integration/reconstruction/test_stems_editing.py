@@ -280,6 +280,39 @@ class TestAChannelAnEditEmpties:
         assert _owners(edited, channel_name) == [AUTHORED_STEM_ID] * len(stream)
 
 
+class TestTheRowTheReadersOwnFramesAnswerTo:
+    """The frames a reader wrote follow their own row, so quieting it puts them out of reach."""
+
+    @staticmethod
+    def _with_authored_frame(reconstruction: Reconstruction) -> Tuple[ChannelName, int, Reconstruction]:
+        """A channel carrying one frame the reader wrote into a rest, which the next edit measures."""
+        channel_name = _channel_with_a_rest(reconstruction)
+        frame = _frames_of(reconstruction, channel_name, RESTING_STEM_ID)[0]
+        proposed = _stream_with(reconstruction, channel_name, {frame: _first_sounding(reconstruction, channel_name)})
+        written = _edited(reconstruction, channel_name, proposed)
+        assert _owners(written, channel_name)[frame] == AUTHORED_STEM_ID
+        return channel_name, frame, written
+
+    def test_an_edit_reaches_them_while_their_row_is_heard(self, reconstruction: Reconstruction) -> None:
+        channel_name, frame, written = self._with_authored_frame(reconstruction)
+        proposed = _stream_with(written, channel_name, {frame: _changed(written.instructions[channel_name][frame])})
+
+        edited = _edited(written, channel_name, proposed, heard=EVERY_STEM | {AUTHORED_STEM_ID})
+
+        assert edited.instructions[channel_name][frame] == proposed[frame]
+
+    def test_an_edit_leaves_them_once_their_row_is_quiet(self, reconstruction: Reconstruction) -> None:
+        """A row out of the edit's reach keeps what it holds, so nothing the reader wrote is lost."""
+        channel_name, frame, written = self._with_authored_frame(reconstruction)
+        stood = written.instructions[channel_name][frame]
+        proposed = _stream_with(written, channel_name, {frame: _changed(stood)})
+
+        edited = _edited(written, channel_name, proposed, heard=EVERY_STEM)
+
+        assert edited.instructions[channel_name][frame] == stood
+        assert _owners(edited, channel_name)[frame] == AUTHORED_STEM_ID
+
+
 class TestAChannelClearedWhileOneRecordingIsHeard:
     """Clearing a channel reaches the recording the reader hears and leaves the others playing.
 

@@ -444,9 +444,11 @@ one of them. A channel written back into play comes back wholly authored. The se
 recorded sources, the identifier, the configuration and the working level stand throughout.
 
 **The scope an edit writes in** follows principle 5: a frame accepts a gesture where its owner
-is ticked on that channel, where it rests, and where it is authored. Every other frame draws
-dimmed and reads as it stands. The scope is the same selection the waveform filter reads, so
-one state answers both, and a reader narrowing what they hear narrows what they change with it.
+is ticked on that channel, and where it rests. The frames a reader wrote answer to a row of
+their own, so they are ticked and reached like any recording's; a rest belongs to no row, which
+is what lets a gesture write a note into silence. Every other frame draws dimmed and reads as it
+stands. The scope is the same selection the waveform filter reads, so one state answers both,
+and a reader narrowing what they hear narrows what they change with it.
 
 ### What a removal releases
 

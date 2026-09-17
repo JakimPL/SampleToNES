@@ -5,7 +5,7 @@ import numpy as np
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
-from sampletones_core.reconstructions.reconstruction.stems.ownership import UNHELD_STEM_IDS
+from sampletones_core.reconstructions.reconstruction.stems.ownership import heard_frame
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 
 
@@ -80,12 +80,11 @@ def _masked_stream(
 
 
 def _is_heard(stem_ids: Sequence[int], frame: int, heard: AbstractSet[int]) -> bool:
-    """Whether a frame sounds for the reader, which it does wherever it answers to no recording."""
+    """Whether the reader hears one frame, which a frame standing past the record always is."""
     if frame >= len(stem_ids):
         return True
 
-    stem_id = stem_ids[frame]
-    return stem_id in heard or stem_id in UNHELD_STEM_IDS
+    return heard_frame(stem_ids[frame], heard)
 
 
 def _sounding_length(stream: Sequence[InstructionUnion]) -> int:

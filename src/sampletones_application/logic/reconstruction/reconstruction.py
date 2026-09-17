@@ -57,7 +57,7 @@ from sampletones_core.exports.request import (
 )
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
-from sampletones_core.reconstructions.reconstruction.stems.ownership import owner_runs
+from sampletones_core.reconstructions.reconstruction.stems.ownership import heard_frame, owner_runs
 from sampletones_core.reconstructions.reconstruction.stems.selection import (
     StemSelection,
 )
@@ -346,7 +346,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                 OwnershipRunViewModel(
                     start_frame=run.start,
                     end_frame=run.end,
-                    stem_id=run.stem_id if run.stem_id in heard or run.stem_id == AUTHORED_STEM_ID else RESTING_STEM_ID,
+                    stem_id=run.stem_id if heard_frame(run.stem_id, heard) else RESTING_STEM_ID,
                     position=positions.get(run.stem_id, 0),
                 )
                 for run in owner_runs(stem_ids)

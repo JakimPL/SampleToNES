@@ -78,10 +78,16 @@ class TestWhatTheReadingLeavesOut:
 
         assert reading == [_silence(), _pulse(62)]
 
-    def test_a_frame_the_reader_wrote_reads_through_whatever_is_heard(self) -> None:
-        reading = _reading([_pulse(60), _pulse(62)], [AUTHORED_STEM_ID, STEM_B], _heard())
+    def test_a_frame_the_reader_wrote_reads_through_while_its_row_is_heard(self) -> None:
+        reading = _reading([_pulse(60), _pulse(62)], [AUTHORED_STEM_ID, STEM_B], _heard(AUTHORED_STEM_ID))
 
         assert reading == [_pulse(60)]
+
+    def test_a_frame_the_reader_wrote_states_silence_once_its_row_is_quiet(self) -> None:
+        """The frames a reader wrote answer to a row of their own, so that row's box reaches them."""
+        reading = _reading([_pulse(60), _pulse(62)], [AUTHORED_STEM_ID, STEM_B], _heard(STEM_B))
+
+        assert reading == [_silence(), _pulse(62)]
 
 
 class TestWhereTheReadingKeepsItsFrames:

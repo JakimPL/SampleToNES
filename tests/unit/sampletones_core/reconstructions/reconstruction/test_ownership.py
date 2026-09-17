@@ -17,6 +17,7 @@ from tests.suite.case import BaseRegularTestCase
 STEM_A: Final[int] = 0
 STEM_B: Final[int] = 1
 EVERY_STEM: Final[FrozenSet[int]] = frozenset({STEM_A, STEM_B})
+EVERYTHING_HEARD: Final[FrozenSet[int]] = EVERY_STEM | {AUTHORED_STEM_ID}
 NOTHING_HEARD: Final[FrozenSet[int]] = frozenset()
 
 
@@ -94,7 +95,7 @@ class TestTheOwnerAFrameLeavesAnEditWith(BaseTestSuite):
             [test_case.previous],
             [test_case.owner],
             [test_case.proposed],
-            heard=EVERY_STEM,
+            heard=EVERYTHING_HEARD,
         )
 
         assert carried.stem_ids == [test_case.expected]
@@ -209,10 +210,22 @@ class TestTheScopeAnEditWritesIn:
         assert carried.instructions == [_pulse(60)]
         assert carried.stem_ids == [AUTHORED_STEM_ID]
 
-    def test_a_frame_the_reader_wrote_takes_the_edit_whatever_is_heard(self) -> None:
-        carried = carried_edit([_pulse(60)], [AUTHORED_STEM_ID], [_pulse(64)], heard=NOTHING_HEARD)
+    def test_a_frame_the_reader_wrote_takes_the_edit_while_its_row_is_heard(self) -> None:
+        carried = carried_edit(
+            [_pulse(60)],
+            [AUTHORED_STEM_ID],
+            [_pulse(64)],
+            heard=frozenset({AUTHORED_STEM_ID}),
+        )
 
         assert carried.instructions == [_pulse(64)]
+        assert carried.stem_ids == [AUTHORED_STEM_ID]
+
+    def test_a_frame_the_reader_wrote_stands_once_its_row_is_quiet(self) -> None:
+        """A row the reader quiets is out of an edit's reach, so the frames it holds stand."""
+        carried = carried_edit([_pulse(60)], [AUTHORED_STEM_ID], [_pulse(64)], heard=NOTHING_HEARD)
+
+        assert carried.instructions == [_pulse(60)]
         assert carried.stem_ids == [AUTHORED_STEM_ID]
 
     def test_a_frame_written_past_the_end_takes_the_edit_whatever_is_heard(self) -> None:
@@ -256,8 +269,13 @@ class TestTheFramesAnEditMayWrite:
     def test_a_recording_left_out_holds_its_frames_back(self) -> None:
         assert self._reach([STEM_A, STEM_B], frozenset({STEM_B})) == [False, True]
 
-    def test_resting_and_authored_frames_stay_reachable(self) -> None:
-        assert self._reach([RESTING_STEM_ID, AUTHORED_STEM_ID], NOTHING_HEARD) == [True, True]
+    def test_a_resting_frame_stays_reachable(self) -> None:
+        """A gesture writes a note into silence whatever the reader is listening to."""
+        assert self._reach([RESTING_STEM_ID], NOTHING_HEARD) == [True]
+
+    def test_the_frames_the_reader_wrote_follow_their_own_row(self) -> None:
+        assert self._reach([AUTHORED_STEM_ID], frozenset({AUTHORED_STEM_ID})) == [True]
+        assert self._reach([AUTHORED_STEM_ID], NOTHING_HEARD) == [False]
 
 
 class TestTheStretchesAChannelDividesInto:
