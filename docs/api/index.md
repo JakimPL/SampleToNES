@@ -5,7 +5,7 @@ This page is for using _SampleToNES_ as a library in your own Python code. Use i
 Names come from two packages:
 
 - The names in the table below come from `sampletones`: `from sampletones import ...`.
-- The examples also use a few helpers from `sampletones_core`: `write_wave`, `generate_library`, `DEFAULT_CHANNELS`, and the FamiTracker instrument writers. Import them with the full path each example shows.
+- The examples also use a few helpers from `sampletones_core`: `write_wave`, `ensure_library`, `DEFAULT_CHANNELS`, and the FamiTracker instrument writers. Import them with the full path each example shows.
 
 ## Public surface
 
@@ -76,14 +76,14 @@ audio = generator(instruction, save=True)  # advances the generator state
 
 ### Generate an instruction library
 
-A reconstruction searches an [instruction library](../formats/instruction-libraries.md) built for its configuration, so the library must exist first. Generate it once for a given config:
+A reconstruction searches an [instruction library](../formats/instruction-libraries.md) built for its configuration by this version of _SampleToNES_, so prepare the library first:
 
 ```python
 from sampletones import Config
-from sampletones_core.headless.library import generate_library
+from sampletones_core.headless.library import ensure_library
 
 config = Config.load("config.json")
-generate_library(config)  # renders every instruction and writes the .ins library
+ensure_library(config)  # builds the .ins library when it is missing or another version built it
 ```
 
 The same step is reached from the application's _Instructions_ tab, or on the command line with `sampletones library --config config.json`.

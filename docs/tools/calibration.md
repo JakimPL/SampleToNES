@@ -24,8 +24,8 @@ In an installed copy:
 sampletones calibration
 ```
 
-The run takes several minutes. A first run also builds any instruction library it is missing,
-which adds to the time.
+The run takes several minutes. A first run also builds each instruction library it needs that is
+missing or that another version built, which adds to the time.
 
 With no options, the run measures the program's default settings under the packaged suite:
 

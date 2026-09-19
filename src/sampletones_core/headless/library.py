@@ -8,13 +8,48 @@ from sampletones_core.library import (
     InstructionLibrary,
     InstructionLibraryData,
     InstructionLibraryKey,
+    LibraryState,
 )
 from sampletones_core.library.creator import InstructionsLibraryCreator
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_shared.logger import logger, null_logger
 
 
+def ensure_library(config: Config) -> None:
+    """Prepares the instruction library a conversion under ``config`` searches.
+
+    A library this build reads is used as it stands. A library built by another version is rebuilt
+    in its place, and a missing one is generated.
+
+    Args:
+        config: The configuration selecting the library.
+
+    Raises:
+        KeyboardInterrupt: If the generation is interrupted, so the conversion stops with it.
+    """
+    window = Window.from_config(config)
+    library = InstructionLibrary.from_config(config)
+    key = library.create_key(config, window)
+    match library.state(key):
+        case LibraryState.CURRENT:
+            return
+        case LibraryState.OUTDATED:
+            logger.info(f"Library {key.filename} was built by another version, rebuilding it")
+        case LibraryState.MISSING:
+            logger.info(f"Library {key.filename} is missing, generating it")
+
+    generate_library(config)
+
+
 def generate_library(config: Config) -> None:
+    """Generates the instruction library for ``config`` and writes it over any file in its place.
+
+    Args:
+        config: The configuration the library is built for.
+
+    Raises:
+        KeyboardInterrupt: If the generation is interrupted.
+    """
     window = Window.from_config(config)
     library = InstructionLibrary.from_config(config)
     key = library.create_key(config, window)
@@ -24,7 +59,6 @@ def generate_library(config: Config) -> None:
     progress_bar = tqdm(total=0, desc="Generating library", unit="instruction", disable=False)
 
     def on_start() -> None:
-        progress_bar.disable = False
         logger.info(f"Starting library generation for key {key}")
 
     def on_completed(
@@ -74,6 +108,7 @@ def generate_library(config: Config) -> None:
         creator.start()
         creator.wait()
     except KeyboardInterrupt:
-        logger.info("Reconstruction interrupted by user")
+        logger.info("Library generation interrupted by user")
+        raise
     finally:
         progress_bar.close()
