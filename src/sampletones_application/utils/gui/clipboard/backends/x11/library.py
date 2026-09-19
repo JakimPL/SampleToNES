@@ -18,24 +18,9 @@ class ScreenIterator(ctypes.Structure):
 
 
 class Screen(ctypes.Structure):
-    _fields_ = [
-        ("root", ctypes.c_uint32),
-        ("default_colormap", ctypes.c_uint32),
-        ("white_pixel", ctypes.c_uint32),
-        ("black_pixel", ctypes.c_uint32),
-        ("current_input_masks", ctypes.c_uint32),
-        ("width_in_pixels", ctypes.c_uint16),
-        ("height_in_pixels", ctypes.c_uint16),
-        ("width_in_millimeters", ctypes.c_uint16),
-        ("height_in_millimeters", ctypes.c_uint16),
-        ("min_installed_maps", ctypes.c_uint16),
-        ("max_installed_maps", ctypes.c_uint16),
-        ("root_visual", ctypes.c_uint32),
-        ("backing_stores", ctypes.c_uint8),
-        ("save_unders", ctypes.c_uint8),
-        ("root_depth", ctypes.c_uint8),
-        ("allowed_depths_len", ctypes.c_uint8),
-    ]
+    """A screen as libxcb lays it out, read as far as the root window it opens with."""
+
+    _fields_ = [("root", ctypes.c_uint32)]
 
 
 class InternAtomReply(ctypes.Structure):

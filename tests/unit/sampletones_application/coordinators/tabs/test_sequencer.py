@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, Final, List
+from typing import Dict, Final, List, Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -41,6 +41,7 @@ from sampletones_application.ui.panels.sequencer import channels as channels_mod
 from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
+from sampletones_application.utils.gui.clipboard.protocol import ClipboardTextCallback
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
@@ -69,7 +70,6 @@ from sampletones_shared.exceptions import (
     InvalidReconstructionValuesError,
     MalformedInstrumentError,
 )
-from sampletones_shared.types.callback import StringCallback
 from tests.suite.language import FakeLanguageManager
 
 FREQUENCY_MISMATCH_MESSAGE_KEY: Final[str] = "global.dialog.message.frequency_mismatch"
@@ -1663,15 +1663,15 @@ class FakeTextClipboard:
     """The desktop's clipboard, held in memory so a test reads what a copy put there.
 
     A read is answered at once, the way DearPyGui's own clipboard answers, until a case holds the
-    answers back to stand for an application that hands its text over later.
+    answers back to stand for an application that hands its text over later, or none at all.
     """
 
     def __init__(self) -> None:
         self.text: str = ""
-        self.unanswered: List[StringCallback] = []
+        self.unanswered: List[ClipboardTextCallback] = []
         self._answers_held: bool = False
 
-    def read(self, on_text: StringCallback) -> None:
+    def read(self, on_text: ClipboardTextCallback) -> None:
         if self._answers_held:
             self.unanswered.append(on_text)
             return
@@ -1686,9 +1686,16 @@ class FakeTextClipboard:
 
     def answer(self) -> None:
         """Hands the text standing now to every read still waiting, in the order they asked."""
+        self._hand_over(self.text)
+
+    def silence(self) -> None:
+        """Leaves every read still waiting with no answer, the way an owner that never replies does."""
+        self._hand_over(None)
+
+    def _hand_over(self, text: Optional[str]) -> None:
         waiting, self.unanswered = self.unanswered, []
         for on_text in waiting:
-            on_text(self.text)
+            on_text(text)
 
 
 def _text_clipboard(coordinator: SequencerTabCoordinator) -> FakeTextClipboard:
@@ -2087,6 +2094,41 @@ class TestPasteAwaitsTheClipboard:
         assert not coordinator._blocks.can_paste_order()
 
         clipboard.answer()
+
+        assert answered == [True]
+        assert coordinator._blocks.can_paste_order()
+
+    def test_a_paste_the_clipboard_answers_nothing_to_writes_nothing(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """What the clipboard holds stays unknown, so the block copied here is not written in its place."""
+        coordinator = block_coordinator
+        clipboard = _text_clipboard(coordinator)
+        _place_transpose(coordinator, 5)
+        coordinator._blocks.copy_tracker(PULSE1_CELL)
+        clipboard.hold_answers()
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
+        clipboard.silence()
+
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose is None
+        assert len(coordinator._history.entries) == recorded
+
+    def test_a_menu_the_clipboard_answers_nothing_to_keeps_its_last_answer(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        clipboard = _text_clipboard(coordinator)
+        clipboard.write("SampleToNES/1 order rows=1 positions=0..0\n03")
+        coordinator._sequencer_order_panel.refresh_paste_block(lambda: None)
+        clipboard.hold_answers()
+        answered: List[bool] = []
+
+        coordinator._sequencer_order_panel.refresh_paste_block(lambda: answered.append(True))
+        clipboard.silence()
 
         assert answered == [True]
         assert coordinator._blocks.can_paste_order()

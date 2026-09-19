@@ -147,16 +147,6 @@ class TestTheTextATransferReads(BaseTestSuite):
             answers={},
             text="",
         ),
-        TestCase(
-            label="an_owner_staying_silent",
-            answers={UTF8: Answer(pieces=(BLOCK_TEXT.encode(),), silent_after=0)},
-            text="",
-        ),
-        TestCase(
-            label="an_owner_falling_silent_between_pieces",
-            answers={UTF8: Answer(pieces=_split(BLOCK_TEXT.encode(), size=8), incremental=True, silent_after=2)},
-            text="",
-        ),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
@@ -164,6 +154,32 @@ class TestTheTextATransferReads(BaseTestSuite):
         owner = ScriptedOwner(test_case.answers)
 
         assert SelectionTransfer(owner, deadline=DEADLINE).text() == test_case.text
+
+
+class TestAnOwnerThatFallsSilent(BaseTestSuite):
+    """Silence leaves the clipboard's text unknown, which the transfer ends the conversation over."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        answers: Mapping[str, Answer]
+
+    test_cases = (
+        TestCase(
+            label="an_owner_staying_silent",
+            answers={UTF8: Answer(pieces=(BLOCK_TEXT.encode(),), silent_after=0)},
+        ),
+        TestCase(
+            label="an_owner_falling_silent_between_pieces",
+            answers={UTF8: Answer(pieces=_split(BLOCK_TEXT.encode(), size=8), incremental=True, silent_after=2)},
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_transfer_ends_the_conversation_over_the_silence(self, test_case: TestCase) -> None:
+        owner = ScriptedOwner(test_case.answers)
+
+        with pytest.raises(TimeoutError):
+            SelectionTransfer(owner, deadline=DEADLINE).text()
 
 
 class TestWhatATransferAsksFor(BaseTestSuite):
@@ -185,6 +201,7 @@ class TestWhatATransferAsksFor(BaseTestSuite):
         """The deadline covers the whole conversation, so silence ends it."""
         owner = ScriptedOwner({UTF8: Answer(pieces=(BLOCK_TEXT.encode(),), silent_after=0)})
 
-        SelectionTransfer(owner, deadline=DEADLINE).text()
+        with pytest.raises(TimeoutError):
+            SelectionTransfer(owner, deadline=DEADLINE).text()
 
         assert owner.asked == [UTF8]

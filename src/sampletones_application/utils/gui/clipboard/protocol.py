@@ -1,6 +1,6 @@
-from typing import Protocol
+from typing import Callable, Optional, Protocol
 
-from sampletones_shared.types.callback import StringCallback
+ClipboardTextCallback = Callable[[Optional[str]], None]
 
 
 class TextClipboard(Protocol):
@@ -11,10 +11,12 @@ class TextClipboard(Protocol):
     that fits the running environment.
     """
 
-    def read(self, on_text: StringCallback) -> None:
+    def read(self, on_text: ClipboardTextCallback) -> None:
         """Hands the text standing on the clipboard to ``on_text``, on the render thread.
 
         A read is asked for on the render thread, where every gesture reaching the clipboard runs.
+        An application that gives no answer leaves ``on_text`` with ``None``, which stands apart
+        from the empty text a clipboard holding nothing reads as.
         """
 
     def write(self, text: str) -> None: ...

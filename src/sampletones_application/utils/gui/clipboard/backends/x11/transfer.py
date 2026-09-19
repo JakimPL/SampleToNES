@@ -51,7 +51,7 @@ class SelectionTransfer:
     one before. UTF-8 is asked for first and Latin-1 after it, the order GLFW asks in.
 
     The whole conversation runs until ``deadline``, read against ``time.monotonic``, and an owner
-    still silent then reads as holding no text, as does a clipboard with no owner.
+    still silent then ends it with a :class:`TimeoutError`.
     """
 
     def __init__(self, connection: SelectionConnection, *, deadline: float) -> None:
@@ -59,14 +59,16 @@ class SelectionTransfer:
         self._deadline = deadline
 
     def text(self) -> str:
+        """The clipboard's text, an empty one where it holds nothing a reader can take.
+
+        Raises:
+            TimeoutError: If the application holding the clipboard answers nothing in time.
+        """
         clipboard = self._connection.atom(CLIPBOARD)
         if self._connection.selection_owner(clipboard) == NO_WINDOW:
             return ""
 
-        try:
-            return self._first_text(clipboard)
-        except TimeoutError:
-            return ""
+        return self._first_text(clipboard)
 
     def _first_text(self, clipboard: int) -> str:
         """The clipboard's text in the first type the owner writes it as, or an empty text."""

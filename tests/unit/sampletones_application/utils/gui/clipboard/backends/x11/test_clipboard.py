@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import Callable, Final, List, Tuple
+from typing import Callable, Final, List, Optional, Tuple
 
 import pytest
 
@@ -40,22 +40,29 @@ class FailingReader:
     def __init__(self) -> None:
         self.transfers: int = 0
 
-    def read_text(self, seconds: float) -> str:
+    def read_text(self, seconds: float) -> Optional[str]:
         self.transfers += 1
         raise RuntimeError("the transfer broke")
+
+
+class SilentReader:
+    """An owner that answers nothing in the span it is given, the way a stopped program does."""
+
+    def read_text(self, seconds: float) -> Optional[str]:
+        return None
 
 
 class Answers:
     """The texts a read was answered with, each beside the thread that answered it."""
 
     def __init__(self) -> None:
-        self.received: List[Tuple[str, threading.Thread]] = []
+        self.received: List[Tuple[Optional[str], threading.Thread]] = []
 
-    def __call__(self, text: str) -> None:
+    def __call__(self, text: Optional[str]) -> None:
         self.received.append((text, threading.current_thread()))
 
     @property
-    def texts(self) -> List[str]:
+    def texts(self) -> List[Optional[str]]:
         return [text for text, _ in self.received]
 
 
@@ -91,6 +98,15 @@ class TestAReadAnswersOnTheRenderThread(BaseTestSuite):
         _draw_until(lambda: bool(answers.received))
 
         assert reader.deadlines == [CLIPBOARD_ANSWER_SECONDS]
+
+    def test_an_owner_answering_nothing_reaches_the_reads_as_no_answer(self) -> None:
+        """The text the clipboard holds stays unknown, which stands apart from an empty clipboard."""
+        answers = Answers()
+
+        X11TextClipboard(SilentReader()).read(answers)
+        _draw_until(lambda: bool(answers.received))
+
+        assert answers.texts == [None]
 
     def test_the_frames_go_on_while_the_owner_is_silent(self) -> None:
         """This application's own window hands its text over as a frame polls its events."""
@@ -143,7 +159,7 @@ class TestReadsShareATransfer(BaseTestSuite):
         assert len(reader.threads) == 2
 
     @pytest.mark.filterwarnings("ignore::pytest.PytestUnhandledThreadExceptionWarning")
-    def test_a_broken_transfer_answers_empty_and_the_next_read_asks_again(self) -> None:
+    def test_a_broken_transfer_answers_nothing_and_the_next_read_asks_again(self) -> None:
         reader = FailingReader()
         clipboard = X11TextClipboard(reader)
         first, second = Answers(), Answers()
@@ -153,7 +169,7 @@ class TestReadsShareATransfer(BaseTestSuite):
         clipboard.read(second)
         _draw_until(lambda: bool(second.received))
 
-        assert (first.texts, second.texts) == ([""], [""])
+        assert (first.texts, second.texts) == ([None], [None])
         assert reader.transfers == 2
 
 

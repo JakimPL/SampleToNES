@@ -77,10 +77,11 @@ class SequencerBlocks:
         return self.order_in_hand() is not None
 
     def read_clipboard(self, then: VoidCallback) -> None:
-        """Asks the system clipboard for its text, running ``then`` once the answer has landed.
+        """Asks the system clipboard for its text, running ``then`` once the read is over.
 
         The answer is what the pastes and the menus offering them read from then on, so a gesture
-        that asked first acts on the text standing on the clipboard as it answered.
+        that asked first acts on the text standing on the clipboard as it answered. A read the
+        clipboard leaves unanswered keeps the answer before it, and ``then`` runs on that one.
         """
         self._text_clipboard.read(partial(self._take_clipboard_text, then))
 
@@ -88,10 +89,14 @@ class SequencerBlocks:
         self,
         paste: Callable[GestureParams, None],
     ) -> Callable[GestureParams, None]:
-        """Holds a paste back until the system clipboard has answered, so it writes the block in hand then."""
+        """Holds a paste back until the system clipboard has answered, so it writes the block in hand then.
+
+        A clipboard that answers nothing leaves the text it holds unknown, and the paste it was
+        asked for is let go of rather than written from a block the answer would have stood ahead of.
+        """
 
         def wrapped(*args: GestureParams.args, **kwargs: GestureParams.kwargs) -> None:
-            self.read_clipboard(partial(paste, *args, **kwargs))
+            self._text_clipboard.read(partial(self._paste_on_answer, partial(paste, *args, **kwargs)))
 
         return wrapped
 
@@ -169,6 +174,15 @@ class SequencerBlocks:
         if block is not None:
             self._order_writer.write(block, cell)
 
-    def _take_clipboard_text(self, then: VoidCallback, text: str) -> None:
-        self._clipboard_text = text
+    def _take_clipboard_text(self, then: VoidCallback, text: Optional[str]) -> None:
+        if text is not None:
+            self._clipboard_text = text
+
         then()
+
+    def _paste_on_answer(self, paste: VoidCallback, text: Optional[str]) -> None:
+        if text is None:
+            return
+
+        self._clipboard_text = text
+        paste()

@@ -1,4 +1,5 @@
 import time
+from typing import Optional
 
 from sampletones_application.utils.gui.clipboard.backends.x11.connection import XcbConnection
 from sampletones_application.utils.gui.clipboard.backends.x11.library import XcbLibrary
@@ -17,15 +18,17 @@ class XcbSelectionReader:
         self._library = library
         self._display = display
 
-    def read_text(self, seconds: float) -> str:
-        """The clipboard's text, or an empty text once ``seconds`` pass before the owner hands it over.
+    def read_text(self, seconds: float) -> Optional[str]:
+        """The clipboard's text, or ``None`` where the read went unanswered.
 
-        A display that refuses the connection reads as an empty clipboard too, and is logged.
+        An owner staying silent past ``seconds`` and a display refusing the connection both leave
+        the clipboard's text unknown, which reads as no answer and is logged. A clipboard holding
+        nothing answers with an empty text.
         """
         deadline = time.monotonic() + seconds
         try:
             with XcbConnection(self._library, self._display) as connection:
                 return SelectionTransfer(connection, deadline=deadline).text()
-        except ConnectionError as error:
-            logger.warning(f"The clipboard was read as empty: {error}")
-            return ""
+        except (ConnectionError, TimeoutError) as error:
+            logger.warning(f"The clipboard answered nothing: {error}")
+            return None

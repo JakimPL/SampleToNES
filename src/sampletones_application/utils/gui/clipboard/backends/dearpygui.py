@@ -2,7 +2,7 @@ from typing import cast
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_shared.types.callback import StringCallback
+from sampletones_application.utils.gui.clipboard.protocol import ClipboardTextCallback
 
 
 class DearPyGuiTextClipboard:
@@ -11,7 +11,7 @@ class DearPyGuiTextClipboard:
     The platform's clipboard hands its text over within the call, so a read answers at once.
     """
 
-    def read(self, on_text: StringCallback) -> None:
+    def read(self, on_text: ClipboardTextCallback) -> None:
         on_text(cast(str, dpg.get_clipboard_text()))
 
     def write(self, text: str) -> None:
