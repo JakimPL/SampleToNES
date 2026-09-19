@@ -67,7 +67,7 @@ from sampletones_application.ui.panels.reconstruction.instruments.config import 
     make_feature_plot_configs,
 )
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.clipboard import copy_to_clipboard
+from sampletones_application.utils.gui.clipboard.copy_button import copy_to_clipboard
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_value,

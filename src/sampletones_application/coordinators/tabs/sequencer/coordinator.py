@@ -61,7 +61,7 @@ from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequenc
 from sampletones_application.ui.panels.sequencer.voices.panel import (
     GUISequencerVoicesPanel,
 )
-from sampletones_application.utils.gui.clipboard import SystemTextClipboard
+from sampletones_application.utils.gui.clipboard.selection import select_text_clipboard
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
@@ -157,7 +157,7 @@ class SequencerTabCoordinator:
             self._sequencer_tracker_logic,
             self._sequencer_order_logic,
             project_controller,
-            text_clipboard=SystemTextClipboard(),
+            text_clipboard=select_text_clipboard(),
         )
         self._tracker_region_adjuster: TrackerRegionAdjuster = TrackerRegionAdjuster(self._sequencer_tracker_logic)
         self._sequencer_voices_logic: SequencerVoicesLogic = SequencerVoicesLogic(

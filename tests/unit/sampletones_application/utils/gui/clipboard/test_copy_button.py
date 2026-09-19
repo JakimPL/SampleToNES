@@ -16,13 +16,14 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.gui.clipboard import (
+from sampletones_application.utils.gui.clipboard import copy_button as copy_button_module
+from sampletones_application.utils.gui.clipboard.copy_button import (
     COPIED_LABEL_SECONDS,
-    SystemTextClipboard,
     copy_to_clipboard,
 )
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
+from sampletones_shared.types.callback import StringCallback
 from tests.suite.application import ManualClock, draw_frame
 from tests.suite.base import BaseTestSuite
 
@@ -35,12 +36,25 @@ TEXT: Final[str] = "the text a reader copies"
 QUEUE_LOGGER: Final[str] = "sampletones_application.utils.callbacks.queue.logger"
 
 
+class WrittenClipboard:
+    """The desktop's clipboard as a copy reaches it, keeping what was written for a case to read."""
+
+    def __init__(self) -> None:
+        self.texts: List[str] = []
+
+    def read(self, on_text: StringCallback) -> None:
+        on_text(self.texts[-1] if self.texts else "")
+
+    def write(self, text: str) -> None:
+        self.texts.append(text)
+
+
 @pytest.fixture
 def written(monkeypatch: pytest.MonkeyPatch) -> List[str]:
     """What reaches the desktop's clipboard, held here so a case leaves the reader's own alone."""
-    texts: List[str] = []
-    monkeypatch.setattr(SystemTextClipboard, "write", lambda _clipboard, text: texts.append(text))
-    return texts
+    clipboard = WrittenClipboard()
+    monkeypatch.setattr(copy_button_module, "select_text_clipboard", lambda: clipboard)
+    return clipboard.texts
 
 
 @pytest.fixture

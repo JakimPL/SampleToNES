@@ -19,7 +19,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.gui.clipboard import copy_to_clipboard
+from sampletones_application.utils.gui.clipboard.copy_button import copy_to_clipboard
 
 
 class GUITraceback:

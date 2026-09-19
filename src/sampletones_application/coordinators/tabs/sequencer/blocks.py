@@ -21,7 +21,7 @@ from sampletones_application.logic.sequencer.tracker import (
     TrackerBlockReader,
     TrackerBlockWriter,
 )
-from sampletones_application.utils.gui.clipboard import TextClipboard
+from sampletones_application.utils.gui.clipboard.protocol import TextClipboard
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
     OrderRegion,
