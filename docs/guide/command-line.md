@@ -59,8 +59,5 @@ A `convert` command takes either `--channels` or `--stems`.
   [Reconstructions](../formats/reconstructions.md) shows the file.
 - **Build a library**: `sampletones library --config my-config.json`
 
-A conversion first builds the instruction library for its settings when there is none, or when
-another version of _SampleToNES_ built the one there. That takes a while.
-
 GPU support is chosen when you install _SampleToNES_. [Installation](installation.md) explains
 how.
