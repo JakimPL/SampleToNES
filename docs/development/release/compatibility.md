@@ -1,9 +1,10 @@
 # Data Compatibility
 
-This document governs the version upgrades applied to the stored data formats of
-_SampleToNES_: reconstruction files (`.stn`), instruction libraries (`.ins`), and
-project documents (`project.json`). Consult it when changing a serialized shape,
-adding a format version, or diagnosing a file that loads as incompatible.
+This document governs the data versions of the stored formats of _SampleToNES_:
+reconstruction files (`.stn`), instruction libraries (`.ins`), and project
+documents (`project.json`). Reconstructions and projects are upgraded; libraries
+are rebuilt. Consult it when changing a serialized shape, adding a format
+version, or diagnosing a file that loads as incompatible.
 
 The upgrades live in `sampletones_core/compatibility` and run at the load
 boundary of each format, before deserialization. The formats' own documents
@@ -72,16 +73,28 @@ file entirely untouched.
 ### Upgrades run on the raw payload
 
 Upgrades apply to the serialized payload before any model sees it: the msgpack
-mapping for `.stn` and `.ins`, the JSON document for `project.json`. The
+mapping for `.stn`, the JSON document for `project.json`. The
 transform steps reshape that payload — renaming the fields whose names changed
 between versions, and adjusting the values they hold where the shape demands it.
 
-A step also restates a value an older version computed, wherever the stored value
-determines the current one in closed form: `compatibility/library/v2_1.py` recovers
-each windowed candidate's mean spectrum from the `f(ΣS) / f(N)` data version 2.0
-stored for its phase spectra `S`. Such a step holds its own copies of the computation
-and the constants it used, so it reads the files of its version the same whatever
-later builds make of them.
+### A library is rebuilt from its settings
+
+A library is derived data: its `InstructionsLibraryConfig` and the generators
+determine it wholly, and generating one costs about what measuring its entries
+costs. A library written at another version is therefore rebuilt:
+`LibraryState` reads the version from the metadata that leads the file, and a
+file the load contract would refuse reads as out of date. A conversion — in the
+application, headless, or in calibration — rebuilds the library it needs
+unprompted, and opening one from the _Instructions_ tab asks first.
+Reconstructions and projects carry their own configuration, so what a user made
+stands apart from the libraries it was converted with.
+
+The library version names what generation produces, so any change to the
+generators or to feature extraction bumps it, and the bump alone carries the
+change to every stored library. The corpus keeps libraries all the same: a
+library a release wrote is held to reading as out of date, and a library
+archived at the version this build writes is held to what this build generates
+for the same tones.
 
 ### A completed upgrade stamps the version it reached
 
@@ -101,9 +114,8 @@ untouched.
   `upgrade_json`, and the per-format registries `CURRENT_VERSIONS` and `UPDATES`.
 - `compatibility/<format>/__init__.py` — that format's `UPDATES` tuple. The
   reconstruction chain currently holds the 2.1→2.2 step
-  (`compatibility/reconstruction/v2_2.py`), the project chain the 1.0→1.1 step
-  (`compatibility/project/v1_1.py`), and the library chain the 2.0→2.1 step
-  (`compatibility/library/v2_1.py`).
+  (`compatibility/reconstruction/v2_2.py`), and the project chain the 1.0→1.1 step
+  (`compatibility/project/v1_1.py`). Libraries have no chain.
 
 ### Version fields
 
@@ -113,8 +125,8 @@ untouched.
 
 ### Load boundaries
 
-`Reconstruction.deserialize_data` and `InstructionLibraryData.load` pass their
-payload through `upgrade_binary`; `ProjectContainer.load` passes the document
+`Reconstruction.deserialize_data` passes its payload through `upgrade_binary`;
+`ProjectContainer.load` passes the document
 through `upgrade_json`. Each wrapper parses the payload, reads the format's
 version field, runs the chain, and re-encodes the upgraded payload. A payload
 that stays as it is — no chain applies, no version field, or a payload that does
@@ -126,7 +138,9 @@ always did.
 ### Adding an upgrade
 
 Read the format's version constant against the one the last release shipped, and
-take whichever route that comparison names.
+take whichever route that comparison names. A library change takes the version
+bump alone: bump `SAMPLETONES_LIBRARY_DATA_VERSION` where it still stands at the
+shipped version, and leave it where it already stands ahead.
 
 **The constant stands where the release left it.** The change opens a new step:
 

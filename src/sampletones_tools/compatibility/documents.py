@@ -127,9 +127,8 @@ def embedded_reconstruction() -> Reconstruction:
 def library_config() -> Config:
     """The configuration the archived library is analyzed under.
 
-    The spectrum is measured by windowed transform at a gamma above zero, which is where the step
-    carrying a library forward has work to do, and the sample rate stands as low as a measured
-    sample allows, which is what keeps the archived file small.
+    The sample rate stands as low as a measured sample allows, which is what keeps the archived file
+    small.
     """
     base = Config()
     library = base.library.model_copy(

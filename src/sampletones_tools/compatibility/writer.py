@@ -1,13 +1,9 @@
 from pathlib import Path
-from typing import Dict, Final, List
+from typing import List
 
 from sampletones_core.compatibility.kind import ObjectKind
+from sampletones_core.compatibility.upgrade import CURRENT_VERSIONS
 from sampletones_core.project.container import ProjectContainer
-from sampletones_shared.application import (
-    SAMPLETONES_LIBRARY_DATA_VERSION,
-    SAMPLETONES_PROJECT_DATA_VERSION,
-    SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
-)
 from sampletones_tools.compatibility.documents import (
     corpus_instructions,
     corpus_library,
@@ -16,12 +12,6 @@ from sampletones_tools.compatibility.documents import (
     embedded_reconstruction,
 )
 from sampletones_tools.compatibility.paths import CORPUS_DIRECTORY, archived_path
-
-ARCHIVED_VERSIONS: Final[Dict[ObjectKind, str]] = {
-    ObjectKind.RECONSTRUCTION: SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
-    ObjectKind.LIBRARY: SAMPLETONES_LIBRARY_DATA_VERSION,
-    ObjectKind.PROJECT: SAMPLETONES_PROJECT_DATA_VERSION,
-}
 
 
 def archive(root: Path = CORPUS_DIRECTORY, force: bool = False) -> List[Path]:
@@ -40,7 +30,7 @@ def archive(root: Path = CORPUS_DIRECTORY, force: bool = False) -> List[Path]:
         List[Path]: The files written, in the order the formats are listed.
     """
     written: List[Path] = []
-    for kind, version in ARCHIVED_VERSIONS.items():
+    for kind, version in CURRENT_VERSIONS.items():
         path = archived_path(kind, version, root)
         if path.exists() and not force:
             continue

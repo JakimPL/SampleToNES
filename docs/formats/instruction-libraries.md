@@ -56,3 +56,22 @@ sr_44100_nf_60_ws_13579_tg_0_sm_cqt_ch_384e710987cb958adf2b214df1267d10.ins
 | `tg_0` | transformation gamma 0 |
 | `sm_cqt` | spectrum method (`fft` / `logfft` / `cqt`) |
 | `ch_384e…` | a hash of the library configuration section |
+
+## Versioning
+
+Each file records the library data-version it was written with, in the metadata
+that leads the file, so the version reads from the first bytes without loading
+the entries. A library is derived data: its settings and the generators
+determine it wholly. A library written at the version this build writes is used
+as it stands, and any other is rebuilt from its settings the first time it is
+needed — a conversion rebuilds it unprompted, and opening one from the
+_Instructions_ tab asks first (see
+[Data compatibility](../development/release/compatibility.md)).
+
+The version therefore names what generation produces: a change to the
+generators or to feature extraction bumps it, which is what has every stored
+library rebuilt. Installs of different versions that share one library folder
+rebuild each other's libraries as each needs them.
+
+The current data version is 2.1. Version 2.1 averages a windowed candidate's
+phases in the power domain, where 2.0 averaged them after the transform.

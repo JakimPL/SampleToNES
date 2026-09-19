@@ -5,7 +5,7 @@ import pytest
 
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
-from sampletones_core.constants.enums import ChannelName, SpectrumMethod
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.library.data import InstructionLibraryData
 from sampletones_core.project.container import ProjectContainer
 from sampletones_core.reconstructions import Reconstruction
@@ -97,18 +97,11 @@ class TestWhatAnArchivedReconstructionStates:
 
 
 class TestWhatAnArchivedLibraryStates:
-    """The archived library is measured the way the step carrying one forward has work to do."""
 
     @staticmethod
     def _loaded(corpus: Path) -> InstructionLibraryData:
         path = archived_path(ObjectKind.LIBRARY, SAMPLETONES_LIBRARY_DATA_VERSION, corpus)
         return InstructionLibraryData.load(path, fast=False)
-
-    def test_it_is_measured_by_a_windowed_transform(self, corpus: Path) -> None:
-        config = self._loaded(corpus).config
-
-        assert config.spectrum_method is SpectrumMethod.FFT
-        assert config.transformation_gamma > 0
 
     def test_every_tone_it_was_given_is_stored(self, corpus: Path) -> None:
         stored = self._loaded(corpus).data

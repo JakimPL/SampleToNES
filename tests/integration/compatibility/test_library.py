@@ -4,85 +4,69 @@ import numpy as np
 import pytest
 
 from sampletones_core.compatibility.kind import ObjectKind
-from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName, SpectrumMethod
-from sampletones_core.fft import Window
-from sampletones_core.fft.features import get_feature_extractor
-from sampletones_core.generators import PulseGenerator
-from sampletones_core.instructions import PulseInstruction
-from sampletones_core.library import InstructionLibraryFragment
+from sampletones_core.compatibility.upgrade import CURRENT_VERSIONS
+from sampletones_core.constants.enums import SpectrumMethod
+from sampletones_core.library import LibraryHeader, LibraryState, library_state
 from sampletones_core.library.data import InstructionLibraryData
 from sampletones_shared.application import SAMPLETONES_LIBRARY_DATA_VERSION
-from tests.suite.analysis import REPAIR_TOLERANCE
+from sampletones_shared.exceptions import IncompatibleLibraryDataVersionError
+from sampletones_tools.compatibility.documents import corpus_library
 from tests.suite.compatibility import LIBRARY_VERSION, archived
 
-STORED_TONES: Final[tuple[PulseInstruction, ...]] = (
-    PulseInstruction(on=True, pitch=57, volume=12, duty_cycle=2),
-    PulseInstruction(on=True, pitch=45, volume=8, duty_cycle=1),
-)
 STORED_SAMPLE_RATE: Final[int] = 11025
 STORED_GAMMA: Final[int] = 50
-DENSITY_FLOOR: Final[float] = 1e-6
+GENERATION_TOLERANCE: Final[float] = 1e-6
 
 
-@pytest.fixture(name="loaded")
-def loaded_fixture() -> InstructionLibraryData:
-    """The archived library read the way a build opens one."""
-    return InstructionLibraryData.load(archived(ObjectKind.LIBRARY, LIBRARY_VERSION), fast=False)
+class TestTheLibraryTheLastReleaseWrote:
+    """A library the last release wrote reads as out of date, which is what has it rebuilt."""
+
+    def test_it_reads_as_out_of_date(self) -> None:
+        assert library_state(archived(ObjectKind.LIBRARY, LIBRARY_VERSION)) is LibraryState.OUTDATED
+
+    def test_it_states_the_settings_it_was_built_for(self) -> None:
+        """The settings a rebuild takes up, so the rebuilt library lands in the file's own place."""
+        config = LibraryHeader.read(archived(ObjectKind.LIBRARY, LIBRARY_VERSION)).config
+
+        assert config is not None
+        assert (config.spectrum_method, config.transformation_gamma, config.sample_rate) == (
+            SpectrumMethod.FFT,
+            STORED_GAMMA,
+            STORED_SAMPLE_RATE,
+        )
+
+    def test_a_load_refuses_it_naming_both_versions(self) -> None:
+        with pytest.raises(IncompatibleLibraryDataVersionError) as refused:
+            InstructionLibraryData.load(archived(ObjectKind.LIBRARY, LIBRARY_VERSION), fast=False)
+
+        assert (refused.value.actual_version, refused.value.expected_version) == (
+            LIBRARY_VERSION,
+            SAMPLETONES_LIBRARY_DATA_VERSION,
+        )
 
 
-class TestTheVersionAnUpgradedLibraryStates:
-    def test_it_states_the_version_this_build_reads(self, loaded: InstructionLibraryData) -> None:
-        assert loaded.metadata.library_data_version == SAMPLETONES_LIBRARY_DATA_VERSION
+class TestALibraryArchivedAtTheVersionThisBuildWrites:
+    """A library written at the version this build writes is held to what this build generates.
 
+    A library reads as current by its version alone, so a change to the generators or to feature
+    extraction bumps the library version, which is what has every stored library rebuilt. Once a
+    release archives a library at the version this build writes, this holds that version to the
+    output it names.
+    """
 
-class TestWhatAnUpgradedLibraryDescribes:
-    """The tones, and the terms they were measured under, stand as the file was written with them."""
+    def test_it_is_what_this_build_generates_for_the_same_tones(self) -> None:
+        path = archived(ObjectKind.LIBRARY, CURRENT_VERSIONS[ObjectKind.LIBRARY])
+        if not path.is_file():
+            pytest.skip("a release archives a library at the version this build writes first")
 
-    def test_it_was_measured_the_way_the_file_states(self, loaded: InstructionLibraryData) -> None:
-        assert loaded.config.spectrum_method is SpectrumMethod.FFT
-        assert loaded.config.transformation_gamma == STORED_GAMMA
-        assert loaded.config.sample_rate == STORED_SAMPLE_RATE
+        stored = InstructionLibraryData.load(path, fast=False)
+        generated = corpus_library()
 
-    def test_every_tone_it_was_written_with_is_held(self, loaded: InstructionLibraryData) -> None:
-        assert all(instruction in loaded.data for instruction in STORED_TONES)
-
-    def test_each_tone_keeps_the_sound_it_was_measured_from(self, loaded: InstructionLibraryData) -> None:
-        assert all(loaded.data[instruction].sample.array.size > 0 for instruction in STORED_TONES)
-
-
-class TestTheRepairAnUpgradedLibraryTakes:
-    """A 2.0 library averaged its phases in feature space, and reads as the transformed mean."""
-
-    def test_each_feature_reads_as_this_build_measures_it(self, loaded: InstructionLibraryData) -> None:
-        """The repair lands on the value the current build computes for the same tone.
-
-        A stored spectrum holds single-precision densities, and recovering the mean runs them back
-        through the transform, which spreads that precision widest at the bins nearest zero. The
-        comparison therefore carries a floor beside the relative tolerance: every density lies
-        within it, and the mass they sum to agrees far more closely still.
-        """
-        config = Config().model_copy(update={"library": loaded.config})
-        extractor = get_feature_extractor(config, Window.from_config(config))
-        generator = PulseGenerator(config, ChannelName.PULSE1)
-        for instruction in STORED_TONES:
-            measured = InstructionLibraryFragment.create(generator, instruction, extractor)
+        assert (stored.config, set(stored.data)) == (generated.config, set(generated.data))
+        for instruction, fragment in generated.data.items():
+            np.testing.assert_array_equal(stored.data[instruction].sample.array, fragment.sample.array)
             np.testing.assert_allclose(
-                loaded.data[instruction].feature.values,
-                measured.feature.values,
-                rtol=REPAIR_TOLERANCE,
-                atol=DENSITY_FLOOR,
-            )
-
-    def test_the_mass_a_feature_sums_to_survives(self, loaded: InstructionLibraryData) -> None:
-        """What the densities add up to is what the repair states, and it answers far more tightly."""
-        config = Config().model_copy(update={"library": loaded.config})
-        extractor = get_feature_extractor(config, Window.from_config(config))
-        generator = PulseGenerator(config, ChannelName.PULSE1)
-        for instruction in STORED_TONES:
-            measured = InstructionLibraryFragment.create(generator, instruction, extractor)
-            np.testing.assert_allclose(
-                loaded.data[instruction].feature.values.sum(),
-                measured.feature.values.sum(),
-                rtol=REPAIR_TOLERANCE,
+                stored.data[instruction].feature.values,
+                fragment.feature.values,
+                rtol=GENERATION_TOLERANCE,
             )

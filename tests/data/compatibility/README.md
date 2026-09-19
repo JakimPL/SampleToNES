@@ -7,6 +7,10 @@ release wrote to the version this build reads. These files are what that claim i
 tested only against payloads a test builds itself is held only to the fields whoever wrote the test
 thought to name, and a field that changed shape while no step named it passes unnoticed.
 
+A library another version wrote is rebuilt, and it is archived all the same: a library a release
+wrote is held to reading as out of date, and a library archived at the version this build writes
+is held to what this build generates for the same tones.
+
 ## Layout
 
 A file is named after the **data version it was written at**, in the spelling the step modules use,
@@ -32,9 +36,7 @@ The project arranges one reconstruction under two voices, which is what holds a 
 keeping a single copy of it, and its embedded reconstruction names no file, the way a project
 detaches a recording before storing it.
 
-The library is measured by windowed transform at a gamma above zero: that is where the step
-carrying a library forward has work to do, and a constant-Q library or a gamma of zero would
-archive a file the step passes through untouched.
+The library holds two measured tones at a low sample rate, which keeps the file small.
 
 ## Adding a version
 

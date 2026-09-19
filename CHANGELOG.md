@@ -7,7 +7,7 @@
 * Improved clarity of reconstructions.
 * Optimized the size of reconstructions.
 * Bumped the reconstruction data-version to `2.2` with backward compatibility for `2.1`.
-* Bumped the library data-version to `2.1` with backward compatibility for `2.0`.
+* Bumped the library data-version to `2.1`: a library built by an earlier version is rebuilt the first time it is needed.
 
 ## v0.3.1 [2026-08-18]
 

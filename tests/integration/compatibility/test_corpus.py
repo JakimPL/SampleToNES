@@ -51,7 +51,7 @@ class TestWhatEveryStepIsHeldTo:
         names it, so the two are compared as versions rather than as the strings they spell.
         """
         kept = [version for version in ARCHIVED_VERSIONS.values() if archived(kind, version).is_file()]
-        for update in UPDATES[kind]:
+        for update in UPDATES.get(kind, ()):
             assert any(compare_versions(str(update.base), version) == 0 for version in kept)
 
     @pytest.mark.parametrize("kind", KINDS, ids=lambda kind: kind.value)
