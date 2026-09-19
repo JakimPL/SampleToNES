@@ -122,9 +122,9 @@ SampleToNES/1 order rows=1 positions=0..1
 
 The form and its reading live in `logic/sequencer/clipboard/`, which deals in blocks and
 strings alone; the desktop's clipboard is reached through
-`utils/gui/clipboard.py::TextClipboard`, one more piece of external behavior standing behind
-a protocol ([Architecture](../architecture.md), principle 11). The sequencer coordinator wires
-the two.
+`utils/gui/clipboard/protocol.py::TextClipboard`, one more piece of external behavior standing
+behind a protocol ([Architecture](../architecture.md), principle 11). The sequencer coordinator
+wires the two.
 
 **A field prints what the grid prints in its cell**, which is what carries the three states
 across: a value reads as its value, an empty cell as the dots beneath it, and a mixed one as
@@ -147,12 +147,16 @@ row accepts, so text typed by hand lands the values the grid would.
 
 ### Which block a paste writes
 
-A copy writes both clipboards, and a paste reads the desktop's text first: it stands while it
+A copy writes both clipboards, and a paste asks the desktop for its text first: it stands while it
 parses as a block for *that* grid, and any other text leaves the grid's own block in hand. So a
 block copied in a second instance pastes here, and a copy taken in this one survives whatever
 else the desktop picks up afterward. `can_paste_block` asks the same question through a
 `ParsedBlockCache`, which reparses only when the text has changed, so opening a menu costs one
 string compare.
+
+The program that owns the desktop's clipboard answers a read in its own time. A paste therefore
+writes its block only after the answer arrives. A menu shows Paste based on the last answer it
+received, and updates the item when the new answer arrives.
 
 ## A grid declares its actions once
 

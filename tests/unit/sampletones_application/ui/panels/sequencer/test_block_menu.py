@@ -168,6 +168,7 @@ def _tracker_panel(
     panel.on_delete_block = gestures.deleted.append
     panel.on_paste_block = gestures.pasted.append
     panel.can_paste_block = lambda: can_paste
+    panel.refresh_paste_block = None
     panel._blocks = BlockGestures(grid=panel)
     attach_edit_surface(panel, TRACKER_BLOCK_SHORTCUTS, TrackerTarget)
     panel._menu = TrackerMenu(
@@ -194,6 +195,7 @@ def _order_panel(
     panel.on_delete_block = gestures.deleted.append
     panel.on_paste_block = gestures.pasted.append
     panel.can_paste_block = lambda: can_paste
+    panel.refresh_paste_block = None
     panel._blocks = BlockGestures(grid=panel)
     attach_edit_surface(panel, ORDER_BLOCK_SHORTCUTS, OrderTarget)
     panel._menu = OrderMenu(
