@@ -18,8 +18,8 @@ A `.stn` file holds:
 * **id** — a unique identifier for the reconstruction;
 * **configuration** — a frozen snapshot of the
   [generation configuration](../guide/configuration.md) used, so the file records
-  exactly how it was made: sample rate, NES frequency, enabled channels, spectrum
-  method, gamma, and the rest;
+  exactly how it was made: sample rate, NES frequency, spectrum method, gamma,
+  and the rest;
 * **coefficient** — the [working level](../glossary.md#working-level-coefficient),
   the single scale factor applied to the input so its loudness fit the NES
   channels' range. Storing it lets the reconstruction and the original be shown
@@ -108,21 +108,7 @@ current shape before deserialization (see
 [Data compatibility](../development/release/compatibility.md)); the application version
 is stored alongside the data version, for reference.
 
-The current data version is 2.2. Version 2.2 renders a channel's audio from the
-instructions it stores, where 2.1 kept the rendered waveform beside them, and
-names each stream by the channel that plays it, where 2.1 named it by its
-generator; the enum values stored inside (`pulse1`, `pulse2`, `triangle`,
-`noise`) never changed. It carries the `stems_data` record on every
-reconstruction, which is where the recordings behind the frames are named: each
-entry states the settings its stem was converted with — the channels it held, the
-drive on each of them, and how many of them it sounded at once — and the record
-names where each recording was read from, so the embedded configuration carries
-the scoring settings alone.
-
-A file written at 2.1 is read with its audio let go of and with a one-stem record
-built from what it states: one entry covering the channels its configuration
-handed out, driven at the level it stored, sourced from the recording it named,
-and holding every frame that sounds, while a silent frame answers to rest.
+The current data version is 2.2.
 
 ## Storage and export
 

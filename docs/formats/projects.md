@@ -51,7 +51,8 @@ The arrangement across the four channels:
 * `rows_per_pattern` — the row count every pattern in the song shares;
 * `order` — the arrangement itself: an ordered list of frames, each frame mapping
   every channel to the pattern index it plays, or empty for a silent slot;
-* `channels` — per channel, a pool of patterns, each pattern a list of rows. A row
+* `channels` — per channel, the `name` of the channel it drives and its pool of
+  `patterns`, each pattern a list of rows. A row
   states the `command` its note column holds — the `voice_id` to start, or a
   note-off — along with its `transpose` and `volume`. The channel a voice sounds on
   is the one whose pool holds the row.
@@ -73,7 +74,4 @@ deserialization (see
 [Data compatibility](../development/release/compatibility.md)). Unknown or extra fields
 within a matching version are ignored, which leaves room for the format to grow.
 
-The current format version is 1.1. It gathers the pool under `voices`, each record
-stating its `kind`; names each channel pool by `name`; and names a row's note
-command by `voice_id` alone. Version 1.0 held the pool under `samples`, named a
-channel pool `generator`, and named a note command's channel beside its sample.
+The current format version is 1.1.

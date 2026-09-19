@@ -73,5 +73,4 @@ generators or to feature extraction bumps it, which is what has every stored
 library rebuilt. Installs of different versions that share one library folder
 rebuild each other's libraries as each needs them.
 
-The current data version is 2.1. Version 2.1 averages a windowed candidate's
-phases in the power domain, where 2.0 averaged them after the transform.
+The current data version is 2.1.
