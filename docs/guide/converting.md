@@ -75,7 +75,7 @@ Click the button under **Output** to start the conversion. The button's label te
 
 When the conversion finishes, click **Load** to open the result on the **Reconstruction** tab, where you can [listen to it and export it](reconstruction.md). After a conversion of several recordings, the button reads **Open** instead.
 
-The first conversion with new settings builds the [instruction library](../concepts/instruction-library.md) for those settings. This takes a while. Later conversions with the same settings use the same library.
+The first conversion with new settings builds the [instruction library](../concepts/instruction-library.md) for those settings. This takes a while. Later conversions with the same settings use the same library. A library built by another version of _SampleToNES_ is rebuilt the first time a conversion needs it.
 
 ## The instruction library
 

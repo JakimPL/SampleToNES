@@ -25,4 +25,4 @@ class MainTabHooks:
     on_load_directory: VoidCallback
     on_canceled: VoidCallback
     on_refresh_trees: VoidCallback
-    on_generate_library: VoidCallback
+    on_prepare_library: VoidCallback

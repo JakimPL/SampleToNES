@@ -17,6 +17,7 @@ from sampletones_application.paths import LANG_EN
 from sampletones_application.view_model.instruction.library import (
     LibraryPanelViewModel,
 )
+from sampletones_core.library import LibraryState
 from sampletones_core.parallelization import TaskStatus
 from sampletones_shared.exceptions import (
     DeserializationError,
@@ -28,6 +29,8 @@ from sampletones_shared.exceptions import (
     UnhandledLibraryError,
 )
 from tests.suite.application import HeldQueue
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 from tests.suite.language import FakeLanguageManager
 from tests.suite.library import OTHER_LIBRARIES, WrittenLibrary, aim_library_directory
 
@@ -51,6 +54,7 @@ TEXTS: Final[Dict[str, str]] = {
     "instructions.library.label.regenerate_library_button": "Regenerate",
     "instructions.library.template.library_loaded_template": "{} loaded.",
     "instructions.library.template.library_exists_template": "{} exists.",
+    "instructions.library.template.library_outdated_template": "{} was built by another version.",
     "instructions.library.template.library_not_exists_template": "{} doesn't exist.",
 }
 
@@ -62,6 +66,40 @@ def _logic(*, operation_active: bool) -> LibraryLogic:
     logic._is_operation_active = lambda: operation_active
     logic.generate_library = MagicMock()
     return logic
+
+
+def _preparing_logic(state: LibraryState) -> LibraryLogic:
+    """A library logic whose configuration names a library standing as ``state``, bypassing the
+    heavy constructor."""
+    logic = LibraryLogic.__new__(LibraryLogic)
+    logic._config_manager = MagicMock()
+    logic._library_manager = MagicMock()
+    logic._library_manager.library_state.return_value = state
+    logic.generate_library = MagicMock()
+    return logic
+
+
+class TestPreparingTheLibraryForAConversion(BaseTestSuite):
+    """A conversion uses a library this build reads as it stands; any other is generated."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        state: LibraryState
+        expected: bool
+
+    test_cases = (
+        TestCase(label="a library this build reads", state=LibraryState.CURRENT, expected=False),
+        TestCase(label="a library another version built", state=LibraryState.OUTDATED, expected=True),
+        TestCase(label="no library", state=LibraryState.MISSING, expected=True),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_whether_it_is_generated(self, test_case: TestCase) -> None:
+        logic = _preparing_logic(test_case.state)
+
+        logic.prepare_library()
+
+        assert logic.generate_library.called is test_case.expected
 
 
 class TestRequestGeneration:
@@ -194,6 +232,7 @@ def _generation_logic(*, generating: bool = True) -> LibraryLogic:
     logic._library_manager = MagicMock()
     logic._library_manager.is_generating.return_value = generating
     logic._library_manager.is_library_loaded.return_value = False
+    logic._library_manager.library_state.return_value = LibraryState.MISSING
     logic._language_manager = FakeLanguageManager(TEXTS)
     logic.on_view_changed = MagicMock()
     return logic
@@ -239,7 +278,6 @@ class TestGenerationEmits:
 
     def test_update_status_repaints_the_idle_state(self) -> None:
         logic = _generation_logic(generating=False)
-        logic._library_manager.library_exists_for_key.return_value = False
 
         with patch(
             "sampletones_application.logic.instruction.library.get_display_name_from_key",
@@ -265,9 +303,22 @@ class TestGenerationEmits:
         assert view_model.status_text == "lib loaded."
         assert view_model.generate_button_label == "Regenerate"
 
+    def test_update_status_reports_a_library_another_version_built(self) -> None:
+        logic = _generation_logic(generating=False)
+        logic._library_manager.library_state.return_value = LibraryState.OUTDATED
+
+        with patch(
+            "sampletones_application.logic.instruction.library.get_display_name_from_key",
+            return_value="lib",
+        ):
+            logic.update_status()
+
+        view_model = logic.on_view_changed.call_args.args[0]
+        assert view_model.status_text == "lib was built by another version."
+
     def test_update_status_reports_an_existing_unloaded_library(self) -> None:
         logic = _generation_logic(generating=False)
-        logic._library_manager.library_exists_for_key.return_value = True
+        logic._library_manager.library_state.return_value = LibraryState.CURRENT
 
         with patch(
             "sampletones_application.logic.instruction.library.get_display_name_from_key",
@@ -491,7 +542,7 @@ class TestTheCatalogFollowingTheConfiguration:
         catalog.queue.drain()
 
         assert (started_in / catalog.config_manager.key.filename).exists()
-        assert catalog.logic.library_exists_for_key(catalog.config_manager.key) is False
+        assert catalog.manager.library_state(catalog.config_manager.key) is LibraryState.MISSING
 
 
 class TestCanceledStatusLanguageKey:

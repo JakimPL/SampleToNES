@@ -533,7 +533,7 @@ class Application:
                 on_load_directory=self._navigate_to_reconstructions,
                 on_canceled=self._refresh_browsers,
                 on_refresh_trees=self._refresh_browsers,
-                on_generate_library=self._instructions_tab.ensure_library_loaded,
+                on_prepare_library=self._instructions_tab.prepare_library,
             ),
             layout=MainTabParameters.from_config(self.layout),
             language_manager=self.language_manager,

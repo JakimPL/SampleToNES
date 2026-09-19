@@ -39,5 +39,6 @@ class InstructionsLibraryElements(AbstractElement):
     GENERATION_PROGRESS_TEMPLATE = "generation_progress_template"
     LIBRARY_NOT_EXISTS_TEMPLATE = "library_not_exists_template"
     LIBRARY_EXISTS_TEMPLATE = "library_exists_template"
+    LIBRARY_OUTDATED_TEMPLATE = "library_outdated_template"
     LIBRARY_LOADED_TEMPLATE = "library_loaded_template"
     INCOMPATIBLE_VERSION_TEMPLATE = "incompatible_version_template"

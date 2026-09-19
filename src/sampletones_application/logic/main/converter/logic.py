@@ -52,7 +52,7 @@ from sampletones_application.view_model.main.source import SourceSettingsPanelVi
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
-from sampletones_core.library import InstructionLibraryKey
+from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.reconstructions.converter import ConversionPlan
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import NoFilesToProcessError
@@ -120,9 +120,10 @@ class ConverterLogic(CallbackMixin):
         self.on_load_file: Optional[PathCallback] = None
         self.on_load_directory: Optional[VoidCallback] = None
         self.on_canceled: Optional[VoidCallback] = None
-        self.generate_library: Optional[VoidCallback] = None
+        self.prepare_library: Optional[VoidCallback] = None
         self.cancel_library_generation: Optional[VoidCallback] = None
         self.library_readiness: Optional[Callable[[Path, InstructionLibraryKey], LibraryReadiness]] = None
+        self.library_state: Optional[Callable[[Path], LibraryState]] = None
 
     @property
     def mixes(self) -> bool:
@@ -397,15 +398,22 @@ class ConverterLogic(CallbackMixin):
             self.call(self.on_target_exists, standing_targets)
             return
 
+        config = self._config_manager.config.model_copy()
+        library_key = self._config_manager.key
         self._run.wait(
             ConversionRequest(
-                config=self._config_manager.config.model_copy(),
+                config=config,
                 plan=plan,
                 reconstruction_name=self._state.destination.reconstruction_name,
-                library_key=self._config_manager.key,
+                library_key=library_key,
+                library_state=self.query(
+                    self.library_state,
+                    config.library_directory / library_key.filename,
+                    default=LibraryState.MISSING,
+                ),
             )
         )
-        self.call(self.generate_library)
+        self.call(self.prepare_library)
         self._wait_for_library_and_start()
 
     def _declines_to_start(self) -> bool:
@@ -557,8 +565,8 @@ class ConverterLogic(CallbackMixin):
     def _wait_for_library_and_start(self) -> None:
         """Begins the run once the library its request converts against is ready.
 
-        A generation preparing the library is waited out; a library still missing once no
-        generation holds it is one the run will not get, so the request is given up.
+        A generation preparing the library is waited out. Once no generation holds it, a library
+        this build reads starts the run, and any other gives the request up.
         """
         request = self._run.request
         if self._run.phase != ConversionPhase.WAITING or request is None:

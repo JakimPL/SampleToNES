@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 from typing import List
 from unittest.mock import MagicMock
@@ -10,8 +11,10 @@ from sampletones_application.logic.instruction.library_manager import (
 )
 from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.view_model.main.updates import AdvancedSettingsUpdate
-from sampletones_core.library import InstructionLibraryKey
-from tests.suite.library import OTHER_LIBRARIES, WrittenLibrary
+from sampletones_core.compatibility.kind import ObjectKind
+from sampletones_core.library import InstructionLibraryKey, LibraryState
+from tests.suite.compatibility import LIBRARY_VERSION, archived
+from tests.suite.library import OTHER_LIBRARIES, WrittenLibrary, write_empty_library
 
 
 @pytest.fixture
@@ -36,21 +39,22 @@ def _create_library_file(
     library_manager: InstructionsLibraryManager,
     key: InstructionLibraryKey,
 ) -> None:
+    write_empty_library(library_manager.get_path(key))
+
+
+def _create_earlier_library_file(
+    library_manager: InstructionsLibraryManager,
+    key: InstructionLibraryKey,
+) -> None:
     path = library_manager.get_path(key)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.touch()
+    shutil.copyfile(archived(ObjectKind.LIBRARY, LIBRARY_VERSION), path)
 
 
-class TestConversionLibraryReadiness:
-    """Guards the contract the conversion flow relies on.
+class TestTheLibraryAConfigurationNames:
+    """A library is judged by the key it is asked about, whatever library the catalog last took up."""
 
-    Conversion reconstructs from the library identified by the *current* configuration, so
-    library readiness must be judged by the configuration's key, never by the key of whatever
-    library happens to be loaded. Conflating the two caused the loaded library's parameters to
-    be reapplied over the user's freshly changed settings (see the convert/reconstruct flow).
-    """
-
-    def test_availability_tracks_current_config_not_loaded_key(
+    def test_the_library_of_settings_changed_since_is_missing(
         self,
         config_manager: ConfigManager,
         library_manager: InstructionsLibraryManager,
@@ -62,19 +66,23 @@ class TestConversionLibraryReadiness:
 
         _set_transformation_gamma(config_manager, 100)
 
-        assert library_manager.is_library_available_for_config() is False
-        assert library_manager.does_library_exist() is True
-        assert config_manager.config.library.transformation_gamma == 100
+        assert (
+            library_manager.library_state(config_manager.key),
+            library_manager.library_state(previous_key),
+            library_manager.current_library_key,
+        ) == (LibraryState.MISSING, LibraryState.CURRENT, previous_key)
 
-    def test_availability_true_when_current_config_library_exists(
+    def test_a_library_another_version_built_is_left_unsynced(
         self,
         config_manager: ConfigManager,
         library_manager: InstructionsLibraryManager,
     ) -> None:
-        _set_transformation_gamma(config_manager, 100)
-        _create_library_file(library_manager, config_manager.key)
+        _create_earlier_library_file(library_manager, config_manager.key)
 
-        assert library_manager.is_library_available_for_config() is True
+        assert (
+            library_manager.library_state(config_manager.key),
+            library_manager.sync_with_config_key(config_manager.key),
+        ) == (LibraryState.OUTDATED, None)
 
 
 class TestTheDirectoryTheCatalogStandsAt:
@@ -170,8 +178,8 @@ class TestCompleteGeneration:
         library_manager._complete_generation(started_in, (config_manager.key, WrittenLibrary()))
 
         assert started_in.get_path(config_manager.key).exists()
-        assert (library_manager.does_library_exist(config_manager.key), library_manager.current_library_key) == (
-            False,
+        assert (library_manager.library_state(config_manager.key), library_manager.current_library_key) == (
+            LibraryState.MISSING,
             None,
         )
 
@@ -201,6 +209,17 @@ class TestTheLibraryAConversionWaitsFor:
         readiness = library_manager.library_readiness(config_manager.get_library_directory(), config_manager.key)
 
         assert readiness == LibraryReadiness.READY
+
+    def test_a_library_another_version_built_with_no_generation_is_missing(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        _create_earlier_library_file(library_manager, config_manager.key)
+
+        readiness = library_manager.library_readiness(config_manager.get_library_directory(), config_manager.key)
+
+        assert readiness == LibraryReadiness.MISSING
 
     def test_a_library_missing_with_no_generation_is_missing(
         self,

@@ -23,6 +23,7 @@ from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.library import LibraryState
 from sampletones_core.reconstructions.converter import GroupConversion
 from sampletones_core.reconstructions.converter.paths import get_audio_files
 from tests.suite.base import BaseTestSuite
@@ -88,7 +89,7 @@ def converter_logic(
         is_operation_active=lambda: logic.is_active,
     )
     logic.on_view_changed = MagicMock()
-    logic.generate_library = MagicMock()
+    logic.prepare_library = MagicMock()
     logic.library_readiness = lambda directory, key: LibraryReadiness.PREPARING
     return logic
 
@@ -237,7 +238,7 @@ class TestNoChannelsGuard(BaseTestSuite):
         converter_logic.start_conversion()
 
         on_no_generators.assert_called_once()
-        converter_logic.generate_library.assert_not_called()
+        converter_logic.prepare_library.assert_not_called()
         assert _phase(converter_logic) == ConversionPhase.IDLE
 
 
@@ -252,7 +253,7 @@ class TestNothingToConvertGuard(BaseTestSuite):
 
         converter_logic.start_conversion()
 
-        converter_logic.generate_library.assert_not_called()
+        converter_logic.prepare_library.assert_not_called()
         assert _phase(converter_logic) == ConversionPhase.IDLE
 
     def test_a_mix_runs_without_a_recording_ever_being_picked(
@@ -302,7 +303,7 @@ class TestOverwriteGuard(BaseTestSuite):
             converter_logic.start_conversion()
 
         on_target_exists.assert_called_once_with((target,))
-        converter_logic.generate_library.assert_not_called()
+        converter_logic.prepare_library.assert_not_called()
         assert _phase(converter_logic) == ConversionPhase.IDLE
 
     def _target_alone(self, converter_logic: ConverterLogic, source: Path) -> Path:
@@ -356,7 +357,7 @@ class TestOverwriteGuard(BaseTestSuite):
             converter_logic.start_conversion(confirmed=True)
 
         on_target_exists.assert_not_called()
-        converter_logic.generate_library.assert_called_once()
+        converter_logic.prepare_library.assert_called_once()
         assert _phase(converter_logic) == ConversionPhase.WAITING
 
     def test_a_target_still_to_be_written_starts_straight_away(
@@ -412,7 +413,7 @@ class TestStartConversionGate(BaseTestSuite):
         converter_logic.start_conversion()
 
         service.start.assert_not_called()
-        converter_logic.generate_library.assert_not_called()
+        converter_logic.prepare_library.assert_not_called()
         assert _phase(converter_logic) == ConversionPhase.IDLE
 
     def test_proceeds_when_nothing_is_active(
@@ -425,7 +426,7 @@ class TestStartConversionGate(BaseTestSuite):
         with patch(SCHEDULING):
             converter_logic.start_conversion()
 
-        converter_logic.generate_library.assert_called_once()
+        converter_logic.prepare_library.assert_called_once()
         assert _phase(converter_logic) == ConversionPhase.WAITING
 
 
@@ -716,6 +717,27 @@ class TestTheSetupARunHolds(BaseTestSuite):
             converter_logic._wait_for_library_and_start()
 
         assert looked_for == [asked_for]
+
+    def test_a_request_holds_where_its_library_stood_when_asked(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        looked_at: List[Path] = []
+
+        def library_state(path: Path) -> LibraryState:
+            looked_at.append(path)
+            return LibraryState.OUTDATED
+
+        converter_logic.library_state = library_state
+        self._waiting(converter_logic, tmp_path)
+
+        request = converter_logic._run.request
+        assert request is not None
+        assert (request.library_state, looked_at) == (
+            LibraryState.OUTDATED,
+            [request.library_directory / request.library_key.filename],
+        )
 
 
 class TestGatheringRecordings(BaseTestSuite):

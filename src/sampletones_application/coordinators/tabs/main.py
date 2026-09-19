@@ -69,6 +69,7 @@ from sampletones_application.view_model.main.config import ConfigPanelViewModel
 from sampletones_application.view_model.main.converter import ConverterViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.library import library_state
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
@@ -326,11 +327,12 @@ class MainTabCoordinator:
         )
         self._converter_logic.on_target_exists = self._confirm_overwriting_target
         self._converter_logic.library_readiness = library_manager.library_readiness
+        self._converter_logic.library_state = library_state
         self._converter_logic.cancel_library_generation = library_manager.cancel_generation
         self._converter_logic.on_load_file = self._hooks.on_load_file
         self._converter_logic.on_load_directory = self._hooks.on_load_directory
         self._converter_logic.on_canceled = self._hooks.on_canceled
-        self._converter_logic.generate_library = self._hooks.on_generate_library
+        self._converter_logic.prepare_library = self._hooks.on_prepare_library
         config_manager.add_config_change_callback(self._converter_logic.refresh_view)
         library_manager.on_generation_progress_extra = conversion_service.forward_library_progress
 

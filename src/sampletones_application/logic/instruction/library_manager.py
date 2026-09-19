@@ -14,8 +14,10 @@ from sampletones_core.library import (
     InstructionLibrary,
     InstructionLibraryData,
     InstructionLibraryKey,
+    LibraryState,
     create_key_from_filename,
     get_display_name_from_key,
+    library_state,
 )
 from sampletones_core.library.creator import InstructionsLibraryCreator
 from sampletones_core.library.filename.fields import InstructionsFilenameFields
@@ -91,38 +93,17 @@ class InstructionsLibraryManager(CallbackMixin):
         self._library_files = new_library_files
         return self._library_files
 
-    def get_library_key(
-        self,
-        library_key: Optional[InstructionLibraryKey] = None,
-    ) -> Optional[InstructionLibraryKey]:
-        if library_key is None:
-            if self._current_library_key is None:
-                return None
+    def is_library_loaded(self, library_key: InstructionLibraryKey) -> bool:
+        """Whether the catalog holds the library ``library_key`` names in memory.
 
-            library_key = self._current_library_key
-
-        return library_key
-
-    def is_library_loaded(
-        self,
-        library_key: Optional[InstructionLibraryKey] = None,
-    ) -> bool:
-        library_key = self.get_library_key(library_key)
-        if not self.does_library_exist(library_key):
-            return False
-
+        A load takes only a library this build reads, so a library held here is one to use as it
+        stands.
+        """
         return library_key in self._library.data
 
-    def does_library_exist(
-        self,
-        library_key: Optional[InstructionLibraryKey] = None,
-    ) -> bool:
-        library_key = self.get_library_key(library_key)
-        if library_key is None:
-            return False
-
-        filepath = self.get_path(library_key)
-        return filepath.exists()
+    def library_state(self, library_key: InstructionLibraryKey) -> LibraryState:
+        """Where the library ``library_key`` names stands in the catalog for this build."""
+        return self._library.state(library_key)
 
     def load_library(self, library_key: InstructionLibraryKey) -> bool:
         if self.is_library_loaded(library_key):
@@ -170,17 +151,11 @@ class InstructionsLibraryManager(CallbackMixin):
         self,
         config_key: InstructionLibraryKey,
     ) -> Optional[InstructionLibraryKey]:
-        if self.library_exists_for_key(config_key):
+        if self.library_state(config_key) is LibraryState.CURRENT:
             self._current_library_key = config_key
             return config_key
 
         return None
-
-    def library_exists_for_key(self, key: InstructionLibraryKey) -> bool:
-        return self._library.exists(key)
-
-    def is_library_available_for_config(self) -> bool:
-        return self.library_exists_for_key(self._config_manager.key)
 
     def library_readiness(
         self,
@@ -190,12 +165,13 @@ class InstructionsLibraryManager(CallbackMixin):
         """Where the library ``key`` names under ``directory`` stands for a conversion waiting on it.
 
         A generation writes its file while it runs, so the file counts only once the generation has
-        been released; a library still missing then is one the conversion will not get.
+        been released. A library this build reads is then ready, and any other is one the conversion
+        will not get.
         """
         if self.is_generating():
             return LibraryReadiness.PREPARING
 
-        if (directory / key.filename).exists():
+        if library_state(directory / key.filename) is LibraryState.CURRENT:
             return LibraryReadiness.READY
 
         return LibraryReadiness.MISSING

@@ -20,6 +20,7 @@ from sampletones_core.generators import (
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import (
     InstructionLibraryKey,
+    LibraryState,
     get_display_name_from_key,
 )
 from sampletones_core.library.filename.utils import create_key_from_filename
@@ -134,14 +135,12 @@ class LibraryLogic(CallbackMixin):
     def is_library_generating(self) -> bool:
         return self._library_manager.is_generating()
 
-    def library_available_for_config(self) -> bool:
-        return self._library_manager.is_library_available_for_config()
+    def config_library_state(self) -> LibraryState:
+        """Where the library the configuration names stands for this build."""
+        return self._library_manager.library_state(self._config_manager.key)
 
     def is_library_loaded(self, key: InstructionLibraryKey) -> bool:
         return self._library_manager.is_library_loaded(key)
-
-    def library_exists_for_key(self, key: InstructionLibraryKey) -> bool:
-        return self._library_manager.library_exists_for_key(key)
 
     def get_path(self, key: InstructionLibraryKey) -> Path:
         return self._library_manager.get_path(key)
@@ -236,6 +235,16 @@ class LibraryLogic(CallbackMixin):
             return
 
         self.generate_library()
+
+    def prepare_library(self) -> None:
+        """Generates the library a conversion under the configuration searches, unless the one
+        standing there is a library this build reads.
+
+        A missing library is generated, and one built by another version is rebuilt in its place.
+        The configuration stays as the reader set it.
+        """
+        if self.config_library_state() is not LibraryState.CURRENT:
+            self.generate_library()
 
     def generate_library(self) -> None:
         if self._library_manager.is_generating():
@@ -457,19 +466,7 @@ class LibraryLogic(CallbackMixin):
         is_generating = self._library_manager.is_generating()
 
         if status_text is None:
-            library_name = get_display_name_from_key(key)
-            if self._library_manager.is_library_loaded(key):
-                status_text = self._language_manager["instructions.library.template.library_loaded_template"].format(
-                    library_name
-                )
-            elif self._library_manager.library_exists_for_key(key):
-                status_text = self._language_manager["instructions.library.template.library_exists_template"].format(
-                    library_name
-                )
-            else:
-                status_text = self._language_manager[
-                    "instructions.library.template.library_not_exists_template"
-                ].format(library_name)
+            status_text = self._idle_status(key).format(get_display_name_from_key(key))
 
         if self._library_manager.is_library_loaded(key):
             generate_button_label = self._language_manager["instructions.library.label.regenerate_library_button"]
@@ -483,3 +480,16 @@ class LibraryLogic(CallbackMixin):
             progress_value=progress,
         )
         self.call(self.on_view_changed, view_model)
+
+    def _idle_status(self, key: InstructionLibraryKey) -> str:
+        """The status template for the library ``key`` names while no generation runs."""
+        if self._library_manager.is_library_loaded(key):
+            return self._language_manager["instructions.library.template.library_loaded_template"]
+
+        match self._library_manager.library_state(key):
+            case LibraryState.CURRENT:
+                return self._language_manager["instructions.library.template.library_exists_template"]
+            case LibraryState.OUTDATED:
+                return self._language_manager["instructions.library.template.library_outdated_template"]
+            case LibraryState.MISSING:
+                return self._language_manager["instructions.library.template.library_not_exists_template"]

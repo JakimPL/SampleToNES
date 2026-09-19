@@ -70,7 +70,7 @@ from sampletones_application.view_model.instruction.details import (
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.library import InstructionLibraryKey
+from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.exceptions import LibraryDisplayError, SampleToNESError
 from sampletones_shared.logger import logger
@@ -108,7 +108,6 @@ class InstructionsTabCoordinator:
         self._config_manager = config_manager
         self._session_manager = session_manager
         self._audio_device_manager = audio_device_manager
-        self._library_manager = library_manager
         self._on_audio_state_changed = on_audio_state_changed
         self._is_converter_visible = is_converter_visible
         self._dialogs = dialogs
@@ -232,7 +231,7 @@ class InstructionsTabCoordinator:
         )
 
     def _request_generate_library(self) -> None:
-        if self._library_logic.library_available_for_config():
+        if self._library_logic.config_library_state() is LibraryState.CURRENT:
             self._dialogs.show_confirmation(
                 TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
                 self._language_manager["instructions.library.message.regenerate_confirmation_message"],
@@ -475,16 +474,9 @@ class InstructionsTabCoordinator:
         """Populates the library tree once the tab's widgets exist."""
         self._library_logic.refresh_libraries(load_if_needed=False)
 
-    def ensure_library_loaded(self) -> None:
-        """Make sure a library matching the current configuration exists before reconstructing.
-
-        The reconstruction pipeline loads the library from disk by the configuration's key, so the
-        only requirement here is that the corresponding file is present; it is generated when missing.
-        The library's stored parameters are deliberately not applied back to the configuration, which
-        would overwrite the user's current settings.
-        """
-        if not self._library_manager.is_library_available_for_config():
-            self._library_logic.generate_library()
+    def prepare_library(self) -> None:
+        """Prepares the library a conversion under the current configuration reads from disk."""
+        self._library_logic.prepare_library()
 
     def load_library_file(self, filepath: Path) -> None:
         self._close_instruction()

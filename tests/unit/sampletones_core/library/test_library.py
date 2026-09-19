@@ -96,34 +96,6 @@ class TestInstructionLibraryGet:
         assert result is not None
 
 
-class TestInstructionLibraryExists:
-    def test_exists_returns_false_before_save(
-        self,
-        library: InstructionLibrary,
-        library_key: InstructionLibraryKey,
-    ) -> None:
-        assert library.exists(library_key) is False
-
-    def test_exists_returns_true_after_save(
-        self,
-        library: InstructionLibrary,
-        library_key: InstructionLibraryKey,
-        empty_library_data: InstructionLibraryData,
-    ) -> None:
-        library.save_data(library_key, empty_library_data)
-        assert library.exists(library_key) is True
-
-    def test_exists_with_config_resolves_key(
-        self,
-        library: InstructionLibrary,
-        library_key: InstructionLibraryKey,
-        empty_library_data: InstructionLibraryData,
-        config: Config,
-    ) -> None:
-        library.save_data(library_key, empty_library_data)
-        assert library.exists(config) is True
-
-
 class TestTheStateOfALibraryInTheCatalog:
     def test_a_library_never_saved_is_missing(
         self,

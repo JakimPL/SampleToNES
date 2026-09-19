@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Optional, Self, Union
+from typing import Dict, Optional, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -88,28 +88,12 @@ class InstructionLibrary(BaseModel):
         if key in self.data:
             return self.data[key]
 
-        if self.exists(key):
+        if self.get_path(key).exists():
             self.load_data(key)
             return self.data[key]
 
         logger.warning(f"Library data for key {key} does not exist")
         return None
-
-    def exists(self, config_or_key: Union[Config, InstructionLibraryKey]) -> bool:
-        """Reports whether a library file exists on disk for the given key.
-
-        Args:
-            config_or_key: A configuration (whose key is derived) or a key directly.
-
-        Returns:
-            bool: True when the corresponding library file is present.
-        """
-        if isinstance(config_or_key, Config):
-            key = self.create_key(config_or_key, Window.from_config(config_or_key))
-        else:
-            key = config_or_key
-
-        return self.get_path(key).exists()
 
     def state(self, key: InstructionLibraryKey) -> LibraryState:
         """Where the library file for ``key`` stands for this build.

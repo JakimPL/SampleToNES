@@ -57,6 +57,10 @@ waveform and spectrum; a configuration that has no library yet is also built
 automatically the first time a reconstruction needs it. Regenerating a library
 that already exists replaces it.
 
+A library belongs to the version of _SampleToNES_ that built it. A library built
+by another version is rebuilt in its place the first time a reconstruction needs
+it, the same way a missing one is built.
+
 The _Instructions_ tab lists the instructions in a library and shows the selected
 one's waveform and spectrum alongside a player, so a library doubles as a way to
 explore the raw material a reconstruction is assembled from.
