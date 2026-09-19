@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from typing import Dict, Final, Tuple
+from functools import cached_property
+from typing import Final, Tuple
 
 from pydantic import BaseModel, ConfigDict
 
+from sampletones_core.timers.nearest import NearestPitch, nearest_pitches
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.specification.registers import (
     MAX_REGISTER_VALUE,
@@ -52,19 +54,17 @@ class PitchTable(BaseModel):
             )
         )
 
-    @property
-    def indices(self) -> Dict[int, int]:
-        """The index each timer is written as, the lowest pitch sounding it standing for it.
+    @cached_property
+    def nearest(self) -> Tuple[NearestPitch, ...]:
+        """The index lying nearest every divider the register holds, beside the steps between them.
 
+        A tone channel's planes carry each tick's divider as this index and a bend of the steps
+        left over, which the driver adds back. Within the table's span the steps stay within half
+        the widest gap between neighboring pitches, well inside the signed byte a bend plane holds.
         Pitches beyond the divider's range share the timer they are clamped to, and they sound
-        alike, so one index stands for the whole group and a stream naming any of them resolves
-        back to the timer it was written from.
+        alike, so the lowest index stands for the whole group.
         """
-        indices: Dict[int, int] = {}
-        for index, timer in enumerate(self.timers):
-            indices.setdefault(timer, index)
-
-        return indices
+        return nearest_pitches(dict(enumerate(self.timers)))
 
     @property
     def data(self) -> bytes:

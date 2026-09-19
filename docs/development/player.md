@@ -92,9 +92,10 @@ are unrelated series braided together. Split apart, each is a slowly-changing se
 own.
 
 **A pitch index rather than a timer.** A tone channel's two timer bytes become one index
-into a table the block carries. It saves a byte a tick directly, but the reason it matters
-is that a timer cannot be transposed and an index can: the same figure played at several
-pitches is several copies in timer space and one entry plus a shift in index space.
+into a table the block carries, beside a bend holding the steps a bent tick stands away
+from that pitch. It saves a byte a tick directly, but the reason it matters is that a timer
+cannot be transposed and an index can: the same figure played at several pitches is several
+copies in timer space and one entry plus a shift in index space.
 
 **Tokens.** A plane is written as holds, literals and phrase plays — the encoding is in
 [the format document](../formats/nsf.md#b4-the-token-streams). What matters here is that a
@@ -164,7 +165,7 @@ The chain runs from the register values upward, and each link is held on its own
 | The byte layout | a hand-built song serializes to expected bytes |
 | The assembly agrees with the specification | the include's equates are read and compared field by field |
 | The driver behaves | the assembled image on a 6502 emulator against `RegisterTrace.from_song`, over several rates and over songs that repeat |
-| The driver's arithmetic | a song stating a bend outright, held to the divider each tick is meant to sound at |
+| The driver's arithmetic | a song stating a bend plane outright, and bent frames exported end to end, each held to the divider the sequencer sounds every tick at |
 | The audio | a captured trace re-rendered against the reconstruction's own approximation |
 | The whole export | a project exported, played on the emulator, and read back as the instructions the sequencer sounds |
 | Listening | `uv run sampletones nsf samples -o build/nsf` then `uv run sampletones nsf render --directory build/nsf`, or any NSF player |

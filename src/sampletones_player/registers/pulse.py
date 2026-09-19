@@ -7,6 +7,7 @@ from pydantic import Field
 from sampletones_core.exporters.implementation.pulse import PulseExporter
 from sampletones_core.instructions import PulseInstruction
 from sampletones_player.registers.base import ChannelRegisters
+from sampletones_player.registers.dividers import bent_dividers
 from sampletones_player.registers.hold import hold
 from sampletones_player.specification.registers import (
     DUTY_CYCLE_SHIFT,
@@ -35,9 +36,10 @@ class PulseRegisters(ChannelRegisters):
         """Turns a pulse channel's instructions into the registers each tick writes.
 
         Volume rides in the control byte's low nibble, so a rest keeps its pitch and duty cycle
-        and sets the level to zero. Holding the period across a rest is what lets the driver leave
-        the timer's high byte alone, and leaving it alone is what keeps the waveform's phase
-        running the way a rendered channel does.
+        and sets the level to zero. The timer carries the note's divider moved by the frame's bend.
+        Holding it across a rest is what lets the driver leave the timer's high byte alone, and
+        leaving it alone is what keeps the waveform's phase running the way a rendered channel
+        does.
 
         Args:
             instructions: The channel's per-tick instructions.
@@ -47,10 +49,11 @@ class PulseRegisters(ChannelRegisters):
             List[PulseRegisters]: One register set per tick, including the closing release tick.
         """
         _, pitches, volumes, duty_cycles = PulseExporter.extract_data(instructions)
+        dividers = bent_dividers(pitches, PulseExporter.read_timer_offsets(instructions), timer_table)
 
         registers: List[PulseRegisters] = []
         for index, volume in enumerate(volumes):
-            timer = timer_table[hold(pitches, index)]
+            timer = hold(dividers, index)
             duty_cycle = hold(duty_cycles, index)
             registers.append(
                 cls(

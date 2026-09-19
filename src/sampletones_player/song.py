@@ -69,7 +69,7 @@ class Song(BaseModel):
         Raises:
             OperationCanceled: If ``report`` withdraws the compression.
             ValueError: If ``loop_tick`` lies outside the song's ticks, or a channel sounds a
-                timer the pitch table states no index for.
+                divider lying further from every pitch of the table than a signed byte states.
         """
         return cls(
             planes=compress_song(

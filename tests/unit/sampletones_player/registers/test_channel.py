@@ -38,6 +38,13 @@ class TestChannelInstructions:
         instructions = melody()
         assert channel_instructions(instructions, PulseInstruction) == instructions
 
+    def test_a_bent_frame_keeps_its_bend(self) -> None:
+        instructions = [
+            TriangleInstruction(on=True, pitch=BASS_PITCH, detune=-5, coarse_detune=1),
+            TriangleInstruction(on=True, pitch=BASS_PITCH, detune=3),
+        ]
+        assert channel_instructions(instructions, TriangleInstruction) == instructions
+
     def test_a_channel_describing_no_frame_rests_for_a_tick(self) -> None:
         assert channel_instructions([], PulseInstruction) == [PulseInstruction.null_instruction()]
 

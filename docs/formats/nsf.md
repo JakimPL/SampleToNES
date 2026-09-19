@@ -92,8 +92,10 @@ pitch, in pitch order, then the high byte of each. One pointer reaches both halv
 is what the driver's lookup takes advantage of.
 
 A plane names a pitch as its **index** — the distance above the lowest pitch the tuning
-covers — rather than as a divider. Pitches beyond the divider's range share the timer they
-clamp to, and the lowest pitch sounding a timer stands for the whole group.
+covers — rather than as a divider. A tick's divider is written as the index of the pitch
+lying nearest it, beside a bend of the steps left over (§C). Pitches beyond the divider's
+range share the timer they clamp to, and the lowest pitch sounding a timer stands for the
+whole group; a divider exactly halfway between two pitches goes to the higher one.
 
 The table is written from the tuning the exported work was built at, computed by the very
 function the reconstruction's own generators render from.
@@ -185,11 +187,18 @@ to it, and a divider offset added to an index means nothing. A tone channel's **
 plane is where the offset goes: one signed byte a tick, in two's complement, added to the
 divider the value plane's note resolves to.
 
+A bent frame sounds the divider its note's own is moved to, and the value plane names the
+pitch lying nearest that divider while the bend plane holds the steps left over. Within the
+table's span those steps stay inside half the widest gap between neighboring pitches — 57
+at the default tuning — so every divider the register holds reaches the planes. A frame
+sounding its note unbent holds a bend of nothing.
+
 The driver sign-extends that byte and adds it across both halves of the timer, which is the
 only arithmetic it performs on a song's behalf. Everything that makes the sum land in
-range is settled in Python: the divider stays within `[MIN_TIMER, MAX_TIMER]`, so the
-timer's high half never exceeds three bits, never reaches the length-counter field beside
-them, and never collides with the `$FF` the driver marks an unwritten shadow by.
+range is settled in Python: `bent_timer` keeps the divider within `[MIN_TIMER, MAX_TIMER]`,
+the rule the generators render a bent frame by, so the timer's high half never exceeds
+three bits, never reaches the length-counter field beside them, and never collides with the
+`$FF` the driver marks an unwritten shadow by.
 
 ## D. Limits
 

@@ -1,11 +1,13 @@
-from typing import Dict, Final, Sequence
+from typing import Final, Sequence, Tuple
 
 from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
+from sampletones_core.timers.nearest import NearestPitch
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.channel import ChannelPlanes, TonePlanes
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.registers.base import ChannelRegisters
 from sampletones_player.registers.streams import ChannelStreams
+from sampletones_player.specification.binary import unsigned_byte
 from sampletones_player.specification.registers import TIMER_HIGH_SHIFT
 
 CONTROL_VALUE_INDEX: Final[int] = 0
@@ -13,28 +15,20 @@ FIRST_VALUE_INDEX: Final[int] = 1
 SECOND_VALUE_INDEX: Final[int] = 2
 
 
-def _pitch_indices(
-    registers: Sequence[ChannelRegisters],
-    indices: Dict[int, int],
-) -> bytes:
-    try:
-        return bytes(
-            indices[tick.values[FIRST_VALUE_INDEX] | (tick.values[SECOND_VALUE_INDEX] << TIMER_HIGH_SHIFT)]
-            for tick in registers
-        )
-    except KeyError as error:
-        raise ValueError(f"a channel sounds timer {error.args[0]}, which no pitch of the table sounds") from error
+def _divider(tick: ChannelRegisters) -> int:
+    return tick.values[FIRST_VALUE_INDEX] | (tick.values[SECOND_VALUE_INDEX] << TIMER_HIGH_SHIFT)
 
 
 def _tone_planes(
     registers: Sequence[ChannelRegisters],
-    indices: Dict[int, int],
+    nearest: Tuple[NearestPitch, ...],
 ) -> TonePlanes:
     control = bytes(tick.values[CONTROL_VALUE_INDEX] for tick in registers)
+    named = [nearest[_divider(tick)] for tick in registers]
     return TonePlanes(
         control=control,
-        value=_pitch_indices(registers, indices),
-        bend=bytes(len(registers)),
+        value=bytes(pitch.pitch for pitch in named),
+        bend=bytes(unsigned_byte(pitch.offset) for pitch in named),
     )
 
 
@@ -51,6 +45,9 @@ def channel_planes(
 ) -> ChannelPlanes:
     """Separates one channel's ticks into the planes the codec reads.
 
+    A tone channel's divider becomes the pitch index lying nearest it and the bend left over,
+    so a note the frame sounds unbent holds a bend of nothing.
+
     Args:
         channel: The channel the registers belong to.
         registers: The channel's per-tick register values.
@@ -60,10 +57,11 @@ def channel_planes(
         ChannelPlanes: The channel's own planes.
 
     Raises:
-        ValueError: If a tone channel sounds a timer the pitch table states no index for.
+        ValueError: If a tone channel sounds a divider lying further from every pitch of the table
+            than a signed byte states.
     """
     if channel in TONE_CHANNELS:
-        return _tone_planes(registers, pitches.indices)
+        return _tone_planes(registers, pitches.nearest)
 
     return _noise_planes(registers)
 
@@ -85,13 +83,14 @@ def planes_from_streams(
         SongPlanes: The planes under the channel each belongs to.
 
     Raises:
-        ValueError: If a tone channel sounds a timer the pitch table states no index for.
+        ValueError: If a tone channel sounds a divider lying further from every pitch of the table
+            than a signed byte states.
     """
-    indices = pitches.indices
+    nearest = pitches.nearest
     pulse1, pulse2, triangle, noise = streams.padded
     return SongPlanes(
-        pulse1=_tone_planes(pulse1, indices),
-        pulse2=_tone_planes(pulse2, indices),
-        triangle=_tone_planes(triangle, indices),
+        pulse1=_tone_planes(pulse1, nearest),
+        pulse2=_tone_planes(pulse2, nearest),
+        triangle=_tone_planes(triangle, nearest),
         noise=_noise_planes(noise),
     )

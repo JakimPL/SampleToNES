@@ -147,9 +147,9 @@ def bent_song(
 ) -> Song:
     """A song holding one note on a pulse channel while its bend plane moves the divider.
 
-    A bend reaches the console on a plane of its own, and only the plane can put one there while
-    the encoders still leave the dimension to the note. Stating one outright is therefore what
-    holds the driver's own arithmetic to the divider each tick is meant to sound at.
+    A bend reaches the console on a plane of its own, and stating the plane outright reaches bends
+    no encoder writes — past half the gap to a neighboring pitch — which is what holds the driver's
+    own arithmetic to the divider each tick is meant to sound at across the whole signed byte.
 
     Args:
         pitch_index: The pitch the value plane names, counted from the lowest the table holds.
