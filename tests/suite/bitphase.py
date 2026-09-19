@@ -22,7 +22,10 @@ BITPHASE_DEFAULT_VOLUME: Final[int] = 0
 BITPHASE_DEFAULT_EFFECT: Final[int] = 0
 BITPHASE_DEFAULT_EFFECT_DELAY: Final[int] = 0
 BITPHASE_DEFAULT_EFFECT_PARAMETER: Final[int] = 0
+BITPHASE_FIRST_TABLE_INDEX: Final[int] = 0
 BITPHASE_NO_EFFECTS: Final[Tuple[None, ...]] = (None,)
+BITPHASE_MIN_EFFECT_COLUMNS: Final[int] = 1
+BITPHASE_MAX_EFFECT_COLUMNS: Final[int] = 4
 BITPHASE_DEFAULT_INSTRUMENT_ID: Final[str] = "01"
 BITPHASE_DEFAULT_LOOP: Final[int] = 0
 BITPHASE_DEFAULT_TABLE_ID: Final[int] = 0
@@ -31,6 +34,8 @@ BITPHASE_DEFAULT_VOLUME_OR_RATE: Final[int] = 15
 
 MIN_INITIAL_SPEED: Final[int] = 1
 MAX_INITIAL_SPEED: Final[int] = 255
+MIN_PATTERN_LENGTH: Final[int] = 1
+MAX_PATTERN_LENGTH: Final[int] = 256
 
 
 @dataclass(frozen=True)
@@ -60,6 +65,7 @@ class LoadedRow:
 class LoadedChannel:
     label: str
     rows: List[LoadedRow]
+    effect_column_count: int
 
 
 @dataclass(frozen=True)
@@ -103,6 +109,7 @@ class LoadedTable:
     loop: int
     name: str
     rows: List[int]
+    additive: bool
 
 
 @dataclass(frozen=True)
@@ -113,6 +120,7 @@ class LoadedSong:
     interrupt_frequency: int
     a4_tuning_hz: float
     initial_speed: int
+    default_pattern_length: int
     tuning_table: List[int]
     patterns: List[LoadedPattern]
 
@@ -136,6 +144,23 @@ def _note(data: Optional[Dict[str, Any]]) -> LoadedNote:
     )
 
 
+def _table_index(data: Dict[str, Any]) -> Optional[int]:
+    """The table an effect reads, which Bitphase takes from any index of zero or above.
+
+    A cell stating no index at all is driven by its own parameter, and one carrying an
+    empty value reads as the first table, since that is what the comparison Bitphase
+    makes says of it.
+    """
+    if "tableIndex" not in data:
+        return None
+
+    index = data["tableIndex"]
+    if index is None:
+        return BITPHASE_FIRST_TABLE_INDEX
+
+    return index if index >= BITPHASE_FIRST_TABLE_INDEX else None
+
+
 def _effect(data: Optional[Dict[str, Any]]) -> Optional[LoadedEffect]:
     if data is None:
         return None
@@ -144,7 +169,7 @@ def _effect(data: Optional[Dict[str, Any]]) -> Optional[LoadedEffect]:
         effect=data.get("effect", BITPHASE_DEFAULT_EFFECT),
         delay=data.get("delay", BITPHASE_DEFAULT_EFFECT_DELAY),
         parameter=data.get("parameter", BITPHASE_DEFAULT_EFFECT_PARAMETER),
-        table_index=data.get("tableIndex"),
+        table_index=_table_index(data),
     )
 
 
@@ -166,12 +191,30 @@ def _row(data: Dict[str, Any]) -> LoadedRow:
     )
 
 
-def _channel(data: Dict[str, Any], label: str) -> LoadedChannel:
-    rows = data.get("rows")
-    if rows is None:
-        return LoadedChannel(label=label, rows=[])
+def _effect_column_count(data: Dict[str, Any], rows: List[LoadedRow]) -> int:
+    """How many effect columns a channel lays out, which its widest line states.
 
-    return LoadedChannel(label=label, rows=[_row(row) for row in rows])
+    Bitphase takes the count the channel carries where it holds one, and reads it off the
+    lines otherwise, so a channel written without the field lays out as many columns as its
+    lines fill.
+    """
+    stated = data.get("effectColumnCount")
+    if isinstance(stated, int):
+        return min(max(stated, BITPHASE_MIN_EFFECT_COLUMNS), BITPHASE_MAX_EFFECT_COLUMNS)
+
+    return max(
+        (len(row.effects) for row in rows),
+        default=BITPHASE_MIN_EFFECT_COLUMNS,
+    )
+
+
+def _channel(data: Dict[str, Any], label: str) -> LoadedChannel:
+    rows = [_row(row) for row in data.get("rows") or []]
+    return LoadedChannel(
+        label=label,
+        rows=rows,
+        effect_column_count=_effect_column_count(data, rows),
+    )
 
 
 def _pattern(data: Dict[str, Any], labels: List[str]) -> LoadedPattern:
@@ -219,6 +262,7 @@ def _table(data: Dict[str, Any]) -> LoadedTable:
         loop=data.get("loop", BITPHASE_DEFAULT_LOOP),
         name=data.get("name", BITPHASE_DEFAULT_NAME),
         rows=list(data.get("rows") or []),
+        additive=bool(data.get("additive", False)),
     )
 
 
@@ -230,6 +274,15 @@ def _initial_speed(data: Dict[str, Any]) -> int:
     return BITPHASE_DEFAULT_INITIAL_SPEED
 
 
+def _default_pattern_length(data: Dict[str, Any]) -> int:
+    """The line count a pattern added to the song takes, within the range Bitphase keeps."""
+    length = data.get("defaultPatternLength")
+    if isinstance(length, int) and MIN_PATTERN_LENGTH <= length <= MAX_PATTERN_LENGTH:
+        return length
+
+    return BITPHASE_DEFAULT_PATTERN_LENGTH
+
+
 def _song(data: Dict[str, Any], labels: List[str]) -> LoadedSong:
     return LoadedSong(
         chip_type=data.get("chipType"),
@@ -238,6 +291,7 @@ def _song(data: Dict[str, Any], labels: List[str]) -> LoadedSong:
         interrupt_frequency=data.get("interruptFrequency", BITPHASE_DEFAULT_INTERRUPT_FREQUENCY),
         a4_tuning_hz=data.get("a4TuningHz", BITPHASE_DEFAULT_A4_TUNING),
         initial_speed=_initial_speed(data),
+        default_pattern_length=_default_pattern_length(data),
         tuning_table=list(data.get("tuningTable") or []),
         patterns=[_pattern(pattern, labels) for pattern in data.get("patterns") or []],
     )

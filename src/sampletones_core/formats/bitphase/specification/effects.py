@@ -14,3 +14,7 @@ class EffectId(IntEnum):
 
 SPEED_EFFECT_DELAY: Final[int] = 0
 NO_EFFECT_PARAMETER: Final[int] = 0
+NO_EFFECT_TABLE: Final[int] = -1
+
+MIN_EFFECT_COLUMNS: Final[int] = 1
+MAX_EFFECT_COLUMNS: Final[int] = 4

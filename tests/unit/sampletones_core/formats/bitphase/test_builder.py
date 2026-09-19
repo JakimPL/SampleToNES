@@ -154,6 +154,17 @@ class TestThePreviewPattern:
         pattern = project.songs[0].patterns[0]
         assert all(len(channel.rows) == pattern.length for channel in pattern.channels)
 
+    def test_the_song_states_the_length_its_patterns_were_built_at(self, project: BitphaseProject) -> None:
+        song = project.songs[0]
+        assert song.default_pattern_length == song.patterns[0].length
+
+    def test_a_channel_lays_out_a_column_for_every_effect_its_lines_carry(
+        self,
+        project: BitphaseProject,
+    ) -> None:
+        channels = project.songs[0].patterns[0].channels
+        assert all(channel.effect_column_count == max(len(row.effects) for row in channel.rows) for channel in channels)
+
 
 class TestTheOrderCoversTheLongestInstrument:
     """Playback returns to the start of the order, so a document whose order runs out

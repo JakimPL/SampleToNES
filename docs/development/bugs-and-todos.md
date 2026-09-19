@@ -32,6 +32,8 @@ starts carrying.
 * The bend in a Bitphase export. `formats/bitphase/envelopes.py` states the three dimensions it
   writes; `NesInstrumentRow` already carries `tone_add` and `tone_accumulation`, so the mapping is
   confined to that module.
+* A Bitphase document states concert pitch whatever the reconstruction was tuned at: `_build_song`
+  builds the tuning table from `DEFAULT_A4_TUNING` and leaves `request.tuning` unread.
 * A transpose or a volume typed in the sample column of a row holding no sample reaches every
   channel. The column summarizes the channels its samples cover, and a row covering none falls
   back to all four so a value typed there lands somewhere; the reference slot keeps the narrower

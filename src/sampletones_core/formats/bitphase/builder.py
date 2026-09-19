@@ -196,6 +196,7 @@ def _build_song(
     *,
     speed: int,
     nes_frequency: int,
+    pattern_length: int,
 ) -> BitphaseSong:
     chip_frequency = CPU_FREQUENCIES[DEFAULT_CHIP_VARIANT]
     return BitphaseSong(
@@ -205,6 +206,7 @@ def _build_song(
             a4_tuning=DEFAULT_A4_TUNING,
         ),
         initial_speed=speed,
+        default_pattern_length=pattern_length,
         chip_frequency=chip_frequency,
         interrupt_frequency=nes_frequency,
     )
@@ -297,6 +299,7 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
                 patterns,
                 speed=PREVIEW_SPEED,
                 nes_frequency=request.nes_frequency,
+                pattern_length=length,
             ),
         ),
         pattern_order=order,
@@ -586,6 +589,7 @@ def project_to_bitphase(project: Project) -> BitphaseProject:
                 patterns,
                 speed=groove.ticks[GROOVE_TRIGGER_ROW],
                 nes_frequency=settings.nes_frequency,
+                pattern_length=project.song.rows_per_pattern,
             ),
         ),
         pattern_order=tuple(pattern.id for pattern in patterns),

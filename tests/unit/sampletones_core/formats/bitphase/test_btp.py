@@ -34,6 +34,7 @@ SONG_KEYS: Final[List[str]] = [
     "patterns",
     "tuningTable",
     "initialSpeed",
+    "defaultPatternLength",
     "chipType",
     "chipVariant",
     "chipFrequency",
@@ -56,7 +57,7 @@ INSTRUMENT_ROW_KEYS: Final[List[str]] = [
     "sweepRate",
     "sweepShift",
 ]
-TABLE_KEYS: Final[List[str]] = ["id", "rows", "loop", "name"]
+TABLE_KEYS: Final[List[str]] = ["id", "rows", "loop", "name", "additive"]
 
 
 @pytest.fixture(name="project")
@@ -134,7 +135,23 @@ class TestTheDocumentCarriesEveryFieldBitphaseReads:
 
     def test_a_channel_names_the_channel_it_drives(self, document: Dict[str, Any]) -> None:
         channel = document["songs"][0]["patterns"][0]["channels"][0]
-        assert set(channel) == {"rows", "label"}
+        assert set(channel) == {"rows", "label", "effectColumnCount"}
+
+    def test_every_effect_names_the_table_it_reads_or_none(self, document: Dict[str, Any]) -> None:
+        """Bitphase reads an effect from a table wherever the cell names an index of zero or
+        above, and an empty value counts as an index, so a parameter-driven effect states one
+        below.
+        """
+        cells = [
+            effect
+            for song in document["songs"]
+            for pattern in song["patterns"]
+            for channel in pattern["channels"]
+            for row in channel["rows"]
+            for effect in row["effects"]
+            if effect is not None
+        ]
+        assert all(isinstance(effect["tableIndex"], int) for effect in cells)
 
 
 class TestTheDocumentReadsAsNes:
