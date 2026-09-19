@@ -1,4 +1,5 @@
-from typing import Optional
+from functools import partial
+from typing import Callable, Optional, ParamSpec
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.clipboard import (
@@ -27,14 +28,19 @@ from sampletones_application.view_model.sequencer.region import (
     TrackerCell,
     TrackerRegion,
 )
+from sampletones_shared.types.callback import VoidCallback
+
+GestureParams = ParamSpec("GestureParams")
 
 
 class SequencerBlocks:
     """The blocks both grids copy, cut and paste, and the two clipboards they travel on.
 
     A copy lands in this tab's own slot and, as text, on the system clipboard, so the same block
-    reaches a paste here and a paste in another instance. A paste reads the system clipboard first
-    while what stands there is a block, which is what lets one instance hand a block to the next.
+    reaches a paste here and a paste in another instance. A paste asks the system clipboard first
+    and takes its text while that text is a block, which is what lets one instance hand a block to
+    the next. The clipboard answers in its own time, so the blocks keep its last answer, and every
+    question about the block in hand reads that answer.
 
     Every gesture here reads and writes the project as it stands; recording what a gesture undoes
     is the caller's, so the coordinator wraps the writing ones in a history transaction.
@@ -50,6 +56,7 @@ class SequencerBlocks:
     ) -> None:
         self._clipboard: SequencerClipboard = SequencerClipboard()
         self._text_clipboard: TextClipboard = text_clipboard
+        self._clipboard_text: str = ""
         self._tracker_text: TrackerBlockText = TrackerBlockText(
             samples=ProjectSampleDirectory(project_controller),
         )
@@ -69,13 +76,32 @@ class SequencerBlocks:
         """Whether the order has a block to write, which is what its Paste item is offered on."""
         return self.order_in_hand() is not None
 
+    def read_clipboard(self, then: VoidCallback) -> None:
+        """Asks the system clipboard for its text, running ``then`` once the answer has landed.
+
+        The answer is what the pastes and the menus offering them read from then on, so a gesture
+        that asked first acts on the text standing on the clipboard as it answered.
+        """
+        self._text_clipboard.read(partial(self._take_clipboard_text, then))
+
+    def after_reading_clipboard(
+        self,
+        paste: Callable[GestureParams, None],
+    ) -> Callable[GestureParams, None]:
+        """Holds a paste back until the system clipboard has answered, so it writes the block in hand then."""
+
+        def wrapped(*args: GestureParams.args, **kwargs: GestureParams.kwargs) -> None:
+            self.read_clipboard(partial(paste, *args, **kwargs))
+
+        return wrapped
+
     def tracker_in_hand(self) -> Optional[TrackerBlock]:
         """The block a tracker paste would write: the system clipboard's while its text is one.
 
         Text another instance copied reads as a block here, so it stands ahead of the slot the
         tracker copied into, and text from anywhere else leaves that slot's own block in hand.
         """
-        parsed = self._tracker_cache.block(self._text_clipboard.read())
+        parsed = self._tracker_cache.block(self._clipboard_text)
         if parsed is not None:
             return parsed
 
@@ -87,7 +113,7 @@ class SequencerBlocks:
         Text another instance copied reads as a block here, so it stands ahead of the slot the
         order copied into, and text from anywhere else leaves that slot's own block in hand.
         """
-        parsed = self._order_cache.block(self._text_clipboard.read())
+        parsed = self._order_cache.block(self._clipboard_text)
         if parsed is not None:
             return parsed
 
@@ -142,3 +168,7 @@ class SequencerBlocks:
         block = self.order_in_hand()
         if block is not None:
             self._order_writer.write(block, cell)
+
+    def _take_clipboard_text(self, then: VoidCallback, text: str) -> None:
+        self._clipboard_text = text
+        then()

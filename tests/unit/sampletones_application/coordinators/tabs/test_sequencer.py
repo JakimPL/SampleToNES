@@ -69,6 +69,7 @@ from sampletones_shared.exceptions import (
     InvalidReconstructionValuesError,
     MalformedInstrumentError,
 )
+from sampletones_shared.types.callback import StringCallback
 from tests.suite.language import FakeLanguageManager
 
 FREQUENCY_MISMATCH_MESSAGE_KEY: Final[str] = "global.dialog.message.frequency_mismatch"
@@ -1659,16 +1660,35 @@ PULSE1_FRAME: Final[OrderRegion] = OrderRegion(
 
 
 class FakeTextClipboard:
-    """The desktop's clipboard, held in memory so a test reads what a copy put there."""
+    """The desktop's clipboard, held in memory so a test reads what a copy put there.
+
+    A read is answered at once, the way DearPyGui's own clipboard answers, until a case holds the
+    answers back to stand for an application that hands its text over later.
+    """
 
     def __init__(self) -> None:
         self.text: str = ""
+        self.unanswered: List[StringCallback] = []
+        self._answers_held: bool = False
 
-    def read(self) -> str:
-        return self.text
+    def read(self, on_text: StringCallback) -> None:
+        if self._answers_held:
+            self.unanswered.append(on_text)
+            return
+
+        on_text(self.text)
 
     def write(self, text: str) -> None:
         self.text = text
+
+    def hold_answers(self) -> None:
+        self._answers_held = True
+
+    def answer(self) -> None:
+        """Hands the text standing now to every read still waiting, in the order they asked."""
+        waiting, self.unanswered = self.unanswered, []
+        for on_text in waiting:
+            on_text(self.text)
 
 
 def _text_clipboard(coordinator: SequencerTabCoordinator) -> FakeTextClipboard:
@@ -1995,16 +2015,78 @@ class TestSystemClipboardPrecedence:
 
         assert coordinator._sequencer_order_logic.entry(ChannelName.NOISE, 1) == 0
 
-    def test_a_paste_offers_itself_on_the_text_standing_on_the_clipboard(
+    def test_a_paste_offers_itself_on_the_text_the_clipboard_answered_with(
         self,
         block_coordinator: SequencerTabCoordinator,
     ) -> None:
         """The menu asks the same question the paste does, so it offers what the next press reaches."""
         coordinator = block_coordinator
+        _text_clipboard(coordinator).write("SampleToNES/1 tracker rows=1 slots=3..5\n.. +09 .")
 
         assert not coordinator._blocks.can_paste_tracker()
 
-        _text_clipboard(coordinator).write("SampleToNES/1 tracker rows=1 slots=3..5\n.. +09 .")
+        coordinator._sequencer_tracker_panel.refresh_paste_block(lambda: None)
 
         assert coordinator._blocks.can_paste_tracker()
         assert not coordinator._blocks.can_paste_order()
+
+
+class TestPasteAwaitsTheClipboard:
+    """The application holding the clipboard hands its text over in its own time, and a paste waits."""
+
+    def test_a_paste_writes_once_the_clipboard_answers(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        clipboard = _text_clipboard(coordinator)
+        clipboard.write("SampleToNES/1 tracker rows=1 slots=3..5\n.. +09 .")
+        clipboard.hold_answers()
+        recorded = len(coordinator._history.entries)
+
+        coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
+
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose is None
+        assert len(coordinator._history.entries) == recorded
+
+        clipboard.answer()
+
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose == 9
+        assert len(coordinator._history.entries) == recorded + 1
+        assert coordinator._history.entries[-1].action is HistoryAction.PASTE_BLOCK
+
+    def test_a_paste_writes_the_text_standing_when_the_clipboard_answers(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        """What another application copies while the answer is on its way is what the paste lands."""
+        coordinator = block_coordinator
+        clipboard = _text_clipboard(coordinator)
+        clipboard.write("SampleToNES/1 order rows=1 positions=0..0\n03")
+        clipboard.hold_answers()
+
+        coordinator._sequencer_order_panel.on_paste_block(OrderCell(channel=ChannelName.NOISE, position=0))
+        clipboard.write("SampleToNES/1 order rows=1 positions=0..0\n05")
+        clipboard.answer()
+
+        assert coordinator._sequencer_order_logic.entry(ChannelName.NOISE, 0) == 5
+
+    def test_a_menu_s_offer_follows_the_answer_it_asked_for(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        clipboard = _text_clipboard(coordinator)
+        clipboard.write("SampleToNES/1 order rows=1 positions=0..0\n03")
+        clipboard.hold_answers()
+        answered: List[bool] = []
+
+        coordinator._sequencer_order_panel.refresh_paste_block(lambda: answered.append(True))
+
+        assert not answered
+        assert not coordinator._blocks.can_paste_order()
+
+        clipboard.answer()
+
+        assert answered == [True]
+        assert coordinator._blocks.can_paste_order()

@@ -23,6 +23,7 @@ OnChannelSoloedCallback = Callable[[ChannelName], None]
 OnBlockRegionCallback = Callable[[TrackerRegion], None]
 OnPasteBlockCallback = Callable[[TrackerCell], None]
 CanPasteBlockQuery = Callable[[], bool]
+RefreshPasteBlockRequest = Callable[[VoidCallback], None]
 
 TrackerEditSurface = GridEditSurface[TrackerCursor, TrackerRegion, TrackerCell, TrackerTarget]
 ThemeKey = Tuple[SubColumn, Optional[VoiceKind]]
