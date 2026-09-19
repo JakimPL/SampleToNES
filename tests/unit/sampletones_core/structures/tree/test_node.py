@@ -2,6 +2,7 @@ from pathlib import Path
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import DEFAULT_CHANNELS, GeneratorName
+from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree.node import (
@@ -14,7 +15,7 @@ from sampletones_core.structures.tree.node import (
 )
 from sampletones_core.structures.tree.type import NodeType
 
-LIBRARY_KEY = InstructionLibraryKey.from_config(Config())
+LIBRARY_KEY = InstructionLibraryKey.create(Config().library, Window.from_config(Config()))
 CONFIG_FIELDS = ConfigDirectoryFields.from_config(Config(), frozenset(DEFAULT_CHANNELS))
 
 

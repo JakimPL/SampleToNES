@@ -16,6 +16,7 @@ from sampletones_shared.utils.serialization import (
     save_yaml,
     serialize_array,
     snake_to_camel,
+    write_atomically,
 )
 
 
@@ -231,6 +232,54 @@ class TestBinaryFileOperations:
             save_binary(filepath, data)
             loaded = load_binary(filepath)
             assert loaded == data
+
+
+class InterruptedWrite(Exception):
+    pass
+
+
+def write_part_and_stop(path: Path) -> None:
+    path.write_bytes(b"part of a")
+    raise InterruptedWrite
+
+
+class TestAnAtomicWrite:
+    """A file is replaced whole once its write succeeds, and stands as it was when the write fails."""
+
+    PREVIOUS: bytes = b"previous"
+
+    def test_a_write_replaces_the_file_whole(self, tmp_path: Path) -> None:
+        target = tmp_path / "document.bin"
+        target.write_bytes(self.PREVIOUS)
+
+        save_binary(target, b"replacement")
+
+        assert target.read_bytes() == b"replacement"
+
+    def test_an_interrupted_write_leaves_the_previous_file(self, tmp_path: Path) -> None:
+        target = tmp_path / "document.bin"
+        target.write_bytes(self.PREVIOUS)
+
+        with pytest.raises(InterruptedWrite):
+            write_atomically(target, write_part_and_stop)
+
+        assert target.read_bytes() == self.PREVIOUS
+
+    def test_a_write_leaves_only_the_file_it_wrote(self, tmp_path: Path) -> None:
+        target = tmp_path / "document.bin"
+
+        save_binary(target, b"content")
+
+        assert list(tmp_path.iterdir()) == [target]
+
+    def test_an_interrupted_write_leaves_nothing_beside_the_file(self, tmp_path: Path) -> None:
+        target = tmp_path / "document.bin"
+        target.write_bytes(self.PREVIOUS)
+
+        with pytest.raises(InterruptedWrite):
+            write_atomically(target, write_part_and_stop)
+
+        assert list(tmp_path.iterdir()) == [target]
 
 
 class TestArraySerialization:

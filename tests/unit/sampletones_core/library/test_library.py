@@ -7,6 +7,7 @@ from sampletones_core.fft import Window
 from sampletones_core.library.data import InstructionLibraryData
 from sampletones_core.library.key import InstructionLibraryKey
 from sampletones_core.library.library import InstructionLibrary
+from sampletones_core.library.state import LibraryState
 
 
 @pytest.fixture(scope="module")
@@ -123,30 +124,22 @@ class TestInstructionLibraryExists:
         assert library.exists(config) is True
 
 
-class TestInstructionLibraryPurge:
-    def test_purge_clears_in_memory_data(
+class TestTheStateOfALibraryInTheCatalog:
+    def test_a_library_never_saved_is_missing(
+        self,
+        library: InstructionLibrary,
+        library_key: InstructionLibraryKey,
+    ) -> None:
+        assert library.state(library_key) is LibraryState.MISSING
+
+    def test_a_library_this_build_saved_is_current(
         self,
         library: InstructionLibrary,
         library_key: InstructionLibraryKey,
         empty_library_data: InstructionLibraryData,
     ) -> None:
         library.save_data(library_key, empty_library_data)
-        assert len(library.data) > 0
-        library.purge()
-        assert len(library.data) == 0
-
-
-class TestInstructionLibraryViews:
-    def test_keys_values_items_after_save(
-        self,
-        library: InstructionLibrary,
-        library_key: InstructionLibraryKey,
-        empty_library_data: InstructionLibraryData,
-    ) -> None:
-        library.save_data(library_key, empty_library_data)
-        assert library_key in library.keys()
-        assert empty_library_data in library.values()
-        assert (library_key, empty_library_data) in library.items()
+        assert library.state(library_key) is LibraryState.CURRENT
 
 
 class TestInstructionLibrarySaveLoad:
@@ -157,20 +150,9 @@ class TestInstructionLibrarySaveLoad:
         empty_library_data: InstructionLibraryData,
     ) -> None:
         library.save_data(library_key, empty_library_data)
-        library.purge()
-        assert library_key not in library.data
-        library.load_data(library_key)
-        assert library_key in library.data
-
-    def test_getitem_after_load(
-        self,
-        library: InstructionLibrary,
-        library_key: InstructionLibraryKey,
-        empty_library_data: InstructionLibraryData,
-    ) -> None:
-        library.save_data(library_key, empty_library_data)
-        loaded = library[library_key]
-        assert isinstance(loaded, InstructionLibraryData)
+        reopened = InstructionLibrary(directory=library.directory)
+        reopened.load_data(library_key)
+        assert reopened.data[library_key].config == empty_library_data.config
 
     def test_get_path_includes_filename(
         self,
