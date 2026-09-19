@@ -20,6 +20,7 @@ from sampletones_player.specification.compression import (
     TokenTag,
 )
 from sampletones_player.specification.song import (
+    ABSENT_STREAM,
     LOOP_ENTRIES_OFFSET,
     LOOP_TICK_OFFSET,
     NO_LOOP,
@@ -49,6 +50,7 @@ STATED: Final[Dict[str, int]] = {
     "STREAM_OFFSETS_OFFSET": STREAM_OFFSETS_OFFSET,
     "LOOP_ENTRIES_OFFSET": LOOP_ENTRIES_OFFSET,
     "NO_LOOP": NO_LOOP,
+    "ABSENT_STREAM": ABSENT_STREAM,
     "PITCH_COUNT": PITCH_COUNT,
     "TOKEN_TAG_MASK": TOKEN_TAG_MASK,
     "TOKEN_OPERAND_MASK": TOKEN_OPERAND_MASK,

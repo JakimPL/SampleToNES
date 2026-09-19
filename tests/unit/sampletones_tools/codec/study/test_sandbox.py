@@ -392,9 +392,10 @@ class TestTheReferenceHoldsTheSandboxToTheCodec:
         assert encoding.written is None
         assert sum(encoding.streams) <= sum(len(stream) for stream in self.compressed.streams)
 
-    def test_wide_holds_opening_the_stream_reduce_an_idle_plane_to_three_bytes(self) -> None:
+    @pytest.mark.parametrize("entry", GRAMMAR_VARIANTS, ids=lambda entry: entry.name)
+    def test_a_plane_holding_zero_throughout_is_absent_under_every_grammar(self, entry: GrammarVariant) -> None:
         read = reference(self.song, self.compressed)
 
-        encoding = encode_grammar(read, replace(WIDE_HOLD, start_hold=True))
+        encoding = encode_grammar(read, entry.grammar)
 
-        assert [encoding.streams[plane] for plane in range(2, PLANE_COUNT, 3)] == [3, 3, 3]
+        assert [encoding.streams[plane] for plane in range(2, PLANE_COUNT, 3)] == [0, 0, 0]

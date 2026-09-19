@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final, Sequence, Tuple
+from typing import Final, Optional, Sequence, Tuple
 
 from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.planes.order import PlaneOrder
@@ -11,7 +11,7 @@ from sampletones_player.specification.compression import (
     PHRASE_TABLE_COUNT_SIZE,
     PHRASE_TABLE_ENTRY_SIZE,
 )
-from sampletones_player.specification.song import SONG_HEADER_SIZE
+from sampletones_player.specification.song import ABSENT_STREAM, SONG_HEADER_SIZE
 
 FIRST_TICK: Final[int] = 0
 NAME_SEPARATOR: Final[str] = "_"
@@ -27,6 +27,16 @@ def _running(start: int, sizes: Sequence[int]) -> Tuple[int, ...]:
     return tuple(offsets)
 
 
+def _stated(offset: int, stream: bytes) -> int:
+    """The offset the header states for a stream, an absent plane's standing as the sentinel."""
+    return offset if stream else ABSENT_STREAM
+
+
+def _entered(offset: int, entry: Optional[int]) -> int:
+    """The offset a stream is re-entered at, an absent plane's standing as the sentinel."""
+    return ABSENT_STREAM if entry is None else offset + entry
+
+
 @dataclass(frozen=True)
 class SongLayout:
     """Where each part of a song block begins, every offset counted from the block's first byte.
@@ -40,8 +50,10 @@ class SongLayout:
         timer_table: Where the timer each pitch sounds at begins.
         phrase_table: Where the dictionary's count and entries begin.
         bodies: Where each phrase's length byte lies, in id order.
-        streams: Where each plane's token stream begins, in song-block order.
-        loop_entries: Where each plane's stream is re-entered once the song repeats.
+        streams: Where each plane's token stream begins, in song-block order, or
+            ``ABSENT_STREAM`` for a plane the block leaves out.
+        loop_entries: Where each plane's stream is re-entered once the song repeats, or
+            ``ABSENT_STREAM`` for a plane the block leaves out.
         size: The bytes the whole block takes.
     """
 
@@ -81,8 +93,8 @@ class SongLayout:
             timer_table=timer_table,
             phrase_table=phrase_table,
             bodies=_running(bodies, body_sizes),
-            streams=stream_offsets,
-            loop_entries=tuple(offset + entry for offset, entry in zip(stream_offsets, entered)),
+            streams=tuple(_stated(offset, stream) for offset, stream in zip(stream_offsets, streams)),
+            loop_entries=tuple(_entered(offset, entry) for offset, entry in zip(stream_offsets, entered)),
             size=stream_start + sum(stream_sizes),
         )
 
@@ -92,7 +104,7 @@ class SongLayout:
 
     @property
     def stated(self) -> Tuple[Tuple[str, int], ...]:
-        """Every offset the block states, each under the name of what it points at."""
+        """Every offset the block states for a part it holds, each under the name of what it points at."""
         return (
             ("timer table", self.timer_table),
             ("phrase table", self.phrase_table),
@@ -106,4 +118,5 @@ class SongLayout:
         return tuple(
             (f"{plane.replace(NAME_SEPARATOR, ' ')} {part}", offset)
             for plane, offset in zip(PlaneOrder.names(), offsets)
+            if offset != ABSENT_STREAM
         )

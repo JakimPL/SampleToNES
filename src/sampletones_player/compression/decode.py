@@ -44,7 +44,8 @@ def decode_plane(data: bytes, table: PhraseTable, ticks: int) -> bytes:
     """Plays a plane's token stream back into the values it writes, tick by tick.
 
     This is the reading the driver performs, stated where it is testable: every encoding is held
-    against it, so what the console plays and what the encoder meant are the same values.
+    against it, so what the console plays and what the encoder meant are the same values. An
+    absent plane's empty stream plays the value every plane starts at throughout.
 
     Args:
         data: The plane's token stream.
@@ -54,6 +55,9 @@ def decode_plane(data: bytes, table: PhraseTable, ticks: int) -> bytes:
     Returns:
         bytes: The values the plane writes, one per tick.
     """
+    if not data:
+        return bytes((INITIAL_PLANE_VALUE,)) * ticks
+
     values = bytearray()
     current = INITIAL_PLANE_VALUE
     position = 0

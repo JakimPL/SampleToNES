@@ -73,8 +73,8 @@ plays from wherever the file loads it.
 | +5 | 2 | the tick the song returns to, or `$FFFF` where it stops there |
 | +7 | 2 | where the timer table begins |
 | +9 | 2 | where the phrase table begins |
-| +11 | `PLANE_COUNT`×2 | where each plane's stream begins |
-| +33 | `PLANE_COUNT`×2 | where each plane's stream is re-entered once the song comes round |
+| +11 | `PLANE_COUNT`×2 | where each plane's stream begins, or `$FFFF` for an absent plane |
+| +33 | `PLANE_COUNT`×2 | where each plane's stream is re-entered once the song comes round, or `$FFFF` for an absent plane |
 
 All fields are little-endian, and the header runs to `SONG_HEADER_SIZE` bytes.
 
@@ -172,6 +172,11 @@ volume envelope and a pitch line are separate series that turn over at their own
 **Every channel's planes are in every block.** A channel an export leaves out holds its
 silent values from the first tick to the last, which a hold covers in a few bytes, so the
 driver reads the same layout whichever channels a song sounds.
+
+**A plane playing zero throughout is absent.** Every plane starts at zero, so a plane that
+never leaves it takes no stream: both its header entries state `ABSENT_STREAM` (`$FFFF`),
+and the driver leaves it standing at zero on every tick. A tone channel that never bends
+costs its bend plane nothing this way.
 
 **The noise channel reads no bend.** It selects one of sixteen fixed periods, so there is
 no finer grid for a bend to reach, and the plane it would hold is left out of the block.

@@ -134,7 +134,9 @@ loop entry, or leave the console alone because the song has ended. Nothing wraps
 arithmetically: reaching the end either points the planes at where the song comes round or
 finishes.
 
-**One routine plays a tick on every plane.** A plane's state carries where its next token
+**One routine plays a tick on every plane the block holds.** An absent plane's source is
+seeded into page zero, which no song occupies, and the advance passes it by, so it stands at
+the zero every plane starts from. A plane's state carries where its next token
 lies, where in a phrase body it stands, how much of that body is left, how much of the
 current token is left, the value it last played, and the shift it is playing at. The three
 kinds of token fold into that one shape — a hold is a phrase of no bytes, a literal is a

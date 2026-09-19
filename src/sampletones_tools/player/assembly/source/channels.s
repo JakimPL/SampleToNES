@@ -11,6 +11,7 @@
 .import song_data
 
 SHADOW_UNWRITTEN = $FF
+ABSENT_PAGE      = $00
 
 .segment "ZEROPAGE"
 
@@ -30,6 +31,8 @@ timer_high_shadows:     .res TRIANGLE_REGISTERS + 1
 .assert OPCODE_SIZE = 1, error, "a token's operands follow its opcode by one byte"
 .assert PHRASE_TABLE_ENTRY_SIZE = 2, error, "a table entry is reached by one doubling"
 .assert PHRASE_LENGTH_SIZE = 1, error, "a phrase body follows its length by one byte"
+.assert >song_data <> ABSENT_PAGE, lderror, "a song loaded in page zero reads as an absent plane"
+.assert ABSENT_STREAM = $FFFF, error, "an absent stream is told apart by both its bytes reading $FF"
 
 ; Readies the tables the planes read through and points every plane at its own first token.
 channels_reset:
@@ -78,10 +81,23 @@ channels_rewind:
     jmp seed_planes
 
 ; Points each plane at the offset the header holds for it at (pointer), and empties what it plays.
+; A plane the block leaves out states ABSENT_STREAM, and its source lands in page zero, which no
+; song occupies: that page is what marks it absent, and its value stays at zero throughout.
 seed_planes:
     ldx #$00
     ldy #$00
 @next:
+    lda (pointer),y
+    iny
+    and (pointer),y
+    cmp #<ABSENT_STREAM
+    bne @present
+    lda #ABSENT_PAGE
+    sta plane_state + PLANE_SOURCE + 1,x
+    iny
+    jmp @empty
+@present:
+    dey
     clc
     lda (pointer),y
     adc #<song_data
@@ -92,6 +108,7 @@ seed_planes:
     sta plane_state + PLANE_SOURCE + 1,x
     iny
 
+@empty:
     lda #$00
     sta plane_state + PLANE_PHRASE_TICKS,x
     sta plane_state + PLANE_TOKEN_TICKS,x
@@ -106,11 +123,14 @@ seed_planes:
     bne @next
     rts
 
-; Advances every plane by one tick of the song.
+; Advances every plane the block holds by one tick of the song, an absent plane standing still.
 channels_advance:
     ldx #$00
 @next:
+    lda plane_state + PLANE_SOURCE + 1,x
+    beq @absent
     jsr plane_advance
+@absent:
     txa
     clc
     adc #PLANE_STATE_SIZE

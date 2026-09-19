@@ -49,7 +49,8 @@ The first thing the encoder does is unbraid them. Each register becomes a **plan
 one byte per tick, the whole song long — and each plane is a series of its own: a
 volume envelope that falls and holds, a pitch line that steps between notes, a duty
 cycle that barely moves. An idle channel's planes become one value repeated, which
-costs almost nothing to state.
+costs almost nothing to state, and a plane holding zero throughout — a bend a channel never
+makes — is left out of the block altogether.
 
 This one change is most of the win. Split into planes and coded, the three-minute
 arrangement falls from 11 bytes a tick to about 1.7.
@@ -66,7 +67,7 @@ resolves the index through and adds the bend to. A tone channel is therefore thr
 planes, the same count as the registers it writes.
 
 Trading two dividers for an index and a bend is worth about a twentieth once the
-planes are coded, since a bend a song never uses is a plane of one value. The larger
+planes are coded, since a bend a song never uses is absent from the block. The larger
 half is that **a pitch index can be transposed and a divider cannot.** The same figure played
 at five pitches is five unrelated byte sequences in divider space; in index space it
 is one sequence and five offsets. That is what turns a repeated sample into a single

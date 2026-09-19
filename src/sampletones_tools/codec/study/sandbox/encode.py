@@ -4,7 +4,7 @@ from typing import Final, Sequence, Tuple
 from sampletones_tools.codec.study.measure import Encoding
 from sampletones_tools.codec.study.sandbox.defaults import modal_counts, no_defaults
 from sampletones_tools.codec.study.sandbox.grammar import Grammar
-from sampletones_tools.codec.study.sandbox.parse import StudyParse, parse_plane
+from sampletones_tools.codec.study.sandbox.parse import StudyParse
 from sampletones_tools.codec.study.sandbox.reference import Reference
 from sampletones_tools.codec.study.sandbox.verify import plays_back
 
@@ -42,7 +42,7 @@ def _parse_all(
     grammar: Grammar,
     defaults: Sequence[int],
 ) -> Tuple[StudyParse, ...]:
-    return tuple(parse_plane(context, grammar) for context in reference.contexts(grammar.costs, defaults))
+    return reference.parses(grammar, defaults)
 
 
 def _streams(parses: Sequence[StudyParse]) -> int:

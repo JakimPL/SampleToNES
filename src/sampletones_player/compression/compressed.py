@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -36,17 +36,18 @@ class CompressedPlanes(BaseModel):
         """The bytes the dictionary and every plane's stream take together."""
         return self.phrases.size + sum(len(stream) for stream in self.streams)
 
-    def entries(self, tick: int) -> Tuple[int, ...]:
+    def entries(self, tick: int) -> Tuple[Optional[int], ...]:
         """The byte each stream is re-entered at, for a song returning to ``tick``.
 
         Args:
             tick: The tick the song returns to.
 
         Returns:
-            Tuple[int, ...]: One byte offset per plane, each counted from its own stream's start,
-                in the order the song block writes them.
+            Tuple[Optional[int], ...]: One byte offset per plane, each counted from its own
+                stream's start, in the order the song block writes them; ``None`` for an absent
+                plane, which holds no stream to re-enter.
 
         Raises:
             ValueError: If a stream spans ``tick`` rather than starting a token there.
         """
-        return tuple(stream_entry(stream, tick) for stream in self.streams)
+        return tuple(stream_entry(stream, tick) if stream else None for stream in self.streams)

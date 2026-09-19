@@ -1,6 +1,7 @@
 from dataclasses import replace
 from typing import Dict, Final, FrozenSet, Iterable, Sequence, Tuple
 
+from sampletones_player.compression.absent import is_absent
 from sampletones_player.compression.admit import admit_seeds
 from sampletones_player.compression.budget import DEFAULT_SEARCH_BUDGET, SearchBudget
 from sampletones_player.compression.compressed import CompressedPlanes
@@ -133,7 +134,8 @@ def encode_streams(
     phrases inside the opcodes that name them.
 
     Each plane is read against the shared dictionary on its own, so the planes may cover
-    different numbers of values.
+    different numbers of values. A plane playing only the value every plane starts at is absent:
+    it takes no stream, and the block states it with a sentinel the driver skips.
 
     Args:
         planes: The planes, each at least one value long.
@@ -145,12 +147,12 @@ def encode_streams(
 
     Returns:
         Tuple[PhraseTable, Tuple[bytes, ...]]: The dictionary, then each plane's token stream in
-            the order the planes were given.
+            the order the planes were given, an absent plane's empty.
 
     Raises:
         OperationCanceled: If ``report`` withdraws the run.
     """
-    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes)
+    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes if not is_absent(plane))
     monitor = CodecMonitor(report)
     entries = boundaries | {STREAM_START}
     baseline = parse_planes(
@@ -188,7 +190,8 @@ def encode_streams(
         monitor,
         baseline,
     )
-    streams = tuple(emit(parse.tokens) for parse in parses)
+    written = iter(emit(parse.tokens) for parse in parses)
+    streams = tuple(b"" if is_absent(plane) else next(written) for plane in planes)
     monitor.reached(len(table), table.size + sum(len(stream) for stream in streams))
     return table, streams
 

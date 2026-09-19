@@ -10,6 +10,7 @@ from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.builder import streams_from_instructions
+from sampletones_player.compression.absent import is_absent
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.channel import TonePlanes
 from sampletones_player.compression.planes.separate import channel_planes, planes_from_streams
@@ -20,7 +21,7 @@ from sampletones_shared.music import Tuning
 from sampletones_tools.codec.study.corpus.notes import channel_notes, song_notes
 from sampletones_tools.codec.study.corpus.slices import project_slices
 from sampletones_tools.codec.study.corpus.song import SongGroup, StudySong
-from sampletones_tools.codec.study.layouts.encode import encode_layout, is_absent
+from sampletones_tools.codec.study.layouts.encode import encode_layout
 from sampletones_tools.codec.study.layouts.layout import Anchor, BendForm, PlaneLayout
 from sampletones_tools.codec.study.layouts.planes import layout_planes, layout_seeds
 from sampletones_tools.codec.study.layouts.tone import FLAG_BIT, tone_planes
