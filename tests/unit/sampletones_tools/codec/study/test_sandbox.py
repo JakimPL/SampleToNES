@@ -39,6 +39,7 @@ from sampletones_tools.codec.study.variants.production import compress_baseline
 from sampletones_tools.codec.study.variants.sandbox import DEFAULT_COUNT_COSTS, GRAMMAR_VARIANTS, GrammarVariant
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.study import NO_STUDY_SLICES, lowest_notes
 
 ENTRIES: Final[FrozenSet[int]] = frozenset({STREAM_START})
 FIGURES: Final[Tuple[bytes, ...]] = (b"\x0a\x0c\x0f\x0f\x0f\x0f\x0f\x0f", b"\x03\x04\x05\x06")
@@ -97,6 +98,8 @@ def _song(ticks: int) -> StudySong:
         planes=SongPlanes.from_order(PlaneOrder.across(planes)),
         seeds=tuple(Phrase(body=body) for body in FIGURES),
         pitches=PitchTable.from_tuning(Tuning()),
+        notes=lowest_notes(ticks),
+        slices=NO_STUDY_SLICES,
     )
 
 

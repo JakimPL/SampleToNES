@@ -114,39 +114,43 @@ def _settle(
     return table, parses
 
 
-def encode_planes(
-    planes: SongPlanes,
+def encode_streams(
+    planes: Sequence[bytes],
     seeds: Sequence[Phrase],
     *,
     options: CodecOptions,
     boundaries: FrozenSet[int],
     budget: SearchBudget = DEFAULT_SEARCH_BUDGET,
     report: CodecReporter = silent_reporter,
-) -> CompressedPlanes:
-    """Compresses a song's planes into the dictionary and streams the driver reads.
+) -> Tuple[PhraseTable, Tuple[bytes, ...]]:
+    """Compresses a run of planes into one dictionary and a token stream for each.
 
-    Every layer is weighed against one reading of the song naming no phrase at all: the seeds a
-    dictionary crowded past its ids keeps, and the bytes each phrase spares once the table
+    Every layer is weighed against one reading of the planes naming no phrase at all: the seeds
+    a dictionary crowded past its ids keeps, and the bytes each phrase spares once the table
     settles. The instruments seed the dictionary, the search fills what they leave behind, and
     the table then settles — phrases the parse names keep their place in the order they are
     leaned on, and the parse runs again over the ids that frees, which is what puts the busiest
     phrases inside the opcodes that name them.
 
+    Each plane is read against the shared dictionary on its own, so the planes may cover
+    different numbers of values.
+
     Args:
-        planes: The planes under the channel each belongs to.
+        planes: The planes, each at least one value long.
         seeds: The phrases the song's instruments offer.
         options: Which of the codec's layers the encoding is built from.
-        boundaries: The ticks a token starts on, beyond the first tick of the song.
+        boundaries: The positions a token starts on in every plane, beyond its first.
         budget: How much work the search spends beyond the phrases the instruments seed.
         report: Hears what the run holds each time it looks up, and answers whether it goes on.
 
     Returns:
-        CompressedPlanes: The dictionary, every plane's token stream and the ticks the song lasts.
+        Tuple[PhraseTable, Tuple[bytes, ...]]: The dictionary, then each plane's token stream in
+            the order the planes were given.
 
     Raises:
         OperationCanceled: If ``report`` withdraws the run.
     """
-    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes.planes)
+    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes)
     monitor = CodecMonitor(report)
     entries = boundaries | {STREAM_START}
     baseline = parse_planes(
@@ -184,10 +188,46 @@ def encode_planes(
         monitor,
         baseline,
     )
-    compressed = CompressedPlanes(
+    streams = tuple(emit(parse.tokens) for parse in parses)
+    monitor.reached(len(table), table.size + sum(len(stream) for stream in streams))
+    return table, streams
+
+
+def encode_planes(
+    planes: SongPlanes,
+    seeds: Sequence[Phrase],
+    *,
+    options: CodecOptions,
+    boundaries: FrozenSet[int],
+    budget: SearchBudget = DEFAULT_SEARCH_BUDGET,
+    report: CodecReporter = silent_reporter,
+) -> CompressedPlanes:
+    """Compresses a song's planes into the dictionary and streams the driver reads.
+
+    Args:
+        planes: The planes under the channel each belongs to.
+        seeds: The phrases the song's instruments offer.
+        options: Which of the codec's layers the encoding is built from.
+        boundaries: The ticks a token starts on, beyond the first tick of the song.
+        budget: How much work the search spends beyond the phrases the instruments seed.
+        report: Hears what the run holds each time it looks up, and answers whether it goes on.
+
+    Returns:
+        CompressedPlanes: The dictionary, every plane's token stream and the ticks the song lasts.
+
+    Raises:
+        OperationCanceled: If ``report`` withdraws the run.
+    """
+    table, streams = encode_streams(
+        planes.planes,
+        seeds,
+        options=options,
+        boundaries=boundaries,
+        budget=budget,
+        report=report,
+    )
+    return CompressedPlanes(
         phrases=table,
-        streams=PlaneOrder.across(emit(parse.tokens) for parse in parses),
+        streams=PlaneOrder.across(streams),
         ticks=planes.ticks,
     )
-    monitor.reached(len(table), compressed.size)
-    return compressed

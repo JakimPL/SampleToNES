@@ -14,11 +14,11 @@ from sampletones_player.specification.registers import (
 )
 
 
-def _sounded(
+def tone_dividers(
     planes: TonePlanes,
     timers: Tuple[int, ...],
-) -> Iterator[Tuple[int, int]]:
-    """Each tick's control byte beside the divider its note and its bend reach together.
+) -> Tuple[int, ...]:
+    """The divider each tick of a tone channel reaches, its note and its bend together.
 
     This is the reading the driver performs between the pitch table and the timer registers,
     stated where it is testable.
@@ -27,11 +27,18 @@ def _sounded(
         planes: The channel's planes.
         timers: The divider each pitch sounds at, in pitch order.
 
-    Yields:
-        Tuple[int, int]: The tick's control byte and the divider its registers carry.
+    Returns:
+        Tuple[int, ...]: One divider per tick.
     """
-    for control, index, bend in zip(planes.control, planes.value, planes.bend):
-        yield control, timers[index] + signed_byte(bend)
+    return tuple(timers[index] + signed_byte(bend) for index, bend in zip(planes.value, planes.bend))
+
+
+def _sounded(
+    planes: TonePlanes,
+    timers: Tuple[int, ...],
+) -> Iterator[Tuple[int, int]]:
+    """Each tick's control byte beside the divider its registers carry."""
+    yield from zip(planes.control, tone_dividers(planes, timers))
 
 
 def _pulse_registers(

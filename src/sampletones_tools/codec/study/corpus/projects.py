@@ -13,6 +13,8 @@ from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.separate import planes_from_streams
 from sampletones_player.compression.seeds import phrases_from_project
 from sampletones_shared.utils.progress import silent_reporter
+from sampletones_tools.codec.study.corpus.notes import song_notes
+from sampletones_tools.codec.study.corpus.slices import project_slices
 from sampletones_tools.codec.study.corpus.song import SongGroup, StudySong
 
 
@@ -61,10 +63,8 @@ def _song(
 ) -> StudySong:
     tuning = tuning_from_project(project)
     pitches = PitchTable.from_tuning(tuning)
-    streams = streams_from_instructions(
-        song_instructions(project, silent_reporter),
-        get_timer_table(tuning),
-    )
+    instructions = song_instructions(project, silent_reporter)
+    streams = streams_from_instructions(instructions, get_timer_table(tuning))
     return StudySong(
         name=name,
         group=group,
@@ -72,6 +72,8 @@ def _song(
         planes=planes_from_streams(streams, pitches),
         seeds=phrases_from_project(project, tuning, ALL_CHANNELS),
         pitches=pitches,
+        notes=song_notes(instructions, streams.ticks),
+        slices=project_slices(project, tuning),
     )
 
 
