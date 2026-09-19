@@ -73,8 +73,8 @@ plays from wherever the file loads it.
 | +5 | 2 | the tick the song returns to, or `$FFFF` where it stops there |
 | +7 | 2 | where the timer table begins |
 | +9 | 2 | where the phrase table begins |
-| +11 | `PLANE_COUNT`×2 | where each plane's stream begins |
-| +33 | `PLANE_COUNT`×2 | where each plane's stream is re-entered once the song comes round |
+| +11 | `PLANE_COUNT`×2 | where each plane's stream begins, or `$FFFF` for an absent plane |
+| +33 | `PLANE_COUNT`×2 | where each plane's stream is re-entered once the song comes round, or `$FFFF` for an absent plane |
 
 All fields are little-endian, and the header runs to `SONG_HEADER_SIZE` bytes.
 
@@ -92,8 +92,10 @@ pitch, in pitch order, then the high byte of each. One pointer reaches both halv
 is what the driver's lookup takes advantage of.
 
 A plane names a pitch as its **index** — the distance above the lowest pitch the tuning
-covers — rather than as a divider. Pitches beyond the divider's range share the timer they
-clamp to, and the lowest pitch sounding a timer stands for the whole group.
+covers — rather than as a divider. A tick's divider is written as the index of the pitch it
+is counted from, beside a bend of the steps from that pitch's own divider (§C). Pitches
+beyond the divider's range share the timer they clamp to, and the lowest pitch sounding a
+timer stands for the whole group.
 
 The table is written from the tuning the exported work was built at, computed by the very
 function the reconstruction's own generators render from.
@@ -139,8 +141,10 @@ length a figure is played at, and — with the shift — every pitch.
 
 A song that repeats re-enters its streams partway through, so the tick it returns to
 begins a token on every plane, and that token names its values outright rather than
-leaning on the value the plane had reached. Coming round is then a matter of pointing each
-plane at the byte the header states and clearing what it was playing.
+leaning on the value the plane had reached. A bend plane is re-entered at the value its
+channel's flags have reached by that tick (§C), which begins a token of its own. Coming
+round is then a matter of pointing each plane at the byte the header states and clearing
+what it was playing.
 
 The tick a song returns to is the export's choice: its first tick, the first tick of an
 order frame, or none at all, in which case the header states `$FFFF` and the song stops at
@@ -153,14 +157,14 @@ The planes are written in this order, and each group belongs to one channel:
 | Plane | Carries | Reaches |
 |---|---|---|
 | pulse 1 control | duty cycle and volume | `$4000` |
-| pulse 1 value | pitch index | `$4002`, `$4003` |
-| pulse 1 bend | divider offset | `$4002`, `$4003` |
+| pulse 1 value | pitch index, and a flag for a bent tick | `$4002`, `$4003` |
+| pulse 1 bend | divider offset of each flagged tick | `$4002`, `$4003` |
 | pulse 2 control | duty cycle and volume | `$4004` |
-| pulse 2 value | pitch index | `$4006`, `$4007` |
-| pulse 2 bend | divider offset | `$4006`, `$4007` |
+| pulse 2 value | pitch index, and a flag for a bent tick | `$4006`, `$4007` |
+| pulse 2 bend | divider offset of each flagged tick | `$4006`, `$4007` |
 | triangle control | linear counter | `$4008` |
-| triangle value | pitch index | `$400A`, `$400B` |
-| triangle bend | divider offset | `$400A`, `$400B` |
+| triangle value | pitch index, and a flag for a bent tick | `$400A`, `$400B` |
+| triangle bend | divider offset of each flagged tick | `$400A`, `$400B` |
 | noise control | volume | `$400C` |
 | noise value | period and mode | `$400E` |
 
@@ -170,6 +174,11 @@ volume envelope and a pitch line are separate series that turn over at their own
 **Every channel's planes are in every block.** A channel an export leaves out holds its
 silent values from the first tick to the last, which a hold covers in a few bytes, so the
 driver reads the same layout whichever channels a song sounds.
+
+**A plane playing zero throughout is absent.** Every plane starts at zero, so a plane that
+never leaves it takes no stream: both its header entries state `ABSENT_STREAM` (`$FFFF`),
+and the driver leaves it standing at zero on every tick. A tone channel that never bends
+costs its bend plane nothing this way.
 
 **The noise channel reads no bend.** It selects one of sixteen fixed periods, so there is
 no finer grid for a bend to reach, and the plane it would hold is left out of the block.
@@ -182,14 +191,32 @@ does.
 **A value plane names a pitch, not a divider.** Stating a note as its distance above the
 lowest one the song reaches is what lets `TRANSPOSED_PHRASE` move a whole phrase by adding
 to it, and a divider offset added to an index means nothing. A tone channel's **bend**
-plane is where the offset goes: one signed byte a tick, in two's complement, added to the
-divider the value plane's note resolves to.
+plane is where the offset goes: signed bytes in two's complement, added to the divider the
+value plane's note resolves to.
+
+**A bend plane holds a value only where a note bends.** A value byte's low seven bits index
+the pitch table and its top bit, `BEND_FLAG`, says the tick reads its offset from the bend
+plane; an unflagged tick sounds its pitch's own divider. The bend plane holds one value per
+flagged tick, in order, and the driver advances it on those ticks alone. The encoder flags
+each note from its first bent tick to its last, so a vibrato passing through zero keeps the
+value plane still, and a channel that never bends holds an empty bend plane — an absent one.
+The flag sits above every index, so a transposed phrase keeps it.
+
+A bent frame sounds the divider its note's own is moved to, and **the value plane names
+the frame's own note** while the bend plane holds the steps from that note's divider. A row
+transposes a note and keeps its bend's steps, so a bent figure keeps the same bend bytes
+at every pitch it is played at, which is what lets one dictionary entry serve it. A bend
+past the signed byte is counted from the pitch lying nearest the divider instead, a
+divider halfway between two pitches going to the higher one; those steps stay inside half
+the widest gap between neighboring pitches — 57 at the default tuning — so every divider
+the register holds reaches the planes.
 
 The driver sign-extends that byte and adds it across both halves of the timer, which is the
 only arithmetic it performs on a song's behalf. Everything that makes the sum land in
-range is settled in Python: the divider stays within `[MIN_TIMER, MAX_TIMER]`, so the
-timer's high half never exceeds three bits, never reaches the length-counter field beside
-them, and never collides with the `$FF` the driver marks an unwritten shadow by.
+range is settled in Python: `bent_timer` keeps the divider within `[MIN_TIMER, MAX_TIMER]`,
+the rule the generators render a bent frame by, so the timer's high half never exceeds
+three bits, never reaches the length-counter field beside them, and never collides with the
+`$FF` the driver marks an unwritten shadow by.
 
 ## D. Limits
 

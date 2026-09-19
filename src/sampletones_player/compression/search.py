@@ -170,7 +170,7 @@ def search_phrases(
     cache: MatchCache,
     table: PhraseTable,
     options: CodecOptions,
-    boundaries: FrozenSet[int],
+    boundaries: Sequence[FrozenSet[int]],
     monitor: CodecMonitor,
     budget: SearchBudget,
 ) -> PhraseTable:
@@ -189,7 +189,7 @@ def search_phrases(
         cache: The planes the song covers, alongside what each phrase plays against them.
         table: The phrases the instruments seeded.
         options: Which of the codec's layers the encoding is built from.
-        boundaries: The ticks a token starts on.
+        boundaries: The positions a token starts on, one set per plane.
         monitor: Carries the run's reckoning of itself onward.
         budget: How many candidates a round gathers and confirms, and how many rounds run.
 

@@ -40,8 +40,8 @@ REPEATS: Final[int] = 12
 
 def song_planes(control: bytes, value: bytes) -> SongPlanes:
     unbent = bytes(len(control))
-    channel = TonePlanes(control=control, value=value, bend=unbent)
-    resting = TonePlanes(control=unbent, value=bytes(len(value)), bend=unbent)
+    channel = TonePlanes(control=control, value=value, bend=b"")
+    resting = TonePlanes(control=unbent, value=bytes(len(value)), bend=b"")
     silent = ChannelPlanes(control=unbent, value=bytes(len(value)))
     return SongPlanes(pulse1=channel, pulse2=resting, triangle=resting, noise=silent)
 

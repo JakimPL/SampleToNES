@@ -7,6 +7,7 @@ from sampletones_core.exporters import PulseExporter, TriangleExporter
 from sampletones_core.features import resting_held_features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import PulseInstruction, TriangleInstruction
+from sampletones_core.instructions.tonal import bend_steps
 
 REFERENCE: Final[int] = 60
 VOLUME: Final[int] = 12
@@ -61,6 +62,52 @@ class TestReadingBendsOutOfAStream:
 
         assert written[FeatureKey.PITCH] == (0, 0, 0)
         assert written[FeatureKey.HI_PITCH] == (0, 0, 0)
+
+
+class TestReadingTheOffsetAChannelSounds:
+    """Both bend dimensions reach a register as one divider offset, held the way pitches are."""
+
+    def test_the_two_dimensions_sum_frame_by_frame(self) -> None:
+        offsets = PulseExporter.read_timer_offsets(_pulses())
+
+        assert offsets == tuple(bend_steps(fine, coarse) for fine, coarse in zip(BENDS, COARSE_BENDS))
+
+    def test_a_rest_carries_the_offset_the_last_sounding_frame_stated(self) -> None:
+        instructions = [
+            TriangleInstruction(on=True, pitch=REFERENCE, detune=9, coarse_detune=1),
+            TriangleInstruction.null_instruction(),
+            TriangleInstruction(on=True, pitch=REFERENCE, detune=-4),
+        ]
+
+        offsets = TriangleExporter.read_timer_offsets(instructions)
+
+        assert offsets == (bend_steps(9, 1), bend_steps(9, 1), -4)
+
+    def test_a_rest_before_the_first_sounding_frame_takes_its_offset(self) -> None:
+        instructions = [
+            PulseInstruction.null_instruction(),
+            PulseInstruction(on=True, pitch=REFERENCE, volume=VOLUME, duty_cycle=0, coarse_detune=-2),
+        ]
+
+        offsets = PulseExporter.read_timer_offsets(instructions)
+
+        assert offsets == (bend_steps(0, -2), bend_steps(0, -2))
+
+    def test_a_channel_that_never_sounds_carries_no_offset(self) -> None:
+        offsets = PulseExporter.read_timer_offsets([PulseInstruction.null_instruction()] * 3)
+
+        assert offsets == (0, 0, 0)
+
+    def test_every_offset_stands_beside_the_pitch_its_frame_holds(self) -> None:
+        instructions = [
+            PulseInstruction.null_instruction(),
+            *_pulses(),
+            PulseInstruction.null_instruction(),
+        ]
+
+        _, pitches, _, _ = PulseExporter.extract_data(instructions)
+
+        assert len(PulseExporter.read_timer_offsets(instructions)) == len(pitches)
 
 
 class TestRoundTrip:

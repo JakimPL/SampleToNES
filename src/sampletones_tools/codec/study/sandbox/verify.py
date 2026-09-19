@@ -48,4 +48,4 @@ def plays_back(
     Returns:
         bool: Whether the encoding is lossless.
     """
-    return all(play_tokens(parse.tokens, table, planes.ticks) == plane for parse, plane in zip(parses, planes.planes))
+    return all(play_tokens(parse.tokens, table, len(plane)) == plane for parse, plane in zip(parses, planes.planes))

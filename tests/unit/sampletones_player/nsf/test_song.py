@@ -4,6 +4,7 @@ from typing import Final, Tuple
 
 import pytest
 
+from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.nsf.layout import NAME_SEPARATOR, SongLayout
 from sampletones_player.nsf.song import song_to_bytes
@@ -11,6 +12,7 @@ from sampletones_player.song import Song
 from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.compression import PLANE_COUNT
 from sampletones_player.specification.song import (
+    ABSENT_STREAM,
     LOOP_ENTRIES_OFFSET,
     LOOP_TICK_OFFSET,
     MAX_BLOCK_OFFSET,
@@ -63,6 +65,11 @@ def loop_entries(data: bytes) -> Tuple[int, ...]:
     return read_words(data, LOOP_ENTRIES_OFFSET, PLANE_COUNT)
 
 
+def held_offsets(data: bytes) -> Tuple[int, ...]:
+    """The stream offsets of the planes the block holds, absent planes left out."""
+    return tuple(offset for offset in stream_offsets(data) if offset != ABSENT_STREAM)
+
+
 def two_tick_song(nes_frequency: int) -> Song:
     return player_song(resting_streams((SOUNDING, RESTING)), nes_frequency, loop_tick=None)
 
@@ -80,8 +87,9 @@ class TestSongBytes:
 
     The layout is the contract the driver reads the song through, so the literal states it in
     full: the header, the timer every pitch sounds at, the dictionary the tokens name, and one
-    token stream per plane. The timer table is named rather than transcribed, since it is the
-    tuning's own table and the block carries whatever that table holds.
+    token stream per plane the block holds. The song bends nowhere, so each bend plane is absent
+    and its header entries carry the sentinel. The timer table is named rather than transcribed,
+    since it is the tuning's own table and the block carries whatever that table holds.
     """
 
     EXPECTED_HEADER: Final[bytes] = (
@@ -91,27 +99,24 @@ class TestSongBytes:
         b"\xff\xff"
         b"\x37\x00"
         b"\x07\x01"
-        b"\x08\x01\x0b\x01\x0e\x01"
-        b"\x11\x01\x14\x01\x17\x01"
-        b"\x1a\x01\x1d\x01\x20\x01"
-        b"\x23\x01\x26\x01"
-        b"\x08\x01\x0b\x01\x0e\x01"
-        b"\x11\x01\x14\x01\x17\x01"
-        b"\x1a\x01\x1d\x01\x20\x01"
-        b"\x23\x01\x26\x01"
+        b"\x08\x01\x0b\x01\xff\xff"
+        b"\x0e\x01\x11\x01\xff\xff"
+        b"\x14\x01\x17\x01\xff\xff"
+        b"\x1a\x01\x1d\x01"
+        b"\x08\x01\x0b\x01\xff\xff"
+        b"\x0e\x01\x11\x01\xff\xff"
+        b"\x14\x01\x17\x01\xff\xff"
+        b"\x1a\x01\x1d\x01"
     )
 
     EXPECTED_STREAMS: Final[bytes] = (
         b"\x00"
         b"\x41\x3f\x30"
         b"\x40\x21\x00"
-        b"\x40\x00\x00"
         b"\x40\x30\x00"
         b"\x40\x21\x00"
-        b"\x40\x00\x00"
         b"\x40\x80\x00"
         b"\x40\x21\x00"
-        b"\x40\x00\x00"
         b"\x40\x30\x00"
         b"\x40\x0a\x00"
     )
@@ -222,8 +227,16 @@ class TestStreamOffsets:
 
     def test_the_offsets_ascend_in_plane_order(self) -> None:
         data = song_to_bytes(two_tick_song(NTSC_FREQUENCY), PROGRAM_AREA_BYTES)
-        offsets = stream_offsets(data)
+        offsets = held_offsets(data)
         assert list(offsets) == sorted(offsets)
+
+    def test_a_plane_that_never_moves_states_the_sentinel(self) -> None:
+        song = two_tick_song(NTSC_FREQUENCY)
+        data = song_to_bytes(song, PROGRAM_AREA_BYTES)
+        absent = [plane for plane, stream in enumerate(song.planes.streams) if not stream]
+        assert absent
+        assert all(stream_offsets(data)[plane] == ABSENT_STREAM for plane in absent)
+        assert all(loop_entries(data)[plane] == ABSENT_STREAM for plane in absent)
 
     def test_each_offset_lands_on_that_planes_first_token(self) -> None:
         song = two_tick_song(NTSC_FREQUENCY)
@@ -243,8 +256,10 @@ class TestLoopEntries:
     def test_a_song_that_repeats_states_the_token_its_loop_tick_starts(self) -> None:
         song = repeating_song()
         data = song_to_bytes(song, PROGRAM_AREA_BYTES)
-        entered = song.planes.entries(LOOP_TICK)
-        assert loop_entries(data) == tuple(offset + entry for offset, entry in zip(stream_offsets(data), entered))
+        entered = song.planes.entries(decode_planes(song.planes).positions(LOOP_TICK))
+        assert loop_entries(data) == tuple(
+            ABSENT_STREAM if entry is None else offset + entry for offset, entry in zip(stream_offsets(data), entered)
+        )
 
     def test_a_song_that_stops_re_enters_at_its_own_first_token(self) -> None:
         data = song_to_bytes(two_tick_song(NTSC_FREQUENCY), PROGRAM_AREA_BYTES)
@@ -254,7 +269,8 @@ class TestLoopEntries:
         song = repeating_song()
         data = song_to_bytes(song, PROGRAM_AREA_BYTES)
         for entry, offset, stream in zip(loop_entries(data), stream_offsets(data), song.planes.streams):
-            assert offset <= entry < offset + len(stream)
+            if stream:
+                assert offset <= entry < offset + len(stream)
 
 
 class TestSongTooLarge:

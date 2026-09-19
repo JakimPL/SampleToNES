@@ -1,7 +1,5 @@
 from typing import Final, Optional, Tuple
 
-import pytest
-
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.compression.song import compress_song, decompress_song
@@ -86,16 +84,13 @@ class TestASongThatRepeatsReEntersItsStreams:
         assert played(streams, MIDDLE_TICK) == played(streams, None)
 
 
-class TestAPlaneNamesPitchesTheTableSounds:
-    """A tone channel reaches a plane as pitch indices, so its timers are the table's own."""
+class TestAPlaneCarriesADividerNoPitchSounds:
+    """A bent tick sounds a divider between the table's own, and the song writes it back exactly."""
 
-    def test_a_timer_no_pitch_sounds_is_refused(self) -> None:
-        streams = resting_streams((pulse_tick(PLAYER_FULL_VOLUME, 0, UNSOUNDED_TIMER),))
-        with pytest.raises(ValueError, match=str(UNSOUNDED_TIMER)):
-            compress_song(
-                streams,
-                PLAYER_PITCHES,
-                seeds=NO_SEEDS,
-                loop_tick=None,
-                scheme=CompressionScheme.SEARCH,
-            )
+    def test_a_timer_no_pitch_sounds_plays_back_as_written(self) -> None:
+        assert UNSOUNDED_TIMER not in PLAYER_PITCHES.timers
+        streams = resting_streams((pulse_tick(PLAYER_FULL_VOLUME, 0, UNSOUNDED_TIMER), SOUNDING))
+        rebuilt = played(streams, None)
+        assert [rebuilt.at(tick) for tick in range(streams.ticks)] == [
+            streams.at(tick) for tick in range(streams.ticks)
+        ]

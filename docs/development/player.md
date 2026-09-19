@@ -92,9 +92,10 @@ are unrelated series braided together. Split apart, each is a slowly-changing se
 own.
 
 **A pitch index rather than a timer.** A tone channel's two timer bytes become one index
-into a table the block carries. It saves a byte a tick directly, but the reason it matters
-is that a timer cannot be transposed and an index can: the same figure played at several
-pitches is several copies in timer space and one entry plus a shift in index space.
+into a table the block carries, beside a bend holding the steps a bent tick stands away
+from that pitch. It saves a byte a tick directly, but the reason it matters is that a timer
+cannot be transposed and an index can: the same figure played at several pitches is several
+copies in timer space and one entry plus a shift in index space.
 
 **Tokens.** A plane is written as holds, literals and phrase plays — the encoding is in
 [the format document](../formats/nsf.md#b4-the-token-streams). What matters here is that a
@@ -133,7 +134,10 @@ loop entry, or leave the console alone because the song has ended. Nothing wraps
 arithmetically: reaching the end either points the planes at where the song comes round or
 finishes.
 
-**One routine plays a tick on every plane.** A plane's state carries where its next token
+**One routine plays a tick on every plane the block holds.** An absent plane's source is
+seeded into page zero, which no song occupies, and the advance passes it by, so it stands at
+the zero every plane starts from. A bend plane is stepped only on a tick its channel's new
+value flags, since it holds a value for those ticks alone. A plane's state carries where its next token
 lies, where in a phrase body it stands, how much of that body is left, how much of the
 current token is left, the value it last played, and the shift it is playing at. The three
 kinds of token fold into that one shape — a hold is a phrase of no bytes, a literal is a
@@ -146,9 +150,9 @@ is one routine called again. The state lives in zero page, well inside what the 
 leaves free, and the linker configuration keeps the two-segment memory model an NSF loads.
 
 **The one sum the driver performs is the bend.** A tone channel's value plane resolves to a
-divider through the timer table, and its bend plane states the steps the tick stands away
-from it — sign-extended and added across both halves of the timer, with the high half
-reaching the register only where it changed. Everything that keeps the sum in range is
+divider through the timer table, and on a flagged tick its bend plane states the steps the
+tick stands away from it — sign-extended and added across both halves of the timer, with the
+high half reaching the register only where it changed. An unflagged tick adds nothing. Everything that keeps the sum in range is
 settled in Python, so what crosses into assembly stays a byte moved and a carry followed.
 
 ## How it is verified
@@ -164,7 +168,7 @@ The chain runs from the register values upward, and each link is held on its own
 | The byte layout | a hand-built song serializes to expected bytes |
 | The assembly agrees with the specification | the include's equates are read and compared field by field |
 | The driver behaves | the assembled image on a 6502 emulator against `RegisterTrace.from_song`, over several rates and over songs that repeat |
-| The driver's arithmetic | a song stating a bend outright, held to the divider each tick is meant to sound at |
+| The driver's arithmetic | a song stating a bend plane outright, and bent frames exported end to end, each held to the divider the sequencer sounds every tick at |
 | The audio | a captured trace re-rendered against the reconstruction's own approximation |
 | The whole export | a project exported, played on the emulator, and read back as the instructions the sequencer sounds |
 | Listening | `uv run sampletones nsf samples -o build/nsf` then `uv run sampletones nsf render --directory build/nsf`, or any NSF player |

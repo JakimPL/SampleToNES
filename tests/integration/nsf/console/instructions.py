@@ -1,10 +1,11 @@
-from typing import Dict, Final, List, Mapping, Tuple
+from dataclasses import dataclass
+from typing import Dict, Final, List, Mapping, Self, Tuple
 
 import numpy as np
 
 from sampletones_core.audio.mixing import mix
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.constants.general import MAX_PERIOD, MAX_VOLUME
+from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MAX_VOLUME, MIN_PITCH
 from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import (
     InstructionUnion,
@@ -13,7 +14,9 @@ from sampletones_core.instructions import (
     TriangleInstruction,
 )
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_player.registers.playable import playable
+from sampletones_core.timers.arithmetic import bent_timer
+from sampletones_core.timers.nearest import NearestPitch, nearest_pitches
+from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.specification.channels import CHANNEL_REGISTER_ADDRESSES
 from sampletones_player.specification.registers import (
     DUTY_CYCLE_SHIFT,
@@ -22,6 +25,7 @@ from sampletones_player.specification.registers import (
     TRIANGLE_COUNTER_CONTROL,
     TRIANGLE_SOUNDING_RELOAD,
 )
+from sampletones_shared.music import Tuning
 from sampletones_tools.player.trace.trace import RegisterTrace
 from tests.integration.nsf.console.machine import register_file
 
@@ -38,10 +42,56 @@ def timer_value(timer_low: int, timer_high: int) -> int:
     return (timer_high << TIMER_HIGH_SHIFT) | timer_low
 
 
+@dataclass(frozen=True)
+class DividerReading:
+    """The note and bend each divider the console sounds reads back as.
+
+    A bent tick sounds a divider no pitch may own, so a divider reads back as the pitch lying
+    nearest it and the detune left over, over the pitches an instruction names. Many splits of
+    pitch, fine and coarse steps reach the same divider, and stating every instruction by the
+    divider it sounds is what puts both sides of a comparison in one form.
+
+    Attributes:
+        timer_table: The timer register value each pitch sounds at.
+        nearest: The pitch and detune each divider reads back as, indexed by the divider.
+    """
+
+    timer_table: Mapping[int, int]
+    nearest: Tuple[NearestPitch, ...]
+
+    @classmethod
+    def from_tuning(cls, tuning: Tuning) -> Self:
+        """The reading of the dividers a song built under ``tuning`` sounds."""
+        timer_table = get_timer_table(tuning)
+        return cls(
+            timer_table=timer_table,
+            nearest=nearest_pitches({pitch: timer_table[pitch] for pitch in range(MIN_PITCH, MAX_PITCH + 1)}),
+        )
+
+    def sounded(self, instruction: InstructionUnion) -> InstructionUnion:
+        """An instruction stated by what the console makes of it.
+
+        A sounding note becomes the divider it sounds, read back. A rest becomes the canonical
+        silent instruction: a stream holds a channel's pitch and timbre through a rest so the
+        driver leaves the timer's high byte alone, and what a rest carries beyond its silence is
+        the channel's own history.
+        """
+        if not instruction.on:
+            silent: InstructionUnion = type(instruction).null_instruction()
+            return silent
+
+        match instruction:
+            case PulseInstruction() | TriangleInstruction():
+                named = self.nearest[bent_timer(self.timer_table[instruction.pitch], instruction.timer_offset)]
+                return instruction.model_copy(update={"pitch": named.pitch, "detune": named.offset, "coarse_detune": 0})
+            case _:
+                return instruction
+
+
 def pulse_instruction(
     registers: Mapping[int, int],
     channel: ChannelName,
-    pitches: Mapping[int, int],
+    reading: DividerReading,
 ) -> PulseInstruction:
     """The instruction a pulse channel's registers sound.
 
@@ -52,25 +102,24 @@ def pulse_instruction(
     Args:
         registers: The whole register file at a tick.
         channel: Which pulse channel to read.
-        pitches: The pitch each timer value belongs to.
+        reading: The note and bend each divider reads back as.
 
     Returns:
         PulseInstruction: The frame the channel plays.
-
-    Raises:
-        KeyError: If the timer standing there belongs to no pitch the configuration covers.
     """
     control, timer_low, timer_high = channel_values(registers, channel)
     volume = control & MAX_VOLUME
+    named = reading.nearest[timer_value(timer_low, timer_high)]
     return PulseInstruction(
         on=volume > 0,
-        pitch=pitches[timer_value(timer_low, timer_high)],
+        pitch=named.pitch,
+        detune=named.offset,
         volume=volume,
         duty_cycle=control >> DUTY_CYCLE_SHIFT,
     )
 
 
-def triangle_instruction(registers: Mapping[int, int], pitches: Mapping[int, int]) -> TriangleInstruction:
+def triangle_instruction(registers: Mapping[int, int], reading: DividerReading) -> TriangleInstruction:
     """The instruction the triangle channel's registers sound.
 
     The channel states whether it sounds through the linear counter's reload value, so a full
@@ -78,18 +127,17 @@ def triangle_instruction(registers: Mapping[int, int], pitches: Mapping[int, int
 
     Args:
         registers: The whole register file at a tick.
-        pitches: The pitch each timer value belongs to.
+        reading: The note and bend each divider reads back as.
 
     Returns:
         TriangleInstruction: The frame the channel plays.
-
-    Raises:
-        KeyError: If the timer standing there belongs to no pitch the configuration covers.
     """
     linear_counter, timer_low, timer_high = channel_values(registers, ChannelName.TRIANGLE)
+    named = reading.nearest[timer_value(timer_low, timer_high)]
     return TriangleInstruction(
         on=linear_counter == TRIANGLE_SOUNDING,
-        pitch=pitches[timer_value(timer_low, timer_high)],
+        pitch=named.pitch,
+        detune=named.offset,
     )
 
 
@@ -115,27 +163,27 @@ def noise_instruction(registers: Mapping[int, int]) -> NoiseInstruction:
     )
 
 
-def instructions_at(registers: Mapping[int, int], pitches: Mapping[int, int]) -> Dict[ChannelName, InstructionUnion]:
+def instructions_at(registers: Mapping[int, int], reading: DividerReading) -> Dict[ChannelName, InstructionUnion]:
     """Every channel's instruction for one tick, read back out of the registers standing at it.
 
     Args:
         registers: The whole register file at a tick.
-        pitches: The pitch each timer value belongs to.
+        reading: The note and bend each divider reads back as.
 
     Returns:
         Dict[ChannelName, InstructionUnion]: One instruction per channel.
     """
     return {
-        ChannelName.PULSE1: pulse_instruction(registers, ChannelName.PULSE1, pitches),
-        ChannelName.PULSE2: pulse_instruction(registers, ChannelName.PULSE2, pitches),
-        ChannelName.TRIANGLE: triangle_instruction(registers, pitches),
+        ChannelName.PULSE1: pulse_instruction(registers, ChannelName.PULSE1, reading),
+        ChannelName.PULSE2: pulse_instruction(registers, ChannelName.PULSE2, reading),
+        ChannelName.TRIANGLE: triangle_instruction(registers, reading),
         ChannelName.NOISE: noise_instruction(registers),
     }
 
 
 def instructions_from_trace(
     trace: RegisterTrace,
-    timer_table: Mapping[int, int],
+    reading: DividerReading,
 ) -> Dict[ChannelName, List[InstructionUnion]]:
     """The per-tick instructions a captured run plays, one stream per channel.
 
@@ -145,38 +193,29 @@ def instructions_from_trace(
 
     Args:
         trace: The writes a run of the driver made.
-        timer_table: The timer register value each pitch sounds at.
+        reading: The note and bend each divider reads back as.
 
     Returns:
         Dict[ChannelName, List[InstructionUnion]]: Each channel's stream, one instruction per
             tick the run sounded.
     """
-    pitches = {timer: pitch for pitch, timer in timer_table.items()}
     streams: Dict[ChannelName, List[InstructionUnion]] = {channel: [] for channel in ChannelName.items()}
 
     for registers in register_file(trace):
-        for channel, instruction in instructions_at(registers, pitches).items():
+        for channel, instruction in instructions_at(registers, reading).items():
             streams[channel].append(instruction)
 
     return streams
 
 
 def sounded_approximation(reconstruction: Reconstruction) -> np.ndarray:
-    """A reconstruction's own waveform, rendered from the frames the console can sound.
-
-    A bend has nowhere to travel in a channel's planes, so ``playable`` states each frame as the
-    driver loads it and the reconstruction is rendered from those. Holding the console's output
-    against this waveform is what makes the comparison one about the driver rather than about the
-    divider offset it has yet to gain.
+    """A reconstruction's own waveform, rendered from its frames on the engine it was built on.
 
     Args:
         reconstruction: The reconstruction the console is playing.
 
     Returns:
-        np.ndarray: The waveform its playable frames sound as.
+        np.ndarray: The waveform its frames sound as.
     """
-    streams = {
-        channel_name: [playable(instruction) for instruction in instructions]
-        for channel_name, instructions in reconstruction.instructions.items()
-    }
+    streams = {channel_name: list(instructions) for channel_name, instructions in reconstruction.instructions.items()}
     return mix(list(render_channels(streams, reconstruction.config).values()))

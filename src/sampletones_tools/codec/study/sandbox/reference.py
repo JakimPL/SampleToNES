@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Final, FrozenSet, Sequence, Tuple
 
+from sampletones_player.compression.absent import is_absent
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.encode import STREAM_START
@@ -11,13 +12,14 @@ from sampletones_player.compression.options import EVERY_LAYER
 from sampletones_player.compression.parse.boundaries import Boundaries
 from sampletones_tools.codec.study.corpus.song import StudySong
 from sampletones_tools.codec.study.sandbox.context import PlaneContext
-from sampletones_tools.codec.study.sandbox.costs import PRODUCTION_COSTS, Costs
+from sampletones_tools.codec.study.sandbox.costs import Costs
 from sampletones_tools.codec.study.sandbox.defaults import no_defaults
-from sampletones_tools.codec.study.sandbox.grammar import BASELINE_GRAMMAR
+from sampletones_tools.codec.study.sandbox.grammar import BASELINE_GRAMMAR, Grammar
 from sampletones_tools.codec.study.sandbox.parse import StudyParse, parse_plane
 from sampletones_tools.codec.study.sandbox.verify import verify_baseline
 
 STREAM_ENTRIES: Final[FrozenSet[int]] = frozenset({STREAM_START})
+ABSENT_PARSE: Final[StudyParse] = StudyParse(tokens=(), costs=(0,))
 
 
 @dataclass(frozen=True)
@@ -28,10 +30,13 @@ class Reference:
     what a grammar earns is read on the streams alone, and how the search and the settling
     would answer a new grammar is left to its production layer to measure.
 
+    An absent plane takes no stream in production, so it takes no tokens under any grammar and
+    the cache holds the planes the block writes alone.
+
     Attributes:
         song: The song.
         table: The dictionary the production codec settled on.
-        cache: What each phrase plays against each plane, shared by every grammar's parse.
+        cache: What each phrase plays against each written plane, shared by every grammar's parse.
         baseline: Every plane under the baseline grammar, held to the production streams.
     """
 
@@ -40,21 +45,21 @@ class Reference:
     cache: MatchCache
     baseline: Tuple[StudyParse, ...]
 
-    def contexts(
+    def parses(
         self,
-        costs: Costs,
+        grammar: Grammar,
         defaults: Sequence[int],
-    ) -> Tuple[PlaneContext, ...]:
-        """Every plane of the song under one grammar's terms.
+    ) -> Tuple[StudyParse, ...]:
+        """Every plane of the song read under one grammar.
 
         Args:
-            costs: The bytes each token takes.
+            grammar: The grammar.
             defaults: The default count of each phrase, by id.
 
         Returns:
-            Tuple[PlaneContext, ...]: One context per plane, in song-block order.
+            Tuple[StudyParse, ...]: One parse per plane, in song-block order, an absent plane's empty.
         """
-        return _contexts(self.cache, self.table, costs, defaults)
+        return _parses(self.song, self.cache, self.table, grammar, defaults)
 
 
 def _contexts(
@@ -79,6 +84,17 @@ def _contexts(
     return tuple(contexts)
 
 
+def _parses(
+    song: StudySong,
+    cache: MatchCache,
+    table: PhraseTable,
+    grammar: Grammar,
+    defaults: Sequence[int],
+) -> Tuple[StudyParse, ...]:
+    written = iter(parse_plane(context, grammar) for context in _contexts(cache, table, grammar.costs, defaults))
+    return tuple(ABSENT_PARSE if is_absent(plane) else next(written) for plane in song.planes.planes)
+
+
 def reference(
     song: StudySong,
     compressed: CompressedPlanes,
@@ -95,10 +111,9 @@ def reference(
     Raises:
         ValueError: If the baseline grammar prices a plane differently from the codec's stream.
     """
-    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in song.planes.planes)
+    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in song.planes.planes if not is_absent(plane))
     table = compressed.phrases
-    contexts = _contexts(cache, table, PRODUCTION_COSTS, no_defaults(len(table)))
-    baseline = tuple(parse_plane(context, BASELINE_GRAMMAR) for context in contexts)
+    baseline = _parses(song, cache, table, BASELINE_GRAMMAR, no_defaults(len(table)))
     verify_baseline(baseline, compressed)
     return Reference(
         song=song,

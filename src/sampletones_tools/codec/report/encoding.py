@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from time import process_time
 from typing import Final, List, Sequence, Tuple
 
+from sampletones_player.compression.absent import is_absent
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.table import phrase_table
 from sampletones_player.compression.encode import STREAM_START, encode_planes
@@ -10,6 +11,7 @@ from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.matches.matcher import PhraseMatcher
 from sampletones_player.compression.options import CodecOptions
 from sampletones_player.compression.parse.plane import parse_plane
+from sampletones_player.compression.planes.channel import TonePlanes
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.registers.streams import ChannelStreams
@@ -209,6 +211,7 @@ def _register_planes(streams: ChannelStreams) -> Tuple[bytes, ...]:
 
 
 def _split_control_planes(planes: SongPlanes) -> Tuple[bytes, ...]:
+    """Every plane with each pulse channel's control split into duty and volume."""
     split: List[bytes] = []
     for channels in planes.ordered:
         if channels in (planes.pulse1, planes.pulse2):
@@ -218,12 +221,17 @@ def _split_control_planes(planes: SongPlanes) -> Tuple[bytes, ...]:
             split.append(channels.control)
 
         split.append(channels.value)
+        match channels:
+            case TonePlanes():
+                split.append(channels.bend)
 
     return tuple(split)
 
 
 def _coded_size(planes: Sequence[bytes], options: CodecOptions) -> int:
-    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes)
+    """The bytes the planes take under holds and literals, an absent plane taking none."""
+    present = [plane for plane in planes if not is_absent(plane)]
+    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in present)
     table = phrase_table(())
     entries = frozenset({STREAM_START})
     return sum(
@@ -232,5 +240,5 @@ def _coded_size(planes: Sequence[bytes], options: CodecOptions) -> int:
             options,
             entries,
         ).size
-        for plane in range(len(planes))
+        for plane in range(len(present))
     )
