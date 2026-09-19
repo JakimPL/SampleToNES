@@ -1,9 +1,12 @@
-import threading
-from typing import Protocol, cast
+from functools import partial
+from typing import Final, Protocol, cast
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.utils.callbacks.delay import call_after
 from sampletones_application.utils.gui.dpg import dpg_configure_item
+
+COPIED_LABEL_SECONDS: Final[float] = 1.0
 
 
 class TextClipboard(Protocol):
@@ -31,12 +34,12 @@ def copy_to_clipboard(
     *,
     copied_label: str,
 ) -> None:
+    """Puts ``text`` on the clipboard, with the button reading ``copied_label`` for a moment.
+
+    The button's own label comes back on the render thread once the moment has passed, the thread
+    the button lives on.
+    """
     SystemTextClipboard().write(text)
 
     dpg_configure_item(button_tag, label=copied_label)
-
-    def restore_label() -> None:
-        dpg_configure_item(button_tag, label=label)
-
-    timer = threading.Timer(1.0, restore_label)
-    timer.start()
+    call_after(COPIED_LABEL_SECONDS, partial(dpg_configure_item, button_tag, label=label))

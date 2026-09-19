@@ -4,7 +4,7 @@ This document describes how work reaches DearPyGui from somewhere other than the
 its context, and what each crossing costs. It governs `utils/gui/render_thread.py`,
 `utils/gui/callbacks.py`, `utils/gui/frame.py`, and the queue in `utils/callbacks/`. Consult it when
 a worker thread has something to show, when a gesture rebuilds widgets, or when work needs a frame
-to have been drawn first.
+to have been drawn first or a span of time to have passed.
 
 The design truth it realizes is principle 6 of [`architecture.md`](../architecture.md): DearPyGui's
 context belongs to the render thread. This document holds the mechanism.
@@ -68,3 +68,11 @@ The drain is what makes the wait a scheduled one. The render thread inside a dra
 rather than inside one, which makes the next frame the drain's own to reach, so `dpg.split_frame`
 there waits for what the wait itself prevents and the application stops for good. Naming a frame
 count asks for the same thing and lets the loop keep running.
+
+## Work that waits for time reads the clock at each drain
+
+The frame rate is the reader's to set, so a wait measured in seconds is read against the clock.
+`utils/callbacks/delay.py::call_after` posts a check to the queue each frame and runs the work at the
+first drain past its deadline, on the render thread like any other queued result. The wait travels
+through the queue, so the shutdown that stops the queue before the context goes drops a wait still
+under way. The Copy buttons restore their label this way.

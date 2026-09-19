@@ -1,31 +1,14 @@
 from typing import List
-from unittest.mock import patch
 
 import pytest
 
 from sampletones_application.utils.callbacks.priority import CallbackPriority
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 
-_real_queue_add = CallbackQueue.add
-
 GENEROUS_BUDGET = 1.0
 DRAIN_ONE_BUDGET = 0.0
 
-
-@pytest.fixture(autouse=True)
-def fresh_queue():
-    """Give each test a clean, live CallbackQueue.
-
-    CallbackQueue is a process-global singleton, so a prior test may leave tasks
-    pending or the queue stopped. stop() clears the heap and marks it stopped,
-    then start() marks it live again; teardown stops it. The add() patch pins the
-    real heap-based add() over any call-through stub other suites install.
-    """
-    with patch.object(CallbackQueue, "add", _real_queue_add):
-        CallbackQueue.stop()
-        CallbackQueue.start()
-        yield
-        CallbackQueue.stop()
+pytestmark = pytest.mark.usefixtures("live_queue")
 
 
 class TestCallbackQueueDelivery:
