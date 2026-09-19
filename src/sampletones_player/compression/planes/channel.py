@@ -4,6 +4,8 @@ from typing import Tuple
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from sampletones_player.compression.planes.flags import flagged_ticks
+
 
 class ChannelPlanes(BaseModel):
     """One channel's ticks separated into the byte series it writes.
@@ -26,9 +28,11 @@ class ChannelPlanes(BaseModel):
 
     @model_validator(mode="after")
     def _validate_every_plane_covers_the_same_ticks(self) -> ChannelPlanes:
-        lengths = {len(plane) for plane in self.ordered}
-        if len(lengths) > 1:
-            raise ValueError(f"a channel's planes cover the same ticks, and these cover {sorted(lengths)}")
+        if len(self.control) != len(self.value):
+            raise ValueError(
+                f"a channel's control and value cover the same ticks, and these cover "
+                f"{len(self.control)} and {len(self.value)}"
+            )
 
         if not self.control:
             raise ValueError("a channel's planes cover at least one tick")
@@ -54,11 +58,35 @@ class TonePlanes(ChannelPlanes):
     by adding to it, and the bend plane holds how far the frame stands from it — so the divider
     the hardware takes is the sum, and each half repeats on its own terms.
 
+    The bend plane is read on the ticks the value plane flags and on those alone: a tick left
+    unflagged sounds its note's own divider. A channel that never bends therefore holds an empty
+    bend plane, and one that bends holds a value only where a note does.
+
     Attributes:
-        bend: The divider steps each tick stands away from its note, held as a signed byte.
+        bend: The divider steps each flagged tick stands away from its note, held as signed bytes
+            in the order the flagged ticks come.
     """
 
     bend: bytes
+
+    @model_validator(mode="after")
+    def _validate_the_bend_covers_the_flagged_ticks(self) -> TonePlanes:
+        flagged = flagged_ticks(self.value)
+        if len(self.bend) != flagged:
+            raise ValueError(f"a bend plane holds a value per flagged tick, {flagged}, and this holds {len(self.bend)}")
+
+        return self
+
+    def bend_position(self, tick: int) -> int:
+        """Where in the bend plane the song stands once ``tick`` ticks have played.
+
+        Args:
+            tick: The ticks played.
+
+        Returns:
+            int: The bend values those ticks read.
+        """
+        return flagged_ticks(self.value[:tick])
 
     @property
     def ordered(self) -> Tuple[bytes, ...]:

@@ -68,6 +68,12 @@ registers it writes. Counting a bend from the note keeps it the same bytes where
 transposes the note to; only a bend past the signed byte is counted from the pitch lying
 nearest the divider instead.
 
+The bend plane holds a value only where a note bends. The value plane's top bit flags each
+bent note from its first bent tick to its last, and the bend plane holds those ticks' steps
+alone, so it runs on a clock of its own: a note played straight costs it nothing, and a
+channel that never bends leaves it out of the block. A loop re-enters it at the value its
+flags have reached, which is a boundary like any other.
+
 Trading two dividers for an index and a bend is worth about a twentieth once the
 planes are coded, since a bend a song never uses is absent from the block. The larger
 half is that **a pitch index can be transposed and a divider cannot.** The same figure played

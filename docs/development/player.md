@@ -136,7 +136,8 @@ finishes.
 
 **One routine plays a tick on every plane the block holds.** An absent plane's source is
 seeded into page zero, which no song occupies, and the advance passes it by, so it stands at
-the zero every plane starts from. A plane's state carries where its next token
+the zero every plane starts from. A bend plane is stepped only on a tick its channel's new
+value flags, since it holds a value for those ticks alone. A plane's state carries where its next token
 lies, where in a phrase body it stands, how much of that body is left, how much of the
 current token is left, the value it last played, and the shift it is playing at. The three
 kinds of token fold into that one shape — a hold is a phrase of no bytes, a literal is a
@@ -149,9 +150,9 @@ is one routine called again. The state lives in zero page, well inside what the 
 leaves free, and the linker configuration keeps the two-segment memory model an NSF loads.
 
 **The one sum the driver performs is the bend.** A tone channel's value plane resolves to a
-divider through the timer table, and its bend plane states the steps the tick stands away
-from it — sign-extended and added across both halves of the timer, with the high half
-reaching the register only where it changed. Everything that keeps the sum in range is
+divider through the timer table, and on a flagged tick its bend plane states the steps the
+tick stands away from it — sign-extended and added across both halves of the timer, with the
+high half reaching the register only where it changed. An unflagged tick adds nothing. Everything that keeps the sum in range is
 settled in Python, so what crosses into assembly stays a byte moved and a carry followed.
 
 ## How it is verified

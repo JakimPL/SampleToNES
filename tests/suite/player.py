@@ -23,6 +23,7 @@ from sampletones_player.compression.encode import emit, encode_planes
 from sampletones_player.compression.options import EVERY_LAYER
 from sampletones_player.compression.pitch import PITCH_COUNT, PitchTable
 from sampletones_player.compression.planes.channel import TonePlanes
+from sampletones_player.compression.planes.flags import flagged_value
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.separate import planes_from_streams
 from sampletones_player.compression.planes.song import SongPlanes
@@ -171,8 +172,8 @@ def bent_song(
     bent = SongPlanes(
         pulse1=TonePlanes(
             control=planes.pulse1.control,
-            value=planes.pulse1.value,
-            bend=bytes(unsigned_byte(bend) for bend in bends),
+            value=bytes(flagged_value(pitch_index, bend != 0) for bend in bends),
+            bend=bytes(unsigned_byte(bend) for bend in bends if bend),
         ),
         pulse2=planes.pulse2,
         triangle=planes.triangle,

@@ -17,6 +17,7 @@ from sampletones_player.compression.planes.separate import channel_planes, plane
 from sampletones_player.compression.seeds import phrases_from_project
 from sampletones_player.registers.channel import channel_registers
 from sampletones_player.specification.binary import unsigned_byte
+from sampletones_player.specification.compression import BEND_FLAG
 from sampletones_shared.music import Tuning
 from sampletones_tools.codec.study.corpus.notes import channel_notes, song_notes
 from sampletones_tools.codec.study.corpus.slices import project_slices
@@ -24,7 +25,7 @@ from sampletones_tools.codec.study.corpus.song import SongGroup, StudySong
 from sampletones_tools.codec.study.layouts.encode import encode_layout
 from sampletones_tools.codec.study.layouts.layout import Anchor, BendForm, PlaneLayout
 from sampletones_tools.codec.study.layouts.planes import layout_planes, layout_seeds
-from sampletones_tools.codec.study.layouts.tone import FLAG_BIT, tone_planes
+from sampletones_tools.codec.study.layouts.tone import tone_planes
 from tests.suite.performance import project_with_instrument
 from tests.suite.player import PLAYER_FULL_VOLUME, PLAYER_REFERENCE_PITCH
 from tests.suite.study import NO_STUDY_SLICES
@@ -39,6 +40,7 @@ ROWS_PER_PATTERN: Final[int] = 8
 
 NEAREST_DENSE: Final[PlaneLayout] = PlaneLayout(Anchor.NEAREST, BendForm.DENSE)
 NAMED_DENSE: Final[PlaneLayout] = PlaneLayout(Anchor.NAMED, BendForm.DENSE)
+PRODUCTION: Final[PlaneLayout] = PlaneLayout(Anchor.NAMED, BendForm.FLAGGED_NOTES)
 EVERY_LAYOUT: Final[Tuple[PlaneLayout, ...]] = tuple(
     PlaneLayout(anchor, form) for anchor in Anchor for form in BendForm
 )
@@ -107,13 +109,13 @@ class TestTheNotesATickNames:
 
 
 class TestWhatTheValuePlaneNames:
-    def test_the_named_dense_layout_is_the_production_separation(self) -> None:
+    def test_the_named_flagged_notes_layout_is_the_production_separation(self) -> None:
         instructions = [
             *bent_frames(PLAYER_REFERENCE_PITCH, (0, 5, PAST_HALFWAY, -5)),
             *coarse_frame(PLAYER_REFERENCE_PITCH, BEYOND_A_BYTE),
         ]
         planes = pulse_planes(instructions)
-        assert written(instructions, NAMED_DENSE) == planes.ordered
+        assert written(instructions, PRODUCTION) == planes.ordered
 
     def test_a_named_note_keeps_a_bend_past_halfway(self) -> None:
         instructions = bent_frames(PLAYER_REFERENCE_PITCH, (PAST_HALFWAY,))
@@ -145,7 +147,7 @@ class TestAFlaggedBendPlane:
         _, value, bend = written(
             bent_frames(PLAYER_REFERENCE_PITCH, bends), PlaneLayout(Anchor.NEAREST, BendForm.FLAGGED_TICKS)
         )
-        assert [bool(byte & FLAG_BIT) for byte in value[: len(bends)]] == [offset != 0 for offset in bends]
+        assert [bool(byte & BEND_FLAG) for byte in value[: len(bends)]] == [offset != 0 for offset in bends]
         assert bend == bytes(unsigned_byte(offset) for offset in bends if offset)
 
     def test_a_flagged_note_spans_its_first_bend_to_its_last(self) -> None:
@@ -153,7 +155,7 @@ class TestAFlaggedBendPlane:
         _, value, bend = written(
             bent_frames(PLAYER_REFERENCE_PITCH, bends), PlaneLayout(Anchor.NEAREST, BendForm.FLAGGED_NOTES)
         )
-        assert [bool(byte & FLAG_BIT) for byte in value[: len(bends)]] == [False, True, True, True, False]
+        assert [bool(byte & BEND_FLAG) for byte in value[: len(bends)]] == [False, True, True, True, False]
         assert bend == bytes(unsigned_byte(offset) for offset in bends[1:4])
 
     @pytest.mark.parametrize("form", (BendForm.FLAGGED_TICKS, BendForm.FLAGGED_NOTES), ids=str)
@@ -165,7 +167,7 @@ class TestAFlaggedBendPlane:
 
 
 class TestALayoutsSeeds:
-    def test_the_named_dense_layout_seeds_what_production_seeds(self) -> None:
+    def test_the_named_flagged_notes_layout_seeds_what_production_seeds(self) -> None:
         instrument = Instrument(
             name="bent",
             envelopes=InstrumentEnvelopes(
@@ -176,7 +178,7 @@ class TestALayoutsSeeds:
         )
         project = project_with_instrument(instrument, rows_per_pattern=ROWS_PER_PATTERN)
         slices = project_slices(project, TUNING)
-        assert layout_seeds(slices, PITCHES, NAMED_DENSE) == phrases_from_project(project, TUNING, ALL_CHANNELS)
+        assert layout_seeds(slices, PITCHES, PRODUCTION) == phrases_from_project(project, TUNING, ALL_CHANNELS)
 
 
 class TestEncodingALayout:

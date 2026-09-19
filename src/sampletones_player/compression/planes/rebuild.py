@@ -2,6 +2,7 @@ from typing import Iterator, Tuple
 
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.channel import ChannelPlanes, TonePlanes
+from sampletones_player.compression.planes.flags import is_flagged, pitch_index
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.registers.noise import NoiseRegisters
 from sampletones_player.registers.pulse import PulseRegisters
@@ -21,7 +22,8 @@ def tone_dividers(
     """The divider each tick of a tone channel reaches, its note and its bend together.
 
     This is the reading the driver performs between the pitch table and the timer registers,
-    stated where it is testable.
+    stated where it is testable: a flagged tick takes the bend plane's next value, and every
+    other tick sounds its pitch's own divider.
 
     Args:
         planes: The channel's planes.
@@ -30,7 +32,10 @@ def tone_dividers(
     Returns:
         Tuple[int, ...]: One divider per tick.
     """
-    return tuple(timers[index] + signed_byte(bend) for index, bend in zip(planes.value, planes.bend))
+    bends = iter(planes.bend)
+    return tuple(
+        timers[pitch_index(value)] + (signed_byte(next(bends)) if is_flagged(value) else 0) for value in planes.value
+    )
 
 
 def _sounded(
@@ -41,7 +46,7 @@ def _sounded(
     yield from zip(
         planes.control,
         tone_dividers(planes, pitches.timers),
-        (pitches.pitch(index) for index in planes.value),
+        (pitches.pitch(pitch_index(value)) for value in planes.value),
     )
 
 

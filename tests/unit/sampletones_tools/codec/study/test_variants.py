@@ -21,7 +21,7 @@ from sampletones_tools.codec.study.variants.seeds import split, trimmed, whole_a
 from sampletones_tools.codec.study.variants.strategy import DEPTH_PREFIX, depth_measurements
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.study import NO_STUDY_SLICES, lowest_notes
+from tests.suite.study import NO_STUDY_SLICES, lowest_notes, resting_planes
 
 TICKS: Final[int] = 4
 BASELINE: Final[str] = "baseline"
@@ -101,7 +101,7 @@ def _song() -> StudySong:
         name="song",
         group=SongGroup.PROJECT,
         source=Path("song.stp"),
-        planes=SongPlanes.from_order(PlaneOrder.across([bytes(TICKS)] * PLANE_COUNT)),
+        planes=resting_planes(TICKS),
         seeds=(),
         pitches=PitchTable.from_tuning(Tuning()),
         notes=lowest_notes(TICKS),

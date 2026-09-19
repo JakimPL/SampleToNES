@@ -4,6 +4,7 @@ import pytest
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.compression.pitch import PitchTable
+from sampletones_player.compression.planes.flags import flagged_value
 from sampletones_player.compression.planes.separate import channel_planes, planes_from_streams
 from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.registers.streams import ChannelStreams
@@ -78,14 +79,21 @@ class TestABentTickSplitsIntoANoteAndABend:
         pitches: PitchTable,
     ) -> None:
         planes = planes_from_streams(sounding_streams, pitches)
-        assert planes.pulse1.bend == bytes(planes.ticks)
+        assert planes.pulse1.bend == b""
 
     def test_a_bent_tick_names_its_anchor_and_the_steps_from_it(self, pitches: PitchTable) -> None:
         bends = (2, -3, PAST_HALFWAY)
         streams = resting_streams([anchored_tick(pitches, LOW_INDEX, bend) for bend in bends])
         planes = planes_from_streams(streams, pitches)
-        assert planes.pulse1.value == bytes((LOW_INDEX,) * len(bends))
+        assert planes.pulse1.value == bytes(flagged_value(LOW_INDEX, True) for _ in bends)
         assert planes.pulse1.bend == bytes(unsigned_byte(bend) for bend in bends)
+
+    def test_a_note_is_flagged_from_its_first_bend_to_its_last(self, pitches: PitchTable) -> None:
+        bends = (0, 3, 0, -3, 0)
+        streams = resting_streams([anchored_tick(pitches, LOW_INDEX, bend) for bend in bends])
+        planes = planes_from_streams(streams, pitches)
+        assert planes.pulse1.value == bytes(flagged_value(LOW_INDEX, 0 < tick < 4) for tick in range(len(bends)))
+        assert planes.pulse1.bend == bytes(unsigned_byte(bend) for bend in bends[1:4])
 
     def test_a_divider_past_the_byte_from_its_anchor_is_refused(self, pitches: PitchTable) -> None:
         streams = resting_streams((anchored_tick(pitches, LOW_INDEX, -SIGNED_BYTE_LIMIT - 1),))

@@ -141,8 +141,10 @@ length a figure is played at, and — with the shift — every pitch.
 
 A song that repeats re-enters its streams partway through, so the tick it returns to
 begins a token on every plane, and that token names its values outright rather than
-leaning on the value the plane had reached. Coming round is then a matter of pointing each
-plane at the byte the header states and clearing what it was playing.
+leaning on the value the plane had reached. A bend plane is re-entered at the value its
+channel's flags have reached by that tick (§C), which begins a token of its own. Coming
+round is then a matter of pointing each plane at the byte the header states and clearing
+what it was playing.
 
 The tick a song returns to is the export's choice: its first tick, the first tick of an
 order frame, or none at all, in which case the header states `$FFFF` and the song stops at
@@ -155,14 +157,14 @@ The planes are written in this order, and each group belongs to one channel:
 | Plane | Carries | Reaches |
 |---|---|---|
 | pulse 1 control | duty cycle and volume | `$4000` |
-| pulse 1 value | pitch index | `$4002`, `$4003` |
-| pulse 1 bend | divider offset | `$4002`, `$4003` |
+| pulse 1 value | pitch index, and a flag for a bent tick | `$4002`, `$4003` |
+| pulse 1 bend | divider offset of each flagged tick | `$4002`, `$4003` |
 | pulse 2 control | duty cycle and volume | `$4004` |
-| pulse 2 value | pitch index | `$4006`, `$4007` |
-| pulse 2 bend | divider offset | `$4006`, `$4007` |
+| pulse 2 value | pitch index, and a flag for a bent tick | `$4006`, `$4007` |
+| pulse 2 bend | divider offset of each flagged tick | `$4006`, `$4007` |
 | triangle control | linear counter | `$4008` |
-| triangle value | pitch index | `$400A`, `$400B` |
-| triangle bend | divider offset | `$400A`, `$400B` |
+| triangle value | pitch index, and a flag for a bent tick | `$400A`, `$400B` |
+| triangle bend | divider offset of each flagged tick | `$400A`, `$400B` |
 | noise control | volume | `$400C` |
 | noise value | period and mode | `$400E` |
 
@@ -189,8 +191,16 @@ does.
 **A value plane names a pitch, not a divider.** Stating a note as its distance above the
 lowest one the song reaches is what lets `TRANSPOSED_PHRASE` move a whole phrase by adding
 to it, and a divider offset added to an index means nothing. A tone channel's **bend**
-plane is where the offset goes: one signed byte a tick, in two's complement, added to the
-divider the value plane's note resolves to.
+plane is where the offset goes: signed bytes in two's complement, added to the divider the
+value plane's note resolves to.
+
+**A bend plane holds a value only where a note bends.** A value byte's low seven bits index
+the pitch table and its top bit, `BEND_FLAG`, says the tick reads its offset from the bend
+plane; an unflagged tick sounds its pitch's own divider. The bend plane holds one value per
+flagged tick, in order, and the driver advances it on those ticks alone. The encoder flags
+each note from its first bent tick to its last, so a vibrato passing through zero keeps the
+value plane still, and a channel that never bends holds an empty bend plane — an absent one.
+The flag sits above every index, so a transposed phrase keeps it.
 
 A bent frame sounds the divider its note's own is moved to, and **the value plane names
 the frame's own note** while the bend plane holds the steps from that note's divider. A row
@@ -199,8 +209,7 @@ at every pitch it is played at, which is what lets one dictionary entry serve it
 past the signed byte is counted from the pitch lying nearest the divider instead, a
 divider halfway between two pitches going to the higher one; those steps stay inside half
 the widest gap between neighboring pitches — 57 at the default tuning — so every divider
-the register holds reaches the planes. A frame sounding its note unbent holds a bend of
-nothing.
+the register holds reaches the planes.
 
 The driver sign-extends that byte and adds it across both halves of the timer, which is the
 only arithmetic it performs on a song's behalf. Everything that makes the sum land in

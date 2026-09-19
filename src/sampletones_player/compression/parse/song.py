@@ -14,7 +14,7 @@ def parse_planes(
     cache: MatchCache,
     table: PhraseTable,
     options: CodecOptions,
-    boundaries: FrozenSet[int],
+    boundaries: Sequence[FrozenSet[int]],
     monitor: CodecMonitor,
 ) -> Tuple[Parse, ...]:
     """Reads every plane of a song against one dictionary.
@@ -26,7 +26,7 @@ def parse_planes(
         cache: The planes the song covers, alongside what each phrase plays against them.
         table: The phrases the planes may play.
         options: Which of the codec's layers the encoding is built from.
-        boundaries: The ticks a token starts on.
+        boundaries: The positions a token starts on, one set per plane.
         monitor: Carries the run's reckoning of itself onward.
 
     Returns:
@@ -37,7 +37,7 @@ def parse_planes(
     """
     parses: List[Parse] = []
     for plane in range(len(cache.indices)):
-        parses.append(parse_plane(PhraseMatcher(table, plane, cache), options, boundaries))
+        parses.append(parse_plane(PhraseMatcher(table, plane, cache), options, boundaries[plane]))
         monitor.poll()
 
     return tuple(parses)
@@ -47,7 +47,7 @@ def parse_planes_offered(
     cache: MatchCache,
     table: PhraseTable,
     options: CodecOptions,
-    boundaries: FrozenSet[int],
+    boundaries: Sequence[FrozenSet[int]],
     monitor: CodecMonitor,
     *,
     parses: Sequence[Parse],
@@ -64,7 +64,7 @@ def parse_planes_offered(
         cache: The planes the song covers, alongside what each phrase plays against them.
         table: The phrases the planes may play, ``offered`` among them.
         options: Which of the codec's layers the encoding is built from.
-        boundaries: The ticks a token starts on.
+        boundaries: The positions a token starts on, one set per plane.
         monitor: Carries the run's reckoning of itself onward.
         parses: The parse each plane reached under the table before ``offered`` joined it.
         offered: The phrase the table gained.
@@ -81,7 +81,7 @@ def parse_planes_offered(
             trial.append(parses[plane])
             continue
 
-        trial.append(parse_plane(PhraseMatcher(table, plane, cache), options, boundaries))
+        trial.append(parse_plane(PhraseMatcher(table, plane, cache), options, boundaries[plane]))
         monitor.poll()
 
     return tuple(trial)

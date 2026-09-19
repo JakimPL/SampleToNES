@@ -1,6 +1,6 @@
 import logging
 from dataclasses import replace
-from typing import Final, List, Tuple
+from typing import Final, FrozenSet, List, Tuple
 
 import pytest
 
@@ -17,7 +17,7 @@ from sampletones_player.specification.binary import BYTE_VALUES
 from sampletones_player.specification.compression import MAX_PHRASE_IDS
 from sampletones_shared.utils.progress import silent_reporter
 
-STREAM_START: Final[frozenset] = frozenset({0})
+STREAM_START: Final[FrozenSet[int]] = frozenset({0})
 LEANED_ON: Final[bytes] = b"\x10\x18\x14\x22\x1c\x30\x11\x19\x15\x23\x1d\x31\x12\x1a\x16\x24"
 PLAYED_SELDOM: Final[bytes] = b"\x60\x63\x67\x6c\x72\x79\x61\x64\x68\x6d\x73\x7a\x62\x65\x69\x6e"
 LEANED_ON_REPEATS: Final[int] = 12
@@ -62,7 +62,7 @@ def baseline_fixture(cache: MatchCache) -> Tuple[Parse, ...]:
         cache,
         phrase_table(()),
         replace(EVERY_LAYER, phrases=False),
-        STREAM_START,
+        (STREAM_START,),
         CodecMonitor(silent_reporter),
     )
 

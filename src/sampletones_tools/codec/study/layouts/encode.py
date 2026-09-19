@@ -31,7 +31,7 @@ def encode_layout(
         planes,
         seeds,
         options=EVERY_LAYER,
-        boundaries=NO_LOOP_BOUNDARIES,
+        boundaries=(NO_LOOP_BOUNDARIES,) * len(planes),
     )
     seconds = process_time() - started
 

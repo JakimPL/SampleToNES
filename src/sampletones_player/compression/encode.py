@@ -94,7 +94,7 @@ def _settle(
     cache: MatchCache,
     table: PhraseTable,
     options: CodecOptions,
-    boundaries: FrozenSet[int],
+    boundaries: Sequence[FrozenSet[int]],
     monitor: CodecMonitor,
     baseline: Sequence[Parse],
 ) -> Tuple[PhraseTable, Tuple[Parse, ...]]:
@@ -120,7 +120,7 @@ def encode_streams(
     seeds: Sequence[Phrase],
     *,
     options: CodecOptions,
-    boundaries: FrozenSet[int],
+    boundaries: Sequence[FrozenSet[int]],
     budget: SearchBudget = DEFAULT_SEARCH_BUDGET,
     report: CodecReporter = silent_reporter,
 ) -> Tuple[PhraseTable, Tuple[bytes, ...]]:
@@ -141,7 +141,8 @@ def encode_streams(
         planes: The planes, each at least one value long.
         seeds: The phrases the song's instruments offer.
         options: Which of the codec's layers the encoding is built from.
-        boundaries: The positions a token starts on in every plane, beyond its first.
+        boundaries: The positions a token starts on in each plane beyond its first, one set per
+            plane.
         budget: How much work the search spends beyond the phrases the instruments seed.
         report: Hears what the run holds each time it looks up, and answers whether it goes on.
 
@@ -151,10 +152,15 @@ def encode_streams(
 
     Raises:
         OperationCanceled: If ``report`` withdraws the run.
+        ValueError: If the boundaries name a set for other than every plane.
     """
-    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes if not is_absent(plane))
+    if len(boundaries) != len(planes):
+        raise ValueError(f"a set of boundaries stands for each plane, and {len(boundaries)} stand for {len(planes)}")
+
+    present = [plane for plane, written in enumerate(planes) if not is_absent(written)]
+    cache = MatchCache(PlaneIndex.from_plane(planes[plane]) for plane in present)
     monitor = CodecMonitor(report)
-    entries = boundaries | {STREAM_START}
+    entries = tuple(boundaries[plane] | {STREAM_START} for plane in present)
     baseline = parse_planes(
         cache,
         phrase_table(()),
@@ -211,7 +217,8 @@ def encode_planes(
         planes: The planes under the channel each belongs to.
         seeds: The phrases the song's instruments offer.
         options: Which of the codec's layers the encoding is built from.
-        boundaries: The ticks a token starts on, beyond the first tick of the song.
+        boundaries: The ticks a token starts on, beyond the first tick of the song; a bend plane
+            starts one at the position it stands at once those ticks have played.
         budget: How much work the search spends beyond the phrases the instruments seed.
         report: Hears what the run holds each time it looks up, and answers whether it goes on.
 
@@ -221,11 +228,12 @@ def encode_planes(
     Raises:
         OperationCanceled: If ``report`` withdraws the run.
     """
+    positions = [planes.positions(tick) for tick in boundaries]
     table, streams = encode_streams(
         planes.planes,
         seeds,
         options=options,
-        boundaries=boundaries,
+        boundaries=[frozenset(position[plane] for position in positions) for plane in range(len(planes.planes))],
         budget=budget,
         report=report,
     )

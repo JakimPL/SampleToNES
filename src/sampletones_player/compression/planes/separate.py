@@ -3,6 +3,7 @@ from typing import Final, List, Sequence
 from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.channel import ChannelPlanes, TonePlanes
+from sampletones_player.compression.planes.flags import flagged_value, note_flags
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.registers.base import ChannelRegisters
 from sampletones_player.registers.streams import ChannelStreams
@@ -31,10 +32,12 @@ def _tone_planes(
 ) -> TonePlanes:
     ticks = _tone_ticks(registers)
     indices = [pitches.index(tick.anchor) for tick in ticks]
+    offsets = [tick.divider - pitches.timers[index] for tick, index in zip(ticks, indices)]
+    flags = note_flags(indices, offsets)
     return TonePlanes(
         control=bytes(tick.values[CONTROL_VALUE_INDEX] for tick in ticks),
-        value=bytes(indices),
-        bend=bytes(unsigned_byte(tick.divider - pitches.timers[index]) for tick, index in zip(ticks, indices)),
+        value=bytes(flagged_value(index, flag) for index, flag in zip(indices, flags)),
+        bend=bytes(unsigned_byte(offset) for offset, flag in zip(offsets, flags) if flag),
     )
 
 
@@ -52,8 +55,8 @@ def channel_planes(
     """Separates one channel's ticks into the planes the codec reads.
 
     A tone channel's value plane names the pitch each divider is counted from, and its bend plane
-    the steps from that pitch's own divider, so a note the frame sounds unbent holds a bend of
-    nothing.
+    the steps from that pitch's own divider on the ticks the value flags: each note from its
+    first bent tick to its last. A note the frame sounds unbent takes nothing from the bend plane.
 
     Args:
         channel: The channel the registers belong to.

@@ -8,11 +8,13 @@ from sampletones_player.compression.pitch import PITCH_COUNT
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.compression import (
+    BEND_FLAG,
     OPCODE_SIZE,
     PHRASE_ID_ESCAPE,
     PHRASE_LENGTH_SIZE,
     PHRASE_TABLE_COUNT_SIZE,
     PHRASE_TABLE_ENTRY_SIZE,
+    PITCH_INDEX_MASK,
     PLANE_COUNT,
     PLANE_STATE_SIZE,
     TOKEN_OPERAND_MASK,
@@ -52,6 +54,8 @@ STATED: Final[Dict[str, int]] = {
     "NO_LOOP": NO_LOOP,
     "ABSENT_STREAM": ABSENT_STREAM,
     "PITCH_COUNT": PITCH_COUNT,
+    "BEND_FLAG": BEND_FLAG,
+    "PITCH_INDEX_MASK": PITCH_INDEX_MASK,
     "TOKEN_TAG_MASK": TOKEN_TAG_MASK,
     "TOKEN_OPERAND_MASK": TOKEN_OPERAND_MASK,
     "TAG_HOLD": TokenTag.HOLD,
@@ -77,6 +81,8 @@ def _value(node: ast.expr, defined: Dict[str, int]) -> int:
             return defined[name]
         case ast.BinOp(left=left, op=ast.Add(), right=right):
             return _value(left, defined) + _value(right, defined)
+        case ast.BinOp(left=left, op=ast.Sub(), right=right):
+            return _value(left, defined) - _value(right, defined)
         case ast.BinOp(left=left, op=ast.Mult(), right=right):
             return _value(left, defined) * _value(right, defined)
 
@@ -88,7 +94,8 @@ def read_equates(path: Path) -> Dict[str, int]:
 
     The driver and the exporter read one song block, so what the assembly believes about the
     layout is held against what the specification states. An include line is ``NAME = value``,
-    where the value is a number, another equate, or the two joined by an addition or a product.
+    where the value is a number, another equate, or the two joined by a sum, a difference or a
+    product.
 
     Args:
         path: The include file to read.

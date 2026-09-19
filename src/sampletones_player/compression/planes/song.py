@@ -91,3 +91,29 @@ class SongPlanes(BaseModel):
     def ticks(self) -> int:
         """The ticks the song lasts."""
         return self.pulse1.ticks
+
+    def positions(self, tick: int) -> Tuple[int, ...]:
+        """Where each plane stands once ``tick`` ticks have played, in the order the block writes them.
+
+        Every plane reads one value a tick but a bend plane, which reads one on each tick its
+        channel flags, so a song returning to a tick re-enters each plane at a position of its own.
+
+        Args:
+            tick: The ticks played.
+
+        Returns:
+            Tuple[int, ...]: One position per plane.
+        """
+        return (
+            tick,
+            tick,
+            self.pulse1.bend_position(tick),
+            tick,
+            tick,
+            self.pulse2.bend_position(tick),
+            tick,
+            tick,
+            self.triangle.bend_position(tick),
+            tick,
+            tick,
+        )

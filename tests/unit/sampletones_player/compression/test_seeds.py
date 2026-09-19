@@ -94,5 +94,5 @@ class TestABentSliceSeedsItsBend:
         )
         project = project_with_instrument(instrument, rows_per_pattern=ROWS_PER_PATTERN)
 
-        bend_plane = bytes(unsigned_byte(bend) for bend in (*BENDS, BENDS[-1]))
+        bend_plane = bytes(unsigned_byte(bend) for bend in BENDS if bend)
         assert bend_plane in _offered(project)

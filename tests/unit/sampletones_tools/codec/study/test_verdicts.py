@@ -16,7 +16,7 @@ from sampletones_tools.codec.study.report.verdicts import Verdict, judge, verdic
 from sampletones_tools.codec.study.variants.variant import Variant, VariantKind
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.study import NO_STUDY_SLICES, lowest_notes
+from tests.suite.study import NO_STUDY_SLICES, lowest_notes, resting_planes
 
 TICKS: Final[int] = 4
 BASELINE: Final[str] = "baseline"
@@ -100,7 +100,7 @@ def _song(name: str, group: SongGroup) -> StudySong:
         name=name,
         group=group,
         source=Path(f"{name}.stp"),
-        planes=SongPlanes.from_order(PlaneOrder.across([bytes(TICKS)] * PLANE_COUNT)),
+        planes=resting_planes(TICKS),
         seeds=(),
         pitches=PitchTable.from_tuning(Tuning()),
         notes=lowest_notes(TICKS),

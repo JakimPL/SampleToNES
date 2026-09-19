@@ -1,5 +1,6 @@
 from typing import Final, List, Tuple
 
+from sampletones_player.compression.decode import decode_planes
 from sampletones_player.nsf.layout import SongLayout
 from sampletones_player.song import Song
 from sampletones_player.specification.compression import (
@@ -98,7 +99,7 @@ class TestWhereEachStreamIsReEntered:
     def test_an_entry_stands_at_the_token_the_loop_tick_starts(self) -> None:
         song = figure_song(LOOP_TICK)
         layout = SongLayout.of(song)
-        entered = song.planes.entries(LOOP_TICK)
+        entered = song.planes.entries(decode_planes(song.planes).positions(LOOP_TICK))
         assert layout.loop_entries == tuple(
             ABSENT_STREAM if entry is None else offset + entry for offset, entry in zip(layout.streams, entered)
         )

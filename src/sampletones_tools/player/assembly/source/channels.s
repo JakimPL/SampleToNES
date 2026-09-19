@@ -33,6 +33,8 @@ timer_high_shadows:     .res TRIANGLE_REGISTERS + 1
 .assert PHRASE_LENGTH_SIZE = 1, error, "a phrase body follows its length by one byte"
 .assert >song_data <> ABSENT_PAGE, lderror, "a song loaded in page zero reads as an absent plane"
 .assert ABSENT_STREAM = $FFFF, error, "an absent stream is told apart by both its bytes reading $FF"
+.assert BEND_FLAG = $80, error, "a value's flag is read as the sign bit"
+.assert PITCH_COUNT <= BEND_FLAG, error, "every pitch index fits below the flag"
 
 ; Readies the tables the planes read through and points every plane at its own first token.
 channels_reset:
@@ -123,20 +125,47 @@ seed_planes:
     bne @next
     rts
 
-; Advances every plane the block holds by one tick of the song, an absent plane standing still.
+; Advances every plane the block holds by one tick of the song. A bend plane advances only on a
+; tick its channel's new value flags, since it holds a value for those ticks alone.
 channels_advance:
-    ldx #$00
-@next:
+    ldx #PULSE1_CONTROL_PLANE
+    jsr plane_step
+    ldx #PULSE1_VALUE_PLANE
+    jsr plane_step
+    bit plane_state + PULSE1_VALUE_PLANE + PLANE_VALUE
+    bpl @pulse2
+    ldx #PULSE1_BEND_PLANE
+    jsr plane_step
+@pulse2:
+    ldx #PULSE2_CONTROL_PLANE
+    jsr plane_step
+    ldx #PULSE2_VALUE_PLANE
+    jsr plane_step
+    bit plane_state + PULSE2_VALUE_PLANE + PLANE_VALUE
+    bpl @triangle
+    ldx #PULSE2_BEND_PLANE
+    jsr plane_step
+@triangle:
+    ldx #TRIANGLE_CONTROL_PLANE
+    jsr plane_step
+    ldx #TRIANGLE_VALUE_PLANE
+    jsr plane_step
+    bit plane_state + TRIANGLE_VALUE_PLANE + PLANE_VALUE
+    bpl @noise
+    ldx #TRIANGLE_BEND_PLANE
+    jsr plane_step
+@noise:
+    ldx #NOISE_CONTROL_PLANE
+    jsr plane_step
+    ldx #NOISE_VALUE_PLANE
+    jmp plane_step
+
+; Advances the plane at X by one tick where the block holds it, an absent plane standing still.
+plane_step:
     lda plane_state + PLANE_SOURCE + 1,x
     beq @absent
-    jsr plane_advance
+    jmp plane_advance
 @absent:
-    txa
-    clc
-    adc #PLANE_STATE_SIZE
-    tax
-    cpx #PLANE_STATE_BYTES
-    bne @next
     rts
 
 ; Advances the plane whose state lies at X by one tick, leaving the value it plays in that state.
@@ -299,23 +328,26 @@ set_phrase:
 channels_write:
     lda plane_state + PULSE1_CONTROL_PLANE + PLANE_VALUE
     sta CHANNEL_CONTROL + PULSE1_REGISTERS
-    ldx #PULSE1_REGISTERS
-    ldy plane_state + PULSE1_VALUE_PLANE + PLANE_VALUE
     lda plane_state + PULSE1_BEND_PLANE + PLANE_VALUE
+    sta bend
+    ldx #PULSE1_REGISTERS
+    lda plane_state + PULSE1_VALUE_PLANE + PLANE_VALUE
     jsr write_timer
 
     lda plane_state + PULSE2_CONTROL_PLANE + PLANE_VALUE
     sta CHANNEL_CONTROL + PULSE2_REGISTERS
-    ldx #PULSE2_REGISTERS
-    ldy plane_state + PULSE2_VALUE_PLANE + PLANE_VALUE
     lda plane_state + PULSE2_BEND_PLANE + PLANE_VALUE
+    sta bend
+    ldx #PULSE2_REGISTERS
+    lda plane_state + PULSE2_VALUE_PLANE + PLANE_VALUE
     jsr write_timer
 
     lda plane_state + TRIANGLE_CONTROL_PLANE + PLANE_VALUE
     sta CHANNEL_CONTROL + TRIANGLE_REGISTERS
-    ldx #TRIANGLE_REGISTERS
-    ldy plane_state + TRIANGLE_VALUE_PLANE + PLANE_VALUE
     lda plane_state + TRIANGLE_BEND_PLANE + PLANE_VALUE
+    sta bend
+    ldx #TRIANGLE_REGISTERS
+    lda plane_state + TRIANGLE_VALUE_PLANE + PLANE_VALUE
     jsr write_timer
 
     lda plane_state + NOISE_CONTROL_PLANE + PLANE_VALUE
@@ -324,13 +356,23 @@ channels_write:
     sta CHANNEL_TIMER_LOW + NOISE_REGISTERS
     rts
 
-; Writes the timer the pitch at Y sounds at, moved by the bend in A, to the channel whose
-; register base lies in X. The bend states divider steps in two's complement, so it reaches the
-; timer's high half as $00 or $FF beside the carry the low half raised. A high half reaches the
-; register only where it differs from the last one written, since storing it restarts a pulse
-; waveform and reloads the triangle's counter.
+; Writes the timer the value byte in A names to the channel whose register base lies in X, the
+; byte loaded last so its sign stands in N. The low seven bits index the pitch table, and the top
+; bit says the tick carries the bend standing in `bend`; an unflagged tick sounds its pitch's own
+; divider. The bend states divider steps in two's complement, so it reaches the timer's high half
+; as $00 or $FF beside the carry the low half raised. A high half reaches the register only where
+; it differs from the last one written, since storing it restarts a pulse waveform and reloads
+; the triangle's counter.
 write_timer:
-    sta bend
+    bmi @bent
+    ldy #$00
+    sty bend
+    tay
+    jmp @indexed
+@bent:
+    and #PITCH_INDEX_MASK
+    tay
+@indexed:
     lda #$00
     bit bend
     bpl @extended

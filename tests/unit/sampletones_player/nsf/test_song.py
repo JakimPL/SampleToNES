@@ -4,6 +4,7 @@ from typing import Final, Tuple
 
 import pytest
 
+from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.nsf.layout import NAME_SEPARATOR, SongLayout
 from sampletones_player.nsf.song import song_to_bytes
@@ -255,7 +256,7 @@ class TestLoopEntries:
     def test_a_song_that_repeats_states_the_token_its_loop_tick_starts(self) -> None:
         song = repeating_song()
         data = song_to_bytes(song, PROGRAM_AREA_BYTES)
-        entered = song.planes.entries(LOOP_TICK)
+        entered = song.planes.entries(decode_planes(song.planes).positions(LOOP_TICK))
         assert loop_entries(data) == tuple(
             ABSENT_STREAM if entry is None else offset + entry for offset, entry in zip(stream_offsets(data), entered)
         )

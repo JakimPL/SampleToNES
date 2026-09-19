@@ -2,6 +2,7 @@ from typing import Tuple
 
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.table import PhraseTable
+from sampletones_player.compression.planes.flags import flagged_ticks
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.specification.binary import BYTE_VALUES
@@ -94,8 +95,26 @@ def decode_plane(data: bytes, table: PhraseTable, ticks: int) -> bytes:
     return bytes(values[:ticks])
 
 
+def _tone_planes(
+    compressed: CompressedPlanes,
+    control: bytes,
+    value: bytes,
+    bend: bytes,
+) -> Tuple[bytes, bytes, bytes]:
+    """A tone channel's planes played back, its bend plane as long as its value plane flags."""
+    played = decode_plane(value, compressed.phrases, compressed.ticks)
+    return (
+        decode_plane(control, compressed.phrases, compressed.ticks),
+        played,
+        decode_plane(bend, compressed.phrases, flagged_ticks(played)),
+    )
+
+
 def decode_planes(compressed: CompressedPlanes) -> SongPlanes:
     """Plays a song's token streams back into the planes they were written from.
+
+    A bend plane holds a value per tick its channel flags, so each is played for as many values
+    as its channel's value plane flags once that plane is played back.
 
     Args:
         compressed: The dictionary, the streams and the ticks the song lasts.
@@ -103,12 +122,14 @@ def decode_planes(compressed: CompressedPlanes) -> SongPlanes:
     Returns:
         SongPlanes: The planes under the channel each belongs to.
     """
+    streams = compressed.streams
     played = PlaneOrder.across(
-        decode_plane(
-            stream,
-            compressed.phrases,
-            compressed.ticks,
+        (
+            *_tone_planes(compressed, streams.pulse1_control, streams.pulse1_value, streams.pulse1_bend),
+            *_tone_planes(compressed, streams.pulse2_control, streams.pulse2_value, streams.pulse2_bend),
+            *_tone_planes(compressed, streams.triangle_control, streams.triangle_value, streams.triangle_bend),
+            decode_plane(streams.noise_control, compressed.phrases, compressed.ticks),
+            decode_plane(streams.noise_value, compressed.phrases, compressed.ticks),
         )
-        for stream in compressed.streams
     )
     return SongPlanes.from_order(played)

@@ -85,7 +85,7 @@ def _song(ticks: int) -> StudySong:
     planes: List[bytes] = []
     for plane in range(PLANE_COUNT):
         if plane % 3 == 2:
-            planes.append(bytes(ticks))
+            planes.append(b"")
         elif plane % 3 == 0:
             planes.append(_runs_plane(random, ticks))
         else:

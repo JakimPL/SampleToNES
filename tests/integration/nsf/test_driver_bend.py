@@ -7,7 +7,8 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH, PITCH_BEND_MAX, PITCH_BEND_MIN
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.timers.arithmetic import bent_timer
-from sampletones_player.builder import song_from_reconstruction
+from sampletones_player.builder import song_from_reconstruction, streams_from_instructions
+from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import BYTE_VALUES
@@ -15,7 +16,12 @@ from sampletones_player.specification.registers import PULSE1_TIMER_HIGH, TIMER_
 from sampletones_tools.player.trace.trace import RegisterTrace
 from tests.integration.nsf.console.instructions import channel_values, timer_value
 from tests.integration.nsf.console.machine import register_file
-from tests.integration.nsf.console.session import captured_trace, play_calls_covering
+from tests.integration.nsf.console.session import (
+    captured_trace,
+    captured_trace_over,
+    play_calls_covering,
+    play_calls_reaching,
+)
 from tests.integration.nsf.header import sample_information
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
@@ -26,6 +32,7 @@ from tests.suite.player import (
     PLAYER_TIMER_TABLE,
     bent_song,
     player_reconstruction,
+    player_song,
 )
 
 NTSC_RATE: Final[int] = 60
@@ -211,3 +218,30 @@ class TestTheConsoleSoundsTheBendAFrameCarries(BaseTestSuite):
         )
         expected = [bent_timer(PLAYER_TIMER_TABLE[frame.pitch], frame.timer_offset) for frame in test_case.frames]
         assert sounded_dividers(song)[: len(expected)] == expected
+
+
+class TestABentSongComingRound:
+    """A song returning to a tick re-enters each bend plane past the flags played before it."""
+
+    LOOP_TICK: Final[int] = 5
+    ROUNDS: Final[int] = 3
+
+    @pytest.fixture
+    def repeating(self) -> Song:
+        frames = [
+            PulseInstruction(
+                on=True, pitch=PLAYER_REFERENCE_PITCH, volume=PLAYER_FULL_VOLUME, duty_cycle=0, detune=bend
+            )
+            for bend in VIBRATO * 2
+        ]
+        streams = streams_from_instructions({ChannelName.PULSE1: frames}, PLAYER_TIMER_TABLE)
+        return player_song(streams, NTSC_RATE, loop_tick=self.LOOP_TICK)
+
+    def test_the_loop_tick_falls_after_flagged_ticks(self, repeating: Song) -> None:
+        pulse1 = decode_planes(repeating.planes).pulse1
+        assert pulse1.bend_position(self.LOOP_TICK) > 0
+
+    def test_the_console_writes_what_the_model_states_across_its_loops(self, repeating: Song) -> None:
+        calls = play_calls_reaching(repeating, self.ROUNDS * repeating.ticks)
+        trace = captured_trace_over(repeating, sample_information(SONG_NAME), calls)
+        assert trace == RegisterTrace.from_song(repeating, calls)

@@ -18,6 +18,8 @@ TICK_PLAYS              = 1
 TICK_REPEATED           = 2
 
 PITCH_COUNT             = 104
+BEND_FLAG               = $80
+PITCH_INDEX_MASK        = BEND_FLAG - 1
 
 TOKEN_TAG_MASK          = $C0
 TOKEN_OPERAND_MASK      = $3F

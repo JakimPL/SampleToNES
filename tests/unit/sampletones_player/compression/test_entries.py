@@ -38,5 +38,5 @@ class TestWhereAStreamIsReEntered:
     def test_a_tick_a_token_spans_is_refused(self) -> None:
         """A stream re-entered mid-token would leave the driver reading operands as opcodes."""
         stream = emit([HoldToken(ticks=8)])
-        with pytest.raises(ValueError, match="spans tick"):
+        with pytest.raises(ValueError, match="spans position"):
             stream_entry(stream, 3)

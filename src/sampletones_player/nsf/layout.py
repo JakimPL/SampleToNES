@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final, Optional, Sequence, Tuple
 
+from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.song import Song
@@ -88,7 +89,8 @@ class SongLayout:
         stream_start = bodies + sum(body_sizes)
 
         stream_offsets = _running(stream_start, stream_sizes)
-        entered = song.planes.entries(FIRST_TICK if song.loop_tick is None else song.loop_tick)
+        returned = FIRST_TICK if song.loop_tick is None else song.loop_tick
+        entered = song.planes.entries(decode_planes(song.planes).positions(returned))
         return cls(
             timer_table=timer_table,
             phrase_table=phrase_table,
