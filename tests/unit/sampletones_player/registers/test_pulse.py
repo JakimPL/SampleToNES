@@ -16,6 +16,7 @@ from sampletones_core.constants.general import (
 )
 from sampletones_core.generators.implementation.pulse import PulseGenerator
 from sampletones_core.instructions import PulseInstruction
+from sampletones_core.timers.nearest import nearest_pitch
 from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.specification.registers import MAX_REGISTER_VALUE, TIMER_HIGH_SHIFT
 from tests.suite.base import BaseTestSuite
@@ -190,6 +191,17 @@ class TestPulseBend(BaseTestSuite):
             expected & MAX_REGISTER_VALUE,
             expected >> TIMER_HIGH_SHIFT,
         )
+
+    def test_a_bend_within_a_byte_is_counted_from_the_frames_own_note(self) -> None:
+        instructions = [bent_pulse(PLAYER_REFERENCE_PITCH, -40, 0), bent_pulse(PLAYER_REFERENCE_PITCH, 0, 7)]
+        registers = PulseRegisters.from_instructions(instructions, PLAYER_TIMER_TABLE)
+        assert [tick.anchor for tick in registers] == [PLAYER_REFERENCE_PITCH] * len(registers)
+
+    def test_a_bend_past_a_byte_is_counted_from_the_nearest_pitch(self) -> None:
+        instruction = bent_pulse(PLAYER_REFERENCE_PITCH, 0, PITCH_BEND_MAX)
+        tick = PulseRegisters.from_instructions([instruction], PLAYER_TIMER_TABLE)[0]
+        assert tick.anchor == nearest_pitch(PLAYER_TIMER_TABLE, tick.divider).pitch
+        assert tick.anchor != PLAYER_REFERENCE_PITCH
 
     def test_a_rest_holds_the_bent_divider(self) -> None:
         instructions = [bent_pulse(PLAYER_REFERENCE_PITCH, 9, 1), silent_pulse()]

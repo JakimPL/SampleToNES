@@ -54,6 +54,37 @@ class PitchTable(BaseModel):
             )
         )
 
+    def index(self, pitch: int) -> int:
+        """The index a plane names a pitch by, its distance above the lowest pitch the table covers.
+
+        Args:
+            pitch: The pitch.
+
+        Returns:
+            int: The index.
+
+        Raises:
+            ValueError: If the table covers no such pitch.
+        """
+        index = pitch - LIMIT_MIN_PITCH
+        if not 0 <= index < len(self.timers):
+            raise ValueError(
+                f"the table covers pitches {LIMIT_MIN_PITCH} to {LIMIT_MAX_PITCH}, and {pitch} lies beyond"
+            )
+
+        return index
+
+    def pitch(self, index: int) -> int:
+        """The pitch a plane's index names.
+
+        Args:
+            index: The index.
+
+        Returns:
+            int: The pitch, counted the way the project counts pitches.
+        """
+        return LIMIT_MIN_PITCH + index
+
     @cached_property
     def nearest(self) -> Tuple[NearestPitch, ...]:
         """The index lying nearest every divider the register holds, beside the steps between them.

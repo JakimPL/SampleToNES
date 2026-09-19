@@ -1,17 +1,17 @@
-from typing import Final, List, Sequence, Tuple
+from typing import Dict, Final, List, Sequence, Tuple
 
 from sampletones_core.timers.nearest import NearestPitch
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.channel import TonePlanes
 from sampletones_player.compression.planes.rebuild import tone_dividers
-from sampletones_player.specification.binary import SIGNED_BYTE_LIMIT, unsigned_byte
-from sampletones_shared.constants.music import LIMIT_MIN_PITCH
+from sampletones_player.registers.dividers import anchored_pitches
+from sampletones_player.specification.binary import unsigned_byte
 from sampletones_tools.codec.study.layouts.layout import Anchor, BendForm, PlaneLayout
 
 FLAG_BIT: Final[int] = 0x80
 
 
-def anchored_pitches(
+def layout_anchors(
     dividers: Sequence[int],
     notes: bytes,
     pitches: PitchTable,
@@ -35,20 +35,21 @@ def anchored_pitches(
         case Anchor.NEAREST:
             return tuple(pitches.nearest[divider] for divider in dividers)
         case Anchor.NAMED:
-            return tuple(_named(divider, note, pitches) for divider, note in zip(dividers, notes, strict=True))
+            anchors = anchored_pitches(notes, dividers, _timer_table(pitches))
+            return tuple(_counted(divider, pitches.index(pitch), pitches) for divider, pitch in zip(dividers, anchors))
 
 
-def _named(
+def _timer_table(pitches: PitchTable) -> Dict[int, int]:
+    """The timer each pitch of the table sounds at, keyed by the pitch."""
+    return {pitches.pitch(index): timer for index, timer in enumerate(pitches.timers)}
+
+
+def _counted(
     divider: int,
-    note: int,
+    index: int,
     pitches: PitchTable,
 ) -> NearestPitch:
-    index = note - LIMIT_MIN_PITCH
-    offset = divider - pitches.timers[index]
-    if -SIGNED_BYTE_LIMIT <= offset < SIGNED_BYTE_LIMIT:
-        return NearestPitch(pitch=index, offset=offset)
-
-    return pitches.nearest[divider]
+    return NearestPitch(pitch=index, offset=divider - pitches.timers[index])
 
 
 def bend_flags(
@@ -111,7 +112,7 @@ def tone_planes(
     Raises:
         ValueError: If a flagged layout meets a table whose indices reach the flag bit.
     """
-    anchored = anchored_pitches(tone_dividers(planes, pitches.timers), notes, pitches, layout.anchor)
+    anchored = layout_anchors(tone_dividers(planes, pitches.timers), notes, pitches, layout.anchor)
     flags = bend_flags(anchored, layout.form)
     bend = bytes(unsigned_byte(pitch.offset) for pitch, flag in zip(anchored, flags) if flag)
     if layout.form is BendForm.DENSE:

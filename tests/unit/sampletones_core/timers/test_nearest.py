@@ -3,7 +3,7 @@ from typing import Dict, Final, Tuple
 import pytest
 
 from sampletones_core.constants.general import MAX_TIMER
-from sampletones_core.timers.nearest import NearestPitch, nearest_pitches
+from sampletones_core.timers.nearest import NearestPitch, nearest_pitch, nearest_pitches
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_shared.music import Tuning
 
@@ -72,3 +72,13 @@ class TestADividerBetweenTwoPitches:
     def test_an_empty_table_is_refused(self) -> None:
         with pytest.raises(ValueError):
             nearest_pitches({})
+
+
+class TestNamingOneDivider:
+    def test_one_divider_is_named_as_the_whole_table_names_it(
+        self,
+        table: Dict[int, int],
+        nearest: Tuple[NearestPitch, ...],
+    ) -> None:
+        for divider in (0, HALFWAY, table[max(table)], MAX_TIMER):
+            assert nearest_pitch(table, divider) == nearest[divider]

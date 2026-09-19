@@ -37,6 +37,15 @@ class TestThePitchTableNamesEveryPitchAProjectSounds:
             named = table.nearest[timer]
             assert (table.timers[named.pitch], named.offset) == (timer, 0)
 
+    def test_a_pitch_and_its_index_name_each_other(self) -> None:
+        table = PitchTable.from_tuning(TUNING)
+        for pitch in range(LIMIT_MIN_PITCH, LIMIT_MAX_PITCH + 1):
+            assert table.pitch(table.index(pitch)) == pitch
+
+    def test_a_pitch_beyond_the_table_names_no_index(self) -> None:
+        with pytest.raises(ValueError):
+            PitchTable.from_tuning(TUNING).index(LIMIT_MAX_PITCH + 1)
+
     def test_a_higher_index_never_sounds_a_slower_divider(self) -> None:
         table = PitchTable.from_tuning(TUNING)
         for timer, following in zip(table.timers, table.timers[1:]):

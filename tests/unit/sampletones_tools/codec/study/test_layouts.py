@@ -107,10 +107,13 @@ class TestTheNotesATickNames:
 
 
 class TestWhatTheValuePlaneNames:
-    def test_the_nearest_dense_layout_is_the_production_separation(self) -> None:
-        instructions = bent_frames(PLAYER_REFERENCE_PITCH, (0, 5, PAST_HALFWAY, -5))
+    def test_the_named_dense_layout_is_the_production_separation(self) -> None:
+        instructions = [
+            *bent_frames(PLAYER_REFERENCE_PITCH, (0, 5, PAST_HALFWAY, -5)),
+            *coarse_frame(PLAYER_REFERENCE_PITCH, BEYOND_A_BYTE),
+        ]
         planes = pulse_planes(instructions)
-        assert written(instructions, NEAREST_DENSE) == planes.ordered
+        assert written(instructions, NAMED_DENSE) == planes.ordered
 
     def test_a_named_note_keeps_a_bend_past_halfway(self) -> None:
         instructions = bent_frames(PLAYER_REFERENCE_PITCH, (PAST_HALFWAY,))
@@ -162,7 +165,7 @@ class TestAFlaggedBendPlane:
 
 
 class TestALayoutsSeeds:
-    def test_the_nearest_dense_layout_seeds_what_production_seeds(self) -> None:
+    def test_the_named_dense_layout_seeds_what_production_seeds(self) -> None:
         instrument = Instrument(
             name="bent",
             envelopes=InstrumentEnvelopes(
@@ -173,7 +176,7 @@ class TestALayoutsSeeds:
         )
         project = project_with_instrument(instrument, rows_per_pattern=ROWS_PER_PATTERN)
         slices = project_slices(project, TUNING)
-        assert layout_seeds(slices, PITCHES, NEAREST_DENSE) == phrases_from_project(project, TUNING, ALL_CHANNELS)
+        assert layout_seeds(slices, PITCHES, NAMED_DENSE) == phrases_from_project(project, TUNING, ALL_CHANNELS)
 
 
 class TestEncodingALayout:

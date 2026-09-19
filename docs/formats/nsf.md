@@ -92,10 +92,10 @@ pitch, in pitch order, then the high byte of each. One pointer reaches both halv
 is what the driver's lookup takes advantage of.
 
 A plane names a pitch as its **index** — the distance above the lowest pitch the tuning
-covers — rather than as a divider. A tick's divider is written as the index of the pitch
-lying nearest it, beside a bend of the steps left over (§C). Pitches beyond the divider's
-range share the timer they clamp to, and the lowest pitch sounding a timer stands for the
-whole group; a divider exactly halfway between two pitches goes to the higher one.
+covers — rather than as a divider. A tick's divider is written as the index of the pitch it
+is counted from, beside a bend of the steps from that pitch's own divider (§C). Pitches
+beyond the divider's range share the timer they clamp to, and the lowest pitch sounding a
+timer stands for the whole group.
 
 The table is written from the tuning the exported work was built at, computed by the very
 function the reconstruction's own generators render from.
@@ -192,11 +192,15 @@ to it, and a divider offset added to an index means nothing. A tone channel's **
 plane is where the offset goes: one signed byte a tick, in two's complement, added to the
 divider the value plane's note resolves to.
 
-A bent frame sounds the divider its note's own is moved to, and the value plane names the
-pitch lying nearest that divider while the bend plane holds the steps left over. Within the
-table's span those steps stay inside half the widest gap between neighboring pitches — 57
-at the default tuning — so every divider the register holds reaches the planes. A frame
-sounding its note unbent holds a bend of nothing.
+A bent frame sounds the divider its note's own is moved to, and **the value plane names
+the frame's own note** while the bend plane holds the steps from that note's divider. A row
+transposes a note and keeps its bend's steps, so a bent figure keeps the same bend bytes
+at every pitch it is played at, which is what lets one dictionary entry serve it. A bend
+past the signed byte is counted from the pitch lying nearest the divider instead, a
+divider halfway between two pitches going to the higher one; those steps stay inside half
+the widest gap between neighboring pitches — 57 at the default tuning — so every divider
+the register holds reaches the planes. A frame sounding its note unbent holds a bend of
+nothing.
 
 The driver sign-extends that byte and adds it across both halves of the timer, which is the
 only arithmetic it performs on a song's behalf. Everything that makes the sum land in

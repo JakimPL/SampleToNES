@@ -65,6 +65,11 @@ PLAYER_FULL_VOLUME: Final[int] = 15
 PLAYER_SILENT_VOLUME: Final[int] = 0
 
 
+def nearest_anchor(timer: int) -> int:
+    """The pitch a hand-written timer is counted from, the one lying nearest it."""
+    return PLAYER_PITCHES.pitch(PLAYER_PITCHES.nearest[timer].pitch)
+
+
 def pulse_tick(
     volume: int,
     duty_cycle: int,
@@ -75,6 +80,7 @@ def pulse_tick(
         control=(duty_cycle << DUTY_CYCLE_SHIFT) | SUSTAINED_LEVEL | volume,
         timer_low=timer & MAX_REGISTER_VALUE,
         timer_high=timer >> TIMER_HIGH_SHIFT,
+        anchor=nearest_anchor(timer),
     )
 
 
@@ -85,6 +91,7 @@ def triangle_tick(sounding: bool, timer: int) -> TriangleRegisters:
         linear_counter=TRIANGLE_COUNTER_CONTROL | reload_value,
         timer_low=timer & MAX_REGISTER_VALUE,
         timer_high=timer >> TIMER_HIGH_SHIFT,
+        anchor=nearest_anchor(timer),
     )
 
 

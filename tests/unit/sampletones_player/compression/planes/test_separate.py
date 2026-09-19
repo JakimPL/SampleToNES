@@ -1,15 +1,34 @@
+from typing import Final
+
+import pytest
+
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.separate import channel_planes, planes_from_streams
+from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.registers.streams import ChannelStreams
-from sampletones_player.specification.binary import unsigned_byte
-from tests.suite.player import PLAYER_FULL_VOLUME, pulse_tick, resting_streams
+from sampletones_player.specification.binary import SIGNED_BYTE_LIMIT, unsigned_byte
+from sampletones_player.specification.registers import MAX_REGISTER_VALUE, TIMER_HIGH_SHIFT
+from tests.suite.player import PLAYER_FULL_VOLUME, resting_streams
 from tests.unit.sampletones_player.compression.planes.conftest import (
     HIGH_INDEX,
     LOW_INDEX,
     NOISE_PERIOD,
     SOUNDING_TICKS,
 )
+
+PAST_HALFWAY: Final[int] = -40
+
+
+def anchored_tick(pitches: PitchTable, index: int, bend: int) -> PulseRegisters:
+    """A sounding pulse tick counted from the pitch at ``index``, bent by ``bend`` steps."""
+    divider = pitches.timers[index] + bend
+    return PulseRegisters(
+        control=PLAYER_FULL_VOLUME,
+        timer_low=divider & MAX_REGISTER_VALUE,
+        timer_high=divider >> TIMER_HIGH_SHIFT,
+        anchor=pitches.pitch(index),
+    )
 
 
 class TestAChannelSeparatesIntoTwoPlanes:
@@ -51,7 +70,7 @@ class TestAChannelSeparatesIntoTwoPlanes:
 
 
 class TestABentTickSplitsIntoANoteAndABend:
-    """A divider the table holds nowhere reaches the planes as the index nearest it and the rest."""
+    """A tick's divider reaches the planes as the pitch it is counted from and the steps from there."""
 
     def test_an_unbent_tick_holds_a_bend_of_nothing(
         self,
@@ -61,19 +80,14 @@ class TestABentTickSplitsIntoANoteAndABend:
         planes = planes_from_streams(sounding_streams, pitches)
         assert planes.pulse1.bend == bytes(planes.ticks)
 
-    def test_a_bent_tick_names_the_index_nearest_it_and_the_steps_left_over(self, pitches: PitchTable) -> None:
-        bends = (2, -3)
-        streams = resting_streams(
-            [pulse_tick(PLAYER_FULL_VOLUME, 0, pitches.timers[LOW_INDEX] + bend) for bend in bends]
-        )
+    def test_a_bent_tick_names_its_anchor_and_the_steps_from_it(self, pitches: PitchTable) -> None:
+        bends = (2, -3, PAST_HALFWAY)
+        streams = resting_streams([anchored_tick(pitches, LOW_INDEX, bend) for bend in bends])
         planes = planes_from_streams(streams, pitches)
         assert planes.pulse1.value == bytes((LOW_INDEX,) * len(bends))
         assert planes.pulse1.bend == bytes(unsigned_byte(bend) for bend in bends)
 
-    def test_a_divider_past_halfway_names_the_neighboring_index(self, pitches: PitchTable) -> None:
-        lower, higher = pitches.timers[LOW_INDEX], pitches.timers[LOW_INDEX + 1]
-        divider = higher + 1
-        streams = resting_streams((pulse_tick(PLAYER_FULL_VOLUME, 0, divider),))
-        planes = planes_from_streams(streams, pitches)
-        assert lower - divider > divider - higher
-        assert (planes.pulse1.value[0], planes.pulse1.bend[0]) == (LOW_INDEX + 1, unsigned_byte(1))
+    def test_a_divider_past_the_byte_from_its_anchor_is_refused(self, pitches: PitchTable) -> None:
+        streams = resting_streams((anchored_tick(pitches, LOW_INDEX, -SIGNED_BYTE_LIMIT - 1),))
+        with pytest.raises(ValueError):
+            planes_from_streams(streams, pitches)

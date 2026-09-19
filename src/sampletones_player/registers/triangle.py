@@ -6,12 +6,11 @@ from pydantic import Field
 
 from sampletones_core.exporters.implementation.triangle import TriangleExporter
 from sampletones_core.instructions import TriangleInstruction
-from sampletones_player.registers.base import ChannelRegisters
-from sampletones_player.registers.dividers import bent_dividers
+from sampletones_player.registers.dividers import anchored_pitches, bent_dividers
 from sampletones_player.registers.hold import hold
+from sampletones_player.registers.tone import ToneRegisters
 from sampletones_player.specification.registers import (
     MAX_REGISTER_VALUE,
-    MAX_TIMER_HIGH,
     TIMER_HIGH_SHIFT,
     TRIANGLE_COUNTER_CONTROL,
     TRIANGLE_SILENT_RELOAD,
@@ -19,10 +18,8 @@ from sampletones_player.specification.registers import (
 )
 
 
-class TriangleRegisters(ChannelRegisters):
+class TriangleRegisters(ToneRegisters):
     linear_counter: int = Field(..., ge=0, le=MAX_REGISTER_VALUE)
-    timer_low: int = Field(..., ge=0, le=MAX_REGISTER_VALUE)
-    timer_high: int = Field(..., ge=0, le=MAX_TIMER_HIGH)
 
     @property
     def values(self) -> Tuple[int, ...]:
@@ -53,6 +50,7 @@ class TriangleRegisters(ChannelRegisters):
         """
         _, pitches, volumes = TriangleExporter.extract_data(instructions)
         dividers = bent_dividers(pitches, TriangleExporter.read_timer_offsets(instructions), timer_table)
+        anchors = anchored_pitches(pitches, dividers, timer_table)
 
         registers: List[TriangleRegisters] = []
         for index, volume in enumerate(volumes):
@@ -63,6 +61,7 @@ class TriangleRegisters(ChannelRegisters):
                     linear_counter=TRIANGLE_COUNTER_CONTROL | reload_value,
                     timer_low=timer & MAX_REGISTER_VALUE,
                     timer_high=timer >> TIMER_HIGH_SHIFT,
+                    anchor=hold(anchors, index),
                 )
             )
 

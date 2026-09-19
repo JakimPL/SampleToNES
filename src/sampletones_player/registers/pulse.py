@@ -6,22 +6,19 @@ from pydantic import Field
 
 from sampletones_core.exporters.implementation.pulse import PulseExporter
 from sampletones_core.instructions import PulseInstruction
-from sampletones_player.registers.base import ChannelRegisters
-from sampletones_player.registers.dividers import bent_dividers
+from sampletones_player.registers.dividers import anchored_pitches, bent_dividers
 from sampletones_player.registers.hold import hold
+from sampletones_player.registers.tone import ToneRegisters
 from sampletones_player.specification.registers import (
     DUTY_CYCLE_SHIFT,
     MAX_REGISTER_VALUE,
-    MAX_TIMER_HIGH,
     SUSTAINED_LEVEL,
     TIMER_HIGH_SHIFT,
 )
 
 
-class PulseRegisters(ChannelRegisters):
+class PulseRegisters(ToneRegisters):
     control: int = Field(..., ge=0, le=MAX_REGISTER_VALUE)
-    timer_low: int = Field(..., ge=0, le=MAX_REGISTER_VALUE)
-    timer_high: int = Field(..., ge=0, le=MAX_TIMER_HIGH)
 
     @property
     def values(self) -> Tuple[int, ...]:
@@ -50,6 +47,7 @@ class PulseRegisters(ChannelRegisters):
         """
         _, pitches, volumes, duty_cycles = PulseExporter.extract_data(instructions)
         dividers = bent_dividers(pitches, PulseExporter.read_timer_offsets(instructions), timer_table)
+        anchors = anchored_pitches(pitches, dividers, timer_table)
 
         registers: List[PulseRegisters] = []
         for index, volume in enumerate(volumes):
@@ -60,6 +58,7 @@ class PulseRegisters(ChannelRegisters):
                     control=(duty_cycle << DUTY_CYCLE_SHIFT) | SUSTAINED_LEVEL | volume,
                     timer_low=timer & MAX_REGISTER_VALUE,
                     timer_high=timer >> TIMER_HIGH_SHIFT,
+                    anchor=hold(anchors, index),
                 )
             )
 

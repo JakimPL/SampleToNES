@@ -60,11 +60,13 @@ arrangement falls from 11 bytes a tick to about 1.7.
 A tone channel names a pitch by the **divider** the hardware counts down from, which
 takes two bytes and runs the opposite way to the note: higher notes have smaller
 dividers, and the steps between them are uneven. The encoder replaces the two
-divider planes with a **pitch index** — how far the pitch lying nearest the tick's
-divider sits above the lowest pitch the table covers — and a **bend**, the divider
-steps the tick stands away from that pitch. The song block carries a table the driver
-resolves the index through and adds the bend to. A tone channel is therefore three
-planes, the same count as the registers it writes.
+divider planes with a **pitch index** — how far the frame's note sits above the lowest
+pitch the table covers — and a **bend**, the divider steps the tick stands away from that
+note's own divider. The song block carries a table the driver resolves the index through
+and adds the bend to. A tone channel is therefore three planes, the same count as the
+registers it writes. Counting a bend from the note keeps it the same bytes wherever a row
+transposes the note to; only a bend past the signed byte is counted from the pitch lying
+nearest the divider instead.
 
 Trading two dividers for an index and a bend is worth about a twentieth once the
 planes are coded, since a bend a song never uses is absent from the block. The larger

@@ -35,37 +35,43 @@ def tone_dividers(
 
 def _sounded(
     planes: TonePlanes,
-    timers: Tuple[int, ...],
-) -> Iterator[Tuple[int, int]]:
-    """Each tick's control byte beside the divider its registers carry."""
-    yield from zip(planes.control, tone_dividers(planes, timers))
+    pitches: PitchTable,
+) -> Iterator[Tuple[int, int, int]]:
+    """Each tick's control byte, the divider its registers carry, and the pitch it is counted from."""
+    yield from zip(
+        planes.control,
+        tone_dividers(planes, pitches.timers),
+        (pitches.pitch(index) for index in planes.value),
+    )
 
 
 def _pulse_registers(
     planes: TonePlanes,
-    timers: Tuple[int, ...],
+    pitches: PitchTable,
 ) -> Tuple[PulseRegisters, ...]:
     return tuple(
         PulseRegisters(
             control=control,
             timer_low=timer & MAX_REGISTER_VALUE,
             timer_high=timer >> TIMER_HIGH_SHIFT,
+            anchor=anchor,
         )
-        for control, timer in _sounded(planes, timers)
+        for control, timer, anchor in _sounded(planes, pitches)
     )
 
 
 def _triangle_registers(
     planes: TonePlanes,
-    timers: Tuple[int, ...],
+    pitches: PitchTable,
 ) -> Tuple[TriangleRegisters, ...]:
     return tuple(
         TriangleRegisters(
             linear_counter=control,
             timer_low=timer & MAX_REGISTER_VALUE,
             timer_high=timer >> TIMER_HIGH_SHIFT,
+            anchor=anchor,
         )
-        for control, timer in _sounded(planes, timers)
+        for control, timer, anchor in _sounded(planes, pitches)
     )
 
 
@@ -92,10 +98,9 @@ def streams_from_planes(
     Returns:
         ChannelStreams: The per-tick register values every channel plays.
     """
-    timers = pitches.timers
     return ChannelStreams(
-        pulse1=_pulse_registers(planes.pulse1, timers),
-        pulse2=_pulse_registers(planes.pulse2, timers),
-        triangle=_triangle_registers(planes.triangle, timers),
+        pulse1=_pulse_registers(planes.pulse1, pitches),
+        pulse2=_pulse_registers(planes.pulse2, pitches),
+        triangle=_triangle_registers(planes.triangle, pitches),
         noise=_noise_registers(planes.noise),
     )
