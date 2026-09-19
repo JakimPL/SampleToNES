@@ -45,6 +45,7 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR,
     TAG_INSTRUCTIONS_LIBRARY_THEME_GROUP,
     TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION,
+    TAG_INSTRUCTIONS_LIBRARY_THEME_OUTDATED,
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import (
@@ -1187,6 +1188,8 @@ class GUITreePanel(GUIPanel, ABC):
     def _resolve_other_theme_tag(self, node: TreeNode) -> str:
         match node.node_type:
             case NodeType.LIBRARY:
+                if isinstance(node, LibraryNode) and node.outdated:
+                    return TAG_INSTRUCTIONS_LIBRARY_THEME_OUTDATED
                 return TAG_INSTRUCTIONS_LIBRARY_THEME
             case NodeType.GENERATOR:
                 return TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR

@@ -135,6 +135,7 @@ colors:
   library_group: "#125a60"
   library_instruction: "#3d434d"
   library_root: "#20252c"
+  library_outdated: "#7a6524"
 
   text_default: "#12161c"
   text_inactive: "#6e7580"

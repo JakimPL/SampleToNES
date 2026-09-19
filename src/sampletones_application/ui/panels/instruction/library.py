@@ -318,12 +318,11 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
 
         is_current = isinstance(node, LibraryNode) and self._is_current_library_node(node)
         should_expand = is_current or self._should_expand_node(node)
-        leaf = isinstance(node, GeneratorNode)
         self._append_spec(
             node,
             node_tag,
             state.parent,
-            leaf=leaf,
+            leaf=not node.children,
             should_expand=should_expand,
             open_on_double_click=True,
         )

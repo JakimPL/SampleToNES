@@ -12,6 +12,7 @@ from sampletones_application.logic.instruction.library_manager import (
 from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.view_model.main.updates import AdvancedSettingsUpdate
 from sampletones_core.compatibility.kind import ObjectKind
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.structures.tree import LibraryNode
 from tests.suite.compatibility import LIBRARY_VERSION, archived
@@ -87,11 +88,12 @@ class TestTheLibraryAConfigurationNames:
 
 
 class TestTheLibrariesTheCatalogLists:
-    def test_a_library_another_version_built_is_marked(
+    def test_a_library_another_version_built_is_marked_and_holds_no_generators(
         self,
         config_manager: ConfigManager,
         library_manager: InstructionsLibraryManager,
     ) -> None:
+        """A library another version built opens only to be rebuilt, so it lists nothing to load."""
         _set_transformation_gamma(config_manager, 50)
         earlier_key = config_manager.key
         _create_earlier_library_file(library_manager, earlier_key)
@@ -103,8 +105,12 @@ class TestTheLibrariesTheCatalogLists:
 
         root = library_manager.tree.get_root()
         assert root is not None
-        marks = {node.library_key: node.outdated for node in root.children if isinstance(node, LibraryNode)}
-        assert marks == {earlier_key: True, config_manager.key: False}
+        rows = {
+            node.library_key: (node.outdated, len(node.children))
+            for node in root.children
+            if isinstance(node, LibraryNode)
+        }
+        assert rows == {earlier_key: (True, 0), config_manager.key: (False, len(GeneratorName))}
 
 
 class TestTheDirectoryTheCatalogStandsAt:

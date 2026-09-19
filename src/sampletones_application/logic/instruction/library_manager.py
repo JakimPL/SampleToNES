@@ -289,7 +289,8 @@ class InstructionsLibraryManager(CallbackMixin):
             outdated=self._listed_libraries[library_key],
             parent=parent,
         )
-        self._build_generator_nodes(library_node)
+        if not library_node.outdated:
+            self._build_generator_nodes(library_node)
         return library_node
 
     def _build_generator_nodes(self, parent: TreeNode) -> None:
