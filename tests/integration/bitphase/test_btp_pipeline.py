@@ -30,7 +30,12 @@ from sampletones_core.formats.bitphase.specification.instruments import (
     MAX_VOLUME_OR_RATE,
     MIN_PULSE_WIDTH,
     MIN_VOLUME_OR_RATE,
-    SUSTAINED_SOUND_LENGTH,
+    SILENT_VOLUME,
+)
+from sampletones_core.formats.bitphase.specification.macros import (
+    MAX_MACRO_LENGTH,
+    MIN_MACRO_LENGTH,
+    NesMacroField,
 )
 from sampletones_core.formats.bitphase.specification.patterns import (
     FIRST_OCTAVE,
@@ -127,7 +132,11 @@ class TestBtpPipeline:
         assert triggered == set(PLAYED_CHANNELS)
 
     def test_the_document_carries_audible_volume(self, document: LoadedProject) -> None:
-        assert any(row.volume_or_rate > 0 for instrument in document.instruments for row in instrument.rows)
+        assert any(
+            value > SILENT_VOLUME
+            for instrument in document.instruments
+            for value in instrument.macro(NesMacroField.VOLUME_OR_RATE).values
+        )
 
 
 class TestTheLoaderReadsWhatWasWritten:
@@ -139,7 +148,7 @@ class TestTheLoaderReadsWhatWasWritten:
     def test_the_song_names_the_chip_it_drives(self, document: LoadedProject) -> None:
         assert document.songs[0].chip_type == CHIP_TYPE_NES
 
-    def test_every_instrument_names_the_chip_whose_rows_it_holds(self, document: LoadedProject) -> None:
+    def test_every_instrument_names_the_chip_whose_fields_it_holds(self, document: LoadedProject) -> None:
         assert {instrument.chip_type for instrument in document.instruments} == {CHIP_TYPE_NES}
 
     def test_the_song_carries_the_clock_its_tuning_was_built_from(self, document: LoadedProject) -> None:
@@ -292,37 +301,45 @@ class TestTheGrooveReachesTheFile:
         assert all(row.effects == list(BITPHASE_NO_EFFECTS) for row in every_row(document))
 
 
-class TestTheInstrumentRowsArePlayable:
-    def test_every_row_holds_a_waveform_the_channel_reads(self, document: LoadedProject) -> None:
-        rows = [row for instrument in document.instruments for row in instrument.rows]
-        assert all(MIN_PULSE_WIDTH <= row.pulse_width <= MAX_PULSE_WIDTH for row in rows)
+class TestTheInstrumentMacrosArePlayable:
+    def test_every_waveform_value_is_one_the_channel_reads(self, document: LoadedProject) -> None:
+        values = [
+            value for instrument in document.instruments for value in instrument.macro(NesMacroField.PULSE_WIDTH).values
+        ]
+        assert all(MIN_PULSE_WIDTH <= value <= MAX_PULSE_WIDTH for value in values)
 
-    def test_every_row_holds_a_level_the_channel_reads(self, document: LoadedProject) -> None:
-        rows = [row for instrument in document.instruments for row in instrument.rows]
-        assert all(MIN_VOLUME_OR_RATE <= row.volume_or_rate <= MAX_VOLUME_OR_RATE for row in rows)
+    def test_every_level_is_one_the_channel_reads(self, document: LoadedProject) -> None:
+        values = [
+            value
+            for instrument in document.instruments
+            for value in instrument.macro(NesMacroField.VOLUME_OR_RATE).values
+        ]
+        assert all(MIN_VOLUME_OR_RATE <= value <= MAX_VOLUME_OR_RATE for value in values)
 
-    def test_every_row_reads_its_level_as_a_literal_volume(self, document: LoadedProject) -> None:
-        rows = [row for instrument in document.instruments for row in instrument.rows]
-        assert all(row.envelope is False for row in rows)
-
-    def test_every_row_holds_the_note_for_as_long_as_the_envelope_runs(self, document: LoadedProject) -> None:
-        rows = [row for instrument in document.instruments for row in instrument.rows]
-        assert all(row.sound_length == SUSTAINED_SOUND_LENGTH for row in rows)
-
-    def test_every_instrument_loops_on_a_row_it_holds(self, document: LoadedProject) -> None:
-        """Playback returns to the loop row once it runs off the end, so a loop point
-        past the last row would leave the instrument nowhere to resume from.
+    def test_the_fields_a_reconstruction_leaves_alone_are_left_out(self, document: LoadedProject) -> None:
+        """Bitphase reads a field an instrument states no macro for at that field's own default,
+        which is the literal volume, the sustained note and the silent sweep a reconstruction asks
+        for.
         """
-        assert all(instrument.loop < len(instrument.rows) for instrument in document.instruments)
+        written = {field for instrument in document.instruments for field in instrument.macros}
+        assert written.isdisjoint({"envelope", "soundLength", "sweep", "toneAccumulation"})
+
+    def test_every_macro_circles_from_a_value_it_holds(self, document: LoadedProject) -> None:
+        """Playback circles from the loop index once the values run out, so a point past
+        them would leave the field nowhere to resume from.
+        """
+        assert all(
+            macro.loop < len(macro.values)
+            for instrument in document.instruments
+            for macro in instrument.macros.values()
+        )
 
     def test_every_table_loops_on_a_row_it_holds(self, document: LoadedProject) -> None:
         assert all(table.loop < len(table.rows) for table in document.tables)
 
-    def test_each_instrument_runs_as_long_as_its_table(self, document: LoadedProject) -> None:
-        """The rows and the table advance on their own per-tick counters, so a length
-        they share is what keeps the volume envelope aligned with the pitch contour.
-        """
-        lengths = [
-            (len(instrument.rows), len(table.rows)) for instrument, table in zip(document.instruments, document.tables)
-        ]
-        assert all(rows == table_rows for rows, table_rows in lengths)
+    def test_every_macro_holds_the_values_a_bitphase_instrument_stores(self, document: LoadedProject) -> None:
+        assert all(
+            MIN_MACRO_LENGTH <= len(macro.values) <= MAX_MACRO_LENGTH
+            for instrument in document.instruments
+            for macro in instrument.macros.values()
+        )

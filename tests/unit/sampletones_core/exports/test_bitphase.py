@@ -21,6 +21,7 @@ from sampletones_core.exports.request import (
 )
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.features.envelope import Envelope
+from sampletones_core.formats.bitphase.specification.macros import MAX_MACRO_LENGTH, NesMacroField
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_shared.music import Tuning
@@ -116,17 +117,22 @@ class TestWriteInstrument:
 
         assert [instrument["name"] for instrument in document["instruments"]] == ["Short"]
 
-    def test_a_long_envelope_crosses_over_whole(self, backend: BitphaseBackend, tmp_path: Path) -> None:
-        """Bitphase stores instrument rows without a length limit, so a reconstruction
-        reaches the document at its full length.
+    def test_a_long_envelope_reaches_the_values_a_macro_stores(
+        self,
+        backend: BitphaseBackend,
+        tmp_path: Path,
+    ) -> None:
+        """A macro holds the values of one dimension, and a longer envelope keeps its opening
+        values, while the contour a table carries crosses over whole.
         """
         destination = tmp_path / f"Long{EXT_FILE_BITPHASE}"
-        artifact = backend.write_instrument(destination, build_instrument("Long", LONG_ENVELOPE_FRAMES))
+        backend.write_instrument(destination, build_instrument("Long", LONG_ENVELOPE_FRAMES))
 
         document = read_document(destination)
 
-        assert len(document["instruments"][0]["rows"]) == LONG_ENVELOPE_FRAMES
-        assert artifact.truncation is None
+        macros = document["instruments"][0]["macros"]
+        assert len(macros[NesMacroField.VOLUME_OR_RATE]["values"]) == MAX_MACRO_LENGTH
+        assert len(document["tables"][0]["rows"]) == LONG_ENVELOPE_FRAMES
 
 
 class TestWriteSample:

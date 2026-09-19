@@ -1,10 +1,11 @@
 from dataclasses import dataclass
-from typing import Final, Iterable, Tuple
+from typing import Dict, Tuple
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters.feature import Features
 from sampletones_core.features.envelope import Envelope
-from sampletones_core.formats.bitphase.model.instrument import NesInstrumentRow
+from sampletones_core.formats.bitphase.macros import macro, stored_envelope
+from sampletones_core.formats.bitphase.model.instrument import InstrumentMacro
 from sampletones_core.formats.bitphase.notes import noise_arpeggio_to_table_offset
 from sampletones_core.formats.bitphase.specification.instruments import (
     FLAT_PULSE_WIDTH,
@@ -15,30 +16,33 @@ from sampletones_core.formats.bitphase.specification.instruments import (
     NOISE_MODE_SHORT,
     SILENT_VOLUME,
 )
+from sampletones_core.formats.bitphase.specification.macros import NesMacroField
 
-SILENT_ROW: Final[NesInstrumentRow] = NesInstrumentRow(
-    pulse_width=FLAT_PULSE_WIDTH,
-    volume_or_rate=SILENT_VOLUME,
-)
+SILENT_VOLUME_ENVELOPE = Envelope[int](items=(SILENT_VOLUME,))
+HELD_VOLUME_ENVELOPE = Envelope[int](items=(MAX_VOLUME_OR_RATE,))
+FLAT_CONTOUR = Envelope[int](items=(NO_TABLE_OFFSET,))
+
+MacroBag = Dict[NesMacroField, InstrumentMacro]
 
 
 @dataclass(frozen=True)
 class ChannelEnvelopes:
     """One channel slice expressed the way Bitphase plays it back.
 
-    The instrument rows and the table rows advance on their own per-tick counters, so
-    they share a length and a loop point and stay in step for as long as the note
-    sounds.
+    An instrument's macros and its table advance on per-tick counters of their own, so each
+    carries the length and the repeat point its own dimension asks for.
 
     Attributes:
-        rows: Instrument rows, one per engine tick.
+        macros: One macro per instrument field the slice decides.
         table_rows: Semitone offsets, one per engine tick.
-        loop: Row both lists return to once they run off the end.
+        table_loop: Step the contour circles from once it runs off the end.
+        ticks: Ticks the longest dimension describes.
     """
 
-    rows: Tuple[NesInstrumentRow, ...]
+    macros: MacroBag
     table_rows: Tuple[int, ...]
-    loop: int
+    table_loop: int
+    ticks: int
 
 
 def _pulse_width(channel: ChannelName, duty_cycle: int) -> int:
@@ -63,37 +67,70 @@ def _table_offset(channel: ChannelName, arpeggio: int) -> int:
     return arpeggio
 
 
-def _held_volume(frames: int) -> Tuple[int, ...]:
-    """The volume envelope of a slice whose level the channel governs.
+def _volume_envelope(features: Features) -> Envelope[int]:
+    """The levels an instrument writes, which a slice leaving its volume alone holds full.
 
-    Bitphase combines each row's level with the pattern's volume column, and a full-level
-    row comes out at the column's own level, so an instrument holding one for every frame
-    it describes sounds at whatever level the channel carries.
-
-    Args:
-        frames: The frames the slice describes.
-
-    Returns:
-        Tuple[int, ...]: One full-level item per frame.
+    Bitphase combines each row's level with the pattern's volume column, and a full level
+    comes out at the column's own level, so an instrument holding one sounds at whatever
+    level the channel carries.
     """
-    return (MAX_VOLUME_OR_RATE,) * frames
+    volume = features.envelopes.get(FeatureKey.VOLUME, Envelope[int]())
+    if volume.written:
+        return stored_envelope(FeatureKey.VOLUME, volume)
+
+    return HELD_VOLUME_ENVELOPE
+
+
+def _waveform_envelope(features: Features, channel: ChannelName) -> Envelope[int]:
+    """The waveform values a channel takes, which a slice leaving its duty alone holds flat."""
+    duty_cycle = stored_envelope(
+        FeatureKey.DUTY_CYCLE,
+        features.envelopes.get(FeatureKey.DUTY_CYCLE, Envelope[int]()),
+    )
+    items = duty_cycle.items or (FLAT_PULSE_WIDTH,)
+    return duty_cycle.with_items(tuple(_pulse_width(channel, item) for item in items))
+
+
+def _contour(features: Features, channel: ChannelName) -> Envelope[int]:
+    """The semitone steps the table moves the note by, flat where the slice states none."""
+    arpeggio = features.envelopes.get(FeatureKey.ARPEGGIO, Envelope[int]())
+    if not arpeggio.written:
+        return FLAT_CONTOUR
+
+    return arpeggio.with_items(tuple(_table_offset(channel, step) for step in arpeggio.items))
+
+
+def _silent_slice(features: Features, channel: ChannelName) -> ChannelEnvelopes:
+    """The smallest instrument Bitphase plays, which is what a slice describing no frame writes."""
+    return ChannelEnvelopes(
+        macros=_macro_bag(SILENT_VOLUME_ENVELOPE, features, channel),
+        table_rows=FLAT_CONTOUR.items,
+        table_loop=LOOP_FROM_START,
+        ticks=0,
+    )
+
+
+def _macro_bag(volume: Envelope[int], features: Features, channel: ChannelName) -> MacroBag:
+    """The fields the slice decides, the triangle channel leaving its one waveform alone."""
+    macros = {NesMacroField.VOLUME_OR_RATE: macro(volume)}
+    if channel != ChannelName.TRIANGLE:
+        macros[NesMacroField.PULSE_WIDTH] = macro(_waveform_envelope(features, channel))
+
+    return macros
 
 
 def features_to_envelopes(
     features: Features,
     channel: ChannelName,
 ) -> ChannelEnvelopes:
-    """Converts one channel slice's envelopes into Bitphase instrument and table rows.
+    """Converts one channel slice's envelopes into the macros and table Bitphase reads it from.
 
     Volume becomes the instrument's per-tick level, the duty cycle becomes the channel's
-    waveform field, and the arpeggio becomes the table contour that moves the note. A
-    slice that leaves its volume to the channel takes a full level for every frame it
-    describes, so the channel governs how loud it sounds. Bitphase reads every dimension out of
-    one row, so the instrument returns to the earliest row any dimension repeats from; one whose
-    dimensions all halt returns to its last row, resting on the level its volume envelope ends
-    with — silence where the slice writes its own, the channel's level where it holds one.
+    waveform field, and the arpeggio becomes the table contour that moves the note. Each
+    keeps the length and the repeat point it was written at, so a dimension holding one
+    value all through costs that one value.
 
-    A slice describing no frame comes back as the one silent row that is the smallest
+    A slice describing no frame comes back as the one silent value that is the smallest
     instrument Bitphase plays.
 
     Args:
@@ -101,57 +138,31 @@ def features_to_envelopes(
         channel: The NES channel the slice was reconstructed for.
 
     Returns:
-        ChannelEnvelopes: The rows, contour, and loop point describing the slice.
+        ChannelEnvelopes: The macros, contour and repeat points describing the slice.
     """
-    frames = features.frame_count
-    envelopes = {
-        feature_key: features.envelopes.get(feature_key, Envelope[int]()).resized(frames)
-        for feature_key in (FeatureKey.VOLUME, FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE)
-    }
+    if not features.frame_count:
+        return _silent_slice(features, channel)
 
-    if not frames:
-        return ChannelEnvelopes(
-            rows=(SILENT_ROW,),
-            table_rows=(NO_TABLE_OFFSET,),
-            loop=LOOP_FROM_START,
-        )
-
-    volumes = envelopes[FeatureKey.VOLUME].items or _held_volume(frames)
-    arpeggios = envelopes[FeatureKey.ARPEGGIO].items
-    duty_cycles = envelopes[FeatureKey.DUTY_CYCLE].items
-
-    rows = tuple(
-        NesInstrumentRow(
-            pulse_width=_pulse_width(channel, duty_cycles[frame] if duty_cycles else FLAT_PULSE_WIDTH),
-            volume_or_rate=volume,
-        )
-        for frame, volume in enumerate(volumes)
-    )
-    contour = arpeggios or (NO_TABLE_OFFSET,) * len(volumes)
-    table_rows = tuple(_table_offset(channel, arpeggio) for arpeggio in contour)
+    contour = _contour(features, channel)
+    macros = _macro_bag(_volume_envelope(features), features, channel)
 
     return ChannelEnvelopes(
-        rows=rows,
-        table_rows=table_rows,
-        loop=_loop_row(envelopes.values(), len(rows)),
+        macros=macros,
+        table_rows=contour.items,
+        table_loop=_repeat_point(contour),
+        ticks=_ticks(macros, contour),
     )
 
 
-def _loop_row(envelopes: Iterable[Envelope[int]], rows: int) -> int:
-    """The row a Bitphase instrument returns to, which is the earliest any dimension repeats from.
+def _repeat_point(envelope: Envelope[int]) -> int:
+    """The step a dimension circles from, which is its last where it states no point of its own."""
+    if envelope.loop_point is not None:
+        return envelope.loop_point
 
-    Bitphase reads every dimension out of one row, so one point serves them all and the earliest
-    keeps each dimension sounding what it would have sounded.
+    return len(envelope.items) - 1
 
-    Args:
-        envelopes: The dimensions the instrument writes.
-        rows: How many rows the instrument holds.
 
-    Returns:
-        int: The row to return to, held inside the rows the instrument carries.
-    """
-    points = [envelope.loop_point for envelope in envelopes if envelope.loop_point is not None]
-    if not points:
-        return rows - 1
-
-    return min(*points, rows - 1)
+def _ticks(macros: MacroBag, contour: Envelope[int]) -> int:
+    """How long the instrument runs before every dimension it writes stands at its end."""
+    lengths = [len(written.values) for written in macros.values()]
+    return max(lengths + [len(contour.items)])

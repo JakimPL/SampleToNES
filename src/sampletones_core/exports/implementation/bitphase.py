@@ -35,8 +35,8 @@ class BitphaseBackend:
 
     A ``.btp`` holds a whole document, so every scope lands in one file: an instrument
     and a reconstruction each become a playable document whose pattern triggers the
-    instruments it carries. Bitphase stores instrument and table rows without a length
-    limit, so every envelope crosses over whole.
+    instruments it carries. A macro holds the values of one dimension, up to the 512 a
+    Bitphase instrument stores, and a table carries a contour of any length.
     """
 
     @property
@@ -92,8 +92,8 @@ class BitphasePresetBackend:
 
     The panel reads one instrument per file into the slot the user has selected, so a
     whole reconstruction lands as a set of them beside the chosen destination, one file
-    per channel slice named after the instrument. A preset carries rows alone, so its
-    pitch contour rides in each row's tone offset.
+    per channel slice named after the instrument. A preset carries macros alone, so its
+    pitch contour rides in the tone offset each tick takes.
     """
 
     @property

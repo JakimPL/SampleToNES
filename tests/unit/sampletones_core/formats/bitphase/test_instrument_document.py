@@ -4,6 +4,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.bitphase.builder import project_to_bitphase
 from sampletones_core.formats.bitphase.specification.instruments import LOOP_FROM_START
+from sampletones_core.formats.bitphase.specification.macros import NesMacroField
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
@@ -48,21 +49,28 @@ class TestAnInstrumentReachesTheDocument:
 
         document = project_to_bitphase(project)
 
-        assert all(len(instrument.rows) == len(VOLUME) for instrument in document.instruments)
+        assert all(
+            len(instrument.macros[NesMacroField.VOLUME_OR_RATE].values) == len(VOLUME)
+            for instrument in document.instruments
+        )
 
     def test_a_looping_instrument_returns_to_its_loop_point(self) -> None:
         project, _ = _project(ChannelName.PULSE1, loop_point=1)
 
         document = project_to_bitphase(project)
 
-        assert all(instrument.loop == 1 for instrument in document.instruments)
+        assert all(instrument.macros[NesMacroField.VOLUME_OR_RATE].loop == 1 for instrument in document.instruments)
 
-    def test_a_one_shot_rests_on_its_final_row(self) -> None:
+    def test_a_one_shot_holds_its_final_value(self) -> None:
         project, _ = _project(ChannelName.PULSE1)
 
         document = project_to_bitphase(project)
 
-        assert all(instrument.loop == len(instrument.rows) - 1 for instrument in document.instruments)
+        assert all(
+            macro.loop == len(macro.values) - 1
+            for instrument in document.instruments
+            for macro in instrument.macros.values()
+        )
 
     def test_the_table_carries_the_instruments_contour(self) -> None:
         project, _ = _project(ChannelName.PULSE1)
@@ -71,9 +79,13 @@ class TestAnInstrumentReachesTheDocument:
 
         assert any(tuple(table.rows) == ARPEGGIO for table in document.tables)
 
-    def test_the_document_is_written_without_a_loop_past_its_rows(self) -> None:
+    def test_every_point_stands_among_the_values_it_circles(self) -> None:
         project, _ = _project(ChannelName.PULSE1, loop_point=LOOP_FROM_START)
 
         document = project_to_bitphase(project)
 
-        assert all(instrument.loop < len(instrument.rows) for instrument in document.instruments)
+        assert all(
+            macro.loop < len(macro.values)
+            for instrument in document.instruments
+            for macro in instrument.macros.values()
+        )

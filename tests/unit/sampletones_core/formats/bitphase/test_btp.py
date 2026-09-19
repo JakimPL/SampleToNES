@@ -44,19 +44,8 @@ SONG_KEYS: Final[List[str]] = [
 ]
 PATTERN_KEYS: Final[List[str]] = ["id", "length", "channels", "patternRows"]
 ROW_KEYS: Final[List[str]] = ["note", "effects", "instrument", "table", "volume"]
-INSTRUMENT_KEYS: Final[List[str]] = ["id", "chipType", "rows", "loop", "name"]
-INSTRUMENT_ROW_KEYS: Final[List[str]] = [
-    "pulseWidth",
-    "volumeOrRate",
-    "retrigger",
-    "soundLength",
-    "envelope",
-    "toneAdd",
-    "toneAccumulation",
-    "sweep",
-    "sweepRate",
-    "sweepShift",
-]
+INSTRUMENT_KEYS: Final[List[str]] = ["id", "chipType", "name", "macros"]
+MACRO_FIELDS: Final[List[str]] = ["volumeOrRate", "pulseWidth"]
 TABLE_KEYS: Final[List[str]] = ["id", "rows", "loop", "name", "additive"]
 
 
@@ -121,9 +110,13 @@ class TestTheDocumentCarriesEveryFieldBitphaseReads:
     def test_the_instrument_holds_its_field(self, document: Dict[str, Any], key: str) -> None:
         assert key in document["instruments"][0]
 
-    @pytest.mark.parametrize("key", INSTRUMENT_ROW_KEYS)
-    def test_the_instrument_row_holds_its_field(self, document: Dict[str, Any], key: str) -> None:
-        assert key in document["instruments"][0]["rows"][0]
+    @pytest.mark.parametrize("field", MACRO_FIELDS)
+    def test_the_instrument_states_the_fields_it_decides(self, document: Dict[str, Any], field: str) -> None:
+        assert field in document["instruments"][0]["macros"]
+
+    def test_a_macro_carries_its_values_and_the_point_they_circle_from(self, document: Dict[str, Any]) -> None:
+        macro = document["instruments"][0]["macros"]["volumeOrRate"]
+        assert set(macro) == {"values", "loop"}
 
     @pytest.mark.parametrize("key", TABLE_KEYS)
     def test_the_table_holds_its_field(self, document: Dict[str, Any], key: str) -> None:
@@ -171,20 +164,17 @@ class TestTheDocumentReadsAsNes:
 
 class TestTheEnvelopesSurvive:
     def test_the_volume_envelope_crosses_over_whole(self, document: Dict[str, Any]) -> None:
-        rows = document["instruments"][0]["rows"]
-        assert [row["volumeOrRate"] for row in rows] == VOLUME_ENVELOPE
+        assert document["instruments"][0]["macros"]["volumeOrRate"]["values"] == VOLUME_ENVELOPE
 
     def test_the_pitch_contour_crosses_over_whole(self, document: Dict[str, Any]) -> None:
         assert document["tables"][0]["rows"] == PITCH_CONTOUR
 
     def test_the_noise_mode_reaches_the_waveform_field(self, document: Dict[str, Any]) -> None:
-        rows = document["instruments"][1]["rows"]
-        assert [row["pulseWidth"] for row in rows] == [1, 1, 0, 0]
+        assert document["instruments"][1]["macros"]["pulseWidth"]["values"] == [1, 1, 0, 0]
 
-    def test_the_rows_read_their_level_as_a_literal_volume(self, document: Dict[str, Any]) -> None:
-        rows = document["instruments"][0]["rows"]
-        assert all(row["envelope"] is False for row in rows)
-
-    def test_the_rows_hold_the_note_for_as_long_as_the_envelope_runs(self, document: Dict[str, Any]) -> None:
-        rows = document["instruments"][0]["rows"]
-        assert all(row["soundLength"] == 0 for row in rows)
+    def test_the_fields_a_reconstruction_leaves_alone_are_left_out(self, document: Dict[str, Any]) -> None:
+        """Bitphase reads a field the instrument states no macro for at its own default, which is
+        the literal volume, the sustained note and the silent sweep a reconstruction asks for.
+        """
+        written = set(document["instruments"][0]["macros"])
+        assert written.isdisjoint({"envelope", "soundLength", "sweep", "toneAccumulation"})

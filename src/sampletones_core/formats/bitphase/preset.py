@@ -4,8 +4,10 @@ from typing import Final, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exports.request import InstrumentExport
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.bitphase.envelopes import features_to_envelopes
-from sampletones_core.formats.bitphase.model.instrument import BitphaseInstrumentPreset, NesInstrumentRow
+from sampletones_core.formats.bitphase.macros import macro
+from sampletones_core.formats.bitphase.model.instrument import BitphaseInstrumentPreset
 from sampletones_core.formats.bitphase.notes import pitch_to_note_index
 from sampletones_core.formats.bitphase.specification.chip import DEFAULT_A4_TUNING, DEFAULT_CPU_FREQUENCY
 from sampletones_core.formats.bitphase.specification.instruments import (
@@ -13,6 +15,7 @@ from sampletones_core.formats.bitphase.specification.instruments import (
     MIN_TONE_ADD,
     NO_TONE_OFFSET,
 )
+from sampletones_core.formats.bitphase.specification.macros import NesMacroField
 from sampletones_core.formats.bitphase.specification.patterns import MAX_NOTE_INDEX, MIN_NOTE_INDEX
 from sampletones_core.formats.bitphase.tuning import generate_tuning_table
 
@@ -30,12 +33,11 @@ def _tone_offsets(
 ) -> Tuple[int, ...]:
     """Expresses a semitone contour as the per-tick period offsets a preset carries.
 
-    A preset holds rows alone, so its pitch movement rides in each row's tone offset.
+    A preset holds macros alone, so its pitch movement rides in the tone offset each tick takes.
     The offsets are measured against the pitch the slice was reconstructed at, under the
     tuning the NTSC system gives at concert pitch, which is what a freshly created
     Bitphase document plays. The noise channel takes its period from the note rather
-    than from a period offset, so its rows hold a flat offset and the note carries the
-    pitch.
+    than from a period offset, so its offsets stay flat and the note carries the pitch.
     """
     if channel == ChannelName.NOISE:
         return (NO_TONE_OFFSET,) * len(contour)
@@ -70,18 +72,13 @@ def instrument_to_preset(request: InstrumentExport) -> BitphaseInstrumentPreset:
         request.features.initial_pitch,
         envelopes.table_rows,
     )
-    rows: Tuple[NesInstrumentRow, ...] = tuple(
-        row.model_copy(update={"tone_add": offset})
-        for row, offset in zip(
-            envelopes.rows,
-            offsets,
-        )
-    )
 
     return BitphaseInstrumentPreset(
         name=request.name,
-        loop=envelopes.loop,
-        rows=rows,
+        macros={
+            **envelopes.macros,
+            NesMacroField.TONE_ADD: macro(Envelope[int](items=offsets, loop_point=envelopes.table_loop)),
+        },
     )
 
 

@@ -29,8 +29,19 @@ BITPHASE_MAX_EFFECT_COLUMNS: Final[int] = 4
 BITPHASE_DEFAULT_INSTRUMENT_ID: Final[str] = "01"
 BITPHASE_DEFAULT_LOOP: Final[int] = 0
 BITPHASE_DEFAULT_TABLE_ID: Final[int] = 0
-BITPHASE_DEFAULT_PULSE_WIDTH: Final[int] = 2
-BITPHASE_DEFAULT_VOLUME_OR_RATE: Final[int] = 15
+BITPHASE_MAX_MACRO_LENGTH: Final[int] = 512
+BITPHASE_MACRO_DEFAULTS: Final[Dict[str, Any]] = {
+    "pulseWidth": 2,
+    "volumeOrRate": 15,
+    "envelope": False,
+    "retrigger": False,
+    "soundLength": 0,
+    "toneAdd": 0,
+    "toneAccumulation": False,
+    "sweep": False,
+    "sweepRate": 0,
+    "sweepShift": 0,
+}
 
 MIN_INITIAL_SPEED: Final[int] = 1
 MAX_INITIAL_SPEED: Final[int] = 255
@@ -76,31 +87,33 @@ class LoadedPattern:
 
 
 @dataclass(frozen=True)
-class LoadedInstrumentRow:
-    pulse_width: int
-    volume_or_rate: int
-    envelope: bool
-    sound_length: int
-    tone_add: int
-    tone_accumulation: bool
-    retrigger: bool
-    sweep: bool
-    sweep_rate: int
-    sweep_shift: int
+class LoadedMacro:
+    values: List[Any]
+    loop: int
 
 
 @dataclass(frozen=True)
 class LoadedInstrument:
     id: str
     chip_type: str
-    loop: int
     name: str
-    rows: List[LoadedInstrumentRow]
+    macros: Dict[str, LoadedMacro]
 
     @property
     def number(self) -> int:
         """The value a pattern's instrument column carries to play this instrument."""
         return int(self.id, 36)
+
+    def macro(self, field: str) -> LoadedMacro:
+        """The macro Bitphase reads a field from, which one the instrument leaves out defaults.
+
+        Args:
+            field: The instrument field, named as Bitphase keys it.
+
+        Returns:
+            LoadedMacro: The field's own macro, or the single default value it takes.
+        """
+        return self.macros.get(field, LoadedMacro(values=[BITPHASE_MACRO_DEFAULTS[field]], loop=0))
 
 
 @dataclass(frozen=True)
@@ -229,19 +242,16 @@ def _pattern(data: Dict[str, Any], labels: List[str]) -> LoadedPattern:
     )
 
 
-def _instrument_row(data: Dict[str, Any]) -> LoadedInstrumentRow:
-    return LoadedInstrumentRow(
-        pulse_width=data.get("pulseWidth", BITPHASE_DEFAULT_PULSE_WIDTH),
-        volume_or_rate=data.get("volumeOrRate", BITPHASE_DEFAULT_VOLUME_OR_RATE),
-        envelope=bool(data.get("envelope", False)),
-        sound_length=data.get("soundLength", 0),
-        tone_add=data.get("toneAdd", 0),
-        tone_accumulation=bool(data.get("toneAccumulation", False)),
-        retrigger=bool(data.get("retrigger", False)),
-        sweep=bool(data.get("sweep", False)),
-        sweep_rate=data.get("sweepRate", 0),
-        sweep_shift=data.get("sweepShift", 0),
-    )
+def _macro(data: Dict[str, Any]) -> LoadedMacro:
+    """One macro as Bitphase resolves it, within the values it stores and the loop they hold."""
+    values = list(data.get("values") or [])[:BITPHASE_MAX_MACRO_LENGTH]
+    loop = data.get("loop", BITPHASE_DEFAULT_LOOP)
+    return LoadedMacro(values=values, loop=min(max(loop, 0), max(len(values) - 1, 0)))
+
+
+def _macros(data: Dict[str, Any]) -> Dict[str, LoadedMacro]:
+    macros = data.get("macros") or {}
+    return {field: _macro(macro) for field, macro in macros.items()}
 
 
 def _instrument(data: Dict[str, Any]) -> LoadedInstrument:
@@ -250,9 +260,8 @@ def _instrument(data: Dict[str, Any]) -> LoadedInstrument:
     return LoadedInstrument(
         id=identifier if isinstance(identifier, str) else BITPHASE_DEFAULT_INSTRUMENT_ID,
         chip_type=chip_type if isinstance(chip_type, str) else BITPHASE_DEFAULT_CHIP_TYPE,
-        loop=data.get("loop", BITPHASE_DEFAULT_LOOP),
         name=data.get("name", BITPHASE_DEFAULT_NAME),
-        rows=[_instrument_row(row) for row in data.get("rows") or []],
+        macros=_macros(data),
     )
 
 

@@ -86,11 +86,11 @@ class SliceVoice:
 
     Attributes:
         number: Value a pattern's instrument column carries to play the instrument.
-        instrument: The per-tick rows the channel takes on.
+        instrument: The macros the channel reads a value per tick from.
         table: The per-tick semitone contour that moves the note.
         channel: The NES channel the slice was reconstructed for.
         initial_pitch: Pitch the slice's contour is measured against.
-        ticks: How many ticks the instrument runs before it loops.
+        ticks: How many ticks the instrument runs before every dimension stands at its end.
     """
 
     number: int
@@ -135,19 +135,18 @@ def _build_slice_voice(
         number=number,
         instrument=BitphaseInstrument(
             id=format_instrument_id(number),
-            rows=envelopes.rows,
-            loop=envelopes.loop,
+            macros=envelopes.macros,
             name=name,
         ),
         table=BitphaseTable(
             id=table_id,
             rows=envelopes.table_rows,
-            loop=envelopes.loop,
+            loop=envelopes.table_loop,
             name=name,
         ),
         channel=channel,
         initial_pitch=initial_pitch,
-        ticks=len(envelopes.rows),
+        ticks=envelopes.ticks,
     )
 
 
