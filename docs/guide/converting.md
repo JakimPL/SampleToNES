@@ -86,3 +86,5 @@ A conversion builds the library it needs by itself, so you rarely need this tab.
 Select an instruction to see its **Waveform** and **Spectrum**. This lets you see and hear a single NES tone on its own. Click the waveform to play the tone from that point.
 
 **Generate library** builds a library for your current settings. Once a library is loaded, the button reads **Regenerate instructions**.
+
+Opening a library that another version of _SampleToNES_ built asks whether to rebuild it. **Rebuild** builds it again for the settings it was built for, which takes a while.

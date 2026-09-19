@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
-from typing import List
+from typing import Final, List, Optional
+
+import pytest
 
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.outcome import (
@@ -13,9 +15,13 @@ from sampletones_application.view_model.main.updates import (
     AudioSettingsUpdate,
     LibrarySettingsUpdate,
 )
-from sampletones_core.configs import Config
+from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import SpectrumMethod
+from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryKey
+
+OTHER_TUNING: Final[float] = 432.0
+STORED_GAMMA: Final[int] = 50
 
 
 def _manager(path: Path) -> ConfigManager:
@@ -172,6 +178,49 @@ class TestConfigManagerApplySettings:
         update = AudioSettingsUpdate(normalize=True, quantize=False)
         manager.apply_audio_settings(update)
         assert fired == ["changed"]
+
+
+class TestApplyingTheSettingsOfALibrary:
+    """Opening a library makes the settings it was built for the configuration's, so the
+    configuration names the library's own file."""
+
+    def test_the_settings_a_library_states_are_applied_whole(self, tmp_path: Path) -> None:
+        manager = _manager(tmp_path / "missing.json")
+        stored = _library_settings(manager).model_copy(update={"a4_frequency": OTHER_TUNING})
+        key = _key_of(stored)
+
+        manager.apply_library_config(key, stored)
+
+        assert (manager.config.library, manager.key) == (stored, key)
+
+    @pytest.mark.parametrize(
+        "stored_tuning",
+        [None, OTHER_TUNING],
+        ids=["no settings stated", "settings naming another file"],
+    )
+    def test_the_filename_settings_stand_over_the_current_tuning(
+        self,
+        tmp_path: Path,
+        stored_tuning: Optional[float],
+    ) -> None:
+        manager = _manager(tmp_path / "missing.json")
+        named = _library_settings(manager)
+        stored = None if stored_tuning is None else named.model_copy(update={"a4_frequency": stored_tuning})
+
+        manager.apply_library_config(_key_of(named), stored)
+
+        assert manager.config.library == named
+
+
+def _library_settings(manager: ConfigManager) -> InstructionsLibraryConfig:
+    """Library settings the manager's configuration differs from, at the manager's own tuning."""
+    return manager.config.library.model_copy(
+        update={"spectrum_method": SpectrumMethod.FFT, "transformation_gamma": STORED_GAMMA}
+    )
+
+
+def _key_of(library_config: InstructionsLibraryConfig) -> InstructionLibraryKey:
+    return InstructionLibraryKey.create(library_config, Window.from_config(library_config))
 
 
 class TestConfigManagerProperties:

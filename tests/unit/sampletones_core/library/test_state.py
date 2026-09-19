@@ -54,6 +54,10 @@ def _write_archived(path: Path) -> None:
     shutil.copyfile(archived(ObjectKind.LIBRARY, LIBRARY_VERSION), path)
 
 
+def _write_directory(path: Path) -> None:
+    path.mkdir()
+
+
 def _write_bytes(content: bytes) -> Callable[[Path], None]:
     def write(path: Path) -> None:
         path.write_bytes(content)
@@ -90,6 +94,7 @@ class TestWhereALibraryFileStands(BaseTestSuite):
         TestCase(label="a library stating no version", write=_write_stating_no_version, expected=LibraryState.OUTDATED),
         TestCase(label="an empty file", write=_write_bytes(b""), expected=LibraryState.OUTDATED),
         TestCase(label="bytes of no format", write=_write_bytes(b"\xc1" * 32), expected=LibraryState.OUTDATED),
+        TestCase(label="a path the system reads no file from", write=_write_directory, expected=LibraryState.OUTDATED),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)

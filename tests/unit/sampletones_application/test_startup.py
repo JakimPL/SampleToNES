@@ -282,10 +282,10 @@ class TestStartupRestoreDelegation:
         load_reconstruction_safely.assert_called_once_with(Path("last.stn"))
 
     def test_library_load_delegates_to_coordinator(self, app: Application) -> None:
-        with patch.object(app._instructions_tab, "load_library_safely") as load_library_safely:
+        with patch.object(app._instructions_tab, "load_library_file") as load_library_file:
             app._try_load_library(Path("last.ins"))
 
-        load_library_safely.assert_called_once_with(Path("last.ins"))
+        load_library_file.assert_called_once_with(Path("last.ins"))
 
 
 class TestReconstructionSaveAsDetachment:

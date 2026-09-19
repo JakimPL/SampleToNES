@@ -664,7 +664,7 @@ class Application:
         self._project_coordinator.load_project_safely(path)
 
     def _try_load_library(self, path: Path) -> None:
-        self._instructions_tab.load_library_safely(path)
+        self._instructions_tab.load_library_file(path)
 
     def _load_layout_config(self) -> LayoutConfig:
         try:

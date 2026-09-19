@@ -13,6 +13,7 @@ from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.view_model.main.updates import AdvancedSettingsUpdate
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.library import InstructionLibraryKey, LibraryState
+from sampletones_core.structures.tree import LibraryNode
 from tests.suite.compatibility import LIBRARY_VERSION, archived
 from tests.suite.library import OTHER_LIBRARIES, WrittenLibrary, write_empty_library
 
@@ -83,6 +84,27 @@ class TestTheLibraryAConfigurationNames:
             library_manager.library_state(config_manager.key),
             library_manager.sync_with_config_key(config_manager.key),
         ) == (LibraryState.OUTDATED, None)
+
+
+class TestTheLibrariesTheCatalogLists:
+    def test_a_library_another_version_built_is_marked(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        _set_transformation_gamma(config_manager, 50)
+        earlier_key = config_manager.key
+        _create_earlier_library_file(library_manager, earlier_key)
+        _set_transformation_gamma(config_manager, 100)
+        _create_library_file(library_manager, config_manager.key)
+
+        library_manager.gather_available_libraries()
+        library_manager.rebuild_tree()
+
+        root = library_manager.tree.get_root()
+        assert root is not None
+        marks = {node.library_key: node.outdated for node in root.children if isinstance(node, LibraryNode)}
+        assert marks == {earlier_key: True, config_manager.key: False}
 
 
 class TestTheDirectoryTheCatalogStandsAt:

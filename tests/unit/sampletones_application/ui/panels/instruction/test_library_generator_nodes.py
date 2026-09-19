@@ -10,6 +10,8 @@ from tests.suite.language import FakeLanguageManager
 
 STATUS_KEY: Final[str] = "instructions.library.message.status_node_generator"
 STATUS_TEXT: Final[str] = "{generator} of {library_key}"
+OUTDATED_KEY: Final[str] = "instructions.library.template.library_node_outdated_template"
+OUTDATED_TEXT: Final[str] = "{} (out of date)"
 LIBRARY_FILENAME: Final[str] = "library_abc123"
 
 
@@ -25,13 +27,13 @@ def _library_key() -> InstructionLibraryKey:
 
 
 def _generator_node() -> GeneratorNode:
-    library = LibraryNode("Library", library_key=_library_key())
+    library = LibraryNode("Library", library_key=_library_key(), outdated=False)
     return GeneratorNode("Pulse", generator_name=GeneratorName.PULSE, parent=library)
 
 
 def _panel() -> GUIInstructionsLibraryPanel:
     panel = GUIInstructionsLibraryPanel.__new__(GUIInstructionsLibraryPanel)
-    panel._language_manager = FakeLanguageManager(texts={STATUS_KEY: STATUS_TEXT})
+    panel._language_manager = FakeLanguageManager(texts={STATUS_KEY: STATUS_TEXT, OUTDATED_KEY: OUTDATED_TEXT})
     return panel
 
 
@@ -74,3 +76,18 @@ class TestGeneratorNodeSelection:
         panel._on_load_generator(None, True, _generator_node())
 
         assert selected == [(_library_key(), GeneratorName.PULSE)]
+
+
+class TestTheRowOfALibrary:
+    """A library another version built reads as out of date, while its name, which the row's
+    tag and remembered expansion are built from, stays as it is."""
+
+    def test_a_library_another_version_built_reads_as_out_of_date(self) -> None:
+        node = LibraryNode("Library", library_key=_library_key(), outdated=True)
+
+        assert (_panel()._node_label(node), node.name) == ("Library (out of date)", "Library")
+
+    def test_a_library_this_build_reads_reads_as_its_name(self) -> None:
+        node = LibraryNode("Library", library_key=_library_key(), outdated=False)
+
+        assert _panel()._node_label(node) == "Library"

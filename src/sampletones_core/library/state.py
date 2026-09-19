@@ -22,8 +22,8 @@ VERSION_FIELD: Final[str] = "library_data_version"
 class LibraryState(Enum):
     """Where a library file stands for the build about to use it.
 
-    A current library is one this build loads. An outdated one is on disk but was written for
-    another build, so it is rebuilt before use. A missing one is generated.
+    A current library is one this build loads. An outdated one is any other file standing there,
+    most often one another build wrote, and it is rebuilt before use. A missing one is generated.
     """
 
     MISSING = auto()
@@ -37,7 +37,8 @@ class LibraryHeader:
     settings it was built for.
 
     A library stores both ahead of its entries, so they read from the first bytes of the file
-    whatever its size. Each is ``None`` where the file states it in no form this build reads.
+    whatever its size. Each is ``None`` where the file states it in no form this build reads, a
+    file the system refuses to read included.
     """
 
     metadata: Optional[Metadata]
@@ -48,9 +49,15 @@ class LibraryHeader:
         """The header of the library stored at ``path``.
 
         Raises:
-            OSError: If the file cannot be read, a missing one included.
+            FileNotFoundError: If no file stands at ``path``.
         """
-        fields = read_leading_fields(path, HEADER_FIELDS)
+        try:
+            fields = read_leading_fields(path, HEADER_FIELDS)
+        except FileNotFoundError:
+            raise
+        except OSError:
+            fields = {}
+
         return cls(
             metadata=cls._stored_metadata(fields.get(METADATA_FIELD)),
             config=cls._stored_config(fields.get(CONFIG_FIELD)),
@@ -105,7 +112,7 @@ def library_state(path: Path) -> LibraryState:
 
     Returns:
         LibraryState: ``CURRENT`` for a file this build loads, ``OUTDATED`` for any other file,
-            and ``MISSING`` where there is no file.
+            one the system refuses to read included, and ``MISSING`` where there is no file.
     """
     try:
         header = LibraryHeader.read(path)

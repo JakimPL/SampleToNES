@@ -434,6 +434,14 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
             user_data=node,
         )
 
+    def _node_label(self, node: TreeNode) -> str:
+        if isinstance(node, LibraryNode) and node.outdated:
+            return self._language_manager["instructions.library.template.library_node_outdated_template"].format(
+                node.name
+            )
+
+        return node.name
+
     def _is_current_library_node(self, node: TreeNode) -> bool:
         if not isinstance(node, LibraryNode):
             return False

@@ -6,7 +6,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.view_model.instruction.data import InstructionPanelData
-from sampletones_core.configs import Config
+from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.fft import Window
 from sampletones_core.instructions.types import InstructionUnion
@@ -14,6 +14,7 @@ from sampletones_core.library import (
     InstructionLibrary,
     InstructionLibraryData,
     InstructionLibraryKey,
+    LibraryHeader,
     LibraryState,
     create_key_from_filename,
     get_display_name_from_key,
@@ -29,7 +30,6 @@ from sampletones_core.structures.tree import (
     Tree,
     TreeNode,
 )
-from sampletones_shared.logger import logger
 from sampletones_shared.paths.extensions import EXT_FILE_LIBRARY
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -50,7 +50,7 @@ class InstructionsLibraryManager(CallbackMixin):
         self._config_manager = config_manager
         library_directory = config_manager.get_library_directory()
         self._library = InstructionLibrary(directory=str(library_directory))
-        self._library_files: Dict[InstructionLibraryKey, str] = {}
+        self._listed_libraries: Dict[InstructionLibraryKey, bool] = {}
         self._current_library_key: Optional[InstructionLibraryKey] = None
 
         self._tree = Tree()
@@ -72,26 +72,20 @@ class InstructionsLibraryManager(CallbackMixin):
         if directory != self.library_directory:
             self._library = InstructionLibrary(directory=str(directory))
 
-    def gather_available_libraries(self) -> Dict[InstructionLibraryKey, str]:
-        library_directory = to_path(self._library.directory)
-        if not library_directory.exists():
-            self._library_files.clear()
-            self.rebuild_tree()
-            return {}
+    def gather_available_libraries(self) -> None:
+        """Lists the library files standing in the catalog's directory, marking each one another
+        version built, and lets go of the libraries whose files are gone."""
+        library_directory = self.library_directory
+        listed: Dict[InstructionLibraryKey, bool] = {}
+        if library_directory.exists():
+            for filepath in library_directory.iterdir():
+                if filepath.is_file() and filepath.suffix == EXT_FILE_LIBRARY and self._is_library_file(filepath.stem):
+                    listed[create_key_from_filename(filepath)] = library_state(filepath) is LibraryState.OUTDATED
 
-        new_library_files = {}
-        for filepath in library_directory.iterdir():
-            if filepath.is_file() and filepath.suffix == EXT_FILE_LIBRARY and self._is_library_file(filepath.stem):
-                library_key = create_key_from_filename(filepath)
-                new_library_files[library_key] = filepath.stem
+        for removed_key in set(self._listed_libraries) - set(listed):
+            self._library.data.pop(removed_key, None)
 
-        removed_libraries = set(self._library_files.keys()) - set(new_library_files.keys())
-        for removed_key in removed_libraries:
-            if removed_key in self._library.data:
-                del self._library.data[removed_key]
-
-        self._library_files = new_library_files
-        return self._library_files
+        self._listed_libraries = listed
 
     def is_library_loaded(self, library_key: InstructionLibraryKey) -> bool:
         """Whether the catalog holds the library ``library_key`` names in memory.
@@ -105,25 +99,22 @@ class InstructionsLibraryManager(CallbackMixin):
         """Where the library ``library_key`` names stands in the catalog for this build."""
         return self._library.state(library_key)
 
-    def load_library(self, library_key: InstructionLibraryKey) -> bool:
-        if self.is_library_loaded(library_key):
-            self._current_library_key = library_key
-            return True
+    def stored_config(self, library_key: InstructionLibraryKey) -> Optional[InstructionsLibraryConfig]:
+        """The settings the library ``library_key`` names states it was built for, where its file
+        states them in a form this build reads."""
+        try:
+            return LibraryHeader.read(self.get_path(library_key)).config
+        except FileNotFoundError:
+            return None
 
-        if library_key not in self._library_files:
-            return False
+    def load_library(self, library_key: InstructionLibraryKey) -> InstructionLibraryData:
+        """Takes up the library ``library_key`` names as the current one, reading it from its file
+        where the catalog holds it in no memory yet."""
+        if not self.is_library_loaded(library_key):
+            self._library.load_data(library_key)
 
-        self._library.load_data(library_key)
         self._current_library_key = library_key
-        return True
-
-    def load_library_file(self, path: Path) -> InstructionLibraryKey:
-        logger.info(f"Loading library data: {logger.format_path(path)}")
-        library_key = create_key_from_filename(path)
-        self._library.load_data(library_key)
-        self._current_library_key = library_key
-        logger.info(f"Library data: {logger.format_path(path)} loaded successfully")
-        return library_key
+        return self._library.data[library_key]
 
     def load_instruction(
         self,
@@ -278,14 +269,10 @@ class InstructionsLibraryManager(CallbackMixin):
 
         return True
 
-    def _get_display_name(self, filename: str) -> str:
-        key = create_key_from_filename(filename)
-        return get_display_name_from_key(key)
-
     def rebuild_tree(self) -> None:
         root = TreeNode(self._language_manager["instructions.library.label.libraries_node"], node_type=NodeType.ROOT)
 
-        for library_key in sorted(self._library_files.keys(), key=get_display_name_from_key):
+        for library_key in sorted(self._listed_libraries, key=get_display_name_from_key):
             self._build_library_node(library_key, root)
 
         self._tree.set_root(root)
@@ -299,6 +286,7 @@ class InstructionsLibraryManager(CallbackMixin):
         library_node = LibraryNode(
             display_name,
             library_key=library_key,
+            outdated=self._listed_libraries[library_key],
             parent=parent,
         )
         self._build_generator_nodes(library_node)
