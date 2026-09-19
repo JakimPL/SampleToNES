@@ -74,12 +74,12 @@ alone, so it runs on a clock of its own: a note played straight costs it nothing
 channel that never bends leaves it out of the block. A loop re-enters it at the value its
 flags have reached, which is a boundary like any other.
 
-Trading two dividers for an index and a bend is worth about a twentieth once the
-planes are coded, since a bend a song never uses is absent from the block. The larger
-half is that **a pitch index can be transposed and a divider cannot.** The same figure played
+Before any phrase, trading two dividers for an index and a bend is worth little: on the
+arrangement §6 measures, which bends most of its notes, it costs about 2 %. What it earns
+is that **a pitch index can be transposed and a divider cannot.** The same figure played
 at five pitches is five unrelated byte sequences in divider space; in index space it
-is one sequence and five offsets. That is what turns a repeated sample into a single
-dictionary entry in §5.
+is one sequence and five offsets, its bend the same bytes throughout. That is what turns
+a repeated sample into a single dictionary entry in §5.
 
 ## 3. The token language
 
@@ -252,24 +252,26 @@ above it:
 
 | what is stored | bytes per tick | ratio | ticks that fit |
 |---|---|---|---|
-| a record per tick per channel | 11.000 | 1.00 | 2923 |
-| planes, coded | 1.735 | 6.34 | 18527 |
-| planes with a pitch index and a bend | 1.645 | 6.69 | 19644 |
-| phrases from the instruments | 1.191 | 9.23 | 27302 |
-| phrases played transposed | 1.046 | 10.52 | 31194 |
-| phrases from the search as well | **0.880** | **12.49** | **37238** |
+| a record per tick per channel | 11.000 | 1.00 | 2914 |
+| planes, coded | 3.517 | 3.13 | 9115 |
+| planes with a pitch index and a bend | 3.604 | 3.05 | 8885 |
+| phrases from the instruments | 1.989 | 5.53 | 16201 |
+| phrases played transposed | 1.593 | 6.90 | 20294 |
+| phrases from the search as well | **1.346** | **8.17** | **24130** |
 
-The whole song is 9509 bytes of the roughly 32000 available, and **37238 ticks is 10.3
-minutes at 60 Hz**, against the 49 seconds a record per tick reaches. Encoding it costs
-about two seconds; decoding it costs the console around twenty instructions per plane
-per tick, comfortably inside a video frame.
+The arrangement bends most of the notes its pulse channel plays, and its bend plane
+carries every one of them; a song played straight leaves its bend planes out of the
+block. The whole song is 14534 bytes of the roughly 32000 available, and **24130 ticks
+is 6.7 minutes at 60 Hz**, against the 49 seconds a record per tick reaches. Encoding it
+costs between two and three seconds; decoding it costs the console around twenty
+instructions per plane per tick, comfortably inside a video frame.
 
 `uv run sampletones codec report` writes this table over a corpus of songs, and the format's
 constants are settled from it. Two of them were settled against expectation: splitting
-the duty cycle out of the control byte into a plane of its own **costs** 14 %, because
+the duty cycle out of the control byte into a plane of its own **costs** 9 %, because
 volume and duty turn over together and a split pays two opcodes for what one covers;
-and the pitch index earns its place twice, 5 % directly and a further 12 % through the
-transposition it makes possible.
+and the pitch index earns its place through the transposition it makes possible, 20 %,
+where directly it costs the bent arrangement about 2 %.
 
 An export chooses how far down these layers it goes. The **Level** it is written at names the
 layers read in order: *None* spells every plane out as literals, *Held sounds* adds holds,
