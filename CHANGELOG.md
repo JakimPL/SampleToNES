@@ -4,6 +4,7 @@
 
 * Added NSF player and export.
 * Added stems conversion: to mix several recordings into one reconstruction.
+* Updated the Bitphase export to the tracker's current instrument format, with pitch bends.
 * Improved clarity of reconstructions.
 * Optimized the size of reconstructions.
 * Bumped the reconstruction data-version to `2.2` with backward compatibility for `2.1`.
