@@ -334,13 +334,15 @@ silences them.
    a color never reads as a channel's. A recording takes its color from the place
    it holds on the record, so one recording reads alike wherever it is drawn. The
    lanes stand only where more than one recording is in play, since a document
-   answering to a single recording has nothing to tell apart, and a stretch
-   outside what the reader hears reads as a rest — the ribbon states what is
-   heard, like every other reading. Each row of the card leads with a square in
+   answering to a single recording has nothing to tell apart. A stretch reads in
+   three ways: solid where the reader hears the recording holding it, that same
+   color faded where the reader left it out, and the ground where the frames rest
+   — so a stretch names its owner whether or not it is listened to, and the
+   reading sits on top of the record. Each row of the card leads with a square in
    the color its recording is painted in, so a stretch on screen answers to a
    name at a glance. The instruments panel paints the same stretches in a band
-   beneath each dimension's bars, under the frames those bars draw, so a frame a
-   left-out recording holds reads as that recording rather than as a rest.
+   beneath each dimension's bars, under the frames those bars draw, by the same
+   three readings.
 
 ### Mechanics
 

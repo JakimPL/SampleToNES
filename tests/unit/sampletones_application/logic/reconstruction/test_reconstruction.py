@@ -23,7 +23,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 from sampletones_application.view_model.shared.ownership import OwnershipRibbonViewModel
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
 from sampletones_core.constants.enums import AudioSourceType, ChannelName, bending_channels
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.instructions import PulseInstruction, TriangleInstruction
@@ -1344,12 +1344,27 @@ class TestTheLanesTheRibbonStandsOn:
         assert all(lane.runs == () for lane in ribbon.lanes)
         assert ribbon.is_drawn
 
-    def test_a_recording_switched_off_leaves_its_stretches_resting(
+    def test_a_stretch_the_reader_hears_stands_under_its_recording(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         stems_data: ReconstructionData,
     ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        received = self._ribbons(panel_logic)
+
+        panel_logic.display_reconstruction()
+
+        pulse_lane = next(lane for lane in received[-1].lanes if lane.channel_name == ChannelName.PULSE1)
+        assert [(run.stem_id, run.heard) for run in pulse_lane.runs] == [(0, True)]
+
+    def test_a_recording_switched_off_keeps_its_stretch_under_its_own_name(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        """A stretch names the recording holding it whether or not the reader is listening to it."""
         _open(mock_reconstruction_manager, stems_data)
         panel_logic.display_reconstruction()
         received = self._ribbons(panel_logic)
@@ -1357,7 +1372,7 @@ class TestTheLanesTheRibbonStandsOn:
         panel_logic.set_stem_channels(0, frozenset())
 
         pulse_lane = next(lane for lane in received[-1].lanes if lane.channel_name == ChannelName.PULSE1)
-        assert [run.stem_id for run in pulse_lane.runs] == [RESTING_STEM_ID]
+        assert [(run.stem_id, run.heard) for run in pulse_lane.runs] == [(0, False)]
 
     def test_a_document_answering_to_one_recording_offers_no_lanes(
         self,

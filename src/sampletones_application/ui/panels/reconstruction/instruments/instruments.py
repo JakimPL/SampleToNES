@@ -120,7 +120,7 @@ from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 
-SINGLE_FRAME: Final[float] = 1.0
+ONE_SLOT_PER_FRAME: Final[float] = 1.0
 
 OnInstrumentExportCallback = Callable[[ChannelName], None]
 OnAuditionCallback = Callable[[int], None]
@@ -716,21 +716,18 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         The band stands under the frames the bars draw, so the two read column for column
         whatever the dimension's own values reach. A document answering to one recording has
-        nothing to tell apart and paints none.
+        nothing to tell apart, and gives the band back to the bars.
         """
         plot = self.channel_plots.get(channel_name, {}).get(feature_key)
         if plot is None:
             return
 
-        if not lane.runs:
-            self._ownership.clear(plot.y_axis_tag)
-            return
-
+        share = self._layout_graphs.bar_plot.ownership_band if lane.runs else 0.0
         self._ownership.paint(
             plot.y_axis_tag,
             lane.runs,
-            frame_span=SINGLE_FRAME,
-            band=plot.reserve_band(self._layout_graphs.bar_plot.ownership_band),
+            frame_span=ONE_SLOT_PER_FRAME,
+            band=plot.reserve_band(share),
         )
 
     def _feature_envelope(

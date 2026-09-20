@@ -13,12 +13,14 @@ class OwnershipRunViewModel(BaseModel, extra="forbid", frozen=True):
         end_frame: The frame the stretch runs up to, one past its last.
         stem_id: The stem holding it, which names the color.
         position: Where that stem's entry stands on the record, which picks the color.
+        heard: Whether the reader hears that recording here, which settles how solidly it paints.
     """
 
     start_frame: int
     end_frame: int
     stem_id: int
     position: int
+    heard: bool
 
 
 class OwnershipLaneViewModel(BaseModel, extra="forbid", frozen=True):

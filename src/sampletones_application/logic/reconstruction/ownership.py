@@ -4,7 +4,6 @@ from sampletones_application.view_model.shared.ownership import (
     OwnershipLaneViewModel,
     OwnershipRunViewModel,
 )
-from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.ownership import heard_frame, owner_runs
@@ -47,8 +46,8 @@ def ownership_lane(
 ) -> OwnershipLaneViewModel:
     """One channel's lane: the stretches it divides into, each under the recording heard on it.
 
-    A stretch whose recording the reader left out reads as rest, so the lane paints what is
-    listened to rather than what the record holds.
+    A stretch keeps the recording holding it and says whether the reader hears it there, so
+    the lane names an owner wherever the record does and shows the reader's choice on top of it.
 
     Args:
         channel_name: The channel the lane stands for.
@@ -65,8 +64,9 @@ def ownership_lane(
             OwnershipRunViewModel(
                 start_frame=run.start,
                 end_frame=run.end,
-                stem_id=run.stem_id if heard_frame(run.stem_id, heard) else RESTING_STEM_ID,
+                stem_id=run.stem_id,
                 position=positions.get(run.stem_id, 0),
+                heard=heard_frame(run.stem_id, heard),
             )
             for run in owner_runs(stem_ids)
         ),
