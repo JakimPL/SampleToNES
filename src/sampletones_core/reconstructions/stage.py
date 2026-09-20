@@ -11,15 +11,17 @@ class ReconstructionStage(StrEnum):
     it names.
 
     Matching visits the library once per frame per stem and is the whole of what a run spends its
-    time on, which is what :data:`STAGE_WEIGHTS` states: measured over whole runs it takes some
-    ninety-seven parts in a hundred, decoding two, and the gathering a tenth of one. Loading keeps
-    a larger share than a warm run spends there, because a run opening a library of its own pays
-    that reading once and a short recording spends a quarter of itself on it — and a bar standing
-    still is noticed, while one moving a little early is not.
+    time on: measured over whole runs it takes some ninety-seven parts in a hundred, decoding two,
+    and the gathering a tenth of one. :data:`STAGE_WEIGHTS` turns those measurements into shares a
+    bar reads well. Loading takes eight, because a run opening a library of its own pays that
+    reading once and a short recording spends a quarter of itself on it — a bar standing still is
+    noticed, while one moving a little early is not. The gathering takes one so the last stage
+    moves visibly, decoding keeps the two it measures, and matching keeps the eighty-nine that
+    remain.
 
-    The weights are counts rather than fractions, so what a stage is worth is stated against the
-    others and a reading is one division at the point of use — which is what lets the last stage
-    arrive exactly at the whole run.
+    The weights are counts, each stating what a stage is worth against the others, and a reading
+    divides once at the point of use — which is what lets the last stage arrive exactly at the
+    whole run.
     """
 
     LOADING = "loading"
