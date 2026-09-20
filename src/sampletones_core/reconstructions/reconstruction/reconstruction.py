@@ -28,6 +28,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.data import DataModel, Metadata, MetadataContract
+from sampletones_core.data.document import decompress_document
 from sampletones_core.exporters import (
     CHANNEL_TO_EXPORTER_MAP,
     INSTRUCTION_TO_EXPORTER_MAP,
@@ -436,9 +437,8 @@ class Reconstruction(DataModel):
 
     @classmethod
     def load(cls, path: Pathlike, fast: bool = True) -> Reconstruction:
-        binary = load_binary(path)
         return cls.deserialize_data(
-            binary,
+            load_binary(path),
             source=Path(path),
             validation=cls.validate_metadata,
             fast=fast,
@@ -453,7 +453,7 @@ class Reconstruction(DataModel):
         fast: bool = True,
     ) -> Reconstruction:
         try:
-            binary = upgrade_binary(ObjectKind.RECONSTRUCTION, binary)
+            binary = upgrade_binary(ObjectKind.RECONSTRUCTION, decompress_document(binary))
             return cls.deserialize(binary, validation=validation, fast=fast)
         except (ValidationError, TypeError, ValueError, struct.error, IndexError) as exception:
             raise InvalidReconstructionValuesError(

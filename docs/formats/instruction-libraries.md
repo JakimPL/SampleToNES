@@ -41,8 +41,10 @@ method mean is covered in [Reconstruction algorithms](../concepts/reconstruction
 
 ## File format
 
-Libraries are stored as `.ins` files in the documents folder, with the
-configuration embedded in the file name:
+Libraries are stored as `.ins` files in the documents folder. A file holds a
+deflated [MessagePack](https://msgpack.org/) payload, the framing described in
+[Reconstructions](reconstructions.md#storage-and-export), and carries its
+configuration in the file name:
 
 ```
 sr_44100_nf_60_ws_13579_tg_0_sm_cqt_ch_384e710987cb958adf2b214df1267d10.ins

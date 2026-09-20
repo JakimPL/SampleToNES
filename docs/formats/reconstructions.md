@@ -114,9 +114,13 @@ The current data version is 2.2.
 
 ## Storage and export
 
-`.stn` files live in the documents folder. They are binary
-([MessagePack](https://msgpack.org/)) and self-contained: everything needed to
-play a reconstruction is the instructions, the stems assignment and the frozen
-configuration the file carries. The instruction streams can be exported to a
+`.stn` files live in the documents folder. They hold a deflated
+[MessagePack](https://msgpack.org/) payload and are self-contained: everything
+needed to play a reconstruction is the instructions, the stems assignment and the
+frozen configuration the file carries. A payload names every field of every
+frame, and a reconstruction holds one frame per channel per frame of audio, so
+the names repeat thousands of times over and deflate to a small fraction of the
+file. A payload stored plainly reads as it stands, so a file written by an
+earlier build opens as it is. The instruction streams can be exported to a
 tracker — one instrument per channel, or a whole module — as described in
 [FamiTracker export](famitracker.md) and [Bitphase export](bitphase.md).
