@@ -213,14 +213,9 @@ again.
   is out of reach. Lifting the phrasing to the layer that shows it is what settles it.
 * `_on_bar_point_clicked` composes a raw-data tag the text field does not carry, so its write
   finds nothing and the field catches up only when the edit returns through the regeneration.
-* A reconstruction written before the recorded sources moved onto the stems record reads with
-  none of them, so the browser, original playback and the Stems card see a detached document
-  where the file names its recordings under the top-level `audio_filepath`. Folding those paths
-  onto `StemsData.sources` is what the reconstruction 2.2 conversion step still owes, along with
-  the per-entry drives and channel count a mid-branch 2.2 file carries at the top of its setup.
 * `ReconstructionStage.RENDERING` keeps the weight it was measured at while a conversion no longer
   renders, so a bar covers that share faster than the eight parts in a hundred `STAGE_WEIGHTS`
   gives it. Re-measuring the four stages over whole runs is what settles the new figures.
-* `performance/audition.py` previews an instrument at unit drive, where a reconstruction's own
-  frames sound at the drive their recording gives the channel. Which level a preview belongs at is
-  worth stating either way.
+* A sample sounds at unit drive inside a song, since `sampletones_core/performance/` carries no
+  drive, while the same sample's own approximation renders each frame at the drive its recording
+  gives that channel.

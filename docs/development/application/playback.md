@@ -51,6 +51,11 @@ types in, and renders the voice through the same two steps a tracker row takes �
 instrument's own pitch to the note, at full volume. The plot card draws the same rendering at the
 pitch the instrument stands at, so what is seen and what is heard name one generator.
 
+**An audition sounds at unit drive.** A drive belongs to a recording — it is the level a stem's
+settings push each channel it holds at — and an instrument is written rather than recorded, so
+the level its envelopes state is the level it sounds at. A sample previews its reconstruction's
+own frames instead, which render at the drive each recording gives the channel.
+
 **A voice sounded on its own runs to its release, or to the length it is offered.** A row holds a
 voice for as long as the pattern asks, while an audition and the voice list's preview have no row
 behind them, so each states a span of its own. A volume dimension ending at silence releases the
