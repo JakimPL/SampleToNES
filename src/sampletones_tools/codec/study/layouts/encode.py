@@ -3,6 +3,7 @@ from time import process_time
 from sampletones_player.compression.decode import decode_plane
 from sampletones_player.compression.encode import encode_streams
 from sampletones_player.compression.options import EVERY_LAYER
+from sampletones_player.specification.song import SONG_HEADER_SIZE
 from sampletones_tools.codec.study.corpus.song import StudySong
 from sampletones_tools.codec.study.layouts.layout import PlaneLayout
 from sampletones_tools.codec.study.layouts.planes import layout_planes, layout_seeds
@@ -36,6 +37,7 @@ def encode_layout(
     seconds = process_time() - started
 
     return Encoding(
+        header=SONG_HEADER_SIZE,
         phrases=len(table),
         dictionary=table.size,
         streams=tuple(len(stream) for stream in streams),

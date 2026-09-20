@@ -1,11 +1,12 @@
 from typing import FrozenSet, List, Tuple
 
-from sampletones_tools.codec.study.packing.form import SINGLE_TICK, PlaneForm
+from sampletones_tools.codec.study.packing.coding import PlaneCoding
+from sampletones_tools.codec.study.packing.form import SINGLE_TICK
 
 
 def pack_plane(
     plane: bytes,
-    form: PlaneForm,
+    form: PlaneCoding,
     *,
     boundaries: FrozenSet[int],
 ) -> bytes:
@@ -39,7 +40,7 @@ def pack_plane(
 
 def unpack_plane(
     symbols: bytes,
-    form: PlaneForm,
+    form: PlaneCoding,
 ) -> bytes:
     """The values a run of symbols plays, one per tick.
 
@@ -59,7 +60,7 @@ def unpack_plane(
 
 def symbol_boundaries(
     plane: bytes,
-    form: PlaneForm,
+    form: PlaneCoding,
     *,
     boundaries: FrozenSet[int],
 ) -> FrozenSet[int]:

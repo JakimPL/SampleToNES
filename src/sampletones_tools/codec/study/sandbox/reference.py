@@ -35,12 +35,14 @@ class Reference:
 
     Attributes:
         song: The song.
+        planes: The byte series each stream was written from, in song-block order.
         table: The dictionary the production codec settled on.
         cache: What each phrase plays against each written plane, shared by every grammar's parse.
         baseline: Every plane under the baseline grammar, held to the production streams.
     """
 
     song: StudySong
+    planes: Tuple[bytes, ...]
     table: PhraseTable
     cache: MatchCache
     baseline: Tuple[StudyParse, ...]
@@ -59,7 +61,7 @@ class Reference:
         Returns:
             Tuple[StudyParse, ...]: One parse per plane, in song-block order, an absent plane's empty.
         """
-        return _parses(self.song, self.cache, self.table, grammar, defaults)
+        return plane_parses(self.planes, self.cache, self.table, grammar, defaults)
 
 
 def _contexts(
@@ -84,15 +86,15 @@ def _contexts(
     return tuple(contexts)
 
 
-def _parses(
-    song: StudySong,
+def plane_parses(
+    planes: Sequence[bytes],
     cache: MatchCache,
     table: PhraseTable,
     grammar: Grammar,
     defaults: Sequence[int],
 ) -> Tuple[StudyParse, ...]:
     written = iter(parse_plane(context, grammar) for context in _contexts(cache, table, grammar.costs, defaults))
-    return tuple(ABSENT_PARSE if is_absent(plane) else next(written) for plane in song.planes.planes)
+    return tuple(ABSENT_PARSE if is_absent(plane) else next(written) for plane in planes)
 
 
 def reference(
@@ -111,12 +113,14 @@ def reference(
     Raises:
         ValueError: If the baseline grammar prices a plane differently from the codec's stream.
     """
-    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in song.planes.planes if not is_absent(plane))
+    planes = tuple(song.planes.planes)
+    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes if not is_absent(plane))
     table = compressed.phrases
-    baseline = _parses(song, cache, table, BASELINE_GRAMMAR, no_defaults(len(table)))
+    baseline = plane_parses(planes, cache, table, BASELINE_GRAMMAR, no_defaults(len(table)))
     verify_baseline(baseline, compressed)
     return Reference(
         song=song,
+        planes=planes,
         table=table,
         cache=cache,
         baseline=baseline,

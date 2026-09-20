@@ -8,6 +8,7 @@ from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.specification.compression import PLANE_COUNT
+from sampletones_player.specification.song import SONG_HEADER_SIZE
 from sampletones_shared.music import Tuning
 from sampletones_tools.codec.study.corpus.song import SongGroup, StudySong
 from sampletones_tools.codec.study.measure import Encoding, Measurement
@@ -117,6 +118,7 @@ def _measurement(
         song=song,
         variant=variant,
         encoding=Encoding(
+            header=SONG_HEADER_SIZE,
             phrases=0,
             dictionary=0,
             streams=(streams,) + (0,) * (PLANE_COUNT - 1),
@@ -134,6 +136,7 @@ def _variant(name: str, kind: VariantKind) -> Variant:
         kind=kind,
         note="",
         encode=lambda song: Encoding(
+            header=SONG_HEADER_SIZE,
             phrases=0,
             dictionary=0,
             streams=(),

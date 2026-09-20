@@ -16,6 +16,7 @@ from sampletones_tools.codec.study.report.run import MANIFEST_JSON, REPORT_CSV, 
 from sampletones_tools.codec.study.session import run_study
 
 VARIANT: Final[str] = "wide-hold"
+PACKED_VARIANT: Final[str] = "packed-table"
 LENGTHEN_SECONDS: Final[int] = 2
 
 
@@ -55,6 +56,29 @@ class TestStudyRun:
         table = Table(columns=verdicts.COLUMNS, rows=tuple(tuple(row) for row in verdict_rows)).markdown_lines()
         start = markdown.index(table[0])
         assert markdown[start : start + len(table)] == table
+
+    def test_a_packed_plane_run_reads_back_as_the_song_it_was_written_from(
+        self,
+        integration_project: Project,
+        tmp_path: Path,
+    ) -> None:
+        """A run refuses a variant whose streams do not play back, so completing is the assertion."""
+        project = tmp_path / "packed.stp"
+        ProjectContainer.save(integration_project, project)
+        plan = plan_study(
+            StudyManifest(
+                projects=(StudySource.at(project),),
+                reconstructions=(),
+                lengthen_seconds=LENGTHEN_SECONDS,
+                variants=(PACKED_VARIANT,),
+            )
+        )
+
+        directory = run_study(plan, tmp_path / "run")
+
+        header, *measured = _read_csv(directory / REPORT_CSV)
+        variant = header.index("variant")
+        assert {row[variant] for row in measured} >= {PACKED_VARIANT}
 
     def test_a_source_that_fails_to_read_leaves_the_output_untouched(self, tmp_path: Path) -> None:
         broken = tmp_path / "broken.stp"

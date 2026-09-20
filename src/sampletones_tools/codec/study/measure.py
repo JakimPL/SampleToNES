@@ -16,6 +16,7 @@ class Encoding:
     stated as the bytes each would take, so the two kinds sit in one report on the same terms.
 
     Attributes:
+        header: The bytes the song block's header takes, which a format stating more of itself grows.
         phrases: The phrases the dictionary holds.
         dictionary: The bytes the dictionary takes.
         streams: The bytes each plane's stream takes, in the order the song block writes them.
@@ -24,6 +25,7 @@ class Encoding:
         written: The streams as the driver reads them, where the variant writes its grammar.
     """
 
+    header: int
     phrases: int
     dictionary: int
     streams: Tuple[int, ...]
@@ -52,7 +54,7 @@ class Measurement:
     @property
     def block(self) -> int:
         """The bytes the whole song block takes: header, pitch table, dictionary and streams."""
-        return SONG_HEADER_SIZE + len(self.song.pitches.data) + self.dictionary + self.streams
+        return self.encoding.header + len(self.song.pitches.data) + self.dictionary + self.streams
 
     @property
     def dictionary(self) -> int:
@@ -101,6 +103,7 @@ def production_encoding(
         Encoding: The encoding, its streams kept as written.
     """
     return Encoding(
+        header=SONG_HEADER_SIZE,
         phrases=len(compressed.phrases),
         dictionary=compressed.phrases.size,
         streams=tuple(len(stream) for stream in compressed.streams),

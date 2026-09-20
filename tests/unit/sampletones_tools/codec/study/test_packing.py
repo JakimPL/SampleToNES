@@ -7,6 +7,7 @@ from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.specification.binary import MAX_BYTE_VALUE
 from sampletones_player.specification.registers import SUSTAINED_LEVEL
+from sampletones_tools.codec.study.packing.fitted import FORM_SIZE, fitted_form
 from sampletones_tools.codec.study.packing.form import NO_BITS, WHOLE_BYTE, PlaneForm
 from sampletones_tools.codec.study.packing.registers import (
     NOISE_CONTROL_FORM,
@@ -14,10 +15,20 @@ from sampletones_tools.codec.study.packing.registers import (
     PULSE_CONTROL_FORM,
     register_forms,
 )
+from sampletones_tools.codec.study.packing.scheme import (
+    PackingScheme,
+    plane_codings,
+    stated_bytes,
+)
 from sampletones_tools.codec.study.packing.symbols import (
     pack_plane,
     symbol_boundaries,
     unpack_plane,
+)
+from sampletones_tools.codec.study.packing.table import (
+    TABLE_LENGTH_SIZE,
+    TABLE_OFFSET_SIZE,
+    TableForm,
 )
 
 NO_BOUNDARIES: Final[FrozenSet[int]] = frozenset()
@@ -170,3 +181,120 @@ def _ticks_before(packed: bytes, starts: FrozenSet[int]) -> FrozenSet[int]:
         sum(NOISE_CONTROL_FORM.repeated(symbol) for symbol in packed[:start]) for start in sorted(starts)
     )
     return frozenset(reached)
+
+
+class TestTheNarrowestFormAPlaneAllows:
+    def test_a_plane_naming_a_control_bit_in_every_tick_frees_it(self) -> None:
+        plane = bytes([0x80, 0xFF, 0x80, 0xFF])
+
+        form = fitted_form(plane)
+
+        assert form.count_mask == 0x80
+        assert form.repeats == 2
+        assert form.seeded == 0x80
+
+    def test_a_plane_reaching_only_low_values_frees_the_bits_above_them(self) -> None:
+        plane = bytes([0x00, 0x03, 0x1B, 0x07])
+
+        form = fitted_form(plane)
+
+        assert form.repeats == 8
+        assert form.fits(plane)
+
+    def test_a_plane_turning_over_every_bit_takes_its_whole_byte(self) -> None:
+        plane = bytes(range(MAX_BYTE_VALUE + 1))
+
+        assert fitted_form(plane) == WHOLE_BYTE
+
+    def test_a_plane_of_one_value_frees_its_whole_byte(self) -> None:
+        plane = bytes([SUSTAINED_LEVEL] * 4)
+
+        form = fitted_form(plane)
+
+        assert form.seeded == SUSTAINED_LEVEL
+        assert form.idles(plane)
+
+    def test_a_plane_of_no_ticks_takes_its_whole_byte(self) -> None:
+        assert fitted_form(b"") == WHOLE_BYTE
+
+    def test_the_fitted_form_reaches_at_least_as_far_as_the_register_fixes(self) -> None:
+        plane = _noise_control(0, 1, 2, MAX_VOLUME)
+
+        assert fitted_form(plane).repeats >= NOISE_CONTROL_FORM.repeats
+
+
+class TestAPlanesValuesGatheredIntoATable:
+    def test_a_code_stands_for_the_value_it_names(self) -> None:
+        plane = bytes([0x80, 0xFF, 0x80])
+
+        table = TableForm.across(plane)
+
+        assert table.values == (0x80, 0xFF)
+        assert table.value(table.symbol(0xFF, repeats=1)) == 0xFF
+
+    def test_two_values_leave_seven_bits_to_count_with(self) -> None:
+        table = TableForm.across(bytes([0x80, 0xFF]))
+
+        assert table.code_bits == 1
+        assert table.repeats == 128
+
+    def test_the_table_leads_with_the_value_the_plane_is_seeded_to(self) -> None:
+        table = TableForm.across(bytes([0xFF, 0x80, 0xFF]))
+
+        assert table.seeded == 0x80
+
+    def test_the_ticks_come_back_as_they_were_written(self) -> None:
+        plane = bytes([0x80] * 300 + [0xFF] * 5 + [0x80])
+
+        packed = pack_plane(plane, TableForm.across(plane), boundaries=NO_BOUNDARIES)
+
+        assert unpack_plane(packed, TableForm.across(plane)) == plane
+
+    def test_the_block_states_the_table_it_reads_through(self) -> None:
+        table = TableForm.across(bytes(range(16)))
+
+        assert table.stated == TABLE_OFFSET_SIZE + TABLE_LENGTH_SIZE + 16
+
+    def test_a_table_naming_a_value_twice_is_refused(self) -> None:
+        with pytest.raises(ValueError):
+            TableForm(values=(1, 1))
+
+    def test_a_table_naming_no_value_is_refused(self) -> None:
+        with pytest.raises(ValueError):
+            TableForm(values=())
+
+
+class TestWhatASchemeStates:
+    def test_the_register_scheme_states_nothing(self) -> None:
+        planes = (_noise_control(0, 1),) * len(PlaneOrder.names())
+
+        codings = plane_codings(planes, PackingScheme.FIXED)
+
+        assert stated_bytes(codings, PackingScheme.FIXED) == 0
+
+    def test_the_fitted_scheme_states_a_form_per_plane(self) -> None:
+        planes = (_noise_control(0, 1),) * len(PlaneOrder.names())
+
+        codings = plane_codings(planes, PackingScheme.FITTED)
+
+        assert stated_bytes(codings, PackingScheme.FITTED) == FORM_SIZE * len(planes)
+
+    def test_the_table_scheme_states_every_table(self) -> None:
+        planes = (bytes([0x80, 0xFF]),) * len(PlaneOrder.names())
+
+        codings = plane_codings(planes, PackingScheme.TABLE)
+
+        assert stated_bytes(codings, PackingScheme.TABLE) == sum(coding.stated for coding in codings)
+
+    def test_every_scheme_reads_back_the_ticks_it_packs(self) -> None:
+        planes = (
+            _noise_control(0, 0, 3, 3, 3, MAX_VOLUME),
+            bytes([0x80, 0x80, 0xFF, 0x80]),
+            bytes(range(8)),
+        )
+        for scheme in PackingScheme:
+            codings = plane_codings(planes, scheme)[: len(planes)]
+            for plane, coding in zip(planes, codings):
+                packed = pack_plane(plane, coding, boundaries=NO_BOUNDARIES)
+
+                assert unpack_plane(packed, coding) == plane
