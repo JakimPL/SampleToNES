@@ -81,12 +81,6 @@ def note_index(note: LoadedNote) -> int:
 
 
 @pytest.fixture
-def document(integration_project: Project, document_path: Path) -> LoadedProject:
-    write_btp(document_path, project_to_bitphase(integration_project))
-    return parse_btp(document_path.read_bytes(), list(CHANNEL_LABELS))
-
-
-@pytest.fixture
 def groove_document(integration_project: Project, groove_document_path: Path) -> LoadedProject:
     project = at_tempo(integration_project, GROOVE_TEMPO)
     write_btp(groove_document_path, project_to_bitphase(project))

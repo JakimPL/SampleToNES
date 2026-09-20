@@ -30,6 +30,8 @@ BITPHASE_DEFAULT_INSTRUMENT_ID: Final[str] = "01"
 BITPHASE_DEFAULT_LOOP: Final[int] = 0
 BITPHASE_DEFAULT_TABLE_ID: Final[int] = 0
 BITPHASE_MAX_MACRO_LENGTH: Final[int] = 512
+BITPHASE_SILENT_PERIOD: Final[int] = 0
+BITPHASE_MAX_PERIOD: Final[int] = 2047
 BITPHASE_MACRO_DEFAULTS: Final[Dict[str, Any]] = {
     "pulseWidth": 2,
     "volumeOrRate": 15,
@@ -115,6 +117,19 @@ class LoadedInstrument:
         """
         return self.macros.get(field, LoadedMacro(values=[BITPHASE_MACRO_DEFAULTS[field]], loop=0))
 
+    def value(self, field: str, tick: int) -> Any:
+        """The value a field takes on a tick of a sounding note.
+
+        Args:
+            field: The instrument field, named as Bitphase keys it.
+            tick: Ticks since the note started.
+
+        Returns:
+            Any: The value the engine samples for that field.
+        """
+        macro = self.macro(field)
+        return macro.values[sample_index(tick, len(macro.values), macro.loop)]
+
 
 @dataclass(frozen=True)
 class LoadedTable:
@@ -123,6 +138,10 @@ class LoadedTable:
     name: str
     rows: List[int]
     additive: bool
+
+    def step(self, tick: int) -> int:
+        """The semitone step the table moves the note by on a tick of a sounding note."""
+        return self.rows[sample_index(tick, len(self.rows), self.loop)]
 
 
 @dataclass(frozen=True)
@@ -147,6 +166,61 @@ class LoadedProject:
     songs: List[LoadedSong]
     tables: List[LoadedTable]
     instruments: List[LoadedInstrument]
+
+
+def sample_index(tick: int, length: int, loop: int) -> int:
+    """The index a per-tick list stands at on a tick, as Bitphase's engine advances it.
+
+    An instrument macro and a table each advance one entry per tick and circle once they run
+    out, from the loop entry where it stands among them and from the first otherwise. Read from
+    ``sampleInstrumentMacroIndex`` and ``processTables`` of the tracker at commit ``265ff70``.
+
+    Args:
+        tick: Ticks since the note started.
+        length: Entries the list holds.
+        loop: Entry the list circles from.
+
+    Returns:
+        int: The entry to read.
+    """
+    entries = length if length > 0 else 1
+    if tick < entries:
+        return max(tick, 0)
+
+    start = loop if 0 < loop < entries else 0
+    span = entries - start
+    if span <= 0:
+        return entries - 1
+
+    return start + (tick - entries) % span
+
+
+def sounded_period(
+    tuning_table: List[int],
+    note_index: int,
+    instrument: LoadedInstrument,
+    table: LoadedTable,
+    tick: int,
+) -> int:
+    """The channel period a tone channel sounds on a tick, as the engine resolves it.
+
+    The table moves the note, the tuning table resolves the period that note sounds at, and the
+    instrument's tone offset moves it from there. Read from ``nes-audio-driver.js`` of the
+    tracker at commit ``265ff70``, where a period of zero silences the channel.
+
+    Args:
+        tuning_table: The song's period per note index.
+        note_index: The note the pattern cell names.
+        instrument: The instrument the cell triggers.
+        table: The table the cell attaches.
+        tick: Ticks since the note started.
+
+    Returns:
+        int: The period the channel holds, within the timer's range.
+    """
+    moved = min(max(note_index + table.step(tick), 0), len(tuning_table) - 1)
+    period = tuning_table[moved] + instrument.value("toneAdd", tick)
+    return min(max(period, BITPHASE_SILENT_PERIOD), BITPHASE_MAX_PERIOD)
 
 
 def _note(data: Optional[Dict[str, Any]]) -> LoadedNote:
