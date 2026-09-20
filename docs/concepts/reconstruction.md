@@ -393,10 +393,8 @@ once it is asked for, and hold for a whole run.
 A reconstruction is its instruction streams. Each one is rendered back through its generator
 (`sampletones_core.generators`), which carries oscillator phase across frames so
 there are no clicks at frame boundaries, and resets it on a new note where
-`reset_phase` says so; an "off" instruction yields silence for that channel and frame. Each
-frame is rendered at the drive the source holding it gives its channel (see
-[Stems reconstruction](stems.md)), and the per-channel renderings are summed into the final
-approximation.
+`reset_phase` says so; an "off" instruction yields silence for that channel and frame. The
+per-channel renderings are summed into the final approximation.
 
 The rendering is read on demand rather than carried beside the streams, so what a
 reconstruction shows is what an export plays by construction, and a `.stn` states the

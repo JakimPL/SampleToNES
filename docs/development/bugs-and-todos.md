@@ -202,6 +202,3 @@ again.
 ## Bugs
 
 * Misaligned dialog boxes sizes at initialization
-* A sample sounds at unit drive inside a song, since `sampletones_core/performance/` carries no
-  drive, while the same sample's own approximation renders each frame at the drive its recording
-  gives that channel.

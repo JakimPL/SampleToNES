@@ -199,12 +199,9 @@ The drive enters the run where the level matters. `CandidateProvider` serves the
 library's powers, waveforms and moments as they stand, and `FrameMatcher` scales
 them by the drive a column is scored at — powers and variances by its square,
 waveforms and means by the drive itself — so a run at unit drive costs what a run
-without drives costs. `render_streams`
-(`reconstruction/rendering.py`) then renders each frame at the drive the stem
-owning that channel gives it, reading the drive off the recorded entry, and a
-frame no recording holds renders at unit drive. Scoring and rendering therefore
-stand at one level: the instruction a frame records is the one chosen for the
-sound that frame makes, whenever that sound is read.
+without drives costs. `Reconstruction.approximations` then renders each stream as
+it stands, so the instruction a frame records is the sound that frame makes,
+whenever that sound is read.
 
 `Reconstructor.reconstruct` loads the sources through `load_stems`, which brings
 them to one length and one scale, measures the working level on their mix, frames

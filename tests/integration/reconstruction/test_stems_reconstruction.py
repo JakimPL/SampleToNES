@@ -116,8 +116,8 @@ class TestReconstructStems:
         assert len(reconstruction.instructions[ChannelName.PULSE1]) == frame_count
         assert len(reconstruction.instructions[ChannelName.NOISE]) == frame_count
 
-    def test_each_channel_is_recorded_at_the_drive_its_stem_gives_it(self, tmp_path: Path) -> None:
-        """A channel plays the level its own stem asks for, whatever the stem beside it asks."""
+    def test_a_driven_channel_sounds_exactly_what_its_instructions_render(self, tmp_path: Path) -> None:
+        """A drive settles which instruction a frame records, and the frame then sounds that instruction."""
         config = Config()
         library = build_mini_library(config)
         reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=library)
@@ -132,7 +132,7 @@ class TestReconstructStems:
         rendered = render_channels(reconstruction.instructions, config)
         np.testing.assert_allclose(
             reconstruction.approximations[ChannelName.PULSE1],
-            rendered[ChannelName.PULSE1] * _LOUD_DRIVE,
+            rendered[ChannelName.PULSE1],
             atol=_MIX_TOLERANCE,
         )
         np.testing.assert_allclose(

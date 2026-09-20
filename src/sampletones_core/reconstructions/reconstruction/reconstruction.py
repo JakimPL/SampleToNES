@@ -35,9 +35,9 @@ from sampletones_core.exporters import (
     ExporterUnion,
     Features,
 )
+from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
-from sampletones_core.reconstructions.reconstruction.rendering import render_streams
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.filter import heard_instructions
@@ -162,14 +162,14 @@ class Reconstruction(DataModel):
 
     @cached_property
     def approximations(self) -> Dict[ChannelName, np.ndarray]:
-        """The audio each channel in play renders, at the drive its owner gives each frame.
+        """The audio each channel in play renders from the instructions it carries.
 
-        A reconstruction records the instructions a channel plays and the recording behind each
-        of its frames, so its sound is read from those rather than carried beside them. Reading
-        it here keeps one answer for the waveform, playback, an export and the mixed
-        approximation, and keeps a stored document to what it describes.
+        A reconstruction records the instructions a channel plays, so its sound is read from
+        those rather than carried beside them. Reading it here keeps one answer for the
+        waveform, playback, an export and the mixed approximation, and keeps a stored document
+        to what it describes.
         """
-        return render_streams(self.instructions, self.stems_data, self.config)
+        return render_channels(self.instructions, self.config)
 
     @cached_property
     def approximation(self) -> np.ndarray:
