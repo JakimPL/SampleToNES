@@ -81,7 +81,7 @@ class AssignmentSession:
 
     A stem's mix is what its picks sound in its own frame, so a candidate is scored by the cost
     that frame reaches with the candidate sounding beside them, and the channel's silence is one
-    of the candidates. Every candidate plays at the drive the stem gives the channel, so one
+    of the candidates. Every candidate is read at the drive the stem gives the channel, so one
     column answers the channels of a kind the stem drives alike and the channels it drives apart
     hold columns of their own. A channel is taken where it lowers a frame's cost, by the stem
     whose sound it covers most. Only the free channels are shared: the stems compete for them,

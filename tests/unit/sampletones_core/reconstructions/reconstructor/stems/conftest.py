@@ -131,7 +131,7 @@ def _scored_alone(
 ) -> ScoredCandidate:
     provider = matcher.candidate_provider
     mix = FrameMix.of(fragment, context)
-    power = provider.power_of(instruction) * drive**2
+    power = provider.power_of(instruction) / drive**2
     contribution = matcher.contribution(instruction, mix.residual_waveform(fragment), power, drive=drive)
     spectral = matcher.scorer.spectral_costs(fragment, provider.features_of((mix.power + power)[None, :]))
     cost = matcher.scorer.frame_costs(

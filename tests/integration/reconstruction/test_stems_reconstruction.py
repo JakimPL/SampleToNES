@@ -67,6 +67,11 @@ def _stems_config(tone_drive: float = UNIT_DRIVE) -> StemsConfig:
     )
 
 
+def _energy(samples: np.ndarray) -> float:
+    """How much sound a rendered channel carries, which is what a drive lifts."""
+    return float(np.sum(np.square(np.asarray(samples, dtype=np.float64))))
+
+
 def _disjoint_recordings(tmp_path: Path, config: Config) -> Tuple[Path, Path, int]:
     """A steady tone and a noise burst of one length, written as two recordings."""
     sample_rate = config.library.sample_rate
@@ -139,6 +144,24 @@ class TestReconstructStems:
             reconstruction.approximations[ChannelName.NOISE],
             rendered[ChannelName.NOISE],
             atol=_MIX_TOLERANCE,
+        )
+
+    def test_a_driven_recording_is_recorded_louder_and_leaves_the_one_beside_it(self, tmp_path: Path) -> None:
+        """A drive reaches for louder instructions on the channel its own recording holds, and there alone."""
+        config = Config()
+        library = build_mini_library(config)
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=library)
+        tone_path, noise_path, _ = _disjoint_recordings(tmp_path, config)
+
+        standing = reconstructor.reconstruct([tone_path, noise_path], _stems_config())
+        driven = reconstructor.reconstruct([tone_path, noise_path], _stems_config(_LOUD_DRIVE))
+
+        assert standing is not None
+        assert driven is not None
+        assert _energy(driven.approximations[ChannelName.PULSE1]) > _energy(standing.approximations[ChannelName.PULSE1])
+        np.testing.assert_array_equal(
+            driven.approximations[ChannelName.NOISE],
+            standing.approximations[ChannelName.NOISE],
         )
 
     def test_requires_one_path_per_entry(self, tmp_path: Path) -> None:

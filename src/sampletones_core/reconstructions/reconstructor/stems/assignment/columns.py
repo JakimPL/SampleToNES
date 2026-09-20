@@ -11,7 +11,7 @@ class ColumnGroup:
 
     Attributes:
         generator: The generator of the lowest channel in the group, which stands for it.
-        drive: The level every channel of the group plays its candidates at.
+        drive: The level every channel of the group reaches for.
     """
 
     generator: GeneratorUnion

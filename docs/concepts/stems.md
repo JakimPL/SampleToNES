@@ -42,16 +42,18 @@ in, and the working-level coefficient is measured on that mix, exactly as for a
 single file. The reconstruction the run assembles is the sum of the stems'
 approximations, which approximates the mix because each part approximates its part.
 
-### 3. A stem sounds at the drive its settings give each channel
+### 3. A drive reaches for a louder instruction
 
-A stem's settings name a drive per channel it holds: the factor the channel's
-output is scaled by, `1.00` standing at the level the library is calibrated to.
-The drive reaches the matching as well as the rendering — candidates are scored
-at it and the winning instruction is recorded at it — so a channel pushed harder
-is answered by the instructions that carry the recording at that level, and the
-frame that reaches the mix sounds at the level it was chosen for. A drive answers
-for one channel of one stem, so raising it lifts that part of the mix while the
-other stems and the stem's other channels stand where they are.
+A stem's settings name a drive per channel it holds, `1.00` standing at the level
+the library is calibrated to. The drive belongs to the conversion alone: every
+candidate is read at unit drive, so the instruction winning a frame is the one
+sounding it at the drive, and a channel pushed harder is answered by louder
+instructions up to the loudest that channel holds. Past that the channel
+saturates, which is the effect a drive is reached for. A drive answers for one
+channel of one stem, so raising it lifts that part of the mix while the other
+stems and the stem's other channels stand where they are. What a frame sounds
+afterwards is the instruction it carries, so the drive is a record of the level
+the run reached at.
 
 ### 4. A stem sounds where its recording sounds
 
@@ -195,11 +197,11 @@ each. `AssignmentSession` reads a stem's count and its drive per channel from
 that stem's own entry, and caches a scored column under the stem, the generator
 class and the drive it was scored at.
 
-The drive enters the run where the level matters. `CandidateProvider` serves the
-library's powers, waveforms and moments as they stand, and `FrameMatcher` scales
-them by the drive a column is scored at — powers and variances by its square,
-waveforms and means by the drive itself — so a run at unit drive costs what a run
-without drives costs. `Reconstruction.approximations` then renders each stream as
+The drive enters the run once, where the instruction is chosen.
+`CandidateProvider` serves the library's powers, waveforms and moments as they
+stand, and `FrameMatcher` reads them at unit drive — powers and variances divided
+by the drive's square, waveforms and means by the drive itself — so a run at unit
+drive costs what a run without drives costs. `Reconstruction.approximations` then renders each stream as
 it stands, so the instruction a frame records is the sound that frame makes,
 whenever that sound is read.
 

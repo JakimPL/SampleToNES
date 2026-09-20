@@ -363,7 +363,7 @@ main.source.label.drive: "drive"
 main.source.label.drive_mixed: "mixed"
 main.source.label.channel_cap: "Channels at once"
 main.source.tooltip.tooltip_new_recordings: "Every recording you add starts with these settings.\nPick a row in the Converter to change one recording or folder."
-main.source.tooltip.tooltip_drive: "How hard this channel is driven during instruction selection and output.\nAt 1.00 the level is calibrated; higher values push the selection harder, adding a distortion-like effect."
+main.source.tooltip.tooltip_drive: "How hard this channel is driven while a recording is converted.\nAt 1.00 the level is calibrated; higher values reach for louder instructions, adding a distortion-like effect."
 main.source.tooltip.tooltip_channel_cap: "How many of its channels a recording may sound in one frame,\nup to the channels it uses."
 main.source.message.status_channel_cap: "Sound at most {count} channels in one frame."
 

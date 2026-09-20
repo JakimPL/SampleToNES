@@ -16,7 +16,7 @@ class Contribution:
     sequence adds its mean level, with its spread about that mean as the variance.
 
     Attributes:
-        power: The candidate's power density per bin, at the drive it plays at.
+        power: The candidate's power density per bin, read at the channel's drive.
         expectation: The waveform the candidate is expected to render over the frame.
         variance: The per-sample variance about that waveform.
     """

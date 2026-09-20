@@ -51,7 +51,7 @@ class CandidateProvider:
     """
     Serves the library's candidates in the forms the matching reads them in.
 
-    Every quantity stands at the level the library sample plays, which the matching scales by
+    Every quantity stands at the level the library sample plays, which the matching reads at
     the drive the channel is asked for, so one set of rows serves every drive a run holds. A
     candidate's power is read off its phase-averaged library feature once per library and kept
     per generator class, so every frame mixes the same rows. Its waveform and its moments are
