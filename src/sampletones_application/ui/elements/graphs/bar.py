@@ -208,6 +208,25 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self._update_ticks()
         self._update_ranges()
 
+    def reserve_band(self, share: float) -> Tuple[float, float]:
+        """Keeps a band beneath the plotted values, and answers where that band lies.
+
+        A stretch drawn under the bars stands in a band of its own, so the plot lowers what it
+        spans by that share and the bars keep every value they reach. The reserve is measured
+        against the range the plot was built with, so reserving twice keeps one band.
+
+        Args:
+            share: How much of the built range the band takes, beneath it.
+
+        Returns:
+            Tuple[float, float]: The band's lower and upper edge.
+        """
+        low, high = self._default_y_range
+        height = (high - low) * share
+        self.y_range = (low - height, high)
+        self._update_axes_limits()
+        return low - height, low
+
     def _set_layer(
         self,
         layer: BarLayer,

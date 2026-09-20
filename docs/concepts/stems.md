@@ -339,7 +339,9 @@ silences them.
    outside what the reader hears reads as a rest — the ribbon states what is
    heard, like every other reading. Each row of the card leads with a square in
    the color its recording is painted in, so a stretch on screen answers to a
-   name at a glance.
+   name at a glance. The instruments panel paints the same stretches in a band
+   beneath each dimension's bars, under the frames those bars draw, so a frame a
+   left-out recording holds reads as that recording rather than as a rest.
 
 ### Mechanics
 

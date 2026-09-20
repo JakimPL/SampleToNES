@@ -202,9 +202,6 @@ again.
 ## Bugs
 
 * Misaligned dialog boxes sizes at initialization
-* The instruments panel draws the part a reader hears, so a frame held by a recording left out
-  reads as a rest rather than naming its owner. A DearPyGui bar series takes one color for the
-  whole series, so naming it means a series per owner or a drawn overlay beneath the plot.
 * A sample sounds at unit drive inside a song, since `sampletones_core/performance/` carries no
   drive, while the same sample's own approximation renders each frame at the drive its recording
   gives that channel.

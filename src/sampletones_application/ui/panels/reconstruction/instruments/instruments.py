@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -19,6 +19,7 @@ from sampletones_application.constants.instruments import (
     INSTRUMENT_CHANNEL,
 )
 from sampletones_application.layout.general.colors.feature import FeatureColors
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
@@ -53,6 +54,7 @@ from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
+from sampletones_application.ui.elements.graphs.ownership import OwnershipRuns
 from sampletones_application.ui.elements.graphs.utils import extend_y_range
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.layout.collapse import CollapseAxis
@@ -82,10 +84,14 @@ from sampletones_application.utils.gui.keyboard import (
 from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
+from sampletones_application.view_model.shared.ownership import OwnershipLaneViewModel
 from sampletones_core.constants.enums import (
     ChannelName,
     FeatureKey,
@@ -114,6 +120,8 @@ from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 
+SINGLE_FRAME: Final[float] = 1.0
+
 OnInstrumentExportCallback = Callable[[ChannelName], None]
 OnAuditionCallback = Callable[[int], None]
 OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
@@ -131,6 +139,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         pitch_stepper_style: PitchStepperStyle,
         copy_width: int,
         feature_colors: FeatureColors,
+        stem_colors: StemColors,
         layout_graphs: GraphsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -161,6 +170,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._pitch_stepper_style = pitch_stepper_style
         self._copy_width = copy_width
         self._layout_graphs = layout_graphs
+        self._ownership = OwnershipRuns(stem_colors)
         self._feature_plot_configs = make_feature_plot_configs(
             feature_colors,
             language_manager,
@@ -651,25 +661,27 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def update_feature_data(
         self,
-        generators: Optional[Dict[ChannelName, Features]],
+        envelopes: Optional[ChannelEnvelopesViewModel],
     ) -> None:
-        if generators is None:
+        if envelopes is None:
             return
 
         for channel_name in ChannelName.items():
-            generator_features = generators.get(channel_name)
+            generator_features = envelopes.channels.get(channel_name)
             if generator_features is None:
                 continue
 
             self._update_generator_feature_data(
                 channel_name,
                 generator_features,
+                envelopes.lane(channel_name),
             )
 
     def _update_generator_feature_data(
         self,
         channel_name: ChannelName,
         generator_features: Features,
+        lane: OwnershipLaneViewModel,
     ) -> None:
         initial_pitch = generator_features.initial_pitch
         self._apply_pitch_display(channel_name, initial_pitch)
@@ -679,6 +691,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 channel_name,
                 generator_features,
                 feature_key,
+                lane,
             )
 
     def _update_generator_feature_display(
@@ -686,10 +699,39 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         channel_name: ChannelName,
         generator_features: Features,
         feature_key: FeatureKey,
+        lane: OwnershipLaneViewModel,
     ) -> None:
         envelope = self._feature_envelope(generator_features, feature_key)
         self._update_generator_plot(channel_name, feature_key, _plotted_items(envelope))
         self._update_raw_data_text(channel_name, feature_key, envelope)
+        self._paint_ownership(channel_name, feature_key, lane)
+
+    def _paint_ownership(
+        self,
+        channel_name: ChannelName,
+        feature_key: FeatureKey,
+        lane: OwnershipLaneViewModel,
+    ) -> None:
+        """Paints the recording behind each frame in a band beneath that dimension's bars.
+
+        The band stands under the frames the bars draw, so the two read column for column
+        whatever the dimension's own values reach. A document answering to one recording has
+        nothing to tell apart and paints none.
+        """
+        plot = self.channel_plots.get(channel_name, {}).get(feature_key)
+        if plot is None:
+            return
+
+        if not lane.runs:
+            self._ownership.clear(plot.y_axis_tag)
+            return
+
+        self._ownership.paint(
+            plot.y_axis_tag,
+            lane.runs,
+            frame_span=SINGLE_FRAME,
+            band=plot.reserve_band(self._layout_graphs.bar_plot.ownership_band),
+        )
 
     def _feature_envelope(
         self,

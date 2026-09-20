@@ -67,7 +67,10 @@ class InstrumentEditor:
             )
 
         feature_data = self._reconstruction_manager.current_features
-        return None if feature_data is None else ReconstructionEdit(channels=feature_data.channels)
+        if feature_data is None:
+            return None
+
+        return ReconstructionEdit(channels=feature_data.channels, ownership=feature_data.ownership)
 
     def write_envelope(self, feature_key: FeatureKey, envelope: Envelope[int]) -> None:
         """Writes one dimension of the instrument in front of the tab, as one history entry.

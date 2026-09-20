@@ -14,6 +14,9 @@ from sampletones_application.logic.reconstruction.instruments import (
     ReconstructionInstrumentsLogic,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
@@ -116,10 +119,10 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
     ) -> None:
         feature_data = _heard_features(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
-        received: List[Optional[Dict[ChannelName, Features]]] = []
+        received: List[Optional[ChannelEnvelopesViewModel]] = []
         instruments_logic.on_feature_data_changed = received.append
         instruments_logic.update_display()
-        assert received == [feature_data.channels]
+        assert received == [ChannelEnvelopesViewModel(channels=feature_data.channels, ownership=feature_data.ownership)]
 
     def test_with_features_exposes_the_playing_generators(
         self,
@@ -389,13 +392,15 @@ class TestTheInstrumentsPanelShowsAnInstrument:
         self,
         instrument_logic: ReconstructionInstrumentsLogic,
     ) -> None:
-        received: List[Optional[Dict[ChannelName, Features]]] = []
+        received: List[Optional[ChannelEnvelopesViewModel]] = []
         instrument_logic.on_feature_data_changed = received.append
 
         instrument_logic.update_display()
 
-        assert received[-1] is not None
-        assert list(received[-1]) == [INSTRUMENT_CHANNEL]
+        envelopes = received[-1]
+        assert envelopes is not None
+        assert list(envelopes.channels) == [INSTRUMENT_CHANNEL]
+        assert envelopes.ownership == {}
 
     def test_an_envelope_edit_reaches_the_instrument_without_a_regeneration(
         self,
