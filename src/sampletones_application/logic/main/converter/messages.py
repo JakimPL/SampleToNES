@@ -33,7 +33,7 @@ class ConverterMessages:
             ReconstructionStage.LOADING: language_manager["main.converter.message.stage_loading"],
             ReconstructionStage.MATCHING: language_manager["main.converter.message.stage_matching"],
             ReconstructionStage.DECODING: language_manager["main.converter.message.stage_decoding"],
-            ReconstructionStage.RENDERING: language_manager["main.converter.message.stage_rendering"],
+            ReconstructionStage.GATHERING: language_manager["main.converter.message.stage_gathering"],
         }
 
     def progress_text(

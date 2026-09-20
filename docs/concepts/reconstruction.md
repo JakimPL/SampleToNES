@@ -74,7 +74,7 @@ and playback.
 A run says which of these it is in as it passes through them, so a reader watching a
 conversion sees it move rather than waiting for the file. `ReconstructionStage` gathers
 the eight steps into the four a reader is told apart — loading, matching, decoding,
-rendering — and states the share each holds of the whole run;
+gathering — and states the share each holds of the whole run;
 [`progress.md`](../development/progress.md) describes how that account reaches the
 screen from the worker process it is made in.
 

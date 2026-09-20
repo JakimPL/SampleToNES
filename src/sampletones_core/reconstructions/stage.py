@@ -6,16 +6,16 @@ class ReconstructionStage(StrEnum):
     """The work a reconstruction is in the middle of, as the progress it reports names it.
 
     A run reads its recordings onto one scale, matches every frame against the library, reads each
-    channel's frames into the stream it plays, and renders that stream back to the audio the
-    reconstruction carries. Each stage counts in its own unit, so what a report means is read from
-    the stage it names.
+    channel's frames into the stream it plays, and gathers those streams into the document it
+    answers with. Each stage counts in its own unit, so what a report means is read from the stage
+    it names.
 
-    Matching visits the library once per frame per stem and is what a run spends its time on, which
-    is what :data:`STAGE_WEIGHTS` states: the bulk of a reading belongs to matching so a bar tracks
-    the time a run actually takes, while the stages around it keep enough of it to move visibly as
-    they pass. The weights are approximations measured over whole runs, and matching earns a larger
-    share the longer the recording is, so the stages around it are given what they hold on a short
-    one — where a bar standing still is noticed.
+    Matching visits the library once per frame per stem and is the whole of what a run spends its
+    time on, which is what :data:`STAGE_WEIGHTS` states: measured over whole runs it takes some
+    ninety-seven parts in a hundred, decoding two, and the gathering a tenth of one. Loading keeps
+    a larger share than a warm run spends there, because a run opening a library of its own pays
+    that reading once and a short recording spends a quarter of itself on it — and a bar standing
+    still is noticed, while one moving a little early is not.
 
     The weights are counts rather than fractions, so what a stage is worth is stated against the
     others and a reading is one division at the point of use — which is what lets the last stage
@@ -25,7 +25,7 @@ class ReconstructionStage(StrEnum):
     LOADING = "loading"
     MATCHING = "matching"
     DECODING = "decoding"
-    RENDERING = "rendering"
+    GATHERING = "gathering"
 
     @property
     def weight(self) -> int:
@@ -57,9 +57,9 @@ class ReconstructionStage(StrEnum):
 
 STAGE_WEIGHTS: Final[Mapping[ReconstructionStage, int]] = {
     ReconstructionStage.LOADING: 8,
-    ReconstructionStage.MATCHING: 82,
+    ReconstructionStage.MATCHING: 89,
     ReconstructionStage.DECODING: 2,
-    ReconstructionStage.RENDERING: 8,
+    ReconstructionStage.GATHERING: 1,
 }
 
 TOTAL_STAGE_WEIGHT: Final[int] = sum(STAGE_WEIGHTS.values())

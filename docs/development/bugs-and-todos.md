@@ -208,9 +208,6 @@ again.
 * A channel whose every frame rests reads as standing by for the reader while `playing_channels`
   and the export still count it, so the panel and the size figures disagree about a channel whose
   volume was written down to nothing.
-* `ReconstructionStage.RENDERING` keeps the weight it was measured at while a conversion no longer
-  renders, so a bar covers that share faster than the eight parts in a hundred `STAGE_WEIGHTS`
-  gives it. Re-measuring the four stages over whole runs is what settles the new figures.
 * A sample sounds at unit drive inside a song, since `sampletones_core/performance/` carries no
   drive, while the same sample's own approximation renders each frame at the drive its recording
   gives that channel.
