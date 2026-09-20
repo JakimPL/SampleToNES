@@ -15,6 +15,7 @@ global.dialog.label.remove: "Remove"
 global.dialog.label.change_and_retune: "Change and retune"
 global.dialog.label.dont_ask_again: "Don't ask again"
 global.dialog.label.add_anyway: "Add anyway"
+global.dialog.label.unknown_duration: "?"
 
 # Global — Dialog titles
 global.dialog.title.main_window: "SampleToNES"

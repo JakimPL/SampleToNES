@@ -1,12 +1,12 @@
 from pathlib import Path
 from typing import Dict, Final, Tuple
 
+from sampletones_application.categories.estimate import time_estimation
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.services.conversion.result import ConversionItem
 from sampletones_application.services.result import ServiceProgress
 from sampletones_application.view_model.main.converter import ACTIVE_PHASES, ConversionPhase
 from sampletones_core.library import LibraryState
-from sampletones_core.parallelization import ETAEstimator
 from sampletones_core.reconstructions.stage import ReconstructionStage
 
 SINGLE_SOURCE: Final[int] = 1
@@ -114,8 +114,4 @@ class ConverterMessages:
         )
 
     def _estimate_text(self, progress: ServiceProgress[ConversionItem]) -> str:
-        eta_string = ETAEstimator.format_duration(progress.eta_seconds)
-        if not eta_string:
-            return ""
-
-        return self._language_manager["global.dialog.template.time_estimation"].format(eta_string=eta_string)
+        return time_estimation(self._language_manager, progress.eta_seconds)
