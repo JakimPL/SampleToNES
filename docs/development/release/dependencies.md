@@ -6,13 +6,10 @@ The graphical user interface is implemented with DearPyGui, a Python wrapper for
 
 ## Core
 
-The core depends on common Python packages:
-* `numpy`
-* `scipy`
-* `librosa`
-* `cupy` (optional; enables the GPU backend, with the build selected for your NVIDIA driver)
-
-See [GPU acceleration](../../guide/installation.md#gpu-acceleration) for enabling it.
+The reconstruction engine stands on the usual numerical stack, with `cupy` as an optional GPU
+backend, installed as the extra that matches the machine's NVIDIA driver. `pyproject.toml` states
+every dependency and the version each is held to. See
+[GPU acceleration](../../guide/installation.md#gpu-acceleration) for enabling it.
 
 ## Serialization
 
@@ -35,15 +32,10 @@ with a codec set that varies by platform and packaging — the MP3 encoder in pa
 1.2.0 and is present where it was compiled in. The chooser offers the formats the library reports,
 so what a user is shown describes the machine it is running on.
 
-| Format | Sample rates | Quality |
-| --- | --- | --- |
-| WAV | 8000, 16000, 22050, 44100, 48000, 96000, 192000 Hz | 8, 16, 24 or 32-bit PCM, or 32-bit float |
-| MP3 | 8000, 16000, 22050, 44100, 48000 Hz | a bitrate from the ladder its MPEG version defines |
-
-The bitrates on offer narrow with the sample rate: up to 320 kbps at 44100 and 48000 Hz, 160 kbps at
-16000 and 22050 Hz, and 64 kbps at 8000 Hz. libsndfile takes MP3 quality as a compression level
-between 0 and 1 and turns it into a rung on that ladder, so a bitrate is reached through the level
-its rate maps it to, measured per rate and held in `sampletones_core/audio/writers/bitrate.py`.
+The sample rates and qualities each format offers are stated by the writers,
+`sampletones_core/audio/writers/`. libsndfile takes MP3 quality as a compression level rather than a
+bitrate, and the bitrates a rate can carry narrow as the rate falls, so a level is mapped to the rung
+it reaches per rate in `writers/bitrate.py`.
 
 ## File dialogs
 
@@ -84,25 +76,11 @@ installs it. See [Calibration](../../tools/calibration.md).
 
 ## NES player driver
 
-The player that runs on the console is 6502 assembly, held in three parts:
-`src/sampletones_tools/player/assembly/` carries the sources, their includes and the linker
-configuration, `src/sampletones_tools/player/assembler/` carries the Python that assembles them,
-and `src/sampletones_player/driver/binary/` carries the assembled `driver.bin` the application
-ships. `uv run sampletones driver` runs the build, so it behaves the same on every system the
-project supports.
-
-Assembling needs `ca65` and `ld65` from [cc65](https://cc65.github.io/) — on Debian and Ubuntu,
-`sudo apt install cc65`, and a build names the equivalent for whichever system it runs on when the
-programs are absent. cc65 is a build-time tool for the driver alone.
-
-The assembled `driver.bin` is committed, so a checkout carries the player and exporting an NSF
-needs no assembler. A jump table leads the image, which fixes the addresses an NSF header names
-whatever the driver's length, so the exporter states them from `specification/driver.py` and a
-build holds the linker's own labels to them before it writes anything. Editing the assembly means
-running `uv run sampletones driver` again and committing what it writes; the driver's test suite rebuilds the
-sources and holds the committed image to them wherever cc65 is installed. The wheel carries the
-assembled image, which is what exporting reads, and the assembly sources inside the tools package,
-so `sampletones driver -o DIR` assembles the driver from an installed copy too.
+Assembling the console player needs `ca65` and `ld65` from [cc65](https://cc65.github.io/) — on
+Debian and Ubuntu, `sudo apt install cc65` — and a build names the equivalent for whichever system it
+runs on when the programs are absent. cc65 is a build-time tool for the driver alone: the assembled
+`driver.bin` is committed, so a checkout carries the player and exporting an NSF needs no assembler.
+Editing the assembly means running `uv run sampletones driver` again and committing what it writes.
 
 cc65 is distributed under the zlib license, and the driver stays clear of it: the link line names
 our own object files and our own `nsf.cfg`, so nothing of cc65's start-up code or libraries reaches
@@ -110,38 +88,21 @@ the committed image. That keeps the blob entirely ours to ship under the project
 
 ### Verifying the driver
 
-`tests/integration/nsf` runs an exported file the way a console runs it. [py65](https://github.com/mnaberez/py65)
-— a 6502 emulator in the `dev` dependency group — executes the assembled driver against memory that
-watches the APU's address range, so each routine answers with the register writes it made and the
-suite holds the whole run against `RegisterTrace.from_song`. Reading those writes back into
-instructions and rendering them through the project's own generators closes the loop on the sound
-as well: what the console plays stands against the very waveform the reconstruction carries. py65
-is a developer dependency, outside both the wheel and the bundles, and its BSD license leaves the
+[py65](https://github.com/mnaberez/py65), a 6502 emulator in the `dev` dependency group, executes the
+assembled driver against memory that watches the APU's address range, which is what lets the suite
+hold the image to what a correct driver writes ([the console player](../player.md)). py65 is a
+developer dependency, outside both the wheel and the bundles, and its BSD license leaves the
 project's own terms untouched.
 
-Listening to a real APU needs [ffmpeg](https://ffmpeg.org/) carrying the `libgme` demuxer, which
-is a build option rather than a given: `uv run sampletones nsf render` asks the installed ffmpeg which demuxers
-it holds and names this system's install command before it decodes anything. `nsf samples -o DIR`
-writes the example files, and `nsf render --directory DIR` renders each one to a wave beside it, its
-length read out of the song block the file carries. That is an ear rather than a gate: the register trace is what the driver answers to, and
-the wave is what a person listens to.
+Listening to a real APU needs [ffmpeg](https://ffmpeg.org/) carrying the `libgme` demuxer, which is a
+build option rather than a given: `uv run sampletones nsf render` asks the installed ffmpeg which
+demuxers it holds, and names this system's install command before it decodes anything.
 
-### The player's tools
-
-Three tools serve the player, each reached by one command:
-
-| Tool | Run by | Installed with | Reaches |
-| --- | --- | --- | --- |
-| cc65 (`ca65`, `ld65`) | `sampletones driver` | the system's package manager | the machine assembling the driver |
-| py65 | `make test` | `uv sync --group dev` | the `dev` dependency group |
-| ffmpeg with `libgme` | `sampletones nsf render` | the system's package manager | the machine listening to an export |
-
-`scripts/system_dependencies.py` carries what building and running the application needs, and the
-workflows install the `dev` group, so py65 is the one of the three CI
-reaches — the suite verifies the driver through it alone. cc65 and ffmpeg stay on the machine of
-whoever runs `sampletones driver` or `sampletones nsf render`, and a workflow that assembles the driver or renders
-a wave is what would put them in those scripts. The application itself calls neither: an export is
-written by the package's own code, from the committed `driver.bin`.
+Of the three tools the player needs, py65 is the one CI reaches, since the workflows install the
+`dev` group and `scripts/system_dependencies.py` carries what building and running the application
+needs. cc65 and ffmpeg stay on the machine of whoever assembles the driver or renders a wave, and a
+workflow that did either is what would put them in those scripts. The application itself calls
+neither: an export is written by the package's own code, from the committed `driver.bin`.
 
 ## Linux (standalone executable)
 
