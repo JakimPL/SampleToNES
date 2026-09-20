@@ -29,9 +29,6 @@ starts carrying.
   one.
 * Arpeggio modes: a sequence's `setting` byte states absolute. Fixed, relative and scheme need an
   enum of their own, and scheme needs the item bit-packing FamiTracker gives it.
-* The bend in a Bitphase export. `formats/bitphase/envelopes.py` states the three dimensions it
-  writes; `NesInstrumentRow` already carries `tone_add` and `tone_accumulation`, so the mapping is
-  confined to that module.
 * A Bitphase document states concert pitch whatever the reconstruction was tuned at: `_build_song`
   builds the tuning table from `DEFAULT_A4_TUNING` and leaves `request.tuning` unread.
 * A transpose or a volume typed in the sample column of a row holding no sample reaches every

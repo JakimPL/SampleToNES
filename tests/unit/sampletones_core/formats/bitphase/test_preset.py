@@ -7,11 +7,7 @@ import pytest
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.bitphase.model.instrument import BitphaseInstrumentPreset
 from sampletones_core.formats.bitphase.notes import pitch_to_note_index
-from sampletones_core.formats.bitphase.preset import (
-    PRESET_TUNING_TABLE,
-    instrument_to_preset,
-    write_preset,
-)
+from sampletones_core.formats.bitphase.preset import instrument_to_preset, write_preset
 from sampletones_core.formats.bitphase.specification.chip import CHIP_TYPE_NES
 from sampletones_core.formats.bitphase.specification.instruments import (
     LOOP_FROM_START,
@@ -20,6 +16,7 @@ from sampletones_core.formats.bitphase.specification.instruments import (
     NO_TONE_OFFSET,
 )
 from sampletones_core.formats.bitphase.specification.macros import NesMacroField
+from sampletones_core.formats.bitphase.tuning import DEFAULT_TUNING_TABLE
 from sampletones_shared.paths.extensions import EXT_FILE_JSON
 
 from .conftest import REFERENCE_PITCH, build_features, build_instrument
@@ -76,8 +73,8 @@ class TestThePitchContourRidesInTheToneOffset:
 
     def test_each_tick_offsets_the_period_its_semitone_asks_for(self, preset: BitphaseInstrumentPreset) -> None:
         base_index = pitch_to_note_index(REFERENCE_PITCH)
-        base_period = PRESET_TUNING_TABLE[base_index]
-        expected = [PRESET_TUNING_TABLE[base_index + semitones] - base_period for semitones in PITCH_CONTOUR]
+        base_period = DEFAULT_TUNING_TABLE[base_index]
+        expected = [DEFAULT_TUNING_TABLE[base_index + semitones] - base_period for semitones in PITCH_CONTOUR]
         assert offsets(preset) == expected
 
     def test_the_first_tick_plays_the_reconstructed_pitch(self, preset: BitphaseInstrumentPreset) -> None:

@@ -1,7 +1,9 @@
 import math
-from typing import Tuple
+from typing import Final, Tuple
 
 from sampletones_core.formats.bitphase.specification.chip import (
+    DEFAULT_A4_TUNING,
+    DEFAULT_CPU_FREQUENCY,
     MAX_TUNING_PERIOD,
     MIN_TUNING_PERIOD,
     TUNING_A4_INDEX,
@@ -39,3 +41,9 @@ def generate_tuning_table(
         periods.append(max(MIN_TUNING_PERIOD, min(max_period, period)))
 
     return tuple(periods)
+
+
+DEFAULT_TUNING_TABLE: Final[Tuple[int, ...]] = generate_tuning_table(
+    DEFAULT_CPU_FREQUENCY,
+    a4_tuning=DEFAULT_A4_TUNING,
+)
