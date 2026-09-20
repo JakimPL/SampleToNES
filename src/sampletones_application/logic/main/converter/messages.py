@@ -48,7 +48,9 @@ class ConverterMessages:
         batch writes many at once, so a count of the ones written says where it stands.
         """
         return (
-            self._run_text(progress, reconstruction_name) + self._stage_text(progress) + self._estimate_text(progress)
+            self._run_text(progress, reconstruction_name)
+            + self._stage_text(progress)
+            + time_estimation(self._language_manager, progress.eta_seconds)
         )
 
     def preparing_library(self, state: LibraryState) -> str:
@@ -112,6 +114,3 @@ class ConverterMessages:
             completed=step.completed,
             total=step.total,
         )
-
-    def _estimate_text(self, progress: ServiceProgress[ConversionItem]) -> str:
-        return time_estimation(self._language_manager, progress.eta_seconds)
