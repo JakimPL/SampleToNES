@@ -46,9 +46,9 @@ def heard_instructions(
 
     A frame held by a recording the reader left out reads as its channel's silent instruction
     at the index it stands on, so the reading lines up with the audio and the record frame for
-    frame. The reading ends at the last frame the reader hears, so a channel every recording is
-    left out on reads as standing by, while a channel the reader hears keeps every frame it
-    describes — which is the count an export writes and a footprint measures.
+    frame. The reading ends at the last frame the reader hears, and a channel whose sound the
+    reader's choice took away reads as standing by — which is the count an export writes and a
+    footprint measures.
 
     Args:
         stems_data: The record naming the stem holding each frame.
@@ -62,23 +62,41 @@ def heard_instructions(
     for channel_name, stream in instructions.items():
         stem_ids = stems_data.assignments_by_channel.get(channel_name, ())
         hearing = selection.stems_for(channel_name)
-        masked = _masked_stream(stream, stem_ids, hearing)
-        heard[channel_name] = masked[: _heard_length(stem_ids, len(masked), hearing)]
+        heard[channel_name] = _heard_stream(stream, stem_ids, hearing)
 
     return heard
 
 
-def _masked_stream(
+def _heard_stream(
     stream: Sequence[InstructionUnion],
     stem_ids: Sequence[int],
     heard: AbstractSet[int],
 ) -> List[InstructionUnion]:
-    """The stream with every frame outside the reader's hearing stating silence in its place."""
+    """The stream a reader hears: silence where a recording is left out, cut where hearing ends.
+
+    A rest answers to no recording, so every reader hears it and it stands where it is written.
+    That keeps a channel written down to rests alone in play, and leaves a channel whose sound
+    the reader's choice took away standing by, however many rests it also holds.
+    """
     if not stream:
         return list(stream)
 
     null: InstructionUnion = type(stream[0]).null_instruction()
-    return [instruction if _is_heard(stem_ids, frame, heard) else null for frame, instruction in enumerate(stream)]
+    masked: List[InstructionUnion] = []
+    last_heard = 0
+    sounds = False
+    for frame, instruction in enumerate(stream):
+        if _is_heard(stem_ids, frame, heard):
+            masked.append(instruction)
+            last_heard = frame + 1
+            sounds = sounds or instruction.on
+        else:
+            masked.append(null)
+
+    if sounds or not any(instruction.on for instruction in stream):
+        return masked[:last_heard]
+
+    return []
 
 
 def _is_heard(stem_ids: Sequence[int], frame: int, heard: AbstractSet[int]) -> bool:
@@ -87,18 +105,3 @@ def _is_heard(stem_ids: Sequence[int], frame: int, heard: AbstractSet[int]) -> b
         return True
 
     return heard_frame(stem_ids[frame], heard)
-
-
-def _heard_length(stem_ids: Sequence[int], frames: int, heard: AbstractSet[int]) -> int:
-    """How far a stream runs to the last frame the reader hears.
-
-    A channel is in play for as long as its stream describes a frame, so what the reading may
-    let go of is the stretch the reader hears nothing of — the tail a recording left out held.
-    A frame the reader hears stands however quietly it sounds, which keeps this reading and the
-    document's own count of the channel at one answer.
-    """
-    for frame in reversed(range(frames)):
-        if _is_heard(stem_ids, frame, heard):
-            return frame + 1
-
-    return 0

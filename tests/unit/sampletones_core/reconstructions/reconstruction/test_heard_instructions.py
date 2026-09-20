@@ -150,6 +150,12 @@ class TestWhereTheReadingEnds:
 
         assert reading == []
 
+    def test_a_channel_whose_sound_is_left_out_lets_go_of_its_rests_too(self) -> None:
+        """A rest is no evidence the reader hears the channel, so the channel reads as standing by."""
+        reading = _reading([_pulse(60), _silence()], [STEM_A, RESTING_STEM_ID], _heard())
+
+        assert reading == []
+
     def test_a_channel_that_only_rests_keeps_the_frames_it_describes(self) -> None:
         """A channel written down to nothing stays in play, so every reader of it counts one channel."""
         reading = _reading([_silence(), _silence()], [RESTING_STEM_ID, RESTING_STEM_ID], _heard(STEM_A, STEM_B))

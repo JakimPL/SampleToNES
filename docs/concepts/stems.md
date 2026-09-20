@@ -288,14 +288,14 @@ silences them.
    [Editing a stems reconstruction](#editing-a-stems-reconstruction).
 
    Two rules shape the reading. **A filtered reading states the frames it leaves
-   out rather than dropping them**, so the envelopes, the waveform and the record
-   line up column for column, and **it ends at the last frame the reader hears**,
-   so a channel every recording is left out on reads as standing by — its plot
-   empty, its figures at nothing and its instrument written nowhere. A channel the
-   reader hears keeps every frame it describes, however quietly those frames sound,
-   so the figures beside the plot name the bytes the export writes. Together they
-   make what a reader sees, hears, edits and exports one and the same part of the
-   document.
+   out as silence in place**, so the envelopes, the waveform and the record line
+   up column for column, and **it ends at the last frame the reader hears**, so a
+   channel whose sound the reader's choice took away reads as standing by — its
+   plot empty, its figures at nothing and its instrument written nowhere. A rest
+   answers to no recording, so every reader hears it: a channel written down to
+   rests alone stays in play, and the figures beside a plot name the bytes the
+   export writes. Together they make what a reader sees, hears, edits and exports
+   one and the same part of the document.
 2. **A box stands where the choice reaches something.** A stem draws a box on a
    channel exactly where the record gives it a frame there, so every box the card
    offers changes what is heard. A stem the picker never chose offers none, and

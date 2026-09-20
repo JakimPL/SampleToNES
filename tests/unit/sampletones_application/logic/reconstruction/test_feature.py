@@ -108,8 +108,7 @@ class TestTheEnvelopesOfWhatIsHeard:
     ) -> None:
         """Each channel that sounds is read as the document writes it.
 
-        A channel whose every frame rests reads as standing by instead, since the reading ends
-        where a channel last sounds.
+        A channel written down to rests alone stays in play, since every reader hears a rest.
         """
         whole = reconstruction.export()
         sounding = {name: features for name, features in whole.items() if features.has_frames}
