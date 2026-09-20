@@ -5,10 +5,13 @@ from typing import Optional, Tuple
 
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_application.logic.reconstruction.feature import FeatureData
+from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.logic.reconstruction.listening import StemListening
 from sampletones_application.logic.reconstruction.session import ReconstructionSession
 from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
@@ -32,7 +35,7 @@ class ReconstructionManager(CallbackMixin):
         self._scheduling = scheduling
         self._session: ReconstructionSession = ReconstructionSession()
         self._current_reconstruction: Optional[ReconstructionData] = None
-        self._current_features: Optional[FeatureData] = None
+        self._current_features: Optional[ChannelEnvelopesViewModel] = None
         self._listening: StemListening = StemListening()
 
         self.on_reconstruction_loaded: Optional[VoidCallback] = None
@@ -90,7 +93,7 @@ class ReconstructionManager(CallbackMixin):
             raise RuntimeError("No reconstruction is loaded when trying to load features")
 
         reconstruction = self._current_reconstruction.reconstruction
-        self._current_features = FeatureData.heard(reconstruction, self._listening.selection)
+        self._current_features = heard_envelopes(reconstruction, self._listening.selection)
 
     def refresh_features(self) -> None:
         """Reads the envelopes again after a change to what the reader is listening to.
@@ -206,7 +209,7 @@ class ReconstructionManager(CallbackMixin):
         return self._current_reconstruction
 
     @property
-    def current_features(self) -> Optional[FeatureData]:
+    def current_features(self) -> Optional[ChannelEnvelopesViewModel]:
         return self._current_features
 
     @property

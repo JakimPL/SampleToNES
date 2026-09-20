@@ -1,5 +1,6 @@
-from typing import AbstractSet, Dict, Final, Mapping, Sequence
+from typing import AbstractSet, Callable, Dict, Final, Mapping, Sequence
 
+from sampletones_application.logic.reconstruction.listening import offered_channels
 from sampletones_application.view_model.shared.ownership import (
     OwnershipLaneViewModel,
     OwnershipRunViewModel,
@@ -8,7 +9,9 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.ownership import heard_frame, owner_runs
 
-DISTINGUISHABLE_RECORDINGS: Final[int] = 2
+DISTINGUISHABLE_OWNERS: Final[int] = 2
+
+HeardOn = Callable[[ChannelName], AbstractSet[int]]
 
 
 def record_positions(stems_data: StemsData) -> Dict[int, int]:
@@ -26,37 +29,62 @@ def record_positions(stems_data: StemsData) -> Dict[int, int]:
     return {entry.id: index for index, entry in enumerate(stems_data.config.entries)}
 
 
-def tells_recordings_apart(stems_data: StemsData) -> bool:
-    """Whether the document holds recordings a color has something to tell apart.
+def tells_owners_apart(stems_data: StemsData) -> bool:
+    """Whether the document holds owners a color has something to tell apart.
+
+    An owner is a recording the record names, or the row the frames a reader wrote gather under:
+    both take a color of their own and both stand on the stems card, so a document holding one
+    recording and an edit beside it has two owners to tell apart.
 
     Args:
         stems_data: The record the document carries.
 
     Returns:
-        bool: True where two or more recordings stand on the record.
+        bool: True where two or more owners stand on the record.
     """
-    return len(record_positions(stems_data)) >= DISTINGUISHABLE_RECORDINGS
+    return len(offered_channels(stems_data)) >= DISTINGUISHABLE_OWNERS
 
 
-def ownership_lane(
+def ownership_lanes(
+    stems_data: StemsData,
+    assignments: Mapping[ChannelName, Sequence[int]],
+    heard_on: HeardOn,
+) -> Dict[ChannelName, OwnershipLaneViewModel]:
+    """A lane per channel of ``assignments``, each divided into the stretches its owners hold.
+
+    Each surface states its own reading as the assignments it passes — which channels stand, and
+    how far each lane runs — so the rule dividing a channel into stretches is written once and
+    the ribbon under the waveform and the band under an instrument's bars agree by construction.
+    A document answering to a single owner has nothing to tell apart and offers no lane.
+
+    Args:
+        stems_data: The record the document carries.
+        assignments: The stem holding each frame, per channel the surface draws.
+        heard_on: The recordings the reader hears on a channel.
+
+    Returns:
+        Dict[ChannelName, OwnershipLaneViewModel]: One lane per channel given, in that order.
+    """
+    if not tells_owners_apart(stems_data):
+        return {}
+
+    positions = record_positions(stems_data)
+    return {
+        channel_name: _ownership_lane(channel_name, stem_ids, positions, heard_on(channel_name))
+        for channel_name, stem_ids in assignments.items()
+    }
+
+
+def _ownership_lane(
     channel_name: ChannelName,
     stem_ids: Sequence[int],
     positions: Mapping[int, int],
     heard: AbstractSet[int],
 ) -> OwnershipLaneViewModel:
-    """One channel's lane: the stretches it divides into, each under the recording heard on it.
+    """One channel's lane: the stretches it divides into, each under the recording holding it.
 
     A stretch keeps the recording holding it and says whether the reader hears it there, so
     the lane names an owner wherever the record does and shows the reader's choice on top of it.
-
-    Args:
-        channel_name: The channel the lane stands for.
-        stem_ids: The stem holding each frame, as far as the lane runs.
-        positions: Where each recording's entry stands on the record.
-        heard: The recordings the reader hears on this channel.
-
-    Returns:
-        OwnershipLaneViewModel: The channel's stretches, in frame order.
     """
     return OwnershipLaneViewModel(
         channel_name=channel_name,

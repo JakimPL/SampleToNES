@@ -8,11 +8,14 @@ import pytest
 
 from sampletones_application.exports import ExportBackends
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_application.logic.reconstruction.feature import FeatureData
+from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.logic.reconstruction.listening import StemListening
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import (
     ReconstructionPanelLogic,
+)
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
 )
 from sampletones_application.view_model.reconstruction.paths.state import (
     ReconstructionPathState,
@@ -99,7 +102,7 @@ def _open(manager: MagicMock, reconstruction_data: ReconstructionData) -> None:
 def _refresh_features(manager: MagicMock) -> None:
     """Reads the envelopes of what is heard, the way the manager's own refresh does."""
     if manager.current_reconstruction is not None:
-        manager.current_features = FeatureData.heard(
+        manager.current_features = heard_envelopes(
             manager.current_reconstruction.reconstruction,
             manager.listening.selection,
         )

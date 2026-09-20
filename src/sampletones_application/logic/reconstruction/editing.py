@@ -1,25 +1,13 @@
 from dataclasses import dataclass
-from typing import Dict, Optional, Protocol, Union
+from typing import Optional, Protocol, Union
 
-from sampletones_application.view_model.shared.ownership import OwnershipLaneViewModel
-from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
+from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.instrument import Instrument
-
-
-@dataclass(frozen=True)
-class ReconstructionEdit:
-    """The channels of a loaded reconstruction, each with the envelopes it carries.
-
-    Attributes:
-        channels: The envelopes each channel plays.
-        ownership: The recordings behind each channel's frames, empty for a document
-            answering to a single recording.
-    """
-
-    channels: Dict[ChannelName, Features]
-    ownership: Dict[ChannelName, OwnershipLaneViewModel]
 
 
 @dataclass(frozen=True)
@@ -40,7 +28,7 @@ class InstrumentEdit:
     features: Features
 
 
-EditedVoice = Union[ReconstructionEdit, InstrumentEdit]
+EditedVoice = Union[ChannelEnvelopesViewModel, InstrumentEdit]
 
 
 class InstrumentEditingProtocol(Protocol):

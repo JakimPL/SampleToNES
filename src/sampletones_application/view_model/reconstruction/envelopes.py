@@ -22,6 +22,9 @@ class ChannelEnvelopesViewModel(BaseModel, extra="forbid", frozen=True):
     channels: Dict[ChannelName, Features]
     ownership: Dict[ChannelName, OwnershipLaneViewModel]
 
+    def __getitem__(self, channel_name: ChannelName) -> Features:
+        return self.channels[channel_name]
+
     def lane(self, channel_name: ChannelName) -> OwnershipLaneViewModel:
         """The stretches under one channel's bars, empty where no recording is told apart there."""
         return self.ownership.get(channel_name, OwnershipLaneViewModel(channel_name=channel_name, runs=()))

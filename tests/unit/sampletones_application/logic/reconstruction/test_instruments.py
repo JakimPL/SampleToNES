@@ -9,7 +9,7 @@ from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.reconstruction.editor import InstrumentEditor
-from sampletones_application.logic.reconstruction.feature import FeatureData
+from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.logic.reconstruction.instruments import (
     ReconstructionInstrumentsLogic,
 )
@@ -32,12 +32,13 @@ from sampletones_core.reconstructions import Reconstruction
 from tests.suite.stems import everything_heard
 
 
-def _heard_features(reconstruction: Reconstruction) -> FeatureData:
+def _heard_features(reconstruction: Reconstruction) -> ChannelEnvelopesViewModel:
     """The envelopes of the whole document, which is what a fresh reader hears."""
-    return FeatureData.heard(reconstruction, everything_heard(reconstruction))
+    return heard_envelopes(reconstruction, everything_heard(reconstruction))
 
 
 HISTORY_BUDGET: Final[int] = 16
+NEW_PITCH: Final[int] = 61
 
 
 def _editor(
@@ -255,26 +256,30 @@ class TestReconstructionInstrumentsLogicHandlePitchValueChanged:
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         callback = MagicMock()
         instruments_logic.on_reconstruction_instrument_updated = callback
-        instruments_logic.handle_pitch_value_changed(ChannelName.PULSE1, 61)
+        instruments_logic.handle_pitch_value_changed(ChannelName.PULSE1, NEW_PITCH)
         callback.assert_called_once()
 
     def test_forwards_generator_pitch_feature_and_value(
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         callback = MagicMock()
         instruments_logic.on_reconstruction_instrument_updated = callback
-        instruments_logic.handle_pitch_value_changed(ChannelName.PULSE1, 61)
-        channel_name, feature_key, _ = callback.call_args.args
-        channel_features = mock_reconstruction_manager.current_features.channels[ChannelName.PULSE1]
 
+        instruments_logic.handle_pitch_value_changed(ChannelName.PULSE1, NEW_PITCH)
+
+        channel_name, feature_key, features = callback.call_args.args
         assert channel_name == ChannelName.PULSE1
         assert feature_key == FeatureKey.INITIAL_PITCH
-        channel_features.model_copy.assert_called_once_with(update={"initial_pitch": 61})
+        assert features.initial_pitch == NEW_PITCH
 
 
 class TestReconstructionInstrumentsLogicHandleEnvelope:
@@ -282,7 +287,9 @@ class TestReconstructionInstrumentsLogicHandleEnvelope:
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         callback = MagicMock()
         instruments_logic.on_reconstruction_instrument_updated = callback
         instruments_logic.handle_envelope_changed(

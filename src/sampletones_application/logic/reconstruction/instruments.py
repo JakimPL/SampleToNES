@@ -7,7 +7,6 @@ from sampletones_application.layout.behavior.scheduling.scheduling import (
 from sampletones_application.logic.reconstruction.editing import (
     InstrumentEdit,
     InstrumentEditingProtocol,
-    ReconstructionEdit,
 )
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.reconstruction.envelopes import (
@@ -74,11 +73,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
                 ownership={},
             )
 
-        edit = self._reconstruction_edit()
-        if edit is None:
-            return None
-
-        return ChannelEnvelopesViewModel(channels=edit.channels, ownership=edit.ownership)
+        return self._reconstruction_envelopes()
 
     @staticmethod
     def _instrument_channels(
@@ -101,14 +96,14 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
 
     def _current_generators(self) -> Optional[Dict[ChannelName, Features]]:
         """The channels of the reconstruction in front of the panel, where one is."""
-        edit = self._reconstruction_edit()
-        return None if edit is None else edit.channels
+        envelopes = self._reconstruction_envelopes()
+        return None if envelopes is None else envelopes.channels
 
-    def _reconstruction_edit(self) -> Optional[ReconstructionEdit]:
-        """The reconstruction in front of the panel, where it holds one rather than an instrument."""
+    def _reconstruction_envelopes(self) -> Optional[ChannelEnvelopesViewModel]:
+        """The reconstruction in front of the panel, where it holds one and no instrument."""
         match self._editor.edited_instrument():
-            case ReconstructionEdit() as edit:
-                return edit
+            case ChannelEnvelopesViewModel() as envelopes:
+                return envelopes
             case _:
                 return None
 

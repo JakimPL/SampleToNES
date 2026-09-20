@@ -4,7 +4,10 @@ from typing import Callable
 
 import pytest
 
-from sampletones_application.logic.reconstruction.feature import FeatureData
+from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
@@ -37,8 +40,8 @@ def everything_heard(reconstruction: Reconstruction) -> StemSelection:
 
 
 @pytest.fixture
-def feature_data(reconstruction: Reconstruction, everything_heard: StemSelection) -> FeatureData:
-    return FeatureData.heard(reconstruction, everything_heard)
+def envelopes(reconstruction: Reconstruction, everything_heard: StemSelection) -> ChannelEnvelopesViewModel:
+    return heard_envelopes(reconstruction, everything_heard)
 
 
 @pytest.fixture
@@ -80,31 +83,31 @@ def everything_heard_of(stems_reconstruction: Reconstruction) -> StemSelection:
 class TestTheEnvelopesOfWhatIsHeard:
     def test_every_generator_answers_with_an_entry(
         self,
-        feature_data: FeatureData,
+        envelopes: ChannelEnvelopesViewModel,
     ) -> None:
-        assert set(feature_data.channels.keys()) == set(ChannelName.items())
+        assert set(envelopes.channels.keys()) == set(ChannelName.items())
 
     def test_a_channel_standing_by_carries_empty_envelopes(
         self,
         reconstruction: Reconstruction,
-        feature_data: FeatureData,
+        envelopes: ChannelEnvelopesViewModel,
     ) -> None:
         """A channel the reconstruction leaves silent is loaded describing no frame."""
         standing_by = set(ChannelName.items()) - set(reconstruction.playing_channels)
         assert standing_by
-        assert all(not feature_data[channel_name].has_frames for channel_name in standing_by)
+        assert all(not envelopes[channel_name].has_frames for channel_name in standing_by)
 
     def test_the_envelopes_state_the_pitch_they_are_measured_against(
         self,
-        feature_data: FeatureData,
+        envelopes: ChannelEnvelopesViewModel,
     ) -> None:
-        for features in feature_data.channels.values():
+        for features in envelopes.channels.values():
             assert features.initial_pitch is not None
 
     def test_hearing_every_recording_reads_the_document_itself(
         self,
         reconstruction: Reconstruction,
-        feature_data: FeatureData,
+        envelopes: ChannelEnvelopesViewModel,
     ) -> None:
         """Each channel that sounds is read as the document writes it.
 
@@ -114,7 +117,7 @@ class TestTheEnvelopesOfWhatIsHeard:
         sounding = {name: features for name, features in whole.items() if features.has_frames}
         assert sounding
 
-        assert {name: feature_data[name] for name in sounding} == sounding
+        assert {name: envelopes[name] for name in sounding} == sounding
 
     def test_a_channel_no_recording_is_heard_on_describes_no_frame(
         self,
@@ -122,19 +125,19 @@ class TestTheEnvelopesOfWhatIsHeard:
     ) -> None:
         playing = next(iter(reconstruction.playing_channels))
 
-        feature_data = FeatureData.heard(reconstruction, StemSelection(channels={}))
+        envelopes = heard_envelopes(reconstruction, StemSelection(channels={}))
 
-        assert not feature_data[playing].has_frames
+        assert not envelopes[playing].has_frames
 
 
-class TestFeatureDataQueries:
+class TestWhatTheEnvelopesAnswer:
     @pytest.mark.parametrize("channel_name", ChannelName.items(), ids=lambda name: name.value)
     def test_every_channel_answers_with_its_features(
         self,
-        feature_data: FeatureData,
+        envelopes: ChannelEnvelopesViewModel,
         channel_name: ChannelName,
     ) -> None:
-        assert isinstance(feature_data[channel_name], Features)
+        assert isinstance(envelopes[channel_name], Features)
 
 
 class TestTheRecordingsBehindWhatIsDrawn:
@@ -142,31 +145,31 @@ class TestTheRecordingsBehindWhatIsDrawn:
 
     def test_a_document_answering_to_one_recording_tells_none_apart(
         self,
-        feature_data: FeatureData,
+        envelopes: ChannelEnvelopesViewModel,
     ) -> None:
-        assert feature_data.ownership == {}
+        assert envelopes.ownership == {}
 
     def test_every_sounding_channel_carries_its_stretches(
         self,
         stems_reconstruction: Reconstruction,
         everything_heard_of: StemSelection,
     ) -> None:
-        feature_data = FeatureData.heard(stems_reconstruction, everything_heard_of)
+        envelopes = heard_envelopes(stems_reconstruction, everything_heard_of)
 
-        sounding = {name for name, features in feature_data.channels.items() if features.has_frames}
+        sounding = {name for name, features in envelopes.channels.items() if features.has_frames}
         assert sounding
-        assert set(feature_data.ownership) == sounding
+        assert set(envelopes.ownership) == sounding
 
     def test_a_channel_states_one_stretch_per_owner_it_changes_to(
         self,
         stems_reconstruction: Reconstruction,
         everything_heard_of: StemSelection,
     ) -> None:
-        feature_data = FeatureData.heard(stems_reconstruction, everything_heard_of)
-        channel_name = next(iter(feature_data.ownership))
+        envelopes = heard_envelopes(stems_reconstruction, everything_heard_of)
+        channel_name = next(iter(envelopes.ownership))
         owners = stems_reconstruction.stems_data.assignments_by_channel[channel_name]
 
-        runs = feature_data.ownership[channel_name].runs
+        runs = envelopes.ownership[channel_name].runs
 
         assert [run.stem_id for run in runs] == [
             owner for index, owner in enumerate(owners) if index == 0 or owner != owners[index - 1]
@@ -182,9 +185,9 @@ class TestTheRecordingsBehindWhatIsDrawn:
         An export releases the note it ends on, so a dimension's last item can stand past the
         frames the record holds; the stretches stop where the record does.
         """
-        feature_data = FeatureData.heard(stems_reconstruction, everything_heard_of)
+        envelopes = heard_envelopes(stems_reconstruction, everything_heard_of)
 
-        for channel_name, lane in feature_data.ownership.items():
+        for channel_name, lane in envelopes.ownership.items():
             recorded = len(stems_reconstruction.stems_data.assignments_by_channel[channel_name])
-            assert lane.runs[-1].end_frame == min(recorded, feature_data[channel_name].frame_count)
+            assert lane.runs[-1].end_frame == min(recorded, envelopes[channel_name].frame_count)
             assert lane.runs[0].start_frame == 0

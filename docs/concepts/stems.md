@@ -333,8 +333,9 @@ silences them.
    beside it answers for the channel. The recordings take a range of their own, so
    a color never reads as a channel's. A recording takes its color from the place
    it holds on the record, so one recording reads alike wherever it is drawn. The
-   lanes stand only where more than one recording is in play, since a document
-   answering to a single recording has nothing to tell apart. A stretch reads in
+   lanes stand only where more than one owner is in play — a recording the record
+   names, or the row the frames a reader wrote gather under — since a document
+   answering to a single owner has nothing to tell apart. A stretch reads in
    three ways: solid where the reader hears the recording holding it, that same
    color faded where the reader left it out, and the ground where the frames rest
    — so a stretch names its owner whether or not it is listened to, and the
