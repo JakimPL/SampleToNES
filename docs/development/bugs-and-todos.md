@@ -200,5 +200,3 @@ again.
   whole class.
 
 ## Bugs
-
-* Misaligned dialog boxes sizes at initialization

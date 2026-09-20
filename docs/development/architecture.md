@@ -165,7 +165,7 @@ They read the source as an AST through the source layer in `sampletones_tools/ch
 
 | Path | Role |
 |------|------|
-| `ui/elements/` | Reusable low-level widgets: `GUIPanel` (the panel base class), `GUIWindow` (modal variant), buttons, tables, graphs, trees, fonts, the status bar, and `MenuSection` — a run of menu items restated each time its menu is opened |
+| `ui/elements/` | Reusable low-level widgets: `GUIPanel` (the panel base class), `GUIWindow` (modal variant, whose geometry contract is [dialogs.md](application/dialogs.md)), buttons, tables, graphs, trees, fonts, the status bar, and `MenuSection` — a run of menu items restated each time its menu is opened |
 | `ui/elements/layout/` | Reusable layout primitives: `TabColumns` (the tab column scaffold), the `card()` context manager and the `well()` inset region, driven declaratively by tab coordinators, and `centered()`, which stands content in the middle of the width it is offered |
 | `ui/panels/` | Domain-level composite panels, organized by feature area |
 | `ui/themes/` | DPG themes and per-widget style helpers |
