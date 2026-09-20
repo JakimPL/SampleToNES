@@ -21,6 +21,7 @@ import msgpack
 import numpy as np
 from pydantic import BaseModel
 
+from sampletones_core.data.document import compress_document, decompress_document
 from sampletones_shared.array import to_numpy
 from sampletones_shared.exceptions import (
     DeserializationError,
@@ -77,11 +78,11 @@ class DataModel(BaseModel, ABC):
         return cls.deserialize_inner(data, validation, fast=fast)
 
     def save(self, path: Pathlike) -> None:
-        save_binary(path, self.serialize())
+        save_binary(path, compress_document(self.serialize()))
 
     @classmethod
     def load(cls, path: Pathlike, fast: bool = True) -> Self:
-        return cls.deserialize(load_binary(path), fast=fast)
+        return cls.deserialize(decompress_document(load_binary(path)), fast=fast)
 
     @classmethod
     def _construct(cls, fast: bool = True, **data: Any) -> Self:
