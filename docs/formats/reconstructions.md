@@ -65,8 +65,10 @@ The stems setup is also what `sampletones convert --stems` reads, written as JSO
 same fields: one entry per recording, in the order the recordings are given, each naming the
 channels it may occupy, the ones it bends, the `drives` it pushes each of them at and the
 `channel_cap` channels it may sound at once; and a hierarchy listing the stem ids by
-precedence level. An entry stating no `drives` is read at unit drive on every channel it
-holds, and one stating no `channel_cap` may sound all four. Two recordings, the first on the
+precedence level. A drive settles which instruction each frame records while the conversion
+runs, so a reconstruction plays the instructions it names. An entry stating no `drives` is
+read at unit drive on every channel it holds, and one stating no `channel_cap` may sound all
+four. Two recordings, the first on the
 pulses with its second pulse pushed harder and held to one channel a frame, the second on
 the rest as it stands:
 
