@@ -16,14 +16,12 @@ from sampletones_application.paths import (
     PALETTES_DIRECTORY,
     THEME_DIRECTORY,
 )
-from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_INPUT_WARNING,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
 )
-from sampletones_application.tags.graphs import SUF_GRAPH_RAW_DATA
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import PitchStepperStyle
@@ -228,7 +226,6 @@ class TestEditingASequence:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             np.array([15, 4, 8], dtype=np.int8),
-            "plot",
         )
 
         assert edited == [Envelope[int](items=(15, 4, 8))]
@@ -249,7 +246,6 @@ class TestEditingASequence:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             np.array([15, 4, 8], dtype=np.int8),
-            "plot",
         )
 
         assert edited == [Envelope[int](items=(15, 4, 8), loop_point=1)]
@@ -269,10 +265,10 @@ class TestEditingASequence:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             np.array([15, 4, 8], dtype=np.int8),
-            "plot",
         )
 
-        assert written[compose_tag("plot", SUF_GRAPH_RAW_DATA)] == "15 | 4 8"
+        field_tag = panel._get_feature_text_tag(ChannelName.PULSE1, FeatureKey.VOLUME)
+        assert written[field_tag] == "15 | 4 8"
 
 
 class TestCopyingASequence:

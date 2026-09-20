@@ -307,8 +307,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     ) -> str:
         return compose_tag(self.tab_bar_tag, channel_name, feature_key, SUF_GRAPH_RAW_DATA)
 
-    def _get_feature_text_tag(self, text_group_tag: str) -> str:
-        return compose_tag(text_group_tag, SUF_TEXT)
+    def _get_feature_text_tag(
+        self,
+        channel_name: ChannelName,
+        feature_key: FeatureKey,
+    ) -> str:
+        return compose_tag(self._get_feature_text_group_tag(channel_name, feature_key), SUF_TEXT)
 
     def _get_feature_plot_tag(
         self,
@@ -476,12 +480,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         feature_key: FeatureKey,
         envelope: Envelope[int],
     ) -> None:
-        text_group_tag = self._get_feature_text_group_tag(
-            channel_name,
-            feature_key,
+        dpg_set_value(
+            self._get_feature_text_tag(channel_name, feature_key),
+            format_envelope(envelope),
         )
-        raw_data_tag = self._get_feature_text_tag(text_group_tag)
-        dpg_set_value(raw_data_tag, format_envelope(envelope))
         self._show_sequence(channel_name, feature_key, envelope)
 
     def update_view(
@@ -852,7 +854,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 channel_name,
                 feature_key,
                 data,
-                plot.plot_tag,
             ),
             on_bar_point_hovered=self._on_bar_point_hovered,
         )
@@ -862,12 +863,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         channel_name: ChannelName,
         feature_key: FeatureKey,
         data: np.ndarray,
-        plot_tag: str,
     ) -> None:
         envelope = self._standing_sequence(channel_name, feature_key).with_items(tuple(int(value) for value in data))
-        raw_data_tag = compose_tag(plot_tag, SUF_GRAPH_RAW_DATA)
-        dpg_set_value(raw_data_tag, format_envelope(envelope))
-        self._show_sequence(channel_name, feature_key, envelope)
+        self._update_raw_data_text(channel_name, feature_key, envelope)
         self.call(self.on_envelope_changed, channel_name, feature_key, envelope)
 
     def _on_bar_point_hovered(
@@ -897,7 +895,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             feature_key,
         )
         raw_data_text = format_envelope(envelope)
-        raw_data_tag = self._get_feature_text_tag(text_group_tag)
+        raw_data_tag = self._get_feature_text_tag(channel_name, feature_key)
         copy_button_tag = compose_tag(text_group_tag, SUF_BUTTON_COPY)
 
         with dpg.group(tag=text_group_tag, parent=parent, horizontal=True):
@@ -1000,8 +998,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         dimensions reach that file whole is visible before an export.
         """
         self._sequences[(channel_name, feature_key)] = envelope
-        text_group_tag = self._get_feature_text_group_tag(channel_name, feature_key)
-        raw_data_tag = self._get_feature_text_tag(text_group_tag)
+        raw_data_tag = self._get_feature_text_tag(channel_name, feature_key)
         theme = self.warning_input_theme if is_shortened(feature_key, envelope) else self.theme
         theme.bind_to_item(raw_data_tag)
 

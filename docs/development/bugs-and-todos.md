@@ -208,8 +208,6 @@ again.
 * A channel whose every frame rests reads as standing by for the reader while `playing_channels`
   and the export still count it, so the panel and the size figures disagree about a channel whose
   volume was written down to nothing.
-* `_on_bar_point_clicked` composes a raw-data tag the text field does not carry, so its write
-  finds nothing and the field catches up only when the edit returns through the regeneration.
 * `ReconstructionStage.RENDERING` keeps the weight it was measured at while a conversion no longer
   renders, so a bar covers that share faster than the eight parts in a hundred `STAGE_WEIGHTS`
   gives it. Re-measuring the four stages over whole runs is what settles the new figures.
