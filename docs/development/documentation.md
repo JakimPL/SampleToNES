@@ -97,6 +97,10 @@ alone.
   them.
 - State each fact once, in the document that owns it, and link the sibling document rather than repeating
   it.
+- A measurement is written so a reader can place it. State it as a comparison — this against that, taken
+  together — or give the conditions it was taken under: the material, the machine, the build. A bare
+  figure carries no meaning a reader can check, so it is dropped or turned into the comparison it stands
+  for.
 - State things in positive terms: what the design does, not what it avoids or once did. Reach for a
   negative only where the contrast teaches something a positive sentence cannot.
 - Use American English. A name someone else owns keeps their spelling: `MatchRule.serialise()` is

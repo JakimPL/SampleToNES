@@ -327,9 +327,9 @@ The refinement does not search. Two measurements settle why:
   target, where the candidate cannot match the timbre, that response is a small ripple on a
   timbre-dominated floor with many local minima, and taking the lowest-cost divider over a sweep
   lands 15–30 cents from the truth.
-- Searching also costs what the library exists to avoid. Scoring one extra candidate per frame
-  means rendering it and extracting its feature, which measures around **2.1 s per second of
-  audio** — more than a whole conversion of the same audio.
+- Searching also costs what the library exists to avoid. Scoring one extra candidate per frame means
+  rendering it and extracting its feature, and that alone was measured to take **longer than the
+  whole conversion** of the same audio on the same machine.
 
 So the answer is read out of the transform instead. `sampletones_core.fft.instantaneous` takes the
 **phase** the constant-Q transform already computes and `calculate_cqt_spectrum_columns` discards.
@@ -374,9 +374,8 @@ work `docs/development/bugs-and-todos.md` records under **Features**.
 The refinement keeps a bend on the reading alone. A guard was measured before it was left out: render
 each bent candidate, score it, and keep the bend only where the score improves. It rejected nothing.
 The criterion agreed with the reading on every bent frame, on a matched and a mismatched target
-alike. Its cost was measured beside the conversion it would guard, on the same material and the same
-machine: one extra render and score per bent frame took longer than the whole conversion. The guard
-is worth revisiting against material where the reading is shown to misfire.
+alike. It also carries the render-and-score cost § 6.1 rules out, once per bent frame. The guard is
+worth revisiting against material where the reading is shown to misfire.
 
 A frame makes no proposal where it rests, where the stem holding it leaves that channel out, where
 its channel is not pitched — the noise channel's sixteen periods have no finer grid — or where its

@@ -251,9 +251,9 @@ above it:
 | phrases from the search as well | **0.880** | **12.49** | **37238** |
 
 The whole song is 9509 bytes of the roughly 32000 available, and **37238 ticks is 10.3
-minutes at 60 Hz**, against the 49 seconds a record per tick reaches. Encoding it costs
-about two seconds; decoding it costs the console around twenty instructions per plane
-per tick, comfortably inside a video frame.
+minutes at 60 Hz**, against the 49 seconds a record per tick reaches. Encoding happens once, where
+the file is written, and `make benchmarks` holds its cost. Decoding costs the console around twenty
+instructions per plane per tick, comfortably inside a video frame.
 
 `uv run sampletones codec report` writes this table over a corpus of songs, and the format's
 constants are settled from it. Two of them were settled against expectation: splitting

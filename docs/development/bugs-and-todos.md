@@ -171,10 +171,9 @@ again.
 * Every gesture re-derives the whole setup. `ConverterLogic._settle` reads the gathered sources
   into rows and follows the state to its destination, which builds one batch entry per recording
   still holding a channel. A gesture hands `_settle` a state whose recordings are new objects, so
-  the readings are taken cold and the garbage collector's own share falls inside them — together
-  roughly a quarter of a second per gesture on a folder of ten thousand recordings, before a widget
-  is touched, where `tests/benchmarks/test_converter_load.py` holds the warm readings to the length
-  of the list. All of it is repeated work, since what changed was one recording. Answering it means
+  the readings are taken cold and the garbage collector's own share falls inside them — together long
+  enough to be felt as a pause on a folder of ten thousand recordings, before a widget is touched,
+  where `tests/benchmarks/test_converter_load.py` holds the warm readings to the length of the list. All of it is repeated work, since what changed was one recording. Answering it means
   holding the rows against the gathering that produced them and deriving entries for the recordings
   a gesture actually moved.
 * Several directories under `ui/` carry modules without an `__init__.py`, which leaves each one a
