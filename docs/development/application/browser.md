@@ -48,16 +48,15 @@ complements `docs/development/architecture.md` (layering and ownership) and
 `BrowserManager` (`logic/reconstruction/browser/manager.py`) owns the tree and runs a refresh in four
 steps: **scan** the directory, **build** each branch from that one scan, **shape** what came out, and
 **publish** it through `Tree.set_root`. `BrowserLogic` sits above it as the surface the coordinators
-drive, and `get_all_reconstruction_files` reads the scan.
+drive.
 
-| Stage | Module | What it does |
-|---|---|---|
-| Scan | `tree/scan.py` | `scan_reconstructions` walks the directory once, recording each folder with the configuration its name states and each `.stn` file beneath it |
-| Records | `tree/entries/` | `DirectoryEntry`, `ReconstructionEntry`, `ReconstructionScan` — frozen, path-only, no widgets and no tree |
-| Configuration branch | `tree/configurations/` | `branch.py` lays the scanned folders out as they sit; `grouping.py` lifts a top-level configuration directory under frequency ▶ transformation configuration headings and names it by its channels, so the rows leading to it spell its display name; `naming.py` gives the remaining configuration directories friendly names, unique among their siblings |
-| Sample branch | `tree/samples/` | `variants.py` regroups every top-level configuration directory's reconstructions by the audio they mirror (`SampleSource` → `SampleVariant`); `branch.py` rebuilds the mirrored folders as groups and gathers each audio's variants under one sample row, each labeled by its configuration |
-| Shaping | `tree/prune.py`, `tree/collapse.py`, `tree/order.py` | Run in that order over each branch, deepest rows first |
-| Containers | `tree/containers.py` | `find_or_create_group`, `find_or_create_config_group` and `find_or_create_sample` extend the heading of that name a parent already holds; each heading is looked up among the siblings of its own kind and class, so a folder and an audio sharing a name stay two rows |
+A scan records paths alone, in frozen entries holding no widget and no tree, and the two branches read
+it differently. The configuration branch lays the scanned folders out as they sit, giving each
+configuration directory a friendly name. The sample branch regroups every top-level configuration
+directory's reconstructions by the audio they mirror, and gathers each audio's variants under one
+sample row, each labeled by its configuration. A heading is extended rather than repeated: one of that
+name is looked up among the siblings of its own kind and class, so a folder and an audio sharing a name
+stay two rows.
 
 The policy the two branches share: a configuration directory sitting at the top level of the
 reconstructions directory is the one lifted under groups and transposed into the sample view. A
@@ -67,26 +66,22 @@ the branch which follows the disk.
 
 ## The node vocabulary
 
-`sampletones_core/structures/tree/` holds the nodes, all anytree-backed:
+`sampletones_core/structures/tree/` holds the nodes, all anytree-backed. A row states its kind:
+`NodeType.GROUP` and `SAMPLE` for the headings the browser writes, `DIRECTORY` and `FILE` for what the
+disk holds. A row standing for a path is a `FileSystemNode`, which is the class favorites,
+playability, themes and the path items all test for.
 
-* `TreeNode(name, node_type)` — a row and its kind. `NodeType.ROOT` for the container both branches
-  hang from, `GROUP` and `SAMPLE` for the headings the browser writes, `DIRECTORY` and `FILE` for what
-  the disk holds.
-* `FileSystemNode(filepath)` — a row standing for a path. Favorites, playability, themes and the path
-  items all test for this class.
-* `ConfigNode(config)` — a filesystem row belonging to a reconstruction configuration, carrying the
-  parsed `ConfigDirectoryFields`. It subclasses `FileSystemNode` so every reader of a path keeps
-  working, and the fields travel with the row, which is what lets a label, a tooltip and a font state
-  the configuration from the node already in hand.
-* `ConfigGroupNode` — a heading gathering the configurations that share a stretch of their display
-  name: the rates they run at, the spectrum they were built from. It keeps `NodeType.GROUP`, so it
-  folds, prunes, sorts and behaves as any heading does, and it names the rows whose labels are
-  configuration text rather than words, which is what the configuration font reads.
+A filesystem row belonging to a reconstruction configuration is a `ConfigNode`, carrying the parsed
+fields. It subclasses `FileSystemNode` so every reader of a path keeps working, and the fields travel
+with the row, which is what lets a label, a tooltip and a font state the configuration from the node
+already in hand. A heading gathering the configurations that share a stretch of their display name is a
+`ConfigGroupNode`. It keeps `NodeType.GROUP`, so it folds, prunes and sorts as any heading does, and it
+names the rows whose labels are configuration text rather than words, which is what the configuration
+font reads.
 
-`create_directory_node` chooses between `FileSystemNode` and `ConfigNode` from the fields the scan
-read. Which row carries the configuration follows the branch: in the configuration branch it is the
-directory that names it, and in the sample branch it is the variant leaf, since there the
-configuration is what distinguishes one row from the next.
+Which row carries the configuration follows the branch: in the configuration branch it is the directory
+that names it, and in the sample branch it is the variant leaf, since there the configuration is what
+distinguishes one row from the next.
 
 ## The shaping rules
 
@@ -111,32 +106,22 @@ configuration is what distinguishes one row from the next.
 
 ## The panels
 
-The browsers form one line of inheritance, each level owning what it shares:
+The browsers form one line of inheritance, each level owning what it shares: `GUITreePanel`
+(`ui/elements/tree/tree.py`) is a tree of rows, `GUIFileBrowserPanel` (`ui/elements/tree/browser.py`)
+is a browser of files as a collapsible card, and `GUIReconstructionBrowserPanel`
+(`ui/panels/shared/browser.py`) is the reconstruction browser over the two branches. The
+Reconstructions and Sequencer panels below it name their widgets, their refresh control, and what
+opening a reconstruction means in that tab; a subclass declares its widgets as a `FileBrowserTags`
+class attribute. The Main tab's filesystem explorer and the Instructions tab's library catalog sit on
+the file browser as well, so the card, the search and the rebuild machinery are shared with them.
 
-* `GUITreePanel` (`ui/elements/tree/tree.py`) — a tree of rows: the controls it narrows by and the
-  filter they compose, the shape it holds across rebuilds — kept for it by `RowExpansionMemory`
-  (`ui/elements/tree/expansion.py`) — the rebuild handshake, spec collection, themes and fonts per row,
-  the detail tooltip, the status-bar messages, and the context-menu items every browser can offer.
-* `GUIFileBrowserPanel` (`ui/elements/tree/browser.py`) — a browser of files as a collapsible card: the
-  controls bringing the tree up to date and folding it away, the tree window, the folder-and-file
-  handler pair, and enabling the card as the tree locks and unlocks. A subclass declares its widgets as
-  a `FileBrowserTags` class attribute and states what its card and refresh control read.
-* `GUIReconstructionBrowserPanel` (`ui/panels/shared/browser.py`) — the reconstruction browser: the
-  rows the two branches hold, the color a group and a sample read in, and the context menus. The
-  Reconstructions and Sequencer panels below it name their widgets, their refresh control, and what
-  opening a reconstruction means in that tab.
-
-The Main tab's filesystem explorer and the Instructions tab's library catalog sit on
-`GUIFileBrowserPanel` as well, so the card, the search and the rebuild machinery are shared with them.
-
-**A rebuild** starts on the tree worker: `_launch_rebuild` takes the tree lock, brings the model up to
-date, collects the rows into specs, and hands them to `TreeEmitter`, which clears the old rows and
-stages the new ones in budget-sized batches so interactive callbacks run between slices. The
-completion callback shows the empty state where one is called for, runs the panel's hook, and releases
-the lock. Because a browser is asked to rebuild from either tab and from several places in the
-application, exactly one rebuild is in flight at a time. A whole-tree rebuild asked for while the lock
-is held — by another rebuild, a library load or a library generation — is kept for the release, which
-asks for it again once the tree stands free; the latest request is the one kept.
+**A rebuild** starts on the tree worker, which takes the tree lock, brings the model up to date,
+collects the rows into specs, and hands them to `TreeEmitter`; the emitter clears the old rows and
+stages the new ones in budget-sized batches, so interactive callbacks run between slices. Because a
+browser is asked to rebuild from either tab and from several places in the application, exactly one
+rebuild is in flight at a time. A whole-tree rebuild asked for while the lock is held — by another
+rebuild, a library load or a library generation — is kept for the release, which asks for it again once
+the tree stands free; the latest request is the one kept.
 
 **A row's tag** (`compose_node_tag`, `ui/elements/tree/tag.py`) joins the names above it, which reads
 the row back to whoever inspects the widget tree, and appends a digest over the exact path of
@@ -170,14 +155,13 @@ The two criteria answer different questions, so each lands in a different place:
 
 | Criterion | What it decides | Where it lands | What a change costs |
 |---|---|---|---|
-| `favorites_only` | which rows the browser **draws** | `_append_spec` records the rows the mode shows, so `TreeEmitter` creates widgets for those alone | `redraw_tree` collects the rows again from the model in hand, on the tree worker |
-| `query` | which of the drawn rows are **shown** | `update_tree_visibility` flips `show` over the rows already on screen, once the typing settles | a resolution of the query, debounced |
+| `favorites_only` | which rows the browser **draws** | the rows the mode shows are the rows collected into specs, so `TreeEmitter` creates widgets for those alone | a redraw: the rows are collected again from the model in hand, on the tree worker |
+| `query` | which of the drawn rows are **shown** | `show` is flipped over the rows already on screen, once the typing settles | a resolution of the query, debounced |
 
 One rule serves both. `TreeVisibility` (`sampletones_core/structures/tree/visibility.py`) takes the
 rows a criterion named and answers which rows stay: a named row, a row leading down to one, and a row
-one holds. `resolve_visibility` keeps the named rows and the rows above them, so what a pass holds in
-memory follows the size of what was found, and a row beneath a match is answered from its own path
-upward.
+one holds. It keeps the named rows and the rows above them, so what a pass holds in memory follows the
+size of what was found, and a row beneath a match is answered from its own path upward.
 
 **What a criterion names and what it keeps are two sets.** A criterion points the reader at some rows
 and brings others along with them, and only the first kind is worth unfolding to. The rows a criterion
@@ -187,96 +171,76 @@ In the sample branch the headings carry no path, which is what makes the variant
 folder arrives at.
 
 **A criterion is read the way that criterion means.** A search shows what a matching row gathers, so a
-match opens along with the rows above it (`TreeVisibility.should_expand`). The favorites mode points
-the reader at a star, so what opens is the rows above it (`_way_down_to`, over the anchors' ancestors)
-while the star's own row stands where the reader left it — a starred folder is revealed. A starred
-reconstruction inside a starred folder anchors on its own, which is what opens the folder above it.
+match opens along with the rows above it. The favorites mode points the reader at a star, so what opens
+is the rows above it while the star's own row stands where the reader left it — a starred folder is
+revealed. A starred reconstruction inside a starred folder anchors on its own, which is what opens the
+folder above it.
 
 **Which stars are followed is the reader's.** The mode decides what is drawn; whether it also unfolds
 is a preference stated per kind of favorite, held in `ApplicationConfig.browser` and offered as
 **View ▸ Auto-expand favorites**. A starred reconstruction reads the reconstructions answer; a starred
 folder, and everything it brings in where no row stands for it, reads the directories answer. Both are
-off by default, so turning the mode on narrows the tree and leaves every row standing as it was. The
+off as shipped, so turning the mode on narrows the tree and leaves every row standing as it was. The
 panel reads the pair through `TreeLogicProtocol`, once per resolution.
 
-**The way down opens on the pass the reader asked for, and stands for as long as the mode does.**
-Switching the mode on is the reader asking to be shown their favorites, so the pass that switch starts
-is the one that follows a star: `_state_favorites_only` records the request and `_resolve_filter` spends
-it, and the rows it opens are noted in the mode's own memory. Later passes read that memory, so a
-refresh, a query or a star gained meanwhile leaves the reader looking at their favorites, while the
-stars followed stay the ones the switch asked about. Every turn of the mode is a pass's to answer: the
-pass that reads the mode off lets the memory go and those rows fold back. A change of preference asks
-for nothing; it is answered the next time the reader asks for the mode, which keeps a menu click from
-moving the tree the reader is working in.
-
-**The way down becomes the reader's once their own rows stand on it.** A reader looking at their
-favorites opens rows of their own below the way the mode opened, so a row of the mode's holds theirs on
-the screen. `_release_mode_rows` therefore reads the model on the pass that finds the mode off — on the
-tree worker, beside the other walks a pass makes — and hands the memory the ways down to the reader's
-rows; `RowExpansionMemory.release` keeps the rows of the mode's among them, which writes the way down
-into the shape a session keeps. What is left held the mode's opening alone, and folds with it.
+**An opening belongs to the pass that asked for it.** Switching the mode on is the reader asking to be
+shown their favorites, so the pass that switch starts is the one that follows a star, and the rows it
+opens are noted in the mode's own memory. Later passes read that memory, so a refresh, a query or a
+star gained meanwhile leaves the reader looking at their favorites, while the stars followed stay the
+ones the switch asked about. The pass that reads the mode off lets the memory go, and those rows fold
+back. A change of preference asks for nothing: it is answered the next time the reader asks for the
+mode, which keeps a menu click from moving the tree the reader is working in.
 
 **A row the favorites mode holds back holds nothing it would show.** A row it shows either stands on
 the way to a starred row or sits beneath one, and each of those facts holds for every row above it — so
 declining a row declines its subtree, and one decision covers it while the traversal walks on.
 
-**Two memories, each holding what one hand opened.** `RowExpansionMemory` owns both and the rules that
-join them, holding each row by the tag it is addressed under so a later pass creates it open again. The
-reader's rows hold what the reader did — a click, read a frame later once the row has answered it, and
-the expansion items and the collapse control, which record what they set — and they are what a session
-writes down. The mode's rows hold the way down it opened, and go when the mode does, so a narrowed
-browser hands the tree back the way the reader had it, keeping the rows theirs now stand on. Folding a
-row is the reader's word on it whichever hand opened it, so `remember` releases the mode's claim along
-with the reader's and the row stays folded. A pass writes from the tree worker while a click writes from
-the main thread, so one lock covers every answer the memory gives. Both sets are held to the rows the
-model states, read afresh on every pass, so a row a moved reconstructions directory left behind leaves
-them with it. Which browsers record a shape at all is `_REMEMBERS_EXPANSION`: it decides whether a click
-is followed through to the memory, and a browser that keeps none leaves it empty.
+**Two memories, each holding what one hand opened.** `RowExpansionMemory`
+(`ui/elements/tree/expansion.py`) owns both and the rules that join them, holding each row by the tag
+it is addressed under so a later pass creates it open again. The reader's rows hold what the reader did
+— a click, the expansion items, the collapse control — and they are what a session writes down. The
+mode's rows hold the way down it opened and go when the mode does, so a narrowed browser hands the tree
+back the way the reader had it. Where the reader's own rows have come to stand on a row of the mode's,
+the memory takes that way down over as the reader's, so the view they built stays on the screen
+(principle 8). Folding a row is the reader's word on it whichever hand opened it, so the row stays
+folded. A pass writes from the tree worker while a click writes from the main thread, so one lock covers
+every answer the memory gives. Both sets are held to the rows the model states, read afresh on every
+pass, so a row a moved reconstructions directory left behind leaves them with it. Which browsers record
+a shape at all is `_REMEMBERS_EXPANSION`, and a browser that records none leaves the memory empty.
 
 A search unfolds by the same rule from the other end: its matches and the rows above them open for as
 long as the query stands, resolved afresh on each pass, and clearing the query folds them back.
 
-The shape outlives the run as well. A browser is handed the mode and the rows it opens with as it is
-built (`initial_favorites_only`, `initial_expanded_rows`). A change of mode is written where it happens,
-through `on_favorites_filter_changed`, and the shape is asked for the once, at exit:
-`_persist_application_state` takes each tab's rows into `ApplicationState.expanded_rows` under the
-panel's tag, so a pass holds what it opened in memory, on the tree worker, and the session file reads it
-from there.
+**The shape outlives the run.** A browser is handed the mode and the rows it opens with as it is built,
+reports a change of mode where it happens, and is asked for its shape once, at exit: each tab's rows go
+to `ApplicationState.expanded_rows` under the panel's tag, and its mode to
+`ApplicationState.favorites_filters` under the same tag. So a browser opens in the mode it was left in,
+with the rows it was left with, and a collapsed card is remembered the same way.
 
 **The Main tab's explorer remembers folders, not rows.** Its rows are the folders on disk, read a level
 at a time as the reader opens one, so `ExplorerManager` holds two facts about a folder: whether its
 children have been read, and whether its row stands open. They part company — a folder read and then
 folded away is loaded and closed — and the open one is the shape a session writes to
-`ApplicationState.expanded_directories`. A refresh reads down to each remembered folder through
-`_expand_path_to`, reading every folder it needs once. A remembered folder the disk no longer holds is
-read down to as far as it still stands and stays remembered, so a drive unplugged for one run opens
-where it was left once it is back.
+`ApplicationState.expanded_directories`. A refresh reads down to each remembered folder, reading every
+folder it needs once. A remembered folder the disk no longer holds is read down to as far as it still
+stands and stays remembered, so a drive unplugged for one run opens where it was left once it is back.
 
 **What the mode costs.** Resolving it walks the model once per rebuild, on the tree worker, testing each
-row with `is_node_favorite` and `has_favorite_ancestor` — set lookups over `filepath.parents` — and the
-anchors the preference follows are read out of that one answer. What it materializes is the starred rows
-and the rows above them, and what reaches DearPyGui is the drawn rows alone: on a directory holding
-hundreds of thousands of reconstructions, a favorites-only browser creates widgets for the starred ones
-and their headings. A keystroke resolves the query alone, the drawn rows being the mode's to state. A
-favorite toggled while the mode is on redraws the browser, so starring a row brings it in and unstarring
-one takes it out along with what it held.
+row's path and its parents against the session's set, and the anchors the preference follows are read
+out of that one answer. What it materializes is the starred rows and the rows above them, and what
+reaches DearPyGui is the drawn rows alone — so over a directory holding hundreds of thousands of
+reconstructions, a favorites-only browser creates widgets for the starred ones and their headings. A
+keystroke resolves the query alone, the drawn rows being the mode's to state. A favorite toggled while
+the mode is on redraws the browser, so starring a row brings it in and unstarring one takes it out along
+with what it held.
 
 A rebuild that drew no row fills the cleared tree with the message naming the criterion that came back
-empty (`global.dialog.message.tree_no_favorites`, `global.dialog.message.tree_no_results`), so the
-filter's answer reads where the rows would be.
+empty, so the filter's answer reads where the rows would be.
 
-**The control** is a checkbox under the search box carrying the favorite glyph, which reads in the
-favorite color while the mode is on and muted while it is off. `_OFFERS_FAVORITES_FILTER` states
-which cards hold it: the reconstruction browsers, whose rows stand for the paths a session stars. It
-follows the tree's lock, a rebuild being what it asks for, and its label reads in the pair every
-checkbox reads — the text color while it can be clicked, the muted one while a rebuild holds it — so
-the shade states whether the control is live.
-
-Each browser opens in the mode it was left in. The panel raises `on_favorites_filter_changed` with its
-own tag, and the tab coordinator writes it to `ApplicationState.favorites_filters` under that tag,
-which is how a collapsed card is remembered too.
-
-**Folding the whole tree away** is the other control every card carries. It reaches the rows through the
-model rather than the widget tree, so one pass covers a branch however deep it runs, and it records what
-it set — leaving the memory empty, which is the shape a later pass then draws. The explorer folds first
-and drops the folders it had read afterward, so opening one lists it as it stands on disk.
+**The controls each card carries.** A checkbox under the search box switches the favorites mode.
+`_OFFERS_FAVORITES_FILTER` states which cards hold it — the reconstruction browsers, whose rows stand
+for the paths a session stars — and it follows the tree's lock, a rebuild being what it asks for.
+Folding the whole tree away is the other control. It reaches the rows through the model rather than the
+widget tree, so one pass covers a branch however deep it runs, and it records what it set, which leaves
+the memory empty. The explorer folds first and drops the folders it had read afterward, so opening one
+lists it as it stands on disk.

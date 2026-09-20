@@ -106,6 +106,10 @@ starts carrying.
   in `specification/` — so a project past one of them is reported to the reader rather than
   refused by the writer.
 * Per-tab undo routing
+* A history of its own for a standalone reconstruction document — a reconstruction loaded from disk
+  rather than opened as a project sample. The engine is session-scoped to a project, so an edit to
+  such a document is undoable nowhere; giving it a stack reuses the same engine
+  ([undo](application/undo.md)).
 * In-application console
 * Improve performance of browser favorite scan of the entire tree per click
 

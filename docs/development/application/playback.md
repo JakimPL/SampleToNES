@@ -106,13 +106,16 @@ sounding preview whenever the active tab has a source of its own, so a preview a
 
 The transport's verbs are reached identically from the Playback menu, the toolbar, and the keyboard:
 
-| Key | Command | Behavior |
-|-----|---------|-----------|
-| `Space` | Play / Pause | Acts on the target: pauses or resumes it while it is engaged, and starts it from the beginning otherwise. With no target, it does nothing. |
-| `Shift+Space` | Play from start | Starts the active tab's source from the beginning. |
-| `Ctrl+Space` | Play from this frame | Sequencer: plays the song from the first row of the frame the tracker shows. |
-| `Ctrl+Shift+Space` | Play from here | Sequencer panels: plays the song from the cursor's row. |
-| `Escape` | Stop | Silences everything — the engaged source and any preview — from any tab. |
+| Command | Behavior |
+|---------|-----------|
+| Play / Pause | Acts on the target: pauses or resumes it while it is engaged, and starts it from the beginning otherwise. With no target, it does nothing. |
+| Play from start | Starts the active tab's source from the beginning. |
+| Play from this frame | Sequencer: plays the song from the first row of the frame the tracker shows. |
+| Play from here | Sequencer panels: plays the song from the cursor's row. |
+| Stop | Silences everything — the engaged source and any preview — from any tab. |
+
+Each verb is an action, so the combination it answers to is the shipped scheme's
+(`sampletones_config/keybindings/`) and every surface prints what the scheme says.
 
 **A click on a waveform puts the playhead at a sample.** The Reconstructions and Instructions
 waveforms draw the audio their tab's own source plays, so a click reaches that source at the sample
@@ -122,19 +125,15 @@ source another has taken the output from starts sounding rather than moving a pl
 waveform drawing a voice's own audio draws nothing its player sounds, so it takes no click and its
 hint names none.
 
-The left button carries three gestures. A drag pans the view, so a press reads as a click while the
-pointer comes up within the waveform layout's `click_travel` of where it went down. A double-click
-fits the view to the audio (the plot's `fit_button`), so a click is reported once its double-click
-window has closed. The double-click is the one ImGui recognizes, read on the press that completes it,
-and every press following it within the window belongs to the same burst, so the playhead and the
-view each answer exactly the gesture meant for them (`PlotClickGesture`,
-`ui/elements/graphs/gesture.py`).
+The left button carries three gestures: a click seeks, a drag pans the view, and a double-click fits
+it to the audio. `PlotClickGesture` (`ui/elements/graphs/gesture.py`) settles which one a press was,
+so the playhead and the view each answer exactly the gesture meant for them.
 
-Because the target prefers the active tab's own source, `Space` controls what the user is looking at
+Because the target prefers the active tab's own source, Play/Pause acts on what the user is looking at
 whenever that screen can play something, and reaches the source already sounding on a screen that
 plays nothing of its own: the Main tab, an empty Reconstruction or Instructions tab, the Sequencer
-before a project is open. So a paused reconstruction resumes with `Space` from the Main tab, while
-`Space` on the Sequencer with a project open starts the song.
+before a project is open. So it resumes a paused reconstruction from the Main tab, and starts the song
+on the Sequencer with a project open.
 
 ## What the surfaces show
 
@@ -280,29 +279,13 @@ terminating would reclaim.
 | The device, its stream, and arbitration between requests | `AudioDeviceManager` (`sampletones_core/audio/`) |
 | The ranking that settles a contest for the device | `PlaybackPriority` (`logic/shared/`) |
 | The verbs, target resolution, and the registry of sources | `coordinators/playback/router.py` |
-| Putting a sample source's playhead at a clicked sample | `PlayerLogic.play_from` (`logic/shared/player.py`) |
-| Winding every source down ahead of backend teardown | `PlaybackRouter.shutdown()` (`coordinators/playback/router.py`) |
 | A source's engagement reporting | the transport's player protocol, implemented per source |
 | Error presentation for a source's failures | `GuardedPlayer` (`coordinators/playback/guard.py`) |
-| Keyboard delivery, priority, and field focus | `utils/gui/keyboard/` (architecture §12) |
 | The sequencer's mute set, its mask, and solo | `SequencerChannelsLogic` (`logic/sequencer/channels.py`) |
-| A channel name's gestures and menu, in either table | `ChannelSwitch` (`ui/panels/sequencer/channels.py`) |
-| The reach the sequencer view follows the playhead at | `FollowMode` (`constants/playback.py`), held by `SongPlayerLogic` (`logic/sequencer/playback/song_player.py`) |
-| Where the playhead stands, and both grids' marks for it | `SequencerTabCoordinator` (`coordinators/tabs/sequencer.py`) |
-| Marking and revealing the sounding row in the tracker | `GUISequencerTrackerPanel` (`ui/panels/sequencer/tracker.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer/`) |
-| Filling in the dimensions a channel governs, frame by frame | `SampleVoice` (`logic/sequencer/playback/synthesizer/voice.py`) |
 | The values a channel holds between frames | `ChannelState` (`logic/sequencer/playback/synthesizer/state.py`) |
-| The channel generators and the rates they are built at | `ChannelBank` (`logic/sequencer/playback/synthesizer/bank.py`) |
-| How long each row of a pattern lasts | `Groove` (`sampletones_core/timing/`), indexed by row while rendering |
-| How many samples one of that row's ticks spans | `TickClock` (`sampletones_core/timing/`), followed by `EngineRates` |
-| The song's render-ahead buffer | `services/song_player/` |
-| The document a kernel reads, live or captured | `ProjectSource` / `ProjectSnapshot` (`logic/shared/project_source.py`) |
-| The ticks the order lasts and the samples they span | `SongLength` (`logic/sequencer/playback/synthesizer/length.py`) |
+| How long a row lasts, and how many samples its ticks span | `Groove` and `TickClock` (`sampletones_core/timing/`) |
 | Rendering the song to a file, its passes and its progress | `SongRenderService` (`services/render/`) |
-| Where a rendered file's samples go, normalized or direct | `RenderSink` (`services/render/sink.py`) |
-| The choices a render is made under, and the phase it is in | `SongRenderLogic` (`logic/render/`) |
-| The formats a file may be written in, and what each accepts | `sampletones_core/audio/writers/` |
 
 The sequencer song is an ordinary intentional source alongside the reconstruction and instruction
 players: it implements the same protocol and is arbitrated by the same rules.

@@ -32,9 +32,8 @@ domain records and the element its label is looked up by.
 `en.yaml` is a flat map keyed exactly this way, so the dotted string is the lookup form —
 `language_manager["global.dialog.label.ok"]` — and a reader holds a key against the language file by
 eye. `categories/key/` owns the grammar: `validate_text_key` checks every key the file holds at load
-time, and a lookup that misses raises `MissingTextError` naming the key and the file. This makes the
-text system the single source of truth and enables future localization. Log messages are
-developer-facing and exempt.
+time, and a lookup that misses raises `MissingTextError` naming the key and the file. Log messages
+are developer-facing and exempt.
 
 ### Text resolves where it is displayed
 

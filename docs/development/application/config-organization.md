@@ -64,8 +64,7 @@ Keybindings are a domain on the same shape: a scheme is a named set a preference
 name, so the directory holds one file per scheme, named after the scheme it declares, and
 every scheme answers the same action set — an entry names one `ShortcutId` and each scheme
 must have a combination for it. What the directory carries is the combinations, which are a
-reader's to choose; the actions and the category each belongs to are code, since they follow
-from the scope that handles the press.
+reader's to choose; the actions and the categories are code ([`keyboard.md`](keyboard.md)).
 
 ### 3. The config tree mirrors the code
 
@@ -135,52 +134,31 @@ each value sits in the tree stays in the factory.
 
 ## Domains
 
-| Domain | Directory | Schema owner | How it is loaded |
-|--------|-----------|--------------|------------------|
-| Application | `application/` | `DeploymentConfig` (`sampletones_application/config/deployment/`) | `DeploymentConfig.load()`, with `SAMPLETONES_*` env overrides |
-| Behavior | `behavior/` | `BehaviorConfig` (`sampletones_application/layout/behavior.py`) | folded into `LayoutConfig.behavior` by `load_layout_config` |
-| Boundaries | `boundaries/` | `ImportBoundaryRules` (`sampletones_tools/checks/boundary/configs/`) | `ImportBoundaryRules.load()` |
-| Keybindings | `keybindings/` | `ShortcutScheme` (`sampletones_application/utils/gui/shortcuts/`) | `ShortcutCatalog.load()`, indexed by scheme name |
-| Language | `lang/` | `LanguageManager` (`sampletones_application/categories/`) | flat string map keyed `page.panel.text_type.element`, each key validated at load |
-| Layout | `layout/` | `LayoutConfig` (`sampletones_application/layout/config.py`) | `load_layout_config` (`layout/loader.py`) |
-| Palettes | `palettes/` | `Palette` (`sampletones_application/utils/palette/`) | `PaletteCatalog.load()`, indexed by palette name |
-| Theme | `theme/` | `ThemeSpec` (`sampletones_application/ui/themes/spec.py`) | `ThemeLoader.load_all()` → `ThemeRegistry` |
+Each domain is one top-level directory with one schema owner and one load path.
+`sampletones_config/README.md` lists the directories and the schema owning each, beside the data
+itself.
 
-The palettes load first, and the source holding the active one is injected as validation
-**context**, so any color field in layout or theme keeps the token it was written as and
-reads its value from the palette in place when it is drawn with. `PaletteCatalog` names the
-palette a preference selects and answers with the default (`studio`) for a name the build
-does not ship, so a preference outlives the build that wrote it.
+The palettes load first, and the source holding the active one is injected as validation **context**,
+so any color field in layout or theme keeps the token it was written as and reads its value from the
+palette in place when it is drawn with. `PaletteCatalog` names the palette a preference selects and
+answers with the shipped default for a name the build does not carry, so a preference outlives the
+build that wrote it. `ShortcutCatalog` answers the same way for a keybinding scheme; how a scheme is
+validated, layered under a reader's own rebindings and chosen per platform is
+[`keyboard.md`](keyboard.md).
 
-`ShortcutCatalog` answers the same way for a keybinding scheme, with the shipped `default` as
-its fallback. A scheme is validated as it is read: every action the application names is
-answered, every key name resolves against the key table, and one combination reaches one
-action within a category, so a scheme in use resolves any press its category owns. The user's
-own rebindings stay on the preference side (`ShortcutsConfig`) and are applied over the
-selected scheme at startup, which keeps the shipped file the statement of what a build offers.
+Layout and theme schemas are `frozen=True, extra="forbid"`, and loading is eager at the composition
+root, wrapped as `SystemError`, so a mismatch between YAML and schema surfaces loudly at startup.
 
-The domain holds one file per keyboard the build ships — `default.yaml` and `macos.yaml` —
-and the platform decides which one a profile starts on: `ShortcutsConfig.scheme` takes its
-default from `PLATFORM_SCHEME_NAMES`, so the choice is made when the configuration is created
-and the name stored there selects the scheme on every run after.
+Behavior loads as its own domain — its own directory, schema owner and load call — and attaches to the
+layout result as `LayoutConfig.behavior`, so every consumer reaches it as `layout.behavior.*` through
+one access path.
 
-Layout and theme schemas are `frozen=True, extra="forbid"`, and loading is eager at the
-composition root (`Application.__init__` → `load_layout_config`, wrapped as `SystemError`),
-so a mismatch between YAML and schema surfaces loudly at startup.
-
-Behavior loads as its own domain — its own directory, schema owner (`BehaviorConfig`), and
-`load_yaml_model` call — and attaches to the layout result as `LayoutConfig.behavior`, so
-consumers reach it as `layout.behavior.*`. A single access path serves the ~15 runtime
-sites across `application.py` and the tab coordinators that read it, and the ~10 modules
-that import `SchedulingBehavior` as a type.
-
-Boundaries is the domain a developer tool reads. It states the layer graphs the packages
-divide into, the imports each part of the application stays clear of, the spellings a tree
-keeps out, and the standard-library rule the bootstrap scripts under `scripts/` hold to, and
-`sampletones check import-boundary` runs it over the source and scripts trees on every commit. A declaration draws on the named prefix groups `general.yaml` holds, so a set several
-rules reach for is written once and each rule names it, and a name reaching no group is
-refused as the domain is read. The bundle carries the domain with the rest of
-`sampletones_config`.
+Boundaries is the domain a developer tool reads rather than the application. It states the layer graphs
+the packages divide into, the imports each part of the application stays clear of, the spellings a tree
+keeps out, and the standard-library rule the bootstrap scripts hold to. A declaration draws on the
+named prefix groups `general.yaml` holds, so a set several rules reach for is written once, and a name
+reaching no group is refused as the domain is read. [Package layers](../packages.md) states what the
+graphs mean.
 
 ---
 
@@ -188,24 +166,17 @@ refused as the domain is read. The bundle carries the domain with the rest of
 
 Three load mechanisms serve the three grouping schemes:
 
-- **Field aggregation** (layout, and every domain that mirrors the code).
-  `load_layout_config` builds `LayoutConfig` field by field — `load_yaml_model` for a
-  single-mapping file, `load_yaml_model_dir` for a feature-area directory — so the
-  directory structure and the model structure stay identical (principle 3), validated
-  strictly with `extra="forbid"`.
-- **Tag-graph discovery** (theme). Theme is organized for human navigation, grouped by the
-  widget family it styles (`button/`, `channels/`, `dialog/`, `header/`, `nodes/`,
-  `panel/`, `player/`, `tables/`). `ThemeLoader.load_all()` reads every `*.yaml` under
-  `theme/` recursively, validates each as a `ThemeSpec`, resolves the `extends` inheritance
-  graph, and registers the results in the `ThemeRegistry` singleton keyed by `tag`. Here
-  the directory grouping serves people and the `tag` and `extends` fields carry the load
-  meaning; every theme extends the base `default` unless it names another parent.
-- **Name-keyed discovery** (palettes, keybindings). `PaletteCatalog.load()` reads every
-  `*.yaml` under `palettes/` and indexes it by `Palette.name`, holding each file's stem
-  against the name it declares so one name traces a palette from a stored preference to the
-  file on disk. `ShortcutCatalog.load()` reads `keybindings/` the same way, keyed by
-  `ShortcutScheme.name`.
+- **Field aggregation** (layout, and every domain that mirrors the code). The config is built field by
+  field — one file per field, one directory per feature area — so the directory structure and the model
+  structure stay identical (principle 3), validated strictly with `extra="forbid"`.
+- **Tag-graph discovery** (theme). Theme is grouped by the widget family it styles, for a person
+  navigating it, while the load meaning is carried by each spec's `tag` and `extends`: every file under
+  `theme/` is read, validated, resolved against its parent and registered by tag. Every theme extends
+  the base unless it names another parent.
+- **Name-keyed discovery** (palettes, keybindings). Every file in the directory is read and indexed by
+  the name it declares, with each file's stem held against that name, so one name traces a palette or a
+  scheme from a stored preference to the file on disk.
 
-Deployment and the boundaries each load through a bespoke `.load()`
-classmethod over the same low-level primitives in
-`sampletones_shared/utils/serialization.py` — the one module that calls `yaml.safe_load`.
+Deployment and the boundaries each load through a `.load()` classmethod of their own, over the same
+low-level primitives in `sampletones_shared/utils/serialization.py` — the one module that calls
+`yaml.safe_load`.

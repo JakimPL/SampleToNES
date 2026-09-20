@@ -33,9 +33,9 @@ Three priorities order the whole application:
 
 | Priority | Scope | Active when | Behavior |
 |----------|-------|-------------|-----------|
-| `MODAL` (100) | the open dialog's navigator | a modal dialog holds the keyboard | routes Tab/Enter/Escape to the dialog's focus ring and claims every press, so a dialog owns the keyboard exclusively while it is shown |
-| `PANEL` (60) | a sub-panel the keys are meant for — the sequencer's tracker grid, the order list, the voices, the converter's list of gathered recordings, the instruments panel while an audition is open | its tab is in front, its card stands open, and the sub-panel holds what the keys act on: a cursor, a row picked out, or an open audition | handles the keys its own category names and yields the combinations it does not own so a higher-reaching shortcut still wins |
-| `SHORTCUT` (40) | application shortcuts (`ShortcutManager`) | always | fires the matching shortcut while no field is being edited, or whenever the shortcut is `field_transparent` |
+| `MODAL` | the open dialog's navigator | a modal dialog holds the keyboard | routes Tab/Enter/Escape to the dialog's focus ring and claims every press, so a dialog owns the keyboard exclusively while it is shown |
+| `PANEL` | a sub-panel the keys are meant for | its tab is in front, its card stands open, and the sub-panel holds what the keys act on: a cursor, a row picked out, or an open audition | handles the keys its own category names and yields the combinations it does not own so a higher-reaching shortcut still wins |
+| `SHORTCUT` | application shortcuts (`ShortcutManager`) | always | fires the matching shortcut while no field is being edited, or whenever the shortcut is `field_transparent` |
 
 The router offers a panel the key ahead of the shortcut scope, so a panel returns `False` on any
 combination it does not own — the grid yields every `Ctrl`-modified press — which is what lets
@@ -74,9 +74,6 @@ lifetime, and the built-in `MODAL` scope routes each press to the top of the sta
 outranks the panel and shortcut scopes, every scope beneath it reads the keyboard as though the
 application held no dialogs at all.
 
-Its one global handler is bound in `shell.py` once the DPG context exists, on the router the
-composition root built and injected into every consumer (architecture principle 7).
-
 ---
 
 ## The vocabulary
@@ -84,10 +81,6 @@ composition root built and injected into every consumer (architecture principle 
 One key table (`utils/gui/keyboard/keys.py`) reads a key both ways — the name a file writes and the
 code a press carries — and one combination type, `KeyCombination`, parses that spelling, displays
 it, and answers whether a press matches it.
-
-Above them stands the one declared binding (architecture principle 12). The menu printing an
-accelerator, the panel acting on a press, and the dispatcher firing the callback all read that one
-entry, so each of the three shows or fires whatever the scheme currently says.
 
 **The combination is data and the category is code.** Which keys reach an action is the reader's to
 choose, while which scope answers them follows from where the action is handled. A scheme is

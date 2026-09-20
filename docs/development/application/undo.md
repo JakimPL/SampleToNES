@@ -75,13 +75,12 @@ the language re-renders past entries correctly.
 
 ## Configuration
 
-The entry budget is a persisted user preference
-(`ApplicationConfig.history.budget`, default 500, lower bound 1). Strict
-checking and log level are deployment knobs
+The entry budget is a persisted user preference (`ApplicationConfig.history.budget`).
+Strict checking and log level are deployment knobs
 (`application/deployment.yaml` → `DeploymentConfig`); the deployment model is
 authoritative from YAML with no field defaults. The history panel renders a
-window of `layout.sequencer.history.max_rendered_entries` rows around the
-cursor and repaints rows in place via an index-keyed diff.
+window of rows around the cursor (`layout.sequencer.history.max_rendered_entries`)
+and repaints rows in place via an index-keyed diff.
 
 **Strict checking is on where the code is written.** `deployment.yaml` carries the development
 values, so an edit path reaching the project outside a transaction raises
@@ -90,6 +89,3 @@ several tests build the whole application and read that file. A user build takes
 values from `scripts/runtime_hooks/release_environment.py`, so a gap that reaches a release is healed into an
 `UNTRACKED` entry rather than shown to the user. The gap therefore surfaces where it can be
 fixed and stays quiet where it cannot.
-
-Standalone reconstruction documents (a reconstruction loaded from disk that is not
-a project sample) will gain their own history later, reusing the same engine.

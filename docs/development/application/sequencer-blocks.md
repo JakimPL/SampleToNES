@@ -62,12 +62,10 @@ block decides *which kind* goes where.
 
 ## A paste is a run of the single-cell edits
 
-The writers resolve every cell to a method the grid already has:
-`SequencerTrackerLogic.place_note` / `cut_note` / `set_cell_subcolumn` /
-`clear_cell_subcolumn`, and `SequencerOrderLogic.write_entry`. Nothing about the aggregate
-column's fan-out is restated in a writer, so a pasted cell means exactly what the same
-value typed by hand means. That is why each write is explainable, and why the aggregate's
-rules have one home.
+The writers resolve every cell to the single-cell edit the grid already has. Nothing about
+the aggregate column's fan-out is restated in a writer, so a pasted cell means exactly what
+the same value typed by hand means. That is why each write is explainable, and why the
+aggregate's rules have one home.
 
 Two consequences follow from the order the writes are taken in:
 
@@ -162,13 +160,9 @@ received, and updates the item when the new answer arrives.
 
 Where they are shown is decided by whoever asks for them. Each grid builds its whole
 action set from one **target** — the cell a gesture is aimed at, paired with the region
-that gesture acts on — and three doors resolve that target their own way:
-
-| Door | Aims at | Anchors a paste at |
-|------|---------|--------------------|
-| The keyboard | the cursor's cell | the cursor |
-| A context menu | the cell it was raised on | the clicked cell |
-| The menu bar's **Edit** menu | the cursor's cell | the cursor |
+that gesture acts on — and three doors resolve that target their own way. The keyboard and
+the menu bar's **Edit** menu both aim at the cursor's cell and anchor a paste there; a
+context menu aims at the cell it was raised on, and anchors a paste at that cell.
 
 The region behind a target is `region_at` on the shared input state: the selection when the
 cell falls inside it (`Region.covers`), and the cell alone otherwise. So copying one cell
@@ -233,22 +227,19 @@ Both panels read the cell under a held pointer off their own geometry, because D
 reports no hover for the cells a held pointer passes over. A drag carried past an edge
 reads as the edge, so it selects up to it.
 
-The tracker's row lookup is arithmetic: it takes the first row's top edge and divides by
-`layout.tracker.row_height`. That holds only while the rows are evenly pitched, which is
-what `CellPadding.y = 0` and `ItemSpacing.y = 0` in `theme/tables/pattern.yaml` are for.
-A vertical padding there would drift the lookup further down the grid. The order's
-position lookup is arithmetic in the same way, taking its pitch from the first two
-columns; its channel lookup walks the rows, because the master row stands apart from the
-channels beneath it.
+The tracker's row lookup is arithmetic: it measures from the first row's top edge and divides
+by the row height. That holds while the rows are evenly pitched, which is what the pattern
+table's zero vertical cell padding and item spacing are for — a vertical padding there would
+drift the lookup further down the grid. The order's position lookup is arithmetic in the same
+way, taking its pitch from the first two columns; its channel lookup walks the rows, because
+the master row stands apart from the channels beneath it.
 
 ### A drag past the edge carries the view
 
 A pointer held past the cells on screen travels the grid under it, so a selection reaches
-further than the viewport holds. `grid/scroll/` states this in three pieces: a `ScrollAxis`
-naming the one DearPyGui axis a table scrolls along and the pointer coordinate that runs past
-its edges, a `TravelBand` saying where the cells stand along that axis, and the `DragTravel`
-that reads the two each frame. The tracker travels vertically and the order horizontally, both
-from the same class.
+further than the viewport holds. `grid/scroll/` holds the travel: a grid states which axis it
+scrolls along and where its cells stand along it, and one class reads the two each frame. The
+tracker travels vertically and the order horizontally, from that same class.
 
 Three rules make the travel feel like one gesture:
 
