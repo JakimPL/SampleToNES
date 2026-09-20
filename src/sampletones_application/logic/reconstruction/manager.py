@@ -13,7 +13,6 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
-from sampletones_shared.utils.hashing import hash_model
 from sampletones_shared.utils.system.paths import first_missing
 from sampletones_shared.utils.system.reveal.selection import open_paths_in_explorer
 
@@ -35,8 +34,6 @@ class ReconstructionManager(CallbackMixin):
         self._current_reconstruction: Optional[ReconstructionData] = None
         self._current_features: Optional[FeatureData] = None
         self._listening: StemListening = StemListening()
-        self._reconstruction_hash: str = ""
-        self._coefficient: float = 1.0
 
         self.on_reconstruction_loaded: Optional[VoidCallback] = None
         self.on_reconstruction_closed: Optional[VoidCallback] = None
@@ -74,13 +71,12 @@ class ReconstructionManager(CallbackMixin):
     def _adopt_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
         """Makes ``reconstruction_data`` the open document and refreshes its derived state.
 
-        The coefficient, the reader's listening choice and the cached features track whichever
-        reconstruction is open, so every rebinding funnels through here to recompute them in one
-        place. The listening is carried onto the new record before the features are read, so the
-        envelopes answer for the part the reader is listening to as it now stands.
+        The reader's listening choice and the cached features track whichever reconstruction is
+        open, so every rebinding funnels through here to recompute them in one place. The
+        listening is carried onto the new record before the features are read, so the envelopes
+        answer for the part the reader is listening to as it now stands.
         """
         self._current_reconstruction = reconstruction_data
-        self._coefficient = reconstruction_data.reconstruction.coefficient
         self._listening.adopt(reconstruction_data.reconstruction.stems_data)
         self._load_reconstruction_features()
 
@@ -95,7 +91,6 @@ class ReconstructionManager(CallbackMixin):
 
         reconstruction = self._current_reconstruction.reconstruction
         self._current_features = FeatureData.heard(reconstruction, self._listening.selection)
-        self._reconstruction_hash = hash_model(reconstruction)
 
     def refresh_features(self) -> None:
         """Reads the envelopes again after a change to what the reader is listening to.
@@ -184,8 +179,6 @@ class ReconstructionManager(CallbackMixin):
         self._current_reconstruction = None
         self._current_features = None
         self._listening.release()
-        self._reconstruction_hash = ""
-        self._coefficient = 1.0
         self._session.mark_closed()
         CallbackQueue.add(
             self.call,

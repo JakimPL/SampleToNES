@@ -205,7 +205,6 @@ again.
 * The instruments panel draws the part a reader hears, so a frame held by a recording left out
   reads as a rest rather than naming its owner. A DearPyGui bar series takes one color for the
   whole series, so naming it means a series per owner or a drawn overlay beneath the plot.
-* `ReconstructionManager` writes `_reconstruction_hash` and `_coefficient` and reads neither.
 * A channel whose every frame rests reads as standing by for the reader while `playing_channels`
   and the export still count it, so the panel and the size figures disagree about a channel whose
   volume was written down to nothing.
