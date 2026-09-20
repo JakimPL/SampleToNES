@@ -2,7 +2,7 @@ from typing import Any, Final, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.layout.primitives import Dimensions
+from sampletones_application.layout.primitives import DialogGeometry
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_DISPLAY_BUTTON_KEEP,
     TAG_SETTINGS_DISPLAY_BUTTON_REVERT,
@@ -37,7 +37,7 @@ class GUICountdownWindow(GUIDialogWindow):
     def __init__(
         self,
         *,
-        layout: Dimensions,
+        layout: DialogGeometry,
         title: str,
         message: str,
         remaining_format: str,
@@ -58,8 +58,7 @@ class GUICountdownWindow(GUIDialogWindow):
 
         super().__init__(
             tag=TAG_SETTINGS_DISPLAY_WINDOW_COUNTDOWN,
-            width=layout.width,
-            height=layout.height,
+            geometry=layout,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )

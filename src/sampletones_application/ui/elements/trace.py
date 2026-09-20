@@ -30,6 +30,7 @@ class GUITraceback:
         parent: str,
         exception: Exception,
         language_manager: LanguageManager,
+        height: int,
         theme: Optional[Theme] = None,
         button_theme: Optional[Theme] = None,
     ) -> None:
@@ -43,6 +44,7 @@ class GUITraceback:
             ),
         )
 
+        self._height = height
         self._lbl_copy = language_manager["global.traceback.label.copy"]
 
         self.theme = ThemeRegistry.resolve(theme, TAG_GLOBAL_THEME_TRACEBACK)
@@ -60,7 +62,7 @@ class GUITraceback:
                 default_value=self._text,
                 multiline=True,
                 readonly=True,
-                height=400,
+                height=self._height,
                 width=-1,
             )
 

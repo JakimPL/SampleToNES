@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from sampletones_application.layout.primitives import Dimensions
+from sampletones_application.layout.primitives import DialogGeometry
 
 
 class NSFSettingsLayout(BaseModel, extra="forbid", frozen=True):
@@ -13,6 +13,6 @@ class NSFSettingsLayout(BaseModel, extra="forbid", frozen=True):
         frame_width: The width of the field a repeat's order frame is typed into.
     """
 
-    window: Dimensions
+    window: DialogGeometry
     text_width: int
     frame_width: int

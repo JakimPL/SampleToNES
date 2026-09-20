@@ -1378,8 +1378,7 @@ class Application:
             get_dialog_tag(TAG_GLOBAL_DIALOG_ABOUT),
             self.language_manager["global.dialog.title.about"],
             content,
-            width=about.width,
-            height=about.height,
+            geometry=about.window,
         )
 
     def _refresh_audio_devices(self) -> None:

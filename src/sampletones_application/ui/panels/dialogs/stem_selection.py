@@ -100,8 +100,7 @@ class GUIStemSelectionWindow(GUIDialogWindow):
 
         super().__init__(
             tag=TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION,
-            width=layout.stem_selection.width,
-            height=layout.stem_selection.height,
+            geometry=layout.stem_selection,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )

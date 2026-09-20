@@ -88,8 +88,7 @@ class GUIKeybindingsWindow(GUIDialogWindow):
 
         super().__init__(
             tag=TAG_SETTINGS_KEYBINDINGS_WINDOW,
-            width=layout.keybindings.window.width,
-            height=layout.keybindings.window.height,
+            geometry=layout.keybindings.window,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )

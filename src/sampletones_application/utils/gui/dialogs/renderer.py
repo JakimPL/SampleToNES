@@ -1,43 +1,36 @@
 import re
 import uuid
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Pattern, Tuple
+from typing import Callable, Dict, Final, Optional, Pattern, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general import GeneralLayout
+from sampletones_application.layout.primitives import DialogGeometry
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
-    SUF_BUTTON_OK,
     SUF_DIALOG_INFO,
     SUF_GROUP,
     SUF_PATH,
     TAG_GLOBAL_DIALOG_ERROR,
     TAG_GLOBAL_DIALOG_FILE_NOT_FOUND,
     TAG_GLOBAL_DIALOG_PATH_MESSAGE,
-    TAG_GLOBAL_THEME_DIALOG_WINDOW,
 )
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED,
 )
-from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.align import center_when_settled
-from sampletones_application.utils.gui.dialog_navigation import (
-    DialogKeyboardNavigator,
-    FocusStop,
-)
 from sampletones_application.utils.gui.dialogs.windows.confirmation import (
     GUIConfirmationWindow,
 )
 from sampletones_application.utils.gui.dialogs.windows.error import (
     GUIErrorDialogWindow,
 )
+from sampletones_application.utils.gui.dialogs.windows.notice import show_notice
 from sampletones_application.utils.gui.dialogs.windows.save_confirmation import (
     GUISaveConfirmationWindow,
 )
@@ -45,93 +38,16 @@ from sampletones_application.utils.gui.dpg import dpg_delete_item
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
-from sampletones_shared.types.callback import Callback, StringCallback, VoidCallback
+from sampletones_shared.types.callback import Callback, StringCallback
 
 _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
+DIALOG_TEXT_MARGIN: Final[int] = 10
+NOTICE_CLAIMS_THE_SCREEN: Final[bool] = True
 
 
 def get_dialog_tag(base_tag: str) -> str:
     dialog_hash = uuid.uuid4().hex
     return compose_tag(base_tag, dialog_hash)
-
-
-def _bind_dialog_theme(tag: str) -> None:
-    ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG_WINDOW).bind_to_item(tag)
-
-
-def _install_navigation(
-    *,
-    window_tag: str,
-    stops: List[FocusStop],
-    on_escape: VoidCallback,
-    key_router: KeyRouter,
-    shortcut_source: ShortcutSource,
-    initial_index: int = 0,
-) -> DialogKeyboardNavigator:
-    """Builds and installs the keyboard navigator that claims the keyboard for ``window_tag``."""
-    navigator = DialogKeyboardNavigator(
-        window_tag=window_tag,
-        stops=stops,
-        on_escape=on_escape,
-        key_router=key_router,
-        shortcut_source=shortcut_source,
-        initial_index=initial_index,
-    )
-    navigator.install()
-    return navigator
-
-
-def _show_modal_dialog(
-    tag: str,
-    title: str,
-    content: StringCallback,
-    *,
-    ok_label: str,
-    width: int,
-    height: int,
-    key_router: KeyRouter,
-    shortcut_source: ShortcutSource,
-    modal: bool = True,
-) -> None:
-    ok_button_tag = compose_tag(tag, SUF_BUTTON_OK)
-    navigator: Optional[DialogKeyboardNavigator] = None
-
-    def close() -> None:
-        if navigator is not None:
-            navigator.dispose()
-
-        dpg_delete_item(tag)
-
-    with dpg.window(
-        label=title,
-        tag=tag,
-        modal=modal,
-        width=width,
-        min_size=(width, height),
-        no_resize=True,
-        autosize=True,
-        on_close=close,
-    ):
-        _bind_dialog_theme(tag)
-        content(tag)
-        dpg.add_separator()
-        GUIButton(
-            tag=ok_button_tag,
-            label=ok_label,
-            callback=close,
-            width=-1,
-        )
-
-        center_when_settled(tag)
-
-    if modal:
-        navigator = _install_navigation(
-            window_tag=tag,
-            stops=[FocusStop.button(ok_button_tag, close)],
-            on_escape=close,
-            key_router=key_router,
-            shortcut_source=shortcut_source,
-        )
 
 
 class DialogsRenderer:
@@ -148,20 +64,18 @@ class DialogsRenderer:
         self._status_bar = status_bar
         self._router = key_router
         self._shortcuts = shortcut_source
-        self._default_width = layout.dialogs.default.width
-        self._default_height = layout.dialogs.default.height
-        self._error_width = layout.dialogs.error.width
-        self._error_height = layout.dialogs.error.height
-        self._confirmation_height = layout.dialogs.confirmation.height
-        self._default_wrap = layout.dialogs.default.width - 10
-        self._error_wrap = layout.dialogs.error.width - 10
+        self._default = layout.dialogs.default
+        self._error = layout.dialogs.error
+        self._confirmation = layout.dialogs.confirmation
+        self._traceback_height = layout.dialogs.traceback_height
+        self._default_wrap = layout.dialogs.default.width - DIALOG_TEXT_MARGIN
+        self._error_wrap = layout.dialogs.error.width - DIALOG_TEXT_MARGIN
         self._col_text_error = layout.colors.text.error
         self._col_text_highlight = layout.colors.text.highlight
         self._col_path = layout.colors.paths.default
         self._col_path_hover = layout.colors.paths.hover
-        self._recovery_width = layout.dialogs.recovery.width
-        self._recovery_height = layout.dialogs.recovery.height
-        self._recovery_wrap = layout.dialogs.recovery.width - 10
+        self._recovery = layout.dialogs.recovery
+        self._recovery_wrap = layout.dialogs.recovery.width - DIALOG_TEXT_MARGIN
 
         self._msg_path = language_manager["global.status.message.path"]
         self._lbl_ok = language_manager["global.dialog.label.ok"]
@@ -174,20 +88,30 @@ class DialogsRenderer:
         title: str,
         content: StringCallback,
         *,
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-        modal: bool = True,
+        geometry: Optional[DialogGeometry] = None,
     ) -> None:
-        _show_modal_dialog(
+        """Raises a notice at ``geometry``, or at the size every dialog opens at by default."""
+        self._notice(tag, title, content, geometry if geometry is not None else self._default)
+
+    def _notice(
+        self,
+        tag: str,
+        title: str,
+        content: StringCallback,
+        geometry: DialogGeometry,
+        *,
+        claims_the_screen: bool = NOTICE_CLAIMS_THE_SCREEN,
+    ) -> None:
+        """Raises one notice the reader acknowledges, drawn at the size ``geometry`` states."""
+        show_notice(
             tag,
             title,
             content,
+            geometry=geometry,
             ok_label=self._lbl_ok,
             key_router=self._router,
             shortcut_source=self._shortcuts,
-            width=width if width is not None else self._default_width,
-            height=height if height is not None else self._default_height,
-            modal=modal,
+            claims_the_screen=claims_the_screen,
         )
 
     def show_info(
@@ -203,17 +127,7 @@ class DialogsRenderer:
 
         info_tag = compose_tag(tag, SUF_DIALOG_INFO)
         dpg_delete_item(info_tag)
-        _show_modal_dialog(
-            tag=info_tag,
-            title=title,
-            content=content,
-            ok_label=self._lbl_ok,
-            key_router=self._router,
-            shortcut_source=self._shortcuts,
-            width=self._default_width,
-            height=self._default_height,
-            modal=modal,
-        )
+        self._notice(info_tag, title, content, self._default, claims_the_screen=modal)
 
     def show_config_recovery(
         self,
@@ -273,16 +187,12 @@ class DialogsRenderer:
             )
 
         dpg_delete_item(tag)
-        _show_modal_dialog(
-            tag=tag,
-            title=self._language_manager["global.dialog.title.configuration_recovery"],
-            content=content,
-            ok_label=self._lbl_ok,
-            key_router=self._router,
-            shortcut_source=self._shortcuts,
-            width=self._recovery_width,
-            height=self._recovery_height,
-            modal=False,
+        self._notice(
+            tag,
+            self._language_manager["global.dialog.title.configuration_recovery"],
+            content,
+            self._recovery,
+            claims_the_screen=False,
         )
 
     def _render_template_bold(
@@ -330,9 +240,9 @@ class DialogsRenderer:
     ) -> None:
         GUIErrorDialogWindow(
             tag=get_dialog_tag(TAG_GLOBAL_DIALOG_ERROR),
-            width=self._error_width,
-            height=self._error_height,
+            geometry=self._error,
             wrap=self._error_wrap,
+            traceback_height=self._traceback_height,
             language_manager=self._language_manager,
             error_color=self._col_text_error,
             key_router=self._router,
@@ -351,16 +261,7 @@ class DialogsRenderer:
             )
             dpg_set_palette_color(path_text, self._col_path)
 
-        _show_modal_dialog(
-            tag=tag,
-            title=self._language_manager["global.dialog.title.file_not_found"],
-            content=content,
-            ok_label=self._lbl_ok,
-            key_router=self._router,
-            shortcut_source=self._shortcuts,
-            width=self._error_width,
-            height=self._default_height,
-        )
+        self._notice(tag, self._language_manager["global.dialog.title.file_not_found"], content, self._error)
 
     def show_confirmation(
         self,
@@ -387,8 +288,7 @@ class DialogsRenderer:
         """
         GUIConfirmationWindow(
             tag=get_dialog_tag(tag),
-            width=self._default_width,
-            height=self._confirmation_height,
+            geometry=self._confirmation,
             wrap=self._default_wrap,
             path_color=self._col_path,
             path_hover_color=self._col_path_hover,
@@ -427,8 +327,7 @@ class DialogsRenderer:
         """
         GUISaveConfirmationWindow(
             tag=get_dialog_tag(tag),
-            width=self._default_width,
-            height=self._confirmation_height,
+            geometry=self._confirmation,
             wrap=self._default_wrap,
             save_label=self._lbl_save,
             cancel_label=self._lbl_cancel,
@@ -452,16 +351,12 @@ class DialogsRenderer:
                 wrap=self._error_wrap,
             )
 
-        _show_modal_dialog(
-            tag=tag,
-            title=self._language_manager["reconstructions.instruments.title.not_loaded_dialog"],
-            content=content,
-            ok_label=self._lbl_ok,
-            key_router=self._router,
-            shortcut_source=self._shortcuts,
-            width=self._error_width,
-            height=self._default_height,
-            modal=False,
+        self._notice(
+            tag,
+            self._language_manager["reconstructions.instruments.title.not_loaded_dialog"],
+            content,
+            self._error,
+            claims_the_screen=False,
         )
 
     def show_message_with_path(
@@ -486,14 +381,4 @@ class DialogsRenderer:
                     status_bar=self._status_bar,
                 )
 
-        _show_modal_dialog(
-            tag=tag,
-            title=title,
-            content=content,
-            ok_label=self._lbl_ok,
-            key_router=self._router,
-            shortcut_source=self._shortcuts,
-            width=self._error_width,
-            height=self._default_height,
-            modal=False,
-        )
+        self._notice(tag, title, content, self._error, claims_the_screen=False)

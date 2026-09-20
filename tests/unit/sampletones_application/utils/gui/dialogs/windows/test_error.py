@@ -29,8 +29,8 @@ WINDOW_TAG: Final[str] = get_dialog_tag(TAG_GLOBAL_DIALOG_ERROR)
 def window_fixture(dpg_context: None, layout_config: LayoutConfig) -> GUIErrorDialogWindow:
     return GUIErrorDialogWindow(
         tag=WINDOW_TAG,
-        width=layout_config.general.dialogs.error.width,
-        height=layout_config.general.dialogs.error.height,
+        geometry=layout_config.general.dialogs.error,
+        traceback_height=layout_config.general.dialogs.traceback_height,
         wrap=layout_config.general.dialogs.error.width - 10,
         language_manager=LANGUAGE_MANAGER,
         error_color=layout_config.general.colors.text.error,

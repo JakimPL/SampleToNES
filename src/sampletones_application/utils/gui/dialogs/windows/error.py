@@ -3,6 +3,7 @@ from typing import Final, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.primitives import DialogGeometry
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_OK,
@@ -35,9 +36,9 @@ class GUIErrorDialogWindow(GUIDialogWindow):
         self,
         tag: str,
         *,
-        width: int,
-        height: int,
+        geometry: DialogGeometry,
         wrap: int,
+        traceback_height: int,
         language_manager: LanguageManager,
         error_color: BaseColor,
         key_router: KeyRouter,
@@ -45,14 +46,14 @@ class GUIErrorDialogWindow(GUIDialogWindow):
     ) -> None:
         self._language_manager = language_manager
         self._wrap = wrap
+        self._traceback_height = traceback_height
         self._error_color = error_color
         self._exception: Exception
         self._message: Optional[str]
 
         super().__init__(
             tag,
-            width,
-            height,
+            geometry,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )
@@ -67,13 +68,8 @@ class GUIErrorDialogWindow(GUIDialogWindow):
         ok_button_tag = compose_tag(self.tag, SUF_BUTTON_OK)
         traceback: GUITraceback
 
-        with dpg.window(
-            tag=self.tag,
+        with self.dialog_window(
             label=self._language_manager["global.dialog.title.error"],
-            modal=True,
-            min_size=(self.width, self.height),
-            autosize=True,
-            no_scrollbar=False,
             on_close=self.hide,
         ):
             if self._message is not None:
@@ -97,6 +93,7 @@ class GUIErrorDialogWindow(GUIDialogWindow):
                 parent=self.tag,
                 exception=self._exception,
                 language_manager=self._language_manager,
+                height=self._traceback_height,
             )
 
             def toggle_traceback() -> None:
