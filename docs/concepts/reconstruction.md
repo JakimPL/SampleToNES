@@ -371,6 +371,13 @@ a tenth or more, since the reading needs a handful of bins per frame and the tra
 every bin the spectrum covers. Restricting it to the bins the chosen notes actually name is the
 work `docs/development/bugs-and-todos.md` records under **Features**.
 
+The refinement keeps a bend on the reading alone. A guard was measured before it was left out: render
+each bent candidate, score it, and keep the bend only where the score improves. It rejected nothing.
+The criterion agreed with the reading on every bent frame, on a matched and a mismatched target
+alike. Its cost was measured beside the conversion it would guard, on the same material and the same
+machine: one extra render and score per bent frame took longer than the whole conversion. The guard
+is worth revisiting against material where the reading is shown to misfire.
+
 A frame makes no proposal where it rests, where the stem holding it leaves that channel out, where
 its channel is not pitched — the noise channel's sixteen periods have no finer grid — or where its
 reading falls below the confidence threshold. A conversion that bent no note records both bend

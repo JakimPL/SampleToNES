@@ -4,13 +4,9 @@
 
 * Interface scale
 * Tree navigation using keys
-* Moving through the converter's list of gathered recordings with the keyboard. The list holds one
-  row picked out, which is a selection rather than a position: `ConverterState.selected` names it,
-  a click sets it, and `Del` reaches it through the `SOURCES` key scope
-  (`ui/panels/main/converter/listing.py`). What is missing is a cursor the arrow keys move, `Home`
-  and `End`, and a folder opened and closed from the keyboard — the last of which the list answers
-  for on its own, since which folders stand open is `OpenFolders` in `ui/elements/stems/` rather
-  than anything the model records.
+* Moving through the converter's list of gathered recordings with the keyboard. The list holds a
+  selection rather than a position (`ConverterState.selected`), so what is missing is a cursor the
+  arrow keys move, `Home` and `End`, and a folder opened and closed from the keyboard.
 * Waveform LOD for zooming
 * Alt for scrolling graphs
 * Drag and drop
@@ -47,12 +43,11 @@ starts carrying.
 
 * Waveform construction preview for single-file conversion
 * Picking several rows of the converter's list at once, so a group leaves or settles in one gesture
-  rather than a row at a time. The widget family already draws a multi-pick reading —
-  `StemsListOffer.picking` with `picked_keys` and `picking_room` in `view_model/shared/stems.py` —
-  built for the mix chooser and switched off for `GATHERED_SOURCES`. What a converter pick needs
-  beyond it is a pick with no ceiling, since the chooser's is the room a mix has, and the gestures
-  the list already offers one row reaching every picked row: removal, a channel box, and the
-  settings card, which names a single row today.
+  rather than a row at a time. The widget family already draws a multi-pick reading
+  (`StemsListOffer.picking`), built for the mix chooser and switched off for `GATHERED_SOURCES`. What
+  a converter pick needs beyond it is a pick with no ceiling, since the chooser's ceiling is the room
+  a mix has, and every gesture the list offers one row — removal, a channel box, the settings card —
+  reaching each picked row.
 * Selection operations on a reconstruction
 * Reconstruction trimming
 
@@ -60,39 +55,31 @@ starts carrying.
 
 * In-application guide/tutorial
 * Language selector
-* Verifying a bend against the criterion. The plan for the refinement carried a guard: render the
-  bent candidate, score it, and keep the bend only where the cost improves. It was measured and
-  left out. The criterion agreed with the reading on **every** bent frame of both a matched and a
-  mismatched target, so the guard rejects nothing; and one extra render-and-score per bent frame
-  measures around **2.1 s per second of audio**, against a whole conversion's ~1.2 s, so it would
-  nearly triple a run to change no decision. It is worth revisiting only against material where the
-  reading is shown to misfire.
 * Reading only the bins the refinement asks for. `InstantaneousPitch` transforms every bin the
   spectrum covers and then reads five of them per frame, so it computes around twenty times the
   work its reading uses. On a CUDA build that vanishes; on a CPU build one transform measures a
-  tenth or more of a short conversion, and a CI runner has measured it at a third. The kernel is a
-  matrix of one row per bin, so restricting it to the rows the chosen notes name is a slice — what
-  needs care is that the union of harmonic bins over a whole stream is wider than any one frame's.
+  tenth or more of a short conversion. The kernel is a matrix of one row per bin, so restricting it
+  to the rows the chosen notes name is a slice — what needs care is that the union of harmonic bins
+  over a whole stream is wider than any one frame's.
 * Keeping what a stopped folder scan found. `_walk` in `logic/main/sources/scan.py` reports
   `on_stopped` and returns where the reader presses **Stop**, so the recordings met so far go
   nowhere, while `_gather` already answers with them. Handing that list to `answer` instead would
-  let a reader stop a long walk and keep the count they watched climb. What it needs beside it is
-  `_gather_read`'s empty branch (`coordinators/tabs/main.py`) reworked: a stop before the first
-  recording turns up is a different answer from a folder that holds none, which is what that branch
-  says today.
+  let a reader stop a long walk and keep the count they watched climb. It needs `_gather_read`'s
+  empty branch (`coordinators/tabs/main.py`) reworked beside it, since a stop before the first
+  recording turns up is a different answer from a folder that holds none.
 * Calibrating the pitch refinement. `generation.refinement`'s confidence threshold, change weight
-  and window are chosen by hand; `docs/tools/calibration.md`'s experiment measures the criterion
-  blend and could measure these beside it. The change weight is the one with an audible trade-off:
-  it decides how large a one-frame excursion the walk follows rather than absorbs, which is
-  vibrato against jitter.
+  and window are chosen by hand, and [the calibration](../tools/calibration.md) could measure them
+  beside the criterion blend. The change weight is the one with an audible trade-off: it decides how
+  large a one-frame excursion the walk follows rather than absorbs, which is vibrato against jitter.
 
 ### Technical
 
 * Leading the calibration report with `mr-loudness-dB`. `build_referees` puts `mr-auditory-dB`
-  first, which reads silence as closer to a tone than any render, until by-ear ratings of a sweep
-  hold the loudness-weighted referee at ρ ≥ 0.6 in every category. A listening round in September
-  2026 scored `polyphony-chord` 6–7 dB better on a render that had dropped the noise channel
-  entirely, so the bar in `docs/tools/calibration.md` stands unmet and the order stays as it is.
+  first, which reads silence as closer to a tone than any render. The order changes once by-ear
+  ratings of a sweep hold the loudness-weighted referee at ρ ≥ 0.6 in every category, which is the
+  bar [the calibration](../tools/calibration.md) sets; a listening round has scored
+  `polyphony-chord` 6–7 dB better on a render that dropped the noise channel entirely, so the bar
+  stands unmet.
 * An axiom stating that a recording built with noise reconstructs with the noise channel sounding.
   The corpus knows which items were synthesized from noise and the render records already hold the
   per-channel timelines, so such a test would fence the criterion against noise deafness the way
@@ -158,13 +145,6 @@ again.
   `test_startup.py` builds the real application and drives gestures through it end to end — so the
   gap is that a case reading the coordinator's own behavior cannot see a hook left unset. Building
   the object in that file is what closes it.
-* Principle 6 was rewritten once on the premise that a widget's callback arrives on the render
-  thread, reasoned from `manual_callback_management` never having been enabled. A probe reads the
-  opposite: a global mouse handler reports one thread identifier and the render loop another, so
-  DearPyGui answers a gesture on a thread of its own and every callback that rebuilt widgets was
-  racing the renderer. Manual callback management is now on and the frame runs what DearPyGui
-  gathered, which makes the principle true rather than merely stated. What a gesture costs is now
-  paid between frames, so a callback heavy enough to be felt is one to spread across frames itself.
 * `state.last_paths.library` is written and never read. `SessionManager.set_library_path` records
   the directory a library was chosen from, and `get_library_path` is reached by no caller: the
   dialog that would open there takes its starting directory from the advanced settings panel
@@ -190,14 +170,13 @@ again.
   would buy is the exhaustive `match` every other long operation reports through.
 * Every gesture re-derives the whole setup. `ConverterLogic._settle` reads the gathered sources
   into rows and follows the state to its destination, which builds one batch entry per recording
-  still holding a channel. `tests/benchmarks/test_converter_load.py` holds both to the length of
-  the list, and reads about 40 ms and 50 ms on a folder of ten thousand with the collector held
-  off. What a reader pays is more: a gesture hands `_settle` a state whose recordings are new
-  objects, so the readings are taken cold and the collector's own share falls inside them —
-  measured together at roughly a quarter of a second per gesture at that size, before a widget is
-  touched. All of it is repeated work, since what changed was one recording. Answering it means
-  holding the rows against the gathering that produced them and deriving entries for the
-  recordings a gesture actually moved.
+  still holding a channel. A gesture hands `_settle` a state whose recordings are new objects, so
+  the readings are taken cold and the garbage collector's own share falls inside them — together
+  roughly a quarter of a second per gesture on a folder of ten thousand recordings, before a widget
+  is touched, where `tests/benchmarks/test_converter_load.py` holds the warm readings to the length
+  of the list. All of it is repeated work, since what changed was one recording. Answering it means
+  holding the rows against the gathering that produced them and deriving entries for the recordings
+  a gesture actually moved.
 * Several directories under `ui/` carry modules without an `__init__.py`, which leaves each one a
   namespace package. A tool reading the tree treats such a directory as a root it can import from,
   so a module inside one answers for a standard-library name of the same word: `ui/elements/trace.py`

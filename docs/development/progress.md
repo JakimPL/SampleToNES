@@ -72,20 +72,14 @@ Both layers carry the same pair, and each answers through `is_single` which of t
 and both derive `fraction` from them. The layer that turns a run's account into a result states the
 unit that run reads in — `ConversionService` does it for a conversion — so the count a status line
 prints, the stage it names, the bar it draws and the estimate beside it all answer in that one unit.
+Those four are read in the logic layer, under `logic/main/converter/`, and the estimate itself is
+`ETAEstimator` (`parallelization/progress.py`), which works from what a run has covered.
 
 ### 5. A task reaching another process reports over a channel
 
 Where an operation runs in a worker process, its reports reach the run over a `ProgressChannel`
 (`sampletones_core/parallelization/channel/`). The channel carries both directions of principle 1
 across the boundary, and callers depend on the Protocol rather than on any one way of crossing it.
-
-```python
-class ProgressChannel(Protocol):
-    def reporter(self, index: int) -> StepReporter: ...
-    def poll(self, timeout: float) -> Optional[TaskReport]: ...
-    def withdraw(self) -> None: ...
-    def close(self) -> None: ...
-```
 
 `ProcessProgressChannel` is the implementation. A manager stands beside the pool and owns both
 ends — a queue reports travel up and a flag a withdrawal travels down — under the same spawn
@@ -97,58 +91,23 @@ channel serve every platform.
 
 ## Mechanics
 
-### The conversation a run has with its tasks
-
-```mermaid
-sequenceDiagram
-    participant REC as Reconstructor
-    participant JOB as JobReporter
-    participant CH as ProcessProgressChannel
-    participant PUMP as ProgressPump
-    participant RUN as TaskProcessor
-    participant SVC as ConversionService
-
-    Note over REC,JOB: worker process
-    REC->>JOB: announce(MATCHING, frame, frames)
-    JOB->>CH: TaskStep, where a step is due
-    CH-->>JOB: whether the run goes on
-    Note over CH,PUMP: process boundary
-    PUMP->>CH: poll, then drain what waits
-    PUMP->>RUN: TaskSteps.record + notify once
-    RUN->>SVC: TaskProgress(completed, total, steps)
-    SVC->>SVC: ServiceProgress(partial=…, current_item=ConversionItem)
-```
-
 A run's monitor thread waits on the results the pool hands back, so reading the channel belongs
 to a thread of its own: `ProgressPump`. It takes everything already waiting in one turn and
 announces once, which holds the announcements to the rate it reads at however many steps the tasks
 file in between.
 
-### Who owns what
-
-| Concern | Owner |
-|---------|-------|
-| The reporter shape, the silent one, and the spacing between reports | `sampletones_shared/utils/progress.py` |
-| A reconstruction's stages, their shares, and its own `announce` | `sampletones_core/reconstructions/{stage,progress}.py` |
-| Weighing a job's stage and carrying it to the run | `JobReporter` (`reconstructions/converter/progress.py`) |
-| The line between a run and its tasks | `sampletones_core/parallelization/channel/` |
-| Where the running tasks stand, and dropping a finished one | `TaskSteps` (`parallelization/steps.py`) |
-| Ending the pool, opening the channel, reading it, and reaping it | `TaskProcessor` (`parallelization/processor.py`) |
-| How long a run has left, from what it has covered | `ETAEstimator` (`parallelization/progress.py`) |
-| Turning a run's account into a result the application reads, in the unit its size picks | `ConversionService` (`services/conversion/`) |
-| The bar, and the taskbar the run also reports to | `ConversionRun` (`logic/main/converter/run.py`) |
-| The status line and the stage's name | `ConverterMessages` (`logic/main/converter/messages.py`) |
-
 ### A finished task stays finished
 
 A task's reports travel a line the run reads at its own pace, so one filed before its result
-arrived may be read after it. `TaskSteps` records the tasks the run has counted and lets their
+arrived may be read after it. `TaskSteps` (`parallelization/steps.py`) records the tasks the run has
+counted and lets their
 later reports go, which is what keeps a task's own progress and the run's completed count from
 describing the same work twice — and keeps the reading inside the run it describes.
 
 ### The pool's and the channel's lifetime
 
-The run's monitor thread is the one owner of its pool. However the run ends, the monitor ends the
+The run's monitor thread (`TaskProcessor`, `parallelization/processor.py`) is the one owner of its
+pool. However the run ends, the monitor ends the
 pool — a finished pool winds down, a canceled or failed one is stopped — reaps its workers, closes
 the channel, and only then announces the outcome. `cancel()` withdraws the run and leaves the rest to
 the monitor; `shutdown()` cancels a run still going and returns once the monitor has finished. The
@@ -158,32 +117,14 @@ owner of a run (`InstructionsLibraryManager`, `ConversionService`) lets it go on
 The channel is a process of its own, opened on the first task that asks for a line and closed after
 the pool, since the workers hold proxies to it. A run whose tasks report nothing never opens one.
 
-### Adding an operation that reports
-
-1. Give the domain a stage enum and a progress type, with an `announce` beside them, following
-   `sampletones_core/exports/progress.py`.
-2. Thread the reporter through the calls that know how far the work has come, and announce every
-   step they make.
-3. Where the work runs in this process, hand it a carrier that throttles and emits — `StageProgress`
-   for a service. Where it runs in a worker, ask `TaskProcessor._task_reporter` for a line and hand
-   the task a reporter built on it.
-4. Read the run through `fraction`, and name the stage from `LanguageManager` in the logic layer.
-
 ---
 
 ## Testing
 
-Progress is one path with two halves, and each is tested where it is cheap to test:
-
-| What | Where |
-|------|-------|
-| A stage's share, and a run read as a fraction | `tests/unit/sampletones_core/reconstructions/test_progress.py` |
-| The spacing between reports | `tests/unit/sampletones_shared/utils/test_progress.py` |
-| Where the running tasks stand, and a late report | `tests/unit/sampletones_core/parallelization/test_steps.py` |
-| A job's stage weighed and throttled | `tests/unit/sampletones_core/reconstructions/converter/test_progress.py` |
-| The real pipeline reporting its stages, in this process | `tests/integration/reconstruction/test_conversion_jobs.py` |
-| The line carrying steps and a withdrawal between real processes | `tests/integration/sampletones_core/parallelization/test_progress_channel.py` |
-| A conversion reporting itself end to end | `tests/integration/reconstruction/test_conversion_progress.py` |
+Progress is one path with two halves, and each is tested where it is cheap to test: a stage's share,
+the spacing between reports and a late report are unit-tested beside the code that decides them,
+while the pipeline reporting its stages and the line carrying a report between processes are held by
+integration suites.
 
 The two cross-process suites run real worker processes and stand something cheap in for the work —
 counting in one, a walk through the stages in the other — so what they measure is the wiring rather

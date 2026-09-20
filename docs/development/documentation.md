@@ -45,7 +45,8 @@ option a name and one sentence saying who it suits.
 One page per command, written for someone about to run it: what the command measures or produces, how to
 run it with no options, what it writes, and every custom use. How it works comes last. The guide's
 writing rules hold here — plain English, short sentences, a list wherever the page states several things
-of one kind. [Tooling](tooling.md) names each command in one line and links to its page.
+of one kind. [Tooling](tooling.md) governs what a tool is, and [docs/index.md](../index.md) lists the
+pages.
 
 The opening of [the calibration page](../tools/calibration.md) does this: what it measures, what to use
 it for, then how to run it.

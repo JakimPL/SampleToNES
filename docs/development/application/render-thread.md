@@ -43,6 +43,9 @@ DearPyGui gathered at the top of each frame's drain. So a gesture reaches the in
 thread that drew it, and `on_render_thread` is a direct call inside a callback because the callback
 already stands there.
 
+What a gesture costs is therefore paid between frames. A callback heavy enough to be felt is one to
+spread across frames itself.
+
 ## A gesture that waits keeps the frames going
 
 A callback standing on the render thread holds the frames up for as long as it runs, and a native

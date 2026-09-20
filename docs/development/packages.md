@@ -1,14 +1,13 @@
 # Package Layers
 
 _SampleToNES_ is one repository holding several packages under `src/`, ordered so that dependencies
-run one way. This document states that order, what each package is for, and how the console player
-is layered inside it. It is prescriptive: `sampletones_config/boundaries/graphs.yaml` restates these
-tables in the form the import-boundary check runs on every commit, and a divergence between this
-document and that configuration is itself a defect.
+run one way. This document states what each package is for and why the order runs as it does.
+`sampletones_config/boundaries/graphs.yaml` declares the order itself, in the form the
+import-boundary check runs on every commit.
 
 The layering of `sampletones_application` has its own document,
-[`architecture.md`](architecture.md), which the same check enforces. How a long operation reports how far it
-has come — inside one process and across the pool's workers — is [`progress.md`](progress.md).
+[`architecture.md`](architecture.md), which the same check enforces. How a long operation reports how
+far it has come — inside one process and across the pool's workers — is [`progress.md`](progress.md).
 
 ---
 
@@ -41,18 +40,16 @@ graph TD
     ENTRY --> SHARED
 ```
 
-| Package | Purpose | May import |
-|---------|---------|------------|
-| `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, and the command type the entry and the tools share | — |
-| `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, behavior, deployment, and these boundaries themselves — reached as package data rather than by import | — |
-| `sampletones_assets` | The application icons and the bundled fonts, reached as package data | — |
-| `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats | `sampletones_shared` |
-| `sampletones_player` | The NES player: the register model, the re-clocking schedule, the 6502 driver and the NSF file | `sampletones_shared`, `sampletones_core` |
-| `sampletones_application` | The DearPyGui front end | `sampletones_shared`, `sampletones_core`, `sampletones_player` |
-| `sampletones_tools` | Everything a developer runs and the application does not: analytic waveform synthesis, the calibration harness, the driver toolchain and the register trace, the mark the icons are drawn from, the source checks, the synthetic corpus with its sample emitters, and the developer commands that run them | `sampletones_shared`, `sampletones_core`, `sampletones_player`, `sampletones_application` |
-| `sampletones` | The command-line entry: the dispatcher, the commands and the startup self-check | `sampletones_shared`, `sampletones_core`, `sampletones_application`, `sampletones_tools` |
-
-Third-party imports are the package author's own choice and stand outside this table.
+| Package | What it holds |
+|---------|---------------|
+| `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, and the command type the entry and the tools share |
+| `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, behavior, deployment, and these boundaries themselves — reached as package data rather than by import |
+| `sampletones_assets` | The application icons and the bundled fonts, reached as package data |
+| `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats |
+| `sampletones_player` | The NES player: the register model, the re-clocking schedule, the 6502 driver and the NSF file |
+| `sampletones_application` | The DearPyGui front end |
+| `sampletones_tools` | Everything a developer runs and the application does not: analytic waveform synthesis, the calibration harness, the driver toolchain and the register trace, the mark the icons are drawn from, the source checks, the synthetic corpus with its sample emitters, and the developer commands that run them |
+| `sampletones` | The command-line entry: the dispatcher, the commands and the startup self-check |
 
 **The tools package is reached from the command line alone.** `sampletones_tools` holds what a
 developer runs and the application never imports: the developer commands and the libraries behind
@@ -89,19 +86,12 @@ project's usable pitch range, the noise periods, and the note and period names.
 
 The player divides into units layered the same way, and for the same reason: a register value, a
 clock and a song exist independently of the file they are written into or the driver that reads
-them.
-
-| Unit | Purpose | May import |
-|------|---------|------------|
-| `specification/` | The register addresses, control bits, offsets and address constants the format is written by, one module per subject | — |
-| `clock/` | `PlaySchedule` and `FixedPointStep` — the engine ticks one play call advances a stream by | `specification/` |
-| `registers/` | The per-tick register values each channel plays, and the four streams together | `specification/` |
-| `compression/` | The planes a song separates into, the dictionary its tokens name, and the codec that reads them both ways | `specification/`, `registers/` |
-| `song.py` | `Song` — the compressed planes, the timer table, the schedule and the loop point as one value | `clock/`, `registers/`, `compression/` |
-| `builder.py` | The song a reconstruction or an export request plays as, its instructions encoded, its planes compressed and its rate scheduled | `song.py`, `registers/`, `clock/`, `compression/` |
-| `nsf/` | The song block, the header and the `.nsf` file the console loads | `song.py`, `specification/`, `compression/`, `driver/` |
-| `driver/` | The assembled 6502 driver and the addresses its build reports | `specification/` |
-| `export/` | `NSFBackend` — the export seam answered in `.nsf` files, writing each request as the program its source states or the one a user chose (`NSFProgram`: channels, repeat, compression scheme and header text), holding the driver every file carries and saying which stage a run is in | `builder.py`, `song.py`, `nsf/`, `driver/`, `compression/` |
+them. The specification sits at the bottom, holding the addresses, control bits and offsets the
+format is written by; the clock, the per-tick register values and the codec stand on it; `Song`
+gathers what a file carries into one value; `builder.py` is the one place a song is made, whatever
+asked for it; and `nsf/`, `driver/` and `export/` sit at the top, where a song becomes the file the
+console loads. What the console player is for, and what holds it correct, is
+[the console player](player.md).
 
 ### The toolchain and the oracle live with the tools
 
@@ -120,27 +110,22 @@ toolchain the build needs is described in [`dependencies.md`](release/dependenci
 
 `sampletones_config/boundaries/graphs.yaml` declares both graphs as layer tables — each unit and the
 units it may import — and the rule the check runs derives from them: every unit a table leaves out is
-out of reach, so an edge is declared before it is taken. The hook audits the whole source tree on
-every commit (`uv run sampletones check import-boundary --all`), which means adding an edge to a table is how a new
-dependency is opened, and removing one enumerates the work of closing it.
-
-Five token rules hold the shipped packages to the tools edge a second way: a module of
-`sampletones_application`, `sampletones_core`, `sampletones_player`, `sampletones_shared` or
-`sampletones_assets` that spells `sampletones_tools` at all is reported, so the edge is closed in
-words as well as in imports.
+out of reach, so an edge is declared before it is taken. Adding an edge to a table is how a new
+dependency is opened, and removing one enumerates the work of closing it. A graph names the
+repository's own packages, and a third-party import is the package author's own choice. The
+mechanism, and the working idiom that follows from a whole-tree check, are in
+[architecture](architecture.md#enforcement).
 
 A graph answers for its own well-formedness as it is read: a unit reaching a unit the graph leaves
 undeclared is refused, and so is a graph whose units reach themselves, since a unit's layers state a
 level only where the units stand in an order.
 
-Three parts share the work. `sampletones_config/boundaries/` states what the boundaries are.
-`sampletones_tools/checks/boundary/` validates that statement and holds the mechanism —
-reading a module line by line, resolving a unit to the modules it owns, deriving a rule from a graph
-and reporting what crosses it — beside the source layer the other checks read the tree through,
-`sampletones_tools/checks/source/`. `sampletones check import-boundary` runs them over the source
-and scripts trees and prints what they find.
+Token rules hold the shipped packages to the tools edge a second way: a module of
+`sampletones_application`, `sampletones_core`, `sampletones_player`, `sampletones_shared` or
+`sampletones_assets` that spells `sampletones_tools` at all is reported, so the edge is closed in
+words as well as in imports.
 
-The scripts tree is held to a rule of its own, `boundaries/standalone.yaml`. A bootstrap script
-runs on the system interpreter, so it imports the standard library and the scripts tree itself,
-and a name in that tree that stands in for a standard-library module is reported too, since the
-tree sits on the import path. [Tooling](tooling.md) states the principle.
+The scripts tree is held to a rule of its own, `boundaries/standalone.yaml`. A bootstrap script runs
+on the system interpreter, so it imports the standard library and the scripts tree itself, and a name
+in that tree that stands in for a standard-library module is reported too, since the tree sits on the
+import path. [Tooling](tooling.md) states the principle.

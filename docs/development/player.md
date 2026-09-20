@@ -123,9 +123,6 @@ true fraction of the song.
 
 ## The driver
 
-The driver is three sources: the entry points and the play call in `driver.s`, the clock in
-`clock.s`, and the plane decoders in `channels.s`.
-
 **The clock steps a tick at a time.** A play call adds the header's step to an accumulator
 and reads the whole ticks off the top; the driver then moves the clock on by one tick at a
 time, and each step answers what the channels are to do with it — play it, play it from the
@@ -153,32 +150,22 @@ settled in Python, so what crosses into assembly stays a byte moved and a carry 
 
 ## How it is verified
 
-The chain runs from the register values upward, and each link is held on its own:
+The chain runs from the register values upward, and each link is held on its own: the codec against
+its golden decoder over a corpus, the byte layout against a hand-built song, the assembly's equates
+against `specification/`, and the assembled image on a 6502 emulator against `RegisterTrace.from_song`.
+Above them stands a whole export — a project exported, played on the emulator, and read back as the
+instructions the sequencer sounds.
 
-| Level | How |
-|---|---|
-| The codec is lossless | every encoding decodes to the planes it was written from, over a corpus |
-| The codec is safe | a plane the codec finds nothing in stays within its literal bound |
-| The ratio | `uv run sampletones codec report` — bytes per tick and ticks that fit, per layer |
-| What a change would save | `uv run sampletones codec study` — the projects and stems it is given, under every candidate change, with a verdict each |
-| The byte layout | a hand-built song serializes to expected bytes |
-| The assembly agrees with the specification | the include's equates are read and compared field by field |
-| The driver behaves | the assembled image on a 6502 emulator against `RegisterTrace.from_song`, over several rates and over songs that repeat |
-| The driver's arithmetic | a song stating a bend outright, held to the divider each tick is meant to sound at |
-| The audio | a captured trace re-rendered against the reconstruction's own approximation |
-| The whole export | a project exported, played on the emulator, and read back as the instructions the sequencer sounds |
-| Listening | `uv run sampletones nsf samples -o build/nsf` then `uv run sampletones nsf render --directory build/nsf`, or any NSF player |
-| Speed | `make benchmarks` — the encoder's own cost on the shapes that scale worst |
-
-The audio comparison is the one that catches a mistake the trace would let through: the
-trace says the right registers were written, and the render says the result is the waveform
-the reconstruction was built as.
+One link answers what the others cannot. The trace says the right registers were written; the audio
+comparison re-renders a captured trace against the reconstruction's own approximation, and says the
+result is the waveform the reconstruction was built as.
 
 ## Building the driver
 
-`uv run sampletones driver` assembles the sources under `sampletones_tools/player/assembly/`
-with cc65 and writes `sampletones_player/driver/binary/driver.bin`, which is committed —
-exporting an `.nsf` needs no assembler, and the application ships the binary alone.
+The driver binary is committed as `sampletones_player/driver/binary/driver.bin`, so exporting an
+`.nsf` needs no assembler and the application ships the binary alone. `uv run sampletones driver`
+rebuilds it from the sources under `sampletones_tools/player/assembly/` and prints the layout the
+build produced.
 
 The link line names our own configuration and our own object files, with the CPU stated
 outright. That is the guardrail that keeps the shipped image entirely ours: reaching for a
