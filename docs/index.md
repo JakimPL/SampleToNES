@@ -71,6 +71,7 @@ directories of their own.
 - [Package layers](development/packages.md) — the packages the repository divides into, and the order they import each other in.
 - [Tooling](development/tooling.md) — the `sampletones` command, the tools package and the bootstrap scripts: what each runs on and what it may import.
 - [Coding guidelines](development/guidelines.md) — conventions for the codebase.
+- [Writing the documentation](development/documentation.md) — who each document is written for, and how each one reads.
 - [Console player](development/player.md) — the 6502 driver an `.nsf` carries, the codec that fits a song beside it, and how both are verified.
 - [Progress](development/progress.md) — how a long operation reports its progress, in one process and across the pool's workers.
 - [Bugs and to-dos](development/bugs-and-todos.md) — the working ledger of known gaps.

@@ -1,8 +1,9 @@
 # Coding Guidelines
 
 These rules govern the Python in this repository. They complement
-`docs/development/architecture.md` (ownership and layering) and
-`docs/development/application/config-organization.md` (configuration).
+`docs/development/architecture.md` (ownership and layering),
+`docs/development/application/config-organization.md` (configuration) and
+`docs/development/documentation.md` (the prose every document is written in).
 
 ## General
 
@@ -72,34 +73,10 @@ These rules govern the Python in this repository. They complement
 1. Code comments and docstrings are not for recording changes or progress.
 1. Don't write module docstrings.
 
-## Documents
+## Documentation
 
-1. A document under `docs/` explains a subsystem to someone about to change it. Open by stating what it governs and when to consult it, so a reader learns in one paragraph whether they are in the right place.
-1. A development document sits beside what it governs. The top of `docs/development/` holds what spans the repository's packages; `application/` holds what governs the graphical application alone, and `release/` what a release ships and keeps compatible. `docs/index.md` lists every document under the heading of its directory.
-1. Lead with principles, then mechanics. A principle is a design truth you reason from; state the principles first, and let concrete conventions and reference tables follow as the way each principle is realized.
-1. Keep principles, conventions, and descriptions distinct. A principle is a reason; a convention is a handy mechanic that serves it; a description is a fact about how something works. A convention promoted to a principle, or a principle buried in a description, misleads the reader about what is load-bearing.
-1. Prefer a few strong principles to many narrow rules. When several rules are facets of one idea, state the idea once and derive them. A growing list of ad-hoc rules signals a principle that has gone unstated.
-1. State the design in positive terms, as it stands today. This is the docstring rule above applied to prose: describe what the design is and does, not what it avoids, omits, or once was.
-1. Write for a reader who never saw the history. A document is not a changelog or a devlog: do not argue against past states, resolved problems, or rejected alternatives the reader never knew existed. The design as it stands carries its own justification; history belongs in commit messages and release notes.
-1. Reach for a negative example only when the contrast teaches something the positive statement cannot, and use it sparingly. One well-placed "what to avoid" illuminates; a document written mostly in negatives is noise.
-1. State each fact once, in the document that owns it, and cross-reference sibling documents rather than repeating them.
-1. A document change is part of the change that motivates it. Code that alters a contract a document states lands together with the edit stating the new contract, and a deviation the change knowingly leaves behind lands with an entry in the ledger that document names. What a branch leaves behind is therefore the current contract, the recorded distance from it, or both.
-1. Changelog is reserved only for changes that are essential meaningful to users. In particular, minor bugfixes should not end up there, let alone refactors that introduce no new features must not be present in the changelog. The entries must stay brief and concise.
-1. Bugs and todos should be brief and concise, preferably one sentence per entry.
-1. Use American English, in prose and identifiers alike. A name someone else owns keeps the spelling they gave it: `MatchRule.serialise()` is jeepney's, `CancelledError` is the standard library's.
-
-## Guide
-
-1. `docs/guide/` is written for someone using the application, not changing it. A page says what a reader can do and how, in the order they would do it; a page organized by control catalogs the application instead of explaining it.
-1. A few sentences per feature. Mechanism, file formats and per-widget behavior belong to `docs/development/`, and a `###` inside a guide section is the sign a passage grew into a reference.
-1. Write for a reader with no picture of the screen. Name a control by the label the application ships, read from the language file, rather than by where it sits.
-1. Write in plain, direct English. Short sentences carrying one fact each, the noun repeated rather than replaced by a pronoun, and a bulleted list wherever the page states several things of one kind. Use everyday verbs — *shows*, *changes*, *opens*, *removes*, *click* — in place of this repository's own vocabulary (*settles*, *holds*, *answers*, *stands for*, *reaches*), which names concepts a reader of the guide has never met.
-
-## Tools
-
-1. `docs/tools/` is written for someone running a command that measures _SampleToNES_ or produces examples, in an installed copy or a checkout. A page per tool says what the tool is for, how to run it with no options, what it writes, every custom use, and how it works last.
-1. A tool's options are explained on its page. [Tooling](tooling.md) lists the commands in one line each and links to the page.
-1. The guide's writing rules hold: plain, direct English, short sentences, and a list wherever the page states several things of one kind.
+1. [Writing the documentation](documentation.md) holds the rules for every document in the repository — who each one is written for, what belongs in it, and how it reads. Consult it before adding or editing a page.
+1. Bugs and to-dos are brief, preferably one sentence per entry.
 
 ## Tests
 
