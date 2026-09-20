@@ -46,8 +46,9 @@ def heard_instructions(
 
     A frame held by a recording the reader left out reads as its channel's silent instruction
     at the index it stands on, so the reading lines up with the audio and the record frame for
-    frame. The reading ends where it last sounds, so a channel every recording is left out on
-    reads as standing by, and what it costs and what an export writes follow what is heard.
+    frame. The reading ends at the last frame the reader hears, so a channel every recording is
+    left out on reads as standing by, while a channel the reader hears keeps every frame it
+    describes — which is the count an export writes and a footprint measures.
 
     Args:
         stems_data: The record naming the stem holding each frame.
@@ -60,8 +61,9 @@ def heard_instructions(
     heard: Dict[ChannelName, List[InstructionUnion]] = {}
     for channel_name, stream in instructions.items():
         stem_ids = stems_data.assignments_by_channel.get(channel_name, ())
-        masked = _masked_stream(stream, stem_ids, selection.stems_for(channel_name))
-        heard[channel_name] = masked[: _sounding_length(masked)]
+        hearing = selection.stems_for(channel_name)
+        masked = _masked_stream(stream, stem_ids, hearing)
+        heard[channel_name] = masked[: _heard_length(stem_ids, len(masked), hearing)]
 
     return heard
 
@@ -87,10 +89,16 @@ def _is_heard(stem_ids: Sequence[int], frame: int, heard: AbstractSet[int]) -> b
     return heard_frame(stem_ids[frame], heard)
 
 
-def _sounding_length(stream: Sequence[InstructionUnion]) -> int:
-    """How far a stream runs to its last sounding frame."""
-    for frame in reversed(range(len(stream))):
-        if stream[frame].on:
+def _heard_length(stem_ids: Sequence[int], frames: int, heard: AbstractSet[int]) -> int:
+    """How far a stream runs to the last frame the reader hears.
+
+    A channel is in play for as long as its stream describes a frame, so what the reading may
+    let go of is the stretch the reader hears nothing of — the tail a recording left out held.
+    A frame the reader hears stands however quietly it sounds, which keeps this reading and the
+    document's own count of the channel at one answer.
+    """
+    for frame in reversed(range(frames)):
+        if _is_heard(stem_ids, frame, heard):
             return frame + 1
 
     return 0
