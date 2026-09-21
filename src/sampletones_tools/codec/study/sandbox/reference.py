@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Final, FrozenSet, Sequence, Tuple
 
-from sampletones_player.compression.absent import is_absent
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.encode import STREAM_START
@@ -10,6 +9,8 @@ from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.matches.matcher import PhraseMatcher
 from sampletones_player.compression.options import EVERY_LAYER
 from sampletones_player.compression.parse.boundaries import Boundaries
+from sampletones_player.compression.planes.symbols import pack_plane
+from sampletones_player.specification.planes import PLANES
 from sampletones_tools.codec.study.corpus.song import StudySong
 from sampletones_tools.codec.study.sandbox.context import PlaneContext
 from sampletones_tools.codec.study.sandbox.costs import Costs
@@ -19,6 +20,7 @@ from sampletones_tools.codec.study.sandbox.parse import StudyParse, parse_plane
 from sampletones_tools.codec.study.sandbox.verify import verify_baseline
 
 STREAM_ENTRIES: Final[FrozenSet[int]] = frozenset({STREAM_START})
+NO_BOUNDARIES: Final[FrozenSet[int]] = frozenset()
 ABSENT_PARSE: Final[StudyParse] = StudyParse(tokens=(), costs=(0,))
 
 
@@ -94,7 +96,7 @@ def plane_parses(
     defaults: Sequence[int],
 ) -> Tuple[StudyParse, ...]:
     written = iter(parse_plane(context, grammar) for context in _contexts(cache, table, grammar.costs, defaults))
-    return tuple(ABSENT_PARSE if is_absent(plane) else next(written) for plane in planes)
+    return tuple(next(written) if plane else ABSENT_PARSE for plane in planes)
 
 
 def reference(
@@ -113,8 +115,11 @@ def reference(
     Raises:
         ValueError: If the baseline grammar prices a plane differently from the codec's stream.
     """
-    planes = tuple(song.planes.planes)
-    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes if not is_absent(plane))
+    planes = tuple(
+        b"" if plane.idles(played) else pack_plane(played, plane.form, boundaries=NO_BOUNDARIES)
+        for plane, played in zip(PLANES, song.planes.planes, strict=True)
+    )
+    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes if plane)
     table = compressed.phrases
     baseline = plane_parses(planes, cache, table, BASELINE_GRAMMAR, no_defaults(len(table)))
     verify_baseline(baseline, compressed)

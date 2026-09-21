@@ -99,7 +99,7 @@ class TestWhereEachStreamIsReEntered:
     def test_an_entry_stands_at_the_token_the_loop_tick_starts(self) -> None:
         song = figure_song(LOOP_TICK)
         layout = SongLayout.of(song)
-        entered = song.planes.entries(decode_planes(song.planes).positions(LOOP_TICK))
+        entered = song.planes.loop_entries
         assert layout.loop_entries == tuple(
             ABSENT_STREAM if entry is None else offset + entry for offset, entry in zip(layout.streams, entered)
         )

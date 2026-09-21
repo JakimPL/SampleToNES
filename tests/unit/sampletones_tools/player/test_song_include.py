@@ -20,7 +20,13 @@ from sampletones_player.specification.compression import (
     TOKEN_TAG_MASK,
     TokenTag,
 )
-from sampletones_player.specification.planes import PLANE_COUNT
+from sampletones_player.specification.planes import (
+    COUNT_STEP,
+    NOISE_CONTROL_FORM,
+    NOISE_VALUE_FORM,
+    PLANE_COUNT,
+    PULSE_CONTROL_FORM,
+)
 from sampletones_player.specification.song import (
     ABSENT_STREAM,
     LOOP_ENTRIES_OFFSET,
@@ -69,6 +75,13 @@ STATED: Final[Dict[str, int]] = {
     "PHRASE_LENGTH_SIZE": PHRASE_LENGTH_SIZE,
     "PLANE_STATE_SIZE": PLANE_STATE_SIZE,
     "PLANE_STATE_BYTES": PLANE_COUNT * PLANE_STATE_SIZE,
+    "COUNT_STEP": COUNT_STEP,
+    "PULSE_CONTROL_MASK": PULSE_CONTROL_FORM.value_mask,
+    "PULSE_CONTROL_FIXED": PULSE_CONTROL_FORM.value_or,
+    "NOISE_CONTROL_MASK": NOISE_CONTROL_FORM.value_mask,
+    "NOISE_CONTROL_FIXED": NOISE_CONTROL_FORM.value_or,
+    "NOISE_VALUE_MASK": NOISE_VALUE_FORM.value_mask,
+    "NOISE_VALUE_FIXED": NOISE_VALUE_FORM.value_or,
 }
 
 

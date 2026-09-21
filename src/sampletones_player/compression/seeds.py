@@ -1,4 +1,4 @@
-from typing import AbstractSet, List, Tuple
+from typing import AbstractSet, Final, FrozenSet, List, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.maps import CHANNEL_TO_EXPORTER_MAP
@@ -8,9 +8,13 @@ from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.separate import channel_planes
+from sampletones_player.compression.planes.symbols import pack_plane
 from sampletones_player.registers.channel import channel_registers
 from sampletones_player.specification.compression import MAX_PHRASE_LENGTH
+from sampletones_player.specification.planes import PLANES, channel_indices
 from sampletones_shared.music import Tuning
+
+NO_BOUNDARIES: Final[FrozenSet[int]] = frozenset()
 
 
 def phrases_from_project(
@@ -26,7 +30,8 @@ def phrases_from_project(
     row asks for.
 
     A plane holding one value throughout offers the dictionary nothing a hold covers more
-    cheaply, so the slices seed the planes that turn over. The rows of a song play the slices on
+    cheaply, so the slices seed the planes that turn over. Each reaches the dictionary as the
+    symbols its own plane is read in, so a seed and a stream name the same shape. The rows of a song play the slices on
     the channels it sounds, so those are the slices that seed it.
 
     Args:
@@ -51,7 +56,11 @@ def phrases_from_project(
             channel_registers(channel, played, timer_table),
             pitches,
         )
-        phrases.extend(Phrase(body=plane[:MAX_PHRASE_LENGTH]) for plane in planes if _turns_over(plane))
+        phrases.extend(
+            Phrase(body=pack_plane(plane, PLANES[index].form, boundaries=NO_BOUNDARIES)[:MAX_PHRASE_LENGTH])
+            for index, plane in zip(channel_indices(channel), planes, strict=True)
+            if _turns_over(plane)
+        )
 
     return tuple(phrases)
 

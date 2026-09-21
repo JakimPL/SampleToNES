@@ -3,7 +3,6 @@ from time import process_time
 from typing import Final, List, Sequence, Tuple
 
 from sampletones_core.constants.enums import PULSE_CHANNELS
-from sampletones_player.compression.absent import is_absent
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.table import phrase_table
 from sampletones_player.compression.encode import STREAM_START, encode_planes
@@ -17,6 +16,7 @@ from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.registers.streams import ChannelStreams
 from sampletones_player.specification.planes import PLANES, PlaneRole
 from sampletones_player.specification.registers import DUTY_CYCLE_SHIFT
+from sampletones_tools.codec.absent import is_absent
 from sampletones_tools.codec.report.corpus import CorpusEntry
 from sampletones_tools.codec.report.rows import ReportRow
 

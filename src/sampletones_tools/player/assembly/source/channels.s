@@ -35,6 +35,8 @@ timer_high_shadows:     .res TRIANGLE_REGISTERS + 1
 .assert ABSENT_STREAM = $FFFF, error, "an absent stream is told apart by both its bytes reading $FF"
 .assert BEND_FLAG = $80, error, "a value's flag is read as the sign bit"
 .assert PITCH_COUNT <= BEND_FLAG, error, "every pitch index fits below the flag"
+.assert COUNT_STEP = 1 << COUNT_SHIFT, error, "a repeat count steps from the bit it is shifted down by"
+.assert PLANE_STATE_BYTES + PLANE_PHRASE < $100, error, "a plane's phrase pointer is reached in page zero"
 
 ; Readies the tables the planes read through and points every plane at its own first token.
 channels_reset:
@@ -71,7 +73,19 @@ channels_reset:
     sta pointer
     lda #>(song_data + STREAM_OFFSETS_OFFSET)
     sta pointer + 1
-    jmp seed_planes
+    jsr seed_planes
+
+; States the bits each plane's register leaves for a repeat count. Every other plane keeps the
+; zero seeding left it, which is what makes one symbol cover one tick.
+plane_forms:
+    lda #(PULSE_CONTROL_MASK ^ $FF)
+    sta plane_state + PULSE1_CONTROL_PLANE + PLANE_COUNT_MASK
+    sta plane_state + PULSE2_CONTROL_PLANE + PLANE_COUNT_MASK
+    lda #(NOISE_CONTROL_MASK ^ $FF)
+    sta plane_state + NOISE_CONTROL_PLANE + PLANE_COUNT_MASK
+    lda #(NOISE_VALUE_MASK ^ $FF)
+    sta plane_state + NOISE_VALUE_PLANE + PLANE_COUNT_MASK
+    rts
 
 ; Brings every plane back to the token its stream is re-entered at, which is the whole of what a
 ; song coming round restores: the token the loop tick starts is one the plane reads outright.
@@ -116,6 +130,7 @@ seed_planes:
     sta plane_state + PLANE_TOKEN_TICKS,x
     sta plane_state + PLANE_VALUE,x
     sta plane_state + PLANE_SHIFT,x
+    sta plane_state + PLANE_REPEATS,x
 
     txa
     clc
@@ -176,6 +191,11 @@ plane_step:
 ; out behind a literal, or the value the plane already reached. A body played out holds its last
 ; value onward, which is what carries a note whose envelope has finished.
 plane_advance:
+    lda plane_state + PLANE_REPEATS,x
+    beq @symbol
+    dec plane_state + PLANE_REPEATS,x
+    rts
+@symbol:
     lda plane_state + PLANE_TOKEN_TICKS,x
     bne @within
     jsr fetch_token
@@ -195,6 +215,13 @@ plane_advance:
     bne @held
     inc plane_state + PLANE_PHRASE + 1,x
 @held:
+    lda plane_state + PLANE_VALUE,x
+    and plane_state + PLANE_COUNT_MASK,x
+    lsr
+    lsr
+    lsr
+    lsr
+    sta plane_state + PLANE_REPEATS,x
     rts
 
 ; Reads the token the plane at X stands on into that plane's own state.
@@ -327,6 +354,8 @@ set_phrase:
 ; Writes what every plane last played to the registers its channel owns.
 channels_write:
     lda plane_state + PULSE1_CONTROL_PLANE + PLANE_VALUE
+    and #PULSE_CONTROL_MASK
+    ora #PULSE_CONTROL_FIXED
     sta CHANNEL_CONTROL + PULSE1_REGISTERS
     lda plane_state + PULSE1_BEND_PLANE + PLANE_VALUE
     sta bend
@@ -335,6 +364,8 @@ channels_write:
     jsr write_timer
 
     lda plane_state + PULSE2_CONTROL_PLANE + PLANE_VALUE
+    and #PULSE_CONTROL_MASK
+    ora #PULSE_CONTROL_FIXED
     sta CHANNEL_CONTROL + PULSE2_REGISTERS
     lda plane_state + PULSE2_BEND_PLANE + PLANE_VALUE
     sta bend
@@ -351,8 +382,12 @@ channels_write:
     jsr write_timer
 
     lda plane_state + NOISE_CONTROL_PLANE + PLANE_VALUE
+    and #NOISE_CONTROL_MASK
+    ora #NOISE_CONTROL_FIXED
     sta CHANNEL_CONTROL + NOISE_REGISTERS
     lda plane_state + NOISE_VALUE_PLANE + PLANE_VALUE
+    and #NOISE_VALUE_MASK
+    ora #NOISE_VALUE_FIXED
     sta CHANNEL_TIMER_LOW + NOISE_REGISTERS
     rts
 

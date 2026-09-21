@@ -10,13 +10,13 @@ from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.builder import streams_from_instructions
-from sampletones_player.compression.absent import is_absent
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.separate import channel_planes, planes_from_streams
 from sampletones_player.compression.seeds import phrases_from_project
 from sampletones_player.registers.channel import channel_registers
 from sampletones_player.specification.binary import unsigned_byte
 from sampletones_player.specification.compression import BEND_FLAG
+from sampletones_player.specification.planes import PLANES
 from sampletones_shared.music import Tuning
 from sampletones_tools.codec.study.corpus.notes import channel_notes, song_notes
 from sampletones_tools.codec.study.corpus.slices import project_slices
@@ -192,6 +192,7 @@ class TestEncodingALayout:
         song = study_song(bent_frames(PLAYER_REFERENCE_PITCH, (0, 3, 0)))
         planes = layout_planes(song, layout)
         streams = encode_layout(song, layout).streams
-        assert any(is_absent(plane) for plane in planes)
-        assert all(size == 0 for plane, size in zip(planes, streams) if is_absent(plane))
-        assert all(size > 0 for plane, size in zip(planes, streams) if not is_absent(plane))
+        idle = tuple(plane.idles(played) for plane, played in zip(PLANES, planes, strict=True))
+        assert any(idle)
+        assert all(size == 0 for resting, size in zip(idle, streams) if resting)
+        assert all(size > 0 for resting, size in zip(idle, streams) if not resting)

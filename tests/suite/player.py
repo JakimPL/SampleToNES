@@ -40,6 +40,7 @@ from sampletones_player.specification.compression import (
 from sampletones_player.specification.planes import (
     PLANE_COUNT,
     PLANES,
+    Plane,
     PlaneRole,
     plane_index,
 )
@@ -210,17 +211,29 @@ def silent_pulse() -> PulseInstruction:
 PLAYER_VARIED_SEED: Final[int] = 7
 
 
+def playable(plane: Plane, values: bytes) -> bytes:
+    """Arbitrary bytes read as values the plane can play, through its own form."""
+    return bytes(plane.form.value(value) for value in values)
+
+
 def sounding_planes(
     control: bytes,
     value: bytes,
     bend: bytes,
 ) -> SongPlanes:
-    """A song's planes, the first pulse channel sounding what it is given and the rest resting."""
-    resting = [b"" if plane.spans_flagged_ticks else bytes(len(control)) for plane in PLANES]
+    """A song's planes, the first pulse channel sounding what it is given and the rest resting.
+
+    Every other plane stands at the value its own register fixes, which is where the driver seeds
+    it and what makes it absent.
+    """
+    resting = [b"" if plane.spans_flagged_ticks else bytes((plane.seeded,)) * len(control) for plane in PLANES]
     for role, played in zip((PlaneRole.CONTROL, PlaneRole.VALUE, PlaneRole.BEND), (control, value, bend)):
         resting[plane_index(ChannelName.PULSE1, role)] = played
 
     return SongPlanes(planes=PlaneOrder.across(resting))
+
+
+STREAM_START: Final[int] = 0
 
 
 def every_plane_spelling(stream: bytes) -> PlaneOrder:
@@ -247,6 +260,7 @@ def spelled_song(ticks: int, nes_frequency: int) -> Song:
             phrases=PhraseTable(phrases=()),
             streams=every_plane_spelling(stream),
             ticks=ticks,
+            loop_entries=(STREAM_START,) * PLANE_COUNT,
         ),
         pitches=PLAYER_PITCHES,
         schedule=PlaySchedule.from_parameters(nes_frequency),

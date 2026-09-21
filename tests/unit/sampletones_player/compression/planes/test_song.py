@@ -15,6 +15,7 @@ from sampletones_player.specification.planes import (
 )
 from tests.suite.player import sounding_planes
 
+TIMBRE: Final[bytes] = bytes((0x3F, 0x3A))
 BEND: Final[bytes] = bytes((0x00, 0xFD))
 FLAGGED: Final[bytes] = bytes((flagged_value(3, True), flagged_value(4, True)))
 PULSE1_BEND: Final[int] = plane_index(ChannelName.PULSE1, PlaneRole.BEND)
@@ -25,24 +26,26 @@ class TestASongGathersEveryPlaneItsBlockWrites:
     """Every plane advances beside the rest, so the song states them all under one length."""
 
     def test_a_song_carries_the_planes_a_block_writes(self) -> None:
-        assert len(sounding_planes(bytes((1, 2)), FLAGGED, BEND).planes) == PLANE_COUNT
+        assert len(sounding_planes(TIMBRE, FLAGGED, BEND).planes) == PLANE_COUNT
 
     def test_a_plane_is_reached_by_the_name_the_block_writes_it_under(self) -> None:
-        planes = sounding_planes(bytes((1, 2)), FLAGGED, BEND).planes
+        planes = sounding_planes(TIMBRE, FLAGGED, BEND).planes
 
         assert planes.pulse1_bend == BEND
 
     def test_a_channel_answers_with_the_planes_it_writes(self) -> None:
-        planes = sounding_planes(bytes((1, 2)), FLAGGED, BEND)
+        planes = sounding_planes(TIMBRE, FLAGGED, BEND)
 
-        assert planes.of(ChannelName.PULSE1) == (bytes((1, 2)), FLAGGED, BEND)
+        assert planes.of(ChannelName.PULSE1) == (TIMBRE, FLAGGED, BEND)
 
     def test_a_song_lasts_the_ticks_its_planes_cover(self) -> None:
-        assert sounding_planes(bytes((1, 2)), FLAGGED, BEND).ticks == 2
+        assert sounding_planes(TIMBRE, FLAGGED, BEND).ticks == 2
 
     def test_planes_covering_different_ticks_are_refused(self) -> None:
         with pytest.raises(ValidationError):
-            SongPlanes(planes=PlaneOrder.across(bytes(plane) for plane in range(1, PLANE_COUNT + 1)))
+            SongPlanes(
+                planes=PlaneOrder.across(bytes((plane.seeded,)) * index for index, plane in enumerate(PLANES, start=1))
+            )
 
     def test_planes_covering_no_tick_are_refused(self) -> None:
         with pytest.raises(ValidationError):
@@ -55,19 +58,19 @@ class TestABendPlaneCoversTheFlaggedTicks:
     def test_a_bend_for_every_flagged_tick_is_taken(self) -> None:
         value = bytes((flagged_value(3, False), flagged_value(3, True)))
 
-        assert sounding_planes(bytes(2), value, BEND[:1]).planes.pulse1_bend == BEND[:1]
+        assert sounding_planes(TIMBRE, value, BEND[:1]).planes.pulse1_bend == BEND[:1]
 
     def test_a_bend_plane_holding_more_than_the_flags_ask_for_is_refused(self) -> None:
         with pytest.raises(ValidationError):
-            sounding_planes(bytes(2), bytes((3, 4)), BEND)
+            sounding_planes(TIMBRE, bytes((3, 4)), BEND)
 
     def test_a_bend_plane_holding_fewer_than_the_flags_ask_for_is_refused(self) -> None:
         with pytest.raises(ValidationError):
-            sounding_planes(bytes(2), FLAGGED, BEND[:1])
+            sounding_planes(TIMBRE, FLAGGED, BEND[:1])
 
     def test_a_song_returning_to_a_tick_re_enters_the_bend_plane_past_the_flags_before_it(self) -> None:
         value = bytes((flagged_value(3, True), flagged_value(3, False), flagged_value(3, True)))
-        planes = sounding_planes(bytes(3), value, BEND)
+        planes = sounding_planes(TIMBRE + bytes((0x30,)), value, BEND)
 
         assert [planes.positions(tick)[PULSE1_BEND] for tick in range(4)] == [0, 1, 1, 2]
         dense = [position for name, position in zip(PlaneOrder.names(), planes.positions(2)) if name not in BENDS]

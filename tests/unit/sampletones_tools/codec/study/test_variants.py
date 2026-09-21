@@ -120,6 +120,7 @@ def _measurement(
     compressed = CompressedPlanes(
         phrases=phrase_table(()),
         streams=PlaneOrder.across([stream] * PLANE_COUNT),
+        loop_entries=(0,) * PLANE_COUNT,
         ticks=TICKS,
     )
     return Measurement(

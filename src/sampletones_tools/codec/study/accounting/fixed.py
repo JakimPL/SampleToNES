@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from typing import Final
 
+from sampletones_core.constants.enums import TONE_CHANNELS
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.planes.flags import pitch_index
 from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.compression import (
     PHRASE_TABLE_ENTRY_SIZE,
 )
-from sampletones_core.constants.enums import TONE_CHANNELS
 from sampletones_player.specification.planes import PLANE_COUNT, PLANES, PlaneRole
 from sampletones_player.specification.song import SONG_HEADER_SIZE
 from sampletones_tools.codec.study.accounting.finding import Finding

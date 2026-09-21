@@ -1,12 +1,16 @@
-from typing import List, Sequence, Tuple
+from typing import Final, FrozenSet, List, Sequence, Tuple
 
 from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.pitch import PitchTable
+from sampletones_player.compression.planes.symbols import pack_plane
 from sampletones_player.specification.compression import MAX_PHRASE_LENGTH
+from sampletones_player.specification.planes import PLANES, channel_indices
 from sampletones_tools.codec.study.corpus.song import StudySlice, StudySong
 from sampletones_tools.codec.study.layouts.layout import PlaneLayout
 from sampletones_tools.codec.study.layouts.tone import tone_planes
+
+NO_BOUNDARIES: Final[FrozenSet[int]] = frozenset()
 
 
 def layout_planes(
@@ -57,6 +61,10 @@ def layout_seeds(
             else study_slice.planes
         )
 
-        phrases.extend(Phrase(body=plane[:MAX_PHRASE_LENGTH]) for plane in planes if len(set(plane)) > 1)
+        phrases.extend(
+            Phrase(body=pack_plane(plane, PLANES[index].form, boundaries=NO_BOUNDARIES)[:MAX_PHRASE_LENGTH])
+            for index, plane in zip(channel_indices(study_slice.channel), planes, strict=True)
+            if len(set(plane)) > 1
+        )
 
     return tuple(phrases)

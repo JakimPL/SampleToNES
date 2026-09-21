@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from sampletones_player.compression.dictionary.table import PhraseTable
-from sampletones_player.compression.entries import stream_entry
 from sampletones_player.compression.planes.order import PlaneOrder
 
 
@@ -16,6 +15,8 @@ class CompressedPlanes(BaseModel):
         phrases: The dictionary every stream's tokens name.
         streams: The tokens each plane is written as, in the order the song block writes them.
         ticks: The ticks the song lasts, which is where each stream stops being read.
+        loop_entries: The byte each stream is re-entered at when the song comes round, counted
+            from that stream's own start, ``None`` for a plane holding no stream.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -23,6 +24,7 @@ class CompressedPlanes(BaseModel):
     phrases: PhraseTable
     streams: PlaneOrder
     ticks: int
+    loop_entries: Tuple[Optional[int], ...]
 
     @model_validator(mode="after")
     def _validate_the_song_lasts(self) -> CompressedPlanes:
@@ -31,30 +33,16 @@ class CompressedPlanes(BaseModel):
 
         return self
 
+    @model_validator(mode="after")
+    def _validate_every_stream_states_where_it_is_re_entered(self) -> CompressedPlanes:
+        if len(self.loop_entries) != len(self.streams):
+            raise ValueError(
+                f"an entry stands for each of the {len(self.streams)} streams, " f"and {len(self.loop_entries)} stand"
+            )
+
+        return self
+
     @property
     def size(self) -> int:
         """The bytes the dictionary and every plane's stream take together."""
         return self.phrases.size + sum(len(stream) for stream in self.streams)
-
-    def entries(self, positions: Sequence[int]) -> Tuple[Optional[int], ...]:
-        """The byte each stream is re-entered at, each plane standing at a position of its own.
-
-        A song returning to a tick re-enters every plane where that tick leaves it, which for a
-        bend plane is the count of flagged ticks before it — see ``SongPlanes.positions``.
-
-        Args:
-            positions: Where each plane stands once the song returns, in the order the song block
-                writes them.
-
-        Returns:
-            Tuple[Optional[int], ...]: One byte offset per plane, each counted from its own
-                stream's start, in the order the song block writes them; ``None`` for an absent
-                plane, which holds no stream to re-enter.
-
-        Raises:
-            ValueError: If a stream spans its position rather than starting a token there.
-        """
-        return tuple(
-            stream_entry(stream, position) if stream else None
-            for stream, position in zip(self.streams, positions, strict=True)
-        )

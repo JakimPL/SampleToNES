@@ -9,10 +9,10 @@ from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.timers.arithmetic import bent_timer
 from sampletones_player.builder import song_from_reconstruction, streams_from_instructions
 from sampletones_player.compression.decode import decode_planes
-from sampletones_player.specification.planes import PlaneRole, plane_index
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import BYTE_VALUES
+from sampletones_player.specification.planes import PlaneRole, plane_index
 from sampletones_player.specification.registers import PULSE1_TIMER_HIGH, TIMER_HIGH_SHIFT
 from sampletones_tools.player.trace.trace import RegisterTrace
 from tests.integration.nsf.console.instructions import channel_values, timer_value

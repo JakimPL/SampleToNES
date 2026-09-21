@@ -21,7 +21,7 @@ from sampletones_player.specification.compression import (
     CHEAP_PHRASE_IDS,
     MAX_HOLD_TICKS,
 )
-from sampletones_player.specification.planes import PLANE_COUNT
+from sampletones_player.specification.planes import PLANE_COUNT, PLANES, PlaneRole
 from sampletones_shared.music import Tuning
 from sampletones_tools.codec.study.corpus.song import SongGroup, StudySong
 from sampletones_tools.codec.study.sandbox.context import PlaneContext
@@ -39,6 +39,7 @@ from sampletones_tools.codec.study.variants.production import compress_baseline
 from sampletones_tools.codec.study.variants.sandbox import DEFAULT_COUNT_COSTS, GRAMMAR_VARIANTS, GrammarVariant
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.player import playable
 from tests.suite.study import NO_STUDY_SLICES, lowest_notes
 
 ENTRIES: Final[FrozenSet[int]] = frozenset({STREAM_START})
@@ -83,13 +84,13 @@ def _dense_plane(random: Random, ticks: int) -> bytes:
 def _song(ticks: int) -> StudySong:
     random = Random(SEED)
     planes: List[bytes] = []
-    for plane in range(PLANE_COUNT):
-        if plane % 3 == 2:
+    for plane in PLANES:
+        if plane.spans_flagged_ticks:
             planes.append(b"")
-        elif plane % 3 == 0:
-            planes.append(_runs_plane(random, ticks))
+        elif plane.role is PlaneRole.CONTROL:
+            planes.append(playable(plane, _runs_plane(random, ticks)))
         else:
-            planes.append(_figures_plane(random, ticks))
+            planes.append(playable(plane, _figures_plane(random, ticks)))
 
     return StudySong(
         name="song",

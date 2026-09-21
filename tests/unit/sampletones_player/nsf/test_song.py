@@ -87,9 +87,11 @@ class TestSongBytes:
 
     The layout is the contract the driver reads the song through, so the literal states it in
     full: the header, the timer every pitch sounds at, the dictionary the tokens name, and one
-    token stream per plane the block holds. The song bends nowhere, so each bend plane is absent
-    and its header entries carry the sentinel. The timer table is named rather than transcribed,
-    since it is the tuning's own table and the block carries whatever that table holds.
+    token stream per plane the block holds. The song bends nowhere, so each bend plane is absent;
+    its second pulse channel and its noise channel rest throughout, so both control planes stand
+    at the value their register fixes and are absent too. Each absent plane's header entries carry
+    the sentinel. The timer table is named rather than transcribed, since it is the tuning's own
+    table and the block carries whatever that table holds.
     """
 
     EXPECTED_HEADER: Final[bytes] = (
@@ -100,25 +102,17 @@ class TestSongBytes:
         b"\x37\x00"
         b"\x07\x01"
         b"\x08\x01\x0b\x01\xff\xff"
-        b"\x0e\x01\x11\x01\xff\xff"
-        b"\x14\x01\x17\x01\xff\xff"
-        b"\x1a\x01\x1d\x01"
+        b"\xff\xff\x0e\x01\xff\xff"
+        b"\x11\x01\x14\x01\xff\xff"
+        b"\xff\xff\x17\x01"
         b"\x08\x01\x0b\x01\xff\xff"
-        b"\x0e\x01\x11\x01\xff\xff"
-        b"\x14\x01\x17\x01\xff\xff"
-        b"\x1a\x01\x1d\x01"
+        b"\xff\xff\x0e\x01\xff\xff"
+        b"\x11\x01\x14\x01\xff\xff"
+        b"\xff\xff\x17\x01"
     )
 
     EXPECTED_STREAMS: Final[bytes] = (
-        b"\x00"
-        b"\x41\x3f\x30"
-        b"\x40\x21\x00"
-        b"\x40\x30\x00"
-        b"\x40\x21\x00"
-        b"\x40\x80\x00"
-        b"\x40\x21\x00"
-        b"\x40\x30\x00"
-        b"\x40\x0a\x00"
+        b"\x00" b"\x41\x0f\x00" b"\x40\x21\x00" b"\x40\x21\x00" b"\x40\x80\x00" b"\x40\x21\x00" b"\x40\x1a"
     )
 
     def test_the_song_serializes_to_the_expected_bytes(self) -> None:
@@ -256,7 +250,7 @@ class TestLoopEntries:
     def test_a_song_that_repeats_states_the_token_its_loop_tick_starts(self) -> None:
         song = repeating_song()
         data = song_to_bytes(song, PROGRAM_AREA_BYTES)
-        entered = song.planes.entries(decode_planes(song.planes).positions(LOOP_TICK))
+        entered = song.planes.loop_entries
         assert loop_entries(data) == tuple(
             ABSENT_STREAM if entry is None else offset + entry for offset, entry in zip(stream_offsets(data), entered)
         )

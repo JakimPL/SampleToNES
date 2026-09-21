@@ -1,12 +1,11 @@
 from typing import FrozenSet, List, Tuple
 
-from sampletones_tools.codec.study.packing.coding import PlaneCoding
-from sampletones_tools.codec.study.packing.form import SINGLE_TICK
+from sampletones_player.specification.planes import SINGLE_TICK, PlaneForm
 
 
 def pack_plane(
-    plane: bytes,
-    form: PlaneCoding,
+    played: bytes,
+    form: PlaneForm,
     *,
     boundaries: FrozenSet[int],
 ) -> bytes:
@@ -17,7 +16,7 @@ def pack_plane(
     symbol of its own, so the plane stands at a symbol's first byte wherever a token may start.
 
     Args:
-        plane: The values the plane plays.
+        played: The values the plane plays.
         form: How the plane's byte divides.
         boundaries: The ticks a symbol begins on, beyond the plane's first.
 
@@ -28,11 +27,11 @@ def pack_plane(
         ValueError: If a value the plane plays carries fixed bits other than the form's.
     """
     symbols = bytearray()
-    for start, length in _runs(plane, boundaries=boundaries):
+    for start, length in _runs(played, boundaries=boundaries):
         held = length
         while held:
             repeats = min(held, form.repeats)
-            symbols.append(form.symbol(plane[start], repeats))
+            symbols.append(form.symbol(played[start], repeats))
             held -= repeats
 
     return bytes(symbols)
@@ -40,7 +39,7 @@ def pack_plane(
 
 def unpack_plane(
     symbols: bytes,
-    form: PlaneCoding,
+    form: PlaneForm,
 ) -> bytes:
     """The values a run of symbols plays, one per tick.
 
@@ -59,8 +58,8 @@ def unpack_plane(
 
 
 def symbol_boundaries(
-    plane: bytes,
-    form: PlaneCoding,
+    played: bytes,
+    form: PlaneForm,
     *,
     boundaries: FrozenSet[int],
 ) -> FrozenSet[int]:
@@ -70,7 +69,7 @@ def symbol_boundaries(
     ticks and a boundary reaches it as the symbol the tick begins.
 
     Args:
-        plane: The values the plane plays.
+        played: The values the plane plays.
         form: How the plane's byte divides.
         boundaries: The ticks a token starts on, beyond the plane's first.
 
@@ -79,7 +78,7 @@ def symbol_boundaries(
     """
     positions = {}
     symbol = 0
-    for start, length in _runs(plane, boundaries=boundaries):
+    for start, length in _runs(played, boundaries=boundaries):
         positions[start] = symbol
         symbol += -(-length // form.repeats)
 
@@ -87,19 +86,19 @@ def symbol_boundaries(
 
 
 def _runs(
-    plane: bytes,
+    played: bytes,
     *,
     boundaries: FrozenSet[int],
 ) -> Tuple[Tuple[int, int], ...]:
     """Where each run of one value begins and how many ticks it lasts, cut at every boundary."""
     runs: List[Tuple[int, int]] = []
     start = 0
-    for tick in range(SINGLE_TICK, len(plane)):
-        if plane[tick] != plane[start] or tick in boundaries:
+    for tick in range(SINGLE_TICK, len(played)):
+        if played[tick] != played[start] or tick in boundaries:
             runs.append((start, tick - start))
             start = tick
 
-    if plane:
-        runs.append((start, len(plane) - start))
+    if played:
+        runs.append((start, len(played) - start))
 
     return tuple(runs)

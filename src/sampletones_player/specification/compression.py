@@ -51,4 +51,4 @@ INITIAL_PLANE_VALUE: Final[int] = 0
 BEND_FLAG: Final[int] = 0x80
 PITCH_INDEX_MASK: Final[int] = BEND_FLAG - 1
 
-PLANE_STATE_SIZE: Final[int] = 8
+PLANE_STATE_SIZE: Final[int] = 10
