@@ -3,7 +3,11 @@ from typing import Dict, FrozenSet, List, NamedTuple, Optional, Sequence, Set, T
 
 import numpy as np
 
-from sampletones_core.constants.algorithm import RESTING_FRAME_COST, STEM_ACTIVITY_FLOOR
+from sampletones_core.constants.algorithm import (
+    RESTING_FRAME_COST,
+    STEM_ACTIVITY_FLOOR,
+    UNIT_DRIVE,
+)
 from sampletones_core.constants.enums import (
     ChannelName,
     GeneratorClassName,
@@ -35,22 +39,25 @@ from sampletones_shared.array import to_numpy
 
 @dataclass(frozen=True)
 class StemOffer:
-    """What one stem offers for a channel: that channel's column in the stem's frame, and what its head saves.
+    """What one stem offers for a channel: that channel's column in the stem's frame, and what it saves.
 
-    The column arrives best first, so its head is the candidate the stem competes with.
+    The column arrives best first, so its head is the candidate the channel would play.
 
     Attributes:
         stem_id: The stem making the offer.
         generator: The generator standing for the channel the stem would take.
         column: The channel's candidates scored in the stem's frame at the drive the stem gives
             the channel, best first.
-        improvement: How far the head lowers the stem's frame cost, weighted by the energy of the
-            stem's frame.
+        unit_cost: The cost the channel's own best candidate at unit drive reaches in the stem's
+            frame, which the offer is ranked on and the stem stands at once the channel is taken.
+        improvement: How far the channel at unit drive lowers the stem's frame cost, weighted by
+            the energy of the stem's frame.
     """
 
     stem_id: int
     generator: GeneratorUnion
     column: Column
+    unit_cost: float
     improvement: float
 
     @property
@@ -84,8 +91,10 @@ class AssignmentSession:
     of the candidates. Every candidate is read at the drive the stem gives the channel, so one
     column answers the channels of a kind the stem drives alike and the channels it drives apart
     hold columns of their own. A channel is taken where it lowers a frame's cost, by the stem
-    whose sound it covers most. Only the free channels are shared: the stems compete for them,
-    ordered by the hierarchy, and the stems sounding in the frame are the ones that compete.
+    whose sound it covers most, measured at unit drive so a drive settles what a channel plays
+    and leaves the stems standing where they are. Only the free channels are shared: the stems
+    compete for them, ordered by the hierarchy, and the stems sounding in the frame are the ones
+    that compete.
     """
 
     def __init__(
@@ -183,18 +192,23 @@ class AssignmentSession:
 
         A cost is a fraction of its own frame's energy, so two stems' costs stand on different
         scales; weighting a lowering by the energy behind it states it in absolute terms, so the
-        channel reaches the stem whose sound it covers most. An offer whose head is the channel's
-        silence, or which lowers nothing, stands aside. Equal offers leave the one already
-        standing, which is earlier in level order and then in channel order, so a rerun of the
-        same frame assigns the same way.
+        channel reaches the stem whose sound it covers most. The lowering is read from the
+        channel scored at unit drive while the driven column decides what the channel plays, so
+        the stems compete on how much of a frame a channel covers and a drive stays a property of
+        the sound its stem makes. An offer whose head is the channel's silence, or which lowers
+        nothing, stands aside. Equal offers leave the one already standing, which is earlier in
+        level order and then in channel order, so a rerun of the same frame assigns the same way.
         """
         best: Optional[StemOffer] = None
         for stem_id in stem_ids:
             for group in column_groups(self._remaining_channels(stem_id), self._drives(stem_id)):
                 column = self._column(stem_id, group.generator, group.drive)
-                head = column[0]
-                improvement = (self.frame_costs[stem_id] - head.cost) * self.energies[stem_id]
-                if not head.instruction.on or improvement <= 0.0:
+                if not column[0].instruction.on:
+                    continue
+
+                unit_cost = self._column(stem_id, group.generator, UNIT_DRIVE)[0].cost
+                improvement = (self.frame_costs[stem_id] - unit_cost) * self.energies[stem_id]
+                if improvement <= 0.0:
                     continue
 
                 if best is None or improvement > best.improvement:
@@ -202,17 +216,22 @@ class AssignmentSession:
                         stem_id=stem_id,
                         generator=group.generator,
                         column=column,
+                        unit_cost=unit_cost,
                         improvement=improvement,
                     )
 
         return best
 
     def _take(self, offer: StemOffer) -> None:
-        """Gives the offer's channel to its stem, sounding the head in that stem's mix."""
+        """Gives the offer's channel to its stem, sounding the head in that stem's mix.
+
+        The stem stands at the cost the channel reaches at unit drive, which is the scale the
+        next offer is measured against, so one drive-free lowering follows another.
+        """
         stem_id = offer.stem_id
         self._record(stem_id, ChannelName(offer.generator.name), offer.column)
         self.mixes[stem_id] = self.mixes[stem_id].added(offer.head.contribution)
-        self.frame_costs[stem_id] = offer.head.cost
+        self.frame_costs[stem_id] = offer.unit_cost
         self._forget_columns(stem_id)
 
     def _settle_declined(self) -> None:

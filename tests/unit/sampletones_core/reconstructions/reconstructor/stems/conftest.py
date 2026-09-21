@@ -1,4 +1,5 @@
-from typing import Dict, Final, List, Mapping, Sequence
+from dataclasses import dataclass
+from typing import Dict, Final, List, Mapping, Optional, Sequence
 
 import numpy as np
 import pytest
@@ -52,6 +53,15 @@ def audible_instruction_of(library_data: InstructionLibraryData, generator: Gene
     return next(instruction for instruction in library_data.filter((generator.class_name(),)).keys() if instruction.on)
 
 
+@dataclass(frozen=True)
+class _Pick:
+    """A channel standing for the next pick: what it would play, and the cost it is ranked on."""
+
+    channel_name: ChannelName
+    head: ScoredCandidate
+    unit_cost: float
+
+
 def frame_objective_baseline(
     fragment: Fragment,
     channels: Dict[ChannelName, GeneratorUnion],
@@ -62,26 +72,30 @@ def frame_objective_baseline(
 
     Every candidate of every free channel's kind is scored alone at ``drive`` by the frame's cost
     with the picks so far sounding beside it, the lowest free channel of a kind standing for the
-    kind. The pick lowering the frame's cost the most is taken while one exists; the channels no
-    pick lowers hold their silence; every channel is then scored once more with the others' heads
+    kind. The channel taken is the one reaching the lowest cost at unit drive while that cost
+    lowers the frame, and it sounds the head its column at ``drive`` carries; the channels no pick
+    reaches hold their silence; every channel is then scored once more with the others' heads
     sounding. A one-stem setup at full count driving every channel alike runs exactly this, which
     is what makes the two comparable frame by frame.
     """
     heads: Dict[ChannelName, ScoredCandidate] = {}
     frame_cost = matcher.mix_cost(fragment, FrameMix.empty(fragment))
     while True:
-        best = None
+        best: Optional[_Pick] = None
         for channel_name in _representatives(channels, heads):
             context = [head.contribution for head in heads.values()]
-            head = _column(fragment, channels[channel_name], context, matcher, drive)[0]
-            if head.instruction.on and head.cost < frame_cost and (best is None or head.cost < best[1].cost):
-                best = (channel_name, head)
+            generator = channels[channel_name]
+            column = _column(fragment, generator, context, matcher, drive)
+            unit_column = column if drive == UNIT_DRIVE else _column(fragment, generator, context, matcher, UNIT_DRIVE)
+            unit_cost = unit_column[0].cost
+            if column[0].instruction.on and unit_cost < frame_cost and (best is None or unit_cost < best.unit_cost):
+                best = _Pick(channel_name=channel_name, head=column[0], unit_cost=unit_cost)
 
         if best is None:
             break
 
-        heads[best[0]] = best[1]
-        frame_cost = best[1].cost
+        heads[best.channel_name] = best.head
+        frame_cost = best.unit_cost
 
     for channel_name in channels:
         if channel_name not in heads:
