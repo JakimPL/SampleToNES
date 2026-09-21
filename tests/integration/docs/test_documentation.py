@@ -6,6 +6,7 @@ import pytest
 
 from sampletones_shared.paths.source import REPOSITORY_ROOT
 
+ENCODING: Final[str] = "utf-8"
 LINK: Final[re.Pattern[str]] = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 HEADING: Final[re.Pattern[str]] = re.compile(r"^#{1,6}\s+(.*?)\s*$", re.MULTILINE)
 EXTERNAL: Final[Tuple[str, ...]] = ("http://", "https://", "mailto:")
@@ -20,8 +21,13 @@ def anchor(heading: str) -> str:
     return re.sub(r"[^\w\s-]", "", text).replace(" ", "-")
 
 
+def text(page: Path) -> str:
+    """The page as it is stored, which is UTF-8 whatever encoding the platform prefers."""
+    return page.read_text(encoding=ENCODING)
+
+
 def anchors(page: Path) -> Set[str]:
-    return {anchor(heading) for heading in HEADING.findall(page.read_text())}
+    return {anchor(heading) for heading in HEADING.findall(text(page))}
 
 
 def pages() -> List[Path]:
@@ -37,7 +43,7 @@ class TestEveryInternalLinkResolves:
 
     @pytest.mark.parametrize("page", pages(), ids=identifier)
     def test_the_page_links_only_to_files_and_headings_that_exist(self, page: Path) -> None:
-        for target in LINK.findall(page.read_text()):
+        for target in LINK.findall(text(page)):
             if target.startswith(EXTERNAL):
                 continue
 
@@ -53,7 +59,7 @@ class TestTheIndexListsEveryDocument:
     """`docs/index.md` is the map of the documentation, so a page is reachable from it."""
 
     def test_every_page_is_listed(self) -> None:
-        listed = {(INDEX.parent / target.partition("#")[0]).resolve() for target in LINK.findall(INDEX.read_text())}
+        listed = {(INDEX.parent / target.partition("#")[0]).resolve() for target in LINK.findall(text(INDEX))}
         missing = [
             identifier(page) for page in DOCUMENTATION.rglob("*.md") if page != INDEX and page.resolve() not in listed
         ]

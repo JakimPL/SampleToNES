@@ -6,6 +6,7 @@ from sampletones_shared.constants.general import HEXADECIMAL_BASE
 from sampletones_shared.exceptions import DriverBuildError
 
 LABEL_MARKER: Final[str] = "al"
+LABEL_ENCODING: Final[str] = "utf-8"
 LABEL_FIELDS: Final[int] = 3
 SYMBOL_PREFIX: Final[str] = "."
 
@@ -29,7 +30,7 @@ def read_labels(path: Path) -> Dict[str, int]:
         Dict[str, int]: Each symbol's address, keyed by the symbol's own name.
     """
     labels: Dict[str, int] = {}
-    for line in path.read_text().splitlines():
+    for line in path.read_text(encoding=LABEL_ENCODING).splitlines():
         fields = line.split()
         if len(fields) == LABEL_FIELDS and fields[0] == LABEL_MARKER:
             labels[fields[2].removeprefix(SYMBOL_PREFIX)] = int(
