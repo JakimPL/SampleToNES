@@ -96,7 +96,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
         with self._collapsible_card(
             parent,
             self._lbl_stems,
-            glyph=self._glyphs.headers.source,
+            glyph=self._glyphs.headers.stems,
             width=0,
             no_scrollbar=True,
         ):

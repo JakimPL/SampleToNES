@@ -292,6 +292,22 @@ class TestStemsPanelLevels:
         assert dpg.does_item_exist(panel.stems_list.tags.table)
 
 
+class TestStemsPanelHeader:
+    def test_the_card_leads_with_the_glyph_of_stems(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        layout_config: LayoutConfig,
+    ) -> None:
+        render(panel)
+
+        texts = [
+            dpg.get_value(item) for item in dpg.get_all_items() if dpg.get_item_type(item) == "mvAppItemType::mvText"
+        ]
+
+        assert layout_config.glyphs.headers.stems in texts
+        assert layout_config.glyphs.headers.stems != layout_config.glyphs.headers.source
+
+
 class TestStemsPanelStates:
     def test_the_setup_line_states_the_mode(self, panel: GUIReconstructionStemsPanel) -> None:
         render(panel)
