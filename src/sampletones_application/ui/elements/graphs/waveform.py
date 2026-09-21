@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, Callable, Dict, Final, List, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Final, List, Mapping, Optional, Sequence, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -9,6 +9,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
+from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.graphs import (
     SUF_GRAPH_PLOT,
     SUF_GRAPH_SUBPLOTS,
@@ -40,6 +41,7 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_item,
 )
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.keyboard.modifiers import Modifier, capture_modifiers
 from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.faded import FadedColor
@@ -98,6 +100,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.position_indicator_tag = compose_tag(tag, SUF_WAVEFORM_POSITION_INDICATOR)
         self.overlay_rectangle_tag = compose_tag(tag, SUF_WAVEFORM_OVERLAY)
         self.mouse_handler_tag = compose_tag(tag, SUF_HANDLER_MOUSE)
+        self.lane_handler_tag = compose_tag(tag, SUF_RIBBON_LANE, SUF_HANDLER_REGISTRY)
 
         self.on_position_clicked: Optional[Callable[[int], None]] = None
         self._click = PlotClickGesture(
@@ -140,6 +143,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             (_min_x, _max_x),
             (_min_y, _max_y),
             layout.waveform.zoom_factor,
+            layout.waveform.pan_factor,
         )
 
     def _create_content(self) -> None:
@@ -241,6 +245,15 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             FontRegistry.bind_to_item(plot_tag, Font.REGULAR_TINY)
             self._bind_lane_theme(channel_name, plot_tag)
 
+        self._bind_lane_hover()
+
+    def _bind_lane_hover(self) -> None:
+        with dpg.item_handler_registry(tag=self.lane_handler_tag):
+            dpg.add_item_hover_handler(callback=self._on_lane_hover)
+
+        for plot_tag in self.lane_plot_tags.values():
+            dpg.bind_item_handler_registry(plot_tag, self.lane_handler_tag)
+
     def _bind_lane_theme(self, channel_name: ChannelName, plot_tag: str) -> None:
         """Prints a lane's letter in the color the channel is drawn in everywhere else."""
         theme_tag = compose_tag(plot_tag, SUF_GRAPH_THEME)
@@ -310,6 +323,20 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
     def set_overlay_range(self, start: float = 0.0, end: float = 0.0) -> None:
         self._set_overlay_rectangle(x_start=start, x_end=end)
+
+    def _pannable_plot_tags(self) -> Sequence[str]:
+        return (self.plot_tag, *self.lane_plot_tags.values())
+
+    def _on_panned(self) -> None:
+        super()._on_panned()
+        FrameCallbackManager.set_frame_callback(self._restate_zoomed_clock_ticks)
+
+    def _on_lane_hover(self) -> None:
+        """Holds the lanes' own wheel zoom back while Alt is held, so the wheel pans them instead."""
+        locked = Modifier.ALT in capture_modifiers()
+        for channel_name, plot_tag in self.lane_plot_tags.items():
+            for axis_tag in (compose_tag(plot_tag, SUF_GRAPH_X_AXIS), self.lane_y_axis_tags[channel_name]):
+                dpg.configure_item(axis_tag, lock_min=locked, lock_max=locked)
 
     def _on_hover(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         super()._on_hover(sender, app_data, user_data)

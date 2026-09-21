@@ -40,3 +40,4 @@ SUF_OWNERSHIP_LEFT_OUT = "left_out"
 SUF_BAR_PLOT_ZERO_LINE = "zero_line"
 SUF_BAR_PLOT_HOVER_BAR = "hover_bar"
 SUF_HANDLER_MOUSE = compose_tag("handler", "mouse")
+SUF_HANDLER_WHEEL = compose_tag("handler", "wheel")

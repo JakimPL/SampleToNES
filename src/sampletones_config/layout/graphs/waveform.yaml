@@ -1,4 +1,5 @@
 reconstruction_dim_opacity: 0.5
 zoom_factor: 0.2
+pan_factor: 0.1
 max_display_points: 4096
 click_travel: 4

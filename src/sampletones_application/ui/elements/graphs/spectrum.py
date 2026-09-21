@@ -25,6 +25,8 @@ from sampletones_shared.utils.color import MAX_CHANNEL_VALUE
 
 
 class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
+    pans_with_wheel = False
+
     tag: str
     parent: str
     width: int
@@ -58,6 +60,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             x_range=(layout.graph.min_x, layout.graph.max_x),
             y_range=(MIN_FREQUENCY, DEFAULT_SAMPLE_RATE / 2),
             zoom_factor=layout.waveform.zoom_factor,
+            pan_factor=layout.waveform.pan_factor,
         )
 
     def _create_content(self) -> None:

@@ -23,7 +23,8 @@ compare the two. The **Waveform** card has a checkbox for each channel, and keys
 same checkboxes.
 
 Click the waveform to play from that point. While playback is paused, a click moves the playback
-position. Drag the waveform to move the view, and double-click to fit the view.
+position. Drag the waveform to move the view, and double-click to fit the view. Scroll to zoom, hold **Alt** and
+scroll to move the view sideways, or hold **Alt** and **Shift** and scroll to move it up and down.
 
 ## Hearing what each recording contributed
 

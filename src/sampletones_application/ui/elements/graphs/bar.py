@@ -24,6 +24,7 @@ from sampletones_application.utils.gui.dpg import (
     dpg_delete_item,
     dpg_is_item_hovered,
 )
+from sampletones_application.utils.gui.keyboard.modifiers import CTRL_ALT_SHIFT, capture_modifiers
 from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.faded import FadedColor
@@ -101,6 +102,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             (_min_x, _max_x),
             _y_range,
             layout.waveform.zoom_factor,
+            layout.waveform.pan_factor,
         )
 
     def _create_content(self) -> None:
@@ -328,7 +330,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         previous_stroke = self._draw_stroke
         self._draw_stroke = None
 
-        if dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_LAlt):
+        if capture_modifiers() & CTRL_ALT_SHIFT:
             return
 
         if not dpg_is_item_hovered(self.plot_tag) or self.current_data is None:

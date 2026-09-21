@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, Optional, Tuple
+from typing import Any, ClassVar, Dict, Generic, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -15,13 +15,17 @@ from sampletones_application.tags.graphs import (
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.layers.type import LayerT
+from sampletones_application.ui.elements.graphs.pan import PlotWheelPan
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.keyboard.modifiers import Modifier, capture_modifiers
 from sampletones_shared.types.application import Sender
 
 
 class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
+    pans_with_wheel: ClassVar[bool] = True
+
     def __init__(
         self,
         tag: str,
@@ -32,6 +36,7 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
         x_range: Tuple[float, float],
         y_range: Tuple[float, float],
         zoom_factor: float,
+        pan_factor: float,
     ):
         self.label = label
         self.plot_tag = compose_tag(tag, SUF_GRAPH_PLOT)
@@ -42,6 +47,7 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
         self.event_handler_tag = compose_tag(tag, SUF_HANDLER_REGISTRY)
 
         self.zoom_factor = zoom_factor
+        self.pan_factor = pan_factor
         self._x_range: Tuple[float, float] = x_range
         self._y_range: Tuple[float, float] = y_range
         self._default_x_range = self._x_range
@@ -74,6 +80,25 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
         with dpg.item_handler_registry(tag=self.event_handler_tag):
             dpg.add_item_hover_handler(callback=self._on_hover)
 
+        if self.pans_with_wheel:
+            PlotWheelPan(
+                tag=self.tag,
+                plot_tags=self._pannable_plot_tags(),
+                x_axis_tag=self.x_axis_tag,
+                y_axis_tag=self.y_axis_tag,
+                pan_factor=self.pan_factor,
+                x_bounds=lambda: self.x_range,
+                y_bounds=lambda: self.y_range,
+                on_panned=self._on_panned,
+            ).create()
+
+    def _pannable_plot_tags(self) -> Sequence[str]:
+        """The plots the wheel pans the graph from, which are the plot and any linked to it."""
+        return (self.plot_tag,)
+
+    def _on_panned(self) -> None:
+        self._release_axes_limits()
+
     def _bind_event_handler(self) -> None:
         dpg.bind_item_handler_registry(self.plot_tag, self.event_handler_tag)
 
@@ -86,9 +111,13 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
         _app_data: int,
         _user_data: Any,
     ) -> None:
-        shift = dpg.is_key_down(dpg.mvKey_LShift)
-        dpg.configure_item(self.x_axis_tag, lock_min=shift, lock_max=shift)
-        dpg.configure_item(self.y_axis_tag, lock_min=not shift, lock_max=not shift)
+        modifiers = capture_modifiers()
+        panning = Modifier.ALT in modifiers
+        shift = Modifier.SHIFT in modifiers
+        lock_x = panning or shift
+        lock_y = panning or not shift
+        dpg.configure_item(self.x_axis_tag, lock_min=lock_x, lock_max=lock_x)
+        dpg.configure_item(self.y_axis_tag, lock_min=lock_y, lock_max=lock_y)
         self._release_axes_limits()
 
     def add_layer(self, layer: LayerT) -> None:
