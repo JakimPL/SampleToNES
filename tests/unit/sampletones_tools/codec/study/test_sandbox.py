@@ -21,7 +21,7 @@ from sampletones_player.specification.compression import (
     CHEAP_PHRASE_IDS,
     MAX_HOLD_TICKS,
 )
-from sampletones_player.specification.planes import PLANE_COUNT, PLANES, PlaneRole
+from sampletones_player.specification.planes import NO_BITS, PLANE_COUNT, PLANES, PlaneRole
 from sampletones_shared.music import Tuning
 from sampletones_tools.codec.study.corpus.song import SongGroup, StudySong
 from sampletones_tools.codec.study.sandbox.context import PlaneContext
@@ -42,6 +42,7 @@ from tests.suite.case import BaseRegularTestCase
 from tests.suite.player import playable
 from tests.suite.study import NO_STUDY_SLICES, lowest_notes
 
+SEEDED_SYMBOL: Final[int] = NO_BITS
 ENTRIES: Final[FrozenSet[int]] = frozenset({STREAM_START})
 FIGURES: Final[Tuple[bytes, ...]] = (b"\x0a\x0c\x0f\x0f\x0f\x0f\x0f\x0f", b"\x03\x04\x05\x06")
 TABLE: Final[PhraseTable] = phrase_table(Phrase(body=body) for body in FIGURES)
@@ -116,6 +117,7 @@ def _context(
         boundaries=Boundaries.across(len(plane), ENTRIES),
         transposition=EVERY_LAYER.transposition,
         defaults=tuple(defaults),
+        seeded=SEEDED_SYMBOL,
         costs=costs,
     )
 
