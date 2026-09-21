@@ -252,11 +252,11 @@ above it:
 
 The whole song is 9509 bytes of the roughly 32000 available, and **37238 ticks is 10.3
 minutes at 60 Hz**, against the 49 seconds a record per tick reaches. Encoding happens once, where
-the file is written, and `make benchmarks` holds its cost. Decoding costs the console around twenty
-instructions per plane per tick, comfortably inside a video frame.
+the file is written. Decoding costs the console around twenty instructions per plane per tick,
+comfortably inside a video frame.
 
-`uv run sampletones codec report` writes this table over a corpus of songs, and the format's
-constants are settled from it. Two of them were settled against expectation: splitting
+The table is measured over a corpus of songs, and the format's constants are settled from
+it. Two of them were settled against expectation: splitting
 the duty cycle out of the control byte into a plane of its own **costs** 14 %, because
 volume and duty turn over together and a split pays two opcodes for what one covers;
 and the pitch index earns its place twice, 5 % directly and a further 12 % through the
@@ -286,32 +286,7 @@ plays the same song.
   dictionary entries, and nothing exploits the correlation between a channel's own
   control and value planes.
 
-## Appendix — the shape of the format
+## Appendix — where the exact shape is written
 
-| quantity | value |
-|---|---|
-| planes | control and value for every channel, and a bend for each tone channel |
-| bytes per tick before coding | 11 |
-| ticks one hold covers | 1 to 64 |
-| values one literal carries | 1 to 64 |
-| ticks one phrase token covers | 1 to 256 |
-| phrase ids inside the opcode | 63 |
-| phrases in the dictionary | up to 255 |
-| values in a phrase | up to 255 |
-| candidate lengths the search gathers | 3 to 48 |
-| decoder state on the console | 88 bytes of zero page, 8 per plane |
-
-Where things live:
-
-| concern | module |
-|---|---|
-| planes, and the pitch index | `sampletones_player.compression.planes`, `.pitch` |
-| the token kinds and their byte costs | `sampletones_player.compression.tokens` |
-| the cheapest reading of a plane | `sampletones_player.compression.parse` |
-| the dictionary, its entries and its pruning | `sampletones_player.compression.dictionary` |
-| phrases the instruments offer | `sampletones_player.compression.seeds` |
-| phrases the search earns | `sampletones_player.compression.search` |
-| how much work the search spends | `sampletones_player.compression.budget` |
-| what a phrase plays against a plane | `sampletones_player.compression.matches` |
-| encoding, and the decoder the driver is held to | `sampletones_player.compression.encode`, `.decode` |
-| the opcode layout and its bounds | `sampletones_player.specification.compression` |
+This page explains the scheme. The bytes themselves — the opcodes, the operand each carries and
+the bounds they impose — are in [NSF export](../formats/nsf.md).

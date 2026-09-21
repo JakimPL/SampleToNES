@@ -2,9 +2,8 @@
 
 This document explains how _SampleToNES_ turns an arbitrary audio sample into a
 *reconstruction* — a sequence of NES instructions that, when played back on the
-console's sound hardware, approximates the original. It is written to be readable
-without prior knowledge of the codebase, while pointing at the packages that
-implement each part.
+console's sound hardware, approximates the original. You can read it without
+reading the source code.
 
 The tunable choices described here are set empirically; the experiment that
 picks them is described in [Calibration](../tools/calibration.md).
@@ -24,9 +23,7 @@ second (for example, *pulse 1: note A-4, volume 12, 50 % duty*). Approximating a
 arbitrary sound this way produces a **reconstruction**: one instruction stream per
 channel whose mixed, rendered output resembles the input as closely as the
 hardware permits. By default a reconstruction uses one pulse channel, the triangle
-and the noise; the second pulse can be enabled in the configuration. The channel
-models live in `sampletones_core.generators` and the instruction value types in
-`sampletones_core.instructions`.
+and the noise; the second pulse can be enabled in the configuration.
 
 Reconstruction is a **search problem**. The input is cut into short, fixed-length
 frames, and within each frame at most one instruction per channel is in effect. For
@@ -43,17 +40,14 @@ have very different waveforms depending on phase.
 
 ## 2. The pipeline
 
-`Reconstructor` (`sampletones_core.reconstructions.reconstructor`) carries the
-input through a fixed sequence of stages:
+A reconstruction runs through a fixed sequence of stages:
 
-1. **Load** the audio (`sampletones_core.audio`) — mix to mono, resample, and
-   optionally clean it up (normalize, quantize). Several sources load together, so
-   one scale drawn from the peak of their sum holds them at the balance they were
-   captured in.
+1. **Load** the audio — mix to mono, resample, and optionally clean it up (normalize,
+   quantize). Several sources load together, so one scale drawn from the peak of their
+   sum keeps them at the balance they were captured in.
 2. **Set a working level** — scale the whole signal so its typical frame plays at the
    level one channel renders at full volume, keeping quiet passages matchable (§3.4).
-3. **Fragment** it into short, fixed-length frames
-   (`sampletones_core.fft.fragment`); from here on each channel holds one
+3. **Fragment** it into short, fixed-length frames; from here on each channel has one
    instruction per frame.
 4. **Describe each frame** by a spectral feature that captures its frequency
    content (§3).
@@ -65,26 +59,22 @@ input through a fixed sequence of stages:
 7. **Refine** each chosen note onto the divider the recording's own fundamental stands at (§6).
 8. **Render** the chosen instructions back into audio through the generators,
    keeping each oscillator continuous across frames.
-9. **Reassemble** the channels into the final approximation and package it, with the
-   instruction streams, as a `Reconstruction`.
+9. **Reassemble** the channels into the final approximation, and save it with the
+   instruction streams as a reconstruction.
 
 Stages 3–7 are where the algorithms described below live; the rest is preparation
 and playback.
 
-A run says which of these it is in as it passes through them, so a reader watching a
-conversion sees it move rather than waiting for the file. `ReconstructionStage` gathers
-the eight steps into the four a reader is told apart — loading, matching, decoding,
-rendering — and states the share each holds of the whole run;
-[`progress.md`](../development/progress.md) describes how that account reaches the
-screen from the worker process it is made in.
+A run reports which stage it is in as it goes, gathered into the four a conversion shows
+you: loading, matching, decoding and rendering.
 
 ## 3. Representing a frame
 
 ### 3.1 The candidate catalog (library)
 
-Before any reconstruction, `sampletones_core.library` precomputes a **library**: for
-every possible instruction it renders the waveform its generator produces and stores
-the corresponding spectral feature. Because NES waveforms are periodic, a
+Before any reconstruction, the program precomputes a **library**: for every possible
+instruction it renders the waveform that instruction produces and stores the
+corresponding spectral feature. Because NES waveforms are periodic, a
 candidate's feature is computed from its power spectrum averaged over many phase
 offsets, which makes it essentially phase-independent — matching then compares
 spectral *shape* rather than an accident of alignment. The library is keyed by the
@@ -95,9 +85,9 @@ is generated, explored and keyed.
 
 ### 3.2 Spectrum methods: FFT, log-FFT and CQT
 
-The feature of a frame is a frequency *histogram* (`sampletones_core.structures`),
-produced by one of three methods (`sampletones_core.fft.spectrum`,
-configurable via `library.spectrum_method`):
+The feature of a frame is a frequency *histogram*, produced by one of three methods
+(`library.spectrum_method`). The figures below are for 44.1 kHz audio at a 60 Hz change
+rate:
 
 | method   | frequency axis            | resolution                              | time support              |
 |----------|---------------------------|-----------------------------------------|---------------------------|
@@ -123,9 +113,9 @@ sharper frequency resolution requires a longer time window, and vice versa):
   It is the default.
   The price is time support: its low-frequency basis functions are long (hundreds of
   milliseconds), so brief events are smeared in time at the low end. _SampleToNES_
-  computes the CQT **once over the whole signal** with a hop of one frame
-  (`calculate_cqt_spectrum_columns`), so each frame's energy is reported at its own
-  time position and the per-frame columns line up with the FFT path's frame centers.
+  computes the CQT **once over the whole signal** with a hop of one frame, so each
+  frame's energy is reported at its own time position and the per-frame columns line up
+  with the FFT path's frame centers.
 
 The target and the library candidates are always described by the *same* method, so
 their features are directly comparable bin by bin. All three methods share one scale
@@ -136,7 +126,7 @@ by its energy gain).
 ### 3.3 The gamma transform
 
 Whatever the method, the raw power spectrum is mapped into a "feature space" by a
-Yeo-Johnson-family transform (`sampletones_core.fft.transformer`) controlled by a
+Yeo-Johnson-family transform controlled by a
 `transformation_gamma` in `[0, 100]`:
 
 - `gamma = 0` → identity: the feature is the power spectrum (the default);
@@ -155,7 +145,7 @@ at every gamma.
 A single **coefficient** scales the input before matching so that its typical frame
 plays at the level one channel renders at full volume. The typical frame is a
 *robust* level — a high percentile of the per-frame RMS levels over the audible frames
-(`active_frame_level` in `sampletones_core.audio`) — so a lone transient (a kick, a
+— so a lone transient (a kick, a
 click) saturates to the loudest available note while the bulk of the signal stays
 within reach of the quietest one. RMS measures how much sound a frame carries, which
 is what a channel's volume renders, whatever the waveform's crest.
@@ -168,8 +158,8 @@ channel can answer it, and louder frames call on more channels.
 
 ## 4. Scoring a candidate: the criterion
 
-`Criterion` (`sampletones_core.reconstructions.criterion`) scores a candidate
-against the target frame as a weighted sum of a spectral and a temporal term:
+The **criterion** scores a candidate against the target frame as a weighted sum of a
+spectral and a temporal term:
 
 ```
 cost = α · spectral + β · temporal          (default α = 0.8, β = 0.2)
@@ -200,18 +190,16 @@ cost = α · spectral + β · temporal          (default α = 0.8, β = 0.2)
   expected to sum to `E` with a per-sample variance `V`,
   `E mean((t − x)²) = mean((t − E)²) + V`, whose root normalizes as above.
 
-A lower cost is a better match. The criterion evaluates many candidates at once and,
-on machines with a GPU, runs on the array backend in `sampletones_shared`.
+A lower cost is a better match. The criterion scores many candidates at once, and runs on
+the graphics card where the machine has one.
 
 ## 5. Choosing instructions
 
-Two questions settle what a frame plays, and each has its own owner. **Ownership** —
-which channel a source holds this frame — is answered by the assignment in
-`sampletones_core.reconstructions.reconstructor.stems.assignment`. **The stream** —
-what a channel plays across the frames it holds — is answered by a decoder in
-`sampletones_core.reconstructions.reconstructor.decoder`, named by
-`generation.decoder.selector`. Both work from the same candidate scoring
-(`reconstructor/matching.py`), the same criterion and the same library.
+Two questions settle what a frame plays, and each is answered separately.
+**Ownership** — which channel a source holds this frame — is answered by the
+assignment (§5.1). **The stream** — what a channel plays across the frames it holds —
+is answered by a decoder, chosen with `generation.decoder.selector`. Both work from the
+same candidate scoring, the same criterion and the same library.
 
 The assignment leaves every channel in play a **column** per frame: the candidates
 that channel may sound there, best first. The decoder reads those columns into one
@@ -313,10 +301,10 @@ reaching a whole semitone only around C-7, where the divider grid and the note g
 below that is room the matching leaves unused, and material that was never in A=440 equal
 temperament — most recordings of most instruments — sits somewhere inside it.
 
-`sampletones_core.reconstructions.reconstructor.refinement` spends that room, after the decoder has
-settled which note each frame plays and before the frames are rendered. It spends it where the run
-asks: a stem entry names the channels it carries toward its own recording, so one recording's bass
-line can land on its exact tuning while another's lead keeps the grid.
+The **refinement** spends that room, after the decoder has settled which note each frame plays and
+before the frames are rendered. It spends it where the run asks: a stem entry names the channels it
+carries toward its own recording, so one recording's bass line can land on its exact tuning while
+another's lead keeps the grid.
 
 ### 6.1 Reading rather than searching
 
@@ -331,8 +319,8 @@ The refinement does not search. Two measurements settle why:
   rendering it and extracting its feature, and that alone was measured to take **longer than the
   whole conversion** of the same audio on the same machine.
 
-So the answer is read out of the transform instead. `sampletones_core.fft.instantaneous` takes the
-**phase** the constant-Q transform already computes and `calculate_cqt_spectrum_columns` discards.
+So the answer is read out of the transform instead, from the **phase** the constant-Q transform
+already computes and the spectrum discards.
 A partial standing between two bin centers still advances its phase at its own rate, so comparing
 that advance across two columns against the rate the bin itself turns at states the partial's
 frequency far more finely than the bins are spaced. Reading the first few harmonics of the note the
@@ -396,20 +384,19 @@ once it is asked for, and hold for a whole run.
 
 ## 7. Rendering and reassembly
 
-A reconstruction is its instruction streams. Each one is rendered back through its generator
-(`sampletones_core.generators`), which carries oscillator phase across frames so
-there are no clicks at frame boundaries, and resets it on a new note where
-`reset_phase` says so; an "off" instruction yields silence for that channel and frame. Each
+A reconstruction is its instruction streams. Each one is rendered back through the channel
+that plays it, which carries the oscillator's phase across frames so there are no clicks at
+frame boundaries, and resets it on a new note where the settings say so. An "off"
+instruction gives silence for that channel and frame. Each
 frame is rendered at the drive the source holding it gives its channel (see
 [Stems reconstruction](stems.md)), and the per-channel renderings are summed into the final
 approximation.
 
-The rendering is read on demand rather than carried beside the streams, so what a
-reconstruction shows is what an export plays by construction, and a `.stn` states the
-instructions, the per-frame ownership and the setup they were chosen under — a few megabytes
-where the audio would be a few hundred. `Reconstruction.approximations` is that reading; the
-coefficient from §3.4 is stored so the reconstruction and the original can be shown and played
-on a common scale.
+The audio is rendered when it is asked for rather than stored beside the streams, so what a
+reconstruction shows is what an export plays. A `.stn` therefore holds the instructions, the
+per-frame ownership and the setup they were chosen under, which is far smaller than the audio
+would be. The working level from §3.4 is stored too, so the reconstruction and the original
+can be shown and played on a common scale.
 
 ## 8. Limitations
 
@@ -429,34 +416,8 @@ on a common scale.
   chose. The room a bend has also closes with pitch: a divider step is a whole semitone from around
   C-7 up, so notes there sound where the grid puts them.
 
-## Appendix — key parameters and where things live
+## Appendix — the settings behind all this
 
-Default configuration (44.1 kHz, 60 Hz change rate, channels pulse 1 + triangle +
-noise):
-
-| parameter                | default | notes                                              |
-|--------------------------|---------|----------------------------------------------------|
-| frame length             | 735     | `sample_rate / nes_frequency`, ~17 ms              |
-| spectrum method          | `cqt`   | `fft` / `logfft` / `cqt`                            |
-| `transformation_gamma`   | 0       | 0 = power spectrum, 100 = log                       |
-| spectral / temporal weight | 0.8 / 0.2 | criterion blend                                 |
-| spectral distance        | β-divergence | also `squared`, `absolute`                     |
-| selector                 | Viterbi | `greedy` / `viterbi`                                |
-| pitch refinement         | per stem | bends each note onto the divider the source sounds  |
-| normalize / quantize     | on / off | input preprocessing                                |
-
-Package map:
-
-| concern                         | package                                              |
-|---------------------------------|------------------------------------------------------|
-| NES channel models              | `sampletones_core.generators`                        |
-| instruction value types         | `sampletones_core.instructions`                      |
-| windowing, spectra, features    | `sampletones_core.fft`                               |
-| candidate catalog             | `sampletones_core.library`                           |
-| scoring                         | `sampletones_core.reconstructions.criterion`         |
-| selection + assembly            | `sampletones_core.reconstructions.reconstructor`     |
-| audio I/O and level             | `sampletones_core.audio`                             |
-| tracker export                  | `sampletones_core.exporters`                         |
-| pitch refinement                | `sampletones_core.reconstructions.reconstructor.refinement` |
-| criterion calibration           | `sampletones_tools.calibration`                      |
-| analytic waveform synthesis     | `sampletones_tools.synthesis`                        |
+Every choice described here is a setting you can change. The
+[configuration file](../formats/configuration.md) lists them with the values each one accepts, and
+the shipped values are in `sampletones_core/configs/generation.yaml`.
