@@ -20,9 +20,9 @@ its sound registers are exactly the values the sequencer plays.
 
 A song reaches the console as **ticks** — the fixed-rate slices a reconstruction's
 envelopes advance through, the same slices the sequencer sounds a row in. On every
-tick each of the four channels has a full set of register values, and written out
-plainly that is 11 bytes a tick: three each for the two pulse channels and the
-triangle, two for the noise.
+tick each of the four [channels](../glossary.md#channel) has a full set of register
+values, and written out plainly that is 11 bytes a tick: three each for the two pulse
+channels and the triangle, two for the noise.
 
 At 60 ticks a second, 11 bytes a tick fills the space behind the driver in **49
 seconds**. A song of three minutes needs 118800 bytes and the console has about

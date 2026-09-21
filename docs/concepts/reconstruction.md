@@ -10,13 +10,15 @@ picks them is described in [Calibration](../tools/calibration.md).
 
 ## 1. The problem
 
-The NES sound chip (Ricoh 2A03 APU) can only produce a few simple, fixed
-waveforms across four usable channels:
+The NES sound chip ([Ricoh 2A03 APU](../glossary.md#2a03-apu)) can only produce a few
+simple, fixed waveforms across four usable channels:
 
-- two **pulse** (square) channels — each with 4 duty cycles and 15 volume levels;
-- one **triangle** channel — fixed shape and amplitude, pitch only;
-- one **noise** channel — a pseudo-random LFSR generator with 16 periods, 15
-  volume levels and a short/long mode.
+- two [**pulse**](../glossary.md#pulse-square) (square) channels — each with 4
+  [duty cycles](../glossary.md#duty-cycle) and 15 volume levels;
+- one [**triangle**](../glossary.md#triangle) channel — fixed shape and amplitude, pitch only;
+- one [**noise**](../glossary.md#noise) channel — a pseudo-random
+  [LFSR](../glossary.md#lfsr) generator with 16 periods, 15 volume levels and a short/long
+  mode.
 
 A program steers these channels by issuing *instructions* a few dozen times per
 second (for example, *pulse 1: note A-4, volume 12, 50 % duty*). Approximating an

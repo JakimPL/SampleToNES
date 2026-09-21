@@ -23,10 +23,10 @@ tab, or right-click in the **Filesystem** browser.
 | `.ins` | [instruction library](../formats/instruction-libraries.md) |
 | `.stn` | [reconstruction](../formats/reconstructions.md) |
 | `.stp` | [project](../formats/projects.md) |
-| `.fti` | FamiTracker instrument |
-| `.ftm` | FamiTracker module |
-| `.json` | Bitphase instrument preset |
-| `.btp` | Bitphase project |
+| `.fti` | [FamiTracker instrument](../formats/famitracker.md) |
+| `.ftm` | [FamiTracker module](../formats/famitracker.md) |
+| `.json` | [Bitphase instrument preset](../formats/bitphase.md) |
+| `.btp` | [Bitphase project](../formats/bitphase.md) |
 | `.nsf` | [NSF program](../formats/nsf.md) |
 
 The first three are your own work, saved in the folders above. The rest are exports, and the save

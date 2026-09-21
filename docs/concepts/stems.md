@@ -7,11 +7,11 @@ stored record is [Reconstructions](../formats/reconstructions.md). What the
 application does with a stems reconstruction — the Stems card, an edit and a removal
 — is [Stems in the application](../development/application/stems.md).
 
-A stems reconstruction converts several audio stems at once. Each stem is matched
-against the instruction library on its own; within each frame, the channels are
-handed to the stems one pick at a time, following a precedence hierarchy. The
-result is one reconstruction whose `stems_data` records, per channel and frame,
-which stem's stream plays.
+A stems reconstruction converts several audio [stems](../glossary.md#stem) at once. Each
+stem is matched against the [instruction library](../glossary.md#instruction-library) on
+its own; within each [frame](../glossary.md#frame), the channels are handed to the stems
+one pick at a time, following a precedence hierarchy. The result is one reconstruction
+whose `stems_data` records, per channel and frame, which stem's stream plays.
 
 ## Principles
 
