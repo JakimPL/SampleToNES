@@ -1,6 +1,9 @@
 from typing import Final
 
-from sampletones_player.compression.progress.report import CodecProgress, CodecReporter
+from sampletones_player.compression.progress.report import (
+    CodecProgress,
+    CodecReporter,
+)
 from sampletones_shared.exceptions import OperationCanceled
 
 NOTHING_FOUND: Final[int] = 0

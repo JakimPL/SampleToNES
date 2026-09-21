@@ -123,4 +123,8 @@ class TestSeedsBeyondTheIdsATokenReaches:
 
 def crowded_seeds() -> Tuple[Phrase, ...]:
     """More shapes than a token can name, two of which the plane actually plays."""
-    return (*unplayed_seeds(), Phrase(body=LEANED_ON), Phrase(body=PLAYED_SELDOM))
+    return (
+        *unplayed_seeds(),
+        Phrase(body=LEANED_ON),
+        Phrase(body=PLAYED_SELDOM),
+    )

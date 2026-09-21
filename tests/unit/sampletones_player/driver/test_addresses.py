@@ -33,5 +33,9 @@ class TestTheDeclaredAddresses(BaseTestSuite):
     def test_a_longer_driver_moves_the_song_alone(self) -> None:
         shorter = DriverAddresses.for_code(CODE_LENGTH)
         longer = DriverAddresses.for_code(CODE_LENGTH * 2)
-        assert (longer.load, longer.init, longer.play) == (shorter.load, shorter.init, shorter.play)
+        assert (longer.load, longer.init, longer.play) == (
+            shorter.load,
+            shorter.init,
+            shorter.play,
+        )
         assert longer.song > shorter.song

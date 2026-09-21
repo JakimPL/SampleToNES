@@ -36,7 +36,11 @@ class TestSongLoopBounds:
 
     def test_a_loop_at_the_songs_length_raises(self) -> None:
         with pytest.raises(ValidationError, match="loop_tick must lie within"):
-            player_song(resting_streams((SOUNDING, OCTAVE_UP)), NTSC_FREQUENCY, loop_tick=2)
+            player_song(
+                resting_streams((SOUNDING, OCTAVE_UP)),
+                NTSC_FREQUENCY,
+                loop_tick=2,
+            )
 
     def test_a_negative_loop_raises(self) -> None:
         with pytest.raises(ValidationError, match="loop_tick must lie within"):
@@ -70,10 +74,26 @@ class TestSongPlayback(BaseTestSuite):
             )
 
     test_cases: Tuple[TestCase, ...] = (
-        TestCase(name="stops", loop_tick=None, expected=(0, 1, 2, 3, None, None, None, None)),
-        TestCase(name="repeats-from-the-start", loop_tick=0, expected=(0, 1, 2, 3, 0, 1, 2, 3)),
-        TestCase(name="repeats-from-the-middle", loop_tick=2, expected=(0, 1, 2, 3, 2, 3, 2, 3)),
-        TestCase(name="repeats-one-tick", loop_tick=3, expected=(0, 1, 2, 3, 3, 3, 3, 3)),
+        TestCase(
+            name="stops",
+            loop_tick=None,
+            expected=(0, 1, 2, 3, None, None, None, None),
+        ),
+        TestCase(
+            name="repeats-from-the-start",
+            loop_tick=0,
+            expected=(0, 1, 2, 3, 0, 1, 2, 3),
+        ),
+        TestCase(
+            name="repeats-from-the-middle",
+            loop_tick=2,
+            expected=(0, 1, 2, 3, 2, 3, 2, 3),
+        ),
+        TestCase(
+            name="repeats-one-tick",
+            loop_tick=3,
+            expected=(0, 1, 2, 3, 3, 3, 3, 3),
+        ),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
@@ -89,9 +109,24 @@ class TestSongPlayback(BaseTestSuite):
         assert all(0 <= tick < song.ticks for tick in played if tick is not None)
 
     def test_the_song_lasts_as_long_as_its_streams(self) -> None:
-        song = player_song(resting_streams((SOUNDING, OCTAVE_UP)), NTSC_FREQUENCY, loop_tick=None)
+        song = player_song(
+            resting_streams((SOUNDING, OCTAVE_UP)),
+            NTSC_FREQUENCY,
+            loop_tick=None,
+        )
         assert song.ticks == song.streams.ticks
 
     def test_a_slow_stream_holds_its_tick_between_calls(self) -> None:
-        song = player_song(resting_streams((SOUNDING, OCTAVE_UP, RESTING, RESTING)), 30, loop_tick=None)
-        assert tuple(song.tick_at(play_call) for play_call in range(6)) == (0, 0, 1, 1, 2, 2)
+        song = player_song(
+            resting_streams((SOUNDING, OCTAVE_UP, RESTING, RESTING)),
+            30,
+            loop_tick=None,
+        )
+        assert tuple(song.tick_at(play_call) for play_call in range(6)) == (
+            0,
+            0,
+            1,
+            1,
+            2,
+            2,
+        )

@@ -3,6 +3,7 @@ from typing import Final, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.layout.primitives import DialogGeometry
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_CANCEL,
@@ -35,14 +36,11 @@ class GUIConfirmationWindow(GUIDialogWindow):
     keyboard alone.
     """
 
-    _fits_content = True
-
     def __init__(
         self,
         tag: str,
         *,
-        width: int,
-        height: int,
+        geometry: DialogGeometry,
         wrap: int,
         path_color: BaseColor,
         path_hover_color: BaseColor,
@@ -69,8 +67,7 @@ class GUIConfirmationWindow(GUIDialogWindow):
 
         super().__init__(
             tag,
-            width,
-            height,
+            geometry,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )

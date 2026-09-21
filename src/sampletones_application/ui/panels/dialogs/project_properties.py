@@ -105,8 +105,7 @@ class GUIProjectPropertiesWindow(GUIDialogWindow):
 
         super().__init__(
             tag=TAG_SETTINGS_PROPERTIES_WINDOW,
-            width=layout.window.width,
-            height=layout.window.height,
+            geometry=layout.window,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )

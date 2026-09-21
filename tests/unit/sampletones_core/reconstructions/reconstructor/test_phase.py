@@ -48,7 +48,7 @@ class TestPhaseAlignerEquivalence:
 
 class TestPhaseAlignerDrive:
     @pytest.mark.parametrize("aligner_class", [SlidingRmsePhaseAligner, CrossCorrelationPhaseAligner])
-    def test_aligned_candidate_matches_a_drive_scaled_target(
+    def test_an_aligned_candidate_matches_the_target_it_sounds_louder_than(
         self,
         aligner_class: Type[PhaseAligner],
         config: Config,
@@ -58,13 +58,13 @@ class TestPhaseAlignerDrive:
     ) -> None:
         """
         The aligner searches and returns the candidate at the amplitude it competes
-        at, so a target that is a drive-scaled, phase-shifted rendering of the
-        candidate is reproduced exactly.
+        at, so a target the candidate sounds ``drive`` times as loud as, phase-shifted,
+        is reproduced exactly.
         """
         aligner = aligner_class(config, window, library_data)
 
         library_fragment = library_data[audible_instruction]
-        target = DRIVE * library_fragment.get_fragment(library_fragment.length // 4, config, window).audio
+        target = library_fragment.get_fragment(library_fragment.length // 4, config, window).audio / DRIVE
         aligned = aligner.align(target, audible_instruction, DRIVE)
 
         assert _rmse(target, aligned) == pytest.approx(0.0, abs=1e-4)

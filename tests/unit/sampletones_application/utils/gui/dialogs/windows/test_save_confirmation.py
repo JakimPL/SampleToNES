@@ -27,8 +27,7 @@ CONFIRMED: Final[str] = "confirmed"
 def window_fixture(dpg_context: None, layout_config: LayoutConfig) -> GUISaveConfirmationWindow:
     return GUISaveConfirmationWindow(
         tag=WINDOW_TAG,
-        width=layout_config.general.dialogs.default.width,
-        height=layout_config.general.dialogs.confirmation.height,
+        geometry=layout_config.general.dialogs.confirmation,
         wrap=layout_config.general.dialogs.default.width - 10,
         save_label="Save",
         cancel_label="Cancel",

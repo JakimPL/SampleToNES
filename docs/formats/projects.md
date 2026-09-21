@@ -1,10 +1,9 @@
 # Projects
 
-A project gathers a set of voices and arranges them into a song, saved as a single
-`.stp` file. It is what the sequencer works with, and what you hand over when you
-share a whole piece. See [Project](../concepts/project.md) for what a project is;
-this page documents the file. [Reconstructions](reconstructions.md) documents the
-converted audio a sample stands on.
+A project gathers a set of voices and arranges them into a song, saved as a single `.stp` file. The
+sequencer works with it, and you hand it over to share a whole piece. See
+[Project](../concepts/project.md) for what a project is. This page documents the file.
+[Reconstructions](reconstructions.md) documents the converted audio a sample stands on.
 
 ## Structure
 
@@ -13,11 +12,11 @@ A `.stp` file is a zip archive with two kinds of member:
 * **`project.json`** — the project document (below).
 * **`reconstructions/<id>.stn`** — one [reconstruction](reconstructions.md) per
   sample, stored as its own `.stn` member and referenced from the document by its
-  id.
+  id. The archive deflates its members, so a member has the reconstruction's payload as it stands.
 
-Keeping the reconstructions in separate members lets `project.json` stay small
-while the larger audio data travels alongside it in the same archive. A
-[instrument](../glossary.md#instrument) carries no audio, so the document holds it whole.
+The reconstructions sit in separate members, so `project.json` stays small and the larger audio data
+travels beside it in the same archive. An [instrument](../glossary.md#instrument) has no audio, so the
+document holds it whole.
 
 ### `project.json`
 
@@ -39,39 +38,35 @@ Every voice carries an `id` and a `name`. The `kind` says what else it carries:
 | `sample` | the `reconstruction_id` of its audio member |
 | `instrument` | its `envelopes` — `volume`, `arpeggio` and `duty_cycle` — and the `initial_pitch` and `initial_period` those values are measured against |
 
-Each envelope holds its `items`, one per tick, and the `loop_point` those items repeat
-from while a note is held, or `null` where they play once and the last item stands for as
-long as the note sounds. Every envelope states its own point, so a two-item duty cycle
-circles on its own period beside a longer volume envelope.
+Each envelope has its `items`, one per tick, and a `loop_point`: the item they repeat from while a note
+is held. It is `null` where the items play once and the last item holds for as long as the note sounds.
+See [loop point](../glossary.md#loop-point).
 
 ### `song`
 
 The arrangement across the four channels:
 
-* `rows_per_pattern` — the row count every pattern in the song shares;
-* `order` — the arrangement itself: an ordered list of frames, each frame mapping
-  every channel to the pattern index it plays, or empty for a silent slot;
-* `channels` — per channel, the `name` of the channel it drives and its pool of
-  `patterns`, each pattern a list of rows. A row
-  states the `command` its note column holds — the `voice_id` to start, or a
-  note-off — along with its `transpose` and `volume`. The channel a voice sounds on
-  is the one whose pool holds the row.
+| Field | Contents |
+| --- | --- |
+| `rows_per_pattern` | the row count every pattern in the song shares |
+| `order` | an ordered list of frames, each mapping every channel to the pattern index it plays, or empty for a silent slot |
+| `channels` | per channel, the `name` of the channel it drives and its pool of `patterns`, each pattern a list of rows |
+
+A row has the `command` its note column holds (the `voice_id` to start, or a note-off), its `transpose`
+and its `volume`. The channel a voice sounds on is the one whose pool has the row.
 
 ## Detached reconstructions
 
-The reconstructions inside a project are
-[detached](reconstructions.md#detached-reconstructions) from their original
-source-audio paths, so a project stays portable — it carries everything it needs
-and no path that would only mean something on the author's machine.
+The reconstructions inside a project are [detached](reconstructions.md#detached-reconstructions) from
+their original source-audio paths. A project therefore stays portable: it has everything it needs and no
+path that means something only on the author's machine.
 
 ## Versioning
 
-`project.json` records the project format version it was written with. On load,
-_SampleToNES_ requires that version to match the one it supports and declines an
-incompatible file rather than misreading it. A file written at a version the
-upgrade chain reaches is migrated in memory to the current shape before
-deserialization (see
-[Data compatibility](../development/release/compatibility.md)). Unknown or extra fields
-within a matching version are ignored, which leaves room for the format to grow.
+`project.json` records the project format version it was written with. A file at the supported version
+loads as it stands. A file at an older version the upgrade chain reaches is migrated in memory to the
+current shape first. Any other file is declined. [Data compatibility](../development/release/compatibility.md)
+describes the chain. Unknown or extra fields within a matching version are ignored, which leaves room
+for the format to grow.
 
 The current format version is 1.1.

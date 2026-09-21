@@ -11,6 +11,8 @@ class BarPlotLayout(BaseModel, extra="forbid", frozen=True):
         bar_weight: The share of its slot a bar fills.
         hover_alpha: How solid the bar under the cursor is drawn.
         minimum_span: The slots the axis holds room for, so a short dimension keeps a grid.
+        ownership_band: The share of the value range kept beneath it for the stretches naming
+            the recording behind each frame.
     """
 
     min_x: float
@@ -19,3 +21,4 @@ class BarPlotLayout(BaseModel, extra="forbid", frozen=True):
     bar_weight: float
     hover_alpha: int
     minimum_span: float
+    ownership_band: float

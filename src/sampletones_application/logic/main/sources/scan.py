@@ -24,7 +24,8 @@ class FolderScan(CallbackMixin):
     window keeps answering and the reader knows what it is waiting for.
 
     The reports arrive on the worker's own thread, so whoever draws from them crosses to the
-    thread DearPyGui's context belongs to.
+    thread DearPyGui's context belongs to. The scan lives in ``logic/`` because it is short and the
+    Main tab is its only caller.
     """
 
     def __init__(self) -> None:

@@ -5,15 +5,17 @@ from typing import Optional, Tuple
 
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_application.logic.reconstruction.feature import FeatureData
+from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.logic.reconstruction.listening import StemListening
 from sampletones_application.logic.reconstruction.session import ReconstructionSession
 from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
-from sampletones_shared.utils.hashing import hash_model
 from sampletones_shared.utils.system.paths import first_missing
 from sampletones_shared.utils.system.reveal.selection import open_paths_in_explorer
 
@@ -33,10 +35,8 @@ class ReconstructionManager(CallbackMixin):
         self._scheduling = scheduling
         self._session: ReconstructionSession = ReconstructionSession()
         self._current_reconstruction: Optional[ReconstructionData] = None
-        self._current_features: Optional[FeatureData] = None
+        self._current_features: Optional[ChannelEnvelopesViewModel] = None
         self._listening: StemListening = StemListening()
-        self._reconstruction_hash: str = ""
-        self._coefficient: float = 1.0
 
         self.on_reconstruction_loaded: Optional[VoidCallback] = None
         self.on_reconstruction_closed: Optional[VoidCallback] = None
@@ -74,13 +74,12 @@ class ReconstructionManager(CallbackMixin):
     def _adopt_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
         """Makes ``reconstruction_data`` the open document and refreshes its derived state.
 
-        The coefficient, the reader's listening choice and the cached features track whichever
-        reconstruction is open, so every rebinding funnels through here to recompute them in one
-        place. The listening is carried onto the new record before the features are read, so the
-        envelopes answer for the part the reader is listening to as it now stands.
+        The reader's listening choice and the cached features track whichever reconstruction is
+        open, so every rebinding funnels through here to recompute them in one place. The
+        listening is carried onto the new record before the features are read, so the envelopes
+        answer for the part the reader is listening to as it now stands.
         """
         self._current_reconstruction = reconstruction_data
-        self._coefficient = reconstruction_data.reconstruction.coefficient
         self._listening.adopt(reconstruction_data.reconstruction.stems_data)
         self._load_reconstruction_features()
 
@@ -94,8 +93,7 @@ class ReconstructionManager(CallbackMixin):
             raise RuntimeError("No reconstruction is loaded when trying to load features")
 
         reconstruction = self._current_reconstruction.reconstruction
-        self._current_features = FeatureData.heard(reconstruction, self._listening.selection)
-        self._reconstruction_hash = hash_model(reconstruction)
+        self._current_features = heard_envelopes(reconstruction, self._listening.selection)
 
     def refresh_features(self) -> None:
         """Reads the envelopes again after a change to what the reader is listening to.
@@ -184,8 +182,6 @@ class ReconstructionManager(CallbackMixin):
         self._current_reconstruction = None
         self._current_features = None
         self._listening.release()
-        self._reconstruction_hash = ""
-        self._coefficient = 1.0
         self._session.mark_closed()
         CallbackQueue.add(
             self.call,
@@ -213,7 +209,7 @@ class ReconstructionManager(CallbackMixin):
         return self._current_reconstruction
 
     @property
-    def current_features(self) -> Optional[FeatureData]:
+    def current_features(self) -> Optional[ChannelEnvelopesViewModel]:
         return self._current_features
 
     @property

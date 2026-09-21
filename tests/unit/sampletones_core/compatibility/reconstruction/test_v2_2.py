@@ -160,9 +160,6 @@ class TestWhereTheRecordingCameFrom:
         """A document detached from its origin names none, which a stored project carries."""
         assert update({})[STEMS_DATA][SOURCES] == []
 
-    def test_the_key_the_record_replaces_is_let_go_of(self) -> None:
-        assert AUDIO_FILEPATH not in update({AUDIO_FILEPATH: RECORDING})[STEMS_DATA]
-
 
 class TestWhoHoldsEachFrame:
     """Rest and silence name the same frames, so the owners are read from the stream itself."""

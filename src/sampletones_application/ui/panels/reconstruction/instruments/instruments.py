@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -19,6 +19,7 @@ from sampletones_application.constants.instruments import (
     INSTRUMENT_CHANNEL,
 )
 from sampletones_application.layout.general.colors.feature import FeatureColors
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
@@ -53,6 +54,7 @@ from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
+from sampletones_application.ui.elements.graphs.ownership import OwnershipRuns
 from sampletones_application.ui.elements.graphs.utils import extend_y_range
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.layout.collapse import CollapseAxis
@@ -82,10 +84,14 @@ from sampletones_application.utils.gui.keyboard import (
 from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
+from sampletones_application.view_model.shared.ownership import OwnershipLaneViewModel
 from sampletones_core.constants.enums import (
     ChannelName,
     FeatureKey,
@@ -114,6 +120,8 @@ from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 
+ONE_SLOT_PER_FRAME: Final[float] = 1.0
+
 OnInstrumentExportCallback = Callable[[ChannelName], None]
 OnAuditionCallback = Callable[[int], None]
 OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
@@ -131,6 +139,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         pitch_stepper_style: PitchStepperStyle,
         copy_width: int,
         feature_colors: FeatureColors,
+        stem_colors: StemColors,
         layout_graphs: GraphsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -161,6 +170,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._pitch_stepper_style = pitch_stepper_style
         self._copy_width = copy_width
         self._layout_graphs = layout_graphs
+        self._ownership = OwnershipRuns(stem_colors)
         self._feature_plot_configs = make_feature_plot_configs(
             feature_colors,
             language_manager,
@@ -307,8 +317,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     ) -> str:
         return compose_tag(self.tab_bar_tag, channel_name, feature_key, SUF_GRAPH_RAW_DATA)
 
-    def _get_feature_text_tag(self, text_group_tag: str) -> str:
-        return compose_tag(text_group_tag, SUF_TEXT)
+    def _get_feature_text_tag(
+        self,
+        channel_name: ChannelName,
+        feature_key: FeatureKey,
+    ) -> str:
+        return compose_tag(self._get_feature_text_group_tag(channel_name, feature_key), SUF_TEXT)
 
     def _get_feature_plot_tag(
         self,
@@ -476,12 +490,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         feature_key: FeatureKey,
         envelope: Envelope[int],
     ) -> None:
-        text_group_tag = self._get_feature_text_group_tag(
-            channel_name,
-            feature_key,
+        dpg_set_value(
+            self._get_feature_text_tag(channel_name, feature_key),
+            format_envelope(envelope),
         )
-        raw_data_tag = self._get_feature_text_tag(text_group_tag)
-        dpg_set_value(raw_data_tag, format_envelope(envelope))
         self._show_sequence(channel_name, feature_key, envelope)
 
     def update_view(
@@ -649,25 +661,27 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def update_feature_data(
         self,
-        generators: Optional[Dict[ChannelName, Features]],
+        envelopes: Optional[ChannelEnvelopesViewModel],
     ) -> None:
-        if generators is None:
+        if envelopes is None:
             return
 
         for channel_name in ChannelName.items():
-            generator_features = generators.get(channel_name)
+            generator_features = envelopes.channels.get(channel_name)
             if generator_features is None:
                 continue
 
             self._update_generator_feature_data(
                 channel_name,
                 generator_features,
+                envelopes.lane(channel_name),
             )
 
     def _update_generator_feature_data(
         self,
         channel_name: ChannelName,
         generator_features: Features,
+        lane: OwnershipLaneViewModel,
     ) -> None:
         initial_pitch = generator_features.initial_pitch
         self._apply_pitch_display(channel_name, initial_pitch)
@@ -677,6 +691,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 channel_name,
                 generator_features,
                 feature_key,
+                lane,
             )
 
     def _update_generator_feature_display(
@@ -684,10 +699,39 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         channel_name: ChannelName,
         generator_features: Features,
         feature_key: FeatureKey,
+        lane: OwnershipLaneViewModel,
     ) -> None:
         envelope = self._feature_envelope(generator_features, feature_key)
-        self._update_generator_plot(channel_name, feature_key, _plotted_items(envelope))
+        items = _plotted_items(envelope)
+        self._update_generator_plot(channel_name, feature_key, items)
         self._update_raw_data_text(channel_name, feature_key, envelope)
+        self._paint_ownership(channel_name, feature_key, lane, len(items))
+
+    def _paint_ownership(
+        self,
+        channel_name: ChannelName,
+        feature_key: FeatureKey,
+        lane: OwnershipLaneViewModel,
+        frame_count: int,
+    ) -> None:
+        """Paints the recording behind each frame in a band beneath that dimension's bars.
+
+        The band stands under the frames the bars draw, so the two read column for column
+        whatever the dimension's own values reach. A dimension writing nothing, and a document
+        answering to one recording, have nothing to tell apart and give the band to the bars.
+        """
+        plot = self.channel_plots.get(channel_name, {}).get(feature_key)
+        if plot is None:
+            return
+
+        runs = lane.up_to(frame_count)
+        share = self._layout_graphs.bar_plot.ownership_band if runs else 0.0
+        self._ownership.paint(
+            plot.y_axis_tag,
+            runs,
+            frame_span=ONE_SLOT_PER_FRAME,
+            band=plot.reserve_band(share),
+        )
 
     def _feature_envelope(
         self,
@@ -852,7 +896,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 channel_name,
                 feature_key,
                 data,
-                plot.plot_tag,
             ),
             on_bar_point_hovered=self._on_bar_point_hovered,
         )
@@ -862,12 +905,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         channel_name: ChannelName,
         feature_key: FeatureKey,
         data: np.ndarray,
-        plot_tag: str,
     ) -> None:
         envelope = self._standing_sequence(channel_name, feature_key).with_items(tuple(int(value) for value in data))
-        raw_data_tag = compose_tag(plot_tag, SUF_GRAPH_RAW_DATA)
-        dpg_set_value(raw_data_tag, format_envelope(envelope))
-        self._show_sequence(channel_name, feature_key, envelope)
+        self._update_raw_data_text(channel_name, feature_key, envelope)
         self.call(self.on_envelope_changed, channel_name, feature_key, envelope)
 
     def _on_bar_point_hovered(
@@ -897,7 +937,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             feature_key,
         )
         raw_data_text = format_envelope(envelope)
-        raw_data_tag = self._get_feature_text_tag(text_group_tag)
+        raw_data_tag = self._get_feature_text_tag(channel_name, feature_key)
         copy_button_tag = compose_tag(text_group_tag, SUF_BUTTON_COPY)
 
         with dpg.group(tag=text_group_tag, parent=parent, horizontal=True):
@@ -1000,8 +1040,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         dimensions reach that file whole is visible before an export.
         """
         self._sequences[(channel_name, feature_key)] = envelope
-        text_group_tag = self._get_feature_text_group_tag(channel_name, feature_key)
-        raw_data_tag = self._get_feature_text_tag(text_group_tag)
+        raw_data_tag = self._get_feature_text_tag(channel_name, feature_key)
         theme = self.warning_input_theme if is_shortened(feature_key, envelope) else self.theme
         theme.bind_to_item(raw_data_tag)
 

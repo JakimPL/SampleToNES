@@ -7,6 +7,7 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import (
     ALL_STEMS_CHANNEL_CAP,
+    MAX_DRIVE,
     SINGLE_STATE_LATTICE_WIDTH,
     UNIT_DRIVE,
 )
@@ -38,6 +39,7 @@ from .conftest import audible_instruction_of, rendered_fragment, shared_frames
 DEFAULT_CHANNELS: List[ChannelName] = [ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE]
 LOUDER_STEM_SCALE: Final[float] = 4.0
 LOUD_DRIVE: Final[float] = 2.0
+SWEPT_DRIVES: Final[Tuple[float, ...]] = (UNIT_DRIVE, LOUD_DRIVE, MAX_DRIVE)
 
 
 def _config(
@@ -251,6 +253,75 @@ class TestImprovementsWithinALevel:
         )
 
         assert [choice.stem_id for choice in assignment.choices] == [0]
+
+
+class TestDrivesLeaveTheCompetitionStanding:
+    """A drive settles what a channel plays and leaves the stems competing where they stood.
+
+    This is the contract ``docs/concepts/stems.md`` states of a drive: raising one lifts the part of the mix its own channel carries, while the stems beside it hold
+    the channels they held.
+    """
+
+    @staticmethod
+    def _stems_config(driven_stem_id: int, drive: float) -> StemsConfig:
+        """Two stems on one level reaching for the first pulse, one of them pushed to ``drive``."""
+        held = [ChannelName.PULSE1]
+        return StemsConfig(
+            entries=[
+                StemEntry(
+                    id=stem_id,
+                    settings=StemSettings(
+                        channels=held,
+                        bends=bending_channels(held),
+                        drives={ChannelName.PULSE1: drive if stem_id == driven_stem_id else UNIT_DRIVE},
+                        channel_cap=1,
+                    ),
+                )
+                for stem_id in (0, 1)
+            ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
+        )
+
+    def _winner(
+        self,
+        fragments: Dict[int, Fragment],
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+        driven_stem_id: int,
+        drive: float,
+    ) -> int:
+        """The stem the first pulse reaches with ``driven_stem_id`` pushed to ``drive``."""
+        assignment = assign_frame(
+            fragments,
+            self._stems_config(driven_stem_id, drive),
+            channels,
+            matcher,
+            SINGLE_STATE_LATTICE_WIDTH,
+        )
+        return assignment.by_channel[ChannelName.PULSE1].stem_id
+
+    @pytest.mark.parametrize("driven_stem_id", (0, 1))
+    def test_the_channel_holds_its_stem_at_every_drive(
+        self,
+        driven_stem_id: int,
+        audible_fragments: List[Fragment],
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        """Two recordings reaching for one channel keep it where it stood, whichever is pushed.
+
+        The stems are ranked on the channel read at unit drive, so the winner follows the
+        recordings alone and a reader raising a drive hears that stem louder where it stood. The
+        sweep stands at and above the level the library is calibrated to, the range this
+        library's rows answer.
+        """
+        assert len(audible_fragments) >= 2
+        fragments = {0: audible_fragments[0], 1: audible_fragments[-1]}
+        standing = self._winner(fragments, channels, matcher, driven_stem_id, UNIT_DRIVE)
+
+        winners = {drive: self._winner(fragments, channels, matcher, driven_stem_id, drive) for drive in SWEPT_DRIVES}
+
+        assert winners == {drive: standing for drive in SWEPT_DRIVES}
 
 
 class TestColumns:

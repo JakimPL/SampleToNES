@@ -3,11 +3,19 @@ from typing import Tuple
 import pytest
 
 from sampletones_player.compression.options import EVERY_LAYER, CodecOptions
-from sampletones_player.compression.scheme import CompressionScheme, offered_schemes
+from sampletones_player.compression.scheme import (
+    CompressionScheme,
+    offered_schemes,
+)
 
 
 def layers(options: CodecOptions) -> Tuple[bool, ...]:
-    return (options.holds, options.phrases, options.transposition, options.search)
+    return (
+        options.holds,
+        options.phrases,
+        options.transposition,
+        options.search,
+    )
 
 
 class TestCompressionScheme:
@@ -40,7 +48,9 @@ class TestOfferedSchemes:
     def test_a_seeded_song_is_offered_every_scheme(self) -> None:
         assert offered_schemes(seeded=True) == tuple(CompressionScheme)
 
-    def test_a_song_seeding_nothing_is_offered_every_scheme_but_the_instruments(self) -> None:
+    def test_a_song_seeding_nothing_is_offered_every_scheme_but_the_instruments(
+        self,
+    ) -> None:
         assert offered_schemes(seeded=False) == tuple(
             scheme for scheme in CompressionScheme if scheme != CompressionScheme.INSTRUMENTS
         )

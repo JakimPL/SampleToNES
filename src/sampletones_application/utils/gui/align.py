@@ -1,16 +1,19 @@
-from typing import Any, Callable, Final, Tuple
+from functools import partial
+from typing import Any, Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.placement import centered_position
 
-_SETTLE_FRAMES: Final[int] = 2
 
+def viewport_center() -> Tuple[int, int]:
+    """The middle of the space a window's position is measured in.
 
-def get_center(width: int, height: int) -> Tuple[int, int]:
-    x = (dpg.get_viewport_width() - width) / 2
-    y = (dpg.get_viewport_height() - height) / 2
-    return round(x), round(y)
+    A position given to DearPyGui stands in the viewport's client area, so the center it is
+    measured against is read from the same space.
+    """
+    return dpg.get_viewport_client_width() // 2, dpg.get_viewport_client_height() // 2
 
 
 def center_item(tag: str) -> None:
@@ -18,22 +21,32 @@ def center_item(tag: str) -> None:
         return
 
     width, height = dpg.get_item_rect_size(tag)
-    x, y = get_center(width, height)
-    dpg.set_item_pos(tag, [x, y])
+    dpg.set_item_pos(tag, list(centered_position(viewport_center(), width, height)))
 
 
 def center_when_settled(tag: str) -> None:
-    """Centers an autosizing window once its content has reached its final size.
+    """Holds a window centered over the frames it takes its size in, and lets go once it settles.
 
-    An autosize window measures its content across the first couple of frames, so a stretch
-    table or wrapped text reaches its final width and height only on the second layout pass.
-    Deferring the center until then reads the settled size, so the window rests centered on its
-    first appearance the same way a reopened one does from its remembered size.
+    A window that takes the size its content asks for reaches it over the frames it is drawn
+    in: a form measures its fields on the second, and the keybindings list widens over a dozen
+    more. Centering the window against every size it is read at keeps it centered the whole way
+    there, and two readings that agree end the pass: a dialog can be dragged, and one that kept
+    measuring would drag it back.
     """
-    FrameCallbackManager.set_frame_callback(
-        lambda: center_item(tag),
-        frame_count=_SETTLE_FRAMES,
-    )
+    FrameCallbackManager.set_frame_callback(partial(_center_once_settled, tag, None))
+
+
+def _center_once_settled(tag: str, previous: Optional[Tuple[int, int]]) -> None:
+    """Centers the window where it now stands, and reads again while it is still growing."""
+    if not dpg.does_item_exist(tag):
+        return
+
+    width, height = dpg.get_item_rect_size(tag)
+    center_item(tag)
+    if previous == (width, height):
+        return
+
+    FrameCallbackManager.set_frame_callback(partial(_center_once_settled, tag, (width, height)))
 
 
 def table_wrapper(

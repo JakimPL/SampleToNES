@@ -17,6 +17,7 @@ from sampletones_core.constants.enums import (
     bending_channels,
 )
 from sampletones_core.data import Metadata
+from sampletones_core.data.document import DOCUMENT_MAGIC
 from sampletones_core.features import resting_held_features, resting_reference
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
@@ -264,6 +265,30 @@ class TestRoundTrip:
 
         assert loaded.audio_filepath == ()
 
+    def test_the_stored_file_carries_the_framing(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        path = tmp_path / "framed.stn"
+
+        reconstruction.save(path)
+
+        assert path.read_bytes().startswith(DOCUMENT_MAGIC)
+        assert path.stat().st_size < len(reconstruction.serialize())
+
+    def test_a_file_written_before_the_framing_still_loads(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        path = tmp_path / "plain.stn"
+        path.write_bytes(reconstruction.serialize())
+
+        assert Reconstruction.load(path).id == reconstruction.id
+
 
 class TestDetachSource:
     def test_detach_clears_the_source_location(
@@ -292,6 +317,18 @@ class TestLoadRejectsForeignFiles:
                 b"garbage-not-a-flatbuffer",
                 source="corrupt.stn",
             )
+
+    def test_a_damaged_framing_raises_a_load_error(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        path = tmp_path / "damaged.stn"
+        reconstruction_factory().save(path)
+        path.write_bytes(path.read_bytes()[:32] + b"\xff" * 256)
+
+        with pytest.raises(LoadReconstructionError):
+            Reconstruction.load(path)
 
 
 class TestLoadFileAccess(BaseTestSuite):

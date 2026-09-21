@@ -76,6 +76,8 @@ class TestNoteFlags(BaseTestSuite):
     def test_the_flags_match(self, test_case: TestCase) -> None:
         assert note_flags(test_case.indices, test_case.offsets) == test_case.expected
 
-    def test_indices_and_offsets_covering_different_ticks_are_refused(self) -> None:
+    def test_indices_and_offsets_covering_different_ticks_are_refused(
+        self,
+    ) -> None:
         with pytest.raises(ValueError):
             note_flags((INDEX,), ())

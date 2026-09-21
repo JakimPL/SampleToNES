@@ -4,8 +4,6 @@ from typing import Final, NamedTuple, Tuple
 from sampletones_tools.codec.study.corpus.song import StudySong
 from sampletones_tools.codec.study.measure import Encoder, Encoding
 from sampletones_tools.codec.study.sandbox.costs import (
-    DEFAULT_COUNT_OPERANDS,
-    DEFAULT_COUNT_SIZE,
     PRODUCTION_COSTS,
     SET_HOLD_BOUND,
     Costs,
@@ -17,7 +15,6 @@ from sampletones_tools.codec.study.variants.variant import Variant, VariantKind
 
 WIDE_HOLD: Final[str] = "H1"
 SET_HOLD: Final[str] = "H3"
-DEFAULT_COUNT: Final[str] = "H4"
 HOLD_EDGES: Final[str] = "H9"
 DRIVER_UNCHANGED: Final[str] = "driver unchanged"
 WIDE_HOLD_NOTE: Final[str] = (
@@ -30,17 +27,8 @@ SET_HOLD_NOTE: Final[str] = (
 SET_HOLD_BOUND_NOTE: Final[str] = (
     "a two-byte set-hold needs an opcode of its own, so this bounds what any reallocation of the opcode space reaches"
 )
-DEFAULT_COUNT_NOTE: Final[str] = (
-    "one operand bit says the count is the phrase's own, leaving 31 cheap ids; each table entry "
-    "grows by a byte, read once when a phrase is set"
-)
 COMBINED_NOTE: Final[str] = "every change the free escape carries at once, the escape counting 31 blocks and 31 ticks"
 
-DEFAULT_COUNT_COSTS: Final[Costs] = replace(
-    PRODUCTION_COSTS,
-    operands=DEFAULT_COUNT_OPERANDS,
-    default_entry=DEFAULT_COUNT_SIZE,
-)
 SET_HOLD_BOUND_COSTS: Final[Costs] = replace(
     PRODUCTION_COSTS,
     set_hold=SET_HOLD_BOUND,
@@ -109,22 +97,8 @@ GRAMMAR_VARIANTS: Final[Tuple[GrammarVariant, ...]] = (
         grammar=replace(BASELINE_GRAMMAR, set_hold=True, costs=SET_HOLD_BOUND_COSTS),
     ),
     GrammarVariant(
-        name="default-count",
-        hypothesis=DEFAULT_COUNT,
-        kind=VariantKind.FORMAT,
-        note=DEFAULT_COUNT_NOTE,
-        grammar=replace(BASELINE_GRAMMAR, default_counts=True, costs=DEFAULT_COUNT_COSTS),
-    ),
-    GrammarVariant(
-        name="wide-hold+default-count",
-        hypothesis=f"{WIDE_HOLD}+{DEFAULT_COUNT}",
-        kind=VariantKind.FORMAT,
-        note=f"{WIDE_HOLD_NOTE}; {DEFAULT_COUNT_NOTE}",
-        grammar=replace(BASELINE_GRAMMAR, wide_hold=True, default_counts=True, costs=DEFAULT_COUNT_COSTS),
-    ),
-    GrammarVariant(
         name="escape-grammar",
-        hypothesis=f"{WIDE_HOLD}+{SET_HOLD}+{DEFAULT_COUNT}+{HOLD_EDGES}",
+        hypothesis=f"{WIDE_HOLD}+{SET_HOLD}+{HOLD_EDGES}",
         kind=VariantKind.FORMAT,
         note=COMBINED_NOTE,
         grammar=replace(
@@ -132,8 +106,6 @@ GRAMMAR_VARIANTS: Final[Tuple[GrammarVariant, ...]] = (
             start_hold=True,
             wide_hold=True,
             set_hold=True,
-            default_counts=True,
-            costs=DEFAULT_COUNT_COSTS,
         ),
     ),
 )

@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Optional
+from typing import Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -27,11 +27,11 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_RENDER_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.path import GUIDestinationPathText
+from sampletones_application.ui.elements.seeded import GUISeededDialogWindow
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
@@ -49,7 +49,7 @@ from sampletones_shared.types.callback import VoidCallback
 SettingsCallback = Callable[[SongRenderSettings], None]
 
 
-class GUIRenderWindow(GUIDialogWindow):
+class GUIRenderWindow(GUISeededDialogWindow[SongRenderViewModel]):
     """Modal form over writing the open song to an audio file.
 
     The dialog has two faces and shows one at a time: the setup, where the file is described and
@@ -76,7 +76,6 @@ class GUIRenderWindow(GUIDialogWindow):
         self._layout = layout
         self._path_colors = path_colors
         self._status_bar = status_bar
-        self._view_model: Optional[SongRenderViewModel] = None
         self._destination_text: Optional[GUIDestinationPathText] = None
 
         self.on_settings_changed: Optional[SettingsCallback] = None
@@ -106,25 +105,12 @@ class GUIRenderWindow(GUIDialogWindow):
         }
 
         super().__init__(
+            subject="render",
             tag=TAG_SETTINGS_RENDER_WINDOW,
-            width=layout.render.window.width,
-            height=layout.render.window.height,
+            geometry=layout.render.window,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )
-
-    def open(self, view_model: SongRenderViewModel) -> None:
-        """Shows the window seeded with the render being set up."""
-        self._view_model = view_model
-        self.show()
-
-    def prepare(self, *_args: Any, **_kwargs: Any) -> None:
-        """The rendered values are seeded by :meth:`open` before the tree rebuilds."""
-
-    def update_view(self, view_model: SongRenderViewModel) -> None:
-        """Re-seeds the controls of the open window from where the render stands."""
-        self._view_model = view_model
-        self._render()
 
     def create_window(self) -> None:
         with self.dialog_window(
@@ -259,7 +245,7 @@ class GUIRenderWindow(GUIDialogWindow):
         )
         self._destination_text = GUIDestinationPathText(
             tag=TAG_SETTINGS_RENDER_PATH_DESTINATION,
-            path=self._require_view_model().destination,
+            path=self.view_model.destination,
             parent=TAG_SETTINGS_RENDER_GROUP_DESTINATION,
             color=self._path_colors.default,
             hover_color=self._path_colors.hover,
@@ -303,7 +289,7 @@ class GUIRenderWindow(GUIDialogWindow):
 
     def _render(self) -> None:
         """Shows the face the phase calls for, with each choice standing at what it reconciled to."""
-        view_model = self._require_view_model()
+        view_model = self.view_model
         self._render_setup(view_model)
         self._render_progress(view_model)
 
@@ -429,22 +415,11 @@ class GUIRenderWindow(GUIDialogWindow):
         A render already stopping, and one that has reported its outcome, answer neither — what
         they are waiting for is the service, which arrives on its own.
         """
-        view_model = self._require_view_model()
+        view_model = self.view_model
         if view_model.cancel_enabled:
             self._request_cancel()
         elif view_model.setup_visible:
             self.call(self.on_close)
 
     def _settings(self) -> SongRenderSettings:
-        return self._require_view_model().settings
-
-    def _require_view_model(self) -> SongRenderViewModel:
-        """The render on screen.
-
-        Raises:
-            SystemError: when the window is drawn before :meth:`open` seeds it.
-        """
-        if self._view_model is None:
-            raise SystemError("The render window is drawn from a view model it was opened with")
-
-        return self._view_model
+        return self.view_model.settings

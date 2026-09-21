@@ -1,5 +1,8 @@
 from sampletones_player.compression.tokens.hold import HoldToken
-from sampletones_player.specification.compression import MAX_HOLD_TICKS, OPCODE_SIZE
+from sampletones_player.specification.compression import (
+    MAX_HOLD_TICKS,
+    OPCODE_SIZE,
+)
 
 
 class TestWhatAHoldCosts:
