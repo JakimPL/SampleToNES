@@ -93,6 +93,10 @@ alone.
 
 ## What holds everywhere
 
+- A page opens by saying who it is for and when to use it. A reader learns in one paragraph whether they
+  are in the right place.
+- A term is defined or linked before its first use. A reader never meets a word the page has not
+  introduced.
 - One fact per sentence, and short sentences. Several clauses joined by semicolons hide the facts inside
   them.
 - State each fact once, in the document that owns it, and link the sibling document rather than repeating

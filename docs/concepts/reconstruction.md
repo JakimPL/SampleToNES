@@ -20,6 +20,11 @@ simple, fixed waveforms across four usable channels:
   [LFSR](../glossary.md#lfsr) generator with 16 periods, 15 volume levels and a short/long
   mode.
 
+The noise period setting divides the APU clock into the LFSR's shift rate, `APU_CLOCK / NOISE_PERIODS[index]`.
+That rate runs from 440.0 Hz at index 0 to 447443.2 Hz at index 15. In short mode the register repeats every
+93 shifts, so index 15 sounds as a tone at about 4811 Hz. Short mode's output bit is set 17.2% of the time,
+against 50% in long mode, and that imbalance gives it a metallic timbre.
+
 A program steers these channels by issuing *instructions* a few dozen times per
 second (for example, *pulse 1: note A-4, volume 12, 50 % duty*). Approximating an
 arbitrary sound this way produces a **reconstruction**: one instruction stream per
