@@ -19,6 +19,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_FONT_REGULAR,
     TAG_GLOBAL_FONT_REGULAR_LARGE,
     TAG_GLOBAL_FONT_REGULAR_SMALL,
+    TAG_GLOBAL_FONT_REGULAR_TINY,
 )
 from sampletones_application.ui.elements.fonts.data import FontData
 from sampletones_application.ui.elements.fonts.font import Font
@@ -31,6 +32,7 @@ class FontRegistry:
     _REGISTRY: ClassVar[Dict[Font, FontData]] = {}
     _SPECS: ClassVar[Dict[Font, Tuple[str, FontResource, Typeface, Step]]] = {
         Font.REGULAR: (TAG_GLOBAL_FONT_REGULAR, FontResource.REGULAR, Typeface.SANS, Step.MEDIUM),
+        Font.REGULAR_TINY: (TAG_GLOBAL_FONT_REGULAR_TINY, FontResource.REGULAR, Typeface.SANS, Step.TINY),
         Font.REGULAR_SMALL: (TAG_GLOBAL_FONT_REGULAR_SMALL, FontResource.REGULAR, Typeface.SANS, Step.SMALL),
         Font.REGULAR_LARGE: (TAG_GLOBAL_FONT_REGULAR_LARGE, FontResource.REGULAR, Typeface.SANS, Step.LARGE),
         Font.ITALIC: (TAG_GLOBAL_FONT_ITALIC, FontResource.ITALIC, Typeface.SANS, Step.MEDIUM),

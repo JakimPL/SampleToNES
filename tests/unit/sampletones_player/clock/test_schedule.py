@@ -14,12 +14,27 @@ from sampletones_player.specification.clock import (
     MAX_STEP_WHOLE,
     NTSC_FRAME_RATE,
 )
-from sampletones_shared.constants.nes import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
+from sampletones_shared.constants.nes import (
+    MAX_NES_FREQUENCY,
+    MIN_NES_FREQUENCY,
+)
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 
 LONG_RUN_PLAY_CALLS: Final[int] = 36000
-NES_FREQUENCIES: Final[Tuple[int, ...]] = (15, 24, 25, 30, 50, 60, 100, 120, 200, 299, 300)
+NES_FREQUENCIES: Final[Tuple[int, ...]] = (
+    15,
+    24,
+    25,
+    30,
+    50,
+    60,
+    100,
+    120,
+    200,
+    299,
+    300,
+)
 
 
 def exact_rate(nes_frequency: int) -> Fraction:
@@ -149,7 +164,10 @@ class TestFixedPointStep(BaseTestSuite):
     @pytest.mark.parametrize("nes_frequency", NES_FREQUENCIES)
     def test_the_value_recomposes_the_fields(self, nes_frequency: int) -> None:
         step = PlaySchedule.from_parameters(nes_frequency).fixed_point_step
-        assert divmod(step.value, FIXED_POINT_SCALE) == (step.whole, step.fraction)
+        assert divmod(step.value, FIXED_POINT_SCALE) == (
+            step.whole,
+            step.fraction,
+        )
 
     @pytest.mark.parametrize("nes_frequency", NES_FREQUENCIES)
     def test_the_step_is_the_nearest_unit_to_the_exact_rate(self, nes_frequency: int) -> None:
@@ -189,9 +207,15 @@ class TestFixedPointStep(BaseTestSuite):
 
     def test_a_whole_step_needs_no_fraction(self) -> None:
         step = PlaySchedule(ticks_per_play_call=Fraction(3)).fixed_point_step
-        assert (step.whole, step.fraction, step.value) == (3, 0, 3 * FIXED_POINT_SCALE)
+        assert (step.whole, step.fraction, step.value) == (
+            3,
+            0,
+            3 * FIXED_POINT_SCALE,
+        )
 
-    def test_a_step_a_hair_under_a_whole_tick_carries_into_the_whole_byte(self) -> None:
+    def test_a_step_a_hair_under_a_whole_tick_carries_into_the_whole_byte(
+        self,
+    ) -> None:
         """Rounding the fraction up spills into the whole byte, keeping both fields in range."""
         rate = Fraction(2) - Fraction(1, 10 * FIXED_POINT_SCALE)
         step = PlaySchedule(ticks_per_play_call=rate).fixed_point_step
@@ -235,7 +259,9 @@ class TestPlayScheduleBounds(BaseTestSuite):
         with pytest.raises(ValueError, match="play_calls must be at least 0"):
             schedule.ticks_at(-1)
 
-    def test_a_negative_call_count_is_rejected_by_the_exact_schedule(self) -> None:
+    def test_a_negative_call_count_is_rejected_by_the_exact_schedule(
+        self,
+    ) -> None:
         schedule = PlaySchedule.from_parameters(60)
         with pytest.raises(ValueError, match="play_calls must be at least 0"):
             schedule.exact_ticks_at(-1)

@@ -71,7 +71,7 @@ class TestReconstructionFraction(BaseTestSuite):
         TestCase(stage=ReconstructionStage.MATCHING, covered=0.0, expected=0.0),
         TestCase(stage=ReconstructionStage.MATCHING, covered=0.5, expected=0.5),
         TestCase(stage=ReconstructionStage.MATCHING, covered=WHOLE, expected=WHOLE),
-        TestCase(stage=ReconstructionStage.RENDERING, covered=WHOLE, expected=WHOLE),
+        TestCase(stage=ReconstructionStage.GATHERING, covered=WHOLE, expected=WHOLE),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
@@ -131,4 +131,4 @@ class TestAnnounce(BaseTestSuite):
         readings: Tuple[int, ...] = (0, FRAMES // 2, FRAMES)
 
         for completed in readings:
-            announce(silent_reporter, ReconstructionStage.RENDERING, completed, FRAMES)
+            announce(silent_reporter, ReconstructionStage.GATHERING, completed, FRAMES)

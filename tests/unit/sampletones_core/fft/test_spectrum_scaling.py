@@ -4,7 +4,7 @@ from typing import Final, Tuple
 import numpy as np
 import pytest
 
-from sampletones_core.constants.algorithm import PERCEPTUAL_EXPONENT
+from sampletones_core.configs import Config
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones_core.fft.cqt.frequencies import calculate_cqt_frequencies
@@ -179,7 +179,7 @@ class TestOctaveWeightAllocation:
             shares = np.asarray(
                 octave_weight_shares(
                     edges,
-                    perceptual_exponent=PERCEPTUAL_EXPONENT,
+                    perceptual_exponent=Config().generation.metric.perceptual_exponent,
                     bands=OCTAVE_BANDS,
                 )
             )
@@ -195,7 +195,7 @@ class TestOctaveWeightAllocation:
             shares = np.asarray(
                 octave_weight_shares(
                     edges,
-                    perceptual_exponent=PERCEPTUAL_EXPONENT,
+                    perceptual_exponent=Config().generation.metric.perceptual_exponent,
                     bands=OCTAVE_BANDS,
                 )
             )

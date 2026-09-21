@@ -50,6 +50,7 @@ class FolderRenderer:
             master=False,
             removable=False,
             bends=False,
+            swatch=False,
             folders=False,
         )
 

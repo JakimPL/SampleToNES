@@ -7,7 +7,7 @@ from typing import (
     List,
     Optional,
     Protocol,
-    Set,
+    Sequence,
     Tuple,
 )
 
@@ -17,7 +17,15 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.sources import SourceKind
 from sampletones_application.logic.export.instrument.source import ExportableInstrument
 from sampletones_application.logic.reconstruction.data import ReconstructionData
+from sampletones_application.logic.reconstruction.listening import StemListening
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.reconstruction.ownership import (
+    ownership_lanes,
+    record_positions,
+)
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
 )
@@ -31,12 +39,14 @@ from sampletones_application.view_model.reconstruction.stems import (
     ReconstructionStemsViewModel,
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
+from sampletones_application.view_model.shared.ownership import OwnershipRibbonViewModel
 from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
     StemsListViewModel,
 )
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.configs.library import InstructionsLibraryConfig
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.naming import instrument_slice_name
@@ -48,6 +58,7 @@ from sampletones_core.exports.request import (
     SampleExport,
 )
 from sampletones_core.exports.scope import ExportScope
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.selection import (
     StemSelection,
 )
@@ -109,8 +120,6 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._playing_channels: FrozenSet[ChannelName] = frozenset()
         self._selected_channels: List[ChannelName] = []
-        self._offered_stem_channels: Dict[int, FrozenSet[ChannelName]] = {}
-        self._stem_channels: Dict[int, FrozenSet[ChannelName]] = {}
 
         self.on_view_changed: Optional[Callable[[ReconstructionViewModel], None]] = None
         self.on_audio_data_changed: Optional[Callable[[Optional[AudioData]], None]] = None
@@ -124,6 +133,8 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self.on_locate_audio_not_found: Optional[PathCallback] = None
         self.on_stems_view_changed: Optional[Callable[[ReconstructionStemsViewModel], None]] = None
+        self.on_ownership_changed: Optional[Callable[[OwnershipRibbonViewModel], None]] = None
+        self.on_heard_changed: Optional[VoidCallback] = None
 
     def display_reconstruction(self) -> None:
         reconstruction_data = self._reconstruction_data
@@ -132,8 +143,6 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self._playing_channels = frozenset(reconstruction_data.reconstruction.playing_channels)
         self._selected_channels = self._in_channel_order(self._playing_channels)
-        self._offered_stem_channels = self._offered_channels(reconstruction_data)
-        self._stem_channels = dict(self._offered_stem_channels)
 
         view_model = self._build_view_model(reconstruction_data)
         if not view_model.audio_source_enabled:
@@ -150,6 +159,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             reconstruction_data.waveform_data(self._stem_selection),
             self._selected_channels,
         )
+        self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         self._emit_audio_data()
 
     def update_reconstruction(self) -> None:
@@ -158,7 +168,6 @@ class ReconstructionPanelLogic(CallbackMixin):
             return
 
         self._adopt_playing_channels(frozenset(reconstruction_data.reconstruction.playing_channels))
-        self._adopt_stem_channels(self._offered_channels(reconstruction_data))
 
         self.call(self.on_view_changed, self._build_view_model(reconstruction_data))
         self.call(
@@ -170,6 +179,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             reconstruction_data.waveform_data(self._stem_selection),
             self._selected_channels,
         )
+        self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         if self._current_audio_source != AudioSourceType.ORIGINAL:
             self._emit_audio_data()
 
@@ -209,8 +219,6 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._current_audio_source = AudioSourceType.RECONSTRUCTION
         self._playing_channels = frozenset()
         self._selected_channels = []
-        self._offered_stem_channels = {}
-        self._stem_channels = {}
         self.call(self.on_audio_data_changed, None)
         self.call(self.on_waveform_cleared)
         self.call(
@@ -257,6 +265,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             reconstruction_data.waveform_data(self._stem_selection),
             channels,
         )
+        self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         self._emit_audio_data()
 
     def set_stem_channels(
@@ -266,10 +275,11 @@ class ReconstructionPanelLogic(CallbackMixin):
     ) -> None:
         """Adopts the channels one recording is heard on and re-answers playback and the waveform.
 
-        The choice is listening state, so it filters what plays and what the waveform
-        shows without touching the document.
+        The choice is listening state, so it filters what plays, what the waveform shows and
+        what the instruments panel draws while the document stands as it is.
         """
-        self._stem_channels[stem_id] = channels
+        self._listening.set_channels(stem_id, channels)
+        self._reconstruction_manager.refresh_features()
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             return
@@ -283,92 +293,86 @@ class ReconstructionPanelLogic(CallbackMixin):
             reconstruction_data.waveform_data(self._stem_selection),
             self._selected_channels,
         )
+        self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         self._emit_audio_data()
+        self.call(self.on_heard_changed)
 
-    def _adopt_stem_channels(
-        self,
-        offered: Dict[int, FrozenSet[ChannelName]],
-    ) -> None:
-        """Carries the reader's per-channel stem choice across an edit.
-
-        A channel a stem keeps holding frames on keeps whatever the reader chose for it, and
-        one the stem reaches for the first time joins ticked, so a deliberate choice survives
-        while the new content is heard. A stem appearing for the first time offers everything
-        it holds, which is the same rule read against the nothing it offered before.
-        """
-        self._stem_channels = {
-            stem_id: (self._stem_channels.get(stem_id, frozenset()) & channels)
-            | (channels - self._offered_stem_channels.get(stem_id, frozenset()))
-            for stem_id, channels in offered.items()
-        }
-        self._offered_stem_channels = offered
+    @property
+    def _listening(self) -> StemListening:
+        """Which recordings the reader is listening to, which the open document holds."""
+        return self._reconstruction_manager.listening
 
     @property
     def _stem_selection(self) -> StemSelection:
-        """What the reader is listening to, read the way the filter asks for it.
+        return self._listening.selection
 
-        The card keeps the channels each recording is heard on; the filter asks each channel
-        which recordings it keeps, so the selection is that map turned around.
-        """
-        channels: Dict[ChannelName, Set[int]] = {channel_name: set() for channel_name in ChannelName.items()}
-        for stem_id, stem_channels in self._stem_channels.items():
-            for channel_name in stem_channels:
-                channels[channel_name].add(stem_id)
-
-        return StemSelection(
-            channels={channel_name: frozenset(stem_ids) for channel_name, stem_ids in channels.items()}
-        )
-
-    @staticmethod
-    def _offered_channels(
+    def _build_ownership_ribbon(
+        self,
         reconstruction_data: ReconstructionData,
-    ) -> Dict[int, FrozenSet[ChannelName]]:
-        """The channels each stem holds frames on, which is what its row offers a box for.
+    ) -> OwnershipRibbonViewModel:
+        """The recordings behind each stretch of what the document plays.
 
-        A stem the picker never chose on a channel contributes nothing there whatever the
-        reader ticks, so the row draws a box exactly where the choice reaches something.
+        A lane stands for every channel the document plays, and paints the stretches the
+        recordings heard there hold, so the ribbon reads as the waveform above it sounds. A
+        channel the reader has switched off keeps its lane and stands empty, since the lanes
+        answer for the document while what fills them answers for the listening: the rows beneath
+        the waveform hold still while a reader picks their way through it. A document answering to
+        one owner alone has nothing to tell apart, so it offers no lanes.
         """
         stems_data = reconstruction_data.reconstruction.stems_data
-        offered: Dict[int, Set[ChannelName]] = {entry.id: set() for entry in stems_data.config.entries}
-        for channel_name, stem_ids in stems_data.assignments_by_channel.items():
-            for stem_id in set(stem_ids):
-                if stem_id in offered:
-                    offered[stem_id].add(channel_name)
+        owned = stems_data.assignments_by_channel
+        assignments: Dict[ChannelName, Sequence[int]] = {
+            channel_name: owned[channel_name] if channel_name in self._selected_channels else ()
+            for channel_name in self._in_channel_order(self._playing_channels)
+            if channel_name in owned
+        }
+        lanes = tuple(ownership_lanes(stems_data, assignments, self.heard_on).values())
+        return OwnershipRibbonViewModel(
+            lanes=lanes,
+            frame_length=reconstruction_data.reconstruction.config.frame_length,
+            total_frames=max((len(owned[lane.channel_name]) for lane in lanes), default=0),
+        )
 
-        return {stem_id: frozenset(channels) for stem_id, channels in offered.items()}
+    def heard_on(self, channel_name: ChannelName) -> FrozenSet[int]:
+        """The recordings the reader hears on one channel, which is the scope an edit writes in.
+
+        What is heard and what is edited are one choice, so an edit reaches exactly the frames
+        the waveform draws, and a recording switched off on this channel reads there as it stands.
+        """
+        return self._listening.heard_on(channel_name)
 
     def _build_stems_view_model(
         self,
         reconstruction_data: ReconstructionData,
     ) -> ReconstructionStemsViewModel:
-        """The recorded assignment as the stems list draws it, banded by the picking levels."""
+        """The recorded assignment as the stems list draws it, banded by the picking levels.
+
+        Each row reads as the recording the document remembers, so one whose file this machine
+        no longer names — a sample embedded in a project — keeps its name, its boxes and its
+        place among the levels. A document whose record names its recordings nowhere shows the
+        card's empty state.
+        """
         reconstruction = reconstruction_data.reconstruction
         stems_data = reconstruction.stems_data
-        source_paths = reconstruction.audio_filepath
-        if not source_paths:
+        if not stems_data.sources:
             return ReconstructionStemsViewModel(
                 reconstruction_loaded=True,
                 stems=EMPTY_STEMS_LIST,
             )
 
-        recordings = {entry.id: source_paths[index] for index, entry in enumerate(stems_data.config.entries)}
         entries = stems_data.config.entries_by_id
-        levels = stems_data.config.hierarchy.levels
+        positions = record_positions(stems_data)
+        levels = self._levels_with_edits(stems_data)
         rows = tuple(
-            StemRowViewModel(
-                key=str(stem_id),
-                kind=SourceKind.RECORDING,
-                path=recordings[stem_id],
-                held=(),
-                channels=self._stem_channels.get(stem_id, frozenset()),
-                partial_channels=frozenset(),
-                bends=entries[stem_id].settings.bend_set,
-                offered_channels=self._offered_stem_channels.get(stem_id, frozenset()),
-                available=recordings[stem_id].is_file(),
-                level=level_index,
-                position=position,
-                level_size=len(level),
-                level_count=len(levels),
+            self._stem_row(
+                stems_data,
+                entries[stem_id].settings.bend_set if stem_id in entries else frozenset(),
+                positions.get(stem_id),
+                stem_id,
+                level_index,
+                position,
+                len(level),
+                len(levels),
             )
             for level_index, level in enumerate(levels)
             for position, stem_id in enumerate(level)
@@ -389,7 +393,49 @@ class ReconstructionPanelLogic(CallbackMixin):
                 selected_key=None,
             ),
             hierarchy_mode=stems_data.config.hierarchy.mode,
-            channel_cap=stems_data.config.channel_cap,
+        )
+
+    def _levels_with_edits(self, stems_data: StemsData) -> List[List[int]]:
+        """The picking levels, with the frames the reader wrote standing in a level of their own.
+
+        The hierarchy orders the recordings a conversion picked between; what the reader wrote
+        answers to none of it, so it stands after them all wherever it holds a frame.
+        """
+        levels = [list(level) for level in stems_data.config.hierarchy.levels]
+        if AUTHORED_STEM_ID in self._listening.offered:
+            levels.append([AUTHORED_STEM_ID])
+
+        return levels
+
+    def _stem_row(
+        self,
+        stems_data: StemsData,
+        bends: FrozenSet[ChannelName],
+        record_position: Optional[int],
+        stem_id: int,
+        level: int,
+        position: int,
+        level_size: int,
+        level_count: int,
+    ) -> StemRowViewModel:
+        """One recording's row: what it is called, where it lives, and the boxes it offers."""
+        source = stems_data.sources_by_id.get(stem_id)
+        return StemRowViewModel(
+            key=str(stem_id),
+            kind=SourceKind.RECORDING if source is not None else SourceKind.EDITS,
+            name=source.name if source is not None else "",
+            path=source.path if source is not None else None,
+            held=(),
+            channels=self._listening.heard.get(stem_id, frozenset()),
+            partial_channels=frozenset(),
+            bends=bends,
+            offered_channels=self._listening.offered.get(stem_id, frozenset()),
+            available=source is not None and source.path is not None and source.path.is_file(),
+            level=level,
+            position=position,
+            record_position=record_position,
+            level_size=level_size,
+            level_count=level_count,
         )
 
     def exportable_instrument(
@@ -404,6 +450,9 @@ class ReconstructionPanelLogic(CallbackMixin):
         Args:
             channel_name: The channel whose slice is written.
 
+        The slice holds what the reader is listening to, which is what the panel beside it
+        draws, so an export writes what stands on screen.
+
         Returns:
             Optional[ExportableInstrument]: The slice and the name to suggest for it, or ``None``
             where that channel describes no frame and is written nowhere.
@@ -411,22 +460,31 @@ class ReconstructionPanelLogic(CallbackMixin):
         Raises:
             AssertionError: If no reconstruction is loaded.
         """
-        reconstruction_data = self._reconstruction_data
-        if not reconstruction_data:
-            raise AssertionError("Expected reconstruction data to be loaded before exporting an instrument")
-
-        if channel_name not in reconstruction_data.reconstruction.playing_channels:
+        features = self._heard_features()[channel_name]
+        if not features.has_frames:
             return None
 
         return ExportableInstrument(
             name=self._get_instrument_name(channel_name),
             source=InstrumentSource(
                 channel=channel_name,
-                features=reconstruction_data.feature_data[channel_name],
+                features=features,
                 nes_frequency=self._nes_frequency(),
                 tuning=self._tuning(),
             ),
         )
+
+    def _heard_features(self) -> ChannelEnvelopesViewModel:
+        """The envelopes of the part the reader is listening to, as the open document reads them.
+
+        Raises:
+            AssertionError: If no reconstruction is loaded.
+        """
+        features = self._reconstruction_manager.current_features
+        if features is None:
+            raise AssertionError("Expected reconstruction data to be loaded before reading its envelopes")
+
+        return features
 
     def request_export_instruments_dialog(
         self,
@@ -489,7 +547,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.warning("No reconstruction data available for instruments export")
             return
 
-        request = self._sample_request(reconstruction_data, destination.stem)
+        request = self._sample_request(destination.stem)
         self._session_manager.set_instrument_path(destination.parent)
         self._export_service.export_sample(
             destination,
@@ -510,17 +568,13 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting instruments")
 
-        return self._sample_request(reconstruction_data, reconstruction_data.name)
+        return self._sample_request(reconstruction_data.name)
 
-    def _sample_request(
-        self,
-        reconstruction_data: ReconstructionData,
-        name: str,
-    ) -> SampleExport:
+    def _sample_request(self, name: str) -> SampleExport:
         """The slice of every playing channel of the reconstruction as one export named ``name``.
 
-        Each slice takes its channel suffix from the name, and a channel standing by describes no
-        frame and is left to rest.
+        Each slice takes its channel suffix from the name, and a channel describing no frame of
+        what the reader is listening to is left to rest.
         """
         return SampleExport(
             name=name,
@@ -530,7 +584,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                     feature,
                     instrument_slice_name(name, channel_name),
                 )
-                for channel_name, feature in reconstruction_data.feature_data.channels.items()
+                for channel_name, feature in self._heard_features().channels.items()
                 if feature.has_frames
             ),
             nes_frequency=self._nes_frequency(),

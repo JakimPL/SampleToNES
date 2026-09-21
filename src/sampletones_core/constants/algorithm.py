@@ -1,24 +1,12 @@
 from typing import Final
 
-from sampletones_core.constants.enums import (
-    ChannelName,
-    HierarchyMode,
-    PhaseAlignerName,
-    SelectorName,
-    SpectralDistance,
-)
+from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.constants.general import (
-    MAX_VOLUME,
-    MIN_VOLUME,
     MIXER_NOISE,
     MIXER_PULSE,
     MIXER_TRIANGLE,
+    QUIETEST_VOLUME_LEVEL,
 )
-
-# Matching floors
-
-SPECTRUM_FLOOR: Final[float] = (MIN_VOLUME / MAX_VOLUME) ** 2
-TEMPORAL_LEVEL_FLOOR: Final[float] = MIN_VOLUME / MAX_VOLUME
 
 # Input preprocessing
 
@@ -42,48 +30,26 @@ LIBRARY_PHASES_PER_SAMPLE: Final[int] = 100
 
 TRANSFORMATION_GAMMA: Final[int] = 0
 MAX_TRANSFORMATION_GAMMA: Final[int] = 100
-FIND_BEST_PHASE: Final[bool] = True
-FAST_DIFFERENCE: Final[bool] = False
-PHASE_ALIGNER: Final[PhaseAlignerName] = PhaseAlignerName.CROSS_CORRELATION
-
-RESET_PHASE: Final[bool] = False
-FINAL_REGENERATION: Final[bool] = True
-SPECTRAL_LOSS_WEIGHT: Final[float] = 0.80
-TEMPORAL_LOSS_WEIGHT: Final[float] = 0.20
-
-SPECTRAL_DISTANCE: Final[SpectralDistance] = SpectralDistance.BETA_DIVERGENCE
-DIVERGENCE_BETA: Final[float] = 1.0
-PERCEPTUAL_EXPONENT: Final[float] = 1.0
 
 # Selection and continuity decoding
 
-SELECTOR: Final[SelectorName] = SelectorName.VITERBI
-DECODER_TOP_K: Final[int] = 8
 SINGLE_STATE_LATTICE_WIDTH: Final[int] = 1
-TRANSITION_PITCH_WEIGHT: Final[float] = 0.03
-TRANSITION_VOLUME_WEIGHT: Final[float] = 0.02
-TRANSITION_TIMBRE_WEIGHT: Final[float] = 0.10
-TRANSITION_ON_OFF_WEIGHT: Final[float] = 0.20
 
-# Pitch refinement
+# Drive
 
-REFINEMENT_CONFIDENCE: Final[float] = 0.15
-REFINEMENT_CHANGE_WEIGHT: Final[float] = 2.0
-REFINEMENT_WINDOW: Final[int] = 4
-
-# Mixer drive
-
-DRIVE: Final[float] = 1.0
+MIN_DRIVE: Final[float] = 0.1
+UNIT_DRIVE: Final[float] = 1.0
 MAX_DRIVE: Final[float] = 5.0
 
 # Stems assignment
 
+MIN_STEMS_CHANNEL_CAP: Final[int] = 1
 ALL_STEMS_CHANNEL_CAP: Final[int] = len(ChannelName)
-DEFAULT_STEMS_CHANNEL_CAP: Final[int] = ALL_STEMS_CHANNEL_CAP
 DEFAULT_STEMS_HIERARCHY_MODE: Final[HierarchyMode] = HierarchyMode.ROUND_ROBIN
 RESTING_STEM_ID: Final[int] = -1
+AUTHORED_STEM_ID: Final[int] = -2
 RESTING_FRAME_COST: Final[float] = 0.0
-STEM_ACTIVITY_FLOOR: Final[float] = TEMPORAL_LEVEL_FLOOR * min(MIXER_PULSE, MIXER_TRIANGLE, MIXER_NOISE)
+STEM_ACTIVITY_FLOOR: Final[float] = QUIETEST_VOLUME_LEVEL * min(MIXER_PULSE, MIXER_TRIANGLE, MIXER_NOISE)
 
 # Execution
 

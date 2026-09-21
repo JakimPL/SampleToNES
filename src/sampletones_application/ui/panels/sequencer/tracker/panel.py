@@ -94,6 +94,7 @@ from sampletones_application.ui.panels.sequencer.tracker.callbacks import (
     OnPlayFromRowCallback,
     OnSetNoteOffCallback,
     OnSetRowCallback,
+    RefreshPasteBlockRequest,
     TrackerEditSurface,
 )
 from sampletones_application.ui.panels.sequencer.tracker.menu import TrackerMenu
@@ -237,6 +238,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self.on_delete_block: Optional[OnBlockRegionCallback] = None
         self.on_paste_block: Optional[OnPasteBlockCallback] = None
         self.can_paste_block: Optional[CanPasteBlockQuery] = None
+        self.refresh_paste_block: Optional[RefreshPasteBlockRequest] = None
         self.on_channel_mute_toggled: Optional[OnChannelMuteToggledCallback] = None
         self.on_channel_soloed: Optional[OnChannelSoloedCallback] = None
         self.on_channels_toggled: Optional[VoidCallback] = None
@@ -1391,6 +1393,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             tab_active=self._tab_active,
             router=self._router,
             holds=self._input_state.cursor is not None,
+            card_open=self.card_open,
         )
 
     # TODO: to extract common parts [_on_key_pressed]

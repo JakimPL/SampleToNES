@@ -75,7 +75,6 @@ def state_of(root: Path, count: int) -> ConverterState:
         settings=RunSettings(
             joining=SETTINGS,
             output=OutputKind.PER_RECORDING,
-            channel_cap=len(ChannelName),
             hierarchy_mode=DEFAULT_STEMS_HIERARCHY_MODE,
         ),
         gathering=gathering_of(root, count),
@@ -271,6 +270,7 @@ def list_drawn_as(prefix: str, layout_config: LayoutConfig) -> GUIStemsList:
         layout=layout_config.general.stems,
         ceiling=layout_config.general.stems.well_ceiling,
         glyphs=layout_config.glyphs.common,
+        stem_colors=layout_config.general.colors.stems,
         language_manager=LanguageManager(LANG_EN),
         status_bar=GUIStatusBar(),
         offer=GATHERED_SOURCES,

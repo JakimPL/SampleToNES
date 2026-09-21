@@ -6,7 +6,6 @@ from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.encode import emit, encode_planes
 from sampletones_player.compression.options import CodecOptions
-from sampletones_player.compression.planes.channel import ChannelPlanes, TonePlanes
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.compression.progress.report import CodecProgress
 from sampletones_player.compression.tokens.hold import HoldToken
@@ -18,6 +17,7 @@ from sampletones_player.specification.compression import (
     TokenTag,
 )
 from sampletones_shared.exceptions import OperationCanceled
+from tests.suite.player import sounding_planes
 from tests.suite.progress import FIRST_REPORT, RecordingReporter
 
 EVERY_LAYER: Final[CodecOptions] = CodecOptions(
@@ -39,11 +39,7 @@ REPEATS: Final[int] = 12
 
 
 def song_planes(control: bytes, value: bytes) -> SongPlanes:
-    unbent = bytes(len(control))
-    channel = TonePlanes(control=control, value=value, bend=unbent)
-    resting = TonePlanes(control=unbent, value=bytes(len(value)), bend=unbent)
-    silent = ChannelPlanes(control=unbent, value=bytes(len(value)))
-    return SongPlanes(pulse1=channel, pulse2=resting, triangle=resting, noise=silent)
+    return sounding_planes(control, value, b"")
 
 
 class TestWhatATokenLooksLikeOnTheBus:
@@ -56,19 +52,25 @@ class TestWhatATokenLooksLikeOnTheBus:
         assert emit((LiteralToken(values=bytes((0x10, 0x20))),)) == bytes((TokenTag.LITERAL | 1, 0x10, 0x20))
 
     def test_a_phrase_carries_a_cheap_id_inside_its_opcode(self) -> None:
-        token = PhraseToken(phrase_id=2, ticks=5, transpose=0)
+        token = PhraseToken(phrase_id=2, ticks=5, transpose=0, default=False)
         assert emit((token,)) == bytes((TokenTag.PHRASE | 2, 4))
 
     def test_a_shifted_phrase_states_the_shift_after_the_count(self) -> None:
-        token = PhraseToken(phrase_id=2, ticks=5, transpose=0xFD)
+        token = PhraseToken(phrase_id=2, ticks=5, transpose=0xFD, default=False)
         assert emit((token,)) == bytes((TokenTag.TRANSPOSED_PHRASE | 2, 4, 0xFD))
 
-    def test_a_phrase_beyond_the_cheap_ids_names_itself_in_the_byte_that_follows(self) -> None:
-        token = PhraseToken(phrase_id=200, ticks=MAX_PHRASE_TICKS, transpose=0)
+    def test_a_phrase_beyond_the_cheap_ids_names_itself_in_the_byte_that_follows(
+        self,
+    ) -> None:
+        token = PhraseToken(phrase_id=200, ticks=MAX_PHRASE_TICKS, transpose=0, default=False)
         assert emit((token,)) == bytes((TokenTag.PHRASE | PHRASE_ID_ESCAPE, 200, MAX_PHRASE_TICKS - 1))
 
     def test_a_stream_takes_the_bytes_the_parse_counted(self) -> None:
-        tokens = (LiteralToken(values=MOTIF), HoldToken(ticks=4), PhraseToken(phrase_id=1, ticks=2, transpose=3))
+        tokens = (
+            LiteralToken(values=MOTIF),
+            HoldToken(ticks=4),
+            PhraseToken(phrase_id=1, ticks=2, transpose=3, default=False),
+        )
         assert len(emit(tokens)) == sum(token.size for token in tokens)
 
 
@@ -111,16 +113,21 @@ class TestEncodingASong:
 
     def test_the_figure_played_most_takes_the_cheapest_id(self) -> None:
         planes = song_planes(bytes((0x30,)) * (len(MOTIF) * REPEATS), MOTIF * REPEATS)
-        seeds: Tuple[Phrase, ...] = (Phrase(body=bytes((0x30,)) * 8), Phrase(body=MOTIF))
+        seeds: Tuple[Phrase, ...] = (
+            Phrase(body=bytes((0x30,)) * 8),
+            Phrase(body=MOTIF),
+        )
         compressed = encode_planes(
             planes,
             seeds,
             options=SEEDED,
             boundaries=NO_BOUNDARIES,
         )
-        assert compressed.phrases[0] == Phrase(body=MOTIF)
+        assert compressed.phrases[0].body == MOTIF
 
-    def test_a_song_re_entered_at_a_boundary_still_plays_back_whole(self) -> None:
+    def test_a_song_re_entered_at_a_boundary_still_plays_back_whole(
+        self,
+    ) -> None:
         planes = song_planes(TIMBRE * REPEATS, MOTIF * REPEATS)
         compressed = encode_planes(
             planes,

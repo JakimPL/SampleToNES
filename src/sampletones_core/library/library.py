@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, ItemsView, KeysView, Optional, Self, Union, ValuesView
+from typing import Dict, Optional, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -12,6 +12,7 @@ from sampletones_shared.paths.user import LIBRARY_DIRECTORY
 
 from .data import InstructionLibraryData
 from .key import InstructionLibraryKey
+from .state import LibraryState, library_state
 
 
 class InstructionLibrary(BaseModel):
@@ -41,9 +42,6 @@ class InstructionLibrary(BaseModel):
         default_factory=dict,
         description="Cached instruction library data, keyed by configuration.",
     )
-
-    def __getitem__(self, key: InstructionLibraryKey) -> InstructionLibraryData:
-        return self.data[key]
 
     @classmethod
     def from_config(cls, config: Config) -> Self:
@@ -90,41 +88,23 @@ class InstructionLibrary(BaseModel):
         if key in self.data:
             return self.data[key]
 
-        if self.exists(key):
+        if self.get_path(key).exists():
             self.load_data(key)
             return self.data[key]
 
         logger.warning(f"Library data for key {key} does not exist")
         return None
 
-    def exists(self, config_or_key: Union[Config, InstructionLibraryKey]) -> bool:
-        """Reports whether a library file exists on disk for the given key.
+    def state(self, key: InstructionLibraryKey) -> LibraryState:
+        """Where the library file for ``key`` stands for this build.
 
         Args:
-            config_or_key: A configuration (whose key is derived) or a key directly.
+            key: The key identifying the library.
 
         Returns:
-            bool: True when the corresponding library file is present.
+            LibraryState: Whether the file is missing, out of date or current.
         """
-        if isinstance(config_or_key, Config):
-            key = self.create_key(config_or_key, Window.from_config(config_or_key))
-        else:
-            key = config_or_key
-
-        return self.get_path(key).exists()
-
-    def purge(self) -> None:
-        """Empties the in-memory cache, so the next request reloads from disk."""
-        self.data.clear()
-
-    def keys(self) -> KeysView[InstructionLibraryKey]:
-        return self.data.keys()
-
-    def items(self) -> ItemsView[InstructionLibraryKey, InstructionLibraryData]:
-        return self.data.items()
-
-    def values(self) -> ValuesView[InstructionLibraryData]:
-        return self.data.values()
+        return library_state(self.get_path(key))
 
     def get_path(self, key: InstructionLibraryKey) -> Path:
         """The file path a library key maps to under the library directory.

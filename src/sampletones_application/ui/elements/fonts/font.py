@@ -3,6 +3,7 @@ from enum import Enum
 
 class Font(Enum):
     REGULAR = "Regular"
+    REGULAR_TINY = "RegularTiny"
     REGULAR_SMALL = "RegularSmall"
     REGULAR_LARGE = "RegularLarge"
     ITALIC = "Italic"

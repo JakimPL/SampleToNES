@@ -9,10 +9,10 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
-    bending_channels,
 )
 from sampletones_core.reconstructions.converter import GroupConversion, ReconstructionConverter
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from tests.suite.conversion import FakeReconstructor, write_silent_recording
 from tests.suite.parallelization import ProgressRecorder, stands_partway
@@ -44,8 +44,7 @@ def conversion_run(tmp_path: Path) -> Iterator[Tuple[ReconstructionConverter, Pr
     config = _config(tmp_path)
     source = write_silent_recording(tmp_path / "kick.wav")
     release_path = tmp_path / RELEASE_NAME
-    channels = list(DEFAULT_CHANNELS)
-    stems = StemsConfig.single_entry(channels, bending_channels(channels))
+    stems = StemsConfig.single_entry(StemSettings.covering(list(DEFAULT_CHANNELS)))
     plan = GroupConversion(sources=(source,), stems=stems)
 
     recorder = ProgressRecorder()

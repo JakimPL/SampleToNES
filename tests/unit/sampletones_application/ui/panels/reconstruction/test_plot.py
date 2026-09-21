@@ -1,10 +1,14 @@
 from dataclasses import dataclass
-from typing import Dict, FrozenSet, List
+from types import SimpleNamespace
+from typing import Any, Dict, FrozenSet, List
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
 from sampletones_application.layout.general.colors.channel import ChannelColors
+from sampletones_application.layout.loader import load_layout_config
+from sampletones_application.paths import BEHAVIOR_DIRECTORY, LAYOUT_DIRECTORY, PALETTES_DIRECTORY
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS,
 )
@@ -12,7 +16,9 @@ from sampletones_application.ui.panels.reconstruction import plot as plot_module
 from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
 )
+from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.colors.written import LiteralColor
+from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
 )
@@ -24,6 +30,11 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 )
 from sampletones_application.view_model.reconstruction.waveform import (
     InstrumentWaveformViewModel,
+)
+from sampletones_application.view_model.shared.ownership import (
+    OwnershipLaneViewModel,
+    OwnershipRibbonViewModel,
+    OwnershipRunViewModel,
 )
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
@@ -279,9 +290,39 @@ class _WaveformRecorder:
 
     def __init__(self) -> None:
         self.drawn: List[Dict[str, object]] = []
+        self.lane_heights: List[int] = []
 
     def load_voice_waveform(self, audio: np.ndarray, *, name: str, color: object) -> None:
         self.drawn.append({"audio": audio, "name": name, "color": color})
+
+    def set_lane_heights(self, heights: Dict[ChannelName, int]) -> None:
+        self.lane_heights.append(sum(heights.values()))
+
+
+class _RibbonRecorder:
+    """Stands in for the ownership ribbon, giving each drawn channel a row of its own.
+
+    The room a lane takes is read from the layout the application draws under, so the stand-in
+    follows the configured height rather than restating one of its own.
+    """
+
+    def __init__(self, lane_height: int) -> None:
+        self.lane_height = lane_height
+        self.painted: List[OwnershipRibbonViewModel] = []
+
+    def update_view(self, view_model: OwnershipRibbonViewModel) -> None:
+        self.painted.append(view_model)
+
+    @property
+    def lane_heights(self) -> Dict[ChannelName, int]:
+        drawn = [lane.channel_name for lane in self.painted[-1].lanes] if self.painted else []
+        return {channel_name: self.lane_height if channel_name in drawn else 0 for channel_name in ChannelName.items()}
+
+
+def _configured_lane_height() -> int:
+    """The room one lane takes, read from the layout the application draws under."""
+    source = PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default)
+    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, source).graphs.ribbon.lane_height
 
 
 class InstrumentHarness:
@@ -292,16 +333,34 @@ class InstrumentHarness:
         monkeypatch.setattr(plot_module, "dpg_configure_item", self._configure)
 
         self.waveform = _WaveformRecorder()
+        self.ribbon = _RibbonRecorder(_configured_lane_height())
         self.panel = GUIReconstructionPlotPanel.__new__(GUIReconstructionPlotPanel)
         self.panel._channel_colors = CHANNEL_COLORS
         self.panel.autoscale_tag = AUTOSCALE_TAG
         self.panel._frame_length = None
         self.panel.waveform_display = self.waveform
+        self.panel.ownership_ribbon = self.ribbon
+        self.panel._ownership = OwnershipRibbonViewModel.empty()
 
     def _configure(self, tag: str, **kwargs: object) -> None:
         show = kwargs.get("show")
         if isinstance(show, bool):
             self.shown[tag] = show
+
+
+def _ribbon(*channels: ChannelName) -> OwnershipRibbonViewModel:
+    """A ribbon standing for one lane per named channel, each holding a single stretch."""
+    return OwnershipRibbonViewModel(
+        lanes=tuple(
+            OwnershipLaneViewModel(
+                channel_name=channel_name,
+                runs=(OwnershipRunViewModel(start_frame=0, end_frame=2, stem_id=0, position=0, heard=True),),
+            )
+            for channel_name in channels
+        ),
+        frame_length=FRAME_LENGTH,
+        total_frames=2,
+    )
 
 
 def _waveform(channel_name: ChannelName) -> InstrumentWaveformViewModel:
@@ -311,6 +370,30 @@ def _waveform(channel_name: ChannelName) -> InstrumentWaveformViewModel:
         audio=np.zeros(2 * FRAME_LENGTH),
         frame_length=FRAME_LENGTH,
     )
+
+
+class TestTheLanesUnderWhatTheCardDraws:
+    """The lanes describe a recording, so they stand only while the card shows one."""
+
+    def test_the_lanes_stand_down_for_a_voice(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        harness = InstrumentHarness(monkeypatch)
+        harness.panel.update_ownership(_ribbon(ChannelName.PULSE1, ChannelName.TRIANGLE))
+
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        assert harness.ribbon.painted[-1].lanes == ()
+        assert harness.waveform.lane_heights[-1] == 0
+
+    def test_the_lanes_return_with_the_recording(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        harness = InstrumentHarness(monkeypatch)
+        ribbon = _ribbon(ChannelName.PULSE1, ChannelName.TRIANGLE)
+        harness.panel.update_ownership(ribbon)
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        harness.panel.update_instrument_view(None)
+
+        assert harness.ribbon.painted[-1] == ribbon
+        assert harness.waveform.lane_heights[-1] == harness.waveform.lane_heights[0]
 
 
 class TestTheCardAnInstrumentIsDrawnOn:
@@ -371,3 +454,29 @@ class TestTheCardAnInstrumentIsDrawnOn:
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS: True,
         }
         assert len(harness.waveform.drawn) == 1
+
+
+class TestWaveformClicks:
+    """A click on the waveform leaves the card as the sample it pointed at."""
+
+    def test_the_sample_a_click_names_reaches_the_panel_hook(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        graphs: List[SimpleNamespace] = []
+
+        def graph(**_kwargs: Any) -> SimpleNamespace:
+            graphs.append(SimpleNamespace(on_position_clicked=None))
+            return graphs[-1]
+
+        monkeypatch.setattr(plot_module, "GUIWaveformGraph", graph)
+        panel = GUIReconstructionPlotPanel.__new__(GUIReconstructionPlotPanel)
+        panel._layout_graphs = MagicMock()
+        panel._channel_colors = CHANNEL_COLORS
+        panel._language_manager = MagicMock()
+        panel._status_bar = MagicMock()
+        monkeypatch.setattr(GUIReconstructionPlotPanel, "_body_container", "body", raising=False)
+        clicked: List[int] = []
+        panel.on_position_clicked = clicked.append
+
+        panel._create_waveform_display()
+        graphs[0].on_position_clicked(420)
+
+        assert clicked == [420]

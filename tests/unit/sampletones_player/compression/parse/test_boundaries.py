@@ -24,6 +24,8 @@ class TestWhereATokenMayStartAndHowFarItReaches:
         boundaries = Boundaries.across(TICKS, ENTRIES)
         assert boundaries.following[0] == 4
 
-    def test_a_tick_past_the_last_boundary_looks_forward_to_the_end_of_the_plane(self) -> None:
+    def test_a_tick_past_the_last_boundary_looks_forward_to_the_end_of_the_plane(
+        self,
+    ) -> None:
         boundaries = Boundaries.across(TICKS, ENTRIES)
         assert boundaries.following[4] == TICKS

@@ -3,7 +3,6 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.configs import InstructionsLibraryConfig
-from sampletones_core.configs.config import Config
 from sampletones_core.constants.algorithm import MAX_TRANSFORMATION_GAMMA
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones_core.constants.enums import SpectrumMethod
@@ -35,11 +34,6 @@ class InstructionLibraryKey(BaseModel):
     )
     config_hash: str = Field(..., description="Hash of the configuration")
     filename: str = Field(..., description="Filename representing the key")
-
-    @classmethod
-    def from_config(cls, config: Config) -> InstructionLibraryKey:
-        window = Window.from_config(config)
-        return cls.create(config.library, window)
 
     @classmethod
     def create(cls, config: InstructionsLibraryConfig, window: Window) -> InstructionLibraryKey:

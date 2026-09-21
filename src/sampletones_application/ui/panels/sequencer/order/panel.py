@@ -73,6 +73,7 @@ from sampletones_application.ui.panels.sequencer.order.callbacks import (
     OnSetOrderEntryCallback,
     OrderEditSurface,
     OrderKey,
+    RefreshPasteBlockRequest,
 )
 from sampletones_application.ui.panels.sequencer.order.menu import OrderMenu
 from sampletones_application.ui.panels.sequencer.order.moves import MOVE_DIRECTIONS
@@ -190,6 +191,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self.on_delete_block: Optional[OnBlockRegionCallback] = None
         self.on_paste_block: Optional[OnPasteBlockCallback] = None
         self.can_paste_block: Optional[CanPasteBlockQuery] = None
+        self.refresh_paste_block: Optional[RefreshPasteBlockRequest] = None
         self.on_channel_mute_toggled: Optional[OnChannelMuteToggledCallback] = None
         self.on_channel_soloed: Optional[OnChannelSoloedCallback] = None
         self.on_channels_toggled: Optional[VoidCallback] = None
@@ -1077,6 +1079,7 @@ class GUISequencerOrderPanel(GUIPanel):
             tab_active=self._tab_active,
             router=self._router,
             holds=self._input_state.cursor is not None,
+            card_open=self.card_open,
         )
 
     # TODO: to extract common parts [_on_key_pressed]

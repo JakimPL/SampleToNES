@@ -6,8 +6,10 @@ import pytest
 
 from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.elements.sequencer import SequencerVoicesElements
+from sampletones_application.tags.sequencer import TAG_SEQUENCER_VOICES_PANEL
 from sampletones_application.ui.elements import context_menu as context_menu_module
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.panels.sequencer.voices import menu as menu_module
 from sampletones_application.ui.panels.sequencer.voices import panel as panel_module
 from sampletones_application.ui.panels.sequencer.voices.menu import VoicesMenu
@@ -156,6 +158,7 @@ def _panel(
     take — so a case naming a position names the same one however the voice is stocked.
     """
     panel = GUISequencerVoicesPanel.__new__(GUISequencerVoicesPanel)
+    GUIPanel.__init__(panel, tag=TAG_SEQUENCER_VOICES_PANEL)
     panel._language_manager = _Labels()
     panel._shortcuts = shipped_source()
     panel._entries = ENTRIES
@@ -722,6 +725,16 @@ class TestWhichDoorAnswersAPress:
         fixture.panel._show_list_menu()
 
         assert build_recorder.widgets == []
+
+    def test_a_press_on_a_menu_open_over_the_list_is_the_menus(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        fixture = _panel(monkeypatch)
+        monkeypatch.setattr(panel_module, "dpg_pointer_within_window", lambda _window, _anchor: True)
+        monkeypatch.setattr(panel_module, "context_menu_under_pointer", lambda: True)
+
+        assert fixture.panel._pointer_within_list() is False
 
     def test_a_press_beyond_the_list_asks_for_no_menu(
         self,

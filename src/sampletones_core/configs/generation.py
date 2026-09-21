@@ -1,29 +1,6 @@
-from pydantic import AliasChoices, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
-from sampletones_core.constants.algorithm import (
-    DECODER_TOP_K,
-    DIVERGENCE_BETA,
-    DRIVE,
-    FAST_DIFFERENCE,
-    FINAL_REGENERATION,
-    FIND_BEST_PHASE,
-    MAX_DRIVE,
-    PERCEPTUAL_EXPONENT,
-    PHASE_ALIGNER,
-    REFINEMENT_CHANGE_WEIGHT,
-    REFINEMENT_CONFIDENCE,
-    REFINEMENT_WINDOW,
-    RESET_PHASE,
-    SELECTOR,
-    SPECTRAL_DISTANCE,
-    SPECTRAL_LOSS_WEIGHT,
-    TEMPORAL_LEVEL_FLOOR,
-    TEMPORAL_LOSS_WEIGHT,
-    TRANSITION_ON_OFF_WEIGHT,
-    TRANSITION_PITCH_WEIGHT,
-    TRANSITION_TIMBRE_WEIGHT,
-    TRANSITION_VOLUME_WEIGHT,
-)
+from sampletones_core.configs.defaults import generation_default
 from sampletones_core.constants.enums import (
     PhaseAlignerName,
     SelectorName,
@@ -33,38 +10,53 @@ from sampletones_core.data import DataModel
 
 
 class CalculationConfig(DataModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
 
-    find_best_phase: bool = Field(default=FIND_BEST_PHASE)
-    fast_difference: bool = Field(default=FAST_DIFFERENCE)
-    phase_aligner: PhaseAlignerName = Field(default=PHASE_ALIGNER)
+    find_best_phase: bool = Field(default=generation_default("calculation", "find_best_phase"))
+    phase_aligner: PhaseAlignerName = Field(default=generation_default("calculation", "phase_aligner"))
 
 
 class WeightsConfig(DataModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
 
-    spectral_loss_weight: float = Field(default=SPECTRAL_LOSS_WEIGHT, ge=0.0)
-    temporal_loss_weight: float = Field(default=TEMPORAL_LOSS_WEIGHT, ge=0.0)
+    spectral_loss_weight: float = Field(default=generation_default("weights", "spectral_loss_weight"), ge=0.0)
+    temporal_loss_weight: float = Field(default=generation_default("weights", "temporal_loss_weight"), ge=0.0)
 
 
 class MetricConfig(DataModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, use_enum_values=True)
+    """How far a candidate stands from a target frame, bin by bin and sample by sample.
 
-    spectral_distance: SpectralDistance = Field(default=SPECTRAL_DISTANCE)
-    beta: float = Field(default=DIVERGENCE_BETA, ge=0.0)
-    perceptual_exponent: float = Field(default=PERCEPTUAL_EXPONENT, ge=0.0)
-    temporal_level_floor: float = Field(default=TEMPORAL_LEVEL_FLOOR, gt=0.0)
+    Attributes:
+        spectral_distance: The family the per-bin spectral distance belongs to.
+        beta: The beta of the beta-divergence distance.
+        perceptual_exponent: The power the loudness curve weighting each bin is raised to.
+        temporal_level_floor: The quietest level the temporal term normalizes by, as a share of
+            what one channel plays at full volume.
+        silence_floor: The power a frame whose own bins lie under it is measured from, which
+            holds a silent frame's cost finite.
+        dynamic_range_decibels: How far under a frame's loudest bin its floor sits, which sets how
+            quiet a bin stays worth covering.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True, use_enum_values=True, validate_default=True)
+
+    spectral_distance: SpectralDistance = Field(default=generation_default("metric", "spectral_distance"))
+    beta: float = Field(default=generation_default("metric", "beta"), ge=0.0)
+    perceptual_exponent: float = Field(default=generation_default("metric", "perceptual_exponent"), ge=0.0)
+    temporal_level_floor: float = Field(default=generation_default("metric", "temporal_level_floor"), gt=0.0)
+    silence_floor: float = Field(default=generation_default("metric", "silence_floor"), gt=0.0)
+    dynamic_range_decibels: float = Field(default=generation_default("metric", "dynamic_range_decibels"), gt=0.0)
 
 
 class DecoderConfig(DataModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
 
-    selector: SelectorName = Field(default=SELECTOR)
-    top_k: int = Field(default=DECODER_TOP_K, ge=1)
-    pitch_weight: float = Field(default=TRANSITION_PITCH_WEIGHT, ge=0.0)
-    volume_weight: float = Field(default=TRANSITION_VOLUME_WEIGHT, ge=0.0)
-    timbre_weight: float = Field(default=TRANSITION_TIMBRE_WEIGHT, ge=0.0)
-    on_off_weight: float = Field(default=TRANSITION_ON_OFF_WEIGHT, ge=0.0)
+    selector: SelectorName = Field(default=generation_default("decoder", "selector"))
+    top_k: int = Field(default=generation_default("decoder", "top_k"), ge=1)
+    pitch_weight: float = Field(default=generation_default("decoder", "pitch_weight"), ge=0.0)
+    volume_weight: float = Field(default=generation_default("decoder", "volume_weight"), ge=0.0)
+    timbre_weight: float = Field(default=generation_default("decoder", "timbre_weight"), ge=0.0)
+    on_off_weight: float = Field(default=generation_default("decoder", "on_off_weight"), ge=0.0)
 
 
 class RefinementConfig(DataModel):
@@ -84,28 +76,17 @@ class RefinementConfig(DataModel):
         window: The frames on either side whose readings a frame may settle on.
     """
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
 
-    confidence: float = Field(default=REFINEMENT_CONFIDENCE, ge=0.0, le=1.0)
-    change_weight: float = Field(default=REFINEMENT_CHANGE_WEIGHT, ge=0.0)
-    window: int = Field(default=REFINEMENT_WINDOW, ge=0)
+    confidence: float = Field(default=generation_default("refinement", "confidence"), ge=0.0, le=1.0)
+    change_weight: float = Field(default=generation_default("refinement", "change_weight"), ge=0.0)
+    window: int = Field(default=generation_default("refinement", "window"), ge=0)
 
 
 class GenerationConfig(DataModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
 
-    drive: float = Field(
-        default=DRIVE,
-        gt=0.0,
-        le=MAX_DRIVE,
-        validation_alias=AliasChoices(
-            "drive",
-            "mixer",
-        ),
-    )
-
-    reset_phase: bool = Field(default=RESET_PHASE)
-    final_regeneration: bool = Field(default=FINAL_REGENERATION)
+    reset_phase: bool = Field(default=generation_default("reset_phase"))
 
     calculation: CalculationConfig = Field(default_factory=CalculationConfig)
     weights: WeightsConfig = Field(default_factory=WeightsConfig)

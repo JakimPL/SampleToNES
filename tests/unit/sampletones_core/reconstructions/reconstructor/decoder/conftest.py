@@ -4,6 +4,7 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.instructions import PulseInstruction
+from sampletones_core.reconstructions.reconstructor.contribution import Contribution
 from sampletones_core.reconstructions.reconstructor.decoder.base import ChannelLattice
 from sampletones_core.reconstructions.reconstructor.decoder.greedy import GreedyDecoder
 from sampletones_core.reconstructions.reconstructor.decoder.viterbi import ViterbiDecoder
@@ -14,7 +15,7 @@ JUMPED = PulseInstruction(on=True, pitch=72, volume=10, duty_cycle=0)
 
 
 def state(instruction: PulseInstruction, cost: float) -> ScoredCandidate:
-    return ScoredCandidate(instruction=instruction, cost=cost, approximation=None)  # type: ignore[arg-type]
+    return ScoredCandidate(instruction=instruction, cost=cost, contribution=Contribution.silence(1, 1))
 
 
 def per_frame_best(frames: ChannelLattice) -> List[PulseInstruction]:

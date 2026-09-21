@@ -10,7 +10,7 @@ from sampletones_application.utils.file_dialogs.selection import (
 )
 from sampletones_application.utils.gui.render_thread import answered_while_drawing
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils.system.paths import ensure_suffix, to_path
+from sampletones_shared.utils.system.paths import ensure_suffix, nearest_directory, to_path
 
 
 def open_file_dialog(
@@ -29,7 +29,7 @@ def open_file_dialog(
         partial(
             backend.open_file,
             title=title,
-            initial_directory=_optional_path(initial_directory),
+            initial_directory=_standing_directory(initial_directory),
             filters=filters,
         )
     )
@@ -54,7 +54,7 @@ def save_file_dialog(
         partial(
             backend.save_file,
             title=title,
-            initial_directory=_optional_path(initial_directory),
+            initial_directory=_standing_directory(initial_directory),
             suggested_name=default_filename,
             filters=filters,
         )
@@ -81,7 +81,7 @@ def select_directory_dialog(
         partial(
             backend.select_directory,
             title=title,
-            initial_directory=_optional_path(initial_directory),
+            initial_directory=_standing_directory(initial_directory),
         )
     )
 
@@ -132,5 +132,14 @@ def _offered_extensions(filters: Tuple[FileFilter, ...]) -> Tuple[str, ...]:
     return tuple(chain.from_iterable(file_filter.extensions for file_filter in filters))
 
 
-def _optional_path(value: Optional[Pathlike]) -> Optional[Path]:
-    return to_path(value) if value is not None else None
+def _standing_directory(value: Optional[Pathlike]) -> Optional[Path]:
+    """The folder a dialog opens in: the one asked for, or the nearest one above it still on the disk.
+
+    A remembered folder may have gone since it was written down — deleted, or on a drive unplugged
+    for now — so a dialog opens as close to it as the disk allows and the remembered path stands for
+    the next time it is there.
+    """
+    if value is None:
+        return None
+
+    return nearest_directory(to_path(value))

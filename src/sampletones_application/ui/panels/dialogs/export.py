@@ -1,4 +1,4 @@
-from typing import Any, Dict, Final, Optional
+from typing import Dict, Final, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -17,10 +17,10 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_EXPORT_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.layout.centered import centered
+from sampletones_application.ui.elements.seeded import GUISeededDialogWindow
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.keyboard import KeyRouter
@@ -34,7 +34,7 @@ from sampletones_shared.types.callback import VoidCallback
 RING_STYLE: Final[int] = 1
 
 
-class GUIExportWindow(GUIDialogWindow):
+class GUIExportWindow(GUISeededDialogWindow[SongExportViewModel]):
     """Modal report over an export while it runs.
 
     The file itself was named in the system's own save dialog, so this window has one face: what
@@ -44,8 +44,6 @@ class GUIExportWindow(GUIDialogWindow):
 
     Canceling is offered for as long as the run can still answer one.
     """
-
-    _fits_content = True
 
     def __init__(
         self,
@@ -59,7 +57,6 @@ class GUIExportWindow(GUIDialogWindow):
         self._language_manager = language_manager
         self._text_colors = text_colors
         self._indicator = layout.export.indicator
-        self._view_model: SongExportViewModel = SongExportViewModel.idle()
 
         self.on_cancel: Optional[VoidCallback] = None
 
@@ -71,24 +68,11 @@ class GUIExportWindow(GUIDialogWindow):
 
         super().__init__(
             tag=TAG_SETTINGS_EXPORT_WINDOW,
-            width=layout.export.window.width,
-            height=layout.export.window.height,
+            geometry=layout.export.window,
+            subject="export",
             key_router=key_router,
             shortcut_source=shortcut_source,
         )
-
-    def open(self, view_model: SongExportViewModel) -> None:
-        """Shows the window over the run that has just begun."""
-        self._view_model = view_model
-        self.show()
-
-    def prepare(self, *_args: Any, **_kwargs: Any) -> None:
-        """The drawn values are seeded by :meth:`open` before the tree rebuilds."""
-
-    def update_view(self, view_model: SongExportViewModel) -> None:
-        """Re-draws the open window from where the run stands."""
-        self._view_model = view_model
-        self._render()
 
     def create_window(self) -> None:
         with self.dialog_window(
@@ -176,7 +160,7 @@ class GUIExportWindow(GUIDialogWindow):
 
     def _render(self) -> None:
         """Draws the run as it stands: what it has been through, and where the latest stage is."""
-        view_model = self._view_model
+        view_model = self.view_model
         self._render_stages(view_model)
         dpg_configure_item(
             TAG_SETTINGS_EXPORT_GROUP_MEASURED,
@@ -222,5 +206,5 @@ class GUIExportWindow(GUIDialogWindow):
         return compose_tag(TAG_SETTINGS_EXPORT_TEXT_STAGE, stage.value)
 
     def _request_cancel(self) -> None:
-        if self._view_model.cancel_enabled:
+        if self.view_model.cancel_enabled:
             self.call(self.on_cancel)

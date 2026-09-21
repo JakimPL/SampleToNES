@@ -101,6 +101,54 @@ class TestTreeLogicLocking:
         assert True in states
 
 
+class TestARebuildAskedForUnderTheLock:
+    """A rebuild asked for while the tree is held runs once the lock is let go."""
+
+    def test_a_free_tree_is_taken(self) -> None:
+        tree = _tree()
+        retries: List[str] = []
+
+        taken = tree.lock_unless_locked(lambda: retries.append("rebuild"))
+
+        assert (taken, tree.locked, retries) == (True, True, [])
+
+    def test_a_held_tree_asks_again_at_its_release(self) -> None:
+        tree = _tree()
+        retries: List[str] = []
+        tree.lock()
+
+        taken = tree.lock_unless_locked(lambda: retries.append("rebuild"))
+        held = list(retries)
+        tree.unlock()
+
+        assert (taken, held, retries) == (False, [], ["rebuild"])
+
+    def test_only_the_release_of_the_last_holder_asks_again(self) -> None:
+        tree = _tree()
+        retries: List[str] = []
+        tree.lock()
+        tree.lock()
+        tree.lock_unless_locked(lambda: retries.append("rebuild"))
+
+        tree.unlock()
+        after_first = list(retries)
+        tree.unlock()
+
+        assert (after_first, retries) == ([], ["rebuild"])
+
+    def test_the_latest_request_is_the_one_asked_again(self) -> None:
+        tree = _tree()
+        retries: List[str] = []
+        tree.lock()
+        tree.lock_unless_locked(lambda: retries.append("first"))
+        tree.lock_unless_locked(lambda: retries.append("second"))
+
+        tree.unlock()
+        tree.unlock()
+
+        assert retries == ["second"]
+
+
 class TestTreeLogicAutoplay:
     def test_cancel_autoplay_clears_pending_node(self, tmp_path: Path) -> None:
         tree = _tree()

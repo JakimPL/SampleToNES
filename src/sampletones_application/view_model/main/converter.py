@@ -63,8 +63,6 @@ class ConverterViewModel(BaseModel, frozen=True):
     other_operation_active: bool
     output: OutputKind
     stem_sources: Tuple[StemRowViewModel, ...]
-    channel_cap: int
-    max_channel_cap: int
     hierarchy_mode: HierarchyMode
     max_sources: int
     selected_key: Optional[str]
@@ -82,6 +80,11 @@ class ConverterViewModel(BaseModel, frozen=True):
     @property
     def is_active(self) -> bool:
         return self.phase in ACTIVE_PHASES
+
+    @property
+    def live(self) -> bool:
+        """Whether the setup answers gestures, which a conversion holding resources holds still."""
+        return not self.is_active
 
     @property
     def subpanel_visible(self) -> bool:
@@ -133,7 +136,7 @@ class ConverterViewModel(BaseModel, frozen=True):
             muted_channels=frozenset(),
             picked_keys=frozenset(),
             picking_room=None,
-            live=not self.is_active,
+            live=self.live,
             collapse_levels=not self.mixes_several,
             selected_key=self.selected_key,
         )

@@ -21,6 +21,7 @@ import msgpack
 import numpy as np
 from pydantic import BaseModel
 
+from sampletones_core.data.document import compress_document, decompress_document
 from sampletones_shared.array import to_numpy
 from sampletones_shared.exceptions import (
     DeserializationError,
@@ -77,11 +78,11 @@ class DataModel(BaseModel, ABC):
         return cls.deserialize_inner(data, validation, fast=fast)
 
     def save(self, path: Pathlike) -> None:
-        save_binary(path, self.serialize())
+        save_binary(path, compress_document(self.serialize()))
 
     @classmethod
     def load(cls, path: Pathlike, fast: bool = True) -> Self:
-        return cls.deserialize(load_binary(path), fast=fast)
+        return cls.deserialize(decompress_document(load_binary(path)), fast=fast)
 
     @classmethod
     def _construct(cls, fast: bool = True, **data: Any) -> Self:
@@ -176,6 +177,13 @@ class DataModel(BaseModel, ABC):
                 for item in value
             ]
 
+        if get_origin(annotation) is dict:
+            key_class, item_class = get_args(annotation)
+            return {
+                self._pack_value(key, key_class, field_name): self._pack_value(item, item_class, field_name)
+                for key, item in value.items()
+            }
+
         if issubclass(annotation, DataModel):
             return value.serialize_inner()
 
@@ -237,6 +245,18 @@ class DataModel(BaseModel, ABC):
         if get_origin(annotation) is tuple:
             item_class = get_args(annotation)[0]
             return tuple(cls._unpack_value(item, item_class, field_name, validation, fast) for item in raw)
+
+        if get_origin(annotation) is dict:
+            if not isinstance(raw, dict):
+                raise DeserializationError(f"Field '{field_name}' expects a mapping, got {type(raw).__name__}")
+
+            key_class, item_class = get_args(annotation)
+            return {
+                cls._unpack_value(key, key_class, field_name, validation, fast): cls._unpack_value(
+                    item, item_class, field_name, validation, fast
+                )
+                for key, item in raw.items()
+            }
 
         if issubclass(annotation, DataModel):
             return annotation.deserialize_inner(raw, validation, fast=fast)

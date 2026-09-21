@@ -8,17 +8,15 @@ from sampletones_core.audio import active_frame_level, common_length, load_audio
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
 from sampletones_core.constants.enums import (
+    TONE_CHANNELS,
     ChannelName,
-    bending_channels,
     ordered_channels,
 )
 from sampletones_core.fft import FragmentedAudio, Window
 from sampletones_core.generators import (
-    MIXER_LEVELS,
-    GeneratorUnion,
+    FULL_SCALE_RMS_LEVELS,
     get_generators_by_channels,
 )
-from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibrary, InstructionLibraryData
 from sampletones_core.reconstructions.progress import (
     FRAMES_PREPARED,
@@ -38,6 +36,7 @@ from sampletones_core.reconstructions.reconstructor.state import ReconstructionS
 from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
 from sampletones_core.reconstructions.reconstructor.stems.assignment.track import TrackAssignment
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.exceptions import NoLibraryDataError
@@ -108,8 +107,8 @@ class Reconstructor:
         """Reconstructs an audio file into a :class:`Reconstruction`.
 
         The classic run is the stems pipeline's single-stem case: one stem covering
-        every channel this reconstructor was built for, on one precedence level, with
-        the cap at the channel count, so every one of them is assigned in every frame.
+        every channel this reconstructor was built for, on one precedence level,
+        sounding all of them at once, so every one of them is assigned in every frame.
 
         Args:
             path: Path to the audio file to reconstruct.
@@ -120,8 +119,7 @@ class Reconstructor:
         Raises:
             TypeError: If ``path`` is not a string or ``Path``.
         """
-        channels = list(self.channel_names)
-        stems_config = StemsConfig.single_entry(channels, bending_channels(channels))
+        stems_config = StemsConfig.single_entry(StemSettings.covering(list(self.channel_names)))
         return self.reconstruct([path], stems_config)
 
     def reconstruct(
@@ -135,8 +133,9 @@ class Reconstructor:
 
         Loads the stems onto one scale drawn from their mix, matches each stem's frames
         against the library on its own, and assigns each frame's channels to the stems
-        following the configured hierarchy and channel cap. A stem takes a channel where
-        its own recording sounds, so what the channel carries is that recording. The
+        following the configured hierarchy and each stem's own count. A stem takes a channel where
+        its own recording sounds, so what the channel carries is that recording, at the drive that
+        stem's settings give the channel. The
         assignment leaves every channel in play a column of candidates per frame, which
         the configured decoder reads into the stream that channel plays. The per-frame
         assignment is recorded in the reconstruction's stems data.
@@ -144,8 +143,8 @@ class Reconstructor:
         Args:
             paths: Paths to the stem audio files, one per stems entry.
             stems_config: The stems setup built for this process from the inputs:
-                the entries with their channels, the precedence hierarchy, and the
-                per-stem channel cap.
+                the entries with what each recording is converted with, and the
+                precedence hierarchy.
             report: Hears each stage of the run and answers whether it is still wanted.
 
         Returns:
@@ -164,10 +163,12 @@ class Reconstructor:
         announce(report, ReconstructionStage.LOADING, FRAMES_PREPARED, PREPARATIONS)
         worker = self._build_worker(common_length(recordings))
         assignment = self._assign_stem_frames(prepared.frames, stems_config, worker, report)
-        self._drop_resting_channels(assignment)
         announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
         streams = worker.decoder.decode(assignment.lattices)
+        assignment.release_silent(streams)
+        self._drop_resting_channels(assignment, streams)
         streams = self._refiner(stems_config).refine(streams, assignment.stem_ids, prepared.recordings)
+        announce(report, ReconstructionStage.DECODING, WHOLE_STAGE, WHOLE_STAGE)
         self._record_streams(streams, report)
         return Reconstruction.from_state(
             self.state,
@@ -283,7 +284,6 @@ class Reconstructor:
                     stems_config,
                     self.channels,
                     worker.matcher,
-                    worker.feature_extractor,
                     worker.decoder.lattice_width,
                 )
             )
@@ -296,31 +296,35 @@ class Reconstructor:
         """The frames every recording answers, which they share by sharing a length."""
         return min((len(fragments) for fragments in stem_frames.values()), default=0)
 
-    def _drop_resting_channels(self, assignment: TrackAssignment) -> None:
+    def _drop_resting_channels(self, assignment: TrackAssignment, streams: Streams) -> None:
         """Leaves the channels that sound, releasing those that rested through every frame.
 
-        A channel no stem ever took describes nothing, so it stands by: the state releases its
-        stream and the record names it no more, which is what keeps a silent channel out of
-        every export.
+        A channel whose decoded stream sounds in no frame describes nothing, so it stands by: the
+        state releases its stream and the record names it no more, which is what keeps a silent
+        channel out of every export.
         """
         for channel_name in assignment.resting_channels:
             self.state.drop(channel_name)
             assignment.drop(channel_name)
+            del streams[channel_name]
 
-    def _record_streams(self, streams: Streams, report: ReconstructionReporter) -> None:
-        """Folds the decoded streams into the state, one frame at a time.
+    def _record_streams(
+        self,
+        streams: Streams,
+        report: ReconstructionReporter,
+    ) -> None:
+        """Reads the decoded streams into the state, one frame at a time.
 
-        Frame order is what carries a generator's oscillator phase from one frame into the
-        next, which is the continuity final regeneration renders against.
+        A reconstruction records the instructions its channels play, and reads its sound from
+        them, so this is where a run's answer is gathered.
         """
         frames = self._frame_count(streams)
         for position in range(frames):
-            announce(report, ReconstructionStage.RENDERING, position, frames)
+            announce(report, ReconstructionStage.GATHERING, position, frames)
             for channel_name in self.state.channel_names:
-                candidate = streams[channel_name][position]
-                self._record(channel_name, candidate.instruction, candidate.approximation.audio)
+                self.state.append(channel_name, streams[channel_name][position].instruction)
 
-        announce(report, ReconstructionStage.RENDERING, frames, frames)
+        announce(report, ReconstructionStage.GATHERING, frames, frames)
 
     @staticmethod
     def _frame_count(streams: Streams) -> int:
@@ -366,14 +370,16 @@ class Reconstructor:
         stems_config: StemsConfig,
     ) -> float:
         """
-        Working-level coefficient that scales the input into the range one frame spans.
+        Working-level coefficient that brings the input's typical frame to what one channel renders.
 
-        The reference anchors to the robust active-frame level using the configured
-        percentile and audibility floor, and is floored at `MINIMUM_AUDIO_LEVEL` so
-        a fully silent input yields a finite coefficient. The range it is measured against
-        is what the setup's frame budget reaches: the loudest mixer weights among the covered
-        channels, as many of them as one frame can hold, so a capped run targets a level its
-        channels render.
+        The typical frame is the robust active-frame RMS level under the configured percentile
+        and audibility floor, floored at `MINIMUM_AUDIO_LEVEL` so a fully silent input yields a
+        finite coefficient. It is brought to the full-scale RMS level of the quietest tone
+        channel the setup covers, or of the quietest covered channel when the setup covers no
+        tone channel. A steady tone then plays at a level a single tone channel renders whole,
+        so one channel can answer it, and louder frames call on more channels. A pulse and the
+        noise swing between two levels, so their RMS level is their peak; a triangle's is its
+        peak over the square root of three.
 
         Args:
             audio: The prepared input audio.
@@ -382,7 +388,6 @@ class Reconstructor:
         Returns:
             float: The positive scale factor the input is divided by before matching.
         """
-        total = self._frame_mixer_total(stems_config)
         level = max(
             active_frame_level(
                 audio,
@@ -392,16 +397,13 @@ class Reconstructor:
             ),
             MINIMUM_AUDIO_LEVEL,
         )
-        return float(level / total)
+        return float(level / self._working_level(stems_config))
 
-    def _frame_mixer_total(self, stems_config: StemsConfig) -> float:
-        """The mixer weight one frame reaches: the loudest covered channels, up to the budget."""
-        covered = stems_config.covered_channels
-        levels = sorted(
-            (MIXER_LEVELS[generator.class_name()] for name, generator in self.channels.items() if name in covered),
-            reverse=True,
-        )
-        return sum(levels[: stems_config.frame_budget])
+    def _working_level(self, stems_config: StemsConfig) -> float:
+        """The full-scale RMS level of the quietest covered tone channel, or covered channel without one."""
+        covered = [name for name in self.channels if name in stems_config.covered_channels]
+        anchors = [name for name in covered if name in TONE_CHANNELS] or covered
+        return min(FULL_SCALE_RMS_LEVELS[self.channels[name].class_name()] for name in anchors)
 
     def get_fragments(self, audio: np.ndarray) -> FragmentedAudio:
         """Frames the audio into the fragments matched against the library.
@@ -442,33 +444,6 @@ class Reconstructor:
                 tuple(generator.class_name() for generator in self.channels.values()),
             ),
         )
-
-    def _record(
-        self,
-        channel_name: ChannelName,
-        instruction: InstructionUnion,
-        matched_audio: np.ndarray,
-    ) -> None:
-        """Appends one frame of one channel to the reconstruction state.
-
-        Regenerates the frame from its instruction when final regeneration is enabled, which
-        carries the oscillator's phase into the next frame, otherwise keeps the audio the match
-        was made on. Either one is scaled by the configured drive.
-        """
-        generator: GeneratorUnion = self.channels[channel_name]
-        if self.config.generation.final_regeneration:
-            approximation = (
-                generator(
-                    instruction,  # type: ignore[arg-type]
-                    initials=generator.initials,
-                    save=True,
-                )
-                * self.config.generation.drive
-            )
-        else:
-            approximation = matched_audio * self.config.generation.drive
-
-        self.state.append(channel_name, instruction, approximation)
 
     def reset_generators(self) -> None:
         """Resets every channel's generator so the next reconstruction starts fresh."""

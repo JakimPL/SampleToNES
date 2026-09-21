@@ -29,11 +29,20 @@ class StemRowViewModel(BaseModel, frozen=True):
 
     ``bends`` names the channels whose notes the recording carries to the pitch it sounds, which a
     list recording what a finished conversion took draws beside the channel itself.
+
+    ``name`` is what the row reads as and ``path`` where its source lives, which a row standing
+    for a recording a document was detached from carries no more. Gathering a file names the row
+    after it; a recorded assignment names it after the recording the document remembers.
+
+    ``record_position`` is where the recording's entry stands on the record, which is what picks
+    the color it is known by, so the swatch beside a name reads as the stretches that recording
+    holds in the ribbon. A row answering to an entry of its own carries it.
     """
 
     key: str
     kind: SourceKind
-    path: Path
+    name: str
+    path: Optional[Path]
     held: Tuple["StemRowViewModel", ...]
     channels: FrozenSet[ChannelName]
     partial_channels: FrozenSet[ChannelName]
@@ -42,6 +51,7 @@ class StemRowViewModel(BaseModel, frozen=True):
     available: bool
     level: int
     position: int
+    record_position: Optional[int]
     level_size: int
     level_count: int
 
@@ -69,14 +79,23 @@ class StemRowViewModel(BaseModel, frozen=True):
         return self.offered_channels & TONE_CHANNELS
 
     @property
-    def name(self) -> str:
-        """The source's own name, which is what the row reads as."""
-        return self.path.name if self.stands_for_a_folder else self.path.stem
-
-    @property
     def stands_for_a_folder(self) -> bool:
         """The row is a folder, standing for every recording gathered below it."""
         return self.kind is SourceKind.FOLDER
+
+    @property
+    def stands_for_edits(self) -> bool:
+        """The row stands for the frames the reader wrote, which no recording answers for."""
+        return self.kind is SourceKind.EDITS
+
+    @property
+    def releasable(self) -> bool:
+        """Whether the row names something a removal takes out of the document.
+
+        A removal takes a recording out of the recorded setup, so the frames the reader wrote
+        stand outside what it reaches.
+        """
+        return not self.stands_for_edits
 
     @property
     def takes_part(self) -> bool:
@@ -237,8 +256,15 @@ class StemsListViewModel(BaseModel, frozen=True):
 
     @property
     def picked_paths(self) -> Tuple[Path, ...]:
-        """The recordings standing picked, in the order the list draws them."""
-        return tuple(recording.path for recording in self.recordings if recording.key in self.picked_keys)
+        """The recordings standing picked, in the order the list draws them.
+
+        A list gathering files names a path for every row it holds, which is what a pick reaches.
+        """
+        return tuple(
+            recording.path
+            for recording in self.recordings
+            if recording.key in self.picked_keys and recording.path is not None
+        )
 
     def boxes_of(self, row: StemRowViewModel) -> Tuple[ChannelName, ...]:
         """The channels ``row`` draws a box for, in the order the columns stand."""

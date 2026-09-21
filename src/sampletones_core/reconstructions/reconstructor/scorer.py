@@ -9,45 +9,67 @@ from ..criterion import Criterion
 
 class Scorer:
     """
-    Scores candidate approximations against a target fragment in two stages.
+    Scores what a frame sounds like against the target fragment, in two stages.
 
-    `spectral_costs` ranks the whole candidate stack by the phase-independent
-    spectral term, producing the shortlist. `aligned_cost` completes the criterion
-    for one shortlisted candidate, evaluating the temporal term on the candidate's
-    phase-aligned waveform so it reflects the waveform shape at its best phase alignment.
+    `spectral_costs` ranks a stack of mixed features by the phase-independent spectral term,
+    producing the shortlist. `frame_costs` completes the criterion for shortlisted mixes with the
+    temporal term their expected waveforms measure.
     """
 
     def __init__(self, config: Config, window: Window, signal_length: int) -> None:
         self.criterion = Criterion(config, window, signal_length)
 
-    def spectral_costs(self, target: Fragment, candidates: Fragment) -> np.ndarray:
+    def spectral_costs(self, target: Fragment, features: xp.ndarray) -> np.ndarray:
         """
-        Weighted spectral loss of every candidate against the target.
+        Weighted spectral loss of every mixed feature against the target.
 
-        Both sides are compared through their spectral features, which are averaged
-        over phase for library candidates, so the ranking is independent of how the
-        candidate waveforms are phased.
+        The mixed features sum powers averaged over phase, so the ranking is independent of how
+        the candidate waveforms are phased.
 
         Args:
             target: Target fragment to match.
-            candidates: Stacked candidate fragments.
+            features: Feature values of the mixes, one mix per row.
 
         Returns:
-            One spectral cost per candidate.
+            One spectral cost per mix.
         """
         errors = None
-        target_gpu = None
+        target_values = None
         try:
-            target_gpu = target.to_cupy()
-            errors = self.criterion.spectral_loss(
-                target_gpu.feature,
-                candidates.feature,
-            )
-            return to_numpy(errors)
+            target_values = xp.asarray(target.feature.values)
+            errors = self.criterion.spectral_loss(target_values, features)
+            return np.asarray(to_numpy(errors), dtype=np.float64)
         finally:
-            del errors, target_gpu
+            del errors, target_values
             if CUPY_AVAILABLE:
                 xp.get_default_memory_pool().free_all_blocks()
+
+    def frame_costs(
+        self,
+        target: Fragment,
+        spectral_costs: np.ndarray,
+        expectations: np.ndarray,
+        variances: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Full criterion cost of every mix, with the temporal term its expected waveform measures.
+
+        Args:
+            target: Target fragment to match.
+            spectral_costs: The mixes' spectral costs from `spectral_costs`.
+            expectations: The waveform each mix is expected to render, one mix per row.
+            variances: The per-sample variance of each mix about its expected waveform.
+
+        Returns:
+            One blended criterion cost per mix.
+        """
+        temporal = self.criterion.expected_temporal_loss(
+            xp.asarray(target.audio, dtype=xp.float64),
+            xp.asarray(expectations),
+            xp.asarray(variances),
+        )
+        combined = self.criterion.combine_losses(xp.asarray(spectral_costs), temporal)
+        return np.asarray(to_numpy(combined), dtype=np.float64).reshape(-1)
 
     def reference_energy(self, target: Fragment) -> float:
         """
@@ -64,34 +86,6 @@ class Scorer:
         """
         energy = self.criterion.reference_energy(xp.asarray(target.feature.values))
         return float(to_numpy(energy).reshape(-1)[0])
-
-    def aligned_cost(
-        self,
-        target: Fragment,
-        spectral_cost: float,
-        approximation: Fragment,
-    ) -> float:
-        """
-        Full criterion cost of one candidate, with the temporal term evaluated on the
-        candidate's aligned waveform.
-
-        Combines the already-computed spectral cost with the temporal loss between the
-        target and the aligned approximation, using the configured loss blend.
-
-        Args:
-            target: Target fragment to match.
-            spectral_cost: The candidate's spectral cost from `spectral_costs`.
-            approximation: The candidate fragment built at its best phase.
-
-        Returns:
-            The blended criterion cost.
-        """
-        temporal = self.criterion.temporal_loss(
-            xp.asarray(target.audio),
-            xp.asarray(approximation.audio),
-        )
-        combined = self.criterion.combine_losses(spectral_cost, temporal)
-        return float(to_numpy(combined)[0])
 
     @staticmethod
     def top_k(costs: np.ndarray, k: int) -> np.ndarray:

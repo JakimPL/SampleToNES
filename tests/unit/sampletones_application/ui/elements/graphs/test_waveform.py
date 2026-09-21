@@ -1,12 +1,15 @@
 from types import SimpleNamespace
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 
 from sampletones_application.ui.elements.graphs import waveform as waveform_module
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.utils.palette.colors.written import LiteralColor
+
+VOICE_SAMPLES = 64
 
 
 class _FakeDPG:
@@ -96,6 +99,9 @@ class _Array:
 def _graph() -> GUIWaveformGraph:
     graph = GUIWaveformGraph.__new__(GUIWaveformGraph)
     graph.y_axis_tag = "axis"
+    graph.x_axis_tag = "time_axis"
+    graph._named_span = None
+    graph._sample_rate = 0
     graph.position_indicator_tag = "indicator"
     graph.overlay_rectangle_tag = "overlay"
     graph.layers = {}
@@ -209,3 +215,74 @@ class TestWaveformReconstructionDim:
 
         graph.set_reconstruction_dimmed(False)
         graph._status_bar.set.assert_called_with("")
+
+
+class TestAClickReportsASampleOfDrawnAudio:
+    """The graph reports the sample a click named while it draws the audio its player sounds."""
+
+    @staticmethod
+    def _graph_reporting_clicks(monkeypatch: pytest.MonkeyPatch) -> Tuple[GUIWaveformGraph, List[int]]:
+        graph = _graph()
+        graph.current_data = MagicMock()
+        graph._plays_what_it_draws = True
+        graph._default_x_range = (0.0, 1.0)
+        graph._default_y_range = (-1.0, 1.0)
+        graph._layout = SimpleNamespace(waveform=SimpleNamespace(max_display_points=VOICE_SAMPLES))
+        monkeypatch.setattr(graph, "add_layer", lambda _layer: None)
+        monkeypatch.setattr(graph, "_update_display", lambda: None)
+        clicked: List[int] = []
+        graph.on_position_clicked = clicked.append
+        return graph, clicked
+
+    def test_a_click_reports_the_nearest_sample(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        graph, clicked = self._graph_reporting_clicks(monkeypatch)
+
+        graph._on_plot_clicked(420.6)
+
+        assert clicked == [421]
+
+    def test_a_voice_drawn_in_place_of_the_audio_takes_no_click(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A hand-written voice's waveform is none of the audio the tab's player sounds."""
+        graph, clicked = self._graph_reporting_clicks(monkeypatch)
+
+        graph.load_voice_waveform(
+            np.zeros(VOICE_SAMPLES, dtype=np.float32),
+            name="voice",
+            color=LiteralColor((255, 255, 255, 255)),
+        )
+        graph._on_plot_clicked(420.6)
+
+        assert clicked == []
+
+    def test_a_graph_emptied_takes_no_click(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        graph, clicked = self._graph_reporting_clicks(monkeypatch)
+
+        graph.clear_layers()
+        graph._on_plot_clicked(420.6)
+
+        assert clicked == []
+
+
+class TestClearingKeepsThePositionIndicator:
+    def test_the_indicator_is_drawn_again_after_the_axis_is_emptied(
+        self,
+        fake_dpg: _FakeDPG,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        graph = _graph()
+        graph.current_position = 900
+        graph.indicator_theme = MagicMock()
+        graph.overlay_theme = MagicMock()
+        _with_layout(graph)
+        graph._layout.graph = SimpleNamespace(min_y=-1.0, max_y=1.0)  # type: ignore[attr-defined]
+        indicators: List[Dict[str, Any]] = []
+        monkeypatch.setattr(waveform_module, "dpg_delete_children", lambda tag: fake_dpg.set_children(tag, []))
+        monkeypatch.setattr(waveform_module.dpg, "add_inf_line_series", lambda x, **kwargs: indicators.append(kwargs))
+        monkeypatch.setattr(waveform_module.dpg, "add_shade_series", lambda *args, **kwargs: None)
+        monkeypatch.setattr(graph, "clear_layers", lambda: None)
+
+        graph.clear()
+
+        assert [indicator["tag"] for indicator in indicators] == [graph.position_indicator_tag]
+        assert indicators[0]["show"] is False
+        assert graph.current_position == 0

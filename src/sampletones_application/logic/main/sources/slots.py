@@ -2,29 +2,17 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Final, FrozenSet, Tuple
 
 from sampletones_application.constants.sources import SettingsField
-from sampletones_core.constants.enums import ALL_CHANNELS, TONE_CHANNELS, ChannelName, ordered_channels
+from sampletones_core.constants.enums import ALL_CHANNELS, TONE_CHANNELS, ChannelName
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 SettingsReader = Callable[[StemSettings], FrozenSet[ChannelName]]
 SettingsWriter = Callable[[StemSettings, FrozenSet[ChannelName]], StemSettings]
 SettingsOffer = Callable[[StemSettings], FrozenSet[ChannelName]]
+SettingsChange = Callable[[StemSettings], StemSettings]
 
 
 def _channels_of(settings: StemSettings) -> FrozenSet[ChannelName]:
     return settings.channel_set
-
-
-def _with_channels(
-    settings: StemSettings,
-    channels: FrozenSet[ChannelName],
-) -> StemSettings:
-    """The settings occupying ``channels``, keeping the bends that still reach one of them.
-
-    A bend belongs to a channel the recording occupies, so narrowing the channels narrows the
-    bends along with them and one gesture leaves a value the model accepts.
-    """
-    held = ordered_channels(channels)
-    return StemSettings(channels=held, bends=ordered_channels(settings.bend_set & channels))
 
 
 def _channels_offered(_settings: StemSettings) -> FrozenSet[ChannelName]:
@@ -38,15 +26,6 @@ def _bends_of(settings: StemSettings) -> FrozenSet[ChannelName]:
 def _bends_offered(settings: StemSettings) -> FrozenSet[ChannelName]:
     """A bend belongs to a channel the recording occupies whose hardware reads one."""
     return settings.channel_set & TONE_CHANNELS
-
-
-def _with_bends(
-    settings: StemSettings,
-    bends: FrozenSet[ChannelName],
-) -> StemSettings:
-    """The settings bending ``bends``, holding each to a channel occupied whose hardware reads one."""
-    reached = bends & settings.channel_set & TONE_CHANNELS
-    return StemSettings(channels=settings.channels, bends=ordered_channels(reached))
 
 
 @dataclass(frozen=True)
@@ -87,14 +66,14 @@ class SettingsSlot:
 CHANNEL_SLOT: Final[SettingsSlot] = SettingsSlot(
     field=SettingsField.CHANNELS,
     read=_channels_of,
-    write=_with_channels,
+    write=StemSettings.with_channels,
     offered=_channels_offered,
 )
 
 BEND_SLOT: Final[SettingsSlot] = SettingsSlot(
     field=SettingsField.BENDS,
     read=_bends_of,
-    write=_with_bends,
+    write=StemSettings.with_bends,
     offered=_bends_offered,
 )
 

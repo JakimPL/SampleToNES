@@ -1,0 +1,30 @@
+reset_phase: false
+
+calculation:
+  find_best_phase: true
+  phase_aligner: cross_correlation
+
+weights:
+  spectral_loss_weight: 0.8
+  temporal_loss_weight: 0.2
+
+metric:
+  spectral_distance: beta_divergence
+  beta: 1.0
+  perceptual_exponent: 1.0
+  temporal_level_floor: 0.06666666666666667
+  silence_floor: 0.0044444444444444444
+  dynamic_range_decibels: 60.0
+
+decoder:
+  selector: viterbi
+  top_k: 8
+  pitch_weight: 0.03
+  volume_weight: 0.02
+  timbre_weight: 0.1
+  on_off_weight: 0.2
+
+refinement:
+  confidence: 0.15
+  change_weight: 2.0
+  window: 4

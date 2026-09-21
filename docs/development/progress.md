@@ -4,12 +4,11 @@ This document governs how a long operation says how far it has come, and how tha
 the reader watching it. Consult it when adding an operation that takes long enough to be watched,
 when changing what one reports, or when the report has to cross a process boundary.
 
-The subsystem spans three packages: the operations that report live in `sampletones_core` and
-`sampletones_player`, the line a report crosses between processes is
-`sampletones_core/parallelization/channel/`, and the layer that draws it is
-`sampletones_application/services/` and `logic/`. Layering between those packages is
-[`packages.md`](packages.md); the application's own layers are
-[`architecture.md`](architecture.md).
+The subsystem spans several packages. The operations that report live in `sampletones_core` and
+`sampletones_player`. The line a report crosses between processes is
+`sampletones_core/parallelization/channel/`. The layer that draws it is `sampletones_application/services/`
+and `logic/`. [`packages.md`](packages.md) describes the layering between those packages, and
+[`architecture.md`](architecture.md) describes the application's own layers.
 
 ---
 
@@ -24,158 +23,108 @@ answering whether the run goes on.
 ExportReporter = Callable[[ExportProgress], bool]
 ```
 
-Each domain names its own progress type — `ExportProgress`, `WalkProgress`, `CodecProgress`,
-`ReconstructionProgress` — and its own `announce`, which builds that type, offers it, and raises
-`OperationCanceled` where the answer is no. One reporter therefore carries both directions: an
-operation is watched and withdrawn over the same line, and a caller that wants neither passes
-`silent_reporter` (`sampletones_shared/utils/progress.py`) and hears the run through to its end.
+Each domain names its own progress type (`ExportProgress`, `WalkProgress`, `CodecProgress`,
+`ReconstructionProgress`) and its own `announce`. `announce` builds that type, offers it, and raises
+`OperationCanceled` where the answer is no. One reporter therefore carries both directions: an operation is
+watched and withdrawn over the same line. A caller that wants neither passes `silent_reporter`
+(`sampletones_shared/utils/progress.py`) and hears the run through to its end.
 
 ### 2. A stage names the unit its counts are in
 
-A run passes through stages counting in units of their own — a song's ticks, a dictionary's bytes,
-a recording's frames, a batch's files. A report therefore names its stage, and what the counts mean
-is read from that name. `ExportStage` and `ReconstructionStage` are the two vocabularies today.
+A run passes through stages counting in units of their own: a song's ticks, a dictionary's bytes, a
+recording's frames, a batch's files. A report therefore names its stage, and the name says what the counts
+mean. `ExportStage` and `ReconstructionStage` are the vocabularies.
 
-Where the stages differ in what they cost, the enum states what each is worth against the others
-(`STAGE_WEIGHTS`), so one reading spans a run that changes what it is counting several times over.
-The weights are approximations measured over whole runs, justified by what they achieve: a bar that
-tracks the time a run actually takes. They are counts rather than fractions, and a reading divides
-them once at the point of use, which is what lets a finished run arrive exactly at its end.
+Where the stages differ in what they cost, the enum says what each is worth against the others
+(`STAGE_WEIGHTS`), so one reading spans a run that changes what it is counting several times over. The
+weights are approximations measured over whole runs, and they are justified by what they achieve: a bar
+that tracks the time a run actually takes. They are counts and not fractions. A reading divides them once
+at the point of use, so a finished run arrives exactly at its end.
 
 ### 3. A report is filed as often as the run moves, and carried as often as it is worth reading
 
-An operation announces every step it makes — every frame, every row — because that is what it
-knows. Deciding how often that is worth passing on belongs to whoever carries it: `ReportRate`
-(`sampletones_shared/utils/progress.py`) spaces reports over `PROGRESS_STEPS` whatever the stage
-counts in, always takes a stage's first reading and its last, and treats a count that falls as a
-step the same way one that rises.
+An operation announces every step it makes, every frame and every row, because that is what it knows.
+Whoever carries the report decides how often that is worth passing on. `ReportRate`
+(`sampletones_shared/utils/progress.py`) spaces reports over `PROGRESS_STEPS` whatever the stage counts in.
+It always takes a stage's first reading and its last, and it treats a count that falls as a step, the same
+as one that rises.
 
-Both carriers use it: `StageProgress` in the application services, and `JobReporter` in the
-conversion, which throttles on the worker side so the line between processes carries only what a
-bar can be redrawn at.
+Both carriers use it: `StageProgress` in the application services, and `JobReporter` in the conversion.
+`JobReporter` throttles on the worker side, so the line between processes carries only what a bar can be
+redrawn at.
 
-### 4. A run reads as the items it finished plus the part of the one under way
+### 4. A run reports in items when it has many, and in the part done of one item when it has one
 
-An operation counts the items it is measured in — files, samples, jobs. An item that reports its own
-progress makes the count alone a poor reading: a conversion of one recording stands at nothing out
-of one for its whole length. Both layers therefore carry the same pair:
+An operation counts the items it is measured in: files, samples, jobs. Where it is measured in many items,
+that count is the reading. The items are what a reader recognizes, and a run with several under way at
+once has no one item to follow. Where it is measured in one item, the count stands at nothing out of one
+for the run's whole length. The reading is then the part of that one item done, which the item reports
+itself.
+
+Both layers carry the same pair, and each tells through `is_single` which of the two it is:
 
 | Layer | Type | The counts | The work under way |
 |-------|------|-----------|--------------------|
 | Core | `TaskProgress` | `completed` / `total` | `steps`, one per running task |
 | Application | `ServiceProgress` | `completed` / `total` | `partial`, in items |
 
-and both derive `fraction` from them. The counts keep naming the items a reader recognizes — a
-status line still reads *Progress: 2/5 files* — while every bar in the application draws
-`fraction`, so one reading answers for a batch of files and for a single reconstruction alike.
+Both derive `fraction` from them. The layer that turns a run's account into a result states the unit that
+run reads in (`ConversionService` does it for a conversion). The count a status line prints, the stage it
+names, the bar it draws and the estimate beside it therefore all answer in that one unit. The logic layer
+reads them under `logic/main/converter/`, and `ETAEstimator` (`parallelization/progress.py`) makes the
+estimate from what a run has covered.
 
 ### 5. A task reaching another process reports over a channel
 
 Where an operation runs in a worker process, its reports reach the run over a `ProgressChannel`
-(`sampletones_core/parallelization/channel/`). The channel carries both directions of principle 1
-across the boundary, and callers depend on the Protocol rather than on any one way of crossing it.
+(`sampletones_core/parallelization/channel/`). The channel carries both directions of principle 1 across
+the boundary, and callers depend on the Protocol and not on any one way of crossing it.
 
-```python
-class ProgressChannel(Protocol):
-    def reporter(self, index: int) -> StepReporter: ...
-    def poll(self, timeout: float) -> Optional[TaskReport]: ...
-    def withdraw(self) -> None: ...
-    def close(self) -> None: ...
-```
-
-`ProcessProgressChannel` is the implementation. A manager stands beside the pool and owns both
-ends — a queue reports travel up and a flag a withdrawal travels down — under the same spawn
-context the pool's workers run in. Each end reaches a task as an ordinary value it is built with,
-so a worker started as a fresh interpreter reconnects to them on its own, which is what makes one
-channel serve every platform.
+`ProcessProgressChannel` is the implementation. A manager stands beside the pool and owns both ends: a
+queue that reports travel up, and a flag that a withdrawal travels down. Both live under the same spawn
+context the pool's workers run in. Each end reaches a task as an ordinary value it is built with, so a
+worker started as a fresh interpreter reconnects on its own. That makes one channel serve every platform.
 
 ---
 
 ## Mechanics
 
-### The conversation a run has with its tasks
-
-```mermaid
-sequenceDiagram
-    participant REC as Reconstructor
-    participant JOB as JobReporter
-    participant CH as ProcessProgressChannel
-    participant PUMP as ProgressPump
-    participant RUN as TaskProcessor
-    participant SVC as ConversionService
-
-    Note over REC,JOB: worker process
-    REC->>JOB: announce(MATCHING, frame, frames)
-    JOB->>CH: TaskStep, where a step is due
-    CH-->>JOB: whether the run goes on
-    Note over CH,PUMP: process boundary
-    PUMP->>CH: poll, then drain what waits
-    PUMP->>RUN: TaskSteps.record + notify once
-    RUN->>SVC: TaskProgress(completed, total, steps)
-    SVC->>SVC: ServiceProgress(partial=…, current_item=ConversionItem)
-```
-
-A run's monitor thread waits on the results the pool hands back, so reading the channel belongs
-to a thread of its own: `ProgressPump`. It takes everything already waiting in one turn and
-announces once, which holds the announcements to the rate it reads at however many steps the tasks
-file in between.
-
-### Who owns what
-
-| Concern | Owner |
-|---------|-------|
-| The reporter shape, the silent one, and the spacing between reports | `sampletones_shared/utils/progress.py` |
-| A reconstruction's stages, their shares, and its own `announce` | `sampletones_core/reconstructions/{stage,progress}.py` |
-| Weighing a job's stage and carrying it to the run | `JobReporter` (`reconstructions/converter/progress.py`) |
-| The line between a run and its tasks | `sampletones_core/parallelization/channel/` |
-| Where the running tasks stand, and dropping a finished one | `TaskSteps` (`parallelization/steps.py`) |
-| Opening the channel, reading it, and reaping it | `TaskProcessor` (`parallelization/processor.py`) |
-| How long a run has left, from what it has covered | `ETAEstimator` (`parallelization/progress.py`) |
-| Turning a run's account into a result the application reads | `ConversionService` (`services/conversion/`) |
-| The bar, and the taskbar the run also reports to | `ConversionRun` (`logic/main/converter/run.py`) |
-| The status line and the stage's name | `ConverterMessages` (`logic/main/converter/messages.py`) |
+**Reading the channel belongs to a thread of its own.** A run's monitor thread waits on the results the
+pool hands back, so a separate thread (`ProgressPump`) reads the channel. It takes everything already
+waiting in one turn and announces once. That holds the announcements to the rate it reads at, however many
+steps the tasks file in between.
 
 ### A finished task stays finished
 
-A task's reports travel a line the run reads at its own pace, so one filed before its result
-arrived may be read after it. `TaskSteps` records the tasks the run has counted and lets their
-later reports go, which is what keeps a task's own progress and the run's completed count from
-describing the same work twice — and keeps the reading inside the run it describes.
+A task's reports travel a line the run reads at its own pace, so a report filed before a task's result
+arrived may be read after it. The run records the tasks it has counted (`TaskSteps`) and lets their later
+reports go. That keeps a task's own progress and the run's completed count from describing the same work
+twice, and it keeps the reading inside the run it describes.
 
-### The channel's lifetime
+### The pool's and the channel's lifetime
 
-The channel is a process of its own, opened on the first task that asks for a line and reaped once
-the run ends, whatever became of it. A run whose tasks report nothing never opens one.
+The run's monitor thread (`TaskProcessor`) is the one owner of its pool. However the run ends, the monitor
+ends the pool: a finished pool winds down, and a canceled or failed one is stopped. It then reaps the
+workers, closes the channel, and only then announces the outcome.
 
-### Adding an operation that reports
+`cancel()` withdraws the run and leaves the rest to the monitor. `shutdown()` cancels a run still going and
+returns once the monitor has finished. The owner of a run (`InstructionsLibraryManager`,
+`ConversionService`) lets it go only after `shutdown()` returns, so an operation reads as active until no
+worker of it is left.
 
-1. Give the domain a stage enum and a progress type, with an `announce` beside them, following
-   `sampletones_core/exports/progress.py`.
-2. Thread the reporter through the calls that know how far the work has come, and announce every
-   step they make.
-3. Where the work runs in this process, hand it a carrier that throttles and emits — `StageProgress`
-   for a service. Where it runs in a worker, ask `TaskProcessor._task_reporter` for a line and hand
-   the task a reporter built on it.
-4. Read the run through `fraction`, and name the stage from `LanguageManager` in the logic layer.
+The channel is a process of its own. It opens on the first task that asks for a line and closes after the
+pool, since the workers hold proxies to it. A run whose tasks report nothing never opens one.
 
 ---
 
 ## Testing
 
-Progress is one path with two halves, and each is tested where it is cheap to test:
+Progress is one path with two halves, and each is tested where it is cheap to test. A stage's share, the
+spacing between reports and a late report are unit-tested beside the code that decides them. The pipeline
+reporting its stages and the line carrying a report between processes are held by integration suites.
 
-| What | Where |
-|------|-------|
-| A stage's share, and a run read as a fraction | `tests/unit/sampletones_core/reconstructions/test_progress.py` |
-| The spacing between reports | `tests/unit/sampletones_shared/utils/test_progress.py` |
-| Where the running tasks stand, and a late report | `tests/unit/sampletones_core/parallelization/test_steps.py` |
-| A job's stage weighed and throttled | `tests/unit/sampletones_core/reconstructions/converter/test_progress.py` |
-| The real pipeline reporting its stages, in this process | `tests/integration/reconstruction/test_conversion_jobs.py` |
-| The line carrying steps and a withdrawal between real processes | `tests/integration/sampletones_core/parallelization/test_progress_channel.py` |
-| A conversion reporting itself end to end | `tests/integration/reconstruction/test_conversion_progress.py` |
-
-The two cross-process suites run real worker processes and stand something cheap in for the work —
-counting in one, a walk through the stages in the other — so what they measure is the wiring rather
-than a reconstruction. Both hold their worker at a chosen point until the test has taken the reading
-it is asserting on (`tests/suite/release.py`), so an assertion about work under way is made while
-that work is provably under way rather than resting on the scheduler.
+The two cross-process suites run real worker processes and put something cheap in place of the work:
+counting in one, a walk through the stages in the other. They measure the wiring and not a reconstruction.
+Both hold their worker at a chosen point until the test has taken the reading it asserts on
+(`tests/suite/release.py`). An assertion about work under way is therefore made while that work is provably
+under way, and does not rest on the scheduler.

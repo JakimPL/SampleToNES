@@ -3,10 +3,6 @@ from typing import Dict, FrozenSet, List, Self
 
 from pydantic import ConfigDict, Field, model_validator
 
-from sampletones_core.constants.algorithm import (
-    ALL_STEMS_CHANNEL_CAP,
-    DEFAULT_STEMS_CHANNEL_CAP,
-)
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import DataModel
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
@@ -15,40 +11,34 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.settings impor
 
 
 class StemsConfig(DataModel):
+    """The setup a run hands its channels out under: the stems, and the order they pick in.
+
+    Each entry states what its recording is converted with, the count and the drives included, so
+    the setup carries every per-recording choice and the hierarchy alone speaks for the run.
+    """
+
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     entries: List[StemEntry] = Field(
         default_factory=list,
-        description="The competing stems and the channels each may occupy",
+        description="The competing stems, each with what its recording is converted with",
     )
     hierarchy: StemsHierarchy = Field(
         default_factory=StemsHierarchy,
         description="The precedence structure of the stems assignment",
     )
-    channel_cap: int = Field(
-        default=DEFAULT_STEMS_CHANNEL_CAP,
-        ge=1,
-        description="The most channels one stem holds per frame",
-    )
 
     @classmethod
-    def single_entry(
-        cls,
-        channels: List[ChannelName],
-        bends: List[ChannelName],
-        *,
-        channel_cap: int = ALL_STEMS_CHANNEL_CAP,
-    ) -> Self:
-        """The setup for one stem covering ``channels`` and bending ``bends``, the classic run's shape.
+    def single_entry(cls, settings: StemSettings) -> Self:
+        """The setup of one stem converted with ``settings`` on a single precedence level.
 
-        One entry holding every channel on a single precedence level reproduces the classic
-        greedy pick when the cap equals the channel count, so this setup describes both a
-        single-file conversion and the stems pipeline's simplest case.
+        One entry covering every channel it is given, sounding all of them at once, reproduces the
+        classic greedy pick, so this setup describes both a single-file conversion and the stems
+        pipeline's simplest case.
         """
         return cls(
-            entries=[StemEntry(id=0, settings=StemSettings(channels=channels, bends=bends))],
+            entries=[StemEntry(id=0, settings=settings)],
             hierarchy=StemsHierarchy(levels=[[0]]),
-            channel_cap=channel_cap,
         )
 
     @cached_property
@@ -65,17 +55,6 @@ class StemsConfig(DataModel):
     def covered_channels(self) -> FrozenSet[ChannelName]:
         """Every channel some stem may occupy, which is the set an assignment puts in play."""
         return frozenset(channel for entry in self.entries for channel in entry.settings.channels)
-
-    @property
-    def frame_budget(self) -> int:
-        """The most channels that can sound in one frame under this setup.
-
-        Each stem holds at most ``channel_cap`` channels per frame and every held channel is one
-        of the covered ones, so the smaller of the two bounds is what a frame can reach. The
-        working level is measured against this budget, which keeps a capped run's target within
-        what its channels render.
-        """
-        return min(len(self.covered_channels), len(self.entries) * self.channel_cap)
 
     @model_validator(mode="after")
     def _validate_unique_entry_ids(self) -> Self:

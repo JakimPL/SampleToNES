@@ -266,6 +266,7 @@ class GUIFileBrowserPanel(GUITreePanel, ABC):
             refresh,
             lambda: self._collect_specs(self.tree_tag),
             root_tag=self.tree_tag,
+            retry=self.rebuild_tree,
             on_finished=self._on_rebuild_finished,
         )
 

@@ -10,6 +10,7 @@ from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.generators import get_generators_by_channels
 from sampletones_core.instructions import PulseInstruction, TriangleInstruction
+from sampletones_core.reconstructions.reconstructor.contribution import Contribution
 from sampletones_core.reconstructions.reconstructor.matching import ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.refinement import refiner
 from sampletones_core.reconstructions.reconstructor.refinement.refiner import PitchRefiner
@@ -40,7 +41,6 @@ def _stems(*entries: StemEntry) -> StemsConfig:
     return StemsConfig(
         entries=list(entries),
         hierarchy=StemsHierarchy(levels=[[entry.id for entry in entries]]),
-        channel_cap=len(TONES),
     )
 
 
@@ -62,7 +62,10 @@ def _stream(channel_name: ChannelName) -> List[ScoredCandidate]:
         if channel_name is ChannelName.PULSE1
         else TriangleInstruction(on=True, pitch=PITCH)
     )
-    return [ScoredCandidate(instruction=instruction, cost=0.0, approximation=np.zeros(1)) for _ in range(FRAMES)]
+    return [
+        ScoredCandidate(instruction=instruction, cost=0.0, contribution=Contribution.silence(1, 1))
+        for _ in range(FRAMES)
+    ]
 
 
 def _bends(streams: Dict[ChannelName, List[ScoredCandidate]], channel_name: ChannelName) -> List[int]:

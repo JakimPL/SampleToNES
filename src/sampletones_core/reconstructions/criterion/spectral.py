@@ -1,10 +1,10 @@
 from typing import Tuple
 
-from sampletones_core.constants.algorithm import SPECTRUM_FLOOR
 from sampletones_core.constants.enums import SpectralDistance
 from sampletones_shared.array import xp
 
 from .alignment import align_candidates
+from .metric import SpectralMetric
 
 
 def calculate_spectral_loss(
@@ -12,22 +12,20 @@ def calculate_spectral_loss(
     candidates: xp.ndarray,
     weights: xp.ndarray,
     *,
-    distance: SpectralDistance,
-    divergence_beta: float,
+    metric: SpectralMetric,
 ) -> xp.ndarray:
     """
     Weighted spectral distance between a target feature and candidate features.
 
-    The per-bin distances are weighted and normalized by the target's own weighted
-    energy, so the score reflects spectral shape at every target level. The
-    `SPECTRUM_FLOOR` in the denominator keeps the ratio finite for silent targets.
+    The per-bin distances are weighted and divided by the target's own weighted energy, so a
+    score reflects spectral shape at every target level. Every side measures power above the
+    target's `spectral_floor`, which keeps the reading finite for silent targets.
 
     Args:
         reference: Target feature values, one dimension.
         candidates: Candidate feature values, one candidate per row.
         weights: Per-bin weights of the configuration.
-        distance: Per-bin distance family.
-        divergence_beta: Beta parameter of the beta-divergence distance.
+        metric: The distance family and the scale bins are measured on.
 
     Returns:
         One loss per candidate.
@@ -38,8 +36,9 @@ def calculate_spectral_loss(
         ValueError: If the spectral distance is unsupported.
     """
     reference, candidates, weights = _prepare(reference, candidates, weights)
+    floor = spectral_floor(reference, metric=metric)
 
-    match distance:
+    match metric.distance:
         case SpectralDistance.SQUARED:
             numerator = xp.sqrt(
                 xp.sum(
@@ -55,15 +54,37 @@ def calculate_spectral_loss(
                 * _beta_divergence(
                     reference,
                     candidates,
-                    divergence_beta,
+                    metric.divergence_beta,
+                    floor,
                 ),
                 axis=-1,
             )
         case _:
-            raise ValueError(f"Unsupported spectral distance: {distance}")
+            raise ValueError(f"Unsupported spectral distance: {metric.distance}")
 
-    denominator = weighted_reference_energy(reference, weights, distance=distance)
-    return numerator / (denominator + SPECTRUM_FLOOR)
+    denominator = weighted_reference_energy(reference, weights, distance=metric.distance)
+    return numerator / (denominator + floor)
+
+
+def spectral_floor(reference: xp.ndarray, *, metric: SpectralMetric) -> xp.ndarray:
+    """
+    The power a bin of the target's frame is measured above, set by that frame's loudest bin.
+
+    The floor sits the metric's dynamic range under the loudest bin, so a candidate's addition is
+    charged wherever it stays audible beside what the frame sounds, at every frame loudness: quiet
+    noise under a loud tone costs what it adds, and noise filling a frame costs what it leaves out.
+    A frame whose loudest bin lies under the metric's silence floor is measured from that level,
+    which keeps the floor positive for a silent frame.
+
+    Args:
+        reference: Target feature values.
+        metric: The scale the frame is measured on.
+
+    Returns:
+        The floor, as a scalar on the active array backend.
+    """
+    loudest = xp.maximum(xp.max(reference), metric.silence_floor)
+    return loudest * 10.0 ** (-metric.dynamic_range_decibels / 10.0)
 
 
 def weighted_reference_energy(
@@ -115,17 +136,35 @@ def _beta_divergence(
     reference: xp.ndarray,
     candidates: xp.ndarray,
     beta: float,
+    floor: xp.ndarray,
 ) -> xp.ndarray:
-    reference = reference + SPECTRUM_FLOOR
-    candidates = candidates + SPECTRUM_FLOOR
+    """
+    Per-bin beta-divergence of the floored candidates from the floored reference.
+
+    Every branch reads the divergence off the relative difference `u` of the two spectra, in double
+    precision, and returns it in the reference's precision. The divergence of a small `u` is about
+    `u² / 2` while its rounding stays near machine epsilon times `|u|`, so double precision measures
+    a candidate whose spectrum differs from the reference by a millionth as finely as a loud one.
+    """
+    precision = reference.dtype
+    reference = reference.astype(xp.float64)
+    candidates = candidates.astype(xp.float64)
+    floor = xp.asarray(floor, dtype=xp.float64)
+    floored_reference = reference + floor
+    floored_candidates = candidates + floor
 
     if beta == 1.0:
-        return reference * (xp.log(reference) - xp.log(candidates)) + (candidates - reference)
+        divergence = floored_reference * _log_excess((candidates - reference) / floored_reference)
+    elif beta == 0.0:
+        divergence = _log_excess((reference - candidates) / floored_candidates)
+    else:
+        relative = (reference - candidates) / floored_candidates
+        excess = xp.expm1(beta * xp.log1p(relative)) - beta * relative
+        divergence = floored_candidates**beta * excess / (beta * (beta - 1.0))
 
-    if beta == 0.0:
-        ratio = reference / candidates
-        return ratio - xp.log(ratio) - 1.0
+    return divergence.astype(precision)
 
-    return (reference**beta + (beta - 1.0) * candidates**beta - beta * reference * candidates ** (beta - 1.0)) / (
-        beta * (beta - 1.0)
-    )
+
+def _log_excess(relative: xp.ndarray) -> xp.ndarray:
+    """`u - log(1 + u)`, the divergence of a ratio `1 + u` from one, which vanishes quadratically at `u = 0`."""
+    return relative - xp.log1p(relative)

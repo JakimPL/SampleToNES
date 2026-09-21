@@ -12,6 +12,7 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
+from sampletones_core.reconstructions.reconstructor.contribution import Contribution
 from sampletones_core.reconstructions.reconstructor.matching import ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.stems.assignment.track import TrackAssignment
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
@@ -32,6 +33,10 @@ def _fragment(config: Config) -> Fragment:
     )
 
 
+def _silence(fragment: Fragment) -> Contribution:
+    return Contribution.silence(len(fragment.feature.values), fragment.audio.shape[0])
+
+
 def _choices(config: Config) -> Tuple[StemChoice, StemChoice]:
     fragment = _fragment(config)
     return (
@@ -49,10 +54,13 @@ def _choice(
     return StemChoice(
         stem_id=stem_id,
         channel_name=channel_name,
-        instruction=instruction,
-        approximation=fragment,
-        cost=FRAME_COST,
-        column=(ScoredCandidate(instruction=instruction, cost=FRAME_COST, approximation=fragment),),
+        column=(
+            ScoredCandidate(
+                instruction=instruction,
+                cost=FRAME_COST,
+                contribution=_silence(fragment),
+            ),
+        ),
     )
 
 
@@ -61,7 +69,13 @@ def _rest(config: Config) -> StemRest:
     instruction = NoiseInstruction.null_instruction()
     return StemRest(
         channel_name=ChannelName.NOISE,
-        column=(ScoredCandidate(instruction=instruction, cost=RESTING_FRAME_COST, approximation=fragment),),
+        column=(
+            ScoredCandidate(
+                instruction=instruction,
+                cost=RESTING_FRAME_COST,
+                contribution=_silence(fragment),
+            ),
+        ),
     )
 
 
@@ -138,6 +152,30 @@ class TestTrackAssignment:
 
         assert set(track.lattices) == {ChannelName.PULSE1}
         assert set(track.stem_ids) == {ChannelName.PULSE1}
+
+    def test_a_frame_decoded_silent_is_released_to_the_resting_stem(self) -> None:
+        config = Config()
+        first, _ = _choices(config)
+        silent_pick = _choice(0, ChannelName.PULSE1, PulseInstruction.null_instruction(), _fragment(config))
+
+        track = TrackAssignment([ChannelName.PULSE1])
+        for choice in (first, silent_pick, first):
+            track.add(StemFrameAssignment(choices=(choice,), rests=()))
+        track.release_silent({ChannelName.PULSE1: [column[0] for column in track.lattices[ChannelName.PULSE1]]})
+
+        assert track.stem_ids[ChannelName.PULSE1] == [first.stem_id, RESTING_STEM_ID, first.stem_id]
+        assert track.resting_channels == []
+
+    def test_a_channel_decoded_silent_throughout_is_named_resting(self) -> None:
+        config = Config()
+        silent_pick = _choice(0, ChannelName.PULSE1, PulseInstruction.null_instruction(), _fragment(config))
+
+        track = TrackAssignment([ChannelName.PULSE1])
+        for _ in range(3):
+            track.add(StemFrameAssignment(choices=(silent_pick,), rests=()))
+        track.release_silent({ChannelName.PULSE1: [column[0] for column in track.lattices[ChannelName.PULSE1]]})
+
+        assert track.resting_channels == [ChannelName.PULSE1]
 
 
 class TestHierarchyMode:

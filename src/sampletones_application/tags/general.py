@@ -8,6 +8,12 @@ TAG_GLOBAL_WINDOW_MAIN = TagName(
     Widget.WINDOW,
     "main",
 )
+TAG_GLOBAL_CONTEXT_WINDOW = TagName(
+    Page.GLOBAL,
+    Panel.CONTEXT,
+    Widget.WINDOW,
+    "context",
+)
 TAG_GLOBAL_TABS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -61,6 +67,12 @@ TAG_GLOBAL_FONT_REGULAR = TagName(
     Panel.IMPLICIT,
     Widget.FONT,
     "regular",
+)
+TAG_GLOBAL_FONT_REGULAR_TINY = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.FONT,
+    "regular_tiny",
 )
 TAG_GLOBAL_FONT_REGULAR_SMALL = TagName(
     Page.GLOBAL,
@@ -121,6 +133,30 @@ TAG_GLOBAL_THEME_SECONDARY_BUTTON = TagName(
     Panel.IMPLICIT,
     Widget.THEME,
     "secondary_button",
+)
+TAG_GLOBAL_THEME_STEP_BUTTON = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "step_button",
+)
+TAG_GLOBAL_THEME_STEP_BUTTON_LIT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "step_button_lit",
+)
+TAG_GLOBAL_THEME_STEP_BUTTON_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "step_button_partial",
+)
+TAG_GLOBAL_THEME_STEP_BUTTON_DIM = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "step_button_dim",
 )
 TAG_GLOBAL_THEME_DANGER_BUTTON = TagName(
     Page.GLOBAL,
@@ -836,6 +872,7 @@ SUF_HANDLER_NODE = compose_tag("handler", "node")
 SUF_HANDLER_DETAIL_TOOLTIP = compose_tag("handler", "detail_tooltip")
 SUF_HANDLER_HEADER = compose_tag("handler", "header")
 SUF_HANDLER_DRAG = compose_tag("handler", "drag")
+SUF_HANDLER_DRAWN = compose_tag("handler", "drawn")
 SUF_HANDLER_LIST = compose_tag("handler", "list")
 SUF_LABEL = "label"
 SUF_LEAD = "lead"
@@ -845,8 +882,10 @@ SUF_TEXT_FAVORITES = compose_tag(SUF_TEXT, "favorites")
 SUF_INPUT = "input"
 SUF_INPUT_SEARCH = compose_tag(SUF_INPUT, "search")
 SUF_CHECKBOX = "checkbox"
+SUF_SLIDER = "slider"
 SUF_CHECKBOX_FAVORITES = compose_tag(SUF_CHECKBOX, "favorites")
 SUF_STRIP = "strip"
+SUF_SWATCH = "swatch"
 SUF_TABLE = "table"
 SUF_TABLE_COLUMN = compose_tag(SUF_TABLE, "column")
 SUF_TABLE_GAP = compose_tag(SUF_TABLE, "gap")

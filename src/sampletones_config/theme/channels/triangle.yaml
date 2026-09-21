@@ -15,3 +15,11 @@ components:
       - type: color
         key: Text
         value: .channel_triangle
+  - item_type: SliderFloat
+    entries:
+      - type: color
+        key: SliderGrab
+        value: .channel_triangle
+      - type: color
+        key: SliderGrabActive
+        value: .channel_triangle_soft

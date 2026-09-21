@@ -5,28 +5,9 @@ This page is for using _SampleToNES_ as a library in your own Python code. Use i
 Names come from two packages:
 
 - The names in the table below come from `sampletones`: `from sampletones import ...`.
-- The examples also use a few helpers from `sampletones_core`: `write_wave`, `generate_library`, `DEFAULT_CHANNELS`, and the FamiTracker instrument writers. Import them with the full path each example shows.
+- The examples also use a few helpers from `sampletones_core` that are not in the table: `write_wave`, `ensure_library`, `DEFAULT_CHANNELS`, and the FamiTracker instrument writers. Import them with the full path each example shows.
 
 ## Public surface
-
-```python
-from sampletones import (
-    Config,
-    Window,
-    InstructionLibrary,
-    Reconstruction,
-    Reconstructor,
-    ChannelName,
-    Generator,
-    PulseGenerator,
-    TriangleGenerator,
-    NoiseGenerator,
-    Instruction,
-    PulseInstruction,
-    TriangleInstruction,
-    NoiseInstruction,
-)
-```
 
 | Name | Purpose |
 | --- | --- |
@@ -51,24 +32,18 @@ The package version is available as `sampletones.__version__`.
 from sampletones import Config, PulseGenerator, PulseInstruction
 from sampletones_core.audio.io import write_wave
 
-# Load configuration
 config = Config.load("config.json")
 
-# Prepare generator and instruction
 generator = PulseGenerator(config)
 instruction = PulseInstruction(on=True, pitch=55, volume=7, duty_cycle=2)
-
-# Generate waveform
 audio = generator(instruction)
 
-# Save audio file
-sample_rate = config.sample_rate
-write_wave("pulse.wav", sample_rate, audio)
+write_wave("pulse.wav", config.sample_rate, audio)
 ```
 
 The output is a single `G2` square wave one frame long.
 
-Each generator keeps an oscillator phase and clock. By default a call renders a standalone waveform and leaves that state where it was; pass `save=True` to advance it into the next call, so a sequence of instructions renders as one continuous signal:
+Each generator keeps an oscillator phase and clock. A call renders a standalone waveform and leaves that state where it was. Pass `save=True` to advance the state into the next call, so a sequence of instructions renders as one continuous signal:
 
 ```python
 audio = generator(instruction, save=True)  # advances the generator state
@@ -76,17 +51,17 @@ audio = generator(instruction, save=True)  # advances the generator state
 
 ### Generate an instruction library
 
-A reconstruction searches an [instruction library](../formats/instruction-libraries.md) built for its configuration, so the library must exist first. Generate it once for a given config:
+A reconstruction searches an [instruction library](../formats/instruction-libraries.md) built for its configuration by this version of _SampleToNES_, so prepare the library first:
 
 ```python
 from sampletones import Config
-from sampletones_core.headless.library import generate_library
+from sampletones_core.headless.library import ensure_library
 
 config = Config.load("config.json")
-generate_library(config)  # renders every instruction and writes the .ins library
+ensure_library(config)  # builds the .ins library when it is missing or another version built it
 ```
 
-The same step is reached from the application's _Instructions_ tab, or on the command line with `sampletones library --config config.json`.
+The application's _Instructions_ tab and `sampletones library --config config.json` do the same.
 
 ### Reconstruct a sample
 
@@ -97,19 +72,14 @@ from sampletones import Config, Reconstructor
 from sampletones_core.audio.io import write_wave
 from sampletones_core.constants.enums import DEFAULT_CHANNELS
 
-# Load configuration
 config = Config.load("config.json")
 
-# Prepare the reconstructor for the channels the run may use
+# The channels the run may use
 reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS))
 
-# Reconstruct an audio file and save the reconstruction
 reconstruction = reconstructor("sample.wav")
 reconstruction.save("reconstruction.stn")
-
-# Save the reconstruction waveform
-sample_rate = config.sample_rate
-write_wave("reconstruction.wav", sample_rate, reconstruction.approximation)
+write_wave("reconstruction.wav", config.sample_rate, reconstruction.approximation)
 ```
 
 ### Load a reconstruction
@@ -139,4 +109,4 @@ for channel, features in reconstruction.export().items():
     write_fti(f"{channel.value}.fti", instrument)
 ```
 
-This writes one `.fti` per channel, named after the channel. A complete FamiTracker `.ftm` module is assembled from a project in the application, not from a single reconstruction — see [FamiTracker formats](../formats/famitracker.md).
+This writes one `.fti` per channel, named after the channel. A `.ftm` module comes from a project in the application. See [FamiTracker formats](../formats/famitracker.md).

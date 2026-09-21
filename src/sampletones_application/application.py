@@ -322,6 +322,7 @@ class Application:
             layout=self.layout.tabs.main.converter,
             stems_layout=self.layout.general.stems,
             glyphs=self.layout.glyphs.common,
+            stem_colors=self.layout.general.colors.stems,
             language_manager=self.language_manager,
             status_bar=self.status_bar,
             title=self.language_manager["main.converter.title.stem_selection_dialog"],
@@ -532,7 +533,7 @@ class Application:
                 on_load_directory=self._navigate_to_reconstructions,
                 on_canceled=self._refresh_browsers,
                 on_refresh_trees=self._refresh_browsers,
-                on_generate_library=self._instructions_tab.ensure_library_loaded,
+                on_prepare_library=self._instructions_tab.prepare_library,
             ),
             layout=MainTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
@@ -663,7 +664,7 @@ class Application:
         self._project_coordinator.load_project_safely(path)
 
     def _try_load_library(self, path: Path) -> None:
-        self._instructions_tab.load_library_safely(path)
+        self._instructions_tab.load_library_file(path)
 
     def _load_layout_config(self) -> LayoutConfig:
         try:
@@ -969,8 +970,6 @@ class Application:
             logger.warning("A conversion or library generation is already in progress; cannot start a new one")
             return
 
-        self._instructions_tab.ensure_library_loaded()
-
         filepath = open_file_dialog(
             title=self.language_manager["global.dialog.title.reconstruct_file"],
             initial_directory=self.session_manager.get_audio_input_path(),
@@ -988,8 +987,6 @@ class Application:
         if self._is_operation_active():
             logger.warning("A conversion or library generation is already in progress; cannot start a new one")
             return
-
-        self._instructions_tab.ensure_library_loaded()
 
         directory = select_directory_dialog(
             title=self.language_manager["global.dialog.title.reconstruct_directory"],
@@ -1076,7 +1073,7 @@ class Application:
 
     @ignore_none_path
     def _handle_reconstruct_file(self, filepath: Path) -> None:
-        self._reconstruct_file(filepath)
+        self._main_tab.request_reconstruct_file(filepath)
 
     def _reconstruct_directory(self, directory_path: Path) -> None:
         self._main_tab.convert_path(directory_path)
@@ -1086,7 +1083,7 @@ class Application:
 
     @ignore_none_path
     def _handle_reconstruct_directory(self, directory_path: Path) -> None:
-        self._reconstruct_directory(directory_path)
+        self._main_tab.request_reconstruct_directory(directory_path)
 
     def _on_playback_error(self, exception: Exception) -> None:
         logger.error_with_traceback(exception, "Playback error occurred")
@@ -1381,8 +1378,7 @@ class Application:
             get_dialog_tag(TAG_GLOBAL_DIALOG_ABOUT),
             self.language_manager["global.dialog.title.about"],
             content,
-            width=about.width,
-            height=about.height,
+            geometry=about.window,
         )
 
     def _refresh_audio_devices(self) -> None:
@@ -1735,7 +1731,7 @@ class Application:
             stop_background_workers()
             self._playback_router.shutdown()
             self._main_tab.cleanup()
-            self.library_manager.shutdown()
+            self.library_manager.release_creator()
             save_failed = self._save_config()
 
             self._persist_application_state()

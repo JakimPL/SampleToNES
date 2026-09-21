@@ -4,6 +4,7 @@ from typing import Any, Callable, Final, FrozenSet, List, Optional, Sequence, Tu
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.glyphs.common import CommonGlyphs
 from sampletones_application.layout.tabs.main.converter import ConverterLayout
@@ -61,6 +62,7 @@ class GUIStemSelectionWindow(GUIDialogWindow):
         layout: ConverterLayout,
         stems_layout: StemsListLayout,
         glyphs: CommonGlyphs,
+        stem_colors: StemColors,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         title: str,
@@ -85,6 +87,7 @@ class GUIStemSelectionWindow(GUIDialogWindow):
             layout=stems_layout,
             ceiling=layout.stem_selection_list,
             glyphs=glyphs,
+            stem_colors=stem_colors,
             language_manager=language_manager,
             status_bar=status_bar,
             offer=PICKED_SOURCES,
@@ -97,8 +100,7 @@ class GUIStemSelectionWindow(GUIDialogWindow):
 
         super().__init__(
             tag=TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION,
-            width=layout.stem_selection.width,
-            height=layout.stem_selection.height,
+            geometry=layout.stem_selection,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )

@@ -4,6 +4,7 @@ from typing import Final, Optional, Tuple
 from pydantic import BaseModel, ConfigDict
 
 NOTHING_TO_DO: Final[int] = 0
+SINGLE_TASK: Final[int] = 1
 
 
 class TaskStatus(Enum):
@@ -14,7 +15,6 @@ class TaskStatus(Enum):
     FAILED = "FAILED"
     CANCELING = "CANCELING"
     CANCELED = "CANCELED"
-    CLEANING_UP = "CLEANING_UP"
 
 
 class TaskStep(BaseModel):
@@ -52,6 +52,11 @@ class TaskProgress(BaseModel):
     completed: int
     current_item: Optional[str] = None
     steps: Tuple[TaskStep, ...] = ()
+
+    @property
+    def is_single(self) -> bool:
+        """The run is one task, whose own step is the whole of what the run has to report."""
+        return self.total <= SINGLE_TASK
 
     @property
     def partial(self) -> float:

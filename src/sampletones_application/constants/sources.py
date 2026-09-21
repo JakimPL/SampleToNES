@@ -2,14 +2,17 @@ from enum import StrEnum
 
 
 class SourceKind(StrEnum):
-    """The two kinds of row a converter's list holds.
+    """The kinds of row a stems list holds.
 
     A recording stands for itself and a folder for what was found below it, which is what decides
-    how a row is drawn, what one gesture on it settles, and what taking it out takes with it.
+    how a row is drawn, what one gesture on it settles, and what taking it out takes with it. A
+    list describing a finished conversion holds a third: the frames the reader wrote by hand,
+    which answer to no recording and are named where they are drawn.
     """
 
     RECORDING = "recording"
     FOLDER = "folder"
+    EDITS = "edits"
 
 
 class SettingsField(StrEnum):

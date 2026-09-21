@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
 
+from sampletones_application.categories.estimate import time_estimation
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
@@ -31,7 +32,6 @@ from sampletones_core.audio.writers import (
     available_depths,
 )
 from sampletones_core.constants.enums import ALL_CHANNELS
-from sampletones_core.parallelization import ETAEstimator
 from sampletones_shared.constants.project import DEFAULT_EXPORT_NAME
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
@@ -68,11 +68,11 @@ class SongRenderLogic(CallbackMixin):
         self._session_manager = session_manager
         self._service = render_service
         self._is_operation_active = is_operation_active
+        self._language_manager = language_manager
         self._msg_canceling = language_manager["settings.render.message.status_canceling"]
         self._msg_canceled = language_manager["settings.render.message.status_canceled"]
         self._msg_completed = language_manager["settings.render.message.status_completed"]
         self._msg_failed = language_manager["settings.render.message.status_failed"]
-        self._eta_template = language_manager["global.dialog.template.time_estimation"]
         self._stage_messages: Dict[RenderStage, str] = {
             RenderStage.SYNTHESIS: language_manager["settings.render.message.status_synthesis"],
             RenderStage.ENCODING: language_manager["settings.render.message.status_encoding"],
@@ -220,13 +220,8 @@ class SongRenderLogic(CallbackMixin):
         self._report(status_text, progress.fraction)
 
     def _stage_status(self, stage: RenderStage, eta_seconds: Optional[float]) -> str:
-        """What the pass is doing, and how long it has left where an estimate stands."""
-        status_text = self._stage_messages[stage]
-        eta_string = ETAEstimator.format_duration(eta_seconds)
-        if eta_string:
-            status_text += self._eta_template.format(eta_string=eta_string)
-
-        return status_text
+        """What the pass is doing, and how long it has left."""
+        return self._stage_messages[stage] + time_estimation(self._language_manager, eta_seconds)
 
     def _on_render_complete(self, destination: Path) -> None:
         self._phase = RenderPhase.COMPLETED

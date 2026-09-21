@@ -1,6 +1,7 @@
 from abc import ABC
 from typing import Final, List, Optional
 
+from sampletones_application.layout.primitives import DialogGeometry
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG
 from sampletones_application.ui.elements.window import GUIWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -30,8 +31,7 @@ class GUIDialogWindow(GUIWindow, ABC):
     def __init__(
         self,
         tag: str,
-        width: int,
-        height: int,
+        geometry: DialogGeometry,
         *,
         key_router: KeyRouter,
         shortcut_source: ShortcutSource,
@@ -40,11 +40,7 @@ class GUIDialogWindow(GUIWindow, ABC):
         self._shortcuts = shortcut_source
         self._navigator: Optional[DialogKeyboardNavigator] = None
 
-        super().__init__(
-            tag,
-            width,
-            height,
-        )
+        super().__init__(tag, geometry)
 
     def _install_navigation(
         self,

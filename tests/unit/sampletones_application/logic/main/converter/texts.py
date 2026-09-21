@@ -15,7 +15,8 @@ TEXTS: Final[Dict[str, str]] = {
     "main.converter.message.stage_loading": "reading",
     "main.converter.message.stage_matching": "matching",
     "main.converter.message.stage_decoding": "decoding",
-    "main.converter.message.stage_rendering": "rendering",
+    "main.converter.message.stage_gathering": "gathering",
+    "global.dialog.label.unknown_duration": "?",
     "global.dialog.template.time_estimation": "",
 }
 

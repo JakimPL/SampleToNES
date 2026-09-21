@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Final
+from dataclasses import dataclass
+from typing import Final, Tuple
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -8,11 +9,28 @@ import pytest
 
 from sampletones_core.configs import Config, MetricConfig, WeightsConfig
 from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
-from sampletones_core.fft import Window
+from sampletones_core.fft import CyclicArray, Window
 from sampletones_core.reconstructions.criterion import Criterion
+from sampletones_core.reconstructions.criterion.metric import SpectralMetric
+from sampletones_core.reconstructions.criterion.spectral import spectral_floor
 from sampletones_shared.array import to_numpy
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 LONG_SIGNAL_LENGTH: Final[int] = 1 << 20
+SHIPPED_METRIC: Final[SpectralMetric] = SpectralMetric.from_config(Config().generation.metric)
+SILENT_FRAME_FLOOR: Final[float] = SHIPPED_METRIC.silence_floor * 10.0 ** (
+    -SHIPPED_METRIC.dynamic_range_decibels / 10.0
+)
+HISS_LEVEL: Final[float] = SILENT_FRAME_FLOOR / 1e5
+QUIET_NOISE_LEVEL: Final[float] = 10.0 * HISS_LEVEL
+TONE_POWER: Final[float] = 0.03
+ADDED_NOISE_POWER: Final[float] = 1e-5
+AUDIBLE_ADDITION_COST: Final[float] = 1e-3
+SECOND_ORDER_TOLERANCE: Final[float] = 1e-3
+CYCLE_SAMPLES: Final[int] = 97
+CANDIDATE_SEED: Final[int] = 7
+CONSTANT_LEVEL: Final[float] = 0.05
 
 
 def _criterion_with_distance(
@@ -31,6 +49,10 @@ def _criterion_with_distance(
     return Criterion(updated_config, window, LONG_SIGNAL_LENGTH)
 
 
+def _hiss(bins: int) -> np.ndarray:
+    return np.linspace(0.5, 1.5, bins) * HISS_LEVEL
+
+
 @pytest.fixture(scope="module")
 def config() -> Config:
     return Config()
@@ -44,6 +66,11 @@ def window(config: Config) -> Window:
 @pytest.fixture(scope="module")
 def criterion(config: Config, window: Window) -> Criterion:
     return Criterion(config, window, LONG_SIGNAL_LENGTH)
+
+
+@pytest.fixture(scope="module")
+def bins(criterion: Criterion) -> int:
+    return int(criterion.weights.shape[-1])
 
 
 class TestCriterionTemporalLoss:
@@ -110,6 +137,50 @@ class TestCriterionTemporalLoss:
         assert loss == pytest.approx(0.1 / criterion.temporal_level_floor, rel=1e-5)
 
 
+class TestCriterionExpectedTemporalLoss:
+    """
+    A candidate standing at every phase alike is measured by the loss its phases average to, which
+    its mean and variance state.
+    """
+
+    def test_the_expected_loss_is_the_mean_square_over_every_shift(
+        self,
+        criterion: Criterion,
+        config: Config,
+    ) -> None:
+        generator = np.random.default_rng(CANDIDATE_SEED)
+        sample = CyclicArray(
+            array=(0.3 * generator.standard_normal(CYCLE_SAMPLES) + 0.1).astype(np.float32),
+            sample_rate=config.library.sample_rate,
+        )
+        target = generator.standard_normal(config.frame_length)
+        mean_squares = [
+            np.mean((target - sample.get_fragment(shift, config.frame_length)) ** 2) for shift in range(sample.length)
+        ]
+        level = max(float(np.sqrt(np.mean(target**2))), criterion.temporal_level_floor)
+
+        loss = float(to_numpy(criterion.expected_temporal_loss(target, sample.mean, sample.variance))[0])
+
+        assert loss == pytest.approx(float(np.sqrt(np.mean(mean_squares))) / level, rel=1e-5)
+
+    def test_a_candidate_holding_one_level_expects_the_loss_it_scores(
+        self,
+        criterion: Criterion,
+        config: Config,
+    ) -> None:
+        target = np.random.default_rng(CANDIDATE_SEED).standard_normal(config.frame_length)
+        candidate = np.full((1, config.frame_length), CONSTANT_LEVEL)
+
+        scored = float(to_numpy(criterion.temporal_loss(target, candidate))[0])
+        expected = float(to_numpy(criterion.expected_temporal_loss(target, CONSTANT_LEVEL, 0.0))[0])
+
+        assert expected == pytest.approx(scored, rel=1e-6)
+
+    def test_2d_reference_raises_value_error(self, criterion: Criterion, config: Config) -> None:
+        with pytest.raises(ValueError):
+            criterion.expected_temporal_loss(np.zeros((2, config.frame_length)), 0.0, 0.0)
+
+
 class TestCriterionGetLossWeights:
     def test_negative_weight_raises_value_error(self, window: Window) -> None:
         mock_config = MagicMock()
@@ -140,10 +211,6 @@ class TestCriterionGetLossWeights:
 
 
 class TestCriterionSpectralLoss:
-    @pytest.fixture
-    def bins(self, criterion: Criterion) -> int:
-        return int(criterion.weights.shape[-1])
-
     def test_beta_divergence_is_zero_for_identical_spectrum(
         self,
         config: Config,
@@ -198,6 +265,103 @@ class TestCriterionSpectralLoss:
         distant = reference + np.float32(0.5)
         loss = criterion.spectral_loss(reference, np.stack([close, distant]))
         assert float(loss[0]) < float(loss[1])
+
+    def test_a_hiss_below_the_floor_scores_silence_closer_than_quiet_noise(
+        self,
+        config: Config,
+        window: Window,
+        bins: int,
+    ) -> None:
+        """
+        A hiss lying far below a silent frame's floor sits nearer silence than a louder noise, so
+        silence stays among the candidates a quiet frame keeps.
+        """
+        criterion = _criterion_with_distance(config, window, SpectralDistance.BETA_DIVERGENCE, beta=1.0)
+        reference = _hiss(bins).astype(np.float32)
+        candidates = np.stack(
+            [
+                np.zeros(bins, dtype=np.float32),
+                np.full(bins, QUIET_NOISE_LEVEL, dtype=np.float32),
+            ]
+        )
+        silence, quiet_noise = to_numpy(criterion.spectral_loss(reference, candidates))
+        assert silence < quiet_noise
+
+
+class TestCriterionBetaDivergenceAtTheFloor(BaseTestSuite):
+    """
+    Spectra lying far below a silent frame's floor score by the divergence their small difference
+    carries, which keeps the losses of near-silent frames apart in single-precision features.
+
+    A relative difference `u` diverges by about `u² / 2`, so a candidate one hiss level away from a
+    hiss reference costs `(c - r)² / 2` over the floored spectrum raised to `β - 2`.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        beta: float
+
+    test_cases = (
+        TestCase(label="itakura_saito", beta=0.0),
+        TestCase(label="general", beta=0.5),
+        TestCase(label="kullback_leibler", beta=1.0),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_hiss_scores_its_second_order_divergence(
+        self,
+        config: Config,
+        window: Window,
+        bins: int,
+        test_case: TestCase,
+    ) -> None:
+        criterion = _criterion_with_distance(config, window, SpectralDistance.BETA_DIVERGENCE, beta=test_case.beta)
+        reference = np.full(bins, HISS_LEVEL, dtype=np.float32)
+        candidate = np.full((1, bins), 2 * HISS_LEVEL, dtype=np.float32)
+        weights = to_numpy(criterion.weights).reshape(-1).astype(np.float64)
+        floored = HISS_LEVEL + SILENT_FRAME_FLOOR
+        per_bin = HISS_LEVEL**2 / 2 * floored ** (test_case.beta - 2)
+        expected = np.sum(weights * per_bin) / (np.sum(weights * HISS_LEVEL) + SILENT_FRAME_FLOOR)
+
+        loss = to_numpy(criterion.spectral_loss(reference, candidate))
+
+        np.testing.assert_allclose(loss, [expected], rtol=SECOND_ORDER_TOLERANCE)
+
+
+class TestSpectralFloor:
+    def test_the_floor_follows_the_frame_s_loudest_bin(self, bins: int) -> None:
+        quiet = np.linspace(0.0, 1e-2, bins, dtype=np.float32)
+        loud = 100.0 * quiet
+
+        assert float(to_numpy(spectral_floor(loud, metric=SHIPPED_METRIC))) == pytest.approx(
+            100.0 * float(to_numpy(spectral_floor(quiet, metric=SHIPPED_METRIC)))
+        )
+
+    def test_a_silent_frame_keeps_a_positive_floor(self, bins: int) -> None:
+        assert float(
+            to_numpy(spectral_floor(np.zeros(bins, dtype=np.float32), metric=SHIPPED_METRIC))
+        ) == pytest.approx(SILENT_FRAME_FLOOR)
+
+    def test_quiet_noise_under_a_loud_tone_costs_what_it_adds(
+        self,
+        config: Config,
+        window: Window,
+        bins: int,
+    ) -> None:
+        """Noise far quieter than a tone but audible beside it makes a covering of the tone cost more."""
+        criterion = _criterion_with_distance(config, window, SpectralDistance.BETA_DIVERGENCE, beta=1.0)
+        tone = np.zeros(bins, dtype=np.float32)
+        tone[bins // 4] = TONE_POWER
+        with_noise = tone + np.float32(ADDED_NOISE_POWER)
+
+        alone, noisy = to_numpy(criterion.spectral_loss(tone, np.stack([tone, with_noise])))
+
+        assert alone == pytest.approx(0.0, abs=1e-9)
+        assert noisy > AUDIBLE_ADDITION_COST
 
 
 class TestCriterionCqtAxis:

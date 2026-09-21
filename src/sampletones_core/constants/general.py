@@ -43,6 +43,7 @@ SILENT_VOLUME: Final[int] = 0
 MIN_VOLUME: Final[int] = 1
 MAX_VOLUME: Final[int] = 15
 VOLUME_RANGE: Final[range] = range(MAX_VOLUME + 1)
+QUIETEST_VOLUME_LEVEL: Final[float] = MIN_VOLUME / MAX_VOLUME
 MAX_DUTY_CYCLE: Final[int] = 3
 
 # Channel-specific constants

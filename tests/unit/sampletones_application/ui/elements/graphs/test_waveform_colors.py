@@ -46,6 +46,7 @@ def graph() -> Generator[GUIWaveformGraph, None, None]:
                 tag="waveform",
                 parent="root",
                 layout=layout.graphs,
+                channel_colors=layout.general.colors.channels,
                 language_manager=LanguageManager(LANG_EN),
                 status_bar=MagicMock(),
             )

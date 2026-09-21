@@ -8,18 +8,36 @@ from sampletones_player.compression.pitch import PITCH_COUNT
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.compression import (
+    BEND_FLAG,
+    DEFAULT_COUNT_FLAG,
     OPCODE_SIZE,
+    PHRASE_DEFAULT_SIZE,
     PHRASE_ID_ESCAPE,
+    PHRASE_ID_MASK,
     PHRASE_LENGTH_SIZE,
     PHRASE_TABLE_COUNT_SIZE,
     PHRASE_TABLE_ENTRY_SIZE,
-    PLANE_COUNT,
+    PITCH_INDEX_MASK,
     PLANE_STATE_SIZE,
     TOKEN_OPERAND_MASK,
     TOKEN_TAG_MASK,
     TokenTag,
 )
+from sampletones_player.specification.planes import (
+    COUNT_STEP,
+    NOISE_CONTROL_FORM,
+    NOISE_VALUE_FORM,
+    PLANE_COUNT,
+    PULSE_CONTROL_FORM,
+    SILENT_PITCH_INDEX,
+)
+from sampletones_player.specification.registers import (
+    TRIANGLE_COUNTER_CONTROL,
+    TRIANGLE_SILENT_RELOAD,
+    TRIANGLE_SOUNDING_RELOAD,
+)
 from sampletones_player.specification.song import (
+    ABSENT_STREAM,
     LOOP_ENTRIES_OFFSET,
     LOOP_TICK_OFFSET,
     NO_LOOP,
@@ -49,7 +67,10 @@ STATED: Final[Dict[str, int]] = {
     "STREAM_OFFSETS_OFFSET": STREAM_OFFSETS_OFFSET,
     "LOOP_ENTRIES_OFFSET": LOOP_ENTRIES_OFFSET,
     "NO_LOOP": NO_LOOP,
+    "ABSENT_STREAM": ABSENT_STREAM,
     "PITCH_COUNT": PITCH_COUNT,
+    "BEND_FLAG": BEND_FLAG,
+    "PITCH_INDEX_MASK": PITCH_INDEX_MASK,
     "TOKEN_TAG_MASK": TOKEN_TAG_MASK,
     "TOKEN_OPERAND_MASK": TOKEN_OPERAND_MASK,
     "TAG_HOLD": TokenTag.HOLD,
@@ -61,8 +82,22 @@ STATED: Final[Dict[str, int]] = {
     "PHRASE_TABLE_COUNT_SIZE": PHRASE_TABLE_COUNT_SIZE,
     "PHRASE_TABLE_ENTRY_SIZE": PHRASE_TABLE_ENTRY_SIZE,
     "PHRASE_LENGTH_SIZE": PHRASE_LENGTH_SIZE,
+    "PHRASE_DEFAULT_SIZE": PHRASE_DEFAULT_SIZE,
+    "DEFAULT_COUNT_FLAG": DEFAULT_COUNT_FLAG,
+    "PHRASE_ID_MASK": PHRASE_ID_MASK,
     "PLANE_STATE_SIZE": PLANE_STATE_SIZE,
     "PLANE_STATE_BYTES": PLANE_COUNT * PLANE_STATE_SIZE,
+    "COUNT_STEP": COUNT_STEP,
+    "SILENT_PITCH_INDEX": SILENT_PITCH_INDEX,
+    "TRIANGLE_COUNTER": TRIANGLE_COUNTER_CONTROL,
+    "TRIANGLE_SOUNDING": TRIANGLE_SOUNDING_RELOAD,
+    "TRIANGLE_SILENT": TRIANGLE_SILENT_RELOAD,
+    "PULSE_CONTROL_MASK": PULSE_CONTROL_FORM.value_mask,
+    "PULSE_CONTROL_FIXED": PULSE_CONTROL_FORM.value_or,
+    "NOISE_CONTROL_MASK": NOISE_CONTROL_FORM.value_mask,
+    "NOISE_CONTROL_FIXED": NOISE_CONTROL_FORM.value_or,
+    "NOISE_VALUE_MASK": NOISE_VALUE_FORM.value_mask,
+    "NOISE_VALUE_FIXED": NOISE_VALUE_FORM.value_or,
 }
 
 
@@ -75,6 +110,8 @@ def _value(node: ast.expr, defined: Dict[str, int]) -> int:
             return defined[name]
         case ast.BinOp(left=left, op=ast.Add(), right=right):
             return _value(left, defined) + _value(right, defined)
+        case ast.BinOp(left=left, op=ast.Sub(), right=right):
+            return _value(left, defined) - _value(right, defined)
         case ast.BinOp(left=left, op=ast.Mult(), right=right):
             return _value(left, defined) * _value(right, defined)
 
@@ -86,7 +123,8 @@ def read_equates(path: Path) -> Dict[str, int]:
 
     The driver and the exporter read one song block, so what the assembly believes about the
     layout is held against what the specification states. An include line is ``NAME = value``,
-    where the value is a number, another equate, or the two joined by an addition or a product.
+    where the value is a number, another equate, or the two joined by a sum, a difference or a
+    product.
 
     Args:
         path: The include file to read.

@@ -44,7 +44,7 @@ from sampletones_application.view_model.shared.stems import (
 )
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
-from tests.suite.frames import Frames
+from tests.suite.frames import DrawnFrames
 from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
 
 ROOT_TAG = "test_root"
@@ -92,6 +92,7 @@ def stems_list(dpg_context: None, layout_config: LayoutConfig) -> GUIStemsList:
         layout=layout_config.general.stems,
         ceiling=layout_config.general.stems.well_ceiling,
         glyphs=layout_config.glyphs.common,
+        stem_colors=layout_config.general.colors.stems,
         language_manager=LanguageManager(LANG_EN),
         status_bar=GUIStatusBar(),
         offer=GATHERED_SOURCES,
@@ -106,6 +107,7 @@ def recording(path: Path, *, channels: FrozenSet[ChannelName] = frozenset(CHANNE
     return StemRowViewModel(
         key=str(path),
         kind=SourceKind.RECORDING,
+        name=path.stem,
         path=path,
         held=(),
         channels=channels,
@@ -115,6 +117,7 @@ def recording(path: Path, *, channels: FrozenSet[ChannelName] = frozenset(CHANNE
         available=True,
         level=0,
         position=0,
+        record_position=None,
         level_size=1,
         level_count=1,
     )
@@ -125,6 +128,7 @@ def folder(name: str, *, holds: int) -> StemRowViewModel:
     return StemRowViewModel(
         key=str(root),
         kind=SourceKind.FOLDER,
+        name=root.name,
         path=root,
         held=tuple(recording(root / f"take_{index}.wav") for index in range(holds)),
         channels=frozenset(CHANNELS),
@@ -134,19 +138,24 @@ def folder(name: str, *, holds: int) -> StemRowViewModel:
         available=True,
         level=0,
         position=0,
+        record_position=None,
         level_size=1,
         level_count=1,
     )
 
 
-def view(*rows: StemRowViewModel, selected_key: Optional[str] = None) -> StemsListViewModel:
+def view(
+    *rows: StemRowViewModel,
+    selected_key: Optional[str] = None,
+    live: bool = True,
+) -> StemsListViewModel:
     return StemsListViewModel(
         rows=rows,
         channels_in_play=CHANNELS,
         muted_channels=frozenset(),
         picked_keys=frozenset(),
         picking_room=None,
-        live=True,
+        live=live,
         collapse_levels=True,
         selected_key=selected_key,
     )
@@ -253,6 +262,18 @@ class TestOpeningAFolder(BaseTestSuite):
         press(twisty_of(sources))
         for held in sources.held:
             assert dpg.does_item_exist(name_of(held))
+
+    def test_the_marker_rests_while_the_list_is_inert(self, stems_list: GUIStemsList) -> None:
+        """A run holds the list still, so a folder stays as it was drawn and the pick inside it stays."""
+        sources = folder("sources", holds=3)
+        stems_list.update_view(view(sources, live=False))
+
+        press(twisty_of(sources))
+
+        assert (dpg.get_item_configuration(twisty_of(sources))["enabled"], dpg.does_item_exist(region_of(sources))) == (
+            False,
+            False,
+        )
 
     def test_the_marker_closes_it_again(self, stems_list: GUIStemsList) -> None:
         sources = folder("sources", holds=3)
@@ -495,7 +516,7 @@ class TestARecordingThatLeavesAFolder(BaseTestSuite):
         assert dpg.get_item_label(name_of(sources)) == named("sources", holds=2)
 
     @staticmethod
-    def _settled(stems_list: GUIStemsList, frames: Frames, *, holds: int) -> StemRowViewModel:
+    def _settled(stems_list: GUIStemsList, frames: DrawnFrames, *, holds: int) -> StemRowViewModel:
         """An open folder standing at the height its recordings ask for, as a run of frames leaves it.
 
         A region reads what it holds back the frame after the rows are placed and sizes itself to
@@ -515,7 +536,7 @@ class TestARecordingThatLeavesAFolder(BaseTestSuite):
     def test_one_of_them_leaving_asks_for_the_frame_that_reads_the_folder_back(
         self,
         stems_list: GUIStemsList,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """The region is filled again where the recording stood, so what room its rows now ask for
         is read back once the frame that placed them has been rendered."""
@@ -528,7 +549,7 @@ class TestARecordingThatLeavesAFolder(BaseTestSuite):
     def test_the_folder_comes_down_to_the_room_its_recordings_now_ask_for(
         self,
         stems_list: GUIStemsList,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """A folder whose recordings outgrow its region stands at its ceiling and scrolls them;
         with one fewer they fit, and the frame that reads them back is what stands it at their
@@ -674,6 +695,7 @@ class TestWhereTheNamesOpen(BaseTestSuite):
             master=GATHERED_SOURCES.master_box,
             removable=GATHERED_SOURCES.removal,
             bends=GATHERED_SOURCES.bends,
+            swatch=GATHERED_SOURCES.swatch,
             folders=True,
         )
 
@@ -844,7 +866,7 @@ class TestAFolderFollowingItsReader(BaseTestSuite):
     def test_a_scroll_into_one_brings_the_recordings_it_reaches_in(
         self,
         stems_list: GUIStemsList,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """The folder's own region follows the reader, so the list around it keeps its widgets."""
         sources = self._opened(stems_list)
@@ -860,7 +882,7 @@ class TestAFolderFollowingItsReader(BaseTestSuite):
     def test_the_folder_s_own_row_stays_where_it_stood(
         self,
         stems_list: GUIStemsList,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """A scroll inside a folder is answered inside it, so the rows around it are left be."""
         sources = self._opened(stems_list)

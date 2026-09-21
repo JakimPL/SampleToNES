@@ -4,24 +4,30 @@ from unittest.mock import MagicMock, patch
 import dearpygui.dearpygui as dpg
 import pytest
 
+from sampletones_application.layout.primitives import DEARPYGUI_MAXIMUM_WINDOW_SIZE, DialogGeometry
 from sampletones_application.ui.elements.window import GUIWindow
 from sampletones_shared.types.callback import VoidCallback
 
 MODULE: Final[str] = "sampletones_application.ui.elements.window"
 TAG: Final[str] = "test.dialog.window.probe"
 STATED_WIDTH: Final[int] = 460
-CONTENT_HEIGHT: Final[int] = 0
+STATED_HEIGHT: Final[int] = 200
+VIEWPORT_WIDTH: Final[int] = 1280
+VIEWPORT_HEIGHT: Final[int] = 800
 
 
 class ProbeWindow(GUIWindow):
     """A dialog whose content stretches across the window, the shape a stated width has to hold."""
 
-    def __init__(self, on_close: Optional[VoidCallback]) -> None:
+    def __init__(
+        self,
+        on_close: Optional[VoidCallback],
+        geometry: Optional[DialogGeometry] = None,
+    ) -> None:
         self._on_close = on_close
         super().__init__(
             tag=TAG,
-            width=STATED_WIDTH,
-            height=CONTENT_HEIGHT,
+            geometry=geometry if geometry is not None else DialogGeometry(width=STATED_WIDTH, height=STATED_HEIGHT),
         )
 
     def prepare(self, *_args: Any, **_kwargs: Any) -> None:
@@ -50,11 +56,79 @@ class TestDialogGeometry:
 
         assert dpg.get_item_configuration(TAG)["width"] == STATED_WIDTH
 
-    def test_the_window_takes_no_size_from_its_content(self, dpg_context: None) -> None:
-        """A window measuring itself against stretched content loses a pixel of width every frame."""
+    def test_the_window_holds_its_stated_width_both_ways(self, dpg_context: None) -> None:
+        """A window free to widen, holding content measured against its width, widens every frame.
+
+        The probe's combo stretches across the window, so the width it asks for follows the width
+        the window has; holding the window to one width is what leaves the two agreeing.
+        """
         ProbeWindow(on_close=None).create_window()
 
-        assert dpg.get_item_configuration(TAG)["autosize"] is False
+        configuration = dpg.get_item_configuration(TAG)
+        assert configuration["autosize"] is True
+        assert configuration["min_size"][0] == STATED_WIDTH
+        assert configuration["max_size"][0] == STATED_WIDTH
+
+    def test_the_window_leaves_its_height_to_what_it_holds(self, dpg_context: None) -> None:
+        """A prompt wrapping over several lines grows down, so nothing caps the height."""
+        ProbeWindow(on_close=None).create_window()
+
+        assert dpg.get_item_configuration(TAG)["max_size"][1] == DEARPYGUI_MAXIMUM_WINDOW_SIZE
+
+    def test_the_window_opens_at_the_height_it_states(self, dpg_context: None) -> None:
+        """A dialog holding more than it states grows, so the stated height is where it starts."""
+        ProbeWindow(on_close=None).create_window()
+
+        assert dpg.get_item_configuration(TAG)["min_size"][1] == STATED_HEIGHT
+
+    def test_a_window_stating_no_height_leaves_its_content_to_settle_it(self, dpg_context: None) -> None:
+        ProbeWindow(on_close=None, geometry=DialogGeometry(width=STATED_WIDTH)).create_window()
+
+        assert dpg.get_item_configuration(TAG)["min_size"][1] == 0
+
+
+class TestWhereADialogOpens:
+    """A dialog stating a height is placed before it is drawn, so it never appears off center."""
+
+    @staticmethod
+    def _shown(geometry: DialogGeometry) -> Any:
+        window = ProbeWindow(on_close=None, geometry=geometry)
+        with (
+            patch(f"{MODULE}.ThemeRegistry"),
+            patch(f"{MODULE}.center_when_settled"),
+            patch.object(dpg, "get_viewport_client_width", return_value=VIEWPORT_WIDTH),
+            patch.object(dpg, "get_viewport_client_height", return_value=VIEWPORT_HEIGHT),
+        ):
+            window.show()
+
+        return dpg.get_item_pos(TAG)
+
+    def test_a_window_stating_a_height_stands_at_its_center(self, dpg_context: None) -> None:
+        position = self._shown(DialogGeometry(width=STATED_WIDTH, height=STATED_HEIGHT))
+
+        assert position == [
+            (VIEWPORT_WIDTH - STATED_WIDTH) // 2,
+            (VIEWPORT_HEIGHT - STATED_HEIGHT) // 2,
+        ]
+
+    def test_a_window_taller_than_the_viewport_keeps_its_title_bar_reachable(self, dpg_context: None) -> None:
+        position = self._shown(DialogGeometry(width=STATED_WIDTH, height=VIEWPORT_HEIGHT * 2))
+
+        assert position[1] == 0
+
+    def test_a_window_settling_its_own_height_is_left_to_the_correction(self, dpg_context: None) -> None:
+        """Nothing states where it goes until a frame has measured it, so the pass does the placing."""
+        window = ProbeWindow(on_close=None, geometry=DialogGeometry(width=STATED_WIDTH))
+
+        with (
+            patch(f"{MODULE}.ThemeRegistry"),
+            patch(f"{MODULE}.center_when_settled") as center_when_settled,
+            patch.object(dpg, "set_item_pos") as set_item_pos,
+        ):
+            window.show()
+
+        set_item_pos.assert_not_called()
+        center_when_settled.assert_called_once_with(TAG)
 
 
 class TestCloseAffordance:
@@ -121,6 +195,15 @@ class TestModalHandOff:
 class TestRaisingAWindow:
     """A window is raised from wherever a result reaches the screen, the callback drain between
     frames included, so opening one waits on no frame."""
+
+    @pytest.fixture(name="viewport", autouse=True)
+    def viewport_fixture(self) -> Iterator[None]:
+        """Stands in for the viewport a window is centered against, which a suite draws none of."""
+        with (
+            patch.object(dpg, "get_viewport_client_width", return_value=VIEWPORT_WIDTH),
+            patch.object(dpg, "get_viewport_client_height", return_value=VIEWPORT_HEIGHT),
+        ):
+            yield
 
     def test_opening_waits_on_no_frame(self, dpg_context: None) -> None:
         window = ProbeWindow(on_close=None)

@@ -44,25 +44,29 @@ def _stems_config() -> StemsConfig:
         entries=[
             StemEntry(
                 id=STEM_A,
-                settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                settings=StemSettings(
+                    channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1]), channel_cap=1
+                ),
             ),
             StemEntry(
                 id=STEM_B,
                 settings=StemSettings(
                     channels=[ChannelName.PULSE1, ChannelName.NOISE],
                     bends=bending_channels([ChannelName.PULSE1, ChannelName.NOISE]),
+                    channel_cap=1,
                 ),
             ),
             StemEntry(
                 id=STEM_C,
-                settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                settings=StemSettings(
+                    channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1]), channel_cap=1
+                ),
             ),
         ],
         hierarchy=StemsHierarchy(
             levels=[[STEM_A], [STEM_B, STEM_C]],
             mode=HierarchyMode.STRICT,
         ),
-        channel_cap=1,
     )
 
 
@@ -70,12 +74,9 @@ def _reconstruction(
     owners: Mapping[ChannelName, Sequence[int]],
     *,
     instructions: Mapping[ChannelName, Sequence[InstructionUnion]],
-    approximations: Mapping[ChannelName, np.ndarray],
 ) -> Reconstruction:
     """A three-recording reconstruction whose frames are owned as ``owners`` states."""
     return Reconstruction.create(
-        approximation=np.zeros(0, dtype=np.float32),
-        approximations=approximations,
         instructions=instructions,
         config=Config(),
         coefficient=1.0,
@@ -121,12 +122,8 @@ def reconstruction() -> Reconstruction:
             ChannelName.NOISE: [STEM_B] * FRAME_COUNT,
         },
         instructions={
-            ChannelName.PULSE1: [_pulse(60), _pulse(61), _pulse(62), _pulse(63)],
+            ChannelName.PULSE1: [_pulse(60), _pulse(61), _pulse(62), PulseInstruction.null_instruction()],
             ChannelName.NOISE: [_noise() for _ in range(FRAME_COUNT)],
-        },
-        approximations={
-            ChannelName.PULSE1: _audio(PULSE_LEVEL),
-            ChannelName.NOISE: _audio(NOISE_LEVEL),
         },
     )
 
@@ -147,11 +144,11 @@ class TestTheRecordedSetup:
 
         assert remaining.stems_data.config.hierarchy.levels == [[STEM_B, STEM_C]]
 
-    def test_the_picking_order_and_the_cap_carry_over(self, reconstruction: Reconstruction) -> None:
+    def test_the_picking_order_and_each_stems_count_carry_over(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_C)
 
         assert remaining.stems_data.config.hierarchy.mode == HierarchyMode.STRICT
-        assert remaining.stems_data.config.channel_cap == 1
+        assert all(entry.settings.channel_cap == 1 for entry in remaining.stems_data.config.entries)
 
     def test_the_removed_recordings_source_path_goes_from_its_position(
         self,
@@ -183,7 +180,7 @@ class TestTheReleasedFrames:
     def test_the_frames_it_held_state_silence(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_B)
 
-        assert _sounding(remaining, ChannelName.PULSE1) == [True, False, True, True]
+        assert _sounding(remaining, ChannelName.PULSE1) == [True, False, True, False]
 
     def test_the_frames_it_held_lose_their_samples(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_B)
@@ -194,10 +191,13 @@ class TestTheReleasedFrames:
     def test_the_recordings_that_stay_keep_their_frames(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_B)
 
-        audio = remaining.approximations[ChannelName.PULSE1]
-        kept = np.full(_frame_length(), PULSE_LEVEL, dtype=np.float32)
         for index in (0, 2, 3):
-            np.testing.assert_array_equal(_frame(audio, index), kept)
+            assert remaining.instructions[ChannelName.PULSE1][index] == (
+                reconstruction.instructions[ChannelName.PULSE1][index]
+            )
+
+        for index in (0, 2):
+            assert _frame(remaining.approximations[ChannelName.PULSE1], index).any()
 
     def test_the_channel_keeps_its_length(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_B)
@@ -209,7 +209,7 @@ class TestTheReleasedFrames:
 
         np.testing.assert_array_equal(
             remaining.approximations[ChannelName.NOISE],
-            _audio(NOISE_LEVEL),
+            reconstruction.approximations[ChannelName.NOISE],
         )
 
 
@@ -222,18 +222,16 @@ class TestAnEmptiedChannel:
     def test_a_channel_left_entirely_released_sounds_nothing(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_B)
 
-        np.testing.assert_array_equal(
-            remaining.approximations[ChannelName.NOISE],
-            np.zeros(FRAME_COUNT * _frame_length(), dtype=np.float32),
-        )
+        assert ChannelName.NOISE not in remaining.approximations
 
-    def test_a_channel_left_entirely_released_rests_through_every_frame(
+    def test_a_channel_left_entirely_released_leaves_the_record(
         self,
         reconstruction: Reconstruction,
     ) -> None:
+        """A channel standing by describes no frame, so the record names it no more."""
         remaining = without_stem(reconstruction, STEM_B)
 
-        assert remaining.stems_data.assignments_by_channel[ChannelName.NOISE] == [RESTING_STEM_ID] * FRAME_COUNT
+        assert ChannelName.NOISE not in remaining.stems_data.assignments_by_channel
 
     def test_a_channel_that_already_rested_throughout_keeps_its_stream(self) -> None:
         """A removal reaching none of a channel's frames leaves that channel exactly as it stood."""
@@ -243,47 +241,25 @@ class TestAnEmptiedChannel:
                 ChannelName.NOISE: [RESTING_STEM_ID] * FRAME_COUNT,
             },
             instructions={
-                ChannelName.PULSE1: [_pulse(60), _pulse(61), _pulse(62), _pulse(63)],
-                ChannelName.NOISE: [_noise() for _ in range(FRAME_COUNT)],
-            },
-            approximations={
-                ChannelName.PULSE1: _audio(PULSE_LEVEL),
-                ChannelName.NOISE: _audio(NOISE_LEVEL),
+                ChannelName.PULSE1: [_pulse(60), _pulse(61), _pulse(62), PulseInstruction.null_instruction()],
+                ChannelName.NOISE: [NoiseInstruction.null_instruction() for _ in range(FRAME_COUNT)],
             },
         )
 
         remaining = without_stem(reconstruction, STEM_B)
 
-        assert _sounding(remaining, ChannelName.NOISE) == [True] * FRAME_COUNT
-        np.testing.assert_array_equal(remaining.approximations[ChannelName.NOISE], _audio(NOISE_LEVEL))
-
-    def test_a_channel_an_edit_re_derived_keeps_its_stream(self) -> None:
-        """A channel the assignment says nothing about is the editor's, so a removal passes it by."""
-        reconstruction = _reconstruction(
-            {ChannelName.PULSE1: [STEM_A, STEM_B, STEM_C, RESTING_STEM_ID]},
-            instructions={
-                ChannelName.PULSE1: [_pulse(60), _pulse(61), _pulse(62), _pulse(63)],
-                ChannelName.NOISE: [_noise() for _ in range(FRAME_COUNT)],
-            },
-            approximations={
-                ChannelName.PULSE1: _audio(PULSE_LEVEL),
-                ChannelName.NOISE: _audio(NOISE_LEVEL),
-            },
-        )
-
-        remaining = without_stem(reconstruction, STEM_B)
-
-        assert _sounding(remaining, ChannelName.NOISE) == [True] * FRAME_COUNT
-        np.testing.assert_array_equal(remaining.approximations[ChannelName.NOISE], _audio(NOISE_LEVEL))
+        assert _sounding(remaining, ChannelName.NOISE) == [False] * FRAME_COUNT
+        assert remaining.stems_data.assignments_by_channel[ChannelName.NOISE] == [RESTING_STEM_ID] * FRAME_COUNT
 
 
 class TestTheMixedApproximation:
     def test_the_mix_is_summed_afresh_from_what_stays(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_B)
 
-        expected = np.full(FRAME_COUNT * _frame_length(), PULSE_LEVEL, dtype=np.float32)
-        expected[_frame_length() : 2 * _frame_length()] = 0.0
-        np.testing.assert_array_equal(remaining.approximation, expected)
+        np.testing.assert_array_equal(
+            remaining.approximation,
+            remaining.approximations[ChannelName.PULSE1],
+        )
 
 
 class TestTheDocument:
@@ -296,11 +272,13 @@ class TestTheDocument:
         assert remaining.metadata == reconstruction.metadata
 
     def test_the_source_reconstruction_is_left_as_it_stood(self, reconstruction: Reconstruction) -> None:
+        before = reconstruction.approximations[ChannelName.NOISE].copy()
+
         without_stem(reconstruction, STEM_B)
 
         assert [entry.id for entry in reconstruction.stems_data.config.entries] == [STEM_A, STEM_B, STEM_C]
         assert reconstruction.stems_data.assignments_by_channel[ChannelName.NOISE] == [STEM_B] * FRAME_COUNT
-        np.testing.assert_array_equal(reconstruction.approximations[ChannelName.NOISE], _audio(NOISE_LEVEL))
+        np.testing.assert_array_equal(reconstruction.approximations[ChannelName.NOISE], before)
 
 
 class TestARefusedRemoval:
@@ -310,15 +288,12 @@ class TestARefusedRemoval:
 
     def test_removing_the_last_recording_is_refused(self) -> None:
         reconstruction = Reconstruction.create(
-            approximation=np.zeros(0, dtype=np.float32),
-            approximations={ChannelName.PULSE1: _audio(PULSE_LEVEL)},
             instructions={ChannelName.PULSE1: [_pulse(60)] * FRAME_COUNT},
             config=Config(),
             coefficient=1.0,
             audio_filepath=(RECORDINGS[STEM_A],),
             stems_data=StemsData.single_entry(
-                [ChannelName.PULSE1],
-                [ChannelName.PULSE1],
+                StemSettings(channels=[ChannelName.PULSE1], bends=[ChannelName.PULSE1]),
                 [
                     ChannelAssignment(
                         channel_name=ChannelName.PULSE1,

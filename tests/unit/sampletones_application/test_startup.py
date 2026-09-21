@@ -19,6 +19,7 @@ from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_GROUP,
+    SUF_HANDLER_REGISTRY,
     SUF_STRIP,
     SUF_TABLE,
     SUF_TABLE_COLUMN,
@@ -27,26 +28,25 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.tags.main import (
     PRE_MAIN_CONVERTER_CANDIDATE,
-    PRE_MAIN_SOURCE_SLOT,
     TAG_MAIN_ADVANCED_PANEL,
     TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL,
     TAG_MAIN_CONFIG_PANEL,
     TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
     TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
-    TAG_MAIN_CONVERTER_GROUP_CONTROLS,
     TAG_MAIN_CONVERTER_GROUP_ORDER,
     TAG_MAIN_CONVERTER_PANEL,
     TAG_MAIN_CONVERTER_RADIO_MODE,
     TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE,
     TAG_MAIN_CONVERTER_WINDOW_STEMS,
-    TAG_MAIN_SOURCE_GROUP_GRID,
     TAG_MAIN_SOURCE_PANEL,
-    TAG_MAIN_SOURCE_TEXT_INSPECTING,
-    TAG_MAIN_SOURCE_TEXT_UNPICKED,
+    TAG_MAIN_SOURCE_TABLE_CHANNELS,
+    TAG_MAIN_SOURCE_TEXT_SUBJECT,
 )
 from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.ui.elements.stems.tags import StemsTags
 from sampletones_application.ui.panels.main import explorer as explorer_module
+from sampletones_application.ui.panels.main.source.rows import ChannelSettingsRows
+from sampletones_application.ui.panels.main.source.steps import ChannelCapSteps
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.keyboard.modifiers import Modifier
 from sampletones_application.utils.gui.shortcuts.ids import (
@@ -60,14 +60,18 @@ from sampletones_application.utils.parallelization.background import (
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_application.view_model.main.converter import ConversionPhase, ConverterViewModel
 from sampletones_application.view_model.shared.stems import StemRowViewModel
+from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.converter.paths import get_audio_files
 from sampletones_core.structures.tree import FileSystemNode, NodeType
+from sampletones_shared.paths.user import CONFIG_PATH, LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
 DRAG_PAYLOAD_SLOT: Final[int] = 3
+LOUD_DRIVE: Final[float] = 1.75
 UNBUILT_ROW: Final[str] = "browser.row.unbuilt"
 
 _DPG_DISPLAY_FUNCTIONS = [
@@ -136,6 +140,29 @@ def _profile(directory: Path) -> UserProfile:
     )
 
 
+def _settings(directory: Path) -> Path:
+    """Writes the settings a run starts on: the shipped defaults, with the instruction library and
+    the reconstructions held in the test's own directory.
+
+    A startup lists the reconstructions and loads the library from the directories its settings
+    name, so a run reads only the files a test places beside it.
+    """
+    config = Config()
+    general = config.general.model_copy(
+        update={
+            "library_directory": str(directory / LIBRARY_DIRECTORY.name),
+            "reconstructions_directory": str(directory / RECONSTRUCTIONS_DIRECTORY.name),
+        }
+    )
+    path = directory / CONFIG_PATH.name
+    config.model_copy(update={"general": general}).save(path)
+    return path
+
+
+def _application(directory: Path) -> Application:
+    return Application(profile=_profile(directory), config_path=_settings(directory))
+
+
 class TestGUIStartup:
     @pytest.fixture(autouse=True)
     def dpg_context(self) -> Generator[Any, Application, Any]:
@@ -150,7 +177,7 @@ class TestGUIStartup:
             for display_patch in _display_patches():
                 stack.enter_context(display_patch)
 
-            Application(profile=_profile(tmp_path))
+            _application(tmp_path)
 
     def test_initializes_where_nothing_can_play(self, tmp_path: Path) -> None:
         """Editing a song, exporting a module and rendering to a file need no output device.
@@ -164,7 +191,7 @@ class TestGUIStartup:
                 stack.enter_context(display_patch)
             stack.enter_context(_no_audio_devices())
 
-            Application(profile=_profile(tmp_path))
+            _application(tmp_path)
 
 
 @pytest.fixture
@@ -175,7 +202,7 @@ def app(tmp_path: Path) -> Generator[Any, Application, Any]:
             for display_patch in _display_patches():
                 stack.enter_context(display_patch)
 
-            yield Application(profile=_profile(tmp_path))
+            yield _application(tmp_path)
     finally:
         stop_background_workers()
         SingleThreadExecutor.reset_shutdown()
@@ -213,7 +240,7 @@ class TestKeybindingPreferences:
                         return_value=REBOUND_UNDO,
                     )
                 )
-                yield Application(profile=_profile(tmp_path))
+                yield _application(tmp_path)
         finally:
             stop_background_workers()
             SingleThreadExecutor.reset_shutdown()
@@ -255,10 +282,10 @@ class TestStartupRestoreDelegation:
         load_reconstruction_safely.assert_called_once_with(Path("last.stn"))
 
     def test_library_load_delegates_to_coordinator(self, app: Application) -> None:
-        with patch.object(app._instructions_tab, "load_library_safely") as load_library_safely:
+        with patch.object(app._instructions_tab, "load_library_file") as load_library_file:
             app._try_load_library(Path("last.ins"))
 
-        load_library_safely.assert_called_once_with(Path("last.ins"))
+        load_library_file.assert_called_once_with(Path("last.ins"))
 
 
 class TestReconstructionSaveAsDetachment:
@@ -544,8 +571,22 @@ def _click_row(app: Application, path: Path) -> None:
 
 def _click_slot_box(field: SettingsField, channel_name: ChannelName) -> None:
     """Clicks one of the settings card's boxes, the way DearPyGui reports a checkbox."""
-    box = compose_tag(PRE_MAIN_SOURCE_SLOT, field.value, channel_name.value)
+    box = ChannelSettingsRows.box_tag(channel_name, field)
     dpg.get_item_callback(box)(box, True, dpg.get_item_user_data(box))
+
+
+def _release_drive(channel_name: ChannelName, drive: float) -> None:
+    """Drags one of the settings card's drives to ``drive`` and lets go, the way DearPyGui reports it."""
+    slider = ChannelSettingsRows.slider_tag(channel_name)
+    dpg.set_value(slider, drive)
+    [handler] = dpg.get_item_children(compose_tag(TAG_MAIN_SOURCE_TABLE_CHANNELS, SUF_HANDLER_REGISTRY), 1)
+    dpg.get_item_callback(handler)(handler, slider)
+
+
+def _click_step(step: int) -> None:
+    """Clicks one of the settings card's counts, the way DearPyGui reports a button."""
+    button = ChannelCapSteps.step_tag(step)
+    dpg.get_item_callback(button)(button, None, dpg.get_item_user_data(button))
 
 
 def _row_of(app: Application, path: Path) -> StemRowViewModel:
@@ -1002,28 +1043,40 @@ class TestConverterStemsCard:
         assert ChannelName.PULSE2 in _row_of(app, second).channels
         assert ChannelName.PULSE2 not in _row_of(app, first).channels
 
-    def test_the_card_names_the_gesture_that_gives_it_a_row(self, app: Application, tmp_path: Path) -> None:
-        """The card answers for a picked row, so with none picked it says which gesture picks one."""
+    def test_with_nothing_picked_the_card_edits_the_recordings_added_next(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        """A count set with no row picked is what the next recording gathered arrives with."""
         self._gather(app, tmp_path, ["a.wav"])
+        assert dpg.get_value(TAG_MAIN_SOURCE_TEXT_SUBJECT) == app.language_manager["main.source.label.new_recordings"]
 
-        assert dpg.get_item_configuration(TAG_MAIN_SOURCE_TEXT_UNPICKED)["show"] is True
-        assert dpg.get_item_configuration(TAG_MAIN_SOURCE_GROUP_GRID)["show"] is False
+        _click_step(1)
+        second = self._gather(app, tmp_path, ["b.wav"])[0]
+        _click_row(app, second)
 
-    def test_a_picked_row_brings_the_grid_with_it(self, app: Application, tmp_path: Path) -> None:
+        assert app._main_tab._converter_logic.source_settings_view.channel_cap == 1
+
+    def test_a_picked_row_names_the_card(self, app: Application, tmp_path: Path) -> None:
         path = self._gather(app, tmp_path, ["a.wav"])[0]
 
         _click_row(app, path)
 
-        assert dpg.get_item_configuration(TAG_MAIN_SOURCE_GROUP_GRID)["show"] is True
-        assert dpg.get_value(TAG_MAIN_SOURCE_TEXT_INSPECTING) == path.stem
+        assert dpg.get_value(TAG_MAIN_SOURCE_TEXT_SUBJECT) == path.stem
 
-    def test_the_run_controls_arrive_with_the_first_recording(self, app: Application, tmp_path: Path) -> None:
-        """The choices answer for what is listed, so they stand once there is something to answer for."""
-        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_GROUP_CONTROLS)["show"] is False
+    def test_a_released_drive_reaches_the_row_the_card_edits(self, app: Application, tmp_path: Path) -> None:
+        first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
 
-        self._gather(app, tmp_path, ["a.wav"])
+        _click_row(app, second)
+        _release_drive(ChannelName.PULSE1, LOUD_DRIVE)
 
-        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_GROUP_CONTROLS)["show"] is True
+        drives = {
+            channel.channel: channel.drive for channel in app._main_tab._converter_logic.source_settings_view.channels
+        }
+        assert drives[ChannelName.PULSE1] == LOUD_DRIVE
+        _click_row(app, first)
+        assert dpg.get_value(ChannelSettingsRows.slider_tag(ChannelName.PULSE1)) == pytest.approx(UNIT_DRIVE)
 
     def test_the_order_arrives_with_the_second_recording_in_a_mix(self, app: Application, tmp_path: Path) -> None:
         """One recording is its own order, so the choice of how levels take turns arrives with the second."""

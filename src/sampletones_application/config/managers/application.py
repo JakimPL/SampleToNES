@@ -173,14 +173,6 @@ class ApplicationConfigManager:
         self.config.converter.output = output
 
     @property
-    def converter_channel_cap(self) -> int:
-        """How many channels one recording may hold in a frame, as the reader last set it."""
-        return self.config.converter.channel_cap
-
-    def set_converter_channel_cap(self, channel_cap: int) -> None:
-        self.config.converter.channel_cap = channel_cap
-
-    @property
     def converter_hierarchy_mode(self) -> HierarchyMode:
         """How the levels of a mix take turns, as the reader last set it."""
         return self.config.converter.hierarchy_mode

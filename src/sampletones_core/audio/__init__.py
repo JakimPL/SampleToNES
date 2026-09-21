@@ -1,5 +1,5 @@
 from .device import AudioDevice, CurrentDevice
-from .io import load_audio, load_stems, read_wave, write_wave
+from .io import load_audio, load_stems, read_wave, write_flac, write_wave
 from .manager import CHANNELS, FORMAT, AudioDeviceManager
 from .mixing import align, common_length, mix
 from .processing import (
@@ -47,5 +47,6 @@ __all__ = [
     "validate_audio_array",
     "validate_buffer_size",
     "validate_sample_rate",
+    "write_flac",
     "write_wave",
 ]

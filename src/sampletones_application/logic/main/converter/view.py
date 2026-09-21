@@ -6,18 +6,16 @@ from sampletones_application.logic.main.converter.destination import Destination
 from sampletones_application.logic.main.converter.gathering import Gathering
 from sampletones_application.logic.main.converter.state import ConverterState
 from sampletones_application.logic.main.sources.row import SourceRow
-from sampletones_application.logic.main.sources.slots import (
-    CHANNEL_SLOT,
-    SETTINGS_SLOTS,
-    SettingsSlot,
-)
+from sampletones_application.logic.main.sources.slots import BEND_SLOT, CHANNEL_SLOT
 from sampletones_application.view_model.main.converter import ConversionPhase, ConverterViewModel
 from sampletones_application.view_model.main.source import (
+    ChannelSettingsViewModel,
     InspectedSourceViewModel,
-    SettingsSlotViewModel,
+    SourceSettingsPanelViewModel,
 )
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_application.view_model.shared.stems import StemRowViewModel
+from sampletones_core.constants.algorithm import UNIT_DRIVE
 from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
@@ -55,33 +53,38 @@ def compose_view(
         other_operation_active=other_operation_active,
         output=settings.output,
         stem_sources=rows,
-        channel_cap=settings.effective_channel_cap,
-        max_channel_cap=settings.max_channel_cap,
         hierarchy_mode=settings.hierarchy_mode,
         max_sources=state.gathering.ceiling,
         selected_key=_selected_key(state),
     )
 
 
-def settings_slots(state: ConverterState) -> Tuple[SettingsSlotViewModel, ...]:
-    """The choices the settings card edits, read through the recordings the picked row stands for.
+def source_settings(state: ConverterState, *, live: bool) -> SourceSettingsPanelViewModel:
+    """What the settings card shows: one line per channel, and the row it edits them on.
 
-    With no row picked the card has nothing to answer for, so every choice offers no channel and
-    the card says which gesture picks one.
+    With a row picked out the lines read through every recording that row stands for; with none
+    picked the card edits the settings a recording joins with, so a reader settles the shape the
+    recordings gathered from then on arrive in.
     """
     inspected = inspected_settings(state)
-    return tuple(_slot_reading(slot, inspected) for slot in SETTINGS_SLOTS)
+    return SourceSettingsPanelViewModel(
+        subject=inspected_source(state),
+        channels=tuple(_channel_reading(channel_name, inspected) for channel_name in ChannelName.items()),
+        caps=frozenset(settings.channel_cap for settings in inspected),
+        channels_used=max((len(settings.channels) for settings in inspected), default=0),
+        live=live,
+    )
 
 
 def inspected_settings(state: ConverterState) -> Tuple[StemSettings, ...]:
-    """The settings the card is editing, read from the recordings the picked row stands for."""
+    """The settings the card is editing: the picked row's recordings, or what a recording joins with."""
     selected = state.selected
     if selected is None:
-        return ()
+        return (state.settings.joining,)
 
     row = state.gathering.sources.row(selected)
     if row is None:
-        return ()
+        return (state.settings.joining,)
 
     return tuple(recording.settings for recording in row.recordings)
 
@@ -103,26 +106,33 @@ def inspected_source(state: ConverterState) -> Optional[InspectedSourceViewModel
     )
 
 
-def _slot_reading(
-    slot: SettingsSlot,
+def _channel_reading(
+    channel_name: ChannelName,
     inspected: Tuple[StemSettings, ...],
-) -> SettingsSlotViewModel:
-    offered = frozenset().union(*(slot.offered(settings) for settings in inspected)) if inspected else frozenset()
-    held = set()
-    partial = set()
-    for channel_name in offered:
-        agreement = Agreement.over(channel_name in slot.read(settings) for settings in inspected)
-        if agreement is Agreement.ALL:
-            held.add(channel_name)
-        elif agreement is Agreement.SOME:
-            partial.add(channel_name)
-
-    return SettingsSlotViewModel(
-        field=slot.field,
-        offered_channels=offered,
-        held_channels=frozenset(held),
-        partial_channels=frozenset(partial),
+) -> ChannelSettingsViewModel:
+    """How the inspected recordings stand on one channel: its use, its bend and its drive."""
+    return ChannelSettingsViewModel(
+        channel=channel_name,
+        use=Agreement.over(CHANNEL_SLOT.holds(settings, channel_name) for settings in inspected),
+        bend=Agreement.over(BEND_SLOT.holds(settings, channel_name) for settings in inspected),
+        drive=_agreed_drive(channel_name, inspected),
     )
+
+
+def _agreed_drive(
+    channel_name: ChannelName,
+    inspected: Tuple[StemSettings, ...],
+) -> Optional[float]:
+    """The drive the inspected recordings give one channel, and nothing where they differ.
+
+    A recording leaving the channel unoccupied says nothing about how hard it is driven, so a
+    channel none of them occupies reads as the calibrated level its slider rests at.
+    """
+    drives = {settings.drives[channel_name] for settings in inspected if channel_name in settings.channel_set}
+    if len(drives) == 1:
+        return drives.pop()
+
+    return None if drives else UNIT_DRIVE
 
 
 def _selected_key(state: ConverterState) -> Optional[str]:
@@ -166,6 +176,7 @@ def _row(placement: _Placement) -> StemRowViewModel:
     return StemRowViewModel(
         key=str(placement.path),
         kind=key.kind,
+        name=placement.path.name if key.names_folder else placement.path.stem,
         path=placement.path,
         held=_held(placement) if key.names_folder else (),
         channels=channels,
@@ -175,6 +186,7 @@ def _row(placement: _Placement) -> StemRowViewModel:
         available=placement.path.is_dir() if key.names_folder else placement.path.is_file(),
         level=placement.level,
         position=placement.position,
+        record_position=None,
         level_size=placement.level_size,
         level_count=placement.level_count,
     )
@@ -190,6 +202,7 @@ def _held(placement: _Placement) -> Tuple[StemRowViewModel, ...]:
         StemRowViewModel(
             key=str(recording.path),
             kind=recording.key.kind,
+            name=recording.path.stem,
             path=recording.path,
             held=(),
             channels=frozenset(CHANNEL_SLOT.read(recording.settings)),
@@ -199,6 +212,7 @@ def _held(placement: _Placement) -> Tuple[StemRowViewModel, ...]:
             available=recording.path.is_file(),
             level=placement.level,
             position=placement.position,
+            record_position=None,
             level_size=placement.level_size,
             level_count=placement.level_count,
         )

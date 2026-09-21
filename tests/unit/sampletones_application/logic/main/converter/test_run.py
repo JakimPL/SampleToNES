@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.logic.main.converter.run import (
+    ConversionRequest,
     ConversionRun,
     ConversionSuccess,
     RunReport,
@@ -20,11 +21,22 @@ from sampletones_application.services.result import (
 )
 from sampletones_application.view_model.main.converter import ConversionPhase
 from sampletones_core.configs import Config
+from sampletones_core.library import LibraryState
 from sampletones_core.parallelization import TaskProgress
 from tests.suite.base import BaseTestSuite
 from tests.unit.sampletones_application.logic.main.converter.texts import messages
 
 WRITTEN: Tuple[Path, ...] = (Path("/reconstructions/kick.stn"),)
+
+
+def _request(reconstruction_name: str, library_state: LibraryState) -> ConversionRequest:
+    return ConversionRequest(
+        config=Config(),
+        plan=MagicMock(),
+        reconstruction_name=reconstruction_name,
+        library_key=MagicMock(),
+        library_state=library_state,
+    )
 
 
 def _library_progress(completed: int, total: int) -> ConversionResult:
@@ -55,8 +67,9 @@ class Driver:
         self._handler(result)
 
     def begin(self, reconstruction_name: str = "kick") -> None:
-        self.run.wait()
-        self.run.begin(Config(), MagicMock(), reconstruction_name)
+        request = _request(reconstruction_name, LibraryState.CURRENT)
+        self.run.wait(request)
+        self.run.begin(request)
 
 
 @pytest.fixture
@@ -71,7 +84,7 @@ class TestWhereARunStands(BaseTestSuite):
         assert (driver.run.phase, driver.run.is_active) == (ConversionPhase.IDLE, False)
 
     def test_a_request_waits_for_the_library_it_converts_against(self, driver: Driver) -> None:
-        driver.run.wait()
+        driver.run.wait(_request("kick", LibraryState.MISSING))
 
         assert (driver.run.phase, driver.run.is_active) == (ConversionPhase.WAITING, True)
 
@@ -114,7 +127,7 @@ class TestWhereARunStands(BaseTestSuite):
 
 class TestWhatARunReports(BaseTestSuite):
     def test_a_request_says_it_is_waiting(self, driver: Driver) -> None:
-        driver.run.wait()
+        driver.run.wait(_request("kick", LibraryState.MISSING))
 
         assert driver.reports[-1].status_text == "main.converter.message.status_waiting"
 
@@ -151,12 +164,32 @@ class TestWhatARunReports(BaseTestSuite):
         assert driver.run.phase == ConversionPhase.CANCELING
 
     def test_library_progress_moves_the_bar_while_waiting(self, driver: Driver) -> None:
-        driver.run.wait()
+        driver.run.wait(_request("kick", LibraryState.MISSING))
 
         driver.reports_from_service(ServiceStarted(total=1))
         driver.reports_from_service(_library_progress(completed=3, total=4))
 
         assert driver.reports[-1].progress == pytest.approx(0.75)
+
+    @pytest.mark.parametrize(
+        ("library_state", "status_text"),
+        [
+            (LibraryState.MISSING, "main.converter.message.status_generating_library"),
+            (LibraryState.OUTDATED, "main.converter.message.status_updating_library"),
+        ],
+        ids=["missing", "built by another version"],
+    )
+    def test_library_progress_names_what_the_library_needs(
+        self,
+        driver: Driver,
+        library_state: LibraryState,
+        status_text: str,
+    ) -> None:
+        driver.run.wait(_request("kick", library_state))
+
+        driver.reports_from_service(_library_progress(completed=1, total=4))
+
+        assert driver.reports[-1].status_text == status_text
 
     def test_library_progress_once_the_run_is_under_way_reports_nothing(self, driver: Driver) -> None:
         driver.begin()
@@ -196,7 +229,7 @@ class TestWhatACompletedRunHandsOver(BaseTestSuite):
         driver.run.on_canceled.assert_called_once_with()
 
     def test_a_request_given_up_before_the_service_took_it_cancels_all_the_same(self, driver: Driver) -> None:
-        driver.run.wait()
+        driver.run.wait(_request("kick", LibraryState.MISSING))
 
         driver.run.abandon()
 
@@ -210,4 +243,4 @@ class TestWhatACompletedRunHandsOver(BaseTestSuite):
         driver.run.close()
 
         assert (driver.run.written, driver.run.phase) == ((), ConversionPhase.IDLE)
-        driver.service.cleanup.assert_called_once()
+        driver.service.release.assert_called_once()

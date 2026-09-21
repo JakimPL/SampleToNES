@@ -16,14 +16,12 @@ from sampletones_application.paths import (
     PALETTES_DIRECTORY,
     THEME_DIRECTORY,
 )
-from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_INPUT_WARNING,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
 )
-from sampletones_application.tags.graphs import SUF_GRAPH_RAW_DATA
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import PitchStepperStyle
@@ -42,8 +40,13 @@ from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
+from sampletones_application.view_model.shared.ownership import (
+    OwnershipLaneViewModel,
+    OwnershipRunViewModel,
+)
 from sampletones_core.constants.enums import ChannelName, FeatureKey, GeneratorName
 from sampletones_core.constants.general import PITCH_BEND_MAX, PITCH_BEND_MIN
+from sampletones_core.exporters.feature import Features
 from sampletones_core.features import CHANNEL_GENERATOR_KIND, supported_features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
@@ -59,6 +62,18 @@ SEQUENCE_STATUS_KEY: Final[str] = "reconstructions.instruments.message.status_se
 LARGEST_PULSE: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=9, sequence_bytes=768)
 LARGEST_TRIANGLE: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=7, sequence_bytes=512)
 SILENT_INSTRUMENT: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=3, sequence_bytes=0)
+
+PLOTTED_AXIS: Final[str] = "instruments.plot.y"
+PLOTTED_BAND: Final[tuple] = (-5.0, -2.0)
+PLOTTED_CHANNEL: Final[ChannelName] = ChannelName.PULSE1
+PLOTTED_PITCH: Final[int] = 60
+PLOTTED_LANE: Final[OwnershipLaneViewModel] = OwnershipLaneViewModel(
+    channel_name=PLOTTED_CHANNEL,
+    runs=(
+        OwnershipRunViewModel(start_frame=0, end_frame=4, stem_id=0, position=0, heard=True),
+        OwnershipRunViewModel(start_frame=4, end_frame=10, stem_id=1, position=1, heard=True),
+    ),
+)
 
 NOT_LOADED: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
     reconstruction_loaded=False,
@@ -157,6 +172,7 @@ def panel(
         pitch_stepper_style=PitchStepperStyle.from_general(layout_config.general),
         copy_width=layout_config.general.buttons.copy_width,
         feature_colors=layout_config.general.colors.features,
+        stem_colors=layout_config.general.colors.stems,
         layout_graphs=layout_config.graphs,
         language_manager=LanguageManager(LANG_EN),
         status_bar=MagicMock(),
@@ -213,6 +229,86 @@ class TestSequenceLengthWarning:
         ]
 
 
+class TestTheBandBeneathADimension:
+    """A dimension's band stands over the frames that dimension draws, and no further.
+
+    A channel's readings trim to their own lengths, so a lane handed whole to each of them paints
+    a stretch over frames that reading never drew.
+    """
+
+    @staticmethod
+    def _features(volume_items: int, duty_items: int) -> Features:
+        """One instrument whose volume and duty cycle write different numbers of frames."""
+        return Features(
+            initial_pitch=PLOTTED_PITCH,
+            volume=sequence(volume_items),
+            arpeggio=sequence(volume_items),
+            pitch=sequence(volume_items),
+            hi_pitch=sequence(volume_items),
+            duty_cycle=sequence(duty_items),
+        )
+
+    def _painted(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        monkeypatch: pytest.MonkeyPatch,
+        features: Features,
+        feature_key: FeatureKey,
+    ) -> Dict[str, object]:
+        """What the panel hands the ownership painter for one dimension of a two-recording lane."""
+        plot = MagicMock()
+        plot.y_axis_tag = PLOTTED_AXIS
+        plot.reserve_band.return_value = PLOTTED_BAND
+        panel.channel_plots[PLOTTED_CHANNEL] = {feature_key: plot}
+        painted: Dict[str, object] = {}
+
+        def paint(y_axis_tag: str, runs: object, **kwargs: object) -> None:
+            painted["runs"] = runs
+
+        monkeypatch.setattr(panel._ownership, "paint", paint)
+        panel._update_generator_feature_display(PLOTTED_CHANNEL, features, feature_key, PLOTTED_LANE)
+        painted["share"] = plot.reserve_band.call_args.args[0]
+        return painted
+
+    def test_a_dimension_reaching_the_whole_lane_carries_every_stretch(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        painted = self._painted(panel, monkeypatch, self._features(10, 10), FeatureKey.VOLUME)
+
+        assert painted["runs"] == PLOTTED_LANE.runs
+
+    def test_a_trimmed_dimension_ends_its_stretches_where_it_ends(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        painted = self._painted(panel, monkeypatch, self._features(10, 1), FeatureKey.DUTY_CYCLE)
+
+        assert painted["runs"] == (PLOTTED_LANE.runs[0].model_copy(update={"end_frame": 1}),)
+
+    def test_a_dimension_writing_nothing_gives_the_band_to_the_bars(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        painted = self._painted(panel, monkeypatch, self._features(10, 0), FeatureKey.DUTY_CYCLE)
+
+        assert painted["runs"] == ()
+        assert painted["share"] == 0.0
+
+    def test_a_dimension_the_lane_reaches_keeps_its_band(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        monkeypatch: pytest.MonkeyPatch,
+        layout_config: LayoutConfig,
+    ) -> None:
+        painted = self._painted(panel, monkeypatch, self._features(10, 10), FeatureKey.VOLUME)
+
+        assert painted["share"] == layout_config.graphs.bar_plot.ownership_band
+
+
 class TestEditingASequence:
     """A bar redrawn on the plot restates the values; the item the dimension repeats from is its own."""
 
@@ -228,7 +324,6 @@ class TestEditingASequence:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             np.array([15, 4, 8], dtype=np.int8),
-            "plot",
         )
 
         assert edited == [Envelope[int](items=(15, 4, 8))]
@@ -249,7 +344,6 @@ class TestEditingASequence:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             np.array([15, 4, 8], dtype=np.int8),
-            "plot",
         )
 
         assert edited == [Envelope[int](items=(15, 4, 8), loop_point=1)]
@@ -269,10 +363,10 @@ class TestEditingASequence:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             np.array([15, 4, 8], dtype=np.int8),
-            "plot",
         )
 
-        assert written[compose_tag("plot", SUF_GRAPH_RAW_DATA)] == "15 | 4 8"
+        field_tag = panel._get_feature_text_tag(ChannelName.PULSE1, FeatureKey.VOLUME)
+        assert written[field_tag] == "15 | 4 8"
 
 
 class TestCopyingASequence:
@@ -677,11 +771,33 @@ class TestTheNoteKeys:
             pitch_stepper_style=PitchStepperStyle.from_general(layout_config.general),
             copy_width=layout_config.general.buttons.copy_width,
             feature_colors=layout_config.general.colors.features,
+            stem_colors=layout_config.general.colors.stems,
             layout_graphs=layout_config.graphs,
             language_manager=LanguageManager(LANG_EN),
             status_bar=MagicMock(),
             key_router=key_router,
             tab_active=lambda: False,
+        )
+        panel.update_view(ONE_INSTRUMENT)
+        assert panel._audition_keys_active() is False
+
+    def test_a_rail_put_away_keeps_the_keys_from_the_panel(
+        self,
+        layout_config: LayoutConfig,
+        key_router: MagicMock,
+    ) -> None:
+        """A rail collapsed to its edge keeps the instrument it had open, and sounds no note."""
+        panel = GUIReconstructionInstrumentsPanel(
+            pitch_stepper_style=PitchStepperStyle.from_general(layout_config.general),
+            copy_width=layout_config.general.buttons.copy_width,
+            feature_colors=layout_config.general.colors.features,
+            stem_colors=layout_config.general.colors.stems,
+            layout_graphs=layout_config.graphs,
+            initial_collapsed=True,
+            language_manager=LanguageManager(LANG_EN),
+            status_bar=MagicMock(),
+            key_router=key_router,
+            tab_active=lambda: True,
         )
         panel.update_view(ONE_INSTRUMENT)
         assert panel._audition_keys_active() is False

@@ -11,6 +11,7 @@ import pyaudio
 from sampletones_core.constants.audio import (
     DEFAULT_BUFFER_SIZE,
     SAMPLE_RATES,
+    START_OF_AUDIO,
     BufferSize,
     SampleRate,
 )
@@ -483,18 +484,35 @@ class AudioDeviceManager(CallbackMixin):
         """
         self.set_callbacks(_position_callback=callback)
 
-    def set_position(self, position: int) -> None:
+    def set_position(
+        self,
+        position: int,
+        *,
+        owner: Optional[Any],
+    ) -> bool:
         """
-        Seek to a specific position in the audio.
+        Seek ``owner``'s playback to a specific position in the audio.
 
-        The position is clamped to valid range [0, audio_length].
+        Ownership is checked under the lock the seek writes under, so a playback another source
+        took over in the meantime stays where it is.
 
         Args:
-            position: Target position in samples.
+            position: Target position in samples, clamped to the audio.
+            owner: Identity that must match the active playback's owner for the seek to apply.
+
+        Returns:
+            bool: Whether ``owner``'s playback was moved.
         """
         with self._lock:
-            if self._audio_data is not None:
-                self._position = max(0, min(position, len(self._audio_data)))
+            if not self._playing or self._audio_data is None or self._output_owner is not owner:
+                return False
+
+            self._position = self._clamped_position(position, len(self._audio_data))
+            return True
+
+    @staticmethod
+    def _clamped_position(position: int, length: int) -> int:
+        return max(START_OF_AUDIO, min(position, length))
 
     def play_file(
         self,
@@ -521,6 +539,7 @@ class AudioDeviceManager(CallbackMixin):
         update: bool = True,
         priority: int = 0,
         owner: Optional[Any] = None,
+        start: int = START_OF_AUDIO,
     ) -> bool:
         """
         Play audio data.
@@ -539,6 +558,8 @@ class AudioDeviceManager(CallbackMixin):
             priority: Output-request priority; higher wins. Callers assign the meaning.
             owner: Identity of the caller owning this playback, matched by :meth:`replace_audio`
                 to swap the live buffer only while its own audio is the one playing.
+            start: The sample playback begins at, clamped to the audio. It is placed before the
+                playback thread starts, so the first buffer written is the one beginning there.
 
         Returns:
             bool: Whether this request took the output, which is what a caller following its own
@@ -560,7 +581,7 @@ class AudioDeviceManager(CallbackMixin):
 
         with self._lock:
             self._audio_data = audio.astype(np.float32)
-            self._position = 0
+            self._position = self._clamped_position(start, len(self._audio_data))
             self._playing = True
             self._output_owner = owner
             self._active_priority = priority
@@ -763,6 +784,22 @@ class AudioDeviceManager(CallbackMixin):
         """
         with self._lock:
             return self._playing and self._output_owner is owner
+
+    def position_of(self, owner: Any) -> int:
+        """Where ``owner``'s playback stands, sounding or held paused.
+
+        The position is read under the same lock a seek writes it under, so a caller drawing a mark
+        from it draws the latest seek, while a position reported earlier may already be behind it.
+
+        Returns:
+            int: The sample the playback has reached, or the start of the audio while ``owner`` holds
+                no output.
+        """
+        with self._lock:
+            if self._playing and self._output_owner is owner:
+                return self._position
+
+            return START_OF_AUDIO
 
     def open_output_stream(
         self,

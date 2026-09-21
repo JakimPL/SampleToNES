@@ -35,12 +35,14 @@ def _row(
         partial_channels=frozenset(),
         bends=frozenset(),
         key=str(path),
+        name=path.stem,
         path=path,
         channels=channels,
         offered_channels=frozenset(ChannelName.items()),
         available=True,
         level=level,
         position=position,
+        record_position=None,
         level_size=level_size,
         level_count=level_count,
     )
@@ -54,7 +56,6 @@ def _view_model(
     input_path: Optional[Path] = Path("/audio/sample.wav"),
     mixes: bool = False,
     stem_sources: Tuple[StemRowViewModel, ...] = (_row("sample"),),
-    channel_cap: int = len(ENABLED_CHANNELS),
     max_sources: int = MAX_STEM_SOURCES,
 ) -> ConverterViewModel:
     return ConverterViewModel(
@@ -68,8 +69,6 @@ def _view_model(
         other_operation_active=other_operation_active,
         output=OutputKind.MIXED if mixes else OutputKind.PER_RECORDING,
         stem_sources=stem_sources,
-        channel_cap=channel_cap,
-        max_channel_cap=len(ENABLED_CHANNELS),
         hierarchy_mode=HierarchyMode.ROUND_ROBIN,
         max_sources=max_sources,
         selected_key=None,

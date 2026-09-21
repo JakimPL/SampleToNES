@@ -1,4 +1,6 @@
+import shutil
 from pathlib import Path
+from typing import List
 from unittest.mock import MagicMock
 
 import pytest
@@ -7,23 +9,19 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
+from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.view_model.main.updates import AdvancedSettingsUpdate
-from sampletones_core.library import InstructionLibraryKey
+from sampletones_core.compatibility.kind import ObjectKind
+from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.library import InstructionLibraryKey, LibraryState
+from sampletones_core.structures.tree import LibraryNode
+from tests.suite.compatibility import LIBRARY_VERSION, archived
+from tests.suite.library import OTHER_LIBRARIES, WrittenLibrary, write_empty_library
 
 
 @pytest.fixture
-def config_manager(tmp_path: Path) -> ConfigManager:
-    return ConfigManager(tmp_path / "config.json")
-
-
-@pytest.fixture
-def library_manager(
-    config_manager: ConfigManager,
-    tmp_path: Path,
-) -> InstructionsLibraryManager:
-    manager = InstructionsLibraryManager(config_manager, language_manager=MagicMock())
-    manager.set_library_directory(tmp_path / "libraries")
-    return manager
+def library_manager(config_manager: ConfigManager) -> InstructionsLibraryManager:
+    return InstructionsLibraryManager(config_manager, language_manager=MagicMock())
 
 
 def _set_transformation_gamma(config_manager: ConfigManager, gamma: int) -> None:
@@ -43,21 +41,22 @@ def _create_library_file(
     library_manager: InstructionsLibraryManager,
     key: InstructionLibraryKey,
 ) -> None:
+    write_empty_library(library_manager.get_path(key))
+
+
+def _create_earlier_library_file(
+    library_manager: InstructionsLibraryManager,
+    key: InstructionLibraryKey,
+) -> None:
     path = library_manager.get_path(key)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.touch()
+    shutil.copyfile(archived(ObjectKind.LIBRARY, LIBRARY_VERSION), path)
 
 
-class TestConversionLibraryReadiness:
-    """Guards the contract the conversion flow relies on.
+class TestTheLibraryAConfigurationNames:
+    """A library is judged by the key it is asked about, whatever library the catalog last took up."""
 
-    Conversion reconstructs from the library identified by the *current* configuration, so
-    library readiness must be judged by the configuration's key, never by the key of whatever
-    library happens to be loaded. Conflating the two caused the loaded library's parameters to
-    be reapplied over the user's freshly changed settings (see the convert/reconstruct flow).
-    """
-
-    def test_availability_tracks_current_config_not_loaded_key(
+    def test_the_library_of_settings_changed_since_is_missing(
         self,
         config_manager: ConfigManager,
         library_manager: InstructionsLibraryManager,
@@ -69,19 +68,77 @@ class TestConversionLibraryReadiness:
 
         _set_transformation_gamma(config_manager, 100)
 
-        assert library_manager.is_library_available_for_config() is False
-        assert library_manager.does_library_exist() is True
-        assert config_manager.config.library.transformation_gamma == 100
+        assert (
+            library_manager.library_state(config_manager.key),
+            library_manager.library_state(previous_key),
+            library_manager.current_library_key,
+        ) == (LibraryState.MISSING, LibraryState.CURRENT, previous_key)
 
-    def test_availability_true_when_current_config_library_exists(
+    def test_a_library_another_version_built_is_left_unsynced(
         self,
         config_manager: ConfigManager,
         library_manager: InstructionsLibraryManager,
     ) -> None:
+        _create_earlier_library_file(library_manager, config_manager.key)
+
+        assert (
+            library_manager.library_state(config_manager.key),
+            library_manager.sync_with_config_key(config_manager.key),
+        ) == (LibraryState.OUTDATED, None)
+
+
+class TestTheLibrariesTheCatalogLists:
+    def test_a_library_another_version_built_is_marked_and_holds_no_generators(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        """A library another version built opens only to be rebuilt, so it lists nothing to load."""
+        _set_transformation_gamma(config_manager, 50)
+        earlier_key = config_manager.key
+        _create_earlier_library_file(library_manager, earlier_key)
         _set_transformation_gamma(config_manager, 100)
         _create_library_file(library_manager, config_manager.key)
 
-        assert library_manager.is_library_available_for_config() is True
+        library_manager.gather_available_libraries()
+        library_manager.rebuild_tree()
+
+        root = library_manager.tree.get_root()
+        assert root is not None
+        rows = {
+            node.library_key: (node.outdated, len(node.children))
+            for node in root.children
+            if isinstance(node, LibraryNode)
+        }
+        assert rows == {earlier_key: (True, 0), config_manager.key: (False, len(GeneratorName))}
+
+
+class TestTheDirectoryTheCatalogStandsAt:
+    """The catalog holds the libraries it loaded for as long as it reads the same directory."""
+
+    def test_the_directory_it_stands_at_keeps_what_it_loaded(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        library_manager._library.save_data(config_manager.key, WrittenLibrary())
+
+        library_manager.set_library_directory(config_manager.get_library_directory())
+
+        assert library_manager.is_library_loaded(config_manager.key) is True
+
+    def test_another_directory_starts_with_nothing_loaded(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        library_manager._library.save_data(config_manager.key, WrittenLibrary())
+        other = tmp_path / OTHER_LIBRARIES
+
+        library_manager.set_library_directory(other)
+
+        assert (library_manager.library_directory, library_manager._library.data) == (other, {})
 
 
 class TestCompleteGeneration:
@@ -96,15 +153,15 @@ class TestCompleteGeneration:
         self,
         library_manager: InstructionsLibraryManager,
     ) -> None:
-        library_manager._library = MagicMock()
-        library_manager._library.save_data.side_effect = PermissionError("save failed")
+        library = MagicMock()
+        library.save_data.side_effect = PermissionError("save failed")
         error_callback = MagicMock()
         completed_callback = MagicMock()
         library_manager.on_generation_error = error_callback
         library_manager.on_generation_completed = completed_callback
 
         with pytest.raises(PermissionError):
-            library_manager._complete_generation((MagicMock(), MagicMock()))
+            library_manager._complete_generation(library, (MagicMock(), MagicMock()))
 
         error_callback.assert_called_once()
         completed_callback.assert_not_called()
@@ -113,13 +170,13 @@ class TestCompleteGeneration:
         self,
         library_manager: InstructionsLibraryManager,
     ) -> None:
-        library_manager._library = MagicMock()
-        library_manager._library.save_data.side_effect = RuntimeError("unexpected")
+        library = MagicMock()
+        library.save_data.side_effect = RuntimeError("unexpected")
         error_callback = MagicMock()
         library_manager.on_generation_error = error_callback
 
         with pytest.raises(RuntimeError):
-            library_manager._complete_generation((MagicMock(), MagicMock()))
+            library_manager._complete_generation(library, (MagicMock(), MagicMock()))
 
         error_callback.assert_not_called()
 
@@ -132,7 +189,97 @@ class TestCompleteGeneration:
         library_manager.on_generation_completed = completed_callback
         key = MagicMock()
 
-        library_manager._complete_generation((key, MagicMock()))
+        library_manager._complete_generation(library_manager._library, (key, MagicMock()))
 
         assert library_manager._current_library_key is key
         completed_callback.assert_called_once()
+
+    def test_a_library_lands_where_its_generation_started(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        started_in = library_manager._library
+        library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
+
+        library_manager._complete_generation(started_in, (config_manager.key, WrittenLibrary()))
+
+        assert started_in.get_path(config_manager.key).exists()
+        assert (library_manager.library_state(config_manager.key), library_manager.current_library_key) == (
+            LibraryState.MISSING,
+            None,
+        )
+
+
+class TestTheLibraryAConversionWaitsFor:
+    """A conversion waits out a generation, then takes the library or gives the request up."""
+
+    def test_a_generation_under_way_is_waited_out(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        _create_library_file(library_manager, config_manager.key)
+        library_manager._creator = CreatorEndingItsRun(library_manager)
+
+        readiness = library_manager.library_readiness(config_manager.get_library_directory(), config_manager.key)
+
+        assert readiness == LibraryReadiness.PREPARING
+
+    def test_a_library_on_disk_with_no_generation_is_ready(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        _create_library_file(library_manager, config_manager.key)
+
+        readiness = library_manager.library_readiness(config_manager.get_library_directory(), config_manager.key)
+
+        assert readiness == LibraryReadiness.READY
+
+    def test_a_library_another_version_built_with_no_generation_is_missing(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        _create_earlier_library_file(library_manager, config_manager.key)
+
+        readiness = library_manager.library_readiness(config_manager.get_library_directory(), config_manager.key)
+
+        assert readiness == LibraryReadiness.MISSING
+
+    def test_a_library_missing_with_no_generation_is_missing(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        readiness = library_manager.library_readiness(config_manager.get_library_directory(), config_manager.key)
+
+        assert readiness == LibraryReadiness.MISSING
+
+
+class CreatorEndingItsRun:
+    """A creator that notes whether its generation still read as in progress while it ended."""
+
+    def __init__(self, manager: InstructionsLibraryManager) -> None:
+        self._manager = manager
+        self.generating_while_ending: List[bool] = []
+
+    def shutdown(self) -> None:
+        self.generating_while_ending.append(self._manager.is_generating())
+
+
+class TestReleasingTheCreator:
+    """A generation reads as in progress until its creator has ended the pool it ran on."""
+
+    def test_the_generation_reads_as_in_progress_until_the_creator_has_ended(
+        self,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        creator = CreatorEndingItsRun(library_manager)
+        library_manager._creator = creator
+
+        library_manager.release_creator()
+
+        assert (creator.generating_while_ending, library_manager.is_generating()) == ([True], False)

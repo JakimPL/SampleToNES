@@ -1,8 +1,9 @@
 # Coding Guidelines
 
 These rules govern the Python in this repository. They complement
-`docs/development/architecture.md` (ownership and layering) and
-`docs/development/application/config-organization.md` (configuration).
+`docs/development/architecture.md` (ownership and layering),
+`docs/development/application/config-organization.md` (configuration) and
+`docs/development/documentation.md` (the prose every document is written in).
 
 ## General
 
@@ -10,16 +11,17 @@ These rules govern the Python in this repository. They complement
 1. Split a function with several meaningful steps into helpers, each with one responsibility.
 1. Spell names out in full: `note`, not `n`.
 1. Give every semantic value a name — a `Final` constant, promoted to a shared module once the concept is reused.
-1. Avoid the _tramp data_ antipattern: threading a value through functions that only pass it along.
+1. Hand a value to the function that uses it. Threading it through functions that only pass it along is the _tramp data_ antipattern.
 1. Make the inputs logic depends on explicit. The parameters and configuration instances it relies on are required, not optional. Reserve default values for settings seldom changed (e.g. `seed`), and declare each such default as a top-level `Final` constant.
-1. Derive booleans rather than storing them. A boolean computed from existing state belongs in a `@property` (or `@computed_field` on a Pydantic model), since a stored flag creates hidden state that drifts out of sync.
-1. State type expectations explicitly, and reach attributes by direct access rather than dynamic `getattr` or `hasattr`.
+1. Derive booleans from state. A boolean computed from existing state belongs in a `@property` (or `@computed_field` on a Pydantic model), since a stored flag creates hidden state that drifts out of sync.
+1. State type expectations explicitly, and reach attributes by direct access, not through dynamic `getattr` or `hasattr`.
 1. Prefer protocols over inheritance.
 1. Prefer `match` statements over long `isinstance` chains, and for enumeration handling.
 1. Prefer `pathlib.Path` over `os.path`.
 1. Separate function options with `*`, and choose positional arguments intentionally.
-1. Change internal APIs, configs, and data shapes freely; preserve backward compatibility only when the user explicitly asks.
-1. Move a stored data version once per release. The version a build writes between releases is still being written, so a further change to that format extends the upgrade step already pending — one step carries the whole distance from the version the last release shipped. See [data compatibility](release/compatibility.md).
+1. Change internal APIs, configs, and data shapes freely. Preserve backward compatibility only when the user explicitly asks.
+1. Move a stored data version once per release. The version a build writes between releases is still being written. A further change to that format therefore extends the upgrade step already pending, and one step carries the whole distance from the version the last release shipped. Libraries are rebuilt from their settings, so a change to what library generation produces moves the library version alone. See [data compatibility](release/compatibility.md).
+1. A risk named while planning lands as a case or a ledger entry. A plan records intent, and a case and the ledger carry a doubt past the moment it was felt. Where the risk is a behavior that might be wrong, write the case that would catch it. Where it is a distance the change accepts, write the entry in [bugs and todos](bugs-and-todos.md) that names it.
 1. Run `pre-commit` on new files after each change.
 
 ## Ownership
@@ -28,7 +30,7 @@ These rules govern the Python in this repository. They complement
 1. Put general-purpose, non-model-specific helpers in shared or common modules.
 1. Search the repository with `rg` for existing logic before adding a helper.
 1. When new code would duplicate existing logic, extract the shared rule first and route both call sites through it.
-1. Import a shared helper straight from the module that implements it; a re-export or delegated-import module that exists only to route imports through is disallowed.
+1. Import a shared helper straight from the module that implements it. A re-export or delegated-import module that exists only to route imports through is disallowed.
 1. An `__init__` exposes only names from within its own tree hierarchy.
 1. Give each module a single area of responsibility.
 1. If a module contains many class and function definitions, split into a subpackage divided by a single concern.
@@ -51,7 +53,7 @@ These rules govern the Python in this repository. They complement
 
 1. Let a failure crash unless the code can recover from it meaningfully.
 1. Handle errors at the execution boundary where possible.
-1. Catch an exception only to recover from it; a `try`/`except` that repackages a failure without recovering adds nothing.
+1. Catch an exception only to recover from it. A `try`/`except` that repackages a failure without recovering adds nothing.
 1. Bare `except` and `except Exception` are forbidden.
 1. Scope each `try` to the statements that can actually fail, absent a specific reason to widen it.
 
@@ -64,47 +66,31 @@ These rules govern the Python in this repository. They complement
 ## Docstrings and Comments
 
 1. A docstring explains the intention of a class or function and the context of its use.
-1. State functionality in positive terms. Describe what a class or function *does* — not what it avoids, omits, skips, differs from, or no longer does. Reframe every negation ("does not", "rather than", "instead of", "without", "never", "cannot", "no longer") into the behavior that actually happens. Do not contrast with rejected alternatives as justification; the positive statement carries the meaning.
+1. State functionality in positive terms. Describe what a class or function *does*. Reframe every negation ("does not", "rather than", "instead of", "without", "never", "cannot", "no longer") into the behavior that actually happens. The positive statement carries the meaning, so a contrast with a rejected alternative adds nothing.
 1. Negative phrasing is allowed only where the condition itself is the contract: exception triggers in `Raises:` clauses, precondition/postcondition bounds (prefer "must be at least X" over "cannot be less than X" where natural), and documented edge-case returns. Outside these concrete cases, negative descriptions are information noise and must be removed.
-1. Justify an arbitrary choice in the docstring rather than a code comment, and frame the justification by what the choice achieves.
+1. Justify an arbitrary choice in the docstring, not in a code comment, and frame the justification by what the choice achieves.
 1. Let clear names carry the meaning, and skip comments or docstrings that restate the code.
-1. Avoid code comments; they are warranted for tensor shapes, third-party API quirks, or non-obvious invariants.
+1. Avoid code comments. They are warranted for tensor shapes, third-party API quirks, or non-obvious invariants.
 1. Code comments and docstrings are not for recording changes or progress.
 1. Don't write module docstrings.
 
-## Documents
+## Documentation
 
-1. A document under `docs/` explains a subsystem to someone about to change it. Open by stating what it governs and when to consult it, so a reader learns in one paragraph whether they are in the right place.
-1. A development document sits beside what it governs. The top of `docs/development/` holds what spans the repository's packages; `application/` holds what governs the graphical application alone, and `release/` what a release ships and keeps compatible. `docs/index.md` lists every document under the heading of its directory.
-1. Lead with principles, then mechanics. A principle is a design truth you reason from; state the principles first, and let concrete conventions and reference tables follow as the way each principle is realized.
-1. Keep principles, conventions, and descriptions distinct. A principle is a reason; a convention is a handy mechanic that serves it; a description is a fact about how something works. A convention promoted to a principle, or a principle buried in a description, misleads the reader about what is load-bearing.
-1. Prefer a few strong principles to many narrow rules. When several rules are facets of one idea, state the idea once and derive them. A growing list of ad-hoc rules signals a principle that has gone unstated.
-1. State the design in positive terms, as it stands today. This is the docstring rule above applied to prose: describe what the design is and does, not what it avoids, omits, or once was.
-1. Write for a reader who never saw the history. A document is not a changelog or a devlog: do not argue against past states, resolved problems, or rejected alternatives the reader never knew existed. The design as it stands carries its own justification; history belongs in commit messages and release notes.
-1. Reach for a negative example only when the contrast teaches something the positive statement cannot, and use it sparingly. One well-placed "what to avoid" illuminates; a document written mostly in negatives is noise.
-1. State each fact once, in the document that owns it, and cross-reference sibling documents rather than repeating them.
-1. A document change is part of the change that motivates it. Code that alters a contract a document states lands together with the edit stating the new contract, and a deviation the change knowingly leaves behind lands with an entry in the ledger that document names. What a branch leaves behind is therefore the current contract, the recorded distance from it, or both.
-1. Changelog is only for changes that are meaningful to users. In particular, refactors that introduce no new features must not be present in the changelog.
-1. Use American English, in prose and identifiers alike. A name someone else owns keeps the spelling they gave it: `MatchRule.serialise()` is jeepney's, `CancelledError` is the standard library's.
-
-## Guide
-
-1. `docs/guide/` is written for someone using the application, not changing it. A page says what a reader can do and how, in the order they would do it; a page organized by control catalogs the application instead of explaining it.
-1. A few sentences per feature. Mechanism, file formats and per-widget behavior belong to `docs/development/`, and a `###` inside a guide section is the sign a passage grew into a reference.
-1. Write for a reader with no picture of the screen. Name a control by the label the application ships, read from the language file, rather than by where it sits.
-1. Write in plain, direct English. Short sentences carrying one fact each, the noun repeated rather than replaced by a pronoun, and a bulleted list wherever the page states several things of one kind. Use everyday verbs — *shows*, *changes*, *opens*, *removes*, *click* — in place of this repository's own vocabulary (*settles*, *holds*, *answers*, *stands for*, *reaches*), which names concepts a reader of the guide has never met.
+1. [Writing the documentation](documentation.md) has the rules for every document in the repository: who each one is written for, what belongs in it, and how it reads. Consult it before adding or editing a page.
+1. Bugs and to-dos are brief, preferably one sentence per entry.
 
 ## Tests
 
 1. A test file mirrors the ownership of the code it exercises.
 1. When functionality moves between packages, move its direct unit tests in the same change.
-1. **A test whose assertion is a measured duration lives in `tests/benchmarks/`.** The gated suite runs across six workers and under coverage, which multiplies the cost of the code being measured, so those tests run in a pass of their own — serial and uncovered — where the reading is the code's own cost. `make test` runs the covered suite, and `make benchmarks` runs the measured pass.
+1. **A test whose assertion is a measured duration lives in `tests/benchmarks/`.** The gated suite runs across several workers and under coverage, which multiplies the cost of the code being measured. Benchmarks run in a pass of their own, serial and uncovered, where the reading is the code's own cost. `make test` runs the covered suite, and `make benchmarks` runs the measured pass.
 1. Parametrize tests that share a body, using a test-case dataclass.
 1. Test case classes and cases themselves should be defined inside the testing class, unless these objects are shared between test classes. A suite inherits from `BaseTestSuite` and names its case class `TestCase`, which inherits from `BaseRegularTestCase`, or from `BaseAutolabelTestCase` where the case derives its own label. The parametrized argument carries the case as `test_case`.
 1. For a multi-step scenario, use a test-scenario suite class — a series of functions with assertions.
 1. Prefer fixtures over factories, and define shared fixtures in an appropriate place.
-1. **A shipped value is a choice, not a contract.** Defaults, keybinding schemes, palettes and layouts are tuned freely, so a case that restates one turns every adjustment into a test edit. Read the value where it is configured — or from the constant that defines it — and assert the behavior around it: the bound it lies within, the round-trip it survives, the action it answers. Spell a value out only where the value itself is the contract, a file format's constant say, and name that reason in the case.
-1. **A case assumes no one platform.** The separators in a path, the ending of a line, the formatting of a number, the order a directory arrives in — these belong to where the suite runs, not to the case. Compare a path with a `Path` rather than with the string POSIX renders it as; the suite runs on Windows too.
-1. Values that must match by contract are asserted to match, never hardcoded — e.g. project metadata at creation or after a save/load round-trip is held against its source, never against a version string.
-1. Unit tests may mock system boundaries (file I/O, external services, IPC channels), but must not mock the domain logic that is the subject of the test. Integration tests must exercise real computation pipelines against real (synthetically built) data.
-1. When a test expectation diverges from the production code's actual behavior, determine which is wrong before acting. A failing test is evidence of a potential bug in the production code unless the test itself is demonstrably incorrect (wrong imports, misread API contract, incorrect fixture). Never silently delete or weaken a test to make it pass. If uncertain, flag the divergence explicitly and ask before changing either side.
+1. **A contract stated in prose is pinned by a case.** A behavior a document or a docstring asserts is a promise to whoever reads it next. Write the case that fails once the promise stops holding, and write it where the contract is stated, so the sentence and the assertion move together.
+1. **A shipped value is a choice, not a contract.** Defaults, keybinding schemes, palettes and layouts are tuned freely, so a case that restates one turns every adjustment into a test edit. Read the value where it is configured, or from the constant that defines it, and assert the behavior around it: the bound it lies within, the round trip it survives, the action it answers. Spell a value out only where the value itself is the contract, such as a file format's constant, and name that reason in the case.
+1. **A case runs on every platform.** The separators in a path, the ending of a line, the formatting of a number and the order a directory arrives in belong to where the suite runs, not to the case. Compare a path with a `Path` and not with the string POSIX renders it as, because the suite runs on Windows too.
+1. Values that must match by contract are asserted to match and never hardcoded. For example, project metadata at creation or after a save/load round trip is held against its source and never against a version string.
+1. Unit tests may mock system boundaries (file I/O, external services, IPC channels) but not the domain logic that is the subject of the test. Integration tests exercise real computation pipelines against real, synthetically built data.
+1. When a test expectation diverges from the production code's actual behavior, determine which is wrong before acting. A failing test is evidence of a potential bug in the production code unless the test itself is demonstrably incorrect (wrong imports, misread API contract, incorrect fixture). Never silently delete or weaken a test to make it pass. If uncertain, flag the divergence and ask before changing either side.

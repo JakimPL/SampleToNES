@@ -1837,6 +1837,9 @@ gpu-cuda11 = [
 assets = [
     { name = "pillow" },
 ]
+calibration = [
+    { name = "zimtohrli" },
+]
 dev = [
     { name = "black" },
     { name = "isort" },
@@ -1882,6 +1885,7 @@ provides-extras = ["build", "gpu", "gpu-cuda11"]
 
 [package.metadata.requires-dev]
 assets = [{ name = "pillow", specifier = ">=11,<13" }]
+calibration = [{ name = "zimtohrli", specifier = ">=0.2.1,<0.3" }]
 dev = [
     { name = "black", specifier = "==26.5.1" },
     { name = "isort", specifier = "==8.0.1" },
@@ -2170,4 +2174,35 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/15/ba/1f6e8c957e4932be060dcdc482d339c12e0216351478add3645cdaa53c05/virtualenv-21.3.3.tar.gz", hash = "sha256:f5bda277e553b1c2b3c1a8debfc30496e1288cc93ce6b7b71b3280047e317328", size = 7613784, upload-time = "2026-05-13T18:01:30.19Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f4/34/a9dbe051de88a63eb7408ea66630bac38e72f7f6077d4be58737106860d9/virtualenv-21.3.3-py3-none-any.whl", hash = "sha256:7d5987d8369e098e41406efb780a3d4ca79280097293899e351a6407ee153ab3", size = 7594554, upload-time = "2026-05-13T18:01:27.815Z" },
+]
+
+[[package]]
+name = "zimtohrli"
+version = "0.2.1.post1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8d/91/da58ac8f4bf82dda1261e9b9f04983bd8cef4327fea67d68c01cf702d76d/zimtohrli-0.2.1.post1.tar.gz", hash = "sha256:0463fa5eb8614f46408b463a7f2a3595a2bd699a8b0ae48c0751ac2b37d6095b", size = 21518, upload-time = "2025-09-30T08:12:26.818Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8b/2d/31c2c6d043873e6a8b14ca546220a1aeda061375e897855410de5aecbe8f/zimtohrli-0.2.1.post1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:63ed6ce7d49b2215987161df9d512c43d98d9cf2e5edd5ad48994adab0073c65", size = 28273, upload-time = "2025-09-30T08:12:00.718Z" },
+    { url = "https://files.pythonhosted.org/packages/00/4d/7c91c2dedd94f66b415e4487f1b9d1488aaffe1cb3a8252606a492edad42/zimtohrli-0.2.1.post1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a9a384d4d66525082e3fb8471f19501cb954a0fd13dc8dcc629b4f793f7c5ff1", size = 161899, upload-time = "2025-09-30T08:12:01.853Z" },
+    { url = "https://files.pythonhosted.org/packages/22/a6/639f364dcbfdf35f0e9d734f69ae62bb098f0ed4a56ee110b237f126dd3d/zimtohrli-0.2.1.post1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:0d2f4fd76015f254601afaa20d64762ce7c5ca6ee70c07649b97a2fd46165d77", size = 1190952, upload-time = "2025-09-30T08:12:03.251Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/c1/ad8562e9d8171fed7e96d1259f09b17784044d37af2be7fd2de98adc02cd/zimtohrli-0.2.1.post1-cp312-cp312-win32.whl", hash = "sha256:736b889938a561ff7f50f441a199d0181d3c8e56c10b36f17b16c52a6445ee43", size = 28070, upload-time = "2025-09-30T08:12:04.473Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/ae/bf4ed2d43e8fe33fdcaa9debbf98529bc1862d03ee66bcf3bd4a16bab95f/zimtohrli-0.2.1.post1-cp312-cp312-win_amd64.whl", hash = "sha256:9946d3f5ab2c6e57248ae4012d014c31d1812efb7f349b1a218355cf60970be8", size = 32527, upload-time = "2025-09-30T08:12:05.548Z" },
+    { url = "https://files.pythonhosted.org/packages/f2/62/380f40e530bd8112e30d78fab52e19bb47e342c7bfc0fdae08d2024f4389/zimtohrli-0.2.1.post1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:cac384b9a8268577df0c8f60b35a71e5de7be49f490f83733b52f6eb51941b91", size = 28276, upload-time = "2025-09-30T08:12:06.611Z" },
+    { url = "https://files.pythonhosted.org/packages/1a/64/169441e6be2b1981df321f539684bac2b7d3af1bded312ad4c4bec725a1f/zimtohrli-0.2.1.post1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:be6fbb52bc5967970a0dd5159b32812c9dbf7e8d6c9ef85b1b05afc0cf1db05b", size = 161846, upload-time = "2025-09-30T08:12:08Z" },
+    { url = "https://files.pythonhosted.org/packages/56/c1/d3424134b7d683d446a1ee65a8d00fb0b9968bbdffddef573ebc70b699f8/zimtohrli-0.2.1.post1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:ce472c22698aea34f3b16743afb1c02c32d2c6539729861f44f2e82124e45163", size = 1190999, upload-time = "2025-09-30T08:12:09.672Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/fd/2b2ae939c0ff84bff7ccb5fd51ef37b51c1e40e35dd9a708455d6140bc6a/zimtohrli-0.2.1.post1-cp313-cp313-win32.whl", hash = "sha256:9352ce9732e929e0f981301ed457bdbd70668008df949ddf3265785f71ef11fc", size = 28071, upload-time = "2025-09-30T08:12:11.056Z" },
+    { url = "https://files.pythonhosted.org/packages/f0/5f/59751aecd76f171a9bf7f9a6625c6cac39a1973230251149a25705ad2c85/zimtohrli-0.2.1.post1-cp313-cp313-win_amd64.whl", hash = "sha256:8a9d5c64f3176aff909113728cfcd524dc81cb0dbee0c363abec8b1f220b7073", size = 32527, upload-time = "2025-09-30T08:12:12.309Z" },
+    { url = "https://files.pythonhosted.org/packages/06/76/5d6a2940729154c36a55edf6815ac8a416ef6b061754c537b959653c14ee/zimtohrli-0.2.1.post1-cp314-cp314-macosx_10_13_x86_64.whl", hash = "sha256:612440ab80e841788adcf6874404a17a4bed4e59e257a8f4ed5212fb948f946a", size = 28269, upload-time = "2025-09-30T08:12:13.692Z" },
+    { url = "https://files.pythonhosted.org/packages/06/c2/41f683611c3e7c041bfe78d3636024296e2e330437b49bd7c0d63630892f/zimtohrli-0.2.1.post1-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:241c09c20b3c0f76f0503c2dbcb5e489fd7b2c1cc3866e05ae46c2953d93786b", size = 161936, upload-time = "2025-09-30T08:12:14.777Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/12/2dd3bdb4307dd05515e791e4f67bac8349bc91c08cd3e9baab58dcfa7cac/zimtohrli-0.2.1.post1-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:d16924660bcfe6c570ad147fdaa82e5787ce289510e11b5943918b2f447f7caa", size = 1191112, upload-time = "2025-09-30T08:12:16.188Z" },
+    { url = "https://files.pythonhosted.org/packages/13/04/2417c40ab44b77c238fcbc360718da605e1e9e3424a1d2d1bc0c735ef0d5/zimtohrli-0.2.1.post1-cp314-cp314-win32.whl", hash = "sha256:67b654efaf3865639bde41a90819f39da12fd441b79f526196fd78150782aaa7", size = 28735, upload-time = "2025-09-30T08:12:17.864Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/4c/21b8aacde85637d07b3534b31fa9f0584f4dadf364a348d313228570731f/zimtohrli-0.2.1.post1-cp314-cp314-win_amd64.whl", hash = "sha256:08f4bc952cef7681da11e28ab3b01006129082a03393fae2a0fc6de2332dda31", size = 33079, upload-time = "2025-09-30T08:12:18.947Z" },
+    { url = "https://files.pythonhosted.org/packages/57/11/6e8ffe92575511455a652a90c335db567a09702c780651151b68cdc0f859/zimtohrli-0.2.1.post1-cp314-cp314t-macosx_10_13_x86_64.whl", hash = "sha256:5fd4336b70cedc8f8b19b69e6f1331a1258f1dc3d6b1bd14ef138d18c777ce0c", size = 28397, upload-time = "2025-09-30T08:12:20.085Z" },
+    { url = "https://files.pythonhosted.org/packages/66/1c/88e61b9461521a62d9cbcc1bc54feb8a9eacb1f8c7b41d459a69f5a0851b/zimtohrli-0.2.1.post1-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:341a6c618f9390877a7b2005b16dff128708315b402ae2df4ad044b04949ad8a", size = 162517, upload-time = "2025-09-30T08:12:21.159Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/16/7329479a9dfbe0452ed285fdfea9c6bd94d5856ade05809b0888c62c2944/zimtohrli-0.2.1.post1-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:0fe5d4974a19a96536e78d3dcd5c0ed506c9ab288d30f85d5bd44466301715be", size = 1191666, upload-time = "2025-09-30T08:12:22.539Z" },
+    { url = "https://files.pythonhosted.org/packages/82/08/874263294b1e2cc72cf3e235597e02af405153119e2d5433ea172c83f745/zimtohrli-0.2.1.post1-cp314-cp314t-win32.whl", hash = "sha256:5ad1790ee4c2a3a9220d43c5b06ee6123feda3b079929b77591c10730713c8b1", size = 28860, upload-time = "2025-09-30T08:12:24.101Z" },
+    { url = "https://files.pythonhosted.org/packages/0d/2f/de75945f3083ddfa66d165bc55b28308799e104e954ee43508bb1043c67a/zimtohrli-0.2.1.post1-cp314-cp314t-win_amd64.whl", hash = "sha256:43ce58509922ccdcbd527e664bc2ddddc85fb239abbda1d0b964e874736c9afc", size = 33211, upload-time = "2025-09-30T08:12:25.417Z" },
 ]

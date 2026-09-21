@@ -7,6 +7,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SourceKind
 from sampletones_application.layout.general.colors.path import PathColors
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.tabs.main.converter import ConverterLayout
@@ -35,8 +36,8 @@ class GUIConverterPanel(GUIPanel):
 
     The card reads top to bottom as one sentence. The output switch says what a run writes, the
     button below repeats it in the words of what is listed, and the list itself is what the run
-    converts. The choices that shape a run stand under the list, since they answer for what it
-    holds, and the destination stands under them.
+    converts. The order a mix picks in stands under the list, since it answers for what the list
+    holds, and the destination stands under it.
     """
 
     def __init__(
@@ -46,6 +47,7 @@ class GUIConverterPanel(GUIPanel):
         stems_layout: StemsListLayout,
         inputs: InputsLayout,
         path_colors: PathColors,
+        stem_colors: StemColors,
         initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -58,11 +60,13 @@ class GUIConverterPanel(GUIPanel):
         self._listing = ConverterListing(
             stems_layout=stems_layout,
             glyphs=self._glyphs.common,
+            stem_colors=stem_colors,
             language_manager=language_manager,
             status_bar=status_bar,
             key_router=key_router,
             shortcut_source=shortcut_source,
             tab_active=tab_active,
+            card_open=self.card_open,
         )
         self._menus = ConverterMenus(
             stems_list=self._listing.stems_list,
@@ -79,12 +83,9 @@ class GUIConverterPanel(GUIPanel):
             language_manager=language_manager,
             status_bar=status_bar,
         )
-        self._banded = False
-
         self.on_convert_requested: Optional[VoidCallback] = None
         self.on_cancel_requested: Optional[VoidCallback] = None
         self.on_output_changed: Optional[Callable[[OutputKind], None]] = None
-        self.on_channel_cap_changed: Optional[Callable[[int], None]] = None
         self.on_hierarchy_mode_changed: Optional[Callable[[HierarchyMode], None]] = None
         self.on_source_channels_changed: Optional[Callable[[Path, FrozenSet[ChannelName]], None]] = None
         self.on_folder_channel_toggled: Optional[Callable[[Path, ChannelName], None]] = None
@@ -104,7 +105,6 @@ class GUIConverterPanel(GUIPanel):
         self._wire()
 
     def create_panel(self, parent: str) -> None:
-        self._setup.create_handlers()
         with self._collapsible_card(
             parent,
             self._language_manager["main.converter.label.section"],
@@ -128,6 +128,11 @@ class GUIConverterPanel(GUIPanel):
         return self._listing.stems_list
 
     @property
+    def keys_active(self) -> bool:
+        """Whether a key reaching the row picked out answers: the tab in front, the card open."""
+        return self._listing.keys_active
+
+    @property
     def input_path_text(self) -> Optional[GUIPathText]:
         """The line naming the recording a running conversion is on."""
         return self._summary.input_path_text
@@ -141,7 +146,6 @@ class GUIConverterPanel(GUIPanel):
         return bool(dpg.get_item_configuration(self.tag)["show"])
 
     def update_view(self, view_model: ConverterViewModel) -> None:
-        self._banded = view_model.mixes
         self._action.update_view(view_model)
         self._summary.update_view(view_model)
         self._setup.update_view(view_model)
@@ -150,7 +154,6 @@ class GUIConverterPanel(GUIPanel):
     def _wire(self) -> None:
         """Hand each section's reports on to the card's own hooks, which the coordinator wires."""
         self._setup.on_output_changed = lambda output: self.call(self.on_output_changed, output)
-        self._setup.on_channel_cap_changed = lambda cap: self.call(self.on_channel_cap_changed, cap)
         self._setup.on_hierarchy_mode_changed = lambda mode: self.call(self.on_hierarchy_mode_changed, mode)
 
         self._action.on_convert_requested = lambda: self.call(self.on_convert_requested)
@@ -173,7 +176,7 @@ class GUIConverterPanel(GUIPanel):
         self._listing.on_source_dropped_on_level = lambda path, position: self.call(
             self.on_source_dropped_on_level, path, position
         )
-        self._listing.on_menu_requested = self._show_menu
+        self._listing.on_menu_requested = self._menus.show
 
         self._menus.on_source_played = lambda path: self.call(self.on_source_played, path)
         self._menus.on_source_removed = lambda path: self.call(self.on_source_removed, path)
@@ -182,10 +185,6 @@ class GUIConverterPanel(GUIPanel):
         self._menus.on_source_isolated = lambda path: self.call(self.on_source_isolated, path)
         self._menus.on_folder_removed = lambda path: self.call(self.on_folder_removed, path)
         self._menus.on_folder_toggled = self._toggle_folder
-
-    def _show_menu(self, key: str) -> None:
-        """The moves a menu offers follow the run being set up, which decides what a move means."""
-        self._menus.show(key, banded=self._banded)
 
     def _toggle_folder(self, root: Path) -> None:
         """Whether a folder stands open is the list's own memory, so the menu asks the list."""

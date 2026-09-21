@@ -2,10 +2,7 @@ import msgpack
 
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.compatibility.upgrade import upgrade_binary
-from sampletones_shared.application import (
-    SAMPLETONES_LIBRARY_DATA_VERSION,
-    SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
-)
+from sampletones_shared.application import SAMPLETONES_RECONSTRUCTION_DATA_VERSION
 
 
 class TestUpgradeBinary:
@@ -16,14 +13,6 @@ class TestUpgradeBinary:
         )
 
         assert upgrade_binary(ObjectKind.RECONSTRUCTION, binary) is binary
-
-    def test_current_library_version_returns_the_same_bytes(self) -> None:
-        binary = msgpack.packb(
-            {"metadata": {"library_data_version": SAMPLETONES_LIBRARY_DATA_VERSION}},
-            use_bin_type=True,
-        )
-
-        assert upgrade_binary(ObjectKind.LIBRARY, binary) is binary
 
     def test_missing_metadata_returns_the_same_bytes(self) -> None:
         binary = msgpack.packb({"items": []}, use_bin_type=True)
@@ -44,8 +33,9 @@ class TestUpgradeBinary:
         binary = msgpack.packb(
             {
                 "metadata": {"reconstruction_data_version": "2.1"},
+                "approximation": [1.0, 2.0],
                 "approximations_data": [{"generator_name": "pulse1", "approximation": [1.0, 2.0]}],
-                "instructions_data": [],
+                "instructions_data": [{"generator_name": "pulse1", "instructions": []}],
                 "config": {
                     "metadata": {"reconstruction_data_version": "2.1"},
                     "generation": {"generators": ["pulse1", "noise"]},
@@ -57,9 +47,9 @@ class TestUpgradeBinary:
         upgraded = upgrade_binary(ObjectKind.RECONSTRUCTION, binary)
         data = msgpack.unpackb(upgraded, raw=False)
 
-        assert data["approximations_data"][0]["channel_name"] == "pulse1"
-        assert "generator_name" not in data["approximations_data"][0]
-        assert "channels" not in data["config"]["generation"]
+        assert "approximation" not in data
+        assert "approximations_data" not in data
+        assert data["instructions_data"][0]["channel_name"] == "pulse1"
         assert data["stems_data"]["config"]["entries"][0]["settings"]["channels"] == ["pulse1", "noise"]
         assert data["config"]["metadata"]["reconstruction_data_version"] == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
         assert data["metadata"]["reconstruction_data_version"] == SAMPLETONES_RECONSTRUCTION_DATA_VERSION

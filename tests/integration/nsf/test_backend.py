@@ -18,7 +18,6 @@ from sampletones_core.performance import song_instructions
 from sampletones_core.project.project import Project
 from sampletones_core.project.tuning import tuning_from_project
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.timers.utils import get_timer_table
 from sampletones_core.timing import SongTiming
 from sampletones_player.builder import (
     SONG_START,
@@ -29,11 +28,14 @@ from sampletones_player.builder import (
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.export.backend import NSFBackend
 from sampletones_player.export.program import NSFProgram
-from sampletones_player.registers.playable import playable
 from sampletones_player.song import Song
 from sampletones_player.specification.nsf import NSF_MAGIC
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
-from tests.integration.nsf.console.instructions import instructions_from_trace, sounded_approximation
+from tests.integration.nsf.console.instructions import (
+    DividerReading,
+    instructions_from_trace,
+    sounded_approximation,
+)
 from tests.integration.nsf.console.session import (
     captured_file_trace,
     captured_run,
@@ -44,19 +46,6 @@ ChannelInstructions = Dict[ChannelName, List[InstructionUnion]]
 
 PROJECT_ARTIFACT: Final[str] = "song"
 LOOP_FRAME: Final[int] = 1
-
-
-def resting(instruction: InstructionUnion) -> InstructionUnion:
-    """A sounding instruction as it stands, and a rest as the canonical silent one.
-
-    A stream holds a channel's pitch and timbre through a rest so the driver leaves the timer's
-    high byte alone, so what a rest carries beyond its silence is the channel's own history.
-    """
-    if instruction.on:
-        return instruction
-
-    silent: InstructionUnion = type(instruction).null_instruction()
-    return silent
 
 
 def sample_request(sample: Sample) -> SampleExport:
@@ -133,7 +122,7 @@ def played(
         trace = captured_file_trace(destination.read_bytes(), song)
         played[name] = instructions_from_trace(
             trace,
-            get_timer_table(instrument_catalog[name].reconstruction.config.tuning),
+            DividerReading.from_tuning(instrument_catalog[name].reconstruction.config.tuning),
         )
 
     return played
@@ -159,8 +148,8 @@ class TestTheBackendWritesAPlayableProgram:
 class TestTheConsoleSoundsTheRequest:
     """The envelopes an export request carries, read back off the APU the file drives.
 
-    A frame reaches the console through ``playable``, which states what its planes can carry of
-    one, so both sides are read in the terms the driver actually sounds.
+    A divider reads back as the pitch lying nearest it and a detune, so both sides are stated by
+    the divider each frame sounds — see :class:`DividerReading`.
     """
 
     def test_every_slice_sounds_the_instructions_its_envelopes_describe(
@@ -169,10 +158,11 @@ class TestTheConsoleSoundsTheRequest:
         requests: Dict[str, SampleExport],
     ) -> None:
         for name, request in requests.items():
+            reading = DividerReading.from_tuning(request.tuning)
             for channel, instructions in instructions_from_instruments(request.instruments).items():
                 sounded = played[name][channel][: len(instructions)]
-                assert [resting(instruction) for instruction in sounded] == [
-                    resting(playable(instruction)) for instruction in instructions
+                assert [reading.sounded(instruction) for instruction in sounded] == [
+                    reading.sounded(instruction) for instruction in instructions
                 ]
 
     def test_a_channel_the_request_leaves_out_rests_throughout(
@@ -250,11 +240,12 @@ class TestTheBackendWritesAWholeSong:
             project_file.read_bytes(),
             play_calls_reaching(project_song, project_song.ticks),
         )
-        played = instructions_from_trace(trace, get_timer_table(tuning_from_project(integration_project)))
+        reading = DividerReading.from_tuning(tuning_from_project(integration_project))
+        played = instructions_from_trace(trace, reading)
         for channel, instructions in song_instructions(integration_project).items():
             sounded = played[channel][: len(instructions)]
-            assert [resting(instruction) for instruction in sounded] == [
-                resting(playable(instruction)) for instruction in instructions
+            assert [reading.sounded(instruction) for instruction in sounded] == [
+                reading.sounded(instruction) for instruction in instructions
             ]
 
     def test_the_song_comes_round_rather_than_falling_silent(
@@ -266,11 +257,12 @@ class TestTheBackendWritesAWholeSong:
         """The file repeats, so the calls past the arrangement's end sound its first ticks again."""
         ticks = project_song.ticks
         trace = captured_run(project_file.read_bytes(), play_calls_reaching(project_song, 2 * ticks))
-        played = instructions_from_trace(trace, get_timer_table(tuning_from_project(integration_project)))
+        reading = DividerReading.from_tuning(tuning_from_project(integration_project))
+        played = instructions_from_trace(trace, reading)
         for channel, sounded in played.items():
             assert len(sounded) > ticks
-            assert [resting(instruction) for instruction in sounded[ticks : 2 * ticks]] == [
-                resting(instruction) for instruction in sounded[:ticks]
+            assert [reading.sounded(instruction) for instruction in sounded[ticks : 2 * ticks]] == [
+                reading.sounded(instruction) for instruction in sounded[:ticks]
             ]
 
 
@@ -294,7 +286,7 @@ def sounded_program(
 ) -> ChannelInstructions:
     """What the console sounds over ``ticks`` of a written program, read back as instructions."""
     trace = captured_run(data, play_calls_reaching(project_song, ticks))
-    return instructions_from_trace(trace, get_timer_table(tuning_from_project(project)))
+    return instructions_from_trace(trace, DividerReading.from_tuning(tuning_from_project(project)))
 
 
 class TestTheConsoleSoundsTheChosenProgram:
@@ -312,14 +304,15 @@ class TestTheConsoleSoundsTheChosenProgram:
         )
         data = chosen_file(backend, integration_project, program, tmp_path).read_bytes()
         played = sounded_program(data, project_song, integration_project, project_song.ticks)
+        reading = DividerReading.from_tuning(tuning_from_project(integration_project))
 
         for channel, instructions in song_instructions(integration_project).items():
             sounded = played[channel][: len(instructions)]
             if channel == ChannelName.NOISE:
                 assert not any(instruction.on for instruction in sounded)
             else:
-                assert [resting(instruction) for instruction in sounded] == [
-                    resting(playable(instruction)) for instruction in instructions
+                assert [reading.sounded(instruction) for instruction in sounded] == [
+                    reading.sounded(instruction) for instruction in instructions
                 ]
 
     def test_a_song_written_without_compression_sounds_the_arrangement(
@@ -332,10 +325,11 @@ class TestTheConsoleSoundsTheChosenProgram:
         program = NSFProgram.for_project(integration_project).model_copy(update={"scheme": CompressionScheme.NONE})
         data = chosen_file(backend, integration_project, program, tmp_path).read_bytes()
         played = sounded_program(data, project_song, integration_project, project_song.ticks)
+        reading = DividerReading.from_tuning(tuning_from_project(integration_project))
 
         for channel, instructions in song_instructions(integration_project).items():
-            assert [resting(instruction) for instruction in played[channel][: len(instructions)]] == [
-                resting(playable(instruction)) for instruction in instructions
+            assert [reading.sounded(instruction) for instruction in played[channel][: len(instructions)]] == [
+                reading.sounded(instruction) for instruction in instructions
             ]
 
     def test_a_song_repeating_from_a_frame_comes_round_to_that_frame(
@@ -351,9 +345,10 @@ class TestTheConsoleSoundsTheChosenProgram:
         data = chosen_file(backend, integration_project, program, tmp_path).read_bytes()
         ticks = project_song.ticks
         played = sounded_program(data, project_song, integration_project, 2 * ticks)
+        reading = DividerReading.from_tuning(tuning_from_project(integration_project))
 
         repeated = ticks - loop_tick
         for sounded in played.values():
-            assert [resting(instruction) for instruction in sounded[ticks : ticks + repeated]] == [
-                resting(instruction) for instruction in sounded[loop_tick:ticks]
+            assert [reading.sounded(instruction) for instruction in sounded[ticks : ticks + repeated]] == [
+                reading.sounded(instruction) for instruction in sounded[loop_tick:ticks]
             ]

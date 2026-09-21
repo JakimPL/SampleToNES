@@ -3,6 +3,7 @@ channel_column_width: 78
 channel_solo_width: 62
 channel_box_width: 29
 remove_button_width: 30
+swatch_size: 14
 level_strip_height: 6
 well_padding: 8
 well_margin: 4

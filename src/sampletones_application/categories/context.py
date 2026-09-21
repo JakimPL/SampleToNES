@@ -71,6 +71,18 @@ def channel_label(
     return context_label(language_manager, CHANNEL_ELEMENTS[channel])
 
 
+def channel_letter(
+    language_manager: LanguageManager,
+    channel: ChannelName,
+) -> str:
+    """Resolves the single letter a channel is marked by where a name has no room to stand.
+
+    The ownership ribbon gives each channel a lane one bar high, so the lane is named by the
+    letter the reader already meets in a converted reconstruction's folder name.
+    """
+    return context_text(language_manager, TextType.LETTER, CHANNEL_ELEMENTS[channel])
+
+
 def generator_label(
     language_manager: LanguageManager,
     generator_name: GeneratorName,

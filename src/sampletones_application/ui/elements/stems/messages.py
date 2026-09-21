@@ -38,6 +38,7 @@ class StemsMessages:
         self._msg_missing = language_manager["global.stems.message.missing_tooltip"]
         self._msg_unoffered = language_manager["global.stems.message.unoffered_tooltip"]
         self._msg_folder = language_manager["global.stems.message.folder_tooltip"]
+        self._msg_edits = language_manager["global.stems.message.edits_tooltip"]
 
     def reads(self, view_model: StemsListViewModel) -> None:
         """Takes up the view the list is drawing, which is what every answer is read from."""
@@ -45,9 +46,15 @@ class StemsMessages:
 
     def row_explanation(self, row: StemRowViewModel) -> str:
         """What the row's hover states: where the source is, why it is grayed out where it
-        contributes nothing, and how it moves where the list lets it."""
-        lines = [str(row.path)]
-        if row.stands_for_a_folder:
+        contributes nothing, and how it moves where the list lets it.
+
+        A row the document remembers by name alone opens on that name, which is what a recording
+        an embedded sample was detached from reads as.
+        """
+        lines = [str(row.path) if row.path is not None else row.name]
+        if row.stands_for_edits:
+            lines.append(self._msg_edits)
+        elif row.stands_for_a_folder:
             lines.append(self._msg_folder)
         elif not row.available:
             lines.append(self._msg_missing)
@@ -78,13 +85,13 @@ class StemsMessages:
     def _row_gestures(self, row: StemRowViewModel) -> Tuple[str, ...]:
         """What a reader can do to a recording, in the order the list offers it.
 
-        A list that sounds a row says so, since a double-click is the one gesture nothing on the
-        row draws; a list that neither drags nor reveals reads as the name alone.
+        A list that sounds or reveals a row says so, since a double-click is the one gesture
+        nothing on the row draws; a list that neither drags nor reveals reads as the name alone.
         """
         lines: Tuple[str, ...] = ()
         if self._offer.drags(self._view):
             lines += (self._language_manager["global.stems.message.status_row_drag"].format(name=row.name),)
-        if self._host.activatable:
+        if self._host.revealable:
             lines += (self._language_manager["global.stems.message.status_row_reveal"].format(name=row.name),)
 
         if self._host.playable:

@@ -14,6 +14,9 @@ VALID_FIELDS: Final[Dict[str, Any]] = {
     "low_frequency": 30.0,
     "energy_floor": 1e-10,
     "audibility_range_decibels": 60.0,
+    "compression_exponent": 0.3,
+    "dynamic_range_decibels": 60.0,
+    "level_matching": True,
 }
 
 
@@ -58,6 +61,21 @@ class TestRefereeConfig:
             field="audibility_range_decibels",
             value=0.0,
             label="zero_audibility_range",
+        ),
+        InvalidFieldCase(
+            field="compression_exponent",
+            value=0.0,
+            label="zero_compression_exponent",
+        ),
+        InvalidFieldCase(
+            field="compression_exponent",
+            value=1.5,
+            label="expanding_compression_exponent",
+        ),
+        InvalidFieldCase(
+            field="dynamic_range_decibels",
+            value=0.0,
+            label="zero_dynamic_range",
         ),
     )
 

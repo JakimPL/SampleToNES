@@ -17,6 +17,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
 )
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.language import FakeLanguageManager
 
 CONVERTER_RUNNING_MESSAGE_KEY: Final[str] = "main.explorer.message.converter_running_msg"
@@ -43,7 +44,7 @@ def _hooks(*, operation_active: bool) -> MainTabHooks:
         on_load_directory=MagicMock(),
         on_canceled=MagicMock(),
         on_refresh_trees=MagicMock(),
-        on_generate_library=MagicMock(),
+        on_prepare_library=MagicMock(),
     )
 
 
@@ -84,6 +85,19 @@ class TestConverterRunningNotice:
         coordinator._dialogs.show_info.assert_not_called()
 
 
+class TestTheChannelKeys:
+    """A channel key reaches the recording picked out on the terms the list's own keys keep."""
+
+    @pytest.mark.parametrize("keys_active", [True, False], ids=["open", "put-away"])
+    def test_a_key_reaches_the_pick_only_while_the_list_answers_keys(self, keys_active: bool) -> None:
+        coordinator = _coordinator(operation_active=False)
+        coordinator._converter_panel = MagicMock(keys_active=keys_active)
+
+        coordinator.toggle_channel(ChannelName.TRIANGLE)
+
+        assert coordinator._converter_logic.toggle_channel.called is keys_active
+
+
 class TestReconstructGuards:
     """Reconstruction and conversion share the exclusive worker pool, so the reconstruct intents
     decline while an operation runs and delegate to the wired callbacks when idle."""
@@ -91,7 +105,7 @@ class TestReconstructGuards:
     def test_file_request_declines_while_an_operation_is_active(self) -> None:
         coordinator = _coordinator(operation_active=True)
 
-        coordinator._request_reconstruct_file(Path("/audio/sample.wav"))
+        coordinator.request_reconstruct_file(Path("/audio/sample.wav"))
 
         coordinator._hooks.on_reconstruct_file.assert_not_called()
         coordinator._dialogs.show_info.assert_called_once()
@@ -100,7 +114,7 @@ class TestReconstructGuards:
         coordinator = _coordinator(operation_active=False)
         filepath = Path("/audio/sample.wav")
 
-        coordinator._request_reconstruct_file(filepath)
+        coordinator.request_reconstruct_file(filepath)
 
         coordinator._hooks.on_reconstruct_file.assert_called_once_with(filepath)
         coordinator._dialogs.show_info.assert_not_called()
@@ -108,7 +122,7 @@ class TestReconstructGuards:
     def test_directory_request_declines_while_an_operation_is_active(self) -> None:
         coordinator = _coordinator(operation_active=True)
 
-        coordinator._request_reconstruct_directory(Path("/audio"))
+        coordinator.request_reconstruct_directory(Path("/audio"))
 
         coordinator._hooks.on_reconstruct_directory.assert_not_called()
         coordinator._dialogs.show_info.assert_called_once()
@@ -117,7 +131,7 @@ class TestReconstructGuards:
         coordinator = _coordinator(operation_active=False)
         directory = Path("/audio")
 
-        coordinator._request_reconstruct_directory(directory)
+        coordinator.request_reconstruct_directory(directory)
 
         coordinator._hooks.on_reconstruct_directory.assert_called_once_with(directory)
         coordinator._dialogs.show_info.assert_not_called()
@@ -405,12 +419,12 @@ class TestReconstructReplacesTheSetup:
     def test_an_empty_setup_reconstructs_straight_away(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=False)
 
-        coordinator._request_reconstruct_file(tmp_path / "a.wav")
+        coordinator.request_reconstruct_file(tmp_path / "a.wav")
 
         coordinator._hooks.on_reconstruct_file.assert_called_once_with(tmp_path / "a.wav")
         coordinator._dialogs.show_confirmation.assert_not_called()
 
-    @pytest.mark.parametrize("gesture", ["_request_reconstruct_file", "_request_reconstruct_directory"])
+    @pytest.mark.parametrize("gesture", ["request_reconstruct_file", "request_reconstruct_directory"])
     def test_a_gathered_list_is_asked_about_first(self, tmp_path: Path, gesture: str) -> None:
         coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
 
@@ -423,7 +437,7 @@ class TestReconstructReplacesTheSetup:
     def test_confirming_converts_what_was_named(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
 
-        coordinator._request_reconstruct_directory(tmp_path)
+        coordinator.request_reconstruct_directory(tmp_path)
         coordinator._dialogs.show_confirmation.call_args.args[3]()
 
         coordinator._hooks.on_reconstruct_directory.assert_called_once_with(tmp_path)
@@ -431,7 +445,7 @@ class TestReconstructReplacesTheSetup:
     def test_declining_converts_nothing(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
 
-        coordinator._request_reconstruct_directory(tmp_path)
+        coordinator.request_reconstruct_directory(tmp_path)
         coordinator._dialogs.show_confirmation.call_args.kwargs["on_cancel"]()
 
         coordinator._converter_logic.set_output.assert_not_called()

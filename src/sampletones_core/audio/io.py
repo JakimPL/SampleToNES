@@ -1,9 +1,10 @@
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
+from typing import Final, List, Optional, Sequence, Tuple
 
 import numpy as np
 from scipy.io import wavfile
 from soundfile import read as sf_read
+from soundfile import write as sf_write
 
 from sampletones_core.constants.algorithm import QUANTIZATION_LEVELS
 from sampletones_shared.types.path import Pathlike
@@ -14,6 +15,9 @@ from .processing import normalize as normalize_audio
 from .processing import quantize as quantize_audio
 from .processing import resample, to_mono
 from .validation import validate_audio_array, validate_sample_rate
+
+FLAC_FORMAT: Final[str] = "FLAC"
+FLAC_SUBTYPE: Final[str] = "PCM_16"
 
 
 def write_wave(path: Pathlike, sample_rate: int, audio: np.ndarray) -> None:
@@ -35,6 +39,28 @@ def write_wave(path: Pathlike, sample_rate: int, audio: np.ndarray) -> None:
     validate_audio_array(audio, allowed_dims=(1, 2))
     audio = clip_audio(audio)
     wavfile.write(path, sample_rate, audio)
+
+
+def write_flac(path: Pathlike, sample_rate: int, audio: np.ndarray) -> None:
+    """
+    Write audio data to a FLAC file with specified sample rate.
+
+    The samples are clipped to the valid wave range and stored as 16-bit integers, a lossless
+    encoding every audio player and every browser reads, at about a third of the size the same
+    audio takes as 32-bit floating point.
+
+    Args:
+        path: File path where the FLAC file will be written.
+        sample_rate: Sample rate in Hz (must be one of the allowed rates).
+        audio: Audio array to write (can be mono or stereo).
+
+    Raises:
+        TypeError: If sample_rate is not an integer or audio is not a numpy array.
+        ValueError: If sample_rate is not in allowed sample rates or audio has invalid dimensions.
+    """
+    validate_sample_rate(sample_rate)
+    validate_audio_array(audio, allowed_dims=(1, 2))
+    sf_write(path, clip_audio(audio), sample_rate, subtype=FLAC_SUBTYPE, format=FLAC_FORMAT)
 
 
 def read_wave(path: Pathlike) -> Tuple[np.ndarray, int]:

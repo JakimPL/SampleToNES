@@ -23,7 +23,7 @@ from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_BUTTON
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_BUTTON_ACTION,
-    TAG_MAIN_CONVERTER_GROUP_CONTROLS,
+    TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
     TAG_MAIN_CONVERTER_GROUP_CONVERT,
     TAG_MAIN_CONVERTER_GROUP_INPUT,
     TAG_MAIN_CONVERTER_GROUP_ORDER,
@@ -57,6 +57,10 @@ from tests.suite.gestures import CLICKED, click_row_name
 from tests.suite.shortcuts import rebound_source, shipped_source
 
 ROOT_TAG = "test_root"
+SETUP_CHOICES = (
+    TAG_MAIN_CONVERTER_RADIO_MODE,
+    TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE,
+)
 LANGUAGE_MANAGER = LanguageManager(LANG_EN)
 ACTION_LABEL = "Convert 2 recordings"
 STATUS_TEXT = "No tasks in progress."
@@ -102,6 +106,7 @@ def row(
     return StemRowViewModel(
         key=str(path),
         kind=SourceKind.RECORDING,
+        name=path.stem,
         path=path,
         held=(),
         channels=frozenset({ChannelName.PULSE1}),
@@ -111,6 +116,7 @@ def row(
         available=True,
         level=level,
         position=position,
+        record_position=None,
         level_size=level_size,
         level_count=level_count,
     )
@@ -122,6 +128,7 @@ def folder(name: str, *, holds: int) -> StemRowViewModel:
     return StemRowViewModel(
         key=str(root),
         kind=SourceKind.FOLDER,
+        name=root.name,
         path=root,
         held=tuple(row(f"{name}/take_{index}") for index in range(holds)),
         channels=frozenset({ChannelName.PULSE1}),
@@ -131,6 +138,7 @@ def folder(name: str, *, holds: int) -> StemRowViewModel:
         available=True,
         level=0,
         position=0,
+        record_position=None,
         level_size=1,
         level_count=1,
     )
@@ -155,8 +163,6 @@ def view(
         other_operation_active=False,
         output=output,
         stem_sources=rows,
-        channel_cap=len(ChannelName),
-        max_channel_cap=len(ChannelName),
         hierarchy_mode=DEFAULT_STEMS_HIERARCHY_MODE,
         max_sources=8,
         selected_key=selected_key,
@@ -169,13 +175,20 @@ def build(
     key_router: Optional[KeyRouter] = None,
     tab_active: ActivePredicate = lambda: True,
     shortcut_source: Optional[ShortcutSource] = None,
+    collapsed: bool = False,
 ) -> Tuple[GUIConverterPanel, List[OutputKind]]:
-    """The card as the application builds it, over the output switch it reports."""
+    """The card as the application builds it, over the output switch it reports.
+
+    ``collapsed`` opens the card put away, which is how a reader who collapsed it last session
+    meets it.
+    """
     panel = GUIConverterPanel(
         layout=layout_config.tabs.main.converter,
         stems_layout=layout_config.general.stems,
         inputs=layout_config.general.inputs,
         path_colors=layout_config.general.colors.paths,
+        stem_colors=layout_config.general.colors.stems,
+        initial_collapsed=collapsed,
         language_manager=LANGUAGE_MANAGER,
         status_bar=GUIStatusBar(),
         key_router=key_router if key_router is not None else KeyRouter(),
@@ -270,19 +283,12 @@ class TestTheActionButton:
 
 
 class TestTheRunControls:
-    """The choices answer for what the list holds, so they arrive with it."""
+    """The order answers for a mix of several recordings, so it arrives with the second of them."""
 
-    def test_they_stand_away_until_something_is_listed(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+    def test_it_stands_away_until_something_is_listed(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         build(layout_config)
 
-        assert not shows(TAG_MAIN_CONVERTER_GROUP_CONTROLS)
-
-    def test_they_arrive_with_the_first_recording(self, dpg_context: None, layout_config: LayoutConfig) -> None:
-        panel, _reported = build(layout_config)
-
-        panel.update_view(view(row("kick")))
-
-        assert shows(TAG_MAIN_CONVERTER_GROUP_CONTROLS)
+        assert not shows(TAG_MAIN_CONVERTER_GROUP_ORDER)
 
     def test_the_order_arrives_with_the_second_recording_of_a_mix(
         self,
@@ -308,12 +314,26 @@ class TestTheRunControls:
 
         assert not shows(TAG_MAIN_CONVERTER_GROUP_ORDER)
 
-    def test_they_stand_below_the_list(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+    def test_every_choice_rests_while_a_run_holds_the_setup(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        panel, _reported = build(layout_config)
+
+        panel.update_view(view(row("kick"), row("snare"), output=OutputKind.MIXED, phase=ConversionPhase.RUNNING))
+
+        assert {tag: dpg.get_item_configuration(tag)["enabled"] for tag in SETUP_CHOICES} == dict.fromkeys(
+            SETUP_CHOICES,
+            False,
+        )
+
+    def test_it_stands_below_the_list(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         build(layout_config)
         body = dpg.get_item_children(dpg.get_item_parent(TAG_MAIN_CONVERTER_WINDOW_STEMS), 1)
 
         assert body.index(dpg.get_alias_id(TAG_MAIN_CONVERTER_WINDOW_STEMS)) < body.index(
-            dpg.get_alias_id(TAG_MAIN_CONVERTER_GROUP_CONTROLS)
+            dpg.get_alias_id(TAG_MAIN_CONVERTER_GROUP_ORDER)
         )
 
 
@@ -423,6 +443,34 @@ class TestTheKeysTheListClaims:
 
         assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is False
         assert removed == []
+
+    def test_a_press_rests_while_the_card_stands_away(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A card put away keeps the row it holds picked out, and lets the key travel on."""
+        router = KeyRouter()
+        panel, _reported = build(layout_config, key_router=router, collapsed=True)
+        removed: List[Path] = []
+        panel.on_source_removed = removed.append
+        kick = row("kick")
+        panel.update_view(view(kick, selected_key=kick.key))
+
+        assert self._press(router, ShortcutId.SOURCES_REMOVE_SOURCE) is False
+        assert (removed, panel.stems_list.picked_key) == ([], kick.key)
+
+    def test_the_channel_keys_read_the_card_standing_away(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The channel keys reach the pick from the application's shortcuts, on the list's terms."""
+        panel, _reported = build(layout_config, collapsed=True)
+        kick = row("kick")
+        panel.update_view(view(kick, selected_key=kick.key))
+
+        assert panel.keys_active is False
 
     def test_a_press_rests_while_the_list_stands_inert(
         self,
@@ -703,6 +751,36 @@ class TestTheMovesAMixOffers(BaseTestSuite):
         moves = self._moves(panel, kick, registered)
 
         assert list(moves) == [self._label(ConverterStemMoveElements.CONTEXT_REMOVE_STEM)]
+
+    def test_a_mix_of_one_recording_offers_removal_alone(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        """One recording is its own order, so the list draws no levels and the menu names no move
+        over them."""
+        panel, _reported = build(layout_config)
+        kick = row("kick")
+        panel.update_view(view(kick, output=OutputKind.MIXED))
+
+        moves = self._moves(panel, kick, registered)
+
+        assert list(moves) == [self._label(ConverterStemMoveElements.CONTEXT_REMOVE_STEM)]
+
+    def test_a_running_mix_offers_no_move_it_would_take(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        panel, _reported = build(layout_config)
+        kick = row("kick")
+        panel.update_view(view(kick, row("snare"), output=OutputKind.MIXED, phase=ConversionPhase.RUNNING))
+
+        moves = self._moves(panel, kick, registered)
+
+        assert not any(moves.values())
 
     def test_a_mix_offers_every_move_a_row_can_make(
         self,

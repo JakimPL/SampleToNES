@@ -1,3 +1,4 @@
+from typing import List
 from unittest.mock import MagicMock
 
 import pytest
@@ -56,21 +57,23 @@ class TestGuardedCommands:
         dialogs.show_error.assert_called_once_with(exception, "playback failed")
 
 
-class TestPassThroughs:
-    """Stop and the status queries delegate without a guard, matching the logic's own surface."""
+class TestAGuardedRun:
+    """A command beyond the transport runs under the same boundary the transport commands keep."""
 
-    def test_stop_delegates(self, guarded_player: GuardedPlayer, player_logic: MagicMock) -> None:
-        guarded_player.stop()
+    def test_the_command_runs(self, guarded_player: GuardedPlayer, dialogs: MagicMock) -> None:
+        ran: List[int] = []
 
-        player_logic.stop.assert_called_once_with()
+        guarded_player.run_guarded(lambda: ran.append(400))
 
-    def test_queries_reflect_the_logic(self, guarded_player: GuardedPlayer, player_logic: MagicMock) -> None:
-        player_logic.is_playing.return_value = True
-        player_logic.is_paused.return_value = False
-        player_logic.is_engaged.return_value = True
-        player_logic.is_loaded.return_value = True
+        assert ran == [400]
+        dialogs.show_error.assert_not_called()
 
-        assert guarded_player.is_playing() is True
-        assert guarded_player.is_paused() is False
-        assert guarded_player.is_engaged() is True
-        assert guarded_player.is_loaded() is True
+    def test_playback_error_becomes_a_dialog(self, guarded_player: GuardedPlayer, dialogs: MagicMock) -> None:
+        exception = PlaybackError("device unavailable")
+
+        def failing() -> None:
+            raise exception
+
+        guarded_player.run_guarded(failing)
+
+        dialogs.show_error.assert_called_once_with(exception, "playback failed")

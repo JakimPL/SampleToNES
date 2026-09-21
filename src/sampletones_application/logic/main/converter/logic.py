@@ -7,10 +7,12 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
+from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.logic.main.converter.destination import Destination
 from sampletones_application.logic.main.converter.gathering import Gathering
 from sampletones_application.logic.main.converter.messages import ConverterMessages
 from sampletones_application.logic.main.converter.run import (
+    ConversionRequest,
     ConversionRun,
     ConversionServiceProtocol,
     ConversionSuccess,
@@ -27,8 +29,7 @@ from sampletones_application.logic.main.converter.state import ConverterState
 from sampletones_application.logic.main.converter.view import (
     compose_view,
     inspected_settings,
-    inspected_source,
-    settings_slots,
+    source_settings,
     stem_rows,
 )
 from sampletones_application.logic.main.sources.folder import Folder
@@ -39,6 +40,7 @@ from sampletones_application.logic.main.sources.recording import Recording
 from sampletones_application.logic.main.sources.slots import (
     CHANNEL_SLOT,
     SLOTS_BY_FIELD,
+    SettingsChange,
     SettingsSlot,
 )
 from sampletones_application.utils.callbacks.queue import CallbackQueue
@@ -46,14 +48,11 @@ from sampletones_application.view_model.main.converter import (
     ConversionPhase,
     ConverterViewModel,
 )
-from sampletones_application.view_model.main.source import (
-    InspectedSourceViewModel,
-    SettingsSlotViewModel,
-)
+from sampletones_application.view_model.main.source import SourceSettingsPanelViewModel
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_application.view_model.shared.stems import StemRowViewModel
-from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.reconstructions.converter import ConversionPlan
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import NoFilesToProcessError
@@ -62,11 +61,19 @@ from sampletones_shared.types.callback import PathCallback, PathsCallback, VoidC
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
+def _driven(settings: StemSettings, channel_name: ChannelName, drive: float) -> StemSettings:
+    """The settings pushing one channel with ``drive``, where the recording occupies it."""
+    if channel_name not in settings.channel_set:
+        return settings
+
+    return settings.with_drive(channel_name, drive)
+
+
 class ConverterLogic(CallbackMixin):
     """What the Main tab's converter offers, and the one place its parts are settled against.
 
     The setup a reader builds is one value (:class:`ConverterState`), and every gesture rewrites a
-    part of it and hands the whole back to ``_settle``, which follows it wherever it reaches: the
+    part of it and hands the whole back to ``_rewrite``, which follows it wherever it reaches: the
     destination the run now names, and the view the panel draws. The run itself is held apart, so
     a conversion under way reports where it stands without knowing what it was set up from.
     """
@@ -90,7 +97,6 @@ class ConverterLogic(CallbackMixin):
             settings=RunSettings(
                 joining=session_manager.converter_settings,
                 output=session_manager.converter_output,
-                channel_cap=session_manager.converter_channel_cap,
                 hierarchy_mode=session_manager.converter_hierarchy_mode,
             ),
             gathering=Gathering.empty(),
@@ -114,9 +120,10 @@ class ConverterLogic(CallbackMixin):
         self.on_load_file: Optional[PathCallback] = None
         self.on_load_directory: Optional[VoidCallback] = None
         self.on_canceled: Optional[VoidCallback] = None
-        self.generate_library: Optional[VoidCallback] = None
+        self.prepare_library: Optional[VoidCallback] = None
         self.cancel_library_generation: Optional[VoidCallback] = None
-        self.is_library_available: Optional[Callable[[], bool]] = None
+        self.library_readiness: Optional[Callable[[Path, InstructionLibraryKey], LibraryReadiness]] = None
+        self.library_state: Optional[Callable[[Path], LibraryState]] = None
 
     @property
     def mixes(self) -> bool:
@@ -191,7 +198,7 @@ class ConverterLogic(CallbackMixin):
         for path in paths:
             gathering = self._joined(gathering, self._gathered(path))
 
-        self._settle(self._state.with_gathering(gathering))
+        self._rewrite(self._state.with_gathering(gathering))
 
     def gather_folder(self, root: Path, found: Sequence[Path]) -> None:
         """Gathers a folder standing for the recordings ``found`` below it.
@@ -205,23 +212,33 @@ class ConverterLogic(CallbackMixin):
             self.gather_recordings(found)
             return
 
-        self._settle(self._state.with_gathering(self._gathering_folder(root, found)))
+        self._rewrite(self._state.with_gathering(self._gathering_folder(root, found)))
 
     def convert_recording(self, path: Path) -> None:
-        """Converts exactly the recording the reader named, which is what a Reconstruct asks for."""
+        """Converts exactly the recording the reader named, which is what a Reconstruct asks for.
+
+        The setup is replaced only where a conversion may start, so a Reconstruct reaching the
+        converter while another operation runs leaves what the reader gathered standing.
+        """
+        if self._declines_to_start():
+            return
+
         self._replace_setup()
         self.gather_recordings([path])
         self.start_conversion()
 
     def convert_folder(self, root: Path, found: Sequence[Path]) -> None:
         """Converts the recordings ``found`` below a folder, writing one reconstruction apiece."""
+        if self._declines_to_start():
+            return
+
         self._replace_setup()
         self.gather_folder(root, found)
         self.start_conversion()
 
     def _replace_setup(self) -> None:
         """Lets whatever was gathered go, since a Reconstruct names what it converts on its own."""
-        self._settle(
+        self._rewrite(
             self._state.with_settings(self._settings.with_output(OutputKind.PER_RECORDING)).with_gathering(
                 Gathering.empty()
             )
@@ -229,29 +246,24 @@ class ConverterLogic(CallbackMixin):
 
     def select_row(self, path: Path, kind: SourceKind) -> None:
         """Names the row a reader is inspecting, which the settings card edits."""
-        self._settle(self._state.with_selected(SourceKey(kind=kind, path=path)))
+        self._rewrite(self._state.with_selected(SourceKey(kind=kind, path=path)))
 
     def clear_selection(self) -> None:
         """Lets the inspected row go, which leaves the settings card and the keys with none."""
-        self._settle(self._state.with_selected(None))
+        self._rewrite(self._state.with_selected(None))
 
     def remove_source(self, path: Path) -> None:
         """Takes one gathered recording out of the setup."""
-        self._settle(self._state.with_gathering(self._state.gathering.remove(SourceKey.recording(path))))
+        self._rewrite(self._state.with_gathering(self._state.gathering.remove(SourceKey.recording(path))))
 
     def remove_folder(self, root: Path) -> None:
         """Takes a folder out of the setup, along with every recording it stands for."""
-        self._settle(self._state.with_gathering(self._state.gathering.remove(SourceKey.folder(root))))
+        self._rewrite(self._state.with_gathering(self._state.gathering.remove(SourceKey.folder(root))))
 
     @property
-    def settings_slots(self) -> Tuple[SettingsSlotViewModel, ...]:
-        """The choices the settings card edits, read from the row a reader picked."""
-        return settings_slots(self._state)
-
-    @property
-    def inspected_source(self) -> Optional[InspectedSourceViewModel]:
-        """The row the settings card is editing, where a reader picked one out of the list."""
-        return inspected_source(self._state)
+    def source_settings_view(self) -> SourceSettingsPanelViewModel:
+        """What the settings card shows: the row a reader picked, or what a recording joins with."""
+        return source_settings(self._state, live=self.live)
 
     @property
     def live(self) -> bool:
@@ -259,19 +271,27 @@ class ConverterLogic(CallbackMixin):
         return not self._run.is_active
 
     def toggle_slot(self, field: SettingsField, channel_name: ChannelName) -> None:
-        """Settles one choice on ``channel_name`` for the row the settings card is pointed at.
+        """Settles one choice on ``channel_name`` where the settings card is pointed.
 
         A picked row settles the same way a folder's own box does — already agreeing lets the
         choice go, every other reading takes it up — so one gesture answers for a folder and for
         a recording alike.
         """
-        selected = self._state.selected
-        if selected is None:
-            return
-
         slot = SLOTS_BY_FIELD[field]
         held = self._inspected_agreement(slot, channel_name).settles_to
-        self._settle(self._state.with_gathering(self._state.gathering.settled(selected, slot, channel_name, held)))
+        self._edit_inspected(lambda settings: slot.settled(settings, channel_name, held))
+
+    def set_drive(self, channel_name: ChannelName, drive: float) -> None:
+        """Names how hard one channel is driven, where the settings card is pointed.
+
+        A drive belongs to a channel a recording occupies, so a recording leaving the channel
+        free stands as it is.
+        """
+        self._edit_inspected(lambda settings: _driven(settings, channel_name, drive))
+
+    def set_channel_cap(self, channel_cap: int) -> None:
+        """Names how many of its channels one recording may sound in a frame, where the card points."""
+        self._edit_inspected(lambda settings: settings.with_channel_cap(channel_cap))
 
     def toggle_channel(self, channel_name: ChannelName) -> None:
         """Settles one channel on the row a reader picked out, which the channel's key reaches.
@@ -280,12 +300,15 @@ class ConverterLogic(CallbackMixin):
         the recordings the box beside that row reaches. With no row picked out there is nothing
         for the press to settle, and it leaves the list as it stands.
         """
+        if self._state.selected is None:
+            return
+
         self.toggle_slot(SettingsField.CHANNELS, channel_name)
 
     def set_source_channels(self, path: Path, channels: FrozenSet[ChannelName]) -> None:
         """Names the channels one recording may take, which is the whole of what it reaches."""
         gathering = self._state.gathering.written(path, CHANNEL_SLOT, channels)
-        self._settle(self._state.with_gathering(gathering))
+        self._rewrite(self._state.with_gathering(gathering))
 
     def toggle_folder_channel(self, root: Path, channel_name: ChannelName) -> None:
         """Settles one channel on every recording a folder stands for, in one gesture.
@@ -294,7 +317,7 @@ class ConverterLogic(CallbackMixin):
         the whole folder on it, so one gesture always moves the group somewhere.
         """
         gathering = self._state.gathering.toggled(SourceKey.folder(root), CHANNEL_SLOT, channel_name)
-        self._settle(self._state.with_gathering(gathering))
+        self._rewrite(self._state.with_gathering(gathering))
 
     def move_source_within_level(self, path: Path, offset: int) -> None:
         """Moves a recording past the neighbor it shares a level with."""
@@ -330,7 +353,7 @@ class ConverterLogic(CallbackMixin):
         settled = (
             gathering.mixing_only(gathering.recordings[: gathering.ceiling]) if output.mixes else gathering.unmixed()
         )
-        self._settle(self._state.with_settings(self._settings.with_output(output)).with_gathering(settled))
+        self._rewrite(self._state.with_settings(self._settings.with_output(output)).with_gathering(settled))
 
     def mix_only(self, paths: Sequence[Path]) -> None:
         """Names the recordings a mix converts, gathering each one the list has still to take up.
@@ -342,19 +365,15 @@ class ConverterLogic(CallbackMixin):
         """
         gathering = self._state.gathering
         mixed = tuple(self._standing(gathering, path) for path in tuple(paths)[: gathering.ceiling])
-        self._settle(
+        self._rewrite(
             self._state.with_settings(self._settings.with_output(OutputKind.MIXED)).with_gathering(
                 gathering.mixing_only(mixed)
             )
         )
 
-    def set_channel_cap(self, channel_cap: int) -> None:
-        """Names how many channels one recording may hold in a frame, for every conversion."""
-        self._settle(self._state.with_settings(self._settings.with_channel_cap(channel_cap)))
-
     def set_hierarchy_mode(self, hierarchy_mode: HierarchyMode) -> None:
         """Names how the levels take turns: round by round, or one level exhausted before the next."""
-        self._settle(self._state.with_settings(self._settings.with_hierarchy_mode(hierarchy_mode)))
+        self._rewrite(self._state.with_settings(self._settings.with_hierarchy_mode(hierarchy_mode)))
 
     def start_conversion(self, confirmed: bool = False) -> None:
         """Starts the run the current setup describes, asking first where it would write over work.
@@ -362,8 +381,7 @@ class ConverterLogic(CallbackMixin):
         ``confirmed`` states that the reader has already answered for the file standing at the
         target, which is what lets the prompt's answer come back and run.
         """
-        if self._is_operation_active():
-            logger.warning("A conversion or library generation is already in progress")
+        if self._declines_to_start():
             return
 
         if not self._state.gathering.count:
@@ -380,9 +398,31 @@ class ConverterLogic(CallbackMixin):
             self.call(self.on_target_exists, standing_targets)
             return
 
-        self._run.wait()
-        self.call(self.generate_library)
+        config = self._config_manager.config.model_copy()
+        library_key = self._config_manager.key
+        self._run.wait(
+            ConversionRequest(
+                config=config,
+                plan=plan,
+                reconstruction_name=self._state.destination.reconstruction_name,
+                library_key=library_key,
+                library_state=self.query(
+                    self.library_state,
+                    config.library_directory / library_key.filename,
+                    default=LibraryState.MISSING,
+                ),
+            )
+        )
+        self.call(self.prepare_library)
         self._wait_for_library_and_start()
+
+    def _declines_to_start(self) -> bool:
+        """Whether another exclusive operation holds the resources a conversion would take."""
+        if not self._is_operation_active():
+            return False
+
+        logger.warning("A conversion or library generation is already in progress")
+        return True
 
     def cancel(self) -> None:
         if self._run.is_running:
@@ -412,6 +452,21 @@ class ConverterLogic(CallbackMixin):
     @property
     def _settings(self) -> RunSettings:
         return self._state.settings
+
+    def _edit_inspected(self, change: SettingsChange) -> None:
+        """Makes one edit where the settings card is pointed.
+
+        A picked row hands the edit to every recording it stands for; with no row picked the card
+        edits what a recording joins with, so a reader settles the shape the recordings gathered
+        from then on arrive in.
+        """
+        selected = self._state.selected
+        if selected is None:
+            joining = change(self._settings.joining)
+            self._rewrite(self._state.with_settings(self._settings.with_joining(joining)))
+            return
+
+        self._rewrite(self._state.with_gathering(self._state.gathering.changed(selected, change)))
 
     def _inspected_agreement(self, slot: SettingsSlot, channel_name: ChannelName) -> Agreement:
         """How the settings the card is editing read on ``channel_name`` in ``slot``."""
@@ -452,21 +507,27 @@ class ConverterLogic(CallbackMixin):
         if not self.mixes:
             return
 
-        self._settle(self._state.with_gathering(self._state.gathering.with_levels(levels)))
+        self._rewrite(self._state.with_gathering(self._state.gathering.with_levels(levels)))
 
-    def _settle(self, state: ConverterState) -> None:
-        """Takes up a rewritten setup and follows it wherever it reaches.
+    def _rewrite(self, state: ConverterState) -> None:
+        """Takes up a setup a gesture rewrote and follows it wherever it reaches.
+
+        The list stands inert while a conversion holds resources, so every gesture — a pick
+        included — is held to the same rule the drawn list keeps: the setup the reader sees is the
+        setup the logic holds. The run itself converts the request it was started from.
 
         A mix names its destination after the recordings that take part, so the path the panel
         shows follows every gesture; a settled run returns to idle, since the screen has moved on
         from the setup it reported.
         """
+        if not self.live:
+            return
+
         self._remember(state.settings)
         self._state = self._redirected(state.selecting(state.selected))
         self._rows = self._read_rows()
-        if not self.is_active:
-            self._run.return_to_idle()
-            self._emit(self._messages.idle, 0.0)
+        self._run.return_to_idle()
+        self._emit(self._messages.idle, 0.0)
 
     def _remember(self, settings: RunSettings) -> None:
         """Write down the shape of the run, so a launch opens where the last one left off.
@@ -479,7 +540,6 @@ class ConverterLogic(CallbackMixin):
 
         self._session_manager.set_converter_settings(settings.joining)
         self._session_manager.set_converter_output(settings.output)
-        self._session_manager.set_converter_channel_cap(settings.channel_cap)
         self._session_manager.set_converter_hierarchy_mode(settings.hierarchy_mode)
 
     def _redirected(self, state: ConverterState) -> ConverterState:
@@ -503,26 +563,31 @@ class ConverterLogic(CallbackMixin):
         return plan.existing_targets(self._config_manager.config)
 
     def _wait_for_library_and_start(self) -> None:
-        if self._run.phase != ConversionPhase.WAITING:
+        """Begins the run once the library its request converts against is ready.
+
+        A generation preparing the library is waited out. Once no generation holds it, a library
+        this build reads starts the run, and any other gives the request up.
+        """
+        request = self._run.request
+        if self._run.phase != ConversionPhase.WAITING or request is None:
             return
 
-        if not self.call(self.is_library_available):
-            CallbackQueue.add(
-                self._wait_for_library_and_start,
-                priority=self._scheduling.priorities.schedule,
-                delay=self._scheduling.delays.schedule,
-            )
-        else:
-            self._begin_conversion()
-
-    def _begin_conversion(self) -> None:
-        plan = conversion_plan(self._state)
-        if plan is None:
-            logger.warning("Nothing is selected to convert")
-            return
-
-        config: Config = self._config_manager.config.model_copy()
-        self._run.begin(config, plan, self._state.destination.reconstruction_name)
+        readiness = self.call(
+            self.library_readiness,
+            request.library_directory,
+            request.library_key,
+        )
+        match readiness:
+            case LibraryReadiness.READY:
+                self._run.begin(request)
+            case LibraryReadiness.MISSING:
+                self._run.abandon()
+            case _:
+                CallbackQueue.add(
+                    self._wait_for_library_and_start,
+                    priority=self._scheduling.priorities.schedule,
+                    delay=self._scheduling.delays.schedule,
+                )
 
     def _on_report(self, report: RunReport) -> None:
         self._emit(report.status_text, report.progress, running_input=report.input_path)

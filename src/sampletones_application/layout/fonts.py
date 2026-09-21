@@ -10,6 +10,7 @@ class Typeface(Enum):
 
 
 class Step(Enum):
+    TINY = "tiny"
     SMALL = "small"
     MEDIUM = "medium"
     LARGE = "large"
@@ -17,6 +18,7 @@ class Step(Enum):
 
 
 class FontScale(BaseModel, extra="forbid", frozen=True):
+    tiny: int
     small: int
     medium: int
     large: int
@@ -24,6 +26,7 @@ class FontScale(BaseModel, extra="forbid", frozen=True):
 
     def step(self, step: Step) -> int:
         return {
+            Step.TINY: self.tiny,
             Step.SMALL: self.small,
             Step.MEDIUM: self.medium,
             Step.LARGE: self.large,
@@ -34,7 +37,7 @@ class FontScale(BaseModel, extra="forbid", frozen=True):
 class FontsLayout(BaseModel, extra="forbid", frozen=True):
     """Per-typeface pixel-size scales for every rendered font.
 
-    Each typeface carries its own ``small``/``medium``/``large``/``title`` scale, so Sans
+    Each typeface carries its own ``tiny``/``small``/``medium``/``large``/``title`` scale, so Sans
     and Mono are tuned to the same apparent size independently, and a rung is drawn at
     where a font asks for it. ``scale`` is the DearPyGui global font multiplier applied
     on top.

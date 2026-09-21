@@ -41,7 +41,11 @@ def _item(stage: ReconstructionStage, completed: int) -> ConversionItem:
 
 
 class TestProgressText(BaseTestSuite):
-    """A batch counts the files it has written; a single job names the reconstruction it is making."""
+    """A batch counts the files it has written; a run of one names the reconstruction it is making.
+
+    The reading states which of the two the run is, and carries a stage where the run has one
+    reconstruction to name a stage for, so the words follow the unit the run reports in.
+    """
 
     def test_a_batch_counts_its_files(self) -> None:
         assert messages().progress_text(_progress(2, 5), "track") == "Progress: 2/5 files"
@@ -58,11 +62,6 @@ class TestProgressText(BaseTestSuite):
         progress = _progress(0, 1, item=ConversionItem(source=Path("/audio/kick.wav")))
 
         assert messages().progress_text(progress, "kick") == "Reconstructing kick..."
-
-    def test_a_batch_counts_the_reconstruction_under_way_toward_its_files(self) -> None:
-        progress = _progress(2, 5, item=_item(ReconstructionStage.RENDERING, FRAMES), partial=0.5)
-
-        assert messages().progress_text(progress, "kick") == "Progress: 2/5 files - rendering 1100/1100"
 
 
 class TestActionLabel(BaseTestSuite):

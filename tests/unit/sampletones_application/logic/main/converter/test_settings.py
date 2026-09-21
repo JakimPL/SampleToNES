@@ -1,43 +1,37 @@
 from typing import List
 
-from sampletones_application.constants.conversion import MIN_CHANNEL_CAP
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.logic.main.converter.settings import RunSettings
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
-from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
+from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from tests.suite.base import BaseTestSuite
 
 TONES: List[ChannelName] = [ChannelName.PULSE1, ChannelName.PULSE2, ChannelName.TRIANGLE]
 
 
-def _settings(channels: List[ChannelName], channel_cap: int = 4) -> RunSettings:
+def _settings(channels: List[ChannelName]) -> RunSettings:
     return RunSettings(
-        joining=_joining(channels),
+        joining=StemSettings.covering(channels),
         output=OutputKind.PER_RECORDING,
-        channel_cap=channel_cap,
         hierarchy_mode=DEFAULT_STEMS_HIERARCHY_MODE,
     )
 
 
-def _joining(channels: List[ChannelName]) -> StemSettings:
-    return StemSettings(channels=channels, bends=bending_channels(channels))
+class TestWhatARecordingJoinsWith(BaseTestSuite):
+    def test_the_settings_a_recording_joins_with_are_the_readers_to_name(self) -> None:
+        joining = StemSettings.covering([ChannelName.NOISE]).with_channel_cap(1)
 
+        settings = _settings(TONES).with_joining(joining)
 
-class TestTheCapARunHoldsTo(BaseTestSuite):
-    def test_a_cap_beyond_the_channels_there_are_is_held_to_them(self) -> None:
-        settings = _settings(TONES).with_channel_cap(len(ChannelName) + 5)
+        assert settings.joining == joining
 
-        assert settings.effective_channel_cap == len(ChannelName)
+    def test_naming_them_leaves_the_shape_of_the_run(self) -> None:
+        settings = _settings(TONES).with_output(OutputKind.MIXED)
 
-    def test_a_cap_below_one_channel_is_refused(self) -> None:
-        assert _settings(TONES).with_channel_cap(0).effective_channel_cap == MIN_CHANNEL_CAP
+        named = settings.with_joining(StemSettings.covering([ChannelName.NOISE]))
 
-    def test_the_cap_stands_whatever_a_row_holds(self) -> None:
-        """The cap bounds a frame, so it answers to the hardware rather than to one row."""
-        settings = _settings([ChannelName.PULSE1]).with_channel_cap(3)
-
-        assert settings.effective_channel_cap == 3
+        assert (named.output, named.hierarchy_mode) == (settings.output, settings.hierarchy_mode)
 
 
 class TestTheShapeOfTheRun(BaseTestSuite):

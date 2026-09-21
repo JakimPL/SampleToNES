@@ -23,7 +23,9 @@ from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.hover import HOVER_RECHECK_FRAMES
 from tests.suite.frames import Frames
+from tests.suite.gestures import HOVERED, handler_of
 
 _EXPANDED_GLYPH = "v"
 _COLLAPSED_GLYPH = ">"
@@ -36,7 +38,7 @@ _RAIL_WIDTH = 28
 
 
 _STRIP_PADDING = 8
-HOVER_RECHECK_FRAMES = 2
+RESTING_FRAMES = 12
 
 
 @pytest.fixture
@@ -109,6 +111,11 @@ def _build_card(controller: CollapseController) -> None:
             dpg.add_text("body")
 
     controller.set_collapsed(controller.collapsed, notify=False)
+
+
+def _report_hover(controller: CollapseController) -> None:
+    """Land the report DearPyGui's hover handler makes for a frame the pointer rests on a bar."""
+    dpg.get_item_callback(handler_of(controller.strip_handler_tag, HOVERED))()
 
 
 class TestCollapseControllerAttach:
@@ -248,32 +255,49 @@ class TestHorizontalCollapse:
         probed: List[str] = []
         monkeypatch.setattr(dpg, "is_item_hovered", lambda tag: bool(probed.append(tag)) and False)
 
-        controller._on_bar_hover()
+        _report_hover(controller)
 
         assert controller.strip_tag in probed
         assert controller.rail_tag in probed
 
-    def test_a_hovered_bar_asks_for_the_frame_that_catches_the_pointer_leaving(
+    def test_a_pointer_resting_on_a_bar_keeps_one_recheck_waiting(
         self,
         dpg_context: None,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """An item hover handler fires only while the pointer is over the item, so the re-check
-        that restores the idle background waits the couple of frames the hover takes to end."""
+        """A hover handler reports every frame the pointer rests on the bar, and the one re-check
+        catching the pointer leaving is all those reports wait on."""
         controller = _controller(CollapseAxis.VERTICAL)
         _build_card(controller)
         held = Frames()
-        probed: List[str] = []
         monkeypatch.setattr(FrameCallbackManager, "set_frame_callback", held.hold)
-        monkeypatch.setattr(dpg, "is_item_hovered", lambda tag: bool(probed.append(tag)) or True)
-        controller._on_bar_hover()
-        probed.clear()
+        monkeypatch.setattr(dpg, "is_item_hovered", lambda tag: True)
 
-        held.render(HOVER_RECHECK_FRAMES - 1)
-        assert probed == []
+        for _ in range(RESTING_FRAMES):
+            _report_hover(controller)
+            held.render()
 
-        held.render()
-        assert probed == [controller.strip_tag]
+        assert held.pending == 1
+
+    def test_a_pointer_leaving_the_bar_settles_it_back_to_idle(
+        self,
+        dpg_context: None,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        controller = _controller(CollapseAxis.VERTICAL)
+        _build_card(controller)
+        held = Frames()
+        hovered = [True]
+        monkeypatch.setattr(FrameCallbackManager, "set_frame_callback", held.hold)
+        monkeypatch.setattr(dpg, "is_item_hovered", lambda tag: hovered[0])
+        _report_hover(controller)
+        worn = dpg.get_item_theme(controller.strip_tag)
+
+        hovered[0] = False
+        held.render(HOVER_RECHECK_FRAMES)
+
+        assert worn != dpg.get_item_theme(controller.strip_tag)
+        assert held.pending == 0
 
     def test_toggle_announces_the_new_state(self, dpg_context: None) -> None:
         controller = _controller(CollapseAxis.HORIZONTAL_LEFT)

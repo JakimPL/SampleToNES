@@ -7,6 +7,7 @@ from sampletones_application.tags.general import (
     SUF_CHECKBOX,
     SUF_FOLDER,
     SUF_GROUP,
+    SUF_HANDLER_DRAWN,
     SUF_HANDLER_REGISTRY,
     SUF_LEVEL,
     SUF_PAYLOAD,
@@ -42,6 +43,16 @@ class StemsTags:
     def body(self) -> str:
         """The group the bands are built into, which a rebuild empties."""
         return compose_tag(self.well, SUF_GROUP)
+
+    @property
+    def body_handlers(self) -> str:
+        """The registry watching the body, which is where the frames it is drawn in are reported."""
+        return compose_tag(self.body, SUF_HANDLER_REGISTRY)
+
+    @property
+    def drawn(self) -> str:
+        """The handler reporting each frame the body is drawn in, standing on while the list settles."""
+        return compose_tag(self.body, SUF_HANDLER_DRAWN)
 
     @property
     def table(self) -> str:

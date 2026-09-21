@@ -3,7 +3,6 @@ from typing import Any, Dict, Final, Optional, Tuple
 
 import numpy as np
 
-from sampletones_core.constants.algorithm import RESET_PHASE
 from sampletones_core.constants.general import (
     APU_CLOCK,
     MAX_LFSR,
@@ -79,7 +78,7 @@ class LFSRTimer(Timer):
         self,
         sample_rate: int,
         nes_frequency: int,
-        reset_phase: bool = RESET_PHASE,
+        reset_phase: bool,
     ) -> None:
         super().__init__(sample_rate, nes_frequency, reset_phase)
 
@@ -134,11 +133,6 @@ class LFSRTimer(Timer):
         index = int(self.lfsr_tables[self.short].lfsr_to_index[lfsr])
         return index if index != OFF_CYCLE else CYCLE_START
 
-    def calculate_offset(self, initials: Initials = None) -> int:
-        lfsr, clock = initials if initials is not None else (1, 0.0)
-        index = self.resolve_index(lfsr)
-        return int(np.ceil(index / self._clocks_per_sample - clock))
-
     def generate_frame(self, save: bool = True) -> np.ndarray:
         tables = self.lfsr_tables[self.short]
         length = self.lfsr_period
@@ -173,11 +167,23 @@ class LFSRTimer(Timer):
     @period.setter
     def period(self, value: int) -> None:
         self._clocks_per_sample = self.calculate_clocks_per_sample(value)
-        self._period = self.lfsr_period / self._clocks_per_sample
+        self._period = self.cycle_samples(self.short, value)
         self._real_frequency = self.sample_rate / self._period
 
         if self.reset_phase:
             self.reset()
+
+    def cycle_samples(self, short: bool, period: int) -> float:
+        """The samples one whole shift-register cycle spans at a period, a fractional count.
+
+        Args:
+            short: Whether the register runs in its 93-step short mode.
+            period: The index into the noise period table.
+
+        Returns:
+            float: The cycle's length in samples.
+        """
+        return cycle_length(short) / self.calculate_clocks_per_sample(period)
 
     def calculate_clocks_per_sample(self, period: int) -> float:
         apu_period = NOISE_PERIODS[period]

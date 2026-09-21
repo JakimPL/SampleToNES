@@ -1,4 +1,5 @@
 import threading
+from dataclasses import dataclass
 from typing import Callable, Final, List
 from unittest.mock import MagicMock, patch
 
@@ -6,7 +7,10 @@ import numpy as np
 import pytest
 
 from sampletones_core.audio.manager import AudioDeviceManager
+from sampletones_core.constants.audio import START_OF_AUDIO
 from sampletones_shared.exceptions import PlaybackError
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 _LOW = 0
 _HIGH = 1
@@ -134,6 +138,90 @@ class TestPriorityArbitration:
         thread.assert_called_once()
 
 
+class TestPlaybackStart(BaseTestSuite):
+    """Playback begins at the sample asked for, placed before the thread writing it starts."""
+
+    AUDIO_LENGTH: Final[int] = 8
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        start: int
+        expected: int
+
+    test_cases = (
+        TestCase(start=5, expected=5, label="within_the_audio"),
+        TestCase(start=-3, expected=0, label="before_the_audio_clamps_to_its_beginning"),
+        TestCase(start=AUDIO_LENGTH + 4, expected=AUDIO_LENGTH, label="past_the_audio_clamps_to_its_end"),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_playback_begins_at_the_start_asked_for(self, test_case: TestCase) -> None:
+        manager = _manager()
+        manager.stop = MagicMock()
+        positions_at_thread_start: List[int] = []
+
+        def thread(**_kwargs: object) -> MagicMock:
+            started = MagicMock()
+            started.start.side_effect = lambda: positions_at_thread_start.append(manager._position)
+            return started
+
+        with patch("sampletones_core.audio.manager.threading.Thread", side_effect=thread):
+            manager.play(np.zeros(self.AUDIO_LENGTH, dtype=np.float32), start=test_case.start)
+
+        assert positions_at_thread_start == [test_case.expected]
+
+
+class TestSeekingAPlayback(BaseTestSuite):
+    """A seek moves the playback of the owner asking for it, clamped to the audio, under one lock."""
+
+    AUDIO_LENGTH: Final[int] = 8
+
+    @staticmethod
+    def _playing(owner: object, length: int) -> AudioDeviceManager:
+        manager = _manager()
+        manager._audio_data = np.zeros(length, dtype=np.float32)
+        manager._playing = True
+        manager._output_owner = owner
+        return manager
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        position: int
+        expected: int
+
+    test_cases = (
+        TestCase(position=5, expected=5, label="within_the_audio"),
+        TestCase(position=-3, expected=0, label="before_the_audio_clamps_to_its_beginning"),
+        TestCase(position=AUDIO_LENGTH + 4, expected=AUDIO_LENGTH, label="past_the_audio_clamps_to_its_end"),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_owner_moves_its_playback(self, test_case: TestCase) -> None:
+        owner = object()
+        manager = self._playing(owner, self.AUDIO_LENGTH)
+
+        moved = manager.set_position(test_case.position, owner=owner)
+
+        assert (moved, manager.position_of(owner)) == (True, test_case.expected)
+
+    def test_another_owner_leaves_the_playback_where_it_stands(self) -> None:
+        owner = object()
+        manager = self._playing(owner, self.AUDIO_LENGTH)
+        manager._position = 3
+
+        moved = manager.set_position(5, owner=object())
+
+        assert (moved, manager.position_of(owner)) == (False, 3)
+
+
 class TestOwnership:
     """Ownership tells a source's own playback apart from a preview or another source's output."""
 
@@ -166,6 +254,36 @@ class TestOwnership:
         manager._playing = True
 
         assert manager.is_owned_by(object()) is False
+
+
+class TestPositionOfAnOwner:
+    """A source reads where its own playback stands, and the start of the audio for anyone else's."""
+
+    def test_the_owner_reads_the_position_its_playback_reached(self) -> None:
+        manager = _manager()
+        owner = object()
+        manager._output_owner = owner
+        manager._playing = True
+        manager._position = 640
+
+        assert manager.position_of(owner) == 640
+
+    def test_another_source_reads_the_start_of_the_audio(self) -> None:
+        manager = _manager()
+        manager._output_owner = object()
+        manager._playing = True
+        manager._position = 640
+
+        assert manager.position_of(object()) == START_OF_AUDIO
+
+    def test_an_owner_whose_playback_ended_reads_the_start_of_the_audio(self) -> None:
+        manager = _manager()
+        owner = object()
+        manager._output_owner = owner
+        manager._playing = False
+        manager._position = 640
+
+        assert manager.position_of(owner) == START_OF_AUDIO
 
 
 class TestBackendTeardown:

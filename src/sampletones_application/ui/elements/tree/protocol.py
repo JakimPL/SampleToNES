@@ -1,6 +1,7 @@
-from typing import Protocol
+from typing import Optional, Protocol
 
 from sampletones_core.structures.tree import FileSystemNode, TreeNode
+from sampletones_shared.types.callback import VoidCallback
 
 
 class TreeLogicProtocol(Protocol):
@@ -25,6 +26,8 @@ class TreeLogicProtocol(Protocol):
     def locked(self) -> bool: ...
 
     def lock(self) -> None: ...
+
+    def lock_unless_locked(self, retry: Optional[VoidCallback]) -> bool: ...
 
     def unlock(self) -> None: ...
 

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.general.colors.path import PathColors
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.tabs.main import MainLayout
@@ -27,6 +28,7 @@ class MainTabParameters:
     inputs: InputsLayout
     stems: StemsListLayout
     path_colors: PathColors
+    stem_colors: StemColors
     tree_colors: TreeColors
     scheduling: SchedulingBehavior
 
@@ -40,6 +42,7 @@ class MainTabParameters:
             inputs=general.inputs,
             stems=general.stems,
             path_colors=general.colors.paths,
+            stem_colors=general.colors.stems,
             tree_colors=TreeColors.create(
                 general.colors,
                 accent=general.colors.paths.hover,

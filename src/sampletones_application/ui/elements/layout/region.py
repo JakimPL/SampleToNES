@@ -114,7 +114,7 @@ class WindowedRegion:
 
     @property
     def standing(self) -> bool:
-        """The region's body is on screen, which is what a draw fills and a settle reads."""
+        """The region's body stands built, which is what a draw fills and a settle reads."""
         return bool(dpg.does_item_exist(self._body_tag))
 
     @property

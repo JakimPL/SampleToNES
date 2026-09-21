@@ -15,6 +15,7 @@ from sampletones_application.services.result import (
 from sampletones_application.utils.progress import SystemProgress
 from sampletones_application.view_model.main.converter import ACTIVE_PHASES, ConversionPhase
 from sampletones_core.configs import Config
+from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.parallelization import TaskProgress
 from sampletones_core.reconstructions.converter import ConversionPlan
 from sampletones_shared.types.callback import VoidCallback
@@ -36,6 +37,28 @@ class ConversionSuccess:
     def is_single(self) -> bool:
         """One reconstruction was written, so it is the one a follow-up offer would load."""
         return len(self.written) == 1
+
+
+@dataclass(frozen=True)
+class ConversionRequest:
+    """What a run converts, settled at the moment the conversion is asked for.
+
+    A run first waits for the library it converts against, while the setup and the settings stay
+    in the reader's hands; the run converts what it was asked to, against the library the request
+    named, whatever moves meanwhile. ``library_state`` is where that library stood when the
+    conversion was asked for, which names the preparation the run waits on.
+    """
+
+    config: Config
+    plan: ConversionPlan
+    reconstruction_name: str
+    library_key: InstructionLibraryKey
+    library_state: LibraryState
+
+    @property
+    def library_directory(self) -> Path:
+        """Where the library the run converts against stands."""
+        return Path(self.config.general.library_directory)
 
 
 @dataclass(frozen=True)
@@ -65,9 +88,7 @@ class ConversionServiceProtocol(Protocol):
 
     def cancel(self) -> None: ...
 
-    def cleanup(self) -> None: ...
-
-    def shutdown(self) -> None: ...
+    def release(self) -> None: ...
 
     def is_running(self) -> bool: ...
 
@@ -93,6 +114,7 @@ class ConversionRun(CallbackMixin):
         self._phase: ConversionPhase = ConversionPhase.IDLE
         self._written: Tuple[Path, ...] = ()
         self._reconstruction_name: str = ""
+        self._request: Optional[ConversionRequest] = None
 
         self._service.subscribe(self._on_service_result)
 
@@ -121,16 +143,22 @@ class ConversionRun(CallbackMixin):
         """The reconstructions the last completed run wrote."""
         return self._written
 
-    def wait(self) -> None:
+    @property
+    def request(self) -> Optional[ConversionRequest]:
+        """What the run in hand was asked to convert."""
+        return self._request
+
+    def wait(self, request: ConversionRequest) -> None:
         """Takes up a request, while the library it converts against is prepared."""
+        self._request = request
         self._phase = ConversionPhase.WAITING
         self._report(self._messages.waiting, 0.0)
 
-    def begin(self, config: Config, plan: ConversionPlan, reconstruction_name: str) -> None:
-        """Hands the plan to the service, which is where the conversion itself starts."""
-        self._reconstruction_name = reconstruction_name
+    def begin(self, request: ConversionRequest) -> None:
+        """Hands the request to the service, which is where the conversion itself starts."""
+        self._reconstruction_name = request.reconstruction_name
         self._system_progress.initialize()
-        self._service.start(config, plan)
+        self._service.start(request.config, request.plan)
 
     def cancel(self) -> None:
         """Asks the service to give up the run it holds."""
@@ -146,10 +174,11 @@ class ConversionRun(CallbackMixin):
     def close(self) -> None:
         """Lets the run go, whatever it came to, and returns to idle."""
         try:
-            self._service.cleanup()
+            self._service.release()
         finally:
             self._system_progress.clear()
             self._written = ()
+            self._request = None
             self.return_to_idle()
 
     def return_to_idle(self) -> None:
@@ -157,8 +186,8 @@ class ConversionRun(CallbackMixin):
         self._phase = ConversionPhase.IDLE
 
     def cleanup(self) -> None:
-        """Shuts the service down, which is the end of every run this object could hold."""
-        self._service.shutdown()
+        """Releases the service, which is the end of every run this object could hold."""
+        self._service.release()
         self._system_progress.clear()
 
     def _on_service_result(self, result: ConversionResult) -> None:
@@ -197,11 +226,12 @@ class ConversionRun(CallbackMixin):
         return progress.current_item.source if progress.current_item is not None else None
 
     def _handle_library_progress(self, progress: TaskProgress) -> None:
-        if self._phase != ConversionPhase.WAITING:
+        request = self._request
+        if self._phase != ConversionPhase.WAITING or request is None:
             return
 
         total = max(progress.total, 1)
-        self._report(self._messages.generating_library, progress.completed / total)
+        self._report(self._messages.preparing_library(request.library_state), progress.completed / total)
 
     def _settle_as_complete(self, written: Tuple[Path, ...]) -> None:
         """Settles a finished run, telling its listener what was written before reporting.

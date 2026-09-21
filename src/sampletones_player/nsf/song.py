@@ -1,11 +1,16 @@
+from typing import Final
+
 from sampletones_core.formats.binary import BinaryWriter
 from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.nsf.layout import SongLayout
 from sampletones_player.song import Song
+from sampletones_player.specification.compression import NO_DEFAULT_COUNT
 from sampletones_player.specification.song import MAX_BLOCK_OFFSET, NO_LOOP
 from sampletones_shared.exceptions import SongTooLargeError
+
+STATED_BEYOND_THE_FIRST: Final[int] = 1
 
 
 def _write_header(
@@ -42,6 +47,7 @@ def _write_phrase_table(
 
     for phrase in phrases.phrases:
         writer.write_uint8(phrase.length)
+        writer.write_uint8(max(phrase.default - STATED_BEYOND_THE_FIRST, NO_DEFAULT_COUNT))
         writer.write_bytes(phrase.body)
 
 

@@ -60,6 +60,7 @@ class StemsGestures:
         self.on_removal_asked: Optional[StringCallback] = None
         self.on_menu_asked: Optional[StringCallback] = None
         self.on_row_activated: Optional[StringCallback] = None
+        self.on_row_revealed: Optional[StringCallback] = None
         self.on_dropped_on_row: Optional[KeyPairCallback] = None
         self.on_dropped_on_level: Optional[KeyOffsetCallback] = None
         self.on_folder_toggled: Optional[StringCallback] = None
@@ -199,7 +200,12 @@ class StemsGestures:
             self._report(self.on_row_activated, key)
 
     def _on_name_double_clicked(self, _sender: Sender, app_data: Tuple[int, int]) -> None:
-        """A double-click opens what it landed on: a folder shows what it holds, a recording sounds."""
+        """A double-click opens what it landed on.
+
+        A folder shows what it holds; a recording sounds where the owner plays one and shows where
+        it sits on disk where the owner reveals one, which is the deliberate gesture those two
+        deserve.
+        """
         key = self._named_by(app_data, dpg.mvMouseButton_Left)
         if key is None:
             return
@@ -211,6 +217,9 @@ class StemsGestures:
 
         if self._host.playable:
             self._report(self.on_row_opened, key)
+
+        if self._host.revealable:
+            self._report(self.on_row_revealed, key)
 
     @staticmethod
     def _named_by(app_data: Tuple[int, int], button: int) -> Optional[str]:

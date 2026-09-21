@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.sources import SourceKind
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.glyphs.common import CommonGlyphs
 from sampletones_application.tags.main import (
@@ -46,9 +47,10 @@ class ConverterListing(CallbackMixin):
     becomes the path the logic answers for — including the two a folder answers differently:
     removing one takes everything it holds, and its box settles every recording under it.
 
-    A row picked out puts the list on the keyboard: while the Main tab is in front and no field
-    holds the keys, the list answers the presses its own category names and yields every other, so
-    a press it has no action for still reaches the application's shortcuts.
+    A row picked out puts the list on the keyboard: while the Main tab is in front, while the card
+    stands open and while no field holds the keys, the list answers the presses its own category
+    names and yields every other, so a press it has no action for still reaches the application's
+    shortcuts.
     """
 
     def __init__(
@@ -56,21 +58,25 @@ class ConverterListing(CallbackMixin):
         *,
         stems_layout: StemsListLayout,
         glyphs: CommonGlyphs,
+        stem_colors: StemColors,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         key_router: KeyRouter,
         shortcut_source: ShortcutSource,
         tab_active: ActivePredicate,
+        card_open: ActivePredicate,
     ) -> None:
         self._language_manager = language_manager
         self._router = key_router
         self._shortcuts = shortcut_source
         self._tab_active = tab_active
+        self._card_open = card_open
         self._stems_list = GUIStemsList(
             prefix=PRE_MAIN_CONVERTER_STEMS,
             layout=stems_layout,
             ceiling=stems_layout.well_ceiling,
             glyphs=glyphs,
+            stem_colors=stem_colors,
             language_manager=language_manager,
             status_bar=status_bar,
             offer=GATHERED_SOURCES,
@@ -138,12 +144,18 @@ class ConverterListing(CallbackMixin):
         if row is not None:
             self.call(self.on_row_selected, Path(key), row.kind)
 
+    @property
+    def keys_active(self) -> bool:
+        """Whether a key reaching the row picked out answers, which the channel keys ask as well."""
+        return self._keys_active()
+
     def _keys_active(self) -> bool:
         """Whether the list owns the next key, which the row it holds picked out is what decides."""
         return panel_scope_active(
             tab_active=self._tab_active,
             router=self._router,
             holds=self._stems_list.picked_key is not None,
+            card_open=self._card_open,
         )
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:

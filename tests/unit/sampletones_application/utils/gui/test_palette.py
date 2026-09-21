@@ -7,7 +7,7 @@ from sampletones_application.utils.gui.palette.dpg import (
     dpg_add_palette_theme_color,
     dpg_set_palette_color,
 )
-from sampletones_application.utils.gui.palette.palette import PaletteBindings
+from sampletones_application.utils.gui.palette.palette import PRUNE_FLOOR, PaletteBindings
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_application.utils.palette.colors.literal import LiteralColor
@@ -21,6 +21,7 @@ from sampletones_shared.utils.color import MAX_CHANNEL_VALUE
 STUDIO_ACCENT: ColorRGBA = (169, 127, 227, 255)
 LIGHT_ACCENT: ColorRGBA = (107, 63, 176, 255)
 LITERAL: ColorRGBA = (240, 146, 86, 255)
+TRANSIENT_ITEMS: int = 4000
 
 
 @pytest.fixture
@@ -127,6 +128,19 @@ class TestArgumentBinding:
         PaletteBindings.apply()
 
         assert not list(PaletteBindings.bindings())
+
+    def test_items_bound_and_deleted_over_a_session_leave_a_bounded_registry(
+        self,
+        context: None,
+        accent: BaseColor,
+    ) -> None:
+        """Every right-click builds a menu's worth of colored text and takes it down again."""
+        for _ in range(TRANSIENT_ITEMS):
+            item = _add_text()
+            dpg_set_palette_color(item, accent)
+            dpg.delete_item(item)
+
+        assert len(list(PaletteBindings.bindings())) < 2 * PRUNE_FLOOR
 
 
 class TestThemeColorBinding:

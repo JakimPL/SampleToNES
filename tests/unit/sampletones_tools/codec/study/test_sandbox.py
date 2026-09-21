@@ -20,8 +20,8 @@ from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.specification.compression import (
     CHEAP_PHRASE_IDS,
     MAX_HOLD_TICKS,
-    PLANE_COUNT,
 )
+from sampletones_player.specification.planes import NO_BITS, PLANE_COUNT, PLANES, PlaneRole
 from sampletones_shared.music import Tuning
 from sampletones_tools.codec.study.corpus.song import SongGroup, StudySong
 from sampletones_tools.codec.study.sandbox.context import PlaneContext
@@ -36,10 +36,13 @@ from sampletones_tools.codec.study.sandbox.reference import reference
 from sampletones_tools.codec.study.sandbox.tokens import Hold, Literal, Play, SetHold, StudyToken, WideHold
 from sampletones_tools.codec.study.sandbox.verify import verify_baseline
 from sampletones_tools.codec.study.variants.production import compress_baseline
-from sampletones_tools.codec.study.variants.sandbox import DEFAULT_COUNT_COSTS, GRAMMAR_VARIANTS, GrammarVariant
+from sampletones_tools.codec.study.variants.sandbox import GRAMMAR_VARIANTS, GrammarVariant
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.player import playable
+from tests.suite.study import NO_STUDY_SLICES, lowest_notes
 
+SEEDED_SYMBOL: Final[int] = NO_BITS
 ENTRIES: Final[FrozenSet[int]] = frozenset({STREAM_START})
 FIGURES: Final[Tuple[bytes, ...]] = (b"\x0a\x0c\x0f\x0f\x0f\x0f\x0f\x0f", b"\x03\x04\x05\x06")
 TABLE: Final[PhraseTable] = phrase_table(Phrase(body=body) for body in FIGURES)
@@ -53,7 +56,6 @@ SET_HOLD_ESCAPE: Final[Grammar] = replace(BASELINE_GRAMMAR, set_hold=True)
 SET_HOLD_REALLOCATED: Final[Grammar] = replace(
     BASELINE_GRAMMAR, set_hold=True, costs=replace(PRODUCTION_COSTS, set_hold=SET_HOLD_BOUND)
 )
-DEFAULT_COUNTS: Final[Grammar] = replace(BASELINE_GRAMMAR, default_counts=True, costs=DEFAULT_COUNT_COSTS)
 
 
 def _figures_plane(random: Random, ticks: int) -> bytes:
@@ -82,21 +84,23 @@ def _dense_plane(random: Random, ticks: int) -> bytes:
 def _song(ticks: int) -> StudySong:
     random = Random(SEED)
     planes: List[bytes] = []
-    for plane in range(PLANE_COUNT):
-        if plane % 3 == 2:
-            planes.append(bytes(ticks))
-        elif plane % 3 == 0:
-            planes.append(_runs_plane(random, ticks))
+    for plane in PLANES:
+        if plane.spans_flagged_ticks:
+            planes.append(b"")
+        elif plane.role is PlaneRole.CONTROL:
+            planes.append(playable(plane, _runs_plane(random, ticks)))
         else:
-            planes.append(_figures_plane(random, ticks))
+            planes.append(playable(plane, _figures_plane(random, ticks)))
 
     return StudySong(
         name="song",
         group=SongGroup.PROJECT,
         source=Path("song.stp"),
-        planes=SongPlanes.from_order(PlaneOrder.across(planes)),
+        planes=SongPlanes(planes=PlaneOrder.across(planes)),
         seeds=tuple(Phrase(body=body) for body in FIGURES),
         pitches=PitchTable.from_tuning(Tuning()),
+        notes=lowest_notes(ticks),
+        slices=NO_STUDY_SLICES,
     )
 
 
@@ -113,6 +117,7 @@ def _context(
         boundaries=Boundaries.across(len(plane), ENTRIES),
         transposition=EVERY_LAYER.transposition,
         defaults=tuple(defaults),
+        seeded=SEEDED_SYMBOL,
         costs=costs,
     )
 
@@ -297,7 +302,7 @@ class TestGrammarsPriceAPlane(BaseTestSuite):
             label="a phrase played at its default count carries no count",
             plane=repeated,
             table=repeated_table,
-            grammar=DEFAULT_COUNTS,
+            grammar=BASELINE_GRAMMAR,
             defaults=(4,),
             expected=3,
         ),
@@ -305,7 +310,7 @@ class TestGrammarsPriceAPlane(BaseTestSuite):
             label="a phrase played at another count carries it",
             plane=repeated,
             table=repeated_table,
-            grammar=DEFAULT_COUNTS,
+            grammar=BASELINE_GRAMMAR,
             defaults=(3,),
             expected=6,
         ),
@@ -324,11 +329,6 @@ class TestCosts:
         assert PRODUCTION_COSTS.phrase(CHEAP_PHRASE_IDS - 1, 0, default=False) == 2
         assert PRODUCTION_COSTS.phrase(CHEAP_PHRASE_IDS, 0, default=False) == 3
         assert PRODUCTION_COSTS.phrase(0, 3, default=False) == 3
-
-    def test_default_counts_halve_the_cheap_ids_and_widen_the_entries(self) -> None:
-        assert DEFAULT_COUNT_COSTS.phrase(30, 0, default=True) == 1
-        assert DEFAULT_COUNT_COSTS.phrase(31, 0, default=True) == 2
-        assert DEFAULT_COUNT_COSTS.dictionary(TABLE) == TABLE.size + len(TABLE)
 
     def test_offered_lengths_are_the_longest_alone_or_every_one(self) -> None:
         assert tuple(offered_lengths(5, least=2, every=False)) == (5,)
@@ -389,9 +389,11 @@ class TestTheReferenceHoldsTheSandboxToTheCodec:
         assert encoding.written is None
         assert sum(encoding.streams) <= sum(len(stream) for stream in self.compressed.streams)
 
-    def test_wide_holds_opening_the_stream_reduce_an_idle_plane_to_three_bytes(self) -> None:
+    @pytest.mark.parametrize("entry", GRAMMAR_VARIANTS, ids=lambda entry: entry.name)
+    def test_a_plane_holding_zero_throughout_is_absent_under_every_grammar(self, entry: GrammarVariant) -> None:
         read = reference(self.song, self.compressed)
 
-        encoding = encode_grammar(read, replace(WIDE_HOLD, start_hold=True))
+        encoding = encode_grammar(read, entry.grammar)
 
-        assert [encoding.streams[plane] for plane in range(2, PLANE_COUNT, 3)] == [3, 3, 3]
+        bends = [index for index, plane in enumerate(PLANES) if plane.spans_flagged_ticks]
+        assert [encoding.streams[index] for index in bends] == [0] * len(bends)

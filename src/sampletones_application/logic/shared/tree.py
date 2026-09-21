@@ -27,6 +27,8 @@ class TreeLogic(CallbackMixin):
         self._is_locked: bool = False
         self._thread_lock = threading.RLock()
 
+        self._retry_on_release: Optional[VoidCallback] = None
+
         self._pending_autoplay_node: Optional[FileSystemNode] = None
         self._pending_search_query: Optional[str] = None
 
@@ -41,16 +43,43 @@ class TreeLogic(CallbackMixin):
 
         self._notify_lock_state(False)
 
+    def lock_unless_locked(self, retry: Optional[VoidCallback]) -> bool:
+        """Takes the lock when it stands free, answering whether it did.
+
+        A lock already held keeps ``retry`` for its release instead, so a rebuild asked for while a
+        generation, a load or another rebuild holds the tree runs once they have let it go. Only the
+        latest ``retry`` is kept, since each one reads the model as it stands when it runs.
+        """
+        with self._thread_lock:
+            if self._is_locked:
+                if retry is not None:
+                    self._retry_on_release = retry
+                return False
+
+            self._lock_counter += 1
+            self._is_locked = True
+
+        self._notify_lock_state(False)
+        return True
+
     def unlock(self) -> None:
         with self._thread_lock:
             self._lock_counter -= 1
             unlocked = self._lock_counter <= 0
+            retry: Optional[VoidCallback] = None
             if unlocked:
                 self._lock_counter = 0
                 self._is_locked = False
+                retry, self._retry_on_release = self._retry_on_release, None
 
         if unlocked:
             self._notify_lock_state(True)
+
+        if retry is not None:
+            CallbackQueue.add(
+                retry,
+                priority=self._scheduling.priorities.gui_action,
+            )
 
     def _notify_lock_state(self, is_unlocked: bool) -> None:
         """Deliver the tree-enabled change on the main thread.

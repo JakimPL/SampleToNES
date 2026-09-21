@@ -4,7 +4,6 @@ from typing import Any, Dict, Final, List, NamedTuple, Optional, Tuple
 import msgpack
 
 from sampletones_core.compatibility.kind import ObjectKind
-from sampletones_core.compatibility.library import UPDATES as LIBRARY_UPDATES
 from sampletones_core.compatibility.project import UPDATES as PROJECT_UPDATES
 from sampletones_core.compatibility.reconstruction import UPDATES as RECONSTRUCTION_UPDATES
 from sampletones_core.compatibility.update import VersionUpdate
@@ -23,7 +22,6 @@ CURRENT_VERSIONS: Final[Dict[ObjectKind, str]] = {
 }
 
 UPDATES: Final[Dict[ObjectKind, Tuple[VersionUpdate, ...]]] = {
-    ObjectKind.LIBRARY: LIBRARY_UPDATES,
     ObjectKind.RECONSTRUCTION: RECONSTRUCTION_UPDATES,
     ObjectKind.PROJECT: PROJECT_UPDATES,
 }
@@ -94,12 +92,12 @@ def upgrade(
 def upgrade_binary(kind: ObjectKind, binary: bytes) -> bytes:
     """Upgrades a msgpack payload at the load boundary of a binary format.
 
-    The reconstruction and library formats store their data as msgpack mappings
-    whose ``metadata`` section carries ``<kind>_data_version``. This wrapper
-    unpacks the payload, reads that version, runs :func:`upgrade`, and re-encodes
-    the upgraded mapping. It returns the input bytes unchanged whenever the
-    payload stays as it is: when it does not unpack to a mapping, when it lacks
-    the version field, or when the chain does not apply.
+    A binary format stores its data as a msgpack mapping whose ``metadata``
+    section carries ``<kind>_data_version``. This wrapper unpacks the payload,
+    reads that version, runs :func:`upgrade`, and re-encodes the upgraded
+    mapping. It returns the input bytes unchanged whenever the payload stays as
+    it is: when it does not unpack to a mapping, when it lacks the version
+    field, or when the chain does not apply.
     """
     try:
         data = msgpack.unpackb(binary, raw=False)

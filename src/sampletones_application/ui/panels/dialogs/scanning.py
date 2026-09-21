@@ -57,8 +57,7 @@ class GUIScanWindow(GUIWindow):
 
         super().__init__(
             tag=TAG_MAIN_CONVERTER_WINDOW_SCAN,
-            width=layout.scan.width,
-            height=layout.scan.height,
+            geometry=layout.scan,
         )
 
     def open(self, root: Path) -> None:

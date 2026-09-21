@@ -45,6 +45,7 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR,
     TAG_INSTRUCTIONS_LIBRARY_THEME_GROUP,
     TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION,
+    TAG_INSTRUCTIONS_LIBRARY_THEME_OUTDATED,
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import (
@@ -195,13 +196,15 @@ class GUITreePanel(GUIPanel, ABC):
         collect: Callable[[], List[NodeSpec]],
         *,
         root_tag: str,
+        retry: Optional[VoidCallback],
         on_finished: Optional[VoidCallback] = None,
     ) -> None:
         """Rebuild the subtree under ``root_tag``: prepare it off-thread, emit it on the main thread.
 
         Runs on the background traversal worker and walks through five steps:
 
-        1. A rebuild already in flight holds the lock, so return and let it finish.
+        1. A lock already held — a rebuild in flight, a load, a generation — keeps ``retry`` for its
+           release, which asks for this rebuild again once the tree stands free.
         2. Acquire the lock; responsibility for releasing it passes to the emit pipeline.
         3. ``refresh`` updates the model and the filter is resolved against it, then
            ``collect`` resolves it into a flat :class:`NodeSpec` list -- every per-node
@@ -214,10 +217,9 @@ class GUITreePanel(GUIPanel, ABC):
 
         A failure before the handoff releases the lock so the tree stays interactive.
         """
-        if self.locked:
+        if not self._logic.lock_unless_locked(retry):
             return
 
-        self.lock()
         handed_off = False
         try:
             refresh()
@@ -429,7 +431,7 @@ class GUITreePanel(GUIPanel, ABC):
                 node=node,
                 node_tag=node_tag,
                 parent_tag=parent,
-                label=node.name,
+                label=self._node_label(node),
                 name_font=self._resolve_node_name_font(node),
                 leaf=leaf,
                 open_on_arrow=open_on_arrow,
@@ -749,6 +751,11 @@ class GUITreePanel(GUIPanel, ABC):
             return self._colors.accent
 
         return self._colors.node
+
+    def _node_label(self, node: TreeNode) -> str:
+        """The text a node's row reads, which is the node's name; a panel marking some of its rows
+        adds the mark here, which keeps the row's tag and its remembered expansion on the name."""
+        return node.name
 
     def _resolve_node_name_font(self, node: TreeNode) -> Font:
         """Select the label font for a node: monospace for the rows stating a configuration.
@@ -1181,6 +1188,8 @@ class GUITreePanel(GUIPanel, ABC):
     def _resolve_other_theme_tag(self, node: TreeNode) -> str:
         match node.node_type:
             case NodeType.LIBRARY:
+                if isinstance(node, LibraryNode) and node.outdated:
+                    return TAG_INSTRUCTIONS_LIBRARY_THEME_OUTDATED
                 return TAG_INSTRUCTIONS_LIBRARY_THEME
             case NodeType.GENERATOR:
                 return TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR

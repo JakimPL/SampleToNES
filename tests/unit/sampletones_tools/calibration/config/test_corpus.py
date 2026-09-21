@@ -15,6 +15,30 @@ VALID_TRANSIENT: Final[Dict[str, Any]] = {
     "attack_tone_decay_seconds": 0.3,
 }
 
+VALID_POLYPHONY: Final[Dict[str, Any]] = {
+    "chord_frequencies": (220.0, 277.18),
+    "melody_frequencies": (440.0, 523.25),
+    "note_seconds": 0.25,
+    "note_decay_seconds": 0.4,
+    "snare_period_seconds": 0.5,
+    "snare_delay_seconds": 0.25,
+    "snare_decay_seconds": 0.04,
+    "snare_level": 0.35,
+}
+
+VALID_MIX: Final[Dict[str, Any]] = {
+    "noise_levels": (0.05, 0.15),
+    "bass_frequency": 55.0,
+    "hat_period_seconds": 0.25,
+    "hat_decay_seconds": 0.008,
+    "hat_level": 0.4,
+}
+
+VALID_DYNAMICS: Final[Dict[str, Any]] = {
+    "burst_seconds": 0.2,
+    "hiss_level": 0.09,
+}
+
 VALID_FIELDS: Final[Dict[str, Any]] = {
     "seed": 1,
     "item_seconds": 1.5,
@@ -23,8 +47,10 @@ VALID_FIELDS: Final[Dict[str, Any]] = {
     "tone": {"frequencies": (55.0, 440.0)},
     "timbre": {"duty_cycles": (0.125, 0.5), "frequency": 220.0},
     "noise": {"white_level": 0.5},
-    "mix": {"noise_levels": (0.05, 0.15)},
+    "mix": VALID_MIX,
     "transient": VALID_TRANSIENT,
+    "polyphony": VALID_POLYPHONY,
+    "dynamics": VALID_DYNAMICS,
 }
 
 
@@ -92,7 +118,7 @@ class TestCorpusConfig:
         ),
         InvalidFieldCase(
             field="mix",
-            value={"noise_levels": ()},
+            value={**VALID_MIX, "noise_levels": ()},
             label="empty_mix_noise_levels",
         ),
         InvalidFieldCase(
@@ -104,6 +130,26 @@ class TestCorpusConfig:
             field="transient",
             value={**VALID_TRANSIENT, "attack_seconds": 0.0},
             label="zero_attack",
+        ),
+        InvalidFieldCase(
+            field="polyphony",
+            value={**VALID_POLYPHONY, "chord_frequencies": (220.0,)},
+            label="single_note_chord",
+        ),
+        InvalidFieldCase(
+            field="polyphony",
+            value={**VALID_POLYPHONY, "note_seconds": 0.0},
+            label="zero_note_seconds",
+        ),
+        InvalidFieldCase(
+            field="dynamics",
+            value={**VALID_DYNAMICS, "hiss_level": 1.0},
+            label="hiss_as_loud_as_the_burst",
+        ),
+        InvalidFieldCase(
+            field="mix",
+            value={**VALID_MIX, "hat_period_seconds": 0.0},
+            label="zero_hat_period",
         ),
     )
 

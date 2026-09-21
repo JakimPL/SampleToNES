@@ -108,30 +108,19 @@ class TestTheShapeASessionLeft:
         assert not manager.is_directory_open(paths[NOTES])
         assert rows_below(manager.tree, paths[NOTES]) == []
 
-    def test_a_folder_the_disk_has_lost_is_dropped_at_startup(
+    def test_a_folder_gone_for_now_stays_remembered(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        """A folder on a drive unplugged for one run comes back open once the drive does."""
         paths = write_corpus(tmp_path)
         gone = tmp_path / "gone"
-
         manager = build_manager(tmp_path, {paths[MUSIC], gone}, monkeypatch)
 
-        assert manager.open_directories == {paths[MUSIC]}
+        manager.refresh_tree()
 
-    def test_a_file_standing_where_a_folder_was_is_dropped_at_startup(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        write_corpus(tmp_path)
-        replaced = tmp_path / "replaced"
-        replaced.touch()
-
-        manager = build_manager(tmp_path, {replaced}, monkeypatch)
-
-        assert manager.open_directories == set()
+        assert manager.open_directories >= {paths[MUSIC], gone}
 
 
 class TestReadingApartFromStandingOpen:

@@ -7,8 +7,10 @@ from sampletones_tools.calibration.config.corpus import CorpusConfig
 from sampletones_tools.synthesis.envelopes.exponential_decay import (
     ExponentialDecayEnvelope,
 )
+from sampletones_tools.synthesis.envelopes.gate import GateEnvelope
 from sampletones_tools.synthesis.envelopes.linear_attack import LinearAttackEnvelope
 from sampletones_tools.synthesis.envelopes.linear_ramp import LinearRampEnvelope
+from sampletones_tools.synthesis.envelopes.periodic_decay import PeriodicDecayEnvelope
 from sampletones_tools.synthesis.envelopes.types import EnvelopeUnion
 from sampletones_tools.synthesis.oscillators.exponential_glide import (
     ExponentialGlideOscillator,
@@ -26,6 +28,8 @@ from .item import CorpusItem
 Probe = Tuple[str, str, Voice]
 
 UNIT_GAIN: Final[float] = 1.0
+SQUARE_DUTY_CYCLE: Final[float] = 0.5
+FIRST_STRIKE_SECONDS: Final[float] = 0.0
 
 
 def build_corpus(
@@ -38,8 +42,9 @@ def build_corpus(
 
     The corpus spans the signal classes the criterion must arbitrate between:
     steady tones across the pitch range, pulse timbres of several duty cycles,
-    broadband noise, tone-plus-noise mixes, percussive transients, and a
-    crescendo probing the dynamic range. Probes render in a fixed order from
+    broadband noise, tone-plus-noise mixes, percussive transients, level changes
+    (a crescendo and a burst dropping to a hiss), and voices sounding together.
+    Probes render in a fixed order from
     one seeded generator, so every item is deterministic for a fixed sample
     rate and configuration and referee scores are reproducible across runs.
 
@@ -58,6 +63,9 @@ def build_corpus(
         *_mix_probes(config),
         *_transient_probes(config),
         _crescendo_probe(config),
+        *_polyphony_probes(config),
+        _burst_then_hiss_probe(config),
+        _bass_hi_hats_probe(config),
     ]
     return [
         _item(
@@ -220,6 +228,78 @@ def _crescendo_probe(config: CorpusConfig) -> Probe:
             ),
         ),
     )
+
+
+def _polyphony_probes(config: CorpusConfig) -> List[Probe]:
+    polyphony = config.polyphony
+    chord_gain = UNIT_GAIN / len(polyphony.chord_frequencies)
+    chord = [
+        _layer(SineOscillator(kind="sine", frequency=frequency), gain=chord_gain)
+        for frequency in polyphony.chord_frequencies
+    ]
+    note_decay = PeriodicDecayEnvelope(
+        kind="periodic_decay",
+        period_seconds=polyphony.note_seconds,
+        time_constant_seconds=polyphony.note_decay_seconds,
+        delay_seconds=FIRST_STRIKE_SECONDS,
+    )
+    melody = [
+        _layer(
+            PulseOscillator(kind="pulse", frequency=frequency, duty_cycle=SQUARE_DUTY_CYCLE),
+            GateEnvelope(
+                kind="gate",
+                start_seconds=index * polyphony.note_seconds,
+                end_seconds=(index + 1) * polyphony.note_seconds,
+            ),
+            note_decay,
+        )
+        for index, frequency in enumerate(polyphony.melody_frequencies)
+    ]
+    snare = _layer(
+        WhiteNoiseOscillator(kind="white_noise"),
+        PeriodicDecayEnvelope(
+            kind="periodic_decay",
+            period_seconds=polyphony.snare_period_seconds,
+            time_constant_seconds=polyphony.snare_decay_seconds,
+            delay_seconds=polyphony.snare_delay_seconds,
+        ),
+        gain=polyphony.snare_level,
+    )
+    return [
+        ("polyphony-chord", "polyphony", _voice(config, *chord)),
+        ("polyphony-melody-snare", "polyphony", _voice(config, *melody, snare)),
+    ]
+
+
+def _burst_then_hiss_probe(config: CorpusConfig) -> Probe:
+    dynamics = config.dynamics
+    burst = _layer(
+        WhiteNoiseOscillator(kind="white_noise"),
+        GateEnvelope(kind="gate", start_seconds=FIRST_STRIKE_SECONDS, end_seconds=dynamics.burst_seconds),
+        gain=config.noise.white_level,
+    )
+    hiss = _layer(
+        WhiteNoiseOscillator(kind="white_noise"),
+        GateEnvelope(kind="gate", start_seconds=dynamics.burst_seconds, end_seconds=config.item_seconds),
+        gain=config.noise.white_level * dynamics.hiss_level,
+    )
+    return ("dynamics-burst-then-hiss", "dynamics", _voice(config, burst, hiss))
+
+
+def _bass_hi_hats_probe(config: CorpusConfig) -> Probe:
+    mix = config.mix
+    bass = _layer(SineOscillator(kind="sine", frequency=mix.bass_frequency))
+    hats = _layer(
+        WhiteNoiseOscillator(kind="white_noise"),
+        PeriodicDecayEnvelope(
+            kind="periodic_decay",
+            period_seconds=mix.hat_period_seconds,
+            time_constant_seconds=mix.hat_decay_seconds,
+            delay_seconds=FIRST_STRIKE_SECONDS,
+        ),
+        gain=mix.hat_level,
+    )
+    return ("mix-bass-hi-hats", "mix", _voice(config, bass, hats))
 
 
 def _layer(

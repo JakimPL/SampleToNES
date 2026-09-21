@@ -23,6 +23,7 @@ from sampletones_application.tags.general import (
     SUF_HEADING,
     SUF_LEAD,
     SUF_STRIP,
+    SUF_SWATCH,
     SUF_TABLE,
     SUF_TEXT,
     TAG_GLOBAL_THEME_CHANNEL_MUTED,
@@ -41,6 +42,7 @@ from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
@@ -49,7 +51,7 @@ from sampletones_application.view_model.shared.stems import (
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.callback import Callback
 from tests.suite.base import BaseTestSuite
-from tests.suite.frames import Frames
+from tests.suite.frames import DrawnFrames
 from tests.suite.gestures import CLICKED, DOUBLE_CLICKED, HOVERED, click_row_name, handler_of
 
 ROOT_TAG = "test_root"
@@ -58,6 +60,7 @@ TAGS: Final[StemsTags] = StemsTags(prefix=PREFIX)
 CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.TRIANGLE)
 DRAG_PAYLOAD_SLOT: Final[int] = 3
 LONG_LIST: Final[int] = 200
+FULL_CHANNEL: Final[float] = 255.0
 ROW_PITCH: Final[float] = 20.0
 HEADING_HEIGHT: Final[float] = 24.0
 DEEP_SCROLL: Final[float] = 2000.0
@@ -95,12 +98,14 @@ def build(
     master_box: bool = False,
     bends: bool = False,
     picking: bool = False,
+    swatch: bool = False,
 ) -> GUIStemsList:
     stems_list = GUIStemsList(
         prefix=PREFIX,
         layout=layout_config.general.stems,
         ceiling=layout_config.general.stems.well_ceiling,
         glyphs=layout_config.glyphs.common,
+        stem_colors=layout_config.general.colors.stems,
         language_manager=LanguageManager(LANG_EN),
         status_bar=GUIStatusBar(),
         offer=StemsListOffer(
@@ -110,6 +115,7 @@ def build(
             dragging=dragging,
             bends=bends,
             picking=picking,
+            swatch=swatch,
         ),
     )
     with dpg.window(tag=ROOT_TAG):
@@ -126,22 +132,26 @@ def row(
     available: bool = True,
     level: int = 0,
     position: int = 0,
+    record_position: Optional[int] = None,
+    kind: SourceKind = SourceKind.RECORDING,
     level_size: int = 1,
     level_count: int = 1,
 ) -> StemRowViewModel:
     path = Path(f"/audio/{name}.wav")
     return StemRowViewModel(
-        kind=SourceKind.RECORDING,
+        kind=kind,
         held=(),
         partial_channels=frozenset(),
         bends=frozenset(),
         key=str(path),
+        name=path.stem,
         path=path,
         channels=channels,
         offered_channels=offered_channels,
         available=available,
         level=level,
         position=position,
+        record_position=record_position,
         level_size=level_size,
         level_count=level_count,
     )
@@ -219,6 +229,7 @@ def folder_row(
     return StemRowViewModel(
         key=str(path),
         kind=SourceKind.FOLDER,
+        name=path.name,
         path=path,
         held=tuple(row(f"{name}/held_{index}") for index in range(holds)),
         channels=channels,
@@ -228,6 +239,7 @@ def folder_row(
         available=True,
         level=0,
         position=0,
+        record_position=None,
         level_size=1,
         level_count=1,
     )
@@ -763,6 +775,7 @@ class TestMasterCheckbox(BaseTestSuite):
                 master=True,
                 removable=True,
                 bends=False,
+                swatch=False,
                 folders=False,
             ).master_indent
         )
@@ -1177,7 +1190,7 @@ class TestThePickALongListHolds(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         stems_list = build(layout_config)
         rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
@@ -1302,7 +1315,7 @@ class TestTheListSettlingItsWell(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """The rows outside the window are built as the reader reaches them, so the pass goes on."""
         stems_list = build(layout_config)
@@ -1318,7 +1331,7 @@ class TestTheListSettlingItsWell(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """One pass answers for whatever the list has drawn by the time it runs, so a run of
         readings between two frames leaves one pass rather than one apiece."""
@@ -1335,7 +1348,7 @@ class TestTheListSettlingItsWell(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         stems_list = build(layout_config)
         rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
@@ -1351,7 +1364,7 @@ class TestTheListSettlingItsWell(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """A list short enough to stand whole has nothing left to build, so it stops watching."""
         stems_list = build(layout_config)
@@ -1367,7 +1380,7 @@ class TestTheListSettlingItsWell(BaseTestSuite):
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
-        frames: Frames,
+        frames: DrawnFrames,
     ) -> None:
         """The window follows the reader, so rows they scrolled to are built and the ones behind go."""
         stems_list = build(layout_config)
@@ -1381,3 +1394,159 @@ class TestTheListSettlingItsWell(BaseTestSuite):
 
         assert self._drawn(rows, REACHED_ROW)
         assert not self._drawn(rows, EARLY_ROW)
+
+    def test_a_list_put_away_keeps_its_watch_and_does_no_work(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: DrawnFrames,
+    ) -> None:
+        """A list holding rows back settles on no frame while its card is collapsed or its tab is in
+        the back, and its watch stands waiting for the frame it comes back in."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+        frames.on_screen = False
+
+        with placed(self._built(rows)), patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL):
+            frames.render(SETTLING_FRAMES)
+
+        assert frames.pending == 1
+        assert self._drawn(rows, EARLY_ROW)
+        assert not self._drawn(rows, REACHED_ROW)
+
+    def test_a_list_drawn_again_takes_its_pass_up(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: DrawnFrames,
+    ) -> None:
+        """The first frame the list is drawn in again follows the scroll made while it was away."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+        with placed(self._built(rows)):
+            frames.render()
+        frames.on_screen = False
+        with placed(self._built(rows)), patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL):
+            frames.render()
+
+        frames.on_screen = True
+        with placed(self._built(rows)), patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL):
+            frames.render()
+
+        assert self._drawn(rows, REACHED_ROW)
+
+
+class TestTheColorARowIsKnownBy(BaseTestSuite):
+    """A row leads with the color its recording is painted in, so the ribbon answers to a name."""
+
+    @staticmethod
+    def _fill(entry: StemRowViewModel) -> Tuple[float, ...]:
+        """The color the square is filled with, as DearPyGui holds a drawn color."""
+        return tuple(dpg.get_item_configuration(row_tag(entry, SUF_SWATCH))["fill"])
+
+    @staticmethod
+    def _drawn(color: BaseColor) -> Any:
+        """A token as DearPyGui reports it back, which is each channel over its full scale."""
+        return pytest.approx([value / FULL_CHANNEL for value in color.rgba])
+
+    def test_a_row_takes_the_color_its_place_on_the_record_picks(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config, swatch=True)
+        bass = row("bass", record_position=1)
+
+        stems_list.update_view(view(bass))
+
+        assert self._fill(bass) == self._drawn(layout_config.general.colors.stems.for_position(1))
+
+    def test_two_recordings_read_apart(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config, swatch=True)
+        bass = row("bass", record_position=0)
+        lead = row("lead", record_position=1)
+
+        stems_list.update_view(view(bass, lead))
+
+        assert self._fill(bass) != self._fill(lead)
+
+    def test_the_frames_a_reader_wrote_take_the_color_of_their_own(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config, swatch=True)
+        edits = row("edits", record_position=None, kind=SourceKind.EDITS)
+
+        stems_list.update_view(view(edits))
+
+        assert self._fill(edits) == self._drawn(layout_config.general.colors.stems.authored)
+
+    def test_a_row_answering_to_no_entry_draws_no_square(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config, swatch=True)
+        gathered = row("gathered", record_position=None)
+
+        stems_list.update_view(view(gathered))
+
+        assert not dpg.does_item_exist(row_tag(gathered, SUF_SWATCH))
+
+    def test_a_list_offering_no_swatch_draws_none(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass", record_position=0)
+
+        stems_list.update_view(view(bass))
+
+        assert not dpg.does_item_exist(row_tag(bass, SUF_SWATCH))
+
+    def test_the_square_keeps_its_color_through_a_repaint(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A view redrawn onto the widgets already standing leaves the color the row is known by."""
+        stems_list = build(layout_config, swatch=True)
+        bass = row("bass", record_position=2)
+
+        stems_list.update_view(view(bass))
+        stems_list.update_view(view(bass, muted_channels=frozenset({ChannelName.PULSE1})))
+
+        assert self._fill(bass) == self._drawn(layout_config.general.colors.stems.for_position(2))
+
+    def test_the_square_stands_in_the_middle_of_the_row_it_leads(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A row stands as tall as its name and the padding a cell keeps, and the square centers on it."""
+        stems = layout_config.general.stems
+        stems_list = build(layout_config, swatch=True)
+        bass = row("bass", record_position=0)
+
+        stems_list.update_view(view(bass))
+
+        configuration = dpg.get_item_configuration(row_tag(bass, SUF_SWATCH))
+        top, bottom = configuration["pmin"][1], configuration["pmax"][1]
+        assert bottom - top == stems.swatch_size
+        assert top + bottom == stems.name_height + 2 * stems.cell_padding
+
+    def test_the_square_fills_the_column_it_stands_in(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The column is the square's own width, so the cell's padding is what centers it across."""
+        stems = layout_config.general.stems
+        stems_list = build(layout_config, swatch=True)
+        bass = row("bass", record_position=0)
+
+        stems_list.update_view(view(bass))
+
+        configuration = dpg.get_item_configuration(row_tag(bass, SUF_SWATCH))
+        assert configuration["pmin"][0] == 0
+        assert configuration["pmax"][0] == stems.swatch_size

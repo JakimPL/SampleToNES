@@ -85,6 +85,32 @@ class CountingProcessor(TaskProcessor[int]):
         return tuple(results)
 
 
+def failing_task(task: CountingTask) -> int:
+    """Raises in its worker once it has counted halfway, so the run ends on a task's error.
+
+    Raises:
+        ValueError: Always, once the task reaches its halfway mark.
+    """
+    for completed in range(1, HALFWAY + 1):
+        task.report(
+            TaskStep(
+                stage=COUNTING_STAGE,
+                completed=completed,
+                total=STEP_COUNT,
+                fraction=completed / STEP_COUNT,
+            )
+        )
+
+    raise ValueError(f"task {task.index} failed at its halfway mark")
+
+
+class FailingProcessor(CountingProcessor):
+    """A counting run whose every task raises, so what a test reads is how a failed run ends."""
+
+    def _get_task_function(self) -> Callable[[CountingTask], int]:
+        return failing_task
+
+
 class ProgressRecorder:
     """Keeps every reading a run offers, and waits for the one a test is after.
 

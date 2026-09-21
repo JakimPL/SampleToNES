@@ -6,7 +6,6 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
-    bending_channels,
 )
 from sampletones_core.reconstructions.converter import (
     DirectoryConversion,
@@ -15,6 +14,7 @@ from sampletones_core.reconstructions.converter import (
     reconstruct_job,
 )
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import NoFilesToProcessError
 
 _RECONSTRUCTOR_PATCH = "sampletones_core.reconstructions.converter.converter.Reconstructor"
@@ -27,8 +27,7 @@ def config() -> Config:
 
 @pytest.fixture(scope="module")
 def stems(config: Config) -> StemsConfig:
-    channels = list(DEFAULT_CHANNELS)
-    return StemsConfig.single_entry(channels, bending_channels(channels))
+    return StemsConfig.single_entry(StemSettings.covering(list(DEFAULT_CHANNELS)))
 
 
 def _group(path: Path, stems: StemsConfig) -> GroupConversion:

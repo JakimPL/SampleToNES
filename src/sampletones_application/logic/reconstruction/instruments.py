@@ -7,9 +7,11 @@ from sampletones_application.layout.behavior.scheduling.scheduling import (
 from sampletones_application.logic.reconstruction.editing import (
     InstrumentEdit,
     InstrumentEditingProtocol,
-    ReconstructionEdit,
 )
 from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_application.view_model.reconstruction.instruments import (
     InstrumentViewModel,
     ReconstructionInstrumentsViewModel,
@@ -44,7 +46,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self._pending_reconstruction_update: Optional[ReconstructionUpdate] = None
 
         self.on_view_changed: Optional[Callable[[ReconstructionInstrumentsViewModel], None]] = None
-        self.on_feature_data_changed: Optional[Callable[[Optional[Dict[ChannelName, Features]]], None]] = None
+        self.on_feature_data_changed: Optional[Callable[[Optional[ChannelEnvelopesViewModel]], None]] = None
         self.on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
         self.on_display_refreshed: Optional[VoidCallback] = None
 
@@ -58,17 +60,20 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self.call(self.on_feature_data_changed, self._displayed_features())
         self.call(self.on_display_refreshed)
 
-    def _displayed_features(self) -> Optional[Dict[ChannelName, Features]]:
-        """The envelopes the panel draws: a reconstruction's channels, or an instrument's own set.
+    def _displayed_features(self) -> Optional[ChannelEnvelopesViewModel]:
+        """The envelopes the panel plots: a reconstruction's channels, or an instrument's own set.
 
         An instrument is drawn on the tab the panel shows it under, which is the channel offering every
-        dimension an instrument writes.
+        dimension an instrument writes, and it answers to no recording, so it carries no stretches.
         """
         instrument = self.instrument_edit
         if instrument is not None:
-            return self._instrument_channels(instrument)
+            return ChannelEnvelopesViewModel(
+                channels=self._instrument_channels(instrument),
+                ownership={},
+            )
 
-        return self._current_generators()
+        return self._reconstruction_envelopes()
 
     @staticmethod
     def _instrument_channels(
@@ -91,9 +96,14 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
 
     def _current_generators(self) -> Optional[Dict[ChannelName, Features]]:
         """The channels of the reconstruction in front of the panel, where one is."""
+        envelopes = self._reconstruction_envelopes()
+        return None if envelopes is None else envelopes.channels
+
+    def _reconstruction_envelopes(self) -> Optional[ChannelEnvelopesViewModel]:
+        """The reconstruction in front of the panel, where it holds one and no instrument."""
         match self._editor.edited_instrument():
-            case ReconstructionEdit() as edit:
-                return edit.channels
+            case ChannelEnvelopesViewModel() as envelopes:
+                return envelopes
             case _:
                 return None
 

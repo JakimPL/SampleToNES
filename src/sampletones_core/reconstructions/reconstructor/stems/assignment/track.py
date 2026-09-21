@@ -2,7 +2,7 @@ from typing import Dict, List, Sequence
 
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.reconstructions.reconstructor.decoder.base import ChannelLattice, Lattices
+from sampletones_core.reconstructions.reconstructor.decoder.base import ChannelLattice, Lattices, Streams
 from sampletones_core.reconstructions.reconstructor.matching import Column
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 
@@ -27,6 +27,23 @@ class TrackAssignment:
 
         for rest in frame_assignment.rests:
             self._append(rest.channel_name, RESTING_STEM_ID, rest.column)
+
+    def release_silent(self, streams: Streams) -> None:
+        """Gives every frame a decoded stream plays silent to the resting stem.
+
+        A stem owns a channel's frame to sound its recording there, so a frame the decoder settled
+        on an off instruction holds no stem's sound. Releasing it keeps the resting stem id and
+        the silent instruction naming the same frames, and a channel decoded silent throughout
+        reads as resting.
+
+        Args:
+            streams: The decoded streams of the channels in play.
+        """
+        for channel_name, stream in streams.items():
+            stem_ids = self.stem_ids[channel_name]
+            for frame, candidate in enumerate(stream):
+                if not candidate.instruction.on:
+                    stem_ids[frame] = RESTING_STEM_ID
 
     def drop(self, channel_name: ChannelName) -> None:
         """Releases a channel's records, leaving it out of the reconstruction being assembled."""

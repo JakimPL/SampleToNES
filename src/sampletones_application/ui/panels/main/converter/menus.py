@@ -60,11 +60,8 @@ class ConverterMenus(CallbackMixin):
         self.on_folder_removed: Optional[PathCallback] = None
         self.on_folder_toggled: Optional[PathCallback] = None
 
-    def show(self, key: str, *, banded: bool) -> None:
-        """Offer what the row a gesture landed on can do, reading the kind of row it is.
-
-        ``banded`` states that the list is drawing levels, which is what the moves rearrange.
-        """
+    def show(self, key: str) -> None:
+        """Offer what the row a gesture landed on can do, reading the kind of row it is."""
         row = self._stems_list.row(key)
         if row is None:
             return
@@ -73,9 +70,9 @@ class ConverterMenus(CallbackMixin):
             self._show_folder(row)
             return
 
-        self._show_row(row, banded=banded)
+        self._show_row(row)
 
-    def _show_row(self, row: StemRowViewModel, *, banded: bool) -> None:
+    def _show_row(self, row: StemRowViewModel) -> None:
         with context_menu():
             self._header(row.name)
             add_play_menu_item(
@@ -84,7 +81,7 @@ class ConverterMenus(CallbackMixin):
                 enabled=row.available,
             )
             dpg.add_separator()
-            for element, enabled, callback in self._moves(row, banded=banded):
+            for element, enabled, callback in self._moves(row):
                 dpg.add_menu_item(
                     label=self._label(element),
                     enabled=enabled,
@@ -95,7 +92,8 @@ class ConverterMenus(CallbackMixin):
                 self._label(ConverterStemMoveElements.CONTEXT_REMOVE_STEM),
                 lambda: self.call(self.on_source_removed, row.path),
             )
-            add_path_menu_items(self._language_manager, row.path)
+            if row.path is not None:
+                add_path_menu_items(self._language_manager, row.path)
 
     def _show_folder(self, row: StemRowViewModel) -> None:
         opened = self._stems_list.stands_open(row.key)
@@ -113,21 +111,17 @@ class ConverterMenus(CallbackMixin):
                 self._folder_label(ConverterFolderElements.CONTEXT_REMOVE_FOLDER),
                 lambda: self.call(self.on_folder_removed, row.path),
             )
-            add_path_menu_items(self._language_manager, row.path)
+            if row.path is not None:
+                add_path_menu_items(self._language_manager, row.path)
 
-    def _moves(
-        self,
-        row: StemRowViewModel,
-        *,
-        banded: bool,
-    ) -> List[Tuple[ConverterStemMoveElements, bool, VoidCallback]]:
-        """The moves the row can make, which are the level moves while a mix is banded.
+    def _moves(self, row: StemRowViewModel) -> List[Tuple[ConverterStemMoveElements, bool, VoidCallback]]:
+        """The moves the row can make, which are the ones the list is drawing the levels for.
 
-        A run writing a reconstruction apiece keeps its recordings in one flat list, so it has no
-        order to rearrange and names no moves.
+        A drag makes these same moves, so the menu names them wherever a drag rearranges the list
+        and stands with removal alone wherever the recordings are one flat run.
         """
         path = row.path
-        if not banded:
+        if not self._stems_list.rearranges:
             return []
 
         return [

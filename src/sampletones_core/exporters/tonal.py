@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple, TypeVar, Union
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.features import BEND_FEATURES, CHANNEL_FEATURE_DEFAULTS
 from sampletones_core.instructions import TonalInstruction
+from sampletones_core.instructions.tonal import bend_steps
 
 from .exporter import Exporter
 from .implementation.utils import held_across_rests
@@ -44,6 +45,29 @@ class TonalExporter(Exporter[TonalInstructionT], ABC):
                 CHANNEL_FEATURE_DEFAULTS[FeatureKey.HI_PITCH],
             ),
         }
+
+    @classmethod
+    def read_timer_offsets(cls, instructions: List[TonalInstructionT]) -> Tuple[int, ...]:
+        """The timer steps each frame stands away from its note, both bend dimensions together.
+
+        A register takes one divider whichever split of fine and coarse steps reached it, so this
+        is the bend as a channel sounds it. It is held across rests by the rule ``extract_data``
+        holds pitches by, which lines the two up frame for frame.
+
+        Args:
+            instructions: The channel's per-frame instructions.
+
+        Returns:
+            Tuple[int, ...]: One offset per frame.
+        """
+        return held_across_rests(
+            instructions,
+            lambda instruction: instruction.timer_offset,
+            bend_steps(
+                CHANNEL_FEATURE_DEFAULTS[FeatureKey.PITCH],
+                CHANNEL_FEATURE_DEFAULTS[FeatureKey.HI_PITCH],
+            ),
+        )
 
     @classmethod
     def unstated_features(cls, instructions: List[TonalInstructionT]) -> Tuple[FeatureKey, ...]:

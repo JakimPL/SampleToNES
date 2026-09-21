@@ -8,6 +8,7 @@ from sampletones_application.services.conversion.result import (
     ReconstructionStep,
 )
 from sampletones_application.services.result import (
+    NOTHING_UNDER_WAY,
     ServiceCanceled,
     ServiceError,
     ServiceIntermediate,
@@ -40,10 +41,11 @@ class ConversionService(ServiceBase[ConversionResult]):
         self._eta_estimator: Optional[ETAEstimator] = None
 
     def start(self, config: Config, plan: ConversionPlan) -> None:
-        if self._converter is not None and self._converter.is_running():
+        if self.is_running():
             logger.warning("Conversion is already in progress")
             return
 
+        self.release()
         self._converter = ReconstructionConverter(config=config, plan=plan)
         self._converter.set_callbacks(
             on_start=self._on_start,
@@ -58,18 +60,13 @@ class ConversionService(ServiceBase[ConversionResult]):
         if self._converter and self._converter.is_running():
             self._converter.cancel()
 
-    def cleanup(self) -> None:
-        if self._converter is not None:
-            self._converter.cleanup()
-            self._converter = None
+    def release(self) -> None:
+        """Ends the converter's run and lets the converter go once its pool has ended.
 
-        self._eta_estimator = None
-
-    def shutdown(self) -> None:
-        """Tears the converter's process pool down synchronously for application exit.
-
-        The pool spawns its workers, so the process must reap them before it releases
-        the shared resources they depend on; this blocks until the pool has stopped."""
+        A converter that has announced its outcome has already ended its pool, so this returns at
+        once; a run still under way is canceled and its workers waited for, which is what the
+        application's exit asks.
+        """
         if self._converter is not None:
             self._converter.shutdown()
             self._converter = None
@@ -94,47 +91,59 @@ class ConversionService(ServiceBase[ConversionResult]):
     ) -> None:
         match task_status:
             case TaskStatus.RUNNING | TaskStatus.CANCELING:
-                self._emit(
-                    ServiceProgress(
-                        completed=task_progress.completed,
-                        total=task_progress.total,
-                        current_item=self._item(task_progress),
-                        eta_seconds=self._estimate(task_progress),
-                        partial=task_progress.partial,
-                    )
-                )
+                self._emit(self._reading(task_progress))
             case _:
                 pass
 
-    def _estimate(self, task_progress: TaskProgress) -> Optional[float]:
-        """How long the run has left, read from the whole of what it has covered.
+    def _reading(self, task_progress: TaskProgress) -> ServiceProgress[ConversionItem]:
+        """Where the run stands, counted in the unit the run's own size makes readable.
 
-        The run's own reading counts the reconstruction under way, so an estimate taken from it
-        moves while a single conversion runs rather than waiting for the file to be written.
+        A run writing one reconstruction counts to one, so the part of that reconstruction done is
+        what a reader follows: the reading carries the stage the reconstruction is at, and the bar
+        and the estimate move with it. A run writing several counts the reconstructions it has
+        written, which is the unit a reader recognizes and the one the estimate is taken in, since
+        such a run holds as many reconstructions under way at once as it has workers.
         """
+        writes_one = task_progress.is_single
+        under_way = task_progress.partial if writes_one else NOTHING_UNDER_WAY
+        step = self._step(task_progress) if writes_one else None
+        return ServiceProgress(
+            completed=task_progress.completed,
+            total=task_progress.total,
+            current_item=self._item(task_progress, step),
+            eta_seconds=self._estimate(task_progress.completed + under_way),
+            partial=under_way,
+        )
+
+    def _estimate(self, covered: float) -> Optional[float]:
+        """How long the run has left, read from what it has covered in the unit it counts in."""
         if self._eta_estimator is None:
             return None
 
-        return self._eta_estimator.update(task_progress.completed + task_progress.partial)
+        return self._eta_estimator.update(covered)
 
-    @classmethod
-    def _item(cls, task_progress: TaskProgress) -> Optional[ConversionItem]:
-        """The reconstruction the run is building, where it has a recording to name.
+    @staticmethod
+    def _item(
+        task_progress: TaskProgress,
+        step: Optional[ReconstructionStep],
+    ) -> Optional[ConversionItem]:
+        """The reconstruction the run names itself by, where it has a recording to name.
 
         A run works on as many reconstructions as it has workers and names the one it has been at
-        longest, whose step it carries; the reading a bar draws counts them all.
+        longest, so a reader watching a batch sees the run move through its recordings.
         """
         if task_progress.current_item is None:
             return None
 
-        return ConversionItem(
-            source=to_path(task_progress.current_item),
-            step=cls._step(task_progress),
-        )
+        return ConversionItem(source=to_path(task_progress.current_item), step=step)
 
     @staticmethod
     def _step(task_progress: TaskProgress) -> Optional[ReconstructionStep]:
-        """What that reconstruction is doing, once it has said something about itself."""
+        """What the reconstruction under way is doing, once it has said something about itself.
+
+        A run writing one reconstruction holds one line open, so the step standing on it is that
+        reconstruction's own.
+        """
         if not task_progress.steps:
             return None
 

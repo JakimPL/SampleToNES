@@ -3,6 +3,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Tuple
 
+from sampletones_core.constants.enums import ChannelName
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.song import SongPlanes
@@ -24,6 +25,21 @@ class SongGroup(StrEnum):
 
 
 @dataclass(frozen=True)
+class StudySlice:
+    """One channel of one of a song's voices, the material a plane layout builds a seed from.
+
+    Attributes:
+        channel: The channel the slice plays on.
+        planes: The slice's planes as the production codec separates them, in block order.
+        notes: The note each of its ticks names, empty on the noise channel.
+    """
+
+    channel: ChannelName
+    planes: Tuple[bytes, ...]
+    notes: bytes
+
+
+@dataclass(frozen=True)
 class StudySong:
     """One song the study measures the codec on.
 
@@ -34,6 +50,9 @@ class StudySong:
         planes: The planes the codec compresses.
         seeds: The phrases the song's instruments offer the dictionary.
         pitches: The timer each pitch of the song sounds at.
+        notes: The note each tick of every tone channel names, in channel order, which a plane
+            layout may anchor a bend to in place of the pitch nearest the divider.
+        slices: The song's voices, one channel at a time, which seed a plane layout's dictionary.
     """
 
     name: str
@@ -42,6 +61,8 @@ class StudySong:
     planes: SongPlanes
     seeds: Tuple[Phrase, ...]
     pitches: PitchTable
+    notes: Tuple[bytes, ...]
+    slices: Tuple[StudySlice, ...]
 
     @property
     def ticks(self) -> int:

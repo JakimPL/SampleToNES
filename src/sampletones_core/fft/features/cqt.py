@@ -10,7 +10,6 @@ from sampletones_core.constants.spectrum import (
 )
 from sampletones_core.structures.histogram import Histogram
 
-from ..fragment.fragment import Fragment
 from ..spectrum.cqt import calculate_cqt_spectrum_columns
 from ..window.cyclic import CyclicArray
 from .base import FeatureExtractor
@@ -36,11 +35,3 @@ class CQTFeatureExtractor(FeatureExtractor):
         mean_values = np.mean([histogram.values for histogram in interior], axis=0)
         spectrum = Histogram(edges=interior[0].edges, values=mean_values.astype(np.float32))
         return self.transformer.forward(spectrum)
-
-    def _residual_feature(
-        self,
-        target: Fragment,
-        approximation: Fragment,
-        windowed_audio: np.ndarray,
-    ) -> Histogram:
-        return self.transformer.subtract(target.feature, approximation.feature)

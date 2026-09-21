@@ -186,8 +186,8 @@ class TestFlattenLocation(BaseTestSuite):
         TestCase(label="single_key", location=("count",), expected="count"),
         TestCase(
             label="nested_keys",
-            location=("generation", "drive"),
-            expected="generation.drive",
+            location=("generation", "reset_phase"),
+            expected="generation.reset_phase",
         ),
         TestCase(
             label="list_index",
@@ -248,14 +248,14 @@ class TestRecoveryOnRealModels:
     def test_config_keeps_valid_settings_and_drops_incompatible(self) -> None:
         raw = {
             "library": {"sample_rate": 22050},
-            "generation": {"drive": -5.0, "reset_phase": False},
+            "generation": {"decoder": {"top_k": 0}, "reset_phase": False},
             "obsolete_field": 123,
         }
         recovered = validate_with_recovery(Config, raw)
         assert recovered.model.library.sample_rate == 22050
         assert recovered.model.generation.reset_phase is False
-        assert recovered.model.generation.drive == Config().generation.drive
-        assert set(recovered.dropped) == {("generation", "drive"), ("obsolete_field",)}
+        assert recovered.model.generation.decoder.top_k == Config().generation.decoder.top_k
+        assert set(recovered.dropped) == {("generation", "decoder", "top_k"), ("obsolete_field",)}
 
     def test_application_config_keeps_favorites_when_master_gain_invalid(self) -> None:
         raw = {"audio": {"master_gain": 5.0}, "favorites": {"paths": ["/x/y"]}}

@@ -91,13 +91,14 @@ class CQTWindow(StrEnum):
 
 ALL_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
 
-TONE_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(
+PULSE_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(
     {
         ChannelName.PULSE1,
         ChannelName.PULSE2,
-        ChannelName.TRIANGLE,
     }
 )
+
+TONE_CHANNELS: Final[FrozenSet[ChannelName]] = PULSE_CHANNELS | {ChannelName.TRIANGLE}
 
 
 CHANNEL_ABBREVIATIONS: Final[Dict[ChannelName, Literal["P", "p", "T", "N"]]] = {

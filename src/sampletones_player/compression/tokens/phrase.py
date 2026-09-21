@@ -8,14 +8,16 @@ class PhraseToken:
     """The plane plays a phrase from the table, shifted by ``transpose``, for ``ticks`` ticks.
 
     A count past the phrase's own length holds its final value onward, the way a note whose
-    envelope has finished keeps sounding, and a count short of it cuts the note off.
+    envelope has finished keeps sounding, and a count short of it cuts the note off. A token
+    playing the count the phrase itself carries states none, which is a byte it spares.
     """
 
     phrase_id: int
     ticks: int
     transpose: int
+    default: bool
 
     @property
     def size(self) -> int:
         """The bytes the token takes."""
-        return phrase_size(self.phrase_id, self.transpose)
+        return phrase_size(self.phrase_id, self.transpose, default=self.default)

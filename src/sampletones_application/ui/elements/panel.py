@@ -64,6 +64,10 @@ class GUIPanel(CallbackMixin, ABC):
     def collapsed(self) -> bool:
         return self._collapse is not None and self._collapse.collapsed
 
+    def card_open(self) -> bool:
+        """Whether the card stands open, which a panel's key scope reads at the moment of a press."""
+        return not self.collapsed
+
     @property
     def _body_container(self) -> str:
         """The container new body content attaches to: the collapse body group when collapsible, else the card.

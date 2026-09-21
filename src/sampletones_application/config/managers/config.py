@@ -13,10 +13,9 @@ from sampletones_application.config.managers.outcome import (
 from sampletones_application.view_model.main.updates import (
     AdvancedSettingsUpdate,
     AudioSettingsUpdate,
-    GenerationSettingsUpdate,
     LibrarySettingsUpdate,
 )
-from sampletones_core.configs import Config
+from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.data.metadata import Metadata
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryKey
@@ -110,19 +109,6 @@ class ConfigManager:
         self.window = Window.from_config(self.config)
         self.update_gui()
 
-    def apply_generation_settings(
-        self,
-        update: GenerationSettingsUpdate,
-    ) -> None:
-        new_generation = self.config.generation.model_copy(update={"drive": update.drive})
-        self.config = self.config.model_copy(
-            update={
-                "generation": new_generation,
-            }
-        )
-        self.window = Window.from_config(self.config)
-        self.update_gui()
-
     def apply_advanced_settings(self, update: AdvancedSettingsUpdate) -> None:
         new_general = self.config.general.model_copy(
             update={
@@ -162,28 +148,50 @@ class ConfigManager:
         for callback in self.config_change_callbacks:
             callback()
 
-    def apply_library_config(self, library_key: InstructionLibraryKey) -> None:
-        sample_rate = library_key.sample_rate
-        nes_frequency = round(sample_rate / library_key.frame_length)
-        window_size = library_key.window_size
-        transformation_gamma = library_key.transformation_gamma
-        spectrum_method = library_key.spectrum_method
+    def apply_library_config(
+        self,
+        library_key: InstructionLibraryKey,
+        stored_config: Optional[InstructionsLibraryConfig],
+    ) -> None:
+        """Makes the settings the library ``library_key`` names was built for the configuration's.
 
-        new_library_config = self.config.library.model_copy(
-            update={
-                "sample_rate": sample_rate,
-                "nes_frequency": nes_frequency,
-                "window_size": window_size,
-                "spectrum_method": spectrum_method,
-                "transformation_gamma": transformation_gamma,
-            }
-        )
+        The settings the library states are applied whole where they name the library's own file,
+        tuning included. Otherwise the settings its filename carries are applied over the current
+        tuning.
+
+        Args:
+            library_key: The library whose settings are applied.
+            stored_config: The settings the library's file states, or ``None`` where it states none
+                this build reads.
+        """
+        if stored_config is None or not self._names_library(stored_config, library_key):
+            stored_config = self._filename_library_config(library_key)
 
         self.config = self.config.model_copy(
-            update={"library": new_library_config},
+            update={"library": stored_config},
         )
         self.window = Window.from_config(self.config)
         self.update_gui()
+
+    @staticmethod
+    def _names_library(
+        library_config: InstructionsLibraryConfig,
+        library_key: InstructionLibraryKey,
+    ) -> bool:
+        """Whether ``library_config`` names the file of the library ``library_key`` names."""
+        named = InstructionLibraryKey.create(library_config, Window.from_config(library_config))
+        return named.filename == library_key.filename
+
+    def _filename_library_config(self, library_key: InstructionLibraryKey) -> InstructionsLibraryConfig:
+        """The current library settings under the ones the filename of ``library_key`` carries."""
+        return self.config.library.model_copy(
+            update={
+                "sample_rate": library_key.sample_rate,
+                "nes_frequency": round(library_key.sample_rate / library_key.frame_length),
+                "spectrum_method": library_key.spectrum_method,
+                "transformation_gamma": library_key.transformation_gamma,
+            }
+        )
 
     def load_default_config(self) -> None:
         self.load_config(Config())

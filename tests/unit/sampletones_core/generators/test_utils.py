@@ -1,5 +1,3 @@
-from typing import Dict
-
 import pytest
 
 from sampletones_core.configs import Config
@@ -8,30 +6,14 @@ from sampletones_core.generators.implementation.noise import NoiseGenerator
 from sampletones_core.generators.implementation.pulse import PulseGenerator
 from sampletones_core.generators.implementation.triangle import TriangleGenerator
 from sampletones_core.generators.utils import (
-    get_generator_by_instruction,
     get_generators_by_channels,
     get_generators_map,
-    get_remaining_generator_classes,
-)
-from sampletones_core.instructions import (
-    NoiseInstruction,
-    PulseInstruction,
-    TriangleInstruction,
 )
 
 
 @pytest.fixture
 def config() -> Config:
     return Config()
-
-
-@pytest.fixture
-def all_generators(config: Config) -> dict:
-    return {
-        GeneratorClassName.PULSE_GENERATOR: PulseGenerator(config, ChannelName.PULSE1),
-        GeneratorClassName.TRIANGLE_GENERATOR: TriangleGenerator(config, ChannelName.TRIANGLE),
-        GeneratorClassName.NOISE_GENERATOR: NoiseGenerator(config, ChannelName.NOISE),
-    }
 
 
 class TestGetGeneratorsByChannels:
@@ -63,56 +45,3 @@ class TestGetGeneratorsMap:
         assert isinstance(result[GeneratorClassName.PULSE_GENERATOR], PulseGenerator)
         assert isinstance(result[GeneratorClassName.TRIANGLE_GENERATOR], TriangleGenerator)
         assert isinstance(result[GeneratorClassName.NOISE_GENERATOR], NoiseGenerator)
-
-
-class TestGetRemainingGeneratorClasses:
-    def test_maps_by_class_name(self, config: Config) -> None:
-        named = {
-            ChannelName.PULSE1: PulseGenerator(config, ChannelName.PULSE1),
-            ChannelName.NOISE: NoiseGenerator(config, ChannelName.NOISE),
-        }
-        result = get_remaining_generator_classes(named)
-        assert GeneratorClassName.PULSE_GENERATOR in result
-        assert GeneratorClassName.NOISE_GENERATOR in result
-
-    def test_lowest_pulse_channel_is_representative_when_both_remain(self, config: Config) -> None:
-        named = {
-            ChannelName.PULSE2: PulseGenerator(config, ChannelName.PULSE2),
-            ChannelName.PULSE1: PulseGenerator(config, ChannelName.PULSE1),
-        }
-        result = get_remaining_generator_classes(named)
-        assert result[GeneratorClassName.PULSE_GENERATOR] is named[ChannelName.PULSE1]
-
-    def test_pulse2_represents_pulse_kind_after_pulse1_is_consumed(self, config: Config) -> None:
-        named = {
-            ChannelName.PULSE2: PulseGenerator(config, ChannelName.PULSE2),
-        }
-        result = get_remaining_generator_classes(named)
-        assert result[GeneratorClassName.PULSE_GENERATOR] is named[ChannelName.PULSE2]
-
-    def test_single_channel_kinds_keep_their_own_generator(self, config: Config) -> None:
-        named = {
-            ChannelName.PULSE1: PulseGenerator(config, ChannelName.PULSE1),
-            ChannelName.TRIANGLE: TriangleGenerator(config, ChannelName.TRIANGLE),
-            ChannelName.NOISE: NoiseGenerator(config, ChannelName.NOISE),
-        }
-        result = get_remaining_generator_classes(named)
-        assert result[GeneratorClassName.TRIANGLE_GENERATOR] is named[ChannelName.TRIANGLE]
-        assert result[GeneratorClassName.NOISE_GENERATOR] is named[ChannelName.NOISE]
-
-
-class TestGetGeneratorByInstruction:
-    def test_pulse_instruction_returns_pulse_generator(self, all_generators: Dict) -> None:
-        instruction = PulseInstruction(on=True, pitch=60, volume=15, duty_cycle=0)
-        result = get_generator_by_instruction(instruction, all_generators)
-        assert isinstance(result, PulseGenerator)
-
-    def test_noise_instruction_returns_noise_generator(self, all_generators: Dict) -> None:
-        instruction = NoiseInstruction(on=True, period=3, volume=15, short=False)
-        result = get_generator_by_instruction(instruction, all_generators)
-        assert isinstance(result, NoiseGenerator)
-
-    def test_triangle_instruction_returns_triangle_generator(self, all_generators: Dict) -> None:
-        instruction = TriangleInstruction(on=True, pitch=60)
-        result = get_generator_by_instruction(instruction, all_generators)
-        assert isinstance(result, TriangleGenerator)

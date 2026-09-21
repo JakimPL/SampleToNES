@@ -1,12 +1,12 @@
 from dataclasses import dataclass
-from typing import Dict, FrozenSet, List, Optional, Sequence, Set, Tuple
+from typing import Dict, FrozenSet, List, NamedTuple, Optional, Sequence, Set, Tuple
 
 import numpy as np
 
 from sampletones_core.constants.algorithm import (
     RESTING_FRAME_COST,
-    SINGLE_STATE_LATTICE_WIDTH,
     STEM_ACTIVITY_FLOOR,
+    UNIT_DRIVE,
 )
 from sampletones_core.constants.enums import (
     ChannelName,
@@ -14,17 +14,16 @@ from sampletones_core.constants.enums import (
     HierarchyMode,
 )
 from sampletones_core.fft import Fragment
-from sampletones_core.fft.features import FeatureExtractor
-from sampletones_core.generators import (
-    GeneratorUnion,
-    get_generator_by_instruction,
-    get_remaining_generator_classes,
-)
+from sampletones_core.generators import GeneratorUnion
+from sampletones_core.reconstructions.reconstructor.contribution import Contribution
 from sampletones_core.reconstructions.reconstructor.matching import (
     Column,
     FrameMatcher,
     ScoredCandidate,
+    column_of,
 )
+from sampletones_core.reconstructions.reconstructor.mix import FrameMix
+from sampletones_core.reconstructions.reconstructor.stems.assignment.columns import column_groups
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import (
     StemsConfig,
 )
@@ -40,48 +39,62 @@ from sampletones_shared.array import to_numpy
 
 @dataclass(frozen=True)
 class StemOffer:
-    """What one stem offers for its residual: a shortlist, and the channel it won with.
+    """What one stem offers for a channel: that channel's column in the stem's frame, and what it saves.
 
-    The shortlist arrives best first, so its head is the candidate the stem competes with, and
-    the generator behind that head names the channel the stem would take.
+    The column arrives best first, so its head is the candidate the channel would play.
+
+    Attributes:
+        stem_id: The stem making the offer.
+        generator: The generator standing for the channel the stem would take.
+        column: The channel's candidates scored in the stem's frame at the drive the stem gives
+            the channel, best first.
+        unit_cost: The cost the channel's own best candidate at unit drive reaches in the stem's
+            frame, which the offer is ranked on and the stem stands at once the channel is taken.
+        improvement: How far the channel at unit drive lowers the stem's frame cost, weighted by
+            the energy of the stem's frame.
     """
 
     stem_id: int
     generator: GeneratorUnion
-    shortlist: Tuple[ScoredCandidate, ...]
-    generator_classes: Dict[GeneratorClassName, GeneratorUnion]
-    residual_energy: float
+    column: Column
+    unit_cost: float
+    improvement: float
 
     @property
-    def candidate(self) -> ScoredCandidate:
-        return self.shortlist[0]
+    def head(self) -> ScoredCandidate:
+        return self.column[0]
 
-    @property
-    def bid(self) -> float:
-        """How much of what this stem still holds its best candidate covers.
 
-        A cost is a fraction of its own target's energy, so two stems' costs stand on different
-        scales and comparing them alone would hand a channel to whichever recording is easiest to
-        approximate. Weighting the cost by the energy behind it states the covering in absolute
-        terms, so the channel goes to the stem with the most sound left to render.
-        """
-        return self.residual_energy * max(0.0, 1.0 - self.candidate.cost)
+class ColumnKey(NamedTuple):
+    """What a scored column answers: one stem's kind of channel at one drive."""
 
-    @property
-    def class_restricted(self) -> bool:
-        """The shortlist covers this offer's generator class alone, so it is the channel's own column."""
-        return len(self.generator_classes) == 1
+    stem_id: int
+    class_name: GeneratorClassName
+    drive: float
+
+
+@dataclass(frozen=True)
+class ScoredChoice:
+    """A choice together with the contributions sounding beside it when its column was scored."""
+
+    choice: StemChoice
+    context: Tuple[Contribution, ...]
 
 
 class AssignmentSession:
     """
-    Carries one frame assignment's mutable progress: each stem's residual, the free
-    channels, and the per-stem channel counts.
+    Carries one frame assignment's mutable progress: each stem's mix and frame cost, the free
+    channels, and how many channels each stem holds against the count its settings allow.
 
-    A stem's residual holds what is left of that stem's own frame, so a pick answers what
-    that recording still sounds and the channel it wins carries that recording. Only the
-    free channels are shared: the stems compete for them, ordered by the hierarchy, and the
-    stems sounding in the frame are the ones that compete.
+    A stem's mix is what its picks sound in its own frame, so a candidate is scored by the cost
+    that frame reaches with the candidate sounding beside them, and the channel's silence is one
+    of the candidates. Every candidate is read at the drive the stem gives the channel, so one
+    column answers the channels of a kind the stem drives alike and the channels it drives apart
+    hold columns of their own. A channel is taken where it lowers a frame's cost, by the stem
+    whose sound it covers most, measured at unit drive so a drive settles what a channel plays
+    and leaves the stems standing where they are. Only the free channels are shared: the stems
+    compete for them, ordered by the hierarchy, and the stems sounding in the frame are the ones
+    that compete.
     """
 
     def __init__(
@@ -90,38 +103,54 @@ class AssignmentSession:
         stems_config: StemsConfig,
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
-        extractor: FeatureExtractor,
         lattice_width: int,
     ) -> None:
         self.fragments = fragments
         self.stems_config = stems_config
         self.channels = channels
         self.matcher = matcher
-        self.extractor = extractor
         self.lattice_width = lattice_width
-        self.channel_cap = stems_config.channel_cap
-        self.residuals: Dict[int, Fragment] = dict(fragments)
+        self.caps: Dict[int, int] = {entry.id: entry.settings.channel_cap for entry in stems_config.entries}
         covered = stems_config.covered_channels
         self.free_channels = [name for name in ChannelName.items() if name in covered]
         self.used_channels: Dict[int, int] = {entry.id: 0 for entry in stems_config.entries}
         self.sounding = self._sounding_stems()
-        self.choices: List[StemChoice] = []
+        self.mixes: Dict[int, FrameMix] = {stem_id: FrameMix.empty(fragments[stem_id]) for stem_id in self.sounding}
+        self.frame_costs: Dict[int, float] = {
+            stem_id: matcher.mix_cost(fragments[stem_id], mix) for stem_id, mix in self.mixes.items()
+        }
+        self.energies: Dict[int, float] = {
+            stem_id: matcher.reference_energy(fragments[stem_id]) for stem_id in self.sounding
+        }
+        self.columns: Dict[ColumnKey, Column] = {}
+        self.choices: List[ScoredChoice] = []
 
     def run(self) -> StemFrameAssignment:
-        """Runs the frame's picks and reports them together with the channels left resting."""
+        """Runs the frame's picks, settles the channels no pick took, and reports the frame whole."""
         match self.stems_config.hierarchy.mode:
             case HierarchyMode.ROUND_ROBIN:
                 self._round_robin()
             case HierarchyMode.STRICT:
                 self._strict()
 
+        self._settle_declined()
+        self._sweep()
         return StemFrameAssignment(
-            choices=tuple(self.choices),
+            choices=tuple(
+                StemChoice(
+                    stem_id=scored.choice.stem_id,
+                    channel_name=scored.choice.channel_name,
+                    column=column_of(scored.choice.column, self.lattice_width),
+                )
+                for scored in self.choices
+            ),
             rests=self._rests(),
         )
 
     def _round_robin(self) -> None:
-        for _ in range(self.channel_cap):
+        """Gives every level one pick per round, for as many rounds as the largest count among the stems sounding."""
+        rounds = max((self.caps[stem_id] for stem_id in self.sounding), default=0)
+        for _ in range(rounds):
             for level in self.stems_config.hierarchy.levels:
                 if not self.free_channels:
                     return
@@ -146,9 +175,7 @@ class AssignmentSession:
             eligible = [
                 stem_id
                 for stem_id in level
-                if stem_id in self.sounding
-                and self.used_channels[stem_id] < self.channel_cap
-                and (repeat or stem_id not in picked_this_visit)
+                if stem_id in self.sounding and self._has_room(stem_id) and (repeat or stem_id not in picked_this_visit)
             ]
             if not eligible or not self.free_channels:
                 return
@@ -157,100 +184,183 @@ class AssignmentSession:
             if offer is None:
                 return
 
-            choice = self._choice(offer)
-            self.choices.append(choice)
-            self.used_channels[choice.stem_id] += 1
-            self.free_channels.remove(choice.channel_name)
-            self.residuals[choice.stem_id] = self.extractor.subtract(
-                self.residuals[choice.stem_id],
-                choice.approximation,
-            )
-            picked_this_visit.add(choice.stem_id)
+            self._take(offer)
+            picked_this_visit.add(offer.stem_id)
 
     def _best_offer(self, stem_ids: Sequence[int]) -> Optional[StemOffer]:
-        """The stem of ``stem_ids`` whose best candidate covers the most of what it still holds.
+        """The offer lowering its stem's frame cost the most, weighted by that frame's energy.
 
-        Equal bids leave the offer already standing, which is the one earlier in level order, so a
-        rerun of the same frame assigns the same way.
+        A cost is a fraction of its own frame's energy, so two stems' costs stand on different
+        scales; weighting a lowering by the energy behind it states it in absolute terms, so the
+        channel reaches the stem whose sound it covers most. The lowering is read from the
+        channel scored at unit drive while the driven column decides what the channel plays, so
+        the stems compete on how much of a frame a channel covers and a drive stays a property of
+        the sound its stem makes. An offer whose head is the channel's silence, or which lowers
+        nothing, stands aside. Equal offers leave the one already standing, which is earlier in
+        level order and then in channel order, so a rerun of the same frame assigns the same way.
         """
         best: Optional[StemOffer] = None
         for stem_id in stem_ids:
-            remaining_channels = self._remaining_channels(stem_id)
-            if not remaining_channels:
-                continue
+            for group in column_groups(self._remaining_channels(stem_id), self._drives(stem_id)):
+                column = self._column(stem_id, group.generator, group.drive)
+                if not column[0].instruction.on:
+                    continue
 
-            remaining_generator_classes = get_remaining_generator_classes(remaining_channels)
-            scored = self.matcher.score_candidates(
-                self.residuals[stem_id],
-                remaining_generator_classes,
-            )
-            offer = StemOffer(
-                stem_id=stem_id,
-                generator=get_generator_by_instruction(
-                    scored[0].instruction,
-                    remaining_generator_classes,
-                ),
-                shortlist=tuple(scored),
-                generator_classes=remaining_generator_classes,
-                residual_energy=self.matcher.reference_energy(self.residuals[stem_id]),
-            )
-            if best is None or offer.bid > best.bid:
-                best = offer
+                unit_cost = self._column(stem_id, group.generator, UNIT_DRIVE)[0].cost
+                improvement = (self.frame_costs[stem_id] - unit_cost) * self.energies[stem_id]
+                if improvement <= 0.0:
+                    continue
+
+                if best is None or improvement > best.improvement:
+                    best = StemOffer(
+                        stem_id=stem_id,
+                        generator=group.generator,
+                        column=column,
+                        unit_cost=unit_cost,
+                        improvement=improvement,
+                    )
 
         return best
 
-    def _choice(self, offer: StemOffer) -> StemChoice:
-        return StemChoice(
-            stem_id=offer.stem_id,
-            channel_name=ChannelName(offer.generator.name),
-            instruction=offer.candidate.instruction,
-            approximation=offer.candidate.approximation,
-            cost=offer.candidate.cost,
-            column=self._column(offer),
-        )
+    def _take(self, offer: StemOffer) -> None:
+        """Gives the offer's channel to its stem, sounding the head in that stem's mix.
 
-    def _column(self, offer: StemOffer) -> Column:
-        """The alternatives the decoder chooses among for the channel this offer won.
-
-        A decoder reading one candidate per frame settles on the pick itself, so the frame is
-        answered by the scoring already done. A wider lattice scores the winning channel's own
-        candidates against the residual the pick was made on, which reaches the alternatives a
-        scoring across several channels ranked below other channels' candidates. Where the offer
-        was already scored over one generator class, that scoring is the column.
+        The stem stands at the cost the channel reaches at unit drive, which is the scale the
+        next offer is measured against, so one drive-free lowering follows another.
         """
-        if self.lattice_width == SINGLE_STATE_LATTICE_WIDTH:
-            return (offer.candidate,)
+        stem_id = offer.stem_id
+        self._record(stem_id, ChannelName(offer.generator.name), offer.column)
+        self.mixes[stem_id] = self.mixes[stem_id].added(offer.head.contribution)
+        self.frame_costs[stem_id] = offer.unit_cost
+        self._forget_columns(stem_id)
 
-        if offer.class_restricted:
-            return offer.shortlist[: self.lattice_width]
+    def _settle_declined(self) -> None:
+        """Gives each channel no pick took to the first sounding stem that may still hold it.
 
-        generator = offer.generator
-        scored = self.matcher.score_candidates(
-            self.residuals[offer.stem_id],
-            {generator.class_name(): generator},
+        The channel sounds nothing there, and its column keeps the alternatives a decoder may
+        still sound when the frames around ask for the channel. A declined channel counts against
+        its stem's count, so no decoded frame sounds more channels than the stem allows. A channel
+        no stem may hold stays free for the rests.
+        """
+        for channel_name in list(self.free_channels):
+            stem_id = self._settling_stem(channel_name)
+            if stem_id is None:
+                continue
+
+            self._record(
+                stem_id,
+                channel_name,
+                self._column(stem_id, self.channels[channel_name], self._drive_of(stem_id, channel_name)),
+            )
+
+    def _sweep(self) -> None:
+        """Scores every choice once more with the stem's other choices sounding beside it.
+
+        A pick is made before the picks after it, so the channels taken early answered a frame the
+        later channels had yet to join. Scoring each channel again against what the others settled
+        on lets its head move to what the whole frame asks of it: a channel may fall silent where
+        the others cover its sound, or sound where they leave room. A choice whose context is
+        unchanged keeps its column.
+        """
+        for index, scored in enumerate(self.choices):
+            stem_id = scored.choice.stem_id
+            context = tuple(
+                other.choice.head.contribution
+                for other_index, other in enumerate(self.choices)
+                if other_index != index and other.choice.stem_id == stem_id and other.choice.sounding
+            )
+            if len(context) == len(scored.context) and all(
+                current is previous for current, previous in zip(context, scored.context)
+            ):
+                continue
+
+            fragment = self.fragments[stem_id]
+            column = self.matcher.score_column(
+                fragment,
+                self.channels[scored.choice.channel_name],
+                FrameMix.of(fragment, context),
+                drive=self._drive_of(stem_id, scored.choice.channel_name),
+            )
+            self.choices[index] = ScoredChoice(
+                choice=StemChoice(stem_id=stem_id, channel_name=scored.choice.channel_name, column=column),
+                context=context,
+            )
+
+    def _record(self, stem_id: int, channel_name: ChannelName, column: Column) -> None:
+        context = tuple(
+            scored.choice.head.contribution
+            for scored in self.choices
+            if scored.choice.stem_id == stem_id and scored.choice.sounding
         )
-        return tuple(scored[: self.lattice_width])
+        self.choices.append(
+            ScoredChoice(
+                choice=StemChoice(stem_id=stem_id, channel_name=channel_name, column=column),
+                context=context,
+            )
+        )
+        self.used_channels[stem_id] += 1
+        self.free_channels.remove(channel_name)
+
+    def _column(self, stem_id: int, generator: GeneratorUnion, drive: float) -> Column:
+        """The column of ``generator``'s class at ``drive`` in the stem's frame, scored once per mix."""
+        key = ColumnKey(stem_id=stem_id, class_name=generator.class_name(), drive=drive)
+        column = self.columns.get(key)
+        if column is None:
+            column = self.matcher.score_column(
+                self.fragments[stem_id],
+                generator,
+                self.mixes[stem_id],
+                drive=drive,
+            )
+            self.columns[key] = column
+
+        return column
+
+    def _forget_columns(self, stem_id: int) -> None:
+        for key in [key for key in self.columns if key.stem_id == stem_id]:
+            del self.columns[key]
+
+    def _settling_stem(self, channel_name: ChannelName) -> Optional[int]:
+        """The first sounding stem in hierarchy order that allows ``channel_name`` and has room left."""
+        for level in self.stems_config.hierarchy.levels:
+            for stem_id in level:
+                allowed = self.stems_config.entries_by_id[stem_id].settings.channel_set
+                if stem_id in self.sounding and channel_name in allowed and self._has_room(stem_id):
+                    return stem_id
+
+        return None
+
+    def _drives(self, stem_id: int) -> Dict[ChannelName, float]:
+        """The level the stem gives each of the channels it occupies."""
+        return self.stems_config.entries_by_id[stem_id].settings.drives
+
+    def _drive_of(self, stem_id: int, channel_name: ChannelName) -> float:
+        """The level the stem gives one of the channels it occupies."""
+        return self._drives(stem_id)[channel_name]
+
+    def _has_room(self, stem_id: int) -> bool:
+        """Whether the stem holds fewer channels than the count its settings allow in one frame."""
+        return self.used_channels[stem_id] < self.caps[stem_id]
 
     def _rests(self) -> Tuple[StemRest, ...]:
-        """The channels no stem took, each holding its null instruction over a silent frame."""
+        """The channels no stem holds, each holding its null instruction over a silent frame."""
         if not self.free_channels:
             return ()
 
-        silent = next(iter(self.fragments.values())) * 0.0
+        fragment = next(iter(self.fragments.values()))
+        silence = Contribution.silence(len(fragment.feature.values), fragment.audio.shape[0])
         return tuple(
             StemRest(
                 channel_name=channel_name,
-                column=(self._resting_candidate(channel_name, silent),),
+                column=(
+                    ScoredCandidate(
+                        instruction=self.channels[channel_name].get_instruction_type().null_instruction(),
+                        cost=RESTING_FRAME_COST,
+                        contribution=silence,
+                    ),
+                ),
             )
             for channel_name in self.free_channels
-        )
-
-    def _resting_candidate(self, channel_name: ChannelName, silent: Fragment) -> ScoredCandidate:
-        instruction = self.channels[channel_name].get_instruction_type().null_instruction()
-        return ScoredCandidate(
-            instruction=instruction,
-            cost=RESTING_FRAME_COST,
-            approximation=silent,
         )
 
     def _sounding_stems(self) -> FrozenSet[int]:

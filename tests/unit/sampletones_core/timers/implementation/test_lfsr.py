@@ -41,14 +41,14 @@ class NoiseRenderCase(BaseTestCase):
 
 @pytest.fixture
 def long_timer() -> LFSRTimer:
-    timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY)
+    timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY, reset_phase=False)
     timer.short = False
     return timer
 
 
 @pytest.fixture
 def short_timer() -> LFSRTimer:
-    timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY)
+    timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY, reset_phase=False)
     timer.short = True
     return timer
 
@@ -253,7 +253,7 @@ class TestLFSRShiftRate:
 
     @pytest.mark.parametrize("case", NOISE_RENDER_CASES, ids=lambda c: c.label)
     def test_real_frequency_is_the_sequence_repetition_rate(self, case: NoiseRenderCase) -> None:
-        timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY)
+        timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY, reset_phase=False)
         timer.short = case.short
         timer.period = case.period_index
         assert timer.real_frequency == pytest.approx(tone_frequency(case.period_index, case.short))
@@ -262,7 +262,7 @@ class TestLFSRShiftRate:
 class TestLFSRAgainstReference:
     @pytest.mark.parametrize("case", NOISE_RENDER_CASES, ids=lambda c: c.label)
     def test_consecutive_frames_match_the_hardware_reference(self, case: NoiseRenderCase) -> None:
-        timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY)
+        timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY, reset_phase=False)
         timer.short = case.short
         timer.period = case.period_index
         timer.set((1, 0.0))
@@ -280,7 +280,7 @@ class TestLFSRAgainstReference:
 
     @pytest.mark.parametrize("case", NOISE_RENDER_CASES, ids=lambda c: c.label)
     def test_render_resumes_the_reference_state(self, case: NoiseRenderCase) -> None:
-        timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY)
+        timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY, reset_phase=False)
         timer.short = case.short
         timer.period = case.period_index
         timer.set((1, 0.0))
@@ -300,7 +300,7 @@ class TestLFSRAgainstReference:
 class TestLFSRBitDensity:
     @pytest.mark.parametrize("short", [False, True], ids=["long", "short"])
     def test_mean_level_matches_the_shift_register_bit_density(self, short: bool) -> None:
-        timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY)
+        timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY, reset_phase=False)
         timer.short = short
         timer.period = FASTEST_PERIOD
         timer.set((1, 0.0))
@@ -316,7 +316,7 @@ class TestLFSRSequencePeriodicity:
         here sit a fraction of a shift-register step apart. Slow periods hold that fraction
         far below one step, where the repetition shows as near-perfect correlation.
         """
-        timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY)
+        timer = LFSRTimer(sample_rate=SAMPLE_RATE, nes_frequency=NES_FREQUENCY, reset_phase=False)
         timer.short = case.short
         timer.period = case.period_index
         timer.set((1, 0.0))

@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors.channel import ChannelColors
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.reconstructions import (
@@ -16,6 +17,7 @@ from sampletones_application.tags.reconstructions import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.graphs.ribbon import GUIOwnershipRibbon
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -29,6 +31,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 from sampletones_application.view_model.reconstruction.waveform import (
     InstrumentWaveformViewModel,
 )
+from sampletones_application.view_model.shared.ownership import OwnershipRibbonViewModel
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_shared.types.application import Sender
@@ -41,19 +44,24 @@ class GUIReconstructionPlotPanel(GUIPanel):
         *,
         layout_graphs: GraphsLayout,
         channel_colors: ChannelColors,
+        stem_colors: StemColors,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout_graphs = layout_graphs
         self._channel_colors = channel_colors
+        self._stem_colors = stem_colors
         self._status_bar = status_bar
         self._language_manager = language_manager
 
         self.waveform_display: GUIWaveformGraph
+        self.ownership_ribbon: GUIOwnershipRibbon
+        self._ownership: OwnershipRibbonViewModel = OwnershipRibbonViewModel.empty()
         self._frame_length: Optional[int] = None
 
         self.on_channels_changed: Optional[Callable[[List[ChannelName]], None]] = None
+        self.on_position_clicked: Optional[Callable[[int], None]] = None
 
         self.autoscale_tag = compose_tag(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT, SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE
@@ -77,6 +85,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
         ):
             self._create_autoscale_checkbox()
             self._create_waveform_display()
+            self._create_ownership_ribbon()
             self._create_channel_checkboxes()
             self._create_tooltips()
 
@@ -116,8 +125,10 @@ class GUIReconstructionPlotPanel(GUIPanel):
         """
         self._show_recording_controls(shown=waveform is None)
         if waveform is None:
+            self._draw_ownership(self._ownership)
             return
 
+        self._draw_ownership(OwnershipRibbonViewModel.empty())
         self._frame_length = waveform.frame_length
         self.waveform_display.load_voice_waveform(
             waveform.audio,
@@ -148,6 +159,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
     def clear_waveform(self) -> None:
         self._frame_length = None
         self.waveform_display.clear()
+        self.update_ownership(OwnershipRibbonViewModel.empty())
 
     def set_waveform_top_source(self, audio_source: AudioSourceType) -> None:
         self.waveform_display.set_top_source(audio_source)
@@ -185,9 +197,34 @@ class GUIReconstructionPlotPanel(GUIPanel):
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_RECONSTRUCTION_WAVEFORM,
             parent=self._body_container,
             layout=self._layout_graphs,
+            channel_colors=self._channel_colors,
             language_manager=self._language_manager,
             status_bar=self._status_bar,
         )
+        self.waveform_display.on_position_clicked = self._on_position_clicked
+
+    def _create_ownership_ribbon(self) -> None:
+        """The lanes naming the recording behind each stretch, painted in the waveform's own row."""
+        self.ownership_ribbon = GUIOwnershipRibbon(
+            plot_tags=self.waveform_display.lane_plot_tags,
+            y_axis_tags=self.waveform_display.lane_y_axis_tags,
+            layout=self._layout_graphs,
+            stem_colors=self._stem_colors,
+        )
+        self.ownership_ribbon.bind_theme()
+
+    def update_ownership(self, ribbon: OwnershipRibbonViewModel) -> None:
+        """Takes the lanes the open document answers for and paints them under its waveform."""
+        self._ownership = ribbon
+        self._draw_ownership(ribbon)
+
+    def _draw_ownership(self, ribbon: OwnershipRibbonViewModel) -> None:
+        """Paints the lanes and gives them the room they need under the waveform."""
+        self.ownership_ribbon.update_view(ribbon)
+        self.waveform_display.set_lane_heights(self.ownership_ribbon.lane_heights)
+
+    def _on_position_clicked(self, position: int) -> None:
+        self.call(self.on_position_clicked, position)
 
     def _create_channel_checkboxes(self) -> None:
         generator_labels = {
