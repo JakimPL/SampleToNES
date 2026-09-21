@@ -115,6 +115,8 @@ A test guards principle 4. It imports the registry in a subprocess and asserts t
 registry and package modules of the tools load and no heavy library does. A startup failure in any tool
 module would break every invocation, the GUI included.
 
+The `icons` command writes the icon suite from the mark declared in `sampletones_tools/assets/mark/config`. `mark.yaml` has the geometry, colors and rasterization settings, validated as a `Mark`, and `template.svg` is the vector the rendered geometry fills. The suite is the vector `sampletones.svg` and the rasters the application ships, `sampletones.png` and the multi-resolution `sampletones.ico`. The command points at the directory the icons ship from. The whole suite is committed, so every wheel, bundle and test run finds the icons where they lie. The `icons` pre-push hook writes them again for a push that touches either directory, which holds the committed files to what the mark describes, and CI runs that same hook.
+
 A tool that writes a page ships that page's files as they are read. `calibration/board/static/` holds the
 markup, the stylesheet and the script, copied out byte for byte, and the builder writes the palette, the
 faces and the run's own contents beside them. The stylesheet names color tokens and the script names no
