@@ -23,7 +23,7 @@ specification is readable straight from the code.
 ### A.1 `.fti` — instrument file
 
 An `.fti` holds a single 2A03 instrument: its five sequences inline, then an empty
-DPCM section. Written by `sampletones_core/formats/famitracker/instrument.py`.
+DPCM section.
 
 | Field | Type | Value |
 | --- | --- | --- |
@@ -51,8 +51,7 @@ Each **sequence record**:
 ### A.2 `.ftm` — module file
 
 An `.ftm` is a file header followed by a sequence of named, versioned blocks and a
-final `END` marker. Written by `sampletones_core/formats/famitracker/module.py`, one function
-per block.
+final `END` marker.
 
 **File header**
 
@@ -242,7 +241,7 @@ as the note sounds. A point outside the items the sequence carries is read as no
 
 **What the voice leaves to the file.** A tracker instrument states more than a voice
 holds, and each of those is reported once the import lands, so a reader learns what the
-file carried (`InstrumentOmission` in `voice.py`):
+file carried:
 
 | Stated in the file | What the voice holds |
 | --- | --- |
@@ -290,10 +289,8 @@ reaching a state the exporter would reject.
 ## E. Driver memory footprint
 
 Compiling a module into an NSF lays each instrument out across two regions of the driver's
-data, and an instrument's sequences size both of them. `footprint.py` measures the two, and
-`specification/memory.py` names every field the measurement counts. The instruments panel and
-the samples context menu display the result, so the cost of a sample is readable before an
-export.
+data, and an instrument's sequences size both of them. The instruments panel and the samples
+context menu show the measurement, so the cost of a sample is readable before an export.
 
 The **instrument region** holds the instrument list — one pointer per instrument — followed by
 each instrument's body: a sequence-enable bitmask, then one pointer per populated sequence. The

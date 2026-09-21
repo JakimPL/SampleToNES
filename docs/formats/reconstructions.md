@@ -11,57 +11,55 @@ application shows in step with what an export plays.
 
 ## Contents
 
-A `.stn` file holds:
+A `.stn` file is one MessagePack map:
 
-* **metadata** — the application name and version, and the reconstruction
-  data-version used to check compatibility on load (see [Versioning](#versioning));
-* **id** — a unique identifier for the reconstruction;
-* **configuration** — a frozen snapshot of the
-  [generation configuration](../guide/configuration.md) used, so the file records
-  exactly how it was made: sample rate, NES frequency, spectrum method, gamma,
-  and the rest;
-* **coefficient** — the [working level](../glossary.md#working-level-coefficient),
-  the single scale factor applied to the input so its loudness fit the NES
-  channels' range. Storing it lets the reconstruction and the original be shown
-  and played on a common scale;
-* **per-channel instructions** — the instruction stream each channel plays, one
-  [instruction](../glossary.md#instruction) per frame. This is the data a
-  FamiTracker export is built from. A reconstruction holds a stream for every one
-  of the four channels (`pulse1`, `pulse2`, `triangle`, `noise`), and a stream of
-  no frames is a channel standing by: it is written by no export and costs
-  nothing, while staying open to edit, so writing an envelope into it puts the
-  channel in play and clearing every envelope takes it out again;
-* **per-channel reference pitch** — the note each channel's arpeggio offsets are
-  measured against, chosen once when the reconstruction is built and stored with
-  the instructions it describes. An export reads the offsets against this pitch,
-  so editing an arpeggio moves the frames around a base that stays put (see
-  [FamiTracker export](famitracker.md));
-* **per-channel held dimensions** — the envelopes each channel leaves to the
-  player. An instruction states a value for every dimension of its frame, so this
-  is what says which of them the instrument itself writes; the rest are the
-  channel's, and the player keeps the value it already holds for them. A channel
-  in play writes them all as it is built, and clearing an envelope in the
-  instruments panel adds that dimension here;
-* **stems assignment** — the stems setup the reconstruction was built under, the
-  recording behind each entry, and, per channel, the source holding each frame
-  (`stems_data`). Every reconstruction carries one: a conversion from a single file
-  records one stem covering every channel it plays. A frame whose channel is silent
-  records the resting stem id, `-1`: a frame no source took, where a source's count
-  of channels at once or a hierarchy left it free, and a frame the decoding settled
-  on a silent instruction. A frame the reader wrote by hand records the authored
-  stem id, `-2`, which answers to no recording and stands through every removal;
-* **source audio** — per entry, the recording's name and the file it was read from,
-  in the order the stems setup lists them. The name belongs to the document and the
-  file to this machine, so a [detached](#detached-reconstructions) reconstruction
-  keeps every name and states no location.
+| Field | Contents |
+| --- | --- |
+| `metadata` | the application name and version, and the reconstruction data version checked on load (see [Versioning](#versioning)) |
+| `id` | a unique identifier for the reconstruction |
+| `config` | a frozen snapshot of the [generation configuration](../guide/configuration.md) it was made with: sample rate, NES frequency, spectrum method, gamma, and the rest |
+| `coefficient` | the [working level](../glossary.md#working-level-coefficient), the single scale factor applied to the input so its loudness fit the NES channels' range. Storing it lets the reconstruction and the original be shown and played on a common scale |
+| `instructions_data` | one entry per channel (below) |
+| `stems_data` | the stems setup, the recordings behind it, and which stem holds each frame (below) |
 
-A channel standing by rests at a reference pitch of its own, so the first envelope
-written into it sounds on a mid-range note, and it leaves every dimension it offers
-to the player, which is the record a channel edited down to empty envelopes reaches
-as well. A file naming a stream for the channels it plays alone reads as the whole
-four, with the rest coming back standing by.
+### `instructions_data`
 
-The stems setup is also what `sampletones convert --stems` reads, written as JSON with the
+One entry per channel:
+
+| Field | Contents |
+| --- | --- |
+| `channel_name` | `pulse1`, `pulse2`, `triangle` or `noise` |
+| `instructions` | the stream the channel plays, one [instruction](../glossary.md#instruction) per frame. A FamiTracker export is built from this |
+| `initial_pitch` | the note the channel's arpeggio offsets are measured against, chosen when the reconstruction is built. An export reads the offsets against this pitch, so editing an arpeggio moves the frames around a base that stays put (see [FamiTracker export](famitracker.md)) |
+| `held_features` | the dimensions the channel governs. An instruction states a value for every dimension of its frame, so this says which of them the instrument itself writes; for the rest the player keeps the value it already has |
+
+A stream of no frames is a channel standing by: no export writes it and it costs nothing, while it
+stays open to edit. Writing an envelope into it puts the channel in play, and clearing every
+envelope takes it out again. Such a channel rests at a reference pitch of its own, so the first
+envelope written into it sounds on a mid-range note, and it leaves every dimension to the player —
+which is also what a channel edited down to empty envelopes records. A file naming a stream for the
+channels it plays alone reads as the whole four, with the rest coming back standing by.
+
+### `stems_data`
+
+| Field | Contents |
+| --- | --- |
+| `config` | the stems setup the conversion ran under: one entry per recording, and the hierarchy of levels |
+| `sources` | one per entry: the `stem_id` it was converted as, the `name` it is known by, and the `path` it was read from, absent once [detached](#detached-reconstructions) |
+| `assignments` | per channel, the `stem_ids` holding each frame, parallel to that channel's stream |
+
+Every reconstruction carries this record. A conversion from a single file records one stem covering
+every channel it plays. Two ids name no recording: `-1` is a resting frame, and `-2` a frame the
+reader wrote by hand, which answers to no recording and stands through every removal. A frame rests
+where its channel is silent — where no source took it, where a source's channel count or the
+hierarchy left it free, or where the decoding settled on a silent instruction.
+
+A recording's name belongs to the document and its path to this machine, which is what lets a
+detached reconstruction keep every name and state no location.
+
+### The stems setup as JSON
+
+The same setup is what `sampletones convert --stems` reads, written as JSON with the
 same fields: one entry per recording, in the order the recordings are given, each naming the
 channels it may occupy, the ones it bends, the `drives` it pushes each of them at and the
 `channel_cap` channels it may sound at once; and a hierarchy listing the stem ids by

@@ -167,8 +167,8 @@ A Bitphase song states a **speed** — the engine ticks each row lasts — where
 project states a tempo and a speed together. The row rate the pair asks for is fractional at
 most tempi, so the exporter carries it as a [groove](../glossary.md#groove): whole tick counts,
 one per row of a pattern, averaging out to that rate with the longer rows on the bar and the
-beat. `sampletones_core/timing/` builds them and in-app playback reads the same groove, so a
-document plays the rows the sequencer played. At 60 Hz, speed 6 and tempo 210, a 16-row
+beat. In-app playback reads that same groove, so a document plays the rows the sequencer
+played. At 60 Hz, speed 6 and tempo 210, a 16-row
 pattern in common time comes to
 
 ```

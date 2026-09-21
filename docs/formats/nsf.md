@@ -2,11 +2,10 @@
 
 This document is the reference for the `.nsf` files _SampleToNES_ writes: the file a
 console or an NSF player loads, and the song block inside it that the player's own 6502
-driver reads. Read it before changing anything under `sampletones_player/nsf/`,
-`sampletones_player/compression/`, or the assembly under `sampletones_player/driver/`.
-The design behind the format — why a song is stored this way and how the driver is held
-to it — is in [the player](../development/player.md), and the compression scheme is explained
-in [song compression](../concepts/compression.md); the layout itself is here.
+driver reads. Read it before changing how an `.nsf` is written or read. The design behind
+the format — why a song is stored this way and how the driver is held to it — is in
+[the player](../development/player.md), and the compression scheme is explained in
+[song compression](../concepts/compression.md); the layout itself is here.
 
 An `.nsf` is unlike the tracker exports beside it. A [FamiTracker](famitracker.md) or
 [Bitphase](bitphase.md) file describes a song to a program that already knows how to play
