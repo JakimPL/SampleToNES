@@ -360,13 +360,11 @@ class ReconstructionPanelLogic(CallbackMixin):
                 stems=EMPTY_STEMS_LIST,
             )
 
-        entries = stems_data.config.entries_by_id
         positions = record_positions(stems_data)
         levels = self._levels_with_edits(stems_data)
         rows = tuple(
             self._stem_row(
                 stems_data,
-                entries[stem_id].settings.bend_set if stem_id in entries else frozenset(),
                 positions.get(stem_id),
                 stem_id,
                 level_index,
@@ -410,7 +408,6 @@ class ReconstructionPanelLogic(CallbackMixin):
     def _stem_row(
         self,
         stems_data: StemsData,
-        bends: FrozenSet[ChannelName],
         record_position: Optional[int],
         stem_id: int,
         level: int,
@@ -428,7 +425,6 @@ class ReconstructionPanelLogic(CallbackMixin):
             held=(),
             channels=self._listening.heard.get(stem_id, frozenset()),
             partial_channels=frozenset(),
-            bends=bends,
             offered_channels=self._listening.offered.get(stem_id, frozenset()),
             available=source is not None and source.path is not None and source.path.is_file(),
             level=level,

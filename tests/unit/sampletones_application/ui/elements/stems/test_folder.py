@@ -112,7 +112,6 @@ def recording(path: Path, *, channels: FrozenSet[ChannelName] = frozenset(CHANNE
         held=(),
         channels=channels,
         partial_channels=frozenset(),
-        bends=frozenset(),
         offered_channels=frozenset(CHANNELS),
         available=True,
         level=0,
@@ -133,7 +132,6 @@ def folder(name: str, *, holds: int) -> StemRowViewModel:
         held=tuple(recording(root / f"take_{index}.wav") for index in range(holds)),
         channels=frozenset(CHANNELS),
         partial_channels=frozenset(),
-        bends=frozenset(),
         offered_channels=frozenset(CHANNELS),
         available=True,
         level=0,
@@ -694,7 +692,6 @@ class TestWhereTheNamesOpen(BaseTestSuite):
             channels=CHANNELS,
             master=GATHERED_SOURCES.master_box,
             removable=GATHERED_SOURCES.removal,
-            bends=GATHERED_SOURCES.bends,
             swatch=GATHERED_SOURCES.swatch,
             folders=True,
         )

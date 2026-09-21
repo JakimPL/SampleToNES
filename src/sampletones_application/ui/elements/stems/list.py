@@ -114,7 +114,6 @@ class GUIStemsList(CallbackMixin):
             prefix=prefix,
             layout=layout,
             language_manager=language_manager,
-            bends=offer.bends,
         )
         self._bands = LevelBands(
             self._tags,

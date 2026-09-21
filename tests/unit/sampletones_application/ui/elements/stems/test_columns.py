@@ -49,7 +49,6 @@ def columns(
     *,
     folders: bool,
     master: bool = False,
-    bends: bool = False,
     swatch: bool = False,
 ) -> StemsColumns:
     """The grid a list of gathered recordings declares."""
@@ -58,7 +57,6 @@ def columns(
         channels=CHANNELS,
         master=master,
         removable=True,
-        bends=bends,
         swatch=swatch,
         folders=folders,
     )
@@ -122,20 +120,6 @@ class TestWhereAChannelNameStands(BaseTestSuite):
         with measured(LABEL_SIZE):
             indent = columns(layout_config, folders=True).name_indent(LABEL, Font.BOLD_SMALL)
 
-        assert indent == (stems.channel_solo_width - int(LABEL_WIDTH)) // 2
-
-    def test_a_name_over_a_column_carrying_bends_stands_in_the_wider_room(
-        self,
-        dpg_context: None,
-        layout_config: LayoutConfig,
-    ) -> None:
-        """A cell holding the channel and the bend on it takes a column of its own width, and the
-        name above it is centered in that."""
-        stems = layout_config.general.stems
-
-        with measured(LABEL_SIZE):
-            indent = columns(layout_config, folders=True, bends=True).name_indent(LABEL, Font.BOLD_SMALL)
-
         assert indent == (stems.channel_column_width - int(LABEL_WIDTH)) // 2
 
     def test_a_name_no_frame_has_measured_yet_opens_at_the_edge(
@@ -157,32 +141,9 @@ class TestWhereABoxStands(BaseTestSuite):
         self,
         layout_config: LayoutConfig,
     ) -> None:
-        """One box stands in a column the width the layout gives a channel standing on its own."""
         stems = layout_config.general.stems
 
-        indent = columns(layout_config, folders=True).box_indent(ChannelName.PULSE1)
-
-        assert indent == (stems.channel_solo_width - stems.channel_box_width) // 2
-
-    def test_a_channel_carrying_its_bend_centers_both_boxes_together(
-        self,
-        layout_config: LayoutConfig,
-    ) -> None:
-        """A tone channel's cell holds the channel and the bend on it, in a column of its own width."""
-        stems = layout_config.general.stems
-
-        indent = columns(layout_config, folders=True, bends=True).box_indent(ChannelName.PULSE1)
-
-        assert indent == (stems.channel_column_width - 2 * stems.channel_box_width) // 2
-
-    def test_a_channel_taking_no_bend_keeps_the_one_box(
-        self,
-        layout_config: LayoutConfig,
-    ) -> None:
-        """A bend moves a note within its divider, so noise holds the first slot alone."""
-        stems = layout_config.general.stems
-
-        indent = columns(layout_config, folders=True, bends=True).box_indent(ChannelName.NOISE)
+        indent = columns(layout_config, folders=True).box_indent
 
         assert indent == (stems.channel_column_width - stems.channel_box_width) // 2
 
@@ -209,7 +170,6 @@ class TestWhereABoxStands(BaseTestSuite):
             channels=CHANNELS,
             master=True,
             removable=True,
-            bends=False,
             swatch=False,
             folders=True,
         ).master_indent
@@ -293,7 +253,7 @@ class TestTheColumnsAGridDeclares(BaseTestSuite):
         layout_config: LayoutConfig,
     ) -> None:
         stems = layout_config.general.stems
-        grid = columns(layout_config, folders=True, bends=True)
+        grid = columns(layout_config, folders=True)
 
         declared = self._declared(grid)
 
