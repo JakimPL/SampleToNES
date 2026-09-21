@@ -173,6 +173,11 @@ pick lowers the frame's cost.
 The state of a channel that no stem holds in a frame. It plays its null instruction, which keeps every
 channel's stream in step with the frames.
 
+### Standing by
+
+The state of a channel whose stream has no frame. No export writes it and it costs nothing, and it stays
+open to edit. See [Reconstructions](formats/reconstructions.md#instructions_data).
+
 ### Decoder
 
 The strategy that reads a channel's per-frame candidates into the stream it plays. The setting is
