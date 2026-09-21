@@ -29,9 +29,11 @@ How you run the command depends on how you installed _SampleToNES_:
 
 Add `--help` to any command to see its options.
 
-`sampletones --help` also lists commands for developing _SampleToNES_, such as `check` and
-`codec`. They run from a copy of the source code; add `--help` to one to see what it does. `sampletones calibration` measures how well the app reconstructs a set of reference
-sounds; [Calibration](../tools/calibration.md) explains how to run it and read the results.
+`sampletones --help` also lists commands for developing _SampleToNES_, such as `check` and `codec`.
+They run from a copy of the source code. Add `--help` to one to see what it does.
+
+`sampletones calibration` measures how well the app reconstructs a set of reference sounds.
+[Calibration](../tools/calibration.md) explains how to run it and read the results.
 
 ## Options
 
@@ -42,7 +44,8 @@ sounds; [Calibration](../tools/calibration.md) explains how to run it and read t
   reconstruction goes to the reconstructions folder of your configuration.
 - `--channels <list>` sets the channels `convert` may use, for example `--channels pulse1,pulse2`.
   Without it, `convert` uses pulse 1, triangle and noise.
-- `--stems <file>` gives `convert` a stems file, which it needs to mix several recordings.
+- `--stems <file>` gives `convert` a stems file, which it needs to mix several recordings. The file has
+  one [stem](../glossary.md#stem) entry per recording.
 
 A `convert` command takes either `--channels` or `--stems`.
 
@@ -52,10 +55,9 @@ A `convert` command takes either `--channels` or `--stems`.
 - **Convert a folder**: `sampletones convert path/to/folder`. Every recording in the folder
   becomes its own reconstruction, saved in your reconstructions folder.
 - **Mix several recordings into one reconstruction**:
-  `sampletones convert bass.wav lead.wav --stems stems.json`. The stems file has one entry per
-  recording, in the same order. Each entry lists the channels the recording may use and the
-  channels it bends. The command prints which recording uses which entry before it starts.
-  [Reconstructions](../formats/reconstructions.md) shows the file.
+  `sampletones convert bass.wav lead.wav --stems stems.json`. The entries follow the order of the
+  recordings. Each entry lists the channels the recording may use and the channels it
+  [bends](../glossary.md#bend). [Reconstructions](../formats/reconstructions.md) shows the file.
 - **Build a library**: `sampletones library --config my-config.json`
 
 GPU support is chosen when you install _SampleToNES_. [Installation](installation.md) explains

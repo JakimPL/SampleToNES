@@ -37,16 +37,17 @@ on a NES.
 ## Naming exported files
 
 The save dialog lists the file types that fit your export, and adds the extension of the type you
-pick. When you export one channel, the dialog lists all three instrument types, so you can pick the
-program there. You can also type the extension yourself.
+pick. When you export one channel, the dialog lists all three instrument types, so you can choose the
+program the file is for. You can also type the extension yourself.
 
-The name you type also names the instrument in the tracker:
+The name you type also names the instrument in the tracker. What the app saves depends on the export:
 
-| Export | The name you type | What the app saves |
-| --- | --- | --- |
-| **Instruments** panel ▸ **Export instrument...** | the file | one file, and the instrument inside it has the same name |
-| **Reconstruction ▸ Export instruments** | the set | one file per channel, each named `<name> (channel)`. For `.nsf`, one file, and its title is set in the **Export NSF program** window |
-| **File ▸ Export** | the file | one file with the whole song |
+- **Export instrument...** in the **Instruments** panel saves one file. The name you type is the file's
+  name, and the instrument inside it has the same name.
+- **Reconstruction ▸ Export instruments** saves one file per channel. The name you type is the name of
+  the set, and each file is named `<name> (channel)`. An `.nsf` export is one file, and its title is set
+  in the **Export NSF program** window.
+- **File ▸ Export** saves one file with the whole song.
 
 For example, exporting a reconstruction named `Kick` to FamiTracker instruments saves
 `Kick (pulse1).fti`, `Kick (triangle).fti`, and one file for each other channel the reconstruction

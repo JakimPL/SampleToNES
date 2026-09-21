@@ -32,8 +32,8 @@ right-click menu of any reconstruction in the **Browser**.
 If a reconstruction uses a different [NES frequency](../glossary.md#nes-frequency) than the project,
 the app shows **Different NES frequency**. Click **Add anyway** to add it.
 
-Right-click a voice to rename, duplicate, move or remove it. Three of its commands do more than
-their names say:
+Right-click a voice to rename, duplicate, move or remove it. Some commands do more than their names
+say:
 
 - **Edit** opens the voice on the **Reconstruction** tab, where you change how it sounds. See
   [editing instruments](reconstruction.md#editing-instruments).
@@ -43,7 +43,7 @@ their names say:
   channel, so the app asks which channel to export.
 
 The same commands are on the **Edit** menu for the voice you selected. The right-click menu also
-shows how many bytes the voice takes on the NES, which matters when you export an NSF program.
+shows how many bytes the voice takes on the NES. This matters when you export an NSF program.
 
 Removing a voice that patterns still use asks you first, and clears every row that uses it.
 
@@ -82,8 +82,8 @@ Type notes on your keyboard like a piano:
 **Octave**, above the grid, sets the octave of the bottom row. The same keys work in a sample's cell
 and type the step that plays the note you pressed.
 
-The noise channel has sixteen sounds in place of notes. Type a noise cell as a signed step, such as
-`+03` or `-02`.
+The noise channel has sixteen sounds in place of notes. Type a noise cell as a step with a sign, such
+as `+03` or `-02`.
 
 ## Arranging the song
 
@@ -181,8 +181,7 @@ copied in the order pastes into the order.
 A paste starts at the cursor and fills down and to the right:
 
 - In the **Tracker**, each cell keeps its kind. A volume pastes into a volume column, wherever you
-  paste. Cells past the last row or column are dropped. A `?` cell leaves the target cell as it
-  was.
+  paste. Cells past the last row or column are dropped.
 - In the **Order**, a paste past the last frame adds frames to the song. A paste stops at the
   **Noise** row.
 
@@ -214,8 +213,8 @@ on the **Edit** menu.
 
 ## Timing and properties
 
-**Module options** sets the song's timing: **Rows** per pattern, **Speed** — the engine ticks each row
-lasts — **Tempo**, and the **NES frequency** the song plays at. Speed and tempo together set how fast
+**Module options** sets the song's timing: **Rows** per pattern, **Speed** (the number of [ticks](../glossary.md#tick)
+each row lasts), **Tempo**, and the **NES frequency** the song plays at. Speed and tempo together set how fast
 the rows go by. If the project has voices, changing **NES frequency** changes how they play, so the
 app asks **Change NES frequency** first. Check **Don't ask again** to skip the question.
 
@@ -272,5 +271,5 @@ opens.
 **Length** shows how long the file will be. Click **Render** to start. **Cancel** stops the render
 and saves no file. When the render finishes, click the path to open its folder.
 
-A render plays the song once, with every channel, whatever you muted or looped. While a render runs,
-conversions and library builds wait, and a render waits for them in the same way.
+A render plays the song once, with every channel, whatever you muted or looped. A render, a conversion
+and a library build run one at a time, and each waits for the one before it.
