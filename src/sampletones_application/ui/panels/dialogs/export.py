@@ -6,6 +6,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors.text import TextColors
 from sampletones_application.layout.settings import SettingsLayout
 from sampletones_application.tags.compose import compose_tag
+from sampletones_application.tags.general import TAG_GLOBAL_THEME_DANGER_BUTTON
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_EXPORT_BUTTON_CANCEL,
     TAG_SETTINGS_EXPORT_GROUP_MEASURED,
@@ -21,6 +22,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.layout.centered import centered
 from sampletones_application.ui.elements.seeded import GUISeededDialogWindow
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.keyboard import KeyRouter
@@ -156,6 +158,7 @@ class GUIExportWindow(GUISeededDialogWindow[SongExportViewModel]):
             label=self._language_manager["global.dialog.label.cancel"],
             callback=self._request_cancel,
             width=-1,
+            theme=ThemeRegistry.get(TAG_GLOBAL_THEME_DANGER_BUTTON),
         )
 
     def _render(self) -> None:
