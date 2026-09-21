@@ -23,8 +23,7 @@ class PlaneOrder(NamedTuple):
         pulse2_control: The second pulse channel's timbre and volume.
         pulse2_value: The second pulse channel's pitch.
         pulse2_bend: The second pulse channel's divider offset.
-        triangle_control: The triangle channel's linear counter.
-        triangle_value: The triangle channel's pitch.
+        triangle_value: The triangle channel's pitch, the index above the table naming a rest.
         triangle_bend: The triangle channel's divider offset.
         noise_control: The noise channel's timbre and volume.
         noise_value: The noise channel's period.
@@ -36,7 +35,6 @@ class PlaneOrder(NamedTuple):
     pulse2_control: bytes
     pulse2_value: bytes
     pulse2_bend: bytes
-    triangle_control: bytes
     triangle_value: bytes
     triangle_bend: bytes
     noise_control: bytes

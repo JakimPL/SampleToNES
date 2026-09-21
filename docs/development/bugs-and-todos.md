@@ -82,6 +82,10 @@ starts carrying.
 
 ### Technical
 
+* Re-measuring what the codec achieves. The ladder in `docs/concepts/compression.md` §6, its
+  prose figures and the Appendix are the reading taken before a plane counted its own repeats
+  and before the triangle named its silence; `uv run sampletones codec report` rewrites them
+  once the format settles.
 * Leading the calibration report with `mr-loudness-dB`. `build_referees` puts `mr-auditory-dB`
   first, which reads silence as closer to a tone than any render, until by-ear ratings of a sweep
   hold the loudness-weighted referee at ρ ≥ 0.6 in every category. A listening round in September

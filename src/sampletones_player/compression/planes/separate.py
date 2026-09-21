@@ -2,13 +2,15 @@ from typing import Final, List, Sequence, Tuple
 
 from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
 from sampletones_player.compression.pitch import PitchTable
-from sampletones_player.compression.planes.flags import flagged_value, note_flags
+from sampletones_player.compression.planes.flags import flagged_value, is_flagged, note_flags
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.registers.base import ChannelRegisters
 from sampletones_player.registers.streams import ChannelStreams
 from sampletones_player.registers.tone import ToneRegisters
 from sampletones_player.specification.binary import unsigned_byte
+from sampletones_player.specification.planes import SILENT_PITCH_INDEX
+from sampletones_player.specification.registers import TRIANGLE_SOUNDING_RELOAD
 
 CONTROL_VALUE_INDEX: Final[int] = 0
 FIRST_VALUE_INDEX: Final[int] = 1
@@ -48,6 +50,32 @@ def _noise_planes(registers: Sequence[ChannelRegisters]) -> Tuple[bytes, ...]:
     )
 
 
+def _triangle_planes(
+    registers: Sequence[ChannelRegisters],
+    pitches: PitchTable,
+) -> Tuple[bytes, ...]:
+    """The triangle's planes, its silence named in the pitch its value plane carries.
+
+    The channel sounds at one level, so a tick states whether it sounds through the index it
+    names: the index standing above every pitch the table holds silences the linear counter, and
+    the divider stays where the channel last sounded. A resting tick names no pitch, so it bends
+    nowhere and its bend plane holds nothing for it.
+    """
+    control, value, bend = _tone_planes(registers, pitches)
+    offsets = iter(bend)
+    named = bytearray()
+    bent = bytearray()
+    for timbre, pitch in zip(control, value, strict=True):
+        sounding = bool(timbre & TRIANGLE_SOUNDING_RELOAD)
+        flagged = is_flagged(pitch)
+        offset = next(offsets) if flagged else None
+        named.append(pitch if sounding else SILENT_PITCH_INDEX)
+        if sounding and offset is not None:
+            bent.append(offset)
+
+    return (bytes(named), bytes(bent))
+
+
 def channel_planes(
     channel: ChannelName,
     registers: Sequence[ChannelRegisters],
@@ -72,10 +100,13 @@ def channel_planes(
         ValueError: If a tone channel's divider lies further from the pitch it is counted from than
             a signed byte states.
     """
-    if channel in TONE_CHANNELS:
-        return _tone_planes(registers, pitches)
-
-    return _noise_planes(registers)
+    match channel:
+        case ChannelName.TRIANGLE:
+            return _triangle_planes(registers, pitches)
+        case _ if channel in TONE_CHANNELS:
+            return _tone_planes(registers, pitches)
+        case _:
+            return _noise_planes(registers)
 
 
 def planes_from_streams(

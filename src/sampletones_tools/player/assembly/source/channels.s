@@ -12,6 +12,7 @@
 
 SHADOW_UNWRITTEN = $FF
 ABSENT_PAGE      = $00
+LOWEST_PITCH_INDEX = $00
 
 .segment "ZEROPAGE"
 
@@ -23,6 +24,7 @@ timer_low_table:        .res 2
 timer_high_table:       .res 2
 bend:                   .res 1
 bend_sign:              .res 1
+triangle_pitch:         .res 1
 plane_state:            .res PLANE_STATE_BYTES
 timer_high_shadows:     .res TRIANGLE_REGISTERS + 1
 
@@ -35,11 +37,16 @@ timer_high_shadows:     .res TRIANGLE_REGISTERS + 1
 .assert ABSENT_STREAM = $FFFF, error, "an absent stream is told apart by both its bytes reading $FF"
 .assert BEND_FLAG = $80, error, "a value's flag is read as the sign bit"
 .assert PITCH_COUNT <= BEND_FLAG, error, "every pitch index fits below the flag"
+.assert SILENT_PITCH_INDEX >= PITCH_COUNT, error, "the index standing for silence sounds no pitch"
+.assert SILENT_PITCH_INDEX < BEND_FLAG, error, "the index standing for silence bends nowhere"
 .assert COUNT_STEP = 1 << COUNT_SHIFT, error, "a repeat count steps from the bit it is shifted down by"
 .assert PLANE_STATE_BYTES + PLANE_PHRASE < $100, error, "a plane's phrase pointer is reached in page zero"
 
 ; Readies the tables the planes read through and points every plane at its own first token.
 channels_reset:
+    lda #LOWEST_PITCH_INDEX
+    sta triangle_pitch
+
     lda #SHADOW_UNWRITTEN
     sta timer_high_shadows + PULSE1_REGISTERS
     sta timer_high_shadows + PULSE2_REGISTERS
@@ -73,19 +80,7 @@ channels_reset:
     sta pointer
     lda #>(song_data + STREAM_OFFSETS_OFFSET)
     sta pointer + 1
-    jsr seed_planes
-
-; States the bits each plane's register leaves for a repeat count. Every other plane keeps the
-; zero seeding left it, which is what makes one symbol cover one tick.
-plane_forms:
-    lda #(PULSE_CONTROL_MASK ^ $FF)
-    sta plane_state + PULSE1_CONTROL_PLANE + PLANE_COUNT_MASK
-    sta plane_state + PULSE2_CONTROL_PLANE + PLANE_COUNT_MASK
-    lda #(NOISE_CONTROL_MASK ^ $FF)
-    sta plane_state + NOISE_CONTROL_PLANE + PLANE_COUNT_MASK
-    lda #(NOISE_VALUE_MASK ^ $FF)
-    sta plane_state + NOISE_VALUE_PLANE + PLANE_COUNT_MASK
-    rts
+    jmp seed_planes
 
 ; Brings every plane back to the token its stream is re-entered at, which is the whole of what a
 ; song coming round restores: the token the loop tick starts is one the plane reads outright.
@@ -138,6 +133,20 @@ seed_planes:
     tax
     cpx #PLANE_STATE_BYTES
     bne @next
+
+; States what each plane's byte holds: the bits its register leaves for a repeat count, and for
+; the triangle the index its value plane stands at while the channel rests. Every other plane
+; keeps the zero it was seeded with, which is what makes one symbol cover one tick.
+plane_forms:
+    lda #(PULSE_CONTROL_MASK ^ $FF)
+    sta plane_state + PULSE1_CONTROL_PLANE + PLANE_COUNT_MASK
+    sta plane_state + PULSE2_CONTROL_PLANE + PLANE_COUNT_MASK
+    lda #(NOISE_CONTROL_MASK ^ $FF)
+    sta plane_state + NOISE_CONTROL_PLANE + PLANE_COUNT_MASK
+    lda #(NOISE_VALUE_MASK ^ $FF)
+    sta plane_state + NOISE_VALUE_PLANE + PLANE_COUNT_MASK
+    lda #SILENT_PITCH_INDEX
+    sta plane_state + TRIANGLE_VALUE_PLANE + PLANE_VALUE
     rts
 
 ; Advances every plane the block holds by one tick of the song. A bend plane advances only on a
@@ -161,8 +170,6 @@ channels_advance:
     ldx #PULSE2_BEND_PLANE
     jsr plane_step
 @triangle:
-    ldx #TRIANGLE_CONTROL_PLANE
-    jsr plane_step
     ldx #TRIANGLE_VALUE_PLANE
     jsr plane_step
     bit plane_state + TRIANGLE_VALUE_PLANE + PLANE_VALUE
@@ -351,7 +358,9 @@ set_phrase:
     tay
     rts
 
-; Writes what every plane last played to the registers its channel owns.
+; Writes what every plane last played to the registers its channel owns. The triangle names its
+; silence in the pitch its value plane carries: the index standing above every pitch the table
+; holds silences the linear counter and leaves the divider where the channel last sounded.
 channels_write:
     lda plane_state + PULSE1_CONTROL_PLANE + PLANE_VALUE
     and #PULSE_CONTROL_MASK
@@ -373,12 +382,20 @@ channels_write:
     lda plane_state + PULSE2_VALUE_PLANE + PLANE_VALUE
     jsr write_timer
 
-    lda plane_state + TRIANGLE_CONTROL_PLANE + PLANE_VALUE
+    lda plane_state + TRIANGLE_VALUE_PLANE + PLANE_VALUE
+    cmp #SILENT_PITCH_INDEX
+    beq @resting
+    sta triangle_pitch
+    lda #TRIANGLE_COUNTER | TRIANGLE_SOUNDING
+    bne @counter
+@resting:
+    lda #TRIANGLE_COUNTER | TRIANGLE_SILENT
+@counter:
     sta CHANNEL_CONTROL + TRIANGLE_REGISTERS
     lda plane_state + TRIANGLE_BEND_PLANE + PLANE_VALUE
     sta bend
     ldx #TRIANGLE_REGISTERS
-    lda plane_state + TRIANGLE_VALUE_PLANE + PLANE_VALUE
+    lda triangle_pitch
     jsr write_timer
 
     lda plane_state + NOISE_CONTROL_PLANE + PLANE_VALUE

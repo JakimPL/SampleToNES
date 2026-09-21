@@ -6,6 +6,7 @@ from sampletones_player.compression.planes.flags import flagged_value, note_flag
 from sampletones_player.compression.planes.rebuild import tone_dividers
 from sampletones_player.registers.dividers import anchored_pitches
 from sampletones_player.specification.binary import unsigned_byte
+from sampletones_player.specification.planes import SILENT_PITCH_INDEX
 from sampletones_tools.codec.study.layouts.layout import Anchor, BendForm, PlaneLayout
 
 
@@ -77,8 +78,11 @@ def tone_planes(
     notes: bytes,
     pitches: PitchTable,
     layout: PlaneLayout,
-) -> Tuple[bytes, bytes, bytes]:
-    """A tone channel's control, value and bend planes written under a layout.
+) -> Tuple[bytes, ...]:
+    """A tone channel's planes written under a layout, the divider read across value and bend.
+
+    A tick naming the index that stands for silence keeps it, since a layout moves where a
+    divider is written rather than whether the channel sounds.
 
     Args:
         planes: The channel's planes as the production codec separates them.
@@ -87,18 +91,25 @@ def tone_planes(
         layout: How the divider is written across the value and the bend.
 
     Returns:
-        Tuple[bytes, bytes, bytes]: The control, value and bend planes; a flagged bend plane holds
-            only the ticks its value plane flags.
+        Tuple[bytes, ...]: The channel's planes as the song block writes them; a flagged bend
+            plane holds only the ticks its value plane flags.
 
     Raises:
         ValueError: If a flagged layout meets an index reaching the flag's bit.
     """
-    control, named, offsets = planes
+    *timbre, named, offsets = planes
+    resting = tuple(pitch == SILENT_PITCH_INDEX for pitch in named)
     anchored = layout_anchors(tone_dividers(named, offsets, pitches.timers), notes, pitches, layout.anchor)
-    flags = bend_flags(anchored, layout.form)
+    flags = tuple(flag and not rest for flag, rest in zip(bend_flags(anchored, layout.form), resting, strict=True))
     bend = bytes(unsigned_byte(pitch.offset) for pitch, flag in zip(anchored, flags) if flag)
     if layout.form is BendForm.DENSE:
-        return control, bytes(pitch.pitch for pitch in anchored), bend
+        spelled = bytes(
+            SILENT_PITCH_INDEX if rest else pitch.pitch for rest, pitch in zip(resting, anchored, strict=True)
+        )
+        return (*timbre, spelled, bend)
 
-    value = bytes(flagged_value(pitch.pitch, flag) for pitch, flag in zip(anchored, flags))
-    return control, value, bend
+    value = bytes(
+        SILENT_PITCH_INDEX if rest else flagged_value(pitch.pitch, flag)
+        for rest, pitch, flag in zip(resting, anchored, flags, strict=True)
+    )
+    return (*timbre, value, bend)

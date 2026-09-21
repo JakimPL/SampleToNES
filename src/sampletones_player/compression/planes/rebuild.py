@@ -1,4 +1,4 @@
-from typing import Iterator, Tuple
+from typing import Final, Iterator, List, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.compression.pitch import PitchTable
@@ -9,10 +9,16 @@ from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.registers.streams import ChannelStreams
 from sampletones_player.registers.triangle import TriangleRegisters
 from sampletones_player.specification.binary import signed_byte
+from sampletones_player.specification.planes import SILENT_PITCH_INDEX
 from sampletones_player.specification.registers import (
     MAX_REGISTER_VALUE,
     TIMER_HIGH_SHIFT,
+    TRIANGLE_COUNTER_CONTROL,
+    TRIANGLE_SILENT_RELOAD,
+    TRIANGLE_SOUNDING_RELOAD,
 )
+
+FIRST_PITCH: Final[int] = 0
 
 
 def tone_dividers(
@@ -24,7 +30,8 @@ def tone_dividers(
 
     This is the reading the driver performs between the pitch table and the timer registers,
     stated where it is testable: a flagged tick takes the bend plane's next value, and every
-    other tick sounds its pitch's own divider.
+    other tick sounds its pitch's own divider. A tick naming the index that stands for silence
+    holds the divider the channel last sounded, and the lowest pitch's before it sounds at all.
 
     Args:
         value: The pitch each tick names, under the flag saying whether it bends.
@@ -35,7 +42,35 @@ def tone_dividers(
         Tuple[int, ...]: One divider per tick.
     """
     bends = iter(bend)
-    return tuple(timers[pitch_index(named)] + (signed_byte(next(bends)) if is_flagged(named) else 0) for named in value)
+    dividers: List[int] = []
+    held = timers[FIRST_PITCH]
+    for named in value:
+        if named != SILENT_PITCH_INDEX:
+            held = timers[pitch_index(named)] + (signed_byte(next(bends)) if is_flagged(named) else 0)
+
+        dividers.append(held)
+
+    return tuple(dividers)
+
+
+def held_pitches(value: bytes) -> Tuple[int, ...]:
+    """The pitch index each tick sounds at, a rest holding the one the channel last sounded.
+
+    Args:
+        value: The pitch each tick names, the index above the table naming a rest.
+
+    Returns:
+        Tuple[int, ...]: One index per tick.
+    """
+    indices: List[int] = []
+    held = FIRST_PITCH
+    for named in value:
+        if named != SILENT_PITCH_INDEX:
+            held = pitch_index(named)
+
+        indices.append(held)
+
+    return tuple(indices)
 
 
 def _sounded(
@@ -70,14 +105,23 @@ def _triangle_registers(
     planes: Tuple[bytes, ...],
     pitches: PitchTable,
 ) -> Tuple[TriangleRegisters, ...]:
+    """The triangle's ticks, its linear counter read from the pitch its value plane names.
+
+    An index above every pitch the table holds names a rest, which silences the counter and
+    leaves the divider where the channel last sounded.
+    """
+    value, bend = planes
+    dividers = tone_dividers(value, bend, pitches.timers)
+    anchors = held_pitches(value)
     return tuple(
         TriangleRegisters(
-            linear_counter=control,
+            linear_counter=TRIANGLE_COUNTER_CONTROL
+            | (TRIANGLE_SILENT_RELOAD if named == SILENT_PITCH_INDEX else TRIANGLE_SOUNDING_RELOAD),
             timer_low=timer & MAX_REGISTER_VALUE,
             timer_high=timer >> TIMER_HIGH_SHIFT,
-            anchor=anchor,
+            anchor=pitches.pitch(index),
         )
-        for control, timer, anchor in _sounded(planes, pitches)
+        for named, timer, index in zip(value, dividers, anchors, strict=True)
     )
 
 

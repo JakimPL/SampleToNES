@@ -90,14 +90,22 @@ def pulse_tick(
     )
 
 
+RESTING_PITCH: Final[int] = 0
+
+
 def triangle_tick(sounding: bool, timer: int) -> TriangleRegisters:
-    """A triangle channel's registers for one tick, spelled the way the encoder spells them."""
+    """A triangle channel's registers for one tick, spelled the way the encoder spells them.
+
+    A resting tick states no pitch, so it carries the divider the channel would be holding: the
+    lowest the table reaches, which is where the encoder leaves a channel that has yet to sound.
+    """
     reload_value = TRIANGLE_SOUNDING_RELOAD if sounding else TRIANGLE_SILENT_RELOAD
+    held = timer if sounding else PLAYER_PITCHES.timers[RESTING_PITCH]
     return TriangleRegisters(
         linear_counter=TRIANGLE_COUNTER_CONTROL | reload_value,
-        timer_low=timer & MAX_REGISTER_VALUE,
-        timer_high=timer >> TIMER_HIGH_SHIFT,
-        anchor=nearest_anchor(timer),
+        timer_low=held & MAX_REGISTER_VALUE,
+        timer_high=held >> TIMER_HIGH_SHIFT,
+        anchor=nearest_anchor(held),
     )
 
 

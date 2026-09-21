@@ -2,12 +2,14 @@ from typing import Final
 
 import pytest
 
-from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
+from sampletones_core.constants.enums import ALL_CHANNELS, TONE_CHANNELS, ChannelName
+from sampletones_player.compression.pitch import PITCH_COUNT
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.specification.planes import (
     PLANE_COUNT,
     PLANE_NAMES,
     PLANES,
+    SILENT_PITCH_INDEX,
     PlaneRole,
     channel_indices,
     plane_index,
@@ -19,11 +21,22 @@ PLANES_A_CHANNEL_SOUNDS_WITH: Final[int] = 2
 class TestOneTableStatesEveryPlaneASongBlockWrites:
     """The song block writes its planes in one order, and the table is where that order is stated."""
 
-    def test_every_channel_writes_what_it_sounds_and_how_it_sounds_it(self) -> None:
+    def test_every_channel_names_what_it_sounds(self) -> None:
         for channel in ChannelName.items():
             roles = {PLANES[index].role for index in channel_indices(channel)}
 
-            assert {PlaneRole.CONTROL, PlaneRole.VALUE} <= roles
+            assert PlaneRole.VALUE in roles
+
+    def test_a_control_belongs_to_each_channel_whose_timbre_turns_over(self) -> None:
+        timbred = {plane.channel for plane in PLANES if plane.role is PlaneRole.CONTROL}
+
+        assert timbred == ALL_CHANNELS - {ChannelName.TRIANGLE}
+
+    def test_the_triangle_names_its_silence_in_the_pitch_it_stands_at(self) -> None:
+        triangle = PLANES[plane_index(ChannelName.TRIANGLE, PlaneRole.VALUE)]
+
+        assert triangle.seeded == SILENT_PITCH_INDEX
+        assert triangle.seeded >= PITCH_COUNT
 
     def test_a_bend_belongs_to_each_channel_whose_divider_moves(self) -> None:
         bending = {PLANES[index].channel for index, plane in enumerate(PLANES) if plane.spans_flagged_ticks}

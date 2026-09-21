@@ -89,9 +89,10 @@ class TestSongBytes:
     full: the header, the timer every pitch sounds at, the dictionary the tokens name, and one
     token stream per plane the block holds. The song bends nowhere, so each bend plane is absent;
     its second pulse channel and its noise channel rest throughout, so both control planes stand
-    at the value their register fixes and are absent too. Each absent plane's header entries carry
-    the sentinel. The timer table is named rather than transcribed, since it is the tuning's own
-    table and the block carries whatever that table holds.
+    at the value their register fixes; and its triangle never sounds, so its value plane names the
+    index that stands for silence. Each of those is absent, and its header entries carry the
+    sentinel. The timer table is named rather than transcribed, since it is the tuning's own table
+    and the block carries whatever that table holds.
     """
 
     EXPECTED_HEADER: Final[bytes] = (
@@ -99,21 +100,19 @@ class TestSongBytes:
         b"\xca\x7f"
         b"\x02\x00"
         b"\xff\xff"
-        b"\x37\x00"
-        b"\x07\x01"
-        b"\x08\x01\x0b\x01\xff\xff"
-        b"\xff\xff\x0e\x01\xff\xff"
-        b"\x11\x01\x14\x01\xff\xff"
-        b"\xff\xff\x17\x01"
-        b"\x08\x01\x0b\x01\xff\xff"
-        b"\xff\xff\x0e\x01\xff\xff"
-        b"\x11\x01\x14\x01\xff\xff"
-        b"\xff\xff\x17\x01"
+        b"\x33\x00"
+        b"\x03\x01"
+        b"\x04\x01\x07\x01\xff\xff"
+        b"\xff\xff\x0a\x01\xff\xff"
+        b"\xff\xff\xff\xff"
+        b"\xff\xff\x0d\x01"
+        b"\x04\x01\x07\x01\xff\xff"
+        b"\xff\xff\x0a\x01\xff\xff"
+        b"\xff\xff\xff\xff"
+        b"\xff\xff\x0d\x01"
     )
 
-    EXPECTED_STREAMS: Final[bytes] = (
-        b"\x00" b"\x41\x0f\x00" b"\x40\x21\x00" b"\x40\x21\x00" b"\x40\x80\x00" b"\x40\x21\x00" b"\x40\x1a"
-    )
+    EXPECTED_STREAMS: Final[bytes] = b"\x00" b"\x41\x0f\x00" b"\x40\x21\x00" b"\x40\x21\x00" b"\x40\x1a"
 
     def test_the_song_serializes_to_the_expected_bytes(self) -> None:
         song = two_tick_song(HALF_RATE_FREQUENCY)

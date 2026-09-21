@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_DUTY_CYCLE, MAX_PERIOD, MAX_VOLUME
 from sampletones_player.specification.binary import MAX_BYTE_VALUE
+from sampletones_player.specification.compression import PITCH_INDEX_MASK
 from sampletones_player.specification.registers import (
     DUTY_CYCLE_SHIFT,
     NOISE_MODE_SHIFT,
@@ -17,6 +18,7 @@ from sampletones_player.specification.registers import (
 SINGLE_TICK: Final[int] = 1
 NO_BITS: Final[int] = 0
 COUNT_STEP: Final[int] = 0x10
+SILENT_PITCH_INDEX: Final[int] = PITCH_INDEX_MASK
 
 
 class PlaneForm(BaseModel):
@@ -249,8 +251,12 @@ PLANES: Final[Tuple[Plane, ...]] = (
     ),
     _tone(ChannelName.PULSE2, PlaneRole.VALUE),
     _tone(ChannelName.PULSE2, PlaneRole.BEND),
-    _tone(ChannelName.TRIANGLE, PlaneRole.CONTROL),
-    _tone(ChannelName.TRIANGLE, PlaneRole.VALUE),
+    Plane(
+        channel=ChannelName.TRIANGLE,
+        role=PlaneRole.VALUE,
+        form=WHOLE_BYTE,
+        seeded=SILENT_PITCH_INDEX,
+    ),
     _tone(ChannelName.TRIANGLE, PlaneRole.BEND),
     Plane(
         channel=ChannelName.NOISE,

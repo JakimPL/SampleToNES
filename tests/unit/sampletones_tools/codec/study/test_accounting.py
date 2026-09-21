@@ -12,6 +12,7 @@ from sampletones_player.compression.tokens.literal import LiteralToken
 from sampletones_player.compression.tokens.phrase import PhraseToken
 from sampletones_player.compression.tokens.types import TokenUnion
 from sampletones_player.specification.compression import MAX_HOLD_TICKS, TokenTag
+from sampletones_player.specification.planes import PLANES, PlaneRole
 from sampletones_tools.codec.study.accounting.coincident import coincident_starts
 from sampletones_tools.codec.study.accounting.dictionary import default_counts, plateaus
 from sampletones_tools.codec.study.accounting.finding import Finding
@@ -218,13 +219,17 @@ def _starting_at(ticks: Sequence[int]) -> Tuple[ReadToken, ...]:
 
 
 class TestCoincidentStarts:
+    """Every channel carrying a timbre shares its first tick, and pulse one shares a second."""
+
     def test_a_channel_counts_the_ticks_both_its_planes_start_a_token_on(self) -> None:
         tokens: Dict[str, Tuple[ReadToken, ...]] = {name: _starting_at((0,)) for name in PlaneOrder.names()}
         tokens["pulse1_control"] = _starting_at((0, 5))
         tokens["pulse1_value"] = _starting_at((0, 5, 9))
         tokens["noise_value"] = _starting_at((0, 7))
+        timbred = sum(1 for plane in PLANES if plane.role is PlaneRole.CONTROL)
+        shared = timbred + 1
 
-        assert coincident_starts(tokens) == Finding(10, 5)
+        assert coincident_starts(tokens) == Finding(2 * shared, shared)
 
 
 class TestPlateausInBodies:

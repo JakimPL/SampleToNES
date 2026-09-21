@@ -399,4 +399,5 @@ class TestTheReferenceHoldsTheSandboxToTheCodec:
 
         encoding = encode_grammar(read, entry.grammar)
 
-        assert [encoding.streams[plane] for plane in range(2, PLANE_COUNT, 3)] == [0, 0, 0]
+        bends = [index for index, plane in enumerate(PLANES) if plane.spans_flagged_ticks]
+        assert [encoding.streams[index] for index in bends] == [0] * len(bends)
