@@ -71,9 +71,11 @@ class GUIWindow(GUIPanel, ABC):
     ) -> Iterator[None]:
         """Open this window's modal frame, with the block's widgets building inside it.
 
-        The window opens at the size its geometry states and grows to hold more than that, so a
-        prompt whose text wraps over several lines and a form that unfolds a group after opening
-        both show the whole of what they hold.
+        The window opens at the size its geometry states and grows in height to hold more than
+        that, so a prompt whose text wraps over several lines and a form that unfolds a group
+        after opening both show the whole of what they hold. Its width is the one its geometry
+        states, held as the largest the window may take as well as the smallest, so an item
+        stretching across the window measures against a width that stands.
 
         A dialog offers the title bar's close button when ``on_close`` names what closing means,
         and omits it otherwise, so the only way out of a window is one the window answers for.
@@ -82,7 +84,8 @@ class GUIWindow(GUIPanel, ABC):
             tag=self.tag,
             label=label,
             width=self._geometry.width,
-            min_size=self._geometry.minimum_size,
+            min_size=list(self._geometry.minimum_size),
+            max_size=list(self._geometry.maximum_size),
             autosize=True,
             no_resize=True,
             no_collapse=True,

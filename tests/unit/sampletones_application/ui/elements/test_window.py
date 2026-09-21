@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.layout.primitives import DialogGeometry
+from sampletones_application.layout.primitives import DEARPYGUI_MAXIMUM_WINDOW_SIZE, DialogGeometry
 from sampletones_application.ui.elements.window import GUIWindow
 from sampletones_shared.types.callback import VoidCallback
 
@@ -56,13 +56,24 @@ class TestDialogGeometry:
 
         assert dpg.get_item_configuration(TAG)["width"] == STATED_WIDTH
 
-    def test_the_window_holds_its_stated_width_while_it_fits_its_content(self, dpg_context: None) -> None:
-        """A window measuring itself against stretched content loses a pixel of width every frame."""
+    def test_the_window_holds_its_stated_width_both_ways(self, dpg_context: None) -> None:
+        """A window free to widen, holding content measured against its width, widens every frame.
+
+        The probe's combo stretches across the window, so the width it asks for follows the width
+        the window has; holding the window to one width is what leaves the two agreeing.
+        """
         ProbeWindow(on_close=None).create_window()
 
         configuration = dpg.get_item_configuration(TAG)
         assert configuration["autosize"] is True
         assert configuration["min_size"][0] == STATED_WIDTH
+        assert configuration["max_size"][0] == STATED_WIDTH
+
+    def test_the_window_leaves_its_height_to_what_it_holds(self, dpg_context: None) -> None:
+        """A prompt wrapping over several lines grows down, so nothing caps the height."""
+        ProbeWindow(on_close=None).create_window()
+
+        assert dpg.get_item_configuration(TAG)["max_size"][1] == DEARPYGUI_MAXIMUM_WINDOW_SIZE
 
     def test_the_window_opens_at_the_height_it_states(self, dpg_context: None) -> None:
         """A dialog holding more than it states grows, so the stated height is where it starts."""

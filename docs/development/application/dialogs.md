@@ -10,11 +10,13 @@ one answer, held in one place.
 
 `DialogGeometry` (`layout/primitives.py`) carries a dialog's whole geometry:
 
-- **`width`** is stated always. A stretched item — a field, a combo, a button at
-  `width=-1` — measures itself one pixel inside the region it is offered, so a
-  window sized from its own content would take that pixel back on every frame.
-  A stated width settles the geometry in one pass and gives every dialog the
-  same reading width whatever it holds.
+- **`width`** is stated always, and held both ways: it is the least the window
+  may take and the most. A stretched item — a field, a combo, a button at
+  `width=-1` — measures itself against the region the window offers, so a window
+  free to widen to its content and content sized from the window hand each other
+  a little more every frame until the screen stops them. Holding the width at
+  what the dialog states leaves the two agreeing from the first frame, and gives
+  every dialog the same reading width whatever it holds.
 - **`height`** is the size the dialog opens at. A dialog holding more than that
   grows to hold it, so what a reader is shown is always the whole of what the
   dialog says. A dialog whose length it learns as it opens — a prompt whose text
@@ -39,11 +41,13 @@ A dialog whose height its content settles has nothing to place from until a fram
 has measured it, so it is centered by the correction instead and stands one frame
 where the modal opened.
 
-The correction re-reads the drawn size each frame until two readings agree, then
-centers and ends. It ends deliberately: a dialog carries no `no_move`, so a
-reader can drag it, and a pass that kept measuring would drag it back. The one
+The correction re-reads the drawn size each frame and centers the window against
+it, so a dialog stands centered the whole way to the size it settles at. It ends
+once two readings agree, and ends deliberately: a dialog carries no `no_move`, so
+a reader can drag it, and a pass that kept measuring would drag it back. The one
 window that changes size while it stands is the error dialog, whose **Show
-traceback** re-centers explicitly — the gesture that changes the size re-centers.
+traceback** unfolds a text box beneath the message; the pass has ended by then,
+so the dialog grows downward from where it stands.
 
 Each axis is held at zero at the least, so a dialog taller than the viewport
 keeps its title bar reachable.
