@@ -1,6 +1,9 @@
 from typing import List, Sequence, Tuple
 
-from sampletones_player.specification.compression import BEND_FLAG, PITCH_INDEX_MASK
+from sampletones_player.specification.compression import (
+    BEND_FLAG,
+    PITCH_INDEX_MASK,
+)
 
 
 def is_flagged(value: int) -> bool:

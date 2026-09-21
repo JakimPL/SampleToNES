@@ -150,14 +150,19 @@ class TestHeaderStrings(BaseTestSuite):
         field = read_string(header(), test_case.offset)
         assert field == test_case.expected.encode("utf-8").ljust(STRING_FIELD_SIZE, b"\x00")
 
-    def test_text_longer_than_the_field_is_written_as_much_as_fits_before_its_terminator(self) -> None:
+    def test_text_longer_than_the_field_is_written_as_much_as_fits_before_its_terminator(
+        self,
+    ) -> None:
         """A player reads each field up to its NUL, so the field keeps a byte for one."""
         overlong = "A" * (STRING_FIELD_SIZE * 2)
         data = header_to_bytes(NSFInformation(title=overlong, artist=ARTIST), ADDRESSES)
         assert read_string(data, TITLE_OFFSET) == overlong.encode("utf-8")[:STRING_TEXT_SIZE] + b"\x00"
 
     def test_the_fields_stand_back_to_back(self) -> None:
-        assert (ARTIST_OFFSET - TITLE_OFFSET, COPYRIGHT_OFFSET - ARTIST_OFFSET) == (
+        assert (
+            ARTIST_OFFSET - TITLE_OFFSET,
+            COPYRIGHT_OFFSET - ARTIST_OFFSET,
+        ) == (
             STRING_FIELD_SIZE,
             STRING_FIELD_SIZE,
         )
@@ -169,7 +174,9 @@ class TestHeaderPlayback:
     def test_the_ntsc_period_is_the_one_the_specification_names(self) -> None:
         assert read_word(header(), NTSC_PERIOD_OFFSET) == NTSC_PLAY_PERIOD_MICROSECONDS
 
-    def test_the_ntsc_period_asks_for_the_rate_the_schedule_counts_in(self) -> None:
+    def test_the_ntsc_period_asks_for_the_rate_the_schedule_counts_in(
+        self,
+    ) -> None:
         """A player reading the field and one driving from the frame run a stream at one speed."""
         requested = Fraction(MICROSECONDS_PER_SECOND, read_word(header(), NTSC_PERIOD_OFFSET))
         assert abs(requested - NTSC_FRAME_RATE) / NTSC_FRAME_RATE < RATE_TOLERANCE

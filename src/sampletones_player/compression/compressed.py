@@ -34,7 +34,9 @@ class CompressedPlanes(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def _validate_every_stream_states_where_it_is_re_entered(self) -> CompressedPlanes:
+    def _validate_every_stream_states_where_it_is_re_entered(
+        self,
+    ) -> CompressedPlanes:
         if len(self.loop_entries) != len(self.streams):
             raise ValueError(
                 f"an entry stands for each of the {len(self.streams)} streams, " f"and {len(self.loop_entries)} stand"

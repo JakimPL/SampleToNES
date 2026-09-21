@@ -3,11 +3,17 @@ from dataclasses import replace
 from typing import Dict, Final, FrozenSet, Iterable, List, Sequence, Tuple
 
 from sampletones_player.compression.admit import admit_seeds
-from sampletones_player.compression.budget import DEFAULT_SEARCH_BUDGET, SearchBudget
+from sampletones_player.compression.budget import (
+    DEFAULT_SEARCH_BUDGET,
+    SearchBudget,
+)
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.dictionary.prune import prune
-from sampletones_player.compression.dictionary.table import PhraseTable, phrase_table
+from sampletones_player.compression.dictionary.table import (
+    PhraseTable,
+    phrase_table,
+)
 from sampletones_player.compression.entries import stream_entry
 from sampletones_player.compression.matches.cache import MatchCache
 from sampletones_player.compression.matches.index import PlaneIndex
@@ -16,7 +22,10 @@ from sampletones_player.compression.parse.result import Parse
 from sampletones_player.compression.parse.song import parse_planes
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
-from sampletones_player.compression.planes.symbols import pack_plane, symbol_boundaries
+from sampletones_player.compression.planes.symbols import (
+    pack_plane,
+    symbol_boundaries,
+)
 from sampletones_player.compression.progress.monitor import CodecMonitor
 from sampletones_player.compression.progress.report import (
     CodecReporter,
@@ -272,7 +281,7 @@ def encode_planes(
     positions = [planes.positions(tick) for tick in boundaries]
     entries = [frozenset(position[index] for position in positions) for index in range(len(planes.planes))]
     packed = tuple(
-        b"" if plane.idles(played) else pack_plane(played, plane.form, boundaries=entry)
+        (b"" if plane.idles(played) else pack_plane(played, plane.form, boundaries=entry))
         for plane, played, entry in zip(PLANES, planes.planes, entries, strict=True)
     )
     table, streams = encode_streams(
@@ -288,14 +297,19 @@ def encode_planes(
     )
     returned = [
         symbol_boundaries(played, plane.form, boundaries=frozenset({position}))
-        for plane, played, position in zip(PLANES, planes.planes, planes.positions(_returned(boundaries)), strict=True)
+        for plane, played, position in zip(
+            PLANES,
+            planes.planes,
+            planes.positions(_returned(boundaries)),
+            strict=True,
+        )
     ]
     return CompressedPlanes(
         phrases=table,
         streams=PlaneOrder.across(streams),
         ticks=planes.ticks,
         loop_entries=tuple(
-            stream_entry(stream, next(iter(entry), STREAM_START), table) if stream else None
+            (stream_entry(stream, next(iter(entry), STREAM_START), table) if stream else None)
             for stream, entry in zip(streams, returned, strict=True)
         ),
     )

@@ -2,7 +2,11 @@ from itertools import chain
 from typing import Dict, Iterator, List, NamedTuple, Sequence, Tuple
 
 from sampletones_player.compression.dictionary.table import PhraseTable
-from sampletones_player.compression.matches.cache import KEY_LENGTH, MIN_PHRASE_TICKS, MatchCache
+from sampletones_player.compression.matches.cache import (
+    KEY_LENGTH,
+    MIN_PHRASE_TICKS,
+    MatchCache,
+)
 from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.specification.binary import BYTE_VALUES
 

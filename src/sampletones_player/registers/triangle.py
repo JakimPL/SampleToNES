@@ -6,7 +6,10 @@ from pydantic import Field
 
 from sampletones_core.exporters.implementation.triangle import TriangleExporter
 from sampletones_core.instructions import TriangleInstruction
-from sampletones_player.registers.dividers import anchored_pitches, bent_dividers
+from sampletones_player.registers.dividers import (
+    anchored_pitches,
+    bent_dividers,
+)
 from sampletones_player.registers.hold import hold
 from sampletones_player.registers.tone import ToneRegisters
 from sampletones_player.specification.registers import (
@@ -52,7 +55,11 @@ class TriangleRegisters(ToneRegisters):
             List[TriangleRegisters]: One register set per tick, including the closing release tick.
         """
         _, pitches, volumes = TriangleExporter.extract_data(instructions)
-        dividers = bent_dividers(pitches, TriangleExporter.read_timer_offsets(instructions), timer_table)
+        dividers = bent_dividers(
+            pitches,
+            TriangleExporter.read_timer_offsets(instructions),
+            timer_table,
+        )
         anchors = anchored_pitches(pitches, dividers, timer_table)
 
         registers: List[TriangleRegisters] = []

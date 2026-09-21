@@ -50,7 +50,9 @@ class TestTheSongPlaysBackTheRegistersItWasCompressedFrom:
             streams.at(tick) for tick in range(streams.ticks)
         ]
 
-    def test_a_channel_running_out_early_is_carried_to_the_songs_length(self) -> None:
+    def test_a_channel_running_out_early_is_carried_to_the_songs_length(
+        self,
+    ) -> None:
         streams = resting_streams((SOUNDING, OCTAVE_UP, RESTING))
         rebuilt = played(streams, None)
         assert len(rebuilt.noise) == streams.ticks

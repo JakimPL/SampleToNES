@@ -2,7 +2,10 @@ from typing import Final
 
 import pytest
 
-from sampletones_player.compression.dictionary.table import PhraseTable, phrase_table
+from sampletones_player.compression.dictionary.table import (
+    PhraseTable,
+    phrase_table,
+)
 from sampletones_player.compression.encode import emit
 from sampletones_player.compression.entries import stream_entry
 from sampletones_player.compression.tokens.hold import HoldToken
@@ -25,7 +28,11 @@ class TestWhereAStreamIsReEntered:
     def test_a_tick_a_token_starts_answers_with_that_tokens_byte(self) -> None:
         literal = LiteralToken(values=b"\x01\x02")
         stream = emit(
-            [literal, HoldToken(ticks=3), PhraseToken(phrase_id=PHRASE_ID, ticks=4, transpose=0, default=False)]
+            [
+                literal,
+                HoldToken(ticks=3),
+                PhraseToken(phrase_id=PHRASE_ID, ticks=4, transpose=0, default=False),
+            ]
         )
         assert stream_entry(stream, literal.ticks, DICTIONARY) == literal.size
 

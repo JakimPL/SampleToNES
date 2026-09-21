@@ -12,7 +12,10 @@ from sampletones_player.specification.compression import (
     PHRASE_TABLE_COUNT_SIZE,
     PHRASE_TABLE_ENTRY_SIZE,
 )
-from sampletones_player.specification.song import ABSENT_STREAM, SONG_HEADER_SIZE
+from sampletones_player.specification.song import (
+    ABSENT_STREAM,
+    SONG_HEADER_SIZE,
+)
 
 NAME_SEPARATOR: Final[str] = "_"
 

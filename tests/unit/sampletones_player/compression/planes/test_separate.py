@@ -5,11 +5,20 @@ import pytest
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.flags import flagged_value
-from sampletones_player.compression.planes.separate import channel_planes, planes_from_streams
+from sampletones_player.compression.planes.separate import (
+    channel_planes,
+    planes_from_streams,
+)
 from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.registers.streams import ChannelStreams
-from sampletones_player.specification.binary import SIGNED_BYTE_LIMIT, unsigned_byte
-from sampletones_player.specification.registers import MAX_REGISTER_VALUE, TIMER_HIGH_SHIFT
+from sampletones_player.specification.binary import (
+    SIGNED_BYTE_LIMIT,
+    unsigned_byte,
+)
+from sampletones_player.specification.registers import (
+    MAX_REGISTER_VALUE,
+    TIMER_HIGH_SHIFT,
+)
 from tests.suite.player import PLAYER_FULL_VOLUME, resting_streams
 from tests.unit.sampletones_player.compression.planes.conftest import (
     HIGH_INDEX,

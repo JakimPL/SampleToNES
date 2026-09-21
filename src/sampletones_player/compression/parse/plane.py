@@ -34,7 +34,12 @@ def _relax_literal(
     start = window.cheapest(position, earliest)
     cost = shortest.costs[start] + literal_size(position - start)
     if shortest.improves(position, cost):
-        shortest.relax(start, position, cost, LiteralToken(values=plane[start:position]))
+        shortest.relax(
+            start,
+            position,
+            cost,
+            LiteralToken(values=plane[start:position]),
+        )
 
 
 def _relax_forward(
@@ -71,7 +76,12 @@ def _relax_forward(
             position,
             position + ticks,
             cost + phrase_size(phrase_id, transpose, default=False),
-            PhraseToken(phrase_id=phrase_id, ticks=ticks, transpose=transpose, default=False),
+            PhraseToken(
+                phrase_id=phrase_id,
+                ticks=ticks,
+                transpose=transpose,
+                default=False,
+            ),
         )
         carried = matcher.table[phrase_id].default
         if NO_DEFAULT_COUNT < carried <= ticks:
@@ -79,7 +89,12 @@ def _relax_forward(
                 position,
                 position + carried,
                 cost + phrase_size(phrase_id, transpose, default=True),
-                PhraseToken(phrase_id=phrase_id, ticks=carried, transpose=transpose, default=True),
+                PhraseToken(
+                    phrase_id=phrase_id,
+                    ticks=carried,
+                    transpose=transpose,
+                    default=True,
+                ),
             )
 
 

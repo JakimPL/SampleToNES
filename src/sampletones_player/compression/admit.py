@@ -1,13 +1,25 @@
 from typing import Final, List, NamedTuple, Sequence, Set, Tuple
 
-from sampletones_player.compression.dictionary.phrase import Phrase, phrase_entry_size
-from sampletones_player.compression.dictionary.table import PhraseTable, phrase_table
-from sampletones_player.compression.matches.cache import MIN_PHRASE_TICKS, MatchCache
+from sampletones_player.compression.dictionary.phrase import (
+    Phrase,
+    phrase_entry_size,
+)
+from sampletones_player.compression.dictionary.table import (
+    PhraseTable,
+    phrase_table,
+)
+from sampletones_player.compression.matches.cache import (
+    MIN_PHRASE_TICKS,
+    MatchCache,
+)
 from sampletones_player.compression.matches.shift import NO_SHIFT, asked_shift
 from sampletones_player.compression.options import CodecOptions
 from sampletones_player.compression.parse.result import Parse
 from sampletones_player.compression.tokens.sizes import phrase_size
-from sampletones_player.specification.compression import MAX_PHRASE_IDS, PHRASE_ID_ESCAPE
+from sampletones_player.specification.compression import (
+    MAX_PHRASE_IDS,
+    PHRASE_ID_ESCAPE,
+)
 from sampletones_shared.logger import logger
 
 CROWDED_PHRASE_ID: Final[int] = PHRASE_ID_ESCAPE

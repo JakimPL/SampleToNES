@@ -10,7 +10,10 @@ from sampletones_player.nsf.layout import NAME_SEPARATOR, SongLayout
 from sampletones_player.nsf.song import STATED_BEYOND_THE_FIRST, song_to_bytes
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import WORD_SIZE
-from sampletones_player.specification.compression import PHRASE_DEFAULT_SIZE, PHRASE_LENGTH_SIZE
+from sampletones_player.specification.compression import (
+    PHRASE_DEFAULT_SIZE,
+    PHRASE_LENGTH_SIZE,
+)
 from sampletones_player.specification.planes import PLANE_COUNT
 from sampletones_player.specification.song import (
     ABSENT_STREAM,
@@ -120,7 +123,9 @@ class TestSongBytes:
         expected = self.EXPECTED_HEADER + song.pitches.data + self.EXPECTED_STREAMS
         assert song_to_bytes(song, PROGRAM_AREA_BYTES) == expected
 
-    def test_the_header_runs_to_the_length_the_offsets_are_read_at(self) -> None:
+    def test_the_header_runs_to_the_length_the_offsets_are_read_at(
+        self,
+    ) -> None:
         assert len(self.EXPECTED_HEADER) == SONG_HEADER_SIZE
 
 
@@ -154,7 +159,11 @@ class TestSongHeader(BaseTestSuite):
         assert read_word(data, STEP_FRACTION_OFFSET) == step.fraction
 
     def test_the_header_states_the_songs_length(self) -> None:
-        song = player_song(resting_streams((SOUNDING, OCTAVE_UP, RESTING)), NTSC_FREQUENCY, loop_tick=None)
+        song = player_song(
+            resting_streams((SOUNDING, OCTAVE_UP, RESTING)),
+            NTSC_FREQUENCY,
+            loop_tick=None,
+        )
         data = song_to_bytes(song, PROGRAM_AREA_BYTES)
         assert read_word(data, TOTAL_TICKS_OFFSET) == song.ticks
 
@@ -249,7 +258,9 @@ class TestStreamOffsets:
 class TestLoopEntries:
     """Where each plane's stream is re-entered once the song repeats."""
 
-    def test_a_song_that_repeats_states_the_token_its_loop_tick_starts(self) -> None:
+    def test_a_song_that_repeats_states_the_token_its_loop_tick_starts(
+        self,
+    ) -> None:
         song = repeating_song()
         data = song_to_bytes(song, PROGRAM_AREA_BYTES)
         entered = song.planes.loop_entries
@@ -278,12 +289,16 @@ class TestSongTooLarge:
         with pytest.raises(SongTooLargeError):
             song_to_bytes(song, len(data) - 1)
 
-    def test_a_song_filling_the_available_space_exactly_is_written(self) -> None:
+    def test_a_song_filling_the_available_space_exactly_is_written(
+        self,
+    ) -> None:
         song = two_tick_song(NTSC_FREQUENCY)
         data = song_to_bytes(song, PROGRAM_AREA_BYTES)
         assert song_to_bytes(song, len(data)) == data
 
-    def test_a_song_reaching_past_the_offset_field_names_what_overflowed(self) -> None:
+    def test_a_song_reaching_past_the_offset_field_names_what_overflowed(
+        self,
+    ) -> None:
         """A block given exactly the room it takes is still refused where an offset overflows."""
         song = spelled_song(MAX_BLOCK_OFFSET, NTSC_FREQUENCY)
         with pytest.raises(SongTooLargeError) as overflow:

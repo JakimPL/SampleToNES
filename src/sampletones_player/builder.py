@@ -129,7 +129,9 @@ def instructions_from_instruments(
     return instructions
 
 
-def loop_tick_from_instruments(instruments: Sequence[InstrumentExport]) -> Optional[int]:
+def loop_tick_from_instruments(
+    instruments: Sequence[InstrumentExport],
+) -> Optional[int]:
     """The tick a request's song returns to once it ends.
 
     A song repeats from its first tick where every slice it carries repeats, and ends at its

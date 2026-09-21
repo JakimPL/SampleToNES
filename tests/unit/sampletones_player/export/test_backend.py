@@ -32,7 +32,11 @@ from sampletones_player.specification.nsf import (
     STRING_FIELD_SIZE,
     TITLE_OFFSET,
 )
-from sampletones_player.specification.song import LOOP_TICK_OFFSET, NO_LOOP, TOTAL_TICKS_OFFSET
+from sampletones_player.specification.song import (
+    LOOP_TICK_OFFSET,
+    NO_LOOP,
+    TOTAL_TICKS_OFFSET,
+)
 from sampletones_shared.exceptions import OperationCanceled, SongTooLargeError
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 from tests.suite.performance import (
@@ -153,7 +157,10 @@ class TestWriteSample:
         destination = tmp_path / FILENAME
         request = player_sample(
             SAMPLE_NAME,
-            (lead_slice("lead", SOUNDING_TICKS), bass_slice("bass", SOUNDING_TICKS)),
+            (
+                lead_slice("lead", SOUNDING_TICKS),
+                bass_slice("bass", SOUNDING_TICKS),
+            ),
             nes_frequency=NTSC_FREQUENCY,
         )
         artifact = backend.write_sample(destination, request)
@@ -161,13 +168,21 @@ class TestWriteSample:
 
     def test_the_program_carries_its_driver(self, backend: NSFBackend, tmp_path: Path) -> None:
         destination = tmp_path / FILENAME
-        request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
+        request = player_sample(
+            SAMPLE_NAME,
+            (lead_slice("lead", SOUNDING_TICKS),),
+            nes_frequency=NTSC_FREQUENCY,
+        )
         backend.write_sample(destination, request)
         assert len(destination.read_bytes()) > HEADER_SIZE
 
     def test_the_reconstructions_name_lists_the_program(self, backend: NSFBackend, tmp_path: Path) -> None:
         destination = tmp_path / FILENAME
-        request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
+        request = player_sample(
+            SAMPLE_NAME,
+            (lead_slice("lead", SOUNDING_TICKS),),
+            nes_frequency=NTSC_FREQUENCY,
+        )
         backend.write_sample(destination, request)
         assert read_field(destination.read_bytes(), TITLE_OFFSET) == SAMPLE_NAME
 
@@ -176,18 +191,30 @@ class TestWriteSample:
         listing the file leaves the line blank.
         """
         destination = tmp_path / FILENAME
-        request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
+        request = player_sample(
+            SAMPLE_NAME,
+            (lead_slice("lead", SOUNDING_TICKS),),
+            nes_frequency=NTSC_FREQUENCY,
+        )
         backend.write_sample(destination, request)
         assert read_field(destination.read_bytes(), ARTIST_OFFSET) == ""
 
     def test_the_envelopes_cross_over_whole(self, backend: NSFBackend, tmp_path: Path) -> None:
         destination = tmp_path / FILENAME
-        request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
+        request = player_sample(
+            SAMPLE_NAME,
+            (lead_slice("lead", SOUNDING_TICKS),),
+            nes_frequency=NTSC_FREQUENCY,
+        )
         assert backend.write_sample(destination, request).truncation is None
 
     def test_a_destination_reaches_a_directory_the_run_creates(self, backend: NSFBackend, tmp_path: Path) -> None:
         destination = tmp_path / "exports" / FILENAME
-        request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
+        request = player_sample(
+            SAMPLE_NAME,
+            (lead_slice("lead", SOUNDING_TICKS),),
+            nes_frequency=NTSC_FREQUENCY,
+        )
         backend.write_sample(destination, request)
         assert destination.is_file()
 
@@ -218,7 +245,10 @@ class TestWriteInstrument:
         together = tmp_path / "together.nsf"
 
         backend.write_instrument(alone, instrument)
-        backend.write_sample(together, player_sample(SAMPLE_NAME, (instrument,), nes_frequency=NTSC_FREQUENCY))
+        backend.write_sample(
+            together,
+            player_sample(SAMPLE_NAME, (instrument,), nes_frequency=NTSC_FREQUENCY),
+        )
 
         assert alone.read_bytes() == together.read_bytes()
 
@@ -355,7 +385,11 @@ class TestWhatARunSaysAboutItself:
         tmp_path: Path,
     ) -> None:
         reporter: RecordingReporter[ExportProgress] = RecordingReporter()
-        request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
+        request = player_sample(
+            SAMPLE_NAME,
+            (lead_slice("lead", SOUNDING_TICKS),),
+            nes_frequency=NTSC_FREQUENCY,
+        )
         backend.write_sample(tmp_path / FILENAME, request, reporter)
         assert reported_stages(reporter.reports) == [
             ExportStage.WALKING,
@@ -370,7 +404,11 @@ class TestWhatARunSaysAboutItself:
     ) -> None:
         """A search ends where the song runs out of phrases that pay, so it counts bytes alone."""
         reporter: RecordingReporter[ExportProgress] = RecordingReporter()
-        request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
+        request = player_sample(
+            SAMPLE_NAME,
+            (lead_slice("lead", SOUNDING_TICKS),),
+            nes_frequency=NTSC_FREQUENCY,
+        )
         backend.write_sample(tmp_path / FILENAME, request, reporter)
         compressing = [report for report in reporter.reports if report.stage == ExportStage.COMPRESSING]
         assert compressing and all(report.total is None for report in compressing)
@@ -391,7 +429,11 @@ class TestWithdrawingARun:
     def test_a_withdrawn_run_writes_nothing(self, backend: NSFBackend, tmp_path: Path) -> None:
         destination = tmp_path / FILENAME
         reporter: RecordingReporter[ExportProgress] = RecordingReporter(withdraw_at=WITHDRAWN_WHILE_WALKING)
-        request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
+        request = player_sample(
+            SAMPLE_NAME,
+            (lead_slice("lead", SOUNDING_TICKS),),
+            nes_frequency=NTSC_FREQUENCY,
+        )
         with pytest.raises(OperationCanceled):
             backend.write_sample(destination, request, reporter)
 
@@ -404,7 +446,11 @@ class TestWithdrawingARun:
     ) -> None:
         destination = tmp_path / FILENAME
         reporter: RecordingReporter[ExportProgress] = RecordingReporter(withdraw_at=WITHDRAWN_WHILE_COMPRESSING)
-        request = player_sample(SAMPLE_NAME, (lead_slice("lead", SOUNDING_TICKS),), nes_frequency=NTSC_FREQUENCY)
+        request = player_sample(
+            SAMPLE_NAME,
+            (lead_slice("lead", SOUNDING_TICKS),),
+            nes_frequency=NTSC_FREQUENCY,
+        )
         with pytest.raises(OperationCanceled):
             backend.write_sample(destination, request, reporter)
 
@@ -434,7 +480,10 @@ def repeated_sample() -> SampleExport:
     """A reconstruction holding one note, which every scheme past the first writes as a run."""
     return player_sample(
         SAMPLE_NAME,
-        (lead_slice("lead", REPEATED_TICKS), bass_slice("bass", REPEATED_TICKS)),
+        (
+            lead_slice("lead", REPEATED_TICKS),
+            bass_slice("bass", REPEATED_TICKS),
+        ),
         nes_frequency=NTSC_FREQUENCY,
     )
 
@@ -459,27 +508,42 @@ class TestAChosenProgram:
         expected: str,
     ) -> None:
         destination = tmp_path / FILENAME
-        program = chosen_program(channels=ALL_CHANNELS, loop_tick=SONG_START, scheme=CompressionScheme.SEARCH)
+        program = chosen_program(
+            channels=ALL_CHANNELS,
+            loop_tick=SONG_START,
+            scheme=CompressionScheme.SEARCH,
+        )
         backend.choosing(program).write_project(destination, ProjectExport(project=drum_project()))
         assert read_field(destination.read_bytes(), offset) == expected
 
     def test_a_song_chosen_to_play_once_stops_at_its_end(self, backend: NSFBackend, tmp_path: Path) -> None:
         destination = tmp_path / FILENAME
-        program = chosen_program(channels=ALL_CHANNELS, loop_tick=None, scheme=CompressionScheme.SEARCH)
+        program = chosen_program(
+            channels=ALL_CHANNELS,
+            loop_tick=None,
+            scheme=CompressionScheme.SEARCH,
+        )
         backend.choosing(program).write_project(destination, ProjectExport(project=drum_project()))
         assert written_loop_tick(destination.read_bytes()) == NO_LOOP
 
     def test_a_reconstruction_repeats_where_the_program_says(self, backend: NSFBackend, tmp_path: Path) -> None:
         """The slices play once, and the program asks for them to come round all the same."""
         destination = tmp_path / FILENAME
-        program = chosen_program(channels=ALL_CHANNELS, loop_tick=SONG_START, scheme=CompressionScheme.SEARCH)
+        program = chosen_program(
+            channels=ALL_CHANNELS,
+            loop_tick=SONG_START,
+            scheme=CompressionScheme.SEARCH,
+        )
         backend.choosing(program).write_sample(destination, repeated_sample())
         assert written_loop_tick(destination.read_bytes()) == SONG_START
 
     def test_a_lighter_scheme_writes_a_larger_file(self, backend: NSFBackend, tmp_path: Path) -> None:
         spelled_out = tmp_path / "none.nsf"
         runs = tmp_path / "runs.nsf"
-        for destination, scheme in ((spelled_out, CompressionScheme.NONE), (runs, CompressionScheme.RUNS)):
+        for destination, scheme in (
+            (spelled_out, CompressionScheme.NONE),
+            (runs, CompressionScheme.RUNS),
+        ):
             program = chosen_program(channels=ALL_CHANNELS, loop_tick=None, scheme=scheme)
             backend.choosing(program).write_sample(destination, repeated_sample())
 
@@ -491,6 +555,12 @@ class TestAChosenProgram:
         tmp_path: Path,
     ) -> None:
         destination = tmp_path / FILENAME
-        backend.choosing(chosen_program(channels=ALL_CHANNELS, loop_tick=None, scheme=CompressionScheme.NONE))
+        backend.choosing(
+            chosen_program(
+                channels=ALL_CHANNELS,
+                loop_tick=None,
+                scheme=CompressionScheme.NONE,
+            )
+        )
         backend.write_project(destination, ProjectExport(project=drum_project()))
         assert read_field(destination.read_bytes(), TITLE_OFFSET) == PROJECT_TITLE

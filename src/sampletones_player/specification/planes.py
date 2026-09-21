@@ -6,7 +6,11 @@ from typing import Final, Tuple
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.constants.general import MAX_DUTY_CYCLE, MAX_PERIOD, MAX_VOLUME
+from sampletones_core.constants.general import (
+    MAX_DUTY_CYCLE,
+    MAX_PERIOD,
+    MAX_VOLUME,
+)
 from sampletones_player.specification.binary import MAX_BYTE_VALUE
 from sampletones_player.specification.compression import PITCH_INDEX_MASK
 from sampletones_player.specification.registers import (

@@ -4,7 +4,10 @@ from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.dictionary.table import phrase_table
 from sampletones_player.compression.matches.cache import KEY_LENGTH, MatchCache
 from sampletones_player.compression.matches.index import PlaneIndex
-from sampletones_player.compression.matches.matcher import PhraseMatch, PhraseMatcher
+from sampletones_player.compression.matches.matcher import (
+    PhraseMatch,
+    PhraseMatcher,
+)
 from sampletones_player.specification.compression import MAX_PHRASE_TICKS
 
 MOTIF: Final[bytes] = bytes((40, 44, 47))
@@ -42,11 +45,15 @@ class TestWhichPhrasesAPlanePlays:
         plane = MOTIF + bytes((MOTIF[-1],)) * 4
         assert found(plane, (Phrase(body=MOTIF),), 0) == [PhraseMatch(phrase_id=0, ticks=len(plane), transpose=0)]
 
-    def test_a_note_cut_short_plays_as_much_of_the_phrase_as_sounded(self) -> None:
+    def test_a_note_cut_short_plays_as_much_of_the_phrase_as_sounded(
+        self,
+    ) -> None:
         plane = MOTIF[:3] + bytes((99,))
         assert found(plane, (Phrase(body=MOTIF),), 0) == [PhraseMatch(phrase_id=0, ticks=3, transpose=0)]
 
-    def test_a_note_cut_before_its_shape_is_told_apart_is_offered_nowhere(self) -> None:
+    def test_a_note_cut_before_its_shape_is_told_apart_is_offered_nowhere(
+        self,
+    ) -> None:
         """A phrase is shortlisted by its first steps, so a shorter start names no phrase."""
         plane = MOTIF[:KEY_LENGTH] + bytes((99,))
         assert found(plane, (Phrase(body=MOTIF),), 0) == []

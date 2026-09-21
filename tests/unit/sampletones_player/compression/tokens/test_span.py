@@ -4,7 +4,10 @@ from typing import Final
 import pytest
 
 from sampletones_player.compression.dictionary.phrase import Phrase
-from sampletones_player.compression.dictionary.table import PhraseTable, phrase_table
+from sampletones_player.compression.dictionary.table import (
+    PhraseTable,
+    phrase_table,
+)
 from sampletones_player.compression.encode import emit
 from sampletones_player.compression.tokens.hold import HoldToken
 from sampletones_player.compression.tokens.literal import LiteralToken
@@ -43,7 +46,11 @@ class TestWhatAWrittenTokenTakesAndCovers(BaseTestSuite):
             return self.name
 
     test_cases = (
-        TestCase(name="hold", token=HoldToken(ticks=7), expected=TokenSpan(size=1, ticks=7)),
+        TestCase(
+            name="hold",
+            token=HoldToken(ticks=7),
+            expected=TokenSpan(size=1, ticks=7),
+        ),
         TestCase(
             name="hold-longest",
             token=HoldToken(ticks=MAX_HOLD_TICKS),
@@ -56,17 +63,32 @@ class TestWhatAWrittenTokenTakesAndCovers(BaseTestSuite):
         ),
         TestCase(
             name="phrase",
-            token=PhraseToken(phrase_id=CHEAP_ID, ticks=PHRASE_PLAY_TICKS, transpose=0, default=False),
+            token=PhraseToken(
+                phrase_id=CHEAP_ID,
+                ticks=PHRASE_PLAY_TICKS,
+                transpose=0,
+                default=False,
+            ),
             expected=TokenSpan(size=2, ticks=PHRASE_PLAY_TICKS),
         ),
         TestCase(
             name="phrase-shifted",
-            token=PhraseToken(phrase_id=CHEAP_ID, ticks=PHRASE_PLAY_TICKS, transpose=SHIFT, default=False),
+            token=PhraseToken(
+                phrase_id=CHEAP_ID,
+                ticks=PHRASE_PLAY_TICKS,
+                transpose=SHIFT,
+                default=False,
+            ),
             expected=TokenSpan(size=3, ticks=PHRASE_PLAY_TICKS),
         ),
         TestCase(
             name="phrase-escaped",
-            token=PhraseToken(phrase_id=PHRASE_ID_ESCAPE, ticks=PHRASE_PLAY_TICKS, transpose=0, default=False),
+            token=PhraseToken(
+                phrase_id=PHRASE_ID_ESCAPE,
+                ticks=PHRASE_PLAY_TICKS,
+                transpose=0,
+                default=False,
+            ),
             expected=TokenSpan(size=3, ticks=PHRASE_PLAY_TICKS),
         ),
         TestCase(
@@ -81,7 +103,12 @@ class TestWhatAWrittenTokenTakesAndCovers(BaseTestSuite):
         ),
         TestCase(
             name="phrase-longest",
-            token=PhraseToken(phrase_id=CHEAP_ID, ticks=MAX_PHRASE_TICKS, transpose=0, default=False),
+            token=PhraseToken(
+                phrase_id=CHEAP_ID,
+                ticks=MAX_PHRASE_TICKS,
+                transpose=0,
+                default=False,
+            ),
             expected=TokenSpan(size=2, ticks=MAX_PHRASE_TICKS),
         ),
     )

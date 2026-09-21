@@ -28,7 +28,9 @@ class TestASongGathersEveryPlaneItsBlockWrites:
     def test_a_song_carries_the_planes_a_block_writes(self) -> None:
         assert len(sounding_planes(TIMBRE, FLAGGED, BEND).planes) == PLANE_COUNT
 
-    def test_a_plane_is_reached_by_the_name_the_block_writes_it_under(self) -> None:
+    def test_a_plane_is_reached_by_the_name_the_block_writes_it_under(
+        self,
+    ) -> None:
         planes = sounding_planes(TIMBRE, FLAGGED, BEND).planes
 
         assert planes.pulse1_bend == BEND
@@ -60,18 +62,35 @@ class TestABendPlaneCoversTheFlaggedTicks:
 
         assert sounding_planes(TIMBRE, value, BEND[:1]).planes.pulse1_bend == BEND[:1]
 
-    def test_a_bend_plane_holding_more_than_the_flags_ask_for_is_refused(self) -> None:
+    def test_a_bend_plane_holding_more_than_the_flags_ask_for_is_refused(
+        self,
+    ) -> None:
         with pytest.raises(ValidationError):
             sounding_planes(TIMBRE, bytes((3, 4)), BEND)
 
-    def test_a_bend_plane_holding_fewer_than_the_flags_ask_for_is_refused(self) -> None:
+    def test_a_bend_plane_holding_fewer_than_the_flags_ask_for_is_refused(
+        self,
+    ) -> None:
         with pytest.raises(ValidationError):
             sounding_planes(TIMBRE, FLAGGED, BEND[:1])
 
-    def test_a_song_returning_to_a_tick_re_enters_the_bend_plane_past_the_flags_before_it(self) -> None:
-        value = bytes((flagged_value(3, True), flagged_value(3, False), flagged_value(3, True)))
+    def test_a_song_returning_to_a_tick_re_enters_the_bend_plane_past_the_flags_before_it(
+        self,
+    ) -> None:
+        value = bytes(
+            (
+                flagged_value(3, True),
+                flagged_value(3, False),
+                flagged_value(3, True),
+            )
+        )
         planes = sounding_planes(TIMBRE + bytes((0x30,)), value, BEND)
 
-        assert [planes.positions(tick)[PULSE1_BEND] for tick in range(4)] == [0, 1, 1, 2]
+        assert [planes.positions(tick)[PULSE1_BEND] for tick in range(4)] == [
+            0,
+            1,
+            1,
+            2,
+        ]
         dense = [position for name, position in zip(PlaneOrder.names(), planes.positions(2)) if name not in BENDS]
         assert dense == [2] * len(dense)

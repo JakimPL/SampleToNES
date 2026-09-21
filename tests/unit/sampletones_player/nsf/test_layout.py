@@ -10,7 +10,10 @@ from sampletones_player.specification.compression import (
     PHRASE_TABLE_ENTRY_SIZE,
 )
 from sampletones_player.specification.planes import PLANE_COUNT
-from sampletones_player.specification.song import ABSENT_STREAM, SONG_HEADER_SIZE
+from sampletones_player.specification.song import (
+    ABSENT_STREAM,
+    SONG_HEADER_SIZE,
+)
 from tests.suite.player import (
     PLAYER_FULL_VOLUME,
     PLAYER_OCTAVE_UP_TIMER,
@@ -33,7 +36,11 @@ FIGURE: Final = (SOUNDING, OCTAVE_UP, RESTING, OCTAVE_UP)
 
 
 def figure_song(loop_tick: int) -> Song:
-    return player_song(resting_streams(FIGURE * FIGURE_REPEATS), NTSC_FREQUENCY, loop_tick=loop_tick)
+    return player_song(
+        resting_streams(FIGURE * FIGURE_REPEATS),
+        NTSC_FREQUENCY,
+        loop_tick=loop_tick,
+    )
 
 
 def present(song: Song, layout: SongLayout) -> List[Tuple[bytes, int]]:
@@ -82,7 +89,9 @@ class TestWhereEachPartOfTheBlockBegins:
         stream, offset = present(song, layout)[-1]
         assert layout.size == offset + len(stream)
 
-    def test_an_absent_plane_states_the_sentinel_for_its_stream_and_its_entry(self) -> None:
+    def test_an_absent_plane_states_the_sentinel_for_its_stream_and_its_entry(
+        self,
+    ) -> None:
         song = figure_song(LOOP_TICK)
         layout = SongLayout.of(song)
         absent = [plane for plane, stream in enumerate(song.planes.streams) if not stream]
@@ -105,8 +114,14 @@ class TestWhereEachStreamIsReEntered:
             ABSENT_STREAM if entry is None else offset + entry for offset, entry in zip(layout.streams, entered)
         )
 
-    def test_a_song_that_stops_re_enters_at_each_streams_own_start(self) -> None:
-        song = player_song(resting_streams(FIGURE * FIGURE_REPEATS), NTSC_FREQUENCY, loop_tick=None)
+    def test_a_song_that_stops_re_enters_at_each_streams_own_start(
+        self,
+    ) -> None:
+        song = player_song(
+            resting_streams(FIGURE * FIGURE_REPEATS),
+            NTSC_FREQUENCY,
+            loop_tick=None,
+        )
         layout = SongLayout.of(song)
         assert layout.loop_entries == layout.streams
 

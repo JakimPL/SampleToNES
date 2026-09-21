@@ -2,7 +2,11 @@ from typing import Final, List, Sequence, Tuple
 
 from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
 from sampletones_player.compression.pitch import PitchTable
-from sampletones_player.compression.planes.flags import flagged_value, is_flagged, note_flags
+from sampletones_player.compression.planes.flags import (
+    flagged_value,
+    is_flagged,
+    note_flags,
+)
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.registers.base import ChannelRegisters

@@ -2,7 +2,11 @@ from typing import Final
 
 import pytest
 
-from sampletones_core.constants.enums import ALL_CHANNELS, TONE_CHANNELS, ChannelName
+from sampletones_core.constants.enums import (
+    ALL_CHANNELS,
+    TONE_CHANNELS,
+    ChannelName,
+)
 from sampletones_player.compression.pitch import PITCH_COUNT
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.specification.planes import (
@@ -27,12 +31,16 @@ class TestOneTableStatesEveryPlaneASongBlockWrites:
 
             assert PlaneRole.VALUE in roles
 
-    def test_a_control_belongs_to_each_channel_whose_timbre_turns_over(self) -> None:
+    def test_a_control_belongs_to_each_channel_whose_timbre_turns_over(
+        self,
+    ) -> None:
         timbred = {plane.channel for plane in PLANES if plane.role is PlaneRole.CONTROL}
 
         assert timbred == ALL_CHANNELS - {ChannelName.TRIANGLE}
 
-    def test_the_triangle_names_its_silence_in_the_pitch_it_stands_at(self) -> None:
+    def test_the_triangle_names_its_silence_in_the_pitch_it_stands_at(
+        self,
+    ) -> None:
         triangle = PLANES[plane_index(ChannelName.TRIANGLE, PlaneRole.VALUE)]
 
         assert triangle.seeded == SILENT_PITCH_INDEX
@@ -43,7 +51,9 @@ class TestOneTableStatesEveryPlaneASongBlockWrites:
 
         assert bending == TONE_CHANNELS
 
-    def test_a_plane_is_named_by_the_channel_and_the_part_it_carries(self) -> None:
+    def test_a_plane_is_named_by_the_channel_and_the_part_it_carries(
+        self,
+    ) -> None:
         assert PLANES[plane_index(ChannelName.NOISE, PlaneRole.VALUE)].name == "noise_value"
 
     def test_the_table_names_each_plane_once(self) -> None:

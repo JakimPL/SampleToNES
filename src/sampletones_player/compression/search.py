@@ -1,13 +1,32 @@
-from typing import Callable, Dict, Final, FrozenSet, Iterator, List, NamedTuple, Sequence, Tuple
+from typing import (
+    Callable,
+    Dict,
+    Final,
+    FrozenSet,
+    Iterator,
+    List,
+    NamedTuple,
+    Sequence,
+    Tuple,
+)
 
 from sampletones_player.compression.budget import SearchBudget, shares
-from sampletones_player.compression.dictionary.phrase import Phrase, phrase_entry_size
-from sampletones_player.compression.dictionary.table import PhraseTable, phrase_table
+from sampletones_player.compression.dictionary.phrase import (
+    Phrase,
+    phrase_entry_size,
+)
+from sampletones_player.compression.dictionary.table import (
+    PhraseTable,
+    phrase_table,
+)
 from sampletones_player.compression.matches.cache import MatchCache
 from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.options import CodecOptions
 from sampletones_player.compression.parse.result import Parse
-from sampletones_player.compression.parse.song import parse_planes, parse_planes_offered
+from sampletones_player.compression.parse.song import (
+    parse_planes,
+    parse_planes_offered,
+)
 from sampletones_player.compression.progress.monitor import CodecMonitor
 from sampletones_player.compression.tokens.literal import LiteralToken
 from sampletones_player.compression.tokens.sizes import phrase_size

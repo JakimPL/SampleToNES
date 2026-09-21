@@ -16,7 +16,11 @@ from sampletones_player.registers.channel import channel_registers
 from sampletones_player.specification.binary import unsigned_byte
 from sampletones_player.specification.planes import PLANES
 from sampletones_shared.music import Tuning
-from tests.suite.performance import make_pulse_reconstruction, project_with_instrument, project_with_sample
+from tests.suite.performance import (
+    make_pulse_reconstruction,
+    project_with_instrument,
+    project_with_sample,
+)
 from tests.suite.player import PLAYER_FULL_VOLUME, PLAYER_REFERENCE_PITCH
 
 TUNING: Final[Tuning] = Tuning()
