@@ -192,9 +192,8 @@ time resolutions, and compare the energy in each band in decibels. Their tuning 
   installed; see [dependencies](../development/release/dependencies.md#calibration).
 
 A referee is tested against sounds whose ranking is known, such as "a triangle at the right pitch
-is closer to a sine than silence is". These tests live in
-`tests/unit/sampletones_tools/calibration/referee/test_axioms.py`. A test a referee is known to
-fail is marked as an expected failure.
+is closer to a sine than silence is". A ranking a referee is known to get wrong is recorded as an
+expected failure rather than hidden.
 
 ### Which referee leads
 
