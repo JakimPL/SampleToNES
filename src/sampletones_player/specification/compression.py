@@ -2,7 +2,6 @@ from enum import IntEnum
 from math import ceil
 from typing import Final
 
-from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
 from sampletones_player.specification.binary import (
     BYTE_VALUES,
     MAX_BYTE_VALUE,
@@ -52,9 +51,4 @@ INITIAL_PLANE_VALUE: Final[int] = 0
 BEND_FLAG: Final[int] = 0x80
 PITCH_INDEX_MASK: Final[int] = BEND_FLAG - 1
 
-PLANES_PER_CHANNEL: Final[int] = 2
-TONE_PLANES_PER_CHANNEL: Final[int] = PLANES_PER_CHANNEL + 1
-PLANE_COUNT: Final[int] = sum(
-    TONE_PLANES_PER_CHANNEL if channel in TONE_CHANNELS else PLANES_PER_CHANNEL for channel in ChannelName.items()
-)
 PLANE_STATE_SIZE: Final[int] = 8

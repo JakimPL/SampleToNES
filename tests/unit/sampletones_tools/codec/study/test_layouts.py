@@ -12,7 +12,6 @@ from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.builder import streams_from_instructions
 from sampletones_player.compression.absent import is_absent
 from sampletones_player.compression.pitch import PitchTable
-from sampletones_player.compression.planes.channel import TonePlanes
 from sampletones_player.compression.planes.separate import channel_planes, planes_from_streams
 from sampletones_player.compression.seeds import phrases_from_project
 from sampletones_player.registers.channel import channel_registers
@@ -56,11 +55,12 @@ def coarse_frame(pitch: int, coarse: int) -> List[InstructionUnion]:
     return [PulseInstruction(on=True, pitch=pitch, volume=PLAYER_FULL_VOLUME, duty_cycle=0, coarse_detune=coarse)]
 
 
-def pulse_planes(instructions: Sequence[InstructionUnion]) -> TonePlanes:
+VALUE_PLANE: Final[int] = 1
+
+
+def pulse_planes(instructions: Sequence[InstructionUnion]) -> Tuple[bytes, ...]:
     registers = channel_registers(ChannelName.PULSE1, {ChannelName.PULSE1: instructions}, TIMER_TABLE)
-    planes = channel_planes(ChannelName.PULSE1, registers, PITCHES)
-    assert isinstance(planes, TonePlanes)
-    return planes
+    return channel_planes(ChannelName.PULSE1, registers, PITCHES)
 
 
 def written(instructions: Sequence[InstructionUnion], layout: PlaneLayout) -> Tuple[bytes, bytes, bytes]:
@@ -115,7 +115,7 @@ class TestWhatTheValuePlaneNames:
             *coarse_frame(PLAYER_REFERENCE_PITCH, BEYOND_A_BYTE),
         ]
         planes = pulse_planes(instructions)
-        assert written(instructions, PRODUCTION) == planes.ordered
+        assert written(instructions, PRODUCTION) == planes
 
     def test_a_named_note_keeps_a_bend_past_halfway(self) -> None:
         instructions = bent_frames(PLAYER_REFERENCE_PITCH, (PAST_HALFWAY,))
@@ -163,7 +163,7 @@ class TestAFlaggedBendPlane:
         instructions = bent_frames(PLAYER_REFERENCE_PITCH, (0, 0, 0))
         _, value, bend = written(instructions, PlaneLayout(Anchor.NEAREST, form))
         assert bend == b""
-        assert value == pulse_planes(instructions).value
+        assert value == pulse_planes(instructions)[VALUE_PLANE]
 
 
 class TestALayoutsSeeds:

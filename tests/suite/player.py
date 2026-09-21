@@ -22,7 +22,6 @@ from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.encode import emit, encode_planes
 from sampletones_player.compression.options import EVERY_LAYER
 from sampletones_player.compression.pitch import PITCH_COUNT, PitchTable
-from sampletones_player.compression.planes.channel import TonePlanes
 from sampletones_player.compression.planes.flags import flagged_value
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.separate import planes_from_streams
@@ -37,7 +36,12 @@ from sampletones_player.song import Song
 from sampletones_player.specification.binary import unsigned_byte
 from sampletones_player.specification.compression import (
     MAX_LITERAL_BYTES,
+)
+from sampletones_player.specification.planes import (
     PLANE_COUNT,
+    PLANES,
+    PlaneRole,
+    plane_index,
 )
 from sampletones_player.specification.registers import (
     DUTY_CYCLE_SHIFT,
@@ -170,14 +174,10 @@ def bent_song(
     sounding = pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_PITCHES.timers[pitch_index])
     planes = planes_from_streams(resting_streams((sounding,) * len(bends)), PLAYER_PITCHES)
     bent = SongPlanes(
-        pulse1=TonePlanes(
-            control=planes.pulse1.control,
-            value=bytes(flagged_value(pitch_index, bend != 0) for bend in bends),
-            bend=bytes(unsigned_byte(bend) for bend in bends if bend),
-        ),
-        pulse2=planes.pulse2,
-        triangle=planes.triangle,
-        noise=planes.noise,
+        planes=planes.planes._replace(
+            pulse1_value=bytes(flagged_value(pitch_index, bend != 0) for bend in bends),
+            pulse1_bend=bytes(unsigned_byte(bend) for bend in bends if bend),
+        )
     )
     return Song(
         planes=encode_planes(bent, (), options=EVERY_LAYER, boundaries=frozenset()),
@@ -210,6 +210,24 @@ def silent_pulse() -> PulseInstruction:
 PLAYER_VARIED_SEED: Final[int] = 7
 
 
+def sounding_planes(
+    control: bytes,
+    value: bytes,
+    bend: bytes,
+) -> SongPlanes:
+    """A song's planes, the first pulse channel sounding what it is given and the rest resting."""
+    resting = [b"" if plane.spans_flagged_ticks else bytes(len(control)) for plane in PLANES]
+    for role, played in zip((PlaneRole.CONTROL, PlaneRole.VALUE, PlaneRole.BEND), (control, value, bend)):
+        resting[plane_index(ChannelName.PULSE1, role)] = played
+
+    return SongPlanes(planes=PlaneOrder.across(resting))
+
+
+def every_plane_spelling(stream: bytes) -> PlaneOrder:
+    """One stream standing for every plane the song block writes."""
+    return PlaneOrder.across((stream,) * PLANE_COUNT)
+
+
 def spelled_song(ticks: int, nes_frequency: int) -> Song:
     """A song whose every plane spells its values out, which is the most room a song can take.
 
@@ -227,7 +245,7 @@ def spelled_song(ticks: int, nes_frequency: int) -> Song:
     return Song(
         planes=CompressedPlanes(
             phrases=PhraseTable(phrases=()),
-            streams=PlaneOrder.across((stream,) * PLANE_COUNT),
+            streams=every_plane_spelling(stream),
             ticks=ticks,
         ),
         pitches=PLAYER_PITCHES,

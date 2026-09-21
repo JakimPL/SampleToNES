@@ -51,7 +51,7 @@ def phrases_from_project(
             channel_registers(channel, played, timer_table),
             pitches,
         )
-        phrases.extend(Phrase(body=plane[:MAX_PHRASE_LENGTH]) for plane in planes.ordered if _turns_over(plane))
+        phrases.extend(Phrase(body=plane[:MAX_PHRASE_LENGTH]) for plane in planes if _turns_over(plane))
 
     return tuple(phrases)
 

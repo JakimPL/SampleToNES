@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from time import process_time
 from typing import Final, List, Sequence, Tuple
 
+from sampletones_core.constants.enums import PULSE_CHANNELS
 from sampletones_player.compression.absent import is_absent
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.table import phrase_table
@@ -11,10 +12,10 @@ from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.matches.matcher import PhraseMatcher
 from sampletones_player.compression.options import CodecOptions
 from sampletones_player.compression.parse.plane import parse_plane
-from sampletones_player.compression.planes.channel import TonePlanes
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.registers.streams import ChannelStreams
+from sampletones_player.specification.planes import PLANES, PlaneRole
 from sampletones_player.specification.registers import DUTY_CYCLE_SHIFT
 from sampletones_tools.codec.report.corpus import CorpusEntry
 from sampletones_tools.codec.report.rows import ReportRow
@@ -213,17 +214,12 @@ def _register_planes(streams: ChannelStreams) -> Tuple[bytes, ...]:
 def _split_control_planes(planes: SongPlanes) -> Tuple[bytes, ...]:
     """Every plane with each pulse channel's control split into duty and volume."""
     split: List[bytes] = []
-    for channels in planes.ordered:
-        if channels in (planes.pulse1, planes.pulse2):
-            split.append(bytes(control >> DUTY_CYCLE_SHIFT for control in channels.control))
-            split.append(bytes(control & CONTROL_LEVEL_MASK for control in channels.control))
+    for plane, played in zip(PLANES, planes.planes, strict=True):
+        if plane.role is PlaneRole.CONTROL and plane.channel in PULSE_CHANNELS:
+            split.append(bytes(control >> DUTY_CYCLE_SHIFT for control in played))
+            split.append(bytes(control & CONTROL_LEVEL_MASK for control in played))
         else:
-            split.append(channels.control)
-
-        split.append(channels.value)
-        match channels:
-            case TonePlanes():
-                split.append(channels.bend)
+            split.append(played)
 
     return tuple(split)
 

@@ -1,7 +1,8 @@
 from typing import Final, Tuple
 
-from sampletones_player.compression.planes.channel import ChannelPlanes, TonePlanes
+from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
+from sampletones_player.specification.planes import PLANES
 from sampletones_shared.constants.music import LIMIT_MIN_PITCH
 from sampletones_tools.codec.study.corpus.notes import TONE_ORDER
 from sampletones_tools.codec.study.corpus.song import StudySlice
@@ -16,10 +17,4 @@ def lowest_notes(ticks: int) -> Tuple[bytes, ...]:
 
 def resting_planes(ticks: int) -> SongPlanes:
     """A song's planes holding zero throughout, every tone channel bending nowhere."""
-    tone = TonePlanes(control=bytes(ticks), value=bytes(ticks), bend=b"")
-    return SongPlanes(
-        pulse1=tone,
-        pulse2=tone,
-        triangle=tone,
-        noise=ChannelPlanes(control=bytes(ticks), value=bytes(ticks)),
-    )
+    return SongPlanes(planes=PlaneOrder.across(b"" if plane.spans_flagged_ticks else bytes(ticks) for plane in PLANES))

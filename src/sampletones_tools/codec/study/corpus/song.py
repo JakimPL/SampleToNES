@@ -6,7 +6,6 @@ from typing import Tuple
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.pitch import PitchTable
-from sampletones_player.compression.planes.channel import ChannelPlanes
 from sampletones_player.compression.planes.song import SongPlanes
 
 
@@ -31,12 +30,12 @@ class StudySlice:
 
     Attributes:
         channel: The channel the slice plays on.
-        planes: The slice's planes as the production codec separates them.
+        planes: The slice's planes as the production codec separates them, in block order.
         notes: The note each of its ticks names, empty on the noise channel.
     """
 
     channel: ChannelName
-    planes: ChannelPlanes
+    planes: Tuple[bytes, ...]
     notes: bytes
 
 

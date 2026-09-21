@@ -15,12 +15,12 @@ from sampletones_player.specification.compression import (
     PHRASE_TABLE_COUNT_SIZE,
     PHRASE_TABLE_ENTRY_SIZE,
     PITCH_INDEX_MASK,
-    PLANE_COUNT,
     PLANE_STATE_SIZE,
     TOKEN_OPERAND_MASK,
     TOKEN_TAG_MASK,
     TokenTag,
 )
+from sampletones_player.specification.planes import PLANE_COUNT
 from sampletones_player.specification.song import (
     ABSENT_STREAM,
     LOOP_ENTRIES_OFFSET,

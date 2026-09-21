@@ -1,7 +1,7 @@
 import pytest
 
 from sampletones_player.compression.planes.order import PlaneOrder
-from sampletones_player.specification.compression import PLANE_COUNT
+from sampletones_player.specification.planes import PLANE_COUNT
 
 
 def numbered(count: int) -> PlaneOrder:

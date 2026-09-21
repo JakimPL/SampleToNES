@@ -4,8 +4,7 @@ from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.dictionary.table import phrase_table
 from sampletones_player.compression.matches.cache import KEY_LENGTH, MatchCache
 from sampletones_player.compression.matches.index import PlaneIndex
-from sampletones_player.compression.matches.match import PhraseMatch
-from sampletones_player.compression.matches.matcher import PhraseMatcher
+from sampletones_player.compression.matches.matcher import PhraseMatch, PhraseMatcher
 from sampletones_player.specification.compression import MAX_PHRASE_TICKS
 
 MOTIF: Final[bytes] = bytes((40, 44, 47))

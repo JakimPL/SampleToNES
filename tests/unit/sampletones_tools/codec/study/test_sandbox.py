@@ -20,8 +20,8 @@ from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.specification.compression import (
     CHEAP_PHRASE_IDS,
     MAX_HOLD_TICKS,
-    PLANE_COUNT,
 )
+from sampletones_player.specification.planes import PLANE_COUNT
 from sampletones_shared.music import Tuning
 from sampletones_tools.codec.study.corpus.song import SongGroup, StudySong
 from sampletones_tools.codec.study.sandbox.context import PlaneContext
@@ -95,7 +95,7 @@ def _song(ticks: int) -> StudySong:
         name="song",
         group=SongGroup.PROJECT,
         source=Path("song.stp"),
-        planes=SongPlanes.from_order(PlaneOrder.across(planes)),
+        planes=SongPlanes(planes=PlaneOrder.across(planes)),
         seeds=tuple(Phrase(body=body) for body in FIGURES),
         pitches=PitchTable.from_tuning(Tuning()),
         notes=lowest_notes(ticks),

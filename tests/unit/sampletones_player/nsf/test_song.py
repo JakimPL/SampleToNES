@@ -10,7 +10,7 @@ from sampletones_player.nsf.layout import NAME_SEPARATOR, SongLayout
 from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import WORD_SIZE
-from sampletones_player.specification.compression import PLANE_COUNT
+from sampletones_player.specification.planes import PLANE_COUNT
 from sampletones_player.specification.song import (
     ABSENT_STREAM,
     LOOP_ENTRIES_OFFSET,

@@ -9,7 +9,6 @@ from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.compression.pitch import PitchTable
-from sampletones_player.compression.planes.channel import ChannelPlanes
 from sampletones_player.compression.planes.separate import channel_planes
 from sampletones_player.compression.seeds import phrases_from_project
 from sampletones_player.registers.channel import channel_registers
@@ -33,7 +32,7 @@ def project() -> Project:
 
 
 @pytest.fixture
-def slice_planes(project: Project) -> ChannelPlanes:
+def slice_planes(project: Project) -> Tuple[bytes, ...]:
     """The planes the project's own slice writes on the channel it plays."""
     instructions = project.voices[0].reconstruction.get_channel_instructions(ChannelName.PULSE1)
     registers = channel_registers(
@@ -54,18 +53,18 @@ class TestTheInstrumentsSeedTheDictionary:
     def test_the_phrases_are_the_planes_the_slice_turns_over(
         self,
         project: Project,
-        slice_planes: ChannelPlanes,
+        slice_planes: Tuple[bytes, ...],
     ) -> None:
-        turning = tuple(plane for plane in slice_planes.ordered if len(set(plane)) > 1)
+        turning = tuple(plane for plane in slice_planes if len(set(plane)) > 1)
         assert _offered(project) == turning
 
     def test_a_plane_holding_one_value_offers_the_dictionary_nothing(
         self,
         project: Project,
-        slice_planes: ChannelPlanes,
+        slice_planes: Tuple[bytes, ...],
     ) -> None:
         """A hold covers such a plane more cheaply than any phrase naming it could."""
-        held = tuple(plane for plane in slice_planes.ordered if len(set(plane)) == 1)
+        held = tuple(plane for plane in slice_planes if len(set(plane)) == 1)
         assert held
         assert not set(held) & set(_offered(project))
 

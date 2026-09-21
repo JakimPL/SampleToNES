@@ -7,8 +7,8 @@ from sampletones_player.specification.compression import (
     PHRASE_LENGTH_SIZE,
     PHRASE_TABLE_COUNT_SIZE,
     PHRASE_TABLE_ENTRY_SIZE,
-    PLANE_COUNT,
 )
+from sampletones_player.specification.planes import PLANE_COUNT
 from sampletones_player.specification.song import ABSENT_STREAM, SONG_HEADER_SIZE
 from tests.suite.player import (
     PLAYER_FULL_VOLUME,

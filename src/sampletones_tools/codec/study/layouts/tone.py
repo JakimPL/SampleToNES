@@ -2,7 +2,6 @@ from typing import Dict, Sequence, Tuple
 
 from sampletones_core.timers.nearest import NearestPitch
 from sampletones_player.compression.pitch import PitchTable
-from sampletones_player.compression.planes.channel import TonePlanes
 from sampletones_player.compression.planes.flags import flagged_value, note_flags
 from sampletones_player.compression.planes.rebuild import tone_dividers
 from sampletones_player.registers.dividers import anchored_pitches
@@ -74,7 +73,7 @@ def bend_flags(
 
 
 def tone_planes(
-    planes: TonePlanes,
+    planes: Tuple[bytes, ...],
     notes: bytes,
     pitches: PitchTable,
     layout: PlaneLayout,
@@ -94,11 +93,12 @@ def tone_planes(
     Raises:
         ValueError: If a flagged layout meets an index reaching the flag's bit.
     """
-    anchored = layout_anchors(tone_dividers(planes, pitches.timers), notes, pitches, layout.anchor)
+    control, named, offsets = planes
+    anchored = layout_anchors(tone_dividers(named, offsets, pitches.timers), notes, pitches, layout.anchor)
     flags = bend_flags(anchored, layout.form)
     bend = bytes(unsigned_byte(pitch.offset) for pitch, flag in zip(anchored, flags) if flag)
     if layout.form is BendForm.DENSE:
-        return planes.control, bytes(pitch.pitch for pitch in anchored), bend
+        return control, bytes(pitch.pitch for pitch in anchored), bend
 
     value = bytes(flagged_value(pitch.pitch, flag) for pitch, flag in zip(anchored, flags))
-    return planes.control, value, bend
+    return control, value, bend

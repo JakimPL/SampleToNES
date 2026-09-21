@@ -9,6 +9,7 @@ from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.timers.arithmetic import bent_timer
 from sampletones_player.builder import song_from_reconstruction, streams_from_instructions
 from sampletones_player.compression.decode import decode_planes
+from sampletones_player.specification.planes import PlaneRole, plane_index
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import BYTE_VALUES
@@ -220,6 +221,9 @@ class TestTheConsoleSoundsTheBendAFrameCarries(BaseTestSuite):
         assert sounded_dividers(song)[: len(expected)] == expected
 
 
+PULSE1_BEND: Final[int] = plane_index(ChannelName.PULSE1, PlaneRole.BEND)
+
+
 class TestABentSongComingRound:
     """A song returning to a tick re-enters each bend plane past the flags played before it."""
 
@@ -238,8 +242,8 @@ class TestABentSongComingRound:
         return player_song(streams, NTSC_RATE, loop_tick=self.LOOP_TICK)
 
     def test_the_loop_tick_falls_after_flagged_ticks(self, repeating: Song) -> None:
-        pulse1 = decode_planes(repeating.planes).pulse1
-        assert pulse1.bend_position(self.LOOP_TICK) > 0
+        planes = decode_planes(repeating.planes)
+        assert planes.positions(self.LOOP_TICK)[PULSE1_BEND] > 0
 
     def test_the_console_writes_what_the_model_states_across_its_loops(self, repeating: Song) -> None:
         calls = play_calls_reaching(repeating, self.ROUNDS * repeating.ticks)

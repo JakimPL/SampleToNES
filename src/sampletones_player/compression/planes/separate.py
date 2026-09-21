@@ -1,9 +1,9 @@
-from typing import Final, List, Sequence
+from typing import Final, List, Sequence, Tuple
 
 from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
 from sampletones_player.compression.pitch import PitchTable
-from sampletones_player.compression.planes.channel import ChannelPlanes, TonePlanes
 from sampletones_player.compression.planes.flags import flagged_value, note_flags
+from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.registers.base import ChannelRegisters
 from sampletones_player.registers.streams import ChannelStreams
@@ -29,29 +29,30 @@ def _tone_ticks(registers: Sequence[ChannelRegisters]) -> List[ToneRegisters]:
 def _tone_planes(
     registers: Sequence[ChannelRegisters],
     pitches: PitchTable,
-) -> TonePlanes:
+) -> Tuple[bytes, ...]:
     ticks = _tone_ticks(registers)
     indices = [pitches.index(tick.anchor) for tick in ticks]
     offsets = [tick.divider - pitches.timers[index] for tick, index in zip(ticks, indices)]
     flags = note_flags(indices, offsets)
-    return TonePlanes(
-        control=bytes(tick.values[CONTROL_VALUE_INDEX] for tick in ticks),
-        value=bytes(flagged_value(index, flag) for index, flag in zip(indices, flags)),
-        bend=bytes(unsigned_byte(offset) for offset, flag in zip(offsets, flags) if flag),
+    return (
+        bytes(tick.values[CONTROL_VALUE_INDEX] for tick in ticks),
+        bytes(flagged_value(index, flag) for index, flag in zip(indices, flags)),
+        bytes(unsigned_byte(offset) for offset, flag in zip(offsets, flags) if flag),
     )
 
 
-def _noise_planes(registers: Sequence[ChannelRegisters]) -> ChannelPlanes:
-    control = bytes(tick.values[CONTROL_VALUE_INDEX] for tick in registers)
-    value = bytes(tick.values[FIRST_VALUE_INDEX] for tick in registers)
-    return ChannelPlanes(control=control, value=value)
+def _noise_planes(registers: Sequence[ChannelRegisters]) -> Tuple[bytes, ...]:
+    return (
+        bytes(tick.values[CONTROL_VALUE_INDEX] for tick in registers),
+        bytes(tick.values[FIRST_VALUE_INDEX] for tick in registers),
+    )
 
 
 def channel_planes(
     channel: ChannelName,
     registers: Sequence[ChannelRegisters],
     pitches: PitchTable,
-) -> ChannelPlanes:
+) -> Tuple[bytes, ...]:
     """Separates one channel's ticks into the planes the codec reads.
 
     A tone channel's value plane names the pitch each divider is counted from, and its bend plane
@@ -64,7 +65,7 @@ def channel_planes(
         pitches: The timer each pitch sounds at.
 
     Returns:
-        ChannelPlanes: The channel's own planes.
+        Tuple[bytes, ...]: The channel's own planes, in the order the song block writes them.
 
     Raises:
         TypeError: If a tone channel's ticks hold registers another channel writes.
@@ -97,10 +98,10 @@ def planes_from_streams(
         ValueError: If a tone channel's divider lies further from the pitch it is counted from than
             a signed byte states.
     """
-    pulse1, pulse2, triangle, noise = streams.padded
     return SongPlanes(
-        pulse1=_tone_planes(pulse1, pitches),
-        pulse2=_tone_planes(pulse2, pitches),
-        triangle=_tone_planes(triangle, pitches),
-        noise=_noise_planes(noise),
+        planes=PlaneOrder.across(
+            plane
+            for channel, registers in zip(ChannelName.items(), streams.padded, strict=True)
+            for plane in channel_planes(channel, registers, pitches)
+        )
     )

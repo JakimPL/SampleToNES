@@ -6,8 +6,9 @@ from sampletones_player.compression.planes.flags import pitch_index
 from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.compression import (
     PHRASE_TABLE_ENTRY_SIZE,
-    PLANE_COUNT,
 )
+from sampletones_core.constants.enums import TONE_CHANNELS
+from sampletones_player.specification.planes import PLANE_COUNT, PLANES, PlaneRole
 from sampletones_player.specification.song import SONG_HEADER_SIZE
 from sampletones_tools.codec.study.accounting.finding import Finding
 from sampletones_tools.codec.study.corpus.song import StudySong
@@ -54,8 +55,12 @@ def fixed_overheads(
     Returns:
         FixedOverheads: The fixed bytes, part by part.
     """
-    tones = (song.planes.pulse1, song.planes.pulse2, song.planes.triangle)
-    highest = max(pitch_index(value) for channel in tones for value in channel.value)
+    tones = (
+        song.planes.planes[index]
+        for index, plane in enumerate(PLANES)
+        if plane.role is PlaneRole.VALUE and plane.channel in TONE_CHANNELS
+    )
+    highest = max(pitch_index(value) for plane in tones for value in plane)
     return FixedOverheads(
         header=SONG_HEADER_SIZE,
         pitch_table=len(song.pitches.data),

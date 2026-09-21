@@ -6,7 +6,6 @@ from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.encode import emit, encode_planes
 from sampletones_player.compression.options import CodecOptions
-from sampletones_player.compression.planes.channel import ChannelPlanes, TonePlanes
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.compression.progress.report import CodecProgress
 from sampletones_player.compression.tokens.hold import HoldToken
@@ -18,6 +17,7 @@ from sampletones_player.specification.compression import (
     TokenTag,
 )
 from sampletones_shared.exceptions import OperationCanceled
+from tests.suite.player import sounding_planes
 from tests.suite.progress import FIRST_REPORT, RecordingReporter
 
 EVERY_LAYER: Final[CodecOptions] = CodecOptions(
@@ -39,11 +39,7 @@ REPEATS: Final[int] = 12
 
 
 def song_planes(control: bytes, value: bytes) -> SongPlanes:
-    unbent = bytes(len(control))
-    channel = TonePlanes(control=control, value=value, bend=b"")
-    resting = TonePlanes(control=unbent, value=bytes(len(value)), bend=b"")
-    silent = ChannelPlanes(control=unbent, value=bytes(len(value)))
-    return SongPlanes(pulse1=channel, pulse2=resting, triangle=resting, noise=silent)
+    return sounding_planes(control, value, b"")
 
 
 class TestWhatATokenLooksLikeOnTheBus:

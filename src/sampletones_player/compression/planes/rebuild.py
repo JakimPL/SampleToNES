@@ -1,7 +1,7 @@
 from typing import Iterator, Tuple
 
+from sampletones_core.constants.enums import ChannelName
 from sampletones_player.compression.pitch import PitchTable
-from sampletones_player.compression.planes.channel import ChannelPlanes, TonePlanes
 from sampletones_player.compression.planes.flags import is_flagged, pitch_index
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.registers.noise import NoiseRegisters
@@ -16,7 +16,8 @@ from sampletones_player.specification.registers import (
 
 
 def tone_dividers(
-    planes: TonePlanes,
+    value: bytes,
+    bend: bytes,
     timers: Tuple[int, ...],
 ) -> Tuple[int, ...]:
     """The divider each tick of a tone channel reaches, its note and its bend together.
@@ -26,32 +27,32 @@ def tone_dividers(
     other tick sounds its pitch's own divider.
 
     Args:
-        planes: The channel's planes.
+        value: The pitch each tick names, under the flag saying whether it bends.
+        bend: The steps each flagged tick stands from its pitch's own divider.
         timers: The divider each pitch sounds at, in pitch order.
 
     Returns:
         Tuple[int, ...]: One divider per tick.
     """
-    bends = iter(planes.bend)
-    return tuple(
-        timers[pitch_index(value)] + (signed_byte(next(bends)) if is_flagged(value) else 0) for value in planes.value
-    )
+    bends = iter(bend)
+    return tuple(timers[pitch_index(named)] + (signed_byte(next(bends)) if is_flagged(named) else 0) for named in value)
 
 
 def _sounded(
-    planes: TonePlanes,
+    planes: Tuple[bytes, ...],
     pitches: PitchTable,
 ) -> Iterator[Tuple[int, int, int]]:
     """Each tick's control byte, the divider its registers carry, and the pitch it is counted from."""
+    control, value, bend = planes
     yield from zip(
-        planes.control,
-        tone_dividers(planes, pitches.timers),
-        (pitches.pitch(pitch_index(value)) for value in planes.value),
+        control,
+        tone_dividers(value, bend, pitches.timers),
+        (pitches.pitch(pitch_index(named)) for named in value),
     )
 
 
 def _pulse_registers(
-    planes: TonePlanes,
+    planes: Tuple[bytes, ...],
     pitches: PitchTable,
 ) -> Tuple[PulseRegisters, ...]:
     return tuple(
@@ -66,7 +67,7 @@ def _pulse_registers(
 
 
 def _triangle_registers(
-    planes: TonePlanes,
+    planes: Tuple[bytes, ...],
     pitches: PitchTable,
 ) -> Tuple[TriangleRegisters, ...]:
     return tuple(
@@ -80,13 +81,14 @@ def _triangle_registers(
     )
 
 
-def _noise_registers(planes: ChannelPlanes) -> Tuple[NoiseRegisters, ...]:
+def _noise_registers(planes: Tuple[bytes, ...]) -> Tuple[NoiseRegisters, ...]:
+    control, value = planes
     return tuple(
         NoiseRegisters(
-            control=control,
+            control=timbre,
             period=period,
         )
-        for control, period in zip(planes.control, planes.value)
+        for timbre, period in zip(control, value)
     )
 
 
@@ -97,15 +99,15 @@ def streams_from_planes(
     """Rebuilds a song's four streams from the planes they were separated into.
 
     Args:
-        planes: The planes under the channel each belongs to.
+        planes: Every plane, in the order the song block writes them.
         pitches: The timer each pitch sounds at.
 
     Returns:
         ChannelStreams: The per-tick register values every channel plays.
     """
     return ChannelStreams(
-        pulse1=_pulse_registers(planes.pulse1, pitches),
-        pulse2=_pulse_registers(planes.pulse2, pitches),
-        triangle=_triangle_registers(planes.triangle, pitches),
-        noise=_noise_registers(planes.noise),
+        pulse1=_pulse_registers(planes.of(ChannelName.PULSE1), pitches),
+        pulse2=_pulse_registers(planes.of(ChannelName.PULSE2), pitches),
+        triangle=_triangle_registers(planes.of(ChannelName.TRIANGLE), pitches),
+        noise=_noise_registers(planes.of(ChannelName.NOISE)),
     )
