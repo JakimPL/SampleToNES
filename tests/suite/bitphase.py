@@ -22,15 +22,33 @@ BITPHASE_DEFAULT_VOLUME: Final[int] = 0
 BITPHASE_DEFAULT_EFFECT: Final[int] = 0
 BITPHASE_DEFAULT_EFFECT_DELAY: Final[int] = 0
 BITPHASE_DEFAULT_EFFECT_PARAMETER: Final[int] = 0
+BITPHASE_FIRST_TABLE_INDEX: Final[int] = 0
 BITPHASE_NO_EFFECTS: Final[Tuple[None, ...]] = (None,)
+BITPHASE_MIN_EFFECT_COLUMNS: Final[int] = 1
+BITPHASE_MAX_EFFECT_COLUMNS: Final[int] = 4
 BITPHASE_DEFAULT_INSTRUMENT_ID: Final[str] = "01"
 BITPHASE_DEFAULT_LOOP: Final[int] = 0
 BITPHASE_DEFAULT_TABLE_ID: Final[int] = 0
-BITPHASE_DEFAULT_PULSE_WIDTH: Final[int] = 2
-BITPHASE_DEFAULT_VOLUME_OR_RATE: Final[int] = 15
+BITPHASE_MAX_MACRO_LENGTH: Final[int] = 512
+BITPHASE_SILENT_PERIOD: Final[int] = 0
+BITPHASE_MAX_PERIOD: Final[int] = 2047
+BITPHASE_MACRO_DEFAULTS: Final[Dict[str, Any]] = {
+    "pulseWidth": 2,
+    "volumeOrRate": 15,
+    "envelope": False,
+    "retrigger": False,
+    "soundLength": 0,
+    "toneAdd": 0,
+    "toneAccumulation": False,
+    "sweep": False,
+    "sweepRate": 0,
+    "sweepShift": 0,
+}
 
 MIN_INITIAL_SPEED: Final[int] = 1
 MAX_INITIAL_SPEED: Final[int] = 255
+MIN_PATTERN_LENGTH: Final[int] = 1
+MAX_PATTERN_LENGTH: Final[int] = 256
 
 
 @dataclass(frozen=True)
@@ -60,6 +78,7 @@ class LoadedRow:
 class LoadedChannel:
     label: str
     rows: List[LoadedRow]
+    effect_column_count: int
 
 
 @dataclass(frozen=True)
@@ -70,31 +89,46 @@ class LoadedPattern:
 
 
 @dataclass(frozen=True)
-class LoadedInstrumentRow:
-    pulse_width: int
-    volume_or_rate: int
-    envelope: bool
-    sound_length: int
-    tone_add: int
-    tone_accumulation: bool
-    retrigger: bool
-    sweep: bool
-    sweep_rate: int
-    sweep_shift: int
+class LoadedMacro:
+    values: List[Any]
+    loop: int
 
 
 @dataclass(frozen=True)
 class LoadedInstrument:
     id: str
     chip_type: str
-    loop: int
     name: str
-    rows: List[LoadedInstrumentRow]
+    macros: Dict[str, LoadedMacro]
 
     @property
     def number(self) -> int:
         """The value a pattern's instrument column carries to play this instrument."""
         return int(self.id, 36)
+
+    def macro(self, field: str) -> LoadedMacro:
+        """The macro Bitphase reads a field from, which one the instrument leaves out defaults.
+
+        Args:
+            field: The instrument field, named as Bitphase keys it.
+
+        Returns:
+            LoadedMacro: The field's own macro, or the single default value it takes.
+        """
+        return self.macros.get(field, LoadedMacro(values=[BITPHASE_MACRO_DEFAULTS[field]], loop=0))
+
+    def value(self, field: str, tick: int) -> Any:
+        """The value a field takes on a tick of a sounding note.
+
+        Args:
+            field: The instrument field, named as Bitphase keys it.
+            tick: Ticks since the note started.
+
+        Returns:
+            Any: The value the engine samples for that field.
+        """
+        macro = self.macro(field)
+        return macro.values[sample_index(tick, len(macro.values), macro.loop)]
 
 
 @dataclass(frozen=True)
@@ -103,6 +137,11 @@ class LoadedTable:
     loop: int
     name: str
     rows: List[int]
+    additive: bool
+
+    def step(self, tick: int) -> int:
+        """The semitone step the table moves the note by on a tick of a sounding note."""
+        return self.rows[sample_index(tick, len(self.rows), self.loop)]
 
 
 @dataclass(frozen=True)
@@ -113,6 +152,7 @@ class LoadedSong:
     interrupt_frequency: int
     a4_tuning_hz: float
     initial_speed: int
+    default_pattern_length: int
     tuning_table: List[int]
     patterns: List[LoadedPattern]
 
@@ -128,12 +168,84 @@ class LoadedProject:
     instruments: List[LoadedInstrument]
 
 
+def sample_index(tick: int, length: int, loop: int) -> int:
+    """The index a per-tick list stands at on a tick, as Bitphase's engine advances it.
+
+    An instrument macro and a table each advance one entry per tick and circle once they run
+    out, from the loop entry where it stands among them and from the first otherwise. Read from
+    ``sampleInstrumentMacroIndex`` and ``processTables`` of the tracker at commit ``265ff70``.
+
+    Args:
+        tick: Ticks since the note started.
+        length: Entries the list holds.
+        loop: Entry the list circles from.
+
+    Returns:
+        int: The entry to read.
+    """
+    entries = length if length > 0 else 1
+    if tick < entries:
+        return max(tick, 0)
+
+    start = loop if 0 < loop < entries else 0
+    span = entries - start
+    if span <= 0:
+        return entries - 1
+
+    return start + (tick - entries) % span
+
+
+def sounded_period(
+    tuning_table: List[int],
+    note_index: int,
+    instrument: LoadedInstrument,
+    table: LoadedTable,
+    tick: int,
+) -> int:
+    """The channel period a tone channel sounds on a tick, as the engine resolves it.
+
+    The table moves the note, the tuning table resolves the period that note sounds at, and the
+    instrument's tone offset moves it from there. Read from ``nes-audio-driver.js`` of the
+    tracker at commit ``265ff70``, where a period of zero silences the channel.
+
+    Args:
+        tuning_table: The song's period per note index.
+        note_index: The note the pattern cell names.
+        instrument: The instrument the cell triggers.
+        table: The table the cell attaches.
+        tick: Ticks since the note started.
+
+    Returns:
+        int: The period the channel holds, within the timer's range.
+    """
+    moved = min(max(note_index + table.step(tick), 0), len(tuning_table) - 1)
+    period = tuning_table[moved] + instrument.value("toneAdd", tick)
+    return min(max(period, BITPHASE_SILENT_PERIOD), BITPHASE_MAX_PERIOD)
+
+
 def _note(data: Optional[Dict[str, Any]]) -> LoadedNote:
     source = data or {}
     return LoadedNote(
         name=source.get("name", BITPHASE_DEFAULT_NOTE_NAME),
         octave=source.get("octave", BITPHASE_DEFAULT_OCTAVE),
     )
+
+
+def _table_index(data: Dict[str, Any]) -> Optional[int]:
+    """The table an effect reads, which Bitphase takes from any index of zero or above.
+
+    A cell stating no index at all is driven by its own parameter, and one carrying an
+    empty value reads as the first table, since that is what the comparison Bitphase
+    makes says of it.
+    """
+    if "tableIndex" not in data:
+        return None
+
+    index = data["tableIndex"]
+    if index is None:
+        return BITPHASE_FIRST_TABLE_INDEX
+
+    return index if index >= BITPHASE_FIRST_TABLE_INDEX else None
 
 
 def _effect(data: Optional[Dict[str, Any]]) -> Optional[LoadedEffect]:
@@ -144,7 +256,7 @@ def _effect(data: Optional[Dict[str, Any]]) -> Optional[LoadedEffect]:
         effect=data.get("effect", BITPHASE_DEFAULT_EFFECT),
         delay=data.get("delay", BITPHASE_DEFAULT_EFFECT_DELAY),
         parameter=data.get("parameter", BITPHASE_DEFAULT_EFFECT_PARAMETER),
-        table_index=data.get("tableIndex"),
+        table_index=_table_index(data),
     )
 
 
@@ -166,12 +278,30 @@ def _row(data: Dict[str, Any]) -> LoadedRow:
     )
 
 
-def _channel(data: Dict[str, Any], label: str) -> LoadedChannel:
-    rows = data.get("rows")
-    if rows is None:
-        return LoadedChannel(label=label, rows=[])
+def _effect_column_count(data: Dict[str, Any], rows: List[LoadedRow]) -> int:
+    """How many effect columns a channel lays out, which its widest line states.
 
-    return LoadedChannel(label=label, rows=[_row(row) for row in rows])
+    Bitphase takes the count the channel carries where it holds one, and reads it off the
+    lines otherwise, so a channel written without the field lays out as many columns as its
+    lines fill.
+    """
+    stated = data.get("effectColumnCount")
+    if isinstance(stated, int):
+        return min(max(stated, BITPHASE_MIN_EFFECT_COLUMNS), BITPHASE_MAX_EFFECT_COLUMNS)
+
+    return max(
+        (len(row.effects) for row in rows),
+        default=BITPHASE_MIN_EFFECT_COLUMNS,
+    )
+
+
+def _channel(data: Dict[str, Any], label: str) -> LoadedChannel:
+    rows = [_row(row) for row in data.get("rows") or []]
+    return LoadedChannel(
+        label=label,
+        rows=rows,
+        effect_column_count=_effect_column_count(data, rows),
+    )
 
 
 def _pattern(data: Dict[str, Any], labels: List[str]) -> LoadedPattern:
@@ -186,19 +316,16 @@ def _pattern(data: Dict[str, Any], labels: List[str]) -> LoadedPattern:
     )
 
 
-def _instrument_row(data: Dict[str, Any]) -> LoadedInstrumentRow:
-    return LoadedInstrumentRow(
-        pulse_width=data.get("pulseWidth", BITPHASE_DEFAULT_PULSE_WIDTH),
-        volume_or_rate=data.get("volumeOrRate", BITPHASE_DEFAULT_VOLUME_OR_RATE),
-        envelope=bool(data.get("envelope", False)),
-        sound_length=data.get("soundLength", 0),
-        tone_add=data.get("toneAdd", 0),
-        tone_accumulation=bool(data.get("toneAccumulation", False)),
-        retrigger=bool(data.get("retrigger", False)),
-        sweep=bool(data.get("sweep", False)),
-        sweep_rate=data.get("sweepRate", 0),
-        sweep_shift=data.get("sweepShift", 0),
-    )
+def _macro(data: Dict[str, Any]) -> LoadedMacro:
+    """One macro as Bitphase resolves it, within the values it stores and the loop they hold."""
+    values = list(data.get("values") or [])[:BITPHASE_MAX_MACRO_LENGTH]
+    loop = data.get("loop", BITPHASE_DEFAULT_LOOP)
+    return LoadedMacro(values=values, loop=min(max(loop, 0), max(len(values) - 1, 0)))
+
+
+def _macros(data: Dict[str, Any]) -> Dict[str, LoadedMacro]:
+    macros = data.get("macros") or {}
+    return {field: _macro(macro) for field, macro in macros.items()}
 
 
 def _instrument(data: Dict[str, Any]) -> LoadedInstrument:
@@ -207,9 +334,8 @@ def _instrument(data: Dict[str, Any]) -> LoadedInstrument:
     return LoadedInstrument(
         id=identifier if isinstance(identifier, str) else BITPHASE_DEFAULT_INSTRUMENT_ID,
         chip_type=chip_type if isinstance(chip_type, str) else BITPHASE_DEFAULT_CHIP_TYPE,
-        loop=data.get("loop", BITPHASE_DEFAULT_LOOP),
         name=data.get("name", BITPHASE_DEFAULT_NAME),
-        rows=[_instrument_row(row) for row in data.get("rows") or []],
+        macros=_macros(data),
     )
 
 
@@ -219,6 +345,7 @@ def _table(data: Dict[str, Any]) -> LoadedTable:
         loop=data.get("loop", BITPHASE_DEFAULT_LOOP),
         name=data.get("name", BITPHASE_DEFAULT_NAME),
         rows=list(data.get("rows") or []),
+        additive=bool(data.get("additive", False)),
     )
 
 
@@ -230,6 +357,15 @@ def _initial_speed(data: Dict[str, Any]) -> int:
     return BITPHASE_DEFAULT_INITIAL_SPEED
 
 
+def _default_pattern_length(data: Dict[str, Any]) -> int:
+    """The line count a pattern added to the song takes, within the range Bitphase keeps."""
+    length = data.get("defaultPatternLength")
+    if isinstance(length, int) and MIN_PATTERN_LENGTH <= length <= MAX_PATTERN_LENGTH:
+        return length
+
+    return BITPHASE_DEFAULT_PATTERN_LENGTH
+
+
 def _song(data: Dict[str, Any], labels: List[str]) -> LoadedSong:
     return LoadedSong(
         chip_type=data.get("chipType"),
@@ -238,6 +374,7 @@ def _song(data: Dict[str, Any], labels: List[str]) -> LoadedSong:
         interrupt_frequency=data.get("interruptFrequency", BITPHASE_DEFAULT_INTERRUPT_FREQUENCY),
         a4_tuning_hz=data.get("a4TuningHz", BITPHASE_DEFAULT_A4_TUNING),
         initial_speed=_initial_speed(data),
+        default_pattern_length=_default_pattern_length(data),
         tuning_table=list(data.get("tuningTable") or []),
         patterns=[_pattern(pattern, labels) for pattern in data.get("patterns") or []],
     )

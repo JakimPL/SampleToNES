@@ -3,7 +3,8 @@ from typing import Dict, Final, Optional
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.truncation import EnvelopeTruncation
-from sampletones_core.features.envelope import Envelope, releases
+from sampletones_core.features.envelope import Envelope
+from sampletones_core.features.limits import within_limit
 from sampletones_core.formats.famitracker.model.sequence import InstrumentSequence
 from sampletones_core.formats.famitracker.specification.sequences import (
     BEND_SEQUENCE_KINDS,
@@ -46,10 +47,8 @@ def stored_envelope(
 ) -> Envelope[int]:
     """One dimension as a FamiTracker file holds it, within the items a sequence stores.
 
-    The item limit belongs to the file: an envelope carries whatever length it was written at, and
-    this is where a longer one meets what the format stores. A dimension over the limit keeps its
-    opening items, and a volume dimension ending at silence keeps that silence as its last item —
-    the release is what ends a note, so it is the one item worth a place of its own.
+    The item limit belongs to the file, and :func:`within_limit` is the rule every format shortens
+    a dimension by.
 
     Args:
         feature_key: The dimension being written.
@@ -58,10 +57,7 @@ def stored_envelope(
     Returns:
         Envelope[int]: The dimension within the items the file holds.
     """
-    if feature_key is FeatureKey.VOLUME and releases(envelope):
-        return _keeping_release(envelope, MAX_SEQUENCE_ITEMS)
-
-    return envelope.limited(MAX_SEQUENCE_ITEMS)
+    return within_limit(feature_key, envelope, MAX_SEQUENCE_ITEMS)
 
 
 def is_shortened(feature_key: FeatureKey, envelope: Envelope[int]) -> bool:
@@ -158,15 +154,6 @@ def _stored_envelopes(features: Features) -> Dict[SequenceKind, Envelope[int]]:
         FEATURE_KEY_TO_SEQUENCE_KIND[feature_key]: stored_envelope(feature_key, envelope)
         for feature_key, envelope in features.envelopes.items()
     }
-
-
-def _keeping_release(envelope: Envelope[int], limit: int) -> Envelope[int]:
-    """This dimension within ``limit`` items, the last of them the release it ends on."""
-    if len(envelope.items) <= limit:
-        return envelope
-
-    opening = envelope.limited(limit - 1)
-    return opening.with_items(opening.items + envelope.items[-1:])
 
 
 def _sequence(

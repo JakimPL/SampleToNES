@@ -29,13 +29,15 @@ with every field below loads exactly as it was written.
 ```
 Project    { name, author, songs[], loopPointId, patternOrder[], tables[],
              patternOrderColors{}, instruments[] }
-Song       { patterns[], tuningTable[], initialSpeed, chipType, chipVariant,
-             chipFrequency, interruptFrequency, a4TuningHz, virtualChannelMap{} }
+Song       { patterns[], tuningTable[], initialSpeed, defaultPatternLength, chipType,
+             chipVariant, chipFrequency, interruptFrequency, a4TuningHz,
+             virtualChannelMap{} }
 Pattern    { id, length, channels[], patternRows[] }
-Channel    { rows[], label }
+Channel    { rows[], label, effectColumnCount }
 Row        { note: { name, octave }, effects[], instrument, table, volume }
-Table      { id, rows[], loop, name }
-Instrument { id, chipType, rows[], loop, name }
+Effect     { effect, delay, parameter, tableIndex }
+Table      { id, rows[], loop, name, additive }
+Instrument { chipType, name, macros{ field: { values[], loop } }, id }
 ```
 
 The project owns the instruments and tables, so every song addresses the same lists. `patternOrder` names
@@ -43,36 +45,48 @@ the pattern each order position plays. `loopPointId` is the order position playb
 
 **Field names are camelCase**, as in Bitphase's own files.
 
+A channel has as many effect columns as its widest row, up to four, and Bitphase gives a channel the same
+count in every pattern it appears in. An effect reads its argument from a table whenever `tableIndex` is
+zero or above, and from `parameter` otherwise, so an effect driven by its parameter writes `tableIndex`
+as `-1`. An empty value counts as naming the first table, and the effect is then dropped.
+
 ### A.2 `.json` — the instrument preset
 
 Bitphase's instruments panel saves and loads a single instrument through a file picker. The file holds
-`{ chipType, name, loop, rows }`, indented the way Bitphase writes its own, so a preset written here reads
-like one saved from the tracker.
+`{ chipType, name, macros }`, indented the way Bitphase writes its own, so a preset written here reads
+like one saved from the tracker. The panel writes the macros into the instrument slot the reader has
+selected, and that slot gives the instrument its id and its chip.
 
-A preset has rows only, so its pitch movement goes in each row's `toneAdd` (section C.3) instead of a
-table.
+A preset has macros only, so its pitch movement goes in the `toneAdd` each tick takes (section C.3)
+instead of a table.
 
 ## B. The NES instrument
 
-An instrument advances **one row per engine tick** while a note sounds, so a row has every register value
-the channel takes for that tick. The fields match Bitphase's `NesInstrumentRow`:
+An instrument is a set of **macros**, one per field, and each macro gives that field a value per engine
+tick while a note sounds. A field with no macro takes the default below, so an instrument writes a macro
+only for the fields a reconstruction decides. The fields match Bitphase's own:
 
-| Field | Range | Runtime meaning | What the exporter writes |
-| --- | --- | --- | --- |
-| `pulseWidth` | 0–3 | square duty cycle; on the noise channel, any nonzero value selects the short LFSR | the duty-cycle envelope item (squares), the short/long mode (noise), a flat value (triangle) |
-| `volumeOrRate` | 0–15 | the literal channel volume while `envelope` stays off | the volume envelope item, or a full level where the slice leaves its volume to the channel |
-| `envelope` | bool | reads `volumeOrRate` as a hardware decay rate | `false`, so each item is the volume itself |
-| `soundLength` | 0–511 | length counter in ticks; `0` holds the note | `0`, so the volume envelope alone shapes the note |
-| `toneAdd` | −4096–4095 | period offset added to the tuning-table period (squares and triangle) | `0` in a document, the pitch contour in a preset |
-| `toneAccumulation` | bool | sums `toneAdd` across ticks | `false`, since each item is an absolute offset |
-| `retrigger` | bool | restarts the waveform phase this tick | `false`, so the waveform runs continuously |
-| `sweep` / `sweepRate` / `sweepShift` | bool / 0–7 / −7–7 | the square channel's hardware sweep | disabled |
+| Field | Range | Default | Runtime meaning | What the exporter writes |
+| --- | --- | --- | --- | --- |
+| `volumeOrRate` | 0–15 | 15 | the literal channel volume while `envelope` stays off | the volume envelope, or one full level where the slice leaves its volume to the channel |
+| `pulseWidth` | 0–3 | 2 | square duty cycle; on the noise channel, any nonzero value selects the short LFSR | the duty-cycle envelope (squares), the short or long mode (noise); the triangle writes no macro |
+| `toneAdd` | −4096–4095 | 0 | period offset added to the period the note resolves to (squares and triangle) | the bend the slice sounds (section C.4), and the contour with it in a preset |
+| `envelope` | bool | `false` | reads `volumeOrRate` as a hardware decay rate | no macro, so each value is the volume itself |
+| `soundLength` | 0–511 | 0 | length counter in ticks; `0` holds the note | no macro, so the volume envelope alone shapes the note |
+| `toneAccumulation` | bool | `false` | sums `toneAdd` across ticks | no macro, so each value is a whole offset |
+| `retrigger` | bool | `false` | restarts the waveform phase this tick | no macro, so the waveform runs continuously |
+| `sweep` / `sweepRate` / `sweepShift` | bool / 0–7 / −7–7 | `false` / 0 / 0 | the square channel's hardware sweep | no macro, so the sweep stays off |
 
-**Looping.** Playback returns to the instrument's `loop` row once it runs off the end. That is the only
-mode. Bitphase reads every dimension out of one row, so the instrument returns to the earliest row any
-dimension repeats from, and each dimension goes on sounding what it would have sounded. A slice whose
-dimensions all halt sets `loop = len - 1` and rests on the level that row has: silence where the volume
-envelope ends on a note-off item, the channel's own level where the slice holds its volume.
+**Every field has its own counter.** A macro has the values one field takes and the index they repeat
+from, and Bitphase advances each macro on its own. A field whose value never changes therefore costs one
+value, however long the other fields run.
+
+**Looping.** Playback returns to the macro's `loop` index once the values run out. That is the only mode.
+A macro whose `loop` is `0` repeats whole, and one whose `loop` is its last index stays on the last value.
+A dimension the reconstruction gives a repeat point repeats from that point. A dimension that plays
+through writes its last index, and the value it ends on is what the note rests on: silence where the
+volume envelope ends on a note-off item, the channel's own level where the slice leaves the volume
+alone.
 
 **A hand-written instrument's slices.** Bitphase bakes a channel's registers tick by tick. An
 [instrument](../glossary.md#instrument) written by hand therefore reaches a document as one slice per
@@ -81,16 +95,14 @@ instrument states. The envelopes are one set for every channel, so the slices di
 channel reads of them.
 
 **A held volume.** A slice whose volume envelope has no item leaves its level to the channel. The exporter
-writes a full `volumeOrRate` for every frame the slice describes. Playback combines a row's level with the
-pattern's volume column through a PT3 volume table, where a full-level row comes out at the column's own
-level. Those rows therefore sound at whatever level the channel has, which is how FamiTracker reads a
-disabled volume sequence. A slice that describes no frame at all writes a single silent row, the smallest
-instrument Bitphase plays.
+writes one full `volumeOrRate`. Playback combines that level with the pattern's volume column through a
+PT3 volume table, where a full level comes out at the column's own level. The slice therefore sounds at
+whatever level the channel has, which is how FamiTracker reads a disabled volume sequence. A slice that
+describes no frame at all writes a single silent value, the smallest instrument Bitphase plays.
 
-**Equal lengths.** Instrument rows and table rows advance on independent per-tick counters, so they share a
-length and a loop point to stay in step for as long as the note sounds. The slice's longest dimension sets
-that length. Every shorter dimension holds the value it ended on for the rest of it (`Envelope.resized`),
-as the sequences of a FamiTracker instrument each do on a counter of their own.
+**A table runs beside the macros.** The table advances one step per tick on a counter of its own, so the
+contour keeps the length and the repeat point the arpeggio envelope was written at, whatever the macros
+beside it do.
 
 ## C. Pitch
 
@@ -118,8 +130,10 @@ _SampleToNES_ and FamiTracker share that convention.
 ### C.2 Tables carry the contour
 
 A table has one semitone offset per tick, and playback adds `rows[position]` to the channel's note every
-tick. That matches a reconstruction's arpeggio envelope in absolute mode, so the contour crosses over
-verbatim on the pitched channels.
+tick. It repeats from `loop` once the steps run out, by the rule a macro repeats by. That matches a
+reconstruction's arpeggio envelope in absolute mode, so the contour crosses over verbatim on the pitched
+channels, with the repeat point the envelope was written at. A table whose `additive` flag is set adds
+each step to the one before it; a contour measures every step from the note, so the flag stays clear.
 
 A pattern's `table` column names a table by `id + 1`. `0` leaves the attached table alone and `-1`
 detaches it.
@@ -138,10 +152,30 @@ channel has.
 
 ### C.3 Presets fold the contour into the period
 
-An instrument preset has no table, so its pitch movement is the per-tick `toneAdd` each row applies to the
-note's own period. The offsets are measured against the pitch the slice was reconstructed at, under the
-tuning a freshly created Bitphase document plays: NTSC at concert pitch. The noise channel takes its period
-from the note, so its preset rows hold a flat offset.
+An instrument preset has no table, so its pitch movement is the per-tick `toneAdd` each tick applies to
+the note's own period. One offset carries the contour and the bend together. The offsets are measured
+against the pitch the slice was reconstructed at, under the tuning a freshly created Bitphase document
+plays: NTSC at concert pitch. The noise channel takes its period from the note, so a preset for it has a
+flat offset.
+
+### C.4 The bend rides the tone offset
+
+A reconstruction says which note a frame plays and how far from that note it sounds, in steps of the
+channel's own timer. That distance is the [bend](../glossary.md#bend), written as a fine dimension of one
+step per unit and a coarse one of sixteen. Bitphase counts a period where _SampleToNES_ counts a timer,
+and the two differ by one step across the table, so a distance in steps crosses over unchanged. The bend
+is the `toneAdd` macro, one value per tick.
+
+| What the engine does | What the exporter writes |
+| --- | --- |
+| moves the note by the table step, then reads that note's period | each value is measured from the note its own contour step reaches, so a transposed trigger keeps its bend |
+| adds `toneAdd` to that period | the two bend dimensions added together, one value per tick |
+| leaves `toneAccumulation` clear | a whole offset per tick, not a step added to a running one |
+| silences a channel whose period reaches zero | an offset bounded to keep the period within 1–2047, the rule the timer follows |
+
+The squares and the triangle read the offset. The noise channel takes its period from the note alone, so
+a noise slice writes no `toneAdd`. A slice that sounds every tick on its own note writes none either, so
+a document pays only for the bends it sounds.
 
 ## D. Tempo as a groove
 
@@ -167,7 +201,7 @@ per pattern row, and that carries a per-row tick count into a song:
 | Its place | the first row of the DPCM channel, in every pattern |
 
 A speed effect applies from whichever channel has it, so the groove rides the DPCM channel, which this
-exporter leaves silent. Every sounding channel keeps the one effect column the chip gives it. The table
+exporter leaves silent. Every sounding channel keeps its own effect column free. The table
 advances an entry per row and resumes from where a trigger placed it. Triggering it at each pattern start
 therefore holds every row on the entry that describes it, however the order jumps.
 
@@ -212,8 +246,9 @@ is the same cell you would see in the tracker.
 
 | Quantity | Bitphase limit | Exporter behavior |
 | --- | --- | --- |
-| Items per instrument row list | unbounded | writes the envelope whole |
+| Values per instrument macro | 1–512 | writes the opening values of a longer dimension, and keeps a volume's closing silence |
 | Rows per table | unbounded | writes the contour, or the groove, whole |
+| Effect columns per channel | 1–4 | writes one, which the groove trigger takes on the DPCM channel |
 | Instruments | the instrument column holds 2 base-36 digits, so 1–1295 | raises past 1295 |
 | Tables | the table column holds 1 base-36 digit, so ids 0–34 | raises past 35 tables, one of which a groove takes |
 | Note range | the 96-entry tuning table, pitch 24–119 | clamps to the nearest playable note |
@@ -228,11 +263,25 @@ therefore what a wide document reaches first, and the exporter raises an error i
 document whose later voices cannot be named. A song whose rows vary spends one of those ids on its groove,
 so the slices a document holds are those the table column can still name.
 
+**The macro limit is the one a reconstruction meets by itself.** A dimension reaches it at 512 frames,
+which is 8.5 s at 60 Hz. Each field is counted on its own, so a flat duty or a held level costs one value,
+and the contour the table carries keeps its whole length. A volume dimension keeps its closing silence as
+its last value, because the note has to end. [The FamiTracker export](famitracker.md#b-the-2a03-instrument)
+meets its own limit by the same rule.
+
 ## G. Data without a counterpart
 
 **`ProjectInfo.comment`** has no counterpart in a Bitphase document, which has a name and an author only,
 so the exporter leaves the comment out.
 
+**A document is written at concert pitch.** `a4TuningHz` and the tuning table are written at A4 = 440 Hz,
+so a reconstruction tuned elsewhere sounds a document at the pitch Bitphase gives a new one. The distance
+is recorded in [bugs and to-dos](../development/bugs-and-todos.md).
+
+**A field a reconstruction does not decide gets no macro.** The hardware envelope, the length counter, the
+phase retrigger, the sweep and the tone accumulator each take the default in section B. Bitphase also
+stores DPCM sample data on an instrument but never plays it, so the exporter writes none of it.
+
 `interruptFrequency` carries the reconstruction's own tick rate. Bitphase's settings panel offers 50 and
-60 Hz, and its loader and timeline accept any value. A rate outside that pair plays correctly, and the
-panel's selector shows no match.
+60 Hz beside a custom value, and its loader and timeline accept any rate. A rate outside that pair plays
+correctly.

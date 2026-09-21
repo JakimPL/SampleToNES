@@ -12,6 +12,10 @@ from sampletones_core.formats.bitphase.specification.chip import (
     MIN_INITIAL_SPEED,
     ChipVariant,
 )
+from sampletones_core.formats.bitphase.specification.patterns import (
+    MAX_PATTERN_LENGTH,
+    MIN_PATTERN_LENGTH,
+)
 
 
 class BitphaseSong(BaseModel):
@@ -37,6 +41,12 @@ class BitphaseSong(BaseModel):
         ge=MIN_INITIAL_SPEED,
         le=MAX_INITIAL_SPEED,
         description="Engine ticks per pattern line.",
+    )
+    default_pattern_length: int = Field(
+        ...,
+        ge=MIN_PATTERN_LENGTH,
+        le=MAX_PATTERN_LENGTH,
+        description="Line count a pattern added to the song takes.",
     )
     chip_type: str = Field(
         default=CHIP_TYPE_NES,

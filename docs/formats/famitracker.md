@@ -225,12 +225,13 @@ stops the note. The driver holds a halted sequence's last value for as long as a
 sounding, so a volume envelope that ended audible would sound to the end of the song. Every generator
 writes the release item, so a volume dimension is one item longer than the frames it describes.
 
-**The item limit.** A FamiTracker sequence holds up to 252 items. Only this writer applies the limit: an
-envelope keeps whatever length it was written at until export. A dimension over the limit is written as
-its opening items. A volume dimension keeps its release as the last item, because the note has to end, so
-the release displaces the last sounding item that would not fit. A reconstruction reaches the limit at 252
-frames, since its volume carries the release past them. At the default 30 fps that is 8.4 s. The export
-reports what it left out.
+**The item limit.** A FamiTracker sequence holds up to 252 items. An envelope keeps whatever length it was
+written at, and a writer applies its own format's limit at export. A dimension over the limit is written
+as its opening items. A volume dimension keeps its release as the last item, because the note has to end,
+so the release displaces the last sounding item that would not fit. A reconstruction reaches the limit at
+252 frames, since its volume carries the release past them. At the default 30 fps that is 8.4 s. The
+export reports what it left out. [The Bitphase export](bitphase.md#f-bitphase-capacity-limits) shortens a
+dimension by the same rule, at its own limit.
 
 **Empty dimensions.** An empty dimension is written as a disabled sequence. This differs from a sequence
 with a single zero: a disabled slot leaves that dimension to the channel, while a one-item sequence sets

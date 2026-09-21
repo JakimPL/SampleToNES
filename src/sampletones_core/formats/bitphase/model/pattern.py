@@ -1,8 +1,12 @@
 from typing import Dict, Optional, Tuple
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from sampletones_core.formats.bitphase.model.config import BITPHASE_MODEL_CONFIG
+from sampletones_core.formats.bitphase.specification.effects import (
+    MIN_EFFECT_COLUMNS,
+    NO_EFFECT_TABLE,
+)
 from sampletones_core.formats.bitphase.specification.patterns import (
     EMPTY_OCTAVE,
     FULL_VOLUME,
@@ -35,16 +39,22 @@ class NoteCell(BaseModel):
 
 
 class EffectCell(BaseModel):
-    """One effect column of a pattern row."""
+    """One effect column of a pattern row.
+
+    Bitphase reads an effect from a table wherever the cell names an index of zero or
+    above, and from the cell's own parameter otherwise, so a parameter-driven effect
+    states ``NO_EFFECT_TABLE``.
+    """
 
     model_config = BITPHASE_MODEL_CONFIG
 
     effect: int = Field(..., description="Effect identifier.")
     delay: int = Field(default=0, description="Ticks the effect waits before it applies.")
     parameter: int = Field(default=0, description="Effect argument.")
-    table_index: Optional[int] = Field(
-        default=None,
-        description="Table the effect drives, where it takes one.",
+    table_index: int = Field(
+        default=NO_EFFECT_TABLE,
+        ge=NO_EFFECT_TABLE,
+        description="Table the effect drives, or NO_EFFECT_TABLE where its parameter drives it.",
     )
 
 
@@ -77,12 +87,22 @@ class BitphaseRow(BaseModel):
 
 
 class BitphaseChannel(BaseModel):
-    """One channel's lines within a pattern."""
+    """One channel's lines within a pattern.
+
+    A channel lays out as many effect columns as its widest line carries, and Bitphase
+    holds that width across every pattern the channel appears in.
+    """
 
     model_config = BITPHASE_MODEL_CONFIG
 
     rows: Tuple[BitphaseRow, ...] = Field(..., description="One row per pattern line.")
     label: str = Field(..., description="Name of the channel the lines drive.")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def effect_column_count(self) -> int:
+        """How many effect columns the channel's lines fill."""
+        return max((len(row.effects) for row in self.rows), default=MIN_EFFECT_COLUMNS)
 
 
 class BitphasePattern(BaseModel):

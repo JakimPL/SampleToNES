@@ -17,6 +17,8 @@ def build_features(
     *,
     arpeggio: Optional[Sequence[int]] = None,
     duty_cycle: Optional[Sequence[int]] = None,
+    bend: Optional[Sequence[int]] = None,
+    coarse_bend: Optional[Sequence[int]] = None,
     initial_pitch: int = REFERENCE_PITCH,
 ) -> Features:
     """Builds the envelopes of one channel slice, flat in every dimension left out."""
@@ -25,8 +27,8 @@ def build_features(
         initial_pitch=initial_pitch,
         volume=Envelope(items=tuple(volume)),
         arpeggio=Envelope(items=contour),
-        pitch=None,
-        hi_pitch=None,
+        pitch=None if bend is None else Envelope(items=tuple(bend)),
+        hi_pitch=None if coarse_bend is None else Envelope(items=tuple(coarse_bend)),
         duty_cycle=None if duty_cycle is None else Envelope(items=tuple(duty_cycle)),
     )
 

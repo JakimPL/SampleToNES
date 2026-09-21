@@ -86,11 +86,11 @@ class SliceVoice:
 
     Attributes:
         number: Value a pattern's instrument column carries to play the instrument.
-        instrument: The per-tick rows the channel takes on.
+        instrument: The macros the channel reads a value per tick from.
         table: The per-tick semitone contour that moves the note.
         channel: The NES channel the slice was reconstructed for.
         initial_pitch: Pitch the slice's contour is measured against.
-        ticks: How many ticks the instrument runs before it loops.
+        ticks: How many ticks the instrument runs before every dimension stands at its end.
     """
 
     number: int
@@ -135,19 +135,18 @@ def _build_slice_voice(
         number=number,
         instrument=BitphaseInstrument(
             id=format_instrument_id(number),
-            rows=envelopes.rows,
-            loop=envelopes.loop,
+            macros=envelopes.macros,
             name=name,
         ),
         table=BitphaseTable(
             id=table_id,
             rows=envelopes.table_rows,
-            loop=envelopes.loop,
+            loop=envelopes.table_loop,
             name=name,
         ),
         channel=channel,
         initial_pitch=initial_pitch,
-        ticks=len(envelopes.rows),
+        ticks=envelopes.ticks,
     )
 
 
@@ -196,6 +195,7 @@ def _build_song(
     *,
     speed: int,
     nes_frequency: int,
+    pattern_length: int,
 ) -> BitphaseSong:
     chip_frequency = CPU_FREQUENCIES[DEFAULT_CHIP_VARIANT]
     return BitphaseSong(
@@ -205,6 +205,7 @@ def _build_song(
             a4_tuning=DEFAULT_A4_TUNING,
         ),
         initial_speed=speed,
+        default_pattern_length=pattern_length,
         chip_frequency=chip_frequency,
         interrupt_frequency=nes_frequency,
     )
@@ -297,6 +298,7 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
                 patterns,
                 speed=PREVIEW_SPEED,
                 nes_frequency=request.nes_frequency,
+                pattern_length=length,
             ),
         ),
         pattern_order=order,
@@ -586,6 +588,7 @@ def project_to_bitphase(project: Project) -> BitphaseProject:
                 patterns,
                 speed=groove.ticks[GROOVE_TRIGGER_ROW],
                 nes_frequency=settings.nes_frequency,
+                pattern_length=project.song.rows_per_pattern,
             ),
         ),
         pattern_order=tuple(pattern.id for pattern in patterns),

@@ -2,52 +2,48 @@ import json
 from pathlib import Path
 from typing import Final, Sequence, Tuple
 
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.exporters.bend import bend_envelope
+from sampletones_core.exporters.feature import Features
 from sampletones_core.exports.request import InstrumentExport
-from sampletones_core.formats.bitphase.envelopes import features_to_envelopes
-from sampletones_core.formats.bitphase.model.instrument import BitphaseInstrumentPreset, NesInstrumentRow
+from sampletones_core.features.envelope import Envelope
+from sampletones_core.formats.bitphase.envelopes import ChannelEnvelopes, features_to_envelopes
+from sampletones_core.formats.bitphase.macros import macro, stored_envelope
+from sampletones_core.formats.bitphase.model.instrument import BitphaseInstrumentPreset
 from sampletones_core.formats.bitphase.notes import pitch_to_note_index
-from sampletones_core.formats.bitphase.specification.chip import DEFAULT_A4_TUNING, DEFAULT_CPU_FREQUENCY
-from sampletones_core.formats.bitphase.specification.instruments import (
-    MAX_TONE_ADD,
-    MIN_TONE_ADD,
-    NO_TONE_OFFSET,
-)
-from sampletones_core.formats.bitphase.specification.patterns import MAX_NOTE_INDEX, MIN_NOTE_INDEX
-from sampletones_core.formats.bitphase.tuning import generate_tuning_table
+from sampletones_core.formats.bitphase.pitch import contour_period, sounding_offset
+from sampletones_core.formats.bitphase.specification.instruments import NO_TONE_OFFSET
+from sampletones_core.formats.bitphase.specification.macros import NesMacroField
+from sampletones_core.formats.bitphase.tuning import DEFAULT_TUNING_TABLE
 
-PRESET_TUNING_TABLE: Final[Tuple[int, ...]] = generate_tuning_table(
-    DEFAULT_CPU_FREQUENCY,
-    a4_tuning=DEFAULT_A4_TUNING,
-)
 PRESET_JSON_INDENT: Final[int] = 2
 
 
 def _tone_offsets(
+    features: Features,
     channel: ChannelName,
-    initial_pitch: int,
     contour: Sequence[int],
 ) -> Tuple[int, ...]:
-    """Expresses a semitone contour as the per-tick period offsets a preset carries.
+    """Expresses a slice's pitch movement as the per-tick period offsets a preset carries.
 
-    A preset holds rows alone, so its pitch movement rides in each row's tone offset.
-    The offsets are measured against the pitch the slice was reconstructed at, under the
-    tuning the NTSC system gives at concert pitch, which is what a freshly created
-    Bitphase document plays. The noise channel takes its period from the note rather
-    than from a period offset, so its rows hold a flat offset and the note carries the
-    pitch.
+    A preset holds macros alone, so the movement a table would drive rides in the tone offset
+    each tick takes, beside the bend the slice sounds. The offsets are measured against the
+    pitch the slice was reconstructed at, under the tuning the NTSC system gives at concert
+    pitch, which is what a freshly created Bitphase document plays. The noise channel takes its
+    period from the note rather than from a period offset, so its offsets stay flat and the note
+    carries the pitch.
     """
     if channel == ChannelName.NOISE:
         return (NO_TONE_OFFSET,) * len(contour)
 
-    base_index = pitch_to_note_index(initial_pitch)
-    base_period = PRESET_TUNING_TABLE[base_index]
+    base_index = pitch_to_note_index(features.initial_pitch)
+    base_period = DEFAULT_TUNING_TABLE[base_index]
+    bend = stored_envelope(FeatureKey.PITCH, bend_envelope(features.pitch, features.hi_pitch))
 
     offsets = []
-    for semitones in contour:
-        index = max(MIN_NOTE_INDEX, min(MAX_NOTE_INDEX, base_index + semitones))
-        offset = PRESET_TUNING_TABLE[index] - base_period
-        offsets.append(max(MIN_TONE_ADD, min(MAX_TONE_ADD, offset)))
+    for tick, semitones in enumerate(contour):
+        moved = contour_period(base_index, semitones) - base_period
+        offsets.append(sounding_offset(base_period, moved + _value(bend, tick)))
 
     return tuple(offsets)
 
@@ -66,23 +62,35 @@ def instrument_to_preset(request: InstrumentExport) -> BitphaseInstrumentPreset:
         request.channel,
     )
     offsets = _tone_offsets(
+        request.features,
         request.channel,
-        request.features.initial_pitch,
-        envelopes.table_rows,
-    )
-    rows: Tuple[NesInstrumentRow, ...] = tuple(
-        row.model_copy(update={"tone_add": offset})
-        for row, offset in zip(
-            envelopes.rows,
-            offsets,
-        )
+        _contour(envelopes),
     )
 
     return BitphaseInstrumentPreset(
         name=request.name,
-        loop=envelopes.loop,
-        rows=rows,
+        macros={
+            **envelopes.macros,
+            NesMacroField.TONE_ADD: macro(Envelope[int](items=offsets, loop_point=envelopes.table_loop)),
+        },
     )
+
+
+def _contour(envelopes: ChannelEnvelopes) -> Tuple[int, ...]:
+    """The semitone steps a preset states an offset for, one per tick the instrument runs.
+
+    A document moves the note through a table that advances on a counter of its own, where a
+    preset carries the movement in the offsets themselves, so the contour is read out to the
+    ticks the slice describes.
+    """
+    contour = Envelope[int](items=envelopes.table_rows, loop_point=envelopes.table_loop)
+    return tuple(_value(contour, tick) for tick in range(envelopes.ticks))
+
+
+def _value(envelope: Envelope[int], tick: int) -> int:
+    """The value a dimension stands at on a tick, which is nothing where it writes none."""
+    value = envelope.at(tick)
+    return NO_TONE_OFFSET if value is None else value
 
 
 def write_preset(destination: Path, preset: BitphaseInstrumentPreset) -> None:

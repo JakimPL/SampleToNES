@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from sampletones_core.formats.bitphase.model.config import BITPHASE_MODEL_CONFIG
 from sampletones_core.formats.bitphase.specification.instruments import (
+    ABSOLUTE_TABLE,
     LOOP_FROM_START,
     MAX_TABLE_ID,
     MIN_TABLE_ID,
@@ -41,4 +42,8 @@ class BitphaseTable(BaseModel):
     name: str = Field(
         ...,
         description="Name shown in the table list.",
+    )
+    additive: bool = Field(
+        default=ABSOLUTE_TABLE,
+        description="Whether each step adds to the value the table has reached, rather than to the note.",
     )
