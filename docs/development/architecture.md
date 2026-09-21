@@ -140,7 +140,7 @@ A menu item is a view of an action. `ShortcutManager.add_menu_item(shortcut_id, 
 
 **The identifier vocabularies, the declarations that complete them and the shapes a case may take are enforced the same way.** Each is a `sampletones check <name>` command under `sampletones_tools/checks/`, run over the whole tree as a pre-commit hook. The principle a check holds names it where that principle is stated. The checks are global by nature, because a dead entry and an unread fragment are both absences, so the hooks pass the whole tree and not filenames.
 
-**Behavioral contracts are enforced by review.** Contracts a grep cannot see, such as where state lives, which methods touch DPG and how errors travel, are upheld in code review against this document. A change that alters one lands with the edit that states the new contract. A change that knowingly leaves a distance behind lands with an entry in [`bugs-and-todos.md`](bugs-and-todos.md) § Architecture. [`documentation.md`](documentation.md) § Upkeep holds that rule. The ledger is the memory of what is currently out of line.
+**Behavioral contracts are enforced by review.** Contracts a grep cannot see, such as where state lives, which methods touch DPG and how errors travel, are upheld in code review against this document. A change that alters one lands with the edit that states the new contract. A change that knowingly leaves a distance behind lands with an entry in [`bugs-and-todos.md`](bugs-and-todos.md#architecture). [`documentation.md`](documentation.md#upkeep) holds that rule. The ledger is the memory of what is currently out of line.
 
 ---
 

@@ -129,7 +129,7 @@ currently out of line. An entry leaves when the code meets the contract again.
 * `ConverterMessages` reads the strings it shows a reader once, at construction, where principle 8 has text
   resolve at the point of use. The stage names and status lines are cached as fields, and the run's
   templates are read live. The fix is to read each key where it is used and let the manager answer.
-* `FolderScan` runs a long directory read on a worker and reports back, which is what `services/` is for,
+* `FolderScan` runs a long directory read on a worker and reports back, which is work that `services/` exists for,
   while it stands in `logic/`. It reports through optional hooks and not the result union, and the
   coordinator crosses to the render thread on its behalf. Moving it would buy the exhaustive `match` every
   other long operation reports through.

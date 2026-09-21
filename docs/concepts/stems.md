@@ -113,7 +113,7 @@ A cost is a fraction of its own recording's energy, so two stems' costs stand on
 Comparing them alone would hand a channel to whichever recording is easiest to approximate. Within a
 level, a candidate is therefore ranked by how far it lowers its stem's frame cost, weighted by the energy
 behind it. The channel reaches the stem whose sound it covers most. Precedence between levels stays the
-hierarchy's, which is what a reader arranges the levels to say.
+hierarchy's, because that is what a reader arranges the levels to say.
 
 ### 10. Ties resolve deterministically
 

@@ -60,7 +60,7 @@ The NES has four sound [channels](../glossary.md#channel): **Pulse 1**, **Pulse 
 **Noise**. Every recording in the list has a checkbox for each channel. Check the channels that the
 recording may use. Press `1` to `4` to switch a channel on or off for the selected row.
 
-A folder's checkboxes stand for every recording inside it. A checkbox is checked when they all use the
+A folder's checkboxes represent every recording inside it. A checkbox is checked when they all use the
 channel, partly filled when only some do, and empty when none do. Clicking one changes the channel for
 all of them. To change one recording on its own, open the folder first — click the marker
 next to the folder name, or double-click the name — and each recording inside has its own checkboxes.
@@ -72,7 +72,7 @@ per channel:
 
 - **on** repeats the checkbox in the list, so you can also switch a channel there.
 - [**bend**](../glossary.md#bend) tunes each note to the recording's exact pitch. **Pulse 1**, **Pulse 2** and **Triangle**
-  have it; noise has none.
+  have it, and noise does not.
 - [**drive**](../glossary.md#drive) sets how hard the recording pushes that channel. `1.00` is the level the recording was
   measured at, and up to `5.00` pushes it harder, which suits a part that sits quietly under the
   others. Drag the slider, or Ctrl-click it to type a value.

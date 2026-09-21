@@ -13,13 +13,13 @@ These rules govern the Python in this repository. They complement
 1. Give every semantic value a name — a `Final` constant, promoted to a shared module once the concept is reused.
 1. Hand a value to the function that uses it. Threading it through functions that only pass it along is the _tramp data_ antipattern.
 1. Make the inputs logic depends on explicit. The parameters and configuration instances it relies on are required, not optional. Reserve default values for settings seldom changed (e.g. `seed`), and declare each such default as a top-level `Final` constant.
-1. Derive booleans rather than storing them. A boolean computed from existing state belongs in a `@property` (or `@computed_field` on a Pydantic model), since a stored flag creates hidden state that drifts out of sync.
-1. State type expectations explicitly, and reach attributes by direct access rather than dynamic `getattr` or `hasattr`.
+1. Derive booleans from state. A boolean computed from existing state belongs in a `@property` (or `@computed_field` on a Pydantic model), since a stored flag creates hidden state that drifts out of sync.
+1. State type expectations explicitly, and reach attributes by direct access, not through dynamic `getattr` or `hasattr`.
 1. Prefer protocols over inheritance.
 1. Prefer `match` statements over long `isinstance` chains, and for enumeration handling.
 1. Prefer `pathlib.Path` over `os.path`.
 1. Separate function options with `*`, and choose positional arguments intentionally.
-1. Change internal APIs, configs, and data shapes freely; preserve backward compatibility only when the user explicitly asks.
+1. Change internal APIs, configs, and data shapes freely. Preserve backward compatibility only when the user explicitly asks.
 1. Move a stored data version once per release. The version a build writes between releases is still being written. A further change to that format therefore extends the upgrade step already pending, and one step carries the whole distance from the version the last release shipped. Libraries are rebuilt from their settings, so a change to what library generation produces moves the library version alone. See [data compatibility](release/compatibility.md).
 1. A risk named while planning lands as a case or a ledger entry. A plan records intent, and a case and the ledger carry a doubt past the moment it was felt. Where the risk is a behavior that might be wrong, write the case that would catch it. Where it is a distance the change accepts, write the entry in [bugs and todos](bugs-and-todos.md) that names it.
 1. Run `pre-commit` on new files after each change.
@@ -53,7 +53,7 @@ These rules govern the Python in this repository. They complement
 
 1. Let a failure crash unless the code can recover from it meaningfully.
 1. Handle errors at the execution boundary where possible.
-1. Catch an exception only to recover from it; a `try`/`except` that repackages a failure without recovering adds nothing.
+1. Catch an exception only to recover from it. A `try`/`except` that repackages a failure without recovering adds nothing.
 1. Bare `except` and `except Exception` are forbidden.
 1. Scope each `try` to the statements that can actually fail, absent a specific reason to widen it.
 
@@ -68,9 +68,9 @@ These rules govern the Python in this repository. They complement
 1. A docstring explains the intention of a class or function and the context of its use.
 1. State functionality in positive terms. Describe what a class or function *does*. Reframe every negation ("does not", "rather than", "instead of", "without", "never", "cannot", "no longer") into the behavior that actually happens. The positive statement carries the meaning, so a contrast with a rejected alternative adds nothing.
 1. Negative phrasing is allowed only where the condition itself is the contract: exception triggers in `Raises:` clauses, precondition/postcondition bounds (prefer "must be at least X" over "cannot be less than X" where natural), and documented edge-case returns. Outside these concrete cases, negative descriptions are information noise and must be removed.
-1. Justify an arbitrary choice in the docstring rather than a code comment, and frame the justification by what the choice achieves.
+1. Justify an arbitrary choice in the docstring, not in a code comment, and frame the justification by what the choice achieves.
 1. Let clear names carry the meaning, and skip comments or docstrings that restate the code.
-1. Avoid code comments; they are warranted for tensor shapes, third-party API quirks, or non-obvious invariants.
+1. Avoid code comments. They are warranted for tensor shapes, third-party API quirks, or non-obvious invariants.
 1. Code comments and docstrings are not for recording changes or progress.
 1. Don't write module docstrings.
 

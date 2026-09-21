@@ -59,7 +59,7 @@ Growth runs before the first write, so one history entry covers the appended fra
 Transpose and volume move whole cells, while a region names its edges as subcolumns. A shift therefore reads the columns a region covers (`TrackerRegion.columns`) and reaches each of their channels once, at every row the region spans. Two consequences follow:
 
 - A nudge raised with the cursor on a volume subcolumn still moves that cell's transpose.
-- A region covering the sample column together with a channel beneath it moves that channel a single step, since the sample column stands for the channels a value typed in it writes to.
+- A region covering the sample column together with a channel beneath it moves that channel a single step, since the sample column represents the channels a value typed in it writes to.
 
 Each cell reaches the grid through the single-cell adjustment that already governs it, as a pasted cell does. A shift therefore lands exactly the writes the same nudge repeated by hand would make, the transpose and volume ranges included.
 

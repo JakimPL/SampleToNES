@@ -43,7 +43,7 @@ graph TD
 | Package | What it holds |
 |---------|---------------|
 | `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, and the command type the entry and the tools share |
-| `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, behavior, deployment, and these boundaries themselves — reached as package data rather than by import |
+| `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, behavior, deployment, and these boundaries themselves — reached as package data and not by import |
 | `sampletones_assets` | The application icons and the bundled fonts, reached as package data |
 | `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats |
 | `sampletones_player` | The NES player: the register model, the re-clocking schedule, the 6502 driver and the NSF file |
@@ -59,7 +59,7 @@ developer command does in an installed copy.
 
 **The reconstruction engine sits below the console player.** A reconstruction is produced, saved and
 exported to a tracker with `sampletones_player` absent from the process. That lets the player's format move
-while the engine holds still. An export backend that reaches the console (the seam described in
+while the engine holds still. An export backend that reaches the console (the interface described in
 `sampletones_core/exports/backend.py`) is therefore registered from above and not from the engine's own
 registry.
 

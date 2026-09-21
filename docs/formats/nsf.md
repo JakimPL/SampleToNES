@@ -84,7 +84,7 @@ then the high byte of each. One pointer reaches both halves, which the driver's 
 A plane names a pitch as its **index**, the distance above the lowest pitch the tuning covers, and not as
 a divider. A tick's divider is written as the index of the pitch it is counted from, beside a bend: the
 steps from that pitch's own divider (section C). Pitches beyond the divider's range share the timer they
-clamp to, and the lowest pitch sounding a timer stands for the whole group.
+clamp to, and the lowest pitch sounding a timer represents the whole group.
 
 The table comes from the tuning the exported work was built at, computed by the function the
 reconstruction's own generators render from.

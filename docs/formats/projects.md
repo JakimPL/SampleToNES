@@ -39,7 +39,7 @@ Every voice carries an `id` and a `name`. The `kind` says what else it carries:
 | `instrument` | its `envelopes` — `volume`, `arpeggio` and `duty_cycle` — and the `initial_pitch` and `initial_period` those values are measured against |
 
 Each envelope has its `items`, one per tick, and a `loop_point`: the item they repeat from while a note
-is held. It is `null` where the items play once and the last item stands for as long as the note sounds.
+is held. It is `null` where the items play once and the last item holds for as long as the note sounds.
 See [loop point](../glossary.md#loop-point).
 
 ### `song`

@@ -208,7 +208,7 @@ right-click menu.
 ## Undoing a change
 
 You can undo every change, including a copy, a paste or a delete, which each count as one step. The
-**History** panel lists your changes; click one to go back to that point. **Undo** and **Redo** are
+**History** panel lists your changes, and you can click one to go back to that point. **Undo** and **Redo** are
 on the **Edit** menu.
 
 ## Timing and properties

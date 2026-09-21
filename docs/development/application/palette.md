@@ -36,4 +36,4 @@ keeps as table state.
 
 The `palette-colors` hook reports each of these: an attribute assigned a resolved `rgba`, a theme color
 filled outside the palette bindings, and a hex literal in the shipped configuration outside `palettes/`
-(see [`architecture.md`](../architecture.md) § Enforcement).
+(see [`architecture.md`](../architecture.md#enforcement)).

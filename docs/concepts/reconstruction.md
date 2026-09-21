@@ -149,7 +149,7 @@ A single **coefficient** scales the input before matching, so its typical frame 
 channel renders at full volume. The typical frame is a *robust* level: a high percentile of the per-frame
 RMS levels over the audible frames. A lone transient such as a kick or a click therefore saturates to the
 loudest available note, while the bulk of the signal stays within reach of the quietest one. RMS measures
-how much sound a frame carries, which is what a channel's volume renders, whatever the waveform's crest.
+how much sound a frame carries. A channel's volume renders that quantity, whatever the waveform's crest.
 
 That level is brought to the full-scale RMS level of the quietest tone channel the setup covers. This is
 the triangle, whose RMS level is its peak over √3. A pulse, which swings between two levels, takes over

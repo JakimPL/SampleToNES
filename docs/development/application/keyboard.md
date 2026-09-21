@@ -21,7 +21,7 @@ The application orders its scopes by priority, from highest to lowest:
 | Priority | Scope | Active when | Behavior |
 |----------|-------|-------------|-----------|
 | `MODAL` | the open dialog's navigator | a modal dialog holds the keyboard | routes Tab/Enter/Escape to the dialog's focus ring and claims every press, so a dialog owns the keyboard exclusively while it is shown |
-| `PANEL` | a sub-panel the keys are meant for | its tab is in front, its card stands open, and the sub-panel holds what the keys act on: a cursor, a row picked out, or an open audition | handles the keys its own category names and yields every combination it does not own, so a higher-reaching shortcut still wins |
+| `PANEL` | a sub-panel the keys are meant for | its tab is in front, its card is open, and the sub-panel holds what the keys act on: a cursor, a row picked out, or an open audition | handles the keys its own category names and yields every combination it does not own, so a higher-reaching shortcut still wins |
 | `SHORTCUT` | application shortcuts (`ShortcutManager`) | always | fires the matching shortcut while no field is being edited, or whenever the shortcut is `field_transparent` |
 
 The router offers a panel the key ahead of the shortcut scope. A panel therefore returns `False` on any combination it does not own. The grid, for example, yields every `Ctrl`-modified press. That lets field-transparent shortcuts, such as the tab switch, reach the shortcut scope while a grid cursor is set.
@@ -78,7 +78,7 @@ An assignment displaces. Giving an action a combination its category already ans
 
 ## Actions
 
-Declaring an action takes four links, and the `shortcut-actions` check holds every one of them (see [`architecture.md`](../architecture.md) § Enforcement):
+Declaring an action takes four links, and the `shortcut-actions` check holds every one of them (see [`architecture.md`](../architecture.md#enforcement)):
 
 | Link | Where | What it says |
 |------|-------|----------------|
@@ -103,4 +103,4 @@ The owner writes one builder, such as `GUISequencerVoicesPanel.add_action_items`
 
 ### A menu whose contents follow a selection is filled when it is opened
 
-A menu bar is built once, while what an item should say follows the cursor at the moment a reader opens the menu. `MenuSection` (`ui/elements/menu_section.py`) is the mechanism. A marker leads the menu, and the framework reports it drawn once a frame while the menu stands open. A gap in those reports marks a fresh opening and refills the section. The `MenuSection` docstring says why the marker leads.
+A menu bar is built once, while what an item should say follows the cursor at the moment a reader opens the menu. `MenuSection` (`ui/elements/menu_section.py`) is the mechanism. A marker leads the menu, and the framework reports it drawn once a frame while the menu is open. A gap in those reports marks a fresh opening and refills the section. The `MenuSection` docstring says why the marker leads.

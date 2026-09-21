@@ -100,7 +100,7 @@ A pass through the song begins on the values a channel holds from the start: ful
 
 A render writes the whole song to an audio file through the synthesizer that plays it. `RowSynthesizer` serves both: the player drives it to feed the device, and the render drives it to feed a file writer. The synthesis is therefore written once, and the file and the playback agree on what the song sounds like by construction.
 
-Two things differ between them, and whoever asks for the audio sets each. The **document** is a seam. The synthesizer reads its project through `ProjectSource`, which the live controller satisfies for playback and a frozen `ProjectSnapshot` satisfies for a render. The player therefore follows every edit as the buffer drains (principle 6), while a render describes one state of the document however the project moves on. The **rate** is the consumer's: the device for playback, the chosen output format for a render. The synthesizer rebuilds its generators and its tick clock when either changes, so a file is written at the rate its engine ran at.
+Two things differ between them, and whoever asks for the audio sets each. The **document** is read through an interface. The synthesizer reads its project through `ProjectSource`, which the live controller satisfies for playback and a frozen `ProjectSnapshot` satisfies for a render. The player therefore follows every edit as the buffer drains (principle 6), while a render describes one state of the document however the project moves on. The **rate** is the consumer's: the device for playback, the chosen output format for a render. The synthesizer rebuilds its generators and its tick clock when either changes, so a file is written at the rate its engine ran at.
 
 A rate is asked for once there is audio to take it, which is the first row the synthesizer renders. A device has been chosen by the time playback starts, and a format by the time a render does. A session on a machine with no output device opens on that rule, and everything that writes and does not sound works on it: editing, exporting a module and rendering to a file.
 
@@ -114,7 +114,7 @@ The write takes one pass, or two where the user asks for a normalized peak. The 
 
 The device is torn down once every source holding a stream has released it. A source that streams to the device writes from a thread of its own, so only that source can bring the writing to a stop and hand the stream back. The hand-back is what leaves the backend safe to terminate.
 
-`PlaybackRouter.shutdown()` is the seam the application calls as it quits. It reaches every registered source and not only the engaged one, so a source holding a stream is wound down whatever the transport reports at that moment.
+`PlaybackRouter.shutdown()` is the entry point the application calls as it quits. It reaches every registered source and not only the engaged one, so a source holding a stream is wound down whatever the transport reports at that moment.
 
 The device holds a release per stream it handed out and invokes it whenever it needs the output free: as the backend is torn down, and on a device change, where the release stops the song so the new device opens cleanly. A stream that outlives its release leaves the running backend in place. The manager reports the failure and keeps the instance, since the source still writes to memory that terminating would reclaim.
 

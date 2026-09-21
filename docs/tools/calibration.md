@@ -193,7 +193,7 @@ time resolutions, and compare the energy in each band in decibels. Their tuning 
   reports the level difference on its own. Silence scores worst, and a clip with the right tone and
   some added noise scores between.
 - **`zimtohrli`** is a model of human hearing from Google. It joins the other two where it is
-  installed; see [dependencies](../development/release/dependencies.md#calibration).
+  installed. See [dependencies](../development/release/dependencies.md#calibration).
 
 A referee is tested against sounds whose ranking is known, such as "a triangle at the right pitch is
 closer to a sine than silence is". Rankings it is known to get wrong are recorded as expected failures.
