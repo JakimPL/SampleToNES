@@ -48,8 +48,9 @@ def _lanes(
     """The stretches under each channel's bars, held to the frames those bars describe.
 
     Every channel the panel plots takes a lane, whatever the reader has switched on beneath the
-    waveform: the panel draws the whole document, and the channel boxes answer for the waveform,
-    the stems card's muted tint and an export's scope.
+    waveform: the channel boxes answer for the waveform, the stems card's muted tint and an
+    export's scope. A lane reaches the last frame the channel's readings describe, so it stands
+    over the bars drawn from them and no further.
     """
     stems_data = reconstruction.stems_data
     owned = stems_data.assignments_by_channel

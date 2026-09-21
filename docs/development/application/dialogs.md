@@ -1,10 +1,9 @@
 # Dialogs
 
 A dialog states its size once, and where it opens follows from what it states.
-
-Four code paths once answered that question four ways, which is why four fixes to
-the same defect each settled one half of it and left the other. What follows is
-one answer, held in one place.
+Consult this when a dialog opens at the wrong size or in the wrong place, and
+when adding one: `GUIWindow` is the single place a dialog's window is opened, so
+what this document says holds for every dialog the application raises.
 
 ## What a dialog states
 
@@ -38,8 +37,9 @@ last was, and a position set through the API takes precedence over that, so a
 placed dialog never appears at the pointer.
 
 A dialog whose height its content settles has nothing to place from until a frame
-has measured it, so it is centered by the correction instead and stands one frame
-where the modal opened.
+has measured it, so it is centered by the correction instead. It is drawn once
+where the modal opened, once centered against the height it had reached by then,
+and stands where it belongs from the third frame on.
 
 The correction re-reads the drawn size each frame and centers the window against
 it, so a dialog stands centered the whole way to the size it settles at. It ends
