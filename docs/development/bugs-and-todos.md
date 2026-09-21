@@ -202,11 +202,6 @@ again.
 * `ReconstructionStage.RENDERING` keeps the weight it was measured at while a conversion no longer
   renders, so a bar covers that share faster than the eight parts in a hundred `STAGE_WEIGHTS`
   gives it. Re-measuring the four stages over whole runs is what settles the new figures.
-* `_heard_stream` reads a resting frame as heard whoever is unchecked, so a channel whose last
-  frame is a rest keeps its reading open to the end: the frames an unchecked recording held come
-  back as silence instead of being cut, and the instruments panel, the size figures and an export
-  all measure that longer sequence. The rule is there so a channel written down to rests alone
-  stays in play, which the cut has to keep.
 * `StemColors.for_stem` paints a resting stretch in `stem_rest`, the color matching the ribbon's
   ground so a rest reads as a gap under the waveform. The band beneath the instruments bars reuses
   it over `plot_background`, which differs in every palette — `#aab0bb` against `#ffffff` in the
