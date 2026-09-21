@@ -196,11 +196,3 @@ again.
 * `ReconstructionStage.RENDERING` keeps the weight it was measured at while a conversion no longer
   renders, so a bar covers that share faster than the eight parts in a hundred `STAGE_WEIGHTS`
   gives it. Re-measuring the four stages over whole runs is what settles the new figures.
-* `StemColors.for_stem` paints a resting stretch in `stem_rest`, the color matching the ribbon's
-  ground so a rest reads as a gap under the waveform. The band beneath the instruments bars reuses
-  it over `plot_background`, which differs in every palette — `#aab0bb` against `#ffffff` in the
-  light one — so a rest shows there as a solid bar where it should be a gap.
-* The error dialog states a height of 120 and its traceback box adds 400, so **Show traceback**
-  grows it past the 800-tall client the application opens at its smallest and its buttons fall
-  below the screen. `center_when_settled` has ended by then, so the dialog grows downward from
-  where it stood rather than re-centering on the new height.
