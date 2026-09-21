@@ -1258,6 +1258,51 @@ class TestWhatTheEnvelopesShow:
 
         assert len(reported) == 1
 
+    def test_a_solo_leaves_the_envelopes_of_the_recording_alone(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        whole = mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count
+
+        panel_logic.solo_stem(0)
+
+        assert mock_reconstruction_manager.listening.heard[1] == frozenset()
+        assert 0 < mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count < whole
+
+    def test_a_second_solo_returns_to_the_whole_mix(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        whole = mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count
+
+        panel_logic.solo_stem(0)
+        panel_logic.solo_stem(0)
+
+        assert mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count == whole
+
+    def test_a_solo_tells_the_reader_the_envelopes_moved_once(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        reported: List[None] = []
+        panel_logic.on_heard_changed = lambda: reported.append(None)
+
+        panel_logic.solo_stem(0)
+
+        assert len(reported) == 1
+
 
 class TestTheLanesTheRibbonStandsOn:
     """The lanes answer for the channels the document plays, and what fills them for the listening."""

@@ -1,4 +1,4 @@
-from typing import Dict, FrozenSet, Set
+from typing import Dict, FrozenSet, Optional, Set
 
 from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
 from sampletones_core.constants.enums import ChannelName
@@ -17,11 +17,15 @@ class StemListening:
     The choice is the reader's, so it travels across an edit rather than being remade: a channel
     a recording keeps holding frames on keeps whatever was chosen for it, and one the recording
     reaches for the first time joins heard.
+
+    Soloing a recording silences every other one and remembers the choice it replaced, so soloing
+    it again returns to that choice. A choice made by hand afterwards stands as the new state.
     """
 
     def __init__(self) -> None:
         self._offered: Dict[int, FrozenSet[ChannelName]] = {}
         self._heard: Dict[int, FrozenSet[ChannelName]] = {}
+        self._heard_before_solo: Optional[Dict[int, FrozenSet[ChannelName]]] = None
 
     @property
     def offered(self) -> Dict[int, FrozenSet[ChannelName]]:
@@ -67,15 +71,51 @@ class StemListening:
             for stem_id, channels in offered.items()
         }
         self._offered = offered
+        self._heard_before_solo = None
 
     def set_channels(self, stem_id: int, channels: FrozenSet[ChannelName]) -> None:
         """Takes the channels one recording is heard on, as a box on its row leaves them."""
         self._heard[stem_id] = channels
+        self._heard_before_solo = None
+
+    def solo(self, stem_id: int) -> None:
+        """Hears one recording on every channel it offers and silences the others.
+
+        The choice in force when the first solo starts is remembered, so soloing the recording
+        again returns to it, whichever recordings were soloed in between. Where nothing is
+        remembered, every recording is heard whole. A recording offering no channel has nothing
+        to hear alone.
+        """
+        if not self._offered.get(stem_id):
+            return
+
+        if self._is_alone(stem_id):
+            restored = self._heard_before_solo if self._heard_before_solo is not None else dict(self._offered)
+            self._heard_before_solo = None
+            self._heard = restored
+            return
+
+        if not any(self._is_alone(other_id) for other_id in self._offered):
+            self._heard_before_solo = dict(self._heard)
+
+        self._heard = {
+            offered_id: channels if offered_id == stem_id else frozenset()
+            for offered_id, channels in self._offered.items()
+        }
 
     def release(self) -> None:
         """Lets go of the choice, which is what closing the reconstruction it describes does."""
         self._offered = {}
         self._heard = {}
+        self._heard_before_solo = None
+
+    def _is_alone(self, stem_id: int) -> bool:
+        """Whether the recording is heard on every channel it offers while no other is heard at all."""
+        offered = self._offered.get(stem_id, frozenset())
+        if not offered or self._heard.get(stem_id, frozenset()) != offered:
+            return False
+
+        return all(not channels for other_id, channels in self._heard.items() if other_id != stem_id)
 
 
 def offered_channels(stems_data: StemsData) -> Dict[int, FrozenSet[ChannelName]]:

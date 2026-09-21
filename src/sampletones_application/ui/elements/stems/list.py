@@ -309,6 +309,15 @@ class GUIStemsList(CallbackMixin):
         """
         return self._view.live and self._rows.releasable(self._view)
 
+    @property
+    def holds_several_rows(self) -> bool:
+        """Whether more than one row stands in the list, which is what a solo silences the rest of."""
+        return self._view.row_count > 1
+
+    def soloed(self, key: str) -> bool:
+        """Whether the row is the one recording heard, which is what a menu names its solo by."""
+        return self._view.soloed(key)
+
     def stands_open(self, key: str) -> bool:
         """Whether the folder's recordings are in view, which is what a menu names its move by."""
         return self._open_folders.stands_open(key)

@@ -128,3 +128,80 @@ class TestWhatTheChoiceCarriesAcrossAnEdit:
         listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE))
 
         assert listening.heard == listening.offered
+
+
+class TestSoloingARecording:
+    """A solo hears one recording alone and remembers the choice it replaced."""
+
+    @staticmethod
+    def _held() -> StemsData:
+        return _stems_data(
+            ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_B]),
+            ChannelAssignment(channel_name=ChannelName.TRIANGLE, stem_ids=[STEM_A, STEM_B]),
+        )
+
+    def test_the_recording_is_heard_on_every_channel_it_offers_and_no_other_is_heard(
+        self,
+        listening: StemListening,
+    ) -> None:
+        listening.adopt(self._held())
+        listening.set_channels(STEM_A, frozenset({ChannelName.PULSE1}))
+
+        listening.solo(STEM_A)
+
+        assert listening.heard[STEM_A] == frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE})
+        assert listening.heard[STEM_B] == frozenset()
+
+    def test_a_second_solo_returns_to_the_choice_it_replaced(self, listening: StemListening) -> None:
+        listening.adopt(self._held())
+        listening.set_channels(STEM_B, frozenset({ChannelName.TRIANGLE}))
+        before = listening.heard
+
+        listening.solo(STEM_A)
+        listening.solo(STEM_A)
+
+        assert listening.heard == before
+
+    def test_soloing_another_recording_keeps_the_choice_the_first_solo_replaced(
+        self,
+        listening: StemListening,
+    ) -> None:
+        listening.adopt(self._held())
+        listening.set_channels(STEM_B, frozenset({ChannelName.TRIANGLE}))
+        before = listening.heard
+
+        listening.solo(STEM_A)
+        listening.solo(STEM_B)
+        listening.solo(STEM_B)
+
+        assert listening.heard == before
+
+    def test_a_solo_with_nothing_remembered_hears_every_recording_whole(self, listening: StemListening) -> None:
+        listening.adopt(self._held())
+        listening.solo(STEM_A)
+        listening.adopt(self._held())
+
+        listening.solo(STEM_A)
+
+        assert listening.heard == listening.offered
+
+    def test_a_choice_made_by_hand_stands_as_the_new_state(self, listening: StemListening) -> None:
+        listening.adopt(self._held())
+        listening.solo(STEM_A)
+
+        listening.set_channels(STEM_B, frozenset({ChannelName.PULSE1}))
+        listening.solo(STEM_A)
+
+        assert listening.heard[STEM_A] == frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE})
+        assert listening.heard[STEM_B] == frozenset()
+
+    def test_a_recording_offering_nothing_leaves_the_others_heard(
+        self,
+        listening: StemListening,
+    ) -> None:
+        listening.adopt(_stems_data(ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A])))
+
+        listening.solo(STEM_B)
+        listening.solo(STEM_B)
+
+        assert listening.heard == listening.offered

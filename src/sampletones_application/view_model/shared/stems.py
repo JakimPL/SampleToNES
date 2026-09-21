@@ -180,6 +180,21 @@ class StemsListViewModel(BaseModel, frozen=True):
         """The row a gesture named, where the view still holds one."""
         return self._by_key.get(key)
 
+    def soloed(self, key: str) -> bool:
+        """Whether the row is the one recording heard, on every channel it offers.
+
+        A list holding a single recording has no other to silence, so none of its rows stands
+        soloed.
+        """
+        row = self.row(key)
+        if row is None or self.row_count < 2 or not row.offers_channels:
+            return False
+
+        if row.channels != row.offered_channels:
+            return False
+
+        return not any(other.takes_part for other in self.rows if other.key != key)
+
     def rows_on(self, level_index: int) -> Tuple[StemRowViewModel, ...]:
         """The rows one band holds, in the order they stand."""
         return tuple(row for row in self.rows if row.level == level_index)

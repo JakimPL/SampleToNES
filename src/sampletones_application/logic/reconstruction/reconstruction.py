@@ -279,6 +279,19 @@ class ReconstructionPanelLogic(CallbackMixin):
         what the instruments panel draws while the document stands as it is.
         """
         self._listening.set_channels(stem_id, channels)
+        self._refresh_listening()
+
+    def solo_stem(self, stem_id: int) -> None:
+        """Hears one recording alone, or returns to the choice it replaced when it already is.
+
+        Like the boxes on its row, the solo is listening state, so it re-answers what plays and
+        what the waveform and the instruments panel show while the document stands as it is.
+        """
+        self._listening.solo(stem_id)
+        self._refresh_listening()
+
+    def _refresh_listening(self) -> None:
+        """Re-answers every reading of the document after the listening choice changed."""
         self._reconstruction_manager.refresh_features()
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:

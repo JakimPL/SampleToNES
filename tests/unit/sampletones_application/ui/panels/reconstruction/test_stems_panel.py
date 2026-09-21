@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import FrozenSet, Iterator, List, Tuple
+from typing import Any, Dict, FrozenSet, Iterator, List, Tuple
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -24,6 +24,7 @@ from sampletones_application.tags.reconstructions import (
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.panels.reconstruction import stems_menu as menu_module
 from sampletones_application.ui.panels.reconstruction.stems import (
     GUIReconstructionStemsPanel,
 )
@@ -39,8 +40,11 @@ from sampletones_application.view_model.shared.stems import (
     StemsListViewModel,
 )
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from tests.suite.gestures import CLICKED, click_row_name
 
 ROOT_TAG = "test_root"
+SEPARATOR = "separator"
+LANGUAGE_MANAGER = LanguageManager(LANG_EN)
 CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.NOISE)
 
 
@@ -326,3 +330,144 @@ class TestStemsPanelStates:
         assert dpg.is_item_shown(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_EMPTY)
         assert not dpg.is_item_shown(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP)
         assert not dpg.is_item_shown(panel.stems_list.tag)
+
+
+@pytest.fixture
+def registered(monkeypatch: pytest.MonkeyPatch) -> List[Dict[str, Any]]:
+    """The items a menu registers, in the order a reader meets them, the rules between them included."""
+    items: List[Dict[str, Any]] = []
+    monkeypatch.setattr(menu_module.dpg, "add_menu_item", lambda **kwargs: items.append(kwargs) or 0)
+    monkeypatch.setattr(
+        menu_module.dpg,
+        "add_separator",
+        lambda **_kwargs: items.append({"label": SEPARATOR}) or 0,
+    )
+    return items
+
+
+def right_click(panel: GUIReconstructionStemsPanel, stem_id: int) -> None:
+    click_row_name(panel.stems_list.tags, str(stem_id), kind=CLICKED, button=dpg.mvMouseButton_Right)
+
+
+def item(registered: List[Dict[str, Any]], key: str) -> Dict[str, Any]:
+    label = LANGUAGE_MANAGER[key]
+    return next(entry for entry in registered if entry["label"] == label)
+
+
+class TestTheMenuARightClickPutsUp:
+    """A right-click on a recording offers to mute or solo it, beside the file items."""
+
+    def test_a_right_click_offers_what_a_recording_can_be_told(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare")))
+
+        right_click(panel, 0)
+
+        labels = [entry["label"] for entry in registered]
+        assert LANGUAGE_MANAGER["reconstructions.reconstruction.label.stem_mute"] in labels
+        assert LANGUAGE_MANAGER["reconstructions.reconstruction.label.stem_solo"] in labels
+        assert LANGUAGE_MANAGER["global.context.label.open_in_explorer"] in labels
+
+    def test_a_row_heard_offers_to_mute_and_reports_what_it_keeps(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        reported: List[Tuple[int, FrozenSet[ChannelName]]] = []
+        panel.on_stem_channels_changed = lambda stem_id, channels: reported.append((stem_id, channels))
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare")))
+
+        right_click(panel, 0)
+        item(registered, "reconstructions.reconstruction.label.stem_mute")["callback"]()
+
+        assert reported == [(0, frozenset())]
+
+    def test_a_row_muted_offers_to_unmute_across_every_channel_it_offers(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        reported: List[Tuple[int, FrozenSet[ChannelName]]] = []
+        panel.on_stem_channels_changed = lambda stem_id, channels: reported.append((stem_id, channels))
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick", channels=frozenset()), _row(1, name="snare")))
+
+        right_click(panel, 0)
+        item(registered, "reconstructions.reconstruction.label.stem_unmute")["callback"]()
+
+        assert reported == [(0, frozenset(CHANNELS))]
+
+    def test_solo_reports_the_recording_it_landed_on(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        soloed: List[int] = []
+        panel.on_stem_solo_requested = soloed.append
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare")))
+
+        right_click(panel, 1)
+        item(registered, "reconstructions.reconstruction.label.stem_solo")["callback"]()
+
+        assert soloed == [1]
+
+    def test_a_recording_heard_alone_offers_to_unsolo(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare", channels=frozenset())))
+
+        right_click(panel, 0)
+
+        labels = [entry["label"] for entry in registered]
+        assert LANGUAGE_MANAGER["reconstructions.reconstruction.label.stem_unsolo"] in labels
+        assert LANGUAGE_MANAGER["reconstructions.reconstruction.label.stem_solo"] not in labels
+
+    def test_a_lone_recording_has_none_to_solo_against(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick")))
+
+        right_click(panel, 0)
+
+        assert item(registered, "reconstructions.reconstruction.label.stem_solo")["enabled"] is False
+
+    def test_a_row_standing_for_the_readers_frames_offers_no_file_items(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        edits = _row(0, name="edits").model_copy(update={"kind": SourceKind.EDITS, "path": None})
+        render(panel)
+        panel.update_view(_view_model(edits, _row(1, name="snare")))
+
+        right_click(panel, 0)
+
+        labels = [entry["label"] for entry in registered]
+        assert LANGUAGE_MANAGER["reconstructions.reconstruction.label.stem_mute"] in labels
+        assert LANGUAGE_MANAGER["global.context.label.open_in_explorer"] not in labels
+
+    def test_a_rule_divides_what_a_recording_is_told_from_its_file(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare")))
+
+        right_click(panel, 0)
+
+        labels = [entry["label"] for entry in registered]
+        solo = labels.index(LANGUAGE_MANAGER["reconstructions.reconstruction.label.stem_solo"])
+        assert labels[solo + 1] == SEPARATOR
