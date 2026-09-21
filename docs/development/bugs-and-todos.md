@@ -31,6 +31,8 @@ dimension the import starts carrying.
   their own, and scheme needs the item bit-packing FamiTracker gives it.
 * A Bitphase document is written at concert pitch whatever the reconstruction was tuned at. The song
   builder reads the default tuning and leaves the request's own tuning unread.
+* A Bitphase export shortens a dimension past 512 values and reports nothing. The FamiTracker export
+  reports what it left out, and the instruments panel draws its warning from that report alone.
 * A transpose or a volume typed in the sample column of a row with no sample reaches every channel. The
   column falls back to all four channels so the value lands somewhere, and the reference slot keeps the
   narrower reading and stays empty.

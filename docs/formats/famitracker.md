@@ -228,10 +228,10 @@ writes the release item, so a volume dimension is one item longer than the frame
 **The item limit.** A FamiTracker sequence holds up to 252 items. An envelope keeps whatever length it was
 written at, and a writer applies its own format's limit at export. A dimension over the limit is written
 as its opening items. A volume dimension keeps its release as the last item, because the note has to end,
-so the release displaces the last sounding item that would not fit. [The Bitphase
-export](bitphase.md#f-bitphase-capacity-limits) meets its own limit by the same rule. A reconstruction reaches the limit at 252
-frames, since its volume carries the release past them. At the default 30 fps that is 8.4 s. The export
-reports what it left out.
+so the release displaces the last sounding item that would not fit. A reconstruction reaches the limit at
+252 frames, since its volume carries the release past them. At the default 30 fps that is 8.4 s. The
+export reports what it left out. [The Bitphase export](bitphase.md#f-bitphase-capacity-limits) shortens a
+dimension by the same rule, at its own limit.
 
 **Empty dimensions.** An empty dimension is written as a disabled sequence. This differs from a sequence
 with a single zero: a disabled slot leaves that dimension to the channel, while a one-item sequence sets
