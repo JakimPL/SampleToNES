@@ -8,11 +8,14 @@ import pytest
 
 from sampletones_application.exports import ExportBackends
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_application.logic.reconstruction.feature import FeatureData
+from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.logic.reconstruction.listening import StemListening
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import (
     ReconstructionPanelLogic,
+)
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
 )
 from sampletones_application.view_model.reconstruction.paths.state import (
     ReconstructionPathState,
@@ -23,7 +26,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 from sampletones_application.view_model.shared.ownership import OwnershipRibbonViewModel
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
 from sampletones_core.constants.enums import AudioSourceType, ChannelName, bending_channels
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.instructions import PulseInstruction, TriangleInstruction
@@ -99,7 +102,7 @@ def _open(manager: MagicMock, reconstruction_data: ReconstructionData) -> None:
 def _refresh_features(manager: MagicMock) -> None:
     """Reads the envelopes of what is heard, the way the manager's own refresh does."""
     if manager.current_reconstruction is not None:
-        manager.current_features = FeatureData.heard(
+        manager.current_features = heard_envelopes(
             manager.current_reconstruction.reconstruction,
             manager.listening.selection,
         )
@@ -1257,7 +1260,7 @@ class TestWhatTheEnvelopesShow:
 
 
 class TestTheLanesTheRibbonStandsOn:
-    """The lanes answer for the channels the reader has on, and follow every choice that moves them."""
+    """The lanes answer for the channels the document plays, and what fills them for the listening."""
 
     @pytest.fixture(name="stems_data")
     def stems_data_fixture(self, tmp_path: Path) -> ReconstructionData:
@@ -1295,7 +1298,7 @@ class TestTheLanesTheRibbonStandsOn:
         panel_logic.on_ownership_changed = received.append
         return received
 
-    def test_a_lane_stands_for_every_channel_the_reader_has_on(
+    def test_a_lane_stands_for_every_channel_the_document_plays(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
@@ -1308,26 +1311,63 @@ class TestTheLanesTheRibbonStandsOn:
 
         assert [lane.channel_name for lane in received[-1].lanes] == [ChannelName.PULSE1, ChannelName.TRIANGLE]
 
-    def test_a_channel_switched_off_leaves_the_lanes(
+    def test_a_channel_switched_off_keeps_its_lane_and_stands_empty(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         stems_data: ReconstructionData,
     ) -> None:
+        """The rows beneath the waveform hold still while a reader picks their way through it."""
         _open(mock_reconstruction_manager, stems_data)
         panel_logic.display_reconstruction()
         received = self._ribbons(panel_logic)
 
         panel_logic.set_selected_channels([ChannelName.PULSE1])
 
-        assert [lane.channel_name for lane in received[-1].lanes] == [ChannelName.PULSE1]
+        lanes = {lane.channel_name: lane for lane in received[-1].lanes}
+        assert list(lanes) == [ChannelName.PULSE1, ChannelName.TRIANGLE]
+        assert lanes[ChannelName.TRIANGLE].runs == ()
+        assert lanes[ChannelName.PULSE1].runs
 
-    def test_a_recording_switched_off_leaves_its_stretches_resting(
+    def test_the_lanes_stand_where_nothing_is_switched_on(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         stems_data: ReconstructionData,
     ) -> None:
+        """The ribbon measures the record, so its rows hold even with nothing to paint in them."""
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        received = self._ribbons(panel_logic)
+
+        panel_logic.set_selected_channels([])
+
+        ribbon = received[-1]
+        assert [lane.channel_name for lane in ribbon.lanes] == [ChannelName.PULSE1, ChannelName.TRIANGLE]
+        assert all(lane.runs == () for lane in ribbon.lanes)
+        assert ribbon.is_drawn
+
+    def test_a_stretch_the_reader_hears_stands_under_its_recording(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        received = self._ribbons(panel_logic)
+
+        panel_logic.display_reconstruction()
+
+        pulse_lane = next(lane for lane in received[-1].lanes if lane.channel_name == ChannelName.PULSE1)
+        assert [(run.stem_id, run.heard) for run in pulse_lane.runs] == [(0, True)]
+
+    def test_a_recording_switched_off_keeps_its_stretch_under_its_own_name(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        """A stretch names the recording holding it whether or not the reader is listening to it."""
         _open(mock_reconstruction_manager, stems_data)
         panel_logic.display_reconstruction()
         received = self._ribbons(panel_logic)
@@ -1335,7 +1375,7 @@ class TestTheLanesTheRibbonStandsOn:
         panel_logic.set_stem_channels(0, frozenset())
 
         pulse_lane = next(lane for lane in received[-1].lanes if lane.channel_name == ChannelName.PULSE1)
-        assert [run.stem_id for run in pulse_lane.runs] == [RESTING_STEM_ID]
+        assert [(run.stem_id, run.heard) for run in pulse_lane.runs] == [(0, False)]
 
     def test_a_document_answering_to_one_recording_offers_no_lanes(
         self,

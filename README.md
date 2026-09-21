@@ -6,7 +6,7 @@
 
 <div align="center">
     <img src="https://raw.githubusercontent.com/JakimPL/SampleToNES/main/src/sampletones_assets/icons/sampletones.svg" alt="SampleToNES" width="64">
-    <p><i>SampleToNES</i> v0.3.2</p>
+    <p><i>SampleToNES</i></p>
 </div>
 
 ## Overview
@@ -21,26 +21,31 @@ The core idea is to approximate an audio sample using only the chip's basic osci
 
 A built-in sequencer lets you arrange the reconstructed samples into patterns and play them back inside the application, so you can experiment with the results before exporting the instruments into FamiTracker.
 
-It supports:
+With it you can:
 
-* loading common audio formats: WAV, MP3, FLAC, OGG, AIFF, and AU
-* a wide range of NES frequencies, from 15 Hz to 300 Hz, including the two most common standards:
-    * NTSC (60 Hz)
-    * PAL (50 Hz)
-* various sample rates, from 8000 Hz to 192,000 Hz
-* restricting the reconstruction to a chosen subset of oscillators:
-    * `pulse1`
-    * `pulse2`
-    * `triangle`
-    * `noise`
-* exporting reconstructed audio as FamiTracker `.fti` instruments, Bitphase `.json` instrument presets, `.nsf` programs the NES itself plays, or `.wav`
+* convert your own recordings — WAV, MP3, FLAC, OGG, AIFF or AU — into NES instruments
+* choose which of the four channels each recording may use, and how loud it plays on them
+* arrange the results into a song and play it back in the app
+* export instruments and songs for:
+  * [_FamiTracker_](http://famitracker.com/)
+  * [_Bitphase_](https://bitphase.app/)
+  * `.nsf` program
+  * audio `.wav` file
 
 ## Installation
 
 You can install _SampleToNES_ in three ways:
 
 - **Download a release** for Windows or Linux from the [releases page](https://github.com/JakimPL/SampleToNES/releases), extract it, and start `sampletones`.
-- **Install from PyPI** on Windows, macOS or Linux. You need Python 3.12 or newer:
+- **Install from PyPI** on Windows, macOS or Linux. You need Python 3.12 or newer. On Linux and
+  macOS, install the audio and file dialog libraries first:
+
+  ```sh
+  sudo apt-get install libportaudio2 libasound2 python3-tk    # Debian and Ubuntu
+  brew install portaudio                                      # macOS
+  ```
+
+  Then install the app and start it:
 
   ```sh
   uv tool install sampletones      # or: pipx install sampletones
@@ -53,26 +58,12 @@ An NVIDIA graphics card can speed up conversion. The [installation guide](https:
 
 ## Usage
 
-### Where your files are stored
+`sampletones` starts the app. Your work is saved in a `SampleToNES` folder inside your documents
+folder.
 
-Your configuration, instruction libraries (`.ins`), and reconstructions (`.stn`) live under your documents folder, in `SampleToNES/`:
-
-- Windows: `C:\Users\<user>\Documents\SampleToNES`
-- Linux: `/home/<user>/Documents/SampleToNES`
-- macOS: `/Users/<user>/Documents/SampleToNES`
-
-### Command line
-
-Every operation is a named command, and `sampletones` alone starts the interface:
-
-```sh
-sampletones run --config <config-path>                            # start with a custom config
-sampletones open <project-path>                                   # start with a project, reconstruction or library loaded
-sampletones convert <audio-path> --config <config-path> -o <out>  # reconstruct a recording without the GUI
-sampletones library --config <config-path>                        # generate an instruction library
-```
-
-Run `sampletones --help` for the commands and `sampletones <command> --help` for a command's options. The [command-line guide](https://github.com/JakimPL/SampleToNES/blob/main/docs/guide/command-line.md) explains them.
+Every operation is also a named command — `sampletones convert <audio-path>` reconstructs a
+recording without the interface, for example. Run `sampletones --help` for the list, and see the
+[command-line guide](https://github.com/JakimPL/SampleToNES/blob/main/docs/guide/command-line.md).
 
 ## Documentation
 

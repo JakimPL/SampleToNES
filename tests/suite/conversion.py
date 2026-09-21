@@ -17,7 +17,7 @@ from tests.suite.release import wait_for_release
 FAKE_FRAMES: Final[int] = 40
 HALFWAY: Final[int] = FAKE_FRAMES // 2
 COUNTED_STAGES: Final[FrozenSet[ReconstructionStage]] = frozenset(
-    {ReconstructionStage.MATCHING, ReconstructionStage.RENDERING}
+    {ReconstructionStage.MATCHING, ReconstructionStage.GATHERING}
 )
 
 

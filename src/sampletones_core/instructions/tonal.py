@@ -13,6 +13,19 @@ from sampletones_core.constants.general import (
 from .instruction import Instruction
 
 
+def bend_steps(detune: int, coarse_detune: int) -> int:
+    """The timer steps a frame's two bend dimensions move its note by together.
+
+    Args:
+        detune: Timer steps, one per unit.
+        coarse_detune: Timer steps, sixteen per unit.
+
+    Returns:
+        int: The steps both dimensions reach together.
+    """
+    return detune + HI_PITCH_FACTOR * coarse_detune
+
+
 class TonalInstruction(Instruction, ABC):
     """An instruction naming a note, sounded through a timer the frame may bend.
 
@@ -46,7 +59,7 @@ class TonalInstruction(Instruction, ABC):
     @property
     def timer_offset(self) -> int:
         """The timer steps this frame stands away from its note, both dimensions together."""
-        return self.detune + HI_PITCH_FACTOR * self.coarse_detune
+        return bend_steps(self.detune, self.coarse_detune)
 
     @property
     def bent(self) -> bool:

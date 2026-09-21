@@ -3,6 +3,7 @@ from typing import Final, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.primitives import DialogGeometry
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_OK,
@@ -12,7 +13,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.trace import GUITraceback
-from sampletones_application.utils.gui.align import table_wrapper
+from sampletones_application.utils.gui.align import center_when_settled, table_wrapper
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.keyboard import KeyRouter
@@ -29,15 +30,19 @@ class GUIErrorDialogWindow(GUIDialogWindow):
     The exception's name and text are drawn in the error color, the traceback starts
     hidden behind its toggle, and OK — the initially focused button — dismisses the
     prompt. The title-bar close reads the same way.
+
+    Unfolding the traceback is the one gesture that changes a dialog's size while it stands, so
+    it centers the window again on the height it reaches: a report grown from its own height to
+    the traceback's would otherwise carry its buttons below the screen.
     """
 
     def __init__(
         self,
         tag: str,
         *,
-        width: int,
-        height: int,
+        geometry: DialogGeometry,
         wrap: int,
+        traceback_height: int,
         language_manager: LanguageManager,
         error_color: BaseColor,
         key_router: KeyRouter,
@@ -45,19 +50,19 @@ class GUIErrorDialogWindow(GUIDialogWindow):
     ) -> None:
         self._language_manager = language_manager
         self._wrap = wrap
+        self._traceback_height = traceback_height
         self._error_color = error_color
         self._exception: Exception
         self._message: Optional[str]
 
         super().__init__(
             tag,
-            width,
-            height,
+            geometry,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )
 
-    def prepare(self, exception: Exception, message: Optional[str]) -> None:
+    def prepare(self, exception: Exception, message: Optional[str]) -> None:  # pylint: disable=arguments-differ
         """Captures the failure the next appearance reports."""
         self._exception = exception
         self._message = message
@@ -67,13 +72,8 @@ class GUIErrorDialogWindow(GUIDialogWindow):
         ok_button_tag = compose_tag(self.tag, SUF_BUTTON_OK)
         traceback: GUITraceback
 
-        with dpg.window(
-            tag=self.tag,
+        with self.dialog_window(
             label=self._language_manager["global.dialog.title.error"],
-            modal=True,
-            min_size=(self.width, self.height),
-            autosize=True,
-            no_scrollbar=False,
             on_close=self.hide,
         ):
             if self._message is not None:
@@ -97,6 +97,7 @@ class GUIErrorDialogWindow(GUIDialogWindow):
                 parent=self.tag,
                 exception=self._exception,
                 language_manager=self._language_manager,
+                height=self._traceback_height,
             )
 
             def toggle_traceback() -> None:
@@ -109,6 +110,7 @@ class GUIErrorDialogWindow(GUIDialogWindow):
                         else self._language_manager["global.traceback.label.hide"]
                     ),
                 )
+                center_when_settled(self.tag)
 
             dpg.add_separator()
 

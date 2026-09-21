@@ -5,14 +5,11 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.graphs import SUF_GRAPH_THEME, SUF_RIBBON_RUN
-from sampletones_application.utils.gui.dpg import dpg_bind_item_theme, dpg_delete_children
+from sampletones_application.tags.graphs import SUF_GRAPH_THEME, SUF_RIBBON_GROUND
+from sampletones_application.ui.elements.graphs.ownership import OwnershipRuns
+from sampletones_application.utils.gui.dpg import dpg_bind_item_theme
 from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
-from sampletones_application.utils.palette.colors.base import BaseColor
-from sampletones_application.view_model.shared.ownership import (
-    OwnershipLaneViewModel,
-    OwnershipRibbonViewModel,
-)
+from sampletones_application.view_model.shared.ownership import OwnershipRibbonViewModel
 from sampletones_core.constants.enums import ChannelName
 
 
@@ -44,12 +41,12 @@ class GUIOwnershipRibbon:
         self._layout = layout
         self._stem_colors = stem_colors
         self._view_model: OwnershipRibbonViewModel = OwnershipRibbonViewModel.empty()
-        self._run_themes: Dict[BaseColor, str] = {}
+        self._runs = OwnershipRuns(stem_colors)
 
     def bind_theme(self) -> None:
         """Lays each lane's ground, which is the color a resting stretch shows."""
         for channel_name, plot_tag in self._plot_tags.items():
-            theme_tag = compose_tag(plot_tag, SUF_GRAPH_THEME, SUF_RIBBON_RUN)
+            theme_tag = compose_tag(plot_tag, SUF_GRAPH_THEME, SUF_RIBBON_GROUND)
             with dpg.theme(tag=theme_tag), dpg.theme_component(dpg.mvPlot):
                 dpg_add_palette_theme_color(
                     dpg.mvPlotCol_PlotBg,
@@ -63,15 +60,18 @@ class GUIOwnershipRibbon:
         """Repaints the lanes for what the reader is listening to."""
         self._view_model = view_model
         drawn = {lane.channel_name: lane for lane in view_model.lanes}
+        bottom = self._layout.ribbon.lane_gap / 2.0
         for channel_name, y_axis_tag in self._y_axis_tags.items():
             if not dpg.does_item_exist(y_axis_tag):
                 continue
 
-            dpg_delete_children(y_axis_tag)
             lane = drawn.get(channel_name)
-            if lane is not None:
-                self._draw_lane(channel_name, lane, view_model)
-
+            self._runs.paint(
+                y_axis_tag,
+                lane.runs if lane is not None else (),
+                frame_span=view_model.frame_length,
+                band=(bottom, 1.0 - bottom),
+            )
             dpg.set_axis_limits(y_axis_tag, 0.0, 1.0)
             dpg.set_axis_limits_constraints(y_axis_tag, 0.0, 1.0)
 
@@ -92,39 +92,3 @@ class GUIOwnershipRibbon:
     def lane_channels(self) -> List[ChannelName]:
         """The channels the lanes stand for, in the order they are drawn."""
         return [lane.channel_name for lane in self._view_model.lanes]
-
-    def _draw_lane(
-        self,
-        channel_name: ChannelName,
-        lane: OwnershipLaneViewModel,
-        view_model: OwnershipRibbonViewModel,
-    ) -> None:
-        """Paints one channel's stretches, each run a flat bar in its recording's color."""
-        y_axis_tag = self._y_axis_tags[channel_name]
-        bottom = self._layout.ribbon.lane_gap / 2.0
-        top = 1.0 - bottom
-        for run in lane.runs:
-            series_tag = compose_tag(y_axis_tag, SUF_RIBBON_RUN, str(run.start_frame))
-            dpg.add_shade_series(
-                [
-                    run.start_frame * view_model.frame_length,
-                    run.end_frame * view_model.frame_length,
-                ],
-                y1=[bottom, bottom],
-                y2=[top, top],
-                tag=series_tag,
-                parent=y_axis_tag,
-            )
-            self._bind_run_theme(series_tag, self._stem_colors.for_stem(run.stem_id, run.position))
-
-    def _bind_run_theme(self, series_tag: str, color: BaseColor) -> None:
-        """Binds the run its recording's fill, reusing the theme two runs of one color share."""
-        theme_tag = self._run_themes.get(color)
-        if theme_tag is None:
-            theme_tag = compose_tag(SUF_RIBBON_RUN, SUF_GRAPH_THEME, str(len(self._run_themes)))
-            with dpg.theme(tag=theme_tag), dpg.theme_component(dpg.mvShadeSeries):
-                dpg_add_palette_theme_color(dpg.mvPlotCol_Fill, color, category=dpg.mvThemeCat_Plots)
-
-            self._run_themes[color] = theme_tag
-
-        dpg_bind_item_theme(series_tag, theme_tag)

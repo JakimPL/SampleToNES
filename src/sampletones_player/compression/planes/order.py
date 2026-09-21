@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable, NamedTuple, Tuple
 
-from sampletones_player.specification.compression import PLANE_COUNT
+from sampletones_player.specification.planes import PLANE_COUNT, PLANE_NAMES
 
 
 class PlaneOrder(NamedTuple):
@@ -12,6 +12,10 @@ class PlaneOrder(NamedTuple):
     shape: the values each plane plays tick by tick, and the tokens those values are written as.
     Naming them is what lets either be carried whole and read back by the channel it belongs to.
 
+    The fields spell out what ``specification.planes.PLANES`` states, so that a reader reaches a
+    plane by its own name and a type checker knows which names there are. A test holds the two
+    in step.
+
     Attributes:
         pulse1_control: The first pulse channel's timbre and volume.
         pulse1_value: The first pulse channel's pitch.
@@ -19,8 +23,7 @@ class PlaneOrder(NamedTuple):
         pulse2_control: The second pulse channel's timbre and volume.
         pulse2_value: The second pulse channel's pitch.
         pulse2_bend: The second pulse channel's divider offset.
-        triangle_control: The triangle channel's linear counter.
-        triangle_value: The triangle channel's pitch.
+        triangle_value: The triangle channel's pitch, the index above the table naming a rest.
         triangle_bend: The triangle channel's divider offset.
         noise_control: The noise channel's timbre and volume.
         noise_value: The noise channel's period.
@@ -32,7 +35,6 @@ class PlaneOrder(NamedTuple):
     pulse2_control: bytes
     pulse2_value: bytes
     pulse2_bend: bytes
-    triangle_control: bytes
     triangle_value: bytes
     triangle_bend: bytes
     noise_control: bytes
@@ -41,10 +43,13 @@ class PlaneOrder(NamedTuple):
     @classmethod
     def names(cls) -> Tuple[str, ...]:
         """The planes' names, in the order the song block writes them."""
-        return cls._fields
+        return PLANE_NAMES
 
     @classmethod
-    def across(cls, planes: Iterable[bytes]) -> PlaneOrder:
+    def across(
+        cls,
+        planes: Iterable[bytes],
+    ) -> PlaneOrder:
         """Gathers a song's planes under the names the song block writes them by.
 
         Args:

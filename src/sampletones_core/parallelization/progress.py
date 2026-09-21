@@ -2,10 +2,7 @@ from collections import deque
 from time import monotonic
 from typing import Deque, Final, Optional, Tuple
 
-from sampletones_shared.utils.time import format_span
-
 ESTIMATION_MEASUREMENTS_SAMPLES: Final[float] = 0.05
-UNKNOWN_DURATION: Final[str] = "?"
 
 
 class ETAEstimator:
@@ -37,15 +34,6 @@ class ETAEstimator:
             return None
 
         return self._estimate_remaining_seconds(completed_items, now)
-
-    @classmethod
-    def format_duration(cls, seconds: Optional[float]) -> str:
-        """An estimate's remaining span, or the mark standing for one not yet measurable.
-
-        A run needs two measurements before it has a rate, so the first moments of one answer
-        with the mark rather than with a figure.
-        """
-        return UNKNOWN_DURATION if seconds is None else format_span(seconds)
 
     def _get_estimation_measurements_samples(self, ems: float) -> int:
         if isinstance(ems, float):

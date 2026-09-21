@@ -5,6 +5,7 @@ from sampletones_tools.assets.command import ICONS
 from sampletones_tools.calibration.command import CALIBRATION
 from sampletones_tools.checks.command import CHECK
 from sampletones_tools.codec.command import CODEC
+from sampletones_tools.compatibility.command import COMPATIBILITY
 from sampletones_tools.player.command import DRIVER
 from sampletones_tools.samples.commands.btp import BTP
 from sampletones_tools.samples.commands.ftm import FTM
@@ -15,6 +16,7 @@ DEVELOPER_COMMANDS: Final[Tuple[Command, ...]] = (
     CALIBRATION,
     CHECK,
     CODEC,
+    COMPATIBILITY,
     DRIVER,
     FTM,
     ICONS,

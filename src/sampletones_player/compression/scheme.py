@@ -27,7 +27,12 @@ class CompressionScheme(StrEnum):
         """
         match self:
             case CompressionScheme.NONE:
-                return CodecOptions(holds=False, phrases=False, transposition=False, search=False)
+                return CodecOptions(
+                    holds=False,
+                    phrases=False,
+                    transposition=False,
+                    search=False,
+                )
             case CompressionScheme.RUNS:
                 return CodecOptions(holds=True, phrases=False, transposition=False, search=False)
             case CompressionScheme.INSTRUMENTS:

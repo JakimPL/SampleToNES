@@ -533,7 +533,7 @@ class Application:
                 on_load_directory=self._navigate_to_reconstructions,
                 on_canceled=self._refresh_browsers,
                 on_refresh_trees=self._refresh_browsers,
-                on_generate_library=self._instructions_tab.ensure_library_loaded,
+                on_prepare_library=self._instructions_tab.prepare_library,
             ),
             layout=MainTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
@@ -664,7 +664,7 @@ class Application:
         self._project_coordinator.load_project_safely(path)
 
     def _try_load_library(self, path: Path) -> None:
-        self._instructions_tab.load_library_safely(path)
+        self._instructions_tab.load_library_file(path)
 
     def _load_layout_config(self) -> LayoutConfig:
         try:
@@ -1378,8 +1378,7 @@ class Application:
             get_dialog_tag(TAG_GLOBAL_DIALOG_ABOUT),
             self.language_manager["global.dialog.title.about"],
             content,
-            width=about.width,
-            height=about.height,
+            geometry=about.window,
         )
 
     def _refresh_audio_devices(self) -> None:

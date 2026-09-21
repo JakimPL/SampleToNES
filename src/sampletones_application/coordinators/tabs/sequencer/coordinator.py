@@ -61,7 +61,7 @@ from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequenc
 from sampletones_application.ui.panels.sequencer.voices.panel import (
     GUISequencerVoicesPanel,
 )
-from sampletones_application.utils.gui.clipboard import SystemTextClipboard
+from sampletones_application.utils.gui.clipboard.selection import select_text_clipboard
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
@@ -157,7 +157,7 @@ class SequencerTabCoordinator:
             self._sequencer_tracker_logic,
             self._sequencer_order_logic,
             project_controller,
-            text_clipboard=SystemTextClipboard(),
+            text_clipboard=select_text_clipboard(),
         )
         self._tracker_region_adjuster: TrackerRegionAdjuster = TrackerRegionAdjuster(self._sequencer_tracker_logic)
         self._sequencer_voices_logic: SequencerVoicesLogic = SequencerVoicesLogic(
@@ -496,11 +496,14 @@ class SequencerTabCoordinator:
         history has nothing to restore for. The three gestures that do write are whole ones, each
         recording the single entry that takes the grid back to where it stood.
 
-        Each grid also asks whether its own slot holds a block, which is what a menu offering
-        Paste consults before it is opened.
+        A paste asks the system clipboard first and records its entry once the answer has landed.
+        Each grid also asks whether a block stands ready to paste, which a menu offering Paste
+        consults as it opens, and asks the clipboard again so the item follows the fresh answer.
         """
         self._sequencer_tracker_panel.can_paste_block = self._blocks.can_paste_tracker
+        self._sequencer_tracker_panel.refresh_paste_block = self._blocks.read_clipboard
         self._sequencer_order_panel.can_paste_block = self._blocks.can_paste_order
+        self._sequencer_order_panel.refresh_paste_block = self._blocks.read_clipboard
         self._sequencer_tracker_panel.on_copy_block = self._blocks.copy_tracker
         self._sequencer_tracker_panel.on_cut_block = self._recorder.undoable(
             HistoryAction.CUT_BLOCK,
@@ -512,10 +515,12 @@ class SequencerTabCoordinator:
             self._blocks.clear_tracker,
             detail=self._history_detail.tracker_block,
         )
-        self._sequencer_tracker_panel.on_paste_block = self._recorder.undoable(
-            HistoryAction.PASTE_BLOCK,
-            self._blocks.paste_tracker,
-            detail=self._history_detail.tracker_paste,
+        self._sequencer_tracker_panel.on_paste_block = self._blocks.after_reading_clipboard(
+            self._recorder.undoable(
+                HistoryAction.PASTE_BLOCK,
+                self._blocks.paste_tracker,
+                detail=self._history_detail.tracker_paste,
+            )
         )
         self._sequencer_order_panel.on_copy_block = self._blocks.copy_order
         self._sequencer_order_panel.on_cut_block = self._recorder.undoable(
@@ -528,10 +533,12 @@ class SequencerTabCoordinator:
             self._blocks.clear_order,
             detail=self._history_detail.order_block,
         )
-        self._sequencer_order_panel.on_paste_block = self._recorder.undoable(
-            HistoryAction.PASTE_BLOCK,
-            self._blocks.paste_order,
-            detail=self._history_detail.order_paste,
+        self._sequencer_order_panel.on_paste_block = self._blocks.after_reading_clipboard(
+            self._recorder.undoable(
+                HistoryAction.PASTE_BLOCK,
+                self._blocks.paste_order,
+                detail=self._history_detail.order_paste,
+            )
         )
 
     def _wire_voices_callbacks(self) -> None:

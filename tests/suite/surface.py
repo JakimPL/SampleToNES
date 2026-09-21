@@ -12,6 +12,7 @@ from sampletones_application.ui.panels.sequencer.grid.surface.targets import (
     CursorTargets,
 )
 from sampletones_application.ui.panels.sequencer.input.state import GridInputState
+from sampletones_shared.types.callback import VoidCallback
 from tests.suite.grid import CLIPBOARD_LABELS, TRACKER_BLOCK_SHORTCUTS
 from tests.suite.shortcuts import shipped_source
 
@@ -77,7 +78,10 @@ class Grid:
         self.on_cut_block: Optional[Callable[[str], None]] = lambda region: self.events.append(f"cut {region}")
         self.on_delete_block: Optional[Callable[[str], None]] = lambda region: self.events.append(f"delete {region}")
         self.on_paste_block: Optional[Callable[[str], None]] = lambda cell: self.events.append(f"paste {cell}")
-        self.can_paste_block: Optional[Callable[[], bool]] = lambda: can_paste
+        self.can_paste = can_paste
+        self.can_paste_block: Optional[Callable[[], bool]] = lambda: self.can_paste
+        self.refreshes: List[VoidCallback] = []
+        self.refresh_paste_block: Optional[Callable[[VoidCallback], None]] = self.refreshes.append
 
     def owns_keys(self) -> bool:
         return self._owns

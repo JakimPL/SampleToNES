@@ -38,7 +38,8 @@ def compress_song(
 
     Args:
         streams: The per-tick register values every channel plays.
-        pitches: The timer each pitch sounds at, which is what turns a timer into an index.
+        pitches: The timer each pitch sounds at, which is what names a divider as an index and a
+            bend.
         seeds: The phrases the song's instruments offer the dictionary.
         loop_tick: The tick the song returns to once it ends, or ``None`` where it stops there.
         scheme: The layers of the codec the song is written with.
@@ -49,7 +50,8 @@ def compress_song(
 
     Raises:
         OperationCanceled: If ``report`` withdraws the run.
-        ValueError: If a stream sounds a timer the pitch table states no index for.
+        ValueError: If a stream sounds a divider lying further from every pitch of the table than
+            a signed byte states.
     """
     return encode_planes(
         planes_from_streams(streams, pitches),

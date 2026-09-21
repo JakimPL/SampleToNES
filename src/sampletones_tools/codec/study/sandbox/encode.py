@@ -1,10 +1,11 @@
 from time import process_time
 from typing import Final, Sequence, Tuple
 
+from sampletones_player.specification.song import SONG_HEADER_SIZE
 from sampletones_tools.codec.study.measure import Encoding
 from sampletones_tools.codec.study.sandbox.defaults import modal_counts, no_defaults
 from sampletones_tools.codec.study.sandbox.grammar import Grammar
-from sampletones_tools.codec.study.sandbox.parse import StudyParse, parse_plane
+from sampletones_tools.codec.study.sandbox.parse import StudyParse
 from sampletones_tools.codec.study.sandbox.reference import Reference
 from sampletones_tools.codec.study.sandbox.verify import plays_back
 
@@ -28,11 +29,12 @@ def encode_grammar(
     parses = _parses(reference, grammar)
     seconds = process_time() - started
     return Encoding(
+        header=SONG_HEADER_SIZE,
         phrases=len(reference.table),
         dictionary=grammar.costs.dictionary(reference.table),
         streams=tuple(parse.size for parse in parses),
         seconds=seconds,
-        lossless=plays_back(parses, reference.table, reference.song.planes),
+        lossless=plays_back(parses, reference.table, reference.planes),
         written=None,
     )
 
@@ -42,7 +44,7 @@ def _parse_all(
     grammar: Grammar,
     defaults: Sequence[int],
 ) -> Tuple[StudyParse, ...]:
-    return tuple(parse_plane(context, grammar) for context in reference.contexts(grammar.costs, defaults))
+    return reference.parses(grammar, defaults)
 
 
 def _streams(parses: Sequence[StudyParse]) -> int:

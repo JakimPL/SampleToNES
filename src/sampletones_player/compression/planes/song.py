@@ -1,93 +1,91 @@
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Final, Tuple
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from sampletones_player.compression.planes.channel import ChannelPlanes, TonePlanes
+from sampletones_core.constants.enums import ChannelName
+from sampletones_player.compression.planes.flags import flagged_ticks
 from sampletones_player.compression.planes.order import PlaneOrder
+from sampletones_player.specification.planes import (
+    PLANES,
+    PlaneRole,
+    channel_indices,
+    plane_index,
+)
+
+FIRST_PLANE: Final[int] = 0
 
 
 class SongPlanes(BaseModel):
-    """Every channel of a song separated into planes, the whole of what the codec compresses.
+    """Every plane of a song, in the order the song block writes them.
+
+    A channel writes what it sounds and how it sounds it as separate byte series. Read tick by
+    tick those braid together, and each turns over at its own pace — a volume envelope decays
+    while a pitch holds, a pitch walks while the timbre stays put. Kept apart, each is a series
+    that repeats and rests on its own terms, which is the form the codec reads them in.
+
+    A bend plane holds a value on the ticks its channel's value plane flags and on those alone,
+    so it covers fewer ticks than the song lasts while every other plane covers them all.
 
     Attributes:
-        pulse1: The first pulse channel's planes.
-        pulse2: The second pulse channel's planes.
-        triangle: The triangle channel's planes.
-        noise: The noise channel's planes.
+        planes: The byte series each plane plays, under the name the song block writes it by.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    pulse1: TonePlanes
-    pulse2: TonePlanes
-    triangle: TonePlanes
-    noise: ChannelPlanes
-
-    @classmethod
-    def from_order(cls, planes: PlaneOrder) -> SongPlanes:
-        """Gathers a song block's planes back into the four channels that write them.
-
-        Args:
-            planes: The planes, in the order the song block writes them.
-
-        Returns:
-            SongPlanes: The planes under the channel each belongs to.
-        """
-        return cls(
-            pulse1=TonePlanes(
-                control=planes.pulse1_control,
-                value=planes.pulse1_value,
-                bend=planes.pulse1_bend,
-            ),
-            pulse2=TonePlanes(
-                control=planes.pulse2_control,
-                value=planes.pulse2_value,
-                bend=planes.pulse2_bend,
-            ),
-            triangle=TonePlanes(
-                control=planes.triangle_control,
-                value=planes.triangle_value,
-                bend=planes.triangle_bend,
-            ),
-            noise=ChannelPlanes(
-                control=planes.noise_control,
-                value=planes.noise_value,
-            ),
-        )
+    planes: PlaneOrder
 
     @model_validator(mode="after")
-    def _validate_every_channel_reaches_the_same_tick(self) -> SongPlanes:
-        lengths = {channels.ticks for channels in self.ordered}
-        if len(lengths) > 1:
-            raise ValueError(f"a song's channels cover the same ticks, and these cover {sorted(lengths)}")
+    def _validate_every_plane_covers_the_song(self) -> SongPlanes:
+        if not self.planes[FIRST_PLANE]:
+            raise ValueError("a song's planes cover at least one tick")
+
+        for plane, played in zip(PLANES, self.planes, strict=True):
+            reach = self._flagged(plane.channel) if plane.spans_flagged_ticks else self.ticks
+            if len(played) != reach:
+                raise ValueError(
+                    f"the {plane.name} plane covers {reach} of the song's values, and this covers {len(played)}"
+                )
 
         return self
 
-    @property
-    def ordered(self) -> Tuple[ChannelPlanes, ...]:
-        """The four channels in the order the generator names run."""
-        return (self.pulse1, self.pulse2, self.triangle, self.noise)
-
-    @property
-    def planes(self) -> PlaneOrder:
-        """Every plane in the order the song block writes them."""
-        return PlaneOrder(
-            pulse1_control=self.pulse1.control,
-            pulse1_value=self.pulse1.value,
-            pulse1_bend=self.pulse1.bend,
-            pulse2_control=self.pulse2.control,
-            pulse2_value=self.pulse2.value,
-            pulse2_bend=self.pulse2.bend,
-            triangle_control=self.triangle.control,
-            triangle_value=self.triangle.value,
-            triangle_bend=self.triangle.bend,
-            noise_control=self.noise.control,
-            noise_value=self.noise.value,
-        )
+    def _flagged(self, channel: ChannelName) -> int:
+        return flagged_ticks(self.planes[plane_index(channel, PlaneRole.VALUE)])
 
     @property
     def ticks(self) -> int:
         """The ticks the song lasts."""
-        return self.pulse1.ticks
+        return len(self.planes[FIRST_PLANE])
+
+    def of(self, channel: ChannelName) -> Tuple[bytes, ...]:
+        """The planes ``channel`` writes, in the order the song block writes them.
+
+        Args:
+            channel: The channel to read.
+
+        Returns:
+            Tuple[bytes, ...]: That channel's own planes.
+        """
+        return tuple(self.planes[index] for index in channel_indices(channel))
+
+    def positions(self, tick: int) -> Tuple[int, ...]:
+        """Where each plane stands once ``tick`` ticks have played, in block order.
+
+        Every plane reads one value a tick but a bend plane, which reads one on each tick its
+        channel flags, so a song returning to a tick re-enters each plane at a position of its own.
+
+        Args:
+            tick: The ticks played.
+
+        Returns:
+            Tuple[int, ...]: One position per plane.
+        """
+        return tuple(
+            (
+                flagged_ticks(self.planes[plane_index(plane.channel, PlaneRole.VALUE)][:tick])
+                if plane.spans_flagged_ticks
+                else tick
+            )
+            for plane in PLANES
+        )

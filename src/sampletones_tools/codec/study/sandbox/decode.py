@@ -24,7 +24,8 @@ def play_tokens(
 
     This is the reading a driver of the grammar would perform, stated over tokens: a hold
     keeps the value reached, a phrase played past its end holds its final value onward, and
-    every plane opens on the value the driver seeds it to.
+    every plane opens on the value the driver seeds it to. An absent plane has no tokens and
+    stands at that value throughout.
 
     Args:
         tokens: The tokens the plane is written as, in the order they are read.
@@ -34,6 +35,9 @@ def play_tokens(
     Returns:
         bytes: The values the plane writes, one per tick.
     """
+    if not tokens:
+        return bytes((INITIAL_PLANE_VALUE,)) * ticks
+
     values = bytearray()
     current = INITIAL_PLANE_VALUE
     for token in tokens:

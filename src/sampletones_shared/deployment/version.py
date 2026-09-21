@@ -55,26 +55,6 @@ class Version(BaseModel, frozen=True):
         }
 
 
-def _split_version(version: RawVersion) -> Version:
-    """
-    Splits a dotted version string into its integer components.
-
-    Args:
-        version (RawVersion): A dotted version string such as ``1.4.0``,
-            or a tuple of integers such as ``(1, 4, 0)``.
-
-    Returns:
-        Version: The version object.
-
-    Raises:
-        SystemError: If input raw version object is not valid.
-    """
-    try:
-        return Version.model_validate(version)
-    except ValueError as exception:
-        raise SystemError(f"Invalid version format: {exception}") from exception
-
-
 def compare_versions(
     version1: Union[Version, RawVersion],
     version2: Union[Version, RawVersion],
@@ -92,13 +72,13 @@ def compare_versions(
         int: ``-1`` if version1 precedes version2, ``1`` if it follows, ``0`` if they are equal.
 
     Raises:
-        SystemError: If versions raw objects are not valid.
+        ValueError: If either version is malformed.
     """
     if not isinstance(version1, Version):
-        version1 = _split_version(version1)
+        version1 = Version.model_validate(version1)
 
     if not isinstance(version2, Version):
-        version2 = _split_version(version2)
+        version2 = Version.model_validate(version2)
 
     if version1 == version2:
         return 0

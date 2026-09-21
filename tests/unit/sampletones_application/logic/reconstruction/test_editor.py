@@ -6,9 +6,12 @@ import pytest
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_application.logic.reconstruction.editing import InstrumentEdit, ReconstructionEdit
+from sampletones_application.logic.reconstruction.editing import InstrumentEdit
 from sampletones_application.logic.reconstruction.editor import InstrumentEditor
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
@@ -69,11 +72,14 @@ class TestWhatTheTabHasInFront:
         editor: InstrumentEditor,
         reconstruction_manager: MagicMock,
     ) -> None:
-        reconstruction_manager.current_features = MagicMock(channels={ChannelName.PULSE1: _features()})
+        reconstruction_manager.current_features = ChannelEnvelopesViewModel(
+            channels={ChannelName.PULSE1: _features()},
+            ownership={},
+        )
 
         edit = editor.edited_instrument()
 
-        assert isinstance(edit, ReconstructionEdit)
+        assert isinstance(edit, ChannelEnvelopesViewModel)
         assert list(edit.channels) == [ChannelName.PULSE1]
 
     def test_an_instrument_answers_with_what_it_states(
@@ -114,11 +120,14 @@ class TestWhatTheTabHasInFront:
     ) -> None:
         instrument = controller.add_instrument(new_instrument("lead"))
         editor.edit_instrument(instrument.id)
-        reconstruction_manager.current_features = MagicMock(channels={ChannelName.PULSE1: _features()})
+        reconstruction_manager.current_features = ChannelEnvelopesViewModel(
+            channels={ChannelName.PULSE1: _features()},
+            ownership={},
+        )
 
         editor.release_instrument()
 
-        assert isinstance(editor.edited_instrument(), ReconstructionEdit)
+        assert isinstance(editor.edited_instrument(), ChannelEnvelopesViewModel)
 
     def test_an_instrument_removed_from_the_project_leaves_the_tab_holding_nothing(
         self,

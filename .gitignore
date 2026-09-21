@@ -50,3 +50,6 @@ sampletones
 *.exe
 *.dll
 *.so
+
+!tests/data/compatibility/**/*.ins
+!tests/data/compatibility/**/*.stn

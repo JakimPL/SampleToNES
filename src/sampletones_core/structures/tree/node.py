@@ -111,21 +111,27 @@ class ConfigGroupNode(TreeNode):
 
 
 class LibraryNode(TreeNode):
+    """A library file of the catalog, marked ``outdated`` where another version built it."""
+
     def __init__(
         self,
         name: str,
         library_key: InstructionLibraryKey,
+        *,
+        outdated: bool,
         node_type: NodeType = NodeType.LIBRARY,
         parent: Optional[TreeNode] = None,
     ) -> None:
         super().__init__(name, node_type=node_type, parent=parent)
         self.library_key = library_key
+        self.outdated = outdated
 
     def copy(self, parent: Optional[TreeNode] = None) -> LibraryNode:
         return LibraryNode(
             self.name,
             node_type=self.node_type,
             library_key=self.library_key,
+            outdated=self.outdated,
             parent=parent,
         )
 

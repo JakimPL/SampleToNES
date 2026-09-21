@@ -5,10 +5,13 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from sampletones_application.logic.reconstruction.feature import FeatureData
+from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import ServiceError, ServiceSuccess
 from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
@@ -17,9 +20,9 @@ from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.suite.stems import everything_heard
 
 
-def _heard_features(reconstruction: Reconstruction) -> FeatureData:
+def _heard_features(reconstruction: Reconstruction) -> ChannelEnvelopesViewModel:
     """The envelopes of the whole document, which is what a fresh reader hears."""
-    return FeatureData.heard(reconstruction, everything_heard(reconstruction))
+    return heard_envelopes(reconstruction, everything_heard(reconstruction))
 
 
 _real_queue_add = CallbackQueue.add

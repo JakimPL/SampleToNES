@@ -17,9 +17,15 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.sources import SourceKind
 from sampletones_application.logic.export.instrument.source import ExportableInstrument
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.logic.reconstruction.listening import StemListening
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.reconstruction.ownership import (
+    ownership_lanes,
+    record_positions,
+)
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
 )
@@ -33,18 +39,14 @@ from sampletones_application.view_model.reconstruction.stems import (
     ReconstructionStemsViewModel,
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
-from sampletones_application.view_model.shared.ownership import (
-    OwnershipLaneViewModel,
-    OwnershipRibbonViewModel,
-    OwnershipRunViewModel,
-)
+from sampletones_application.view_model.shared.ownership import OwnershipRibbonViewModel
 from sampletones_application.view_model.shared.stems import (
     StemRowViewModel,
     StemsListViewModel,
 )
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.configs.library import InstructionsLibraryConfig
-from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.naming import instrument_slice_name
@@ -57,7 +59,6 @@ from sampletones_core.exports.request import (
 )
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
-from sampletones_core.reconstructions.reconstruction.stems.ownership import heard_frame, owner_runs
 from sampletones_core.reconstructions.reconstruction.stems.selection import (
     StemSelection,
 )
@@ -72,7 +73,6 @@ from sampletones_shared.utils.system.paths import (
 )
 
 EMPTY_STEMS_LIST: Final[StemsListViewModel] = StemsListViewModel.empty()
-DISTINGUISHABLE_RECORDINGS: Final[int] = 2
 
 
 class ExportServiceProtocol(Protocol):
@@ -310,56 +310,27 @@ class ReconstructionPanelLogic(CallbackMixin):
         self,
         reconstruction_data: ReconstructionData,
     ) -> OwnershipRibbonViewModel:
-        """The recordings behind each stretch of what the reader is listening to.
+        """The recordings behind each stretch of what the document plays.
 
-        A lane stands for a channel the reader has on and paints the stretches the recordings
-        heard there hold, so the ribbon reads as the waveform above it sounds. A document
-        answering to one recording alone has nothing to tell apart, so it offers no lanes.
+        A lane stands for every channel the document plays, and paints the stretches the
+        recordings heard there hold, so the ribbon reads as the waveform above it sounds. A
+        channel the reader has switched off keeps its lane and stands empty, since the lanes
+        answer for the document while what fills them answers for the listening: the rows beneath
+        the waveform hold still while a reader picks their way through it. A document answering to
+        one owner alone has nothing to tell apart, so it offers no lanes.
         """
         stems_data = reconstruction_data.reconstruction.stems_data
-        positions = self._record_positions(stems_data)
-        if len(positions) < DISTINGUISHABLE_RECORDINGS:
-            return OwnershipRibbonViewModel.empty()
-
-        lanes = tuple(
-            self._ownership_lane(channel_name, stems_data.assignments_by_channel[channel_name], positions)
-            for channel_name in self._selected_channels
-            if channel_name in stems_data.assignments_by_channel
-        )
+        owned = stems_data.assignments_by_channel
+        assignments: Dict[ChannelName, Sequence[int]] = {
+            channel_name: owned[channel_name] if channel_name in self._selected_channels else ()
+            for channel_name in self._in_channel_order(self._playing_channels)
+            if channel_name in owned
+        }
+        lanes = tuple(ownership_lanes(stems_data, assignments, self.heard_on).values())
         return OwnershipRibbonViewModel(
             lanes=lanes,
             frame_length=reconstruction_data.reconstruction.config.frame_length,
-            total_frames=max((len(lane.runs) and lane.runs[-1].end_frame for lane in lanes), default=0),
-        )
-
-    @staticmethod
-    def _record_positions(stems_data: StemsData) -> Dict[int, int]:
-        """Where each recording's entry stands on the record, which is what picks its color.
-
-        The ribbon and the row beside it read this one ordering, so a stretch and the name it
-        answers to are drawn in the same color.
-        """
-        return {entry.id: index for index, entry in enumerate(stems_data.config.entries)}
-
-    def _ownership_lane(
-        self,
-        channel_name: ChannelName,
-        stem_ids: Sequence[int],
-        positions: Dict[int, int],
-    ) -> OwnershipLaneViewModel:
-        """One channel's lane: the stretches it divides into, each under the recording heard on it."""
-        heard = self.heard_on(channel_name)
-        return OwnershipLaneViewModel(
-            channel_name=channel_name,
-            runs=tuple(
-                OwnershipRunViewModel(
-                    start_frame=run.start,
-                    end_frame=run.end,
-                    stem_id=run.stem_id if heard_frame(run.stem_id, heard) else RESTING_STEM_ID,
-                    position=positions.get(run.stem_id, 0),
-                )
-                for run in owner_runs(stem_ids)
-            ),
+            total_frames=max((len(owned[lane.channel_name]) for lane in lanes), default=0),
         )
 
     def heard_on(self, channel_name: ChannelName) -> FrozenSet[int]:
@@ -390,7 +361,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             )
 
         entries = stems_data.config.entries_by_id
-        positions = self._record_positions(stems_data)
+        positions = record_positions(stems_data)
         levels = self._levels_with_edits(stems_data)
         rows = tuple(
             self._stem_row(
@@ -503,7 +474,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             ),
         )
 
-    def _heard_features(self) -> FeatureData:
+    def _heard_features(self) -> ChannelEnvelopesViewModel:
         """The envelopes of the part the reader is listening to, as the open document reads them.
 
         Raises:

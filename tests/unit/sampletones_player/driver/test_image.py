@@ -41,7 +41,10 @@ class TestTheCommittedDriver(BaseTestSuite):
 
     def test_the_routines_answer_where_the_specification_states(self) -> None:
         image = DriverImage.load()
-        assert (image.addresses.init, image.addresses.play) == (INIT_ADDRESS, PLAY_ADDRESS)
+        assert (image.addresses.init, image.addresses.play) == (
+            INIT_ADDRESS,
+            PLAY_ADDRESS,
+        )
 
     def test_the_image_leads_with_a_jump_to_each_routine(self) -> None:
         assert DriverImage.load().code[: len(JUMP_TABLE) : 3] == bytes((JUMP_ABSOLUTE_OPCODE,) * 2)
@@ -62,7 +65,9 @@ class TestTheImageContract(BaseTestSuite):
         with pytest.raises(ValueError, match="the init routine lies at"):
             DriverImage(**image_fields(init=LOAD_ADDRESS - 1))
 
-    def test_an_image_that_leads_with_anything_but_a_jump_is_rejected(self) -> None:
+    def test_an_image_that_leads_with_anything_but_a_jump_is_rejected(
+        self,
+    ) -> None:
         with pytest.raises(ValueError, match="rather than the jump"):
             DriverImage(**image_fields(code=bytes((RETURN_OPCODE,)) * len(CODE)))
 

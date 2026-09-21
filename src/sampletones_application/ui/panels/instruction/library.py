@@ -318,12 +318,11 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
 
         is_current = isinstance(node, LibraryNode) and self._is_current_library_node(node)
         should_expand = is_current or self._should_expand_node(node)
-        leaf = isinstance(node, GeneratorNode)
         self._append_spec(
             node,
             node_tag,
             state.parent,
-            leaf=leaf,
+            leaf=not node.children,
             should_expand=should_expand,
             open_on_double_click=True,
         )
@@ -433,6 +432,14 @@ class GUIInstructionsLibraryPanel(GUIFileBrowserPanel):
             callback=self._on_load_generator,
             user_data=node,
         )
+
+    def _node_label(self, node: TreeNode) -> str:
+        if isinstance(node, LibraryNode) and node.outdated:
+            return self._language_manager["instructions.library.template.library_node_outdated_template"].format(
+                node.name
+            )
+
+        return node.name
 
     def _is_current_library_node(self, node: TreeNode) -> bool:
         if not isinstance(node, LibraryNode):

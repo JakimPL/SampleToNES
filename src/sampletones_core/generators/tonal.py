@@ -2,9 +2,9 @@ from abc import ABC
 from typing import Dict, Tuple, TypeVar
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.general import MAX_TIMER, MIN_TIMER
 from sampletones_core.instructions import TonalInstruction
 from sampletones_core.timers import PhaseTimer, frequency_to_timer, timer_to_frequency
+from sampletones_core.timers.arithmetic import bent_timer
 from sampletones_shared.utils.arrays import clamp
 
 from .generator import Generator
@@ -17,8 +17,7 @@ class TonalGenerator(Generator[TonalInstructionT, PhaseTimer], ABC):
 
     The pulse and triangle channels sound a pitch the same way — the note resolves to a divider,
     and the frame's own bend moves it from there — so both read one table and drive their timer
-    through one call. The divider stays inside the range the register holds and away from the
-    value that stops the waveform, which keeps a bend audible wherever it lands.
+    through one call, the divider a bend reaches settled by :func:`bent_timer`.
     """
 
     def __init__(self, config: Config, name: str) -> None:
@@ -46,7 +45,7 @@ class TonalGenerator(Generator[TonalInstructionT, PhaseTimer], ABC):
         Raises:
             KeyError: If the pitch is absent from the generator's tables.
         """
-        return int(clamp(self.timer_table[pitch] + offset, MIN_TIMER, MAX_TIMER))
+        return bent_timer(self.timer_table[pitch], offset)
 
     def sounds_at(self, pitch: int, offset: int) -> float:
         """The frequency in Hz this channel sounds a note at once a bend has moved it.

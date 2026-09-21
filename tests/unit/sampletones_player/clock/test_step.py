@@ -32,7 +32,10 @@ class TestFixedPointStep(BaseTestSuite):
         TestCase(fields=(0, MAX_STEP_FRACTION), expected=MAX_STEP_FRACTION),
         TestCase(fields=(1, 0), expected=FIXED_POINT_SCALE),
         TestCase(fields=(3, 21837), expected=3 * FIXED_POINT_SCALE + 21837),
-        TestCase(fields=(MAX_STEP_WHOLE, MAX_STEP_FRACTION), expected=FIXED_POINT_SCALE * (MAX_STEP_WHOLE + 1) - 1),
+        TestCase(
+            fields=(MAX_STEP_WHOLE, MAX_STEP_FRACTION),
+            expected=FIXED_POINT_SCALE * (MAX_STEP_WHOLE + 1) - 1,
+        ),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
@@ -44,7 +47,10 @@ class TestFixedPointStep(BaseTestSuite):
     def test_the_fields_read_back_off_the_value(self, test_case: TestCase) -> None:
         whole, fraction = test_case.fields
         step = FixedPointStep(whole=whole, fraction=fraction)
-        assert divmod(step.value, FIXED_POINT_SCALE) == (step.whole, step.fraction)
+        assert divmod(step.value, FIXED_POINT_SCALE) == (
+            step.whole,
+            step.fraction,
+        )
 
     @pytest.mark.parametrize("fraction", (-1, FIXED_POINT_SCALE))
     def test_a_fraction_outside_the_word_is_rejected(self, fraction: int) -> None:

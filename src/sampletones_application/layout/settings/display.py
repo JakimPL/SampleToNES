@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 
-from sampletones_application.layout.primitives import Dimensions
+from sampletones_application.layout.primitives import DialogGeometry
 
 
 class DisplaySettingsLayout(BaseModel, extra="forbid", frozen=True):
-    window: Dimensions
-    countdown: Dimensions
+    window: DialogGeometry
+    countdown: DialogGeometry

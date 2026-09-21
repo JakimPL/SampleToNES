@@ -18,6 +18,10 @@ from sampletones_player.specification.registers import (
 CHANNEL_REGISTER_ADDRESSES: Final[Dict[ChannelName, Tuple[int, ...]]] = {
     ChannelName.PULSE1: (PULSE1_CONTROL, PULSE1_TIMER_LOW, PULSE1_TIMER_HIGH),
     ChannelName.PULSE2: (PULSE2_CONTROL, PULSE2_TIMER_LOW, PULSE2_TIMER_HIGH),
-    ChannelName.TRIANGLE: (TRIANGLE_LINEAR_COUNTER, TRIANGLE_TIMER_LOW, TRIANGLE_TIMER_HIGH),
+    ChannelName.TRIANGLE: (
+        TRIANGLE_LINEAR_COUNTER,
+        TRIANGLE_TIMER_LOW,
+        TRIANGLE_TIMER_HIGH,
+    ),
     ChannelName.NOISE: (NOISE_CONTROL, NOISE_PERIOD),
 }

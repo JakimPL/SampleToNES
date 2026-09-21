@@ -1,7 +1,7 @@
 from typing import Final
 
 from sampletones_player.specification.binary import WORD_SIZE
-from sampletones_player.specification.compression import PLANE_COUNT
+from sampletones_player.specification.planes import PLANE_COUNT
 
 STEP_WHOLE_OFFSET: Final[int] = 0
 STEP_FRACTION_OFFSET: Final[int] = STEP_WHOLE_OFFSET + 1
@@ -14,4 +14,5 @@ LOOP_ENTRIES_OFFSET: Final[int] = STREAM_OFFSETS_OFFSET + WORD_SIZE * PLANE_COUN
 SONG_HEADER_SIZE: Final[int] = LOOP_ENTRIES_OFFSET + WORD_SIZE * PLANE_COUNT
 
 NO_LOOP: Final[int] = 0xFFFF
-MAX_BLOCK_OFFSET: Final[int] = 0xFFFF
+ABSENT_STREAM: Final[int] = 0xFFFF
+MAX_BLOCK_OFFSET: Final[int] = ABSENT_STREAM - 1

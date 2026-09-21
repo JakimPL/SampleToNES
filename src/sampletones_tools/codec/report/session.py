@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import Final, Sequence, Tuple
 
 from sampletones_player.driver.image import DriverImage
-from sampletones_player.specification.compression import PLANE_COUNT, PLANE_STATE_SIZE
+from sampletones_player.specification.compression import PLANE_STATE_SIZE
+from sampletones_player.specification.planes import PLANE_COUNT
 from sampletones_tools.codec.report.corpus import CorpusEntry, corpus_entries
 from sampletones_tools.codec.report.encoding import Encoding, encode_corpus, report_rows
 from sampletones_tools.codec.report.rows import report_table, write_markdown
