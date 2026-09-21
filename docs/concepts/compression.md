@@ -290,9 +290,10 @@ frame.
 
 The report writes this table over a corpus of songs, and the format's constants are settled from it. Two
 of them were settled against expectation. Splitting the duty cycle out of the control byte into a plane of
-its own **costs** bytes: 16 % on the arrangement above with no plane packed at all, because volume and
-duty turn over together and a split pays two opcodes for what one covers, and 56 % as the format stands,
-because a split plane also gives up the repeat count its register's spare bits carry. The pitch index
+its own **costs** bytes. On the arrangement above, encoded at every layer, it costs 16 % where no plane
+packs, because volume and duty turn over together and a split pays two opcodes for what one covers, and
+56 % where the planes pack as the format packs them, because a split plane also gives up the repeat count
+its register's spare bits carry. The pitch index
 earns its place through the transposition it makes possible, the fourth row against the fifth, and it pays
 for itself directly as well (§2.2).
 
