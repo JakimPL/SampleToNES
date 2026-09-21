@@ -50,9 +50,8 @@ def render(
     progress: float = HALFWAY,
     traveling: bool = True,
 ) -> None:
-    """Builds the widget tree and draws the given state, the way an open window is kept up to date."""
-    window.create_window()
-    window.update_view(
+    """Raises the window on the given state, the way the coordinator running the export does."""
+    window.open(
         SongExportViewModel(
             phase=phase,
             stages=stages,

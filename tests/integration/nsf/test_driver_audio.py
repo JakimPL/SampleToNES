@@ -8,11 +8,13 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.builder import song_from_reconstruction
 from sampletones_player.compression.scheme import CompressionScheme
-from sampletones_player.registers.playable import playable
-from tests.integration.nsf.console.instructions import instructions_from_trace, sounded_approximation
+from tests.integration.nsf.console.instructions import (
+    DividerReading,
+    instructions_from_trace,
+    sounded_approximation,
+)
 from tests.integration.nsf.console.session import captured_trace
 from tests.integration.nsf.header import sample_information
 
@@ -23,20 +25,7 @@ def played_by_console(sample: Sample) -> ChannelInstructions:
     """The per-tick instructions the console sounds, read back out of the registers it wrote."""
     song = song_from_reconstruction(sample.reconstruction, loop_tick=None, scheme=CompressionScheme.SEARCH)
     trace = captured_trace(song, sample_information(sample.name))
-    return instructions_from_trace(trace, get_timer_table(sample.reconstruction.config.tuning))
-
-
-def resting(instruction: InstructionUnion) -> InstructionUnion:
-    """A sounding instruction as it stands, and a rest as the canonical silent one.
-
-    A stream holds a channel's pitch and timbre through a rest so the driver leaves the timer's
-    high byte alone, so what a rest carries beyond its silence is the channel's own history.
-    """
-    if instruction.on:
-        return instruction
-
-    silent: InstructionUnion = type(instruction).null_instruction()
-    return silent
+    return instructions_from_trace(trace, DividerReading.from_tuning(sample.reconstruction.config.tuning))
 
 
 @pytest.fixture(scope="module")
@@ -60,9 +49,8 @@ def rendered(
 class TestTheConsoleSoundsTheReconstruction:
     """What the driver puts on the APU, decoded back into the terms the reconstruction speaks.
 
-    A frame reaches the console through :func:`playable`, which states what the planes can carry
-    of it, so the console is held against the frames it can sound rather than against ones naming
-    a divider offset it has nowhere to put.
+    A divider reads back as the pitch lying nearest it and a detune, so both sides are stated by
+    the divider each frame sounds — see :class:`DividerReading`.
     """
 
     def test_every_played_channel_sounds_its_own_instructions(
@@ -71,10 +59,11 @@ class TestTheConsoleSoundsTheReconstruction:
         instrument_catalog: Dict[str, Sample],
     ) -> None:
         for name, sample in instrument_catalog.items():
+            reading = DividerReading.from_tuning(sample.reconstruction.config.tuning)
             for channel, instructions in sample.reconstruction.instructions.items():
                 sounded = played[name][channel][: len(instructions)]
-                assert [resting(instruction) for instruction in sounded] == [
-                    resting(playable(instruction)) for instruction in instructions
+                assert [reading.sounded(instruction) for instruction in sounded] == [
+                    reading.sounded(instruction) for instruction in instructions
                 ]
 
     def test_a_channel_the_reconstruction_leaves_out_rests_throughout(
@@ -104,8 +93,8 @@ class TestTheConsoleSoundsTheReconstruction:
 class TestTheConsoleRendersTheReconstructionsAudio:
     """The captured trace, sounded through the very generators the reconstruction was built on.
 
-    The reconstruction is rendered from the frames the console can sound, so the two sides are
-    held against one waveform — see :func:`sounded_approximation`.
+    Both sides render on the reconstruction's own engine, so the console is held against the
+    reconstruction's waveform itself — see :func:`sounded_approximation`.
     """
 
     def test_the_console_reproduces_the_reconstructions_waveform(

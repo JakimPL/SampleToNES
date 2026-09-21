@@ -2,6 +2,7 @@ from functools import partial
 from pathlib import Path
 from typing import Callable, Optional, Tuple
 
+from sampletones_application.categories.estimate import time_estimation
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.instruction.library_manager import (
@@ -457,18 +458,14 @@ class LibraryLogic(CallbackMixin):
         assert self._eta_estimator is not None, "ETA Estimator is not initialized"
 
         eta_seconds = self._eta_estimator.update(creator.completed_instructions)
-        eta_string = ETAEstimator.format_duration(eta_seconds)
-
         status_text = self._language_manager["instructions.library.template.generation_progress_template"].format(
             creator.completed_instructions,
             creator.total_instructions,
         )
-        if eta_string:
-            status_text += self._language_manager["global.dialog.template.time_estimation"].format(
-                eta_string=eta_string
-            )
-
-        self._emit_view(status_text, progress=task_progress.fraction)
+        self._emit_view(
+            status_text + time_estimation(self._language_manager, eta_seconds),
+            progress=task_progress.fraction,
+        )
 
     def _on_generation_completed(self) -> None:
         """Closes the generation and reads the catalog again, which lists the library it wrote."""

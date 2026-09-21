@@ -149,7 +149,7 @@ Constructs and updates the DearPyGui widget tree. A panel owns its DPG tags and 
 - Every mutation from outside goes through `update_view(view_model)` or through a direct DPG call (`dpg_configure_item`, `dpg_set_value`) triggered by an `update_*` method.
 - Callback wiring from coordinators sets public `on_x` attributes *after* construction, so a panel tolerates unset hooks until wiring completes.
 - Hooks and view models are how a panel reaches state. A widget that queries per-item state *while it draws*, where projecting the whole collection per repaint would be disproportionate, declares one consumer-owned `Protocol` of exactly the queries that draw makes (e.g. `TreeLogicProtocol`, through which the file trees query per-node favorite and playability state); the owning coordinator constructs the real logic object and injects it, and the panel types against the Protocol. One panel holds one such Protocol: a second is the sign that the panel holds two jobs, and the panel divides.
-- Dialog presentation belongs to coordinators: a panel fires an intent hook, and the owning coordinator renders the dialog via `DialogsRenderer` with text resolved there. Reusable modal *editing* windows subclass `GUIWindow` and follow the ordinary panel contracts.
+- Dialog presentation belongs to coordinators: a panel fires an intent hook, and the owning coordinator renders the dialog via `DialogsRenderer` with text resolved there. Reusable modal *editing* windows subclass `GUIWindow`, follow the ordinary panel contracts, and hold to the geometry contract in [dialogs](application/dialogs.md).
 
 ---
 

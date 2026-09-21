@@ -21,6 +21,7 @@ from sampletones_player.specification.nsf import (
     PROGRAM_SIZE,
 )
 from sampletones_player.specification.song import (
+    ABSENT_STREAM,
     LOOP_TICK_OFFSET,
     NO_LOOP,
     SONG_HEADER_SIZE,
@@ -42,7 +43,9 @@ def read_word(data: bytes, offset: int) -> int:
 
 
 def stream_offsets(block: bytes) -> Tuple[int, ...]:
-    return tuple(read_word(block, STREAM_OFFSETS_OFFSET + WORD_SIZE * plane) for plane in range(PLANE_COUNT))
+    """Where each stream the block holds begins, in plane order, an absent plane left out."""
+    offsets = (read_word(block, STREAM_OFFSETS_OFFSET + WORD_SIZE * plane) for plane in range(PLANE_COUNT))
+    return tuple(offset for offset in offsets if offset != ABSENT_STREAM)
 
 
 @pytest.fixture

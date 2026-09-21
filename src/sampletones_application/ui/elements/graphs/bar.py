@@ -208,6 +208,25 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self._update_ticks()
         self._update_ranges()
 
+    def reserve_band(self, share: float) -> Tuple[float, float]:
+        """Keeps a band beneath the plotted values, and answers where that band lies.
+
+        A stretch drawn under the bars stands in a band of its own, so the plot lowers what it
+        spans by that share and the bars keep every value they reach. The reserve is measured
+        against the range the plot was built with, so reserving twice keeps one band.
+
+        Args:
+            share: How much of the built range the band takes, beneath it.
+
+        Returns:
+            Tuple[float, float]: The band's lower and upper edge.
+        """
+        low, high = self._default_y_range
+        height = (high - low) * share
+        self.y_range = (low - height, high)
+        self._update_axes_limits()
+        return low - height, low
+
     def _set_layer(
         self,
         layer: BarLayer,
@@ -337,8 +356,18 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self._set_hover_bar_position(bar_index, clamped_y)
         self.call(self.on_bar_point_hovered, name, bar_index)
 
-        if dpg.is_mouse_button_down(dpg.mvMouseButton_Left) or dpg.is_mouse_button_clicked(dpg.mvMouseButton_Left):
+        if self._presses_a_bar(mouse_y) and (
+            dpg.is_mouse_button_down(dpg.mvMouseButton_Left) or dpg.is_mouse_button_clicked(dpg.mvMouseButton_Left)
+        ):
             self._draw_bar(layer, bar_index, clamped_y, previous_stroke)
+
+    def _presses_a_bar(self, mouse_y: float) -> bool:
+        """Whether a press at ``mouse_y`` stands on the grid the bars are drawn across.
+
+        A band reserved beneath the bars lies inside the plot and reads which stretch belongs to
+        whom, so a press there answers what the band shows and the values above it stand.
+        """
+        return mouse_y >= self._default_y_range[0]
 
     def _draw_bar(
         self,

@@ -39,6 +39,7 @@ from sampletones_tools.codec.study.variants.production import compress_baseline
 from sampletones_tools.codec.study.variants.sandbox import DEFAULT_COUNT_COSTS, GRAMMAR_VARIANTS, GrammarVariant
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.study import NO_STUDY_SLICES, lowest_notes
 
 ENTRIES: Final[FrozenSet[int]] = frozenset({STREAM_START})
 FIGURES: Final[Tuple[bytes, ...]] = (b"\x0a\x0c\x0f\x0f\x0f\x0f\x0f\x0f", b"\x03\x04\x05\x06")
@@ -84,7 +85,7 @@ def _song(ticks: int) -> StudySong:
     planes: List[bytes] = []
     for plane in range(PLANE_COUNT):
         if plane % 3 == 2:
-            planes.append(bytes(ticks))
+            planes.append(b"")
         elif plane % 3 == 0:
             planes.append(_runs_plane(random, ticks))
         else:
@@ -97,6 +98,8 @@ def _song(ticks: int) -> StudySong:
         planes=SongPlanes.from_order(PlaneOrder.across(planes)),
         seeds=tuple(Phrase(body=body) for body in FIGURES),
         pitches=PitchTable.from_tuning(Tuning()),
+        notes=lowest_notes(ticks),
+        slices=NO_STUDY_SLICES,
     )
 
 
@@ -389,9 +392,10 @@ class TestTheReferenceHoldsTheSandboxToTheCodec:
         assert encoding.written is None
         assert sum(encoding.streams) <= sum(len(stream) for stream in self.compressed.streams)
 
-    def test_wide_holds_opening_the_stream_reduce_an_idle_plane_to_three_bytes(self) -> None:
+    @pytest.mark.parametrize("entry", GRAMMAR_VARIANTS, ids=lambda entry: entry.name)
+    def test_a_plane_holding_zero_throughout_is_absent_under_every_grammar(self, entry: GrammarVariant) -> None:
         read = reference(self.song, self.compressed)
 
-        encoding = encode_grammar(read, replace(WIDE_HOLD, start_hold=True))
+        encoding = encode_grammar(read, entry.grammar)
 
-        assert [encoding.streams[plane] for plane in range(2, PLANE_COUNT, 3)] == [3, 3, 3]
+        assert [encoding.streams[plane] for plane in range(2, PLANE_COUNT, 3)] == [0, 0, 0]

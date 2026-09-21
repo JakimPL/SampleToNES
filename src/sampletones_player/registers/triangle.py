@@ -6,11 +6,11 @@ from pydantic import Field
 
 from sampletones_core.exporters.implementation.triangle import TriangleExporter
 from sampletones_core.instructions import TriangleInstruction
-from sampletones_player.registers.base import ChannelRegisters
+from sampletones_player.registers.dividers import anchored_pitches, bent_dividers
 from sampletones_player.registers.hold import hold
+from sampletones_player.registers.tone import ToneRegisters
 from sampletones_player.specification.registers import (
     MAX_REGISTER_VALUE,
-    MAX_TIMER_HIGH,
     TIMER_HIGH_SHIFT,
     TRIANGLE_COUNTER_CONTROL,
     TRIANGLE_SILENT_RELOAD,
@@ -18,10 +18,8 @@ from sampletones_player.specification.registers import (
 )
 
 
-class TriangleRegisters(ChannelRegisters):
+class TriangleRegisters(ToneRegisters):
     linear_counter: int = Field(..., ge=0, le=MAX_REGISTER_VALUE)
-    timer_low: int = Field(..., ge=0, le=MAX_REGISTER_VALUE)
-    timer_high: int = Field(..., ge=0, le=MAX_TIMER_HIGH)
 
     @property
     def values(self) -> Tuple[int, ...]:
@@ -40,8 +38,8 @@ class TriangleRegisters(ChannelRegisters):
         holds it silent. The control bit stays set throughout, which is what makes the counter
         reload every frame and the note last as long as the ticks do.
 
-        The timer is written from the instruction's pitch directly, and the channel sounds an
-        octave below it — the same octave a rendered triangle sounds.
+        The timer carries the note's divider moved by the frame's bend, and the channel sounds an
+        octave below the pitch it names — the same octave a rendered triangle sounds.
 
         Args:
             instructions: The channel's per-tick instructions.
@@ -51,16 +49,19 @@ class TriangleRegisters(ChannelRegisters):
             List[TriangleRegisters]: One register set per tick, including the closing release tick.
         """
         _, pitches, volumes = TriangleExporter.extract_data(instructions)
+        dividers = bent_dividers(pitches, TriangleExporter.read_timer_offsets(instructions), timer_table)
+        anchors = anchored_pitches(pitches, dividers, timer_table)
 
         registers: List[TriangleRegisters] = []
         for index, volume in enumerate(volumes):
-            timer = timer_table[hold(pitches, index)]
+            timer = hold(dividers, index)
             reload_value = TRIANGLE_SOUNDING_RELOAD if volume > 0 else TRIANGLE_SILENT_RELOAD
             registers.append(
                 cls(
                     linear_counter=TRIANGLE_COUNTER_CONTROL | reload_value,
                     timer_low=timer & MAX_REGISTER_VALUE,
                     timer_high=timer >> TIMER_HIGH_SHIFT,
+                    anchor=hold(anchors, index),
                 )
             )
 

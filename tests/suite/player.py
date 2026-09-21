@@ -23,6 +23,7 @@ from sampletones_player.compression.encode import emit, encode_planes
 from sampletones_player.compression.options import EVERY_LAYER
 from sampletones_player.compression.pitch import PITCH_COUNT, PitchTable
 from sampletones_player.compression.planes.channel import TonePlanes
+from sampletones_player.compression.planes.flags import flagged_value
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.separate import planes_from_streams
 from sampletones_player.compression.planes.song import SongPlanes
@@ -65,6 +66,11 @@ PLAYER_FULL_VOLUME: Final[int] = 15
 PLAYER_SILENT_VOLUME: Final[int] = 0
 
 
+def nearest_anchor(timer: int) -> int:
+    """The pitch a hand-written timer is counted from, the one lying nearest it."""
+    return PLAYER_PITCHES.pitch(PLAYER_PITCHES.nearest[timer].pitch)
+
+
 def pulse_tick(
     volume: int,
     duty_cycle: int,
@@ -75,6 +81,7 @@ def pulse_tick(
         control=(duty_cycle << DUTY_CYCLE_SHIFT) | SUSTAINED_LEVEL | volume,
         timer_low=timer & MAX_REGISTER_VALUE,
         timer_high=timer >> TIMER_HIGH_SHIFT,
+        anchor=nearest_anchor(timer),
     )
 
 
@@ -85,6 +92,7 @@ def triangle_tick(sounding: bool, timer: int) -> TriangleRegisters:
         linear_counter=TRIANGLE_COUNTER_CONTROL | reload_value,
         timer_low=timer & MAX_REGISTER_VALUE,
         timer_high=timer >> TIMER_HIGH_SHIFT,
+        anchor=nearest_anchor(timer),
     )
 
 
@@ -147,9 +155,9 @@ def bent_song(
 ) -> Song:
     """A song holding one note on a pulse channel while its bend plane moves the divider.
 
-    A bend reaches the console on a plane of its own, and only the plane can put one there while
-    the encoders still leave the dimension to the note. Stating one outright is therefore what
-    holds the driver's own arithmetic to the divider each tick is meant to sound at.
+    A bend reaches the console on a plane of its own, and stating the plane outright reaches bends
+    no encoder writes — past half the gap to a neighboring pitch — which is what holds the driver's
+    own arithmetic to the divider each tick is meant to sound at across the whole signed byte.
 
     Args:
         pitch_index: The pitch the value plane names, counted from the lowest the table holds.
@@ -164,8 +172,8 @@ def bent_song(
     bent = SongPlanes(
         pulse1=TonePlanes(
             control=planes.pulse1.control,
-            value=planes.pulse1.value,
-            bend=bytes(unsigned_byte(bend) for bend in bends),
+            value=bytes(flagged_value(pitch_index, bend != 0) for bend in bends),
+            bend=bytes(unsigned_byte(bend) for bend in bends if bend),
         ),
         pulse2=planes.pulse2,
         triangle=planes.triangle,

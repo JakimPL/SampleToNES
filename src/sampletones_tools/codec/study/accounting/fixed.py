@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from sampletones_player.compression.compressed import CompressedPlanes
+from sampletones_player.compression.planes.flags import pitch_index
 from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.compression import (
     PHRASE_TABLE_ENTRY_SIZE,
@@ -53,7 +54,8 @@ def fixed_overheads(
     Returns:
         FixedOverheads: The fixed bytes, part by part.
     """
-    highest = max(max(channel.value) for channel in (song.planes.pulse1, song.planes.pulse2, song.planes.triangle))
+    tones = (song.planes.pulse1, song.planes.pulse2, song.planes.triangle)
+    highest = max(pitch_index(value) for channel in tones for value in channel.value)
     return FixedOverheads(
         header=SONG_HEADER_SIZE,
         pitch_table=len(song.pitches.data),

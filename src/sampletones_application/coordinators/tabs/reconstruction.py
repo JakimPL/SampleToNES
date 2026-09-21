@@ -258,6 +258,7 @@ class ReconstructionTabCoordinator:
             pitch_stepper_style=layout.pitch_stepper_style,
             copy_width=layout.copy_width,
             feature_colors=layout.feature_colors,
+            stem_colors=layout.stem_colors,
             layout_graphs=layout.graphs,
             language_manager=language_manager,
             status_bar=status_bar,

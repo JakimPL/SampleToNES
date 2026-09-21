@@ -34,7 +34,7 @@ def _searched(budget: SearchBudget) -> PhraseTable:
         cache,
         phrase_table(()),
         EVERY_LAYER,
-        STREAM_START,
+        (STREAM_START, STREAM_START),
         CodecMonitor(silent_reporter),
         budget,
     )

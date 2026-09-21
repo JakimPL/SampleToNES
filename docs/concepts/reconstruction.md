@@ -67,8 +67,8 @@ A reconstruction runs through a fixed sequence of stages:
 Stages 3–7 are where the algorithms described below live; the rest is preparation
 and playback.
 
-A run reports which stage it is in as it goes, gathered into the four a conversion shows
-you: loading, matching, decoding and rendering.
+A run reports which stage it is in as it goes, in the four a conversion shows you:
+loading, matching, decoding and gathering.
 
 ## 3. Representing a frame
 
@@ -390,8 +390,7 @@ A reconstruction is its instruction streams. Each one is rendered back through t
 that plays it, which carries the oscillator's phase across frames so there are no clicks at
 frame boundaries, and resets it on a new note where the settings say so. An "off"
 instruction gives silence for that channel and frame. Each
-frame is rendered at the drive the source holding it gives its channel (see
-[Stems reconstruction](stems.md)), and the per-channel renderings are summed into the final
+stream is rendered as it stands, and the per-channel renderings are summed into the final
 approximation.
 
 The audio is rendered when it is asked for rather than stored beside the streams, so what a

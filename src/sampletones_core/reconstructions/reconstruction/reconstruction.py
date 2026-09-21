@@ -28,6 +28,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.data import DataModel, Metadata, MetadataContract
+from sampletones_core.data.document import decompress_document
 from sampletones_core.exporters import (
     CHANNEL_TO_EXPORTER_MAP,
     INSTRUCTION_TO_EXPORTER_MAP,
@@ -35,9 +36,9 @@ from sampletones_core.exporters import (
     ExporterUnion,
     Features,
 )
+from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
-from sampletones_core.reconstructions.reconstruction.rendering import render_streams
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.filter import heard_instructions
@@ -162,14 +163,14 @@ class Reconstruction(DataModel):
 
     @cached_property
     def approximations(self) -> Dict[ChannelName, np.ndarray]:
-        """The audio each channel in play renders, at the drive its owner gives each frame.
+        """The audio each channel in play renders from the instructions it carries.
 
-        A reconstruction records the instructions a channel plays and the recording behind each
-        of its frames, so its sound is read from those rather than carried beside them. Reading
-        it here keeps one answer for the waveform, playback, an export and the mixed
-        approximation, and keeps a stored document to what it describes.
+        A reconstruction records the instructions a channel plays, so its sound is read from
+        those rather than carried beside them. Reading it here keeps one answer for the
+        waveform, playback, an export and the mixed approximation, and keeps a stored document
+        to what it describes.
         """
-        return render_streams(self.instructions, self.stems_data, self.config)
+        return render_channels(self.instructions, self.config)
 
     @cached_property
     def approximation(self) -> np.ndarray:
@@ -436,9 +437,8 @@ class Reconstruction(DataModel):
 
     @classmethod
     def load(cls, path: Pathlike, fast: bool = True) -> Reconstruction:
-        binary = load_binary(path)
         return cls.deserialize_data(
-            binary,
+            load_binary(path),
             source=Path(path),
             validation=cls.validate_metadata,
             fast=fast,
@@ -453,7 +453,7 @@ class Reconstruction(DataModel):
         fast: bool = True,
     ) -> Reconstruction:
         try:
-            binary = upgrade_binary(ObjectKind.RECONSTRUCTION, binary)
+            binary = upgrade_binary(ObjectKind.RECONSTRUCTION, decompress_document(binary))
             return cls.deserialize(binary, validation=validation, fast=fast)
         except (ValidationError, TypeError, ValueError, struct.error, IndexError) as exception:
             raise InvalidReconstructionValuesError(

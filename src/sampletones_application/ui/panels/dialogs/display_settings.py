@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -16,8 +16,8 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_DISPLAY_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.field import labeled_field, subheader
+from sampletones_application.ui.elements.seeded import GUISeededDialogWindow
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
@@ -34,7 +34,7 @@ from sampletones_shared.types.callback import VoidCallback
 SettingsCallback = Callable[[DisplaySettings], None]
 
 
-class GUIDisplaySettingsWindow(GUIDialogWindow):
+class GUIDisplaySettingsWindow(GUISeededDialogWindow[DisplaySettingsViewModel]):
     """Modal form over how the application presents itself: its window, its pacing and its theme.
 
     Every control reports the whole edited state through ``on_settings_changed`` the moment it
@@ -53,7 +53,6 @@ class GUIDisplaySettingsWindow(GUIDialogWindow):
     ) -> None:
         self._language_manager = language_manager
         self._layout = layout
-        self._view_model: Optional[DisplaySettingsViewModel] = None
 
         self.on_settings_changed: Optional[SettingsCallback] = None
         self.on_commit: Optional[VoidCallback] = None
@@ -62,25 +61,12 @@ class GUIDisplaySettingsWindow(GUIDialogWindow):
         self._lbl_unlimited = language_manager["settings.display.label.unlimited_frame_rate"]
 
         super().__init__(
+            subject="display settings",
             tag=TAG_SETTINGS_DISPLAY_WINDOW,
-            width=layout.display.window.width,
-            height=layout.display.window.height,
+            geometry=layout.display.window,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )
-
-    def open(self, view_model: DisplaySettingsViewModel) -> None:
-        """Shows the window seeded with the given display settings."""
-        self._view_model = view_model
-        self.show()
-
-    def prepare(self, *_args: Any, **_kwargs: Any) -> None:
-        """The rendered values are seeded by :meth:`open` before the tree rebuilds."""
-
-    def update_view(self, view_model: DisplaySettingsViewModel) -> None:
-        """Re-seeds the controls of the open window from the given display settings."""
-        self._view_model = view_model
-        self._render()
 
     def create_window(self) -> None:
         with self.dialog_window(
@@ -117,7 +103,7 @@ class GUIDisplaySettingsWindow(GUIDialogWindow):
         )
 
     def _create_window_section(self) -> None:
-        view_model = self._require_view_model()
+        view_model = self.view_model
         subheader(self._language_manager["settings.display.title.section_window"])
         with labeled_field(
             self._language_manager["settings.display.label.resolution"],
@@ -145,7 +131,7 @@ class GUIDisplaySettingsWindow(GUIDialogWindow):
         )
 
     def _create_pacing_section(self) -> None:
-        view_model = self._require_view_model()
+        view_model = self.view_model
         subheader(self._language_manager["settings.display.title.section_pacing"])
         dpg.add_checkbox(
             tag=TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC,
@@ -166,7 +152,7 @@ class GUIDisplaySettingsWindow(GUIDialogWindow):
             )
 
     def _create_appearance_section(self) -> None:
-        view_model = self._require_view_model()
+        view_model = self.view_model
         subheader(self._language_manager["settings.display.title.section_appearance"])
         with labeled_field(
             self._language_manager["settings.display.label.theme"],
@@ -197,7 +183,7 @@ class GUIDisplaySettingsWindow(GUIDialogWindow):
 
     def _render(self) -> None:
         """Shows the standing selection, offering the size and frame controls while they apply."""
-        view_model = self._require_view_model()
+        view_model = self.view_model
         dpg_configure_item(
             TAG_SETTINGS_DISPLAY_COMBO_RESOLUTION,
             items=list(view_model.resolution_items),
@@ -223,50 +209,39 @@ class GUIDisplaySettingsWindow(GUIDialogWindow):
         dpg_set_value(TAG_SETTINGS_DISPLAY_COMBO_PALETTE, view_model.settings.palette)
 
     def _on_resolution_changed(self, _sender: Sender, app_data: str) -> None:
-        view_model = self._require_view_model()
+        view_model = self.view_model
         resolution = view_model.resolution_for_item(app_data)
         self._emit_window(view_model.settings.window.with_resolution(resolution))
 
     def _on_borderless_changed(self, _sender: Sender, app_data: bool) -> None:
-        window = self._require_view_model().settings.window
+        window = self.view_model.settings.window
         self._emit_window(window.with_borderless(bool(app_data)))
 
     def _on_fullscreen_changed(self, _sender: Sender, app_data: bool) -> None:
-        window = self._require_view_model().settings.window
+        window = self.view_model.settings.window
         self._emit_window(window.with_fullscreen(bool(app_data)))
 
     def _on_vsync_changed(self, _sender: Sender, app_data: bool) -> None:
-        settings = self._require_view_model().settings
+        settings = self.view_model.settings
         self._emit(settings.with_vsync(bool(app_data)))
 
     def _on_frame_rate_changed(self, _sender: Sender, app_data: str) -> None:
-        view_model = self._require_view_model()
+        view_model = self.view_model
         frame_rate = view_model.frame_rate_for_item(app_data, self._lbl_unlimited)
         self._emit(view_model.settings.with_frame_rate(frame_rate))
 
     def _on_palette_changed(self, _sender: Sender, app_data: str) -> None:
-        settings = self._require_view_model().settings
+        settings = self.view_model.settings
         self._emit(settings.with_palette(app_data))
 
     def _emit(self, settings: DisplaySettings) -> None:
         self.call(self.on_settings_changed, settings)
 
     def _emit_window(self, window: WindowMode) -> None:
-        self._emit(self._require_view_model().settings.with_window(window))
+        self._emit(self.view_model.settings.with_window(window))
 
     def _request_commit(self) -> None:
         self.call(self.on_commit)
 
     def _request_cancel(self) -> None:
         self.call(self.on_cancel)
-
-    def _require_view_model(self) -> DisplaySettingsViewModel:
-        """The settings on screen.
-
-        Raises:
-            SystemError: when the window is drawn before :meth:`open` seeds it.
-        """
-        if self._view_model is None:
-            raise SystemError("The display settings window is drawn from a view model it was opened with")
-
-        return self._view_model

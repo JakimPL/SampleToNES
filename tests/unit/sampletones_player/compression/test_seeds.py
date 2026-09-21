@@ -3,19 +3,25 @@ from typing import Final, Tuple
 import pytest
 
 from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.project import Project
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.timers.utils import get_timer_table
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.channel import ChannelPlanes
 from sampletones_player.compression.planes.separate import channel_planes
 from sampletones_player.compression.seeds import phrases_from_project
 from sampletones_player.registers.channel import channel_registers
+from sampletones_player.specification.binary import unsigned_byte
 from sampletones_shared.music import Tuning
-from tests.suite.performance import make_pulse_reconstruction, project_with_sample
+from tests.suite.performance import make_pulse_reconstruction, project_with_instrument, project_with_sample
+from tests.suite.player import PLAYER_FULL_VOLUME, PLAYER_REFERENCE_PITCH
 
 TUNING: Final[Tuning] = Tuning()
 ROWS_PER_PATTERN: Final[int] = 8
 SOUNDING_TICKS: Final[int] = 5
+BENDS: Final[Tuple[int, ...]] = (0, 4, -4, 0)
 
 
 @pytest.fixture
@@ -72,3 +78,21 @@ class TestTheInstrumentsSeedTheDictionary:
         sounding = ALL_CHANNELS - {ChannelName.PULSE1}
         assert _offered(project)
         assert phrases_from_project(project, TUNING, sounding) == ()
+
+
+class TestABentSliceSeedsItsBend:
+    """A slice that bends turns its bend plane over, so the dictionary is offered that shape too."""
+
+    def test_the_bend_a_slice_plays_is_offered(self) -> None:
+        instrument = Instrument(
+            name="bent",
+            envelopes=InstrumentEnvelopes(
+                volume=Envelope(items=(PLAYER_FULL_VOLUME,) * len(BENDS)),
+                pitch=Envelope(items=BENDS),
+            ),
+            initial_pitch=PLAYER_REFERENCE_PITCH,
+        )
+        project = project_with_instrument(instrument, rows_per_pattern=ROWS_PER_PATTERN)
+
+        bend_plane = bytes(unsigned_byte(bend) for bend in BENDS if bend)
+        assert bend_plane in _offered(project)

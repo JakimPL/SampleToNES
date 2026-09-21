@@ -1,6 +1,7 @@
 from dataclasses import replace
 from typing import Dict, Final, FrozenSet, Iterable, Sequence, Tuple
 
+from sampletones_player.compression.absent import is_absent
 from sampletones_player.compression.admit import admit_seeds
 from sampletones_player.compression.budget import DEFAULT_SEARCH_BUDGET, SearchBudget
 from sampletones_player.compression.compressed import CompressedPlanes
@@ -93,7 +94,7 @@ def _settle(
     cache: MatchCache,
     table: PhraseTable,
     options: CodecOptions,
-    boundaries: FrozenSet[int],
+    boundaries: Sequence[FrozenSet[int]],
     monitor: CodecMonitor,
     baseline: Sequence[Parse],
 ) -> Tuple[PhraseTable, Tuple[Parse, ...]]:
@@ -114,41 +115,52 @@ def _settle(
     return table, parses
 
 
-def encode_planes(
-    planes: SongPlanes,
+def encode_streams(
+    planes: Sequence[bytes],
     seeds: Sequence[Phrase],
     *,
     options: CodecOptions,
-    boundaries: FrozenSet[int],
+    boundaries: Sequence[FrozenSet[int]],
     budget: SearchBudget = DEFAULT_SEARCH_BUDGET,
     report: CodecReporter = silent_reporter,
-) -> CompressedPlanes:
-    """Compresses a song's planes into the dictionary and streams the driver reads.
+) -> Tuple[PhraseTable, Tuple[bytes, ...]]:
+    """Compresses a run of planes into one dictionary and a token stream for each.
 
-    Every layer is weighed against one reading of the song naming no phrase at all: the seeds a
-    dictionary crowded past its ids keeps, and the bytes each phrase spares once the table
+    Every layer is weighed against one reading of the planes naming no phrase at all: the seeds
+    a dictionary crowded past its ids keeps, and the bytes each phrase spares once the table
     settles. The instruments seed the dictionary, the search fills what they leave behind, and
     the table then settles — phrases the parse names keep their place in the order they are
     leaned on, and the parse runs again over the ids that frees, which is what puts the busiest
     phrases inside the opcodes that name them.
 
+    Each plane is read against the shared dictionary on its own, so the planes may cover
+    different numbers of values. A plane playing only the value every plane starts at is absent:
+    it takes no stream, and the block states it with a sentinel the driver skips.
+
     Args:
-        planes: The planes under the channel each belongs to.
+        planes: The planes, each at least one value long.
         seeds: The phrases the song's instruments offer.
         options: Which of the codec's layers the encoding is built from.
-        boundaries: The ticks a token starts on, beyond the first tick of the song.
+        boundaries: The positions a token starts on in each plane beyond its first, one set per
+            plane.
         budget: How much work the search spends beyond the phrases the instruments seed.
         report: Hears what the run holds each time it looks up, and answers whether it goes on.
 
     Returns:
-        CompressedPlanes: The dictionary, every plane's token stream and the ticks the song lasts.
+        Tuple[PhraseTable, Tuple[bytes, ...]]: The dictionary, then each plane's token stream in
+            the order the planes were given, an absent plane's empty.
 
     Raises:
         OperationCanceled: If ``report`` withdraws the run.
+        ValueError: If the boundaries name a set for other than every plane.
     """
-    cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes.planes)
+    if len(boundaries) != len(planes):
+        raise ValueError(f"a set of boundaries stands for each plane, and {len(boundaries)} stand for {len(planes)}")
+
+    present = [plane for plane, written in enumerate(planes) if not is_absent(written)]
+    cache = MatchCache(PlaneIndex.from_plane(planes[plane]) for plane in present)
     monitor = CodecMonitor(report)
-    entries = boundaries | {STREAM_START}
+    entries = tuple(boundaries[plane] | {STREAM_START} for plane in present)
     baseline = parse_planes(
         cache,
         phrase_table(()),
@@ -184,10 +196,49 @@ def encode_planes(
         monitor,
         baseline,
     )
-    compressed = CompressedPlanes(
+    written = iter(emit(parse.tokens) for parse in parses)
+    streams = tuple(b"" if is_absent(plane) else next(written) for plane in planes)
+    monitor.reached(len(table), table.size + sum(len(stream) for stream in streams))
+    return table, streams
+
+
+def encode_planes(
+    planes: SongPlanes,
+    seeds: Sequence[Phrase],
+    *,
+    options: CodecOptions,
+    boundaries: FrozenSet[int],
+    budget: SearchBudget = DEFAULT_SEARCH_BUDGET,
+    report: CodecReporter = silent_reporter,
+) -> CompressedPlanes:
+    """Compresses a song's planes into the dictionary and streams the driver reads.
+
+    Args:
+        planes: The planes under the channel each belongs to.
+        seeds: The phrases the song's instruments offer.
+        options: Which of the codec's layers the encoding is built from.
+        boundaries: The ticks a token starts on, beyond the first tick of the song; a bend plane
+            starts one at the position it stands at once those ticks have played.
+        budget: How much work the search spends beyond the phrases the instruments seed.
+        report: Hears what the run holds each time it looks up, and answers whether it goes on.
+
+    Returns:
+        CompressedPlanes: The dictionary, every plane's token stream and the ticks the song lasts.
+
+    Raises:
+        OperationCanceled: If ``report`` withdraws the run.
+    """
+    positions = [planes.positions(tick) for tick in boundaries]
+    table, streams = encode_streams(
+        planes.planes,
+        seeds,
+        options=options,
+        boundaries=[frozenset(position[plane] for position in positions) for plane in range(len(planes.planes))],
+        budget=budget,
+        report=report,
+    )
+    return CompressedPlanes(
         phrases=table,
-        streams=PlaneOrder.across(emit(parse.tokens) for parse in parses),
+        streams=PlaneOrder.across(streams),
         ticks=planes.ticks,
     )
-    monitor.reached(len(table), compressed.size)
-    return compressed

@@ -1,4 +1,10 @@
-from sampletones_core.constants.general import APU_CLOCK, MAX_TIMER, TIMER_CYCLE_DIVIDER
+from sampletones_core.constants.general import (
+    APU_CLOCK,
+    MAX_TIMER,
+    MIN_TIMER,
+    TIMER_CYCLE_DIVIDER,
+)
+from sampletones_shared.utils.arrays import clamp
 
 
 def frequency_to_timer(frequency: float) -> int:
@@ -49,3 +55,19 @@ def timer_to_frequency(timer: int) -> float:
         float: The frequency in Hz the divider produces for that timer.
     """
     return APU_CLOCK / (TIMER_CYCLE_DIVIDER * (timer + 1))
+
+
+def bent_timer(timer: int, offset: int) -> int:
+    """The divider a note sounds at once a bend has moved it off its own.
+
+    The sum stays within the 11 bits the register offers and above the divider that stops the
+    waveform, which keeps a bend audible wherever it lands.
+
+    Args:
+        timer: The divider the note sounds at unbent.
+        offset: The divider steps the bend moves it by.
+
+    Returns:
+        int: The divider to sound, in ``[MIN_TIMER, MAX_TIMER]``.
+    """
+    return clamp(timer + offset, MIN_TIMER, MAX_TIMER)

@@ -3,6 +3,7 @@ from typing import Final
 
 import msgpack
 
+from sampletones_core.data.document import compress_document
 from sampletones_core.data.stored import read_leading_fields
 
 LEADING: Final[str] = "leading"
@@ -37,6 +38,29 @@ class TestTheFieldsReadFromTheFront:
         path = _stored(tmp_path / "document.bin", three_fields)
 
         assert read_leading_fields(path, frozenset({LEADING, FOLLOWING})) == {LEADING: 1, FOLLOWING: 2}
+
+
+class TestAStoredDocumentsFraming:
+    def test_the_named_fields_read_through_the_framing(self, tmp_path: Path) -> None:
+        document = {LEADING: {"version": "2.1"}, FOLLOWING: [1, 2], TRAILING: b"\x00" * 4096}
+        payload = msgpack.packb(document, use_bin_type=True)
+        path = _stored(tmp_path / "document.bin", compress_document(payload))
+
+        fields = read_leading_fields(path, frozenset({LEADING, FOLLOWING}))
+
+        assert fields == {LEADING: document[LEADING], FOLLOWING: document[FOLLOWING]}
+
+    def test_a_document_whose_framing_is_cut_short_holds_no_fields(self, tmp_path: Path) -> None:
+        stored = compress_document(msgpack.packb({LEADING: "x" * 4096}, use_bin_type=True))
+        path = _stored(tmp_path / "document.bin", stored[:24])
+
+        assert not read_leading_fields(path, frozenset({LEADING}))
+
+    def test_a_document_whose_framing_is_damaged_holds_no_fields(self, tmp_path: Path) -> None:
+        stored = compress_document(msgpack.packb({LEADING: "x" * 4096}, use_bin_type=True))
+        path = _stored(tmp_path / "document.bin", stored[:20] + b"\xff" * 256)
+
+        assert not read_leading_fields(path, frozenset({LEADING}))
 
 
 class TestAFrontThatDecodesAsNoMap:

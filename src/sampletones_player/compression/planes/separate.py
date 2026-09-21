@@ -1,40 +1,43 @@
-from typing import Dict, Final, Sequence
+from typing import Final, List, Sequence
 
 from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.channel import ChannelPlanes, TonePlanes
+from sampletones_player.compression.planes.flags import flagged_value, note_flags
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.registers.base import ChannelRegisters
 from sampletones_player.registers.streams import ChannelStreams
-from sampletones_player.specification.registers import TIMER_HIGH_SHIFT
+from sampletones_player.registers.tone import ToneRegisters
+from sampletones_player.specification.binary import unsigned_byte
 
 CONTROL_VALUE_INDEX: Final[int] = 0
 FIRST_VALUE_INDEX: Final[int] = 1
-SECOND_VALUE_INDEX: Final[int] = 2
 
 
-def _pitch_indices(
-    registers: Sequence[ChannelRegisters],
-    indices: Dict[int, int],
-) -> bytes:
-    try:
-        return bytes(
-            indices[tick.values[FIRST_VALUE_INDEX] | (tick.values[SECOND_VALUE_INDEX] << TIMER_HIGH_SHIFT)]
-            for tick in registers
-        )
-    except KeyError as error:
-        raise ValueError(f"a channel sounds timer {error.args[0]}, which no pitch of the table sounds") from error
+def _tone_ticks(registers: Sequence[ChannelRegisters]) -> List[ToneRegisters]:
+    ticks: List[ToneRegisters] = []
+    for tick in registers:
+        match tick:
+            case ToneRegisters():
+                ticks.append(tick)
+            case _:
+                raise TypeError(f"a tone channel's planes read tone registers, and a tick holds {type(tick).__name__}")
+
+    return ticks
 
 
 def _tone_planes(
     registers: Sequence[ChannelRegisters],
-    indices: Dict[int, int],
+    pitches: PitchTable,
 ) -> TonePlanes:
-    control = bytes(tick.values[CONTROL_VALUE_INDEX] for tick in registers)
+    ticks = _tone_ticks(registers)
+    indices = [pitches.index(tick.anchor) for tick in ticks]
+    offsets = [tick.divider - pitches.timers[index] for tick, index in zip(ticks, indices)]
+    flags = note_flags(indices, offsets)
     return TonePlanes(
-        control=control,
-        value=_pitch_indices(registers, indices),
-        bend=bytes(len(registers)),
+        control=bytes(tick.values[CONTROL_VALUE_INDEX] for tick in ticks),
+        value=bytes(flagged_value(index, flag) for index, flag in zip(indices, flags)),
+        bend=bytes(unsigned_byte(offset) for offset, flag in zip(offsets, flags) if flag),
     )
 
 
@@ -51,6 +54,10 @@ def channel_planes(
 ) -> ChannelPlanes:
     """Separates one channel's ticks into the planes the codec reads.
 
+    A tone channel's value plane names the pitch each divider is counted from, and its bend plane
+    the steps from that pitch's own divider on the ticks the value flags: each note from its
+    first bent tick to its last. A note the frame sounds unbent takes nothing from the bend plane.
+
     Args:
         channel: The channel the registers belong to.
         registers: The channel's per-tick register values.
@@ -60,10 +67,12 @@ def channel_planes(
         ChannelPlanes: The channel's own planes.
 
     Raises:
-        ValueError: If a tone channel sounds a timer the pitch table states no index for.
+        TypeError: If a tone channel's ticks hold registers another channel writes.
+        ValueError: If a tone channel's divider lies further from the pitch it is counted from than
+            a signed byte states.
     """
     if channel in TONE_CHANNELS:
-        return _tone_planes(registers, pitches.indices)
+        return _tone_planes(registers, pitches)
 
     return _noise_planes(registers)
 
@@ -85,13 +94,13 @@ def planes_from_streams(
         SongPlanes: The planes under the channel each belongs to.
 
     Raises:
-        ValueError: If a tone channel sounds a timer the pitch table states no index for.
+        ValueError: If a tone channel's divider lies further from the pitch it is counted from than
+            a signed byte states.
     """
-    indices = pitches.indices
     pulse1, pulse2, triangle, noise = streams.padded
     return SongPlanes(
-        pulse1=_tone_planes(pulse1, indices),
-        pulse2=_tone_planes(pulse2, indices),
-        triangle=_tone_planes(triangle, indices),
+        pulse1=_tone_planes(pulse1, pitches),
+        pulse2=_tone_planes(pulse2, pitches),
+        triangle=_tone_planes(triangle, pitches),
         noise=_noise_planes(noise),
     )

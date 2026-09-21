@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Final, Optional, Tuple
+from typing import Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -34,11 +34,11 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_NSF_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.field import labeled_field, subheader
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.path import GUIDestinationPathText
+from sampletones_application.ui.elements.seeded import GUISeededDialogWindow
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -82,7 +82,7 @@ class HeaderField:
     edit: Callable[[NSFExportChoices, str], NSFExportChoices]
 
 
-class GUINSFExportWindow(GUIDialogWindow):
+class GUINSFExportWindow(GUISeededDialogWindow[NSFExportViewModel]):
     """Modal form over writing a project or a reconstruction as an NSF program.
 
     The dialog sets the export up and hands it over: the program's text, the channels it sounds,
@@ -93,8 +93,6 @@ class GUINSFExportWindow(GUIDialogWindow):
     reconciles and hands back, so the dialog shows the choices as they end up. A field being typed
     into keeps the text the reader types, and takes the text the header holds once it is left.
     """
-
-    _fits_content = True
 
     def __init__(
         self,
@@ -112,7 +110,6 @@ class GUINSFExportWindow(GUIDialogWindow):
         self._path_colors = path_colors
         self._text_colors = text_colors
         self._status_bar = status_bar
-        self._view_model: Optional[NSFExportViewModel] = None
         self._destination_text: Optional[GUIDestinationPathText] = None
         self._handler_tag = compose_tag(TAG_SETTINGS_NSF_WINDOW, SUF_HANDLER_REGISTRY)
 
@@ -171,25 +168,12 @@ class GUINSFExportWindow(GUIDialogWindow):
         }
 
         super().__init__(
+            subject="NSF export",
             tag=TAG_SETTINGS_NSF_WINDOW,
-            width=layout.nsf.window.width,
-            height=layout.nsf.window.height,
+            geometry=layout.nsf.window,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )
-
-    def open(self, view_model: NSFExportViewModel) -> None:
-        """Shows the window seeded with the export being set up."""
-        self._view_model = view_model
-        self.show()
-
-    def prepare(self, *_args: Any, **_kwargs: Any) -> None:
-        """The drawn values are seeded by :meth:`open` before the tree rebuilds."""
-
-    def update_view(self, view_model: NSFExportViewModel) -> None:
-        """Re-draws the open window from the choices the export stands at."""
-        self._view_model = view_model
-        self._render()
 
     def create_window(self) -> None:
         with self.dialog_window(
@@ -260,7 +244,7 @@ class GUINSFExportWindow(GUIDialogWindow):
     @table_wrapper(columns=len(ChannelName.items()), height=0)
     def _create_channel_checkboxes(self) -> None:
         """Lays the channels out in one row, each tinted in its own color where the source sounds it."""
-        view_model = self._require_view_model()
+        view_model = self.view_model
         for channel in ChannelName.items():
             tag = self._channel_tag(channel)
             dpg.add_checkbox(
@@ -349,7 +333,7 @@ class GUINSFExportWindow(GUIDialogWindow):
         )
         self._destination_text = GUIDestinationPathText(
             tag=TAG_SETTINGS_NSF_PATH_DESTINATION,
-            path=self._require_view_model().destination,
+            path=self.view_model.destination,
             parent=TAG_SETTINGS_NSF_GROUP_DESTINATION,
             color=self._path_colors.default,
             hover_color=self._path_colors.hover,
@@ -383,7 +367,7 @@ class GUINSFExportWindow(GUIDialogWindow):
 
     def _render(self) -> None:
         """Draws the choices as they reconciled, around whatever field is being typed into."""
-        view_model = self._require_view_model()
+        view_model = self.view_model
         self._render_fields(view_model)
         self._render_channels(view_model)
         self._render_repeat(view_model)
@@ -438,11 +422,11 @@ class GUINSFExportWindow(GUIDialogWindow):
         self._emit(field.edit(self._choices(), app_data))
 
     def _on_channel_changed(self, _sender: Sender, app_data: bool, channel: ChannelName) -> None:
-        view_model = self._require_view_model()
+        view_model = self.view_model
         self._emit(view_model.choices.with_channel(channel, bool(app_data), view_model.offer))
 
     def _on_repeat_changed(self, _sender: Sender, app_data: str) -> None:
-        view_model = self._require_view_model()
+        view_model = self.view_model
         self._emit(view_model.choices.with_repeat(self._repeats_by_label[app_data], view_model.offer))
 
     def _on_loop_frame_changed(self, _sender: Sender, app_data: str) -> None:
@@ -452,11 +436,11 @@ class GUINSFExportWindow(GUIDialogWindow):
         except ValueError:
             return
 
-        view_model = self._require_view_model()
+        view_model = self.view_model
         self._emit(view_model.choices.with_loop_frame(frame, view_model.offer))
 
     def _on_scheme_changed(self, _sender: Sender, app_data: str) -> None:
-        view_model = self._require_view_model()
+        view_model = self.view_model
         self._emit(view_model.choices.with_scheme(self._schemes_by_label[app_data], view_model.offer))
 
     def _emit(self, choices: NSFExportChoices) -> None:
@@ -466,7 +450,7 @@ class GUINSFExportWindow(GUIDialogWindow):
         self.call(self.on_browse)
 
     def _request_export(self) -> None:
-        if self._require_view_model().export_enabled:
+        if self.view_model.export_enabled:
             self.call(self.on_export)
 
     def _request_close(self) -> None:
@@ -478,19 +462,8 @@ class GUINSFExportWindow(GUIDialogWindow):
         dpg_delete_item(self._handler_tag)
 
     def _choices(self) -> NSFExportChoices:
-        return self._require_view_model().choices
+        return self.view_model.choices
 
     @staticmethod
     def _channel_tag(channel: ChannelName) -> str:
         return compose_tag(TAG_SETTINGS_NSF_CHECKBOX_CHANNEL, channel.value)
-
-    def _require_view_model(self) -> NSFExportViewModel:
-        """The export on screen.
-
-        Raises:
-            SystemError: when the window is drawn before :meth:`open` seeds it.
-        """
-        if self._view_model is None:
-            raise SystemError("The NSF export window is drawn from a view model it was opened with")
-
-        return self._view_model

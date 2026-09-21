@@ -63,8 +63,10 @@ The same setup is what `sampletones convert --stems` reads, written as JSON with
 same fields: one entry per recording, in the order the recordings are given, each naming the
 channels it may occupy, the ones it bends, the `drives` it pushes each of them at and the
 `channel_cap` channels it may sound at once; and a hierarchy listing the stem ids by
-precedence level. An entry stating no `drives` is read at unit drive on every channel it
-holds, and one stating no `channel_cap` may sound all four. Two recordings, the first on the
+precedence level. A drive settles which instruction each frame records while the conversion
+runs, so a reconstruction plays the instructions it names. An entry stating no `drives` is
+read at unit drive on every channel it holds, and one stating no `channel_cap` may sound all
+four. Two recordings, the first on the
 pulses with its second pulse pushed harder and held to one channel a frame, the second on
 the rest as it stands:
 
@@ -110,9 +112,13 @@ The current data version is 2.2.
 
 ## Storage and export
 
-`.stn` files live in the documents folder. They are binary
-([MessagePack](https://msgpack.org/)) and self-contained: everything needed to
-play a reconstruction is the instructions, the stems assignment and the frozen
-configuration the file carries. The instruction streams can be exported to a
+`.stn` files live in the documents folder. They hold a deflated
+[MessagePack](https://msgpack.org/) payload and are self-contained: everything
+needed to play a reconstruction is the instructions, the stems assignment and the
+frozen configuration the file carries. A payload names every field of every
+frame, and a reconstruction holds one frame per channel per frame of audio, so
+the names repeat thousands of times over and deflate to a small fraction of the
+file. A payload stored plainly reads as it stands, so a file written by an
+earlier build opens as it is. The instruction streams can be exported to a
 tracker — one instrument per channel, or a whole module — as described in
 [FamiTracker export](famitracker.md) and [Bitphase export](bitphase.md).

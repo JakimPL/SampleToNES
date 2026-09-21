@@ -20,6 +20,7 @@ RECORDING_COLORS: Final[Tuple[ColorRGBA, ...]] = (
 )
 AUTHORED_COLOR: Final[ColorRGBA] = (180, 140, 240, 255)
 REST_COLOR: Final[ColorRGBA] = (40, 40, 48, 255)
+LEFT_OUT_FRACTION: Final[float] = 0.4
 FRAME_LENGTH: Final[int] = 4
 
 
@@ -29,19 +30,26 @@ def stem_colors() -> StemColors:
         recordings=tuple(LiteralColor(value) for value in RECORDING_COLORS),
         authored=LiteralColor(AUTHORED_COLOR),
         rest=LiteralColor(REST_COLOR),
+        left_out_fraction=LEFT_OUT_FRACTION,
     )
 
 
 def _runs(*entries: Tuple[int, int, int, int]) -> Tuple[OwnershipRunViewModel, ...]:
     return tuple(
-        OwnershipRunViewModel(start_frame=start, end_frame=end, stem_id=stem_id, position=position)
+        OwnershipRunViewModel(
+            start_frame=start,
+            end_frame=end,
+            stem_id=stem_id,
+            position=position,
+            heard=True,
+        )
         for start, end, stem_id, position in entries
     )
 
 
 class TestTheColorARecordingIsKnownBy:
     def test_a_recording_takes_the_color_of_the_place_it_holds(self, stem_colors: StemColors) -> None:
-        assert stem_colors.for_stem(7, 1).rgba == LiteralColor(RECORDING_COLORS[1]).rgba
+        assert stem_colors.for_stem(7, 1, heard=True).rgba == LiteralColor(RECORDING_COLORS[1]).rgba
 
     def test_the_list_starts_over_for_a_document_holding_more_recordings(
         self,
@@ -50,10 +58,34 @@ class TestTheColorARecordingIsKnownBy:
         assert stem_colors.for_position(len(RECORDING_COLORS)).rgba == stem_colors.for_position(0).rgba
 
     def test_the_frames_the_reader_wrote_take_a_color_of_their_own(self, stem_colors: StemColors) -> None:
-        assert stem_colors.for_stem(AUTHORED_STEM_ID, 0).rgba == LiteralColor(AUTHORED_COLOR).rgba
+        assert stem_colors.for_stem(AUTHORED_STEM_ID, 0, heard=True).rgba == LiteralColor(AUTHORED_COLOR).rgba
 
     def test_a_resting_frame_shows_the_ground(self, stem_colors: StemColors) -> None:
-        assert stem_colors.for_stem(RESTING_STEM_ID, 0).rgba == LiteralColor(REST_COLOR).rgba
+        assert stem_colors.for_stem(RESTING_STEM_ID, 0, heard=True).rgba == LiteralColor(REST_COLOR).rgba
+
+
+class TestHowSolidlyAStretchPaints:
+    """A recording left out keeps its color and carries it faded, so a stretch always names an owner."""
+
+    def test_a_recording_left_out_keeps_its_color(self, stem_colors: StemColors) -> None:
+        left_out = stem_colors.for_stem(7, 1, heard=False).rgba
+
+        assert left_out[:3] == LiteralColor(RECORDING_COLORS[1]).rgba[:3]
+
+    def test_a_recording_left_out_carries_less_of_its_opacity(self, stem_colors: StemColors) -> None:
+        heard = stem_colors.for_stem(7, 1, heard=True).rgba
+
+        assert stem_colors.for_stem(7, 1, heard=False).rgba[3] < heard[3]
+
+    def test_the_frames_the_reader_wrote_fade_like_any_other(self, stem_colors: StemColors) -> None:
+        left_out = stem_colors.for_stem(AUTHORED_STEM_ID, 0, heard=False).rgba
+
+        assert left_out[:3] == LiteralColor(AUTHORED_COLOR).rgba[:3]
+        assert left_out[3] < LiteralColor(AUTHORED_COLOR).rgba[3]
+
+    def test_a_resting_stretch_shows_the_ground_whoever_is_listening(self, stem_colors: StemColors) -> None:
+        """A rest answers to no recording, so every reader hears it."""
+        assert stem_colors.for_stem(RESTING_STEM_ID, 0, heard=False).rgba == LiteralColor(REST_COLOR).rgba
 
 
 class TestWhatTheRibbonStandsFor:

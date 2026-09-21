@@ -6,7 +6,6 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.editing import (
     EditedVoice,
     InstrumentEdit,
-    ReconstructionEdit,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.view_model.shared.history import HistoryDetail
@@ -66,8 +65,7 @@ class InstrumentEditor:
                 features=instrument.instrument_features(),
             )
 
-        feature_data = self._reconstruction_manager.current_features
-        return None if feature_data is None else ReconstructionEdit(channels=feature_data.channels)
+        return self._reconstruction_manager.current_features
 
     def write_envelope(self, feature_key: FeatureKey, envelope: Envelope[int]) -> None:
         """Writes one dimension of the instrument in front of the tab, as one history entry.

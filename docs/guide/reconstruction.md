@@ -37,7 +37,9 @@ Double-click a row to show the recording in your file browser.
 Under the waveform is a row of colored bars, one line per channel, with a letter naming the channel:
 **P** for Pulse 1, **p** for Pulse 2, **T** for Triangle and **N** for Noise. Each bar shows which
 recording played that stretch, in that recording's color, and a dark stretch means nothing was played
-there. The bars appear when there is more than one thing to tell apart: a reconstruction built from
+there. A recording you have unchecked keeps its color, drawn faint, so you can still see which
+recording held a stretch while you listen without it. The bars appear when there is more than one
+thing to tell apart: a reconstruction built from
 several recordings, or one built from a single recording that you have since edited by hand. Your own
 edits are drawn in a color of their own.
 
@@ -65,8 +67,9 @@ disabled. The **Edits** row has no **x**, because it names no recording.
 ## Editing instruments
 
 The **Instruments** panel shows what each channel plays, as one
-[sequence](../glossary.md#sequence-envelope) per dimension. Edit a sequence by dragging its bars or typing
-values.
+[sequence](../glossary.md#sequence-envelope) per dimension. A band beneath each set of bars carries the
+same colors as the bars under the waveform, so you can see which recording a frame came from while you
+edit it. Edit a sequence by dragging its bars or typing values.
 
 Each channel has its own set:
 

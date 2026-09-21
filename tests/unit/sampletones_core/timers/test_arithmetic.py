@@ -3,8 +3,9 @@ from dataclasses import dataclass
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.general import MAX_TIMER, TIMER_CYCLE_DIVIDER
+from sampletones_core.constants.general import MAX_TIMER, MIN_TIMER, TIMER_CYCLE_DIVIDER
 from sampletones_core.timers.arithmetic import (
+    bent_timer,
     frequency_to_timer,
     get_timer_ticks,
     timer_to_frequency,
@@ -72,6 +73,36 @@ class TestGetTimerTicks(BaseTestSuite):
     )
     def test_cycle_count_matches(self, test_case: TestCase) -> None:
         assert get_timer_ticks(test_case.timer) == test_case.expected
+
+
+class TestBentTimer(BaseTestSuite):
+    """A bend moves a divider by its steps, and the register's range holds wherever it lands."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseAutolabelTestCase):
+        expected: int
+        timer: int
+        offset: int
+
+        @property
+        def label(self) -> str:
+            return f"timer_{self.timer}_bent_{self.offset:+d}"
+
+    test_cases = (
+        TestCase(timer=253, offset=0, expected=253),
+        TestCase(timer=253, offset=7, expected=260),
+        TestCase(timer=253, offset=-7, expected=246),
+        TestCase(timer=MAX_TIMER - 3, offset=10, expected=MAX_TIMER),
+        TestCase(timer=MIN_TIMER + 2, offset=-10, expected=MIN_TIMER),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_divider_matches(self, test_case: TestCase) -> None:
+        assert bent_timer(test_case.timer, test_case.offset) == test_case.expected
 
 
 class TestTimerRoundTrip:

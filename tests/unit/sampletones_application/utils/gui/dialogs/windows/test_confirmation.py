@@ -31,8 +31,7 @@ OPTED_OUT: Final[str] = "opted_out"
 def window_fixture(dpg_context: None, layout_config: LayoutConfig) -> GUIConfirmationWindow:
     return GUIConfirmationWindow(
         tag=WINDOW_TAG,
-        width=layout_config.general.dialogs.default.width,
-        height=layout_config.general.dialogs.confirmation.height,
+        geometry=layout_config.general.dialogs.confirmation,
         wrap=layout_config.general.dialogs.default.width - 10,
         path_color=layout_config.general.colors.paths.default,
         path_hover_color=layout_config.general.colors.paths.hover,

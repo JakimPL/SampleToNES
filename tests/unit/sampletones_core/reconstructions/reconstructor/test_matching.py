@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import UNIT_DRIVE
+from sampletones_core.constants.algorithm import MAX_DRIVE, UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
@@ -29,6 +29,11 @@ AVERAGED_SHIFTS: Final[int] = 400
 AVERAGE_TOLERANCE: Final[float] = 0.05
 SOUNDING_COST: Final[float] = 0.2
 SILENT_COST: Final[float] = 0.5
+LADDER_PITCH: Final[int] = 60
+LADDER_DUTY_CYCLE: Final[int] = 0
+LADDER_STEP: Final[int] = 2
+QUIET_RUNG: Final[int] = 3
+MIDDLE_RUNG: Final[int] = 7
 
 
 def _long_noise(library_data: InstructionLibraryData) -> NoiseInstruction:
@@ -126,7 +131,7 @@ class TestScoreColumn:
         assert column[0].instruction == audible_instruction
         assert column[0].cost == pytest.approx(0.0, abs=1e-3)
 
-    def test_a_driven_candidate_answers_a_target_playing_that_loud(
+    def test_a_driven_candidate_answers_a_target_it_sounds_louder_than(
         self,
         worker: ReconstructorWorker,
         library_data: InstructionLibraryData,
@@ -135,9 +140,9 @@ class TestScoreColumn:
         config: Config,
         window: Window,
     ) -> None:
-        """A candidate scored at a drive stands where its library sample played that loud stands."""
+        """A candidate scored at a drive answers the target its library sample sounds that loud over."""
         library_fragment = library_data[audible_instruction].get_fragment(0, config, window)
-        target = amplified(extractor, library_fragment, DRIVE)
+        target = amplified(extractor, library_fragment, UNIT_DRIVE / DRIVE)
 
         column = worker.matcher.score_column(
             target,
@@ -255,7 +260,7 @@ class TestHowACandidateIsMeasured(BaseTestSuite):
                     to_numpy(
                         criterion.temporal_loss(
                             xp.asarray(synthetic_fragment.audio),
-                            xp.asarray(library_fragment.get_fragment(shift, config, window).audio * DRIVE),
+                            xp.asarray(library_fragment.get_fragment(shift, config, window).audio / DRIVE),
                         )
                     )[0]
                 )
@@ -266,7 +271,7 @@ class TestHowACandidateIsMeasured(BaseTestSuite):
         contribution = worker.matcher.contribution(
             noise,
             np.asarray(synthetic_fragment.audio, dtype=np.float64),
-            worker.candidate_provider.power_of(noise) * DRIVE**2,
+            worker.candidate_provider.power_of(noise) / DRIVE**2,
             drive=DRIVE,
         )
 
@@ -294,6 +299,100 @@ class TestHowACandidateIsMeasured(BaseTestSuite):
         assert _temporal_loss(searching, synthetic_fragment, searched) <= _temporal_loss(
             keeping, synthetic_fragment, kept
         )
+
+
+def _ladder_instructions(generator: GeneratorUnion) -> List[InstructionUnion]:
+    """One pulse pitch at every other volume it holds, with the channel's silence beside them.
+
+    Stepping over the volumes keeps the whole ladder inside the spectral shortlist, so the
+    loudest rung stands before the full cost whatever drive the column is scored at.
+    """
+    rungs = sorted(
+        (
+            instruction
+            for instruction in generator.get_possible_instructions()
+            if instruction.on and instruction.pitch == LADDER_PITCH and instruction.duty_cycle == LADDER_DUTY_CYCLE
+        ),
+        key=lambda instruction: instruction.volume,
+    )
+    return [*rungs[::LADDER_STEP], generator.get_instruction_type().null_instruction()]
+
+
+def _ladder_target(
+    worker: ReconstructorWorker,
+    config: Config,
+    window: Window,
+    volume: int,
+) -> Fragment:
+    """The frame the rung at ``volume`` sounds, which a drive is measured against."""
+    rung = next(
+        instruction for instruction in worker.library_data.keys() if instruction.on and instruction.volume == volume
+    )
+    return worker.library_data[rung].get_fragment(0, config, window)
+
+
+def _winner(worker: ReconstructorWorker, target: Fragment, drive: float) -> InstructionUnion:
+    """The row a channel plays in ``target`` at ``drive``."""
+    generator = worker.channels[ChannelName.PULSE1]
+    column = worker.matcher.score_column(target, generator, FrameMix.empty(target), drive=drive)
+    return column[0].instruction
+
+
+def _loudest(worker: ReconstructorWorker) -> InstructionUnion:
+    """The loudest row the ladder holds, which is the level the channel saturates at."""
+    return max(
+        (instruction for instruction in worker.library_data.keys() if instruction.on),
+        key=lambda instruction: instruction.volume,
+    )
+
+
+@pytest.fixture(scope="module")
+def ladder_worker(
+    config: Config,
+    window: Window,
+    extractor: FeatureExtractor,
+    channels: Dict[ChannelName, GeneratorUnion],
+) -> ReconstructorWorker:
+    """A run over one pulse pitch at a ladder of volumes, which is what a drive climbs."""
+    generator = channels[ChannelName.PULSE1]
+    data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = {
+        instruction: InstructionLibraryFragment.create(generator, instruction, extractor)
+        for instruction in _ladder_instructions(generator)
+    }
+    return ReconstructorWorker(
+        config=config,
+        window=window,
+        channels={ChannelName.PULSE1: generator},
+        library_data=InstructionLibraryData.create(config, data),
+        signal_length=WORKER_SIGNAL_LENGTH,
+    )
+
+
+class TestTheRowADriveReachesFor:
+    """A drive lifts what a channel reaches for, up to the loudest row the channel holds."""
+
+    def test_a_driven_channel_reaches_for_a_louder_row(
+        self,
+        ladder_worker: ReconstructorWorker,
+        config: Config,
+        window: Window,
+    ) -> None:
+        target = _ladder_target(ladder_worker, config, window, QUIET_RUNG)
+
+        standing = _winner(ladder_worker, target, UNIT_DRIVE)
+        driven = _winner(ladder_worker, target, DRIVE)
+
+        assert standing.volume < driven.volume < _loudest(ladder_worker).volume
+
+    def test_a_drive_the_channel_cannot_reach_settles_on_its_loudest_row(
+        self,
+        ladder_worker: ReconstructorWorker,
+        config: Config,
+        window: Window,
+    ) -> None:
+        target = _ladder_target(ladder_worker, config, window, MIDDLE_RUNG)
+
+        assert _winner(ladder_worker, target, MAX_DRIVE) == _loudest(ladder_worker)
 
 
 class TestColumnOf:

@@ -25,12 +25,12 @@ class PhaseAligner(ABC):
 
     @abstractmethod
     def align(self, waveform: np.ndarray, instruction: InstructionUnion, drive: float) -> np.ndarray:
-        """The frame the candidate renders at its best phase against ``waveform``, playing at ``drive``."""
+        """The frame the candidate renders at its best phase against ``waveform``, read at unit drive."""
 
     def _rendering(self, instruction: InstructionUnion, shift: int, drive: float) -> np.ndarray:
-        """The candidate's frame starting ``shift`` samples into its library sample, playing at ``drive``."""
+        """The candidate's frame starting ``shift`` samples into its library sample, read at unit drive."""
         fragment = self.library_data[instruction].get_fragment(shift, self.config, self.window)
-        return np.asarray(fragment.audio, dtype=np.float64) * drive
+        return np.asarray(fragment.audio, dtype=np.float64) / drive
 
     def _cycle(self, instruction: InstructionUnion) -> np.ndarray:
         """Two cycles of the candidate's library sample, which every shift of one frame reads from."""
@@ -40,13 +40,13 @@ class PhaseAligner(ABC):
 
 class SlidingRmsePhaseAligner(PhaseAligner):
     """
-    Finds the cyclic shift minimizing the RMSE between the waveform and the drive-scaled
-    candidate, and returns the candidate's frame at that shift.
+    Finds the cyclic shift minimizing the RMSE between the waveform and the candidate read at
+    unit drive, and returns the candidate's frame at that shift.
     """
 
     def align(self, waveform: np.ndarray, instruction: InstructionUnion, drive: float) -> np.ndarray:
         windows = sliding_window_view(self._cycle(instruction), self.config.library.frame_length)
-        remainder = np.asarray(waveform, dtype=np.float64) - drive * windows
+        remainder = np.asarray(waveform, dtype=np.float64) - windows / drive
 
         rmse = np.sqrt((remainder**2).mean(axis=1))
         return self._rendering(instruction, int(np.argmin(rmse)), drive)
@@ -54,10 +54,10 @@ class SlidingRmsePhaseAligner(PhaseAligner):
 
 class CrossCorrelationPhaseAligner(PhaseAligner):
     """
-    Finds the cyclic shift minimizing the squared error between the waveform and the
-    drive-scaled candidate via FFT cross-correlation, expanding
-    `||waveform - drive * candidate||^2` into a per-shift cost of
-    `drive * energy - 2 * correlation` (the constant waveform energy and the positive
+    Finds the cyclic shift minimizing the squared error between the waveform and the candidate
+    read at unit drive via FFT cross-correlation, expanding
+    `||waveform - candidate / drive||^2` into a per-shift cost of
+    `energy / drive - 2 * correlation` (the constant waveform energy and the positive
     drive factor drop out of the argmin), and returns the candidate's frame at that shift.
     The sliding energy of a candidate depends on its library sample alone, so it is read once
     per instruction.
@@ -77,7 +77,7 @@ class CrossCorrelationPhaseAligner(PhaseAligner):
         target = np.asarray(waveform, dtype=np.float64)
 
         correlation = fftconvolve(cycle, target[::-1], mode="valid")
-        cost = drive * self._sliding_energy(instruction, cycle) - 2.0 * correlation
+        cost = self._sliding_energy(instruction, cycle) / drive - 2.0 * correlation
         return self._rendering(instruction, int(np.argmin(cost)), drive)
 
     def _sliding_energy(self, instruction: InstructionUnion, cycle: np.ndarray) -> np.ndarray:

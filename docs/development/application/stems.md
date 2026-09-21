@@ -65,11 +65,14 @@ silences them.
    [Editing a stems reconstruction](#editing-a-stems-reconstruction).
 
    Two rules shape the reading. **A filtered reading states the frames it leaves
-   out rather than dropping them**, so the envelopes, the waveform and the record
-   line up column for column, and **it ends where it last sounds**, so a channel
-   every recording is left out on reads as standing by — its plot empty, its
-   figures at nothing and its instrument written nowhere. Together they make what
-   a reader sees, hears, edits and exports one and the same part of the document.
+   out as silence in place**, so the envelopes, the waveform and the record line
+   up column for column, and **it ends at the last frame the reader hears**, so a
+   channel whose sound the reader's choice took away reads as standing by — its
+   plot empty, its figures at nothing and its instrument written nowhere. A rest
+   answers to no recording, so every reader hears it: a channel written down to
+   rests alone stays in play, and the figures beside a plot name the bytes the
+   export writes. Together they make what a reader sees, hears, edits and exports
+   one and the same part of the document.
 2. **A box stands where the choice reaches something.** A stem draws a box on a
    channel exactly where the record gives it a frame there, so every box the card
    offers changes what is heard. A stem the picker never chose offers none, and
@@ -107,12 +110,16 @@ silences them.
    beside it answers for the channel. The recordings take a range of their own, so
    a color never reads as a channel's. A recording takes its color from the place
    it holds on the record, so one recording reads alike wherever it is drawn. The
-   lanes stand only where more than one recording is in play, since a document
-   answering to a single recording has nothing to tell apart, and a stretch
-   outside what the reader hears reads as a rest — the ribbon states what is
-   heard, like every other reading. Each row of the card leads with a square in
-   the color its recording is painted in, so a stretch on screen answers to a
-   name at a glance.
+   lanes stand only where more than one owner is in play — a recording the record
+   names, or the row the frames a reader wrote gather under — since a document
+   answering to a single owner has nothing to tell apart. A stretch reads in three
+   ways: solid where the reader hears the recording holding it, that same color
+   faded where the reader left it out, and the surface's own ground where the
+   frames rest — so a stretch names its owner whether or not it is listened to,
+   and the reading sits on top of the record. Each row of the card leads with a
+   square in the color its recording is painted in, so a stretch on screen answers
+   to a name at a glance. The instruments panel paints the same stretches in a band
+   beneath each dimension's bars, over the frames those bars draw.
 
 ### Mechanics
 
@@ -168,8 +175,9 @@ follows. Consult it when changing an edit path, the per-frame record, or what th
 4. **A reconstruction records what is played and reads what is heard.** The document holds the
    instruction each channel plays per frame, the recording behind each of those frames, the
    setup they were chosen under and the working level. Its sound is read from those through the
-   generators, at the drive each frame's owner gives its channel, which is one answer serving
-   the waveform, playback, an export and the mixed approximation alike. A document therefore
+   generators, as the instructions stand, which is one answer serving the waveform, playback, an
+   export and the mixed approximation alike; a drive settles which instruction a conversion
+   records and is read no further. A document therefore
    states what it describes, and every gesture below is complete once it has settled the frames.
 
 5. **What is heard is what is edited.** The channels a recording is ticked on are one choice
