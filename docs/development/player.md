@@ -97,10 +97,23 @@ from that pitch. It saves a byte a tick directly, but the reason it matters is t
 cannot be transposed and an index can: the same figure played at several pitches is several
 copies in timer space and one entry plus a shift in index space.
 
+**A plane repeats from its own byte.** Four of the planes write a byte the APU only
+partly reads — two bits a pulse control byte wants set, the top nibble of a noise control
+byte, three bits above a noise period — and those spare bits carry the ticks the value
+repeats for. A rest costs one byte however long it lasts, and the planes that rest longest
+are exactly the ones with room to say so. The division follows from the register, so the
+block states none of it and the driver knows it by plane.
+
+**The triangle names its silence in the pitch it plays.** The channel sounds at one level,
+so the index its value plane carries is enough to say whether it sounds at all: an index
+above every pitch the table holds silences the linear counter. That spares a whole plane,
+in the block and on the tick path both.
+
 **Tokens.** A plane is written as holds, literals and phrase plays — the encoding is in
 [the format document](../formats/nsf.md#b4-the-token-streams). What matters here is that a
 token's count is a duration rather than a length, so one dictionary entry serves a figure
-however long it is held and whatever pitch it is played at.
+however long it is held and whatever pitch it is played at, and that a phrase may state
+the count its tokens play it at most often so those tokens carry none.
 
 **The cheapest reading, not a greedy one.** A plane is parsed as a shortest path: every way
 of covering a tick is an edge priced in the bytes its token takes, and the cheapest path
@@ -139,7 +152,8 @@ seeded into page zero, which no song occupies, and the advance passes it by, so 
 the zero every plane starts from. A bend plane is stepped only on a tick its channel's new
 value flags, since it holds a value for those ticks alone. A plane's state carries where its next token
 lies, where in a phrase body it stands, how much of that body is left, how much of the
-current token is left, the value it last played, and the shift it is playing at. The three
+current token is left, the symbol it last played, the ticks that symbol still covers, the
+bits its own byte counts in, and the shift it is playing at. The three
 kinds of token fold into that one shape — a hold is a phrase of no bytes, a literal is a
 phrase whose bytes lie inline behind its opcode — so playing a tick is the same handful of
 instructions whichever token is standing.
@@ -149,11 +163,14 @@ is a base offset held in `X`, the way a channel's register base is, so every pla
 is one routine called again. The state lives in zero page, well inside what the driver
 leaves free, and the linker configuration keeps the two-segment memory model an NSF loads.
 
-**The one sum the driver performs is the bend.** A tone channel's value plane resolves to a
-divider through the timer table, and on a flagged tick its bend plane states the steps the
-tick stands away from it — sign-extended and added across both halves of the timer, with the
-high half reaching the register only where it changed. An unflagged tick adds nothing. Everything that keeps the sum in range is
-settled in Python, so what crosses into assembly stays a byte moved and a carry followed.
+**The driver's arithmetic is the bend and the repeat.** A tone channel's value plane
+resolves to a divider through the timer table, and on a flagged tick its bend plane states
+the steps the tick stands away from it — sign-extended and added across both halves of the
+timer, with the high half reaching the register only where it changed. An unflagged tick
+adds nothing. The other is a subtraction: a tick a symbol still covers steps the plane's
+count down and returns, which makes the common tick cheaper than reaching a new symbol.
+Everything that keeps either in range is settled in Python, so what crosses into assembly
+stays a byte moved and a carry followed.
 
 ## How it is verified
 

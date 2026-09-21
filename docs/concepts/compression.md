@@ -49,11 +49,12 @@ The first thing the encoder does is unbraid them. Each register becomes a **plan
 one byte per tick, the whole song long — and each plane is a series of its own: a
 volume envelope that falls and holds, a pitch line that steps between notes, a duty
 cycle that barely moves. An idle channel's planes become one value repeated, which
-costs almost nothing to state, and a plane holding zero throughout — a bend a channel never
-makes — is left out of the block altogether.
+costs almost nothing to state, and a plane standing at the value it is seeded to
+throughout — a bend a channel never makes, a control byte of a channel that never sounds —
+is left out of the block altogether.
 
 This one change is most of the win. Split into planes and coded, the three-minute
-arrangement falls from 11 bytes a tick to about 1.7.
+arrangement falls from 11 bytes a tick to about 3.0.
 
 ### 2.2 Pitches instead of dividers
 
@@ -63,8 +64,8 @@ dividers, and the steps between them are uneven. The encoder replaces the two
 divider planes with a **pitch index** — how far the frame's note sits above the lowest
 pitch the table covers — and a **bend**, the divider steps the tick stands away from that
 note's own divider. The song block carries a table the driver resolves the index through
-and adds the bend to. A tone channel is therefore three planes, the same count as the
-registers it writes. Counting a bend from the note keeps it the same bytes wherever a row
+and adds the bend to. A pulse channel is therefore three planes; the triangle is two,
+since it sounds at one level and names its silence in the pitch its value plane carries. Counting a bend from the note keeps it the same bytes wherever a row
 transposes the note to; only a bend past the signed byte is counted from the pitch lying
 nearest the divider instead.
 
@@ -111,6 +112,12 @@ a figure is played at.
 added to each of its values, wrapping at 256. On the 6502 that is a single addition,
 and a fall in pitch is simply the byte that wraps around to it. Together with the
 duration rule, one entry covers every pitch *and* every length a figure is played at.
+
+**A phrase may state its own count.** A figure played at one length throughout states
+that length once, in the phrase's own entry, and every token playing it there names the
+phrase alone. The bit that says so comes out of the opcode's id field, so a phrase
+opcode names 31 ids outright where a hold counts to 64; the phrases a song leans on
+hardest take those ids, and the rest name themselves in a further byte.
 
 ## 4. Reading a plane the cheapest way
 
@@ -252,26 +259,27 @@ above it:
 
 | what is stored | bytes per tick | ratio | ticks that fit |
 |---|---|---|---|
-| a record per tick per channel | 11.000 | 1.00 | 2914 |
-| planes, coded | 3.517 | 3.13 | 9115 |
-| planes with a pitch index and a bend | 3.604 | 3.05 | 8885 |
-| phrases from the instruments | 1.989 | 5.53 | 16201 |
-| phrases played transposed | 1.593 | 6.90 | 20294 |
-| phrases from the search as well | **1.346** | **8.17** | **24130** |
+| a record per tick per channel | 11.000 | 1.00 | 2907 |
+| planes, coded | 3.517 | 3.13 | 9092 |
+| planes with a pitch index and a bend | 2.980 | 3.69 | 10731 |
+| phrases from the instruments | 1.717 | 6.41 | 18750 |
+| phrases played transposed | 1.447 | 7.60 | 22326 |
+| phrases from the search as well | **0.874** | **12.59** | **37660** |
 
 The arrangement bends most of the notes its pulse channel plays, and its bend plane
 carries every one of them; a song played straight leaves its bend planes out of the
-block. The whole song is 14534 bytes of the roughly 32000 available, and **24130 ticks
-is 6.7 minutes at 60 Hz**, against the 49 seconds a record per tick reaches. Encoding it
+block. The whole song is 9435 bytes of the roughly 32000 available, and **37660 ticks
+is 10.5 minutes at 60 Hz**, against the 49 seconds a record per tick reaches. Encoding it
 costs between two and three seconds; decoding it costs the console around twenty
-instructions per plane per tick, comfortably inside a video frame.
+instructions per plane per tick, and fewer on a tick a symbol still covers, comfortably
+inside a video frame.
 
 `uv run sampletones codec report` writes this table over a corpus of songs, and the format's
 constants are settled from it. Two of them were settled against expectation: splitting
 the duty cycle out of the control byte into a plane of its own **costs** 9 %, because
 volume and duty turn over together and a split pays two opcodes for what one covers;
-and the pitch index earns its place through the transposition it makes possible, 20 %,
-where directly it costs the bent arrangement about 2 %.
+and the pitch index earns its place through the transposition it makes possible, 16 %,
+where directly it pays for itself once a plane counts its own repeats.
 
 An export chooses how far down these layers it goes. The **Level** it is written at names the
 layers read in order: *None* spells every plane out as literals, *Held sounds* adds holds,
@@ -301,16 +309,17 @@ plays the same song.
 
 | quantity | value |
 |---|---|
-| planes | control and value for every channel, and a bend for each tone channel |
+| planes | a value for every channel, a control for the three that carry one, and a bend for each tone channel |
 | bytes per tick before coding | 11 |
-| ticks one hold covers | 1 to 64 |
-| values one literal carries | 1 to 64 |
-| ticks one phrase token covers | 1 to 256 |
-| phrase ids inside the opcode | 63 |
+| symbols one hold covers | 1 to 64 |
+| symbols one literal carries | 1 to 64 |
+| symbols one phrase token covers | 1 to 256 |
+| ticks one symbol covers | 1 to 16, by the plane |
+| phrase ids inside the opcode | 31 |
 | phrases in the dictionary | up to 255 |
 | values in a phrase | up to 255 |
 | candidate lengths the search gathers | 3 to 48 |
-| decoder state on the console | 88 bytes of zero page, 8 per plane |
+| decoder state on the console | 100 bytes of zero page, 10 per plane |
 
 Where things live:
 
