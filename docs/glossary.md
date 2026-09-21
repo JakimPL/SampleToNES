@@ -97,6 +97,11 @@ edit or remove one stem on its own. See [Stems reconstruction](concepts/stems.md
 The rank a stem takes when the channels are shared out. A stem on level 1 is offered channels before one
 on level 2, so a lead part can take the channels it needs before a background part does.
 
+### Hierarchy
+
+The precedence order of the levels in a stems setup. The levels pick channels in that order. See
+[Stems reconstruction](concepts/stems.md).
+
 ### Drive
 
 How hard a stem pushes a channel. It is set per channel when a conversion is set up. `1.00` is the level
@@ -196,6 +201,23 @@ Terms from calibration. A *referee* is an independent audio-distance judge that 
 against its original. The *corpus* is the fixed set of synthetic test sounds every configuration is run
 against. A *render* is one reconstruction of a corpus sound, written as an audio file for listening. A
 *variant* is one configuration a run measured.
+
+## Song compression
+
+### Plane
+
+One register of one channel across the whole song, stored as one byte per tick. Each plane is a series of
+its own, such as a volume envelope or a pitch line. See [Song compression](concepts/compression.md).
+
+### Token
+
+The unit a plane is written in. A token is a hold, a literal or a phrase, and the driver reads tokens
+forward one tick at a time.
+
+### Phrase
+
+A run of values a plane plays, stored once in the song's dictionary and named by tokens wherever it
+occurs. Its position in the dictionary is its id.
 
 ## Tracker and export
 
