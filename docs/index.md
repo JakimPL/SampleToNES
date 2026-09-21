@@ -86,6 +86,7 @@ directories of their own.
 - [The render thread](development/application/render-thread.md) — how work reaches DearPyGui from another thread, and what each crossing costs.
 - [Playback](development/application/playback.md) — the audio transport shared by every view, and rendering the song to a file.
 - [Reconstruction browser](development/application/browser.md) — how a reconstructions directory becomes the tree both browser tabs render, and what narrows it.
+- [Stems in the application](development/application/stems.md) — the Stems card, and what an edit or a removal does to the per-frame record.
 - [Configuration](development/application/config-organization.md) — how the YAML configuration package is laid out.
 
 ### Releases
