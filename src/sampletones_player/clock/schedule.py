@@ -130,7 +130,10 @@ class PlaySchedule(BaseModel):
 
         Every answer the schedule gives counts in this step, so it is computed once and held.
         """
-        whole, fraction = divmod(round(self.ticks_per_play_call * FIXED_POINT_SCALE), FIXED_POINT_SCALE)
+        whole, fraction = divmod(
+            round(self.ticks_per_play_call * FIXED_POINT_SCALE),
+            FIXED_POINT_SCALE,
+        )
         return FixedPointStep(whole=whole, fraction=fraction)
 
     def maximum_drift(self, play_calls: int) -> int:

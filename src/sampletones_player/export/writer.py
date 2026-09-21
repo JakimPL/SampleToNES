@@ -9,7 +9,11 @@ from sampletones_core.project.project import Project
 from sampletones_player.builder import song_from_project, song_from_sample
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.export.program import NSFProgram
-from sampletones_player.export.reports import UNMEASURED, codec_reporter, walk_reporter
+from sampletones_player.export.reports import (
+    UNMEASURED,
+    codec_reporter,
+    walk_reporter,
+)
 from sampletones_player.nsf.file import write_nsf
 from sampletones_player.song import Song
 

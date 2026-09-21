@@ -8,7 +8,11 @@ from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.project.project import Project
 from sampletones_player.builder import SONG_START, loop_tick_from_instruments
 from sampletones_player.compression.scheme import CompressionScheme
-from sampletones_player.export.program import DEFAULT_SCHEME, NO_ARTIST, NSFProgram
+from sampletones_player.export.program import (
+    DEFAULT_SCHEME,
+    NO_ARTIST,
+    NSFProgram,
+)
 from sampletones_player.nsf.information import NSFInformation
 from sampletones_shared.application import SAMPLETONES_COPYRIGHT
 from tests.suite.player import (
@@ -67,9 +71,14 @@ class TestTheProgramAProjectStates:
 class TestTheProgramASampleStates:
     """What a reconstruction's slices are written as when nobody chose otherwise."""
 
-    def test_it_is_listed_under_the_reconstructions_name_credited_to_nobody(self) -> None:
+    def test_it_is_listed_under_the_reconstructions_name_credited_to_nobody(
+        self,
+    ) -> None:
         information = NSFProgram.for_sample(sample(loop=False)).information
-        assert (information.title, information.artist) == (SAMPLE_NAME, NO_ARTIST)
+        assert (information.title, information.artist) == (
+            SAMPLE_NAME,
+            NO_ARTIST,
+        )
 
     def test_it_sounds_every_channel(self) -> None:
         assert NSFProgram.for_sample(sample(loop=False)).channels == ALL_CHANNELS

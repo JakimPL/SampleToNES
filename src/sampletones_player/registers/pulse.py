@@ -6,7 +6,10 @@ from pydantic import Field
 
 from sampletones_core.exporters.implementation.pulse import PulseExporter
 from sampletones_core.instructions import PulseInstruction
-from sampletones_player.registers.dividers import anchored_pitches, bent_dividers
+from sampletones_player.registers.dividers import (
+    anchored_pitches,
+    bent_dividers,
+)
 from sampletones_player.registers.hold import hold
 from sampletones_player.registers.tone import ToneRegisters
 from sampletones_player.specification.registers import (

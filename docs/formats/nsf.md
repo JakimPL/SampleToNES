@@ -49,9 +49,9 @@ counted from the block's first byte, so the whole block plays from wherever the 
 
 ```
 +0      header
-+55     timer table
++51     timer table
         phrase table:  count, then one offset per phrase
-        phrase bodies: each a length byte, then its values
+        phrase bodies: each a length byte, a count byte, then its values
         one token stream per plane, in plane order
 ```
 
@@ -66,7 +66,7 @@ counted from the block's first byte, so the whole block plays from wherever the 
 | +7 | 2 | where the timer table begins |
 | +9 | 2 | where the phrase table begins |
 | +11 | `PLANE_COUNT`×2 | where each plane's stream begins, or `$FFFF` for an absent plane |
-| +33 | `PLANE_COUNT`×2 | where each plane's stream is re-entered once the song comes round, or `$FFFF` for an absent plane |
+| +31 | `PLANE_COUNT`×2 | where each plane's stream is re-entered once the song comes round, or `$FFFF` for an absent plane |
 
 All fields are little-endian, and the header runs to `SONG_HEADER_SIZE` bytes.
 
@@ -94,12 +94,16 @@ reconstruction's own generators render from.
 ```
 count               1 byte, how many phrases the table holds
 offsets             one uint16 per phrase, in id order
-bodies              each phrase: a length byte, then its values
+bodies              each phrase: a length byte, a count byte, then its values
 ```
 
 A **phrase** is a run of values a plane plays, stored at the pitch it was found at. Its position in the
 table is its **id**. The ids that fit inside a token's opcode are the cheap ones, so the phrases a song
 relies on most are listed first.
+
+**A phrase states the count its tokens play it at most often.** The count byte holds that count less one,
+the way a token states one. A token playing the phrase at that count names the phrase alone and spends a
+byte fewer.
 
 A song's phrases come from two places: the samples it plays, each offering the planes it writes, and a
 search over whatever those leave uncovered. Both are weighed the same way. A phrase keeps its entry when it
@@ -111,27 +115,36 @@ Each plane is a byte sequence of tokens. The opcode's top two bits name the kind
 its operand:
 
 ```
-00cccccc                 hold the value the plane reached, for c+1 ticks
-01nnnnnn b0..bn          the n+1 bytes that follow, one per tick
-10pppppp cccccccc        phrase p, for c+1 ticks
-11pppppp cccccccc tt     phrase p, for c+1 ticks, every value plus tt
+00cccccc                 hold the value the plane reached, for c+1 symbols
+01nnnnnn b0..bn          the n+1 symbols that follow, one each
+10dppppp cccccccc        phrase p, for c+1 symbols
+11dppppp cccccccc tt     phrase p, for c+1 symbols, every value plus tt
 ```
 
-`p == $3F` is an escape: the phrase's id is the byte that follows. That reaches every id in the table
+`p == $1F` is an escape: the phrase's id is the byte that follows. That reaches every id in the table
 while the low ids stay a byte cheaper. The shift `tt` is **added within the byte** and wraps. That is one
 addition on the 6502, and the encoder does the same addition.
+
+**The `d` bit says the count is the phrase's own.** A token carrying it names the phrase and no count, and
+plays the count the table states for that phrase. The count byte `cccccccc` is then absent. That bit is
+what leaves five bits for an id, so a phrase opcode names ids up to `$1F` outright where a hold or a
+literal counts to `$3F`.
 
 **A token's count is a duration, and it may run past the phrase.** Past its last value the plane holds
 that value, so a note whose envelope has finished keeps sounding. A count shorter than the body cuts the
 note off. One entry therefore serves every length a figure is played at and, with the shift, every pitch.
 
+**A token counts symbols.** On a plane whose byte carries a repeat count (§C) one symbol
+covers as many ticks as it states, so a token's reach in ticks is the ticks its symbols
+carry between them. On every other plane a symbol is a tick.
+
 ### B.5 Where a song comes round
 
 A song that repeats re-enters its streams partway through. The tick it returns to therefore begins a
-token on every plane, and that token names its values outright instead of relying on the value the plane
-had reached. A bend plane is re-entered at the value its channel's flags have reached by that tick
-(section C), which begins a token of its own. Coming round then means pointing each plane at the byte the
-header names and clearing what it was playing.
+symbol, and a token, on every plane, and that token names its values outright instead of relying on the
+value the plane had reached. A bend plane is re-entered at the value its channel's flags have reached by
+that tick (section C), which begins a token of its own. Coming round then means pointing each plane at the
+byte the header names and clearing what it was playing.
 
 The tick a song returns to is the export's choice: its first tick, the first tick of an order frame, or
 none. With none, the header has `$FFFF` and the song stops at its end.
@@ -142,17 +155,16 @@ The planes are written in this order, and each group belongs to one channel:
 
 | Plane | Carries | Reaches |
 |---|---|---|
-| pulse 1 control | duty cycle and volume | `$4000` |
+| pulse 1 control | duty cycle and volume, under a repeat count | `$4000` |
 | pulse 1 value | pitch index, and a flag for a bent tick | `$4002`, `$4003` |
 | pulse 1 bend | divider offset of each flagged tick | `$4002`, `$4003` |
-| pulse 2 control | duty cycle and volume | `$4004` |
+| pulse 2 control | duty cycle and volume, under a repeat count | `$4004` |
 | pulse 2 value | pitch index, and a flag for a bent tick | `$4006`, `$4007` |
 | pulse 2 bend | divider offset of each flagged tick | `$4006`, `$4007` |
-| triangle control | linear counter | `$4008` |
-| triangle value | pitch index, and a flag for a bent tick | `$400A`, `$400B` |
+| triangle value | pitch index, a flag for a bent tick, and the index that rests | `$4008`, `$400A`, `$400B` |
 | triangle bend | divider offset of each flagged tick | `$400A`, `$400B` |
-| noise control | volume | `$400C` |
-| noise value | period and mode | `$400E` |
+| noise control | volume, under a repeat count | `$400C` |
+| noise value | period and mode, around a repeat count | `$400E` |
 
 Splitting a channel's registers apart gives each plane something to repeat: a volume envelope and a pitch
 line are separate series that turn over at their own rates.
@@ -161,9 +173,25 @@ line are separate series that turn over at their own rates.
 the first tick to the last, which a hold covers in a few bytes. The driver therefore reads the same layout
 whichever channels a song sounds.
 
-**A plane playing zero throughout is absent.** Every plane starts at zero, so a plane that never leaves it
-needs no stream. Both its header entries are `ABSENT_STREAM` (`$FFFF`), and the driver leaves it at zero
-on every tick. A tone channel that never bends spends nothing on its bend plane.
+**A plane counts its repeats in the bits its register ignores.** A pulse control byte holds a duty cycle
+and a volume around two bits the hardware wants set. A noise control byte holds a volume under the same
+two. A noise period byte holds a mode bit above three the register reads nothing from. Those spare bits
+carry the ticks the value repeats for, so a run costs one byte however long it lasts. The register byte is
+the symbol masked and ored with the bits the hardware fixes, and counting one repeat off subtracts
+`COUNT_STEP`. Every other plane spends its whole byte and reads a symbol a tick. The division follows from
+the plane, so the block states none of it.
+
+**A plane standing at the value it is seeded to throughout is absent.** The driver seeds every plane
+before its first token: to the bits its register fixes where it has any, and to the index that rests on
+the triangle's value plane. A plane that never leaves that value takes no stream, and both its header
+entries are `ABSENT_STREAM` (`$FFFF`). A tone channel that never bends spends nothing on its bend plane, a
+pulse or noise channel that never sounds spends nothing on its control plane, and a song without a
+triangle spends nothing on its value plane.
+
+**The triangle names its silence in the pitch it plays.** The channel sounds at one level, so a tick
+states whether it sounds through the index its value plane names. The index standing above every pitch the
+table covers silences the linear counter, and the divider stays where the channel last sounded. That is a
+whole plane the block does without.
 
 **The noise channel has no bend plane.** It selects one of sixteen fixed periods, so there is no finer
 grid for a bend to reach, and its block leaves the plane out.
@@ -192,11 +220,12 @@ divider, and a divider halfway between two pitches goes to the higher one. Those
 the widest gap between neighboring pitches, 57 at the default tuning, so every divider the register holds
 reaches the planes.
 
-The driver sign-extends that byte and adds it across both halves of the timer. That is the only arithmetic
-it performs on a song's behalf. Python does everything that makes the sum land in range: `bent_timer`
-keeps the divider within `[MIN_TIMER, MAX_TIMER]`, the rule the generators render a bent frame by. The
-timer's high half therefore never exceeds three bits, never reaches the length-counter field beside them,
-and never collides with the `$FF` the driver marks an unwritten shadow by.
+The driver sign-extends that byte and adds it across both halves of the timer. That addition, and the
+repeat a symbol counts down, are the whole of the arithmetic it performs on a song's behalf. Python does
+everything that makes the sum land in range: `bent_timer` keeps the divider within
+`[MIN_TIMER, MAX_TIMER]`, the rule the generators render a bent frame by. The timer's high half therefore
+never exceeds three bits, never reaches the length-counter field beside them, and never collides with the
+`$FF` the driver marks an unwritten shadow by.
 
 ## D. Limits
 
@@ -205,11 +234,13 @@ and never collides with the `$FF` the driver marks an unwritten shadow by.
 | Program area | 32 KB from `$8000`, less the driver |
 | Song length | as many ticks as the streams fit in |
 | Offsets within the block | `uint16` |
-| Ticks one hold covers | 1–64 (`MAX_HOLD_TICKS`) |
-| Bytes one literal covers | 1–64 (`MAX_LITERAL_BYTES`) |
-| Ticks one phrase token covers | 1–256 (`MAX_PHRASE_TICKS`) |
+| Symbols one hold covers | 1–64 (`MAX_HOLD_TICKS`) |
+| Symbols one literal covers | 1–64 (`MAX_LITERAL_BYTES`) |
+| Symbols one phrase token covers | 1–256 (`MAX_PHRASE_TICKS`) |
+| Ticks one symbol covers | 1 to the plane's own count, 16 at the widest |
 | Values one phrase holds | up to 255 (`MAX_PHRASE_LENGTH`) |
 | Phrases one dictionary holds | up to 255 (`MAX_PHRASE_IDS`) |
+| Phrase ids a token's opcode names | up to 31 (`CHEAP_PHRASE_IDS`) |
 
 A song that reaches past the space behind the driver, or past what an offset field can hold, raises
 `SongTooLargeError` naming the part that overflowed. A project that offers more phrases than a dictionary

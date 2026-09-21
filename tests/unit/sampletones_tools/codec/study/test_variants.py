@@ -13,7 +13,7 @@ from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.compression.tokens.hold import HoldToken
 from sampletones_player.compression.tokens.literal import LiteralToken
-from sampletones_player.specification.compression import PLANE_COUNT
+from sampletones_player.specification.planes import PLANE_COUNT
 from sampletones_shared.music import Tuning
 from sampletones_tools.codec.study.corpus.song import SongGroup, StudySong
 from sampletones_tools.codec.study.measure import Measurement, production_encoding
@@ -120,6 +120,7 @@ def _measurement(
     compressed = CompressedPlanes(
         phrases=phrase_table(()),
         streams=PlaneOrder.across([stream] * PLANE_COUNT),
+        loop_entries=(0,) * PLANE_COUNT,
         ticks=TICKS,
     )
     return Measurement(

@@ -1,7 +1,10 @@
 from sampletones_core.exports.progress import ExportProgress, ExportReporter
 from sampletones_core.exports.stage import ExportStage
 from sampletones_core.performance import WalkProgress, WalkReporter
-from sampletones_player.compression.progress.report import CodecProgress, CodecReporter
+from sampletones_player.compression.progress.report import (
+    CodecProgress,
+    CodecReporter,
+)
 
 UNMEASURED: None = None
 
