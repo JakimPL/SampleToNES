@@ -59,7 +59,7 @@ class GUISeededDialogWindow(GUIDialogWindow, ABC, Generic[ViewModel]):
             SystemError: when the window is drawn before :meth:`open` seeds it.
         """
         if self._view_model is None:
-            raise SystemError(f"The {self._subject} window is drawn from a view model it was opened with")
+            raise SystemError(f"The {self._subject} window is drawn only from a view model it was opened with")
 
         return self._view_model
 

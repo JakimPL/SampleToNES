@@ -73,7 +73,6 @@ class GUIExportWindow(GUISeededDialogWindow[SongExportViewModel]):
             key_router=key_router,
             shortcut_source=shortcut_source,
         )
-        self._view_model = SongExportViewModel.idle()
 
     def create_window(self) -> None:
         with self.dialog_window(
