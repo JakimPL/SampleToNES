@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Final, FrozenSet, List, Optional
 
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.format import ExportFormat
@@ -66,6 +67,7 @@ class FamiTrackerBackend:
         return ExportArtifact(
             paths=(destination,),
             truncation=features_truncation(request.features),
+            skipped_rows=NO_SKIPPED_ROWS,
         )
 
     def write_sample(
@@ -96,6 +98,7 @@ class FamiTrackerBackend:
         return ExportArtifact(
             paths=tuple(paths),
             truncation=EnvelopeTruncation.summarize(truncations),
+            skipped_rows=NO_SKIPPED_ROWS,
         )
 
     def write_project(
@@ -105,7 +108,7 @@ class FamiTrackerBackend:
         report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
-        write_ftm(destination, request.project)
+        skipped_rows = write_ftm(destination, request.project)
         announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
 
-        return ExportArtifact(paths=(destination,), truncation=None)
+        return ExportArtifact(paths=(destination,), truncation=None, skipped_rows=skipped_rows)

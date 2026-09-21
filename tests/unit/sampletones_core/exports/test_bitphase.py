@@ -26,6 +26,7 @@ from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import EXT_FILE_BITPHASE, EXT_FILE_JSON
+from tests.suite.silent_rows import name_a_missing_voice
 
 NES_FREQUENCY: Final[int] = 60
 REFERENCE_PITCH: Final[int] = 60
@@ -180,6 +181,30 @@ class TestWriteProject:
         backend.write_project(destination, ProjectExport(project=project))
 
         assert read_document(destination)["name"] == PROJECT_TITLE
+
+    def test_a_row_with_no_instrument_is_reported_beside_the_written_file(
+        self,
+        backend: BitphaseBackend,
+        project: Project,
+        tmp_path: Path,
+    ) -> None:
+        destination = tmp_path / f"Demo{EXT_FILE_BITPHASE}"
+        silent = name_a_missing_voice(project)
+
+        artifact = backend.write_project(destination, ProjectExport(project=project))
+
+        assert destination.exists()
+        assert artifact.skipped_rows == (silent,)
+
+    def test_a_project_with_an_instrument_for_every_row_reports_none(
+        self,
+        backend: BitphaseBackend,
+        project: Project,
+        tmp_path: Path,
+    ) -> None:
+        artifact = backend.write_project(tmp_path / f"Demo{EXT_FILE_BITPHASE}", ProjectExport(project=project))
+
+        assert artifact.skipped_rows == ()
 
 
 class TestThePresetBackend:

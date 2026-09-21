@@ -240,6 +240,10 @@ rows.
 - **Bitphase project...** saves a `.btp` file.
 - **NSF program...** saves an `.nsf` file, which the NES or an NSF player plays directly.
 
+A voice plays on the channels its instruments cover. Where a row names a voice on another channel, the
+FamiTracker and Bitphase files hold a note cut on that row, which is how the song plays it. The dialog
+that announces the export lists those rows by frame, channel and row.
+
 An NSF program has room for 32 KB, so the app tells you when a song is too long. See [NSF
 export](../formats/nsf.md) and [song compression](../concepts/compression.md).
 

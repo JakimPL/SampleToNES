@@ -14,6 +14,7 @@ from sampletones_application.view_model.shared.export import (
     ExportPhase,
     SongExportViewModel,
 )
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.exports.stage import ExportStage
 
 WALKING_LABEL: Final[str] = "Playing the song out"
@@ -96,6 +97,7 @@ def finished() -> ExportSuccess:
         filepath=Path("song.nsf"),
         export_format=None,
         truncation=None,
+        skipped_rows=NO_SKIPPED_ROWS,
     )
 
 

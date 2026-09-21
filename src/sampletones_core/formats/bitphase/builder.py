@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import SILENT_VOLUME
+from sampletones_core.exporters.skipped import BuiltDocument, find_skipped_rows
 from sampletones_core.exporters.slices import iterate_voice_slices
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.formats.bitphase.envelopes import (
@@ -352,14 +353,6 @@ def _build_voice_table(
     return voices, by_reference
 
 
-def _resolve_slice_voice(reference: NoteOn, channel: ChannelName, voices: SliceVoiceTable) -> SliceVoice:
-    voice = voices.get((reference.voice_id, channel))
-    if voice is None:
-        raise ValueError(f"Row references voice '{reference.voice_id}' on channel '{channel}' with no instrument")
-
-    return voice
-
-
 def _volume_column(volume: Optional[int]) -> int:
     """Writes a tracker line's volume column as the value Bitphase reads it as.
 
@@ -384,26 +377,30 @@ def _row_cell(
 ) -> BitphaseRow:
     """Converts one tracker line to the Bitphase row that plays it.
 
-    Raises:
-        ValueError: If the line references a voice that has no instrument on this channel.
+    A note-on naming a voice with no instrument on this channel plays nothing in the song, so it
+    becomes the note cut that silences the channel.
     """
     volume = _volume_column(row.volume)
     cell = BitphaseRow(volume=volume)
+    note_cut = BitphaseRow(
+        note=NoteCell(name=int(NoteName.OFF)),
+        volume=volume,
+    )
 
     match row.command:
         case NoteOff():
-            cell = BitphaseRow(
-                note=NoteCell(name=int(NoteName.OFF)),
-                volume=volume,
-            )
+            cell = note_cut
         case NoteOn() as reference:
-            voice = _resolve_slice_voice(reference, channel_generator, voices)
-            pitch = voice.initial_pitch + (row.transpose or 0)
-            cell = _trigger_row(
-                voice,
-                _note_cell(channel_generator, pitch),
-                volume,
-            )
+            voice = voices.get((reference.voice_id, channel_generator))
+            if voice is None:
+                cell = note_cut
+            else:
+                pitch = voice.initial_pitch + (row.transpose or 0)
+                cell = _trigger_row(
+                    voice,
+                    _note_cell(channel_generator, pitch),
+                    volume,
+                )
         case None:
             pass
 
@@ -548,20 +545,26 @@ def _project_patterns(
 
 
 def project_to_bitphase(project: Project) -> BitphaseProject:
-    """Maps a project's samples, song and tempo onto the Bitphase document IR.
+    """Maps a project's samples, song and tempo onto the Bitphase document IR."""
+    return build_bitphase(project).document
+
+
+def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
+    """Maps a project onto the Bitphase document IR and lists the rows it had to leave silent.
 
     The song carries the project's tempo as a groove, which is the initial speed on its own
-    where every row lasts alike and a table the patterns trigger where the rows differ.
+    where every row lasts alike and a table the patterns trigger where the rows differ. A row
+    naming a voice on a channel the voice has no instrument for plays nothing in the song, so the
+    document holds a note cut there and the row is listed beside it.
 
     Args:
         project: The project to write.
 
     Returns:
-        BitphaseProject: The document to serialize.
+        BuiltDocument[BitphaseProject]: The document to serialize and the rows left silent.
 
     Raises:
-        ValueError: If the project holds more than Bitphase has room for, or a row
-            references a sample slice that has no instrument.
+        ValueError: If the project holds more than Bitphase has room for.
     """
     groove = _project_groove(project)
     voices, by_reference = _build_voice_table(
@@ -580,18 +583,21 @@ def project_to_bitphase(project: Project) -> BitphaseProject:
     settings = project.settings
     info = project.info
 
-    return BitphaseProject(
-        name=info.title,
-        author=info.author,
-        songs=(
-            _build_song(
-                patterns,
-                speed=groove.ticks[GROOVE_TRIGGER_ROW],
-                nes_frequency=settings.nes_frequency,
-                pattern_length=project.song.rows_per_pattern,
+    return BuiltDocument(
+        document=BitphaseProject(
+            name=info.title,
+            author=info.author,
+            songs=(
+                _build_song(
+                    patterns,
+                    speed=groove.ticks[GROOVE_TRIGGER_ROW],
+                    nes_frequency=settings.nes_frequency,
+                    pattern_length=project.song.rows_per_pattern,
+                ),
             ),
+            pattern_order=tuple(pattern.id for pattern in patterns),
+            tables=_document_tables(voices, groove_table),
+            instruments=tuple(voice.instrument for voice in voices),
         ),
-        pattern_order=tuple(pattern.id for pattern in patterns),
-        tables=_document_tables(voices, groove_table),
-        instruments=tuple(voice.instrument for voice in voices),
+        skipped_rows=find_skipped_rows(project.song, by_reference),
     )

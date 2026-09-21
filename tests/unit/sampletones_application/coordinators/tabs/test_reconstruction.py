@@ -14,6 +14,7 @@ from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.format import ExportFormat
 from sampletones_shared.exceptions import (
@@ -331,6 +332,7 @@ class TestExportResultReportsTruncation:
                 filepath=Path("lead.fti"),
                 export_format=ExportFormat.FAMITRACKER,
                 truncation=None,
+                skipped_rows=NO_SKIPPED_ROWS,
             )
         )
 
@@ -346,6 +348,7 @@ class TestExportResultReportsTruncation:
                 filepath=Path("lead.fti"),
                 export_format=ExportFormat.FAMITRACKER,
                 truncation=EnvelopeTruncation(frames=252, source_frames=300, instruments=1),
+                skipped_rows=NO_SKIPPED_ROWS,
             )
         )
 
@@ -368,6 +371,7 @@ class TestExportResultReportsTruncation:
                     source_frames=410,
                     instruments=3,
                 ),
+                skipped_rows=NO_SKIPPED_ROWS,
             )
         )
 
@@ -385,6 +389,7 @@ class TestExportResultReportsTruncation:
                 filepath=Path("track.wav"),
                 export_format=None,
                 truncation=None,
+                skipped_rows=NO_SKIPPED_ROWS,
             )
         )
 

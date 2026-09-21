@@ -14,6 +14,7 @@ from sampletones_application.services.export.success import ExportSuccess
 from sampletones_application.services.result import ServiceCanceled, ServiceStarted
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.audio import write_wave
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
@@ -134,7 +135,7 @@ class ExportService(ServiceBase[ExportResult]):
     ) -> ExportArtifact:
         """Writes the samples straight out, which takes a moment and reports no stages."""
         write_wave(filepath, sample_rate, audio)
-        return ExportArtifact(paths=(filepath,), truncation=WHOLE_ENVELOPE)
+        return ExportArtifact(paths=(filepath,), truncation=WHOLE_ENVELOPE, skipped_rows=NO_SKIPPED_ROWS)
 
     def _submit(
         self,
@@ -207,6 +208,7 @@ class ExportService(ServiceBase[ExportResult]):
                 filepath=artifact.paths[0] if artifact.paths else destination,
                 export_format=export_format,
                 truncation=artifact.truncation,
+                skipped_rows=artifact.skipped_rows,
             )
         )
 

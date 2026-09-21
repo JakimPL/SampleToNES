@@ -16,6 +16,7 @@ from sampletones_application.services.result import (
 )
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS, SkippedRow
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.format import ExportFormat
@@ -56,9 +57,11 @@ class StubBackend:
         self,
         truncation: Optional[EnvelopeTruncation] = None,
         exception: Optional[Exception] = None,
+        skipped_rows: Tuple[SkippedRow, ...] = NO_SKIPPED_ROWS,
     ) -> None:
         self.truncation = truncation
         self.exception = exception
+        self.skipped_rows = skipped_rows
         self.calls: List[Tuple[str, Path, Any]] = []
         self.on_write: Optional[Callable[[], None]] = None
 
@@ -113,7 +116,7 @@ class StubBackend:
             raise self.exception
 
         announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
-        return ExportArtifact(paths=(destination,), truncation=self.truncation)
+        return ExportArtifact(paths=(destination,), truncation=self.truncation, skipped_rows=self.skipped_rows)
 
 
 def build_instrument(name: str = "Lead") -> InstrumentExport:
@@ -481,6 +484,43 @@ class TestExportTruncationReporting:
         assert outcome(results).truncation is None
 
 
+class TestExportSkippedRowsReporting:
+    SKIPPED = (
+        SkippedRow(
+            voice_id="voice",
+            channel=ChannelName.PULSE1,
+            order_position=3,
+            row_index=26,
+        ),
+    )
+
+    def test_a_project_carries_the_rows_the_backend_left_silent(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
+        export_service, results = service
+
+        export_service.export_project(
+            tmp_path / "song.ftm",
+            StubBackend(skipped_rows=self.SKIPPED),
+            build_project(),
+        )
+
+        assert outcome(results).skipped_rows == self.SKIPPED
+
+    def test_a_project_the_backend_wrote_whole_reports_no_rows(
+        self,
+        service,
+        tmp_path,
+    ) -> None:
+        export_service, results = service
+
+        export_service.export_project(tmp_path / "song.ftm", StubBackend(), build_project())
+
+        assert outcome(results).skipped_rows == ()
+
+
 class TestExportServiceConcurrency:
     def test_second_export_while_first_running_is_rejected(
         self,
@@ -560,7 +600,7 @@ class CancelingBackend:
         self._service.cancel()
         announce(report, ExportStage.COMPRESSING, ONE_FILE, None)
         self.stages.append(ExportStage.COMPRESSING)
-        return ExportArtifact(paths=(destination,), truncation=None)
+        return ExportArtifact(paths=(destination,), truncation=None, skipped_rows=NO_SKIPPED_ROWS)
 
     def write_sample(
         self,
