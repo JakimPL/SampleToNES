@@ -14,7 +14,7 @@ Opening the document loads the recorded stems through `load_stems`, the same cal
 
 The document's name follows the naming rules in `sampletones_core.reconstructions.naming`, applied to the recorded paths in order. A single source names the document after the file's stem. Several stems that share one directory name it after that directory. Paths that share no directory fall back to the `.stn` filename.
 
-The Stems card names every recorded path, one row per stem. Each row has its own full-path tooltip and reveals its recording on a double-click. The Audio source panel keeps the reconstruction's own file and the choice between the two waveforms. Locating reveals every recorded path at once, in one window with every stem selected where the file manager supports that, and in one window per directory otherwise.
+The Stems card names every recorded path, one row per stem. Each row has its own full-path tooltip and reveals its recording on a double-click. The Audio source panel keeps the reconstruction's own file, the choice between the two waveforms and the engine rate, which a document living on disk retimes through `set_nes_frequency` and a project sample leaves to the project. Locating reveals every recorded path at once, in one window with every stem selected where the file manager supports that, and in one window per directory otherwise.
 
 ## The stems card
 

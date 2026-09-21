@@ -284,6 +284,7 @@ class ReconstructionTabCoordinator:
         self._browser_panel.on_directory_remove_requested = self._request_remove_directory
 
         self._reconstruction_audio_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
+        self._reconstruction_audio_panel.on_nes_frequency_changed = self._reconstruction_panel_logic.set_nes_frequency
         self._reconstruction_plot_panel.on_channels_changed = self._reconstruction_panel_logic.set_selected_channels
         self._reconstruction_stems_panel.on_stem_channels_changed = self._reconstruction_panel_logic.set_stem_channels
         self._reconstruction_stems_panel.on_stem_solo_requested = self._reconstruction_panel_logic.solo_stem

@@ -249,6 +249,26 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._emit_audio_data()
         self.call(self.on_waveform_source_changed, audio_source)
 
+    def set_nes_frequency(self, nes_frequency: int) -> None:
+        """Retunes the open reconstruction to ``nes_frequency`` and re-answers every reading of it.
+
+        The instructions carry over and the audio is re-timed to the new frame length, so the
+        waveform, the playback and an export follow the new rate. The change is an unsaved edit
+        of the document, like any other.
+        """
+        reconstruction_data = self._reconstruction_data
+        if not reconstruction_data:
+            return
+
+        reconstruction = reconstruction_data.reconstruction
+        retuned = reconstruction.with_nes_frequency(nes_frequency)
+        if retuned is reconstruction:
+            return
+
+        self._reconstruction_manager.apply_edited(retuned)
+        self.update_reconstruction()
+        self._reconstruction_manager.mark_updated()
+
     def set_selected_channels(self, channels: List[ChannelName]) -> None:
         """Adopts the reader's channel choice, which the stems list reports as muted columns."""
         self._selected_channels = channels

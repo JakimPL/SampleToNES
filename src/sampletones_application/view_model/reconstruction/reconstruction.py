@@ -20,7 +20,8 @@ class ReconstructionViewModel(BaseModel, frozen=True):
     switched on, so a channel switched off by hand stays off across an edit.
 
     :attr:`nes_frequency` is the engine rate the open reconstruction runs at, and ``None``
-    while the tab holds no document.
+    while the tab holds no document. A document living on disk takes a new rate from the tab,
+    while one detached from its file is a project sample and follows the project's rate.
     """
 
     reconstruction_loaded: bool
@@ -35,6 +36,18 @@ class ReconstructionViewModel(BaseModel, frozen=True):
         """The source toggle offers the original audio once its file is present on disk;
         until then playback stays on the reconstruction."""
         return self.original_audio.state in PLAYABLE_PATH_STATES
+
+    @property
+    def nes_frequency_editable(self) -> bool:
+        """The rate can be changed while a loaded document still has a file it is saved to."""
+        return (
+            self.reconstruction_loaded and self.reconstruction_file.state is not ReconstructionPathState.NOT_APPLICABLE
+        )
+
+    @property
+    def show_nes_frequency_hint(self) -> bool:
+        """The hint explains the locked rate, so it appears exactly when a loaded document follows the project's."""
+        return self.reconstruction_loaded and not self.nes_frequency_editable
 
     @property
     def locate_audio_enabled(self) -> bool:
