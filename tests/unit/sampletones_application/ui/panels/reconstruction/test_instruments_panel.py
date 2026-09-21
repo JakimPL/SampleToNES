@@ -40,8 +40,13 @@ from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
+from sampletones_application.view_model.shared.ownership import (
+    OwnershipLaneViewModel,
+    OwnershipRunViewModel,
+)
 from sampletones_core.constants.enums import ChannelName, FeatureKey, GeneratorName
 from sampletones_core.constants.general import PITCH_BEND_MAX, PITCH_BEND_MIN
+from sampletones_core.exporters.feature import Features
 from sampletones_core.features import CHANNEL_GENERATOR_KIND, supported_features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
@@ -57,6 +62,18 @@ SEQUENCE_STATUS_KEY: Final[str] = "reconstructions.instruments.message.status_se
 LARGEST_PULSE: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=9, sequence_bytes=768)
 LARGEST_TRIANGLE: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=7, sequence_bytes=512)
 SILENT_INSTRUMENT: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=3, sequence_bytes=0)
+
+PLOTTED_AXIS: Final[str] = "instruments.plot.y"
+PLOTTED_BAND: Final[tuple] = (-5.0, -2.0)
+PLOTTED_CHANNEL: Final[ChannelName] = ChannelName.PULSE1
+PLOTTED_PITCH: Final[int] = 60
+PLOTTED_LANE: Final[OwnershipLaneViewModel] = OwnershipLaneViewModel(
+    channel_name=PLOTTED_CHANNEL,
+    runs=(
+        OwnershipRunViewModel(start_frame=0, end_frame=4, stem_id=0, position=0, heard=True),
+        OwnershipRunViewModel(start_frame=4, end_frame=10, stem_id=1, position=1, heard=True),
+    ),
+)
 
 NOT_LOADED: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
     reconstruction_loaded=False,
@@ -210,6 +227,86 @@ class TestSequenceLengthWarning:
             TAG_GLOBAL_THEME_INPUT_WARNING,
             TAG_GLOBAL_THEME_DEFAULT,
         ]
+
+
+class TestTheBandBeneathADimension:
+    """A dimension's band stands over the frames that dimension draws, and no further.
+
+    A channel's readings trim to their own lengths, so a lane handed whole to each of them paints
+    a stretch over frames that reading never drew.
+    """
+
+    @staticmethod
+    def _features(volume_items: int, duty_items: int) -> Features:
+        """One instrument whose volume and duty cycle write different numbers of frames."""
+        return Features(
+            initial_pitch=PLOTTED_PITCH,
+            volume=sequence(volume_items),
+            arpeggio=sequence(volume_items),
+            pitch=sequence(volume_items),
+            hi_pitch=sequence(volume_items),
+            duty_cycle=sequence(duty_items),
+        )
+
+    def _painted(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        monkeypatch: pytest.MonkeyPatch,
+        features: Features,
+        feature_key: FeatureKey,
+    ) -> Dict[str, object]:
+        """What the panel hands the ownership painter for one dimension of a two-recording lane."""
+        plot = MagicMock()
+        plot.y_axis_tag = PLOTTED_AXIS
+        plot.reserve_band.return_value = PLOTTED_BAND
+        panel.channel_plots[PLOTTED_CHANNEL] = {feature_key: plot}
+        painted: Dict[str, object] = {}
+
+        def paint(y_axis_tag: str, runs: object, **kwargs: object) -> None:
+            painted["runs"] = runs
+
+        monkeypatch.setattr(panel._ownership, "paint", paint)
+        panel._update_generator_feature_display(PLOTTED_CHANNEL, features, feature_key, PLOTTED_LANE)
+        painted["share"] = plot.reserve_band.call_args.args[0]
+        return painted
+
+    def test_a_dimension_reaching_the_whole_lane_carries_every_stretch(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        painted = self._painted(panel, monkeypatch, self._features(10, 10), FeatureKey.VOLUME)
+
+        assert painted["runs"] == PLOTTED_LANE.runs
+
+    def test_a_trimmed_dimension_ends_its_stretches_where_it_ends(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        painted = self._painted(panel, monkeypatch, self._features(10, 1), FeatureKey.DUTY_CYCLE)
+
+        assert painted["runs"] == (PLOTTED_LANE.runs[0].model_copy(update={"end_frame": 1}),)
+
+    def test_a_dimension_writing_nothing_gives_the_band_to_the_bars(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        painted = self._painted(panel, monkeypatch, self._features(10, 0), FeatureKey.DUTY_CYCLE)
+
+        assert painted["runs"] == ()
+        assert painted["share"] == 0.0
+
+    def test_a_dimension_the_lane_reaches_keeps_its_band(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        monkeypatch: pytest.MonkeyPatch,
+        layout_config: LayoutConfig,
+    ) -> None:
+        painted = self._painted(panel, monkeypatch, self._features(10, 10), FeatureKey.VOLUME)
+
+        assert painted["share"] == layout_config.graphs.bar_plot.ownership_band
 
 
 class TestEditingASequence:

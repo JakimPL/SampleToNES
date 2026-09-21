@@ -702,30 +702,33 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         lane: OwnershipLaneViewModel,
     ) -> None:
         envelope = self._feature_envelope(generator_features, feature_key)
-        self._update_generator_plot(channel_name, feature_key, _plotted_items(envelope))
+        items = _plotted_items(envelope)
+        self._update_generator_plot(channel_name, feature_key, items)
         self._update_raw_data_text(channel_name, feature_key, envelope)
-        self._paint_ownership(channel_name, feature_key, lane)
+        self._paint_ownership(channel_name, feature_key, lane, len(items))
 
     def _paint_ownership(
         self,
         channel_name: ChannelName,
         feature_key: FeatureKey,
         lane: OwnershipLaneViewModel,
+        frame_count: int,
     ) -> None:
         """Paints the recording behind each frame in a band beneath that dimension's bars.
 
         The band stands under the frames the bars draw, so the two read column for column
-        whatever the dimension's own values reach. A document answering to one recording has
-        nothing to tell apart, and gives the band back to the bars.
+        whatever the dimension's own values reach. A dimension writing nothing, and a document
+        answering to one recording, have nothing to tell apart and give the band to the bars.
         """
         plot = self.channel_plots.get(channel_name, {}).get(feature_key)
         if plot is None:
             return
 
-        share = self._layout_graphs.bar_plot.ownership_band if lane.runs else 0.0
+        runs = lane.up_to(frame_count)
+        share = self._layout_graphs.bar_plot.ownership_band if runs else 0.0
         self._ownership.paint(
             plot.y_axis_tag,
-            lane.runs,
+            runs,
             frame_span=ONE_SLOT_PER_FRAME,
             band=plot.reserve_band(share),
         )
