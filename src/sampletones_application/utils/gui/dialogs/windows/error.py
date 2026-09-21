@@ -13,7 +13,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.trace import GUITraceback
-from sampletones_application.utils.gui.align import table_wrapper
+from sampletones_application.utils.gui.align import center_when_settled, table_wrapper
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.keyboard import KeyRouter
@@ -30,6 +30,10 @@ class GUIErrorDialogWindow(GUIDialogWindow):
     The exception's name and text are drawn in the error color, the traceback starts
     hidden behind its toggle, and OK — the initially focused button — dismisses the
     prompt. The title-bar close reads the same way.
+
+    Unfolding the traceback is the one gesture that changes a dialog's size while it stands, so
+    it centers the window again on the height it reaches: a report grown from its own height to
+    the traceback's would otherwise carry its buttons below the screen.
     """
 
     def __init__(
@@ -58,7 +62,7 @@ class GUIErrorDialogWindow(GUIDialogWindow):
             shortcut_source=shortcut_source,
         )
 
-    def prepare(self, exception: Exception, message: Optional[str]) -> None:
+    def prepare(self, exception: Exception, message: Optional[str]) -> None:  # pylint: disable=arguments-differ
         """Captures the failure the next appearance reports."""
         self._exception = exception
         self._message = message
@@ -106,6 +110,7 @@ class GUIErrorDialogWindow(GUIDialogWindow):
                         else self._language_manager["global.traceback.label.hide"]
                     ),
                 )
+                center_when_settled(self.tag)
 
             dpg.add_separator()
 

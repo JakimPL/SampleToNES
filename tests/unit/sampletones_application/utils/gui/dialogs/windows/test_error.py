@@ -1,4 +1,4 @@
-from typing import Final
+from typing import Final, List
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -15,6 +15,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_ERROR,
 )
 from sampletones_application.utils.gui.dialogs import get_dialog_tag
+from sampletones_application.utils.gui.dialogs.windows import error as error_module
 from sampletones_application.utils.gui.dialogs.windows.error import (
     GUIErrorDialogWindow,
 )
@@ -64,6 +65,20 @@ class TestErrorWindow:
         press(compose_tag(WINDOW_TAG, SUF_BUTTON_SHOW_TRACEBACK))
 
         assert dpg.get_item_label(show_inner_tag) == LANGUAGE_MANAGER["global.traceback.label.hide"]
+
+    def test_the_traceback_toggle_centers_the_window_on_its_new_height(
+        self,
+        window: GUIErrorDialogWindow,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Unfolding a traceback grows the report past the screen unless it is placed again."""
+        centered: List[str] = []
+        monkeypatch.setattr(error_module, "center_when_settled", centered.append)
+        render(window)
+
+        press(compose_tag(WINDOW_TAG, SUF_BUTTON_SHOW_TRACEBACK))
+
+        assert centered == [WINDOW_TAG]
 
     def test_ok_dismisses_the_prompt(self, window: GUIErrorDialogWindow) -> None:
         render(window)
