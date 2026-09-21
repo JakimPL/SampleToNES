@@ -82,7 +82,18 @@ cycle* or *noise period*. It is the unit the reconstruction chooses per frame.
 
 A short, fixed-length slice of the input audio. Within a frame, each channel
 holds one instruction. A frame's length is the sample rate divided by the NES
-frequency.
+frequency. The sequencer uses the same word for one position in the
+[order](#order) — the patterns the song plays at that point. The sequencer uses the same word for one position in the
+[order](#order) — the patterns the song plays at that point.
+
+### Stem
+
+One recording that goes into a reconstruction. Every conversion is a stems
+conversion: a single file is the one stem that takes every channel it is given,
+and several recordings share the channels between them. A reconstruction records
+which channels each stem was given and which frames it played, so a stem can be
+heard, edited or removed on its own. See [Stems
+reconstruction](concepts/stems.md).
 
 ### Instruction library
 
@@ -95,6 +106,23 @@ candidates from the library. Saved as an `.ins` file. See
 
 The mixed, rendered audio a reconstruction produces — the NES channels' closest
 match to the original sample.
+
+### Stem
+
+One recording that goes into a reconstruction. A reconstruction built from several stems shares the
+four channels between them, and it records which stem played each frame, so you can hear what one
+stem contributed on its own. See [converting audio](guide/converting.md).
+
+### Level (stems)
+
+The rank a stem takes when the channels are shared out: a stem on level 1 is offered channels before
+one on level 2. It lets a lead part take the channels it needs before a background part does.
+
+### Drive
+
+How hard a stem pushes a channel, set per channel when a conversion is set up. `1.00` is the level
+the recording was measured at, and a higher drive reaches for a louder match, which suits a part that
+sits quietly under the others.
 
 ### Working level (coefficient)
 
@@ -175,10 +203,11 @@ A [_web tracker_](https://github.com/paator/bitphase) whose chips include the NE
 A pattern-based music editor. _SampleToNES_'s built-in sequencer arranges
 reconstructed samples into a song.
 
-### Sequence
+### Sequence (envelope)
 
-In a FamiTracker instrument, a per-tick envelope for one dimension: volume,
-arpeggio, pitch, hi-pitch, or duty/noise mode.
+A per-tick list of values one dimension of a sound follows while a note is held: volume, arpeggio,
+pitch, hi-pitch, or duty/noise mode. An **arpeggio** sequence steps the note itself up and down. A
+FamiTracker instrument carries one sequence per dimension, and _SampleToNES_ edits the same shapes.
 
 ### Bend
 

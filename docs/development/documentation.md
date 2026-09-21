@@ -101,6 +101,8 @@ alone.
   together — or give the conditions it was taken under: the material, the machine, the build. A bare
   figure carries no meaning a reader can check, so it is dropped or turned into the comparison it stands
   for.
+- A recipe says what it is for before what to type, and each step that could be done another way says
+  what it buys. Commands alone leave a reader following instructions they cannot check or adapt.
 - State things in positive terms: what the design does, not what it avoids or once did. Reach for a
   negative only where the contrast teaches something a positive sentence cannot.
 - Use American English. A name someone else owns keeps their spelling: `MatchRule.serialise()` is

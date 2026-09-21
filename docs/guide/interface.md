@@ -5,7 +5,7 @@ _SampleToNES_ has four tabs. Use `F1` to `F4` to switch between them:
 - [**Main**](converting.md) (`F1`) — turn audio files into [reconstructions](../concepts/reconstruction.md).
 - [**Reconstruction**](reconstruction.md) (`F2`) — listen to a reconstruction, edit its instruments, and export it.
 - [**Sequencer**](sequencer.md) (`F3`) — arrange reconstructions into a song.
-- [**Instructions**](converting.md#the-instruction-library) (`F4`) — build and browse the [instruction library](../concepts/instruction-library.md) a conversion uses.
+- [**Instructions**](converting.md#building-a-library-yourself) (`F4`) — build and browse the [instruction library](../concepts/instruction-library.md) a conversion uses.
 
 You usually work through the tabs in this order. Convert your files on **Main**. When the conversion finishes, click **Load** to open the result on **Reconstruction**. From there, **Add to Sequencer** adds the reconstruction to a song.
 
@@ -13,15 +13,9 @@ The **Instructions** tab is optional. Use it to explore single _instructions_: t
 
 ## The menus
 
-Each menu covers one kind of work:
-
-- **File** — projects, exporting a song as a module or a program, and rendering a song to audio.
-- **Edit** — undo and redo, followed by commands for whatever you have selected. Its lower half changes with what you are working on.
-- **Reconstruction** — creating, opening, and saving reconstructions, and exporting them.
-- **Voice** — adding voices to the sequencer, and commands for the voice you selected.
-- **Playback** — playing, autoplay, following the song, and muting channels.
-- **View** — advanced settings, favorites, the display, and the shortcuts.
-- **Help** — **About**.
+Each menu covers one kind of work, and three of them follow what you are doing: the lower half of
+**Edit** holds commands for whatever you have selected, **Voice** holds commands for the voice you
+selected, and **Reconstruction** acts on the reconstruction you have open.
 
 Two items are easy to miss:
 

@@ -18,22 +18,21 @@ tab, or right-click in the **Filesystem** browser.
 
 ## File types
 
-| Type | What it is | Where it is saved |
-| --- | --- | --- |
-| `.ins` | [instruction library](../formats/instruction-libraries.md) | `instructions/` |
-| `.stn` | [reconstruction](../formats/reconstructions.md) | `reconstructions/` |
-| `.stp` | [project](../formats/projects.md) | `projects/` |
-| `.fti` | FamiTracker instrument | where you choose |
-| `.ftm` | FamiTracker module | where you choose |
-| `.json` | Bitphase instrument preset | where you choose |
-| `.btp` | Bitphase project | where you choose |
-| `.nsf` | NES sound file | where you choose |
+| Type | What it is |
+| --- | --- |
+| `.ins` | [instruction library](../formats/instruction-libraries.md) |
+| `.stn` | [reconstruction](../formats/reconstructions.md) |
+| `.stp` | [project](../formats/projects.md) |
+| `.fti` | FamiTracker instrument |
+| `.ftm` | FamiTracker module |
+| `.json` | Bitphase instrument preset |
+| `.btp` | Bitphase project |
+| `.nsf` | [NSF program](../formats/nsf.md) |
 
-The last five types are exports:
-
-- Open `.fti` and `.ftm` files in [FamiTracker](../formats/famitracker.md).
-- Open `.json` and `.btp` files in [Bitphase](../formats/bitphase.md).
-- Play `.nsf` files in an NSF player or on a NES.
+The first three are your own work, saved in the folders above. The rest are exports, and the save
+dialog asks where each one goes. [FamiTracker](../formats/famitracker.md) opens `.fti` and `.ftm`,
+[Bitphase](../formats/bitphase.md) opens `.json` and `.btp`, and an `.nsf` plays in an NSF player or
+on a NES.
 
 ## Naming exported files
 
