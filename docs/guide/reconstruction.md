@@ -37,7 +37,9 @@ Double-click a row to show the recording in your file browser.
 Under the waveform is a row of colored bars, one line per channel, with a letter naming the channel:
 **P** for Pulse 1, **p** for Pulse 2, **T** for Triangle and **N** for Noise. Each bar shows which
 recording played that stretch, in that recording's color, and a dark stretch means nothing was played
-there. The bars appear when a reconstruction was built from more than one recording.
+there. The bars appear when there is more than one thing to tell apart: a reconstruction built from
+several recordings, or one built from a single recording that you have since edited by hand. Your own
+edits are drawn in a color of their own.
 
 Uncheck a channel to silence it in the waveform, in playback, in the original audio and in a WAV
 export. Uncheck every recording on a channel and the channel reads as empty. This lets you hear what

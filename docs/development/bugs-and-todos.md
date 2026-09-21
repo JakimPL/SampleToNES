@@ -189,17 +189,9 @@ again.
 
 ## Bugs
 
-* Misaligned dialog boxes sizes at initialization
-* The instruments panel draws the part a reader hears, so a frame held by a recording left out
-  reads as a rest rather than naming its owner. A DearPyGui bar series takes one color for the
-  whole series, so naming it means a series per owner or a drawn overlay beneath the plot.
-* `ReconstructionManager` writes `_reconstruction_hash` and `_coefficient` and reads neither.
 * A channel whose every frame rests reads as standing by for the reader while `playing_channels`
   and the export still count it, so the panel and the size figures disagree about a channel whose
   volume was written down to nothing.
-* `ETAEstimator` states the mark for an estimate not yet measurable as a literal in
-  `sampletones_core`, where the language file the rest of the application reads its words from
-  is out of reach. Lifting the phrasing to the layer that shows it is what settles it.
 * `_on_bar_point_clicked` composes a raw-data tag the text field does not carry, so its write
   finds nothing and the field catches up only when the edit returns through the regeneration.
 * A reconstruction written before the recorded sources moved onto the stems record reads with
@@ -210,6 +202,16 @@ again.
 * `ReconstructionStage.RENDERING` keeps the weight it was measured at while a conversion no longer
   renders, so a bar covers that share faster than the eight parts in a hundred `STAGE_WEIGHTS`
   gives it. Re-measuring the four stages over whole runs is what settles the new figures.
-* `performance/audition.py` previews an instrument at unit drive, where a reconstruction's own
-  frames sound at the drive their recording gives the channel. Which level a preview belongs at is
-  worth stating either way.
+* `_heard_stream` reads a resting frame as heard whoever is unchecked, so a channel whose last
+  frame is a rest keeps its reading open to the end: the frames an unchecked recording held come
+  back as silence instead of being cut, and the instruments panel, the size figures and an export
+  all measure that longer sequence. The rule is there so a channel written down to rests alone
+  stays in play, which the cut has to keep.
+* `StemColors.for_stem` paints a resting stretch in `stem_rest`, the color matching the ribbon's
+  ground so a rest reads as a gap under the waveform. The band beneath the instruments bars reuses
+  it over `plot_background`, which differs in every palette — `#aab0bb` against `#ffffff` in the
+  light one — so a rest shows there as a solid bar where it should be a gap.
+* The error dialog states a height of 120 and its traceback box adds 400, so **Show traceback**
+  grows it past the 800-tall client the application opens at its smallest and its buttons fall
+  below the screen. `center_when_settled` has ended by then, so the dialog grows downward from
+  where it stood rather than re-centering on the new height.
