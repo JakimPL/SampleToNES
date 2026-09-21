@@ -168,6 +168,7 @@ class Reconstructor:
         assignment.release_silent(streams)
         self._drop_resting_channels(assignment, streams)
         streams = self._refiner(stems_config).refine(streams, assignment.stem_ids, prepared.recordings)
+        announce(report, ReconstructionStage.DECODING, WHOLE_STAGE, WHOLE_STAGE)
         self._record_streams(streams, report)
         return Reconstruction.from_state(
             self.state,
@@ -319,11 +320,11 @@ class Reconstructor:
         """
         frames = self._frame_count(streams)
         for position in range(frames):
-            announce(report, ReconstructionStage.RENDERING, position, frames)
+            announce(report, ReconstructionStage.GATHERING, position, frames)
             for channel_name in self.state.channel_names:
                 self.state.append(channel_name, streams[channel_name][position].instruction)
 
-        announce(report, ReconstructionStage.RENDERING, frames, frames)
+        announce(report, ReconstructionStage.GATHERING, frames, frames)
 
     @staticmethod
     def _frame_count(streams: Streams) -> int:

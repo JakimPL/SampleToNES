@@ -38,3 +38,4 @@ stems:
     - .stem_8
   authored: .stem_authored
   rest: .stem_rest
+  left_out_fraction: 0.45

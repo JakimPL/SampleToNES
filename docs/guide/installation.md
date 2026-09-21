@@ -1,6 +1,6 @@
 # Installation
 
-You can install _SampleToNES_ in three ways:
+You can install _SampleToNES_ in several ways. If you are unsure, download a release.
 
 - **Download a release.** This is the easiest way on Windows and Linux.
 - **Install from PyPI.** This works on Windows, macOS and Linux.

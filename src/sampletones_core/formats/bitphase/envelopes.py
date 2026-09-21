@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, Tuple
 
-from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName, FeatureKey
 from sampletones_core.exporters.bend import bend_envelope
 from sampletones_core.exporters.feature import Features
 from sampletones_core.features.envelope import Envelope
@@ -123,32 +123,28 @@ def _macro_bag(
     if channel != ChannelName.TRIANGLE:
         macros[NesMacroField.PULSE_WIDTH] = macro(_waveform_envelope(features, channel))
 
-    bend = _bend_envelope(features, channel, contour)
-    if bend.written:
-        macros[NesMacroField.TONE_ADD] = macro(bend)
+    if channel in TONE_CHANNELS:
+        bend = _bend_envelope(features, contour)
+        if bend.written:
+            macros[NesMacroField.TONE_ADD] = macro(bend)
 
     return macros
 
 
-def _bend_envelope(features: Features, channel: ChannelName, contour: Envelope[int]) -> Envelope[int]:
+def _bend_envelope(features: Features, contour: Envelope[int]) -> Envelope[int]:
     """The period offsets a slice's bend asks of each tick, measured from the note it sounds on.
 
-    The table moves the note before Bitphase resolves its period, and the tone offset is added
-    to that period, so each tick is measured from the note its own contour step reaches. A slice
-    sounding every tick on its note writes no offset at all, and the noise channel takes its
-    period from the note, so its bend reaches playback through the note column.
+    The table moves the note before Bitphase reads its period, and the tone offset is added to that
+    period, so each tick is measured from the note its own contour step reaches. A slice that sounds
+    every tick on its note asks for no offset at all.
 
     Args:
         features: The per-dimension envelopes describing the slice.
-        channel: The NES channel the slice was reconstructed for.
         contour: The semitone steps the table moves the note by.
 
     Returns:
         Envelope[int]: The offset per tick, empty where the slice sounds on its note throughout.
     """
-    if channel == ChannelName.NOISE:
-        return Envelope[int]()
-
     bend = stored_envelope(FeatureKey.PITCH, bend_envelope(features.pitch, features.hi_pitch))
     if not any(bend.items):
         return Envelope[int]()

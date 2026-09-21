@@ -4,12 +4,16 @@ from sampletones_player.compression.decode import decode_planes
 from sampletones_player.nsf.layout import SongLayout
 from sampletones_player.song import Song
 from sampletones_player.specification.compression import (
+    PHRASE_DEFAULT_SIZE,
     PHRASE_LENGTH_SIZE,
     PHRASE_TABLE_COUNT_SIZE,
     PHRASE_TABLE_ENTRY_SIZE,
-    PLANE_COUNT,
 )
-from sampletones_player.specification.song import ABSENT_STREAM, SONG_HEADER_SIZE
+from sampletones_player.specification.planes import PLANE_COUNT
+from sampletones_player.specification.song import (
+    ABSENT_STREAM,
+    SONG_HEADER_SIZE,
+)
 from tests.suite.player import (
     PLAYER_FULL_VOLUME,
     PLAYER_OCTAVE_UP_TIMER,
@@ -32,7 +36,11 @@ FIGURE: Final = (SOUNDING, OCTAVE_UP, RESTING, OCTAVE_UP)
 
 
 def figure_song(loop_tick: int) -> Song:
-    return player_song(resting_streams(FIGURE * FIGURE_REPEATS), NTSC_FREQUENCY, loop_tick=loop_tick)
+    return player_song(
+        resting_streams(FIGURE * FIGURE_REPEATS),
+        NTSC_FREQUENCY,
+        loop_tick=loop_tick,
+    )
 
 
 def present(song: Song, layout: SongLayout) -> List[Tuple[bytes, int]]:
@@ -67,7 +75,7 @@ class TestWhereEachPartOfTheBlockBegins:
         song = figure_song(LOOP_TICK)
         layout = SongLayout.of(song)
         last = song.planes.phrases[len(song.planes.phrases) - 1]
-        assert layout.streams[0] == layout.bodies[-1] + PHRASE_LENGTH_SIZE + last.length
+        assert layout.streams[0] == layout.bodies[-1] + PHRASE_LENGTH_SIZE + PHRASE_DEFAULT_SIZE + last.length
 
     def test_each_stream_follows_the_one_before_it(self) -> None:
         song = figure_song(LOOP_TICK)
@@ -81,7 +89,9 @@ class TestWhereEachPartOfTheBlockBegins:
         stream, offset = present(song, layout)[-1]
         assert layout.size == offset + len(stream)
 
-    def test_an_absent_plane_states_the_sentinel_for_its_stream_and_its_entry(self) -> None:
+    def test_an_absent_plane_states_the_sentinel_for_its_stream_and_its_entry(
+        self,
+    ) -> None:
         song = figure_song(LOOP_TICK)
         layout = SongLayout.of(song)
         absent = [plane for plane, stream in enumerate(song.planes.streams) if not stream]
@@ -99,13 +109,19 @@ class TestWhereEachStreamIsReEntered:
     def test_an_entry_stands_at_the_token_the_loop_tick_starts(self) -> None:
         song = figure_song(LOOP_TICK)
         layout = SongLayout.of(song)
-        entered = song.planes.entries(decode_planes(song.planes).positions(LOOP_TICK))
+        entered = song.planes.loop_entries
         assert layout.loop_entries == tuple(
             ABSENT_STREAM if entry is None else offset + entry for offset, entry in zip(layout.streams, entered)
         )
 
-    def test_a_song_that_stops_re_enters_at_each_streams_own_start(self) -> None:
-        song = player_song(resting_streams(FIGURE * FIGURE_REPEATS), NTSC_FREQUENCY, loop_tick=None)
+    def test_a_song_that_stops_re_enters_at_each_streams_own_start(
+        self,
+    ) -> None:
+        song = player_song(
+            resting_streams(FIGURE * FIGURE_REPEATS),
+            NTSC_FREQUENCY,
+            loop_tick=None,
+        )
         layout = SongLayout.of(song)
         assert layout.loop_entries == layout.streams
 

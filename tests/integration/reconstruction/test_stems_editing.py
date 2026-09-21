@@ -7,6 +7,7 @@ import pytest
 from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import playing_channels
+from sampletones_core.formats.famitracker.footprint import reconstruction_footprints
 from sampletones_core.instructions import InstructionUnion, TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstruction.stems.filter import filter_approximations
@@ -462,11 +463,7 @@ class TestTheEnvelopesASelectionShows:
         )
 
     def test_every_sounding_channel_reads_the_document_itself(self, reconstruction: Reconstruction) -> None:
-        """A reader hearing everything reads each sounding channel as the document writes it.
-
-        A channel whose every frame rests reads as standing by instead, since the reading ends
-        where a channel last sounds.
-        """
+        """A reader hearing everything reads each sounding channel as the document writes it."""
         whole = reconstruction.export()
         sounding = {name: features for name, features in whole.items() if features.has_frames}
         assert sounding
@@ -514,6 +511,45 @@ class TestTheEnvelopesASelectionShows:
         heard = reconstruction.export_heard(self._selection(channel_name, frozenset()))
 
         assert all(heard[name] == whole[name] for name in ChannelName.items() if name != channel_name)
+
+
+class TestAChannelWrittenDownToNothing:
+    """A channel whose every frame rests keeps them, so every reader of it counts one channel."""
+
+    @staticmethod
+    def _silenced(reconstruction: Reconstruction, channel_name: ChannelName) -> Reconstruction:
+        """The document with one channel written down to rests, frame for frame."""
+        stream = [type(instruction).null_instruction() for instruction in reconstruction.instructions[channel_name]]
+        return _edited(reconstruction, channel_name, stream)
+
+    def test_the_channel_keeps_the_frames_it_describes(self, reconstruction: Reconstruction) -> None:
+        channel_name = _contested_channel(reconstruction)
+        frames = len(reconstruction.instructions[channel_name])
+
+        edited = self._silenced(reconstruction, channel_name)
+
+        assert len(edited.instructions[channel_name]) == frames
+        assert not any(instruction.on for instruction in edited.instructions[channel_name])
+
+    def test_every_reader_counts_it_alike(self, reconstruction: Reconstruction) -> None:
+        """The panel, the record, the footprint and the export answer for one and the same channel."""
+        channel_name = _contested_channel(reconstruction)
+        edited = self._silenced(reconstruction, channel_name)
+        everywhere = StemSelection.everywhere(EVERY_STEM, ChannelName.items())
+
+        assert channel_name in playing_channels(edited.export_heard(everywhere))
+        assert channel_name in edited.playing_channels
+        assert channel_name in playing_channels(edited.export())
+        assert channel_name in reconstruction_footprints(edited)
+
+    def test_the_panel_measures_the_frames_the_export_writes(self, reconstruction: Reconstruction) -> None:
+        channel_name = _contested_channel(reconstruction)
+        edited = self._silenced(reconstruction, channel_name)
+        everywhere = StemSelection.everywhere(EVERY_STEM, ChannelName.items())
+
+        heard = edited.export_heard(everywhere)[channel_name]
+
+        assert heard.frame_count == edited.export()[channel_name].frame_count
 
 
 class TestTheDocumentThroughAFile:

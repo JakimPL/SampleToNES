@@ -3,8 +3,16 @@ from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.rebuild import streams_from_planes
 from sampletones_player.compression.planes.separate import planes_from_streams
 from sampletones_player.registers.streams import ChannelStreams
-from tests.suite.player import PLAYER_FULL_VOLUME, noise_tick, player_streams, pulse_tick, triangle_tick
-from tests.unit.sampletones_player.compression.planes.conftest import NOISE_PERIOD
+from tests.suite.player import (
+    PLAYER_FULL_VOLUME,
+    noise_tick,
+    player_streams,
+    pulse_tick,
+    triangle_tick,
+)
+from tests.unit.sampletones_player.compression.planes.conftest import (
+    NOISE_PERIOD,
+)
 
 
 class TestThePlanesReadBackAsTheStreamsTheyCameFrom:

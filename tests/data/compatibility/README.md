@@ -50,6 +50,26 @@ It writes one document per format at the versions that build states, and leaves 
 already archived — replacing a file would restate history under a name that already means
 something. The corpus grows by one file per format per version, and never changes underneath.
 
-A version that shipped before the command existed is backfilled once, from a worktree at its tag,
-with the generator kept under `generators/`. The recipe is in
+A version that shipped before the command existed is backfilled once, and the release that shipped it
+is what writes the file: a document the current build produced would prove nothing about what the old
+build stored. So that release's code has to run. It runs against a generator written for it, which is
+why the generators live here rather than at the tag — each one postdates the release it writes for.
+
+The tag is checked out beside the repository rather than in it, so the work in progress and the
+development environment both stay as they are:
+
+```
+git worktree add <scratch>/<tag> <tag>
+cd <scratch>/<tag> && uv sync --frozen
+cp <checkout>/tests/data/compatibility/generators/<tag>.py .
+uv run python <tag>.py --output <checkout>/tests/data/compatibility
+cd <checkout> && git worktree remove --force <scratch>/<tag>
+```
+
+`uv sync --frozen` builds that tag's own environment from the lockfile it shipped with, so the
+document is written by the dependencies the release was built on, and the version stamped inside it is
+the one the installed package reports. The output lands in this directory, which leaves the worktree
+disposable as soon as the generator has run.
+
+Why the corpus exists, and what an upgrade step owes it, is
 [Data compatibility](../../../docs/development/release/compatibility.md).

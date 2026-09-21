@@ -1,4 +1,5 @@
-from typing import Optional
+from functools import partial
+from typing import Callable, Optional, ParamSpec
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.clipboard import (
@@ -20,21 +21,26 @@ from sampletones_application.logic.sequencer.tracker import (
     TrackerBlockReader,
     TrackerBlockWriter,
 )
-from sampletones_application.utils.gui.clipboard import TextClipboard
+from sampletones_application.utils.gui.clipboard.protocol import TextClipboard
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
     OrderRegion,
     TrackerCell,
     TrackerRegion,
 )
+from sampletones_shared.types.callback import VoidCallback
+
+GestureParams = ParamSpec("GestureParams")
 
 
 class SequencerBlocks:
     """The blocks both grids copy, cut and paste, and the two clipboards they travel on.
 
     A copy lands in this tab's own slot and, as text, on the system clipboard, so the same block
-    reaches a paste here and a paste in another instance. A paste reads the system clipboard first
-    while what stands there is a block, which is what lets one instance hand a block to the next.
+    reaches a paste here and a paste in another instance. A paste asks the system clipboard first
+    and takes its text while that text is a block, which is what lets one instance hand a block to
+    the next. The clipboard answers in its own time, so the blocks keep its last answer, and every
+    question about the block in hand reads that answer.
 
     Every gesture here reads and writes the project as it stands; recording what a gesture undoes
     is the caller's, so the coordinator wraps the writing ones in a history transaction.
@@ -50,6 +56,7 @@ class SequencerBlocks:
     ) -> None:
         self._clipboard: SequencerClipboard = SequencerClipboard()
         self._text_clipboard: TextClipboard = text_clipboard
+        self._clipboard_text: str = ""
         self._tracker_text: TrackerBlockText = TrackerBlockText(
             samples=ProjectSampleDirectory(project_controller),
         )
@@ -69,13 +76,37 @@ class SequencerBlocks:
         """Whether the order has a block to write, which is what its Paste item is offered on."""
         return self.order_in_hand() is not None
 
+    def read_clipboard(self, then: VoidCallback) -> None:
+        """Asks the system clipboard for its text, running ``then`` once the read is over.
+
+        The answer is what the pastes and the menus offering them read from then on, so a gesture
+        that asked first acts on the text standing on the clipboard as it answered. A read the
+        clipboard leaves unanswered keeps the answer before it, and ``then`` runs on that one.
+        """
+        self._text_clipboard.read(partial(self._take_clipboard_text, then))
+
+    def after_reading_clipboard(
+        self,
+        paste: Callable[GestureParams, None],
+    ) -> Callable[GestureParams, None]:
+        """Holds a paste back until the system clipboard has answered, so it writes the block in hand then.
+
+        A clipboard that answers nothing leaves the text it holds unknown, and the paste it was
+        asked for is let go of rather than written from a block the answer would have stood ahead of.
+        """
+
+        def wrapped(*args: GestureParams.args, **kwargs: GestureParams.kwargs) -> None:
+            self._text_clipboard.read(partial(self._paste_on_answer, partial(paste, *args, **kwargs)))
+
+        return wrapped
+
     def tracker_in_hand(self) -> Optional[TrackerBlock]:
         """The block a tracker paste would write: the system clipboard's while its text is one.
 
         Text another instance copied reads as a block here, so it stands ahead of the slot the
         tracker copied into, and text from anywhere else leaves that slot's own block in hand.
         """
-        parsed = self._tracker_cache.block(self._text_clipboard.read())
+        parsed = self._tracker_cache.block(self._clipboard_text)
         if parsed is not None:
             return parsed
 
@@ -87,7 +118,7 @@ class SequencerBlocks:
         Text another instance copied reads as a block here, so it stands ahead of the slot the
         order copied into, and text from anywhere else leaves that slot's own block in hand.
         """
-        parsed = self._order_cache.block(self._text_clipboard.read())
+        parsed = self._order_cache.block(self._clipboard_text)
         if parsed is not None:
             return parsed
 
@@ -142,3 +173,16 @@ class SequencerBlocks:
         block = self.order_in_hand()
         if block is not None:
             self._order_writer.write(block, cell)
+
+    def _take_clipboard_text(self, then: VoidCallback, text: Optional[str]) -> None:
+        if text is not None:
+            self._clipboard_text = text
+
+        then()
+
+    def _paste_on_answer(self, paste: VoidCallback, text: Optional[str]) -> None:
+        if text is None:
+            return
+
+        self._clipboard_text = text
+        paste()

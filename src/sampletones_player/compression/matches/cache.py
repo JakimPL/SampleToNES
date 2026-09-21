@@ -5,7 +5,11 @@ from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.matches.played import played_ticks
 from sampletones_player.compression.matches.reading import PhraseReading
-from sampletones_player.compression.matches.shift import NO_SHIFT, asked_shift, translation
+from sampletones_player.compression.matches.shift import (
+    NO_SHIFT,
+    asked_shift,
+    translation,
+)
 from sampletones_player.specification.compression import MAX_PHRASE_TICKS
 
 KEY_LENGTH: Final[int] = 2

@@ -1,12 +1,18 @@
 import pytest
 from pydantic import ValidationError
 
-from sampletones_player.compression.dictionary.table import PhraseTable, phrase_table
+from sampletones_player.compression.dictionary.table import (
+    PhraseTable,
+    phrase_table,
+)
 from sampletones_player.specification.compression import (
     MAX_PHRASE_IDS,
     PHRASE_TABLE_COUNT_SIZE,
 )
-from tests.unit.sampletones_player.compression.dictionary.phrases import distinct, phrase
+from tests.unit.sampletones_player.compression.dictionary.phrases import (
+    distinct,
+    phrase,
+)
 
 
 class TestTheTableHoldsWhatATokenCanName:

@@ -3,6 +3,11 @@ from typing import Final
 
 import pytest
 
+from sampletones_player.compression.dictionary.phrase import Phrase
+from sampletones_player.compression.dictionary.table import (
+    PhraseTable,
+    phrase_table,
+)
 from sampletones_player.compression.encode import emit
 from sampletones_player.compression.tokens.hold import HoldToken
 from sampletones_player.compression.tokens.literal import LiteralToken
@@ -21,6 +26,10 @@ FIRST_TOKEN: Final[int] = 0
 CHEAP_ID: Final[int] = 1
 SHIFT: Final[int] = 5
 PHRASE_PLAY_TICKS: Final[int] = 10
+CARRIED_TICKS: Final[int] = 6
+DICTIONARY: Final[PhraseTable] = phrase_table(
+    tuple(Phrase(body=bytes((value,)), default=CARRIED_TICKS) for value in range(PHRASE_ID_ESCAPE + 2))
+)
 
 
 class TestWhatAWrittenTokenTakesAndCovers(BaseTestSuite):
@@ -37,7 +46,11 @@ class TestWhatAWrittenTokenTakesAndCovers(BaseTestSuite):
             return self.name
 
     test_cases = (
-        TestCase(name="hold", token=HoldToken(ticks=7), expected=TokenSpan(size=1, ticks=7)),
+        TestCase(
+            name="hold",
+            token=HoldToken(ticks=7),
+            expected=TokenSpan(size=1, ticks=7),
+        ),
         TestCase(
             name="hold-longest",
             token=HoldToken(ticks=MAX_HOLD_TICKS),
@@ -50,17 +63,32 @@ class TestWhatAWrittenTokenTakesAndCovers(BaseTestSuite):
         ),
         TestCase(
             name="phrase",
-            token=PhraseToken(phrase_id=CHEAP_ID, ticks=PHRASE_PLAY_TICKS, transpose=0),
+            token=PhraseToken(
+                phrase_id=CHEAP_ID,
+                ticks=PHRASE_PLAY_TICKS,
+                transpose=0,
+                default=False,
+            ),
             expected=TokenSpan(size=2, ticks=PHRASE_PLAY_TICKS),
         ),
         TestCase(
             name="phrase-shifted",
-            token=PhraseToken(phrase_id=CHEAP_ID, ticks=PHRASE_PLAY_TICKS, transpose=SHIFT),
+            token=PhraseToken(
+                phrase_id=CHEAP_ID,
+                ticks=PHRASE_PLAY_TICKS,
+                transpose=SHIFT,
+                default=False,
+            ),
             expected=TokenSpan(size=3, ticks=PHRASE_PLAY_TICKS),
         ),
         TestCase(
             name="phrase-escaped",
-            token=PhraseToken(phrase_id=PHRASE_ID_ESCAPE, ticks=PHRASE_PLAY_TICKS, transpose=0),
+            token=PhraseToken(
+                phrase_id=PHRASE_ID_ESCAPE,
+                ticks=PHRASE_PLAY_TICKS,
+                transpose=0,
+                default=False,
+            ),
             expected=TokenSpan(size=3, ticks=PHRASE_PLAY_TICKS),
         ),
         TestCase(
@@ -69,30 +97,36 @@ class TestWhatAWrittenTokenTakesAndCovers(BaseTestSuite):
                 phrase_id=PHRASE_ID_ESCAPE,
                 ticks=PHRASE_PLAY_TICKS,
                 transpose=SHIFT,
+                default=False,
             ),
             expected=TokenSpan(size=4, ticks=PHRASE_PLAY_TICKS),
         ),
         TestCase(
             name="phrase-longest",
-            token=PhraseToken(phrase_id=CHEAP_ID, ticks=MAX_PHRASE_TICKS, transpose=0),
+            token=PhraseToken(
+                phrase_id=CHEAP_ID,
+                ticks=MAX_PHRASE_TICKS,
+                transpose=0,
+                default=False,
+            ),
             expected=TokenSpan(size=2, ticks=MAX_PHRASE_TICKS),
         ),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_span_states_what_the_token_takes(self, test_case: TestCase) -> None:
-        span = token_span(emit([test_case.token]), FIRST_TOKEN)
+        span = token_span(emit([test_case.token]), FIRST_TOKEN, DICTIONARY)
         assert span.size == test_case.expected.size
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_span_states_what_the_token_covers(self, test_case: TestCase) -> None:
-        span = token_span(emit([test_case.token]), FIRST_TOKEN)
+        span = token_span(emit([test_case.token]), FIRST_TOKEN, DICTIONARY)
         assert span.ticks == test_case.expected.ticks
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_span_reaches_the_byte_the_next_token_begins_at(self, test_case: TestCase) -> None:
         stream = emit([test_case.token, HoldToken(ticks=1)])
-        assert token_span(stream, FIRST_TOKEN).size == len(stream) - 1
+        assert token_span(stream, FIRST_TOKEN, DICTIONARY).size == len(stream) - 1
 
 
 class TestWalkingAStream:
@@ -102,12 +136,12 @@ class TestWalkingAStream:
         tokens = (
             LiteralToken(values=b"\x01\x02"),
             HoldToken(ticks=3),
-            PhraseToken(phrase_id=CHEAP_ID, ticks=4, transpose=SHIFT),
+            PhraseToken(phrase_id=CHEAP_ID, ticks=4, transpose=SHIFT, default=False),
         )
         stream = emit(tokens)
         position = 0
         for _ in tokens:
-            position += token_span(stream, position).size
+            position += token_span(stream, position, DICTIONARY).size
 
         assert position == len(stream)
 
@@ -115,13 +149,13 @@ class TestWalkingAStream:
         tokens = (
             LiteralToken(values=b"\x01\x02"),
             HoldToken(ticks=3),
-            PhraseToken(phrase_id=CHEAP_ID, ticks=4, transpose=0),
+            PhraseToken(phrase_id=CHEAP_ID, ticks=4, transpose=0, default=False),
         )
         stream = emit(tokens)
         position = 0
         covered = 0
         for _ in tokens:
-            span = token_span(stream, position)
+            span = token_span(stream, position, DICTIONARY)
             covered += span.ticks
             position += span.size
 

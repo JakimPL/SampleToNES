@@ -4,7 +4,11 @@ from typing import Tuple
 import pytest
 from pydantic import ValidationError
 
-from sampletones_player.compression.budget import DEFAULT_SEARCH_BUDGET, SearchBudget, shares
+from sampletones_player.compression.budget import (
+    DEFAULT_SEARCH_BUDGET,
+    SearchBudget,
+    shares,
+)
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -19,11 +23,36 @@ class TestSharesMeetSmallDemandsAndSplitTheRest(BaseTestSuite):
         expected: Tuple[int, ...]
 
     test_cases = (
-        TestCase(label="every_demand_fits", demands=(5, 5, 5), total=30, expected=(5, 5, 5)),
-        TestCase(label="a_small_demand_leaves_its_surplus", demands=(100, 1, 100), total=41, expected=(20, 1, 20)),
-        TestCase(label="a_zero_demand_takes_nothing", demands=(0, 7), total=3, expected=(0, 3)),
-        TestCase(label="equal_demands_split_evenly", demands=(9, 9), total=8, expected=(4, 4)),
-        TestCase(label="a_total_short_of_one_each", demands=(9, 9, 9), total=2, expected=(0, 1, 1)),
+        TestCase(
+            label="every_demand_fits",
+            demands=(5, 5, 5),
+            total=30,
+            expected=(5, 5, 5),
+        ),
+        TestCase(
+            label="a_small_demand_leaves_its_surplus",
+            demands=(100, 1, 100),
+            total=41,
+            expected=(20, 1, 20),
+        ),
+        TestCase(
+            label="a_zero_demand_takes_nothing",
+            demands=(0, 7),
+            total=3,
+            expected=(0, 3),
+        ),
+        TestCase(
+            label="equal_demands_split_evenly",
+            demands=(9, 9),
+            total=8,
+            expected=(4, 4),
+        ),
+        TestCase(
+            label="a_total_short_of_one_each",
+            demands=(9, 9, 9),
+            total=2,
+            expected=(0, 1, 1),
+        ),
         TestCase(label="no_claimants", demands=(), total=10, expected=()),
     )
 

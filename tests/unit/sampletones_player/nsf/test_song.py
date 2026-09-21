@@ -7,10 +7,14 @@ import pytest
 from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.nsf.layout import NAME_SEPARATOR, SongLayout
-from sampletones_player.nsf.song import song_to_bytes
+from sampletones_player.nsf.song import STATED_BEYOND_THE_FIRST, song_to_bytes
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import WORD_SIZE
-from sampletones_player.specification.compression import PLANE_COUNT
+from sampletones_player.specification.compression import (
+    PHRASE_DEFAULT_SIZE,
+    PHRASE_LENGTH_SIZE,
+)
+from sampletones_player.specification.planes import PLANE_COUNT
 from sampletones_player.specification.song import (
     ABSENT_STREAM,
     LOOP_ENTRIES_OFFSET,
@@ -87,9 +91,12 @@ class TestSongBytes:
 
     The layout is the contract the driver reads the song through, so the literal states it in
     full: the header, the timer every pitch sounds at, the dictionary the tokens name, and one
-    token stream per plane the block holds. The song bends nowhere, so each bend plane is absent
-    and its header entries carry the sentinel. The timer table is named rather than transcribed,
-    since it is the tuning's own table and the block carries whatever that table holds.
+    token stream per plane the block holds. The song bends nowhere, so each bend plane is absent;
+    its second pulse channel and its noise channel rest throughout, so both control planes stand
+    at the value their register fixes; and its triangle never sounds, so its value plane names the
+    index that stands for silence. Each of those is absent, and its header entries carry the
+    sentinel. The timer table is named rather than transcribed, since it is the tuning's own table
+    and the block carries whatever that table holds.
     """
 
     EXPECTED_HEADER: Final[bytes] = (
@@ -97,36 +104,28 @@ class TestSongBytes:
         b"\xca\x7f"
         b"\x02\x00"
         b"\xff\xff"
-        b"\x37\x00"
-        b"\x07\x01"
-        b"\x08\x01\x0b\x01\xff\xff"
-        b"\x0e\x01\x11\x01\xff\xff"
-        b"\x14\x01\x17\x01\xff\xff"
-        b"\x1a\x01\x1d\x01"
-        b"\x08\x01\x0b\x01\xff\xff"
-        b"\x0e\x01\x11\x01\xff\xff"
-        b"\x14\x01\x17\x01\xff\xff"
-        b"\x1a\x01\x1d\x01"
+        b"\x33\x00"
+        b"\x03\x01"
+        b"\x04\x01\x07\x01\xff\xff"
+        b"\xff\xff\x0a\x01\xff\xff"
+        b"\xff\xff\xff\xff"
+        b"\xff\xff\x0d\x01"
+        b"\x04\x01\x07\x01\xff\xff"
+        b"\xff\xff\x0a\x01\xff\xff"
+        b"\xff\xff\xff\xff"
+        b"\xff\xff\x0d\x01"
     )
 
-    EXPECTED_STREAMS: Final[bytes] = (
-        b"\x00"
-        b"\x41\x3f\x30"
-        b"\x40\x21\x00"
-        b"\x40\x30\x00"
-        b"\x40\x21\x00"
-        b"\x40\x80\x00"
-        b"\x40\x21\x00"
-        b"\x40\x30\x00"
-        b"\x40\x0a\x00"
-    )
+    EXPECTED_STREAMS: Final[bytes] = b"\x00" b"\x41\x0f\x00" b"\x40\x21\x00" b"\x40\x21\x00" b"\x40\x1a"
 
     def test_the_song_serializes_to_the_expected_bytes(self) -> None:
         song = two_tick_song(HALF_RATE_FREQUENCY)
         expected = self.EXPECTED_HEADER + song.pitches.data + self.EXPECTED_STREAMS
         assert song_to_bytes(song, PROGRAM_AREA_BYTES) == expected
 
-    def test_the_header_runs_to_the_length_the_offsets_are_read_at(self) -> None:
+    def test_the_header_runs_to_the_length_the_offsets_are_read_at(
+        self,
+    ) -> None:
         assert len(self.EXPECTED_HEADER) == SONG_HEADER_SIZE
 
 
@@ -160,7 +159,11 @@ class TestSongHeader(BaseTestSuite):
         assert read_word(data, STEP_FRACTION_OFFSET) == step.fraction
 
     def test_the_header_states_the_songs_length(self) -> None:
-        song = player_song(resting_streams((SOUNDING, OCTAVE_UP, RESTING)), NTSC_FREQUENCY, loop_tick=None)
+        song = player_song(
+            resting_streams((SOUNDING, OCTAVE_UP, RESTING)),
+            NTSC_FREQUENCY,
+            loop_tick=None,
+        )
         data = song_to_bytes(song, PROGRAM_AREA_BYTES)
         assert read_word(data, TOTAL_TICKS_OFFSET) == song.ticks
 
@@ -200,8 +203,10 @@ class TestPhraseTable:
         data = song_to_bytes(song, PROGRAM_AREA_BYTES)
         layout = SongLayout.of(song)
         for phrase, offset in zip(song.planes.phrases.phrases, layout.bodies):
+            body = offset + PHRASE_LENGTH_SIZE + PHRASE_DEFAULT_SIZE
             assert data[offset] == phrase.length
-            assert data[offset + 1 : offset + 1 + phrase.length] == phrase.body
+            assert data[offset + PHRASE_LENGTH_SIZE] == phrase.default - STATED_BEYOND_THE_FIRST
+            assert data[body : body + phrase.length] == phrase.body
 
     def test_the_entries_stand_where_the_table_states(self) -> None:
         song = spelled_phrase_song()
@@ -253,10 +258,12 @@ class TestStreamOffsets:
 class TestLoopEntries:
     """Where each plane's stream is re-entered once the song repeats."""
 
-    def test_a_song_that_repeats_states_the_token_its_loop_tick_starts(self) -> None:
+    def test_a_song_that_repeats_states_the_token_its_loop_tick_starts(
+        self,
+    ) -> None:
         song = repeating_song()
         data = song_to_bytes(song, PROGRAM_AREA_BYTES)
-        entered = song.planes.entries(decode_planes(song.planes).positions(LOOP_TICK))
+        entered = song.planes.loop_entries
         assert loop_entries(data) == tuple(
             ABSENT_STREAM if entry is None else offset + entry for offset, entry in zip(stream_offsets(data), entered)
         )
@@ -282,12 +289,16 @@ class TestSongTooLarge:
         with pytest.raises(SongTooLargeError):
             song_to_bytes(song, len(data) - 1)
 
-    def test_a_song_filling_the_available_space_exactly_is_written(self) -> None:
+    def test_a_song_filling_the_available_space_exactly_is_written(
+        self,
+    ) -> None:
         song = two_tick_song(NTSC_FREQUENCY)
         data = song_to_bytes(song, PROGRAM_AREA_BYTES)
         assert song_to_bytes(song, len(data)) == data
 
-    def test_a_song_reaching_past_the_offset_field_names_what_overflowed(self) -> None:
+    def test_a_song_reaching_past_the_offset_field_names_what_overflowed(
+        self,
+    ) -> None:
         """A block given exactly the room it takes is still refused where an offset overflows."""
         song = spelled_song(MAX_BLOCK_OFFSET, NTSC_FREQUENCY)
         with pytest.raises(SongTooLargeError) as overflow:

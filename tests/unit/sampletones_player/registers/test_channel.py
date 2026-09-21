@@ -9,7 +9,10 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
-from sampletones_player.registers.channel import channel_instructions, channel_registers
+from sampletones_player.registers.channel import (
+    channel_instructions,
+    channel_registers,
+)
 from sampletones_player.specification.registers import (
     TRIANGLE_COUNTER_CONTROL,
     TRIANGLE_SOUNDING_RELOAD,
@@ -59,15 +62,25 @@ class TestChannelInstructions:
 class TestChannelRegisters:
     """Naming the channel is the whole of what it takes to encode a stream."""
 
-    def test_a_sounding_channel_carries_a_tick_per_instruction_and_a_release(self) -> None:
-        registers = channel_registers(ChannelName.PULSE1, {ChannelName.PULSE1: melody()}, PLAYER_TIMER_TABLE)
+    def test_a_sounding_channel_carries_a_tick_per_instruction_and_a_release(
+        self,
+    ) -> None:
+        registers = channel_registers(
+            ChannelName.PULSE1,
+            {ChannelName.PULSE1: melody()},
+            PLAYER_TIMER_TABLE,
+        )
         assert len(registers) == SOUNDING_TICKS + 1
 
     def test_a_channel_the_song_leaves_out_rests_for_a_tick(self) -> None:
         assert len(channel_registers(ChannelName.PULSE2, {}, PLAYER_TIMER_TABLE)) == 1
 
     def test_a_pitch_reaches_the_timer_the_table_states(self) -> None:
-        registers = channel_registers(ChannelName.PULSE1, {ChannelName.PULSE1: melody()}, PLAYER_TIMER_TABLE)
+        registers = channel_registers(
+            ChannelName.PULSE1,
+            {ChannelName.PULSE1: melody()},
+            PLAYER_TIMER_TABLE,
+        )
         timer = PLAYER_TIMER_TABLE[PLAYER_REFERENCE_PITCH]
         assert registers[0].values[1:] == (timer & 0xFF, timer >> 8)
 
@@ -91,6 +104,12 @@ class TestChannelRegisters:
         )
         assert registers[0].control & 0x0F == NOISE_VOLUME
 
-    def test_a_channel_holding_another_channels_instructions_raises(self) -> None:
+    def test_a_channel_holding_another_channels_instructions_raises(
+        self,
+    ) -> None:
         with pytest.raises(TypeError):
-            channel_registers(ChannelName.TRIANGLE, {ChannelName.TRIANGLE: melody()}, PLAYER_TIMER_TABLE)
+            channel_registers(
+                ChannelName.TRIANGLE,
+                {ChannelName.TRIANGLE: melody()},
+                PLAYER_TIMER_TABLE,
+            )

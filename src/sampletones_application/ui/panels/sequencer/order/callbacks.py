@@ -5,6 +5,7 @@ from sampletones_application.ui.panels.sequencer.input.order import OrderCursor
 from sampletones_application.ui.panels.sequencer.input.target import OrderTarget
 from sampletones_application.view_model.sequencer.region import OrderCell, OrderRegion
 from sampletones_core.constants.enums import ChannelName
+from sampletones_shared.types.callback import VoidCallback
 
 OrderKey = Tuple[Optional[ChannelName], int]
 
@@ -19,5 +20,6 @@ OnChannelSoloedCallback = Callable[[ChannelName], None]
 OnBlockRegionCallback = Callable[[OrderRegion], None]
 OnPasteBlockCallback = Callable[[OrderCell], None]
 CanPasteBlockQuery = Callable[[], bool]
+RefreshPasteBlockRequest = Callable[[VoidCallback], None]
 
 OrderEditSurface = GridEditSurface[OrderCursor, OrderRegion, OrderCell, OrderTarget]

@@ -4,12 +4,11 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID, UNIT_DRIVE
+from sampletones_core.constants.algorithm import RESTING_STEM_ID, UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, bending_channels
-from sampletones_core.generators.render import render_instructions
+from sampletones_core.generators.render import render_channels, render_instructions
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
-from sampletones_core.reconstructions.reconstruction.rendering import render_streams
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.filter import filter_approximations
@@ -101,46 +100,22 @@ def reconstruction() -> Reconstruction:
 
 
 class TestTheAudioAReconstructionAnswersWith:
-    """A channel sounds what its generator renders from its own stream, at the drive its owner gives it."""
+    """A channel sounds what its generator renders from the stream it carries, drive or none."""
 
-    def test_each_frame_stands_at_the_drive_its_owner_gives_the_channel(
+    def test_a_channel_sounds_exactly_what_its_instructions_render(
         self,
         reconstruction: Reconstruction,
     ) -> None:
-        config = reconstruction.config
-        bare = render_instructions(reconstruction.instructions[ChannelName.PULSE1], ChannelName.PULSE1, config)
-
-        rendered = render_streams(reconstruction.instructions, reconstruction.stems_data, config)
-
-        np.testing.assert_allclose(_frame(rendered[ChannelName.PULSE1], 0), _frame(bare, 0) * LOUD_DRIVE)
-        np.testing.assert_allclose(_frame(rendered[ChannelName.PULSE1], 1), _frame(bare, 1) * UNIT_DRIVE)
-
-    def test_a_resting_frame_sounds_nothing(self, reconstruction: Reconstruction) -> None:
-        rendered = render_streams(reconstruction.instructions, reconstruction.stems_data, reconstruction.config)
-
-        np.testing.assert_array_equal(
-            _frame(rendered[ChannelName.PULSE1], 2),
-            np.zeros(reconstruction.config.library.frame_length, dtype=np.float32),
-        )
-
-    def test_a_frame_the_reader_wrote_stands_at_unit_drive(self) -> None:
-        authored = _reconstruction(
-            {ChannelName.PULSE1: [_pulse(60), _pulse(62)]},
-            {ChannelName.PULSE1: [STEM_A, AUTHORED_STEM_ID]},
-        )
-        bare = render_instructions(authored.instructions[ChannelName.PULSE1], ChannelName.PULSE1, authored.config)
-
-        rendered = render_streams(authored.instructions, authored.stems_data, authored.config)
-
-        np.testing.assert_allclose(_frame(rendered[ChannelName.PULSE1], 1), _frame(bare, 1) * UNIT_DRIVE)
-
-    def test_the_reconstruction_reads_the_same_audio_the_render_answers(
-        self,
-        reconstruction: Reconstruction,
-    ) -> None:
-        rendered = render_streams(reconstruction.instructions, reconstruction.stems_data, reconstruction.config)
+        """The document behind this stands at a drive off unit, and sounds its instructions all the same."""
+        rendered = render_channels(reconstruction.instructions, reconstruction.config)
 
         np.testing.assert_array_equal(reconstruction.approximations[ChannelName.PULSE1], rendered[ChannelName.PULSE1])
+
+    def test_a_resting_frame_sounds_nothing(self, reconstruction: Reconstruction) -> None:
+        np.testing.assert_array_equal(
+            _frame(reconstruction.approximations[ChannelName.PULSE1], 2),
+            np.zeros(reconstruction.config.library.frame_length, dtype=np.float32),
+        )
 
     def test_a_channel_standing_by_sounds_nothing_at_all(self) -> None:
         reconstruction = _reconstruction(

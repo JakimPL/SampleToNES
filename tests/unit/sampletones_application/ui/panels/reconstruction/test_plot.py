@@ -354,7 +354,7 @@ def _ribbon(*channels: ChannelName) -> OwnershipRibbonViewModel:
         lanes=tuple(
             OwnershipLaneViewModel(
                 channel_name=channel_name,
-                runs=(OwnershipRunViewModel(start_frame=0, end_frame=2, stem_id=0, position=0),),
+                runs=(OwnershipRunViewModel(start_frame=0, end_frame=2, stem_id=0, position=0, heard=True),),
             )
             for channel_name in channels
         ),

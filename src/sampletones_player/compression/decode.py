@@ -1,17 +1,26 @@
-from typing import Tuple
+from typing import List, Tuple
 
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.planes.flags import flagged_ticks
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
+from sampletones_player.compression.planes.symbols import unpack_plane
 from sampletones_player.specification.binary import BYTE_VALUES
 from sampletones_player.specification.compression import (
-    INITIAL_PLANE_VALUE,
+    DEFAULT_COUNT_FLAG,
     PHRASE_ID_ESCAPE,
+    PHRASE_ID_MASK,
     TOKEN_OPERAND_MASK,
     TOKEN_TAG_MASK,
     TokenTag,
+)
+from sampletones_player.specification.planes import (
+    PLANES,
+    SINGLE_TICK,
+    Plane,
+    PlaneRole,
+    plane_index,
 )
 
 
@@ -23,13 +32,17 @@ def _phrase_values(
     *,
     transposed: bool,
 ) -> Tuple[bytes, int]:
-    phrase_id = operand
-    if operand == PHRASE_ID_ESCAPE:
+    phrase_id = operand & PHRASE_ID_MASK
+    if phrase_id == PHRASE_ID_ESCAPE:
         phrase_id = data[position]
         position += 1
 
-    ticks = data[position] + 1
-    position += 1
+    if operand & DEFAULT_COUNT_FLAG:
+        ticks = table[phrase_id].default
+    else:
+        ticks = data[position] + 1
+        position += 1
+
     transpose = 0
     if transposed:
         transpose = data[position]
@@ -41,28 +54,38 @@ def _phrase_values(
     return played, position
 
 
-def decode_plane(data: bytes, table: PhraseTable, ticks: int) -> bytes:
+def decode_plane(
+    data: bytes,
+    table: PhraseTable,
+    plane: Plane,
+    ticks: int,
+) -> bytes:
     """Plays a plane's token stream back into the values it writes, tick by tick.
 
     This is the reading the driver performs, stated where it is testable: every encoding is held
-    against it, so what the console plays and what the encoder meant are the same values. An
-    absent plane's empty stream plays the value every plane starts at throughout.
+    against it, so what the console plays and what the encoder meant are the same values. A
+    symbol covers the ticks its own count states, so the reading stops once the ticks the song
+    lasts are covered, wherever in a symbol that falls. An absent plane's empty stream plays the
+    value the driver seeds it to throughout.
 
     Args:
         data: The plane's token stream.
         table: The dictionary the tokens name.
+        plane: The plane the stream belongs to, for the byte it seeds to and how its byte divides.
         ticks: The ticks the song lasts.
 
     Returns:
         bytes: The values the plane writes, one per tick.
     """
+    form = plane.form
     if not data:
-        return bytes((INITIAL_PLANE_VALUE,)) * ticks
+        return bytes((plane.seeded,)) * ticks
 
-    values = bytearray()
-    current = INITIAL_PLANE_VALUE
+    symbols = bytearray()
+    current = form.symbol(plane.seeded, SINGLE_TICK)
+    covered = 0
     position = 0
-    while len(values) < ticks:
+    while covered < ticks:
         opcode = data[position]
         position += 1
         operand = opcode & TOKEN_OPERAND_MASK
@@ -90,24 +113,10 @@ def decode_plane(data: bytes, table: PhraseTable, ticks: int) -> bytes:
                 )
 
         current = played[-1]
-        values.extend(played)
+        symbols.extend(played)
+        covered += sum(form.repeated(symbol) for symbol in played)
 
-    return bytes(values[:ticks])
-
-
-def _tone_planes(
-    compressed: CompressedPlanes,
-    control: bytes,
-    value: bytes,
-    bend: bytes,
-) -> Tuple[bytes, bytes, bytes]:
-    """A tone channel's planes played back, its bend plane as long as its value plane flags."""
-    played = decode_plane(value, compressed.phrases, compressed.ticks)
-    return (
-        decode_plane(control, compressed.phrases, compressed.ticks),
-        played,
-        decode_plane(bend, compressed.phrases, flagged_ticks(played)),
-    )
+    return unpack_plane(bytes(symbols), form)[:ticks]
 
 
 def decode_planes(compressed: CompressedPlanes) -> SongPlanes:
@@ -120,16 +129,15 @@ def decode_planes(compressed: CompressedPlanes) -> SongPlanes:
         compressed: The dictionary, the streams and the ticks the song lasts.
 
     Returns:
-        SongPlanes: The planes under the channel each belongs to.
+        SongPlanes: Every plane, in the order the song block writes them.
     """
-    streams = compressed.streams
-    played = PlaneOrder.across(
-        (
-            *_tone_planes(compressed, streams.pulse1_control, streams.pulse1_value, streams.pulse1_bend),
-            *_tone_planes(compressed, streams.pulse2_control, streams.pulse2_value, streams.pulse2_bend),
-            *_tone_planes(compressed, streams.triangle_control, streams.triangle_value, streams.triangle_bend),
-            decode_plane(streams.noise_control, compressed.phrases, compressed.ticks),
-            decode_plane(streams.noise_value, compressed.phrases, compressed.ticks),
+    played: List[bytes] = []
+    for plane, stream in zip(PLANES, compressed.streams, strict=True):
+        reach = (
+            flagged_ticks(played[plane_index(plane.channel, PlaneRole.VALUE)])
+            if plane.spans_flagged_ticks
+            else compressed.ticks
         )
-    )
-    return SongPlanes.from_order(played)
+        played.append(decode_plane(stream, compressed.phrases, plane, reach))
+
+    return SongPlanes(planes=PlaneOrder.across(played))

@@ -1,7 +1,12 @@
+from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.tokens.span import token_span
 
 
-def stream_entry(stream: bytes, position: int) -> int:
+def stream_entry(
+    stream: bytes,
+    position: int,
+    table: PhraseTable,
+) -> int:
     """The byte of ``stream`` the token covering the value at ``position`` begins at.
 
     A song that repeats re-enters its streams partway through, and what the driver needs to
@@ -11,6 +16,7 @@ def stream_entry(stream: bytes, position: int) -> int:
     Args:
         stream: The plane's token stream.
         position: The value the stream is re-entered at.
+        table: The dictionary the tokens name.
 
     Returns:
         int: The byte the token covering ``position`` begins at, counted from the stream's own
@@ -22,7 +28,7 @@ def stream_entry(stream: bytes, position: int) -> int:
     offset = 0
     reached = 0
     while reached < position:
-        span = token_span(stream, offset)
+        span = token_span(stream, offset, table)
         reached += span.ticks
         offset += span.size
 
