@@ -7,7 +7,7 @@ import pytest
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_core.audio import mix, write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import RESTING_STEM_ID, UNIT_DRIVE
+from sampletones_core.constants.algorithm import MAX_DRIVE, MIN_DRIVE, RESTING_STEM_ID, UNIT_DRIVE
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     ChannelName,
@@ -41,6 +41,9 @@ _DISJOINT_DURATION_SECONDS: Final[float] = 0.9
 _DISJOINT_TONES: Final[Tuple[float, ...]] = (220.0, 440.0, 880.0)
 _DISJOINT_AMPLITUDE: Final[float] = 0.5
 _LOUD_DRIVE: Final[float] = 2.0
+_SWEPT_DRIVES: Final[Tuple[float, ...]] = (MIN_DRIVE, UNIT_DRIVE, _LOUD_DRIVE, MAX_DRIVE)
+_COMPETING_TONES: Final[Tuple[float, ...]] = (440.0, 659.0)
+_COMPETING_AMPLITUDES: Final[Tuple[float, ...]] = (0.5, 0.4)
 
 
 def _classic_stems(config: Config, *, channel_cap: int) -> StemsConfig:
@@ -65,6 +68,33 @@ def _stems_config(tone_drive: float = UNIT_DRIVE) -> StemsConfig:
             mode=HierarchyMode.STRICT,
         ),
     )
+
+
+def _competing_stems(drive: float) -> StemsConfig:
+    """Two recordings on one level, each reaching for the first pulse, the first pushed to ``drive``."""
+    held = [ChannelName.PULSE1]
+    return StemsConfig(
+        entries=[
+            StemEntry(id=0, settings=StemSettings.covering(held).with_channel_cap(1).with_drive(held[0], drive)),
+            StemEntry(id=1, settings=StemSettings.covering(held).with_channel_cap(1)),
+        ],
+        hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
+    )
+
+
+def _competing_recordings(tmp_path: Path, config: Config) -> Tuple[Path, Path]:
+    """Two steady tones of one length, written as the recordings that reach for one channel."""
+    sample_rate = config.library.sample_rate
+    count = int(sample_rate * _DURATION_SECONDS)
+    time = np.arange(count) / sample_rate
+
+    paths = []
+    for index, (frequency, amplitude) in enumerate(zip(_COMPETING_TONES, _COMPETING_AMPLITUDES)):
+        path = tmp_path / f"tone_{index}.wav"
+        write_wave(path, sample_rate, amplitude * np.sin(2 * np.pi * frequency * time))
+        paths.append(path)
+
+    return paths[0], paths[1]
 
 
 def _energy(samples: np.ndarray) -> float:
@@ -174,6 +204,47 @@ class TestReconstructStems:
                 [tmp_path / "only_one.wav"],
                 _stems_config(),
             )
+
+
+class TestADriveLeavesTheStemsCompeting:
+    """Two recordings reaching for one channel keep it where it stood, whatever drive one is given.
+
+    A drive settles what a channel plays, so it reaches the instructions the frames record and
+    leaves the ownership beneath them standing. This is the contract ``docs/concepts/stems.md``
+    states of a drive, read over a whole conversion.
+    """
+
+    def test_the_channel_holds_its_recording_across_the_whole_range(self, tmp_path: Path) -> None:
+        config = Config()
+        library = build_mini_library(config)
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=library)
+        paths = list(_competing_recordings(tmp_path, config))
+
+        owners: Dict[float, List[int]] = {}
+        for drive in _SWEPT_DRIVES:
+            reconstruction = reconstructor.reconstruct(paths, _competing_stems(drive))
+            assert reconstruction is not None
+            owners[drive] = list(reconstruction.stems_data.assignments_by_channel[ChannelName.PULSE1])
+
+        standing = owners[UNIT_DRIVE]
+        assert set(standing) == {0}
+        assert owners == {drive: standing for drive in _SWEPT_DRIVES}
+
+    def test_the_drive_lifts_the_channel_it_holds_up_to_what_the_channel_reaches(self, tmp_path: Path) -> None:
+        """A rising drive reaches for louder instructions and settles at the loudest the channel holds."""
+        config = Config()
+        library = build_mini_library(config)
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=library)
+        paths = list(_competing_recordings(tmp_path, config))
+
+        energies: Dict[float, float] = {}
+        for drive in _SWEPT_DRIVES:
+            reconstruction = reconstructor.reconstruct(paths, _competing_stems(drive))
+            assert reconstruction is not None
+            energies[drive] = _energy(reconstruction.approximations[ChannelName.PULSE1])
+
+        assert energies[MIN_DRIVE] < energies[UNIT_DRIVE] < energies[_LOUD_DRIVE]
+        assert energies[MAX_DRIVE] == pytest.approx(energies[_LOUD_DRIVE])
 
 
 class TestThreeStemHierarchy:

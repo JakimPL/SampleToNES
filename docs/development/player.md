@@ -1,81 +1,73 @@
 # The console player
 
-This document governs `sampletones_player`: the 6502 driver an exported `.nsf` carries, the
-codec that fits a song into the console's program area, and the chain that holds both to
-what the application plays. Read it before changing the assembly under
-`sampletones_tools/player/assembly/`, anything under `compression/`, or the way a song is built in
-`builder.py`. The byte layout the two sides meet on is [the NSF format](../formats/nsf.md);
-where the package sits among the others is [package layers](packages.md).
+This document governs `sampletones_player`: the 6502 driver an exported `.nsf` carries, the codec that fits a
+song into the console's program area, and the chain that holds both to what the application plays. Read it
+before changing the assembly under `sampletones_tools/player/assembly/`, anything under `compression/`, or
+the way a song is built in `builder.py`. The byte layout the two sides meet on is
+[the NSF format](../formats/nsf.md). [Package layers](packages.md) says where the package sits among the
+others.
 
-Everything else _SampleToNES_ exports describes a song to a program that plays it. This one
-**is** the program. That single difference sets the whole design: the file has to carry a
-player, the player has to fit beside the song in 32 KB, and the song has to be decodable by
-a processor that has no multiply.
+Everything else _SampleToNES_ exports describes a song to a program that plays it. This one **is** the
+program. That single difference sets the whole design. The file has to carry a player, the player has to
+fit beside the song in 32 KB, and the song has to be decodable by a processor with no multiply.
 
 ## Principles
 
-**The driver interprets nothing.** Which value silences a channel, how a duty cycle reaches
-its bits, how a pitch becomes a period, how the linear counter is held — every one of those
-is settled in Python, under `registers/`, where it is testable at a keystroke. What crosses
-into assembly is moving bytes to addresses and counting ticks. A rule that would have to be
-debugged on a 6502 is a rule in the wrong place.
+**Python settles every rule, and the driver moves bytes.** Which value silences a channel, how a duty cycle
+reaches its bits, how a pitch becomes a period, how the linear counter is held: each of these is settled
+in Python, under `registers/`, where it is testable at a keystroke. What crosses into assembly is moving
+bytes to addresses and counting ticks. A rule that would have to be debugged on a 6502 is a rule in the
+wrong place.
 
 **What a correct driver writes is stated in Python, and the assembly is held to it.**
-`RegisterTrace.from_song` says which APU registers a run touches, in what order, call by
-call. The assembled driver is run on a 6502 emulator and its writes are compared against
-that statement. The oracle is the contract; the assembly is an implementation of it, and
-either one being wrong shows up as a difference rather than as a wrong sound.
+`RegisterTrace.from_song` says which APU registers a run touches, in what order, call by call. The
+assembled driver runs on a 6502 emulator, and its writes are compared against that statement. The oracle
+is the contract, and the assembly is an implementation of it. A fault in either one shows up as a
+difference and not as a wrong sound.
 
-**A song is decoded forward, never indexed.** Reading a tick by multiplying its number
-bought exactly two things: skipping several ticks in one play call, and jumping to the loop
-point. The first is a matter of decoding several ticks in a row; the second the header can
-state outright. Giving both up in exchange for compression is what turns a program area
-that holds seconds into one that holds minutes.
+**A song is decoded forward.** Reading a tick by multiplying its number would allow two things: skipping
+several ticks in one play call, and jumping to the loop point. Decoding several ticks in a row covers the
+first, and the header can state the second outright. Giving up indexing is what turns a program area that
+holds seconds into one that holds minutes.
 
-**The dictionary is the instrument table.** A song is built by playing samples at rows, so
-the shapes its planes repeat are knowable rather than discoverable: each sample offers the
-planes it writes, and every row playing it becomes a token naming that entry. Search fills
-what the samples leave uncovered.
+**The dictionary is the instrument table.** A song is built by playing samples at rows, so the shapes its
+planes repeat are knowable in advance. Each sample offers the planes it writes, and every row playing it
+becomes a token naming that entry. Search fills what the samples leave uncovered.
 
-**Every layer earns its place on measured ground.** Each stage of the codec can be switched
-off on its own, and `uv run sampletones codec report` writes what each one saves across a corpus of
-songs. The format's constants are settled from that report rather than from argument.
+**Every layer earns its place on measured ground.** Each stage of the codec can be switched off on its
+own, and `uv run sampletones codec report` writes what each one saves across a corpus of songs. The
+format's constants are settled from that report and not from argument.
 
 **A change to the codec is measured before it is built.** `uv run sampletones codec study` reads the
-projects and stems named on its command line, encodes every song under every candidate change,
-and writes the sizes, the times, a verdict per candidate and the manifest that repeats the run
-under `Documents/SampleToNES/compression`. A candidate is one of two things. A new way of choosing
-tokens is encoded and played back by the production codec itself. A new token grammar is
-priced in bytes by a study parser, which first has to reproduce the production parser's
-bytes on today's grammar. The rule is printed in the report: a candidate earns a production
-layer when it saves 3% over the projects or 5% over the reconstructions and grows no song by
-more than 1%. The study lives under `sampletones_tools/codec/study`, outside the shipped
-packages.
+projects and stems named on its command line, encodes every song under every candidate change, and writes
+the sizes, the times, a verdict per candidate and the manifest that repeats the run under
+`Documents/SampleToNES/compression`. A candidate is one of two things. A new way of choosing tokens is
+encoded and played back by the production codec itself. A new token grammar is priced in bytes by a study
+parser, which first has to reproduce the production parser's bytes on today's grammar. The report prints
+the rule that gives a candidate a production layer: it must save a set share of the projects' or of the
+reconstructions' bytes, and it must not grow any song beyond a set margin. The study lives under
+`sampletones_tools/codec/study`, outside the shipped packages.
 
 ## The song a file carries
 
-`Song` is the compressed song: the dictionary, one token stream per plane, the timer table,
-the clock and the loop point. The register values every channel writes are read back out of
-the streams on demand, so a trace, a writer and a test all speak to the compressed song
-without knowing it is one.
+`Song` is the compressed song: the dictionary, one token stream per plane, the timer table, the clock and
+the loop point. The register values every channel writes are read back out of the streams on demand, so a
+trace, a writer and a test all speak to the compressed song without knowing it is one.
 
-A song is built three ways, and the difference between them is only where the ticks come
-from: `song_from_reconstruction` sounds a reconstruction's own instructions,
-`song_from_sample` sounds the slices of an export request, and `song_from_project` plays a
-whole arrangement out row by row through the same walk the sequencer sounds a song with.
-The last of those is the one that seeds the dictionary from the project's samples.
+A song is built from a reconstruction's own instructions, from the slices of an export request, or from a
+whole project. The three differ only in where the ticks come from. A project is played out row by row
+through the same walk the sequencer sounds a song with, and it is the case that seeds the dictionary from
+the project's samples.
 
-**A program states what an export chooses.** `NSFProgram` holds the channels a song sounds,
-the tick it returns to, the `CompressionScheme` it is written with and the header text, and
-the builders take the first three explicitly. `NSFProgram.for_project` and
-`NSFProgram.for_sample` state what an export writes when nobody chose otherwise, and the
-export dialog opens on the same values. `NSFBackend` answers the export seam either with those
-stated programs or, through `choosing`, with one a user settled, so the service that runs an
+**A program states what an export chooses.** `NSFProgram` holds the channels a song sounds, the tick it
+returns to, the `CompressionScheme` it is written with and the header text. The builders take the first
+three explicitly. The defaults an export writes when nobody chose otherwise are stated once, and the export
+dialog opens on the same values. A user's choice replaces those defaults, so the service that runs an
 export stays free of anything the format decides.
 
-A project carries no tuning of its own — each sample was reconstructed against one — so the
-samples state it by agreeing on it, and a project whose samples disagree is refused rather
-than sounded half in tune.
+A project has no tuning of its own, because each sample was reconstructed against one. The samples
+therefore state the tuning by agreeing on it. A project whose samples disagree is refused, so nothing
+sounds half in tune.
 
 ## The codec
 
@@ -137,9 +129,6 @@ true fraction of the song.
 
 ## The driver
 
-The driver is three sources: the entry points and the play call in `driver.s`, the clock in
-`clock.s`, and the plane decoders in `channels.s`.
-
 **The clock steps a tick at a time.** A play call adds the header's step to an accumulator
 and reads the whole ticks off the top; the driver then moves the clock on by one tick at a
 time, and each step answers what the channels are to do with it — play it, play it from the
@@ -174,38 +163,27 @@ stays a byte moved and a carry followed.
 
 ## How it is verified
 
-The chain runs from the register values upward, and each link is held on its own:
+The chain runs from the register values upward, and each link is held on its own: the codec against its
+golden decoder over a corpus, the byte layout against a hand-built song, the assembly's equates against
+`specification/`, and the assembled image on a 6502 emulator against `RegisterTrace.from_song`. On top sits
+a whole export: a project exported, played on the emulator, and read back as the instructions the sequencer
+sounds.
 
-| Level | How |
-|---|---|
-| The codec is lossless | every encoding decodes to the planes it was written from, over a corpus |
-| The codec is safe | a plane the codec finds nothing in stays within its literal bound |
-| The ratio | `uv run sampletones codec report` — bytes per tick and ticks that fit, per layer |
-| What a change would save | `uv run sampletones codec study` — the projects and stems it is given, under every candidate change, with a verdict each |
-| The byte layout | a hand-built song serializes to expected bytes |
-| The assembly agrees with the specification | the include's equates are read and compared field by field |
-| The driver behaves | the assembled image on a 6502 emulator against `RegisterTrace.from_song`, over several rates and over songs that repeat |
-| The driver's arithmetic | a song stating a bend plane outright, and bent frames exported end to end, each held to the divider the sequencer sounds every tick at |
-| The audio | a captured trace re-rendered against the reconstruction's own approximation |
-| The whole export | a project exported, played on the emulator, and read back as the instructions the sequencer sounds |
-| Listening | `uv run sampletones nsf samples -o build/nsf` then `uv run sampletones nsf render --directory build/nsf`, or any NSF player |
-| Speed | `make benchmarks` — the encoder's own cost on the shapes that scale worst |
-
-The audio comparison is the one that catches a mistake the trace would let through: the
-trace says the right registers were written, and the render says the result is the waveform
-the reconstruction was built as.
+One more check covers what the others cannot. The trace says the right registers were written. The audio
+comparison re-renders a captured trace against the reconstruction's own approximation and says the result
+is the waveform the reconstruction was built as.
 
 ## Building the driver
 
-`uv run sampletones driver` assembles the sources under `sampletones_tools/player/assembly/`
-with cc65 and writes `sampletones_player/driver/binary/driver.bin`, which is committed —
-exporting an `.nsf` needs no assembler, and the application ships the binary alone.
+The driver binary is committed as `sampletones_player/driver/binary/driver.bin`, so exporting an
+`.nsf` needs no assembler and the application ships the binary alone. `uv run sampletones driver`
+rebuilds it from the sources under `sampletones_tools/player/assembly/` and prints the layout the
+build produced.
 
-The link line names our own configuration and our own object files, with the CPU stated
-outright. That is the guardrail that keeps the shipped image entirely ours: reaching for a
-cc65 target or library would place that project's start-up code and runtime in the bytes the
-package distributes. A build also holds the linker's own labels against the addresses the
-exporter states without one, so the committed image and the header describing it cannot
-drift apart.
+The link line names this project's own configuration and object files and states the CPU outright. That
+keeps the shipped image entirely ours: a cc65 target or library would place that project's start-up code
+and runtime in the bytes the package distributes. A build also holds the linker's own labels against the
+addresses the exporter states without one, so the committed image and the header describing it stay in
+step.
 
 Installing cc65 is covered in [dependencies](release/dependencies.md).

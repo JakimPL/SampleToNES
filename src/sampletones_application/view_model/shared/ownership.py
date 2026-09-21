@@ -29,6 +29,19 @@ class OwnershipLaneViewModel(BaseModel, extra="forbid", frozen=True):
     channel_name: ChannelName
     runs: Tuple[OwnershipRunViewModel, ...]
 
+    def up_to(self, frame_count: int) -> Tuple[OwnershipRunViewModel, ...]:
+        """The lane's runs over the first ``frame_count`` frames, the last of them ending there.
+
+        A surface draws a reading as far as that reading goes, and the channel holds one lane for
+        every reading taken from it, so a surface drawing fewer frames than the channel holds
+        asks the lane for the stretches standing under them.
+        """
+        return tuple(
+            run if run.end_frame <= frame_count else run.model_copy(update={"end_frame": frame_count})
+            for run in self.runs
+            if run.start_frame < frame_count
+        )
+
 
 class OwnershipRibbonViewModel(BaseModel, extra="forbid", frozen=True):
     """The recordings behind each stretch of what a reader is listening to.

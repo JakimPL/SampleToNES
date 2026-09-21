@@ -28,6 +28,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.data import DataModel, Metadata, MetadataContract
+from sampletones_core.data.document import decompress_document
 from sampletones_core.exporters import (
     CHANNEL_TO_EXPORTER_MAP,
     INSTRUCTION_TO_EXPORTER_MAP,
@@ -205,11 +206,11 @@ class Reconstruction(DataModel):
 
     @cached_property
     def held_features(self) -> Dict[ChannelName, Tuple[FeatureKey, ...]]:
-        """The dimensions each channel's instrument writes for itself.
+        """The dimensions each channel governs, whose envelopes an export leaves empty.
 
-        An instruction states every dimension of its frame, so which of them the instrument
-        itself writes is stated here: the rest are the channel's, and an export leaves their
-        envelopes empty for the player to fill from the value it holds.
+        An instrument writes the dimensions it describes and leaves the rest to the channel,
+        which keeps the value it already holds for as long as the instrument sounds. These
+        are the dimensions it leaves.
         """
         return {channel_name: tuple(item.held_features) for channel_name, item in self.streams.items()}
 
@@ -436,9 +437,8 @@ class Reconstruction(DataModel):
 
     @classmethod
     def load(cls, path: Pathlike, fast: bool = True) -> Reconstruction:
-        binary = load_binary(path)
         return cls.deserialize_data(
-            binary,
+            load_binary(path),
             source=Path(path),
             validation=cls.validate_metadata,
             fast=fast,
@@ -453,7 +453,7 @@ class Reconstruction(DataModel):
         fast: bool = True,
     ) -> Reconstruction:
         try:
-            binary = upgrade_binary(ObjectKind.RECONSTRUCTION, binary)
+            binary = upgrade_binary(ObjectKind.RECONSTRUCTION, decompress_document(binary))
             return cls.deserialize(binary, validation=validation, fast=fast)
         except (ValidationError, TypeError, ValueError, struct.error, IndexError) as exception:
             raise InvalidReconstructionValuesError(

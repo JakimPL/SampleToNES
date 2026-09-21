@@ -1,480 +1,169 @@
 # Stems reconstruction
 
-This document explains how one reconstruction is assigned across several stems.
-Consult it when changing the stems assignment algorithm, its configuration, the
-per-stem record a reconstruction carries, or the way the application loads,
-names, reveals, and plays the recorded stems. The single-sample pipeline this
-builds on is described in [Reconstruction](reconstruction.md), and the stored
-record in [Reconstructions](../formats/reconstructions.md).
+This document explains how the four channels are shared out when a reconstruction is built from several
+stems. Read it before changing how stems share channels. You can read it without the source code.
+[Reconstruction](reconstruction.md) describes the single-sample pipeline it builds on.
+[Reconstructions](../formats/reconstructions.md) documents the stored record.
+[Stems in the application](../development/application/stems.md) covers what the application does with a
+stems reconstruction: the Stems card, an edit and a removal.
 
-A stems reconstruction converts several audio stems at once. Each stem is matched
-against the instruction library on its own; within each frame, the channels are
-handed to the stems one pick at a time, following a precedence hierarchy. The
-result is one reconstruction whose `stems_data` records, per channel and frame,
-which stem's stream plays.
+A stems reconstruction converts several audio [stems](../glossary.md#stem) at once. Each stem is matched
+against the [instruction library](../glossary.md#instruction-library) on its own. Within each
+[frame](../glossary.md#frame), the channels are handed to the stems one [pick](../glossary.md#pick) at a
+time, following a precedence hierarchy. The result is one reconstruction whose `stems_data` records, per
+channel and frame, which stem's stream plays.
+
+The terms [level](../glossary.md#level-stems), [drive](../glossary.md#drive),
+[mix](../glossary.md#mix), [column](../glossary.md#column) and [resting](../glossary.md#resting) are
+defined in the glossary.
 
 ## Principles
 
 ### 1. Every conversion is a stems conversion
 
-Below the conversion job there is one pipeline and one entry point. A job names
-the recordings it mixes, the stems setup that hands their channels out, and the
-file it writes; a conversion from a single file is the job whose setup holds one
-stem over every enabled channel. What the reader chose stays above that line:
-the application decides how many jobs a request makes and what setup each
-carries, and a batch is many single-source jobs rather than a mode of its own.
+Below the conversion job there is one pipeline and one entry point. A job names the recordings it mixes,
+the stems setup that hands their channels out, and the file it writes. A conversion from a single file is
+the job whose setup has one stem over every enabled channel. What the reader chose stays above that line:
+the application decides how many jobs a request makes and what setup each carries. A batch is many
+single-source jobs and is not a mode of its own.
 
-This is what lets a per-source channel set, the drive each channel is pushed at,
-a count of channels one source may sound at once and a hierarchy reach every
-conversion alike, and what keeps the classic run from being a second path that
-has to be kept in step.
+One pipeline lets a per-source channel set, the drive each channel is pushed at, a count of channels one
+source may sound at once and a hierarchy reach every conversion alike. It also keeps the classic run from
+becoming a second path that has to be kept in step.
 
 ### 2. A stem is matched against its own recording
 
-Every stem is loaded, padded to the longest stem's length, and framed on its own,
-so a stem's picks are scored against the sound that stem contributes and the
-channels it wins carry that recording. Ownership and content then say the same
-thing: a stem heard on its own plays what was recorded on it.
+Every stem is loaded, padded to the longest stem's length, and framed on its own. A stem's picks are
+therefore scored against the sound that stem contributes, and the channels it wins carry that recording.
+Ownership and content say the same thing: a stem heard on its own plays what was recorded on it.
 
-The mix keeps the two jobs it answers: the whole set is scaled by one factor drawn
-from the peak of its sum, which holds the stems at the balance they were captured
-in, and the working-level coefficient is measured on that mix, exactly as for a
-single file. The reconstruction the run assembles is the sum of the stems'
-approximations, which approximates the mix because each part approximates its part.
+The whole set of recordings is scaled by one factor drawn from the peak of its sum, which holds the stems
+at the balance they were captured in. The working-level coefficient is measured on that sum, exactly as
+for a single file. The reconstruction the run assembles is the sum of the stems' approximations. It
+approximates the summed recordings because each part approximates its part.
 
 ### 3. A drive reaches for a louder instruction
 
-A stem's settings name a drive per channel it holds, `1.00` standing at the level
-the library is calibrated to. The drive belongs to the conversion alone: every
-candidate is read at unit drive, so the instruction winning a frame is the one
-sounding it at the drive, and a channel pushed harder is answered by louder
-instructions up to the loudest that channel holds. Past that the channel
-saturates, which is the effect a drive is reached for. A drive answers for one
-channel of one stem, so raising it lifts that part of the mix while the other
-stems and the stem's other channels stand where they are. What a frame sounds
-afterwards is the instruction it carries, so the drive is a record of the level
-the run reached at.
+A stem's settings name a drive per channel it holds. `1.00` is the level the library is calibrated to. The
+drive belongs to the conversion alone. Every candidate is read at unit drive, so the instruction winning a
+frame is the one that sounds it at the drive. A channel pushed harder is answered by louder instructions,
+up to the loudest that channel holds. Past that the channel saturates, which is the effect a drive is used
+for.
+
+A drive applies to one channel of one stem. Raising it lifts that part of the mix, and the other stems and
+the stem's other channels stay where they are. Afterwards a frame sounds the instruction it carries, so
+nothing reads the drive once the conversion is done. The instruction is the record of the level the run
+reached.
 
 ### 4. A stem sounds where its recording sounds
 
-A stem takes a channel in the frames its own recording reaches a level a channel
-can render, and stands aside in the rest. A channel a passing stem leaves free goes
-to a stem that does sound there, or rests. This is what keeps a recording quiet
-through a passage from sounding that passage on the channels it holds elsewhere.
+A stem takes a channel in the frames where its own recording reaches a level a channel can render, and
+stands aside in the rest. A channel a passing stem leaves free goes to a stem that does sound there, or
+rests. That keeps a recording that is quiet through a passage from sounding the passage on the channels it
+holds elsewhere.
 
 ### 5. One pick at a time, while a pick helps
 
-A pick scores each eligible stem's candidates by the cost of that stem's own frame
-with the candidate sounding beside the stem's earlier picks, with the same two-stage
-criterion the single-sample pipeline uses (`FrameMatcher`), takes the winning offer
-across the active level, adds it to that stem's mix, and consumes the channel. Picks
-continue while an offer lowers a frame's cost and counts and free channels remain. A
-channel no pick took goes, silent, to the first sounding stem in hierarchy order that
-may still hold it, and every held channel is then scored once more with its stem's other
-channels sounding. Each stem carrying a mix of its own is what keeps its later picks
-from re-approximating what its earlier picks already cover, while leaving what the
-other stems sound out of it.
+A pick scores each eligible stem's candidates by the cost of that stem's own frame with the candidate
+sounding beside the stem's earlier picks. It uses the same two-stage criterion as the single-sample
+pipeline. The best candidate across the active level wins, is added to that stem's mix, and takes the
+channel.
+
+Picks continue while a candidate lowers a frame's cost, a stem's count leaves it room, and free channels
+remain. A channel no pick took goes, silent, to the first sounding stem in hierarchy order that may still
+hold it. Then every held channel is scored once more with its stem's other channels sounding.
+
+Each stem has a mix of its own. That keeps a stem's later picks from re-approximating what its earlier
+picks already cover, and it leaves what the other stems sound out of the stem's mix.
 
 ### 6. A frame is answered whole
 
-Every channel the setup covers leaves a frame either held by a stem or **resting**. A
-resting channel holds its channel's null instruction over a silent frame and
-records the resting stem id, so instruction streams, rendered approximations and
-the per-frame stem record all run parallel to the frames they describe: frame
-*i* of a channel is frame *i* of the recording. A frame the decoder settles on a
-silent instruction records the resting stem id too, so the id and the silence name
-the same frames. A channel that rests through every frame stands by instead, carrying
-no stream at all.
+Every channel the setup covers leaves a frame either held by a stem or **resting**. A resting channel
+holds its channel's null instruction over a silent frame and records the resting stem id. Instruction
+streams, rendered approximations and the per-frame stem record therefore all run parallel to the frames
+they describe: frame *i* of a channel is frame *i* of the recording. A frame the decoder settles on a
+silent instruction records the resting stem id too, so the id and the silence name the same frames. A
+channel that rests through every frame is [standing by](../glossary.md#standing-by) and has no stream at
+all.
 
-This is what makes a channel count and a hierarchy usable. Without it, a frame a
-count left unclaimed would shorten that channel's streams and carry its later
-frames early, so what the channel plays would drift out of step with the
-recording it was matched against.
+This is what makes a channel count and a hierarchy usable. Without it, a frame a count left unclaimed
+would shorten that channel's streams and carry its later frames early. What the channel plays would drift
+out of step with the recording it was matched against.
 
 ### 7. Ownership and decoding compose
 
-The assignment answers *which stem owns which channel this frame*; the decoder
-answers *what that channel plays across frames*. Each held channel leaves the frame
-with a column of candidates, its silence among them, as wide as the configured
-decoder reads, and the decoder chooses one candidate per frame from those columns —
-greedily, or along the lowest-cost path through the whole lattice. A resting frame reaches the
-decoder as a column of one, so a channel a count left free sits in the path as the
-off state it is. See [Reconstruction §5](reconstruction.md) for the decoders
-themselves.
+The assignment answers *which stem owns which channel this frame*. The decoder answers *what that channel
+plays across frames*. Each held channel leaves the frame with a column of candidates, its silence among
+them, as wide as the configured decoder reads. The decoder chooses one candidate per frame from those
+columns, greedily or along the lowest-cost path through the whole lattice. A resting frame reaches the
+decoder as a column of one, so a channel a count left free sits in the path as the off state it is.
+[Choosing instructions](reconstruction.md#5-choosing-instructions) describes the decoders.
 
-### 8. Precedence orders, mode alternates
+### 8. Levels pick in order, and the mode sets how
 
-The hierarchy groups stem ids into levels that pick in the listed order. In
-`strict` mode a level exhausts its stems' channel counts before the next level
-picks; in `round_robin` mode the levels take turns, granting every level's stems
-one channel per round, and a run lasts as many rounds as the largest count among
-the stems sounding. Both modes hold every stem to the count its own settings
-name, and a stem holding fewer channels than that runs out of channels first.
+The hierarchy groups stem ids into levels that pick in the listed order. In `strict` mode a level uses up
+its stems' channel counts before the next level picks. In `round_robin` mode the levels take turns,
+granting every level's stems one channel per round, and a run lasts as many rounds as the largest count
+among the stems sounding. Both modes hold every stem to the count its own settings name. A stem holding
+fewer channels than that count runs out of channels first.
 
 ### 9. A level's channel goes to the stem with the most to render
 
-A cost is a fraction of its own recording's energy, so two stems' costs stand on
-different scales and comparing them alone would hand a channel to whichever
-recording is easiest to approximate. Within a level, an offer is therefore ranked
-by how far its head lowers the stem's frame cost, weighted by the energy behind it,
-so the channel reaches the stem whose sound it covers most. Precedence between levels
-stays the hierarchy's, which is what a reader arranges the levels to say.
+A cost is a fraction of its own recording's energy, so two stems' costs stand on different scales.
+Comparing them alone would hand a channel to whichever recording is easiest to approximate. Within a
+level, a candidate is therefore ranked by how far it lowers its stem's frame cost, weighted by the energy
+behind it. The channel reaches the stem whose sound it covers most. Precedence between levels stays the
+hierarchy's, because that is what a reader arranges the levels to say.
 
 ### 10. Ties resolve deterministically
 
-Equal offers go to the stem earlier in level order. Channels of one kind at one
-drive are scored as one column and resolve to the lowest free channel of that
-group, so successive picks over one kind land on the lowest free channel and a
-rerun assigns the same way every time. Two channels of a kind a stem drives
-differently answer for themselves, since each renders the recording at its own
-level.
+Equal candidates go to the stem earlier in level order. Channels of one kind at one drive are scored as
+one column and resolve to the lowest free channel of that group. Successive picks over one kind therefore
+land on the lowest free channel, and a rerun assigns the same way every time. Two channels of a kind that
+a stem drives differently are scored separately, because each renders the recording at its own level.
 
 ### 11. The single-sample case stays exact
 
-One stem covering every enabled channel at unit drive, sounding as many channels
-at once as it holds, is the single-sample reconstruction. Property tests hold the
-assignment against an independent restatement of the frame objective that scores
-every candidate alone —
-identical choices, instructions, costs and contributions — so the one pipeline serves
-the single-sample case exactly as it stands.
+One stem covering every enabled channel at unit drive, sounding as many channels at once as it has, is the
+single-sample reconstruction. Property tests hold the assignment to an independent restatement of the
+frame objective that scores every candidate alone. The one pipeline therefore serves the single-sample
+case exactly.
 
 ### 12. The working level follows the covered channels
 
-The mix is scaled so its typical frame plays at the full-scale RMS level of the
-quietest tone channel the setup covers, or of the quietest covered channel when it
-covers no tone channel (see [Reconstruction §3.4](reconstruction.md)). One channel
-renders that level whole, so a run sounding fewer channels targets a level its
-channels reach, and
-every setup measures against the channel a single recording would be answered by.
+The summed recordings are scaled so their typical frame plays at the full-scale RMS level of the quietest
+tone channel the setup covers, or of the quietest covered channel when the setup covers no tone channel
+(see [the working level](reconstruction.md#34-the-working-level-coefficient)). One channel renders that
+level whole, so a run sounding fewer channels targets a level its channels reach. Every setup measures
+against the channel a single recording would be answered by.
 
-## Mechanics
+## The setup and the record
 
-A request becomes jobs through `reconstructions.converter`: a `ConversionPlan`
-answers with the `ConversionJob`s it divides into, resolved against the
-configuration the run uses. `GroupConversion` mixes the recordings it is given
-into one job; `BatchConversion` gives each gathered recording a job of its own,
-carrying the setup that recording's own row holds and the folder whose tree its
-reconstruction mirrors; and `DirectoryConversion` scans a folder into one
-single-source job per audio file, which is what the command line converts a
-directory as. `ReconstructionConverter` runs those jobs across its worker pool
-and reports the reconstructions written.
+The **setup** is the entries and the precedence hierarchy with its mode. An entry is an id and the
+settings its recording is converted with:
 
-`StemsConfig` (`reconstructor/stems/configs/`) is the setup: the entries and the
-precedence hierarchy with its mode. An entry is an id and the `StemSettings` its
-recording is converted with — the channels it may occupy, which of those it
-carries toward the divider it really sounds, the drive on each channel it holds,
-and how many of them it may sound at once. Every per-recording choice being a
-field on those settings is what lets the list a reader sets a run up in, the
-entry the run records, and a later reader of that record all state the same
-thing. `StemSettings` validates itself — a drive for exactly the channels held,
-each within its bounds, and a count of at least one — and `StemsConfig` holds the
-ids unique and the hierarchy naming every entry exactly once, so an inconsistent
-setup can be neither built nor stored; it derives the views the run reads
-(`entries_by_id`, `covered_channels`). `StemSettings.covering(channels)` is the
-usual settings over a channel set: those channels, the tone channels among them
-bending, unit drive on each, and all of them sounding at once.
+- the channels it may occupy,
+- which of those it carries toward the divider it really sounds,
+- the drive on each channel it holds,
+- how many of those channels it may sound at once.
 
-The assignment lives in `reconstructor/stems/assignment/`:
+Every per-recording choice is a field on those settings. The list a reader sets a run up in, the entry the
+run records and a later reader of that record therefore all say the same thing. The settings check
+themselves: a drive for exactly the channels held, each within its bounds, and a count of at least one.
+The setup keeps the ids unique and the hierarchy naming every entry exactly once, so an inconsistent setup
+can be neither built nor stored.
 
-- `assign_frame` takes this frame of every stem, keyed by stem id, validates the
-  setup against the run's channels, and answers the frame whole: the picks in the
-  order they were made, each with its candidate column, together with the channels
-  left resting;
-- `AssignmentSession` carries one frame's progress — each stem's `FrameMix` and frame
-  cost, the free channels, the per-stem counts, and the stems sounding in the frame —
-  and runs the hierarchy's mode, then settles the declined channels and scores every
-  choice once more. It ranks a level's offers by `StemOffer.improvement`, which the
-  matcher measures through `score_column`, `mix_cost` and `reference_energy`;
-- `TrackAssignment` gathers the frames into what the rest of the run reads: the
-  lattice each channel offers the decoder, and the stem owning each of its
-  frames.
+The setup is built per conversion from the sources and the reader's choices, and it travels with the job.
+It is part of the request and not of the standard configuration. A source the reader left holding no
+channel takes no part: it reaches neither the recordings nor the entries, and the target stays what the
+covered channels can render.
 
-`column_groups` (`assignment/columns.py`) gathers the channels a stem still has
-free into one group per generator class and drive, the lowest free channel of a
-group standing for it. A stem driving its two pulses alike therefore scores them
-as one column, as a run without drives does, and a stem driving them apart scores
-each. `AssignmentSession` reads a stem's count and its drive per channel from
-that stem's own entry, and caches a scored column under the stem, the generator
-class and the drive it was scored at.
+A stem's frame has to reach a floor before it can take a channel: the quietest note any channel renders,
+measured against the working level. Below that, the frame has nothing audible to contribute.
 
-The drive enters the run once, where the instruction is chosen.
-`CandidateProvider` serves the library's powers, waveforms and moments as they
-stand, and `FrameMatcher` reads them at unit drive — powers and variances divided
-by the drive's square, waveforms and means by the drive itself — so a run at unit
-drive costs what a run without drives costs. `Reconstruction.approximations` then renders each stream as
-it stands, so the instruction a frame records is the sound that frame makes,
-whenever that sound is read.
+The record stored in a reconstruction has the setup the assignment was made under. It also has one source
+per entry, naming the recording and the file it was read from, and, per channel, the stem that holds each
+frame, parallel to the instruction streams. Every reconstruction has one. Together with the instruction
+streams it is the whole of what a `.stn` says. See [Reconstructions](../formats/reconstructions.md).
 
-`Reconstructor.reconstruct` loads the sources through `load_stems`, which brings
-them to one length and one scale, measures the working level on their mix, frames
-each of them, assigns every frame, releases the channels that rested throughout,
-decodes the remaining lattices, and reads the decoded streams into the state in
-frame order.
-
-`STEM_ACTIVITY_FLOOR` is the level a stem's frame reaches to take a channel: the
-quietest note any channel renders, measured against the working level.
-
-The record stored in a reconstruction (`stems_data`) holds the stems setup the
-assignment was made under, one `StemSource` per entry — the recording's name and
-the file it was read from — and, per channel, the stem id holding each frame,
-parallel to the instruction streams. Every reconstruction carries one. Together
-with the instruction streams it is the whole of what a `.stn` states:
-`Reconstruction.approximations` reads the sound from the pair, and
-`Reconstruction.audio_filepath` reads the locations off the sources, answering
-with none once any recording has lost its own.
-
-The stems setup is built per conversion from the sources and the reader's
-choices and travels with the job; it is part of the request rather than of the
-standard configuration. A source the reader left holding no channel takes no part:
-the recordings and the entries are derived in one pass, so such a source reaches
-neither, and the target stays what the covered channels can render. The assignment
-is greedy per frame: continuity of *who* owns a channel across frames, and playback
-that decides per frame on the recorded streams, are future work.
-
-## The recorded stems in the application
-
-A stems reconstruction records one source per entry, each naming its recording and
-the file it was read from. The application reads the locations through
-`source_paths`: one path for a single source, the tuple for stems, and empty once
-the reconstruction is detached from its origin. The names stay whatever happens to
-the locations, so a detached document still says which recordings it was built
-from.
-
-Opening the document loads the recorded stems through `load_stems`, the same call
-the conversion loads them with, so each one carries the level it holds in the mix
-and a stem heard on its own sounds at that level. The mix of them is the original
-audio the source toggle and the waveform offer, computed fresh on every load. A
-recorded stem absent or unreadable on this machine follows the single-source rule:
-the whole original is unavailable, the approximation stands on its own, and the
-application names the first missing path in its dialog.
-
-The document's name follows the naming rules in
-`sampletones_core.reconstructions.naming`, applied to the recorded paths in
-order: a single source names the document after the file's stem, several stems
-sharing one directory name it after that directory, and paths sharing no
-directory fall back to the `.stn` filename.
-
-The reconstruction tab names every recorded path on the Stems card, one row per
-stem, each row carrying its own full-path tooltip and revealing its recording on
-a click. The Audio source panel keeps the reconstruction's own file and the
-choice between the two waveforms. Locating reveals every recorded path at once:
-a Linux file manager offering `org.freedesktop.FileManager1` opens one window
-with every stem selected, and every other environment opens one window per
-directory holding them.
-
-## The stems card
-
-The reconstruction tab's Stems card turns the recorded assignment into a
-listener the user can steer. It draws the same list the converter's card draws:
-each row carries one stem under the level it was picked on, named by its
-recording, with a leading master box and a colored box on every channel the
-stem holds frames on. A setup line above the rows names the assignment's
-hierarchy mode, and a **Collapse levels** toggle draws every row
-in one table where the banding is in the way. Ticking a box admits that stem's
-frames on that channel to everything the tab plays and exports; unticking
-silences them.
-
-### Principles
-
-1. **Selection filters what plays, shows what it filters, and scopes what is
-   edited.** A ticked set projects the document rather than mutating it: the
-   waveform shows the ticked frames alone, the reconstruction toggle plays them
-   mixed, original playback plays the recordings heard anywhere mixed, the
-   instruments panel draws the envelopes of that same part beside the figures
-   measuring it, and both WAV export and instrument export write what stands on
-   screen. Each answer derives from the recorded per-channel assignment, so a
-   stem heard on one channel keeps its samples there and stays quiet on the
-   next. The same set says which frames an instrument edit writes — see
-   [Editing a stems reconstruction](#editing-a-stems-reconstruction).
-
-   Two rules shape the reading. **A filtered reading states the frames it leaves
-   out as silence in place**, so the envelopes, the waveform and the record line
-   up column for column, and **it ends at the last frame the reader hears**, so a
-   channel whose sound the reader's choice took away reads as standing by — its
-   plot empty, its figures at nothing and its instrument written nowhere. A rest
-   answers to no recording, so every reader hears it: a channel written down to
-   rests alone stays in play, and the figures beside a plot name the bytes the
-   export writes. Together they make what a reader sees, hears, edits and exports
-   one and the same part of the document.
-2. **A box stands where the choice reaches something.** A stem draws a box on a
-   channel exactly where the record gives it a frame there, so every box the card
-   offers changes what is heard. A stem the picker never chose offers none, and
-   its row reads as holding no frames. The frames a reader wrote by hand answer
-   to no recording, so they gather in a row of their own that reads and behaves
-   like any other.
-3. **Every stem starts heard everywhere it holds frames.** A freshly opened
-   stems reconstruction ticks every box, which answers the full waveform and the
-   full original — the unfiltered document.
-4. **The global channel choice takes precedence.** A channel switched off for
-   the whole reconstruction mutes its column while leaving every value where the
-   reader put it, so switching the channel back on restores the per-stem choice
-   intact. The two compose by construction: the global choice filters the
-   partials, the stems choice the approximations.
-5. **The selection follows the open document.** The card lives with the
-   reconstruction it describes: opening a document seeds the rows and the ticked
-   boxes, a regenerated reconstruction keeps what the reader chose and ticks the
-   channels a stem newly reaches, and closing the document empties the card.
-6. **Listening choices stay out of the document.** The ticked set is session
-   state, like every choice that shapes what is heard — see
-   [Playback](../development/application/playback.md). Saving the reconstruction records
-   the assignment, never the selection. So is the banding: collapsing the levels
-   changes how the card draws, never what it describes.
-7. **Removing a recording edits the document.** Where a box steers listening,
-   the remove button rewrites what is described: the change is asked about first
-   and recorded in the project history, and what it releases is stated under
-   [Editing a stems reconstruction](#editing-a-stems-reconstruction). A
-   reconstruction holds at least one recording, so the last row standing keeps
-   its button held back.
-8. **The ribbon names what the record holds.** Under the waveform runs a lane per
-   channel in play, divided into the stretches one recording holds throughout and
-   painted in that recording's color, with a resting stretch showing the ground.
-   Each lane stands in a row of its own, marked with its channel's letter in that
-   channel's color, so a bar's color answers for the recording while the letter
-   beside it answers for the channel. The recordings take a range of their own, so
-   a color never reads as a channel's. A recording takes its color from the place
-   it holds on the record, so one recording reads alike wherever it is drawn. The
-   lanes stand only where more than one owner is in play — a recording the record
-   names, or the row the frames a reader wrote gather under — since a document
-   answering to a single owner has nothing to tell apart. A stretch reads in
-   three ways: solid where the reader hears the recording holding it, that same
-   color faded where the reader left it out, and the ground where the frames rest
-   — so a stretch names its owner whether or not it is listened to, and the
-   reading sits on top of the record. Each row of the card leads with a square in
-   the color its recording is painted in, so a stretch on screen answers to a
-   name at a glance. The instruments panel paints the same stretches in a band
-   beneath each dimension's bars, under the frames those bars draw, by the same
-   three readings.
-
-### Mechanics
-
-`ReconstructionData.partials_for` and `ReconstructionData.waveform_data` take a
-`StemSelection` — the stems each channel keeps — and zero the unselected frames
-per channel before mixing (`filter_approximations` in
-`sampletones_core.reconstructions.reconstruction.stems`), keeping every array at
-its unfiltered length, so a filtered mix aligns with the unfiltered one sample
-for sample. `original_mix_for` mixes the recordings of the stems heard on any
-channel. `ReconstructionPanelLogic` holds the channels each stem is heard on and
-re-answers the stems view model, the waveform, and the audio data whenever the
-choice changes; the coordinator wires the card's `on_stem_channels_changed` hook
-to that handler. A reconstruction that records one source presents a single row
-for its recording, and one that records no source shows the card's empty
-state.
-
-Removal runs through `without_stem`
-(`sampletones_core.reconstructions.reconstruction.stems.removal`), which returns
-a fresh reconstruction holding what the rule under
-[Editing a stems reconstruction](#editing-a-stems-reconstruction) leaves. The tab
-coordinator hands the result on as a `ReconstructionEdit`, the payload both a
-regenerated instrument and a removed recording travel as, so one path rebinds the
-open document and records the edit against the project history.
-
-## Editing a stems reconstruction
-
-A conversion answers, per channel and frame, which recording plays there. Everything a reader
-does to the document afterward stands on that answer: the instruments panel rewrites what a
-channel plays, the stems card chooses what is heard, and the remove button takes a recording
-out. This section states the account of ownership all three keep, and the rules each gesture
-follows. Consult it when changing an edit path, the per-frame record, or what the card offers.
-
-### Principles
-
-1. **A frame has exactly one owner.** Every frame of a channel in play is held by one
-   recording, by the reader's own hand, or by nobody. The hardware reads one instruction per
-   channel per frame, so this is what the channel allows rather than a convention the code
-   adopts, and it is what makes the per-frame record a partition of the channel's frames. The
-   resting stem id names the frames nobody holds; the **authored** stem id names the frames the
-   reader wrote.
-
-2. **Rest and silence name the same frames.** A frame rests exactly when its instruction is
-   silent, which the conversion establishes and every later gesture keeps. A reader looking at
-   a silent frame and a reader looking at the record therefore learn the same thing, and the
-   rules below follow from it rather than choosing around it.
-
-3. **An edit rewrites what a frame plays, and leaves who plays it.** Ownership answers a
-   question an edit asks nothing about, so a frame carries its owner through any change to its
-   instruction. A frame takes an owner by coming into play and releases it by falling silent.
-   This is what lets a reader shape a recording's part while the document keeps its account of
-   where that part came from.
-
-4. **A reconstruction records what is played and reads what is heard.** The document holds the
-   instruction each channel plays per frame, the recording behind each of those frames, the
-   setup they were chosen under and the working level. Its sound is read from those through the
-   generators, at the drive each frame's owner gives its channel, which is one answer serving
-   the waveform, playback, an export and the mixed approximation alike. A document therefore
-   states what it describes, and every gesture below is complete once it has settled the frames.
-
-5. **What is heard is what is edited.** The channels a recording is ticked on are one choice
-   serving two readings: the frames the waveform draws, and the frames an edit writes. A
-   recording switched off on a channel reads there and stays as it stands, so a reader reaches
-   one recording's part at a time through the card already in front of them.
-
-6. **The setup is the conversion's, and a removal alone rewrites it.** The entries, the levels,
-   the channels each recording may occupy, its bends, its drives and its count record how the
-   document was made. An edit leaves all of them as they stand. Taking a recording out is the
-   one gesture that changes them.
-
-7. **Detaching drops where a recording lives and keeps who played what.** A recording's name and
-   the frames it holds belong to the document; its location on this machine belongs to this
-   machine. The record states both, so detaching lets each location go and keeps every name —
-   a reconstruction embedded in a project therefore keeps a working stems card.
-
-### What the record holds
-
-The per-frame record answers for every channel in play, and these hold after every gesture:
-
-- a channel in play carries one owner per frame of its stream, each naming a recorded entry,
-  the resting stem id or the authored stem id;
-- a channel standing by carries no stream and no record at all;
-- a frame rests exactly where its instruction is silent;
-- a frame a recording holds lies on a channel that recording's settings occupy, while an
-  authored frame answers to no settings;
-- an entry holding no frame anywhere stays on the record, and its row reads as holding none.
-
-### What an edit carries
-
-An edit hands one channel a fresh set of envelopes, which become that channel's stream. Each
-frame's owner follows from the frame it was and the frame it becomes:
-
-| the frame | becomes |
-|---|---|
-| sounding before and after | its owner, unchanged |
-| sounding, edited silent | resting |
-| resting, edited into play | authored |
-| resting, edited silent | resting |
-| written past the end of the stream | authored where it sounds, resting where it stays silent |
-| dropped from the end of the stream, within the scope | gone, together with its ownership |
-| dropped from the end of the stream, outside it | standing, in what it plays and who plays it |
-
-Rest and silence naming the same frames is what makes the table total: a frame's owner before
-the edit already says whether it sounded, so the three lines above the last three cover every
-frame the edit keeps.
-
-An edit shortens a channel as far as its scope reaches. The stream therefore runs through the
-last frame standing outside that scope, the frames the edit did reach rest along the way, and a
-stream edited down to no frame leaves its channel standing by wherever the scope covered every
-one of them. A channel written back into play comes back wholly authored. The setup, the
-recorded sources, the identifier, the configuration and the working level stand throughout.
-
-**The scope an edit writes in** follows principle 5: a frame accepts a gesture where its owner
-is ticked on that channel, and where it rests. The frames a reader wrote answer to a row of
-their own, so they are ticked and reached like any recording's; a rest belongs to no row, which
-is what lets a gesture write a note into silence. Every other frame draws dimmed and reads as it
-stands. The scope is the same selection the waveform filter reads, so one state answers both,
-and a reader narrowing what they hear narrows what they change with it.
-
-### What a removal releases
-
-Taking a recording out (`without_stem`) releases the frames it held: each states its channel's
-silent instruction and takes the resting stem id, and a channel the removal empties stands by.
-The entry and its source leave the record, a level the removal empties collapses, and the ids
-of the recordings that stay are left alone, so the record and a reader's selection both stay
-valid. A reconstruction holds at least one recording, so the last one standing keeps its place.
-
-A frame that stays keeps the instruction it played and the recording that held it. Its samples
-follow from principle 4: a channel the removal reached is read afresh, so its oscillator runs
-through the silence the removal left rather than through the notes it took away.
-
-An edit made before the removal changes nothing about it: the channel carries its record
-whatever was written into it, so the frames the recording held are released the way they would
-have been. The frames the reader authored answer to no recording and stand through every
-removal.
+The assignment is greedy per frame, so which stem owns a channel can change from one frame to the next.

@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -25,10 +25,10 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_KEYBINDINGS_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.seeded import GUISeededDialogWindow
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
@@ -47,7 +47,7 @@ from sampletones_shared.types.callback import StringCallback, VoidCallback
 CombinationCallback = Callable[[KeyCombination], None]
 
 
-class GUIKeybindingsWindow(GUIDialogWindow):
+class GUIKeybindingsWindow(GUISeededDialogWindow[KeybindingsViewModel]):
     """Modal form over the keys each action answers to, one row per action grouped by its scope.
 
     A row is given keys either way round: clicking its shortcut cell listens for the press to
@@ -71,7 +71,6 @@ class GUIKeybindingsWindow(GUIDialogWindow):
         self._language_manager = language_manager
         self._layout = layout
         self._capture: Optional[KeyCapture] = None
-        self._view_model: Optional[KeybindingsViewModel] = None
         self._filter = ""
 
         self.on_scheme_selected: Optional[StringCallback] = None
@@ -89,23 +88,15 @@ class GUIKeybindingsWindow(GUIDialogWindow):
         super().__init__(
             tag=TAG_SETTINGS_KEYBINDINGS_WINDOW,
             geometry=layout.keybindings.window,
+            subject="keybindings",
             key_router=key_router,
             shortcut_source=shortcut_source,
         )
 
     def open(self, view_model: KeybindingsViewModel) -> None:
-        """Shows the window listing the actions of the draft being edited."""
-        self._view_model = view_model
+        """Shows the window listing the actions of the draft being edited, over every scope."""
         self._filter = ""
-        self.show()
-
-    def prepare(self, *_args: Any, **_kwargs: Any) -> None:
-        """The rendered values are seeded by :meth:`open` before the tree rebuilds."""
-
-    def update_view(self, view_model: KeybindingsViewModel) -> None:
-        """Re-reads the rows of the open window from the draft as it now stands."""
-        self._view_model = view_model
-        self._render()
+        super().open(view_model)
 
     def create_window(self) -> None:
         with self.dialog_window(
@@ -143,7 +134,7 @@ class GUIKeybindingsWindow(GUIDialogWindow):
         )
 
     def _create_scheme_field(self) -> None:
-        view_model = self._require_view_model()
+        view_model = self.view_model
         with labeled_field(
             self._label(KeybindingsElements.SCHEME),
             self._layout.label_width,
@@ -188,7 +179,7 @@ class GUIKeybindingsWindow(GUIDialogWindow):
                 init_width_or_weight=self._layout.keybindings.action_width,
             )
             dpg.add_table_column(label=self._label(KeybindingsElements.SHORTCUT))
-            for group in self._require_view_model().groups:
+            for group in self.view_model.groups:
                 self._create_group(group)
 
     def _create_group(self, group: KeybindingGroup) -> None:
@@ -273,7 +264,7 @@ class GUIKeybindingsWindow(GUIDialogWindow):
 
     def _render(self) -> None:
         """Shows each action's keys, the standing selection, and what the filter leaves listed."""
-        view_model = self._require_view_model()
+        view_model = self.view_model
         dpg_set_value(TAG_SETTINGS_KEYBINDINGS_COMBO_SCHEME, view_model.scheme)
         dpg_set_value(TAG_SETTINGS_KEYBINDINGS_INPUT_SHORTCUT, view_model.combination)
         dpg_set_value(TAG_SETTINGS_KEYBINDINGS_TEXT_MESSAGE, view_model.message)
@@ -408,14 +399,3 @@ class GUIKeybindingsWindow(GUIDialogWindow):
             raise SystemError("The keybindings window listens for a press only while it is open")
 
         return self._capture
-
-    def _require_view_model(self) -> KeybindingsViewModel:
-        """The actions on screen.
-
-        Raises:
-            SystemError: when the window is drawn before :meth:`open` seeds it.
-        """
-        if self._view_model is None:
-            raise SystemError("The keybindings window is drawn from a view model it was opened with")
-
-        return self._view_model

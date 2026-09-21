@@ -18,8 +18,9 @@ class GUINoticeWindow(GUIDialogWindow):
 
     What the notice says is drawn by the caller into the window's own tag, so a message, a
     path or a list of settings all reach the reader through one dialog. A notice claiming
-    the screen answers to Tab, Enter and Escape; one reporting something already done leaves
-    the rest of the interface live beside it and takes the keyboard with it.
+    the screen answers to Tab, Enter and Escape; one reporting something already done stands
+    beside an interface that stays live, where the keys keep reaching what the reader was
+    working in and the button is clicked.
     """
 
     def __init__(

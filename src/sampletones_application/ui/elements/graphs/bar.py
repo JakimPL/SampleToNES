@@ -356,8 +356,18 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self._set_hover_bar_position(bar_index, clamped_y)
         self.call(self.on_bar_point_hovered, name, bar_index)
 
-        if dpg.is_mouse_button_down(dpg.mvMouseButton_Left) or dpg.is_mouse_button_clicked(dpg.mvMouseButton_Left):
+        if self._presses_a_bar(mouse_y) and (
+            dpg.is_mouse_button_down(dpg.mvMouseButton_Left) or dpg.is_mouse_button_clicked(dpg.mvMouseButton_Left)
+        ):
             self._draw_bar(layer, bar_index, clamped_y, previous_stroke)
+
+    def _presses_a_bar(self, mouse_y: float) -> bool:
+        """Whether a press at ``mouse_y`` stands on the grid the bars are drawn across.
+
+        A band reserved beneath the bars lies inside the plot and reads which stretch belongs to
+        whom, so a press there answers what the band shows and the values above it stand.
+        """
+        return mouse_y >= self._default_y_range[0]
 
     def _draw_bar(
         self,
