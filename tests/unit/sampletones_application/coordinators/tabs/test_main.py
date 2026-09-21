@@ -44,7 +44,7 @@ def _hooks(*, operation_active: bool) -> MainTabHooks:
         on_load_directory=MagicMock(),
         on_canceled=MagicMock(),
         on_refresh_trees=MagicMock(),
-        on_generate_library=MagicMock(),
+        on_prepare_library=MagicMock(),
     )
 
 

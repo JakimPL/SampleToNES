@@ -45,8 +45,6 @@ def _reconstruction(
     """A one-channel reconstruction whose instrument leaves ``held_features`` to the channel."""
     instructions_list = list(instructions)
     reconstruction = Reconstruction.create(
-        approximation=np.zeros(AUDIO_LENGTH, dtype=np.float32),
-        approximations={channel_name: np.zeros(AUDIO_LENGTH, dtype=np.float32)},
         instructions={channel_name: instructions_list},
         config=Config(),
         coefficient=1.0,
@@ -59,9 +57,9 @@ def _reconstruction(
     reconstruction.update_channel_data(
         channel_name,
         list(instructions),
-        np.ones(AUDIO_LENGTH, dtype=np.float32),
         reconstruction.initial_pitches[channel_name],
         held_features,
+        heard=reconstruction.recorded_stem_ids,
     )
     return reconstruction
 

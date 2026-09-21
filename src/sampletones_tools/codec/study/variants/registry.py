@@ -1,6 +1,7 @@
 from typing import Dict, Final, Sequence, Tuple
 
 from sampletones_tools.codec.study.variants.baselines import Baselines, baseline_variant
+from sampletones_tools.codec.study.variants.layouts import LAYOUT_VARIANTS
 from sampletones_tools.codec.study.variants.production import BASELINE_NAME, BUDGET_VARIANTS, SEED_VARIANTS
 from sampletones_tools.codec.study.variants.sandbox import grammar_variants
 from sampletones_tools.codec.study.variants.variant import Variant
@@ -22,6 +23,7 @@ def variants(baselines: Baselines) -> Dict[str, Variant]:
         *SEED_VARIANTS,
         *BUDGET_VARIANTS,
         *grammar_variants(baselines),
+        *LAYOUT_VARIANTS,
     )
     return {variant.name: variant for variant in every}
 

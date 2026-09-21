@@ -3,6 +3,7 @@ from typing import Callable, FrozenSet, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.tags.reconstructions import (
     PRE_RECONSTRUCTION_STEMS,
@@ -23,7 +24,7 @@ from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.stems import (
     ReconstructionStemsViewModel,
 )
-from sampletones_application.view_model.shared.stems import StemsListViewModel
+from sampletones_application.view_model.shared.stems import StemRowViewModel, StemsListViewModel
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.system.paths import open_path_in_explorer
@@ -38,15 +39,18 @@ class GUIReconstructionStemsPanel(GUIPanel):
     it holds frames on: ticking one keeps that channel's frames in what plays, and the leading
     box moves every channel the recording offers at once. A channel switched off for the whole
     reconstruction shows its boxes muted while they stay as clickable as any other, so the
-    reader's per-recording choice keeps standing. A click on a row shows the recording where it
-    sits on disk, and the button beside it asks to take the recording out of the reconstruction
-    for good. The list holds on to its last row, so one recording always stands.
+    reader's per-recording choice keeps standing. Each row leads with the color its recording is
+    painted in, so a stretch of the ribbon under the waveform answers to a name here at a glance.
+    A double-click on a row shows the recording where it sits on disk, and the button beside it
+    asks to take the recording out of the reconstruction for good. The list holds on to its last
+    row, so one recording always stands.
     """
 
     def __init__(
         self,
         *,
         stems_layout: StemsListLayout,
+        stem_colors: StemColors,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
@@ -56,6 +60,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
         self._lbl_empty = language_manager["reconstructions.reconstruction.label.stems_empty"]
         self._lbl_collapse = language_manager["reconstructions.reconstruction.label.collapse_levels"]
         self._setup_template = language_manager["reconstructions.reconstruction.template.stems_setup"]
+        self._lbl_edits = language_manager["global.stems.label.edits"]
         self._mode_labels = {
             HierarchyMode.ROUND_ROBIN: language_manager["reconstructions.reconstruction.label.stems_mode_round_robin"],
             HierarchyMode.STRICT: language_manager["reconstructions.reconstruction.label.stems_mode_strict"],
@@ -67,6 +72,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
             layout=stems_layout,
             ceiling=stems_layout.well_ceiling,
             glyphs=self._glyphs.common,
+            stem_colors=stem_colors,
             language_manager=language_manager,
             status_bar=status_bar,
             offer=RECORDED_ASSIGNMENT,
@@ -110,7 +116,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
             self._stems_list.create(self._body_container, show=False)
 
         self._stems_list.on_channels_changed = self._on_channels_changed
-        self._stems_list.on_row_activated = self._on_row_activated
+        self._stems_list.on_row_revealed = self._on_row_revealed
         self._stems_list.on_remove_requested = self._on_remove_requested
 
     def update_view(self, view_model: ReconstructionStemsViewModel) -> None:
@@ -148,9 +154,25 @@ class GUIReconstructionStemsPanel(GUIPanel):
         )
 
     def _banded(self, stems: StemsListViewModel) -> StemsListViewModel:
-        """The list as the card draws it, under the banding the reader last asked for."""
+        """The list as the card draws it: the reader's banding, and the edits row named.
+
+        A row standing for the frames the reader wrote answers to no recording, so it takes its
+        name here rather than from the document.
+        """
         collapsed = bool(dpg.get_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS))
-        return stems.model_copy(update={"collapse_levels": collapsed})
+        return stems.model_copy(
+            update={
+                "collapse_levels": collapsed,
+                "rows": tuple(self._named(row) for row in stems.rows),
+            }
+        )
+
+    def _named(self, row: StemRowViewModel) -> StemRowViewModel:
+        """The row under the name it reads as, which the edits row takes from the language file."""
+        if not row.stands_for_edits:
+            return row
+
+        return row.model_copy(update={"name": self._lbl_edits})
 
     def _render_setup_line(
         self,
@@ -160,10 +182,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
             mode = "" if view_model.hierarchy_mode is None else self._mode_labels[view_model.hierarchy_mode]
             dpg_set_value(
                 TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP,
-                self._setup_template.format(
-                    mode=mode,
-                    cap=view_model.channel_cap,
-                ),
+                self._setup_template.format(mode=mode),
             )
 
         dpg_configure_item(
@@ -181,8 +200,12 @@ class GUIReconstructionStemsPanel(GUIPanel):
     def _on_remove_requested(self, key: str) -> None:
         self.call(self.on_stem_remove_requested, int(key))
 
-    def _on_row_activated(self, key: str) -> None:
-        """A clicked row shows its recording where it sits on disk, whichever way it now reads."""
+    def _on_row_revealed(self, key: str) -> None:
+        """A double-clicked row shows its recording where it sits on disk.
+
+        Leaving the file browser to a deliberate gesture keeps a click free to pick a row, which
+        is what a reader does far more often.
+        """
         row = self._stems_list.row(key)
-        if row is not None and row.available:
+        if row is not None and row.available and row.path is not None:
             open_path_in_explorer(row.path)

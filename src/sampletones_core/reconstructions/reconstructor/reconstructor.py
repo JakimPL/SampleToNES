@@ -10,16 +10,13 @@ from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
 from sampletones_core.constants.enums import (
     TONE_CHANNELS,
     ChannelName,
-    bending_channels,
     ordered_channels,
 )
 from sampletones_core.fft import FragmentedAudio, Window
 from sampletones_core.generators import (
     FULL_SCALE_RMS_LEVELS,
-    GeneratorUnion,
     get_generators_by_channels,
 )
-from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibrary, InstructionLibraryData
 from sampletones_core.reconstructions.progress import (
     FRAMES_PREPARED,
@@ -39,6 +36,7 @@ from sampletones_core.reconstructions.reconstructor.state import ReconstructionS
 from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
 from sampletones_core.reconstructions.reconstructor.stems.assignment.track import TrackAssignment
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.exceptions import NoLibraryDataError
@@ -109,8 +107,8 @@ class Reconstructor:
         """Reconstructs an audio file into a :class:`Reconstruction`.
 
         The classic run is the stems pipeline's single-stem case: one stem covering
-        every channel this reconstructor was built for, on one precedence level, with
-        the cap at the channel count, so every one of them is assigned in every frame.
+        every channel this reconstructor was built for, on one precedence level,
+        sounding all of them at once, so every one of them is assigned in every frame.
 
         Args:
             path: Path to the audio file to reconstruct.
@@ -121,8 +119,7 @@ class Reconstructor:
         Raises:
             TypeError: If ``path`` is not a string or ``Path``.
         """
-        channels = list(self.channel_names)
-        stems_config = StemsConfig.single_entry(channels, bending_channels(channels))
+        stems_config = StemsConfig.single_entry(StemSettings.covering(list(self.channel_names)))
         return self.reconstruct([path], stems_config)
 
     def reconstruct(
@@ -136,8 +133,9 @@ class Reconstructor:
 
         Loads the stems onto one scale drawn from their mix, matches each stem's frames
         against the library on its own, and assigns each frame's channels to the stems
-        following the configured hierarchy and channel cap. A stem takes a channel where
-        its own recording sounds, so what the channel carries is that recording. The
+        following the configured hierarchy and each stem's own count. A stem takes a channel where
+        its own recording sounds, so what the channel carries is that recording, at the drive that
+        stem's settings give the channel. The
         assignment leaves every channel in play a column of candidates per frame, which
         the configured decoder reads into the stream that channel plays. The per-frame
         assignment is recorded in the reconstruction's stems data.
@@ -145,8 +143,8 @@ class Reconstructor:
         Args:
             paths: Paths to the stem audio files, one per stems entry.
             stems_config: The stems setup built for this process from the inputs:
-                the entries with their channels, the precedence hierarchy, and the
-                per-stem channel cap.
+                the entries with what each recording is converted with, and the
+                precedence hierarchy.
             report: Hears each stage of the run and answers whether it is still wanted.
 
         Returns:
@@ -170,6 +168,7 @@ class Reconstructor:
         assignment.release_silent(streams)
         self._drop_resting_channels(assignment, streams)
         streams = self._refiner(stems_config).refine(streams, assignment.stem_ids, prepared.recordings)
+        announce(report, ReconstructionStage.DECODING, WHOLE_STAGE, WHOLE_STAGE)
         self._record_streams(streams, report)
         return Reconstruction.from_state(
             self.state,
@@ -309,19 +308,23 @@ class Reconstructor:
             assignment.drop(channel_name)
             del streams[channel_name]
 
-    def _record_streams(self, streams: Streams, report: ReconstructionReporter) -> None:
-        """Renders the decoded streams into the state, one frame at a time.
+    def _record_streams(
+        self,
+        streams: Streams,
+        report: ReconstructionReporter,
+    ) -> None:
+        """Reads the decoded streams into the state, one frame at a time.
 
-        Frame order is what carries a generator's oscillator state from one frame into the next,
-        so each channel plays its streams the way the NES would.
+        A reconstruction records the instructions its channels play, and reads its sound from
+        them, so this is where a run's answer is gathered.
         """
         frames = self._frame_count(streams)
         for position in range(frames):
-            announce(report, ReconstructionStage.RENDERING, position, frames)
+            announce(report, ReconstructionStage.GATHERING, position, frames)
             for channel_name in self.state.channel_names:
-                self._record(channel_name, streams[channel_name][position].instruction)
+                self.state.append(channel_name, streams[channel_name][position].instruction)
 
-        announce(report, ReconstructionStage.RENDERING, frames, frames)
+        announce(report, ReconstructionStage.GATHERING, frames, frames)
 
     @staticmethod
     def _frame_count(streams: Streams) -> int:
@@ -441,20 +444,6 @@ class Reconstructor:
                 tuple(generator.class_name() for generator in self.channels.values()),
             ),
         )
-
-    def _record(
-        self,
-        channel_name: ChannelName,
-        instruction: InstructionUnion,
-    ) -> None:
-        """Appends one frame of one channel, rendered from its instruction at the configured drive.
-
-        The generator carries its oscillator state into the next frame, and resets it where the
-        configuration resets the phase on a new note, as the renderer of a whole channel does.
-        """
-        generator: GeneratorUnion = self.channels[channel_name]
-        rendered = generator(instruction, save=True)  # type: ignore[arg-type]
-        self.state.append(channel_name, instruction, rendered * self.config.generation.drive)
 
     def reset_generators(self) -> None:
         """Resets every channel's generator so the next reconstruction starts fresh."""

@@ -2,6 +2,7 @@ from typing import Callable, Final
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.layout.primitives import DialogGeometry
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON_CANCEL,
@@ -30,14 +31,11 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
     the prompt.
     """
 
-    _fits_content = True
-
     def __init__(
         self,
         tag: str,
         *,
-        width: int,
-        height: int,
+        geometry: DialogGeometry,
         wrap: int,
         save_label: str,
         cancel_label: str,
@@ -56,8 +54,7 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
 
         super().__init__(
             tag,
-            width,
-            height,
+            geometry,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )

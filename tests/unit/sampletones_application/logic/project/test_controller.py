@@ -632,9 +632,9 @@ class TestLiveLinkedReconstruction:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             new_instructions,
-            np.zeros(64, dtype=np.float32),
             72,
             (),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         stored = controller.project.voice(sample.id).reconstruction

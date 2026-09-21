@@ -1,11 +1,11 @@
 from pathlib import Path
 from typing import Optional, Tuple
 
-from sampletones_application.logic.main.converter.state import ConverterState
-from sampletones_application.logic.main.sources.derive import (
+from sampletones_application.logic.main.converter.derive import (
     ConversionSetup,
     derive_conversion_setup,
 )
+from sampletones_application.logic.main.converter.state import ConverterState
 from sampletones_core.reconstructions.converter import (
     BatchConversion,
     BatchEntry,
@@ -16,13 +16,11 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 
 
 def conversion_setup(state: ConverterState) -> ConversionSetup:
-    """The recordings and the stems setup a mix converts under, carrying the channel cap."""
-    settings = state.settings
+    """The recordings and the stems setup a mix converts under, each carrying its own settings."""
     return derive_conversion_setup(
         state.gathering.sources,
         state.gathering.levels,
-        channel_cap=settings.effective_channel_cap,
-        hierarchy_mode=settings.hierarchy_mode,
+        hierarchy_mode=state.settings.hierarchy_mode,
     )
 
 
@@ -41,7 +39,6 @@ def batch_entries(state: ConverterState) -> Tuple[BatchEntry, ...]:
     reconstruction records. The folder a recording was gathered from decides where it is written,
     which is what makes a run over a folder mirror that folder's tree.
     """
-    settings = state.settings
     gathering = state.gathering
     entries = []
     for recording in gathering.sources.recordings:
@@ -51,11 +48,7 @@ def batch_entries(state: ConverterState) -> Tuple[BatchEntry, ...]:
         entries.append(
             BatchEntry(
                 source=recording.path,
-                stems=StemsConfig.single_entry(
-                    recording.settings.channels,
-                    recording.settings.bends,
-                    channel_cap=settings.effective_channel_cap,
-                ),
+                stems=StemsConfig.single_entry(recording.settings),
                 base_directory=gathering.folder_root_of(recording.path),
             )
         )

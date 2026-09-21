@@ -73,6 +73,7 @@ def dpg_context(layout_config: LayoutConfig) -> Iterator[None]:
 def panel(dpg_context: None, layout_config: LayoutConfig) -> GUIReconstructionStemsPanel:
     return GUIReconstructionStemsPanel(
         stems_layout=layout_config.general.stems,
+        stem_colors=layout_config.general.colors.stems,
         language_manager=LanguageManager(LANG_EN),
         status_bar=GUIStatusBar(),
     )
@@ -101,12 +102,14 @@ def _row(
         partial_channels=frozenset(),
         bends=bends,
         key=str(stem_id),
+        name=name,
         path=Path(f"/audio/{name}.wav"),
         channels=channels,
         offered_channels=offered_channels,
         available=True,
         level=level,
         position=position,
+        record_position=position,
         level_size=level_size,
         level_count=level_count,
     )
@@ -130,7 +133,6 @@ def _view_model(
             collapse_levels=False,
         ),
         hierarchy_mode=hierarchy_mode,
-        channel_cap=2 if hierarchy_mode is not None else None,
     )
 
 
@@ -291,14 +293,13 @@ class TestStemsPanelLevels:
 
 
 class TestStemsPanelStates:
-    def test_the_setup_line_states_mode_and_cap(self, panel: GUIReconstructionStemsPanel) -> None:
+    def test_the_setup_line_states_the_mode(self, panel: GUIReconstructionStemsPanel) -> None:
         render(panel)
 
         panel.update_view(_view_model(_row(0, name="kick"), hierarchy_mode=HierarchyMode.STRICT))
 
         assert dpg.is_item_shown(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP)
         assert "Strict" in dpg.get_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP)
-        assert "2" in dpg.get_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP)
 
     def test_the_empty_state_shows_for_a_loaded_reconstruction_without_source(
         self,

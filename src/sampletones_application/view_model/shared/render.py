@@ -19,7 +19,7 @@ from sampletones_core.audio.writers import (
     mp3_bitrates,
 )
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
-from sampletones_core.parallelization import ETAEstimator
+from sampletones_shared.utils.time import format_span
 
 
 class RenderPhase(StrEnum):
@@ -251,7 +251,7 @@ class SongRenderViewModel(BaseModel, frozen=True):
     @property
     def duration_label(self) -> str:
         """The length the render is projected to run to, as the dialog states it."""
-        return ETAEstimator.format_duration(self.duration_seconds)
+        return format_span(self.duration_seconds)
 
     @property
     def progress_overlay(self) -> str:

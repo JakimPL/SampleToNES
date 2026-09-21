@@ -16,6 +16,7 @@ ITEM_TYPE_MAP: Final[Dict[str, int]] = {
     "RadioButton": dpg.mvRadioButton,
     "Selectable": dpg.mvSelectable,
     "ShadeSeries": dpg.mvShadeSeries,
+    "SliderFloat": dpg.mvSliderFloat,
     "Table": dpg.mvTable,
     "Text": dpg.mvText,
     "TreeNode": dpg.mvTreeNode,

@@ -24,6 +24,9 @@ def _heard(*stem_ids: int) -> StemSelection:
     return StemSelection.everywhere(frozenset(stem_ids), ChannelName.items())
 
 
+from tests.suite.stems import recorded_from
+
+
 class TestFromReconstruction:
     def test_wraps_the_same_object_for_live_linking(
         self,
@@ -86,7 +89,7 @@ class TestFromReconstruction:
             Config().library.sample_rate,
             np.ones(64, dtype=np.float32) * 0.5,
         )
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (source_audio,)})
+        reconstruction = recorded_from(reconstruction_factory(), (source_audio,))
 
         data = ReconstructionData.from_reconstruction(
             reconstruction,
@@ -110,7 +113,7 @@ class TestFromReconstruction:
         second = tmp_path / "snare.wav"
         write_wave(first, config.library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
         write_wave(second, config.library.sample_rate, np.ones(64, dtype=np.float32) * 0.25)
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (first, second)})
+        reconstruction = recorded_from(reconstruction_factory(), (first, second))
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
@@ -128,7 +131,7 @@ class TestFromReconstruction:
         first = tmp_path / "kick.wav"
         missing = tmp_path / "gone.wav"
         write_wave(first, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (first, missing)})
+        reconstruction = recorded_from(reconstruction_factory(), (first, missing))
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
@@ -234,7 +237,7 @@ class TestDetachedCopy:
         drums = tmp_path / "drums"
         drums.mkdir()
         stems = (drums / "kick.wav", drums / "snare.wav")
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": stems})
+        reconstruction = recorded_from(reconstruction_factory(), stems)
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         copy = data.detached_copy(tmp_path / "lead.stn")
@@ -247,7 +250,7 @@ class TestDetachedCopy:
         tmp_path: Path,
     ) -> None:
         stems = (Path("/one/kick.wav"), Path("/two/snare.wav"))
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": stems})
+        reconstruction = recorded_from(reconstruction_factory(), stems)
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         copy = data.detached_copy(tmp_path / "lead.stn")
@@ -265,7 +268,7 @@ class TestDetachedCopy:
             Config().library.sample_rate,
             np.ones(64, dtype=np.float32) * 0.5,
         )
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (source_audio,)})
+        reconstruction = recorded_from(reconstruction_factory(), (source_audio,))
         data = ReconstructionData.from_reconstruction(
             reconstruction,
             name="Sample",
@@ -302,8 +305,6 @@ class TestStemFilteredProjections:
             hierarchy=StemsHierarchy(levels=[[0, 1]]),
         )
         reconstruction = Reconstruction.create(
-            approximation=approximation,
-            approximations={ChannelName.PULSE1: approximation.copy()},
             instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)] * 2},
             config=config,
             coefficient=1.0,
@@ -362,7 +363,6 @@ class TestStemFilteredProjections:
         )
         reconstruction = reconstruction_factory().model_copy(
             update={
-                "audio_filepath": (first, second),
                 "stems_data": StemsData(
                     config=stems_config,
                     assignments=[
@@ -371,7 +371,7 @@ class TestStemFilteredProjections:
                             stem_ids=[0, 1],
                         )
                     ],
-                ),
+                ).with_sources((first, second)),
             }
         )
 
@@ -392,7 +392,7 @@ class TestStemFilteredProjections:
     ) -> None:
         source_audio = tmp_path / "source.wav"
         write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": (source_audio,)})
+        reconstruction = recorded_from(reconstruction_factory(), (source_audio,))
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
@@ -429,7 +429,6 @@ class TestRebindingToAnEditedReconstruction:
 
         reconstruction = reconstruction_factory().model_copy(
             update={
-                "audio_filepath": tuple(paths),
                 "stems_data": StemsData(
                     config=StemsConfig(
                         entries=[
@@ -449,7 +448,7 @@ class TestRebindingToAnEditedReconstruction:
                             stem_ids=[0],
                         )
                     ],
-                ),
+                ).with_sources(tuple(paths)),
             }
         )
         return ReconstructionData.from_reconstruction(reconstruction, name="Sample")

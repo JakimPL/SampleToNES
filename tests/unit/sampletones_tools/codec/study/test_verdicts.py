@@ -7,7 +7,8 @@ import pytest
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
-from sampletones_player.specification.compression import PLANE_COUNT
+from sampletones_player.specification.planes import PLANE_COUNT
+from sampletones_player.specification.song import SONG_HEADER_SIZE
 from sampletones_shared.music import Tuning
 from sampletones_tools.codec.study.corpus.song import SongGroup, StudySong
 from sampletones_tools.codec.study.measure import Encoding, Measurement
@@ -16,6 +17,7 @@ from sampletones_tools.codec.study.report.verdicts import Verdict, judge, verdic
 from sampletones_tools.codec.study.variants.variant import Variant, VariantKind
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.study import NO_STUDY_SLICES, lowest_notes, resting_planes
 
 TICKS: Final[int] = 4
 BASELINE: Final[str] = "baseline"
@@ -99,9 +101,11 @@ def _song(name: str, group: SongGroup) -> StudySong:
         name=name,
         group=group,
         source=Path(f"{name}.stp"),
-        planes=SongPlanes.from_order(PlaneOrder.across([bytes(TICKS)] * PLANE_COUNT)),
+        planes=resting_planes(TICKS),
         seeds=(),
         pitches=PitchTable.from_tuning(Tuning()),
+        notes=lowest_notes(TICKS),
+        slices=NO_STUDY_SLICES,
     )
 
 
@@ -114,6 +118,7 @@ def _measurement(
         song=song,
         variant=variant,
         encoding=Encoding(
+            header=SONG_HEADER_SIZE,
             phrases=0,
             dictionary=0,
             streams=(streams,) + (0,) * (PLANE_COUNT - 1),
@@ -131,6 +136,7 @@ def _variant(name: str, kind: VariantKind) -> Variant:
         kind=kind,
         note="",
         encode=lambda song: Encoding(
+            header=SONG_HEADER_SIZE,
             phrases=0,
             dictionary=0,
             streams=(),

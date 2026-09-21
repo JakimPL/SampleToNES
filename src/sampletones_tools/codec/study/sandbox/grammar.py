@@ -35,6 +35,6 @@ BASELINE_GRAMMAR: Final[Grammar] = Grammar(
     start_hold=False,
     wide_hold=False,
     set_hold=False,
-    default_counts=False,
+    default_counts=True,
     costs=PRODUCTION_COSTS,
 )

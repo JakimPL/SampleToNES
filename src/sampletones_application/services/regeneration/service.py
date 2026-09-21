@@ -1,6 +1,4 @@
-from typing import List, cast
-
-import numpy as np
+from typing import AbstractSet, List, cast
 
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.regeneration.result import (
@@ -15,13 +13,16 @@ from sampletones_application.services.result import (
 from sampletones_application.utils.parallelization.coalescing import LatestWinsExecutor
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP, Features
-from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
 
 
 class RegenerationService(ServiceBase[RegenerationResult]):
-    """Recomputes one generator's instructions and audio for a reconstruction.
+    """Recomputes one generator's instructions for a reconstruction.
+
+    An edit reaches the frames the reader hears on the channel, so ``heard`` travels with it:
+    a frame of a recording the reader left out stands as it is, which is what lets one
+    recording's part be shaped while the recordings beside it carry on.
 
     The result is a fresh reconstruction carrying the updated generator data; the
     source reconstruction is left intact. Producing a new object lets callers swap
@@ -45,6 +46,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         channel_name: ChannelName,
         feature_key: FeatureKey,
         features: Features,
+        heard: AbstractSet[int],
     ) -> bool:
         if self._canceled:
             return False
@@ -55,6 +57,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 channel_name,
                 feature_key,
                 features,
+                heard,
             )
         )
 
@@ -70,27 +73,25 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         channel_name: ChannelName,
         feature_key: FeatureKey,
         features: Features,
+        heard: AbstractSet[int],
     ) -> None:
         if self._canceled:
             self._emit(ServiceCanceled())
             return
         try:
             exporter_class = CHANNEL_TO_EXPORTER_MAP[channel_name]
-            generator_class = exporter_class.get_generator_type()
             instructions = cast(
                 List[InstructionUnion],
                 exporter_class.from_features(features),
             )
-            generator = generator_class(reconstruction.config, channel_name)
-            audio = self._render(generator, instructions)
 
             updated = reconstruction.model_copy(deep=True)
             updated.update_channel_data(
                 channel_name,
                 instructions,
-                audio,
                 features.initial_pitch,
                 features.held_features,
+                heard=heard,
             )
             self._emit(
                 ServiceSuccess(
@@ -103,20 +104,3 @@ class RegenerationService(ServiceBase[RegenerationResult]):
             )
         except Exception as exception:  # pylint: disable=broad-exception-caught
             self._emit(ServiceError(exception=exception))
-
-    @staticmethod
-    def _render(
-        generator: GeneratorUnion,
-        instructions: List[InstructionUnion],
-    ) -> np.ndarray:
-        """Synthesizes the frames the instructions describe, one after another.
-
-        An instrument whose every dimension is left to the channel describes no frame, and
-        sounds as the silence of an empty waveform.
-        """
-        if not instructions:
-            return np.zeros(0, dtype=np.float32)
-
-        return np.concatenate(
-            [generator(instruction, save=True) for instruction in instructions],  # type: ignore[arg-type]
-        )

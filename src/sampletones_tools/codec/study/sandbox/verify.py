@@ -3,7 +3,6 @@ from typing import Sequence
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.planes.order import PlaneOrder
-from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_tools.codec.study.sandbox.decode import play_tokens
 from sampletones_tools.codec.study.sandbox.parse import StudyParse
 
@@ -36,16 +35,16 @@ def verify_baseline(
 def plays_back(
     parses: Sequence[StudyParse],
     table: PhraseTable,
-    planes: SongPlanes,
+    planes: Sequence[bytes],
 ) -> bool:
     """Whether every plane's tokens play back to the plane they were written from.
 
     Args:
         parses: Every plane's parse, in the order the song block writes them.
         table: The dictionary the tokens name.
-        planes: The planes the parses were read from.
+        planes: The byte series the parses were read from, in song-block order.
 
     Returns:
         bool: Whether the encoding is lossless.
     """
-    return all(play_tokens(parse.tokens, table, planes.ticks) == plane for parse, plane in zip(parses, planes.planes))
+    return all(play_tokens(parse.tokens, table, len(plane)) == plane for parse, plane in zip(parses, planes))

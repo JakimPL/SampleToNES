@@ -5,17 +5,20 @@ import numpy as np
 
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import DEFAULT_STEMS_CHANNEL_CAP
+from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.instructions import InstructionUnion
+from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.types.path import Pathlike
 
+SINGLE_STEM_ID: Final[int] = 0
 STEM_A_ID: Final[int] = 0
 STEM_B_ID: Final[int] = 1
 STEM_C_ID: Final[int] = 2
@@ -38,35 +41,40 @@ def single_entry_stems_data(
     channels: List[ChannelName],
     instructions: Mapping[ChannelName, Sequence[InstructionUnion]],
 ) -> StemsData:
-    """The single-entry record for ``channels``, stem 0 owning each frame that plays and bending them."""
+    """The single-entry record for ``channels``, stem 0 owning each frame that sounds and bending them.
+
+    Rest and silence name the same frames, so a silent frame takes the resting stem id, which is
+    the shape a conversion records.
+    """
     assignments = [
-        ChannelAssignment(channel_name=channel_name, stem_ids=[0] * len(stream))
+        ChannelAssignment(
+            channel_name=channel_name,
+            stem_ids=[SINGLE_STEM_ID if instruction.on else RESTING_STEM_ID for instruction in stream],
+        )
         for channel_name, stream in instructions.items()
         if stream
     ]
-    return StemsData.single_entry(
-        channels,
-        bending_channels(channels),
-        assignments,
-    )
+    return StemsData.single_entry(StemSettings.covering(channels), assignments)
 
 
 def three_stem_config() -> StemsConfig:
     """Builds the three-stem setup the stems tests share.
 
     Stems a (pulse 1, triangle, noise) and b (pulse 2, triangle) pick on the first
-    hierarchy level, stem c (pulse 1, noise) on the second.
+    hierarchy level, stem c (pulse 1, noise) on the second, each sounding one channel at a time.
     """
     return StemsConfig(
         entries=[
-            StemEntry(id=stem_id, settings=StemSettings(channels=channels, bends=bending_channels(channels)))
+            StemEntry(
+                id=stem_id,
+                settings=StemSettings(channels=channels, bends=bending_channels(channels), channel_cap=1),
+            )
             for stem_id, channels in THREE_STEM_ENTRY_CHANNELS.items()
         ],
         hierarchy=StemsHierarchy(
             levels=[[STEM_A_ID, STEM_B_ID], [STEM_C_ID]],
             mode=HierarchyMode.STRICT,
         ),
-        channel_cap=1,
     )
 
 
@@ -96,3 +104,33 @@ def write_three_stem_recordings(
         paths.append(path)
 
     return paths[0], paths[1], paths[2]
+
+
+def everything_heard(reconstruction: Reconstruction) -> StemSelection:
+    """The reader listening to every recording on every channel, as a fresh document reads."""
+    return StemSelection.everywhere(
+        frozenset(reconstruction.stems_data.config.entries_by_id),
+        ChannelName.items(),
+    )
+
+
+def recorded_from(
+    reconstruction: Reconstruction,
+    paths: Sequence[Path],
+) -> Reconstruction:
+    """The document as though its recordings had been read from ``paths``, one per entry.
+
+    A test states the files a conversion would have read, and the record takes its sources from
+    them; the entries follow, so a document standing for several recordings holds an entry for
+    each of them over the channels it already plays.
+    """
+    settings = reconstruction.stems_data.config.entries[0].settings
+    config = StemsConfig(
+        entries=[StemEntry(id=stem_id, settings=settings) for stem_id in range(len(paths))],
+        hierarchy=StemsHierarchy(levels=[list(range(len(paths)))]),
+    )
+    stems_data = StemsData(
+        config=config,
+        assignments=reconstruction.stems_data.assignments,
+    ).with_sources(paths)
+    return reconstruction.model_copy(update={"stems_data": stems_data})

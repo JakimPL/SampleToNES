@@ -15,3 +15,14 @@ components:
       - type: color
         key: Text
         value: .text_muted
+  - item_type: SliderFloat
+    entries:
+      - type: color
+        key: SliderGrab
+        value: .text_muted
+      - type: color
+        key: SliderGrabActive
+        value: .text_muted
+      - type: color
+        key: Text
+        value: .text_muted

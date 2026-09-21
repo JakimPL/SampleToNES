@@ -45,7 +45,10 @@ class DriverImage(BaseModel):
 
     @model_validator(mode="after")
     def _validate_the_routines_lie_in_the_code(self) -> DriverImage:
-        for name, address in (("init", self.addresses.init), ("play", self.addresses.play)):
+        for name, address in (
+            ("init", self.addresses.init),
+            ("play", self.addresses.play),
+        ):
             if not self.addresses.load <= address < self.addresses.song:
                 raise ValueError(
                     f"the {name} routine lies at {address:#06x}, outside the code between "
@@ -56,7 +59,10 @@ class DriverImage(BaseModel):
 
     @model_validator(mode="after")
     def _validate_the_image_leads_with_its_entry_points(self) -> DriverImage:
-        for name, address in (("init", self.addresses.init), ("play", self.addresses.play)):
+        for name, address in (
+            ("init", self.addresses.init),
+            ("play", self.addresses.play),
+        ):
             opcode = self.code[address - self.addresses.load]
             if opcode != JUMP_ABSOLUTE_OPCODE:
                 raise ValueError(

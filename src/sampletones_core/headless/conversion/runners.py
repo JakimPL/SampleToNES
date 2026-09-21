@@ -5,8 +5,7 @@ from tqdm import tqdm
 
 from sampletones_core.configs import Config
 from sampletones_core.headless.conversion.request import ConversionRequest
-from sampletones_core.headless.library import generate_library
-from sampletones_core.library import InstructionLibrary
+from sampletones_core.headless.library import ensure_library
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_core.reconstructions import Reconstructor
 from sampletones_core.reconstructions.converter import (
@@ -41,7 +40,8 @@ def reconstruct_sources(
 ) -> None:
     """Mixes the recordings into one reconstruction and writes it, showing the progress as a bar.
 
-    A file already standing at the output path is kept, and the run says so.
+    A file already standing at the output path is kept, and the run says so. The library the
+    configuration names is prepared first.
 
     Args:
         sources: The recordings, one per stem of the setup.
@@ -56,6 +56,7 @@ def reconstruct_sources(
         logger.info(f"Reconstruction {output_path} exists, skipping")
         return
 
+    ensure_library(config)
     names = ", ".join(source.name for source in sources)
     logger.info(f"Starting reconstruction of {names}")
     job = ConversionJob(sources=sources, stems=stems, output_path=output_path)
@@ -81,19 +82,15 @@ def reconstruct_directory(
 ) -> None:
     """Reconstructs every recording under the directory, each alone under the setup's stem.
 
-    The library the configuration names is generated first where it is missing. The results
-    mirror the directory's tree inside the configuration's reconstructions directory.
+    The library the configuration names is prepared first. The results mirror the directory's
+    tree inside the configuration's reconstructions directory.
 
     Args:
         directory: The directory of recordings.
         config: The configuration selecting the library and the matching settings.
         stems: The one-stem setup every recording is converted under.
     """
-    library = InstructionLibrary.from_config(config)
-    if not library.exists(config):
-        logger.warning("Library does not exist for the given configuration, generating a new library")
-        generate_library(config)
-
+    ensure_library(config)
     progress_bar = tqdm(total=0, desc=f"Reconstructing {directory.name}", unit="file")
 
     def on_start() -> None:

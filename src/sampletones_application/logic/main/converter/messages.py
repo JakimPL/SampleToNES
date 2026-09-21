@@ -1,11 +1,12 @@
 from pathlib import Path
 from typing import Dict, Final, Tuple
 
+from sampletones_application.categories.estimate import time_estimation
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.services.conversion.result import ConversionItem
 from sampletones_application.services.result import ServiceProgress
 from sampletones_application.view_model.main.converter import ACTIVE_PHASES, ConversionPhase
-from sampletones_core.parallelization import ETAEstimator
+from sampletones_core.library import LibraryState
 from sampletones_core.reconstructions.stage import ReconstructionStage
 
 SINGLE_SOURCE: Final[int] = 1
@@ -22,7 +23,8 @@ class ConverterMessages:
         self._language_manager = language_manager
         self.idle: str = language_manager["main.converter.message.status_idle"]
         self.waiting: str = language_manager["main.converter.message.status_waiting"]
-        self.generating_library: str = language_manager["main.converter.message.status_generating_library"]
+        self._generating_library: str = language_manager["main.converter.message.status_generating_library"]
+        self._updating_library: str = language_manager["main.converter.message.status_updating_library"]
         self.canceling: str = language_manager["main.converter.message.status_canceling"]
         self.canceled: str = language_manager["main.converter.message.status_canceled"]
         self.completed: str = language_manager["main.converter.message.status_reconstruction_completed"]
@@ -31,7 +33,7 @@ class ConverterMessages:
             ReconstructionStage.LOADING: language_manager["main.converter.message.stage_loading"],
             ReconstructionStage.MATCHING: language_manager["main.converter.message.stage_matching"],
             ReconstructionStage.DECODING: language_manager["main.converter.message.stage_decoding"],
-            ReconstructionStage.RENDERING: language_manager["main.converter.message.stage_rendering"],
+            ReconstructionStage.GATHERING: language_manager["main.converter.message.stage_gathering"],
         }
 
     def progress_text(
@@ -46,8 +48,18 @@ class ConverterMessages:
         batch writes many at once, so a count of the ones written says where it stands.
         """
         return (
-            self._run_text(progress, reconstruction_name) + self._stage_text(progress) + self._estimate_text(progress)
+            self._run_text(progress, reconstruction_name)
+            + self._stage_text(progress)
+            + time_estimation(self._language_manager, progress.eta_seconds)
         )
+
+    def preparing_library(self, state: LibraryState) -> str:
+        """The line a run shows while its library is prepared: an update of a library another
+        version built, and a generation of a missing one."""
+        if state is LibraryState.OUTDATED:
+            return self._updating_library
+
+        return self._generating_library
 
     def action_label(
         self,
@@ -102,10 +114,3 @@ class ConverterMessages:
             completed=step.completed,
             total=step.total,
         )
-
-    def _estimate_text(self, progress: ServiceProgress[ConversionItem]) -> str:
-        eta_string = ETAEstimator.format_duration(progress.eta_seconds)
-        if not eta_string:
-            return ""
-
-        return self._language_manager["global.dialog.template.time_estimation"].format(eta_string=eta_string)

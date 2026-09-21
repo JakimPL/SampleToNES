@@ -1,4 +1,4 @@
-from typing import Any, Iterator, List, Tuple
+from typing import Any, Final, Iterator, List, Tuple
 from unittest.mock import patch
 
 import pytest
@@ -14,6 +14,11 @@ from sampletones_application.layout.behavior.scheduling.scheduling import (
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_shared.types.callback import Callback, VoidCallback
+
+REAL_QUEUE_ADD: Final = CallbackQueue.add
+FRAME_BUDGET_SECONDS: Final[float] = 1.0
+DELAY_CLOCK: Final[str] = "sampletones_application.utils.callbacks.delay.time.monotonic"
+CLOCK_START: Final[float] = 100.0
 
 
 @pytest.fixture(autouse=True)
@@ -94,3 +99,45 @@ def held_queue(monkeypatch: pytest.MonkeyPatch) -> HeldQueue:
     queue = HeldQueue()
     monkeypatch.setattr(CallbackQueue, "add", queue.add)
     return queue
+
+
+@pytest.fixture
+def live_queue() -> Iterator[None]:
+    """The real ``CallbackQueue``, live and empty for the case and stopped once it ends.
+
+    The queue belongs to the whole process, so a case before this one may leave work pending or the
+    queue stopped. The real ``add`` is pinned over the call-through ``synchronous_queue`` installs,
+    so what a case queues waits for a drain the way it does in the render loop.
+    """
+    with patch.object(CallbackQueue, "add", REAL_QUEUE_ADD):
+        CallbackQueue.stop()
+        CallbackQueue.start()
+        yield
+        CallbackQueue.stop()
+
+
+def draw_frame() -> None:
+    """One frame of the render loop as the queue meets it: the count moves on, then the drain."""
+    CallbackQueue.notify_frame()
+    CallbackQueue.process(FRAME_BUDGET_SECONDS)
+
+
+class ManualClock:
+    """The monotonic clock a wait on the render thread reads, moved by the case alone."""
+
+    def __init__(self, now: float) -> None:
+        self.now = now
+
+    def __call__(self) -> float:
+        return self.now
+
+    def advance(self, seconds: float) -> None:
+        self.now += seconds
+
+
+@pytest.fixture
+def delay_clock(monkeypatch: pytest.MonkeyPatch) -> ManualClock:
+    """The clock ``call_after`` measures its wait by, standing still until the case moves it."""
+    clock = ManualClock(CLOCK_START)
+    monkeypatch.setattr(DELAY_CLOCK, clock)
+    return clock

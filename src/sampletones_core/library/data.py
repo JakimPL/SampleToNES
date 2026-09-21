@@ -6,11 +6,10 @@ from typing import Any, Dict, Final, KeysView, List, Self, Union, ValuesView
 
 from pydantic import ConfigDict, Field, ValidationError
 
-from sampletones_core.compatibility.kind import ObjectKind
-from sampletones_core.compatibility.upgrade import upgrade_binary
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.data import DataModel, Metadata, MetadataContract
+from sampletones_core.data.document import decompress_document
 from sampletones_core.generators import GeneratorClassNames
 from sampletones_core.instructions import InstructionUnion
 from sampletones_shared.application import SAMPLETONES_LIBRARY_DATA_VERSION
@@ -118,9 +117,8 @@ class InstructionLibraryData(DataModel):
         binary = load_binary(path)
 
         try:
-            binary = upgrade_binary(ObjectKind.LIBRARY, binary)
             return InstructionLibraryData.deserialize(
-                binary,
+                decompress_document(binary),
                 validation=cls.validate_metadata,
                 fast=fast,
             )

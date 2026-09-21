@@ -68,6 +68,17 @@ colors:
   channel_triangle_partial: "#0f528888"
   channel_noise_partial: "#4a4f5988"
 
+  stem_1: "#911828"
+  stem_2: "#189179"
+  stem_3: "#7d1891"
+  stem_4: "#349118"
+  stem_5: "#911866"
+  stem_6: "#18913a"
+  stem_7: "#182891"
+  stem_8: "#729118"
+  stem_authored: "#5a2d8c"
+  stem_rest: "#aab0bb"
+
   tab: "#b9bfca"
   tab_hovered: "#a9b0bd"
   tab_active: "#f7f8fa"
@@ -124,6 +135,7 @@ colors:
   library_group: "#125a60"
   library_instruction: "#3d434d"
   library_root: "#20252c"
+  library_outdated: "#7a6524"
 
   text_default: "#12161c"
   text_inactive: "#6e7580"

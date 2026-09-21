@@ -68,8 +68,7 @@ class GUIAudioSettingsWindow(GUIDialogWindow):
 
         super().__init__(
             tag=TAG_SETTINGS_AUDIO_WINDOW,
-            width=layout.audio.window.width,
-            height=layout.audio.window.height,
+            geometry=layout.audio.window,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )

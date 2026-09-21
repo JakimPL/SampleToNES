@@ -15,12 +15,6 @@ class LibrarySettingsUpdate(BaseModel, frozen=True):
     nes_frequency: int
 
 
-class GenerationSettingsUpdate(BaseModel, frozen=True):
-    """What the settings card reports for the whole run, whichever row it is editing."""
-
-    drive: float
-
-
 class AdvancedSettingsUpdate(BaseModel, frozen=True):
     max_workers: int
     spectrum_method: SpectrumMethod

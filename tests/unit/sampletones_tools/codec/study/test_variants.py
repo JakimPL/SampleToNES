@@ -13,7 +13,7 @@ from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.compression.tokens.hold import HoldToken
 from sampletones_player.compression.tokens.literal import LiteralToken
-from sampletones_player.specification.compression import PLANE_COUNT
+from sampletones_player.specification.planes import PLANE_COUNT
 from sampletones_shared.music import Tuning
 from sampletones_tools.codec.study.corpus.song import SongGroup, StudySong
 from sampletones_tools.codec.study.measure import Measurement, production_encoding
@@ -21,6 +21,7 @@ from sampletones_tools.codec.study.variants.seeds import split, trimmed, whole_a
 from sampletones_tools.codec.study.variants.strategy import DEPTH_PREFIX, depth_measurements
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.study import NO_STUDY_SLICES, lowest_notes, resting_planes
 
 TICKS: Final[int] = 4
 BASELINE: Final[str] = "baseline"
@@ -100,9 +101,11 @@ def _song() -> StudySong:
         name="song",
         group=SongGroup.PROJECT,
         source=Path("song.stp"),
-        planes=SongPlanes.from_order(PlaneOrder.across([bytes(TICKS)] * PLANE_COUNT)),
+        planes=resting_planes(TICKS),
         seeds=(),
         pitches=PitchTable.from_tuning(Tuning()),
+        notes=lowest_notes(TICKS),
+        slices=NO_STUDY_SLICES,
     )
 
 
@@ -117,6 +120,7 @@ def _measurement(
     compressed = CompressedPlanes(
         phrases=phrase_table(()),
         streams=PlaneOrder.across([stream] * PLANE_COUNT),
+        loop_entries=(0,) * PLANE_COUNT,
         ticks=TICKS,
     )
     return Measurement(

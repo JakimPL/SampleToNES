@@ -5,15 +5,25 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from sampletones_application.logic.reconstruction.feature import FeatureData
+from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import ServiceError, ServiceSuccess
 from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
+from tests.suite.stems import everything_heard
+
+
+def _heard_features(reconstruction: Reconstruction) -> ChannelEnvelopesViewModel:
+    """The envelopes of the whole document, which is what a fresh reader hears."""
+    return heard_envelopes(reconstruction, everything_heard(reconstruction))
+
 
 _real_queue_add = CallbackQueue.add
 
@@ -46,6 +56,7 @@ class TestRegenerationServicePipeline:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         assert len(results) == 1
@@ -61,6 +72,7 @@ class TestRegenerationServicePipeline:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         emitted = results[0].value
@@ -77,6 +89,7 @@ class TestRegenerationServicePipeline:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         approximation = reconstruction_data.reconstruction.approximations.get(
@@ -92,6 +105,7 @@ class TestRegenerationServicePipeline:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         instructions = reconstruction_data.reconstruction.get_channel_instructions(ChannelName.PULSE1)
@@ -107,7 +121,13 @@ class TestRegenerationServicePipeline:
         results: List[Any] = []
         service.subscribe(results.append)
 
-        service._run(reconstruction_data.reconstruction, ChannelName.PULSE1, FeatureKey.VOLUME, silenced)
+        service._run(
+            reconstruction_data.reconstruction,
+            ChannelName.PULSE1,
+            FeatureKey.VOLUME,
+            silenced,
+            reconstruction_data.reconstruction.recorded_stem_ids,
+        )
 
         assert isinstance(results[0], ServiceSuccess)
         assert all(
@@ -124,6 +144,7 @@ class TestRegenerationServicePipeline:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             {},
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         assert len(results) == 1
@@ -139,6 +160,7 @@ class TestRegenerationServicePipeline:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         assert len(results) == 1
@@ -171,6 +193,7 @@ def _edit_arpeggio(context: ArpeggioEditContext, arpeggio: np.ndarray) -> None:
         ChannelName.PULSE1,
         FeatureKey.ARPEGGIO,
         edited,
+        context.reconstruction.recorded_stem_ids,
     )
 
     assert len(results) == 1
@@ -197,7 +220,7 @@ class TestArpeggioEditKeepsTheSamplePitch:
             reconstruction = reconstruction_data.reconstruction
             return ArpeggioEditContext(
                 reconstruction=reconstruction,
-                features=FeatureData.load(reconstruction)[ChannelName.PULSE1],
+                features=_heard_features(reconstruction)[ChannelName.PULSE1],
             )
 
         def check_the_starting_reference(context: ArpeggioEditContext) -> None:
@@ -209,7 +232,7 @@ class TestArpeggioEditKeepsTheSamplePitch:
             assert _pitches(context) == [BASE_PITCH + OCTAVE] + [BASE_PITCH] * 3
 
         def reload_the_edited_features(context: ArpeggioEditContext) -> None:
-            context.features = FeatureData.load(context.reconstruction)[ChannelName.PULSE1]
+            context.features = _heard_features(context.reconstruction)[ChannelName.PULSE1]
             assert context.features.initial_pitch == BASE_PITCH
             assert list(context.features.arpeggio.items) == [OCTAVE, 0]
 
@@ -218,7 +241,7 @@ class TestArpeggioEditKeepsTheSamplePitch:
             assert _pitches(context) == [BASE_PITCH] * 4
 
         def check_the_reference_held(context: ArpeggioEditContext) -> None:
-            reloaded = FeatureData.load(context.reconstruction)[ChannelName.PULSE1]
+            reloaded = _heard_features(context.reconstruction)[ChannelName.PULSE1]
             assert reloaded.initial_pitch == BASE_PITCH
             assert list(reloaded.arpeggio.items) == [0]
 
@@ -291,6 +314,7 @@ class TestRegenerationDeliveryThroughRealQueue:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         # The real queue defers delivery until a frame is pumped; nothing has run yet. This also fails
@@ -321,6 +345,7 @@ class TestRegenerationDeliveryThroughRealQueue:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             pulse_features,
+            reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
         for _ in range(DELIVERY_BUDGET_FRAMES):

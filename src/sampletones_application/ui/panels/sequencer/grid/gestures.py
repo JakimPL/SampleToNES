@@ -1,5 +1,6 @@
 from typing import Callable, Generic, Optional, Protocol, TypeVar
 
+from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 RegionT = TypeVar("RegionT")
@@ -33,6 +34,7 @@ class BlockGrid(Protocol[RegionT, CellT]):
     on_delete_block: Optional[Callable[[RegionT], None]]
     on_paste_block: Optional[Callable[[CellT], None]]
     can_paste_block: Optional[Callable[[], bool]]
+    refresh_paste_block: Optional[Callable[[VoidCallback], None]]
 
 
 class BlockGestures(CallbackMixin, Generic[RegionT, CellT]):
@@ -47,8 +49,12 @@ class BlockGestures(CallbackMixin, Generic[RegionT, CellT]):
         self._grid = grid
 
     def can_paste(self) -> bool:
-        """Whether a block stands ready for a paste to write."""
+        """Whether a block stands ready for a paste to write, as the clipboard last answered."""
         return self.query(self._grid.can_paste_block, default=False)
+
+    def refresh_paste(self, then: VoidCallback) -> None:
+        """Asks the clipboard again, running ``then`` once :meth:`can_paste` reads the fresh answer."""
+        self.call(self._grid.refresh_paste_block, then)
 
     def copy_at(self, target: BlockTarget[RegionT, CellT]) -> None:
         """Takes what a target covers, leaving the grid as it stands."""

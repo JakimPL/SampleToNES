@@ -1,8 +1,9 @@
 import base64
 import json
 from contextlib import suppress
+from functools import partial
 from pathlib import Path
-from typing import Any, Dict, Final, List, Mapping, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Final, List, Mapping, Optional, Type, TypeVar, Union
 
 import numpy as np
 import yaml
@@ -14,6 +15,7 @@ from sampletones_shared.types.path import Pathlike
 
 JSON_INDENT: Final[int] = 2
 YAML_ROOT_STEM: Final[str] = "root"
+TEMPORARY_SUFFIX: Final[str] = ".tmp"
 
 ModelTypeT = TypeVar("ModelTypeT", bound=BaseModel)
 
@@ -78,25 +80,36 @@ def save_yaml(filepath: Pathlike, data: Union[List[Any], SerializedData]) -> Non
 
 def save_yaml_atomic(filepath: Pathlike, data: Union[List[Any], SerializedData]) -> None:
     """
-    Saves data to a YAML file atomically via a temporary file.
-
-    The data is written to a sibling ``.tmp`` file and then moved into place with a
-    single ``replace``, so the target file updates only once the whole write
-    succeeds. The temporary file is removed if the write fails.
+    Saves data to a YAML file atomically, through :func:`write_atomically`.
 
     Args:
         filepath (Pathlike): Path to the output YAML file.
         data (Union[List[Any], SerializedData]): The data to save. Must be YAML-serializable.
     """
+    write_atomically(filepath, partial(save_yaml, data=data))
+
+
+def write_atomically(filepath: Pathlike, write: Callable[[Path], None]) -> None:
+    """
+    Writes a file through a temporary sibling moved into place once the whole write succeeded.
+
+    ``write`` fills the sibling, named after the target with ``.tmp`` appended, and a single
+    ``replace`` puts it in the target's place, so a reader of the target meets the previous
+    file or the complete new one, whatever becomes of the writer in between. The sibling is
+    removed whichever way the write ends.
+
+    Args:
+        filepath (Pathlike): Path to the file to write.
+        write (Callable[[Path], None]): Writes the whole content to the path it is given.
+    """
     path = Path(filepath)
-    tmp = path.with_suffix(".tmp")
+    temporary = path.with_name(f"{path.name}{TEMPORARY_SUFFIX}")
     try:
-        save_yaml(tmp, data)
-        tmp.replace(path)
-    except Exception:
+        write(temporary)
+        temporary.replace(path)
+    finally:
         with suppress(FileNotFoundError):
-            tmp.unlink()
-        raise
+            temporary.unlink()
 
 
 def load_yaml(filepath: Pathlike) -> Union[List[Any], SerializedData]:
@@ -185,12 +198,16 @@ def load_yaml_model_dir(
 
 def save_binary(filepath: Pathlike, data: bytes) -> None:
     """
-    Saves binary data to a file.
+    Saves binary data to a file atomically, through :func:`write_atomically`.
 
     Args:
         filepath (Pathlike): Path to the output binary file.
         data (bytes): The binary data to save.
     """
+    write_atomically(filepath, partial(_write_bytes, data=data))
+
+
+def _write_bytes(filepath: Path, data: bytes) -> None:
     with open(filepath, "wb") as file:
         file.write(data)
 

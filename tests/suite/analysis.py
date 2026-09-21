@@ -5,7 +5,6 @@ from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.instructions import PulseInstruction
 
 LIBRARY_TONE: Final[PulseInstruction] = PulseInstruction(on=True, pitch=57, volume=12, duty_cycle=2)
-REPAIR_TOLERANCE: Final[float] = 1e-4
 
 
 def analyzed_config(method: SpectrumMethod, *, gamma: int) -> Config:

@@ -6,10 +6,8 @@ import numpy as np
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
-from sampletones_core.fft import Window
-from sampletones_core.headless.library import generate_library
+from sampletones_core.headless.library import ensure_library
 from sampletones_core.instructions import InstructionUnion
-from sampletones_core.library import InstructionLibrary
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_shared.logger import logger
 
@@ -96,24 +94,6 @@ def build_variants(
                 )
 
     return variants
-
-
-def ensure_library(config: Config) -> None:
-    """
-    Generate the instruction library of a configuration when it is absent.
-
-    Args:
-        config: Configuration whose library must exist before reconstruction.
-    """
-    window = Window.from_config(config)
-    library = InstructionLibrary.from_config(config)
-    key = library.create_key(config, window)
-    path = library.get_path(key)
-    if path.exists():
-        return
-
-    logger.info(f"Generating missing library: {path.name}")
-    generate_library(config)
 
 
 def evaluate_variants(

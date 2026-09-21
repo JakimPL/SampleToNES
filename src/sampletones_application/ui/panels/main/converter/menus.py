@@ -92,7 +92,8 @@ class ConverterMenus(CallbackMixin):
                 self._label(ConverterStemMoveElements.CONTEXT_REMOVE_STEM),
                 lambda: self.call(self.on_source_removed, row.path),
             )
-            add_path_menu_items(self._language_manager, row.path)
+            if row.path is not None:
+                add_path_menu_items(self._language_manager, row.path)
 
     def _show_folder(self, row: StemRowViewModel) -> None:
         opened = self._stems_list.stands_open(row.key)
@@ -110,7 +111,8 @@ class ConverterMenus(CallbackMixin):
                 self._folder_label(ConverterFolderElements.CONTEXT_REMOVE_FOLDER),
                 lambda: self.call(self.on_folder_removed, row.path),
             )
-            add_path_menu_items(self._language_manager, row.path)
+            if row.path is not None:
+                add_path_menu_items(self._language_manager, row.path)
 
     def _moves(self, row: StemRowViewModel) -> List[Tuple[ConverterStemMoveElements, bool, VoidCallback]]:
         """The moves the row can make, which are the ones the list is drawing the levels for.

@@ -3,8 +3,16 @@ from typing import Final
 
 import pytest
 
-from sampletones_player.nsf.information import TEXT_ENCODING, NSFInformation, field_size, fit_field
-from sampletones_player.specification.nsf import STRING_FIELD_SIZE, STRING_TEXT_SIZE
+from sampletones_player.nsf.information import (
+    TEXT_ENCODING,
+    NSFInformation,
+    field_size,
+    fit_field,
+)
+from sampletones_player.specification.nsf import (
+    STRING_FIELD_SIZE,
+    STRING_TEXT_SIZE,
+)
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -23,8 +31,16 @@ class TestFitField(BaseTestSuite):
     test_cases = (
         TestCase(label="short text", text=SHORT_TEXT, expected=SHORT_TEXT),
         TestCase(label="empty text", text="", expected=""),
-        TestCase(label="exactly the room", text="A" * STRING_TEXT_SIZE, expected="A" * STRING_TEXT_SIZE),
-        TestCase(label="one byte over", text="A" * STRING_FIELD_SIZE, expected="A" * STRING_TEXT_SIZE),
+        TestCase(
+            label="exactly the room",
+            text="A" * STRING_TEXT_SIZE,
+            expected="A" * STRING_TEXT_SIZE,
+        ),
+        TestCase(
+            label="one byte over",
+            text="A" * STRING_FIELD_SIZE,
+            expected="A" * STRING_TEXT_SIZE,
+        ),
         TestCase(
             label="a character straddling the edge",
             text="A" * (STRING_TEXT_SIZE - 1) + WIDE_CHARACTER,
@@ -55,4 +71,8 @@ class TestNSFInformation:
     def test_every_field_is_held_as_it_fits(self) -> None:
         overlong = "B" * STRING_FIELD_SIZE
         information = NSFInformation(title=overlong, artist=overlong, copyright=overlong)
-        assert {information.title, information.artist, information.copyright} == {fit_field(overlong)}
+        assert {
+            information.title,
+            information.artist,
+            information.copyright,
+        } == {fit_field(overlong)}

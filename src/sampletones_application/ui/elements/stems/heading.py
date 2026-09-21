@@ -52,6 +52,7 @@ class StemsHeading:
             master=False,
             removable=False,
             bends=bends,
+            swatch=False,
             folders=False,
         )
 

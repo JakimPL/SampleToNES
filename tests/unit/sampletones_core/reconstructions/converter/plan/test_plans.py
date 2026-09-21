@@ -7,7 +7,6 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     ChannelName,
-    bending_channels,
 )
 from sampletones_core.reconstructions.converter.paths.utils import (
     config_directory_path,
@@ -18,6 +17,7 @@ from sampletones_core.reconstructions.converter.plan.batch import BatchConversio
 from sampletones_core.reconstructions.converter.plan.directory import DirectoryConversion
 from sampletones_core.reconstructions.converter.plan.group import GroupConversion
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import NoFilesToProcessError
 
 
@@ -31,8 +31,7 @@ CHANNELS = frozenset(DEFAULT_CHANNELS)
 
 @pytest.fixture(scope="module")
 def stems(config: Config) -> StemsConfig:
-    channels = list(DEFAULT_CHANNELS)
-    return StemsConfig.single_entry(channels, bending_channels(channels))
+    return StemsConfig.single_entry(StemSettings.covering(list(DEFAULT_CHANNELS)))
 
 
 def _write_audio_files(directory: Path, names: List[str]) -> List[Path]:
@@ -83,7 +82,7 @@ class TestGroupConversion:
         tmp_path: Path,
     ) -> None:
         sources = tuple(_write_audio_files(tmp_path, ["a.wav", "b.wav"]))
-        targeted = StemsConfig.single_entry([ChannelName.PULSE1], bending_channels([ChannelName.PULSE1]), channel_cap=1)
+        targeted = StemsConfig.single_entry(StemSettings.covering([ChannelName.PULSE1]).with_channel_cap(1))
 
         jobs = GroupConversion(sources=sources, stems=targeted).jobs(config)
 
@@ -190,7 +189,7 @@ class TestBatchConversion:
         tmp_path: Path,
     ) -> None:
         sources = _write_audio_files(tmp_path, ["a.wav", "b.wav"])
-        targeted = StemsConfig.single_entry([ChannelName.NOISE], [])
+        targeted = StemsConfig.single_entry(StemSettings.covering([ChannelName.NOISE]))
 
         plan = BatchConversion(
             entries=(

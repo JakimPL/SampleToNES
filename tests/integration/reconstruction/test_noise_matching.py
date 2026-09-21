@@ -21,6 +21,7 @@ from sampletones_core.library import (
 )
 from sampletones_core.reconstructions import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from tests.suite.analysis import analyzed_config
 
 NOISE_ONLY: Final[List[ChannelName]] = [ChannelName.NOISE]
@@ -128,7 +129,9 @@ def converted(
     config = _config(request.param)
     path = _burst_then_hiss(tmp_path_factory.mktemp("hiss") / "hiss.wav", config)
     reconstructor = Reconstructor(config, frozenset(NOISE_ONLY), library=_library(config))
-    reconstruction = reconstructor.reconstruct([path], StemsConfig.single_entry(NOISE_ONLY, []))
+    reconstruction = reconstructor.reconstruct(
+        [path], StemsConfig.single_entry(StemSettings(channels=NOISE_ONLY, bends=[]))
+    )
     assert reconstruction is not None
 
     frame_length = config.library.frame_length
@@ -149,7 +152,9 @@ class TestWhiteNoise:
         path = _white_noise(tmp_path / "white.wav", config)
         reconstructor = Reconstructor(config, frozenset(EVERY_CHANNEL), library=_every_channel_library(config))
 
-        reconstruction = reconstructor.reconstruct([path], StemsConfig.single_entry(EVERY_CHANNEL, []))
+        reconstruction = reconstructor.reconstruct(
+            [path], StemsConfig.single_entry(StemSettings(channels=EVERY_CHANNEL, bends=[]))
+        )
 
         assert reconstruction is not None
         interior = reconstruction.instructions[ChannelName.NOISE][EDGE_FRAMES:-EDGE_FRAMES]

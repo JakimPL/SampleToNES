@@ -1,19 +1,16 @@
 # Instruction libraries
 
-An instruction library is stored as a single `.ins` file holding, for every
-possible instruction, the waveform its channel produces and that waveform's
-[spectrum](../glossary.md#spectrum-feature-histogram). It is the catalog the
-reconstruction search draws its candidates from. For what a library is and how
-it is built, see [Instruction library](../concepts/instruction-library.md); this
-page documents the file.
+An instruction library is stored as a single `.ins` file. It has, for every possible instruction, the
+waveform its channel produces and that waveform's [spectrum](../glossary.md#spectrum-feature-histogram).
+It is the catalog the reconstruction search draws its candidates from. For what a library is and how it is
+built, see [Instruction library](../concepts/instruction-library.md). This page documents the file.
 
 Libraries are generated from the _Instructions_ tab (or with
 `sampletones library`) and stored in the documents folder.
 
 ## Contents
 
-A library is keyed by the configuration that produces it and holds one entry per
-instruction.
+A library is keyed by the configuration that produces it and has one entry per instruction.
 
 ### Per-instruction data
 
@@ -32,17 +29,15 @@ Each entry contains:
 
 ### Configuration key
 
-Each library corresponds to one configuration. The parameters that change the
-rendered waveforms or their spectra — sample rate, NES frequency, FFT window
-size, transformation gamma, and spectrum method — form its key, so changing any
-of them selects (or generates) a different library. What gamma and the spectrum
-method mean is covered in [Reconstruction algorithms](../concepts/reconstruction.md)
-(§3.2–3.3).
+Each library corresponds to one configuration. The parameters that change the rendered waveforms or their
+spectra form its key: sample rate, NES frequency, FFT window size, transformation gamma and spectrum
+method. Changing any of them selects, or generates, a different library.
+[Reconstruction algorithms](../concepts/reconstruction.md) explains gamma and the spectrum method.
 
 ## File format
 
-Libraries are stored as `.ins` files in the documents folder, with the
-configuration embedded in the file name:
+A file holds a deflated [MessagePack](https://msgpack.org/) payload, with the framing described in
+[Reconstructions](reconstructions.md#storage-and-export), and has its configuration in the file name:
 
 ```
 sr_44100_nf_60_ws_13579_tg_0_sm_cqt_ch_384e710987cb958adf2b214df1267d10.ins
@@ -56,3 +51,18 @@ sr_44100_nf_60_ws_13579_tg_0_sm_cqt_ch_384e710987cb958adf2b214df1267d10.ins
 | `tg_0` | transformation gamma 0 |
 | `sm_cqt` | spectrum method (`fft` / `logfft` / `cqt`) |
 | `ch_384e…` | a hash of the library configuration section |
+
+## Versioning
+
+Each file records the library data version it was written with, in the metadata that leads the file, so
+the version reads from the first bytes without loading the entries. A library is derived data: its
+settings and the generators determine it wholly. A library written at the version this build writes is
+used as it stands. Any other is rebuilt from its settings the first time it is needed. A conversion
+rebuilds it without asking, and opening one from the _Instructions_ tab asks first. See
+[Data compatibility](../development/release/compatibility.md).
+
+The version names what generation produces. A change to the generators or to feature extraction bumps
+it, and every stored library is then rebuilt. Installs of different versions that share one library
+folder rebuild each other's libraries as each needs them.
+
+The current data version is 2.1.

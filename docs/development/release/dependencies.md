@@ -1,152 +1,69 @@
 # Dependencies
 
+This document says why each dependency exists and what it needs from the machine. Consult it when adding a dependency, changing the build, or diagnosing an install that fails. `pyproject.toml` states every Python dependency and the version each is held to. This page covers what `pyproject.toml` cannot say: system libraries, build-time tools and the reason each one is there.
+
+Dependencies fall into groups by who needs them: what ships with the application, what only the build needs, and what only developers need. Each section below says which group it belongs to.
+
 ## Graphical interface
 
-The graphical user interface is implemented with DearPyGui, a Python wrapper for ImGui (https://www.dearimgui.com/).
+The interface is built with [DearPyGui](https://github.com/hoffstadt/DearPyGui), a Python wrapper for [Dear ImGui](https://www.dearimgui.com/). It ships with the application.
 
 ## Core
 
-The core depends on common Python packages:
-* `numpy`
-* `scipy`
-* `librosa`
-* `cupy` (optional; enables the GPU backend, with the build selected for your NVIDIA driver)
-
-See [GPU acceleration](../../guide/installation.md#gpu-acceleration) for enabling it.
+The reconstruction engine stands on the usual numerical stack, with `cupy` as an optional GPU backend. The GPU backend is installed as the extra that matches the machine's NVIDIA driver. See [GPU acceleration](../../guide/installation.md#gpu-acceleration) for enabling it.
 
 ## Serialization
 
-Instruction libraries and reconstructions are serialized with [MessagePack](https://msgpack.org/) (the `msgpack` package). No external compiler or system dependency is required — it is installed automatically with the package.
+Instruction libraries and reconstructions are serialized with [MessagePack](https://msgpack.org/) (the `msgpack` package). It needs no external compiler or system dependency and installs automatically with the package.
 
 ## Audio playback
 
-Playback goes through PortAudio, reached with the `pyaudio` package. PyPI carries `pyaudio` wheels for Windows, so Linux and macOS compile it on install and need the PortAudio headers and library on the machine. `scripts/system_dependencies.py` installs them: the distribution packages through apt on Linux, PortAudio through Homebrew on macOS.
+Playback goes through PortAudio, reached with the `pyaudio` package. PyPI has `pyaudio` wheels for Windows only, so Linux and macOS compile it on install and need the PortAudio headers and library on the machine. `scripts/system_dependencies.py` installs them: the distribution packages through apt on Linux, and PortAudio through Homebrew on macOS.
 
-Compiling on macOS also depends on the interpreter's architecture. The python.org installer ships a universal2 build, which compiles extensions for both Apple Silicon and Intel, while Homebrew's `libportaudio` carries the machine's own architecture. Pinning `ARCHFLAGS` to `uname -m` settles it on the native one: `make setup` sets it directly, and the CI workflows take it from `scripts/build_environment.py`, which reports it as a `KEY=VALUE` line alongside the PortAudio prefix for a Homebrew installed outside its usual place.
+On macOS the compile architecture is pinned to the machine's own (`ARCHFLAGS`). Homebrew's PortAudio is native to the machine, while the python.org interpreter is universal2, and pinning makes the two agree. `make setup` sets it, and the CI workflows take it from `scripts/build_environment.py`.
 
 ## Audio rendering
 
-Audio files are written with libsndfile, reached with the `soundfile` package. Its wheels carry a
-prebuilt libsndfile 1.2.2 for every supported platform, so the encoders come with the package and
-need nothing installed alongside them.
+Audio files are written with libsndfile, reached with the `soundfile` package. Its wheels carry a prebuilt libsndfile for every supported platform, so the encoders come with the package and need nothing installed alongside them.
 
-Which formats an installation writes is asked of the library at runtime, because libsndfile is built
-with a codec set that varies by platform and packaging — the MP3 encoder in particular arrived in
-1.2.0 and is present where it was compiled in. The chooser offers the formats the library reports,
-so what a user is shown describes the machine it is running on.
+The application asks the library at runtime which formats it can write, because the codec set varies by platform and packaging. The MP3 encoder, for example, is present only where libsndfile was built with it. The chooser therefore offers the formats the library reports, so what a user is shown describes the machine it runs on.
 
-| Format | Sample rates | Quality |
-| --- | --- | --- |
-| WAV | 8000, 16000, 22050, 44100, 48000, 96000, 192000 Hz | 8, 16, 24 or 32-bit PCM, or 32-bit float |
-| MP3 | 8000, 16000, 22050, 44100, 48000 Hz | a bitrate from the ladder its MPEG version defines |
-
-The bitrates on offer narrow with the sample rate: up to 320 kbps at 44100 and 48000 Hz, 160 kbps at
-16000 and 22050 Hz, and 64 kbps at 8000 Hz. libsndfile takes MP3 quality as a compression level
-between 0 and 1 and turns it into a rung on that ladder, so a bitrate is reached through the level
-its rate maps it to, measured per rate and held in `sampletones_core/audio/writers/bitrate.py`.
+The writers (`sampletones_core/audio/writers/`) say which sample rates and qualities each format offers. libsndfile takes MP3 quality as a compression level and not a bitrate, and the bitrates a rate can carry narrow as the rate falls. `writers/bitrate.py` therefore maps a level to the bitrate it reaches at each rate.
 
 ## File dialogs
 
-Dialogs open through the XDG desktop portal (`org.freedesktop.portal.FileChooser`), reached over D-Bus with the pure-Python `jeepney` package on Linux. The portal lists every offered file type in its selector and reports back the one the user picked, which is what lets a save settle its format from the type chosen there. Where no portal answers, `kdialog` and `zenity` take over, and Tk last.
+Dialogs open through the XDG desktop portal (`org.freedesktop.portal.FileChooser`), reached over D-Bus with the pure-Python `jeepney` package on Linux. The portal lists every offered file type in its selector and reports back the one the user picked, so a save settles its format from the type chosen there. Where no portal answers, `kdialog` and `zenity` take over, and Tk last.
 
-`jeepney` is declared for Linux alone, so the modules that speak to the portal are imported where it is installed: the application probes for it before reaching them, and the root `conftest.py` keeps them out of collection elsewhere, leaving the Linux runs of the suite to cover them.
+`jeepney` is declared for Linux only, so the modules that speak to the portal are imported only where it is installed. The application probes for it before reaching them, and the root `conftest.py` keeps them out of collection elsewhere, so the Linux runs of the suite cover them.
 
 ## Application icon
 
-The icon suite in `src/sampletones_assets/icons` is generated from the mark declared in
-`src/sampletones_tools/assets/mark/config`: `mark.yaml` carries the geometry, colors and rasterization
-settings, validated as a `Mark`, and `template.svg` is the vector the rendered geometry fills. The
-tools package writes the whole suite — the vector `sampletones.svg` and the rasters the application
-ships, `sampletones.png` and the multi-resolution `sampletones.ico` — and `uv run sampletones icons`
-points it at the directory the icons are shipped from. Rasterization uses Pillow, declared in the
-`assets` dependency group, which the `dev` group includes.
+The icon suite is generated from a mark declared in `sampletones_tools/assets/mark/config` and committed, so a plain checkout has the icons the application opens its window with. [Tooling](../tooling.md) describes the `icons` command that writes it.
 
-The whole suite is committed, so a plain checkout carries the icons the application opens its window
-with, and every wheel, bundle and test run finds them where they lie. `uv run sampletones icons`
-writes them again from the mark, and the `icons` pre-push hook writes them for a push that touches
-either directory, holding the committed files to what the mark describes. CI runs that same hook.
-
-Pillow is a developer tool the build environment never installs, and the bundle script passes
-`--exclude-module PIL` besides, to hold it to that:
-`pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is
-installed, and PyInstaller follows that import into the bundle. The application reads its icons as
-files, so the exclusion spares every bundle Pillow's extension modules and the imaging libraries
-that come with them. `scripts/verify_bundle.py` holds the release bundles to it.
+Pillow rasterizes the suite. It is declared in the `assets` dependency group, which the `dev` group includes. It is a developer tool that the build environment never installs, and the bundle script passes `--exclude-module PIL` as well. `pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is installed, and PyInstaller follows that import into the bundle. The application reads its icons as files, so the exclusion keeps Pillow's extension modules and the imaging libraries that come with them out of every bundle. `scripts/verify_bundle.py` holds the release bundles to it.
 
 ## Calibration
 
-The calibration harness scores renders with referees of its own, built on `numpy` and `scipy`. The
-`calibration` dependency group adds [Zimtohrli](https://github.com/google/zimtohrli), a
-psychoacoustic model, as a second opinion. PyPI carries its wheels for Windows, Intel macOS and
-x86-64 Linux, and other systems compile it on install. The group stays out of `dev`:
-`uv sync --group calibration`, with the extras the environment already uses named beside it,
-installs it. See [Calibration](../../tools/calibration.md).
+The calibration harness scores renders with referees of its own, built on `numpy` and `scipy`. The `calibration` dependency group adds [Zimtohrli](https://github.com/google/zimtohrli), a psychoacoustic model, as a second opinion. PyPI has its wheels for Windows, Intel macOS and x86-64 Linux, and other systems compile it on install. The group stays out of `dev`. `uv sync --group calibration`, with the extras the environment already uses named beside it, installs it. See [Calibration](../../tools/calibration.md).
 
 ## NES player driver
 
-The player that runs on the console is 6502 assembly, held in three parts:
-`src/sampletones_tools/player/assembly/` carries the sources, their includes and the linker
-configuration, `src/sampletones_tools/player/assembler/` carries the Python that assembles them,
-and `src/sampletones_player/driver/binary/` carries the assembled `driver.bin` the application
-ships. `uv run sampletones driver` runs the build, so it behaves the same on every system the
-project supports.
+Assembling the console player needs `ca65` and `ld65` from [cc65](https://cc65.github.io/). On Debian and Ubuntu that is `sudo apt install cc65`, and a build names the equivalent for whichever system it runs on when the programs are absent. cc65 is a build-time tool for the driver alone. The assembled `driver.bin` is committed, so a checkout has the player and exporting an NSF needs no assembler. Editing the assembly means running `uv run sampletones driver` again and committing what it writes.
 
-Assembling needs `ca65` and `ld65` from [cc65](https://cc65.github.io/) — on Debian and Ubuntu,
-`sudo apt install cc65`, and a build names the equivalent for whichever system it runs on when the
-programs are absent. cc65 is a build-time tool for the driver alone.
-
-The assembled `driver.bin` is committed, so a checkout carries the player and exporting an NSF
-needs no assembler. A jump table leads the image, which fixes the addresses an NSF header names
-whatever the driver's length, so the exporter states them from `specification/driver.py` and a
-build holds the linker's own labels to them before it writes anything. Editing the assembly means
-running `uv run sampletones driver` again and committing what it writes; the driver's test suite rebuilds the
-sources and holds the committed image to them wherever cc65 is installed. The wheel carries the
-assembled image, which is what exporting reads, and the assembly sources inside the tools package,
-so `sampletones driver -o DIR` assembles the driver from an installed copy too.
-
-cc65 is distributed under the zlib license, and the driver stays clear of it: the link line names
-our own object files and our own `nsf.cfg`, so nothing of cc65's start-up code or libraries reaches
-the committed image. That keeps the blob entirely ours to ship under the project's MIT license.
+cc65 is distributed under the zlib license. The link line names our own object files and our own `nsf.cfg`, so nothing of cc65's start-up code or libraries reaches the committed image. That keeps the blob entirely ours to ship under the project's MIT license.
 
 ### Verifying the driver
 
-`tests/integration/nsf` runs an exported file the way a console runs it. [py65](https://github.com/mnaberez/py65)
-— a 6502 emulator in the `dev` dependency group — executes the assembled driver against memory that
-watches the APU's address range, so each routine answers with the register writes it made and the
-suite holds the whole run against `RegisterTrace.from_song`. Reading those writes back into
-instructions and rendering them through the project's own generators closes the loop on the sound
-as well: what the console plays stands against the very waveform the reconstruction carries. py65
-is a developer dependency, outside both the wheel and the bundles, and its BSD license leaves the
-project's own terms untouched.
+[py65](https://github.com/mnaberez/py65), a 6502 emulator in the `dev` dependency group, executes the assembled driver against memory that watches the APU's address range. That lets the suite hold the image to what a correct driver writes ([the console player](../player.md)). py65 is a developer dependency, outside both the wheel and the bundles, and its BSD license leaves the project's own terms untouched.
 
-Listening to a real APU needs [ffmpeg](https://ffmpeg.org/) carrying the `libgme` demuxer, which
-is a build option rather than a given: `uv run sampletones nsf render` asks the installed ffmpeg which demuxers
-it holds and names this system's install command before it decodes anything. `nsf samples -o DIR`
-writes the example files, and `nsf render --directory DIR` renders each one to a wave beside it, its
-length read out of the song block the file carries. That is an ear rather than a gate: the register trace is what the driver answers to, and
-the wave is what a person listens to.
+Listening to a real APU needs [ffmpeg](https://ffmpeg.org/) with the `libgme` demuxer, which is a build option and not a given. `uv run sampletones nsf render` asks the installed ffmpeg which demuxers it has, and names this system's install command before it decodes anything.
 
-### The player's tools
-
-Three tools serve the player, each reached by one command:
-
-| Tool | Run by | Installed with | Reaches |
-| --- | --- | --- | --- |
-| cc65 (`ca65`, `ld65`) | `sampletones driver` | the system's package manager | the machine assembling the driver |
-| py65 | `make test` | `uv sync --group dev` | the `dev` dependency group |
-| ffmpeg with `libgme` | `sampletones nsf render` | the system's package manager | the machine listening to an export |
-
-`scripts/system_dependencies.py` carries what building and running the application needs, and the
-workflows install the `dev` group, so py65 is the one of the three CI
-reaches — the suite verifies the driver through it alone. cc65 and ffmpeg stay on the machine of
-whoever runs `sampletones driver` or `sampletones nsf render`, and a workflow that assembles the driver or renders
-a wave is what would put them in those scripts. The application itself calls neither: an export is
-written by the package's own code, from the committed `driver.bin`.
+CI reaches only py65, because the workflows install the `dev` group and `scripts/system_dependencies.py` has what building and running the application needs. cc65 and ffmpeg stay on the machine of whoever assembles the driver or renders a wave. A workflow that did either would put them in those scripts. The application itself needs neither: an export is written by the package's own code, from the committed `driver.bin`.
 
 ## Linux (standalone executable)
 
-Building a standalone executable on Linux needs the PortAudio, Tk and OpenGL/X11 system packages. Install them with `make system-deps` (or run `python3 scripts/system_dependencies.py`), which holds the full list.
+Building a standalone executable on Linux needs the PortAudio, Tk and OpenGL/X11 system packages. `make system-deps` installs them (or run `python3 scripts/system_dependencies.py`), and the script has the full list.
 
 PortAudio is required. Tk backs the file dialogs where neither a portal nor a desktop tool answers, and `make release` requires it so the shipped executable stays self-contained.
 
-The executable links against the glibc of the machine that builds it and runs on that version or newer, so a redistributable artifact belongs on the oldest Debian or Ubuntu release being supported.
+The executable links against the glibc of the machine that builds it and runs on that version or newer. A redistributable artifact therefore belongs on the oldest Debian or Ubuntu release being supported, so it runs on every newer one.

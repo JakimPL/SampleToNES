@@ -2,21 +2,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from sampletones_application.constants.output import OutputKind
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
-from sampletones_core.constants.enums import (
-    DEFAULT_CHANNELS,
-    ChannelName,
-    HierarchyMode,
-    bending_channels,
-)
+from sampletones_core.constants.enums import DEFAULT_CHANNELS, HierarchyMode
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.types.data import SerializedData
 
 
 def _starting_settings() -> StemSettings:
-    return StemSettings(
-        channels=list(DEFAULT_CHANNELS),
-        bends=bending_channels(list(DEFAULT_CHANNELS)),
-    )
+    return StemSettings.covering(list(DEFAULT_CHANNELS))
 
 
 class ConverterConfig(BaseModel):
@@ -40,10 +32,6 @@ class ConverterConfig(BaseModel):
     output: OutputKind = Field(
         default=OutputKind.PER_RECORDING,
         description="Whether a run writes one reconstruction per recording or one from them all.",
-    )
-    channel_cap: int = Field(
-        default=len(ChannelName),
-        description="How many channels one recording may hold in a single frame.",
     )
     hierarchy_mode: HierarchyMode = Field(
         default=DEFAULT_STEMS_HIERARCHY_MODE,

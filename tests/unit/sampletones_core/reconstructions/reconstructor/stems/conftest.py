@@ -1,10 +1,11 @@
-from typing import Dict, Final, List, Mapping, Sequence
+from dataclasses import dataclass
+from typing import Dict, Final, List, Mapping, Optional, Sequence
 
 import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH
+from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH, UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.fft import Fragment
 from sampletones_core.fft.features import FeatureExtractor
@@ -44,7 +45,7 @@ def rendered_fragment(
         ),
         start=np.zeros(RENDERED_FRAMES * config.library.frame_length, dtype=np.float32),
     )
-    return extractor.extract(audio * config.generation.drive)[RENDERED_FRAMES // 2]
+    return extractor.extract(audio)[RENDERED_FRAMES // 2]
 
 
 def audible_instruction_of(library_data: InstructionLibraryData, generator: GeneratorUnion) -> InstructionUnion:
@@ -52,43 +53,58 @@ def audible_instruction_of(library_data: InstructionLibraryData, generator: Gene
     return next(instruction for instruction in library_data.filter((generator.class_name(),)).keys() if instruction.on)
 
 
+@dataclass(frozen=True)
+class _Pick:
+    """A channel standing for the next pick: what it would play, and the cost it is ranked on."""
+
+    channel_name: ChannelName
+    head: ScoredCandidate
+    unit_cost: float
+
+
 def frame_objective_baseline(
     fragment: Fragment,
     channels: Dict[ChannelName, GeneratorUnion],
     matcher: FrameMatcher,
+    drive: float = UNIT_DRIVE,
 ) -> Dict[ChannelName, ScoredCandidate]:
     """The frame objective restated one candidate at a time, as the assignment's reference.
 
-    Every candidate of every free channel's kind is scored alone by the frame's cost with the picks
-    so far sounding beside it, the lowest free channel of a kind standing for the kind. The pick
-    lowering the frame's cost the most is taken while one exists; the channels no pick lowers hold
-    their silence; every channel is then scored once more with the others' heads sounding. A
-    one-stem setup at full cap runs exactly this, which is what makes the two comparable frame by
-    frame.
+    Every candidate of every free channel's kind is scored alone at ``drive`` by the frame's cost
+    with the picks so far sounding beside it, the lowest free channel of a kind standing for the
+    kind. The channel taken is the one reaching the lowest cost at unit drive while that cost
+    lowers the frame, and it sounds the head its column at ``drive`` carries; the channels no pick
+    reaches hold their silence; every channel is then scored once more with the others' heads
+    sounding. A one-stem setup at full count driving every channel alike runs exactly this, which
+    is what makes the two comparable frame by frame.
     """
     heads: Dict[ChannelName, ScoredCandidate] = {}
     frame_cost = matcher.mix_cost(fragment, FrameMix.empty(fragment))
     while True:
-        best = None
+        best: Optional[_Pick] = None
         for channel_name in _representatives(channels, heads):
-            head = _column(fragment, channels[channel_name], [head.contribution for head in heads.values()], matcher)[0]
-            if head.instruction.on and head.cost < frame_cost and (best is None or head.cost < best[1].cost):
-                best = (channel_name, head)
+            context = [head.contribution for head in heads.values()]
+            generator = channels[channel_name]
+            column = _column(fragment, generator, context, matcher, drive)
+            unit_column = column if drive == UNIT_DRIVE else _column(fragment, generator, context, matcher, UNIT_DRIVE)
+            unit_cost = unit_column[0].cost
+            if column[0].instruction.on and unit_cost < frame_cost and (best is None or unit_cost < best.unit_cost):
+                best = _Pick(channel_name=channel_name, head=column[0], unit_cost=unit_cost)
 
         if best is None:
             break
 
-        heads[best[0]] = best[1]
-        frame_cost = best[1].cost
+        heads[best.channel_name] = best.head
+        frame_cost = best.unit_cost
 
     for channel_name in channels:
         if channel_name not in heads:
             sounding = [head.contribution for head in heads.values() if head.instruction.on]
-            heads[channel_name] = _column(fragment, channels[channel_name], sounding, matcher)[0]
+            heads[channel_name] = _column(fragment, channels[channel_name], sounding, matcher, drive)[0]
 
     for channel_name in list(heads):
         others = [head.contribution for name, head in heads.items() if name != channel_name and head.instruction.on]
-        heads[channel_name] = _column(fragment, channels[channel_name], others, matcher)[0]
+        heads[channel_name] = _column(fragment, channels[channel_name], others, matcher, drive)[0]
 
     return heads
 
@@ -110,10 +126,11 @@ def _column(
     generator: GeneratorUnion,
     context: Sequence[Contribution],
     matcher: FrameMatcher,
+    drive: float,
 ) -> List[ScoredCandidate]:
     library_data = matcher.candidate_provider.library_data
     scored = [
-        _scored_alone(fragment, context, instruction, matcher)
+        _scored_alone(fragment, context, instruction, matcher, drive)
         for instruction in library_data.filter((generator.class_name(),)).keys()
     ]
     return sorted(scored, key=lambda candidate: (candidate.cost, candidate.instruction.on))
@@ -124,11 +141,12 @@ def _scored_alone(
     context: Sequence[Contribution],
     instruction: InstructionUnion,
     matcher: FrameMatcher,
+    drive: float,
 ) -> ScoredCandidate:
     provider = matcher.candidate_provider
     mix = FrameMix.of(fragment, context)
-    power = provider.power_of(instruction)
-    contribution = matcher.contribution(instruction, mix.residual_waveform(fragment), power)
+    power = provider.power_of(instruction) / drive**2
+    contribution = matcher.contribution(instruction, mix.residual_waveform(fragment), power, drive=drive)
     spectral = matcher.scorer.spectral_costs(fragment, provider.features_of((mix.power + power)[None, :]))
     cost = matcher.scorer.frame_costs(
         fragment,

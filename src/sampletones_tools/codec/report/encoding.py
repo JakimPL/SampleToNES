@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from time import process_time
 from typing import Final, List, Sequence, Tuple
 
+from sampletones_core.constants.enums import PULSE_CHANNELS
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.dictionary.table import phrase_table
 from sampletones_player.compression.encode import STREAM_START, encode_planes
@@ -13,6 +14,7 @@ from sampletones_player.compression.parse.plane import parse_plane
 from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.registers.streams import ChannelStreams
+from sampletones_player.specification.planes import NO_BITS, PLANES, PlaneRole
 from sampletones_player.specification.registers import DUTY_CYCLE_SHIFT
 from sampletones_tools.codec.report.corpus import CorpusEntry
 from sampletones_tools.codec.report.rows import ReportRow
@@ -201,28 +203,45 @@ def _measured_row(
 
 
 def _register_planes(streams: ChannelStreams) -> Tuple[bytes, ...]:
-    return tuple(
-        bytes(tick.values[register] for tick in stream)
-        for stream in streams.padded
-        for register in range(len(stream[0].values))
-    )
+    """Every register as a plane, the ones a channel leaves at the value it resets to left out."""
+    written: List[bytes] = []
+    for stream in streams.padded:
+        for register in range(len(stream[0].values)):
+            plane = bytes(tick.values[register] for tick in stream)
+            if set(plane) != {NO_BITS}:
+                written.append(plane)
+
+    return tuple(written)
 
 
 def _split_control_planes(planes: SongPlanes) -> Tuple[bytes, ...]:
-    split: List[bytes] = []
-    for channels in planes.ordered:
-        if channels in (planes.pulse1, planes.pulse2):
-            split.append(bytes(control >> DUTY_CYCLE_SHIFT for control in channels.control))
-            split.append(bytes(control & CONTROL_LEVEL_MASK for control in channels.control))
-        else:
-            split.append(channels.control)
+    """Every plane the block writes, with each pulse channel's control split into duty and volume.
 
-        split.append(channels.value)
+    A plane standing at the value it is seeded to throughout takes no stream, so it takes no
+    bytes here either, and a control plane splits into the two series a split layout would store.
+
+    Args:
+        planes: The song's planes.
+
+    Returns:
+        Tuple[bytes, ...]: The series the layout stores, in the order the block writes them.
+    """
+    split: List[bytes] = []
+    for plane, played in zip(PLANES, planes.planes, strict=True):
+        if plane.idles(played):
+            continue
+
+        if plane.role is PlaneRole.CONTROL and plane.channel in PULSE_CHANNELS:
+            split.append(bytes(control >> DUTY_CYCLE_SHIFT for control in played))
+            split.append(bytes(control & CONTROL_LEVEL_MASK for control in played))
+        else:
+            split.append(played)
 
     return tuple(split)
 
 
 def _coded_size(planes: Sequence[bytes], options: CodecOptions) -> int:
+    """The bytes the planes take under holds and literals."""
     cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes)
     table = phrase_table(())
     entries = frozenset({STREAM_START})

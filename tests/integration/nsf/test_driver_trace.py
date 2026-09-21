@@ -23,12 +23,22 @@ from tests.integration.nsf.console.session import (
 from tests.integration.nsf.header import sample_information
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
+from tests.suite.player import (
+    PLAYER_FULL_VOLUME,
+    PLAYER_OCTAVE_UP_TIMER,
+    PLAYER_REFERENCE_TIMER,
+    PLAYER_SILENT_VOLUME,
+    player_song,
+    pulse_tick,
+    resting_streams,
+)
 
 HALF_RATE: Final[int] = 30
 DOUBLE_RATE: Final[int] = 120
 NTSC_RATE: Final[int] = 60
 FAST_RATE: Final[int] = 300
 ROUNDS: Final[int] = 4
+ABSENT_SONG_NAME: Final[str] = "absent"
 
 
 @pytest.fixture
@@ -186,3 +196,32 @@ class TestARepeatingSongComesRoundWhereTheModelSaysItDoes(BaseTestSuite):
 
         trace = captured_trace_over(song, sample_information(sample.name), calls)
         assert any(writes for writes in trace.play_calls[-TRAILING_CALLS:])
+
+
+class TestAPlaneTheBlockLeavesOut:
+    """A plane holding zero throughout is absent: the header states a sentinel and the driver
+    leaves it standing at zero, on the first pass and on every pass a loop brings round.
+    """
+
+    FIGURE: Final = (
+        pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_REFERENCE_TIMER),
+        pulse_tick(PLAYER_FULL_VOLUME, 1, PLAYER_OCTAVE_UP_TIMER),
+        pulse_tick(PLAYER_SILENT_VOLUME, 1, PLAYER_OCTAVE_UP_TIMER),
+    )
+    LOOP_TICK: Final[int] = 1
+
+    @pytest.fixture
+    def unbent(self) -> Song:
+        """A repeating song on one pulse channel, none of its tone channels bending."""
+        return player_song(resting_streams(self.FIGURE * ROUNDS), NTSC_RATE, loop_tick=self.LOOP_TICK)
+
+    def test_the_song_leaves_its_bend_planes_out(self, unbent: Song) -> None:
+        streams = unbent.planes.streams
+        assert not streams.pulse1_bend
+        assert not streams.pulse2_bend
+        assert not streams.triangle_bend
+
+    def test_the_console_writes_what_the_model_states_across_its_loops(self, unbent: Song) -> None:
+        calls = play_calls_reaching(unbent, ROUNDS * unbent.ticks)
+        trace = captured_trace_over(unbent, sample_information(ABSENT_SONG_NAME), calls)
+        assert trace == RegisterTrace.from_song(unbent, calls)

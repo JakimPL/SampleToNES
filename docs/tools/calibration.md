@@ -6,9 +6,9 @@ writes a page you listen to the results on.
 
 Use it to:
 
-- see which spectrum method suits which kind of sound;
-- check whether a new version or a changed setting reconstructs better or worse;
-- hear what a score means before trusting it.
+- See which spectrum method suits which kind of sound.
+- Check whether a new version or a changed setting reconstructs better or worse.
+- Hear what a score means before trusting it.
 
 ## Run it
 
@@ -24,21 +24,27 @@ In an installed copy:
 sampletones calibration
 ```
 
-The run takes several minutes. A first run also builds any instruction library it is missing,
-which adds to the time.
+The run takes a while, because it reconstructs every reference sound once for each variant. A first run
+also builds each instruction library it needs, which adds to the time. A library counts as needed when it
+is missing or another version built it.
 
 With no options, the run measures the program's default settings under the packaged suite:
 
-- every spectrum method: `fft`, `logfft` and `cqt`;
-- the channels pulse 1, triangle and noise;
-- every other setting at its default value.
+- Every spectrum method: `fft`, `logfft` and `cqt`.
+- The channels pulse 1, triangle and noise.
+- Every other setting at its default value.
+
+A *variant* is one configuration the run measured, named after the settings that set it apart. For
+example, `cqt-pe1` is the `cqt` method at perceptual exponent 1. A *render* is one reference sound as a
+variant reconstructed it.
 
 The same run on another machine or another version gives figures that compare directly, because
 the reference sounds are generated from a fixed seed.
 
 The results go into a new folder inside the `calibration` folder of your
-[SampleToNES folder](../guide/files.md), named by the date and time the run started, for example `run-20260915-124501`. When the run ends, it prints a link to
-the report and opens the listening page.
+[SampleToNES folder](../guide/files.md). The folder is named by the date and time the run started, for
+example `run-20260915-124501`. When the run ends, the command prints a link to the report and opens the
+listening page.
 
 ## What a run writes
 
@@ -54,27 +60,23 @@ the report and opens the listening page.
 | `page/` | the stylesheet, the script and the palette the page reads |
 
 The audio is FLAC, which is lossless and about a third of the size the same audio takes as WAV. A
-default run writes around 35 MB. A run of four channels writes more, because a reconstruction of
-four channels has fourteen combinations to cut where one of three has six.
-
-A *variant* is one configuration the run measured, named after the settings that set it apart,
-for example `cqt-pe1` for the `cqt` method at perceptual exponent 1. A *render* is one reference
-sound as a variant reconstructed it.
+default run writes about 35 MB. A run of four channels writes more, because a reconstruction of four
+channels is cut into fourteen combinations and one of three channels into six.
 
 ## Listen on the page
 
-Every run writes `index.html` and opens it when it ends. The page holds one row per reference
-sound and one column per variant. In each cell:
+Every run writes `index.html` and opens it when it ends. The page has one row per reference sound and
+one column per variant. Each cell has:
 
-- **play** sounds the whole reconstruction, always from its beginning;
-- the number under it is the score, and the line below says how much of the distance between
-  silence and the recording that reconstruction covers, or **past silence** where silence scores
-  closer than the reconstruction does;
-- one bar per channel shows the frames that channel plays, in the channel's own color.
+- **play**, which sounds the whole reconstruction from its beginning.
+- The score under it. The line below the score says how much of the distance between silence and the
+  recording the reconstruction covers, or **past silence** where silence scores closer than the
+  reconstruction does.
+- One bar per channel, showing the frames that channel plays, in the channel's own color.
 
-Beside each bar, **S** plays that channel alone and **M** plays every other channel, so you can
-hear what one channel contributes and what the rest sound like without it. Both are separate
-recordings the run wrote, so switching between them is exact.
+Beside each bar, **S** plays that channel alone and **M** plays every other channel. You hear what one
+channel contributes and what the rest sound like without it. Both are separate recordings the run wrote,
+so switching between them is exact.
 
 <kbd>Space</kbd> pauses and resumes, <kbd>&larr;</kbd> and <kbd>&rarr;</kbd> move across one
 sound's versions, and <kbd>&uarr;</kbd> and <kbd>&darr;</kbd> move to another sound.
@@ -82,30 +84,33 @@ sound's versions, and <kbd>&uarr;</kbd> and <kbd>&darr;</kbd> move to another so
 The page is drawn in the program's own colors. `--palette NAME` draws it in another of the
 program's palettes, and `--no-open` leaves it closed and prints its link alone.
 
-A render plays at the same gain as its recording, so a render that sounds quieter is quieter. You
-can also play any file in the run folder in an audio player of your own.
+A render plays at the same gain as its recording, so a quieter render really is quieter. You can also
+play any file in the run folder in an audio player of your own.
 
-Beside each render, a JSON file of the same name holds:
+Beside each render, a JSON file of the same name has:
 
-- `judgments`: every referee's score for the render, with the readings behind it;
-- `silence`: what complete silence would score against the same recording;
+- `judgments`: every referee's score for the render, with the readings behind it.
+- `silence`: what complete silence would score against the same recording.
 - `timelines`: one character per frame for each channel, `1` where that channel plays.
 
 A render that scores worse than silence is a sign to listen before trusting the number.
 
 ## Read the report
 
-`report.md` holds one section per referee. Each section starts with a table: one row per variant,
-one column per category of reference sound, and the overall mean last. Lower is better.
+A *referee* is a method that scores a reconstruction against its original: zero for identical signals,
+higher for a larger audible difference. [How it judges](#how-it-judges) describes them.
+
+`report.md` has one section per referee. Each section starts with a table: one row per variant, one
+column per category of reference sound, and the overall mean last. Lower is better.
 
 The `mr-loudness-dB` section adds a table for each of its readings:
 
 - `missing`: content the original has and the reconstruction lacks. A high value sounds dull.
 - `added`: content the reconstruction brings in. A high value sounds buzzy or noisy.
-- `level`: how much louder the reconstruction plays than the original, in decibels. Negative means
-  quieter.
+- `level`: how much louder the reconstruction plays than the original, in decibels. A negative value
+  means quieter.
 
-`missing` and `added` add up to the score. The level is reported apart from the score.
+`missing` and `added` add up to the score. The level is reported apart from it.
 
 ## Custom runs
 
@@ -172,32 +177,29 @@ The sounds and their parameters are defined in `sampletones_tools/calibration/co
 
 ### The referees
 
-A referee compares a reconstruction with its original and returns a score: zero for identical
-signals, higher for a larger audible difference. Referees measure in their own way, apart from the
-reconstruction's own scoring, so a comparison stays fair when that scoring is what changed.
+Referees measure in their own way, apart from the reconstruction's own scoring, so a comparison stays
+fair when that scoring is what changed.
 
 Both built-in referees split each signal into bands spaced the way hearing spaces pitch, at several
 time resolutions, and compare the energy in each band in decibels. Their tuning is in
 `sampletones_tools/calibration/config/referee.yaml`.
 
 - **`mr-auditory-dB`** averages the difference over every band equally. It reads the balance of
-  tone against noise across the whole spectrum. Because an empty band counts as much as a full one,
-  a clip that adds noise to a lone tone scores worse than silence. The report still lists this
-  referee first.
+  tone against noise across the whole spectrum. An empty band counts as much as a full one, so a clip
+  that adds noise to a lone tone scores worse than silence. The report lists this referee first for
+  now (see [Which referee leads](#which-referee-leads)).
 - **`mr-loudness-dB`** weighs each band by how loud it plays, so the parts you hear carry the score
   and silent bands barely count. It first brings the reconstruction to the original's level and
   reports the level difference on its own. Silence scores worst, and a clip with the right tone and
   some added noise scores between.
 - **`zimtohrli`** is a model of human hearing from Google. It joins the other two where it is
-  installed; see [dependencies](../development/release/dependencies.md#calibration).
+  installed. See [dependencies](../development/release/dependencies.md#calibration).
 
-A referee is tested against sounds whose ranking is known, such as "a triangle at the right pitch
-is closer to a sine than silence is". These tests live in
-`tests/unit/sampletones_tools/calibration/referee/test_axioms.py`. A test a referee is known to
-fail is marked as an expected failure.
+A referee is tested against sounds whose ranking is known, such as "a triangle at the right pitch is
+closer to a sine than silence is". Rankings it is known to get wrong are recorded as expected failures.
 
 ### Which referee leads
 
-The report lists `mr-auditory-dB` first until `mr-loudness-dB` is shown to agree with the ear: rated
-by ear, a sweep of renders must rank the way its scores do, with a rank correlation of at least 0.6
-in every category.
+The report lists `mr-auditory-dB` first. `mr-loudness-dB` takes the lead once by-ear ratings of a sweep
+of renders agree with its scores. [Bugs and to-dos](../development/bugs-and-todos.md) tracks the bar
+that agreement must reach.

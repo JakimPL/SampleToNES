@@ -7,6 +7,7 @@ from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.layout.general.colors.feature import FeatureColors
 from sampletones_application.layout.general.colors.path import PathColors
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.parameters.geometry import TabGeometry
@@ -32,6 +33,7 @@ class ReconstructionTabParameters:
     copy_width: int
     feature_colors: FeatureColors
     channel_colors: ChannelColors
+    stem_colors: StemColors
     path_colors: PathColors
     path_status_color: BaseColor
     tree_colors: TreeColors
@@ -50,6 +52,7 @@ class ReconstructionTabParameters:
             copy_width=general.buttons.copy_width,
             feature_colors=general.colors.features,
             channel_colors=general.colors.channels,
+            stem_colors=general.colors.stems,
             path_colors=general.colors.paths,
             path_status_color=general.colors.text.disabled,
             tree_colors=TreeColors.create(

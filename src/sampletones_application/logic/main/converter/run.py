@@ -15,7 +15,7 @@ from sampletones_application.services.result import (
 from sampletones_application.utils.progress import SystemProgress
 from sampletones_application.view_model.main.converter import ACTIVE_PHASES, ConversionPhase
 from sampletones_core.configs import Config
-from sampletones_core.library import InstructionLibraryKey
+from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.parallelization import TaskProgress
 from sampletones_core.reconstructions.converter import ConversionPlan
 from sampletones_shared.types.callback import VoidCallback
@@ -45,13 +45,15 @@ class ConversionRequest:
 
     A run first waits for the library it converts against, while the setup and the settings stay
     in the reader's hands; the run converts what it was asked to, against the library the request
-    named, whatever moves meanwhile.
+    named, whatever moves meanwhile. ``library_state`` is where that library stood when the
+    conversion was asked for, which names the preparation the run waits on.
     """
 
     config: Config
     plan: ConversionPlan
     reconstruction_name: str
     library_key: InstructionLibraryKey
+    library_state: LibraryState
 
     @property
     def library_directory(self) -> Path:
@@ -224,11 +226,12 @@ class ConversionRun(CallbackMixin):
         return progress.current_item.source if progress.current_item is not None else None
 
     def _handle_library_progress(self, progress: TaskProgress) -> None:
-        if self._phase != ConversionPhase.WAITING:
+        request = self._request
+        if self._phase != ConversionPhase.WAITING or request is None:
             return
 
         total = max(progress.total, 1)
-        self._report(self._messages.generating_library, progress.completed / total)
+        self._report(self._messages.preparing_library(request.library_state), progress.completed / total)
 
     def _settle_as_complete(self, written: Tuple[Path, ...]) -> None:
         """Settles a finished run, telling its listener what was written before reporting.

@@ -29,6 +29,9 @@ class StemsColumns:
     rather than on the boxes beside them. A channel column holds one box, or two where ``bends``
     states that a cell carries the bend on its channel, and takes the width that fits.
 
+    ``swatch`` states that a row leads with the color its recording is drawn in, which takes a
+    narrow column of its own between the box beside a row and the name it carries.
+
     ``folders`` states that the list this grid belongs to holds folders, which settles both ends
     of the row. At the right, a folder draws its recordings inside a region of their own, and the
     room that region spends there is held clear out here so the columns around a folder stand where
@@ -41,6 +44,7 @@ class StemsColumns:
     master: bool
     removable: bool
     bends: bool
+    swatch: bool
     folders: bool
 
     @property
@@ -81,6 +85,9 @@ class StemsColumns:
         """Add this grid's columns to the table currently being built."""
         if self.master:
             dpg.add_table_column(width_fixed=True, init_width_or_weight=self.layout.master_column_width)
+
+        if self.swatch:
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=self.layout.swatch_size)
 
         dpg.add_table_column(width_stretch=True)
         for _channel_name in self.channels:
@@ -147,6 +154,9 @@ class StemsColumns:
     def open_leading_cells(self) -> None:
         """Open the cells standing before the channels, which a heading leaves blank."""
         if self.master:
+            dpg.add_spacer()
+
+        if self.swatch:
             dpg.add_spacer()
 
         dpg.add_spacer()

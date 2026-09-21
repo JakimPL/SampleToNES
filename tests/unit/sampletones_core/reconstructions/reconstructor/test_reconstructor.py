@@ -13,7 +13,6 @@ from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     ChannelName,
     GeneratorClassName,
-    bending_channels,
 )
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.generators import FULL_SCALE_RMS_LEVELS
@@ -21,6 +20,7 @@ from sampletones_core.generators.render import render_channels
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import NoLibraryDataError
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -159,7 +159,7 @@ class TestReconstructorWorkingLevel(BaseTestSuite):
         test_case: TestCase,
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
-        setup = StemsConfig.single_entry(test_case.channels, bending_channels(test_case.channels))
+        setup = StemsConfig.single_entry(StemSettings.covering(test_case.channels))
         audio = np.ones(config.library.frame_length, dtype=np.float32) * 0.5
 
         assert reconstructor.get_coefficient(audio, setup) == pytest.approx(
@@ -168,8 +168,7 @@ class TestReconstructorWorkingLevel(BaseTestSuite):
 
 
 def _full_setup(config: Config) -> StemsConfig:
-    channels = list(DEFAULT_CHANNELS)
-    return StemsConfig.single_entry(channels, bending_channels(channels))
+    return StemsConfig.single_entry(StemSettings.covering(list(DEFAULT_CHANNELS)))
 
 
 class TestReconstructorGetFragments:
@@ -268,7 +267,7 @@ class TestTheAudioAReconstructionRecords:
         write_wave(audio_path, config.library.sample_rate, np.tile(synthetic_fragment.audio, 3).astype(np.float32))
         return audio_path
 
-    def test_every_channel_generator_renders_the_frames_it_records(
+    def test_every_channel_spans_the_frames_its_stream_describes(
         self,
         config: Config,
         library_data: InstructionLibraryData,
@@ -281,9 +280,8 @@ class TestTheAudioAReconstructionRecords:
 
         assert reconstruction is not None
         for channel_name in reconstruction.playing_channels:
-            generator = reconstructor.channels[channel_name]
-            sounding = [instruction for instruction in reconstruction.instructions[channel_name] if instruction.on]
-            assert generator.previous_instruction is sounding[-1]
+            frames = len(reconstruction.instructions[channel_name])
+            assert len(reconstruction.approximations[channel_name]) == frames * config.library.frame_length
 
     @pytest.mark.parametrize("reset_phase", [False, True], ids=["carried_phase", "reset_phase"])
     def test_the_recorded_audio_is_what_the_channels_render(
@@ -308,6 +306,6 @@ class TestTheAudioAReconstructionRecords:
         for channel_name in reconstruction.playing_channels:
             np.testing.assert_allclose(
                 reconstruction.approximations[channel_name],
-                rendered[channel_name] * resetting.generation.drive,
+                rendered[channel_name],
                 atol=1e-6,
             )

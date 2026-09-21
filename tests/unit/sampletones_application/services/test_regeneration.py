@@ -1,6 +1,6 @@
 import threading
 from types import SimpleNamespace
-from typing import Any, Callable, Dict, Final, Iterator, List, Tuple, TypeAlias, cast
+from typing import Any, Callable, Dict, Final, FrozenSet, Iterator, List, Tuple, TypeAlias, cast
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -23,6 +23,7 @@ REFERENCE_PITCH: Final[int] = 60
 
 MockReconstruction: TypeAlias = MagicMock
 SynthesisMocks: TypeAlias = SimpleNamespace
+EVERY_STEM: Final[FrozenSet[int]] = frozenset({0})
 ResultCallback: TypeAlias = Callable[[Any], None]
 
 
@@ -81,6 +82,7 @@ class TestRegenerationServiceStart:
             synthesis_mocks.channel_name,
             FeatureKey.VOLUME,
             cast(Features, {}),
+            EVERY_STEM,
         )
         assert result is True
 
@@ -88,7 +90,7 @@ class TestRegenerationServiceStart:
         service = RegenerationService()
         service.cancel()
 
-        result = service.start(MagicMock(), MagicMock(), FeatureKey.VOLUME, cast(Features, {}))
+        result = service.start(MagicMock(), MagicMock(), FeatureKey.VOLUME, cast(Features, {}), EVERY_STEM)
 
         assert result is False
 
@@ -103,6 +105,7 @@ class TestRegenerationServiceStart:
             MagicMock(),
             MagicMock(),
             cast(Features, {}),
+            EVERY_STEM,
         )
 
         assert results == []
@@ -120,6 +123,7 @@ class TestRegenerationServiceStart:
                 MagicMock(),
                 MagicMock(),
                 cast(Features, {}),
+                EVERY_STEM,
             )
 
         assert result is False
@@ -157,6 +161,7 @@ class TestRegenerationServiceRun:
             MagicMock(),
             MagicMock(),
             cast(Features, {}),
+            EVERY_STEM,
         )
 
         assert len(results) == 1
@@ -177,6 +182,7 @@ class TestRegenerationServiceRun:
             synthesis_mocks.channel_name,
             FeatureKey.VOLUME,
             features,
+            EVERY_STEM,
         )
 
         assert len(results) == 1
@@ -196,9 +202,9 @@ class TestRegenerationServiceRun:
         """The caller writes the edit into the envelopes, so the service renders what it is given."""
         service = RegenerationService()
 
-        service._run(reconstruction, synthesis_mocks.channel_name, FeatureKey.VOLUME, features)
+        service._run(reconstruction, synthesis_mocks.channel_name, FeatureKey.VOLUME, features, EVERY_STEM)
 
-        _, _, _, initial_pitch, held = reconstruction.model_copy.return_value.update_channel_data.call_args.args
+        _, _, initial_pitch, held = reconstruction.model_copy.return_value.update_channel_data.call_args.args
         assert initial_pitch == features.initial_pitch
         assert held == features.held_features
 
@@ -215,6 +221,7 @@ class TestRegenerationServiceRun:
             synthesis_mocks.channel_name,
             FeatureKey.VOLUME,
             features,
+            EVERY_STEM,
         )
 
         updated = reconstruction.model_copy.return_value
@@ -241,10 +248,11 @@ class TestRegenerationServiceRun:
             synthesis_mocks.channel_name,
             FeatureKey.ARPEGGIO,
             features,
+            EVERY_STEM,
         )
 
         call_args = reconstruction.model_copy.return_value.update_channel_data.call_args
-        assert call_args.args[3] == REFERENCE_PITCH
+        assert call_args.args[2] == REFERENCE_PITCH
 
     def test_run_carries_a_moved_reference_pitch(
         self,
@@ -256,22 +264,20 @@ class TestRegenerationServiceRun:
         moved = features.model_copy(update={"initial_pitch": REFERENCE_PITCH + 12})
         service = RegenerationService()
 
-        service._run(reconstruction, synthesis_mocks.channel_name, FeatureKey.INITIAL_PITCH, moved)
+        service._run(reconstruction, synthesis_mocks.channel_name, FeatureKey.INITIAL_PITCH, moved, EVERY_STEM)
 
-        _, _, _, initial_pitch, _ = reconstruction.model_copy.return_value.update_channel_data.call_args.args
+        _, _, initial_pitch, _ = reconstruction.model_copy.return_value.update_channel_data.call_args.args
         assert initial_pitch == REFERENCE_PITCH + 12
 
-    def test_run_calls_generator_for_each_instruction(
+    def test_run_hands_on_every_instruction_the_envelopes_describe(
         self,
         synthesis_mocks: SynthesisMocks,
         reconstruction: MockReconstruction,
         features: Features,
     ) -> None:
         extra_instruction = MagicMock()
-        synthesis_mocks.exporter.from_features.return_value = [
-            synthesis_mocks.instruction,
-            extra_instruction,
-        ]
+        stream = [synthesis_mocks.instruction, extra_instruction]
+        synthesis_mocks.exporter.from_features.return_value = stream
         service = RegenerationService()
 
         service._run(
@@ -279,9 +285,11 @@ class TestRegenerationServiceRun:
             synthesis_mocks.channel_name,
             FeatureKey.VOLUME,
             features,
+            EVERY_STEM,
         )
 
-        assert synthesis_mocks.generator.call_count == 2
+        call_args = reconstruction.model_copy.return_value.update_channel_data.call_args
+        assert call_args.args[1] == stream
 
     def test_run_exception_emits_service_error(
         self,
@@ -293,7 +301,7 @@ class TestRegenerationServiceRun:
 
         exception = RuntimeError("synthesis failed")
         mock_exporter = MagicMock()
-        mock_exporter.get_generator_type.side_effect = exception
+        mock_exporter.from_features.side_effect = exception
 
         with patch(
             "sampletones_application.services.regeneration.service.CHANNEL_TO_EXPORTER_MAP",
@@ -304,6 +312,7 @@ class TestRegenerationServiceRun:
                 ChannelName.PULSE1,
                 FeatureKey.VOLUME,
                 cast(Features, {}),
+                EVERY_STEM,
             )
 
         assert len(results) == 1
@@ -317,7 +326,7 @@ class TestRegenerationServiceRun:
     ) -> None:
         service = RegenerationService()
         mock_exporter = MagicMock()
-        mock_exporter.get_generator_type.side_effect = RuntimeError("fail")
+        mock_exporter.from_features.side_effect = RuntimeError("fail")
 
         with patch(
             "sampletones_application.services.regeneration.service.CHANNEL_TO_EXPORTER_MAP",
@@ -328,6 +337,7 @@ class TestRegenerationServiceRun:
                 ChannelName.PULSE1,
                 FeatureKey.VOLUME,
                 cast(Features, {}),
+                EVERY_STEM,
             )
 
         reconstruction.update_channel_data.assert_not_called()
@@ -355,6 +365,7 @@ class TestClearingEveryEnvelope:
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             features,
+            EVERY_STEM,
         )
 
         assert isinstance(results[0], ServiceSuccess)
@@ -447,6 +458,7 @@ class TestRegenerationServiceCancellationConstraints:
                 synthesis_mocks.channel_name,
                 FeatureKey.VOLUME,
                 features,
+                EVERY_STEM,
             ),
         )
         thread.start()
@@ -475,6 +487,7 @@ class TestRegenerationServiceCancellationConstraints:
             synthesis_mocks.channel_name,
             FeatureKey.VOLUME,
             cast(Features, {}),
+            EVERY_STEM,
         )
 
         service.cancel()
@@ -483,6 +496,7 @@ class TestRegenerationServiceCancellationConstraints:
             synthesis_mocks.channel_name,
             FeatureKey.VOLUME,
             cast(Features, {}),
+            EVERY_STEM,
         )
 
         assert second_result is False

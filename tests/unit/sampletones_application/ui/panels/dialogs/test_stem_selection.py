@@ -37,6 +37,7 @@ def window_fixture(dpg_context: None, layout_config: LayoutConfig) -> GUIStemSel
         layout=layout_config.tabs.main.converter,
         stems_layout=layout_config.general.stems,
         glyphs=layout_config.glyphs.common,
+        stem_colors=layout_config.general.colors.stems,
         language_manager=LANGUAGE_MANAGER,
         status_bar=GUIStatusBar(),
         title=LANGUAGE_MANAGER["main.converter.title.stem_selection_dialog"],
@@ -54,6 +55,7 @@ def recording_row(path: Path) -> StemRowViewModel:
     return StemRowViewModel(
         key=str(path),
         kind=SourceKind.RECORDING,
+        name=path.stem,
         path=path,
         held=(),
         channels=frozenset({ChannelName.PULSE1}),
@@ -63,6 +65,7 @@ def recording_row(path: Path) -> StemRowViewModel:
         available=True,
         level=0,
         position=0,
+        record_position=None,
         level_size=1,
         level_count=1,
     )
@@ -73,6 +76,7 @@ def folder_row(root: Path, held: Sequence[Path]) -> StemRowViewModel:
     return StemRowViewModel(
         key=str(root),
         kind=SourceKind.FOLDER,
+        name=root.name,
         path=root,
         held=tuple(recording_row(path) for path in held),
         channels=frozenset({ChannelName.PULSE1}),
@@ -82,6 +86,7 @@ def folder_row(root: Path, held: Sequence[Path]) -> StemRowViewModel:
         available=True,
         level=0,
         position=0,
+        record_position=None,
         level_size=1,
         level_count=1,
     )

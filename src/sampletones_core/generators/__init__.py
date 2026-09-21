@@ -23,10 +23,8 @@ from .types import (
     TonalGeneratorUnion,
 )
 from .utils import (
-    get_generator_by_instruction,
     get_generators_by_channels,
     get_generators_map,
-    get_remaining_generator_classes,
 )
 
 __all__ = [
@@ -49,10 +47,8 @@ __all__ = [
     "TonalGenerator",
     "TonalGeneratorUnion",
     "TriangleGenerator",
-    "get_generator_by_instruction",
     "get_generators_by_channels",
     "get_generators_map",
-    "get_remaining_generator_classes",
     "render_channels",
     "render_instructions",
 ]

@@ -9,11 +9,14 @@ from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.reconstruction.editor import InstrumentEditor
-from sampletones_application.logic.reconstruction.feature import FeatureData
+from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.logic.reconstruction.instruments import (
     ReconstructionInstrumentsLogic,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
@@ -26,8 +29,16 @@ from sampletones_core.formats.famitracker.footprint import (
 )
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.reconstructions import Reconstruction
+from tests.suite.stems import everything_heard
+
+
+def _heard_features(reconstruction: Reconstruction) -> ChannelEnvelopesViewModel:
+    """The envelopes of the whole document, which is what a fresh reader hears."""
+    return heard_envelopes(reconstruction, everything_heard(reconstruction))
+
 
 HISTORY_BUDGET: Final[int] = 16
+NEW_PITCH: Final[int] = 61
 
 
 def _editor(
@@ -95,7 +106,7 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
         mock_reconstruction_manager: MagicMock,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        mock_reconstruction_manager.current_features = FeatureData.load(reconstruction_factory())
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
         instruments_logic.update_display()
@@ -107,12 +118,12 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
         mock_reconstruction_manager: MagicMock,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        feature_data = FeatureData.load(reconstruction_factory())
+        feature_data = _heard_features(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
-        received: List[Optional[Dict[ChannelName, Features]]] = []
+        received: List[Optional[ChannelEnvelopesViewModel]] = []
         instruments_logic.on_feature_data_changed = received.append
         instruments_logic.update_display()
-        assert received == [feature_data.channels]
+        assert received == [ChannelEnvelopesViewModel(channels=feature_data.channels, ownership=feature_data.ownership)]
 
     def test_with_features_exposes_the_playing_generators(
         self,
@@ -120,7 +131,7 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
         mock_reconstruction_manager: MagicMock,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        mock_reconstruction_manager.current_features = FeatureData.load(reconstruction_factory())
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
         instruments_logic.update_display()
@@ -147,7 +158,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         mock_reconstruction_manager: MagicMock,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        feature_data = FeatureData.load(reconstruction_factory())
+        feature_data = _heard_features(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
@@ -165,7 +176,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         """A reconstruction exports its instruments as one-shots, so that is the size shown."""
-        feature_data = FeatureData.load(reconstruction_factory())
+        feature_data = _heard_features(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
@@ -184,7 +195,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         """The typed envelope is measured at once, so the figure answers what is on screen."""
-        feature_data = FeatureData.load(reconstruction_factory())
+        feature_data = _heard_features(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
@@ -208,7 +219,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         """The regeneration owns the loaded envelopes, so the measurement reads them without writing."""
-        feature_data = FeatureData.load(reconstruction_factory())
+        feature_data = _heard_features(reconstruction_factory())
         mock_reconstruction_manager.current_features = feature_data
         loaded_volume = feature_data.channels[ChannelName.PULSE1].volume
 
@@ -227,7 +238,7 @@ class TestReconstructionInstrumentsLogicFootprint:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         """A regenerated reconstruction refreshes the figures, leaving the edited envelopes displayed."""
-        mock_reconstruction_manager.current_features = FeatureData.load(reconstruction_factory())
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         received: List[ReconstructionInstrumentsViewModel] = []
         feature_updates: List[Optional[Dict[ChannelName, Features]]] = []
         instruments_logic.on_view_changed = received.append
@@ -245,26 +256,30 @@ class TestReconstructionInstrumentsLogicHandlePitchValueChanged:
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         callback = MagicMock()
         instruments_logic.on_reconstruction_instrument_updated = callback
-        instruments_logic.handle_pitch_value_changed(ChannelName.PULSE1, 61)
+        instruments_logic.handle_pitch_value_changed(ChannelName.PULSE1, NEW_PITCH)
         callback.assert_called_once()
 
     def test_forwards_generator_pitch_feature_and_value(
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         callback = MagicMock()
         instruments_logic.on_reconstruction_instrument_updated = callback
-        instruments_logic.handle_pitch_value_changed(ChannelName.PULSE1, 61)
-        channel_name, feature_key, _ = callback.call_args.args
-        channel_features = mock_reconstruction_manager.current_features.channels[ChannelName.PULSE1]
 
+        instruments_logic.handle_pitch_value_changed(ChannelName.PULSE1, NEW_PITCH)
+
+        channel_name, feature_key, features = callback.call_args.args
         assert channel_name == ChannelName.PULSE1
         assert feature_key == FeatureKey.INITIAL_PITCH
-        channel_features.model_copy.assert_called_once_with(update={"initial_pitch": 61})
+        assert features.initial_pitch == NEW_PITCH
 
 
 class TestReconstructionInstrumentsLogicHandleEnvelope:
@@ -272,7 +287,9 @@ class TestReconstructionInstrumentsLogicHandleEnvelope:
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         callback = MagicMock()
         instruments_logic.on_reconstruction_instrument_updated = callback
         instruments_logic.handle_envelope_changed(
@@ -289,7 +306,7 @@ class TestReconstructionInstrumentsLogicHandleEnvelope:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         """The panel states values and loop point together, so the update carries both."""
-        mock_reconstruction_manager.current_features = FeatureData.load(reconstruction_factory())
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         received: List[Features] = []
         instruments_logic.on_reconstruction_instrument_updated = lambda _channel, _key, features: received.append(
             features
@@ -382,13 +399,15 @@ class TestTheInstrumentsPanelShowsAnInstrument:
         self,
         instrument_logic: ReconstructionInstrumentsLogic,
     ) -> None:
-        received: List[Optional[Dict[ChannelName, Features]]] = []
+        received: List[Optional[ChannelEnvelopesViewModel]] = []
         instrument_logic.on_feature_data_changed = received.append
 
         instrument_logic.update_display()
 
-        assert received[-1] is not None
-        assert list(received[-1]) == [INSTRUMENT_CHANNEL]
+        envelopes = received[-1]
+        assert envelopes is not None
+        assert list(envelopes.channels) == [INSTRUMENT_CHANNEL]
+        assert envelopes.ownership == {}
 
     def test_an_envelope_edit_reaches_the_instrument_without_a_regeneration(
         self,

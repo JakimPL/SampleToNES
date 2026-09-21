@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, Mapping, Optional, Sequence
+from typing import Callable, Dict, FrozenSet, Mapping, Optional, Sequence
 
 import dearpygui.dearpygui as dpg
 
@@ -231,12 +231,14 @@ class ReconstructionTabCoordinator:
         self._reconstruction_plot_panel: GUIReconstructionPlotPanel = GUIReconstructionPlotPanel(
             layout_graphs=layout.graphs,
             channel_colors=layout.channel_colors,
+            stem_colors=layout.stem_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT),
             language_manager=language_manager,
             status_bar=status_bar,
         )
         self._reconstruction_stems_panel: GUIReconstructionStemsPanel = GUIReconstructionStemsPanel(
             stems_layout=layout.stems,
+            stem_colors=layout.stem_colors,
             language_manager=language_manager,
             status_bar=status_bar,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_STEMS),
@@ -256,6 +258,7 @@ class ReconstructionTabCoordinator:
             pitch_stepper_style=layout.pitch_stepper_style,
             copy_width=layout.copy_width,
             feature_colors=layout.feature_colors,
+            stem_colors=layout.stem_colors,
             layout_graphs=layout.graphs,
             language_manager=language_manager,
             status_bar=status_bar,
@@ -288,6 +291,8 @@ class ReconstructionTabCoordinator:
 
         self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view
         self._reconstruction_panel_logic.on_stems_view_changed = self._reconstruction_stems_panel.update_view
+        self._reconstruction_panel_logic.on_ownership_changed = self._reconstruction_plot_panel.update_ownership
+        self._reconstruction_panel_logic.on_heard_changed = self._reconstruction_instruments_logic.update_display
         self._reconstruction_panel_logic.on_audio_data_changed = self._on_audio_data_changed
         self._reconstruction_panel_logic.on_waveform_load_changed = self._reconstruction_plot_panel.load_waveform_data
         self._reconstruction_panel_logic.on_waveform_update_changed = (
@@ -746,6 +751,10 @@ class ReconstructionTabCoordinator:
             return
 
         self._browser_panel.refresh()
+
+    def heard_on(self, channel_name: ChannelName) -> FrozenSet[int]:
+        """The recordings the reader hears on one channel, which is what an edit there reaches."""
+        return self._reconstruction_panel_logic.heard_on(channel_name)
 
     def update_reconstruction(self) -> None:
         self._reconstruction_panel_logic.update_reconstruction()

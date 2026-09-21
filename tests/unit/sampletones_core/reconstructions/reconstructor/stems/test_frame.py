@@ -1,13 +1,20 @@
-from typing import Dict, Final, List, Sequence, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, Final, List, Sequence, Set, Tuple
 
 import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH
+from sampletones_core.constants.algorithm import (
+    ALL_STEMS_CHANNEL_CAP,
+    MAX_DRIVE,
+    SINGLE_STATE_LATTICE_WIDTH,
+    UNIT_DRIVE,
+)
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     ChannelName,
+    GeneratorClassName,
     HierarchyMode,
     bending_channels,
 )
@@ -15,7 +22,7 @@ from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.library import InstructionLibraryData
-from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher, column_of
+from sampletones_core.reconstructions.reconstructor.matching import Column, FrameMatcher, column_of
 from sampletones_core.reconstructions.reconstructor.mix import FrameMix
 from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -25,11 +32,14 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.settings impor
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 from sampletones_core.structures.histogram import Histogram
+from tests.suite.fragments import amplified
 
 from .conftest import audible_instruction_of, rendered_fragment, shared_frames
 
 DEFAULT_CHANNELS: List[ChannelName] = [ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE]
 LOUDER_STEM_SCALE: Final[float] = 4.0
+LOUD_DRIVE: Final[float] = 2.0
+SWEPT_DRIVES: Final[Tuple[float, ...]] = (UNIT_DRIVE, LOUD_DRIVE, MAX_DRIVE)
 
 
 def _config(
@@ -40,11 +50,13 @@ def _config(
 ) -> StemsConfig:
     return StemsConfig(
         entries=[
-            StemEntry(id=stem_id, settings=StemSettings(channels=channels, bends=bending_channels(channels)))
+            StemEntry(
+                id=stem_id,
+                settings=StemSettings(channels=channels, bends=bending_channels(channels), channel_cap=channel_cap),
+            )
             for stem_id, channels in entries.items()
         ],
         hierarchy=StemsHierarchy(levels=levels, mode=mode),
-        channel_cap=channel_cap,
     )
 
 
@@ -193,7 +205,7 @@ class TestImprovementsWithinALevel:
         where more sound is waiting. The winner follows the recordings, not the place a stem holds.
         """
         quiet = synthetic_fragment
-        loud = extractor.amplified(synthetic_fragment, LOUDER_STEM_SCALE)
+        loud = amplified(extractor, synthetic_fragment, LOUDER_STEM_SCALE)
 
         stems_config = _config(
             {0: [ChannelName.PULSE1], 1: [ChannelName.PULSE1]},
@@ -233,7 +245,7 @@ class TestImprovementsWithinALevel:
         )
 
         assignment = assign_frame(
-            {0: synthetic_fragment, 1: extractor.amplified(synthetic_fragment, LOUDER_STEM_SCALE)},
+            {0: synthetic_fragment, 1: amplified(extractor, synthetic_fragment, LOUDER_STEM_SCALE)},
             stems_config,
             channels,
             matcher,
@@ -241,6 +253,75 @@ class TestImprovementsWithinALevel:
         )
 
         assert [choice.stem_id for choice in assignment.choices] == [0]
+
+
+class TestDrivesLeaveTheCompetitionStanding:
+    """A drive settles what a channel plays and leaves the stems competing where they stood.
+
+    This is the contract ``docs/concepts/stems.md`` states of a drive: raising one lifts the part of the mix its own channel carries, while the stems beside it hold
+    the channels they held.
+    """
+
+    @staticmethod
+    def _stems_config(driven_stem_id: int, drive: float) -> StemsConfig:
+        """Two stems on one level reaching for the first pulse, one of them pushed to ``drive``."""
+        held = [ChannelName.PULSE1]
+        return StemsConfig(
+            entries=[
+                StemEntry(
+                    id=stem_id,
+                    settings=StemSettings(
+                        channels=held,
+                        bends=bending_channels(held),
+                        drives={ChannelName.PULSE1: drive if stem_id == driven_stem_id else UNIT_DRIVE},
+                        channel_cap=1,
+                    ),
+                )
+                for stem_id in (0, 1)
+            ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
+        )
+
+    def _winner(
+        self,
+        fragments: Dict[int, Fragment],
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+        driven_stem_id: int,
+        drive: float,
+    ) -> int:
+        """The stem the first pulse reaches with ``driven_stem_id`` pushed to ``drive``."""
+        assignment = assign_frame(
+            fragments,
+            self._stems_config(driven_stem_id, drive),
+            channels,
+            matcher,
+            SINGLE_STATE_LATTICE_WIDTH,
+        )
+        return assignment.by_channel[ChannelName.PULSE1].stem_id
+
+    @pytest.mark.parametrize("driven_stem_id", (0, 1))
+    def test_the_channel_holds_its_stem_at_every_drive(
+        self,
+        driven_stem_id: int,
+        audible_fragments: List[Fragment],
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        """Two recordings reaching for one channel keep it where it stood, whichever is pushed.
+
+        The stems are ranked on the channel read at unit drive, so the winner follows the
+        recordings alone and a reader raising a drive hears that stem louder where it stood. The
+        sweep stands at and above the level the library is calibrated to, the range this
+        library's rows answer.
+        """
+        assert len(audible_fragments) >= 2
+        fragments = {0: audible_fragments[0], 1: audible_fragments[-1]}
+        standing = self._winner(fragments, channels, matcher, driven_stem_id, UNIT_DRIVE)
+
+        winners = {drive: self._winner(fragments, channels, matcher, driven_stem_id, drive) for drive in SWEPT_DRIVES}
+
+        assert winners == {drive: standing for drive in SWEPT_DRIVES}
 
 
 class TestColumns:
@@ -293,6 +374,7 @@ class TestColumns:
             synthetic_fragment,
             channels[ChannelName.PULSE1],
             FrameMix.empty(synthetic_fragment),
+            drive=UNIT_DRIVE,
         )
         assert [candidate.instruction for candidate in column] == [
             candidate.instruction for candidate in column_of(expected, matcher.top_k)
@@ -324,7 +406,7 @@ class TestChannelCap:
         channels: Dict[ChannelName, GeneratorUnion],
         matcher: FrameMatcher,
     ) -> None:
-        for cap, expected_count in ((1, 1), (2, 2), (5, 3)):
+        for cap, expected_count in ((1, 1), (2, 2), (ALL_STEMS_CHANNEL_CAP, 3)):
             stems_config = _config({0: DEFAULT_CHANNELS}, [[0]], HierarchyMode.STRICT, cap)
             assignment = _assign(synthetic_fragment, stems_config, channels, matcher)
             assert len(assignment.choices) == expected_count
@@ -358,6 +440,119 @@ class TestChannelCap:
 
         assert len(assignment.choices) == 2
         assert len(assignment.resting) == 1
+
+
+class TestPerStemCount:
+    """Each stem holds at most the count its own settings allow, whatever the stems beside it allow."""
+
+    def test_each_stem_holds_to_its_own_count(
+        self,
+        config: Config,
+        extractor: FeatureExtractor,
+        library_data: InstructionLibraryData,
+        all_channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        fragment = _every_kind(config, extractor, library_data, all_channels)
+        stems_config = StemsConfig(
+            entries=[
+                StemEntry(
+                    id=0,
+                    settings=StemSettings(channels=[ChannelName.PULSE1, ChannelName.TRIANGLE], bends=[], channel_cap=1),
+                ),
+                StemEntry(
+                    id=1,
+                    settings=StemSettings(channels=[ChannelName.PULSE2, ChannelName.NOISE], bends=[], channel_cap=2),
+                ),
+            ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
+        )
+
+        assignment = assign_frame(
+            {0: fragment, 1: fragment},
+            stems_config,
+            all_channels,
+            matcher,
+            SINGLE_STATE_LATTICE_WIDTH,
+        )
+
+        held = {stem_id: [choice for choice in assignment.choices if choice.stem_id == stem_id] for stem_id in (0, 1)}
+        assert len(held[0]) == 1
+        assert len(held[1]) == 2
+        assert set(assignment.by_channel) | set(assignment.resting) == stems_config.covered_channels
+
+    def test_a_count_above_the_channels_held_sounds_the_channels_held(
+        self,
+        synthetic_fragment: Fragment,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        stems_config = _config({0: [ChannelName.PULSE1]}, [[0]], HierarchyMode.STRICT, ALL_STEMS_CHANNEL_CAP)
+
+        assignment = _assign(synthetic_fragment, stems_config, channels, matcher)
+
+        assert [choice.channel_name for choice in assignment.choices] == [ChannelName.PULSE1]
+        assert assignment.resting == ()
+
+
+@dataclass(frozen=True)
+class _CountingMatcher(FrameMatcher):
+    """A matcher recording every column it was asked for, so a case reads what was scored apart."""
+
+    requests: List[Tuple[GeneratorClassName, float]] = field(default_factory=list)
+
+    def score_column(
+        self,
+        target: Fragment,
+        generator: GeneratorUnion,
+        mix: FrameMix,
+        *,
+        drive: float,
+    ) -> Column:
+        self.requests.append((generator.class_name(), drive))
+        return super().score_column(target, generator, mix, drive=drive)
+
+
+class TestDrivenColumns:
+    """A stem's channels are scored at the drives its settings give them."""
+
+    def test_channels_of_one_kind_driven_alike_are_scored_at_that_drive(
+        self,
+        config: Config,
+        extractor: FeatureExtractor,
+        library_data: InstructionLibraryData,
+        all_channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        counting = _counting(matcher)
+
+        _assign_pulses(
+            _every_kind(config, extractor, library_data, all_channels),
+            {ChannelName.PULSE1: UNIT_DRIVE, ChannelName.PULSE2: UNIT_DRIVE},
+            all_channels,
+            counting,
+        )
+
+        assert _pulse_drives(counting) == {UNIT_DRIVE}
+
+    def test_channels_of_one_kind_driven_apart_are_scored_apart(
+        self,
+        config: Config,
+        extractor: FeatureExtractor,
+        library_data: InstructionLibraryData,
+        all_channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        counting = _counting(matcher)
+
+        _assign_pulses(
+            _every_kind(config, extractor, library_data, all_channels),
+            {ChannelName.PULSE1: UNIT_DRIVE, ChannelName.PULSE2: LOUD_DRIVE},
+            all_channels,
+            counting,
+        )
+
+        assert _pulse_drives(counting) == {UNIT_DRIVE, LOUD_DRIVE}
 
 
 class TestTieBreakDeterminism:
@@ -531,6 +726,51 @@ class TestPicksThatStop:
     ) -> Fragment:
         triangle = audible_instruction_of(library_data, channels[ChannelName.TRIANGLE])
         return library_data[triangle].get_fragment(0, config, window)
+
+
+def _counting(matcher: FrameMatcher) -> _CountingMatcher:
+    """The same matching machinery, keeping a record of the columns it scores."""
+    return _CountingMatcher(
+        config=matcher.config,
+        candidate_provider=matcher.candidate_provider,
+        scorer=matcher.scorer,
+        phase_aligner=matcher.phase_aligner,
+    )
+
+
+def _assign_pulses(
+    fragment: Fragment,
+    drives: Dict[ChannelName, float],
+    channels: Dict[ChannelName, GeneratorUnion],
+    matcher: FrameMatcher,
+) -> StemFrameAssignment:
+    """One frame of a stem holding both pulses at the drives it gives them."""
+    stems_config = StemsConfig(
+        entries=[
+            StemEntry(
+                id=0,
+                settings=StemSettings(
+                    channels=list(drives),
+                    bends=[],
+                    drives=drives,
+                    channel_cap=len(drives),
+                ),
+            )
+        ],
+        hierarchy=StemsHierarchy(levels=[[0]], mode=HierarchyMode.STRICT),
+    )
+    return assign_frame(
+        shared_frames(fragment, stems_config),
+        stems_config,
+        channels,
+        matcher,
+        SINGLE_STATE_LATTICE_WIDTH,
+    )
+
+
+def _pulse_drives(matcher: _CountingMatcher) -> Set[float]:
+    """The drives the pulse class was scored at over the whole frame."""
+    return {drive for class_name, drive in matcher.requests if class_name == GeneratorClassName.PULSE_GENERATOR}
 
 
 def _silent(fragment: Fragment) -> Fragment:

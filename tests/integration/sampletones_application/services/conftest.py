@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
@@ -48,8 +47,6 @@ def pulse_features(pulse_instructions) -> Features:
 def minimal_reconstruction(default_config, pulse_instructions) -> Reconstruction:
     length = 256
     return Reconstruction.create(
-        approximation=np.zeros(length, dtype=np.float32),
-        approximations={ChannelName.PULSE1: np.zeros(length, dtype=np.float32)},
         instructions={ChannelName.PULSE1: pulse_instructions},
         config=default_config,
         coefficient=1.0,
@@ -63,12 +60,10 @@ def minimal_reconstruction(default_config, pulse_instructions) -> Reconstruction
 
 @pytest.fixture
 def reconstruction_data(default_config, minimal_reconstruction) -> ReconstructionData:
-    feature_data = FeatureData.load(minimal_reconstruction)
     return ReconstructionData(
         config=default_config,
         reconstruction=minimal_reconstruction,
         stem_audios=(),
-        feature_data=feature_data,
         filepath=Path("/dev/null"),
         name="null",
     )

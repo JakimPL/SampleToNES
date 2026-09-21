@@ -17,11 +17,10 @@ class ReconstructionStemsViewModel(BaseModel, frozen=True):
     reconstruction_loaded: bool
     stems: StemsListViewModel
     hierarchy_mode: Optional[HierarchyMode] = None
-    channel_cap: Optional[int] = None
 
     @property
     def show_setup_line(self) -> bool:
-        """The setup line states the hierarchy mode and cap a stems record carries."""
+        """The setup line states how the levels of a stems record took turns."""
         return self.hierarchy_mode is not None
 
     @property

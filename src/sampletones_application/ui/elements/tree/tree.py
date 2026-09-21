@@ -45,6 +45,7 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR,
     TAG_INSTRUCTIONS_LIBRARY_THEME_GROUP,
     TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION,
+    TAG_INSTRUCTIONS_LIBRARY_THEME_OUTDATED,
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import (
@@ -430,7 +431,7 @@ class GUITreePanel(GUIPanel, ABC):
                 node=node,
                 node_tag=node_tag,
                 parent_tag=parent,
-                label=node.name,
+                label=self._node_label(node),
                 name_font=self._resolve_node_name_font(node),
                 leaf=leaf,
                 open_on_arrow=open_on_arrow,
@@ -750,6 +751,11 @@ class GUITreePanel(GUIPanel, ABC):
             return self._colors.accent
 
         return self._colors.node
+
+    def _node_label(self, node: TreeNode) -> str:
+        """The text a node's row reads, which is the node's name; a panel marking some of its rows
+        adds the mark here, which keeps the row's tag and its remembered expansion on the name."""
+        return node.name
 
     def _resolve_node_name_font(self, node: TreeNode) -> Font:
         """Select the label font for a node: monospace for the rows stating a configuration.
@@ -1182,6 +1188,8 @@ class GUITreePanel(GUIPanel, ABC):
     def _resolve_other_theme_tag(self, node: TreeNode) -> str:
         match node.node_type:
             case NodeType.LIBRARY:
+                if isinstance(node, LibraryNode) and node.outdated:
+                    return TAG_INSTRUCTIONS_LIBRARY_THEME_OUTDATED
                 return TAG_INSTRUCTIONS_LIBRARY_THEME
             case NodeType.GENERATOR:
                 return TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR

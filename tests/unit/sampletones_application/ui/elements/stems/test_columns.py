@@ -50,6 +50,7 @@ def columns(
     folders: bool,
     master: bool = False,
     bends: bool = False,
+    swatch: bool = False,
 ) -> StemsColumns:
     """The grid a list of gathered recordings declares."""
     return StemsColumns(
@@ -58,6 +59,7 @@ def columns(
         master=master,
         removable=True,
         bends=bends,
+        swatch=swatch,
         folders=folders,
     )
 
@@ -208,6 +210,7 @@ class TestWhereABoxStands(BaseTestSuite):
             master=True,
             removable=True,
             bends=False,
+            swatch=False,
             folders=True,
         ).master_indent
 
@@ -297,3 +300,29 @@ class TestTheColumnsAGridDeclares(BaseTestSuite):
         assert [column["init_width_or_weight"] for column in declared[1 : 1 + len(CHANNELS)]] == [
             stems.channel_column_width
         ] * len(CHANNELS)
+
+    def test_the_swatch_stands_between_the_box_beside_a_row_and_its_name(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The color leads the recording it names, so a row reads as one thing left to right."""
+        stems = layout_config.general.stems
+        grid = columns(layout_config, folders=False, master=True, swatch=True)
+
+        declared = self._declared(grid)
+
+        assert declared[0]["init_width_or_weight"] == stems.master_column_width
+        assert declared[1]["init_width_or_weight"] == stems.swatch_size
+        assert declared[2]["width_stretch"] is True
+
+    def test_a_grid_offering_no_swatch_declares_no_column_for_one(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        with_swatch = self._declared(columns(layout_config, folders=False, master=True, swatch=True))
+        dpg.delete_item(ROOT_TAG)
+        without = self._declared(columns(layout_config, folders=False, master=True))
+
+        assert len(with_swatch) == len(without) + 1

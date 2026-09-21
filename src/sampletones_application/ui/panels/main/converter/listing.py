@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.sources import SourceKind
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.glyphs.common import CommonGlyphs
 from sampletones_application.tags.main import (
@@ -57,6 +58,7 @@ class ConverterListing(CallbackMixin):
         *,
         stems_layout: StemsListLayout,
         glyphs: CommonGlyphs,
+        stem_colors: StemColors,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         key_router: KeyRouter,
@@ -74,6 +76,7 @@ class ConverterListing(CallbackMixin):
             layout=stems_layout,
             ceiling=stems_layout.well_ceiling,
             glyphs=glyphs,
+            stem_colors=stem_colors,
             language_manager=language_manager,
             status_bar=status_bar,
             offer=GATHERED_SOURCES,

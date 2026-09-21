@@ -4,7 +4,7 @@ from typing import Dict, Final, List, Tuple
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_tools.codec.study.accounting.coincident import coincident_starts
-from sampletones_tools.codec.study.accounting.dictionary import default_counts, plateaus
+from sampletones_tools.codec.study.accounting.dictionary import plateaus
 from sampletones_tools.codec.study.accounting.finding import NOTHING, Finding
 from sampletones_tools.codec.study.accounting.fixed import fixed_overheads
 from sampletones_tools.codec.study.accounting.pairs import ramps_in_literals, set_holds
@@ -16,7 +16,6 @@ HYPOTHESES: Final[Tuple[Tuple[str, str], ...]] = (
     ("H1", "hold chains"),
     ("H2", "plateaus in bodies"),
     ("H3", "set-then-hold"),
-    ("H4", "default counts"),
     ("H5", "coincident starts"),
     ("H6", "ramps in literals"),
     ("H7", "fixed tables"),
@@ -114,18 +113,16 @@ def account(
         AccountingRow: The shares and the findings.
     """
     tokens: Dict[str, Tuple[ReadToken, ...]] = {
-        name: read_tokens(stream) for name, stream in zip(PlaneOrder.names(), compressed.streams)
+        name: read_tokens(stream, compressed.phrases) for name, stream in zip(PlaneOrder.names(), compressed.streams)
     }
     planes = tuple(
         plane_shares(name, plane, tokens[name])
         for name, plane in zip(PlaneOrder.names(), measurement.song.planes.planes)
     )
-    every_token = [token for name in PlaneOrder.names() for token in tokens[name]]
     findings = (
         sum((plane.hold_chains for plane in planes), NOTHING),
         plateaus(compressed.phrases),
         sum((set_holds(tokens[name]) for name in PlaneOrder.names()), NOTHING),
-        default_counts(compressed.phrases, every_token),
         coincident_starts(tokens),
         sum((ramps_in_literals(tokens[name]) for name in PlaneOrder.names()), NOTHING),
         fixed_overheads(measurement.song, compressed).finding,

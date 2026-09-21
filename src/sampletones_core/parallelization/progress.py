@@ -35,27 +35,6 @@ class ETAEstimator:
 
         return self._estimate_remaining_seconds(completed_items, now)
 
-    @classmethod
-    def format_duration(cls, seconds: Optional[float]) -> str:
-        if seconds is None:
-            return "?"
-        if seconds <= 0:
-            return "0s"
-
-        secs = int(seconds)
-        if secs <= 0:
-            return "0s"
-
-        minutes, seconds_remaining = divmod(secs, 60)
-        hours, minutes = divmod(minutes, 60)
-
-        if hours:
-            return f"{hours}h {minutes:02d}m {seconds_remaining:02d}s"
-        if minutes:
-            return f"{minutes}m {seconds_remaining:02d}s"
-
-        return f"{seconds_remaining}s"
-
     def _get_estimation_measurements_samples(self, ems: float) -> int:
         if isinstance(ems, float):
             ems = round(ems * self._total)

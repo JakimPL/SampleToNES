@@ -7,12 +7,12 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     ChannelName,
-    bending_channels,
     ordered_channels,
 )
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import (
     StemsConfig,
 )
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.paths.extensions import EXT_FILES_AUDIO, is_audio_file
 from sampletones_shared.utils.serialization import load_json
 from sampletones_shared.utils.text import listed_items
@@ -40,8 +40,7 @@ def channels_named(stated: Optional[str]) -> List[ChannelName]:
 
 def classic_setup(channels: Sequence[ChannelName]) -> StemsConfig:
     """The setup a single-source conversion runs under: one stem over the channels it was given."""
-    ordered = ordered_channels(frozenset(channels))
-    return StemsConfig.single_entry(ordered, bending_channels(ordered))
+    return StemsConfig.single_entry(StemSettings.covering(ordered_channels(frozenset(channels))))
 
 
 def load_stems(path: Path) -> StemsConfig:

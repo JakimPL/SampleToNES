@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, FrozenSet, List, Tuple
+from typing import Any, Callable, FrozenSet, List, Optional, Tuple
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,7 +8,7 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.output import OutputKind
-from sampletones_application.constants.sources import SourceKind
+from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.logic.main.converter.logic import ConverterLogic
 from sampletones_application.logic.main.converter.run import ConversionSuccess
@@ -19,8 +19,11 @@ from sampletones_application.view_model.main.converter import (
     ConversionPhase,
     ConverterViewModel,
 )
+from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.library import LibraryState
 from sampletones_core.reconstructions.converter import GroupConversion
 from sampletones_core.reconstructions.converter.paths import get_audio_files
 from tests.suite.base import BaseTestSuite
@@ -28,6 +31,7 @@ from tests.suite.language import FakeLanguageManager
 from tests.unit.sampletones_application.logic.main.converter.texts import TEXTS
 
 SCHEDULING: str = "sampletones_application.logic.main.converter.logic.CallbackQueue.add"
+LOUD_DRIVE: float = 2.0
 
 
 def _config_writing_under(reconstructions_directory: Path) -> Config:
@@ -85,7 +89,7 @@ def converter_logic(
         is_operation_active=lambda: logic.is_active,
     )
     logic.on_view_changed = MagicMock()
-    logic.generate_library = MagicMock()
+    logic.prepare_library = MagicMock()
     logic.library_readiness = lambda directory, key: LibraryReadiness.PREPARING
     return logic
 
@@ -115,6 +119,13 @@ def _mixing(converter_logic: ConverterLogic, *names: str) -> None:
 def _listed(converter_logic: ConverterLogic, *names: str) -> None:
     """Gathers recordings into a run writing one reconstruction apiece."""
     converter_logic.gather_recordings([Path(f"/audio/{name}.wav") for name in names])
+
+
+def _card_channels(converter_logic: ConverterLogic) -> FrozenSet[ChannelName]:
+    """The channels the settings card reads as held by every recording it inspects."""
+    return frozenset(
+        channel.channel for channel in converter_logic.source_settings_view.channels if channel.use is Agreement.ALL
+    )
 
 
 def _started_plan(converter_logic: ConverterLogic, service: MagicMock) -> GroupConversion:
@@ -227,7 +238,7 @@ class TestNoChannelsGuard(BaseTestSuite):
         converter_logic.start_conversion()
 
         on_no_generators.assert_called_once()
-        converter_logic.generate_library.assert_not_called()
+        converter_logic.prepare_library.assert_not_called()
         assert _phase(converter_logic) == ConversionPhase.IDLE
 
 
@@ -242,7 +253,7 @@ class TestNothingToConvertGuard(BaseTestSuite):
 
         converter_logic.start_conversion()
 
-        converter_logic.generate_library.assert_not_called()
+        converter_logic.prepare_library.assert_not_called()
         assert _phase(converter_logic) == ConversionPhase.IDLE
 
     def test_a_mix_runs_without_a_recording_ever_being_picked(
@@ -292,7 +303,7 @@ class TestOverwriteGuard(BaseTestSuite):
             converter_logic.start_conversion()
 
         on_target_exists.assert_called_once_with((target,))
-        converter_logic.generate_library.assert_not_called()
+        converter_logic.prepare_library.assert_not_called()
         assert _phase(converter_logic) == ConversionPhase.IDLE
 
     def _target_alone(self, converter_logic: ConverterLogic, source: Path) -> Path:
@@ -346,7 +357,7 @@ class TestOverwriteGuard(BaseTestSuite):
             converter_logic.start_conversion(confirmed=True)
 
         on_target_exists.assert_not_called()
-        converter_logic.generate_library.assert_called_once()
+        converter_logic.prepare_library.assert_called_once()
         assert _phase(converter_logic) == ConversionPhase.WAITING
 
     def test_a_target_still_to_be_written_starts_straight_away(
@@ -402,7 +413,7 @@ class TestStartConversionGate(BaseTestSuite):
         converter_logic.start_conversion()
 
         service.start.assert_not_called()
-        converter_logic.generate_library.assert_not_called()
+        converter_logic.prepare_library.assert_not_called()
         assert _phase(converter_logic) == ConversionPhase.IDLE
 
     def test_proceeds_when_nothing_is_active(
@@ -415,7 +426,7 @@ class TestStartConversionGate(BaseTestSuite):
         with patch(SCHEDULING):
             converter_logic.start_conversion()
 
-        converter_logic.generate_library.assert_called_once()
+        converter_logic.prepare_library.assert_called_once()
         assert _phase(converter_logic) == ConversionPhase.WAITING
 
 
@@ -657,7 +668,7 @@ class TestTheSetupARunHolds(BaseTestSuite):
 
         converter_logic.clear_selection()
 
-        assert (converter_logic.inspected_source is not None, _view(converter_logic).selected_key) == (
+        assert (converter_logic.source_settings_view.subject is not None, _view(converter_logic).selected_key) == (
             True,
             str(source),
         )
@@ -670,14 +681,13 @@ class TestTheSetupARunHolds(BaseTestSuite):
     ) -> None:
         self._waiting(converter_logic, tmp_path)
         asked_with = converter_logic._config_manager.config
-        converter_logic._config_manager.config = asked_with.model_copy(
-            update={"generation": asked_with.generation.model_copy(update={"drive": 2.0})}
-        )
+        generation = asked_with.generation.model_copy(update={"reset_phase": not asked_with.generation.reset_phase})
+        converter_logic._config_manager.config = asked_with.model_copy(update={"generation": generation})
         converter_logic.library_readiness = lambda directory, key: LibraryReadiness.READY
 
         converter_logic._wait_for_library_and_start()
 
-        assert service.start.call_args.args[0].generation.drive == asked_with.generation.drive
+        assert service.start.call_args.args[0].generation.reset_phase == asked_with.generation.reset_phase
 
     def test_a_waiting_run_looks_for_its_library_where_it_was_asked_to(
         self,
@@ -707,6 +717,27 @@ class TestTheSetupARunHolds(BaseTestSuite):
             converter_logic._wait_for_library_and_start()
 
         assert looked_for == [asked_for]
+
+    def test_a_request_holds_where_its_library_stood_when_asked(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        looked_at: List[Path] = []
+
+        def library_state(path: Path) -> LibraryState:
+            looked_at.append(path)
+            return LibraryState.OUTDATED
+
+        converter_logic.library_state = library_state
+        self._waiting(converter_logic, tmp_path)
+
+        request = converter_logic._run.request
+        assert request is not None
+        assert (request.library_state, looked_at) == (
+            LibraryState.OUTDATED,
+            [request.library_directory / request.library_key.filename],
+        )
 
 
 class TestGatheringRecordings(BaseTestSuite):
@@ -870,16 +901,17 @@ class TestWhatTheGatheredRecordingsRun(BaseTestSuite):
 
         assert _started_plan(converter_logic, service).stems.hierarchy.mode == HierarchyMode.STRICT
 
-    def test_the_cap_the_reader_asked_for_reaches_the_setup(
+    def test_the_count_a_recording_holds_reaches_its_entry(
         self,
         converter_logic: ConverterLogic,
         service: MagicMock,
     ) -> None:
         _mixing(converter_logic, "a")
+        converter_logic.select_row(Path("/audio/a.wav"), SourceKind.RECORDING)
 
         converter_logic.set_channel_cap(1)
 
-        assert _started_plan(converter_logic, service).stems.channel_cap == 1
+        assert _started_plan(converter_logic, service).stems.entries[0].settings.channel_cap == 1
 
     def test_the_configuration_reaches_the_service_with_the_plan(
         self,
@@ -929,7 +961,7 @@ class TestAFolderInTheList(BaseTestSuite):
 
         row = _view(converter_logic).stem_sources[0]
 
-        assert row.channels == converter_logic.settings_slots[0].held_channels
+        assert row.channels == _card_channels(converter_logic)
         assert row.partial_channels == frozenset()
 
     def test_a_folder_its_recordings_differ_on_reads_as_half_held(
@@ -1054,6 +1086,86 @@ class TestTheChannelAKeyReaches(BaseTestSuite):
         assert [row.channels for row in _view(converter_logic).stem_sources] == standing
 
 
+class TestWhatTheSettingsCardEdits(BaseTestSuite):
+    """The card edits every recording the picked row stands for, or what a recording joins with."""
+
+    @staticmethod
+    def _drive_of(converter_logic: ConverterLogic, channel_name: ChannelName) -> Optional[float]:
+        """The drive the card reads on one channel."""
+        return next(
+            channel.drive
+            for channel in converter_logic.source_settings_view.channels
+            if channel.channel is channel_name
+        )
+
+    def test_a_picked_row_takes_the_drive(self, converter_logic: ConverterLogic) -> None:
+        _listed(converter_logic, "kick")
+        converter_logic.select_row(Path("/audio/kick.wav"), SourceKind.RECORDING)
+
+        converter_logic.set_drive(ChannelName.PULSE1, LOUD_DRIVE)
+
+        assert self._drive_of(converter_logic, ChannelName.PULSE1) == LOUD_DRIVE
+
+    def test_the_rows_beside_it_stand_as_they_were(self, converter_logic: ConverterLogic) -> None:
+        _listed(converter_logic, "kick", "snare")
+        converter_logic.select_row(Path("/audio/kick.wav"), SourceKind.RECORDING)
+        converter_logic.set_drive(ChannelName.PULSE1, LOUD_DRIVE)
+
+        converter_logic.select_row(Path("/audio/snare.wav"), SourceKind.RECORDING)
+
+        assert self._drive_of(converter_logic, ChannelName.PULSE1) == UNIT_DRIVE
+
+    def test_a_folder_hands_the_drive_to_every_recording_it_holds(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        root = tmp_path / "sources"
+        root.mkdir()
+        for name in ("a.wav", "b.wav"):
+            (root / name).touch()
+
+        converter_logic.gather_folder(root, get_audio_files(root, sort=True))
+        converter_logic.select_row(root, SourceKind.FOLDER)
+        converter_logic.set_drive(ChannelName.PULSE1, LOUD_DRIVE)
+
+        converter_logic.select_row(root / "a.wav", SourceKind.RECORDING)
+        assert self._drive_of(converter_logic, ChannelName.PULSE1) == LOUD_DRIVE
+
+    def test_a_channel_the_recording_leaves_free_takes_no_drive(self, converter_logic: ConverterLogic) -> None:
+        """A drive belongs to a channel a recording occupies, so a free one is left alone."""
+        _listed(converter_logic, "kick")
+        converter_logic.select_row(Path("/audio/kick.wav"), SourceKind.RECORDING)
+        converter_logic.toggle_slot(SettingsField.CHANNELS, ChannelName.PULSE1)
+        standing = converter_logic.source_settings_view
+
+        converter_logic.set_drive(ChannelName.PULSE1, LOUD_DRIVE)
+
+        assert converter_logic.source_settings_view == standing
+
+    def test_with_nothing_picked_the_card_names_what_a_recording_joins_with(
+        self,
+        converter_logic: ConverterLogic,
+    ) -> None:
+        assert converter_logic.source_settings_view.edits_new_recordings is True
+
+        converter_logic.set_drive(ChannelName.PULSE1, LOUD_DRIVE)
+        _listed(converter_logic, "kick")
+        converter_logic.select_row(Path("/audio/kick.wav"), SourceKind.RECORDING)
+
+        assert self._drive_of(converter_logic, ChannelName.PULSE1) == LOUD_DRIVE
+
+    def test_a_box_with_nothing_picked_settles_what_a_recording_joins_with(
+        self,
+        converter_logic: ConverterLogic,
+    ) -> None:
+        held = ChannelName.PULSE2 in _card_channels(converter_logic)
+
+        converter_logic.toggle_slot(SettingsField.CHANNELS, ChannelName.PULSE2)
+
+        assert (ChannelName.PULSE2 in _card_channels(converter_logic)) is not held
+
+
 class TestTheStemsView(BaseTestSuite):
     """What the panel is told about the setup being built."""
 
@@ -1088,14 +1200,6 @@ class TestTheStemsView(BaseTestSuite):
 
         assert view_model.has_input is False
         assert view_model.convert_button_enabled is False
-
-    def test_the_cap_the_view_reports_holds_within_the_channels_there_are(
-        self,
-        converter_logic: ConverterLogic,
-    ) -> None:
-        converter_logic.set_channel_cap(len(ChannelName) + 5)
-
-        assert _view(converter_logic).channel_cap == len(ChannelName)
 
 
 def _aimed_at_a_recording(converter_logic: ConverterLogic, tmp_path: Path) -> Path:
@@ -1152,14 +1256,15 @@ class TestTheRunTheSessionCarries(BaseTestSuite):
 
         assert session_manager.converter_output is OutputKind.MIXED
 
-    def test_the_channel_cap_is_written_down(
+    def test_what_a_recording_joins_with_is_written_down(
         self,
         converter_logic: ConverterLogic,
         session_manager: SessionManager,
     ) -> None:
+        """With no row picked the card edits the joining settings, which the session carries."""
         converter_logic.set_channel_cap(2)
 
-        assert session_manager.converter_channel_cap == 2
+        assert session_manager.converter_settings.channel_cap == 2
 
     def test_the_order_is_written_down(
         self,
@@ -1192,3 +1297,4 @@ class TestTheRunTheSessionCarries(BaseTestSuite):
         )
 
         assert reopened.mixes is True
+        assert reopened.source_settings_view.channel_cap == 2

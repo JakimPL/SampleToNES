@@ -19,3 +19,11 @@ components:
       - type: color
         key: Text
         value: .channel_noise_soft
+  - item_type: SliderFloat
+    entries:
+      - type: color
+        key: SliderGrab
+        value: .channel_noise_soft
+      - type: color
+        key: SliderGrabActive
+        value: .channel_noise

@@ -4,7 +4,10 @@ from typing import Final, FrozenSet
 import pytest
 
 from sampletones_player.compression.budget import SearchBudget
-from sampletones_player.compression.dictionary.table import PhraseTable, phrase_table
+from sampletones_player.compression.dictionary.table import (
+    PhraseTable,
+    phrase_table,
+)
 from sampletones_player.compression.matches.cache import MatchCache
 from sampletones_player.compression.matches.index import PlaneIndex
 from sampletones_player.compression.options import EVERY_LAYER
@@ -34,7 +37,7 @@ def _searched(budget: SearchBudget) -> PhraseTable:
         cache,
         phrase_table(()),
         EVERY_LAYER,
-        STREAM_START,
+        (STREAM_START, STREAM_START),
         CodecMonitor(silent_reporter),
         budget,
     )
@@ -63,9 +66,21 @@ class TestTheRoundsBoundWhatTheSearchEarns:
     """Each round adds at most one phrase, so the rounds cap the dictionary the search fills."""
 
     def test_no_rounds_leaves_the_table_as_seeded(self) -> None:
-        table = _searched(SearchBudget(candidate_entries=NARROW_ENTRIES, rounds=0, confirmed_candidates=3))
+        table = _searched(
+            SearchBudget(
+                candidate_entries=NARROW_ENTRIES,
+                rounds=0,
+                confirmed_candidates=3,
+            )
+        )
         assert len(table) == 0
 
     def test_one_round_adds_one_phrase(self) -> None:
-        table = _searched(SearchBudget(candidate_entries=NARROW_ENTRIES, rounds=1, confirmed_candidates=3))
+        table = _searched(
+            SearchBudget(
+                candidate_entries=NARROW_ENTRIES,
+                rounds=1,
+                confirmed_candidates=3,
+            )
+        )
         assert len(table) == 1

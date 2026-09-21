@@ -62,7 +62,9 @@ def melody() -> List[InstructionUnion]:
     return [sounding_pulse(PLAYER_REFERENCE_PITCH, PLAYER_FULL_VOLUME, 0) for _ in range(SOUNDING_TICKS)]
 
 
-def one_channel(generator: ChannelName) -> Dict[ChannelName, List[InstructionUnion]]:
+def one_channel(
+    generator: ChannelName,
+) -> Dict[ChannelName, List[InstructionUnion]]:
     return {generator: melody()}
 
 
@@ -89,25 +91,39 @@ def bass(*, loop: bool) -> InstrumentExport:
 class TestStreamsFromInstructions:
     """The four channels encoded together, each through the encoder its own type names."""
 
-    def test_a_sounding_channel_carries_a_tick_per_instruction_and_a_release(self) -> None:
+    def test_a_sounding_channel_carries_a_tick_per_instruction_and_a_release(
+        self,
+    ) -> None:
         streams = streams_from_instructions(one_channel(ChannelName.PULSE1), PLAYER_TIMER_TABLE)
         assert len(streams.pulse1) == SOUNDING_TICKS + 1
 
     def test_a_channel_describing_no_frame_carries_a_single_tick(self) -> None:
         streams = streams_from_instructions(one_channel(ChannelName.PULSE1), PLAYER_TIMER_TABLE)
-        assert (len(streams.pulse2), len(streams.triangle), len(streams.noise)) == (1, 1, 1)
+        assert (
+            len(streams.pulse2),
+            len(streams.triangle),
+            len(streams.noise),
+        ) == (1, 1, 1)
 
     def test_a_pitch_reaches_the_timer_the_table_states(self) -> None:
         streams = streams_from_instructions(one_channel(ChannelName.PULSE1), PLAYER_TIMER_TABLE)
         timer = PLAYER_TIMER_TABLE[PLAYER_REFERENCE_PITCH]
-        assert (streams.pulse1[0].timer_low, streams.pulse1[0].timer_high) == (timer & 0xFF, timer >> 8)
+        assert (streams.pulse1[0].timer_low, streams.pulse1[0].timer_high) == (
+            timer & 0xFF,
+            timer >> 8,
+        )
 
     def test_each_channel_reads_its_own_stream(self) -> None:
         instructions: Dict[ChannelName, List[InstructionUnion]] = {
             ChannelName.PULSE2: melody(),
             ChannelName.TRIANGLE: [TriangleInstruction(on=True, pitch=BASS_PITCH)],
             ChannelName.NOISE: [
-                NoiseInstruction(on=True, period=NOISE_PERIOD, volume=NOISE_VOLUME, short=False),
+                NoiseInstruction(
+                    on=True,
+                    period=NOISE_PERIOD,
+                    volume=NOISE_VOLUME,
+                    short=False,
+                ),
             ],
         }
         streams = streams_from_instructions(instructions, PLAYER_TIMER_TABLE)
@@ -115,7 +131,9 @@ class TestStreamsFromInstructions:
         assert streams.triangle[0].linear_counter == TRIANGLE_COUNTER_CONTROL | TRIANGLE_SOUNDING_RELOAD
         assert streams.noise[0].control & 0x0F == NOISE_VOLUME
 
-    def test_a_channel_holding_another_channels_instructions_raises(self) -> None:
+    def test_a_channel_holding_another_channels_instructions_raises(
+        self,
+    ) -> None:
         instructions: Dict[ChannelName, List[InstructionUnion]] = {ChannelName.TRIANGLE: melody()}
         with pytest.raises(TypeError):
             streams_from_instructions(instructions, PLAYER_TIMER_TABLE)
@@ -131,7 +149,9 @@ class TestSongFromReconstruction:
             == SOUNDING_TICKS + 1
         )
 
-    def test_the_schedule_follows_the_rate_the_reconstruction_was_built_at(self) -> None:
+    def test_the_schedule_follows_the_rate_the_reconstruction_was_built_at(
+        self,
+    ) -> None:
         reconstruction = player_reconstruction(one_channel(ChannelName.PULSE1), HALF_RATE_FREQUENCY)
         song = song_from_reconstruction(reconstruction, loop_tick=None, scheme=CompressionScheme.SEARCH)
         assert song.schedule == PlaySchedule.from_parameters(HALF_RATE_FREQUENCY)
@@ -143,13 +163,22 @@ class TestSongFromReconstruction:
     def test_a_loop_beyond_the_songs_ticks_raises(self) -> None:
         reconstruction = player_reconstruction(one_channel(ChannelName.PULSE1), NTSC_FREQUENCY)
         with pytest.raises(ValueError):
-            song_from_reconstruction(reconstruction, loop_tick=SOUNDING_TICKS + 1, scheme=CompressionScheme.SEARCH)
+            song_from_reconstruction(
+                reconstruction,
+                loop_tick=SOUNDING_TICKS + 1,
+                scheme=CompressionScheme.SEARCH,
+            )
 
-    def test_the_timers_come_from_the_reconstructions_own_configuration(self) -> None:
+    def test_the_timers_come_from_the_reconstructions_own_configuration(
+        self,
+    ) -> None:
         reconstruction = player_reconstruction(one_channel(ChannelName.PULSE1), NTSC_FREQUENCY)
         song = song_from_reconstruction(reconstruction, loop_tick=None, scheme=CompressionScheme.SEARCH)
         timer = get_timer_table(reconstruction.config.tuning)[PLAYER_REFERENCE_PITCH]
-        assert (song.streams.pulse1[0].timer_low, song.streams.pulse1[0].timer_high) == (timer & 0xFF, timer >> 8)
+        assert (
+            song.streams.pulse1[0].timer_low,
+            song.streams.pulse1[0].timer_high,
+        ) == (timer & 0xFF, timer >> 8)
 
     def test_a_retuned_reconstruction_plays_retuned_timers(self) -> None:
         """The console reaches a pitch through a timer, so a reconstruction built against another
@@ -164,9 +193,14 @@ class TestSongFromReconstruction:
         song = song_from_reconstruction(retuned, loop_tick=None, scheme=CompressionScheme.SEARCH)
 
         assert timer > PLAYER_TIMER_TABLE[PLAYER_REFERENCE_PITCH]
-        assert (song.streams.pulse1[0].timer_low, song.streams.pulse1[0].timer_high) == (timer & 0xFF, timer >> 8)
+        assert (
+            song.streams.pulse1[0].timer_low,
+            song.streams.pulse1[0].timer_high,
+        ) == (timer & 0xFF, timer >> 8)
 
-    def test_a_reconstruction_describing_no_frame_plays_one_resting_tick(self) -> None:
+    def test_a_reconstruction_describing_no_frame_plays_one_resting_tick(
+        self,
+    ) -> None:
         reconstruction = player_reconstruction({ChannelName.PULSE1: [silent_pulse()]}, NTSC_FREQUENCY)
         song = song_from_reconstruction(reconstruction, loop_tick=None, scheme=CompressionScheme.SEARCH)
         assert song.ticks == 1
@@ -189,7 +223,9 @@ class TestInstructionsFromInstruments:
         instructions = instructions_from_instruments((lead(loop=False), bass(loop=False)))
         assert set(instructions) == {ChannelName.PULSE1, ChannelName.TRIANGLE}
 
-    def test_a_slice_reads_back_as_the_instruction_its_channel_sounds(self) -> None:
+    def test_a_slice_reads_back_as_the_instruction_its_channel_sounds(
+        self,
+    ) -> None:
         instructions = instructions_from_instruments((lead(loop=False), bass(loop=False)))
         assert all(isinstance(item, PulseInstruction) for item in instructions[ChannelName.PULSE1])
         assert all(isinstance(item, TriangleInstruction) for item in instructions[ChannelName.TRIANGLE])
@@ -219,15 +255,27 @@ class TestLoopTickFromInstruments:
 class TestSongFromSample:
     """An export request read as the song the console plays it as."""
 
-    def test_every_slice_sounds_on_the_channel_it_was_reconstructed_for(self) -> None:
-        song = sample_song(player_sample("demo", (lead(loop=False), bass(loop=False)), nes_frequency=NTSC_FREQUENCY))
+    def test_every_slice_sounds_on_the_channel_it_was_reconstructed_for(
+        self,
+    ) -> None:
+        song = sample_song(
+            player_sample(
+                "demo",
+                (lead(loop=False), bass(loop=False)),
+                nes_frequency=NTSC_FREQUENCY,
+            )
+        )
         assert len(song.streams.pulse1) == SOUNDING_TICKS + 1
         assert song.streams.triangle[0].linear_counter == TRIANGLE_COUNTER_CONTROL | TRIANGLE_SOUNDING_RELOAD
         assert set(song.streams.pulse2) == {channel_registers(ChannelName.PULSE2, {}, PLAYER_TIMER_TABLE)[0]}
 
     def test_a_slice_on_a_channel_the_song_leaves_out_rests(self) -> None:
         song = song_from_sample(
-            player_sample("demo", (lead(loop=False), bass(loop=False)), nes_frequency=NTSC_FREQUENCY),
+            player_sample(
+                "demo",
+                (lead(loop=False), bass(loop=False)),
+                nes_frequency=NTSC_FREQUENCY,
+            ),
             channels=frozenset({ChannelName.PULSE1}),
             loop_tick=None,
             scheme=CompressionScheme.SEARCH,
@@ -251,16 +299,29 @@ class TestSongFromSample:
     def test_the_timers_come_from_the_tuning_the_request_carries(self) -> None:
         song = sample_song(player_sample("demo", (lead(loop=False),), nes_frequency=NTSC_FREQUENCY))
         timer = get_timer_table(Tuning())[PLAYER_REFERENCE_PITCH]
-        assert (song.streams.pulse1[0].timer_low, song.streams.pulse1[0].timer_high) == (timer & 0xFF, timer >> 8)
+        assert (
+            song.streams.pulse1[0].timer_low,
+            song.streams.pulse1[0].timer_high,
+        ) == (timer & 0xFF, timer >> 8)
 
     def test_a_retuned_request_plays_retuned_timers(self) -> None:
         """The console reaches a pitch through a timer, so a request built against another concert
         pitch plays the divider that concert pitch names.
         """
         tuning = Tuning(a4_frequency=RETUNED_A4_FREQUENCY)
-        song = sample_song(player_sample("demo", (lead(loop=False),), nes_frequency=NTSC_FREQUENCY, tuning=tuning))
+        song = sample_song(
+            player_sample(
+                "demo",
+                (lead(loop=False),),
+                nes_frequency=NTSC_FREQUENCY,
+                tuning=tuning,
+            )
+        )
         timer = get_timer_table(tuning)[PLAYER_REFERENCE_PITCH]
-        assert (song.streams.pulse1[0].timer_low, song.streams.pulse1[0].timer_high) == (timer & 0xFF, timer >> 8)
+        assert (
+            song.streams.pulse1[0].timer_low,
+            song.streams.pulse1[0].timer_high,
+        ) == (timer & 0xFF, timer >> 8)
 
 
 ROWS_PER_PATTERN: Final[int] = 4
@@ -300,7 +361,9 @@ def project_song(project: Project, loop_tick: Optional[int]) -> Song:
 class TestSongFromProject:
     """A whole project reaching the console as the four streams the driver plays."""
 
-    def test_the_song_lasts_the_ticks_the_projects_groove_gives_its_rows(self) -> None:
+    def test_the_song_lasts_the_ticks_the_projects_groove_gives_its_rows(
+        self,
+    ) -> None:
         project = drum_project()
         song = project_song(project, loop_tick=None)
         assert song.ticks == SongTiming.from_project(project).frame_tick(project.song.order_length())
@@ -317,7 +380,10 @@ class TestSongFromProject:
     def test_a_pitch_reaches_the_timer_the_tuning_names(self) -> None:
         song = project_song(drum_project(), loop_tick=None)
         timer = get_timer_table(Tuning())[PLAYER_REFERENCE_PITCH]
-        assert (song.streams.pulse1[0].timer_low, song.streams.pulse1[0].timer_high) == (timer & 0xFF, timer >> 8)
+        assert (
+            song.streams.pulse1[0].timer_low,
+            song.streams.pulse1[0].timer_high,
+        ) == (timer & 0xFF, timer >> 8)
 
     def test_the_song_carries_the_loop_it_is_given(self) -> None:
         song = project_song(drum_project(), loop_tick=SONG_START)
@@ -355,7 +421,12 @@ class TestEveryCompressionSchemePlaysTheSameSong:
     def test_a_harder_scheme_takes_no_more_room(self) -> None:
         project = drum_project()
         sizes = [
-            song_from_project(project, channels=ALL_CHANNELS, loop_tick=SONG_START, scheme=scheme).planes.size
+            song_from_project(
+                project,
+                channels=ALL_CHANNELS,
+                loop_tick=SONG_START,
+                scheme=scheme,
+            ).planes.size
             for scheme in CompressionScheme
         ]
         assert sizes == sorted(sizes, reverse=True)

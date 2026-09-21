@@ -6,16 +6,15 @@ from sampletones_application.services.conversion.service import ConversionServic
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
-    bending_channels,
 )
 from sampletones_core.reconstructions.converter import DirectoryConversion, GroupConversion
 from sampletones_core.reconstructions.converter.plan.protocol import ConversionPlan
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 
 def _stems(config: Config) -> StemsConfig:
-    channels = list(DEFAULT_CHANNELS)
-    return StemsConfig.single_entry(channels, bending_channels(channels))
+    return StemsConfig.single_entry(StemSettings.covering(list(DEFAULT_CHANNELS)))
 
 
 class TestConversionServiceArgumentRouting:

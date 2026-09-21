@@ -67,11 +67,9 @@ from sampletones_application.view_model.main.advanced import (
 )
 from sampletones_application.view_model.main.config import ConfigPanelViewModel
 from sampletones_application.view_model.main.converter import ConverterViewModel
-from sampletones_application.view_model.main.source import (
-    SourceSettingsPanelViewModel,
-)
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.library import library_state
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
@@ -231,15 +229,9 @@ class MainTabCoordinator:
             is_operation_active=self._hooks.is_operation_active,
         )
         self._source_panel: GUISourceSettingsPanel = GUISourceSettingsPanel(
-            SourceSettingsPanelViewModel(
-                slots=self._converter_logic.settings_slots,
-                inspected=None,
-                drive=_config.generation.drive,
-                live=True,
-            ),
+            self._converter_logic.source_settings_view,
             layout=layout.main.source,
             inputs=layout.inputs,
-            stems_layout=layout.stems,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_SOURCE_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -269,6 +261,7 @@ class MainTabCoordinator:
             stems_layout=layout.stems,
             inputs=layout.inputs,
             path_colors=layout.path_colors,
+            stem_colors=layout.stem_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_CONVERTER_PANEL),
             language_manager=language_manager,
             status_bar=status_bar,
@@ -280,13 +273,13 @@ class MainTabCoordinator:
     def _wire_settings(self, config_manager: ConfigManager) -> None:
         """What the settings cards report, and what redraws them when the configuration moves."""
         config_manager.add_config_change_callback(self._update_config_panel_view)
-        config_manager.add_config_change_callback(self._update_source_panel_view)
         config_manager.add_config_change_callback(self._update_advanced_settings_panel_view)
 
         self._config_panel.on_audio_settings_changed = config_manager.apply_audio_settings
         self._config_panel.on_library_settings_changed = config_manager.apply_library_settings
-        self._source_panel.on_generation_settings_changed = config_manager.apply_generation_settings
         self._source_panel.on_slot_toggled = self._converter_logic.toggle_slot
+        self._source_panel.on_drive_changed = self._converter_logic.set_drive
+        self._source_panel.on_channel_cap_changed = self._converter_logic.set_channel_cap
         self._advanced_settings_panel.on_advanced_settings_changed = config_manager.apply_advanced_settings
         self._advanced_settings_panel.on_select_library_directory = self._select_library_directory
         self._advanced_settings_panel.on_select_output_directory = self._select_output_directory
@@ -334,18 +327,18 @@ class MainTabCoordinator:
         )
         self._converter_logic.on_target_exists = self._confirm_overwriting_target
         self._converter_logic.library_readiness = library_manager.library_readiness
+        self._converter_logic.library_state = library_state
         self._converter_logic.cancel_library_generation = library_manager.cancel_generation
         self._converter_logic.on_load_file = self._hooks.on_load_file
         self._converter_logic.on_load_directory = self._hooks.on_load_directory
         self._converter_logic.on_canceled = self._hooks.on_canceled
-        self._converter_logic.generate_library = self._hooks.on_generate_library
+        self._converter_logic.prepare_library = self._hooks.on_prepare_library
         config_manager.add_config_change_callback(self._converter_logic.refresh_view)
         library_manager.on_generation_progress_extra = conversion_service.forward_library_progress
 
         self._converter_panel.on_convert_requested = self._converter_logic.start_conversion
         self._converter_panel.on_cancel_requested = self._request_cancel_confirmation
         self._converter_panel.on_output_changed = self._request_output
-        self._converter_panel.on_channel_cap_changed = self._converter_logic.set_channel_cap
         self._converter_panel.on_hierarchy_mode_changed = self._converter_logic.set_hierarchy_mode
         self._converter_panel.on_source_channels_changed = self._converter_logic.set_source_channels
         self._converter_panel.on_source_removed = self._converter_logic.remove_source
@@ -612,18 +605,8 @@ class MainTabCoordinator:
         )
 
     def _update_source_panel_view(self) -> None:
-        """The settings card reads the choices from the converter and the drive from the config.
-
-        The two owners answer one card, so the composition point is where their readings meet.
-        """
-        self._source_panel.update_view(
-            SourceSettingsPanelViewModel(
-                slots=self._converter_logic.settings_slots,
-                inspected=self._converter_logic.inspected_source,
-                drive=self._config_manager.config.generation.drive,
-                live=self._converter_logic.live,
-            )
-        )
+        """The settings card reads what the converter's picked row, or its joining settings, hold."""
+        self._source_panel.update_view(self._converter_logic.source_settings_view)
 
     def _update_advanced_settings_panel_view(self) -> None:
         self._advanced_settings_panel.update_view(

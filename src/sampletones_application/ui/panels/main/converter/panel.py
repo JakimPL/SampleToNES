@@ -7,6 +7,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SourceKind
 from sampletones_application.layout.general.colors.path import PathColors
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.layout.tabs.main.converter import ConverterLayout
@@ -35,8 +36,8 @@ class GUIConverterPanel(GUIPanel):
 
     The card reads top to bottom as one sentence. The output switch says what a run writes, the
     button below repeats it in the words of what is listed, and the list itself is what the run
-    converts. The choices that shape a run stand under the list, since they answer for what it
-    holds, and the destination stands under them.
+    converts. The order a mix picks in stands under the list, since it answers for what the list
+    holds, and the destination stands under it.
     """
 
     def __init__(
@@ -46,6 +47,7 @@ class GUIConverterPanel(GUIPanel):
         stems_layout: StemsListLayout,
         inputs: InputsLayout,
         path_colors: PathColors,
+        stem_colors: StemColors,
         initial_collapsed: bool = False,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
@@ -58,6 +60,7 @@ class GUIConverterPanel(GUIPanel):
         self._listing = ConverterListing(
             stems_layout=stems_layout,
             glyphs=self._glyphs.common,
+            stem_colors=stem_colors,
             language_manager=language_manager,
             status_bar=status_bar,
             key_router=key_router,
@@ -83,7 +86,6 @@ class GUIConverterPanel(GUIPanel):
         self.on_convert_requested: Optional[VoidCallback] = None
         self.on_cancel_requested: Optional[VoidCallback] = None
         self.on_output_changed: Optional[Callable[[OutputKind], None]] = None
-        self.on_channel_cap_changed: Optional[Callable[[int], None]] = None
         self.on_hierarchy_mode_changed: Optional[Callable[[HierarchyMode], None]] = None
         self.on_source_channels_changed: Optional[Callable[[Path, FrozenSet[ChannelName]], None]] = None
         self.on_folder_channel_toggled: Optional[Callable[[Path, ChannelName], None]] = None
@@ -103,7 +105,6 @@ class GUIConverterPanel(GUIPanel):
         self._wire()
 
     def create_panel(self, parent: str) -> None:
-        self._setup.create_handlers()
         with self._collapsible_card(
             parent,
             self._language_manager["main.converter.label.section"],
@@ -153,7 +154,6 @@ class GUIConverterPanel(GUIPanel):
     def _wire(self) -> None:
         """Hand each section's reports on to the card's own hooks, which the coordinator wires."""
         self._setup.on_output_changed = lambda output: self.call(self.on_output_changed, output)
-        self._setup.on_channel_cap_changed = lambda cap: self.call(self.on_channel_cap_changed, cap)
         self._setup.on_hierarchy_mode_changed = lambda mode: self.call(self.on_hierarchy_mode_changed, mode)
 
         self._action.on_convert_requested = lambda: self.call(self.on_convert_requested)

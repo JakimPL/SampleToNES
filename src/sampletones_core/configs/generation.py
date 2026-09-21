@@ -1,7 +1,6 @@
-from pydantic import AliasChoices, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from sampletones_core.configs.defaults import generation_default
-from sampletones_core.constants.algorithm import MAX_DRIVE
 from sampletones_core.constants.enums import (
     PhaseAlignerName,
     SelectorName,
@@ -86,16 +85,6 @@ class RefinementConfig(DataModel):
 
 class GenerationConfig(DataModel):
     model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
-
-    drive: float = Field(
-        default=generation_default("drive"),
-        gt=0.0,
-        le=MAX_DRIVE,
-        validation_alias=AliasChoices(
-            "drive",
-            "mixer",
-        ),
-    )
 
     reset_phase: bool = Field(default=generation_default("reset_phase"))
 

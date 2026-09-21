@@ -3,6 +3,7 @@ from enum import StrEnum, auto
 
 class TextType(StrEnum):
     LABEL = "label"
+    LETTER = "letter"
     TITLE = "title"
     MESSAGE = "message"
     TEMPLATE = "template"

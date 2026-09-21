@@ -22,7 +22,7 @@ from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.encode import emit, encode_planes
 from sampletones_player.compression.options import EVERY_LAYER
 from sampletones_player.compression.pitch import PITCH_COUNT, PitchTable
-from sampletones_player.compression.planes.channel import TonePlanes
+from sampletones_player.compression.planes.flags import flagged_value
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.planes.separate import planes_from_streams
 from sampletones_player.compression.planes.song import SongPlanes
@@ -36,7 +36,13 @@ from sampletones_player.song import Song
 from sampletones_player.specification.binary import unsigned_byte
 from sampletones_player.specification.compression import (
     MAX_LITERAL_BYTES,
+)
+from sampletones_player.specification.planes import (
     PLANE_COUNT,
+    PLANES,
+    Plane,
+    PlaneRole,
+    plane_index,
 )
 from sampletones_player.specification.registers import (
     DUTY_CYCLE_SHIFT,
@@ -65,6 +71,11 @@ PLAYER_FULL_VOLUME: Final[int] = 15
 PLAYER_SILENT_VOLUME: Final[int] = 0
 
 
+def nearest_anchor(timer: int) -> int:
+    """The pitch a hand-written timer is counted from, the one lying nearest it."""
+    return PLAYER_PITCHES.pitch(PLAYER_PITCHES.nearest[timer].pitch)
+
+
 def pulse_tick(
     volume: int,
     duty_cycle: int,
@@ -75,16 +86,26 @@ def pulse_tick(
         control=(duty_cycle << DUTY_CYCLE_SHIFT) | SUSTAINED_LEVEL | volume,
         timer_low=timer & MAX_REGISTER_VALUE,
         timer_high=timer >> TIMER_HIGH_SHIFT,
+        anchor=nearest_anchor(timer),
     )
 
 
+RESTING_PITCH: Final[int] = 0
+
+
 def triangle_tick(sounding: bool, timer: int) -> TriangleRegisters:
-    """A triangle channel's registers for one tick, spelled the way the encoder spells them."""
+    """A triangle channel's registers for one tick, spelled the way the encoder spells them.
+
+    A resting tick states no pitch, so it carries the divider the channel would be holding: the
+    lowest the table reaches, which is where the encoder leaves a channel that has yet to sound.
+    """
     reload_value = TRIANGLE_SOUNDING_RELOAD if sounding else TRIANGLE_SILENT_RELOAD
+    held = timer if sounding else PLAYER_PITCHES.timers[RESTING_PITCH]
     return TriangleRegisters(
         linear_counter=TRIANGLE_COUNTER_CONTROL | reload_value,
-        timer_low=timer & MAX_REGISTER_VALUE,
-        timer_high=timer >> TIMER_HIGH_SHIFT,
+        timer_low=held & MAX_REGISTER_VALUE,
+        timer_high=held >> TIMER_HIGH_SHIFT,
+        anchor=nearest_anchor(held),
     )
 
 
@@ -147,9 +168,9 @@ def bent_song(
 ) -> Song:
     """A song holding one note on a pulse channel while its bend plane moves the divider.
 
-    A bend reaches the console on a plane of its own, and only the plane can put one there while
-    the encoders still leave the dimension to the note. Stating one outright is therefore what
-    holds the driver's own arithmetic to the divider each tick is meant to sound at.
+    A bend reaches the console on a plane of its own, and stating the plane outright reaches bends
+    no encoder writes — past half the gap to a neighboring pitch — which is what holds the driver's
+    own arithmetic to the divider each tick is meant to sound at across the whole signed byte.
 
     Args:
         pitch_index: The pitch the value plane names, counted from the lowest the table holds.
@@ -162,14 +183,10 @@ def bent_song(
     sounding = pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_PITCHES.timers[pitch_index])
     planes = planes_from_streams(resting_streams((sounding,) * len(bends)), PLAYER_PITCHES)
     bent = SongPlanes(
-        pulse1=TonePlanes(
-            control=planes.pulse1.control,
-            value=planes.pulse1.value,
-            bend=bytes(unsigned_byte(bend) for bend in bends),
-        ),
-        pulse2=planes.pulse2,
-        triangle=planes.triangle,
-        noise=planes.noise,
+        planes=planes.planes._replace(
+            pulse1_value=bytes(flagged_value(pitch_index, bend != 0) for bend in bends),
+            pulse1_bend=bytes(unsigned_byte(bend) for bend in bends if bend),
+        )
     )
     return Song(
         planes=encode_planes(bent, (), options=EVERY_LAYER, boundaries=frozenset()),
@@ -202,6 +219,36 @@ def silent_pulse() -> PulseInstruction:
 PLAYER_VARIED_SEED: Final[int] = 7
 
 
+def playable(plane: Plane, values: bytes) -> bytes:
+    """Arbitrary bytes read as values the plane can play, through its own form."""
+    return bytes(plane.form.value(value) for value in values)
+
+
+def sounding_planes(
+    control: bytes,
+    value: bytes,
+    bend: bytes,
+) -> SongPlanes:
+    """A song's planes, the first pulse channel sounding what it is given and the rest resting.
+
+    Every other plane stands at the value its own register fixes, which is where the driver seeds
+    it and what makes it absent.
+    """
+    resting = [b"" if plane.spans_flagged_ticks else bytes((plane.seeded,)) * len(control) for plane in PLANES]
+    for role, played in zip((PlaneRole.CONTROL, PlaneRole.VALUE, PlaneRole.BEND), (control, value, bend)):
+        resting[plane_index(ChannelName.PULSE1, role)] = played
+
+    return SongPlanes(planes=PlaneOrder.across(resting))
+
+
+STREAM_START: Final[int] = 0
+
+
+def every_plane_spelling(stream: bytes) -> PlaneOrder:
+    """One stream standing for every plane the song block writes."""
+    return PlaneOrder.across((stream,) * PLANE_COUNT)
+
+
 def spelled_song(ticks: int, nes_frequency: int) -> Song:
     """A song whose every plane spells its values out, which is the most room a song can take.
 
@@ -219,8 +266,9 @@ def spelled_song(ticks: int, nes_frequency: int) -> Song:
     return Song(
         planes=CompressedPlanes(
             phrases=PhraseTable(phrases=()),
-            streams=PlaneOrder.across((stream,) * PLANE_COUNT),
+            streams=every_plane_spelling(stream),
             ticks=ticks,
+            loop_entries=(STREAM_START,) * PLANE_COUNT,
         ),
         pitches=PLAYER_PITCHES,
         schedule=PlaySchedule.from_parameters(nes_frequency),
@@ -242,8 +290,6 @@ def player_reconstruction(
     """
     config = Config().with_library(nes_frequency=nes_frequency)
     return Reconstruction.create(
-        approximation=np.zeros(PLAYER_APPROXIMATION_SAMPLES, dtype=np.float32),
-        approximations={},
         instructions=instructions,
         config=config,
         coefficient=1.0,

@@ -4,7 +4,12 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH
+from sampletones_core.constants.algorithm import (
+    MAX_DRIVE,
+    MIN_DRIVE,
+    SINGLE_STATE_LATTICE_WIDTH,
+    UNIT_DRIVE,
+)
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
@@ -24,6 +29,7 @@ from .conftest import audible_instruction_of, frame_objective_baseline, rendered
 
 RANDOM_SEEDS: Final[Tuple[int, ...]] = (11, 23, 47, 89, 131, 197)
 COST_TOLERANCE: Final[float] = 1e-5
+LOUD_DRIVE: Final[float] = 2.0
 
 
 def _config(
@@ -31,16 +37,22 @@ def _config(
     levels: List[List[int]],
     mode: HierarchyMode,
     channel_cap: int,
+    drive: float = UNIT_DRIVE,
 ) -> StemsConfig:
     return StemsConfig(
         entries=[
             StemEntry(
-                id=stem_id, settings=StemSettings(channels=list(channels), bends=bending_channels(list(channels)))
+                id=stem_id,
+                settings=StemSettings(
+                    channels=list(channels),
+                    bends=bending_channels(list(channels)),
+                    drives={channel_name: drive for channel_name in channels},
+                    channel_cap=channel_cap,
+                ),
             )
             for stem_id, channels in entries.items()
         ],
         hierarchy=StemsHierarchy(levels=levels, mode=mode),
-        channel_cap=channel_cap,
     )
 
 
@@ -81,6 +93,27 @@ class TestSingleStemEquivalence:
             SINGLE_STATE_LATTICE_WIDTH,
         )
         baseline = frame_objective_baseline(synthetic_fragment, all_channels, matcher)
+
+        assert [choice.channel_name for choice in assignment.choices] == list(baseline)
+        _assert_same_heads(assignment, baseline)
+
+    def test_matches_the_baseline_at_a_drive_off_unit(
+        self,
+        synthetic_fragment: Fragment,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+    ) -> None:
+        """A stem driving its channels harder picks what the frame objective at that drive picks."""
+        stems_config = _config({0: channels}, [[0]], HierarchyMode.STRICT, len(channels), LOUD_DRIVE)
+
+        assignment = assign_frame(
+            shared_frames(synthetic_fragment, stems_config),
+            stems_config,
+            channels,
+            matcher,
+            SINGLE_STATE_LATTICE_WIDTH,
+        )
+        baseline = frame_objective_baseline(synthetic_fragment, channels, matcher, LOUD_DRIVE)
 
         assert [choice.channel_name for choice in assignment.choices] == list(baseline)
         _assert_same_heads(assignment, baseline)
@@ -242,7 +275,8 @@ class TestRandomizedDifferential:
         for choice in assignment.choices:
             counts[choice.stem_id] = counts.get(choice.stem_id, 0) + 1
             assert choice.channel_name in stems_config.entries_by_id[choice.stem_id].settings.channel_set
-        assert all(count <= stems_config.channel_cap for count in counts.values())
+        for stem_id, count in counts.items():
+            assert count <= stems_config.entries_by_id[stem_id].settings.channel_cap
 
 
 def _assert_same_heads(
@@ -281,6 +315,7 @@ def _random_setup(
         [[0], [1]],
         mode,
         int(rng.integers(1, len(channel_names) + 1)),
+        float(rng.uniform(MIN_DRIVE, MAX_DRIVE)),
     )
 
 

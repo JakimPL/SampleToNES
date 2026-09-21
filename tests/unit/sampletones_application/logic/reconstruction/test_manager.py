@@ -11,6 +11,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
@@ -35,9 +36,8 @@ def _two_entry_stems_data() -> StemsData:
                 ),
             ],
             hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
-            channel_cap=1,
         ),
-        assignments=[],
+        assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
     )
 
 
@@ -404,8 +404,6 @@ class TestReconstructionManagerLocateOriginalAudio:
     ) -> None:
         missing_path = tmp_path / "ghost.wav"
         reconstruction = Reconstruction.create(
-            approximation=np.zeros(64, dtype=np.float32),
-            approximations={ChannelName.PULSE1: np.zeros(64, dtype=np.float32)},
             instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
             config=Config(),
             coefficient=1.0,
@@ -435,8 +433,6 @@ class TestReconstructionManagerLocateOriginalAudio:
         write_wave(first, Config().library.sample_rate, np.ones(64, dtype=np.float32))
         write_wave(second, Config().library.sample_rate, np.ones(64, dtype=np.float32))
         reconstruction = Reconstruction.create(
-            approximation=np.zeros(64, dtype=np.float32),
-            approximations={ChannelName.PULSE1: np.zeros(64, dtype=np.float32)},
             instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
             config=Config(),
             coefficient=1.0,
@@ -459,8 +455,6 @@ class TestReconstructionManagerLocateOriginalAudio:
         missing = tmp_path / "gone.wav"
         write_wave(present, Config().library.sample_rate, np.ones(64, dtype=np.float32))
         reconstruction = Reconstruction.create(
-            approximation=np.zeros(64, dtype=np.float32),
-            approximations={ChannelName.PULSE1: np.zeros(64, dtype=np.float32)},
             instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
             config=Config(),
             coefficient=1.0,

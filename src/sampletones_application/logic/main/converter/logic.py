@@ -29,8 +29,7 @@ from sampletones_application.logic.main.converter.state import ConverterState
 from sampletones_application.logic.main.converter.view import (
     compose_view,
     inspected_settings,
-    inspected_source,
-    settings_slots,
+    source_settings,
     stem_rows,
 )
 from sampletones_application.logic.main.sources.folder import Folder
@@ -41,6 +40,7 @@ from sampletones_application.logic.main.sources.recording import Recording
 from sampletones_application.logic.main.sources.slots import (
     CHANNEL_SLOT,
     SLOTS_BY_FIELD,
+    SettingsChange,
     SettingsSlot,
 )
 from sampletones_application.utils.callbacks.queue import CallbackQueue
@@ -48,20 +48,25 @@ from sampletones_application.view_model.main.converter import (
     ConversionPhase,
     ConverterViewModel,
 )
-from sampletones_application.view_model.main.source import (
-    InspectedSourceViewModel,
-    SettingsSlotViewModel,
-)
+from sampletones_application.view_model.main.source import SourceSettingsPanelViewModel
 from sampletones_application.view_model.shared.agreement import Agreement
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
-from sampletones_core.library import InstructionLibraryKey
+from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.reconstructions.converter import ConversionPlan
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, PathsCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
+
+
+def _driven(settings: StemSettings, channel_name: ChannelName, drive: float) -> StemSettings:
+    """The settings pushing one channel with ``drive``, where the recording occupies it."""
+    if channel_name not in settings.channel_set:
+        return settings
+
+    return settings.with_drive(channel_name, drive)
 
 
 class ConverterLogic(CallbackMixin):
@@ -92,7 +97,6 @@ class ConverterLogic(CallbackMixin):
             settings=RunSettings(
                 joining=session_manager.converter_settings,
                 output=session_manager.converter_output,
-                channel_cap=session_manager.converter_channel_cap,
                 hierarchy_mode=session_manager.converter_hierarchy_mode,
             ),
             gathering=Gathering.empty(),
@@ -116,9 +120,10 @@ class ConverterLogic(CallbackMixin):
         self.on_load_file: Optional[PathCallback] = None
         self.on_load_directory: Optional[VoidCallback] = None
         self.on_canceled: Optional[VoidCallback] = None
-        self.generate_library: Optional[VoidCallback] = None
+        self.prepare_library: Optional[VoidCallback] = None
         self.cancel_library_generation: Optional[VoidCallback] = None
         self.library_readiness: Optional[Callable[[Path, InstructionLibraryKey], LibraryReadiness]] = None
+        self.library_state: Optional[Callable[[Path], LibraryState]] = None
 
     @property
     def mixes(self) -> bool:
@@ -256,14 +261,9 @@ class ConverterLogic(CallbackMixin):
         self._rewrite(self._state.with_gathering(self._state.gathering.remove(SourceKey.folder(root))))
 
     @property
-    def settings_slots(self) -> Tuple[SettingsSlotViewModel, ...]:
-        """The choices the settings card edits, read from the row a reader picked."""
-        return settings_slots(self._state)
-
-    @property
-    def inspected_source(self) -> Optional[InspectedSourceViewModel]:
-        """The row the settings card is editing, where a reader picked one out of the list."""
-        return inspected_source(self._state)
+    def source_settings_view(self) -> SourceSettingsPanelViewModel:
+        """What the settings card shows: the row a reader picked, or what a recording joins with."""
+        return source_settings(self._state, live=self.live)
 
     @property
     def live(self) -> bool:
@@ -271,19 +271,27 @@ class ConverterLogic(CallbackMixin):
         return not self._run.is_active
 
     def toggle_slot(self, field: SettingsField, channel_name: ChannelName) -> None:
-        """Settles one choice on ``channel_name`` for the row the settings card is pointed at.
+        """Settles one choice on ``channel_name`` where the settings card is pointed.
 
         A picked row settles the same way a folder's own box does — already agreeing lets the
         choice go, every other reading takes it up — so one gesture answers for a folder and for
         a recording alike.
         """
-        selected = self._state.selected
-        if selected is None:
-            return
-
         slot = SLOTS_BY_FIELD[field]
         held = self._inspected_agreement(slot, channel_name).settles_to
-        self._rewrite(self._state.with_gathering(self._state.gathering.settled(selected, slot, channel_name, held)))
+        self._edit_inspected(lambda settings: slot.settled(settings, channel_name, held))
+
+    def set_drive(self, channel_name: ChannelName, drive: float) -> None:
+        """Names how hard one channel is driven, where the settings card is pointed.
+
+        A drive belongs to a channel a recording occupies, so a recording leaving the channel
+        free stands as it is.
+        """
+        self._edit_inspected(lambda settings: _driven(settings, channel_name, drive))
+
+    def set_channel_cap(self, channel_cap: int) -> None:
+        """Names how many of its channels one recording may sound in a frame, where the card points."""
+        self._edit_inspected(lambda settings: settings.with_channel_cap(channel_cap))
 
     def toggle_channel(self, channel_name: ChannelName) -> None:
         """Settles one channel on the row a reader picked out, which the channel's key reaches.
@@ -292,6 +300,9 @@ class ConverterLogic(CallbackMixin):
         the recordings the box beside that row reaches. With no row picked out there is nothing
         for the press to settle, and it leaves the list as it stands.
         """
+        if self._state.selected is None:
+            return
+
         self.toggle_slot(SettingsField.CHANNELS, channel_name)
 
     def set_source_channels(self, path: Path, channels: FrozenSet[ChannelName]) -> None:
@@ -360,10 +371,6 @@ class ConverterLogic(CallbackMixin):
             )
         )
 
-    def set_channel_cap(self, channel_cap: int) -> None:
-        """Names how many channels one recording may hold in a frame, for every conversion."""
-        self._rewrite(self._state.with_settings(self._settings.with_channel_cap(channel_cap)))
-
     def set_hierarchy_mode(self, hierarchy_mode: HierarchyMode) -> None:
         """Names how the levels take turns: round by round, or one level exhausted before the next."""
         self._rewrite(self._state.with_settings(self._settings.with_hierarchy_mode(hierarchy_mode)))
@@ -391,15 +398,22 @@ class ConverterLogic(CallbackMixin):
             self.call(self.on_target_exists, standing_targets)
             return
 
+        config = self._config_manager.config.model_copy()
+        library_key = self._config_manager.key
         self._run.wait(
             ConversionRequest(
-                config=self._config_manager.config.model_copy(),
+                config=config,
                 plan=plan,
                 reconstruction_name=self._state.destination.reconstruction_name,
-                library_key=self._config_manager.key,
+                library_key=library_key,
+                library_state=self.query(
+                    self.library_state,
+                    config.library_directory / library_key.filename,
+                    default=LibraryState.MISSING,
+                ),
             )
         )
-        self.call(self.generate_library)
+        self.call(self.prepare_library)
         self._wait_for_library_and_start()
 
     def _declines_to_start(self) -> bool:
@@ -438,6 +452,21 @@ class ConverterLogic(CallbackMixin):
     @property
     def _settings(self) -> RunSettings:
         return self._state.settings
+
+    def _edit_inspected(self, change: SettingsChange) -> None:
+        """Makes one edit where the settings card is pointed.
+
+        A picked row hands the edit to every recording it stands for; with no row picked the card
+        edits what a recording joins with, so a reader settles the shape the recordings gathered
+        from then on arrive in.
+        """
+        selected = self._state.selected
+        if selected is None:
+            joining = change(self._settings.joining)
+            self._rewrite(self._state.with_settings(self._settings.with_joining(joining)))
+            return
+
+        self._rewrite(self._state.with_gathering(self._state.gathering.changed(selected, change)))
 
     def _inspected_agreement(self, slot: SettingsSlot, channel_name: ChannelName) -> Agreement:
         """How the settings the card is editing read on ``channel_name`` in ``slot``."""
@@ -511,7 +540,6 @@ class ConverterLogic(CallbackMixin):
 
         self._session_manager.set_converter_settings(settings.joining)
         self._session_manager.set_converter_output(settings.output)
-        self._session_manager.set_converter_channel_cap(settings.channel_cap)
         self._session_manager.set_converter_hierarchy_mode(settings.hierarchy_mode)
 
     def _redirected(self, state: ConverterState) -> ConverterState:
@@ -537,8 +565,8 @@ class ConverterLogic(CallbackMixin):
     def _wait_for_library_and_start(self) -> None:
         """Begins the run once the library its request converts against is ready.
 
-        A generation preparing the library is waited out; a library still missing once no
-        generation holds it is one the run will not get, so the request is given up.
+        A generation preparing the library is waited out. Once no generation holds it, a library
+        this build reads starts the run, and any other gives the request up.
         """
         request = self._run.request
         if self._run.phase != ConversionPhase.WAITING or request is None:

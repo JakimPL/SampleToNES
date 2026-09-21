@@ -12,7 +12,8 @@ from sampletones_application.logic.main.converter.setup import (
     playing_sources,
 )
 from sampletones_application.logic.main.converter.state import ConverterState
-from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
+from sampletones_application.logic.main.sources.recording import Recording
+from sampletones_core.constants.algorithm import ALL_STEMS_CHANNEL_CAP, DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.reconstructions.converter import BatchConversion, GroupConversion
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -23,35 +24,42 @@ from tests.unit.sampletones_application.logic.main.sources.factories import fold
 JOINING: List[ChannelName] = [ChannelName.PULSE1, ChannelName.PULSE2, ChannelName.TRIANGLE]
 
 
+def _recording(path: str, channel_cap: int) -> Recording:
+    """A gathered recording over the usual channels, sounding at most ``channel_cap`` at once."""
+    return recording(path, JOINING, bending_channels(JOINING), channel_cap=channel_cap)
+
+
 def _state(
     *,
     output: OutputKind,
     listed: Optional[List[str]] = None,
     mixed: Optional[List[str]] = None,
     gathered_folder: Optional[str] = None,
-    channel_cap: int = len(JOINING),
+    channel_cap: int = ALL_STEMS_CHANNEL_CAP,
     hierarchy_mode: HierarchyMode = DEFAULT_STEMS_HIERARCHY_MODE,
 ) -> ConverterState:
     gathering = Gathering.empty()
     for name in listed or []:
-        gathering = gathering.listing(recording(name, JOINING))
+        gathering = gathering.listing(_recording(name, channel_cap))
 
     for name in mixed or []:
-        gathering = gathering.mixing(recording(name, JOINING))
+        gathering = gathering.mixing(_recording(name, channel_cap))
 
     if gathered_folder is not None:
         gathering = gathering.listing_folder(
             folder(
                 gathered_folder,
-                [recording(f"{gathered_folder}/a.wav", JOINING), recording(f"{gathered_folder}/b.wav", JOINING)],
+                [
+                    _recording(f"{gathered_folder}/a.wav", channel_cap),
+                    _recording(f"{gathered_folder}/b.wav", channel_cap),
+                ],
             )
         )
 
     return ConverterState(
         settings=RunSettings(
-            joining=StemSettings(channels=JOINING, bends=bending_channels(JOINING)),
+            joining=StemSettings.covering(JOINING),
             output=output,
-            channel_cap=channel_cap,
             hierarchy_mode=hierarchy_mode,
         ),
         gathering=gathering,
@@ -80,16 +88,16 @@ class TestWhatAPerRecordingRunConverts(BaseTestSuite):
 
         assert [entry.base_directory for entry in entries] == [Path("/audio"), Path("/audio")]
 
-    def test_an_entry_holds_the_channels_the_recording_joins_with(self) -> None:
+    def test_an_entry_holds_the_settings_the_recording_carries(self) -> None:
         entries = batch_entries(_state(output=OutputKind.PER_RECORDING, listed=["/audio/kick.wav"]))
 
-        assert entries[0].stems == StemsConfig.single_entry(JOINING, [], channel_cap=len(JOINING))
+        assert entries[0].stems == StemsConfig.single_entry(StemSettings.covering(JOINING))
 
-    def test_the_cap_reaches_every_entry(self) -> None:
-        """One recording per frame is a choice a reader makes for every conversion, batch included."""
+    def test_each_entry_carries_the_count_its_own_recording_holds(self) -> None:
+        """How many channels one recording sounds at once is that recording's own to state."""
         state = _state(output=OutputKind.PER_RECORDING, listed=["/audio/a.wav", "/audio/b.wav"], channel_cap=1)
 
-        assert [entry.stems.channel_cap for entry in batch_entries(state)] == [1, 1]
+        assert [entry.stems.entries[0].settings.channel_cap for entry in batch_entries(state)] == [1, 1]
 
     def test_a_setup_holding_nothing_names_no_plan(self) -> None:
         assert conversion_plan(_state(output=OutputKind.PER_RECORDING)) is None

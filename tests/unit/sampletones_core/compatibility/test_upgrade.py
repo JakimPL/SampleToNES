@@ -18,11 +18,11 @@ def _marking_update(base: str, target: str, marker: str) -> VersionUpdate:
         markers.append(marker)
         return {**data, "markers": markers}
 
-    return VersionUpdate(ObjectKind.LIBRARY, Version.model_validate(base), Version.model_validate(target), apply)
+    return VersionUpdate(ObjectKind.RECONSTRUCTION, Version.model_validate(base), Version.model_validate(target), apply)
 
 
-def _library_data(version: str) -> SerializedData:
-    return {"metadata": {"library_data_version": version}, "markers": []}
+def _reconstruction_data(version: str) -> SerializedData:
+    return {"metadata": {"reconstruction_data_version": version}, "markers": []}
 
 
 class TestUpgradeChain:
@@ -32,39 +32,39 @@ class TestUpgradeChain:
             _marking_update("1.1", "1.2", SECOND_MARKER),
         )
 
-        upgraded = upgrade(ObjectKind.LIBRARY, "1.0", _library_data("1.0"), updates, "1.2")
+        upgraded = upgrade(ObjectKind.RECONSTRUCTION, "1.0", _reconstruction_data("1.0"), updates, "1.2")
 
         assert upgraded["markers"] == [FIRST_MARKER, SECOND_MARKER]
-        assert upgraded["metadata"]["library_data_version"] == "1.2"
+        assert upgraded["metadata"]["reconstruction_data_version"] == "1.2"
 
     def test_current_version_returns_the_input_unchanged(self) -> None:
         updates = (_marking_update("1.0", "1.1", FIRST_MARKER),)
-        data = _library_data("1.1")
+        data = _reconstruction_data("1.1")
 
-        assert upgrade(ObjectKind.LIBRARY, "1.1", data, updates, "1.1") is data
+        assert upgrade(ObjectKind.RECONSTRUCTION, "1.1", data, updates, "1.1") is data
 
     def test_partial_chain_returns_the_input_unchanged(self) -> None:
         updates = (_marking_update("1.0", "1.1", FIRST_MARKER),)
-        data = _library_data("1.0")
+        data = _reconstruction_data("1.0")
 
-        assert upgrade(ObjectKind.LIBRARY, "1.0", data, updates, "1.2") is data
+        assert upgrade(ObjectKind.RECONSTRUCTION, "1.0", data, updates, "1.2") is data
 
     def test_future_version_returns_the_input_unchanged(self) -> None:
         updates = (_marking_update("1.0", "1.1", FIRST_MARKER),)
-        data = _library_data("1.2")
+        data = _reconstruction_data("1.2")
 
-        assert upgrade(ObjectKind.LIBRARY, "1.2", data, updates, "1.1") is data
+        assert upgrade(ObjectKind.RECONSTRUCTION, "1.2", data, updates, "1.1") is data
 
     def test_unknown_starting_version_returns_the_input_unchanged(self) -> None:
         updates = (_marking_update("1.0", "1.1", FIRST_MARKER),)
-        data = _library_data("0.9")
+        data = _reconstruction_data("0.9")
 
-        assert upgrade(ObjectKind.LIBRARY, "0.9", data, updates, "1.1") is data
+        assert upgrade(ObjectKind.RECONSTRUCTION, "0.9", data, updates, "1.1") is data
 
     def test_two_component_version_matches_three_component_base(self) -> None:
         updates = (_marking_update("1.1.0", "1.2", FIRST_MARKER),)
 
-        upgraded = upgrade(ObjectKind.LIBRARY, "1.1", _library_data("1.1"), updates, "1.2")
+        upgraded = upgrade(ObjectKind.RECONSTRUCTION, "1.1", _reconstruction_data("1.1"), updates, "1.2")
 
         assert upgraded["markers"] == [FIRST_MARKER]
 
@@ -90,4 +90,4 @@ class TestUpgradeChain:
         )
 
         with pytest.raises(ValueError):
-            upgrade(ObjectKind.LIBRARY, "1.0", _library_data("1.0"), updates, "1.2")
+            upgrade(ObjectKind.RECONSTRUCTION, "1.0", _reconstruction_data("1.0"), updates, "1.2")

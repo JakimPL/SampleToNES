@@ -282,6 +282,7 @@ class ReconstructionCoordinator:
             channel_name,
             feature_key,
             features,
+            self._tab.heard_on(channel_name),
         )
         if accepted:
             self._set_reconstruction_dimmed(True)

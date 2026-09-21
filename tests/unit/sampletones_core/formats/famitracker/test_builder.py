@@ -66,9 +66,9 @@ class TestBuildInstrumentTable:
         project_fixture.lead.reconstruction.update_channel_data(
             ChannelName.PULSE1,
             arpeggiated,
-            np.ones(RECONSTRUCTION_LENGTH, dtype=np.float32),
             LEAD_PITCH,
             (),
+            heard=project_fixture.lead.reconstruction.recorded_stem_ids,
         )
 
         instruments, slots = build_instrument_table(project_fixture.project)

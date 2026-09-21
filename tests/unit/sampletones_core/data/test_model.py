@@ -1,8 +1,12 @@
-from typing import Final
+from typing import Dict, Final
 
 import msgpack
+import pytest
 
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.data import DataModel
 from sampletones_core.instructions import PulseInstruction
+from sampletones_shared.exceptions import DeserializationError
 from sampletones_shared.types.data import SerializedData
 
 PITCH: Final[int] = 60
@@ -56,3 +60,32 @@ class TestFieldsAPayloadLeavesOut:
         assert loaded.pitch == PITCH
         assert loaded.volume == VOLUME
         assert loaded.duty_cycle == 1
+
+
+class _Levels(DataModel):
+    """A model carrying one value per channel, the shape a mapping field takes."""
+
+    levels: Dict[ChannelName, float]
+
+
+class TestAMappingField:
+    """A mapping field is written key by key and read back keyed by the type it declares."""
+
+    def test_a_mapping_survives_a_round_trip(self) -> None:
+        model = _Levels(levels={ChannelName.PULSE1: 1.5, ChannelName.NOISE: 0.25})
+
+        loaded = _Levels.deserialize(model.serialize())
+
+        assert loaded.levels == {ChannelName.PULSE1: 1.5, ChannelName.NOISE: 0.25}
+        assert all(isinstance(key, ChannelName) for key in loaded.levels)
+
+    def test_a_mapping_is_written_under_plain_words(self) -> None:
+        model = _Levels(levels={ChannelName.TRIANGLE: 2.0})
+
+        written: SerializedData = msgpack.unpackb(model.serialize(), raw=False)
+
+        assert written["levels"] == {"triangle": 2.0}
+
+    def test_a_value_that_is_no_mapping_is_refused(self) -> None:
+        with pytest.raises(DeserializationError, match="expects a mapping"):
+            _Levels.deserialize(bytes(msgpack.packb({"levels": [1.0]}, use_bin_type=True)))

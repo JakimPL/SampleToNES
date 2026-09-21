@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Final, List
+from typing import Any, Callable, Dict, Final, List
 from unittest.mock import patch
 
 import msgpack
@@ -17,6 +17,7 @@ from sampletones_core.constants.enums import (
     bending_channels,
 )
 from sampletones_core.data import Metadata
+from sampletones_core.data.document import DOCUMENT_MAGIC
 from sampletones_core.features import resting_held_features, resting_reference
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
@@ -64,8 +65,6 @@ def _pulse(pitch: int) -> PulseInstruction:
 
 def _reconstruction(instructions: List[PulseInstruction]) -> Reconstruction:
     return Reconstruction.create(
-        approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
-        approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
         instructions={ChannelName.PULSE1: instructions},
         config=Config(),
         coefficient=1.0,
@@ -97,11 +96,15 @@ class TestStemsDataRoundTrip:
             entries=[
                 StemEntry(
                     id=0,
-                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                    settings=StemSettings(
+                        channels=[ChannelName.PULSE1],
+                        bends=bending_channels([ChannelName.PULSE1]),
+                        drives={ChannelName.PULSE1: 1.5},
+                        channel_cap=1,
+                    ),
                 )
             ],
             hierarchy=StemsHierarchy(levels=[[0]], mode=HierarchyMode.STRICT),
-            channel_cap=1,
         )
         stems_data = StemsData(
             config=stems_config,
@@ -113,8 +116,6 @@ class TestStemsDataRoundTrip:
             ],
         )
         reconstruction = Reconstruction.create(
-            approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
-            approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
             instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH), _pulse(_BASE_PITCH)]},
             config=Config(),
             coefficient=1.0,
@@ -126,7 +127,7 @@ class TestStemsDataRoundTrip:
 
         loaded = Reconstruction.load(path)
 
-        assert loaded.stems_data == stems_data
+        assert loaded.stems_data == reconstruction.stems_data
 
     def test_audio_filepath_tuple_survives_save_and_load(self, tmp_path: Path) -> None:
         stem_paths = (
@@ -150,13 +151,10 @@ class TestStemsDataRoundTrip:
                     ),
                 ],
                 hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
-                channel_cap=1,
             ),
-            assignments=[],
+            assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
         )
         reconstruction = Reconstruction.create(
-            approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
-            approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
             instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH)]},
             config=Config(),
             coefficient=1.0,
@@ -172,16 +170,12 @@ class TestStemsDataRoundTrip:
 
     def test_paths_numbering_the_entries_is_enforced(self) -> None:
         stems_data = StemsData.single_entry(
-            [ChannelName.PULSE1],
-            [ChannelName.PULSE1],
+            StemSettings(channels=[ChannelName.PULSE1], bends=[ChannelName.PULSE1], channel_cap=1),
             [ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
-            channel_cap=1,
         )
 
-        with pytest.raises(ValidationError, match="one per stems entry"):
+        with pytest.raises(ValueError, match="where the setup holds"):
             Reconstruction.create(
-                approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
-                approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
                 instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH)]},
                 config=Config(),
                 coefficient=1.0,
@@ -218,13 +212,10 @@ class TestSourcePaths:
                     ),
                 ],
                 hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
-                channel_cap=1,
             ),
-            assignments=[],
+            assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
         )
         reconstruction = Reconstruction.create(
-            approximation=np.zeros(_AUDIO_LENGTH, dtype=np.float32),
-            approximations={ChannelName.PULSE1: np.zeros(_AUDIO_LENGTH, dtype=np.float32)},
             instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH)]},
             config=Config(),
             coefficient=1.0,
@@ -274,6 +265,30 @@ class TestRoundTrip:
 
         assert loaded.audio_filepath == ()
 
+    def test_the_stored_file_carries_the_framing(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        path = tmp_path / "framed.stn"
+
+        reconstruction.save(path)
+
+        assert path.read_bytes().startswith(DOCUMENT_MAGIC)
+        assert path.stat().st_size < len(reconstruction.serialize())
+
+    def test_a_file_written_before_the_framing_still_loads(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        path = tmp_path / "plain.stn"
+        path.write_bytes(reconstruction.serialize())
+
+        assert Reconstruction.load(path).id == reconstruction.id
+
 
 class TestDetachSource:
     def test_detach_clears_the_source_location(
@@ -302,6 +317,18 @@ class TestLoadRejectsForeignFiles:
                 b"garbage-not-a-flatbuffer",
                 source="corrupt.stn",
             )
+
+    def test_a_damaged_framing_raises_a_load_error(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        path = tmp_path / "damaged.stn"
+        reconstruction_factory().save(path)
+        path.write_bytes(path.read_bytes()[:32] + b"\xff" * 256)
+
+        with pytest.raises(LoadReconstructionError):
+            Reconstruction.load(path)
 
 
 class TestLoadFileAccess(BaseTestSuite):
@@ -373,82 +400,6 @@ class TestMetadataValidation:
             Reconstruction.load(path)
 
 
-class TestVersionUpgradeOnLoad:
-    def test_a_2_1_file_loads_through_the_upgrade(
-        self,
-        tmp_path: Path,
-        reconstruction_factory: ReconstructionFactory,
-    ) -> None:
-        reconstruction = reconstruction_factory()
-        path = tmp_path / "old.stn"
-        reconstruction.save(path)
-
-        binary = path.read_bytes()
-        data = msgpack.unpackb(binary, raw=False)
-        data["metadata"]["reconstruction_data_version"] = "2.1"
-        for item in data["approximations_data"]:
-            item["generator_name"] = item.pop("channel_name")
-
-        for item in data["instructions_data"]:
-            item["generator_name"] = item.pop("channel_name")
-
-        generation = data["config"]["generation"]
-        generation["generators"] = [
-            str(channel_name) for channel_name in reconstruction.stems_data.config.entries[0].settings.channels
-        ]
-        config_metadata = data["config"].get("metadata")
-        if isinstance(config_metadata, dict):
-            config_metadata["reconstruction_data_version"] = "2.1"
-
-        path.write_bytes(msgpack.packb(data, use_bin_type=True))
-
-        loaded = Reconstruction.load(path)
-
-        assert loaded.metadata.reconstruction_data_version == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
-        assert loaded.config.metadata.reconstruction_data_version == SAMPLETONES_RECONSTRUCTION_DATA_VERSION
-        assert set(loaded.approximations) == set(reconstruction.approximations)
-        assert loaded.audio_filepath == reconstruction.audio_filepath
-        assert loaded.stems_data == reconstruction.stems_data
-
-    def test_a_2_1_file_without_stems_record_gains_the_single_entry_record(
-        self,
-        tmp_path: Path,
-        reconstruction_factory: ReconstructionFactory,
-    ) -> None:
-        reconstruction = reconstruction_factory()
-        path = tmp_path / "old_plain.stn"
-        reconstruction.save(path)
-
-        binary = path.read_bytes()
-        data = msgpack.unpackb(binary, raw=False)
-        data["metadata"]["reconstruction_data_version"] = "2.1"
-        data.pop("stems_data")
-        data["audio_filepath"] = str(reconstruction.audio_filepath[0])
-        for item in data["approximations_data"]:
-            item["generator_name"] = item.pop("channel_name")
-
-        for item in data["instructions_data"]:
-            item["generator_name"] = item.pop("channel_name")
-
-        channels = list(reconstruction.stems_data.config.entries[0].settings.channels)
-        generation = data["config"]["generation"]
-        generation["generators"] = [str(channel_name) for channel_name in channels]
-        config_metadata = data["config"].get("metadata")
-        if isinstance(config_metadata, dict):
-            config_metadata["reconstruction_data_version"] = "2.1"
-
-        path.write_bytes(msgpack.packb(data, use_bin_type=True))
-
-        loaded = Reconstruction.load(path)
-
-        stems_data = loaded.stems_data
-        assert stems_data.config.entries[0].id == 0
-        assert stems_data.config.entries[0].settings.channels == channels
-        assert loaded.audio_filepath == reconstruction.audio_filepath
-        for channel, stem_ids in stems_data.assignments_by_channel.items():
-            assert len(stem_ids) == len(loaded.instructions[channel])
-
-
 class TestDeserializeDataWrapping(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
@@ -510,9 +461,9 @@ class TestInitialPitchReference:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             arpeggiated,
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         features = reconstruction.export()[ChannelName.PULSE1]
@@ -526,9 +477,9 @@ class TestInitialPitchReference:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [_pulse(_RESET_PITCH)],
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _RESET_PITCH,
             (),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         assert reconstruction.initial_pitches[ChannelName.PULSE1] == _RESET_PITCH
@@ -571,9 +522,9 @@ class TestHeldFeatures:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [_pulse(_BASE_PITCH)] * 3,
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (FeatureKey.ARPEGGIO,),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         features = reconstruction.export()[ChannelName.PULSE1]
@@ -586,9 +537,9 @@ class TestHeldFeatures:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [_pulse(_BASE_PITCH)] * 3,
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (FeatureKey.ARPEGGIO,),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         features = reconstruction.export()[ChannelName.PULSE1]
@@ -606,9 +557,9 @@ class TestHeldFeatures:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [_pulse(_BASE_PITCH)] * 3,
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (FeatureKey.ARPEGGIO,),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         exported = reconstruction.export()
@@ -629,9 +580,9 @@ class TestHeldFeatures:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [],
-            np.zeros(0, dtype=np.float32),
             resting_reference(ChannelName.PULSE1),
             resting_held_features(ChannelName.PULSE1),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         assert reconstruction.streams[ChannelName.PULSE1] == InstructionsItem.resting(ChannelName.PULSE1)
@@ -641,9 +592,9 @@ class TestHeldFeatures:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [_pulse(_BASE_PITCH)] * 3,
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE),
+            heard=reconstruction.recorded_stem_ids,
         )
         path = tmp_path / "held.stn"
 
@@ -691,9 +642,9 @@ class TestChannelSet:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [],
-            np.zeros(0, dtype=np.float32),
             _BASE_PITCH,
             (FeatureKey.VOLUME, FeatureKey.ARPEGGIO, FeatureKey.DUTY_CYCLE),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         assert reconstruction.playing_channels == ()
@@ -707,9 +658,9 @@ class TestChannelSet:
         reconstruction.update_channel_data(
             ChannelName.PULSE2,
             [_pulse(_BASE_PITCH)] * 2,
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         assert reconstruction.playing_channels == (ChannelName.PULSE1, ChannelName.PULSE2)
@@ -722,9 +673,9 @@ class TestChannelSet:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [],
-            np.zeros(0, dtype=np.float32),
             _BASE_PITCH,
             (),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         assert reconstruction.approximations == {}
@@ -755,9 +706,9 @@ class TestChannelSet:
         loaded.update_channel_data(
             ChannelName.PULSE2,
             [_pulse(_BASE_PITCH)],
-            np.ones(_AUDIO_LENGTH, dtype=np.float32),
             _BASE_PITCH,
             (),
+            heard=loaded.recorded_stem_ids,
         )
 
         assert [item.channel_name for item in loaded.instructions_data] == list(ChannelName.items())
@@ -820,9 +771,9 @@ class TestWithNesFrequency:
         reconstruction.update_channel_data(
             ChannelName.PULSE1,
             [],
-            np.zeros(0, dtype=np.float32),
             _BASE_PITCH,
             (),
+            heard=reconstruction.recorded_stem_ids,
         )
 
         retuned = reconstruction.with_nes_frequency(_RETUNED_FREQUENCY)

@@ -35,16 +35,19 @@ MAX_TRANSFORMATION_GAMMA: Final[int] = 100
 
 SINGLE_STATE_LATTICE_WIDTH: Final[int] = 1
 
-# Mixer drive
+# Drive
 
+MIN_DRIVE: Final[float] = 0.1
+UNIT_DRIVE: Final[float] = 1.0
 MAX_DRIVE: Final[float] = 5.0
 
 # Stems assignment
 
+MIN_STEMS_CHANNEL_CAP: Final[int] = 1
 ALL_STEMS_CHANNEL_CAP: Final[int] = len(ChannelName)
-DEFAULT_STEMS_CHANNEL_CAP: Final[int] = ALL_STEMS_CHANNEL_CAP
 DEFAULT_STEMS_HIERARCHY_MODE: Final[HierarchyMode] = HierarchyMode.ROUND_ROBIN
 RESTING_STEM_ID: Final[int] = -1
+AUTHORED_STEM_ID: Final[int] = -2
 RESTING_FRAME_COST: Final[float] = 0.0
 STEM_ACTIVITY_FLOOR: Final[float] = QUIETEST_VOLUME_LEVEL * min(MIXER_PULSE, MIXER_TRIANGLE, MIXER_NOISE)
 
