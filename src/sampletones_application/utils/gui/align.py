@@ -25,25 +25,25 @@ def center_item(tag: str) -> None:
 
 
 def center_when_settled(tag: str) -> None:
-    """Centers a window once the size it is drawn at stops changing.
+    """Holds a window centered over the frames it takes its size in, and lets go once it settles.
 
-    A window that takes the height its content asks for reaches that height over the first
-    frames it is drawn in, so the size read in any one of them may still be on its way. Reading
-    it again each frame until two readings agree centers the window against the size it settles
-    at, and ends there: a dialog can be dragged, and a pass that kept measuring would drag it
-    back.
+    A window that takes the size its content asks for reaches it over the frames it is drawn
+    in: a form measures its fields on the second, and the keybindings list widens over a dozen
+    more. Centering the window against every size it is read at keeps it centered the whole way
+    there, and two readings that agree end the pass: a dialog can be dragged, and one that kept
+    measuring would drag it back.
     """
     FrameCallbackManager.set_frame_callback(partial(_center_once_settled, tag, None))
 
 
 def _center_once_settled(tag: str, previous: Optional[Tuple[int, int]]) -> None:
-    """Centers the window if it is drawn at the size it was last read at, and waits if it grew."""
+    """Centers the window where it now stands, and reads again while it is still growing."""
     if not dpg.does_item_exist(tag):
         return
 
     width, height = dpg.get_item_rect_size(tag)
+    center_item(tag)
     if previous == (width, height):
-        center_item(tag)
         return
 
     FrameCallbackManager.set_frame_callback(partial(_center_once_settled, tag, (width, height)))
