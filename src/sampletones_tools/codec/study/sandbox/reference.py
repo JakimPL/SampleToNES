@@ -14,7 +14,6 @@ from sampletones_player.specification.planes import PLANES
 from sampletones_tools.codec.study.corpus.song import StudySong
 from sampletones_tools.codec.study.sandbox.context import PlaneContext
 from sampletones_tools.codec.study.sandbox.costs import Costs
-from sampletones_tools.codec.study.sandbox.defaults import no_defaults
 from sampletones_tools.codec.study.sandbox.grammar import BASELINE_GRAMMAR, Grammar
 from sampletones_tools.codec.study.sandbox.parse import StudyParse, parse_plane
 from sampletones_tools.codec.study.sandbox.verify import verify_baseline
@@ -121,7 +120,8 @@ def reference(
     )
     cache = MatchCache(PlaneIndex.from_plane(plane) for plane in planes if plane)
     table = compressed.phrases
-    baseline = plane_parses(planes, cache, table, BASELINE_GRAMMAR, no_defaults(len(table)))
+    carried = tuple(phrase.default for phrase in table.phrases)
+    baseline = plane_parses(planes, cache, table, BASELINE_GRAMMAR, carried)
     verify_baseline(baseline, compressed)
     return Reference(
         song=song,

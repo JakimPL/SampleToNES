@@ -8,7 +8,9 @@ from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.compression.planes.symbols import unpack_plane
 from sampletones_player.specification.binary import BYTE_VALUES
 from sampletones_player.specification.compression import (
+    DEFAULT_COUNT_FLAG,
     PHRASE_ID_ESCAPE,
+    PHRASE_ID_MASK,
     TOKEN_OPERAND_MASK,
     TOKEN_TAG_MASK,
     TokenTag,
@@ -30,13 +32,17 @@ def _phrase_values(
     *,
     transposed: bool,
 ) -> Tuple[bytes, int]:
-    phrase_id = operand
-    if operand == PHRASE_ID_ESCAPE:
+    phrase_id = operand & PHRASE_ID_MASK
+    if phrase_id == PHRASE_ID_ESCAPE:
         phrase_id = data[position]
         position += 1
 
-    ticks = data[position] + 1
-    position += 1
+    if operand & DEFAULT_COUNT_FLAG:
+        ticks = table[phrase_id].default
+    else:
+        ticks = data[position] + 1
+        position += 1
+
     transpose = 0
     if transposed:
         transpose = data[position]

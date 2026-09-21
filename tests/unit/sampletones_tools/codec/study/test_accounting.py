@@ -4,7 +4,7 @@ from typing import Dict, Final, Sequence, Tuple
 import pytest
 
 from sampletones_player.compression.dictionary.phrase import Phrase
-from sampletones_player.compression.dictionary.table import phrase_table
+from sampletones_player.compression.dictionary.table import PhraseTable, phrase_table
 from sampletones_player.compression.encode import emit
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.compression.tokens.hold import HoldToken
@@ -14,7 +14,7 @@ from sampletones_player.compression.tokens.types import TokenUnion
 from sampletones_player.specification.compression import MAX_HOLD_TICKS, TokenTag
 from sampletones_player.specification.planes import PLANES, PlaneRole
 from sampletones_tools.codec.study.accounting.coincident import coincident_starts
-from sampletones_tools.codec.study.accounting.dictionary import default_counts, plateaus
+from sampletones_tools.codec.study.accounting.dictionary import plateaus
 from sampletones_tools.codec.study.accounting.finding import Finding
 from sampletones_tools.codec.study.accounting.pairs import ramps_in_literals, set_holds
 from sampletones_tools.codec.study.accounting.runs import ramps, runs
@@ -33,12 +33,12 @@ class TestReadTokensReadsBackWhatEmitWrote:
     tokens: Final[Tuple[TokenUnion, ...]] = (
         HoldToken(ticks=3),
         LiteralToken(values=b"\x01\x02"),
-        PhraseToken(phrase_id=2, ticks=4, transpose=0),
-        PhraseToken(phrase_id=ESCAPED_PHRASE_ID, ticks=2, transpose=3),
+        PhraseToken(phrase_id=2, ticks=4, transpose=0, default=False),
+        PhraseToken(phrase_id=ESCAPED_PHRASE_ID, ticks=2, transpose=3, default=False),
     )
 
     def test_the_tokens_come_back_in_order(self) -> None:
-        read = read_tokens(emit(self.tokens))
+        read = read_tokens(emit(self.tokens), DICTIONARY)
 
         assert [token.tag for token in read] == [
             TokenTag.HOLD,
@@ -51,7 +51,7 @@ class TestReadTokensReadsBackWhatEmitWrote:
         assert [token.size for token in read] == [token.size for token in self.tokens]
 
     def test_the_operands_come_back(self) -> None:
-        read = read_tokens(emit(self.tokens))
+        read = read_tokens(emit(self.tokens), DICTIONARY)
 
         assert [token.payload for token in read] == [b"", b"\x01\x02", b"", b""]
         assert [token.phrase_id for token in read] == [None, None, 2, ESCAPED_PHRASE_ID]
@@ -96,6 +96,9 @@ class TestRamps(BaseTestSuite):
         assert ramps(test_case.data) == test_case.expected
 
 
+DICTIONARY: Final[PhraseTable] = phrase_table(tuple(Phrase(body=bytes((value,))) for value in range(4)))
+
+
 class TestHoldChains(BaseTestSuite):
     """A wide hold pays two bytes for up to sixty-four full holds, and one for the ticks left."""
 
@@ -128,7 +131,7 @@ class TestHoldChains(BaseTestSuite):
     def test_the_chain_is_priced_against_wide_holds(self, test_case: TestCase) -> None:
         stream = emit([HoldToken(ticks=ticks) for ticks in test_case.holds])
 
-        assert hold_chains(read_tokens(stream)) == test_case.expected
+        assert hold_chains(read_tokens(stream, DICTIONARY)) == test_case.expected
 
     def test_a_literal_breaks_the_chain(self) -> None:
         stream = emit(
@@ -140,7 +143,7 @@ class TestHoldChains(BaseTestSuite):
             ]
         )
 
-        assert hold_chains(read_tokens(stream)) == Finding(2, 0)
+        assert hold_chains(read_tokens(stream, DICTIONARY)) == Finding(2, 0)
 
 
 class TestSetHolds(BaseTestSuite):
@@ -179,7 +182,7 @@ class TestSetHolds(BaseTestSuite):
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_pairs_are_priced_at_two_bytes(self, test_case: TestCase) -> None:
-        assert set_holds(read_tokens(emit(list(test_case.tokens)))) == test_case.expected
+        assert set_holds(read_tokens(emit(list(test_case.tokens)), DICTIONARY)) == test_case.expected
 
 
 class TestRampsInLiterals(BaseTestSuite):
@@ -197,10 +200,13 @@ class TestRampsInLiterals(BaseTestSuite):
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_ramps_are_priced_at_three_bytes(self, test_case: TestCase) -> None:
-        assert ramps_in_literals(read_tokens(emit([LiteralToken(values=test_case.values)]))) == test_case.expected
+        assert (
+            ramps_in_literals(read_tokens(emit([LiteralToken(values=test_case.values)]), DICTIONARY))
+            == test_case.expected
+        )
 
     def test_a_ramp_inside_a_hold_is_none(self) -> None:
-        assert ramps_in_literals(read_tokens(emit([HoldToken(ticks=5)]))) == Finding(0, 0)
+        assert ramps_in_literals(read_tokens(emit([HoldToken(ticks=5)]), DICTIONARY)) == Finding(0, 0)
 
 
 def _starting_at(ticks: Sequence[int]) -> Tuple[ReadToken, ...]:
@@ -237,21 +243,3 @@ class TestPlateausInBodies:
         table = phrase_table((Phrase(body=b"\x01\x01\x01\x02\x02"), Phrase(body=b"\x03\x04")))
 
         assert plateaus(table) == Finding(3, 1)
-
-
-class TestDefaultCounts:
-    def test_the_modal_count_of_each_phrase_spares_its_bytes_but_one(self) -> None:
-        table = phrase_table((Phrase(body=b"\x01\x02"), Phrase(body=b"\x03\x04")))
-        tokens = read_tokens(
-            emit(
-                [
-                    PhraseToken(phrase_id=0, ticks=4, transpose=0),
-                    PhraseToken(phrase_id=0, ticks=4, transpose=0),
-                    PhraseToken(phrase_id=0, ticks=4, transpose=2),
-                    PhraseToken(phrase_id=0, ticks=6, transpose=0),
-                    PhraseToken(phrase_id=1, ticks=2, transpose=0),
-                ]
-            )
-        )
-
-        assert default_counts(table, tokens) == Finding(5, 2)

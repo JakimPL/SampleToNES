@@ -7,6 +7,8 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from sampletones_player.specification.binary import BYTE_VALUES
 from sampletones_player.specification.compression import (
     MAX_PHRASE_LENGTH,
+    NO_DEFAULT_COUNT,
+    PHRASE_DEFAULT_SIZE,
     PHRASE_LENGTH_SIZE,
     PHRASE_TABLE_ENTRY_SIZE,
 )
@@ -24,7 +26,7 @@ def phrase_entry_size(length: int) -> int:
     Returns:
         int: The bytes the phrase and its table entry take together.
     """
-    return PHRASE_TABLE_ENTRY_SIZE + PHRASE_LENGTH_SIZE + length
+    return PHRASE_TABLE_ENTRY_SIZE + PHRASE_LENGTH_SIZE + PHRASE_DEFAULT_SIZE + length
 
 
 class Phrase(BaseModel):
@@ -35,11 +37,13 @@ class Phrase(BaseModel):
 
     Attributes:
         body: The values the phrase plays, one per tick.
+        default: The count its tokens play it at most often, which a token may leave unstated.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     body: bytes
+    default: int = NO_DEFAULT_COUNT
 
     @model_validator(mode="after")
     def _validate_the_body_fits_a_table_entry(self) -> Phrase:

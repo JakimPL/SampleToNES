@@ -44,6 +44,7 @@ class PhraseMatcher:
         cache: MatchCache,
     ) -> None:
         self._index: PlaneIndex = cache.index(plane)
+        self._table: PhraseTable = table
         self._origins: Tuple[int, ...] = tuple(phrase.body[0] for phrase in table.phrases)
         self._played: Tuple[Sequence[int], ...] = tuple(cache.reading(plane, phrase).ticks for phrase in table.phrases)
         keyed: Dict[bytes, List[int]] = {}
@@ -58,6 +59,11 @@ class PhraseMatcher:
 
         self._keyed: Dict[bytes, Tuple[int, ...]] = {key: tuple(ids) for key, ids in keyed.items()}
         self._short: Tuple[int, ...] = tuple(short)
+
+    @property
+    def table(self) -> PhraseTable:
+        """The dictionary the matcher names phrases from."""
+        return self._table
 
     @property
     def index(self) -> PlaneIndex:

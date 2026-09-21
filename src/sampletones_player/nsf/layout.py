@@ -7,6 +7,7 @@ from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.song import Song
 from sampletones_player.specification.compression import (
+    PHRASE_DEFAULT_SIZE,
     PHRASE_LENGTH_SIZE,
     PHRASE_TABLE_COUNT_SIZE,
     PHRASE_TABLE_ENTRY_SIZE,
@@ -78,7 +79,7 @@ class SongLayout:
         """
         phrases = song.planes.phrases
         streams = song.planes.streams
-        body_sizes = [PHRASE_LENGTH_SIZE + phrase.length for phrase in phrases.phrases]
+        body_sizes = [PHRASE_LENGTH_SIZE + PHRASE_DEFAULT_SIZE + phrase.length for phrase in phrases.phrases]
         stream_sizes = [len(stream) for stream in streams]
 
         timer_table = SONG_HEADER_SIZE

@@ -7,9 +7,10 @@ import pytest
 from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.nsf.layout import NAME_SEPARATOR, SongLayout
-from sampletones_player.nsf.song import song_to_bytes
+from sampletones_player.nsf.song import STATED_BEYOND_THE_FIRST, song_to_bytes
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import WORD_SIZE
+from sampletones_player.specification.compression import PHRASE_DEFAULT_SIZE, PHRASE_LENGTH_SIZE
 from sampletones_player.specification.planes import PLANE_COUNT
 from sampletones_player.specification.song import (
     ABSENT_STREAM,
@@ -193,8 +194,10 @@ class TestPhraseTable:
         data = song_to_bytes(song, PROGRAM_AREA_BYTES)
         layout = SongLayout.of(song)
         for phrase, offset in zip(song.planes.phrases.phrases, layout.bodies):
+            body = offset + PHRASE_LENGTH_SIZE + PHRASE_DEFAULT_SIZE
             assert data[offset] == phrase.length
-            assert data[offset + 1 : offset + 1 + phrase.length] == phrase.body
+            assert data[offset + PHRASE_LENGTH_SIZE] == phrase.default - STATED_BEYOND_THE_FIRST
+            assert data[body : body + phrase.length] == phrase.body
 
     def test_the_entries_stand_where_the_table_states(self) -> None:
         song = spelled_phrase_song()

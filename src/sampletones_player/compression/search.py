@@ -130,8 +130,8 @@ def _gain(
         costs = parses[occurrence.plane].costs
         parsed += costs[occurrence.position + length] - costs[occurrence.position]
 
-    stated = phrase_size(phrase_id, UNSHIFTED_OCCURRENCE_TRANSPOSE)
-    shifted = phrase_size(phrase_id, SHIFTED_OCCURRENCE_TRANSPOSE)
+    stated = phrase_size(phrase_id, UNSHIFTED_OCCURRENCE_TRANSPOSE, default=False)
+    shifted = phrase_size(phrase_id, SHIFTED_OCCURRENCE_TRANSPOSE, default=False)
     return parsed - stated - shifted * (len(occurrences) - 1)
 
 

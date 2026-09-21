@@ -36,7 +36,7 @@ from sampletones_tools.codec.study.sandbox.reference import reference
 from sampletones_tools.codec.study.sandbox.tokens import Hold, Literal, Play, SetHold, StudyToken, WideHold
 from sampletones_tools.codec.study.sandbox.verify import verify_baseline
 from sampletones_tools.codec.study.variants.production import compress_baseline
-from sampletones_tools.codec.study.variants.sandbox import DEFAULT_COUNT_COSTS, GRAMMAR_VARIANTS, GrammarVariant
+from sampletones_tools.codec.study.variants.sandbox import GRAMMAR_VARIANTS, GrammarVariant
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.player import playable
@@ -55,7 +55,6 @@ SET_HOLD_ESCAPE: Final[Grammar] = replace(BASELINE_GRAMMAR, set_hold=True)
 SET_HOLD_REALLOCATED: Final[Grammar] = replace(
     BASELINE_GRAMMAR, set_hold=True, costs=replace(PRODUCTION_COSTS, set_hold=SET_HOLD_BOUND)
 )
-DEFAULT_COUNTS: Final[Grammar] = replace(BASELINE_GRAMMAR, default_counts=True, costs=DEFAULT_COUNT_COSTS)
 
 
 def _figures_plane(random: Random, ticks: int) -> bytes:
@@ -301,7 +300,7 @@ class TestGrammarsPriceAPlane(BaseTestSuite):
             label="a phrase played at its default count carries no count",
             plane=repeated,
             table=repeated_table,
-            grammar=DEFAULT_COUNTS,
+            grammar=BASELINE_GRAMMAR,
             defaults=(4,),
             expected=3,
         ),
@@ -309,7 +308,7 @@ class TestGrammarsPriceAPlane(BaseTestSuite):
             label="a phrase played at another count carries it",
             plane=repeated,
             table=repeated_table,
-            grammar=DEFAULT_COUNTS,
+            grammar=BASELINE_GRAMMAR,
             defaults=(3,),
             expected=6,
         ),
@@ -328,11 +327,6 @@ class TestCosts:
         assert PRODUCTION_COSTS.phrase(CHEAP_PHRASE_IDS - 1, 0, default=False) == 2
         assert PRODUCTION_COSTS.phrase(CHEAP_PHRASE_IDS, 0, default=False) == 3
         assert PRODUCTION_COSTS.phrase(0, 3, default=False) == 3
-
-    def test_default_counts_halve_the_cheap_ids_and_widen_the_entries(self) -> None:
-        assert DEFAULT_COUNT_COSTS.phrase(30, 0, default=True) == 1
-        assert DEFAULT_COUNT_COSTS.phrase(31, 0, default=True) == 2
-        assert DEFAULT_COUNT_COSTS.dictionary(TABLE) == TABLE.size + len(TABLE)
 
     def test_offered_lengths_are_the_longest_alone_or_every_one(self) -> None:
         assert tuple(offered_lengths(5, least=2, every=False)) == (5,)

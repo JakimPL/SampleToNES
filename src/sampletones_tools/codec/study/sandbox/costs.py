@@ -7,13 +7,12 @@ from sampletones_player.specification.compression import (
     CHEAP_PHRASE_IDS,
     OPCODE_SIZE,
     PHRASE_COUNT_SIZE,
+    PHRASE_DEFAULT_SIZE,
     PHRASE_ESCAPE_SIZE,
     TRANSPOSE_SIZE,
 )
 
 VALUE_SIZE: Final[int] = 1
-DEFAULT_COUNT_SIZE: Final[int] = 1
-DEFAULT_FLAG_BITS: Final[int] = 1
 
 
 @dataclass(frozen=True)
@@ -87,7 +86,6 @@ PRODUCTION_COSTS: Final[Costs] = Costs(
     phrase_escape=PHRASE_ESCAPE_SIZE,
     transpose=TRANSPOSE_SIZE,
     operands=CHEAP_PHRASE_IDS,
-    default_entry=0,
+    default_entry=PHRASE_DEFAULT_SIZE,
 )
 SET_HOLD_BOUND: Final[int] = OPCODE_SIZE + VALUE_SIZE
-DEFAULT_COUNT_OPERANDS: Final[int] = (CHEAP_PHRASE_IDS + 1) // (1 << DEFAULT_FLAG_BITS) - 1

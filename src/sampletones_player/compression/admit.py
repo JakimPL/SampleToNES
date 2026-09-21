@@ -95,8 +95,8 @@ def _payment(
     if played == 0:
         return 0
 
-    stated = phrase_size(CROWDED_PHRASE_ID, UNSHIFTED_TOKEN_TRANSPOSE)
-    shifted = phrase_size(CROWDED_PHRASE_ID, SHIFTED_TOKEN_TRANSPOSE)
+    stated = phrase_size(CROWDED_PHRASE_ID, UNSHIFTED_TOKEN_TRANSPOSE, default=False)
+    shifted = phrase_size(CROWDED_PHRASE_ID, SHIFTED_TOKEN_TRANSPOSE, default=False)
     spent = stated + shifted * (played - 1) + phrase_entry_size(phrase.length)
     return paid - spent
 

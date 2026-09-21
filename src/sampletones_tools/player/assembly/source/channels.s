@@ -33,6 +33,7 @@ timer_high_shadows:     .res TRIANGLE_REGISTERS + 1
 .assert OPCODE_SIZE = 1, error, "a token's operands follow its opcode by one byte"
 .assert PHRASE_TABLE_ENTRY_SIZE = 2, error, "a table entry is reached by one doubling"
 .assert PHRASE_LENGTH_SIZE = 1, error, "a phrase body follows its length by one byte"
+.assert DEFAULT_COUNT_FLAG = PHRASE_ID_MASK + 1, error, "the count flag stands above every id an opcode names"
 .assert >song_data <> ABSENT_PAGE, lderror, "a song loaded in page zero reads as an absent plane"
 .assert ABSENT_STREAM = $FFFF, error, "an absent stream is told apart by both its bytes reading $FF"
 .assert BEND_FLAG = $80, error, "a value's flag is read as the sign bit"
@@ -284,16 +285,20 @@ fetch_token:
 
 @plays_phrase:
     lda opcode
-    and #TOKEN_OPERAND_MASK
+    and #PHRASE_ID_MASK
     cmp #PHRASE_ID_ESCAPE
     bne @named
     lda (pointer),y
     iny
 @named:
     jsr set_phrase
+    lda opcode
+    and #DEFAULT_COUNT_FLAG
+    bne @shifts
     lda (pointer),y
     iny
     sta plane_state + PLANE_TOKEN_TICKS,x
+@shifts:
     lda #$00
     sta plane_state + PLANE_SHIFT,x
     bit opcode
@@ -349,9 +354,15 @@ set_phrase:
     ldy #$00
     lda (entry),y
     sta plane_state + PLANE_PHRASE_TICKS,x
+    iny
+    lda (entry),y
+    sta plane_state + PLANE_TOKEN_TICKS,x
 
-    inc plane_state + PLANE_PHRASE,x
-    bne @body
+    clc
+    lda plane_state + PLANE_PHRASE,x
+    adc #(PHRASE_LENGTH_SIZE + PHRASE_DEFAULT_SIZE)
+    sta plane_state + PLANE_PHRASE,x
+    bcc @body
     inc plane_state + PLANE_PHRASE + 1,x
 @body:
     pla

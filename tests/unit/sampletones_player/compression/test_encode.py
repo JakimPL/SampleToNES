@@ -52,19 +52,23 @@ class TestWhatATokenLooksLikeOnTheBus:
         assert emit((LiteralToken(values=bytes((0x10, 0x20))),)) == bytes((TokenTag.LITERAL | 1, 0x10, 0x20))
 
     def test_a_phrase_carries_a_cheap_id_inside_its_opcode(self) -> None:
-        token = PhraseToken(phrase_id=2, ticks=5, transpose=0)
+        token = PhraseToken(phrase_id=2, ticks=5, transpose=0, default=False)
         assert emit((token,)) == bytes((TokenTag.PHRASE | 2, 4))
 
     def test_a_shifted_phrase_states_the_shift_after_the_count(self) -> None:
-        token = PhraseToken(phrase_id=2, ticks=5, transpose=0xFD)
+        token = PhraseToken(phrase_id=2, ticks=5, transpose=0xFD, default=False)
         assert emit((token,)) == bytes((TokenTag.TRANSPOSED_PHRASE | 2, 4, 0xFD))
 
     def test_a_phrase_beyond_the_cheap_ids_names_itself_in_the_byte_that_follows(self) -> None:
-        token = PhraseToken(phrase_id=200, ticks=MAX_PHRASE_TICKS, transpose=0)
+        token = PhraseToken(phrase_id=200, ticks=MAX_PHRASE_TICKS, transpose=0, default=False)
         assert emit((token,)) == bytes((TokenTag.PHRASE | PHRASE_ID_ESCAPE, 200, MAX_PHRASE_TICKS - 1))
 
     def test_a_stream_takes_the_bytes_the_parse_counted(self) -> None:
-        tokens = (LiteralToken(values=MOTIF), HoldToken(ticks=4), PhraseToken(phrase_id=1, ticks=2, transpose=3))
+        tokens = (
+            LiteralToken(values=MOTIF),
+            HoldToken(ticks=4),
+            PhraseToken(phrase_id=1, ticks=2, transpose=3, default=False),
+        )
         assert len(emit(tokens)) == sum(token.size for token in tokens)
 
 
@@ -114,7 +118,7 @@ class TestEncodingASong:
             options=SEEDED,
             boundaries=NO_BOUNDARIES,
         )
-        assert compressed.phrases[0] == Phrase(body=MOTIF)
+        assert compressed.phrases[0].body == MOTIF
 
     def test_a_song_re_entered_at_a_boundary_still_plays_back_whole(self) -> None:
         planes = song_planes(TIMBRE * REPEATS, MOTIF * REPEATS)

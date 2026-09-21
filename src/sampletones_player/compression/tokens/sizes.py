@@ -17,19 +17,27 @@ def literal_size(length: int) -> int:
     return OPCODE_SIZE + length
 
 
-def phrase_size(phrase_id: int, transpose: int) -> int:
+def phrase_size(
+    phrase_id: int,
+    transpose: int,
+    *,
+    default: bool,
+) -> int:
     """The bytes a phrase token takes.
 
     The opcode carries the phrase's id where the id is one of the cheap ones, and a further byte
-    names it beyond those. A count byte follows, and a shifted phrase carries the shift as well.
+    names it beyond those. A token stating a count of its own carries it in a byte, and one
+    playing the phrase's own count carries none. A shifted phrase carries the shift as well.
 
     Args:
         phrase_id: Position the phrase takes in the table.
         transpose: The shift every byte of the phrase is played at.
+        default: Whether the token plays the count the phrase carries.
 
     Returns:
         int: The bytes the token takes.
     """
     escape = PHRASE_ESCAPE_SIZE if phrase_id >= PHRASE_ID_ESCAPE else 0
+    count = 0 if default else PHRASE_COUNT_SIZE
     shift = TRANSPOSE_SIZE if transpose else 0
-    return OPCODE_SIZE + PHRASE_COUNT_SIZE + escape + shift
+    return OPCODE_SIZE + count + escape + shift

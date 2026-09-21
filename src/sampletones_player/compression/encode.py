@@ -1,5 +1,6 @@
+from collections import Counter
 from dataclasses import replace
-from typing import Dict, Final, FrozenSet, Iterable, Sequence, Tuple
+from typing import Dict, Final, FrozenSet, Iterable, List, Sequence, Tuple
 
 from sampletones_player.compression.admit import admit_seeds
 from sampletones_player.compression.budget import DEFAULT_SEARCH_BUDGET, SearchBudget
@@ -25,7 +26,12 @@ from sampletones_player.compression.tokens.hold import HoldToken
 from sampletones_player.compression.tokens.literal import LiteralToken
 from sampletones_player.compression.tokens.phrase import PhraseToken
 from sampletones_player.compression.tokens.types import TokenUnion
-from sampletones_player.specification.compression import PHRASE_ID_ESCAPE, TokenTag
+from sampletones_player.specification.compression import (
+    DEFAULT_COUNT_FLAG,
+    NO_DEFAULT_COUNT,
+    PHRASE_ID_ESCAPE,
+    TokenTag,
+)
 from sampletones_player.specification.planes import PLANES
 from sampletones_shared.utils.progress import silent_reporter
 
@@ -53,11 +59,13 @@ def emit(tokens: Sequence[TokenUnion]) -> bytes:
             case PhraseToken():
                 tag = TokenTag.TRANSPOSED_PHRASE if token.transpose else TokenTag.PHRASE
                 named = min(token.phrase_id, PHRASE_ID_ESCAPE)
-                stream.append(tag | named)
+                stream.append(tag | (DEFAULT_COUNT_FLAG if token.default else 0) | named)
                 if named == PHRASE_ID_ESCAPE:
                     stream.append(token.phrase_id)
 
-                stream.append(token.ticks - 1)
+                if not token.default:
+                    stream.append(token.ticks - 1)
+
                 if token.transpose:
                     stream.append(token.transpose)
 
@@ -92,6 +100,25 @@ def _savings(
     return savings
 
 
+def _modal(played: Counter[int]) -> int:
+    """The count a phrase's tokens play it at most often, the shortest breaking a tie."""
+    if not played:
+        return NO_DEFAULT_COUNT
+
+    return min(played, key=lambda ticks: (-played[ticks], ticks))
+
+
+def _counts(parses: Iterable[Parse], phrases: int) -> Dict[int, int]:
+    """The count each phrase's tokens play it at most often, the shortest breaking a tie."""
+    played: List[Counter[int]] = [Counter() for _ in range(phrases)]
+    for parse in parses:
+        for token in parse.tokens:
+            if isinstance(token, PhraseToken):
+                played[token.phrase_id][token.ticks] += 1
+
+    return {phrase_id: _modal(counter) for phrase_id, counter in enumerate(played)}
+
+
 def _settle(
     cache: MatchCache,
     table: PhraseTable,
@@ -100,12 +127,19 @@ def _settle(
     monitor: CodecMonitor,
     baseline: Sequence[Parse],
 ) -> Tuple[PhraseTable, Tuple[Parse, ...]]:
+    """The table and its parses settled together, each round reading the other.
+
+    A phrase's place, its id and the count its tokens leave unstated are all read off a parse
+    that was made under the table before it, so the table is rebuilt and the planes read again
+    until the two stand still.
+    """
     parses = parse_planes(cache, table, options, boundaries, monitor)
     for _ in range(SETTLING_ROUNDS):
         pruned = prune(
             table,
             _references(parses, len(table)),
             _savings(parses, baseline, len(table)),
+            _counts(parses, len(table)),
         )
         if pruned.phrases == table.phrases:
             break
@@ -261,7 +295,7 @@ def encode_planes(
         streams=PlaneOrder.across(streams),
         ticks=planes.ticks,
         loop_entries=tuple(
-            stream_entry(stream, next(iter(entry), STREAM_START)) if stream else None
+            stream_entry(stream, next(iter(entry), STREAM_START), table) if stream else None
             for stream, entry in zip(streams, returned, strict=True)
         ),
     )

@@ -4,6 +4,7 @@ from sampletones_player.compression.decode import decode_planes
 from sampletones_player.nsf.layout import SongLayout
 from sampletones_player.song import Song
 from sampletones_player.specification.compression import (
+    PHRASE_DEFAULT_SIZE,
     PHRASE_LENGTH_SIZE,
     PHRASE_TABLE_COUNT_SIZE,
     PHRASE_TABLE_ENTRY_SIZE,
@@ -67,7 +68,7 @@ class TestWhereEachPartOfTheBlockBegins:
         song = figure_song(LOOP_TICK)
         layout = SongLayout.of(song)
         last = song.planes.phrases[len(song.planes.phrases) - 1]
-        assert layout.streams[0] == layout.bodies[-1] + PHRASE_LENGTH_SIZE + last.length
+        assert layout.streams[0] == layout.bodies[-1] + PHRASE_LENGTH_SIZE + PHRASE_DEFAULT_SIZE + last.length
 
     def test_each_stream_follows_the_one_before_it(self) -> None:
         song = figure_song(LOOP_TICK)

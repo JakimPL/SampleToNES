@@ -85,12 +85,12 @@ class TestTheParseCoversThePlaneCheaply:
 
     def test_a_figure_the_dictionary_holds_reaches_the_stream_as_a_phrase(self) -> None:
         parse = parsed(MOTIF, (Phrase(body=MOTIF),))
-        assert parse.tokens == (PhraseToken(phrase_id=0, ticks=len(MOTIF), transpose=0),)
+        assert parse.tokens == (PhraseToken(phrase_id=0, ticks=len(MOTIF), transpose=0, default=False),)
 
     def test_the_same_figure_played_higher_names_the_same_phrase(self) -> None:
         higher = bytes(value + 7 for value in MOTIF)
         parse = parsed(higher, (Phrase(body=MOTIF),))
-        assert parse.tokens == (PhraseToken(phrase_id=0, ticks=len(MOTIF), transpose=7),)
+        assert parse.tokens == (PhraseToken(phrase_id=0, ticks=len(MOTIF), transpose=7, default=False),)
 
     def test_a_phrase_the_layer_switches_off_is_spelled_out_instead(self) -> None:
         parse = parsed(MOTIF, (Phrase(body=MOTIF),), options=LITERALS_ONLY)

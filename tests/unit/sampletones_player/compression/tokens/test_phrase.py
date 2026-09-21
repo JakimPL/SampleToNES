@@ -51,5 +51,5 @@ class TestWhatAPhraseTokenCosts(BaseTestSuite):
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_a_phrase_token_pays_for_the_id_and_the_shift_it_names(self, test_case: TestCase) -> None:
-        token = PhraseToken(phrase_id=test_case.phrase_id, ticks=1, transpose=test_case.transpose)
-        assert token.size == test_case.expected == phrase_size(test_case.phrase_id, test_case.transpose)
+        token = PhraseToken(phrase_id=test_case.phrase_id, ticks=1, transpose=test_case.transpose, default=False)
+        assert token.size == test_case.expected == phrase_size(test_case.phrase_id, test_case.transpose, default=False)

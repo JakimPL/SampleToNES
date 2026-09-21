@@ -9,8 +9,11 @@ from sampletones_player.compression.planes.order import PlaneOrder
 from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.compression import (
     BEND_FLAG,
+    DEFAULT_COUNT_FLAG,
     OPCODE_SIZE,
+    PHRASE_DEFAULT_SIZE,
     PHRASE_ID_ESCAPE,
+    PHRASE_ID_MASK,
     PHRASE_LENGTH_SIZE,
     PHRASE_TABLE_COUNT_SIZE,
     PHRASE_TABLE_ENTRY_SIZE,
@@ -79,6 +82,9 @@ STATED: Final[Dict[str, int]] = {
     "PHRASE_TABLE_COUNT_SIZE": PHRASE_TABLE_COUNT_SIZE,
     "PHRASE_TABLE_ENTRY_SIZE": PHRASE_TABLE_ENTRY_SIZE,
     "PHRASE_LENGTH_SIZE": PHRASE_LENGTH_SIZE,
+    "PHRASE_DEFAULT_SIZE": PHRASE_DEFAULT_SIZE,
+    "DEFAULT_COUNT_FLAG": DEFAULT_COUNT_FLAG,
+    "PHRASE_ID_MASK": PHRASE_ID_MASK,
     "PLANE_STATE_SIZE": PLANE_STATE_SIZE,
     "PLANE_STATE_BYTES": PLANE_COUNT * PLANE_STATE_SIZE,
     "COUNT_STEP": COUNT_STEP,
