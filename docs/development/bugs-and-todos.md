@@ -71,7 +71,7 @@ starts carrying.
 * Leading the calibration report with `mr-loudness-dB`. `build_referees` puts `mr-auditory-dB`
   first, which reads silence as closer to a tone than any render. The order changes once by-ear
   ratings of a sweep hold the loudness-weighted referee at ρ ≥ 0.6 in every category, which is the
-  bar [the calibration](../tools/calibration.md) sets; a listening round has scored
+  bar for the switch; a listening round has scored
   `polyphony-chord` 6–7 dB better on a render that dropped the noise channel entirely, so the bar
   stands unmet.
 * An axiom stating that a recording built with noise reconstructs with the noise channel sounding.

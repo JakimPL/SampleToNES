@@ -206,11 +206,11 @@ class Reconstruction(DataModel):
 
     @cached_property
     def held_features(self) -> Dict[ChannelName, Tuple[FeatureKey, ...]]:
-        """The dimensions each channel's instrument writes for itself.
+        """The dimensions each channel governs, whose envelopes an export leaves empty.
 
-        An instruction states every dimension of its frame, so which of them the instrument
-        itself writes is stated here: the rest are the channel's, and an export leaves their
-        envelopes empty for the player to fill from the value it holds.
+        An instrument writes the dimensions it describes and leaves the rest to the channel,
+        which keeps the value it already holds for as long as the instrument sounds. These
+        are the dimensions it leaves.
         """
         return {channel_name: tuple(item.held_features) for channel_name, item in self.streams.items()}
 
