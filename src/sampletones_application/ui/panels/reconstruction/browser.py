@@ -7,6 +7,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
 )
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
     TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS,
@@ -48,6 +49,7 @@ class GUIReconstructionsBrowserPanel(GUIReconstructionBrowserPanel):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
+        stem_colors: StemColors,
         initial_collapsed: bool,
         initial_favorites_only: bool,
         initial_expanded_rows: AbstractSet[str],
@@ -61,6 +63,7 @@ class GUIReconstructionsBrowserPanel(GUIReconstructionBrowserPanel):
             language_manager=language_manager,
             status_bar=status_bar,
             colors=colors,
+            stem_colors=stem_colors,
             initial_collapsed=initial_collapsed,
             initial_favorites_only=initial_favorites_only,
             initial_expanded_rows=initial_expanded_rows,

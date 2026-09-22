@@ -38,9 +38,10 @@ and exempt.
 ### Text resolves where it is displayed
 
 A class that reads text holds the manager as `self._language_manager`, assigned in its own `__init__`, and
-looks each string up at the point of use, so a language change takes effect on the next read. Where the
-same text is read at more than one site in a class, one named binding serves them all and the reads stay in
-step.
+looks each string up at the point of use, so a language change takes effect on the next read. A class that
+inherits the manager declares it in its body instead, `_language_manager: LanguageManager`, which states
+the same thing to a reader and to the hook. Where the same text is read at more than one site in a class,
+one named binding serves them all and the reads stay in step.
 
 ### The forms a lookup takes
 

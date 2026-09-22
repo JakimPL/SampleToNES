@@ -1,4 +1,5 @@
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
+from typing import List, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -9,8 +10,18 @@ from sampletones_application.tags.general import (
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
+from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.data import SerializedData
+
+
+@dataclass(frozen=True)
+class DetailSwatch:
+    """One thing a hover lists, named and marked in the color that thing is drawn in elsewhere."""
+
+    name: str
+    color: BaseColor
 
 
 def show_tooltip(
@@ -79,13 +90,36 @@ def create_detail_tooltip(parent: str, *, tag: str) -> None:
         ThemeRegistry.get(TAG_GLOBAL_THEME_TOOLTIP).bind_to_item(tag)
 
 
-def populate_detail_tooltip(tag: str, items: List[Tuple[str, str]]) -> None:
-    """Replaces the tooltip's content with ``label``/``value`` pairs in two aligned columns.
+def populate_detail_tooltip(
+    tag: str,
+    items: List[Tuple[str, str]],
+    *,
+    swatch_glyph: str,
+    swatch_label: str,
+    swatches: Sequence[DetailSwatch],
+) -> None:
+    """Replaces the tooltip's content with ``label``/``value`` pairs and the list that follows them.
 
     ``mvTable_SizingFixedFit`` sizes each column to its own content, so the label column tracks its
     own text width independently of the value column. A compact theme tightens the row padding.
+    The list below the pairs reads under ``swatch_label``, one row per thing, each marked with
+    ``swatch_glyph`` in that thing's own color. A tooltip given nothing to list shows the pairs
+    alone.
     """
     dpg.delete_item(tag, children_only=True)
+    if items:
+        _add_detail_table(tag, items)
+
+    if not swatches:
+        return
+
+    if items:
+        dpg.add_separator(parent=tag)
+
+    _add_swatch_list(tag, swatch_glyph, swatch_label, swatches)
+
+
+def _add_detail_table(tag: str, items: List[Tuple[str, str]]) -> None:
     with dpg.table(
         parent=tag,
         header_row=False,
@@ -104,3 +138,21 @@ def populate_detail_tooltip(tag: str, items: List[Tuple[str, str]]) -> None:
                 FontRegistry.bind_to_item(label_text, Font.REGULAR_SMALL)
                 value_text = dpg.add_text(value)
                 FontRegistry.bind_to_item(value_text, Font.MONO_SMALL)
+
+
+def _add_swatch_list(
+    tag: str,
+    glyph: str,
+    label: str,
+    swatches: Sequence[DetailSwatch],
+) -> None:
+    """Lists each thing under its heading, the mark ahead of the name reading in the thing's color."""
+    heading = dpg.add_text(label, parent=tag)
+    FontRegistry.bind_to_item(heading, Font.REGULAR_SMALL)
+    for swatch in swatches:
+        with dpg.group(horizontal=True, parent=tag):
+            mark = dpg.add_text(glyph)
+            dpg_set_palette_color(mark, swatch.color)
+            FontRegistry.bind_to_item(mark, Font.ICON)
+            name = dpg.add_text(swatch.name)
+            FontRegistry.bind_to_item(name, Font.REGULAR_SMALL)

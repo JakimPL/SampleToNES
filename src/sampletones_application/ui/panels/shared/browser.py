@@ -1,5 +1,6 @@
 from abc import abstractmethod
-from typing import AbstractSet, Any, Optional, Tuple
+from pathlib import Path
+from typing import AbstractSet, Any, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -7,6 +8,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
 )
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_FILE_WAVE,
@@ -18,7 +20,9 @@ from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
+from sampletones_application.utils.gui.tooltip import DetailSwatch
 from sampletones_core.structures.tree import (
+    ConfigNode,
     FileSystemNode,
     NodeType,
     Tree,
@@ -27,7 +31,9 @@ from sampletones_core.structures.tree import (
     traverse,
 )
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.types.callback import PathCallback, VoidCallback
+
+SEVERAL_RECORDINGS: Final[int] = 2
 
 
 class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
@@ -41,6 +47,10 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
     in the mode the session left it in. It holds the shape the reader unfolded as well, so a rebuild
     — a refresh, a change of mode — brings the rows back standing as they were left, and so does the
     next run of the application.
+
+    A row naming a reconstruction asks through ``on_recordings_requested`` what that document is made
+    of, and lists what comes back in the hover details, each recording marked in the color its place
+    on the record gives it everywhere else.
     """
 
     _MONOSPACE_CONFIG_NODES: bool = True
@@ -56,12 +66,17 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         colors: TreeColors,
+        stem_colors: StemColors,
         initial_collapsed: bool,
         initial_favorites_only: bool,
         initial_expanded_rows: AbstractSet[str],
     ) -> None:
         self._language_manager = language_manager
+        self._stem_colors = stem_colors
+        self._detail_document: Optional[Path] = None
+        self._detail_recordings: Tuple[str, ...] = ()
         self.on_refresh_tree: Optional[VoidCallback] = None
+        self.on_recordings_requested: Optional[PathCallback] = None
 
         super().__init__(
             tree=tree,
@@ -110,6 +125,84 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
         }
 
         super()._setup_handlers()
+
+    def _node_detail_items(self, node: TreeNode) -> List[Tuple[str, str]]:
+        """What a row states about the configuration behind it.
+
+        A reconstruction file reads its fields from the configuration directory holding it, since a
+        configuration states them in a directory name. The same file listed under the audio it
+        mirrors carries those fields on its own row, so both branches say the same thing about it.
+        """
+        match node:
+            case ConfigNode():
+                return super()._node_detail_items(node)
+            case FileSystemNode(node_type=NodeType.FILE):
+                return self._enclosing_configuration_items(node)
+
+        return super()._node_detail_items(node)
+
+    def _enclosing_configuration_items(self, node: FileSystemNode) -> List[Tuple[str, str]]:
+        """The fields of the nearest configuration directory above ``node``, where one stands there."""
+        configuration = next(
+            (ancestor.config for ancestor in reversed(node.ancestors) if isinstance(ancestor, ConfigNode)),
+            None,
+        )
+        if configuration is None:
+            return []
+
+        return self._reconstruction_detail_items(configuration)
+
+    def _node_detail_recordings(self, node: TreeNode) -> Tuple[DetailSwatch, ...]:
+        """The recordings the hovered document is made of, asked for as the pointer reaches its row.
+
+        The document holds the answer, so the row asks for it and lists what has come back. A
+        document standing for one recording says what the row already says, which leaves the list
+        to the documents holding several.
+        """
+        path = self._document_path(node)
+        if path is None:
+            self._forget_hovered_document()
+            return ()
+
+        if path != self._detail_document:
+            self._forget_hovered_document()
+            self._detail_document = path
+            self.call(self.on_recordings_requested, path)
+
+        return self._recording_swatches(self._detail_recordings)
+
+    def update_recordings(self, path: Path, names: Tuple[str, ...]) -> None:
+        """Takes what a document names and redraws the details, where they stand on that document."""
+        if path != self._detail_document:
+            return
+
+        self._detail_recordings = names
+        self.refresh_detail_tooltip()
+
+    def _forget_hovered_document(self) -> None:
+        self._detail_document = None
+        self._detail_recordings = ()
+
+    def _recording_swatches(self, names: Tuple[str, ...]) -> Tuple[DetailSwatch, ...]:
+        """One mark per recording, colored by the place it holds on the record."""
+        if len(names) < SEVERAL_RECORDINGS:
+            return ()
+
+        return tuple(
+            DetailSwatch(
+                name=name,
+                color=self._stem_colors.for_position(position),
+            )
+            for position, name in enumerate(names)
+        )
+
+    @staticmethod
+    def _document_path(node: TreeNode) -> Optional[Path]:
+        """Where the reconstruction a row names lives, for the rows that name one."""
+        if isinstance(node, FileSystemNode) and node.node_type == NodeType.FILE:
+            return node.filepath
+
+        return None
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if node.node_type == NodeType.FILE:

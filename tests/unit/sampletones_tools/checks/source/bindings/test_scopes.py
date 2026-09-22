@@ -37,6 +37,15 @@ class Panel:
             print(name)
 """
 
+DECLARED_ATTRIBUTE_SOURCE: Final[str] = """
+class Browser(Panel):
+    _language_manager: LanguageManager
+    _plain = 1
+
+    def _menu_label(self, element: MenuElements) -> str:
+        return self._language_manager[element]
+"""
+
 IMPORTED_SOURCE: Final[str] = """
 def create() -> None:
     for export_format, element in EXPORT_FILTERS.items():
@@ -131,6 +140,19 @@ class TestAttributeTypes:
 
     def test_the_spellings_of_a_type_leave_other_names_aside(self) -> None:
         assert "element" not in panel_environment("_menu_label").spellings_of("LanguageManager")
+
+
+class TestAttributesAClassBodyDeclares:
+    def test_a_declared_attribute_states_its_type_to_every_method(self) -> None:
+        """A class inheriting an attribute declares what it holds rather than assigning it again."""
+        environment = environment_of(DECLARED_ATTRIBUTE_SOURCE, "_menu_label", {})
+
+        assert environment.type_of("self._language_manager") == "LanguageManager"
+
+    def test_an_attribute_the_body_only_assigns_states_nothing(self) -> None:
+        environment = environment_of(DECLARED_ATTRIBUTE_SOURCE, "_menu_label", {})
+
+        assert environment.type_of("self._plain") is None
 
 
 class TestLoopTargets:

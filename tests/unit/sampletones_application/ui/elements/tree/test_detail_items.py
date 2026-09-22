@@ -1,10 +1,12 @@
 from pathlib import Path
-from typing import Final, List
+from typing import Final, List, Tuple
 
 import pytest
 
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
+from sampletones_application.utils.palette.colors.literal import LiteralColor
 from sampletones_core.configs import Config
 from sampletones_core.configs.display import format_frequencies, format_sample_rate, short_hash
 from sampletones_core.constants.enums import DEFAULT_CHANNELS
@@ -17,6 +19,7 @@ from sampletones_core.structures.tree.node import (
 )
 from sampletones_core.structures.tree.type import NodeType
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
+from sampletones_shared.types.application import ColorRGBA
 from tests.suite.language import FakeLanguageManager
 
 CONFIG_FIELDS: Final[ConfigDirectoryFields] = ConfigDirectoryFields.from_config(Config(), frozenset(DEFAULT_CHANNELS))
@@ -31,19 +34,47 @@ DETAIL_LABELS: Final[List[str]] = [
     "window_size",
     "channels",
     "configuration",
+    "stems",
 ]
+
+RECORDING_COLORS: Final[Tuple[ColorRGBA, ...]] = (
+    (200, 80, 40, 255),
+    (80, 160, 220, 255),
+)
+AUTHORED_COLOR: Final[ColorRGBA] = (180, 140, 240, 255)
+REST_COLOR: Final[ColorRGBA] = (40, 40, 48, 255)
+LEFT_OUT_FRACTION: Final[float] = 0.4
+
+RECORDINGS: Final[Tuple[str, ...]] = ("Drums", "Bass")
+ONE_RECORDING: Final[Tuple[str, ...]] = ("Neurostem",)
 
 
 @pytest.fixture
-def panel() -> GUISequencerBrowserPanel:
+def stem_colors() -> StemColors:
+    return StemColors(
+        recordings=tuple(LiteralColor(value) for value in RECORDING_COLORS),
+        authored=LiteralColor(AUTHORED_COLOR),
+        rest=LiteralColor(REST_COLOR),
+        left_out_fraction=LEFT_OUT_FRACTION,
+    )
+
+
+@pytest.fixture
+def panel(stem_colors: StemColors) -> GUISequencerBrowserPanel:
     """Builds a browser panel without its DearPyGui-dependent constructor.
 
-    Resolving a node's detail items reads only the language-resolved detail labels, so the pieces
+    Resolving a node's detail items reads only the language-resolved detail labels, the colors a
+    recording is known by and what the panel holds about the row under the pointer, so the pieces
     the constructor would build around a running GUI context are unnecessary here. A concrete
     browser stands in for the base because the configuration font is a browser-level opt-in.
     """
     instance = GUISequencerBrowserPanel.__new__(GUISequencerBrowserPanel)
     instance._language_manager = FakeLanguageManager()
+    instance._stem_colors = stem_colors
+    instance._detail_document = None
+    instance._detail_recordings = ()
+    instance._detail_tooltip_owner_tag = None
+    instance.on_recordings_requested = None
     for label in DETAIL_LABELS:
         setattr(instance, f"_lbl_detail_{label}", label)
 
@@ -83,6 +114,16 @@ def config_variant_node() -> ConfigNode:
     )
 
 
+def reconstruction_file_node(parent: TreeNode) -> FileSystemNode:
+    """A reconstruction as the configuration branch lists it: a file under the folder holding it."""
+    return FileSystemNode(
+        "song",
+        node_type=NodeType.FILE,
+        filepath=RECONSTRUCTION_PATH,
+        parent=parent,
+    )
+
+
 class TestConfigDetailItems:
     def test_config_directory_states_its_configuration(
         self,
@@ -114,6 +155,93 @@ class TestConfigDetailItems:
         panel: GUISequencerBrowserPanel,
     ) -> None:
         assert panel._node_detail_items(TreeNode("Samples", NodeType.GROUP)) == []
+
+
+class TestAReconstructionFileRow:
+    def test_it_states_the_configuration_of_the_directory_holding_it(
+        self,
+        panel: GUISequencerBrowserPanel,
+    ) -> None:
+        """A configuration states its fields in a directory name, which the file inherits by sitting there."""
+        directory = config_directory_node()
+
+        items = panel._node_detail_items(reconstruction_file_node(directory))
+
+        assert items == panel._node_detail_items(directory)
+
+    def test_a_file_outside_every_configuration_directory_states_none(
+        self,
+        panel: GUISequencerBrowserPanel,
+    ) -> None:
+        assert panel._node_detail_items(reconstruction_file_node(plain_directory_node())) == []
+
+
+class TestTheRecordingsARowLists:
+    def test_a_row_naming_a_document_asks_what_it_holds(
+        self,
+        panel: GUISequencerBrowserPanel,
+    ) -> None:
+        asked: List[Path] = []
+        panel.on_recordings_requested = asked.append
+
+        panel._node_detail_recordings(config_variant_node())
+
+        assert asked == [RECONSTRUCTION_PATH]
+
+    def test_a_row_naming_no_document_asks_for_nothing(
+        self,
+        panel: GUISequencerBrowserPanel,
+    ) -> None:
+        asked: List[Path] = []
+        panel.on_recordings_requested = asked.append
+
+        assert panel._node_detail_recordings(config_directory_node()) == ()
+        assert asked == []
+
+    def test_the_recordings_read_in_record_order(
+        self,
+        panel: GUISequencerBrowserPanel,
+    ) -> None:
+        panel._node_detail_recordings(config_variant_node())
+        panel.update_recordings(RECONSTRUCTION_PATH, RECORDINGS)
+
+        swatches = panel._node_detail_recordings(config_variant_node())
+
+        assert tuple(swatch.name for swatch in swatches) == RECORDINGS
+
+    def test_each_recording_takes_the_color_of_the_place_it_holds(
+        self,
+        panel: GUISequencerBrowserPanel,
+        stem_colors: StemColors,
+    ) -> None:
+        panel._node_detail_recordings(config_variant_node())
+        panel.update_recordings(RECONSTRUCTION_PATH, RECORDINGS)
+
+        swatches = panel._node_detail_recordings(config_variant_node())
+
+        assert [swatch.color.rgba for swatch in swatches] == [
+            stem_colors.for_position(position).rgba for position in range(len(RECORDINGS))
+        ]
+
+    def test_a_document_naming_one_recording_lists_nothing(
+        self,
+        panel: GUISequencerBrowserPanel,
+    ) -> None:
+        """One recording says what the row already says, so the list is left to the documents holding several."""
+        panel._node_detail_recordings(config_variant_node())
+        panel.update_recordings(RECONSTRUCTION_PATH, ONE_RECORDING)
+
+        assert panel._node_detail_recordings(config_variant_node()) == ()
+
+    def test_a_reading_of_another_document_is_left_where_it_is(
+        self,
+        panel: GUISequencerBrowserPanel,
+    ) -> None:
+        panel._node_detail_recordings(config_variant_node())
+
+        panel.update_recordings(CONFIG_DIRECTORY / f"other{EXT_FILE_RECONSTRUCTION}", RECORDINGS)
+
+        assert panel._node_detail_recordings(config_variant_node()) == ()
 
 
 class TestConfigurationFont:

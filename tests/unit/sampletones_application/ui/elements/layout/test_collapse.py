@@ -65,6 +65,7 @@ def rendered_strip_padding(monkeypatch: pytest.MonkeyPatch) -> None:
 def _glyphs() -> Glyphs:
     common = CommonGlyphs(
         tick=".",
+        swatch="#",
         favorite="*",
         expanded=_EXPANDED_GLYPH,
         collapsed=_COLLAPSED_GLYPH,

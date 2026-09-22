@@ -76,6 +76,7 @@ from sampletones_application.utils.gui.dpg import (
 )
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import (
+    DetailSwatch,
     create_detail_tooltip,
     populate_detail_tooltip,
 )
@@ -175,6 +176,7 @@ class GUITreePanel(GUIPanel, ABC):
         self._lbl_detail_window_size = language_manager["global.context.label.detail_window_size"]
         self._lbl_detail_channels = language_manager["global.context.label.detail_channels"]
         self._lbl_detail_configuration = language_manager["global.context.label.detail_configuration"]
+        self._lbl_detail_stems = language_manager["global.context.label.detail_stems"]
 
         self.on_favorites_filter_changed: Optional[Callable[[str, bool], None]] = None
         self.on_add_to_sequencer: Optional[PathCallback] = None
@@ -524,23 +526,63 @@ class GUITreePanel(GUIPanel, ABC):
     def _update_detail_tooltip(self, user_data: Any) -> None:
         """Reveals the detail tooltip for a hovered node that carries details, hiding it otherwise.
 
-        The reveal is gated on a change of owning node, so the tooltip content is rebuilt once per
-        node.
+        A hover is reported for every frame the pointer rests on a row, and the row it belongs to is
+        read first, so the content is built once per node and a row asked about a document asks for
+        it once.
         """
         if not isinstance(user_data, tuple):
             return
 
         node, node_tag = user_data
-        detail_items = self._node_detail_items(node)
-        if detail_items:
-            if self._detail_tooltip_owner_tag != node_tag:
-                populate_detail_tooltip(self._detail_tooltip_tag, detail_items)
-                self._detail_tooltip_owner_tag = node_tag
-                dpg_configure_item(self._detail_tooltip_tag, show=True)
-
+        if self._detail_tooltip_owner_tag == node_tag:
             return
 
-        self._hide_detail_tooltip()
+        self._show_detail_tooltip(node, node_tag)
+
+    def _show_detail_tooltip(self, node: TreeNode, node_tag: str) -> None:
+        """Fills the tooltip with what the node answers, and hides it where the node answers nothing."""
+        detail_items = self._node_detail_items(node)
+        detail_recordings = self._node_detail_recordings(node)
+        if not detail_items and not detail_recordings:
+            self._hide_detail_tooltip()
+            return
+
+        populate_detail_tooltip(
+            self._detail_tooltip_tag,
+            detail_items,
+            swatch_glyph=self._glyphs.common.swatch,
+            swatch_label=self._lbl_detail_stems,
+            swatches=detail_recordings,
+        )
+        self._detail_tooltip_owner_tag = node_tag
+        dpg_configure_item(self._detail_tooltip_tag, show=True)
+
+    def refresh_detail_tooltip(self) -> None:
+        """Rebuilds the tooltip where it stands, which an answer arriving after it was built asks for.
+
+        The rebuild belongs to the row the tooltip is showing, so it stands still once the pointer
+        has moved on.
+        """
+        owner_tag = self._detail_tooltip_owner_tag
+        if owner_tag is None:
+            return
+
+        node = self._node_at(owner_tag)
+        if node is not None:
+            self._show_detail_tooltip(node, owner_tag)
+
+    @staticmethod
+    def _node_at(node_tag: str) -> Optional[TreeNode]:
+        """The node a row was created for, read back from the widget the row is."""
+        if not dpg.does_item_exist(node_tag):
+            return None
+
+        user_data = dpg.get_item_user_data(node_tag)
+        if not isinstance(user_data, tuple):
+            return None
+
+        node, _ = user_data
+        return node if isinstance(node, TreeNode) else None
 
     def _hide_detail_tooltip(self) -> None:
         if self._detail_tooltip_owner_tag is None:
@@ -794,6 +836,10 @@ class GUITreePanel(GUIPanel, ABC):
                 return self._reconstruction_detail_items(node.config)
 
         return []
+
+    def _node_detail_recordings(self, node: TreeNode) -> Tuple[DetailSwatch, ...]:  # pylint: disable=unused-argument
+        """The recordings a row's document is made of, which a browser reading documents answers."""
+        return ()
 
     def _library_detail_items(
         self,

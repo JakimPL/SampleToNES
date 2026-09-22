@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, FrozenSet, Mapping, Optional, Sequence
+from typing import Callable, Dict, FrozenSet, Mapping, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -202,10 +202,12 @@ class ReconstructionTabCoordinator:
             language_manager=language_manager,
             status_bar=status_bar,
             colors=layout.tree_colors,
+            stem_colors=layout.stem_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
             initial_favorites_only=session_manager.is_favorites_filter_active(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
             initial_expanded_rows=session_manager.expanded_rows(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
         )
+        self._browser_panel.on_recordings_requested = self._on_browser_recordings_requested
         self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
         self._browser_tree_logic.on_favorite_changed = on_favorite_changed
         self._browser_tree_logic.on_search_update_needed = self._browser_panel.update_tree_visibility
@@ -582,6 +584,16 @@ class ReconstructionTabCoordinator:
     ) -> None:
         """Persists the browser's favorites filter so it opens in the same mode on the next launch."""
         self._session_manager.set_favorites_filter_active(panel_tag, favorites_only)
+
+    def _on_browser_recordings_requested(self, path: Path) -> None:
+        """Hands the browser what a document names, where it has already been read."""
+        names = self._browser_logic.recordings(path)
+        if names is not None:
+            self._browser_panel.update_recordings(path, names)
+
+    def show_browser_recordings(self, path: Path, names: Tuple[str, ...]) -> None:
+        """Hands the browser a reading that landed after the row asked for it."""
+        self._browser_panel.update_recordings(path, names)
 
     def _on_instruments_collapse_changed(
         self,

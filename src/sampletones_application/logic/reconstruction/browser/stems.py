@@ -69,7 +69,10 @@ class ReconstructionStemsReader(CallbackMixin):
     def _read_document(self, path: Path, modified_at: Optional[float]) -> None:
         names = self._recordings_of(path)
         with self._lock:
-            self._read[path] = _ReadRecordings(modified_at=modified_at, names=names)
+            self._read[path] = _ReadRecordings(
+                modified_at=modified_at,
+                names=names,
+            )
 
         CallbackQueue.add(self._announce, path, names)
 

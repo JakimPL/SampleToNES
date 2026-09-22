@@ -147,6 +147,7 @@ class SequencerTabCoordinator:
             language_manager=language_manager,
             status_bar=status_bar,
             colors=layout.tree_colors,
+            stem_colors=layout.stem_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_BROWSER_PANEL),
             initial_favorites_only=session_manager.is_favorites_filter_active(TAG_SEQUENCER_BROWSER_PANEL),
             initial_expanded_rows=session_manager.expanded_rows(TAG_SEQUENCER_BROWSER_PANEL),
@@ -578,6 +579,7 @@ class SequencerTabCoordinator:
         self._sequencer_browser_panel.replace_in_sequencer_label = self._reconstructions.replace_target_label
         self._sequencer_browser_panel.on_locate_original_audio = self._original_audio_locator.locate
         self._sequencer_browser_panel.on_refresh_tree = self._sequencer_browser_logic.refresh_tree
+        self._sequencer_browser_panel.on_recordings_requested = self._on_browser_recordings_requested
         self._sequencer_tree_logic.on_lock_state_changed = self._sequencer_browser_panel.set_tree_enabled
         self._sequencer_tree_logic.on_favorite_changed = self._on_favorite_changed
         self._sequencer_tree_logic.on_search_update_needed = self._sequencer_browser_panel.update_tree_visibility
@@ -785,6 +787,16 @@ class SequencerTabCoordinator:
 
     def _on_preview_error(self, exception: Exception) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
+
+    def _on_browser_recordings_requested(self, path: Path) -> None:
+        """Hands the browser what a document names, where it has already been read."""
+        names = self._sequencer_browser_logic.recordings(path)
+        if names is not None:
+            self._sequencer_browser_panel.update_recordings(path, names)
+
+    def show_browser_recordings(self, path: Path, names: Tuple[str, ...]) -> None:
+        """Hands the browser a reading that landed after the row asked for it."""
+        self._sequencer_browser_panel.update_recordings(path, names)
 
     def _is_project_open(self) -> bool:
         return self._project_controller.is_open
