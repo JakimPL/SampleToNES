@@ -559,13 +559,29 @@ class TestReconstructionPanelLogicRetuning:
         _open(mock_reconstruction_manager, loaded_data)
         waveforms: List[WaveformData] = []
         audio: List[Optional[AudioData]] = []
-        panel_logic.on_waveform_update_changed = lambda waveform, _channels: waveforms.append(waveform)
+        panel_logic.on_waveform_update_changed = lambda waveform, _channels, **_kwargs: waveforms.append(waveform)
         panel_logic.on_audio_data_changed = audio.append
 
         panel_logic.set_nes_frequency(PAL_FREQUENCY)
 
         assert len(waveforms) == 1
         assert len(audio) == 1
+
+    def test_the_waveform_view_re_fits_to_the_retuned_length(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        """A retune moves the audio's own length, so the old view no longer answers to it."""
+        self._rebinding(mock_reconstruction_manager)
+        _open(mock_reconstruction_manager, loaded_data)
+        refits: List[bool] = []
+        panel_logic.on_waveform_update_changed = lambda _waveform, _channels, *, refit: refits.append(refit)
+
+        panel_logic.set_nes_frequency(PAL_FREQUENCY)
+
+        assert refits == [True]
 
     def test_the_rate_the_document_already_runs_at_changes_nothing(
         self,

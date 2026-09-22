@@ -162,7 +162,13 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         self._emit_audio_data()
 
-    def update_reconstruction(self) -> None:
+    def update_reconstruction(self, *, refit_waveform: bool = False) -> None:
+        """Re-answers every reading of the document after an edit.
+
+        ``refit_waveform`` names an edit that moved the audio's own length, such as a retune,
+        so the waveform's view is re-fitted to the new span rather than held at a position the
+        old length no longer answers to.
+        """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             return
@@ -178,6 +184,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             self.on_waveform_update_changed,
             reconstruction_data.waveform_data(self._stem_selection),
             self._selected_channels,
+            refit=refit_waveform,
         )
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         if self._current_audio_source != AudioSourceType.ORIGINAL:
@@ -253,8 +260,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         """Retunes the open reconstruction to ``nes_frequency`` and re-answers every reading of it.
 
         The instructions carry over and the audio is re-timed to the new frame length, so the
-        waveform, the playback and an export follow the new rate. The change is an unsaved edit
-        of the document, like any other.
+        waveform, the playback and an export follow the new rate. The waveform's view re-fits to
+        the retuned length, taking the longer of it and the original audio where the document
+        keeps one, since the old view answers to a length the audio no longer has. The change is
+        an unsaved edit of the document, like any other.
         """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
@@ -266,7 +275,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             return
 
         self._reconstruction_manager.apply_edited(retuned)
-        self.update_reconstruction()
+        self.update_reconstruction(refit_waveform=True)
         self._reconstruction_manager.mark_updated()
 
     def set_selected_channels(self, channels: List[ChannelName]) -> None:

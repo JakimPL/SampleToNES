@@ -6,7 +6,10 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors.text import TextColors
 from sampletones_application.layout.settings import SettingsLayout
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_DANGER_BUTTON
+from sampletones_application.tags.general import (
+    TAG_GLOBAL_THEME_DANGER_BUTTON,
+    TAG_GLOBAL_THEME_DANGER_BUTTON_FOCUSED,
+)
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_EXPORT_BUTTON_CANCEL,
     TAG_SETTINGS_EXPORT_GROUP_MEASURED,
@@ -93,6 +96,8 @@ class GUIExportWindow(GUISeededDialogWindow[SongExportViewModel]):
                 FocusStop.button(
                     TAG_SETTINGS_EXPORT_BUTTON_CANCEL,
                     self._request_cancel,
+                    base_theme_tag=TAG_GLOBAL_THEME_DANGER_BUTTON,
+                    focused_theme_tag=TAG_GLOBAL_THEME_DANGER_BUTTON_FOCUSED,
                 )
             ],
             on_escape=self._request_cancel,

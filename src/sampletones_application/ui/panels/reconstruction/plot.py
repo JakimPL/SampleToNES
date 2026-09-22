@@ -153,8 +153,10 @@ class GUIReconstructionPlotPanel(GUIPanel):
         self,
         waveform_data: WaveformData,
         generators: List[ChannelName],
+        *,
+        refit: bool = False,
     ) -> None:
-        self.waveform_display.update_waveform_data(waveform_data, generators)
+        self.waveform_display.update_waveform_data(waveform_data, generators, refit=refit)
 
     def clear_waveform(self) -> None:
         self._frame_length = None

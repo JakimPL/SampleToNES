@@ -5,7 +5,10 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.settings import SettingsLayout
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_DANGER_BUTTON
+from sampletones_application.tags.general import (
+    TAG_GLOBAL_THEME_DANGER_BUTTON,
+    TAG_GLOBAL_THEME_DANGER_BUTTON_FOCUSED,
+)
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_RENDER_BUTTON_BROWSE,
     TAG_SETTINGS_RENDER_BUTTON_CANCEL,
@@ -140,7 +143,12 @@ class GUIRenderWindow(GUISeededDialogWindow[SongRenderViewModel]):
                 FocusStop.button(TAG_SETTINGS_RENDER_BUTTON_BROWSE, self._request_destination),
                 FocusStop.button(TAG_SETTINGS_RENDER_BUTTON_CLOSE, self._request_close),
                 FocusStop.button(TAG_SETTINGS_RENDER_BUTTON_START, self._request_render),
-                FocusStop.button(TAG_SETTINGS_RENDER_BUTTON_CANCEL, self._request_cancel),
+                FocusStop.button(
+                    TAG_SETTINGS_RENDER_BUTTON_CANCEL,
+                    self._request_cancel,
+                    base_theme_tag=TAG_GLOBAL_THEME_DANGER_BUTTON,
+                    focused_theme_tag=TAG_GLOBAL_THEME_DANGER_BUTTON_FOCUSED,
+                ),
             ],
             on_escape=self._request_close,
         )

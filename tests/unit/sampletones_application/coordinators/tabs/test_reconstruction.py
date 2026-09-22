@@ -394,3 +394,29 @@ class TestExportResultReportsTruncation:
         )
 
         assert _shown_message(export_coordinator) == export_coordinator._export_messages.wav_success
+
+
+class TestUpdateReconstructionRefitsTheWaveformOnRequest:
+    """A retune moves the audio's own length, so the caller that knows this asks the waveform to
+    re-fit; an ordinary edit leaves the reader's view where it was, as it always has."""
+
+    @staticmethod
+    def _coordinator() -> ReconstructionTabCoordinator:
+        instance = object.__new__(ReconstructionTabCoordinator)
+        instance._reconstruction_panel_logic = MagicMock()
+        instance._reconstruction_instruments_logic = MagicMock()
+        return instance
+
+    def test_a_retune_is_forwarded_to_the_panel_logic(self) -> None:
+        coordinator = self._coordinator()
+
+        coordinator.update_reconstruction(refit_waveform=True)
+
+        coordinator._reconstruction_panel_logic.update_reconstruction.assert_called_once_with(refit_waveform=True)
+
+    def test_an_ordinary_call_asks_for_no_refit(self) -> None:
+        coordinator = self._coordinator()
+
+        coordinator.update_reconstruction()
+
+        coordinator._reconstruction_panel_logic.update_reconstruction.assert_called_once_with(refit_waveform=False)

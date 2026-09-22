@@ -1289,7 +1289,7 @@ class Application:
             self.reconstruction_manager.apply_edited(
                 retuned.reconstruction,
             )
-            self._reconstructions_tab.update_reconstruction()
+            self._reconstructions_tab.update_reconstruction(refit_waveform=True)
 
     def _open_project_properties(self) -> None:
         """Opens the properties dialog seeded with the current project's info.

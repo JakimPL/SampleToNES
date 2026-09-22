@@ -758,8 +758,8 @@ class ReconstructionTabCoordinator:
         """The recordings the reader hears on one channel, which is what an edit there reaches."""
         return self._reconstruction_panel_logic.heard_on(channel_name)
 
-    def update_reconstruction(self) -> None:
-        self._reconstruction_panel_logic.update_reconstruction()
+    def update_reconstruction(self, *, refit_waveform: bool = False) -> None:
+        self._reconstruction_panel_logic.update_reconstruction(refit_waveform=refit_waveform)
         self._reconstruction_instruments_logic.refresh_view()
 
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:

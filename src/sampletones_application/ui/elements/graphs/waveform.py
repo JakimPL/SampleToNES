@@ -482,13 +482,23 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self,
         waveform_data: WaveformData,
         selected_channels: Optional[List[ChannelName]] = None,
+        *,
+        refit: bool = False,
     ) -> None:
+        """Redraws the loaded waveform from fresh data, keeping the view the reader left it at.
+
+        ``refit`` names the update a retune is: the audio's own length changed, so the view is
+        re-fitted to the new span rather than held at a position the old one no longer answers to.
+        """
         if not isinstance(self.current_data, WaveformData):
             return
 
         self.current_data = waveform_data
         for layer in self._display_layers(waveform_data, selected_channels):
             self.layers[layer.name] = layer
+
+        if refit:
+            self._update_ranges()
 
         self._update_display()
 
