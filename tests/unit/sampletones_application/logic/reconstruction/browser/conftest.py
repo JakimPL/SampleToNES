@@ -17,7 +17,13 @@ from sampletones_application.logic.reconstruction.browser.tree.entries.scan impo
 )
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
-from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
+from sampletones_core.structures.tree import (
+    ConfigGroupNode,
+    ConfigNode,
+    FileSystemNode,
+    NodeType,
+    TreeNode,
+)
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from tests.suite.language import FakeLanguageManager
 
@@ -105,6 +111,22 @@ def directory_node(name: str, parent: TreeNode) -> FileSystemNode:
         name,
         node_type=NodeType.DIRECTORY,
         filepath=RECONSTRUCTIONS / name,
+        parent=parent,
+    )
+
+
+def config_group_node(name: str, parent: TreeNode) -> ConfigGroupNode:
+    """A heading naming a stretch of the configuration text the rows below it carry."""
+    return ConfigGroupNode(name, node_type=NodeType.GROUP, parent=parent)
+
+
+def config_variant_node(name: str, parent: TreeNode) -> ConfigNode:
+    """A reconstruction row labeled by the configuration that produced it, as the sample branch builds it."""
+    return ConfigNode(
+        name,
+        node_type=NodeType.FILE,
+        filepath=(RECONSTRUCTIONS / name).with_suffix(EXT_FILE_RECONSTRUCTION),
+        config=config_fields(),
         parent=parent,
     )
 

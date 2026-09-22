@@ -149,3 +149,13 @@ class TestConfigurationFont:
         panel: GUISequencerBrowserPanel,
     ) -> None:
         assert panel._resolve_node_name_font(TreeNode("Amen Breaks", NodeType.GROUP)) == Font.REGULAR_SMALL
+
+    def test_row_gathering_a_plain_name_reads_in_the_name_font(
+        self,
+        panel: GUISequencerBrowserPanel,
+    ) -> None:
+        """A sample folded into its one variant hands the row an audio's name, which reads as such."""
+        variant = config_variant_node()
+        variant.gathered_plain_name = True
+
+        assert panel._resolve_node_name_font(variant) == Font.REGULAR_SMALL

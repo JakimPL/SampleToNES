@@ -94,7 +94,6 @@ from sampletones_core.configs.display import (
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree import (
-    ConfigGroupNode,
     ConfigNode,
     FileSystemNode,
     LibraryNode,
@@ -764,10 +763,11 @@ class GUITreePanel(GUIPanel, ABC):
         carries: the fields a reconstruction directory encodes, the stretch of them a heading gathers
         several directories under, the name a library goes by. A panel that sets
         ``_MONOSPACE_CONFIG_NODES`` renders every one of those rows in the fixed-width font, so a
-        column of them reads field under field and a heading reads as the row below it does. Every
-        other row keeps the panel's ``_NAME_FONT``.
+        column of them reads field under field and a heading reads as the row below it does. A row
+        whose name has gathered a name somebody chose reads as that plain name, and every other row
+        keeps the panel's ``_NAME_FONT``.
         """
-        if self._MONOSPACE_CONFIG_NODES and isinstance(node, (ConfigNode, ConfigGroupNode, LibraryNode)):
+        if self._MONOSPACE_CONFIG_NODES and node.states_configuration:
             return self._CONFIG_FONT
 
         return self._NAME_FONT
