@@ -1,18 +1,16 @@
 from dataclasses import dataclass
-from typing import Final, Tuple
+from typing import Final, Self, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
+from sampletones_core.constants.enums import ChannelName
 
 NO_RESERVE: Final[int] = 0
 NO_INDENT: Final[int] = 0
 COLUMN_BORDER: Final[int] = 1
-ONE_SLOT: Final[int] = 1
-TWO_SLOTS: Final[int] = 2
 
 
 @dataclass(frozen=True)
@@ -26,8 +24,7 @@ class StemsColumns:
     asks it.
 
     The name column is the one that stretches, so a wider card spends its room on the recordings
-    rather than on the boxes beside them. A channel column holds one box, or two where ``bends``
-    states that a cell carries the bend on its channel, and takes the width that fits.
+    rather than on the boxes beside them. A channel column holds one box.
 
     ``swatch`` states that a row leads with the color its recording is drawn in, which takes a
     narrow column of its own between the box beside a row and the name it carries.
@@ -43,14 +40,25 @@ class StemsColumns:
     channels: Tuple[ChannelName, ...]
     master: bool
     removable: bool
-    bends: bool
     swatch: bool
     folders: bool
 
+    @classmethod
+    def empty(cls, layout: StemsListLayout) -> Self:
+        """The grid before a list has drawn anything: no channel, and nothing beside the name."""
+        return cls(
+            layout=layout,
+            channels=(),
+            master=False,
+            removable=False,
+            swatch=False,
+            folders=False,
+        )
+
     @property
     def channel_width(self) -> int:
-        """The room one channel's column takes, which the boxes standing in it decide."""
-        return self.layout.channel_column_width if self.bends else self.layout.channel_solo_width
+        """The room one channel's column takes, which the box standing in it decides."""
+        return self.layout.channel_column_width
 
     @property
     def reserve(self) -> int:
@@ -99,28 +107,15 @@ class StemsColumns:
         if self.reserved:
             dpg.add_table_column(width_fixed=True, init_width_or_weight=self.reserve_width)
 
-    def slots(self, channel_name: ChannelName) -> int:
-        """How many boxes one channel's cell holds: the channel it takes, and the bend on it.
-
-        A bend moves a note by a fraction of the divider its channel loads, so a channel whose
-        periods stand at fixed distances holds the first slot alone.
-        """
-        if self.bends and channel_name in TONE_CHANNELS:
-            return TWO_SLOTS
-
-        return ONE_SLOT
-
     @property
     def master_indent(self) -> int:
         """How far the box beside a row sits in, so it stands in the middle of its own column."""
         return self._centered(self.layout.channel_box_width, within=self.layout.master_column_width)
 
-    def box_indent(self, channel_name: ChannelName) -> int:
-        """How far a channel's boxes sit in, so they stand in the middle of their own column."""
-        return self._centered(
-            self.slots(channel_name) * self.layout.channel_box_width,
-            within=self.channel_width,
-        )
+    @property
+    def box_indent(self) -> int:
+        """How far a channel's box sits in, so it stands in the middle of its own column."""
+        return self._centered(self.layout.channel_box_width, within=self.channel_width)
 
     def marker_indent(self, glyph: str, font: Font) -> int:
         """How far a row carrying no marker sits in, so its name opens where a marker's glyph does.

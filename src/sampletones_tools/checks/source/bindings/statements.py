@@ -45,7 +45,7 @@ def read_statement(node: ast.AST) -> Optional[Statement]:
     """
     match node:
         case ast.arg(arg=name, annotation=ast.expr() as annotation):
-            return _annotated(name, annotation)
+            return annotated_statement(name, annotation)
         case ast.AnnAssign(target=target, annotation=annotation):
             return _annotated_target(target, annotation)
         case ast.Assign(targets=[target], value=value):
@@ -59,7 +59,16 @@ def read_statement(node: ast.AST) -> Optional[Statement]:
             return None
 
 
-def _annotated(spelling: str, annotation: ast.expr) -> Optional[TypeStatement]:
+def annotated_statement(spelling: str, annotation: ast.expr) -> Optional[TypeStatement]:
+    """What an annotation standing on ``spelling`` states about it.
+
+    Args:
+        spelling: Spelling the annotation stands on, as `expression_spelling` writes it.
+        annotation: Annotation to read.
+
+    Returns:
+        Optional[TypeStatement]: The type, or `None` where the annotation names none.
+    """
     type_name = annotation_type_name(annotation)
     if type_name is None:
         return None
@@ -75,7 +84,7 @@ def _annotated_target(target: ast.expr, annotation: ast.expr) -> Optional[TypeSt
     if spelling is None:
         return None
 
-    return _annotated(spelling, annotation)
+    return annotated_statement(spelling, annotation)
 
 
 def _assigned(target: ast.expr, value: ast.expr) -> Optional[Statement]:

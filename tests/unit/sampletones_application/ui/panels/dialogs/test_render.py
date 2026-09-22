@@ -8,7 +8,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.paths import LANG_EN
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import SUF_BUTTON
+from sampletones_application.tags.general import SUF_BUTTON, TAG_GLOBAL_THEME_DANGER_BUTTON
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_RENDER_BUTTON_BROWSE,
     TAG_SETTINGS_RENDER_BUTTON_CANCEL,
@@ -282,6 +282,13 @@ class TestReportedActions:
         press(TAG_SETTINGS_RENDER_BUTTON_CANCEL)
 
         assert stopped
+
+    def test_the_stop_button_carries_the_tone_of_an_action_that_undoes_the_run(self, window: GUIRenderWindow) -> None:
+        render(window, phase=RenderPhase.RENDERING)
+
+        theme = dpg.get_item_theme(compose_tag(TAG_SETTINGS_RENDER_BUTTON_CANCEL, SUF_BUTTON))
+
+        assert dpg.get_item_alias(theme) == TAG_GLOBAL_THEME_DANGER_BUTTON
 
     def test_leaving_the_setup_closes_the_dialog(self, window: GUIRenderWindow) -> None:
         closed: List[None] = []

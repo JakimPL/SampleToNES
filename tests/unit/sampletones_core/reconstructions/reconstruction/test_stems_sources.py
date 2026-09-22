@@ -16,6 +16,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from sampletones_shared.exceptions import SampleToNESError
 
 LEAD: Final[int] = 0
 BASS: Final[int] = 1
@@ -112,6 +113,21 @@ class TestADetachedDocument:
 
         assert restored.stems_data.named(LEAD) == "Lead Vocals"
         assert restored.audio_filepath == ()
+
+
+class TestReadingTheRecordingsOnTheirOwn:
+    def test_the_record_reads_as_the_whole_document_states_it(self, tmp_path: Path) -> None:
+        path = tmp_path / "stems.stn"
+        _reconstruction().save(path)
+
+        assert Reconstruction.read_stems_data(path) == Reconstruction.load(path).stems_data
+
+    def test_a_document_stating_nothing_readable_is_refused(self, tmp_path: Path) -> None:
+        path = tmp_path / "broken.stn"
+        path.write_bytes(b"not a document")
+
+        with pytest.raises(SampleToNESError):
+            Reconstruction.read_stems_data(path)
 
 
 class TestALocationOneRecordingHasLost:

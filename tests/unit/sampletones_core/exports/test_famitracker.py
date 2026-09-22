@@ -10,17 +10,20 @@ from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.implementation.famitracker import FamiTrackerBackend
 from sampletones_core.exports.progress import ExportProgress
-from sampletones_core.exports.request import InstrumentExport, SampleExport
+from sampletones_core.exports.request import InstrumentExport, ProjectExport, SampleExport
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.exports.stage import ExportStage
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.specification.sequences import (
     MAX_SEQUENCE_ITEMS,
 )
+from sampletones_core.project.project import Project
+from sampletones_core.project.settings import ProjectSettings
 from sampletones_shared.exceptions import OperationCanceled
 from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 from tests.suite.progress import RecordingReporter
+from tests.suite.silent_rows import name_a_missing_voice
 
 NES_FREQUENCY: Final[int] = 60
 ENVELOPE_FRAMES: Final[int] = 4
@@ -175,6 +178,35 @@ class TestWriteSample:
         artifact = backend.write_sample(tmp_path / "Kick", request)
 
         assert artifact.truncation is None
+
+
+class TestWriteProject:
+    @staticmethod
+    def _project() -> Project:
+        return Project.create(title="Demo", author="Tester", settings=ProjectSettings())
+
+    def test_a_row_with_no_instrument_is_reported_beside_the_written_file(
+        self,
+        backend: FamiTrackerBackend,
+        tmp_path: Path,
+    ) -> None:
+        destination = tmp_path / f"Demo{EXT_FILE_MODULE}"
+        project = self._project()
+        silent = name_a_missing_voice(project)
+
+        artifact = backend.write_project(destination, ProjectExport(project=project))
+
+        assert destination.exists()
+        assert artifact.skipped_rows == (silent,)
+
+    def test_a_project_with_an_instrument_for_every_row_reports_none(
+        self,
+        backend: FamiTrackerBackend,
+        tmp_path: Path,
+    ) -> None:
+        artifact = backend.write_project(tmp_path / f"Demo{EXT_FILE_MODULE}", ProjectExport(project=self._project()))
+
+        assert artifact.skipped_rows == ()
 
 
 class TestWhatABatchSaysAboutItself:

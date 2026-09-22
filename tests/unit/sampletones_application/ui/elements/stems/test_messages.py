@@ -42,7 +42,6 @@ def offer(*, dragging: bool = False) -> StemsListOffer:
         removal=True,
         keeps_last_row=False,
         dragging=dragging,
-        bends=False,
         picking=False,
         swatch=False,
     )
@@ -64,7 +63,6 @@ def recording(
         held=(),
         channels=channels,
         partial_channels=frozenset(),
-        bends=frozenset(),
         offered_channels=offered_channels,
         available=available,
         level=0,
@@ -85,7 +83,6 @@ def folder(name: str = FOLDER_NAME, *, holds: int = HOLDS) -> StemRowViewModel:
         held=tuple(recording(f"{name}/take_{index}") for index in range(holds)),
         channels=frozenset(CHANNELS),
         partial_channels=frozenset(),
-        bends=frozenset(),
         offered_channels=frozenset(CHANNELS),
         available=True,
         level=0,

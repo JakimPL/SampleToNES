@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Final, Optional
+from typing import Any, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 from pydantic import ValidationError
@@ -638,6 +638,8 @@ class Application:
             sequencer_tab=self._sequencer_tab,
             instructions_tab=self._instructions_tab,
         )
+        self.browser_manager.on_recordings_read = self._show_reconstruction_recordings
+
         self._setup_gui()
         self._restore_current_items(
             library_path=library_path,
@@ -1105,6 +1107,15 @@ class Application:
         self._reconstructions_tab.refresh_browser()
         self._sequencer_tab.refresh_browser()
 
+    def _show_reconstruction_recordings(self, path: Path, names: Tuple[str, ...]) -> None:
+        """Hands a document's recordings to both browsers, whichever of them asked for the reading.
+
+        The two browsers render one tree and read one set of documents, so a reading answers for
+        each of them and the row it belongs to is the one that shows it.
+        """
+        self._reconstructions_tab.show_browser_recordings(path, names)
+        self._sequencer_tab.show_browser_recordings(path, names)
+
     def _repaint_reconstruction_favorites(self, node: FileSystemNode) -> None:
         """Repaints the toggled path in both browsers, whichever tab the star was clicked in.
 
@@ -1289,7 +1300,7 @@ class Application:
             self.reconstruction_manager.apply_edited(
                 retuned.reconstruction,
             )
-            self._reconstructions_tab.update_reconstruction()
+            self._reconstructions_tab.update_reconstruction(refit_waveform=True)
 
     def _open_project_properties(self) -> None:
         """Opens the properties dialog seeded with the current project's info.

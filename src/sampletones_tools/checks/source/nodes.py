@@ -6,6 +6,7 @@ PositionedNode = Union[ast.stmt, ast.expr]
 SCOPE_NODES: Final[Tuple[Type[ast.AST], ...]] = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 
 ATTRIBUTE_SEPARATOR: Final[str] = "."
+INSTANCE_SPELLING: Final[str] = "self"
 
 
 def own_nodes(scope: ast.AST) -> Iterator[ast.AST]:
@@ -40,6 +41,29 @@ def nested_scopes(scope: ast.AST) -> Iterator[ast.AST]:
             yield child
         else:
             yield from nested_scopes(child)
+
+
+def class_attribute_annotations(tree: ast.AST) -> Iterator[Tuple[str, ast.expr]]:
+    """Every attribute a class body annotates, spelled the way an instance reaches it.
+
+    A class states the attributes it carries in its own body, which is how a class inheriting one
+    declares what it holds without assigning it again. Reading those annotations lets a method of
+    that class be understood through `self`.
+
+    Args:
+        tree: Parsed module to read.
+
+    Yields:
+        Tuple[str, ast.expr]: The spelling, such as `self._manager`, and the annotation on it.
+    """
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+
+        for statement in node.body:
+            match statement:
+                case ast.AnnAssign(target=ast.Name(id=name), annotation=annotation):
+                    yield f"{INSTANCE_SPELLING}{ATTRIBUTE_SEPARATOR}{name}", annotation
 
 
 def slice_elements(subscript: ast.Subscript) -> Tuple[ast.expr, ...]:

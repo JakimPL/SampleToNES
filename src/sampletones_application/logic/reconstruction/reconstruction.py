@@ -162,7 +162,13 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         self._emit_audio_data()
 
-    def update_reconstruction(self) -> None:
+    def update_reconstruction(self, *, refit_waveform: bool = False) -> None:
+        """Re-answers every reading of the document after an edit.
+
+        ``refit_waveform`` names an edit that moved the audio's own length, such as a retune,
+        so the waveform's view is re-fitted to the new span rather than held at a position the
+        old length no longer answers to.
+        """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             return
@@ -178,6 +184,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             self.on_waveform_update_changed,
             reconstruction_data.waveform_data(self._stem_selection),
             self._selected_channels,
+            refit=refit_waveform,
         )
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         if self._current_audio_source != AudioSourceType.ORIGINAL:
@@ -249,6 +256,28 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._emit_audio_data()
         self.call(self.on_waveform_source_changed, audio_source)
 
+    def set_nes_frequency(self, nes_frequency: int) -> None:
+        """Retunes the open reconstruction to ``nes_frequency`` and re-answers every reading of it.
+
+        The instructions carry over and the audio is re-timed to the new frame length, so the
+        waveform, the playback and an export follow the new rate. The waveform's view re-fits to
+        the retuned length, taking the longer of it and the original audio where the document
+        keeps one, since the old view answers to a length the audio no longer has. The change is
+        an unsaved edit of the document, like any other.
+        """
+        reconstruction_data = self._reconstruction_data
+        if not reconstruction_data:
+            return
+
+        reconstruction = reconstruction_data.reconstruction
+        retuned = reconstruction.with_nes_frequency(nes_frequency)
+        if retuned is reconstruction:
+            return
+
+        self._reconstruction_manager.apply_edited(retuned)
+        self.update_reconstruction(refit_waveform=True)
+        self._reconstruction_manager.mark_updated()
+
     def set_selected_channels(self, channels: List[ChannelName]) -> None:
         """Adopts the reader's channel choice, which the stems list reports as muted columns."""
         self._selected_channels = channels
@@ -279,6 +308,19 @@ class ReconstructionPanelLogic(CallbackMixin):
         what the instruments panel draws while the document stands as it is.
         """
         self._listening.set_channels(stem_id, channels)
+        self._refresh_listening()
+
+    def solo_stem(self, stem_id: int) -> None:
+        """Hears one recording alone, or returns to the choice it replaced when it already is.
+
+        Like the boxes on its row, the solo is listening state, so it re-answers what plays and
+        what the waveform and the instruments panel show while the document stands as it is.
+        """
+        self._listening.solo(stem_id)
+        self._refresh_listening()
+
+    def _refresh_listening(self) -> None:
+        """Re-answers every reading of the document after the listening choice changed."""
         self._reconstruction_manager.refresh_features()
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
@@ -313,11 +355,12 @@ class ReconstructionPanelLogic(CallbackMixin):
         """The recordings behind each stretch of what the document plays.
 
         A lane stands for every channel the document plays, and paints the stretches the
-        recordings heard there hold, so the ribbon reads as the waveform above it sounds. A
-        channel the reader has switched off keeps its lane and stands empty, since the lanes
-        answer for the document while what fills them answers for the listening: the rows beneath
-        the waveform hold still while a reader picks their way through it. A document answering to
-        one owner alone has nothing to tell apart, so it offers no lanes.
+        recordings heard there hold, so the ribbon reads as the waveform above it sounds — one
+        recording throughout paints one unbroken stretch, which still answers whether a channel
+        is sounding and by whom. A channel the reader has switched off keeps its lane and stands
+        empty, since the lanes answer for the document while what fills them answers for the
+        listening: the rows beneath the waveform hold still while a reader picks their way
+        through it.
         """
         stems_data = reconstruction_data.reconstruction.stems_data
         owned = stems_data.assignments_by_channel
@@ -360,13 +403,11 @@ class ReconstructionPanelLogic(CallbackMixin):
                 stems=EMPTY_STEMS_LIST,
             )
 
-        entries = stems_data.config.entries_by_id
         positions = record_positions(stems_data)
         levels = self._levels_with_edits(stems_data)
         rows = tuple(
             self._stem_row(
                 stems_data,
-                entries[stem_id].settings.bend_set if stem_id in entries else frozenset(),
                 positions.get(stem_id),
                 stem_id,
                 level_index,
@@ -410,7 +451,6 @@ class ReconstructionPanelLogic(CallbackMixin):
     def _stem_row(
         self,
         stems_data: StemsData,
-        bends: FrozenSet[ChannelName],
         record_position: Optional[int],
         stem_id: int,
         level: int,
@@ -428,7 +468,6 @@ class ReconstructionPanelLogic(CallbackMixin):
             held=(),
             channels=self._listening.heard.get(stem_id, frozenset()),
             partial_channels=frozenset(),
-            bends=bends,
             offered_channels=self._listening.offered.get(stem_id, frozenset()),
             available=source is not None and source.path is not None and source.path.is_file(),
             level=level,

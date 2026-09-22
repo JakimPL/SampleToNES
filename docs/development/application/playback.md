@@ -64,6 +64,8 @@ Each verb is an action, so the combination it answers to is the shipped scheme's
 
 The left button carries three gestures: a click seeks, a drag pans the view, and a double-click fits it to the audio. `PlotClickGesture` (`ui/elements/graphs/gesture.py`) settles which one a press was, so the playhead and the view each answer only the gesture meant for them.
 
+The wheel carries the view too. Scrolling zooms x, and Shift with the wheel zooms y. Alt with the wheel pans x, and Alt and Shift pan y, by `pan_factor` of the span in view per notch, stopping at the bounds the graph constrains its axes to. `PlotWheelPan` (`ui/elements/graphs/pan.py`) makes those moves. `GUIGraph` locks both axes on every hover frame Alt is held, so the plot's own zoom leaves the wheel to the pan, and a lane linked to the waveform holds the same lock. The spectrum, whose view is fixed to its band, does not register the pan.
+
 Because the target prefers the active tab's own source, Play/Pause acts on what the user is looking at whenever that screen can play something. On a screen that plays nothing of its own, it reaches the source already sounding. Those screens are the Main tab, an empty Reconstruction or Instructions tab, and the Sequencer before a project is open. So it resumes a paused reconstruction from the Main tab, and starts the song on the Sequencer with a project open.
 
 ## What the surfaces show

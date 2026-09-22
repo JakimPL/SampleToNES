@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, FrozenSet, Mapping, Optional, Sequence
+from typing import Callable, Dict, FrozenSet, Mapping, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -202,10 +202,12 @@ class ReconstructionTabCoordinator:
             language_manager=language_manager,
             status_bar=status_bar,
             colors=layout.tree_colors,
+            stem_colors=layout.stem_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
             initial_favorites_only=session_manager.is_favorites_filter_active(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
             initial_expanded_rows=session_manager.expanded_rows(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
         )
+        self._browser_panel.on_recordings_requested = self._on_browser_recordings_requested
         self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
         self._browser_tree_logic.on_favorite_changed = on_favorite_changed
         self._browser_tree_logic.on_search_update_needed = self._browser_panel.update_tree_visibility
@@ -284,8 +286,10 @@ class ReconstructionTabCoordinator:
         self._browser_panel.on_directory_remove_requested = self._request_remove_directory
 
         self._reconstruction_audio_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
+        self._reconstruction_audio_panel.on_nes_frequency_changed = self._reconstruction_panel_logic.set_nes_frequency
         self._reconstruction_plot_panel.on_channels_changed = self._reconstruction_panel_logic.set_selected_channels
         self._reconstruction_stems_panel.on_stem_channels_changed = self._reconstruction_panel_logic.set_stem_channels
+        self._reconstruction_stems_panel.on_stem_solo_requested = self._reconstruction_panel_logic.solo_stem
         self._reconstruction_stems_panel.on_stem_remove_requested = self._request_remove_stem
         self._browser_panel.on_locate_original_audio = self._original_audio_locator.locate
 
@@ -581,6 +585,16 @@ class ReconstructionTabCoordinator:
         """Persists the browser's favorites filter so it opens in the same mode on the next launch."""
         self._session_manager.set_favorites_filter_active(panel_tag, favorites_only)
 
+    def _on_browser_recordings_requested(self, path: Path) -> None:
+        """Hands the browser what a document names, where it has already been read."""
+        names = self._browser_logic.recordings(path)
+        if names is not None:
+            self._browser_panel.update_recordings(path, names)
+
+    def show_browser_recordings(self, path: Path, names: Tuple[str, ...]) -> None:
+        """Hands the browser a reading that landed after the row asked for it."""
+        self._browser_panel.update_recordings(path, names)
+
     def _on_instruments_collapse_changed(
         self,
         card_tag: str,
@@ -756,8 +770,8 @@ class ReconstructionTabCoordinator:
         """The recordings the reader hears on one channel, which is what an edit there reaches."""
         return self._reconstruction_panel_logic.heard_on(channel_name)
 
-    def update_reconstruction(self) -> None:
-        self._reconstruction_panel_logic.update_reconstruction()
+    def update_reconstruction(self, *, refit_waveform: bool = False) -> None:
+        self._reconstruction_panel_logic.update_reconstruction(refit_waveform=refit_waveform)
         self._reconstruction_instruments_logic.refresh_view()
 
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:

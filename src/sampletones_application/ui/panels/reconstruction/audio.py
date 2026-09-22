@@ -4,12 +4,17 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors.path import PathColors
+from sampletones_application.tags.compose import compose_tag
+from sampletones_application.tags.general import SUF_HANDLER_REGISTRY
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_NES_FREQUENCY,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_RECONSTRUCTION_FILE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
-    TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_NES_FREQUENCY,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY_LOCKED,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -17,6 +22,8 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip, set_tooltip_visible, show_tooltip
+from sampletones_application.utils.gui.widgets import clamp_widget_value
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
@@ -27,17 +34,18 @@ from sampletones_application.view_model.reconstruction.paths.state import (
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
-from sampletones_core.configs.display import format_nes_frequency
 from sampletones_core.constants.enums import AudioSourceType
+from sampletones_shared.constants.nes import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
 from sampletones_shared.types.application import Sender
 
 
 class GUIReconstructionAudioPanel(GUIPanel):
     """Where the reconstruction came from and which of the two waveforms plays.
 
-    The card names the reconstruction's own file and the engine rate it runs at, and offers
+    The card names the reconstruction's own file and takes the engine rate it runs at, and offers
     the choice between the reconstruction and the audio it was built from. The recordings
-    behind that audio are named by the stems card, one row each.
+    behind that audio are named by the stems card, one row each. A reconstruction that is a
+    sample of a project follows the project's rate, so its field is locked.
     """
 
     def __init__(
@@ -53,10 +61,15 @@ class GUIReconstructionAudioPanel(GUIPanel):
         self._status_bar = status_bar
         self._path_colors = path_colors
         self._path_status_color = path_status_color
+        self._nes_frequency_handler_tag = compose_tag(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY,
+            SUF_HANDLER_REGISTRY,
+        )
 
         self._reconstruction_file_path: GUIPathText
 
         self.on_audio_source_changed: Optional[Callable[[AudioSourceType], None]] = None
+        self.on_nes_frequency_changed: Optional[Callable[[int], None]] = None
 
         self._load_path_text(language_manager)
         self._lbl_original_audio_radio = language_manager["reconstructions.reconstruction.label.original_audio_radio"]
@@ -84,14 +97,14 @@ class GUIReconstructionAudioPanel(GUIPanel):
             self._create_audio_source_radio_buttons()
             dpg.add_separator()
             self._create_path_display()
-            self._create_frequency_display()
+            self._create_frequency_input()
 
     def update_view(self, view_model: ReconstructionViewModel) -> None:
         self._render_path(
             self._reconstruction_file_path,
             view_model.reconstruction_file,
         )
-        self._render_frequency(view_model.nes_frequency)
+        self._render_frequency(view_model)
         dpg_configure_item(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
             enabled=view_model.audio_source_enabled,
@@ -137,20 +150,76 @@ class GUIReconstructionAudioPanel(GUIPanel):
         )
         self._reconstruction_file_path.set_status("", self._path_status_color)
 
-    def _create_frequency_display(self) -> None:
-        """Draws the engine rate as a readout beside its label, monospaced as a figure."""
-        with dpg.group(horizontal=True, parent=self._body_container):
+    def _create_frequency_input(self) -> None:
+        """Draws the engine rate as a field beside its label, monospaced as a figure.
+
+        The rate is committed once editing finishes, since a new rate re-times the whole
+        reconstruction and a change per keystroke would redo that work for every digit. A locked
+        field shows no tooltip of its own, so the group around it explains why it is locked.
+        """
+        with dpg.group(
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_NES_FREQUENCY,
+            horizontal=True,
+            parent=self._body_container,
+        ):
             label = dpg.add_text(self._language_manager["reconstructions.reconstruction.label.nes_frequency_label"])
-            dpg.add_text("", tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_NES_FREQUENCY)
+            dpg.add_input_int(
+                tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY,
+                min_value=MIN_NES_FREQUENCY,
+                max_value=MAX_NES_FREQUENCY,
+                min_clamped=True,
+                max_clamped=True,
+                width=-1,
+                enabled=False,
+                show=False,
+            )
 
         FontRegistry.bind_to_item(label, Font.REGULAR_SMALL)
-        FontRegistry.bind_to_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_NES_FREQUENCY, Font.MONO)
+        FontRegistry.bind_to_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY, Font.MONO)
+        with dpg.item_handler_registry(tag=self._nes_frequency_handler_tag):
+            dpg.add_item_deactivated_after_edit_handler(callback=self._on_nes_frequency_input)
 
-    def _render_frequency(self, nes_frequency: Optional[int]) -> None:
-        """States the rate a loaded reconstruction runs at, and stands blank for an empty tab."""
-        dpg_set_value(
-            TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_NES_FREQUENCY,
-            format_nes_frequency(nes_frequency) if nes_frequency is not None else "",
+        dpg.bind_item_handler_registry(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY,
+            self._nes_frequency_handler_tag,
+        )
+        show_tooltip(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY,
+            self._language_manager["main.config.tooltip.tooltip_nes_frequency"],
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY,
+        )
+        attach_disabled_tooltip(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_NES_FREQUENCY,
+            self._language_manager["reconstructions.reconstruction.tooltip.nes_frequency_locked"],
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY_LOCKED,
+        )
+
+    def _render_frequency(self, view_model: ReconstructionViewModel) -> None:
+        """States the rate a loaded reconstruction runs at, and stands blank for an empty tab.
+
+        A field being typed into keeps what the reader has typed until the edit is committed.
+        """
+        nes_frequency = view_model.nes_frequency
+        dpg_configure_item(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY,
+            show=nes_frequency is not None,
+            enabled=view_model.nes_frequency_editable,
+        )
+        set_tooltip_visible(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY,
+            view_model.nes_frequency_editable,
+        )
+        set_tooltip_visible(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY_LOCKED,
+            view_model.show_nes_frequency_hint,
+        )
+        if nes_frequency is not None and not dpg.is_item_active(TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY):
+            dpg_set_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY, nes_frequency)
+
+    def _on_nes_frequency_input(self, _sender: Sender, _app_data: int) -> None:
+        self.call(
+            self.on_nes_frequency_changed,
+            int(clamp_widget_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY)),
         )
 
     def _create_audio_source_radio_buttons(self) -> None:

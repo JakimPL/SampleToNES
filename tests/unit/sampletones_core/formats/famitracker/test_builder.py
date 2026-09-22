@@ -2,8 +2,10 @@ import numpy as np
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exporters.skipped import SkippedRow
 from sampletones_core.formats.famitracker.builder import (
     build_instrument_table,
+    build_module,
     project_to_module,
 )
 from sampletones_core.formats.famitracker.specification.channels import (
@@ -27,7 +29,11 @@ from sampletones_core.formats.famitracker.specification.sequences import (
     SequenceKind,
 )
 from sampletones_core.instructions.implementation.pulse import PulseInstruction
+from sampletones_core.project.patterns.channel import Channel
+from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
+from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
 
 from .conftest import RECONSTRUCTION_LENGTH, ProjectFixture, build_reconstruction
@@ -175,6 +181,67 @@ class TestProjectToModulePatterns:
         # period 4 -> note 5, octave 0
         assert first.note == 5
         assert first.octave == 0
+
+
+class TestARowWithNoInstrumentOnItsChannel:
+    """A voice sounds on the channels its instruments cover, so a row naming it elsewhere plays
+    nothing in the song. The export writes a note cut there and reports the row."""
+
+    DRUM_ROW = 3
+
+    def _with_drum_on_pulse2(self, project_fixture: ProjectFixture) -> None:
+        rows = [Row() for _ in range(8)]
+        rows[self.DRUM_ROW] = Row(command=NoteOn(voice_id=project_fixture.drum.id), volume=9)
+        song = project_fixture.project.song
+        song.channels[ChannelName.PULSE2] = Channel(name=ChannelName.PULSE2, patterns={0: Pattern(rows=rows)})
+        song.order[0][ChannelName.PULSE2] = 0
+
+    def test_the_row_is_written_as_a_note_cut(self, project_fixture: ProjectFixture) -> None:
+        self._with_drum_on_pulse2(project_fixture)
+
+        module = project_to_module(project_fixture.project)
+
+        pattern = next(
+            pattern for pattern in module.track.patterns if pattern.channel == ChannelId.SQUARE2 and pattern.index == 0
+        )
+        cut = next(row for row in pattern.rows if row.row_number == self.DRUM_ROW)
+        assert cut.note == int(NoteValue.HALT)
+        assert cut.instrument == EMPTY_INSTRUMENT
+        assert cut.volume == 9
+
+    def test_the_row_is_reported_where_the_tracker_shows_it(self, project_fixture: ProjectFixture) -> None:
+        self._with_drum_on_pulse2(project_fixture)
+
+        skipped = build_module(project_fixture.project).skipped_rows
+
+        assert skipped == (
+            SkippedRow(
+                voice_id=project_fixture.drum.id,
+                channel=ChannelName.PULSE2,
+                order_position=0,
+                row_index=self.DRUM_ROW,
+            ),
+        )
+
+    def test_a_pattern_the_order_plays_twice_reports_each_frame(self, project_fixture: ProjectFixture) -> None:
+        self._with_drum_on_pulse2(project_fixture)
+        project_fixture.project.song.order[1][ChannelName.PULSE2] = 0
+
+        skipped = build_module(project_fixture.project).skipped_rows
+
+        assert [row.order_position for row in skipped] == [0, 1]
+
+    def test_a_pattern_no_frame_plays_reports_nothing(self, project_fixture: ProjectFixture) -> None:
+        self._with_drum_on_pulse2(project_fixture)
+        project_fixture.project.song.order[0][ChannelName.PULSE2] = None
+
+        assert build_module(project_fixture.project).skipped_rows == ()
+
+    def test_a_project_naming_only_voices_with_instruments_reports_nothing(
+        self,
+        project_fixture: ProjectFixture,
+    ) -> None:
+        assert build_module(project_fixture.project).skipped_rows == ()
 
 
 class TestProjectToModuleOrder:

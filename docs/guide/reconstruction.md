@@ -19,18 +19,23 @@ If the reconstruction you have open has unsaved changes, opening another one ask
 first.
 
 The **Source** card switches playback between **Reconstruction** and **Original audio**, so you can
-compare the two. The **Waveform** card has a checkbox for each channel, and keys `1` to `4` switch the
-same checkboxes.
+compare the two. Its **NES frequency** field retimes the reconstruction: type a new rate and press
+`Enter`. The field is locked for a reconstruction that belongs to a project, which follows the project's
+rate.
+
+The **Waveform** card has a checkbox for each channel, and keys `1` to `4` switch the same checkboxes.
 
 Click the waveform to play from that point. While playback is paused, a click moves the playback
-position. Drag the waveform to move the view, and double-click to fit the view.
+position. Drag the waveform to move the view, and double-click to fit the view. Scroll to zoom, hold **Alt** and
+scroll to move the view sideways, or hold **Alt** and **Shift** and scroll to move it up and down.
 
 ## Hearing what each recording contributed
 
 The **Stems** card lists the recordings a reconstruction was built from, grouped by the
 [level](converting.md#one-reconstruction-each-or-one-mix-from-all) each one was given. A row has a
 checkbox for each channel the recording used, and the checkbox at the front switches all of them.
-Double-click a row to show the recording in your file browser.
+Double-click a row to show the recording in your file browser. Right-click a row to **Mute** the
+recording, hear it alone with **Solo**, or copy its name or path. **Unsolo** brings back the mix you had.
 
 Uncheck a box to hear the reconstruction without that recording on that channel. The waveform, the
 playback, the original audio and a WAV export all follow the checkboxes, so you can hear what each

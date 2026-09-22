@@ -19,8 +19,9 @@ class GUIOwnershipRibbon:
     Each lane stands for one channel in play and runs the length of the document beneath the
     waveform, painted in the color of the recording holding each stretch. A resting stretch shows
     the ground the lane is laid on, so a reader tells at a glance which recording carried a
-    passage and where nothing was played. The lanes are drawn only while more than one recording
-    is in play, since a document answering to a single recording has nothing to distinguish.
+    passage and where nothing was played. A lane is drawn for every channel the document plays,
+    whether the reconstruction answers to one recording or several, since even a single recording
+    throughout is worth telling from a channel standing by.
 
     A lane is painted into the row the waveform keeps for its channel, which is what holds the
     two to one span: they begin and end together however wide the amplitude labels beside them

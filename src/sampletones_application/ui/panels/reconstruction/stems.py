@@ -19,6 +19,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.list import GUIStemsList
 from sampletones_application.ui.elements.stems.offer import RECORDED_ASSIGNMENT
+from sampletones_application.ui.panels.reconstruction.stems_menu import StemsMenu
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.stems import (
@@ -41,8 +42,9 @@ class GUIReconstructionStemsPanel(GUIPanel):
     reconstruction shows its boxes muted while they stay as clickable as any other, so the
     reader's per-recording choice keeps standing. Each row leads with the color its recording is
     painted in, so a stretch of the ribbon under the waveform answers to a name here at a glance.
-    A double-click on a row shows the recording where it sits on disk, and the button beside it
-    asks to take the recording out of the reconstruction for good. The list holds on to its last
+    A double-click on a row shows the recording where it sits on disk, a right-click offers to
+    mute or solo it beside the file items, and the button beside it asks to take the recording
+    out of the reconstruction for good. The list holds on to its last
     row, so one recording always stands.
     """
 
@@ -77,8 +79,13 @@ class GUIReconstructionStemsPanel(GUIPanel):
             status_bar=status_bar,
             offer=RECORDED_ASSIGNMENT,
         )
+        self._menu = StemsMenu(
+            stems_list=self._stems_list,
+            language_manager=language_manager,
+        )
 
         self.on_stem_channels_changed: Optional[Callable[[int, FrozenSet[ChannelName]], None]] = None
+        self.on_stem_solo_requested: Optional[Callable[[int], None]] = None
         self.on_stem_remove_requested: Optional[Callable[[int], None]] = None
 
         super().__init__(tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_STEMS)
@@ -96,7 +103,7 @@ class GUIReconstructionStemsPanel(GUIPanel):
         with self._collapsible_card(
             parent,
             self._lbl_stems,
-            glyph=self._glyphs.headers.source,
+            glyph=self._glyphs.headers.stems,
             width=0,
             no_scrollbar=True,
         ):
@@ -118,6 +125,11 @@ class GUIReconstructionStemsPanel(GUIPanel):
         self._stems_list.on_channels_changed = self._on_channels_changed
         self._stems_list.on_row_revealed = self._on_row_revealed
         self._stems_list.on_remove_requested = self._on_remove_requested
+        self._stems_list.on_menu_requested = self._menu.show
+        self._menu.on_channels_changed = lambda stem_id, channels: self.call(
+            self.on_stem_channels_changed, stem_id, channels
+        )
+        self._menu.on_solo_requested = lambda stem_id: self.call(self.on_stem_solo_requested, stem_id)
 
     def update_view(self, view_model: ReconstructionStemsViewModel) -> None:
         self._view_model = view_model

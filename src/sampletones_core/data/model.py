@@ -74,8 +74,17 @@ class DataModel(BaseModel, ABC):
         validation: Optional[Callback] = None,
         fast: bool = True,
     ) -> Self:
-        data = msgpack.unpackb(buffer, raw=False)
-        return cls.deserialize_inner(data, validation, fast=fast)
+        return cls.deserialize_inner(cls.unpack(buffer), validation, fast=fast)
+
+    @staticmethod
+    def unpack(buffer: bytes) -> SerializedData:
+        """The fields a serialized payload states, before any of them is read into a model.
+
+        A reader after one field of a large document unpacks the payload and reads that field
+        alone, which costs a fraction of building every model the document describes.
+        """
+        unpacked: SerializedData = msgpack.unpackb(buffer, raw=False)
+        return unpacked
 
     def save(self, path: Pathlike) -> None:
         save_binary(path, compress_document(self.serialize()))

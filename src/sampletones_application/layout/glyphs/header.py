@@ -13,6 +13,7 @@ class HeaderGlyphs(BaseModel, extra="forbid", frozen=True):
     details: str
     parameters: str
     source: str
+    stems: str
     instruments: str
     voices: str
     tracker: str

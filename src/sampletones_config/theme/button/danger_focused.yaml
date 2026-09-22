@@ -1,0 +1,13 @@
+name: danger_button_focused
+tag: global.theme.danger_button_focused
+extends: danger_button
+
+components:
+  - item_type: Button
+    entries:
+      - type: color
+        key: Border
+        value: .accent
+      - type: style
+        key: FrameBorderSize
+        x: 1

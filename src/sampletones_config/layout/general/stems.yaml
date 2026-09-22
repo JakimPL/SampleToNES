@@ -1,6 +1,5 @@
 master_column_width: 44
-channel_column_width: 78
-channel_solo_width: 62
+channel_column_width: 62
 channel_box_width: 29
 remove_button_width: 30
 swatch_size: 14

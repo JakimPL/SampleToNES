@@ -8,6 +8,7 @@ import pytest
 from sampletones_application.ui.elements.graphs import waveform as waveform_module
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.utils.palette.colors.written import LiteralColor
+from sampletones_application.view_model.shared.waveform_data import WaveformData
 
 VOICE_SAMPLES = 64
 
@@ -148,6 +149,69 @@ class TestWaveformUpdateDisplay:
 
         assert fake_dpg.alias_to_id["indicator"] not in fake_dpg.deleted
         assert fake_dpg.alias_to_id["overlay"] not in fake_dpg.deleted
+
+
+class TestWaveformDataUpdateRefit:
+    """A retune moves the audio's own length, so its update re-fits the view; an ordinary edit,
+    which changes nothing about the length, leaves the reader's view where it was."""
+
+    @staticmethod
+    def _waveform_data() -> WaveformData:
+        approximation = np.zeros(VOICE_SAMPLES, dtype=np.float32)
+        return WaveformData(
+            original_audio=None,
+            approximation=approximation,
+            approximations={},
+            coefficient=1.0,
+            frame_length=1,
+            sample_rate=44100,
+        )
+
+    def test_a_refit_update_recomputes_the_axis_ranges(
+        self,
+        fake_dpg: _FakeDPG,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        graph = _graph()
+        graph.current_data = self._waveform_data()
+        monkeypatch.setattr(graph, "_display_layers", lambda *_args, **_kwargs: [_Layer("Reconstruction")])
+        ranges = MagicMock()
+        monkeypatch.setattr(graph, "_update_ranges", ranges)
+
+        graph.update_waveform_data(self._waveform_data(), refit=True)
+
+        ranges.assert_called_once_with()
+
+    def test_an_ordinary_update_leaves_the_ranges_alone(
+        self,
+        fake_dpg: _FakeDPG,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        graph = _graph()
+        graph.current_data = self._waveform_data()
+        monkeypatch.setattr(graph, "_display_layers", lambda *_args, **_kwargs: [_Layer("Reconstruction")])
+        ranges = MagicMock()
+        monkeypatch.setattr(graph, "_update_ranges", ranges)
+
+        graph.update_waveform_data(self._waveform_data())
+
+        ranges.assert_not_called()
+
+    def test_a_graph_not_yet_holding_waveform_data_takes_no_update(
+        self,
+        fake_dpg: _FakeDPG,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A voice's own waveform (`current_data` unset) has no length to lose, so a retune
+        elsewhere reaching this graph by mistake is a no-op rather than a crash."""
+        graph = _graph()
+        graph.current_data = None
+        ranges = MagicMock()
+        monkeypatch.setattr(graph, "_update_ranges", ranges)
+
+        graph.update_waveform_data(self._waveform_data(), refit=True)
+
+        ranges.assert_not_called()
 
 
 class TestWaveformReconstructionDim:

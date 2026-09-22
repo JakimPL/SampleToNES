@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from sampletones_application.constants.sources import SourceKind
 from sampletones_application.view_model.shared.agreement import Agreement
-from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName
+from sampletones_core.constants.enums import ChannelName
 
 
 class StemRowViewModel(BaseModel, frozen=True):
@@ -27,9 +27,6 @@ class StemRowViewModel(BaseModel, frozen=True):
     reader reaches by opening it. They stand where the folder stands, so a recording answers for
     itself while the folder answers for them all.
 
-    ``bends`` names the channels whose notes the recording carries to the pitch it sounds, which a
-    list recording what a finished conversion took draws beside the channel itself.
-
     ``name`` is what the row reads as and ``path`` where its source lives, which a row standing
     for a recording a document was detached from carries no more. Gathering a file names the row
     after it; a recorded assignment names it after the recording the document remembers.
@@ -46,7 +43,6 @@ class StemRowViewModel(BaseModel, frozen=True):
     held: Tuple["StemRowViewModel", ...]
     channels: FrozenSet[ChannelName]
     partial_channels: FrozenSet[ChannelName]
-    bends: FrozenSet[ChannelName]
     offered_channels: FrozenSet[ChannelName]
     available: bool
     level: int
@@ -68,15 +64,6 @@ class StemRowViewModel(BaseModel, frozen=True):
         folds them asks here rather than telling the two kinds apart again.
         """
         return self.held or (self,)
-
-    @property
-    def bendable_channels(self) -> FrozenSet[ChannelName]:
-        """The channels the row draws a bend box for: the offered ones that load a divider.
-
-        A bend moves a note by a fraction of the divider its channel loads, so the channels
-        holding one are where the choice reaches something.
-        """
-        return self.offered_channels & TONE_CHANNELS
 
     @property
     def stands_for_a_folder(self) -> bool:
@@ -192,6 +179,21 @@ class StemsListViewModel(BaseModel, frozen=True):
     def row(self, key: str) -> Optional[StemRowViewModel]:
         """The row a gesture named, where the view still holds one."""
         return self._by_key.get(key)
+
+    def soloed(self, key: str) -> bool:
+        """Whether the row is the one recording heard, on every channel it offers.
+
+        A list holding a single recording has no other to silence, so none of its rows stands
+        soloed.
+        """
+        row = self.row(key)
+        if row is None or self.row_count < 2 or not row.offers_channels:
+            return False
+
+        if row.channels != row.offered_channels:
+            return False
+
+        return not any(other.takes_part for other in self.rows if other.key != key)
 
     def rows_on(self, level_index: int) -> Tuple[StemRowViewModel, ...]:
         """The rows one band holds, in the order they stand."""

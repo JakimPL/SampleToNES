@@ -1,8 +1,12 @@
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
+from sampletones_application.logic.reconstruction.browser.stems import (
+    ReconstructionStemsReader,
+    RecordingsCallback,
+)
 from sampletones_application.logic.reconstruction.browser.tree.collapse import (
     collapse_single_child_containers,
 )
@@ -23,14 +27,19 @@ from sampletones_application.logic.reconstruction.browser.tree.scan import (
     scan_reconstructions,
 )
 from sampletones_core.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
+from sampletones_shared.utils.callbacks import CallbackMixin
 
 
-class BrowserManager:
+class BrowserManager(CallbackMixin):
     """Owns the reconstruction browser tree, rebuilt from one reading of the reconstructions directory.
 
     A refresh scans the directory, builds the configuration branch and the sample branch from that
     one reading, shapes what came out — empty headings pruned, lone headings folded into the row they
     lead to, siblings ordered — and publishes the result as the tree both browser tabs render.
+
+    What each reconstruction holds is read from the documents themselves, one at a time and kept,
+    and announced through ``on_recordings_read`` for whoever asked before the reading landed. Both
+    tabs render one tree, so one reading answers for both.
     """
 
     def __init__(
@@ -42,9 +51,12 @@ class BrowserManager:
         self._language_manager = language_manager
         self.config_manager = config_manager
         self.reconstructions_directory = config_manager.get_reconstructions_directory()
+        self.on_recordings_read: Optional[RecordingsCallback] = None
 
         self.tree = Tree()
         self._scan = ReconstructionScan(entries=())
+        self._stems_reader = ReconstructionStemsReader()
+        self._stems_reader.on_recordings_read = self._announce_recordings
 
     def set_reconstructions_directory(self, directory: Path) -> None:
         self.reconstructions_directory = directory
@@ -79,6 +91,13 @@ class BrowserManager:
         collapse_single_child_containers(container_root)
         order_children(container_root)
         return container_root
+
+    def recordings(self, path: Path) -> Optional[Tuple[str, ...]]:
+        """The recordings the reconstruction at ``path`` names, and None until it has been read."""
+        return self._stems_reader.recordings(path)
+
+    def _announce_recordings(self, path: Path, names: Tuple[str, ...]) -> None:
+        self.call(self.on_recordings_read, path, names)
 
     def get_all_reconstruction_files(self) -> List[Path]:
         return sorted({entry.path for entry in self._scan.reconstructions})

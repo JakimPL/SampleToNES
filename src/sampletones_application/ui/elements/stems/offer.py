@@ -13,10 +13,6 @@ class StemsListOffer:
     each owner honors. A list states that here, once, so a drawing step reads one declaration
     rather than asking a flag of its own.
 
-    ``bends`` states that a channel's cell carries the bend on it beside the channel itself, which
-    a list recording what a finished conversion took draws and a list setting a run up leaves to
-    the settings card.
-
     ``picking`` states that the box beside a row picks the row for a mix rather than answering for
     its channels, which is the reading a list asking which recordings to mix draws.
 
@@ -28,7 +24,6 @@ class StemsListOffer:
     removal: bool
     keeps_last_row: bool
     dragging: bool
-    bends: bool
     picking: bool
     swatch: bool
 
@@ -47,7 +42,6 @@ GATHERED_SOURCES: Final[StemsListOffer] = StemsListOffer(
     removal=True,
     keeps_last_row=False,
     dragging=True,
-    bends=False,
     picking=False,
     swatch=False,
 )
@@ -57,7 +51,6 @@ RECORDED_ASSIGNMENT: Final[StemsListOffer] = StemsListOffer(
     removal=True,
     keeps_last_row=True,
     dragging=False,
-    bends=True,
     picking=False,
     swatch=True,
 )
@@ -67,7 +60,6 @@ PICKED_SOURCES: Final[StemsListOffer] = StemsListOffer(
     removal=False,
     keeps_last_row=False,
     dragging=False,
-    bends=False,
     picking=True,
     swatch=False,
 )

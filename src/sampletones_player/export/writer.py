@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Final, Self
 
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.progress import ExportReporter, announce
 from sampletones_core.exports.request import SampleExport
@@ -131,4 +132,4 @@ class NSFWriter:
         announce(report, ExportStage.WRITING, NOTHING_DONE, ONE_FILE)
         write_nsf(destination, song, program.information, self._image)
         announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
-        return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE)
+        return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE, skipped_rows=NO_SKIPPED_ROWS)

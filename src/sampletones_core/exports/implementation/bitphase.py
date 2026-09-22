@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Final, FrozenSet, List
 
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.progress import ExportReporter, announce
@@ -13,8 +14,8 @@ from sampletones_core.exports.scope import ExportScope
 from sampletones_core.exports.stage import ExportStage
 from sampletones_core.formats.bitphase.btp import write_btp
 from sampletones_core.formats.bitphase.builder import (
+    build_bitphase,
     instrument_to_bitphase,
-    project_to_bitphase,
     sample_to_bitphase,
 )
 from sampletones_core.formats.bitphase.preset import instrument_to_preset, write_preset
@@ -60,7 +61,7 @@ class BitphaseBackend:
         write_btp(destination, instrument_to_bitphase(request))
         announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
 
-        return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE)
+        return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE, skipped_rows=NO_SKIPPED_ROWS)
 
     def write_sample(
         self,
@@ -72,7 +73,7 @@ class BitphaseBackend:
         write_btp(destination, sample_to_bitphase(request))
         announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
 
-        return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE)
+        return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE, skipped_rows=NO_SKIPPED_ROWS)
 
     def write_project(
         self,
@@ -81,10 +82,15 @@ class BitphaseBackend:
         report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
-        write_btp(destination, project_to_bitphase(request.project))
+        built = build_bitphase(request.project)
+        write_btp(destination, built.document)
         announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
 
-        return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE)
+        return ExportArtifact(
+            paths=(destination,),
+            truncation=WHOLE_ENVELOPE,
+            skipped_rows=built.skipped_rows,
+        )
 
 
 class BitphasePresetBackend:
@@ -117,7 +123,7 @@ class BitphasePresetBackend:
         write_preset(destination, instrument_to_preset(request))
         announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
 
-        return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE)
+        return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE, skipped_rows=NO_SKIPPED_ROWS)
 
     def write_sample(
         self,
@@ -141,7 +147,7 @@ class BitphasePresetBackend:
             paths.extend(self.write_instrument(filepath, instrument, silent_reporter).paths)
             announce(report, ExportStage.WRITING, index, written)
 
-        return ExportArtifact(paths=tuple(paths), truncation=WHOLE_ENVELOPE)
+        return ExportArtifact(paths=tuple(paths), truncation=WHOLE_ENVELOPE, skipped_rows=NO_SKIPPED_ROWS)
 
     def write_project(
         self,

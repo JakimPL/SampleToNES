@@ -112,6 +112,44 @@ class TestReconstructionViewModelEnablement:
         assert view_model.show_locate_audio_hint is case.show_locate_audio_hint
 
 
+class TestReconstructionViewModelNesFrequency:
+    """The rate is the tab's to change while the document has a file, and the project's once detached."""
+
+    @staticmethod
+    def _view_model(*, loaded: bool, file_state: ReconstructionPathState) -> ReconstructionViewModel:
+        return ReconstructionViewModel(
+            reconstruction_loaded=loaded,
+            playing_channels=frozenset(),
+            selected_channels=frozenset(),
+            reconstruction_file=ReconstructionPathViewModel(state=file_state, paths=()),
+            original_audio=ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, paths=()),
+            nes_frequency=None,
+        )
+
+    @pytest.mark.parametrize(
+        "file_state",
+        [ReconstructionPathState.AVAILABLE, ReconstructionPathState.NOT_FOUND],
+        ids=lambda state: state.name.lower(),
+    )
+    def test_a_document_with_a_file_takes_a_new_rate(self, file_state: ReconstructionPathState) -> None:
+        view_model = self._view_model(loaded=True, file_state=file_state)
+
+        assert view_model.nes_frequency_editable
+        assert not view_model.show_nes_frequency_hint
+
+    def test_a_document_detached_from_its_file_follows_the_project(self) -> None:
+        view_model = self._view_model(loaded=True, file_state=ReconstructionPathState.NOT_APPLICABLE)
+
+        assert not view_model.nes_frequency_editable
+        assert view_model.show_nes_frequency_hint
+
+    def test_an_empty_tab_takes_and_explains_nothing(self) -> None:
+        view_model = self._view_model(loaded=False, file_state=ReconstructionPathState.EMPTY)
+
+        assert not view_model.nes_frequency_editable
+        assert not view_model.show_nes_frequency_hint
+
+
 class TestReconstructionPathViewModelPath:
     def test_single_path_is_the_location(self) -> None:
         view_model = ReconstructionPathViewModel(

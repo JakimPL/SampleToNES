@@ -6,6 +6,7 @@ import pytest
 from sampletones_application.services.export.error import ExportError
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.format import ExportFormat
 
@@ -18,6 +19,7 @@ class TestExportSuccess:
             filepath=filepath,
             export_format=None,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
         assert success.kind == ExportKind.WAV
         assert success.filepath == filepath
@@ -30,6 +32,7 @@ class TestExportSuccess:
             filepath=Path("/x"),
             export_format=ExportFormat.BITPHASE,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
         assert success.export_format == ExportFormat.BITPHASE
 
@@ -44,6 +47,7 @@ class TestExportSuccess:
             filepath=Path("/x"),
             export_format=ExportFormat.FAMITRACKER,
             truncation=truncation,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
         assert success.truncation == truncation
 
@@ -53,6 +57,7 @@ class TestExportSuccess:
             filepath=Path("/x"),
             export_format=None,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
         with pytest.raises(FrozenInstanceError):
             success.kind = ExportKind.INSTRUMENT  # type: ignore[misc]
@@ -64,22 +69,26 @@ class TestExportSuccess:
             filepath=path,
             export_format=None,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         ) == ExportSuccess(
             kind=ExportKind.WAV,
             filepath=path,
             export_format=None,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
         assert ExportSuccess(
             kind=ExportKind.WAV,
             filepath=path,
             export_format=None,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         ) != ExportSuccess(
             kind=ExportKind.INSTRUMENT,
             filepath=path,
             export_format=None,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
 
     def test_the_tracker_format_separates_two_otherwise_equal_results(self) -> None:
@@ -89,11 +98,13 @@ class TestExportSuccess:
             filepath=path,
             export_format=ExportFormat.FAMITRACKER,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         ) != ExportSuccess(
             kind=ExportKind.INSTRUMENT,
             filepath=path,
             export_format=ExportFormat.BITPHASE,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
 
 

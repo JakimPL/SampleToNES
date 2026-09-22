@@ -2,6 +2,7 @@ from typing import List, Optional, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
+from sampletones_core.exporters.skipped import BuiltDocument, find_skipped_rows
 from sampletones_core.exporters.slices import (
     InstrumentSlot,
     InstrumentTable,
@@ -138,6 +139,11 @@ def _row_cell(
     channel_generator: ChannelName,
     slots: InstrumentTable,
 ) -> Optional[RowCell]:
+    """Converts one tracker line to the cell that plays it, and ``None`` where the line is empty.
+
+    A note-on naming a voice with no instrument on this channel plays nothing in the song, so it
+    becomes the note cut that silences the channel.
+    """
     note = EMPTY_NOTE
     octave = MIN_OCTAVE
     instrument = EMPTY_INSTRUMENT
@@ -149,16 +155,14 @@ def _row_cell(
         case NoteOn() as reference:
             slot = slots.get((reference.voice_id, channel_generator))
             if slot is None:
-                raise ValueError(
-                    f"Row references voice '{reference.voice_id}' on channel "
-                    f"'{channel_generator}' with no instrument"
+                note = int(NoteValue.HALT)
+            else:
+                instrument = slot.index
+                note, octave = _note_and_octave(
+                    row.transpose or 0,
+                    channel_generator,
+                    slot,
                 )
-            instrument = slot.index
-            note, octave = _note_and_octave(
-                row.transpose or 0,
-                channel_generator,
-                slot,
-            )
         case None:
             pass
 
@@ -252,6 +256,18 @@ def _build_order(song: Song) -> Tuple[OrderFrame, ...]:
 
 def project_to_module(project: Project) -> FamiTrackerModule:
     """Maps a project's samples and song onto the FamiTracker module IR."""
+    return build_module(project).document
+
+
+def build_module(project: Project) -> BuiltDocument[FamiTrackerModule]:
+    """Maps a project onto the FamiTracker module IR and lists the rows it had to leave silent.
+
+    A row naming a voice on a channel the voice has no instrument for plays nothing in the song,
+    so the module holds a note cut there and the row is listed beside it.
+
+    Raises:
+        ValueError: If the project holds more than FamiTracker has room for.
+    """
     instruments, slots = build_instrument_table(project)
     song = project.song
     settings = project.settings
@@ -294,10 +310,13 @@ def project_to_module(project: Project) -> FamiTrackerModule:
         effect_columns={channel_id: DEFAULT_EFFECT_COLUMNS for channel_id in ChannelId},
     )
 
-    return FamiTrackerModule(
-        parameters=parameters,
-        information=information,
-        instruments=tuple(instruments),
-        track=track,
-        comment=info.comment,
+    return BuiltDocument(
+        document=FamiTrackerModule(
+            parameters=parameters,
+            information=information,
+            instruments=tuple(instruments),
+            track=track,
+            comment=info.comment,
+        ),
+        skipped_rows=find_skipped_rows(song, slots),
     )

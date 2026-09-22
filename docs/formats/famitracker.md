@@ -322,6 +322,10 @@ that ends its note.
 | Tempo / speed | engine-dependent (split at row `speed_split_point`) | tempo 32–255, speed 1–31 | written verbatim from settings |
 | DPCM samples | 64 | not modeled | always empty |
 
+A row that names a voice on a channel the voice has no instrument for plays nothing in the song, so the
+exporter writes a note cut on it and reports the row by its frame, channel and row. The project export
+dialog lists those rows.
+
 The exporter also reserves an empty pattern index per channel (`max used index + 1`) for order slots the
 song leaves unset. A channel that already fills indices up to 127 leaves no room for it, and the exporter
 reports this instead of writing a corrupt order.

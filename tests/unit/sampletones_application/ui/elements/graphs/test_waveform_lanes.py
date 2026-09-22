@@ -1,9 +1,10 @@
-from typing import Generator
+from typing import Generator, List, Tuple
 from unittest.mock import MagicMock
 
 import dearpygui.dearpygui as dpg
 import pytest
 
+from sampletones_application.categories.context import channel_letter
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.loader import load_layout_config
@@ -16,11 +17,14 @@ from sampletones_application.paths import (
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.graphs import waveform as waveform_module
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_core.constants.enums import ChannelName
+
+LANGUAGE_MANAGER = LanguageManager(LANG_EN)
 
 
 @pytest.fixture(name="layout")
@@ -44,7 +48,7 @@ def graph_fixture(layout: LayoutConfig) -> Generator[GUIWaveformGraph, None, Non
                 parent="root",
                 layout=layout.graphs,
                 channel_colors=layout.general.colors.channels,
-                language_manager=LanguageManager(LANG_EN),
+                language_manager=LANGUAGE_MANAGER,
                 status_bar=MagicMock(),
             )
     finally:
@@ -96,3 +100,48 @@ class TestTheFaceALaneIsMarkedIn:
     def test_the_letter_stands_shorter_than_the_lane_it_marks(self, layout: LayoutConfig) -> None:
         """A letter taller than its lane would run into the lane above, so the face stays under it."""
         assert FontRegistry.get_size(Font.REGULAR_TINY) <= layout.graphs.ribbon.lane_height
+
+
+class TestTheLetterFollowsWhetherTheLaneStands:
+    """A closed lane keeps a sliver of height, so its letter is cleared rather than left to crowd it."""
+
+    @staticmethod
+    def _ticks(monkeypatch: pytest.MonkeyPatch) -> List[Tuple[str, Tuple[Tuple[str, float], ...]]]:
+        calls: List[Tuple[str, Tuple[Tuple[str, float], ...]]] = []
+        monkeypatch.setattr(waveform_module.dpg, "set_axis_ticks", lambda tag, ticks: calls.append((tag, ticks)))
+        return calls
+
+    def test_a_channel_gaining_a_lane_is_marked_with_its_letter(
+        self,
+        graph: GUIWaveformGraph,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        calls = self._ticks(monkeypatch)
+
+        graph.set_lane_heights({ChannelName.PULSE1: 11})
+
+        letter = channel_letter(LANGUAGE_MANAGER, ChannelName.PULSE1)
+        assert (graph.lane_y_axis_tags[ChannelName.PULSE1], ((letter, 0.5),)) in calls
+
+    def test_a_channel_without_a_lane_is_cleared(
+        self,
+        graph: GUIWaveformGraph,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        calls = self._ticks(monkeypatch)
+
+        graph.set_lane_heights({ChannelName.PULSE1: 11})
+
+        assert (graph.lane_y_axis_tags[ChannelName.PULSE2], ()) in calls
+
+    def test_a_lane_closed_after_standing_open_loses_its_letter(
+        self,
+        graph: GUIWaveformGraph,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        graph.set_lane_heights({ChannelName.PULSE1: 11})
+        calls = self._ticks(monkeypatch)
+
+        graph.set_lane_heights({})
+
+        assert (graph.lane_y_axis_tags[ChannelName.PULSE1], ()) in calls

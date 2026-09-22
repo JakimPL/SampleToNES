@@ -5,6 +5,10 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.settings import SettingsLayout
+from sampletones_application.tags.general import (
+    TAG_GLOBAL_THEME_DANGER_BUTTON,
+    TAG_GLOBAL_THEME_DANGER_BUTTON_FOCUSED,
+)
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_RENDER_BUTTON_BROWSE,
     TAG_SETTINGS_RENDER_BUTTON_CANCEL,
@@ -33,6 +37,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.path import GUIDestinationPathText
 from sampletones_application.ui.elements.seeded import GUISeededDialogWindow
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
@@ -138,7 +143,12 @@ class GUIRenderWindow(GUISeededDialogWindow[SongRenderViewModel]):
                 FocusStop.button(TAG_SETTINGS_RENDER_BUTTON_BROWSE, self._request_destination),
                 FocusStop.button(TAG_SETTINGS_RENDER_BUTTON_CLOSE, self._request_close),
                 FocusStop.button(TAG_SETTINGS_RENDER_BUTTON_START, self._request_render),
-                FocusStop.button(TAG_SETTINGS_RENDER_BUTTON_CANCEL, self._request_cancel),
+                FocusStop.button(
+                    TAG_SETTINGS_RENDER_BUTTON_CANCEL,
+                    self._request_cancel,
+                    base_theme_tag=TAG_GLOBAL_THEME_DANGER_BUTTON,
+                    focused_theme_tag=TAG_GLOBAL_THEME_DANGER_BUTTON_FOCUSED,
+                ),
             ],
             on_escape=self._request_close,
         )
@@ -285,6 +295,7 @@ class GUIRenderWindow(GUISeededDialogWindow[SongRenderViewModel]):
                 label=self._language_manager["global.dialog.label.cancel"],
                 callback=self._request_cancel,
                 width=-1,
+                theme=ThemeRegistry.get(TAG_GLOBAL_THEME_DANGER_BUTTON),
             )
 
     def _render(self) -> None:

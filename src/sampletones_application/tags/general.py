@@ -170,6 +170,12 @@ TAG_GLOBAL_THEME_FOCUSED_BUTTON = TagName(
     Widget.THEME,
     "focused_button",
 )
+TAG_GLOBAL_THEME_DANGER_BUTTON_FOCUSED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "danger_button_focused",
+)
 TAG_GLOBAL_THEME_SECTION_HEADER = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -861,7 +867,6 @@ SUF_BUTTON_COLLAPSE_ALL = compose_tag(SUF_BUTTON, "collapse_all")
 SUF_BUTTON_SHOW_TRACEBACK = compose_tag(SUF_BUTTON, "show_traceback")
 SUF_BUTTON_DECREMENT = compose_tag(SUF_BUTTON, "decrement")
 SUF_BUTTON_INCREMENT = compose_tag(SUF_BUTTON, "increment")
-SUF_BENDS = "bends"
 SUF_CHANNELS = "channels"
 SUF_GROUP = "group"
 SUF_HEADING = "heading"

@@ -7,7 +7,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.paths import LANG_EN
 from sampletones_application.tags.compose import compose_tag
-from sampletones_application.tags.general import SUF_BUTTON
+from sampletones_application.tags.general import SUF_BUTTON, TAG_GLOBAL_THEME_DANGER_BUTTON
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_EXPORT_BUTTON_CANCEL,
     TAG_SETTINGS_EXPORT_GROUP_MEASURED,
@@ -132,6 +132,13 @@ class TestStoppingARun:
     def test_an_export_already_stopping_offers_no_further_stop(self, window: GUIExportWindow) -> None:
         render(window, phase=ExportPhase.CANCELING)
         assert not dpg.get_item_configuration(TAG_SETTINGS_EXPORT_BUTTON_CANCEL)["enabled"]
+
+    def test_cancel_carries_the_tone_of_an_action_that_undoes_the_run(self, window: GUIExportWindow) -> None:
+        render(window, phase=ExportPhase.EXPORTING)
+
+        theme = dpg.get_item_theme(compose_tag(TAG_SETTINGS_EXPORT_BUTTON_CANCEL, SUF_BUTTON))
+
+        assert dpg.get_item_alias(theme) == TAG_GLOBAL_THEME_DANGER_BUTTON
 
     def test_pressing_cancel_asks_the_run_to_stop(self, window: GUIExportWindow) -> None:
         asked: List[bool] = []

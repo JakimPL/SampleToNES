@@ -1,4 +1,4 @@
-from typing import AbstractSet, Callable, Dict, Final, Mapping, Sequence
+from typing import AbstractSet, Callable, Dict, Final, Mapping, Sequence, Tuple
 
 from sampletones_application.logic.reconstruction.listening import offered_channels
 from sampletones_application.view_model.shared.ownership import (
@@ -30,6 +30,28 @@ def record_positions(stems_data: StemsData) -> Dict[int, int]:
     return {entry.id: index for index, entry in enumerate(stems_data.config.entries)}
 
 
+def recording_names(stems_data: StemsData) -> Tuple[str, ...]:
+    """The recordings a document names, in the order the record paints them.
+
+    The name standing in a given place is the recording standing at that place on the record, which
+    is where every surface reads its color from, so a list of these names and a column of swatches
+    beside them agree. A record whose recordings and entries fail to answer for each other names
+    nothing, a name worth reading being one that sits where its color does.
+
+    Args:
+        stems_data: The record the document carries.
+
+    Returns:
+        Tuple[str, ...]: One name per recording, in record order.
+    """
+    positions = record_positions(stems_data)
+    sources = stems_data.sources_by_id
+    if sources.keys() != positions.keys():
+        return ()
+
+    return tuple(sources[stem_id].name for stem_id in sorted(positions, key=lambda stem_id: positions[stem_id]))
+
+
 def tells_owners_apart(stems_data: StemsData) -> bool:
     """Whether the document holds owners a color has something to tell apart.
 
@@ -56,7 +78,12 @@ def ownership_lanes(
     Each surface states its own reading as the assignments it passes — which channels stand, and
     how far each lane runs — so the rule dividing a channel into stretches is written once and
     the ribbon under the waveform and the band under an instrument's bars agree by construction.
-    A document answering to a single owner has nothing to tell apart and offers no lane.
+    Whether a lane is worth drawing at all is the caller's own question: a surface with room for
+    only one reading, such as an instrument's bars, asks ``tells_owners_apart`` first and skips
+    this call where a document answering to a single owner has nothing to tell apart; a surface
+    reading every channel of a document at once, such as the waveform's ribbon, has a plainer
+    question to answer instead — whether a channel plays — and takes a lane for every one that
+    does.
 
     Args:
         stems_data: The record the document carries.
@@ -66,9 +93,6 @@ def ownership_lanes(
     Returns:
         Dict[ChannelName, OwnershipLaneViewModel]: One lane per channel given, in that order.
     """
-    if not tells_owners_apart(stems_data):
-        return {}
-
     positions = record_positions(stems_data)
     return {
         channel_name: _ownership_lane(channel_name, stem_ids, positions, heard_on(channel_name))

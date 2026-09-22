@@ -5,6 +5,7 @@ from sampletones_application.application import Application
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
 from sampletones_application.services.result import ServiceProgress, ServiceStarted
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.exports.stage import ExportStage
 
 NOTHING_MEASURED: int = 0
@@ -87,6 +88,7 @@ class TestExportEdges:
                 filepath=Path("song.nsf"),
                 export_format=None,
                 truncation=None,
+                skipped_rows=NO_SKIPPED_ROWS,
             )
         )
         application._update_menu.assert_called_once_with()

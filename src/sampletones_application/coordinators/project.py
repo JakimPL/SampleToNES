@@ -11,6 +11,7 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.exports import EXPORT_PROJECT_ELEMENTS
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.categories.skipped import SkippedRowMessages
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.logic.project.controller import ProjectController
@@ -34,6 +35,7 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_core.exporters.skipped import SkippedRow
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.scope import ExportScope
@@ -85,6 +87,7 @@ class ProjectCoordinator:
         self._format_setups = format_setups
         self._dialogs = dialogs
         self._language_manager = language_manager
+        self._skipped_row_messages = SkippedRowMessages.build(language_manager)
         self._on_tab_switch = on_tab_switch
         self._project_manager.session.on_state_changed = on_session_state_changed
 
@@ -317,12 +320,13 @@ class ProjectCoordinator:
             case ExportSuccess(
                 kind=ExportKind.PROJECT,
                 export_format=ExportFormat() as export_format,
+                skipped_rows=skipped_rows,
             ):
                 self._present(
                     partial(
                         self._dialogs.show_info,
                         TAG_GLOBAL_DIALOG_MODULE_EXPORTED,
-                        self._message(EXPORT_PROJECT_ELEMENTS[export_format].exported_message),
+                        self._exported_message(export_format, skipped_rows),
                         self._title(GlobalDialogTitleElements.PROJECT_EXPORTED),
                     )
                 )
@@ -338,6 +342,19 @@ class ProjectCoordinator:
                         self._message(EXPORT_PROJECT_ELEMENTS[export_format].export_failed_message),
                     )
                 )
+
+    def _exported_message(
+        self,
+        export_format: ExportFormat,
+        skipped_rows: Tuple[SkippedRow, ...],
+    ) -> str:
+        """The report of a written project, followed by the rows the format wrote as a note cut."""
+        message = self._message(EXPORT_PROJECT_ELEMENTS[export_format].exported_message)
+        notice = self._skipped_row_messages.notice(skipped_rows, self._project_manager.current.voices)
+        if notice is None:
+            return message
+
+        return f"{message}\n\n{notice}"
 
     def _present(self, raise_dialog: VoidCallback) -> None:
         """Raises ``raise_dialog`` once the frame the export window left the screen in has finished."""

@@ -118,6 +118,34 @@ class TestFocusOutline:
 
         registry.get.assert_not_called()
 
+    def test_a_button_styled_beyond_the_default_keeps_its_own_look_while_focused(self) -> None:
+        """A themed button, such as a danger one, names its own focused variant, so the accent
+        border a stop takes on carries that button's colors forward rather than the plain
+        default look every other stop shares."""
+        stops = [
+            FocusStop.field("title"),
+            FocusStop.button(
+                "cancel",
+                MagicMock(),
+                base_theme_tag="global.theme.danger_button",
+                focused_theme_tag="global.theme.danger_button_focused",
+            ),
+        ]
+        ring = FocusRing(stops, initial_index=0)
+
+        themes: Dict[str, MagicMock] = defaultdict(MagicMock)
+        registry = MagicMock()
+        registry.get.side_effect = lambda tag: themes[tag]
+
+        with patch(f"{MODULE}.dpg", _dpg()), patch(f"{MODULE}.ThemeRegistry", registry):
+            ring.focus_initial()
+            ring.cycle(1)
+            ring.cycle(1)
+
+        themes["global.theme.danger_button_focused"].bind_to_item.assert_any_call("cancel.button")
+        themes["global.theme.danger_button"].bind_to_item.assert_any_call("cancel.button")
+        themes[TAG_GLOBAL_THEME_FOCUSED_BUTTON].bind_to_item.assert_not_called()
+
 
 class TestActivateFocused:
     def test_activates_the_focused_button(self) -> None:

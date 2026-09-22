@@ -44,15 +44,7 @@ class FolderRenderer:
         self._rows = rows
         self._regions: Dict[str, WindowedRegion] = {}
         self._resting: Dict[str, float] = {}
-        self._columns = StemsColumns(
-            layout=layout,
-            channels=(),
-            master=False,
-            removable=False,
-            bends=False,
-            swatch=False,
-            folders=False,
-        )
+        self._columns = StemsColumns.empty(layout)
 
     def reads(self, columns: StemsColumns) -> None:
         """Takes up the grid the list is drawing, which a folder's own tables stand in too."""

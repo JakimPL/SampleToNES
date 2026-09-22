@@ -1,6 +1,9 @@
 from typing import Dict
 
-from sampletones_application.logic.reconstruction.ownership import ownership_lanes
+from sampletones_application.logic.reconstruction.ownership import (
+    ownership_lanes,
+    tells_owners_apart,
+)
 from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
@@ -50,9 +53,13 @@ def _lanes(
     Every channel the panel plots takes a lane, whatever the reader has switched on beneath the
     waveform: the channel boxes answer for the waveform, the stems card's muted tint and an
     export's scope. A lane reaches the last frame the channel's readings describe, so it stands
-    over the bars drawn from them and no further.
+    over the bars drawn from them and no further. A dimension's bars are one reading of one
+    channel, so a document answering to a single owner has nothing beneath them to tell apart.
     """
     stems_data = reconstruction.stems_data
+    if not tells_owners_apart(stems_data):
+        return {}
+
     owned = stems_data.assignments_by_channel
     assignments = {
         channel_name: owned[channel_name][: features.frame_count]

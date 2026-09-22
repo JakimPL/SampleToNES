@@ -1,6 +1,6 @@
 ﻿from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, Final, List
+from typing import Callable, Dict, Final, List, Optional
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -23,7 +23,9 @@ from sampletones_application.view_model.reconstruction.paths.state import (
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
+from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.ownership import OwnershipRibbonViewModel
+from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
@@ -491,6 +493,117 @@ class TestReconstructionPanelLogicEngineRate:
         panel_logic.close_reconstruction()
 
         assert received[0].nes_frequency is None
+
+
+class TestReconstructionPanelLogicRetuning:
+    """A reader changing the rate re-times the open document and every reading of it."""
+
+    @staticmethod
+    def _rebinding(manager: MagicMock) -> None:
+        """Lets the stand-in manager rebind the open document the way the real one does."""
+        manager.apply_edited.side_effect = lambda reconstruction: setattr(
+            manager,
+            "current_reconstruction",
+            manager.current_reconstruction.with_reconstruction(reconstruction),
+        )
+
+    def test_the_document_is_rebound_to_a_reconstruction_at_the_new_rate(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        self._rebinding(mock_reconstruction_manager)
+        _open(mock_reconstruction_manager, loaded_data)
+
+        panel_logic.set_nes_frequency(PAL_FREQUENCY)
+
+        retuned = mock_reconstruction_manager.apply_edited.call_args.args[0]
+        assert retuned.config.nes_frequency == PAL_FREQUENCY
+
+    def test_the_change_stands_as_an_unsaved_edit(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        self._rebinding(mock_reconstruction_manager)
+        _open(mock_reconstruction_manager, loaded_data)
+
+        panel_logic.set_nes_frequency(PAL_FREQUENCY)
+
+        mock_reconstruction_manager.mark_updated.assert_called_once_with()
+
+    def test_the_view_states_the_new_rate(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        self._rebinding(mock_reconstruction_manager)
+        _open(mock_reconstruction_manager, loaded_data)
+        received: List[ReconstructionViewModel] = []
+        panel_logic.on_view_changed = received.append
+
+        panel_logic.set_nes_frequency(PAL_FREQUENCY)
+
+        assert received[-1].nes_frequency == PAL_FREQUENCY
+
+    def test_the_waveform_and_the_audio_follow_the_new_rate(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        self._rebinding(mock_reconstruction_manager)
+        _open(mock_reconstruction_manager, loaded_data)
+        waveforms: List[WaveformData] = []
+        audio: List[Optional[AudioData]] = []
+        panel_logic.on_waveform_update_changed = lambda waveform, _channels, **_kwargs: waveforms.append(waveform)
+        panel_logic.on_audio_data_changed = audio.append
+
+        panel_logic.set_nes_frequency(PAL_FREQUENCY)
+
+        assert len(waveforms) == 1
+        assert len(audio) == 1
+
+    def test_the_waveform_view_re_fits_to_the_retuned_length(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        """A retune moves the audio's own length, so the old view no longer answers to it."""
+        self._rebinding(mock_reconstruction_manager)
+        _open(mock_reconstruction_manager, loaded_data)
+        refits: List[bool] = []
+        panel_logic.on_waveform_update_changed = lambda _waveform, _channels, *, refit: refits.append(refit)
+
+        panel_logic.set_nes_frequency(PAL_FREQUENCY)
+
+        assert refits == [True]
+
+    def test_the_rate_the_document_already_runs_at_changes_nothing(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, loaded_data)
+
+        panel_logic.set_nes_frequency(loaded_data.config.nes_frequency)
+
+        mock_reconstruction_manager.apply_edited.assert_not_called()
+        mock_reconstruction_manager.mark_updated.assert_not_called()
+
+    def test_a_tab_holding_no_document_changes_nothing(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+    ) -> None:
+        panel_logic.set_nes_frequency(PAL_FREQUENCY)
+
+        mock_reconstruction_manager.apply_edited.assert_not_called()
 
 
 class TestReconstructionPanelLogicClose:
@@ -1258,6 +1371,51 @@ class TestWhatTheEnvelopesShow:
 
         assert len(reported) == 1
 
+    def test_a_solo_leaves_the_envelopes_of_the_recording_alone(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        whole = mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count
+
+        panel_logic.solo_stem(0)
+
+        assert mock_reconstruction_manager.listening.heard[1] == frozenset()
+        assert 0 < mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count < whole
+
+    def test_a_second_solo_returns_to_the_whole_mix(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        whole = mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count
+
+        panel_logic.solo_stem(0)
+        panel_logic.solo_stem(0)
+
+        assert mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count == whole
+
+    def test_a_solo_tells_the_reader_the_envelopes_moved_once(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        reported: List[None] = []
+        panel_logic.on_heard_changed = lambda: reported.append(None)
+
+        panel_logic.solo_stem(0)
+
+        assert len(reported) == 1
+
 
 class TestTheLanesTheRibbonStandsOn:
     """The lanes answer for the channels the document plays, and what fills them for the listening."""
@@ -1377,18 +1535,23 @@ class TestTheLanesTheRibbonStandsOn:
         pulse_lane = next(lane for lane in received[-1].lanes if lane.channel_name == ChannelName.PULSE1)
         assert [(run.stem_id, run.heard) for run in pulse_lane.runs] == [(0, False)]
 
-    def test_a_document_answering_to_one_recording_offers_no_lanes(
+    def test_a_document_answering_to_one_recording_still_offers_a_lane(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
+        """A single recording throughout still answers whether a channel is sounding and by whom,
+        so its lane stands the way every other channel's does."""
         _open(mock_reconstruction_manager, loaded_data)
         received = self._ribbons(panel_logic)
 
         panel_logic.display_reconstruction()
 
-        assert not received[-1].is_drawn
+        ribbon = received[-1]
+        assert ribbon.is_drawn
+        assert [lane.channel_name for lane in ribbon.lanes] == [ChannelName.PULSE1]
+        assert ribbon.lanes[0].runs
 
 
 class TestTheScopeAnEditWritesIn:

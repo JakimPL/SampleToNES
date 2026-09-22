@@ -1,6 +1,6 @@
 import ast
 from dataclasses import dataclass
-from typing import Dict, List, NamedTuple, Optional
+from typing import Dict, Final, List, NamedTuple, Optional
 
 from sampletones_tools.checks.source.bindings.containers import (
     ItemTypes,
@@ -14,9 +14,18 @@ from sampletones_tools.checks.source.bindings.statements import (
     LoopStatement,
     Statement,
     TypeStatement,
+    annotated_statement,
     read_statement,
 )
-from sampletones_tools.checks.source.nodes import expression_spelling, is_attribute_spelling, nested_scopes, own_nodes
+from sampletones_tools.checks.source.nodes import (
+    class_attribute_annotations,
+    expression_spelling,
+    is_attribute_spelling,
+    nested_scopes,
+    own_nodes,
+)
+
+MODULE_SCOPE: Final[int] = 0
 
 
 @dataclass(frozen=True)
@@ -70,6 +79,19 @@ class _ScopeReader:
 
         for nested in nested_scopes(node):
             self.read(nested, scope)
+
+    def read_class_attributes(self, tree: ast.AST) -> None:
+        """Records what each class body says its instances carry, under the spelling `self` reaches.
+
+        An attribute chain belongs to the module, so an annotation written in a class body states
+        the type for every method of that class, which is how a class inheriting an attribute
+        declares what it holds.
+
+        Args:
+            tree: Parsed module to read.
+        """
+        for spelling, annotation in class_attribute_annotations(tree):
+            self._collect(MODULE_SCOPE, annotated_statement(spelling, annotation))
 
     def scopes(self) -> List[Scope]:
         """The scopes read so far, each holding the types visible inside it."""
@@ -158,8 +180,10 @@ def module_scopes(
 
     A parameter annotation, an annotated assignment, and an assignment from a direct construction
     each state a type. An assignment of one spelling to another carries that type along, so an
-    object taken as a parameter and kept as `self._manager` is known under both spellings. A `for`
-    or comprehension target takes the item type of the container it walks.
+    object taken as a parameter and kept as `self._manager` is known under both spellings. An
+    attribute a class body annotates is known the same way, which is how a class that inherits one
+    states what it holds. A `for` or comprehension target takes the item type of the container it
+    walks.
 
     Args:
         tree: Parsed module to read.
@@ -173,4 +197,5 @@ def module_scopes(
     """
     reader = _ScopeReader({**imported_item_types, **container_item_types(tree)})
     reader.read(tree, None)
+    reader.read_class_attributes(tree)
     return reader.scopes()

@@ -114,7 +114,6 @@ class GUIStemsList(CallbackMixin):
             prefix=prefix,
             layout=layout,
             language_manager=language_manager,
-            bends=offer.bends,
         )
         self._bands = LevelBands(
             self._tags,
@@ -309,6 +308,15 @@ class GUIStemsList(CallbackMixin):
         asks this, so every way out of the list answers to the one rule the button reads.
         """
         return self._view.live and self._rows.releasable(self._view)
+
+    @property
+    def holds_several_rows(self) -> bool:
+        """Whether more than one row stands in the list, which is what a solo silences the rest of."""
+        return self._view.row_count > 1
+
+    def soloed(self, key: str) -> bool:
+        """Whether the row is the one recording heard, which is what a menu names its solo by."""
+        return self._view.soloed(key)
 
     def stands_open(self, key: str) -> bool:
         """Whether the folder's recordings are in view, which is what a menu names its move by."""

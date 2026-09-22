@@ -10,7 +10,8 @@ from sampletones_core.constants.enums import (
     ChannelName,
 )
 from sampletones_core.constants.general import SILENT_VOLUME
-from sampletones_core.formats.bitphase.builder import project_to_bitphase
+from sampletones_core.exporters.skipped import SkippedRow
+from sampletones_core.formats.bitphase.builder import build_bitphase, project_to_bitphase
 from sampletones_core.formats.bitphase.model.pattern import BitphaseRow, EffectCell
 from sampletones_core.formats.bitphase.model.project import BitphaseProject
 from sampletones_core.formats.bitphase.notes import (
@@ -318,15 +319,51 @@ class TestTheTempoBecomesAGroove:
         assert all(row.effects == (None,) for channel in channels for row in channel.rows)
 
 
-class TestAnUnbuildableRow:
-    def test_a_row_naming_a_slice_with_no_instrument_is_refused(self, source: Project, lead: Sample) -> None:
+class TestARowWithNoInstrumentOnItsChannel:
+    """A voice sounds on the channels its instruments cover, so a row naming it elsewhere plays
+    nothing in the song. The export writes a note cut there and reports the row."""
+
+    @staticmethod
+    def _with_lead_on_pulse2(source: Project, lead: Sample) -> None:
         rows: List[Row] = [Row() for _ in range(ROWS_PER_PATTERN)]
-        rows[TRIGGER_ROW] = Row(command=NoteOn(voice_id=lead.id))
+        rows[TRIGGER_ROW] = Row(command=NoteOn(voice_id=lead.id), volume=ROW_VOLUME)
         source.song.channels[ChannelName.PULSE2] = Channel(
             name=ChannelName.PULSE2,
             patterns={0: Pattern(rows=rows)},
         )
         source.song.order[0][ChannelName.PULSE2] = 0
 
-        with pytest.raises(ValueError, match="with no instrument"):
-            project_to_bitphase(source)
+    def test_the_row_is_written_as_a_note_cut(self, source: Project, lead: Sample) -> None:
+        self._with_lead_on_pulse2(source, lead)
+
+        document = project_to_bitphase(source)
+
+        cut = document.songs[0].patterns[0].channels[int(ChannelIndex.SQUARE2)].rows[TRIGGER_ROW]
+        assert cut.note is not None
+        assert cut.note.name == int(NoteName.OFF)
+        assert cut.volume == ROW_VOLUME
+
+    def test_the_row_is_reported_where_the_tracker_shows_it(self, source: Project, lead: Sample) -> None:
+        self._with_lead_on_pulse2(source, lead)
+
+        skipped = build_bitphase(source).skipped_rows
+
+        assert skipped == (
+            SkippedRow(
+                voice_id=lead.id,
+                channel=ChannelName.PULSE2,
+                order_position=0,
+                row_index=TRIGGER_ROW,
+            ),
+        )
+
+    def test_a_pattern_the_order_plays_twice_reports_each_frame(self, source: Project, lead: Sample) -> None:
+        self._with_lead_on_pulse2(source, lead)
+        source.song.order[1][ChannelName.PULSE2] = 0
+
+        skipped = build_bitphase(source).skipped_rows
+
+        assert [row.order_position for row in skipped] == [0, 1]
+
+    def test_a_project_naming_only_voices_with_instruments_reports_nothing(self, source: Project) -> None:
+        assert build_bitphase(source).skipped_rows == ()

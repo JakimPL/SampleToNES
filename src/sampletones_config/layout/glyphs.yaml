@@ -1,5 +1,6 @@
 common:
   tick: "▍"
+  swatch: "■"
   favorite: "★"
   expanded: "▾"
   collapsed: "▸"
@@ -22,6 +23,7 @@ headers:
   details: "✎"
   parameters: "▦"
   source: "♪"
+  stems: "☰"
   instruments: "♬"
   voices: "♫"
   tracker: "▦"

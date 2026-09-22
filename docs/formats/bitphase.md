@@ -258,6 +258,10 @@ is the same cell you would see in the tracker.
 | Speed | 1–255 | the groove's tick counts, bounded to that range |
 | DPCM channel | present | rests, apart from the groove trigger each pattern's first row carries |
 
+A row that names a voice on a channel the voice has no instrument for plays nothing in the song, so the
+exporter writes a note cut on it and reports the row by its frame, channel and row. The project export
+dialog lists those rows.
+
 Tables and instruments are numbered together, and each slice takes one of each. The table column is
 therefore what a wide document reaches first, and the exporter raises an error instead of writing a
 document whose later voices cannot be named. A song whose rows vary spends one of those ids on its groove,

@@ -18,6 +18,11 @@ def collapse_single_child_containers(node: TreeNode) -> None:
     click behavior, theme, context menu and favorite star carry over from before the fold. The two
     branch roots stay in place, since each names a way of reading the whole tree, and a folder the disk
     holds stays a folder of its own, since the configuration branch mirrors the disk.
+
+    A heading naming something somebody chose — an audio file, a source folder — hands the row a name
+    that is no longer the configuration's own text, and the row records that it gathered a plain name.
+    A reader of configuration text, such as the font a row is drawn in, meets it as the plain name it
+    has become.
     """
     for child in list(node.children):
         collapse_single_child_containers(child)
@@ -58,6 +63,7 @@ def _siblings_hold(
 def _fold_into_child(node: TreeNode) -> None:
     child = node.children[0]
     child.name = _joined_name(node, child)
+    child.gathered_plain_name = child.gathered_plain_name or not node.states_configuration
     child.parent = node.parent
     node.parent = None
 
