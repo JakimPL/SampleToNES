@@ -25,7 +25,10 @@ from sampletones_core.structures.tree import (
     TreeNode,
 )
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
+from tests.suite.application import synchronous_executor
 from tests.suite.language import FakeLanguageManager
+
+__all__ = ["synchronous_executor"]
 
 HASH_A: Final[str] = "6edf7c948606917a78b45d153c7ca7e0"
 HASH_B: Final[str] = "a1b2c3d4e5f60718293a4b5c6d7e8f90"

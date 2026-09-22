@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional, Tuple
 
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
@@ -22,6 +23,10 @@ class BrowserLogic:
     def refresh_tree(self) -> None:
         reconstructions_directory = self._config_manager.get_reconstructions_directory()
         self._browser_manager.set_reconstructions_directory(reconstructions_directory)
+
+    def recordings(self, path: Path) -> Optional[Tuple[str, ...]]:
+        """The recordings the reconstruction at ``path`` names, and None until it has been read."""
+        return self._browser_manager.recordings(path)
 
     def remove_path(self, path: Path) -> None:
         remove_path(path)

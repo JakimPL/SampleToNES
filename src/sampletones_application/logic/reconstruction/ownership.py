@@ -1,4 +1,4 @@
-from typing import AbstractSet, Callable, Dict, Final, Mapping, Sequence
+from typing import AbstractSet, Callable, Dict, Final, Mapping, Sequence, Tuple
 
 from sampletones_application.logic.reconstruction.listening import offered_channels
 from sampletones_application.view_model.shared.ownership import (
@@ -28,6 +28,28 @@ def record_positions(stems_data: StemsData) -> Dict[int, int]:
         Dict[int, int]: The place each recording's entry stands at, by stem id.
     """
     return {entry.id: index for index, entry in enumerate(stems_data.config.entries)}
+
+
+def recording_names(stems_data: StemsData) -> Tuple[str, ...]:
+    """The recordings a document names, in the order the record paints them.
+
+    The name standing in a given place is the recording standing at that place on the record, which
+    is where every surface reads its color from, so a list of these names and a column of swatches
+    beside them agree. A record whose recordings and entries fail to answer for each other names
+    nothing, a name worth reading being one that sits where its color does.
+
+    Args:
+        stems_data: The record the document carries.
+
+    Returns:
+        Tuple[str, ...]: One name per recording, in record order.
+    """
+    positions = record_positions(stems_data)
+    sources = stems_data.sources_by_id
+    if sources.keys() != positions.keys():
+        return ()
+
+    return tuple(sources[stem_id].name for stem_id in sorted(positions, key=lambda stem_id: positions[stem_id]))
 
 
 def tells_owners_apart(stems_data: StemsData) -> bool:
