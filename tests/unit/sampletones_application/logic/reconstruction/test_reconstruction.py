@@ -1535,18 +1535,23 @@ class TestTheLanesTheRibbonStandsOn:
         pulse_lane = next(lane for lane in received[-1].lanes if lane.channel_name == ChannelName.PULSE1)
         assert [(run.stem_id, run.heard) for run in pulse_lane.runs] == [(0, False)]
 
-    def test_a_document_answering_to_one_recording_offers_no_lanes(
+    def test_a_document_answering_to_one_recording_still_offers_a_lane(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
+        """A single recording throughout still answers whether a channel is sounding and by whom,
+        so its lane stands the way every other channel's does."""
         _open(mock_reconstruction_manager, loaded_data)
         received = self._ribbons(panel_logic)
 
         panel_logic.display_reconstruction()
 
-        assert not received[-1].is_drawn
+        ribbon = received[-1]
+        assert ribbon.is_drawn
+        assert [lane.channel_name for lane in ribbon.lanes] == [ChannelName.PULSE1]
+        assert ribbon.lanes[0].runs
 
 
 class TestTheScopeAnEditWritesIn:

@@ -56,7 +56,12 @@ def ownership_lanes(
     Each surface states its own reading as the assignments it passes — which channels stand, and
     how far each lane runs — so the rule dividing a channel into stretches is written once and
     the ribbon under the waveform and the band under an instrument's bars agree by construction.
-    A document answering to a single owner has nothing to tell apart and offers no lane.
+    Whether a lane is worth drawing at all is the caller's own question: a surface with room for
+    only one reading, such as an instrument's bars, asks ``tells_owners_apart`` first and skips
+    this call where a document answering to a single owner has nothing to tell apart; a surface
+    reading every channel of a document at once, such as the waveform's ribbon, has a plainer
+    question to answer instead — whether a channel plays — and takes a lane for every one that
+    does.
 
     Args:
         stems_data: The record the document carries.
@@ -66,9 +71,6 @@ def ownership_lanes(
     Returns:
         Dict[ChannelName, OwnershipLaneViewModel]: One lane per channel given, in that order.
     """
-    if not tells_owners_apart(stems_data):
-        return {}
-
     positions = record_positions(stems_data)
     return {
         channel_name: _ownership_lane(channel_name, stem_ids, positions, heard_on(channel_name))

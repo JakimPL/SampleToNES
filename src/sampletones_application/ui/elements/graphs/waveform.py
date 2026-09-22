@@ -239,7 +239,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
                 )
                 dpg.set_axis_ticks(
                     self.lane_y_axis_tags[channel_name],
-                    ((channel_letter(self._language_manager, channel_name), LANE_LETTER_POSITION),),
+                    self._lane_letter_ticks(channel_name),
                 )
 
             FontRegistry.bind_to_item(plot_tag, Font.REGULAR_TINY)
@@ -277,9 +277,24 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._resize_rows()
 
     def set_lane_heights(self, heights: Mapping[ChannelName, int]) -> None:
-        """Gives each channel's row the height it needs, closing the ones with nothing to show."""
+        """Gives each channel's row the height it needs, closing the ones with nothing to show.
+
+        A closed row carries a sliver of height rather than none, since the grid gives every row
+        some room to stay laid out in, so a channel's letter is cleared from its axis rather than
+        left to crowd that sliver.
+        """
         self._lane_heights = {channel_name: heights.get(channel_name, 0) for channel_name in ChannelName.items()}
+        for channel_name, height in self._lane_heights.items():
+            dpg.set_axis_ticks(
+                self.lane_y_axis_tags[channel_name],
+                self._lane_letter_ticks(channel_name) if height else (),
+            )
+
         self._resize_rows()
+
+    def _lane_letter_ticks(self, channel_name: ChannelName) -> Tuple[Tuple[str, float], ...]:
+        """The one tick standing for a lane's letter, at the position it prints centered from."""
+        return ((channel_letter(self._language_manager, channel_name), LANE_LETTER_POSITION),)
 
     def _resize_rows(self) -> None:
         """Hands the grid the room the waveform and the rows beneath it take together."""

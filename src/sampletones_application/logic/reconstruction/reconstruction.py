@@ -355,11 +355,12 @@ class ReconstructionPanelLogic(CallbackMixin):
         """The recordings behind each stretch of what the document plays.
 
         A lane stands for every channel the document plays, and paints the stretches the
-        recordings heard there hold, so the ribbon reads as the waveform above it sounds. A
-        channel the reader has switched off keeps its lane and stands empty, since the lanes
-        answer for the document while what fills them answers for the listening: the rows beneath
-        the waveform hold still while a reader picks their way through it. A document answering to
-        one owner alone has nothing to tell apart, so it offers no lanes.
+        recordings heard there hold, so the ribbon reads as the waveform above it sounds — one
+        recording throughout paints one unbroken stretch, which still answers whether a channel
+        is sounding and by whom. A channel the reader has switched off keeps its lane and stands
+        empty, since the lanes answer for the document while what fills them answers for the
+        listening: the rows beneath the waveform hold still while a reader picks their way
+        through it.
         """
         stems_data = reconstruction_data.reconstruction.stems_data
         owned = stems_data.assignments_by_channel

@@ -1,6 +1,9 @@
 from typing import Dict, Final, List, Sequence, Tuple
 
-from sampletones_application.logic.reconstruction.ownership import ownership_lanes
+from sampletones_application.logic.reconstruction.ownership import (
+    ownership_lanes,
+    tells_owners_apart,
+)
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, bending_channels
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -16,17 +19,17 @@ STEM_B: Final[int] = 1
 STEM_CHANNELS: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.TRIANGLE]
 
 
-def _stems_data(stem_ids: Sequence[int]) -> StemsData:
-    """A record of two recordings, the first channel holding ``stem_ids`` frame by frame."""
+def _stems_data(stem_ids: Sequence[int], *, owners: Sequence[int] = (STEM_A, STEM_B)) -> StemsData:
+    """A record of the given recordings, the first channel holding ``stem_ids`` frame by frame."""
     entries = [
         StemEntry(
             id=stem_id,
             settings=StemSettings(channels=STEM_CHANNELS, bends=bending_channels(STEM_CHANNELS)),
         )
-        for stem_id in (STEM_A, STEM_B)
+        for stem_id in owners
     ]
     return StemsData(
-        config=StemsConfig(entries=entries, hierarchy=StemsHierarchy(levels=[[STEM_A, STEM_B]])),
+        config=StemsConfig(entries=entries, hierarchy=StemsHierarchy(levels=[list(owners)])),
         assignments=[ChannelAssignment(channel_name=CHANNEL, stem_ids=list(stem_ids))],
     )
 
@@ -56,3 +59,24 @@ class TestWhatALaneDividesInto:
 
     def test_a_trailing_rest_leaves_the_recordings_where_they_stand(self) -> None:
         assert _lane_runs([STEM_A, STEM_A, RESTING_STEM_ID]) == ((0, 2, STEM_A),)
+
+
+class TestALaneStandsWhateverTheDocumentHoldsToTellApart:
+    """Whether a lane is worth drawing is left to the caller, so a document answering to a single
+    owner still divides into the one stretch that owner holds."""
+
+    def test_a_single_owner_still_takes_a_lane(self) -> None:
+        stems_data = _stems_data([STEM_A, STEM_A], owners=(STEM_A,))
+        assignments: Dict[ChannelName, List[int]] = {CHANNEL: [STEM_A, STEM_A]}
+
+        lanes = ownership_lanes(stems_data, assignments, lambda _channel: {STEM_A})
+
+        assert [(run.start_frame, run.end_frame, run.stem_id) for run in lanes[CHANNEL].runs] == [(0, 2, STEM_A)]
+
+
+class TestWhetherTheDocumentHasOwnersToTellApart:
+    def test_one_owner_has_nothing_to_tell_apart(self) -> None:
+        assert not tells_owners_apart(_stems_data([STEM_A], owners=(STEM_A,)))
+
+    def test_two_owners_tell_apart(self) -> None:
+        assert tells_owners_apart(_stems_data([STEM_A, STEM_B]))
