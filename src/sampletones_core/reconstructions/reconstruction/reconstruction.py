@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import struct
+from contextlib import contextmanager
 from functools import cached_property
 from pathlib import Path
 from typing import (
@@ -9,6 +10,7 @@ from typing import (
     Final,
     FrozenSet,
     Iterable,
+    Iterator,
     List,
     Mapping,
     Optional,
@@ -445,6 +447,23 @@ class Reconstruction(DataModel):
         )
 
     @classmethod
+    def read_stems_data(cls, path: Pathlike) -> StemsData:
+        """The recordings a document names and the setup they were converted under, read on their own.
+
+        A listing that names many reconstructions asks each one what it is made of, which the whole
+        document costs far more to answer than the one field holding it. The payload travels through
+        the upgrade and the ``deserialize_inner`` a full load reads it with, so this answer and the
+        loaded document's describe the same recordings.
+
+        Raises:
+            InvalidReconstructionValuesError: If the payload states values a stems record rejects.
+            UnhandledReconstructionError: If reading it fails for any other reason.
+        """
+        with cls._reading(path):
+            document = cls.unpack(upgrade_binary(ObjectKind.RECONSTRUCTION, decompress_document(load_binary(path))))
+            return StemsData.deserialize_inner(document["stems_data"])
+
+    @classmethod
     def deserialize_data(
         cls,
         binary: bytes,
@@ -452,9 +471,16 @@ class Reconstruction(DataModel):
         validation: Optional[Callback] = None,
         fast: bool = True,
     ) -> Reconstruction:
-        try:
+        with cls._reading(source):
             binary = upgrade_binary(ObjectKind.RECONSTRUCTION, decompress_document(binary))
             return cls.deserialize(binary, validation=validation, fast=fast)
+
+    @staticmethod
+    @contextmanager
+    def _reading(source: Pathlike) -> Iterator[None]:
+        """States what a malformed document raises, so every reader of one answers the same errors."""
+        try:
+            yield
         except (ValidationError, TypeError, ValueError, struct.error, IndexError) as exception:
             raise InvalidReconstructionValuesError(
                 f'Failed to deserialize ReconstructionData from "{source}" due to validation error: {exception}',
