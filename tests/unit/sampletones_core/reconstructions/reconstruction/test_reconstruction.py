@@ -152,10 +152,10 @@ class TestStemsDataRoundTrip:
                 ],
                 hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
             ),
-            assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
+            assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0, 1])],
         )
         reconstruction = Reconstruction.create(
-            instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH)]},
+            instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH), _pulse(_BASE_PITCH)]},
             config=Config(),
             coefficient=1.0,
             audio_filepath=stem_paths,
@@ -213,10 +213,10 @@ class TestSourcePaths:
                 ],
                 hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
             ),
-            assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
+            assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0, 1])],
         )
         reconstruction = Reconstruction.create(
-            instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH)]},
+            instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH), _pulse(_BASE_PITCH)]},
             config=Config(),
             coefficient=1.0,
             audio_filepath=stem_paths,

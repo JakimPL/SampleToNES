@@ -9,6 +9,7 @@ from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
@@ -121,16 +122,36 @@ def recorded_from(
     """The document as though its recordings had been read from ``paths``, one per entry.
 
     A test states the files a conversion would have read, and the record takes its sources from
-    them; the entries follow, so a document standing for several recordings holds an entry for
-    each of them over the channels it already plays.
+    them; the entries follow, one per path over the channels the document already plays. Every
+    recording a document names holds a frame, so each channel plays its stream once per recording,
+    and the frames sounding in the n-th play answer to the n-th recording.
     """
     settings = reconstruction.stems_data.config.entries[0].settings
-    config = StemsConfig(
-        entries=[StemEntry(id=stem_id, settings=settings) for stem_id in range(len(paths))],
-        hierarchy=StemsHierarchy(levels=[list(range(len(paths)))]),
-    )
+    stem_ids = list(range(len(paths)))
+    streams = dict(reconstruction.streams)
+    assignments: List[ChannelAssignment] = []
+    for channel_name in reconstruction.playing_channels:
+        stream = reconstruction.instructions[channel_name]
+        streams[channel_name] = InstructionsItem.create(
+            channel_name=channel_name,
+            instructions=stream * len(paths),
+            initial_pitch=reconstruction.initial_pitches[channel_name],
+            held_features=reconstruction.held_features[channel_name],
+        )
+        assignments.append(
+            ChannelAssignment(
+                channel_name=channel_name,
+                stem_ids=[
+                    stem_id if instruction.on else RESTING_STEM_ID for stem_id in stem_ids for instruction in stream
+                ],
+            )
+        )
+
     stems_data = StemsData(
-        config=config,
-        assignments=reconstruction.stems_data.assignments,
+        config=StemsConfig(
+            entries=[StemEntry(id=stem_id, settings=settings) for stem_id in stem_ids],
+            hierarchy=StemsHierarchy(levels=[stem_ids]),
+        ),
+        assignments=assignments,
     ).with_sources(paths)
-    return reconstruction.model_copy(update={"stems_data": stems_data})
+    return reconstruction.rewritten(streams, stems_data)

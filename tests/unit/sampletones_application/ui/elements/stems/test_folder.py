@@ -116,7 +116,7 @@ def recording(path: Path, *, channels: FrozenSet[ChannelName] = frozenset(CHANNE
         available=True,
         level=0,
         position=0,
-        record_position=None,
+        stem_id=None,
         level_size=1,
         level_count=1,
     )
@@ -136,7 +136,7 @@ def folder(name: str, *, holds: int) -> StemRowViewModel:
         available=True,
         level=0,
         position=0,
-        record_position=None,
+        stem_id=None,
         level_size=1,
         level_count=1,
     )

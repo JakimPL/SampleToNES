@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Final, List
+from typing import AbstractSet, Any, Dict, Final, List
 
 import msgpack
 import pytest
@@ -136,23 +136,27 @@ class TestWhatTheApplicationGets:
         assert loaded.audio_filepath == (SOURCE_PATH,)
 
 
-def _silenced(document: Dict[str, Any], channel_name: ChannelName) -> Dict[str, Any]:
-    """The stored document with every frame of one channel written down to rests."""
+def _silenced(document: Dict[str, Any], channel_names: AbstractSet[ChannelName]) -> Dict[str, Any]:
+    """The stored document with every frame of the named channels written down to rests."""
     for stream in document[INSTRUCTIONS_DATA]:
-        if stream[GENERATOR_NAME] == channel_name:
+        if stream[GENERATOR_NAME] in channel_names:
             for frame in stream[INSTRUCTIONS]:
                 frame[INSTRUCTION][UNION_DATA][ON] = False
 
     return document
 
 
-@pytest.fixture(name="silenced")
-def silenced_fixture(tmp_path: Path) -> Reconstruction:
-    """The archived file with its first pulse resting through every frame, read with every rule held."""
-    document = _silenced(stored_document(archived(ObjectKind.RECONSTRUCTION, RECONSTRUCTION_VERSION)), SILENCED_CHANNEL)
-    path = tmp_path / "silenced.stn"
+def _loaded_silenced(path: Path, channel_names: AbstractSet[ChannelName]) -> Reconstruction:
+    """The archived file with the named channels resting through every frame, read with every rule held."""
+    document = _silenced(stored_document(archived(ObjectKind.RECONSTRUCTION, RECONSTRUCTION_VERSION)), channel_names)
     path.write_bytes(msgpack.packb(document, use_bin_type=True))
     return Reconstruction.load(path, fast=False)
+
+
+@pytest.fixture(name="silenced")
+def silenced_fixture(tmp_path: Path) -> Reconstruction:
+    """The archived file with its first pulse resting through every frame."""
+    return _loaded_silenced(tmp_path / "silenced.stn", frozenset({SILENCED_CHANNEL}))
 
 
 class TestAnArchivedChannelWrittenDownToRests:
@@ -177,3 +181,18 @@ class TestAnArchivedChannelWrittenDownToRests:
         for channel_name in validated.playing_channels:
             if channel_name != SILENCED_CHANNEL:
                 assert silenced.instructions[channel_name] == validated.instructions[channel_name]
+
+
+class TestAnArchivedFileSoundingNothing:
+    """A file the last release stored resting on every channel keeps the recording it names."""
+
+    @pytest.fixture(name="quiet")
+    def quiet_fixture(self, tmp_path: Path) -> Reconstruction:
+        return _loaded_silenced(tmp_path / "quiet.stn", frozenset(ChannelName.items()))
+
+    def test_every_channel_stands_by(self, quiet: Reconstruction) -> None:
+        assert quiet.playing_channels == ()
+
+    def test_the_recording_stays_on_the_record(self, quiet: Reconstruction) -> None:
+        assert [entry.id for entry in quiet.stems_data.config.entries] == [SINGLE_STEM_ID]
+        assert quiet.audio_filepath == (SOURCE_PATH,)

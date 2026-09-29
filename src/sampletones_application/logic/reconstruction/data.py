@@ -10,7 +10,6 @@ from sampletones_core.audio import load_stems, mix
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.reconstructions.naming.derive import derive_name
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.filter import (
     filter_approximations,
@@ -33,7 +32,7 @@ class ReconstructionData:
         return cls._assemble(
             reconstruction,
             filepath=path,
-            name=cls._derive_name(reconstruction, path),
+            name=cls._derive_name(path),
         )
 
     @classmethod
@@ -66,7 +65,7 @@ class ReconstructionData:
             reconstruction=reconstruction,
             config=reconstruction.config,
             filepath=filepath,
-            name=self._derive_name(reconstruction, filepath),
+            name=self._derive_name(filepath),
         )
 
     def with_reconstruction(self, reconstruction: Reconstruction) -> Self:
@@ -113,17 +112,13 @@ class ReconstructionData:
         )
 
     @staticmethod
-    def _derive_name(reconstruction: Reconstruction, filepath: Path) -> str:
-        """Names the document after its source audio when present, otherwise after the file.
+    def _derive_name(filepath: Path) -> str:
+        """Names a document on disk after its file, for display and export.
 
-        A file-backed reconstruction keeps the audio's name for display and export; several
-        source paths (stems) name the document through the source-naming rules, and a detached
-        reconstruction (no source audio) falls back to the ``.stn`` filename.
+        The converter names the file from every recording the conversion read, and a recording
+        the document lets go of leaves that name standing, so the file carries the one name a
+        document keeps whatever it holds.
         """
-        source_paths = reconstruction.audio_filepath
-        if source_paths:
-            return derive_name(source_paths)
-
         return filepath.stem
 
     @staticmethod

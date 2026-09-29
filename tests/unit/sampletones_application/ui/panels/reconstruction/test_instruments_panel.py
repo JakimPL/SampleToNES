@@ -79,8 +79,8 @@ PLOTTED_PITCH: Final[int] = 60
 PLOTTED_LANE: Final[OwnershipLaneViewModel] = OwnershipLaneViewModel(
     channel_name=PLOTTED_CHANNEL,
     runs=(
-        OwnershipRunViewModel(start_frame=0, end_frame=4, stem_id=0, position=0, heard=True),
-        OwnershipRunViewModel(start_frame=4, end_frame=10, stem_id=1, position=1, heard=True),
+        OwnershipRunViewModel(start_frame=0, end_frame=4, stem_id=0, heard=True),
+        OwnershipRunViewModel(start_frame=4, end_frame=10, stem_id=1, heard=True),
     ),
 )
 

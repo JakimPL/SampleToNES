@@ -6,9 +6,6 @@ from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
-from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
-from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
-from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 
 
 def without_stem(reconstruction: Reconstruction, stem_id: int) -> Reconstruction:
@@ -21,8 +18,10 @@ def without_stem(reconstruction: Reconstruction, stem_id: int) -> Reconstruction
     and the audio the document answers with is read afresh from what remains.
 
     The entry leaves the recorded setup, taking its level and its recorded source along with
-    it, once that level holds nothing else. The identifier, configuration, coefficient and
-    metadata carry over, so the result is the same document holding one recording fewer.
+    it, once that level holds nothing else. The ids of the recordings that stay are left alone,
+    and the document settles the way every change does, so each recording it names still holds
+    a frame. The identifier, configuration, coefficient and metadata carry over, so the result is
+    the same document holding one recording fewer.
 
     Args:
         reconstruction: The reconstruction the recording is taken out of.
@@ -45,23 +44,9 @@ def without_stem(reconstruction: Reconstruction, stem_id: int) -> Reconstruction
     released = {item.channel_name: [held == stem_id for held in item.stem_ids] for item in stems_data.assignments}
     return reconstruction.rewritten(
         _released_streams(reconstruction, released),
-        StemsData(
-            config=_config_without(config, stem_id),
-            sources=[source for source in stems_data.sources if source.stem_id != stem_id],
-            assignments=[_released_assignment(item, released[item.channel_name]) for item in stems_data.assignments],
-        ),
-    )
-
-
-def _config_without(config: StemsConfig, stem_id: int) -> StemsConfig:
-    """The recorded setup with one entry gone, and the level it emptied gone along with it."""
-    levels = [[held for held in level if held != stem_id] for level in config.hierarchy.levels]
-    return StemsConfig(
-        entries=[entry for entry in config.entries if entry.id != stem_id],
-        hierarchy=StemsHierarchy(
-            levels=[level for level in levels if level],
-            mode=config.hierarchy.mode,
-        ),
+        stems_data.with_assignments(
+            [_released_assignment(item, released[item.channel_name]) for item in stems_data.assignments]
+        ).without_entries(frozenset({stem_id})),
     )
 
 

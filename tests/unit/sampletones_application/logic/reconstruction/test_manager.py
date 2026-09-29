@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable
+from typing import Callable, List
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -37,8 +37,13 @@ def _two_entry_stems_data() -> StemsData:
             ],
             hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
         ),
-        assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
+        assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0, 1])],
     )
+
+
+def _two_frames() -> List[PulseInstruction]:
+    """A frame for each of the two recordings, which every recording a document names holds."""
+    return [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)] * 2
 
 
 class TestLoadReconstructionPropagatesErrors:
@@ -376,6 +381,45 @@ class TestReconstructionManagerPropertiesWhenEmpty:
         assert reconstruction_manager.source_paths == ()
 
 
+class TestAnEditLettingARecordingGo:
+    """The open document follows an edit that lets a recording go, and so does what is heard of it."""
+
+    @staticmethod
+    def _edited(reconstruction: Reconstruction) -> Reconstruction:
+        """The document with the second recording's frame written silent, which it held alone."""
+        edited = reconstruction.model_copy(deep=True)
+        edited.update_channel_data(
+            ChannelName.PULSE1,
+            [_two_frames()[0], PulseInstruction.null_instruction()],
+            edited.initial_pitches[ChannelName.PULSE1],
+            edited.held_features[ChannelName.PULSE1],
+            heard=edited.recorded_stem_ids,
+        )
+        return edited
+
+    def test_the_recording_leaves_what_the_reader_hears(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        tmp_path: Path,
+    ) -> None:
+        reconstruction = Reconstruction.create(
+            instructions={ChannelName.PULSE1: _two_frames()},
+            config=Config(),
+            coefficient=1.0,
+            audio_filepath=(tmp_path / "kick.wav", tmp_path / "snare.wav"),
+            stems_data=_two_entry_stems_data(),
+        )
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample")
+
+        reconstruction_manager.apply_edited(self._edited(reconstruction))
+
+        assert reconstruction_manager.listening.offered == {0: frozenset({ChannelName.PULSE1})}
+        assert reconstruction_manager.source_paths == (tmp_path / "kick.wav",)
+        features = reconstruction_manager.current_features
+        assert features is not None
+        assert features[ChannelName.PULSE1].volume.items[-1] == 0
+
+
 class TestReconstructionManagerMarkUpdated:
     def test_mark_updated_sets_unsaved_changes(
         self,
@@ -433,7 +477,7 @@ class TestReconstructionManagerLocateOriginalAudio:
         write_wave(first, Config().library.sample_rate, np.ones(64, dtype=np.float32))
         write_wave(second, Config().library.sample_rate, np.ones(64, dtype=np.float32))
         reconstruction = Reconstruction.create(
-            instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
+            instructions={ChannelName.PULSE1: _two_frames()},
             config=Config(),
             coefficient=1.0,
             audio_filepath=(first, second),
@@ -455,7 +499,7 @@ class TestReconstructionManagerLocateOriginalAudio:
         missing = tmp_path / "gone.wav"
         write_wave(present, Config().library.sample_rate, np.ones(64, dtype=np.float32))
         reconstruction = Reconstruction.create(
-            instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
+            instructions={ChannelName.PULSE1: _two_frames()},
             config=Config(),
             coefficient=1.0,
             audio_filepath=(present, missing),

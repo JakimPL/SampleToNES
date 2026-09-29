@@ -130,6 +130,23 @@ class Reconstruction(DataModel):
 
         return self
 
+    @model_validator(mode="after")
+    def _validate_every_recording_holds_a_frame(self) -> Self:
+        """Holds the record to naming the recordings behind its frames and those alone.
+
+        A recording holding no frame leaves the document, so every entry holds a frame somewhere
+        once any of them does. A record where none does keeps them all.
+
+        Raises:
+            ValueError: If one recording holds a frame while another holds none.
+        """
+        holding = self.stems_data.holding_stem_ids
+        recorded = frozenset(self.stems_data.config.entries_by_id)
+        if holding and holding != recorded:
+            raise ValueError(f"The stems record names {sorted(recorded - holding)}, which hold no frame")
+
+        return self
+
     @staticmethod
     def _validate_frame_owner(
         channel_name: ChannelName,
@@ -267,8 +284,9 @@ class Reconstruction(DataModel):
         """A fresh document holding the streams a conversion chose and the record it made.
 
         A channel whose stream sounds in no frame stands by, so it takes the stream of a channel
-        that describes none and the record lets go of it. The paths name the recordings in entry
-        order, so they reach the record before it settles.
+        that describes none and the record lets go of it. A recording the conversion gave no frame
+        leaves the document, its path with it. The paths name the recordings in entry order, so
+        they reach the record before it settles.
 
         Args:
             instructions: What each channel plays, one instruction per frame.
@@ -402,7 +420,9 @@ class Reconstruction(DataModel):
         recordings the edit reaches on this channel, so a frame of a recording left out of it
         stands as it is. A channel the edit leaves resting through every frame stands by and
         stays editable, keeping the reference and the held dimensions handed in; its audio is
-        read afresh from the stream it now carries.
+        read afresh from the stream it now carries. A recording the edit leaves holding no frame
+        on any channel leaves the document, together with its source and its place in the
+        hierarchy, unless no recording holds a frame at all.
 
         Args:
             channel_name: The channel the edit writes.

@@ -130,7 +130,7 @@ def row(
     available: bool = True,
     level: int = 0,
     position: int = 0,
-    record_position: Optional[int] = None,
+    stem_id: Optional[int] = None,
     kind: SourceKind = SourceKind.RECORDING,
     level_size: int = 1,
     level_count: int = 1,
@@ -148,7 +148,7 @@ def row(
         available=available,
         level=level,
         position=position,
-        record_position=record_position,
+        stem_id=stem_id,
         level_size=level_size,
         level_count=level_count,
     )
@@ -235,7 +235,7 @@ def folder_row(
         available=True,
         level=0,
         position=0,
-        record_position=None,
+        stem_id=None,
         level_size=1,
         level_count=1,
     )
@@ -1446,22 +1446,22 @@ class TestTheColorARowIsKnownBy(BaseTestSuite):
         """A token as DearPyGui reports it back, which is each channel over its full scale."""
         return pytest.approx([value / FULL_CHANNEL for value in color.rgba])
 
-    def test_a_row_takes_the_color_its_place_on_the_record_picks(
+    def test_a_row_takes_the_color_its_recordings_id_picks(
         self,
         dpg_context: None,
         layout_config: LayoutConfig,
     ) -> None:
         stems_list = build(layout_config, swatch=True)
-        bass = row("bass", record_position=1)
+        bass = row("bass", stem_id=1)
 
         stems_list.update_view(view(bass))
 
-        assert self._fill(bass) == self._drawn(layout_config.general.colors.stems.for_position(1))
+        assert self._fill(bass) == self._drawn(layout_config.general.colors.stems.for_recording(1))
 
     def test_two_recordings_read_apart(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         stems_list = build(layout_config, swatch=True)
-        bass = row("bass", record_position=0)
-        lead = row("lead", record_position=1)
+        bass = row("bass", stem_id=0)
+        lead = row("lead", stem_id=1)
 
         stems_list.update_view(view(bass, lead))
 
@@ -1473,7 +1473,7 @@ class TestTheColorARowIsKnownBy(BaseTestSuite):
         layout_config: LayoutConfig,
     ) -> None:
         stems_list = build(layout_config, swatch=True)
-        edits = row("edits", record_position=None, kind=SourceKind.EDITS)
+        edits = row("edits", stem_id=None, kind=SourceKind.EDITS)
 
         stems_list.update_view(view(edits))
 
@@ -1485,7 +1485,7 @@ class TestTheColorARowIsKnownBy(BaseTestSuite):
         layout_config: LayoutConfig,
     ) -> None:
         stems_list = build(layout_config, swatch=True)
-        gathered = row("gathered", record_position=None)
+        gathered = row("gathered", stem_id=None)
 
         stems_list.update_view(view(gathered))
 
@@ -1493,7 +1493,7 @@ class TestTheColorARowIsKnownBy(BaseTestSuite):
 
     def test_a_list_offering_no_swatch_draws_none(self, dpg_context: None, layout_config: LayoutConfig) -> None:
         stems_list = build(layout_config)
-        bass = row("bass", record_position=0)
+        bass = row("bass", stem_id=0)
 
         stems_list.update_view(view(bass))
 
@@ -1506,12 +1506,12 @@ class TestTheColorARowIsKnownBy(BaseTestSuite):
     ) -> None:
         """A view redrawn onto the widgets already standing leaves the color the row is known by."""
         stems_list = build(layout_config, swatch=True)
-        bass = row("bass", record_position=2)
+        bass = row("bass", stem_id=2)
 
         stems_list.update_view(view(bass))
         stems_list.update_view(view(bass, muted_channels=frozenset({ChannelName.PULSE1})))
 
-        assert self._fill(bass) == self._drawn(layout_config.general.colors.stems.for_position(2))
+        assert self._fill(bass) == self._drawn(layout_config.general.colors.stems.for_recording(2))
 
     def test_the_square_stands_in_the_middle_of_the_row_it_leads(
         self,
@@ -1521,7 +1521,7 @@ class TestTheColorARowIsKnownBy(BaseTestSuite):
         """A row stands as tall as its name and the padding a cell keeps, and the square centers on it."""
         stems = layout_config.general.stems
         stems_list = build(layout_config, swatch=True)
-        bass = row("bass", record_position=0)
+        bass = row("bass", stem_id=0)
 
         stems_list.update_view(view(bass))
 
@@ -1538,7 +1538,7 @@ class TestTheColorARowIsKnownBy(BaseTestSuite):
         """The column is the square's own width, so the cell's padding is what centers it across."""
         stems = layout_config.general.stems
         stems_list = build(layout_config, swatch=True)
-        bass = row("bass", record_position=0)
+        bass = row("bass", stem_id=0)
 
         stems_list.update_view(view(bass))
 

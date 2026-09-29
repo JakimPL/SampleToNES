@@ -163,6 +163,7 @@ from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.view_model.shared.project_properties import (
     ProjectPropertiesViewModel,
 )
+from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.audio import BufferSize, SampleRate
@@ -1107,14 +1108,14 @@ class Application:
         self._reconstructions_tab.refresh_browser()
         self._sequencer_tab.refresh_browser()
 
-    def _show_reconstruction_recordings(self, path: Path, names: Tuple[str, ...]) -> None:
+    def _show_reconstruction_recordings(self, path: Path, recordings: Tuple[NamedRecordingViewModel, ...]) -> None:
         """Hands a document's recordings to both browsers, whichever of them asked for the reading.
 
         The two browsers render one tree and read one set of documents, so a reading answers for
         each of them and the row it belongs to is the one that shows it.
         """
-        self._reconstructions_tab.show_browser_recordings(path, names)
-        self._sequencer_tab.show_browser_recordings(path, names)
+        self._reconstructions_tab.show_browser_recordings(path, recordings)
+        self._sequencer_tab.show_browser_recordings(path, recordings)
 
     def _repaint_reconstruction_favorites(self, node: FileSystemNode) -> None:
         """Repaints the toggled path in both browsers, whichever tab the star was clicked in.

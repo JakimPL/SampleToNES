@@ -152,6 +152,28 @@ class TestReconstructionDataLoad:
 
         assert data.filepath == save_path
 
+    def test_load_names_the_document_after_its_file(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        reconstruction = recorded_from(reconstruction_factory(), (tmp_path / "kick.wav", tmp_path / "snare.wav"))
+        save_path = tmp_path / "drums.stn"
+        reconstruction.save(save_path)
+
+        data = ReconstructionData.load(save_path)
+
+        assert data.name == "drums"
+
+    def test_an_in_memory_document_keeps_the_name_it_was_given(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        """A project sample carries its own name, whatever recordings it was built from."""
+        data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
+
+        assert data.name == "Sample"
+
     def test_load_has_no_original_audio_when_source_file_missing(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
@@ -213,7 +235,7 @@ class TestDetachedCopy:
 
         assert copy.name == "lead"
 
-    def test_names_after_the_source_audio_when_present(
+    def test_names_after_the_file_when_audio_is_present(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
@@ -227,13 +249,14 @@ class TestDetachedCopy:
         copy = data.detached_copy(tmp_path / "lead.stn")
 
         assert reconstruction.audio_filepath
-        assert copy.name == reconstruction.audio_filepath[0].stem
+        assert copy.name == "lead"
 
-    def test_names_after_the_shared_directory_of_stems(
+    def test_a_stems_document_is_named_after_its_file(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
     ) -> None:
+        """The file carries the name the converter gave every recording, which outlasts any of them leaving."""
         drums = tmp_path / "drums"
         drums.mkdir()
         stems = (drums / "kick.wav", drums / "snare.wav")
@@ -242,20 +265,7 @@ class TestDetachedCopy:
 
         copy = data.detached_copy(tmp_path / "lead.stn")
 
-        assert copy.name == "drums"
-
-    def test_names_after_the_first_source_when_stems_share_no_directory(
-        self,
-        reconstruction_factory: Callable[[], Reconstruction],
-        tmp_path: Path,
-    ) -> None:
-        stems = (Path("/one/kick.wav"), Path("/two/snare.wav"))
-        reconstruction = recorded_from(reconstruction_factory(), stems)
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
-
-        copy = data.detached_copy(tmp_path / "lead.stn")
-
-        assert copy.name == "kick"
+        assert copy.name == "lead"
 
     def test_reuses_the_already_loaded_original_audio(
         self,
@@ -427,30 +437,7 @@ class TestRebindingToAnEditedReconstruction:
             write_wave(path, sample_rate, shape)
             paths.append(path)
 
-        reconstruction = reconstruction_factory().model_copy(
-            update={
-                "stems_data": StemsData(
-                    config=StemsConfig(
-                        entries=[
-                            StemEntry(
-                                id=stem_id,
-                                settings=StemSettings(
-                                    channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])
-                                ),
-                            )
-                            for stem_id in range(3)
-                        ],
-                        hierarchy=StemsHierarchy(levels=[[0], [1], [2]]),
-                    ),
-                    assignments=[
-                        ChannelAssignment(
-                            channel_name=ChannelName.PULSE1,
-                            stem_ids=[0],
-                        )
-                    ],
-                ).with_sources(tuple(paths)),
-            }
-        )
+        reconstruction = recorded_from(reconstruction_factory(), tuple(paths))
         return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
     def test_a_recording_follows_the_entry_it_was_loaded_for(
@@ -478,6 +465,32 @@ class TestRebindingToAnEditedReconstruction:
 
         assert len(remaining.stem_audios) == 2
         assert all(not np.array_equal(audio, second) for audio in remaining.stem_audios)
+
+    def test_an_edit_letting_a_recording_go_releases_its_audio(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        """A recording the edit leaves holding no frame leaves the document, and its audio with it."""
+        data = self._three_recordings(reconstruction_factory, tmp_path)
+        second, third = data.stem_audios[1], data.stem_audios[2]
+        stream = list(data.reconstruction.instructions[ChannelName.PULSE1])
+        stream[1] = PulseInstruction.null_instruction()
+        edited = data.reconstruction.model_copy(deep=True)
+        edited.update_channel_data(
+            ChannelName.PULSE1,
+            stream,
+            edited.initial_pitches[ChannelName.PULSE1],
+            edited.held_features[ChannelName.PULSE1],
+            heard=edited.recorded_stem_ids,
+        )
+
+        remaining = data.with_reconstruction(edited)
+
+        assert [entry.id for entry in edited.stems_data.config.entries] == [0, 2]
+        assert len(remaining.stem_audios) == 2
+        assert all(not np.array_equal(audio, second) for audio in remaining.stem_audios)
+        np.testing.assert_allclose(remaining.original_mix_for(_heard(2)), third)
 
     def test_an_edit_keeping_every_entry_keeps_every_recording(
         self,

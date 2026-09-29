@@ -67,7 +67,7 @@ def recording(
         available=available,
         level=0,
         position=0,
-        record_position=0,
+        stem_id=0,
         level_size=1,
         level_count=1,
     )
@@ -87,7 +87,7 @@ def folder(name: str = FOLDER_NAME, *, holds: int = HOLDS) -> StemRowViewModel:
         available=True,
         level=0,
         position=0,
-        record_position=None,
+        stem_id=None,
         level_size=1,
         level_count=1,
     )

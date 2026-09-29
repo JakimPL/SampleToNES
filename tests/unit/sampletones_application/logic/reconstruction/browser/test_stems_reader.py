@@ -7,6 +7,7 @@ import pytest
 from sampletones_application.logic.reconstruction.browser.stems import (
     ReconstructionStemsReader,
 )
+from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from tests.suite.sequencer import sample_reconstruction
@@ -28,6 +29,11 @@ def write_document(directory: Path, names: Sequence[str]) -> Path:
     return path
 
 
+def named(names: Sequence[str]) -> Tuple[NamedRecordingViewModel, ...]:
+    """The recordings a document written from ``names`` answers with, numbered in the order given."""
+    return tuple(NamedRecordingViewModel(stem_id=stem_id, name=name) for stem_id, name in enumerate(names))
+
+
 def touched_later(path: Path) -> None:
     """Writes the file's clock forward, so a rewrite reads as one however fast it followed."""
     written = path.stat().st_mtime + LATER
@@ -36,10 +42,10 @@ def touched_later(path: Path) -> None:
 
 class Announcements:
     def __init__(self) -> None:
-        self.read: List[Tuple[Path, Tuple[str, ...]]] = []
+        self.read: List[Tuple[Path, Tuple[NamedRecordingViewModel, ...]]] = []
 
-    def __call__(self, path: Path, names: Tuple[str, ...]) -> None:
-        self.read.append((path, names))
+    def __call__(self, path: Path, recordings: Tuple[NamedRecordingViewModel, ...]) -> None:
+        self.read.append((path, recordings))
 
 
 @pytest.fixture
@@ -71,7 +77,7 @@ class TestReadingADocument:
 
         reader.recordings(path)
 
-        assert reader.recordings(path) == tuple(RECORDINGS)
+        assert reader.recordings(path) == named(RECORDINGS)
 
     def test_the_reading_is_announced_once_it_lands(
         self,
@@ -83,7 +89,7 @@ class TestReadingADocument:
 
         reader.recordings(path)
 
-        assert announcements.read == [(path, tuple(RECORDINGS))]
+        assert announcements.read == [(path, named(RECORDINGS))]
 
 
 class TestWhatAReadingOutlives:
@@ -99,7 +105,7 @@ class TestWhatAReadingOutlives:
         touched_later(path)
 
         assert reader.recordings(path) is None
-        assert reader.recordings(path) == tuple(REWRITTEN)
+        assert reader.recordings(path) == named(REWRITTEN)
 
     def test_a_document_read_once_is_answered_without_reading_it_again(
         self,

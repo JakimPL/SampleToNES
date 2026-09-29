@@ -34,58 +34,57 @@ def stem_colors() -> StemColors:
     )
 
 
-def _runs(*entries: Tuple[int, int, int, int]) -> Tuple[OwnershipRunViewModel, ...]:
+def _runs(*entries: Tuple[int, int, int]) -> Tuple[OwnershipRunViewModel, ...]:
     return tuple(
         OwnershipRunViewModel(
             start_frame=start,
             end_frame=end,
             stem_id=stem_id,
-            position=position,
             heard=True,
         )
-        for start, end, stem_id, position in entries
+        for start, end, stem_id in entries
     )
 
 
 class TestTheColorARecordingIsKnownBy:
-    def test_a_recording_takes_the_color_of_the_place_it_holds(self, stem_colors: StemColors) -> None:
-        assert stem_colors.for_stem(7, 1, heard=True).rgba == LiteralColor(RECORDING_COLORS[1]).rgba
+    def test_a_recording_takes_the_color_of_the_id_it_was_converted_as(self, stem_colors: StemColors) -> None:
+        assert stem_colors.for_stem(1, heard=True).rgba == LiteralColor(RECORDING_COLORS[1]).rgba
 
     def test_the_list_starts_over_for_a_document_holding_more_recordings(
         self,
         stem_colors: StemColors,
     ) -> None:
-        assert stem_colors.for_position(len(RECORDING_COLORS)).rgba == stem_colors.for_position(0).rgba
+        assert stem_colors.for_recording(len(RECORDING_COLORS)).rgba == stem_colors.for_recording(0).rgba
 
     def test_the_frames_the_reader_wrote_take_a_color_of_their_own(self, stem_colors: StemColors) -> None:
-        assert stem_colors.for_stem(AUTHORED_STEM_ID, 0, heard=True).rgba == LiteralColor(AUTHORED_COLOR).rgba
+        assert stem_colors.for_stem(AUTHORED_STEM_ID, heard=True).rgba == LiteralColor(AUTHORED_COLOR).rgba
 
     def test_a_resting_frame_shows_the_ground(self, stem_colors: StemColors) -> None:
-        assert stem_colors.for_stem(RESTING_STEM_ID, 0, heard=True).rgba == LiteralColor(REST_COLOR).rgba
+        assert stem_colors.for_stem(RESTING_STEM_ID, heard=True).rgba == LiteralColor(REST_COLOR).rgba
 
 
 class TestHowSolidlyAStretchPaints:
     """A recording left out keeps its color and carries it faded, so a stretch always names an owner."""
 
     def test_a_recording_left_out_keeps_its_color(self, stem_colors: StemColors) -> None:
-        left_out = stem_colors.for_stem(7, 1, heard=False).rgba
+        left_out = stem_colors.for_stem(1, heard=False).rgba
 
         assert left_out[:3] == LiteralColor(RECORDING_COLORS[1]).rgba[:3]
 
     def test_a_recording_left_out_carries_less_of_its_opacity(self, stem_colors: StemColors) -> None:
-        heard = stem_colors.for_stem(7, 1, heard=True).rgba
+        heard = stem_colors.for_stem(1, heard=True).rgba
 
-        assert stem_colors.for_stem(7, 1, heard=False).rgba[3] < heard[3]
+        assert stem_colors.for_stem(1, heard=False).rgba[3] < heard[3]
 
     def test_the_frames_the_reader_wrote_fade_like_any_other(self, stem_colors: StemColors) -> None:
-        left_out = stem_colors.for_stem(AUTHORED_STEM_ID, 0, heard=False).rgba
+        left_out = stem_colors.for_stem(AUTHORED_STEM_ID, heard=False).rgba
 
         assert left_out[:3] == LiteralColor(AUTHORED_COLOR).rgba[:3]
         assert left_out[3] < LiteralColor(AUTHORED_COLOR).rgba[3]
 
     def test_a_resting_stretch_shows_the_ground_whoever_is_listening(self, stem_colors: StemColors) -> None:
         """A rest answers to no recording, so every reader hears it."""
-        assert stem_colors.for_stem(RESTING_STEM_ID, 0, heard=False).rgba == LiteralColor(REST_COLOR).rgba
+        assert stem_colors.for_stem(RESTING_STEM_ID, heard=False).rgba == LiteralColor(REST_COLOR).rgba
 
 
 class TestWhatTheRibbonStandsFor:
@@ -98,7 +97,7 @@ class TestWhatTheRibbonStandsFor:
         )
 
     def test_a_ribbon_with_lanes_is_drawn(self) -> None:
-        lane = OwnershipLaneViewModel(channel_name=ChannelName.PULSE1, runs=_runs((0, 4, 0, 0)))
+        lane = OwnershipLaneViewModel(channel_name=ChannelName.PULSE1, runs=_runs((0, 4, 0)))
 
         assert self._ribbon([lane], 4).is_drawn
 
@@ -111,7 +110,7 @@ class TestWhatTheRibbonStandsFor:
         assert not self._ribbon([lane], 0).is_drawn
 
     def test_the_span_it_covers_is_stated_in_the_samples_the_waveform_counts(self) -> None:
-        lane = OwnershipLaneViewModel(channel_name=ChannelName.PULSE1, runs=_runs((0, 6, 0, 0)))
+        lane = OwnershipLaneViewModel(channel_name=ChannelName.PULSE1, runs=_runs((0, 6, 0)))
 
         assert self._ribbon([lane], 6).total_samples == 6 * FRAME_LENGTH
 

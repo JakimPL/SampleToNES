@@ -4,15 +4,16 @@ from functools import partial
 from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
 
-from sampletones_application.logic.reconstruction.ownership import recording_names
+from sampletones_application.logic.reconstruction.ownership import named_recordings
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.parallelization.coalescing import LatestWinsExecutor
+from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.callbacks import CallbackMixin
 
-RecordingsCallback = Callable[[Path, Tuple[str, ...]], None]
+RecordingsCallback = Callable[[Path, Tuple[NamedRecordingViewModel, ...]], None]
 
 
 @dataclass(frozen=True)
@@ -20,7 +21,7 @@ class _ReadRecordings:
     """What one reading of a document found, held against the state of the file it was read from."""
 
     modified_at: Optional[float]
-    names: Tuple[str, ...]
+    recordings: Tuple[NamedRecordingViewModel, ...]
 
 
 class ReconstructionStemsReader(CallbackMixin):
@@ -44,7 +45,7 @@ class ReconstructionStemsReader(CallbackMixin):
         self._lock = threading.Lock()
         self._read: Dict[Path, _ReadRecordings] = {}
 
-    def recordings(self, path: Path) -> Optional[Tuple[str, ...]]:
+    def recordings(self, path: Path) -> Optional[Tuple[NamedRecordingViewModel, ...]]:
         """The recordings the document names, in record order, and ``None`` while it stands unread.
 
         Asking for an unread document starts the reading that answers it, so one call both says
@@ -54,33 +55,33 @@ class ReconstructionStemsReader(CallbackMixin):
             path: The reconstruction file the row names.
 
         Returns:
-            Optional[Tuple[str, ...]]: The recordings, or None until the reading lands.
+            Optional[Tuple[NamedRecordingViewModel, ...]]: The recordings, or None until the reading lands.
         """
         modified_at = self._modified_at(path)
         with self._lock:
             read = self._read.get(path)
 
         if read is not None and read.modified_at == modified_at:
-            return read.names
+            return read.recordings
 
         self._executor.submit(partial(self._read_document, path, modified_at))
         return None
 
     def _read_document(self, path: Path, modified_at: Optional[float]) -> None:
-        names = self._recordings_of(path)
+        recordings = self._recordings_of(path)
         with self._lock:
             self._read[path] = _ReadRecordings(
                 modified_at=modified_at,
-                names=names,
+                recordings=recordings,
             )
 
-        CallbackQueue.add(self._announce, path, names)
+        CallbackQueue.add(self._announce, path, recordings)
 
-    def _announce(self, path: Path, names: Tuple[str, ...]) -> None:
-        self.call(self.on_recordings_read, path, names)
+    def _announce(self, path: Path, recordings: Tuple[NamedRecordingViewModel, ...]) -> None:
+        self.call(self.on_recordings_read, path, recordings)
 
     @staticmethod
-    def _recordings_of(path: Path) -> Tuple[str, ...]:
+    def _recordings_of(path: Path) -> Tuple[NamedRecordingViewModel, ...]:
         """The recordings the document at ``path`` names, and nothing where it cannot be read."""
         try:
             stems_data = Reconstruction.read_stems_data(path)
@@ -88,7 +89,7 @@ class ReconstructionStemsReader(CallbackMixin):
             logger.debug(f'Failed to read the recordings of "{path}": {exception}')
             return ()
 
-        return recording_names(stems_data)
+        return named_recordings(stems_data)
 
     @staticmethod
     def _modified_at(path: Path) -> Optional[float]:

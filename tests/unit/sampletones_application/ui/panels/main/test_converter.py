@@ -115,7 +115,7 @@ def row(
         available=True,
         level=level,
         position=position,
-        record_position=None,
+        stem_id=None,
         level_size=level_size,
         level_count=level_count,
     )
@@ -136,7 +136,7 @@ def folder(name: str, *, holds: int) -> StemRowViewModel:
         available=True,
         level=0,
         position=0,
-        record_position=None,
+        stem_id=None,
         level_size=1,
         level_count=1,
     )

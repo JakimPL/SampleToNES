@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import Dict, FrozenSet, List, Self
+from typing import AbstractSet, Dict, FrozenSet, List, Self
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -39,6 +39,27 @@ class StemsConfig(DataModel):
         return cls(
             entries=[StemEntry(id=0, settings=settings)],
             hierarchy=StemsHierarchy(levels=[[0]]),
+        )
+
+    def without_entries(self, stem_ids: AbstractSet[int]) -> Self:
+        """The setup with the entries ``stem_ids`` names gone, and every level they empty gone too.
+
+        The entries that stay keep their ids, their settings and their order, and the levels keep
+        the picking mode they were read in, so the setup still says how what remains was converted.
+
+        Args:
+            stem_ids: The entries that leave.
+
+        Returns:
+            Self: The setup of the entries that stay.
+        """
+        levels = [[stem_id for stem_id in level if stem_id not in stem_ids] for level in self.hierarchy.levels]
+        return self.__class__(
+            entries=[entry for entry in self.entries if entry.id not in stem_ids],
+            hierarchy=StemsHierarchy(
+                levels=[level for level in levels if level],
+                mode=self.hierarchy.mode,
+            ),
         )
 
     @cached_property

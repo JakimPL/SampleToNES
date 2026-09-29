@@ -26,6 +26,7 @@ from sampletones_application.logic.reconstruction.browser.tree.samples.branch im
 from sampletones_application.logic.reconstruction.browser.tree.scan import (
     scan_reconstructions,
 )
+from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -92,12 +93,12 @@ class BrowserManager(CallbackMixin):
         order_children(container_root)
         return container_root
 
-    def recordings(self, path: Path) -> Optional[Tuple[str, ...]]:
+    def recordings(self, path: Path) -> Optional[Tuple[NamedRecordingViewModel, ...]]:
         """The recordings the reconstruction at ``path`` names, and None until it has been read."""
         return self._stems_reader.recordings(path)
 
-    def _announce_recordings(self, path: Path, names: Tuple[str, ...]) -> None:
-        self.call(self.on_recordings_read, path, names)
+    def _announce_recordings(self, path: Path, recordings: Tuple[NamedRecordingViewModel, ...]) -> None:
+        self.call(self.on_recordings_read, path, recordings)
 
     def get_all_reconstruction_files(self) -> List[Path]:
         return sorted({entry.path for entry in self._scan.reconstructions})

@@ -77,11 +77,10 @@ class OwnershipRuns:
             SUF_OWNERSHIP_RUN,
             SUF_GRAPH_THEME,
             str(run.stem_id),
-            str(run.position),
             SUF_OWNERSHIP_HEARD if run.heard else SUF_OWNERSHIP_LEFT_OUT,
         )
         if not dpg.does_item_exist(theme_tag):
-            color = self._stem_colors.for_stem(run.stem_id, run.position, heard=run.heard)
+            color = self._stem_colors.for_stem(run.stem_id, heard=run.heard)
             with dpg.theme(tag=theme_tag), dpg.theme_component(dpg.mvShadeSeries):
                 dpg_add_palette_theme_color(dpg.mvPlotCol_Fill, color, category=dpg.mvThemeCat_Plots)
 

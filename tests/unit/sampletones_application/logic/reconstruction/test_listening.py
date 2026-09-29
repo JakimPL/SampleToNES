@@ -120,6 +120,21 @@ class TestWhatTheChoiceCarriesAcrossAnEdit:
 
         assert listening.heard[STEM_A] == frozenset({ChannelName.PULSE1})
 
+    def test_a_recording_leaving_the_record_leaves_the_choice(self, listening: StemListening) -> None:
+        """An edit letting a recording go takes its row away, and the rest keep what the reader chose."""
+        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE))
+        listening.set_channels(STEM_A, frozenset({ChannelName.PULSE1}))
+
+        listening.adopt(
+            _stems_data(ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_A])).without_entries(
+                frozenset({STEM_B})
+            )
+        )
+
+        assert listening.offered == {STEM_A: frozenset({ChannelName.PULSE1})}
+        assert listening.heard == {STEM_A: frozenset({ChannelName.PULSE1})}
+        assert STEM_B not in listening.selection.stems_for(ChannelName.PULSE1)
+
     def test_a_released_choice_hears_the_next_document_whole(self, listening: StemListening) -> None:
         listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE))
         listening.set_channels(STEM_A, frozenset())

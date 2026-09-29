@@ -21,6 +21,7 @@ from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.protocol import TreeLogicProtocol
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.utils.gui.tooltip import DetailSwatch
+from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.structures.tree import (
     ConfigNode,
     FileSystemNode,
@@ -49,8 +50,8 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
     next run of the application.
 
     A row naming a reconstruction asks through ``on_recordings_requested`` what that document is made
-    of, and lists what comes back in the hover details, each recording marked in the color its place
-    on the record gives it everywhere else.
+    of, and lists what comes back in the hover details, each recording marked in the color the entry
+    it was converted as gives it everywhere else.
     """
 
     _MONOSPACE_CONFIG_NODES: bool = True
@@ -74,7 +75,7 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
         self._language_manager = language_manager
         self._stem_colors = stem_colors
         self._detail_document: Optional[Path] = None
-        self._detail_recordings: Tuple[str, ...] = ()
+        self._detail_recordings: Tuple[NamedRecordingViewModel, ...] = ()
         self.on_refresh_tree: Optional[VoidCallback] = None
         self.on_recordings_requested: Optional[PathCallback] = None
 
@@ -171,29 +172,29 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
 
         return self._recording_swatches(self._detail_recordings)
 
-    def update_recordings(self, path: Path, names: Tuple[str, ...]) -> None:
+    def update_recordings(self, path: Path, recordings: Tuple[NamedRecordingViewModel, ...]) -> None:
         """Takes what a document names and redraws the details, where they stand on that document."""
         if path != self._detail_document:
             return
 
-        self._detail_recordings = names
+        self._detail_recordings = recordings
         self.refresh_detail_tooltip()
 
     def _forget_hovered_document(self) -> None:
         self._detail_document = None
         self._detail_recordings = ()
 
-    def _recording_swatches(self, names: Tuple[str, ...]) -> Tuple[DetailSwatch, ...]:
-        """One mark per recording, colored by the place it holds on the record."""
-        if len(names) < SEVERAL_RECORDINGS:
+    def _recording_swatches(self, recordings: Tuple[NamedRecordingViewModel, ...]) -> Tuple[DetailSwatch, ...]:
+        """One mark per recording, colored by the entry it was converted as."""
+        if len(recordings) < SEVERAL_RECORDINGS:
             return ()
 
         return tuple(
             DetailSwatch(
-                name=name,
-                color=self._stem_colors.for_position(position),
+                name=recording.name,
+                color=self._stem_colors.for_recording(recording.stem_id),
             )
-            for position, name in enumerate(names)
+            for recording in recordings
         )
 
     @staticmethod

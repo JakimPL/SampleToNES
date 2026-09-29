@@ -7,6 +7,7 @@ from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.utils.palette.colors.literal import LiteralColor
+from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.configs import Config
 from sampletones_core.configs.display import format_frequencies, format_sample_rate, short_hash
 from sampletones_core.constants.enums import DEFAULT_CHANNELS
@@ -45,8 +46,11 @@ AUTHORED_COLOR: Final[ColorRGBA] = (180, 140, 240, 255)
 REST_COLOR: Final[ColorRGBA] = (40, 40, 48, 255)
 LEFT_OUT_FRACTION: Final[float] = 0.4
 
-RECORDINGS: Final[Tuple[str, ...]] = ("Drums", "Bass")
-ONE_RECORDING: Final[Tuple[str, ...]] = ("Neurostem",)
+RECORDINGS: Final[Tuple[NamedRecordingViewModel, ...]] = (
+    NamedRecordingViewModel(stem_id=0, name="Drums"),
+    NamedRecordingViewModel(stem_id=2, name="Bass"),
+)
+ONE_RECORDING: Final[Tuple[NamedRecordingViewModel, ...]] = (NamedRecordingViewModel(stem_id=0, name="Neurostem"),)
 
 
 @pytest.fixture
@@ -207,20 +211,21 @@ class TestTheRecordingsARowLists:
 
         swatches = panel._node_detail_recordings(config_variant_node())
 
-        assert tuple(swatch.name for swatch in swatches) == RECORDINGS
+        assert tuple(swatch.name for swatch in swatches) == tuple(recording.name for recording in RECORDINGS)
 
-    def test_each_recording_takes_the_color_of_the_place_it_holds(
+    def test_each_recording_takes_the_color_of_the_id_it_was_converted_as(
         self,
         panel: GUISequencerBrowserPanel,
         stem_colors: StemColors,
     ) -> None:
+        """A recording keeps its color once another leaves the record, so the list skips no color it names."""
         panel._node_detail_recordings(config_variant_node())
         panel.update_recordings(RECONSTRUCTION_PATH, RECORDINGS)
 
         swatches = panel._node_detail_recordings(config_variant_node())
 
         assert [swatch.color.rgba for swatch in swatches] == [
-            stem_colors.for_position(position).rgba for position in range(len(RECORDINGS))
+            stem_colors.for_recording(recording.stem_id).rgba for recording in RECORDINGS
         ]
 
     def test_a_document_naming_one_recording_lists_nothing(

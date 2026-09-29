@@ -209,7 +209,7 @@ class StemRowRenderer:
         return (self._layout.name_height - size) / 2.0 + self._layout.cell_padding
 
     def _swatch_color(self, row: StemRowViewModel) -> Optional[BaseColor]:
-        """The color one row is known by, which the place its recording holds on the record picks.
+        """The color one row is known by, which the entry its recording was converted as picks.
 
         The frames a reader wrote answer to no recording, so they take the color the ribbon paints
         them in wherever they stand.
@@ -217,10 +217,10 @@ class StemRowRenderer:
         if row.stands_for_edits:
             return self._stem_colors.authored
 
-        if row.record_position is None:
+        if row.stem_id is None:
             return None
 
-        return self._stem_colors.for_position(row.record_position)
+        return self._stem_colors.for_recording(row.stem_id)
 
     @staticmethod
     def _paint_swatch(square: Sender, color: BaseColor) -> None:

@@ -5,6 +5,7 @@ from sampletones_application.view_model.shared.ownership import (
     OwnershipLaneViewModel,
     OwnershipRunViewModel,
 )
+from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
@@ -15,41 +16,26 @@ DISTINGUISHABLE_OWNERS: Final[int] = 2
 HeardOn = Callable[[ChannelName], AbstractSet[int]]
 
 
-def record_positions(stems_data: StemsData) -> Dict[int, int]:
-    """Where each recording's entry stands on the record, which is what picks its color.
+def named_recordings(stems_data: StemsData) -> Tuple[NamedRecordingViewModel, ...]:
+    """The recordings a document names, in record order, each with the id that picks its color.
 
-    Every surface painting a recording reads this one ordering, so a stretch under the waveform,
-    a stretch under an instrument's bars and the swatch beside a name are drawn in the same color.
-
-    Args:
-        stems_data: The record the document carries.
-
-    Returns:
-        Dict[int, int]: The place each recording's entry stands at, by stem id.
-    """
-    return {entry.id: index for index, entry in enumerate(stems_data.config.entries)}
-
-
-def recording_names(stems_data: StemsData) -> Tuple[str, ...]:
-    """The recordings a document names, in the order the record paints them.
-
-    The name standing in a given place is the recording standing at that place on the record, which
-    is where every surface reads its color from, so a list of these names and a column of swatches
-    beside them agree. A record whose recordings and entries fail to answer for each other names
-    nothing, a name worth reading being one that sits where its color does.
+    Every surface painting a recording reads its color from the id it was converted as, so a
+    list of these and a column of swatches beside them agree with the stretches the ribbon draws.
+    A record whose recordings and entries fail to answer for each other names nothing, a name
+    worth reading being one that sits where its color does.
 
     Args:
         stems_data: The record the document carries.
 
     Returns:
-        Tuple[str, ...]: One name per recording, in record order.
+        Tuple[NamedRecordingViewModel, ...]: One per recording, in record order.
     """
-    positions = record_positions(stems_data)
     sources = stems_data.sources_by_id
-    if sources.keys() != positions.keys():
+    entries = stems_data.config.entries
+    if sources.keys() != stems_data.config.entries_by_id.keys():
         return ()
 
-    return tuple(sources[stem_id].name for stem_id in sorted(positions, key=lambda stem_id: positions[stem_id]))
+    return tuple(NamedRecordingViewModel(stem_id=entry.id, name=sources[entry.id].name) for entry in entries)
 
 
 def tells_owners_apart(stems_data: StemsData) -> bool:
@@ -69,7 +55,6 @@ def tells_owners_apart(stems_data: StemsData) -> bool:
 
 
 def ownership_lanes(
-    stems_data: StemsData,
     assignments: Mapping[ChannelName, Sequence[int]],
     heard_on: HeardOn,
 ) -> Dict[ChannelName, OwnershipLaneViewModel]:
@@ -86,16 +71,14 @@ def ownership_lanes(
     does.
 
     Args:
-        stems_data: The record the document carries.
         assignments: The stem holding each frame, per channel the surface draws.
         heard_on: The recordings the reader hears on a channel.
 
     Returns:
         Dict[ChannelName, OwnershipLaneViewModel]: One lane per channel given, in that order.
     """
-    positions = record_positions(stems_data)
     return {
-        channel_name: _ownership_lane(channel_name, stem_ids, positions, heard_on(channel_name))
+        channel_name: _ownership_lane(channel_name, stem_ids, heard_on(channel_name))
         for channel_name, stem_ids in assignments.items()
     }
 
@@ -103,7 +86,6 @@ def ownership_lanes(
 def _ownership_lane(
     channel_name: ChannelName,
     stem_ids: Sequence[int],
-    positions: Mapping[int, int],
     heard: AbstractSet[int],
 ) -> OwnershipLaneViewModel:
     """One channel's lane: the stretches it divides into, each under the recording holding it.
@@ -120,7 +102,6 @@ def _ownership_lane(
                 start_frame=run.start,
                 end_frame=run.end,
                 stem_id=run.stem_id,
-                position=positions.get(run.stem_id, 0),
                 heard=heard_frame(run.stem_id, heard),
             )
             for run in owner_runs(stem_ids)

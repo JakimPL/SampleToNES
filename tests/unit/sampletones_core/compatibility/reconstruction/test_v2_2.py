@@ -210,6 +210,14 @@ class TestAChannelRestingThroughEveryFrame:
     def test_a_channel_that_sounds_keeps_its_frames(self) -> None:
         assert len(self._upgraded()[INSTRUCTIONS_DATA][0][INSTRUCTIONS]) == 1
 
+    def test_a_file_sounding_nothing_keeps_its_recording(self) -> None:
+        """No frame tells the one recording from another, so the record keeps it."""
+        upgraded = update({INSTRUCTIONS_DATA: [_stream("pulse1", False)], AUDIO_FILEPATH: RECORDING})
+
+        assert [entry[ID] for entry in upgraded[STEMS_DATA][CONFIG][ENTRIES]] == [SINGLE_STEM_ID]
+        assert upgraded[STEMS_DATA][SOURCES] == [{STEM_ID: SINGLE_STEM_ID, NAME: RECORDING_NAME, PATH: RECORDING}]
+        assert _owners(upgraded) == []
+
 
 class TestWhatTheStepLeavesAlone:
     """The payload handed in stands as it was, and what the step knows nothing of travels."""

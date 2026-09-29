@@ -98,6 +98,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
+from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
@@ -584,13 +585,13 @@ class ReconstructionTabCoordinator:
 
     def _on_browser_recordings_requested(self, path: Path) -> None:
         """Hands the browser what a document names, where it has already been read."""
-        names = self._browser_logic.recordings(path)
-        if names is not None:
-            self._browser_panel.update_recordings(path, names)
+        recordings = self._browser_logic.recordings(path)
+        if recordings is not None:
+            self._browser_panel.update_recordings(path, recordings)
 
-    def show_browser_recordings(self, path: Path, names: Tuple[str, ...]) -> None:
+    def show_browser_recordings(self, path: Path, recordings: Tuple[NamedRecordingViewModel, ...]) -> None:
         """Hands the browser a reading that landed after the row asked for it."""
-        self._browser_panel.update_recordings(path, names)
+        self._browser_panel.update_recordings(path, recordings)
 
     def _on_instruments_collapse_changed(
         self,

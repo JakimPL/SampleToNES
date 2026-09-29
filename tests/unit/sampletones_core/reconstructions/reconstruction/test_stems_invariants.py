@@ -350,20 +350,60 @@ class TestWhatCreatingSettles:
         assert created.stems_data.assignments == []
 
 
-class TestAnEntryHoldingNoFrame:
-    def test_a_recording_the_picker_never_chose_stays_on_the_record(self) -> None:
+class TestARecordingHoldingNoFrame:
+    """A recording holding no frame leaves the document, unless no recording holds one at all."""
+
+    def test_a_recording_the_picker_never_chose_leaves(self) -> None:
         reconstruction = _reconstruction(
             {ChannelName.PULSE1: [_pulse(60)]},
             {ChannelName.PULSE1: [STEM_A]},
         )
 
-        assert [entry.id for entry in reconstruction.stems_data.config.entries] == [STEM_A, STEM_B]
+        assert [entry.id for entry in reconstruction.stems_data.config.entries] == [STEM_A]
+        assert reconstruction.stems_data.config.hierarchy.levels == [[STEM_A]]
 
-    def test_a_recording_an_edit_emptied_stays_on_the_record(self, reconstruction: Reconstruction) -> None:
+    def test_a_recording_an_edit_emptied_leaves(self, reconstruction: Reconstruction) -> None:
         edited = _edited(
             reconstruction,
             [_pulse(60), PulseInstruction.null_instruction(), PulseInstruction.null_instruction()],
         )
 
-        assert [entry.id for entry in edited.stems_data.config.entries] == [STEM_A, STEM_B]
+        assert [entry.id for entry in edited.stems_data.config.entries] == [STEM_A]
         assert STEM_B not in edited.stems_data.assignments_by_channel[ChannelName.PULSE1]
+
+    def test_a_record_where_nothing_sounds_keeps_every_recording(self) -> None:
+        reconstruction = _reconstruction(
+            {ChannelName.PULSE1: [PulseInstruction.null_instruction()]},
+            {ChannelName.PULSE1: [RESTING_STEM_ID]},
+        )
+
+        assert [entry.id for entry in reconstruction.stems_data.config.entries] == [STEM_A, STEM_B]
+
+    def test_an_edit_silencing_every_recording_keeps_them_all(self) -> None:
+        reconstruction = _reconstruction(
+            {ChannelName.PULSE1: [_pulse(60), _pulse(62)]},
+            {ChannelName.PULSE1: [STEM_A, STEM_B]},
+        )
+
+        edited = _edited(reconstruction, [])
+
+        assert [entry.id for entry in edited.stems_data.config.entries] == [STEM_A, STEM_B]
+
+    def test_a_record_holding_only_the_readers_frames_keeps_every_recording(self) -> None:
+        """Frames the reader wrote answer to no recording, so they tell none of them apart."""
+        reconstruction = _reconstruction(
+            {ChannelName.PULSE1: [_pulse(60), _pulse(62)]},
+            {ChannelName.PULSE1: [STEM_A, STEM_B]},
+        )
+
+        authored = _edited(_edited(reconstruction, []), [_pulse(60)])
+
+        assert authored.stems_data.assignments_by_channel == {ChannelName.PULSE1: [AUTHORED_STEM_ID]}
+        assert [entry.id for entry in authored.stems_data.config.entries] == [STEM_A, STEM_B]
+
+    def test_a_stored_record_naming_an_idle_recording_is_refused(self) -> None:
+        with pytest.raises(ValidationError):
+            _stored(
+                {ChannelName.PULSE1: [_pulse(60)]},
+                {ChannelName.PULSE1: [STEM_A]},
+            )

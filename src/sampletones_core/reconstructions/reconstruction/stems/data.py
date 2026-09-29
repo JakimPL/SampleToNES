@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import cached_property
 from pathlib import Path
-from typing import AbstractSet, Dict, List, Optional, Self, Sequence, Tuple
+from typing import AbstractSet, Dict, FrozenSet, List, Optional, Self, Sequence, Tuple
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -67,6 +67,15 @@ class StemsData(DataModel):
         return {item.channel_name: item.stem_ids for item in self.assignments}
 
     @cached_property
+    def holding_stem_ids(self) -> FrozenSet[int]:
+        """The recorded entries holding a frame on some channel.
+
+        A rest and a frame the reader wrote answer to no entry, so neither counts toward any.
+        """
+        held = frozenset(stem_id for item in self.assignments for stem_id in item.stem_ids)
+        return held & frozenset(self.config.entries_by_id)
+
+    @cached_property
     def sources_by_id(self) -> Dict[int, StemSource]:
         """Where each recording came from, keyed by the entry it was converted as."""
         return {source.stem_id: source for source in self.sources}
@@ -123,23 +132,45 @@ class StemsData(DataModel):
             assignments=assignments,
         )
 
+    def without_entries(self, stem_ids: AbstractSet[int]) -> StemsData:
+        """The record with the entries ``stem_ids`` names gone, together with their sources.
+
+        A level the entries leave empty goes with them, and the ids of the entries that stay are
+        left alone, so the owners the record names keep naming the same recordings.
+
+        Args:
+            stem_ids: The entries that leave.
+
+        Returns:
+            StemsData: The record of the entries that stay.
+        """
+        return self._rebuilt(
+            config=self.config.without_entries(stem_ids),
+            sources=[source for source in self.sources if source.stem_id not in stem_ids],
+            assignments=self.assignments,
+        )
+
     def settled(self, playing: AbstractSet[ChannelName]) -> StemsData:
-        """The record answering for the channels in play and for those alone.
+        """The record answering for the channels in play, and naming the recordings that hold a frame.
 
         A channel resting through every frame stands by and describes no frame, so the record
-        lets go of the owners it named there, whatever left the channel silent.
+        lets go of the owners it named there, whatever left the channel silent. A recording holding
+        no frame on any channel then leaves the record, its source and its place in the hierarchy
+        with it. A record where no recording holds a frame keeps every one of them, since nothing
+        sounds that could tell them apart.
 
         Args:
             playing: The channels whose streams sound somewhere.
 
         Returns:
-            StemsData: The record of the channels in play.
+            StemsData: The record of the channels in play and the recordings behind them.
         """
-        return self._rebuilt(
-            config=self.config,
-            sources=self.sources,
-            assignments=[item for item in self.assignments if item.channel_name in playing],
-        )
+        record = self.with_assignments([item for item in self.assignments if item.channel_name in playing])
+        holding = record.holding_stem_ids
+        if not holding:
+            return record
+
+        return record.without_entries(frozenset(record.config.entries_by_id) - holding)
 
     def _with_sources(self, sources: List[StemSource]) -> StemsData:
         """This record carrying ``sources`` in place of the ones it names."""

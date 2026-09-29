@@ -84,7 +84,8 @@ streams, rendered approximations and the per-frame stem record therefore all run
 they describe: frame *i* of a channel is frame *i* of the recording. A frame the decoder settles on a
 silent instruction records the resting stem id too, so the id and the silence name the same frames. A
 channel that rests through every frame is [standing by](../glossary.md#standing-by), whatever left it
-silent, and has no stream at all.
+silent, and has no stream at all. A recording the assignment leaves holding no frame on any channel takes
+no part in the result either: it leaves the record with its source, unless no recording holds a frame.
 
 This is what makes a channel count and a hierarchy usable. Without it, a frame a count left unclaimed
 would shorten that channel's streams and carry its later frames early. What the channel plays would drift
@@ -161,9 +162,10 @@ covered channels can render.
 A stem's frame has to reach a floor before it can take a channel: the quietest note any channel renders,
 measured against the working level. Below that, the frame has nothing audible to contribute.
 
-The record stored in a reconstruction has the setup the assignment was made under. It also has one source
-per entry, naming the recording and the file it was read from, and, per channel, the stem that holds each
-frame, parallel to the instruction streams. Every reconstruction has one. Together with the instruction
-streams it is the whole of what a `.stn` says. See [Reconstructions](../formats/reconstructions.md).
+The record stored in a reconstruction has the setup the assignment was made under, less the recordings
+that ended up holding no frame. It also has one source per entry, naming the recording and the file it was
+read from, and, per channel, the stem that holds each frame, parallel to the instruction streams. Every
+reconstruction has one. Together with the instruction streams it is the whole of what a `.stn` says. See
+[Reconstructions](../formats/reconstructions.md).
 
 The assignment is greedy per frame, so which stem owns a channel can change from one frame to the next.

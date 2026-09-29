@@ -1,9 +1,12 @@
+from pathlib import Path
 from typing import Dict, Final, List, Sequence, Tuple
 
 from sampletones_application.logic.reconstruction.ownership import (
+    named_recordings,
     ownership_lanes,
     tells_owners_apart,
 )
+from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, bending_channels
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -16,6 +19,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.settings impor
 CHANNEL: Final[ChannelName] = ChannelName.PULSE1
 STEM_A: Final[int] = 0
 STEM_B: Final[int] = 1
+STEM_C: Final[int] = 2
 STEM_CHANNELS: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.TRIANGLE]
 
 
@@ -37,7 +41,7 @@ def _stems_data(stem_ids: Sequence[int], *, owners: Sequence[int] = (STEM_A, STE
 def _lane_runs(stem_ids: Sequence[int]) -> Tuple[Tuple[int, int, int], ...]:
     """The stretches the first channel divides into, each as its start, end and owner."""
     assignments: Dict[ChannelName, List[int]] = {CHANNEL: list(stem_ids)}
-    lanes = ownership_lanes(_stems_data(stem_ids), assignments, lambda _channel: {STEM_A, STEM_B})
+    lanes = ownership_lanes(assignments, lambda _channel: {STEM_A, STEM_B})
     return tuple((run.start_frame, run.end_frame, run.stem_id) for run in lanes[CHANNEL].runs)
 
 
@@ -66,10 +70,9 @@ class TestALaneStandsWhateverTheDocumentHoldsToTellApart:
     owner still divides into the one stretch that owner holds."""
 
     def test_a_single_owner_still_takes_a_lane(self) -> None:
-        stems_data = _stems_data([STEM_A, STEM_A], owners=(STEM_A,))
         assignments: Dict[ChannelName, List[int]] = {CHANNEL: [STEM_A, STEM_A]}
 
-        lanes = ownership_lanes(stems_data, assignments, lambda _channel: {STEM_A})
+        lanes = ownership_lanes(assignments, lambda _channel: {STEM_A})
 
         assert [(run.start_frame, run.end_frame, run.stem_id) for run in lanes[CHANNEL].runs] == [(0, 2, STEM_A)]
 
@@ -80,3 +83,20 @@ class TestWhetherTheDocumentHasOwnersToTellApart:
 
     def test_two_owners_tell_apart(self) -> None:
         assert tells_owners_apart(_stems_data([STEM_A, STEM_B]))
+
+
+class TestTheRecordingsADocumentNames:
+    """A list of recordings carries the id each was converted as, which is what colors its mark."""
+
+    def test_each_recording_is_named_with_the_id_it_was_converted_as(self) -> None:
+        stems_data = _stems_data([STEM_A, STEM_C], owners=(STEM_A, STEM_C)).with_sources(
+            (Path("/music/Drums.wav"), Path("/music/Bass.wav"))
+        )
+
+        assert named_recordings(stems_data) == (
+            NamedRecordingViewModel(stem_id=STEM_A, name="Drums"),
+            NamedRecordingViewModel(stem_id=STEM_C, name="Bass"),
+        )
+
+    def test_a_record_naming_no_recording_lists_nothing(self) -> None:
+        assert named_recordings(_stems_data([STEM_A, STEM_B])) == ()

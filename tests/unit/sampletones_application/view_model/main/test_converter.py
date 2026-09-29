@@ -41,7 +41,7 @@ def _row(
         available=True,
         level=level,
         position=position,
-        record_position=None,
+        stem_id=None,
         level_size=level_size,
         level_count=level_count,
     )

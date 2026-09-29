@@ -264,13 +264,21 @@ class TestAChannelAnEditEmpties:
         assert channel_name not in edited.stems_data.assignments_by_channel
         assert channel_name not in edited.approximations
 
-    def test_the_recordings_stay_on_the_record(self, reconstruction: Reconstruction) -> None:
+    def test_the_recordings_holding_frames_elsewhere_stay_on_the_record(self, reconstruction: Reconstruction) -> None:
+        """A recording holding no frame leaves, so what stays is what still sounds somewhere."""
         channel_name = _contested_channel(reconstruction)
+        elsewhere = {
+            stem_id
+            for other in reconstruction.playing_channels
+            if other != channel_name
+            for stem_id in _holders(reconstruction, other)
+        }
+        located = dict(zip(reconstruction.stems_data.config.entries_by_id, reconstruction.audio_filepath))
 
         edited = _edited(reconstruction, channel_name, [])
 
-        assert edited.stems_data.config == reconstruction.stems_data.config
-        assert edited.audio_filepath == reconstruction.audio_filepath
+        assert frozenset(edited.stems_data.config.entries_by_id) == frozenset(elsewhere)
+        assert edited.audio_filepath == tuple(located[entry.id] for entry in edited.stems_data.config.entries)
 
     def test_writing_it_back_into_play_makes_it_the_readers_own(self, reconstruction: Reconstruction) -> None:
         channel_name = _contested_channel(reconstruction)

@@ -17,7 +17,6 @@ def _run(start_frame: int, end_frame: int, stem_id: int) -> OwnershipRunViewMode
         start_frame=start_frame,
         end_frame=end_frame,
         stem_id=stem_id,
-        position=stem_id,
         heard=True,
     )
 

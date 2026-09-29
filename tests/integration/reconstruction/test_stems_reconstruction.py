@@ -16,12 +16,14 @@ from sampletones_core.constants.enums import (
 )
 from sampletones_core.generators import render_channels
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
+from sampletones_core.reconstructions.converter import GroupConversion, reconstruct_job
 from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from sampletones_shared.utils.progress import silent_reporter
 from sampletones_tools.corpus.catalog import build_mini_library
 from tests.suite.stems import (
     STEM_A_ID,
@@ -425,6 +427,7 @@ class TestRemovingAStem:
         paths = write_three_stem_recordings(config, tmp_path)
         reconstruction = reconstructor.reconstruct(list(paths), three_stem_config())
         assert reconstruction is not None
+        assert len(reconstruction.stems_data.config.entries) == 3
         return reconstruction, paths, config
 
     def test_the_removed_recording_leaves_the_setup_and_the_source_paths(self, tmp_path: Path) -> None:
@@ -528,6 +531,56 @@ class TestRemovingAStem:
                     assert remaining.stems_data.assignments_by_channel[channel][frame_index] == stem_id
 
 
+class TestAConversionLetsGoOfIdleRecordings:
+    """A recording the conversion gives no frame leaves the document it writes."""
+
+    @staticmethod
+    def _silent_beside_a_tone(tmp_path: Path, config: Config) -> Tuple[Path, Path]:
+        """A steady tone and a recording of silence, of one length."""
+        tone_path, _noise_path, count = _disjoint_recordings(tmp_path, config)
+        silent_path = tmp_path / "silence.wav"
+        write_wave(silent_path, config.library.sample_rate, np.zeros(count))
+        return tone_path, silent_path
+
+    def test_a_silent_recording_leaves_the_document(self, tmp_path: Path) -> None:
+        config = Config()
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=build_mini_library(config))
+        tone_path, silent_path = self._silent_beside_a_tone(tmp_path, config)
+
+        reconstruction = reconstructor.reconstruct([tone_path, silent_path], _competing_stems(UNIT_DRIVE))
+
+        assert reconstruction is not None
+        assert [entry.id for entry in reconstruction.stems_data.config.entries] == [0]
+        assert reconstruction.audio_filepath == (tone_path,)
+
+    def test_a_recording_outranked_on_every_frame_leaves_the_document(self, tmp_path: Path) -> None:
+        """Two recordings reach for one channel and one of them takes every frame of it."""
+        config = Config()
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=build_mini_library(config))
+        paths = _competing_recordings(tmp_path, config)
+
+        reconstruction = reconstructor.reconstruct(list(paths), _competing_stems(UNIT_DRIVE))
+
+        assert reconstruction is not None
+        assert set(reconstruction.stems_data.assignments_by_channel[ChannelName.PULSE1]) == {0}
+        assert [entry.id for entry in reconstruction.stems_data.config.entries] == [0]
+        assert reconstruction.stems_data.config.hierarchy.levels == [[0]]
+        assert reconstruction.audio_filepath == (paths[0],)
+
+    def test_the_document_is_written_where_the_job_names(self, tmp_path: Path) -> None:
+        """The file is named from every recording the job read, whichever of them stayed."""
+        general = Config().general.model_copy(update={"reconstructions_directory": str(tmp_path / "out")})
+        config = Config().model_copy(update={"general": general})
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=build_mini_library(config))
+        sources = self._silent_beside_a_tone(tmp_path, config)
+        job = GroupConversion(sources=sources, stems=_competing_stems(UNIT_DRIVE)).jobs(config)[0]
+
+        written = reconstruct_job((reconstructor, job, silent_reporter))
+
+        assert written == job.output_path
+        assert Reconstruction.load(written).audio_filepath == (sources[0],)
+
+
 class TestStemsOriginalAudio:
     def test_mixes_the_recorded_stems_at_the_balance_they_were_captured_in(self, tmp_path: Path) -> None:
         """The recordings reach the original at the levels they hold relative to one another.
@@ -563,7 +616,7 @@ class TestStemsOriginalAudio:
         data = ReconstructionData.load(save_path)
 
         assert data.reconstruction.audio_filepath == (tone_path, noise_path)
-        assert data.name == tmp_path.name
+        assert data.name == save_path.stem
         assert data.original_audio is not None
         loaded_tone, loaded_noise = data.stem_audios
         np.testing.assert_allclose(

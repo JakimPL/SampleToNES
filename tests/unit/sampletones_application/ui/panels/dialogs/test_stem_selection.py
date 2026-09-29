@@ -64,7 +64,7 @@ def recording_row(path: Path) -> StemRowViewModel:
         available=True,
         level=0,
         position=0,
-        record_position=None,
+        stem_id=None,
         level_size=1,
         level_count=1,
     )
@@ -84,7 +84,7 @@ def folder_row(root: Path, held: Sequence[Path]) -> StemRowViewModel:
         available=True,
         level=0,
         position=0,
-        record_position=None,
+        stem_id=None,
         level_size=1,
         level_count=1,
     )

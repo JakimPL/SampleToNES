@@ -84,7 +84,8 @@ dimension the import starts carrying.
 * Per-tab undo routing
 * A history of its own for a standalone reconstruction document, one loaded from disk and not opened as a
   project sample. The engine is session-scoped to a project, so an edit to such a document is undoable
-  nowhere. Giving it a stack reuses the same engine ([undo](application/undo.md)).
+  nowhere. Giving it a stack reuses the same engine ([undo](application/undo.md)). Until then, an edit that
+  silences a channel or lets a recording go is reversible only by reloading the file.
 * In-application console
 * Improve performance of the browser's favorite scan of the entire tree per click
 

@@ -119,6 +119,46 @@ class TestStemsConfigViews:
         assert stems.covered_channels == frozenset({ChannelName.PULSE1, ChannelName.NOISE})
 
 
+class TestWithoutEntries:
+    """The entries a setup lets go of leave with their places in the hierarchy."""
+
+    @staticmethod
+    def _shared_level() -> StemsConfig:
+        """Stems 0 and 1 picking together on the first level, stem 2 alone on the second."""
+        return StemsConfig(
+            entries=[
+                StemEntry(
+                    id=stem_id,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                )
+                for stem_id in (0, 1, 2)
+            ],
+            hierarchy=StemsHierarchy(levels=[[0, 1], [2]], mode=HierarchyMode.STRICT),
+        )
+
+    def test_the_entries_named_leave(self) -> None:
+        remaining = self._shared_level().without_entries(frozenset({1}))
+
+        assert [entry.id for entry in remaining.entries] == [0, 2]
+        assert remaining.hierarchy.levels == [[0], [2]]
+
+    def test_a_level_they_empty_collapses(self) -> None:
+        remaining = self._shared_level().without_entries(frozenset({2}))
+
+        assert remaining.hierarchy.levels == [[0, 1]]
+
+    def test_the_picking_mode_stays(self) -> None:
+        remaining = self._shared_level().without_entries(frozenset({0, 1}))
+
+        assert remaining.hierarchy.mode == HierarchyMode.STRICT
+        assert remaining.hierarchy.levels == [[2]]
+
+    def test_naming_nothing_leaves_the_setup_as_it_stands(self) -> None:
+        setup = self._shared_level()
+
+        assert setup.without_entries(frozenset()) == setup
+
+
 class TestSingleEntry:
     def test_names_one_stem_over_the_settings_it_is_given(self) -> None:
         settings = StemSettings.covering([ChannelName.PULSE1, ChannelName.TRIANGLE])

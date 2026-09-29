@@ -51,7 +51,9 @@ standing by.
 | `assignments` | per channel, the `stem_ids` holding each frame, parallel to that channel's stream |
 
 Every reconstruction has this record. A conversion from a single file records one stem covering every
-channel it plays. Two ids name no recording. `-1` is a resting frame. `-2` is a frame the reader wrote by
+channel it plays. Every entry holds a frame on some channel, unless no entry does: a recording left holding
+none leaves the record, with its source and its place in the hierarchy. The recordings that stay keep their
+ids. Two ids name no recording. `-1` is a resting frame. `-2` is a frame the reader wrote by
 hand: it answers to no recording and survives every removal. A frame rests where its channel is silent:
 where no source took it, where a source's channel count or the hierarchy left it free, or where decoding
 settled on a silent instruction.

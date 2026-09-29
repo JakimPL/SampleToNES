@@ -31,9 +31,9 @@ class StemRowViewModel(BaseModel, frozen=True):
     for a recording a document was detached from carries no more. Gathering a file names the row
     after it; a recorded assignment names it after the recording the document remembers.
 
-    ``record_position`` is where the recording's entry stands on the record, which is what picks
-    the color it is known by, so the swatch beside a name reads as the stretches that recording
-    holds in the ribbon. A row answering to an entry of its own carries it.
+    ``stem_id`` is the entry the row's recording was converted as, which is what picks the color
+    it is known by, so the swatch beside a name reads as the stretches that recording holds in the
+    ribbon. A row answering to an entry of its own carries it.
     """
 
     key: str
@@ -47,7 +47,7 @@ class StemRowViewModel(BaseModel, frozen=True):
     available: bool
     level: int
     position: int
-    record_position: Optional[int]
+    stem_id: Optional[int]
     level_size: int
     level_count: int
 

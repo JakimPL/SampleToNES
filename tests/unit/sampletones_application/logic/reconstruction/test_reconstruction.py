@@ -35,6 +35,7 @@ from sampletones_core.instructions import PulseInstruction, TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
@@ -1099,34 +1100,8 @@ class TestReconstructionPanelLogicStemSelection:
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
     ) -> ReconstructionData:
-        reconstruction = reconstruction_factory()
-        frame_count = len(reconstruction.approximations[ChannelName.PULSE1]) // reconstruction.config.frame_length
-        stems_config = StemsConfig(
-            entries=[
-                StemEntry(
-                    id=0,
-                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
-                ),
-                StemEntry(
-                    id=1,
-                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
-                ),
-            ],
-            hierarchy=StemsHierarchy(levels=[[0, 1]]),
-        )
-        stems_reconstruction = reconstruction.model_copy(
-            update={
-                "stems_data": StemsData(
-                    config=stems_config,
-                    assignments=[
-                        ChannelAssignment(
-                            channel_name=ChannelName.PULSE1,
-                            stem_ids=[0, 1] * (frame_count // 2) + ([0] if frame_count % 2 else []),
-                        )
-                    ],
-                ).with_sources((tmp_path / "a.wav", tmp_path / "b.wav")),
-            }
-        )
+        """Two recordings taking turns on the first pulse, one frame each."""
+        stems_reconstruction = recorded_from(reconstruction_factory(), (tmp_path / "a.wav", tmp_path / "b.wav"))
         return ReconstructionData.from_reconstruction(stems_reconstruction, name="Sample")
 
     def test_display_hears_every_recording_on_the_channels_it_holds(
@@ -1143,7 +1118,7 @@ class TestReconstructionPanelLogicStemSelection:
 
         assert mock_reconstruction_manager.listening.heard == {
             0: frozenset({ChannelName.PULSE1}),
-            1: frozenset(),
+            1: frozenset({ChannelName.PULSE1}),
         }
         assert len(stems_views) == 1
         rows = stems_views[0].stems.rows
@@ -1151,20 +1126,30 @@ class TestReconstructionPanelLogicStemSelection:
         assert all(row.channels == row.offered_channels for row in rows)
         assert stems_views[0].stems.channels_in_play == (ChannelName.PULSE1,)
 
-    def test_a_recording_holding_no_frames_offers_no_box(
+    def test_a_document_where_no_recording_holds_a_frame_offers_no_box_for_any(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         stems_data: ReconstructionData,
     ) -> None:
-        _open(mock_reconstruction_manager, stems_data)
+        """Every recording stays on a record whose frames answer to none of them, and none offers a box."""
+        reconstruction = stems_data.reconstruction
+        frames = len(reconstruction.instructions[ChannelName.PULSE1])
+        authored = reconstruction.model_copy(
+            update={
+                "stems_data": reconstruction.stems_data.with_assignments(
+                    [ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[AUTHORED_STEM_ID] * frames)]
+                ),
+            }
+        )
+        _open(mock_reconstruction_manager, stems_data.with_reconstruction(authored))
         stems_views = []
         panel_logic.on_stems_view_changed = stems_views.append
 
         panel_logic.display_reconstruction()
 
         rows = {row.key: row for row in stems_views[0].stems.rows}
-        assert rows["0"].offered_channels == frozenset({ChannelName.PULSE1})
+        assert rows["0"].offered_channels == frozenset()
         assert rows["1"].offered_channels == frozenset()
         assert not rows["1"].offers_channels
 
@@ -1184,13 +1169,13 @@ class TestReconstructionPanelLogicStemSelection:
         assert [(row.key, row.level, row.position) for row in rows] == [("0", 0, 0), ("1", 0, 1)]
         assert all(row.level_size == 2 and row.level_count == 1 for row in rows)
 
-    def test_a_row_carries_the_place_its_recording_holds_on_the_record(
+    def test_a_row_carries_the_id_its_recording_was_converted_as(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         stems_data: ReconstructionData,
     ) -> None:
-        """The swatch beside a name and the stretches in the ribbon read one ordering."""
+        """The swatch beside a name and the stretches in the ribbon read one id."""
         _open(mock_reconstruction_manager, stems_data)
         stems_views = []
         panel_logic.on_stems_view_changed = stems_views.append
@@ -1198,8 +1183,24 @@ class TestReconstructionPanelLogicStemSelection:
         panel_logic.display_reconstruction()
 
         rows = {row.key: row for row in stems_views[0].stems.rows}
-        assert rows["0"].record_position == 0
-        assert rows["1"].record_position == 1
+        assert rows["0"].stem_id == 0
+        assert rows["1"].stem_id == 1
+
+    def test_a_recording_keeps_its_color_once_another_leaves(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        """The recording standing second keeps the id that colored it, standing first afterward."""
+        _open(mock_reconstruction_manager, stems_data.with_reconstruction(without_stem(stems_data.reconstruction, 0)))
+        stems_views = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        rows = stems_views[0].stems.rows
+        assert [(row.key, row.stem_id) for row in rows] == [("1", 1)]
 
     def test_silencing_a_recording_filters_waveform_and_playback(
         self,

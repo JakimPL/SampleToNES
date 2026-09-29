@@ -66,4 +66,4 @@ def _lanes(
         for channel_name, features in channels.items()
         if features.has_frames and channel_name in owned
     }
-    return ownership_lanes(stems_data, assignments, selection.stems_for)
+    return ownership_lanes(assignments, selection.stems_for)

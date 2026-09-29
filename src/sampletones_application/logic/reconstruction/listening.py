@@ -122,9 +122,10 @@ def offered_channels(stems_data: StemsData) -> Dict[int, FrozenSet[ChannelName]]
     """The channels each recording holds frames on, which is what its row offers a box for.
 
     A recording the picker never chose on a channel contributes nothing there whatever the
-    reader ticks, so the row draws a box exactly where the choice reaches something. The frames
-    the reader wrote gather under the authored stem, which offers its boxes the same way and
-    appears exactly where it holds a frame.
+    reader ticks, so the row draws a box exactly where the choice reaches something. A recording
+    holding no frame anywhere has left the document, so every recording offers a box somewhere
+    once any of them holds a frame. The frames the reader wrote gather under the authored stem,
+    which offers its boxes the same way and appears exactly where it holds a frame.
     """
     offered: Dict[int, Set[ChannelName]] = {entry.id: set() for entry in stems_data.config.entries}
     for channel_name, stem_ids in stems_data.assignments_by_channel.items():

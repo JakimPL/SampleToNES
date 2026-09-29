@@ -19,10 +19,7 @@ from sampletones_application.logic.export.instrument.source import ExportableIns
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.listening import StemListening
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.logic.reconstruction.ownership import (
-    ownership_lanes,
-    record_positions,
-)
+from sampletones_application.logic.reconstruction.ownership import ownership_lanes
 from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
@@ -369,7 +366,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             for channel_name in self._in_channel_order(self._playing_channels)
             if channel_name in owned
         }
-        lanes = tuple(ownership_lanes(stems_data, assignments, self.heard_on).values())
+        lanes = tuple(ownership_lanes(assignments, self.heard_on).values())
         return OwnershipRibbonViewModel(
             lanes=lanes,
             frame_length=reconstruction_data.reconstruction.config.frame_length,
@@ -403,12 +400,10 @@ class ReconstructionPanelLogic(CallbackMixin):
                 stems=EMPTY_STEMS_LIST,
             )
 
-        positions = record_positions(stems_data)
         levels = self._levels_with_edits(stems_data)
         rows = tuple(
             self._stem_row(
                 stems_data,
-                positions.get(stem_id),
                 stem_id,
                 level_index,
                 position,
@@ -451,7 +446,6 @@ class ReconstructionPanelLogic(CallbackMixin):
     def _stem_row(
         self,
         stems_data: StemsData,
-        record_position: Optional[int],
         stem_id: int,
         level: int,
         position: int,
@@ -472,7 +466,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             available=source is not None and source.path is not None and source.path.is_file(),
             level=level,
             position=position,
-            record_position=record_position,
+            stem_id=stem_id if stem_id in stems_data.config.entries_by_id else None,
             level_size=level_size,
             level_count=level_count,
         )
