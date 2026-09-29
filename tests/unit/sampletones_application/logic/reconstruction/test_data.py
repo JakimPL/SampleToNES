@@ -24,7 +24,7 @@ def _heard(*stem_ids: int) -> StemSelection:
     return StemSelection.everywhere(frozenset(stem_ids), ChannelName.items())
 
 
-from tests.suite.stems import recorded_from
+from tests.suite.stems import RECORDED_SCALE, recorded_from
 
 
 class TestFromReconstruction:
@@ -106,7 +106,7 @@ class TestFromReconstruction:
         """The recordings are scaled together, so one heard alone sounds at its mix level.
 
         The louder recording is written at twice the quieter one, and it stays twice as loud
-        once loaded, while their mix reaches the full range.
+        once loaded, while their mix stands at the level the scale the document records sets.
         """
         config = Config()
         first = tmp_path / "kick.wav"
@@ -121,7 +121,7 @@ class TestFromReconstruction:
         louder, quieter = data.stem_audios
         np.testing.assert_allclose(louder, 2.0 * quieter, rtol=1e-6)
         np.testing.assert_allclose(data.original_audio, mix([louder, quieter]))
-        np.testing.assert_allclose(np.max(np.abs(data.original_audio)), 1.0, rtol=1e-6)
+        np.testing.assert_allclose(np.max(np.abs(data.original_audio)), (0.5 + 0.25) / RECORDED_SCALE, rtol=1e-6)
 
     def test_one_unreadable_stem_costs_the_whole_original(
         self,
@@ -327,6 +327,7 @@ class TestStemFilteredProjections:
                         stem_ids=[0, 1],
                     )
                 ],
+                scale=RECORDED_SCALE,
             ),
         )
         return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
@@ -381,6 +382,7 @@ class TestStemFilteredProjections:
                             stem_ids=[0, 1],
                         )
                     ],
+                    scale=RECORDED_SCALE,
                 ).with_sources((first, second)),
             }
         )

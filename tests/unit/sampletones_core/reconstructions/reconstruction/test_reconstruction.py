@@ -47,7 +47,7 @@ from tests.suite.arrays import assert_array_equal
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import DIRECTORY_READ_ERRORS
-from tests.suite.stems import single_entry_stems_data
+from tests.suite.stems import RECORDED_SCALE, single_entry_stems_data
 
 _RETUNED_FREQUENCY: Final[int] = DEFAULT_NES_FREQUENCY // 2
 _FASTER_FREQUENCY: Final[int] = DEFAULT_NES_FREQUENCY * 2
@@ -114,6 +114,7 @@ class TestStemsDataRoundTrip:
                     stem_ids=[0, 0],
                 )
             ],
+            scale=RECORDED_SCALE,
         )
         reconstruction = Reconstruction.create(
             instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH), _pulse(_BASE_PITCH)]},
@@ -153,6 +154,7 @@ class TestStemsDataRoundTrip:
                 hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
             ),
             assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0, 1])],
+            scale=RECORDED_SCALE,
         )
         reconstruction = Reconstruction.create(
             instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH), _pulse(_BASE_PITCH)]},
@@ -172,6 +174,7 @@ class TestStemsDataRoundTrip:
         stems_data = StemsData.single_entry(
             StemSettings(channels=[ChannelName.PULSE1], bends=[ChannelName.PULSE1], channel_cap=1),
             [ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0])],
+            RECORDED_SCALE,
         )
 
         with pytest.raises(ValueError, match="where the setup holds"):
@@ -214,6 +217,7 @@ class TestSourcePaths:
                 hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
             ),
             assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0, 1])],
+            scale=RECORDED_SCALE,
         )
         reconstruction = Reconstruction.create(
             instructions={ChannelName.PULSE1: [_pulse(_BASE_PITCH), _pulse(_BASE_PITCH)]},

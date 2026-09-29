@@ -35,6 +35,7 @@ THREE_STEM_ENTRY_CHANNELS: Final[Dict[int, List[ChannelName]]] = {
     STEM_C_ID: [ChannelName.PULSE1, ChannelName.NOISE],
 }
 STEM_RECORDING_DURATION_SECONDS: Final[float] = 0.5
+RECORDED_SCALE: Final[float] = 1.0
 RECORDING_SEED: Final[int] = 93
 
 
@@ -55,7 +56,7 @@ def single_entry_stems_data(
         for channel_name, stream in instructions.items()
         if stream
     ]
-    return StemsData.single_entry(StemSettings.covering(channels), assignments)
+    return StemsData.single_entry(StemSettings.covering(channels), assignments, RECORDED_SCALE)
 
 
 def three_stem_config() -> StemsConfig:
@@ -153,5 +154,6 @@ def recorded_from(
             hierarchy=StemsHierarchy(levels=[stem_ids]),
         ),
         assignments=assignments,
+        scale=RECORDED_SCALE,
     ).with_sources(paths)
     return reconstruction.rewritten(streams, stems_data)

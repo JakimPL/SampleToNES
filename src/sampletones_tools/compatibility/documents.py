@@ -30,6 +30,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.settings impor
 SINGLE_STEM_ID: Final[int] = 0
 SOURCE_PATH: Final[Path] = Path("samples") / "kick.wav"
 COEFFICIENT: Final[float] = 0.75
+RECORDING_SCALE: Final[float] = 0.5
 ROWS_PER_PATTERN: Final[int] = 4
 PATTERN_NAME: Final[str] = "verse"
 FIRST_SAMPLE_NAME: Final[str] = "kick"
@@ -76,7 +77,7 @@ def corpus_instructions() -> Dict[ChannelName, List[InstructionUnion]]:
 
 
 def stems_record(instructions: Dict[ChannelName, List[InstructionUnion]]) -> StemsData:
-    """The single-entry record a classic conversion writes, one owner per frame.
+    """The single-entry record a classic conversion writes, one owner per frame, and the scale it read at.
 
     A frame that sounds answers to the recording; a silent frame answers to rest, which is the
     rule a reconstruction holds its record to.
@@ -89,7 +90,7 @@ def stems_record(instructions: Dict[ChannelName, List[InstructionUnion]]) -> Ste
         )
         for channel_name, stream in instructions.items()
     ]
-    return StemsData.single_entry(StemSettings.covering(channels), assignments)
+    return StemsData.single_entry(StemSettings.covering(channels), assignments, RECORDING_SCALE)
 
 
 def corpus_reconstruction(instructions: Dict[ChannelName, List[InstructionUnion]]) -> Reconstruction:

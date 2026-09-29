@@ -1,5 +1,5 @@
 from .device import AudioDevice, CurrentDevice
-from .io import load_audio, load_stems, read_wave, write_flac, write_wave
+from .io import UNIT_SCALE, load_audio, mix_scale, read_stems, read_wave, scale_stems, write_flac, write_wave
 from .manager import CHANNELS, FORMAT, AudioDeviceManager
 from .mixing import align, common_length, mix
 from .processing import (
@@ -24,6 +24,7 @@ from .validation import (
 __all__ = [
     "CHANNELS",
     "FORMAT",
+    "UNIT_SCALE",
     "AudioDevice",
     "AudioDeviceManager",
     "CurrentDevice",
@@ -35,13 +36,15 @@ __all__ = [
     "common_length",
     "interpolate",
     "load_audio",
-    "load_stems",
     "minmax_decimate",
     "mix",
+    "mix_scale",
     "normalize",
     "quantize",
+    "read_stems",
     "read_wave",
     "resample",
+    "scale_stems",
     "silence",
     "to_mono",
     "validate_audio_array",

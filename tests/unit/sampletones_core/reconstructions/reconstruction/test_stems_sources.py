@@ -17,6 +17,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.entry import S
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import SampleToNESError
+from tests.suite.stems import RECORDED_SCALE
 
 LEAD: Final[int] = 0
 BASS: Final[int] = 1
@@ -48,6 +49,7 @@ def _reconstruction(paths: Sequence[Path] = tuple(RECORDINGS)) -> Reconstruction
         stems_data=StemsData(
             config=_stems_config(),
             assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[LEAD, BASS])],
+            scale=RECORDED_SCALE,
         ),
     )
 
@@ -74,6 +76,7 @@ class TestWhatTheRecordRemembersAboutARecording:
                 config=_stems_config(),
                 sources=[StemSource.of(LEAD, RECORDINGS[0]), StemSource.of(7, RECORDINGS[1])],
                 assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[LEAD, BASS])],
+                scale=RECORDED_SCALE,
             )
 
 
@@ -139,6 +142,7 @@ class TestALocationOneRecordingHasLost:
             config=stems_data.config,
             sources=[stems_data.sources_by_id[LEAD], stems_data.sources_by_id[BASS].detached()],
             assignments=stems_data.assignments,
+            scale=RECORDED_SCALE,
         )
 
         assert partial.paths == ()

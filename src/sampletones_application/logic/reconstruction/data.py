@@ -6,10 +6,11 @@ from typing import Dict, List, Optional, Self, Tuple
 import numpy as np
 
 from sampletones_application.view_model.shared.waveform_data import WaveformData
-from sampletones_core.audio import load_stems, mix
+from sampletones_core.audio import mix
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.recordings import load_recordings
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.filter import (
     filter_approximations,
@@ -127,8 +128,9 @@ class ReconstructionData:
     ) -> Tuple[np.ndarray, ...]:
         """Loads the recorded source, one recording per path, in path order.
 
-        The set is loaded together, so every recording carries the level it holds in the
-        mix and one heard on its own sounds at that level.
+        Every recording is read at the level its conversion read it at, which the document
+        records, so one heard on its own sounds at the level it holds in the mix, and it keeps
+        that level once another recording leaves the document.
 
         A reconstruction detached from its origin (a project sample) records no source
         path, and a file-backed reconstruction may point at audio absent or unreadable on
@@ -136,19 +138,8 @@ class ReconstructionData:
         come back as one empty tuple in either case; the approximation then stands on its
         own in playback and the display.
         """
-        source_paths = reconstruction.audio_filepath
-        if not source_paths:
-            return ()
-
-        config = reconstruction.config
         try:
-            return load_stems(
-                source_paths,
-                target_sample_rate=config.library.sample_rate,
-                normalize=config.general.normalize,
-                quantize=config.general.quantize,
-                quantization_levels=config.general.quantization_levels,
-            )
+            return load_recordings(reconstruction)
         except (FileNotFoundError, IsADirectoryError, PermissionError, OSError) as error:
             logger.warning(f"Could not load the original audio: {error}. The original is unavailable")
             return ()

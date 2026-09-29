@@ -24,6 +24,7 @@ from sampletones_core.compatibility.fields import (
     ON,
     PATH,
     RECONSTRUCTION_DATA_VERSION,
+    SCALE,
     SETTINGS,
     SOURCES,
     STEM_ID,
@@ -148,6 +149,13 @@ class TestTheRecordingTheRecordAnswersTo:
 
         assert _drives(update(quiet)) == {"pulse1": MIN_DRIVE}
         assert _drives(update(loud)) == {"pulse1": MAX_DRIVE}
+
+
+class TestTheScaleTheRecordingWasReadAt:
+    """A file written before the scale was recorded leaves it unmeasured, and its one recording reads at its peak."""
+
+    def test_an_upgraded_record_states_no_scale(self) -> None:
+        assert update({AUDIO_FILEPATH: RECORDING})[STEMS_DATA][SCALE] is None
 
 
 class TestWhereTheRecordingCameFrom:

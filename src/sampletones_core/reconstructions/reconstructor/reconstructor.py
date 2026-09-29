@@ -4,7 +4,15 @@ from typing import AbstractSet, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from sampletones_core.audio import active_frame_level, common_length, load_audio, load_stems, mix
+from sampletones_core.audio import (
+    active_frame_level,
+    common_length,
+    load_audio,
+    mix,
+    mix_scale,
+    read_stems,
+    scale_stems,
+)
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
 from sampletones_core.constants.enums import (
@@ -43,6 +51,22 @@ from sampletones_shared.exceptions import NoLibraryDataError
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.progress import silent_reporter
 from sampletones_shared.utils.system.paths import to_path
+
+
+@dataclass(frozen=True)
+class LoadedStems:
+    """Each stem's recording on the shared scale, and the factor that scale divided them by.
+
+    The factor is measured on the whole set a conversion reads, so the document records it and
+    reads the recordings that stay at that same level once one of them leaves.
+
+    Attributes:
+        recordings: Each stem's recording, in entry order.
+        scale: The factor every recording was divided by.
+    """
+
+    recordings: Tuple[np.ndarray, ...]
+    scale: float
 
 
 @dataclass(frozen=True)
@@ -157,11 +181,11 @@ class Reconstructor:
         """
         checked_paths = self._check_stem_paths(paths, stems_config)
         announce(report, ReconstructionStage.LOADING, STAGE_BEGUN, PREPARATIONS)
-        recordings = self._load_stem_recordings(checked_paths)
+        loaded = self._load_stem_recordings(checked_paths)
         announce(report, ReconstructionStage.LOADING, RECORDINGS_LOADED, PREPARATIONS)
-        prepared = self._prepare_stem_frames(recordings, stems_config)
+        prepared = self._prepare_stem_frames(loaded.recordings, stems_config)
         announce(report, ReconstructionStage.LOADING, FRAMES_PREPARED, PREPARATIONS)
-        worker = self._build_worker(common_length(recordings))
+        worker = self._build_worker(common_length(loaded.recordings))
         assignment = self._assign_stem_frames(prepared.frames, stems_config, worker, report)
         announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
         streams = worker.decoder.decode(assignment.lattices)
@@ -174,7 +198,7 @@ class Reconstructor:
             self.config,
             prepared.coefficient,
             tuple(checked_paths),
-            stems_data=self._build_stems_data(stems_config, assignment.stem_ids),
+            stems_data=self._build_stems_data(stems_config, assignment.stem_ids, loaded.scale),
         )
 
     def _refiner(self, stems_config: StemsConfig) -> PitchRefiner:
@@ -204,18 +228,24 @@ class Reconstructor:
 
         return checked_paths
 
-    def _load_stem_recordings(self, checked_paths: List[Path]) -> Tuple[np.ndarray, ...]:
+    def _load_stem_recordings(self, checked_paths: List[Path]) -> LoadedStems:
         """Loads the recordings onto the one scale and length the run measures them on.
 
         The set is scaled by the peak of its own mix, so each recording keeps the level it
-        holds there and the mix is the balance the recordings were captured in.
+        holds there and the mix is the balance the recordings were captured in. The scale is
+        measured on every recording the run reads, before any of them leaves the result.
         """
-        return load_stems(
-            checked_paths,
-            target_sample_rate=self.config.library.sample_rate,
-            normalize=self.config.general.normalize,
-            quantize=self.config.general.quantize,
-            quantization_levels=self.config.general.quantization_levels,
+        general = self.config.general
+        recordings = read_stems(checked_paths, target_sample_rate=self.config.library.sample_rate)
+        scale = mix_scale(recordings, normalize=general.normalize)
+        return LoadedStems(
+            recordings=scale_stems(
+                recordings,
+                scale=scale,
+                quantize=general.quantize,
+                quantization_levels=general.quantization_levels,
+            ),
+            scale=scale,
         )
 
     def _prepare_stem_frames(
@@ -322,6 +352,7 @@ class Reconstructor:
     def _build_stems_data(
         stems_config: StemsConfig,
         assignments: Dict[ChannelName, List[int]],
+        scale: float,
     ) -> StemsData:
         """Assembles the per-channel per-frame stem record into serializable stems data."""
         return StemsData(
@@ -329,6 +360,7 @@ class Reconstructor:
             assignments=[
                 ChannelAssignment(channel_name=channel, stem_ids=stem_ids) for channel, stem_ids in assignments.items()
             ],
+            scale=scale,
         )
 
     def load_audio(self, path: Path) -> np.ndarray:

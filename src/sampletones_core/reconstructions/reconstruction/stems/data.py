@@ -29,18 +29,41 @@ class StemsData(DataModel):
         ...,
         description="Per channel, the stem holding each frame",
     )
+    scale: Optional[float] = Field(
+        ...,
+        gt=0,
+        description="The factor the conversion divided every recording by, absent where it went unmeasured",
+    )
 
     @classmethod
     def single_entry(
         cls,
         settings: StemSettings,
         assignments: List[ChannelAssignment],
+        scale: Optional[float],
     ) -> StemsData:
         """The record of one stem converted with ``settings``, holding the frames ``assignments`` name."""
         return cls(
             config=StemsConfig.single_entry(settings),
             assignments=assignments,
+            scale=scale,
         )
+
+    @model_validator(mode="after")
+    def _validate_an_unmeasured_scale_holds_one_recording(self) -> Self:
+        """Holds a record stating no scale to the one recording such a record can carry.
+
+        A conversion measures the scale of the whole set it reads. A document written before the
+        scale was recorded holds one recording, which its own peak scales exactly as the
+        conversion did, and a lone recording stays on the record for good.
+
+        Raises:
+            ValueError: If a record stating no scale names other than one recording.
+        """
+        if self.scale is None and len(self.config.entries) != 1:
+            raise ValueError(f"A record stating no scale names {len(self.config.entries)} recordings")
+
+        return self
 
     @model_validator(mode="after")
     def _validate_sources_name_the_entries(self) -> Self:
@@ -180,16 +203,21 @@ class StemsData(DataModel):
             assignments=self.assignments,
         )
 
-    @staticmethod
     def _rebuilt(
+        self,
         *,
         config: StemsConfig,
         sources: List[StemSource],
         assignments: List[ChannelAssignment],
     ) -> StemsData:
-        """A record built afresh from its parts, so its memoized views follow what it now holds."""
+        """A record built afresh from its parts, so its memoized views follow what it now holds.
+
+        The scale belongs to the conversion and stays whatever the record now holds, so every
+        recording that stays is read at the level the conversion read it at.
+        """
         return StemsData(
             config=config,
             sources=sources,
             assignments=assignments,
+            scale=self.scale,
         )

@@ -13,6 +13,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from tests.suite.stems import RECORDED_SCALE
 
 FRAME_LENGTH: Final[int] = 2
 EVERY_CHANNEL: Final[Tuple[ChannelName, ...]] = tuple(ChannelName.items())
@@ -37,6 +38,7 @@ def _stems_data(*stem_lists: Tuple[ChannelName, List[int]]) -> StemsData:
             hierarchy=StemsHierarchy(levels=[[entry.id] for entry in entries]),
         ),
         assignments=[ChannelAssignment(channel_name=channel, stem_ids=stem_ids) for channel, stem_ids in stem_lists],
+        scale=RECORDED_SCALE,
     )
 
 

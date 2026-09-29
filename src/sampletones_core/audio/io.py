@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Final, List, Optional, Sequence, Tuple
+from typing import Final, Optional, Sequence, Tuple
 
 import numpy as np
 from scipy.io import wavfile
@@ -18,6 +18,7 @@ from .validation import validate_audio_array, validate_sample_rate
 
 FLAC_FORMAT: Final[str] = "FLAC"
 FLAC_SUBTYPE: Final[str] = "PCM_16"
+UNIT_SCALE: Final[float] = 1.0
 
 
 def write_wave(path: Pathlike, sample_rate: int, audio: np.ndarray) -> None:
@@ -147,32 +148,21 @@ def load_audio(
     return audio
 
 
-def load_stems(
+def read_stems(
     paths: Sequence[Pathlike],
     *,
     target_sample_rate: int,
-    normalize: bool,
-    quantize: bool,
-    quantization_levels: int,
 ) -> Tuple[np.ndarray, ...]:
     """
-    Load a set of recordings onto one shared scale and one shared length.
+    Read a set of recordings onto one sample rate and one shared length, at the levels captured.
 
-    The recordings of one piece stand in a balance the piece was mixed at, so the whole
-    set is scaled by a single factor drawn from the peak of their sum. Each recording
-    then keeps the level it holds in the mix, which is what lets one of them be heard on
-    its own at the level it sounds there. Quantization follows the scaling, the order it
-    is defined against.
-
-    Scaling one recording by the peak of its own sum is normalizing it, so a set of one
-    reaches exactly what :func:`load_audio` answers for that path.
+    Each recording is mixed to mono and resampled, a shorter one runs on in silence to the length
+    of the longest, and a sample the file states no finite value for reads as silence. The levels
+    stay as the files hold them, so the balance they were captured in is what a scale then keeps.
 
     Args:
         paths: Paths to the recordings, in the order they are returned.
         target_sample_rate: Sample rate every recording is resampled to.
-        normalize: Whether the set is scaled to the peak of its mix.
-        quantize: Whether each scaled recording is quantized.
-        quantization_levels: Number of amplitude levels used when quantization is enabled.
 
     Returns:
         The recordings in the order given, each one the length of the longest.
@@ -192,21 +182,57 @@ def load_stems(
         for path in paths
     ]
     aligned = align(recordings, common_length(recordings))
-    scaled = _scaled_to_mix(aligned) if normalize else aligned
+    return tuple(np.nan_to_num(recording, nan=0.0, posinf=0.0, neginf=0.0) for recording in aligned)
+
+
+def mix_scale(recordings: Sequence[np.ndarray], *, normalize: bool) -> float:
+    """
+    The factor a set of recordings is divided by to bring the peak of their mix to full range.
+
+    The recordings of one piece stand in the balance the piece was mixed at, so the whole set is
+    scaled by the one factor drawn from the peak of their sum. Each recording then keeps the level
+    it holds in the mix, which is what lets one of them be heard on its own at the level it sounds
+    there. Scaling one recording by the peak of its own sum is normalizing it.
+
+    Args:
+        recordings: The recordings of one set, sharing a length.
+        normalize: Whether the set is brought to full range at all.
+
+    Returns:
+        float: The peak of the mix, and ``UNIT_SCALE`` where normalization is off or the set is
+            silent throughout.
+    """
+    if not normalize or not recordings:
+        return UNIT_SCALE
+
+    peak = float(np.max(np.abs(mix(list(recordings)))))
+    return peak if peak > 0.0 else UNIT_SCALE
+
+
+def scale_stems(
+    recordings: Sequence[np.ndarray],
+    *,
+    scale: float,
+    quantize: bool,
+    quantization_levels: int,
+) -> Tuple[np.ndarray, ...]:
+    """
+    Bring every recording of a set to the level ``scale`` sets for it.
+
+    Each recording is divided by the one factor, so the set keeps its balance. Quantization follows
+    the scaling, the order it is defined against.
+
+    Args:
+        recordings: The recordings of one set.
+        scale: The factor every recording is divided by.
+        quantize: Whether each scaled recording is quantized.
+        quantization_levels: Number of amplitude levels used when quantization is enabled.
+
+    Returns:
+        The scaled recordings, in the order given.
+    """
+    scaled = [(recording / scale).astype(np.float32) for recording in recordings]
     if quantize:
         return tuple(quantize_audio(recording, levels=quantization_levels) for recording in scaled)
 
     return tuple(scaled)
-
-
-def _scaled_to_mix(recordings: List[np.ndarray]) -> List[np.ndarray]:
-    """The recordings divided by the peak their mix reaches, silence left as it is."""
-    finite = [np.nan_to_num(recording, nan=0.0, posinf=0.0, neginf=0.0) for recording in recordings]
-    if not finite:
-        return finite
-
-    peak = float(np.max(np.abs(mix(finite))))
-    if peak == 0.0:
-        return finite
-
-    return [(recording / peak).astype(np.float32) for recording in finite]

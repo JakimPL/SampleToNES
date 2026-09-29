@@ -15,6 +15,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from tests.suite.stems import RECORDED_SCALE
 
 CHANNEL: Final[ChannelName] = ChannelName.PULSE1
 STEM_A: Final[int] = 0
@@ -35,6 +36,7 @@ def _stems_data(stem_ids: Sequence[int], *, owners: Sequence[int] = (STEM_A, STE
     return StemsData(
         config=StemsConfig(entries=entries, hierarchy=StemsHierarchy(levels=[list(owners)])),
         assignments=[ChannelAssignment(channel_name=CHANNEL, stem_ids=list(stem_ids))],
+        scale=RECORDED_SCALE,
     )
 
 

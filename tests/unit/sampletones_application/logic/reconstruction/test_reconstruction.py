@@ -50,7 +50,7 @@ from sampletones_shared.paths.extensions import (
     EXT_FILE_NSF,
 )
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.stems import recorded_from
+from tests.suite.stems import RECORDED_SCALE, recorded_from
 
 NO_EXTENSION: Final[str] = ""
 RETUNED_A4_FREQUENCY: Final[float] = 432.0
@@ -1295,6 +1295,7 @@ class TestWhatTheEnvelopesShow:
             stems_data=StemsData(
                 config=stems_config,
                 assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0, 1])],
+                scale=RECORDED_SCALE,
             ),
         )
         return ReconstructionData.from_reconstruction(stems_reconstruction, name="Sample")
@@ -1447,6 +1448,7 @@ class TestTheLanesTheRibbonStandsOn:
                     ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0]),
                     ChannelAssignment(channel_name=ChannelName.TRIANGLE, stem_ids=[1]),
                 ],
+                scale=RECORDED_SCALE,
             ),
         )
         return ReconstructionData.from_reconstruction(stems_reconstruction, name="Sample")
@@ -1582,6 +1584,7 @@ class TestTheScopeAnEditWritesIn:
             stems_data=StemsData(
                 config=stems_config,
                 assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0, 1])],
+                scale=RECORDED_SCALE,
             ),
         )
         return ReconstructionData.from_reconstruction(stems_reconstruction, name="Sample")
@@ -1649,6 +1652,7 @@ class TestTheRowTheReadersOwnFramesStandIn:
                             stem_ids=[AUTHORED_STEM_ID] * frames,
                         )
                     ],
+                    scale=RECORDED_SCALE,
                 ).with_sources((tmp_path / "a.wav",)),
             }
         )

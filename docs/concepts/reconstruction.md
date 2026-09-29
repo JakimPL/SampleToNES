@@ -50,7 +50,7 @@ A reconstruction runs through a fixed sequence of stages:
 
 1. **Load** the audio: mix to mono, resample, and optionally clean it up (normalize, quantize). Several
    sources load together, so one scale drawn from the peak of their sum keeps them at the balance they
-   were captured in.
+   were captured in. The reconstruction records that scale.
 2. **Set a working level.** Scale the whole signal so its typical frame plays at the level one channel
    renders at full volume, which keeps quiet passages matchable
    ([section 3.4](#34-the-working-level-coefficient)).

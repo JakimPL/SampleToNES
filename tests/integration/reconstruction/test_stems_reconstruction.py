@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_core.audio import mix, write_wave
+from sampletones_core.audio import mix, mix_scale, read_stems, scale_stems, write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import MAX_DRIVE, MIN_DRIVE, RESTING_STEM_ID, UNIT_DRIVE
 from sampletones_core.constants.enums import (
@@ -626,6 +626,60 @@ class TestStemsOriginalAudio:
         )
         np.testing.assert_allclose(data.original_audio, mix([loaded_tone, loaded_noise]), atol=_MIX_TOLERANCE)
         np.testing.assert_allclose(np.max(np.abs(data.original_audio)), 1.0, rtol=1e-5)
+
+    def test_the_conversion_records_the_scale_it_read_the_set_at(self, tmp_path: Path) -> None:
+        config = Config()
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=build_mini_library(config))
+        paths = _competing_recordings(tmp_path, config)
+
+        reconstruction = reconstructor.reconstruct(list(paths), _competing_stems(UNIT_DRIVE))
+
+        assert reconstruction is not None
+        read = read_stems(paths, target_sample_rate=config.library.sample_rate)
+        assert reconstruction.stems_data.scale == mix_scale(read, normalize=config.general.normalize)
+
+    def test_a_recording_keeps_its_level_once_another_leaves(self, tmp_path: Path) -> None:
+        """A removal saved and opened again reads the recordings that stay as the session held them."""
+        config = three_stem_reconstruction_config()
+        reconstructor = Reconstructor(config, frozenset(THREE_STEM_CHANNELS), library=build_mini_library(config))
+        paths = write_three_stem_recordings(config, tmp_path)
+        reconstruction = reconstructor.reconstruct(list(paths), three_stem_config())
+        assert reconstruction is not None
+        converted_path = tmp_path / "three.stn"
+        reconstruction.save(converted_path)
+        data = ReconstructionData.load(converted_path)
+
+        in_session = data.with_reconstruction(without_stem(data.reconstruction, STEM_A_ID))
+        removed_path = tmp_path / "two.stn"
+        in_session.reconstruction.save(removed_path)
+        reopened = ReconstructionData.load(removed_path)
+
+        assert len(reopened.stem_audios) == len(in_session.stem_audios) == 2
+        for loaded, held in zip(reopened.stem_audios, in_session.stem_audios):
+            np.testing.assert_array_equal(loaded, held)
+
+    def test_a_pruned_conversion_keeps_the_rest_at_their_level(self, tmp_path: Path) -> None:
+        """A recording outranked on every frame leaves, and the one that stays keeps its level in the mix."""
+        config = Config()
+        reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=build_mini_library(config))
+        paths = _competing_recordings(tmp_path, config)
+        reconstruction = reconstructor.reconstruct(list(paths), _competing_stems(UNIT_DRIVE))
+        assert reconstruction is not None
+        assert reconstruction.audio_filepath == (paths[0],)
+        save_path = tmp_path / "pruned.stn"
+        reconstruction.save(save_path)
+
+        (loaded,) = ReconstructionData.load(save_path).stem_audios
+
+        read = read_stems(paths, target_sample_rate=config.library.sample_rate)
+        expected = scale_stems(
+            read,
+            scale=mix_scale(read, normalize=config.general.normalize),
+            quantize=config.general.quantize,
+            quantization_levels=config.general.quantization_levels,
+        )[0]
+        assert np.max(np.abs(loaded)) < 1.0
+        np.testing.assert_array_equal(loaded, expected)
 
 
 class TestClassicRunCarriesTheSingleEntryRecord:

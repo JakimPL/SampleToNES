@@ -113,6 +113,16 @@ class TestTheRecordAnUpgradedFileGains:
         assert set(sounding) == {SINGLE_STEM_ID}
 
 
+class TestTheScaleAnUpgradedFileStates:
+    """A file the last release wrote kept no scale, and its one recording reads at its own peak."""
+
+    def test_the_record_states_no_scale(self, validated: Reconstruction) -> None:
+        assert validated.stems_data.scale is None
+
+    def test_the_application_reads_the_same(self, loaded: Reconstruction) -> None:
+        assert loaded.stems_data.scale is None
+
+
 class TestTheRecordingAnUpgradedFileNames:
     """Where the audio came from travels onto the record, which is where a 2.2 file keeps it."""
 

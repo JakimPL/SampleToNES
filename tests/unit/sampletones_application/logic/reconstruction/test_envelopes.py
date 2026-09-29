@@ -20,7 +20,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
-from tests.suite.stems import STEM_A_ID, STEM_B_ID
+from tests.suite.stems import RECORDED_SCALE, STEM_A_ID, STEM_B_ID
 
 
 @pytest.fixture
@@ -68,6 +68,7 @@ def stems_reconstruction(reconstruction: Reconstruction) -> Reconstruction:
             StemSource(stem_id=STEM_B_ID, name="second", path=None),
         ],
         assignments=assignments,
+        scale=RECORDED_SCALE,
     )
     return reconstruction
 

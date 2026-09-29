@@ -28,6 +28,7 @@ INSTRUCTION: Final = "instruction"
 UNION_DATA: Final = "_data"
 ON: Final = "on"
 SOURCES: Final = "sources"
+SCALE: Final = "scale"
 STEM_ID: Final = "stem_id"
 PATH: Final = "path"
 

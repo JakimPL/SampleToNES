@@ -20,6 +20,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy impo
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.stems import RECORDED_SCALE
 
 STEM_A: Final[int] = 0
 STEM_B: Final[int] = 1
@@ -76,6 +77,7 @@ def _reconstruction(
                 ChannelAssignment(channel_name=channel_name, stem_ids=list(stem_ids))
                 for channel_name, stem_ids in owners.items()
             ],
+            scale=RECORDED_SCALE,
         ),
     )
 
@@ -109,6 +111,7 @@ def _stored(
                 ChannelAssignment(channel_name=channel_name, stem_ids=list(stem_ids))
                 for channel_name, stem_ids in owners.items()
             ],
+            scale=RECORDED_SCALE,
         ),
         coefficient=1.0,
     )

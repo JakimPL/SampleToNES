@@ -30,6 +30,7 @@ from sampletones_core.compatibility.fields import (
     ON,
     PATH,
     RECONSTRUCTION_DATA_VERSION,
+    SCALE,
     SETTINGS,
     SOURCES,
     STEM_ID,
@@ -141,7 +142,8 @@ def _with_the_stems_record(data: SerializedData) -> SerializedData:
     A file written before the record states its channels and its drive in the configuration, and
     names the recording it was built from beside them, so the record is read from those: one entry
     covering every channel the run handed out, driven as it stored, holding every frame that
-    sounds, and naming the file it read.
+    sounds, and naming the file it read. Such a file kept no scale, and its one recording reads at
+    its own peak, which is the scale its conversion divided it by.
     """
     updated = dict(data)
     channels = _stored_channels(data)
@@ -163,6 +165,7 @@ def _with_the_stems_record(data: SerializedData) -> SerializedData:
         },
         SOURCES: _recorded_sources(data),
         ASSIGNMENTS: _frame_owners(data),
+        SCALE: None,
     }
     return updated
 
@@ -248,9 +251,10 @@ def update(data: SerializedData) -> SerializedData:
     it drove them, and the recording it was built from. Data version 2.2 renders its audio from the
     instructions it keeps, names each stream by its channel, and carries the record of the
     recordings behind its frames: the recording's own settings, where it was read from, and the
-    frame-by-frame account of what it holds, where a silent frame answers to rest. A channel resting
-    through every frame stands by in 2.2, so its stream states no frame and the record names it
-    nowhere, while the reference it stored stays.
+    frame-by-frame account of what it holds, where a silent frame answers to rest, together with the
+    scale the conversion read its recordings at, which a 2.1 file leaves unmeasured. A channel
+    resting through every frame stands by in 2.2, so its stream states no frame and the record names
+    it nowhere, while the reference it stored stays.
     """
     updated = _without_the_stored_audio(data)
     updated = _streams_named_by_channel(updated)

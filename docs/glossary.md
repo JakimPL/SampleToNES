@@ -124,6 +124,12 @@ sample.
 A single scale factor applied to the input, so its typical frame plays at the level one NES channel
 renders at full volume.
 
+### Recording scale
+
+The factor a conversion divides every recording it reads by, drawn from the peak of their mix. A
+reconstruction records it, so each recording keeps the level it held in the conversion. See
+[Stems reconstruction](concepts/stems.md#2-a-stem-is-matched-against-its-own-recording).
+
 ## Analysis and scoring
 
 ### Spectrum (feature, histogram)

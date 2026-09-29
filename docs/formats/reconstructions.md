@@ -49,6 +49,7 @@ standing by.
 | `config` | the stems setup the conversion ran under: one entry per recording, and the hierarchy of levels |
 | `sources` | one per entry: the `stem_id` it was converted as, the `name` it is known by, and the `path` it was read from, absent once [detached](#detached-reconstructions) |
 | `assignments` | per channel, the `stem_ids` holding each frame, parallel to that channel's stream |
+| `scale` | the [recording scale](../glossary.md#recording-scale): the factor the conversion divided every recording it read by, measured on the whole set before any recording left. Reading the recordings at it keeps each one at the level it held in the conversion. Absent in a file upgraded from data version 2.1, which holds one recording that reads at its own peak |
 
 Every reconstruction has this record. A conversion from a single file records one stem covering every
 channel it plays. Every entry holds a frame on some channel, unless no entry does: a recording left holding
@@ -105,7 +106,8 @@ beside it for reference. A file at the supported version loads as it stands. A f
 the upgrade chain reaches is migrated in memory to the current shape first. Any other file is declined.
 [Data compatibility](../development/release/compatibility.md) describes the chain.
 
-The current data version is 2.2.
+The current data version is 2.2. A file at data version 2.1 carries no stems record. Its upgrade records
+one recording covering the channels the run handed out, and leaves the recording scale unmeasured.
 
 ## Storage and export
 

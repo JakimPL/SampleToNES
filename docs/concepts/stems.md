@@ -38,8 +38,10 @@ therefore scored against the sound that stem contributes, and the channels it wi
 Ownership and content say the same thing: a stem heard on its own plays what was recorded on it.
 
 The whole set of recordings is scaled by one factor drawn from the peak of its sum, which holds the stems
-at the balance they were captured in. The working-level coefficient is measured on that sum, exactly as
-for a single file. The reconstruction the run assembles is the sum of the stems' approximations. It
+at the balance they were captured in. The document records that
+[recording scale](../glossary.md#recording-scale), so a recording keeps the level it held in the
+conversion once another leaves the document, across a save and a reload. The working-level coefficient is
+measured on that sum, exactly as for a single file. The reconstruction the run assembles is the sum of the stems' approximations. It
 approximates the summed recordings because each part approximates its part.
 
 ### 3. A drive reaches for a louder instruction

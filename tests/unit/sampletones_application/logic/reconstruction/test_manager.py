@@ -19,7 +19,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy impo
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import LoadReconstructionError
 from tests.suite.errors import DIRECTORY_READ_ERRORS
-from tests.suite.stems import single_entry_stems_data
+from tests.suite.stems import RECORDED_SCALE, single_entry_stems_data
 
 
 def _two_entry_stems_data() -> StemsData:
@@ -38,6 +38,7 @@ def _two_entry_stems_data() -> StemsData:
             hierarchy=StemsHierarchy(levels=[[0, 1]], mode=HierarchyMode.STRICT),
         ),
         assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0, 1])],
+        scale=RECORDED_SCALE,
     )
 
 
