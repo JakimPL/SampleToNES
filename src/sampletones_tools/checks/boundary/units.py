@@ -1,8 +1,9 @@
 from typing import Final, Iterable, Tuple
 
-from sampletones_tools.checks.source.modules import MODULE_SEPARATOR
+from sampletones_tools.checks.source.modules import MODULE_SEPARATOR, PACKAGE_INITIALIZER
 
 MODULE_SUFFIX: Final[str] = ".py"
+INITIALIZER_FILENAME: Final[str] = f"{PACKAGE_INITIALIZER}{MODULE_SUFFIX}"
 PATH_SEPARATOR: Final[str] = "/"
 UNIT_PATTERN: Final[str] = "**/*.py"
 

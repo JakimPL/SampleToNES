@@ -7,11 +7,10 @@ from pydantic import BaseModel, ConfigDict
 from sampletones_tools.checks.boundary.imports import imported_module
 from sampletones_tools.checks.boundary.lines import numbered_lines
 from sampletones_tools.checks.boundary.scope import rule_modules
-from sampletones_tools.checks.boundary.units import MODULE_SUFFIX
+from sampletones_tools.checks.boundary.units import INITIALIZER_FILENAME
 from sampletones_tools.checks.boundary.violation import Violation
 from sampletones_tools.checks.source.modules import (
     MODULE_SEPARATOR,
-    PACKAGE_INITIALIZER,
     SOURCE_PATTERN,
     source_paths,
 )
@@ -32,7 +31,7 @@ def local_names(root: Path) -> Set[str]:
         Set[str]: The importable names the tree offers.
     """
     modules = {path.stem for path in root.glob(SOURCE_PATTERN)}
-    packages = {path.name for path in root.iterdir() if (path / f"{PACKAGE_INITIALIZER}{MODULE_SUFFIX}").is_file()}
+    packages = {path.name for path in root.iterdir() if (path / INITIALIZER_FILENAME).is_file()}
     return modules | packages
 
 

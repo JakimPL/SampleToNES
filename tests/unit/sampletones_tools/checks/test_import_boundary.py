@@ -13,6 +13,14 @@ APPLICATION: Final[str] = "sampletones_application"
 VISUAL_IMPORT: Final[str] = "import dearpygui.dearpygui as dpg\n"
 PLAIN_IMPORT: Final[str] = "from sampletones_core.project.project import Project\n"
 THIRD_PARTY_IMPORT: Final[str] = "import numpy\n"
+INITIALIZER: Final[str] = "__init__.py"
+
+
+def logic_package(source: Path) -> Path:
+    """The application's logic package in a source tree a test builds, each directory a package."""
+    write_module(source / APPLICATION, INITIALIZER, "")
+    write_module(source / APPLICATION / "logic", INITIALIZER, "")
+    return source / APPLICATION / "logic"
 
 
 class TestMain:
@@ -24,7 +32,7 @@ class TestMain:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        path = write_module(tmp_path / APPLICATION / "logic", "direct.py", VISUAL_IMPORT)
+        path = write_module(logic_package(tmp_path), "direct.py", VISUAL_IMPORT)
 
         exit_code = dispatch(COMMANDS, ["check", "import-boundary", "--all", "--source", str(tmp_path)])
 
@@ -38,7 +46,7 @@ class TestMain:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        write_module(tmp_path / "src" / APPLICATION / "logic", "clean.py", PLAIN_IMPORT)
+        write_module(logic_package(tmp_path / "src"), "clean.py", PLAIN_IMPORT)
         path = write_module(tmp_path / "scripts", "bundle.py", THIRD_PARTY_IMPORT)
 
         exit_code = dispatch(
@@ -64,8 +72,23 @@ class TestMain:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        write_module(tmp_path / APPLICATION / "logic", "reported.py", VISUAL_IMPORT)
-        clean = write_module(tmp_path / APPLICATION / "logic", "clean.py", PLAIN_IMPORT)
+        write_module(logic_package(tmp_path), "reported.py", VISUAL_IMPORT)
+        clean = write_module(logic_package(tmp_path), "clean.py", PLAIN_IMPORT)
 
         assert dispatch(COMMANDS, ["check", "import-boundary", str(clean), "--source", str(tmp_path)]) == 0
         assert capsys.readouterr().err == ""
+
+    def test_a_directory_without_an_initializer_is_reported(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        write_module(logic_package(tmp_path), "clean.py", PLAIN_IMPORT)
+        write_module(tmp_path / APPLICATION / "ui" / "elements", "trace.py", "")
+
+        exit_code = dispatch(COMMANDS, ["check", "import-boundary", "--all", "--source", str(tmp_path)])
+
+        assert exit_code == 1
+        error = capsys.readouterr().err
+        assert "namespace package" in error
+        assert str((tmp_path / APPLICATION / "ui" / "elements").resolve()) in error

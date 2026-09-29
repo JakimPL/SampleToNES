@@ -4,12 +4,13 @@ from typing import List, Optional, Sequence, Set
 
 from sampletones_tools.checks.boundary.check import check_boundaries
 from sampletones_tools.checks.boundary.configs.rules import ImportBoundaryRules
+from sampletones_tools.checks.boundary.packages import check_packages
 from sampletones_tools.checks.boundary.standalone import check_standalone
 from sampletones_tools.checks.boundary.violation import Violation
 
 
 def check_imports(source: Path, scripts: Path, selection: Optional[Set[Path]]) -> List[Violation]:
-    """Every import and token the shipped boundaries forbid under the source and scripts trees.
+    """Every import, token and namespace package the shipped boundaries forbid under the two trees.
 
     Args:
         source: Source root the rule roots are named within.
@@ -22,6 +23,7 @@ def check_imports(source: Path, scripts: Path, selection: Optional[Set[Path]]) -
     boundaries = ImportBoundaryRules.load()
     return [
         *check_boundaries(source, boundaries.boundary_rules(), boundaries.tokens, selection),
+        *check_packages(source, selection),
         *check_standalone(scripts, boundaries.standalone, selection),
     ]
 

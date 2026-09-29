@@ -128,6 +128,9 @@ Token rules hold the shipped packages to the tools edge a second way. A module o
 `sampletones_assets` that spells `sampletones_tools` at all is reported, so the edge is closed in words as
 well as in imports.
 
+The same check reports every directory under `src/` that has a module anywhere inside it and no
+`__init__.py`, since a tool takes such a namespace package for a root it imports from.
+
 A bootstrap script runs on the system interpreter, so the scripts tree has a rule of its own,
 `boundaries/standalone.yaml`. A script imports the standard library and the scripts tree itself. A name in
 that tree that stands in for a standard-library module is reported too, since the tree sits on the import

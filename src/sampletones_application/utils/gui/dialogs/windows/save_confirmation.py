@@ -59,7 +59,7 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
             shortcut_source=shortcut_source,
         )
 
-    def prepare(
+    def prepare(  # pylint: disable=arguments-differ
         self,
         message: str,
         title: str,

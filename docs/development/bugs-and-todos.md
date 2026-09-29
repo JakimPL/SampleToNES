@@ -137,9 +137,5 @@ currently out of line. An entry leaves when the code meets the contract again.
   pause before a widget is touched, and all of it repeats work, since one recording changed. The answer is
   to hold the rows against the gathering that produced them and derive entries for the recordings a gesture
   moved.
-* Several directories under `ui/` have modules without an `__init__.py`, which makes each a namespace
-  package. A tool reading the tree treats such a directory as a root it can import from, so a module
-  inside one answers for a standard-library name of the same word (`ui/elements/trace.py` against
-  `trace`). Giving each directory an `__init__.py` closes the whole class.
 
 ## Bugs

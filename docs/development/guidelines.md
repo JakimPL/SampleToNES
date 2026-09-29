@@ -36,6 +36,7 @@ These rules govern the Python in this repository. They complement
 1. If a module contains many class and function definitions, split into a subpackage divided by a single concern.
 1. If a private function (or public that does not have any external consumers) serves only a class in the module it lives, move it to the class as a static/class method or isolate helper functions into a separate utility module.
 1. Prefer subpackages over a flat directory structure.
+1. Make every source directory a package. Every directory under `src/` with a module anywhere inside it has an `__init__.py`, so each module is reached by its full name alone.
 1. Isolate platform-, desktop-, or external-tool-specific behavior behind a `Protocol` with one implementation per target, selected by a runtime factory that probes availability and environment. Callers depend only on the `Protocol` and stay platform-agnostic.
 1. Wrap a third-party library or OS tool whose behavior differs across platforms behind our own typed interface, and encode each quirk inside the matching implementation. That implementation's class docstring is where its quirks are named, so a reader meets them beside the code they explain.
 
