@@ -83,22 +83,3 @@ class TestReconstructionStateAppend:
         state.append(ChannelName.TRIANGLE, _make_instruction())
         assert len(state.instructions[ChannelName.PULSE1]) == 1
         assert len(state.instructions[ChannelName.TRIANGLE]) == 1
-
-
-class TestReconstructionStateDrop:
-    @pytest.fixture
-    def state(self) -> ReconstructionState:
-        state = ReconstructionState.create([ChannelName.PULSE1, ChannelName.TRIANGLE])
-        state.append(ChannelName.PULSE1, _make_instruction())
-        return state
-
-    def test_dropping_a_channel_releases_its_stream(self, state: ReconstructionState) -> None:
-        state.drop(ChannelName.TRIANGLE)
-
-        assert state.channel_names == [ChannelName.PULSE1]
-        assert set(state.instructions) == {ChannelName.PULSE1}
-
-    def test_the_remaining_channels_keep_their_frames(self, state: ReconstructionState) -> None:
-        state.drop(ChannelName.TRIANGLE)
-
-        assert len(state.instructions[ChannelName.PULSE1]) == 1

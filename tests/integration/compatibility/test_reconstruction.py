@@ -1,20 +1,30 @@
 from pathlib import Path
-from typing import Final, List
+from typing import Any, Dict, Final, List
 
+import msgpack
 import pytest
 
+from sampletones_core.compatibility.fields import (
+    GENERATOR_NAME,
+    INSTRUCTION,
+    INSTRUCTIONS,
+    INSTRUCTIONS_DATA,
+    ON,
+    UNION_DATA,
+)
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.constants.algorithm import ALL_STEMS_CHANNEL_CAP, RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.application import SAMPLETONES_RECONSTRUCTION_DATA_VERSION
-from tests.suite.compatibility import RECONSTRUCTION_VERSION, archived
+from tests.suite.compatibility import RECONSTRUCTION_VERSION, archived, stored_document
 
 SOURCE_PATH: Final[Path] = Path("samples") / "kick.wav"
 SOURCE_NAME: Final[str] = "kick"
 SINGLE_STEM_ID: Final[int] = 0
 FRAMES: Final[int] = 3
 STORED_DRIVE: Final[float] = 1.5
+SILENCED_CHANNEL: Final[ChannelName] = ChannelName.PULSE1
 
 
 @pytest.fixture(name="validated")
@@ -124,3 +134,46 @@ class TestWhatTheApplicationGets:
 
     def test_it_reads_the_same_recording(self, loaded: Reconstruction) -> None:
         assert loaded.audio_filepath == (SOURCE_PATH,)
+
+
+def _silenced(document: Dict[str, Any], channel_name: ChannelName) -> Dict[str, Any]:
+    """The stored document with every frame of one channel written down to rests."""
+    for stream in document[INSTRUCTIONS_DATA]:
+        if stream[GENERATOR_NAME] == channel_name:
+            for frame in stream[INSTRUCTIONS]:
+                frame[INSTRUCTION][UNION_DATA][ON] = False
+
+    return document
+
+
+@pytest.fixture(name="silenced")
+def silenced_fixture(tmp_path: Path) -> Reconstruction:
+    """The archived file with its first pulse resting through every frame, read with every rule held."""
+    document = _silenced(stored_document(archived(ObjectKind.RECONSTRUCTION, RECONSTRUCTION_VERSION)), SILENCED_CHANNEL)
+    path = tmp_path / "silenced.stn"
+    path.write_bytes(msgpack.packb(document, use_bin_type=True))
+    return Reconstruction.load(path, fast=False)
+
+
+class TestAnArchivedChannelWrittenDownToRests:
+    """A channel the last release stored resting through every frame reads as standing by."""
+
+    def test_the_channel_stands_by(self, silenced: Reconstruction) -> None:
+        assert SILENCED_CHANNEL not in silenced.playing_channels
+        assert silenced.instructions[SILENCED_CHANNEL] == []
+
+    def test_the_record_names_it_nowhere(self, silenced: Reconstruction) -> None:
+        assert SILENCED_CHANNEL not in silenced.stems_data.assignments_by_channel
+
+    def test_it_keeps_the_reference_it_stored(self, silenced: Reconstruction, validated: Reconstruction) -> None:
+        assert silenced.initial_pitches[SILENCED_CHANNEL] == validated.initial_pitches[SILENCED_CHANNEL]
+        assert silenced.held_features[SILENCED_CHANNEL] == validated.held_features[SILENCED_CHANNEL]
+
+    def test_the_channels_beside_it_play_as_they_were_written(
+        self,
+        silenced: Reconstruction,
+        validated: Reconstruction,
+    ) -> None:
+        for channel_name in validated.playing_channels:
+            if channel_name != SILENCED_CHANNEL:
+                assert silenced.instructions[channel_name] == validated.instructions[channel_name]

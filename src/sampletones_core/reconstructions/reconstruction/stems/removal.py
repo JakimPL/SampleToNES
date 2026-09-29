@@ -1,4 +1,4 @@
-from typing import Dict, FrozenSet, List, Sequence
+from typing import Dict, List, Sequence
 
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
@@ -15,10 +15,10 @@ def without_stem(reconstruction: Reconstruction, stem_id: int) -> Reconstruction
     """The reconstruction with one recording taken out, the frames it held left resting.
 
     A released frame states silence and takes ``RESTING_STEM_ID``, which is the shape a capped
-    run already records for a frame every stem passed over. A channel the removal empties stands
-    by, describing no frame at all. The frames of the recordings that stay keep their
-    instructions and their owners, and the audio the document answers with is read afresh from
-    what remains.
+    run already records for a frame every stem passed over. A channel the removal leaves resting
+    through every frame stands by, describing no frame at all and keeping the reference it was
+    shaped from. The frames of the recordings that stay keep their instructions and their owners,
+    and the audio the document answers with is read afresh from what remains.
 
     The entry leaves the recorded setup, taking its level and its recorded source along with
     it, once that level holds nothing else. The identifier, configuration, coefficient and
@@ -43,22 +43,13 @@ def without_stem(reconstruction: Reconstruction, stem_id: int) -> Reconstruction
         raise ValueError("A reconstruction holds at least one stem")
 
     released = {item.channel_name: [held == stem_id for held in item.stem_ids] for item in stems_data.assignments}
-    assignments = [_released_assignment(item, released[item.channel_name]) for item in stems_data.assignments]
-    resting = _emptied_channels(assignments, released)
-
-    streams = _released_streams(reconstruction, released, resting)
-
-    return Reconstruction(
-        metadata=reconstruction.metadata,
-        id=reconstruction.id,
-        config=reconstruction.config,
-        instructions_data=[streams[channel_name] for channel_name in ChannelName.items()],
-        stems_data=StemsData(
+    return reconstruction.rewritten(
+        _released_streams(reconstruction, released),
+        StemsData(
             config=_config_without(config, stem_id),
             sources=[source for source in stems_data.sources if source.stem_id != stem_id],
-            assignments=[item for item in assignments if item.channel_name not in resting],
+            assignments=[_released_assignment(item, released[item.channel_name]) for item in stems_data.assignments],
         ),
-        coefficient=reconstruction.coefficient,
     )
 
 
@@ -82,49 +73,27 @@ def _released_assignment(item: ChannelAssignment, released: Sequence[bool]) -> C
     )
 
 
-def _emptied_channels(
-    assignments: Sequence[ChannelAssignment],
-    released: Dict[ChannelName, List[bool]],
-) -> FrozenSet[ChannelName]:
-    """The channels the removal leaves resting through every frame.
-
-    A channel reaches this state by losing frames it held, so one that already rested
-    throughout is left as it stood.
-    """
-    return frozenset(
-        item.channel_name
-        for item in assignments
-        if any(released[item.channel_name]) and all(held == RESTING_STEM_ID for held in item.stem_ids)
-    )
-
-
 def _released_streams(
     reconstruction: Reconstruction,
     released: Dict[ChannelName, List[bool]],
-    resting: FrozenSet[ChannelName],
 ) -> Dict[ChannelName, InstructionsItem]:
     """Every channel's stream as the removal leaves it, keyed by channel.
 
-    A channel the removal empties stands by, one it reaches states silence where the recording
-    held a frame, and one it reaches none of stands exactly as it did.
+    A channel the removal reaches states silence where the recording held a frame, and one it
+    reaches none of stands exactly as it did.
     """
-    streams: Dict[ChannelName, InstructionsItem] = {}
-    for channel_name, stream in reconstruction.streams.items():
-        if channel_name in resting:
-            streams[channel_name] = InstructionsItem.resting(channel_name)
-        elif channel_name in released:
-            streams[channel_name] = _released_stream(stream, released[channel_name])
-        else:
-            streams[channel_name] = stream
-
-    return streams
+    return {
+        channel_name: _released_stream(stream, released[channel_name]) if channel_name in released else stream
+        for channel_name, stream in reconstruction.streams.items()
+    }
 
 
 def _released_stream(stream: InstructionsItem, released: Sequence[bool]) -> InstructionsItem:
     """The channel's stream with each released frame stating silence.
 
     The silent instruction takes the type the stream already carries, which is the type the
-    channel is read through, so the stream stays one exporter's throughout.
+    channel is read through, so the stream stays one exporter's throughout. The reference and the
+    held dimensions stay the stream's own, so a channel the removal silences keeps them.
     """
     instructions = [data.instruction for data in stream.instructions]
     if not instructions:

@@ -8,6 +8,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction
+from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
@@ -233,23 +234,15 @@ class TestAnEmptiedChannel:
 
         assert ChannelName.NOISE not in remaining.stems_data.assignments_by_channel
 
-    def test_a_channel_that_already_rested_throughout_keeps_its_stream(self) -> None:
-        """A removal reaching none of a channel's frames leaves that channel exactly as it stood."""
-        reconstruction = _reconstruction(
-            {
-                ChannelName.PULSE1: [STEM_A, STEM_B, STEM_C, RESTING_STEM_ID],
-                ChannelName.NOISE: [RESTING_STEM_ID] * FRAME_COUNT,
-            },
-            instructions={
-                ChannelName.PULSE1: [_pulse(60), _pulse(61), _pulse(62), PulseInstruction.null_instruction()],
-                ChannelName.NOISE: [NoiseInstruction.null_instruction() for _ in range(FRAME_COUNT)],
-            },
-        )
+    def test_an_emptied_channel_keeps_its_reference(self, reconstruction: Reconstruction) -> None:
+        """A channel the removal silences keeps the base it was shaped from, as an edit keeps it."""
+        stream = reconstruction.streams[ChannelName.NOISE]
+        assert stream != InstructionsItem.resting(ChannelName.NOISE)
 
         remaining = without_stem(reconstruction, STEM_B)
 
-        assert _sounding(remaining, ChannelName.NOISE) == [False] * FRAME_COUNT
-        assert remaining.stems_data.assignments_by_channel[ChannelName.NOISE] == [RESTING_STEM_ID] * FRAME_COUNT
+        assert remaining.streams[ChannelName.NOISE].initial_pitch == stream.initial_pitch
+        assert remaining.streams[ChannelName.NOISE].held_features == stream.held_features
 
 
 class TestTheMixedApproximation:

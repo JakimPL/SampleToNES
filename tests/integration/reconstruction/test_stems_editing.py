@@ -513,8 +513,8 @@ class TestTheEnvelopesASelectionShows:
         assert all(heard[name] == whole[name] for name in ChannelName.items() if name != channel_name)
 
 
-class TestAChannelWrittenDownToNothing:
-    """A channel whose every frame rests keeps them, so every reader of it counts one channel."""
+class TestAChannelWrittenDownToRests:
+    """A channel an edit leaves resting through every frame stands by, and every reader agrees."""
 
     @staticmethod
     def _silenced(reconstruction: Reconstruction, channel_name: ChannelName) -> Reconstruction:
@@ -522,34 +522,39 @@ class TestAChannelWrittenDownToNothing:
         stream = [type(instruction).null_instruction() for instruction in reconstruction.instructions[channel_name]]
         return _edited(reconstruction, channel_name, stream)
 
-    def test_the_channel_keeps_the_frames_it_describes(self, reconstruction: Reconstruction) -> None:
+    def test_the_channel_stands_by(self, reconstruction: Reconstruction) -> None:
         channel_name = _contested_channel(reconstruction)
-        frames = len(reconstruction.instructions[channel_name])
 
         edited = self._silenced(reconstruction, channel_name)
 
-        assert len(edited.instructions[channel_name]) == frames
-        assert not any(instruction.on for instruction in edited.instructions[channel_name])
+        assert edited.instructions[channel_name] == []
+        assert channel_name not in edited.approximations
 
-    def test_every_reader_counts_it_alike(self, reconstruction: Reconstruction) -> None:
-        """The panel, the record, the footprint and the export answer for one and the same channel."""
+    def test_the_record_names_it_no_more(self, reconstruction: Reconstruction) -> None:
         channel_name = _contested_channel(reconstruction)
+
         edited = self._silenced(reconstruction, channel_name)
-        everywhere = StemSelection.everywhere(EVERY_STEM, ChannelName.items())
 
-        assert channel_name in playing_channels(edited.export_heard(everywhere))
-        assert channel_name in edited.playing_channels
-        assert channel_name in playing_channels(edited.export())
-        assert channel_name in reconstruction_footprints(edited)
+        assert channel_name not in edited.stems_data.assignments_by_channel
 
-    def test_the_panel_measures_the_frames_the_export_writes(self, reconstruction: Reconstruction) -> None:
+    def test_every_reader_counts_it_out(self, reconstruction: Reconstruction) -> None:
+        """The document, the export, the heard export and the footprint leave out one and the same channel."""
         channel_name = _contested_channel(reconstruction)
         edited = self._silenced(reconstruction, channel_name)
         everywhere = StemSelection.everywhere(EVERY_STEM, ChannelName.items())
 
-        heard = edited.export_heard(everywhere)[channel_name]
+        assert channel_name not in edited.playing_channels
+        assert channel_name not in playing_channels(edited.export())
+        assert channel_name not in playing_channels(edited.export_heard(everywhere))
+        assert channel_name not in reconstruction_footprints(edited)
 
-        assert heard.frame_count == edited.export()[channel_name].frame_count
+    def test_it_keeps_the_reference_it_was_edited_from(self, reconstruction: Reconstruction) -> None:
+        channel_name = _contested_channel(reconstruction)
+
+        edited = self._silenced(reconstruction, channel_name)
+
+        assert edited.initial_pitches[channel_name] == reconstruction.initial_pitches[channel_name]
+        assert edited.held_features[channel_name] == reconstruction.held_features[channel_name]
 
 
 class TestTheDocumentThroughAFile:

@@ -123,7 +123,8 @@ class TestWhereTheReadingEnds:
     """The reading runs to the last frame the reader hears, so what is drawn is what is written.
 
     A rest belongs to no recording and is always read, so the reading lets go of the stretch a
-    left-out recording held and keeps every frame the channel describes.
+    left-out recording held and keeps every frame before it. A reading sounding in no frame
+    stands by, as the document stands by a channel resting throughout.
     """
 
     def test_a_trailing_frame_left_out_leaves_the_reading(self) -> None:
@@ -156,11 +157,11 @@ class TestWhereTheReadingEnds:
 
         assert reading == []
 
-    def test_a_channel_that_only_rests_keeps_the_frames_it_describes(self) -> None:
-        """A channel written down to nothing stays in play, so every reader of it counts one channel."""
+    def test_a_channel_that_only_rests_reads_as_standing_by(self) -> None:
+        """A channel resting through every frame plays nothing, whoever the reader hears."""
         reading = _reading([_silence(), _silence()], [RESTING_STEM_ID, RESTING_STEM_ID], _heard(STEM_A, STEM_B))
 
-        assert reading == [_silence(), _silence()]
+        assert reading == []
 
     def test_a_channel_standing_by_reads_as_it_stands(self) -> None:
         instructions: Dict[ChannelName, Sequence[InstructionUnion]] = {CHANNEL: []}

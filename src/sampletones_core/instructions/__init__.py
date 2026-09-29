@@ -4,6 +4,7 @@ from .implementation.pulse import PulseInstruction
 from .implementation.triangle import TriangleInstruction
 from .instruction import Instruction
 from .maps import INSTRUCTION_CLASS_MAP
+from .stream import sounds
 from .tonal import TonalInstruction
 from .types import (
     InstructionClass,
@@ -30,4 +31,5 @@ __all__ = [
     "TonalInstructionUnion",
     "TriangleInstruction",
     "get_instruction_by_type",
+    "sounds",
 ]

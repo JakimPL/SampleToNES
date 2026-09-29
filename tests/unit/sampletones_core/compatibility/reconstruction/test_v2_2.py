@@ -41,6 +41,8 @@ from sampletones_core.constants.algorithm import (
 )
 
 STORED_DRIVE: Final[float] = 2.5
+STORED_REFERENCE: Final[int] = 43
+INITIAL_PITCH: Final[str] = "initial_pitch"
 RECORDING: Final[str] = "/audio/kick.wav"
 RECORDING_NAME: Final[str] = "kick"
 
@@ -183,9 +185,30 @@ class TestWhoHoldsEachFrame:
 
     def test_a_frame_stating_nothing_reads_as_silent(self) -> None:
         """A payload this build cannot read a flag from describes no sound, so nothing holds it."""
-        data = {INSTRUCTIONS_DATA: [{GENERATOR_NAME: "pulse1", INSTRUCTIONS: ["frame"]}]}
+        data = {INSTRUCTIONS_DATA: [{GENERATOR_NAME: "pulse1", INSTRUCTIONS: [_frame(True), "frame"]}]}
 
-        assert _owners(update(data)) == [{CHANNEL_NAME: "pulse1", STEM_IDS: [RESTING_STEM_ID]}]
+        assert _owners(update(data)) == [{CHANNEL_NAME: "pulse1", STEM_IDS: [SINGLE_STEM_ID, RESTING_STEM_ID]}]
+
+
+class TestAChannelRestingThroughEveryFrame:
+    """A channel whose every frame rests stands by, so its stream states none of them."""
+
+    @staticmethod
+    def _upgraded() -> Dict[str, Any]:
+        resting = {**_stream("noise", False, False), INITIAL_PITCH: STORED_REFERENCE}
+        return update({INSTRUCTIONS_DATA: [_stream("pulse1", True), resting]})
+
+    def test_its_stream_holds_no_frame(self) -> None:
+        assert self._upgraded()[INSTRUCTIONS_DATA][1][INSTRUCTIONS] == []
+
+    def test_it_keeps_the_reference_it_stored(self) -> None:
+        assert self._upgraded()[INSTRUCTIONS_DATA][1][INITIAL_PITCH] == STORED_REFERENCE
+
+    def test_it_names_no_owner(self) -> None:
+        assert _owners(self._upgraded()) == [{CHANNEL_NAME: "pulse1", STEM_IDS: [SINGLE_STEM_ID]}]
+
+    def test_a_channel_that_sounds_keeps_its_frames(self) -> None:
+        assert len(self._upgraded()[INSTRUCTIONS_DATA][0][INSTRUCTIONS]) == 1
 
 
 class TestWhatTheStepLeavesAlone:

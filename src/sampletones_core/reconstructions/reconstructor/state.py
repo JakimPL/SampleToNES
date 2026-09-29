@@ -34,8 +34,3 @@ class ReconstructionState(BaseModel):
     ) -> None:
         """Records one frame of one channel: what it plays."""
         self.instructions[channel_name].append(instruction)
-
-    def drop(self, channel_name: ChannelName) -> None:
-        """Releases a channel's stream, leaving it out of the reconstruction being assembled."""
-        self.channel_names.remove(channel_name)
-        del self.instructions[channel_name]

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import cached_property
 from pathlib import Path
-from typing import Dict, List, Optional, Self, Sequence, Tuple
+from typing import AbstractSet, Dict, List, Optional, Self, Sequence, Tuple
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -115,6 +115,50 @@ class StemsData(DataModel):
         """The record with every recording's location let go of, keeping the names it holds."""
         return self._with_sources([source.detached() for source in self.sources])
 
+    def with_assignments(self, assignments: List[ChannelAssignment]) -> StemsData:
+        """The record naming ``assignments`` as the owners of every frame, the setup and sources kept."""
+        return self._rebuilt(
+            config=self.config,
+            sources=self.sources,
+            assignments=assignments,
+        )
+
+    def settled(self, playing: AbstractSet[ChannelName]) -> StemsData:
+        """The record answering for the channels in play and for those alone.
+
+        A channel resting through every frame stands by and describes no frame, so the record
+        lets go of the owners it named there, whatever left the channel silent.
+
+        Args:
+            playing: The channels whose streams sound somewhere.
+
+        Returns:
+            StemsData: The record of the channels in play.
+        """
+        return self._rebuilt(
+            config=self.config,
+            sources=self.sources,
+            assignments=[item for item in self.assignments if item.channel_name in playing],
+        )
+
     def _with_sources(self, sources: List[StemSource]) -> StemsData:
-        """This record carrying ``sources``, built afresh so its memoized views follow them."""
-        return StemsData(config=self.config, sources=sources, assignments=self.assignments)
+        """This record carrying ``sources`` in place of the ones it names."""
+        return self._rebuilt(
+            config=self.config,
+            sources=sources,
+            assignments=self.assignments,
+        )
+
+    @staticmethod
+    def _rebuilt(
+        *,
+        config: StemsConfig,
+        sources: List[StemSource],
+        assignments: List[ChannelAssignment],
+    ) -> StemsData:
+        """A record built afresh from its parts, so its memoized views follow what it now holds."""
+        return StemsData(
+            config=config,
+            sources=sources,
+            assignments=assignments,
+        )

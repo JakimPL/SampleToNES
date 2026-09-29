@@ -166,7 +166,6 @@ class Reconstructor:
         announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
         streams = worker.decoder.decode(assignment.lattices)
         assignment.release_silent(streams)
-        self._drop_resting_channels(assignment, streams)
         streams = self._refiner(stems_config).refine(streams, assignment.stem_ids, prepared.recordings)
         announce(report, ReconstructionStage.DECODING, WHOLE_STAGE, WHOLE_STAGE)
         self._record_streams(streams, report)
@@ -295,18 +294,6 @@ class Reconstructor:
     def _stem_frame_count(stem_frames: Dict[int, FragmentedAudio]) -> int:
         """The frames every recording answers, which they share by sharing a length."""
         return min((len(fragments) for fragments in stem_frames.values()), default=0)
-
-    def _drop_resting_channels(self, assignment: TrackAssignment, streams: Streams) -> None:
-        """Leaves the channels that sound, releasing those that rested through every frame.
-
-        A channel whose decoded stream sounds in no frame describes nothing, so it stands by: the
-        state releases its stream and the record names it no more, which is what keeps a silent
-        channel out of every export.
-        """
-        for channel_name in assignment.resting_channels:
-            self.state.drop(channel_name)
-            assignment.drop(channel_name)
-            del streams[channel_name]
 
     def _record_streams(
         self,

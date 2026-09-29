@@ -180,8 +180,9 @@ channel's stream in step with the frames.
 
 ### Standing by
 
-The state of a channel whose stream has no frame. No export writes it and it costs nothing, and it stays
-open to edit. See [Reconstructions](formats/reconstructions.md#instructions_data).
+The state of a channel whose stream sounds in no frame, whatever silenced it: a conversion, an edit or a
+removal. Its stream holds no frame. No export writes it and it costs nothing, and it stays open to edit.
+See [Reconstructions](formats/reconstructions.md#instructions_data).
 
 ### Decoder
 

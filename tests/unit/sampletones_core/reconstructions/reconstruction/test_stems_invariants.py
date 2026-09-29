@@ -7,7 +7,9 @@ from pydantic import ValidationError
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, bending_channels
-from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction
+from sampletones_core.features import resting_reference
+from sampletones_core.instructions import InstructionData, InstructionUnion, NoiseInstruction, PulseInstruction
+from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
@@ -23,6 +25,7 @@ STEM_A: Final[int] = 0
 STEM_B: Final[int] = 1
 EVERY_STEM: Final[FrozenSet[int]] = frozenset({STEM_A, STEM_B})
 UNHELD_STEM_IDS: Final[FrozenSet[int]] = frozenset({RESTING_STEM_ID, AUTHORED_STEM_ID})
+STORED_ID: Final[str] = "stored"
 
 
 def _pulse(pitch: int) -> PulseInstruction:
@@ -74,6 +77,40 @@ def _reconstruction(
                 for channel_name, stem_ids in owners.items()
             ],
         ),
+    )
+
+
+def _stored(
+    instructions: Mapping[ChannelName, Sequence[InstructionUnion]],
+    owners: Mapping[ChannelName, Sequence[int]],
+) -> Reconstruction:
+    """A document built from its stored parts as they stand, the way a file states them.
+
+    Creating a document settles it, so a record naming a channel the streams leave silent is
+    one a stored file carries and creation never writes.
+    """
+    return Reconstruction(
+        id=STORED_ID,
+        config=Config(),
+        instructions_data=[
+            InstructionsItem(
+                channel_name=channel_name,
+                instructions=[
+                    InstructionData.create(instruction) for instruction in instructions.get(channel_name, ())
+                ],
+                initial_pitch=resting_reference(channel_name),
+                held_features=[],
+            )
+            for channel_name in ChannelName.items()
+        ],
+        stems_data=StemsData(
+            config=_stems_config(),
+            assignments=[
+                ChannelAssignment(channel_name=channel_name, stem_ids=list(stem_ids))
+                for channel_name, stem_ids in owners.items()
+            ],
+        ),
+        coefficient=1.0,
     )
 
 
@@ -175,12 +212,26 @@ class TestTheRecordAfterEveryGesture(BaseTestSuite):
             gesture=lambda reconstruction: _edited(reconstruction, []),
         ),
         TestCase(
+            label="an edit writing every frame silent",
+            gesture=lambda reconstruction: _edited(reconstruction, [PulseInstruction.null_instruction()] * 3),
+        ),
+        TestCase(
             label="an edit writing an emptied channel back into play",
             gesture=lambda reconstruction: _edited(_edited(reconstruction, []), [_pulse(60), _pulse(62)]),
         ),
         TestCase(
             label="a recording taken out",
             gesture=lambda reconstruction: without_stem(reconstruction, STEM_B),
+        ),
+        TestCase(
+            label="a removal leaving a channel only rests",
+            gesture=lambda reconstruction: without_stem(
+                _edited(
+                    reconstruction,
+                    [PulseInstruction.null_instruction(), _pulse(62), PulseInstruction.null_instruction()],
+                ),
+                STEM_B,
+            ),
         ),
         TestCase(
             label="a recording taken out after an edit",
@@ -217,38 +268,86 @@ def _detached(reconstruction: Reconstruction) -> Reconstruction:
 class TestARecordTheDocumentRefuses:
     def test_a_channel_in_play_naming_no_owner_per_frame_is_refused(self) -> None:
         with pytest.raises(ValidationError):
-            _reconstruction(
+            _stored(
                 {ChannelName.PULSE1: [_pulse(60), _pulse(62)]},
                 {ChannelName.PULSE1: [STEM_A]},
             )
 
     def test_a_frame_naming_a_recording_the_setup_leaves_out_is_refused(self) -> None:
         with pytest.raises(ValidationError):
-            _reconstruction(
+            _stored(
                 {ChannelName.NOISE: [_noise()]},
                 {ChannelName.NOISE: [STEM_B]},
             )
 
     def test_a_sounding_frame_recorded_as_resting_is_refused(self) -> None:
         with pytest.raises(ValidationError):
-            _reconstruction(
+            _stored(
                 {ChannelName.PULSE1: [_pulse(60)]},
                 {ChannelName.PULSE1: [RESTING_STEM_ID]},
             )
 
     def test_a_silent_frame_recorded_as_held_is_refused(self) -> None:
         with pytest.raises(ValidationError):
-            _reconstruction(
-                {ChannelName.PULSE1: [PulseInstruction.null_instruction()]},
-                {ChannelName.PULSE1: [STEM_A]},
+            _stored(
+                {ChannelName.PULSE1: [_pulse(60), PulseInstruction.null_instruction()]},
+                {ChannelName.PULSE1: [STEM_A, STEM_A]},
             )
 
     def test_a_channel_standing_by_carrying_a_record_is_refused(self) -> None:
         with pytest.raises(ValidationError):
-            _reconstruction(
+            _stored(
                 {ChannelName.PULSE1: [_pulse(60)]},
                 {ChannelName.PULSE1: [STEM_A], ChannelName.TRIANGLE: [RESTING_STEM_ID]},
             )
+
+    def test_a_channel_resting_through_every_frame_is_refused(self) -> None:
+        """A channel resting throughout stands by, so a stream stating those frames is refused."""
+        with pytest.raises(ValidationError):
+            _stored(
+                {
+                    ChannelName.PULSE1: [_pulse(60)],
+                    ChannelName.NOISE: [NoiseInstruction.null_instruction()] * 2,
+                },
+                {
+                    ChannelName.PULSE1: [STEM_A],
+                    ChannelName.NOISE: [RESTING_STEM_ID] * 2,
+                },
+            )
+
+
+class TestWhatCreatingSettles:
+    """A conversion hands every channel it covered a stream, and a silent one stands by."""
+
+    @pytest.fixture
+    def created(self) -> Reconstruction:
+        """Stem A sounding the pulse while the noise it also covers rests through every frame."""
+        return _reconstruction(
+            {
+                ChannelName.PULSE1: [_pulse(60), _pulse(62)],
+                ChannelName.NOISE: [NoiseInstruction.null_instruction()] * 2,
+            },
+            {
+                ChannelName.PULSE1: [STEM_A, STEM_A],
+                ChannelName.NOISE: [RESTING_STEM_ID] * 2,
+            },
+        )
+
+    def test_a_channel_resting_through_every_frame_stands_by(self, created: Reconstruction) -> None:
+        assert created.playing_channels == (ChannelName.PULSE1,)
+        assert created.streams[ChannelName.NOISE] == InstructionsItem.resting(ChannelName.NOISE)
+
+    def test_the_record_names_it_no_more(self, created: Reconstruction) -> None:
+        assert ChannelName.NOISE not in created.stems_data.assignments_by_channel
+
+    def test_a_conversion_where_nothing_sounds_stands_every_channel_by(self) -> None:
+        created = _reconstruction(
+            {ChannelName.PULSE1: [PulseInstruction.null_instruction()]},
+            {ChannelName.PULSE1: [RESTING_STEM_ID]},
+        )
+
+        assert created.playing_channels == ()
+        assert created.stems_data.assignments == []
 
 
 class TestAnEntryHoldingNoFrame:

@@ -108,6 +108,33 @@ def _stamped_embedded_config(data: SerializedData) -> SerializedData:
     return updated
 
 
+def _silent_streams_emptied(data: SerializedData) -> SerializedData:
+    """The payload with every stream resting through its frames stated as none at all.
+
+    A channel resting through every frame stands by, and a channel standing by describes no frame.
+    The stream keeps the reference and the held dimensions it stored, so the channel keeps the base
+    it was shaped from.
+    """
+    streams = data.get(INSTRUCTIONS_DATA)
+    if not isinstance(streams, list):
+        return data
+
+    updated = dict(data)
+    updated[INSTRUCTIONS_DATA] = [_emptied_if_silent(stream) for stream in streams]
+    return updated
+
+
+def _emptied_if_silent(stream: Any) -> Any:
+    """One stored stream, stating no frame where none of its frames sounds."""
+    if not isinstance(stream, dict) or not isinstance(stream.get(INSTRUCTIONS), list):
+        return stream
+
+    if any(_sounds(frame) for frame in stream[INSTRUCTIONS]):
+        return stream
+
+    return {**stream, INSTRUCTIONS: []}
+
+
 def _with_the_stems_record(data: SerializedData) -> SerializedData:
     """The payload carrying the record of the one recording a 2.1 conversion answered to.
 
@@ -221,11 +248,14 @@ def update(data: SerializedData) -> SerializedData:
     it drove them, and the recording it was built from. Data version 2.2 renders its audio from the
     instructions it keeps, names each stream by its channel, and carries the record of the
     recordings behind its frames: the recording's own settings, where it was read from, and the
-    frame-by-frame account of what it holds, where a silent frame answers to rest.
+    frame-by-frame account of what it holds, where a silent frame answers to rest. A channel resting
+    through every frame stands by in 2.2, so its stream states no frame and the record names it
+    nowhere, while the reference it stored stays.
     """
     updated = _without_the_stored_audio(data)
     updated = _streams_named_by_channel(updated)
     updated = _stamped_embedded_config(updated)
+    updated = _silent_streams_emptied(updated)
     return _with_the_stems_record(updated)
 
 

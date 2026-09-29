@@ -117,18 +117,7 @@ class TestTrackAssignment:
         assert track.lattices[ChannelName.PULSE1] == [first.column]
         assert track.lattices[ChannelName.NOISE] == [rest.column]
 
-    def test_a_channel_resting_throughout_is_named_resting(self) -> None:
-        config = Config()
-        first, _ = _choices(config)
-        rest = _rest(config)
-
-        track = TrackAssignment([ChannelName.PULSE1, ChannelName.NOISE])
-        for _ in range(3):
-            track.add(StemFrameAssignment(choices=(first,), rests=(rest,)))
-
-        assert track.resting_channels == [ChannelName.NOISE]
-
-    def test_a_channel_that_sounds_once_keeps_its_place(self) -> None:
+    def test_a_channel_resting_before_it_sounds_records_both_frames(self) -> None:
         config = Config()
         first, _ = _choices(config)
         rest = _rest(config)
@@ -138,20 +127,7 @@ class TestTrackAssignment:
         track.add(StemFrameAssignment(choices=(first,), rests=(rest,)))
         track.add(StemFrameAssignment(choices=(first, noise_choice), rests=()))
 
-        assert track.resting_channels == []
         assert track.stem_ids[ChannelName.NOISE] == [RESTING_STEM_ID, 0]
-
-    def test_dropping_a_channel_releases_both_records(self) -> None:
-        config = Config()
-        first, _ = _choices(config)
-        rest = _rest(config)
-
-        track = TrackAssignment([ChannelName.PULSE1, ChannelName.NOISE])
-        track.add(StemFrameAssignment(choices=(first,), rests=(rest,)))
-        track.drop(ChannelName.NOISE)
-
-        assert set(track.lattices) == {ChannelName.PULSE1}
-        assert set(track.stem_ids) == {ChannelName.PULSE1}
 
     def test_a_frame_decoded_silent_is_released_to_the_resting_stem(self) -> None:
         config = Config()
@@ -164,9 +140,8 @@ class TestTrackAssignment:
         track.release_silent({ChannelName.PULSE1: [column[0] for column in track.lattices[ChannelName.PULSE1]]})
 
         assert track.stem_ids[ChannelName.PULSE1] == [first.stem_id, RESTING_STEM_ID, first.stem_id]
-        assert track.resting_channels == []
 
-    def test_a_channel_decoded_silent_throughout_is_named_resting(self) -> None:
+    def test_a_channel_decoded_silent_throughout_rests_in_every_frame(self) -> None:
         config = Config()
         silent_pick = _choice(0, ChannelName.PULSE1, PulseInstruction.null_instruction(), _fragment(config))
 
@@ -175,7 +150,7 @@ class TestTrackAssignment:
             track.add(StemFrameAssignment(choices=(silent_pick,), rests=()))
         track.release_silent({ChannelName.PULSE1: [column[0] for column in track.lattices[ChannelName.PULSE1]]})
 
-        assert track.resting_channels == [ChannelName.PULSE1]
+        assert track.stem_ids[ChannelName.PULSE1] == [RESTING_STEM_ID] * 3
 
 
 class TestHierarchyMode:

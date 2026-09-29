@@ -45,20 +45,6 @@ class TrackAssignment:
                 if not candidate.instruction.on:
                     stem_ids[frame] = RESTING_STEM_ID
 
-    def drop(self, channel_name: ChannelName) -> None:
-        """Releases a channel's records, leaving it out of the reconstruction being assembled."""
-        del self.lattices[channel_name]
-        del self.stem_ids[channel_name]
-
-    @property
-    def resting_channels(self) -> List[ChannelName]:
-        """The channels that rested through every frame, which sound nothing anywhere."""
-        return [
-            channel_name
-            for channel_name, stem_ids in self.stem_ids.items()
-            if all(stem_id == RESTING_STEM_ID for stem_id in stem_ids)
-        ]
-
     def _append(self, channel_name: ChannelName, stem_id: int, column: Column) -> None:
         lattice: ChannelLattice = self.lattices[channel_name]
         lattice.append(column)

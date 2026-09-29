@@ -39,7 +39,7 @@ from sampletones_core.exporters import (
     Features,
 )
 from sampletones_core.generators.render import render_channels
-from sampletones_core.instructions import InstructionUnion
+from sampletones_core.instructions import InstructionUnion, sounds
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
@@ -218,13 +218,13 @@ class Reconstruction(DataModel):
 
     @cached_property
     def playing_channels(self) -> Tuple[ChannelName, ...]:
-        """The channels whose instruction stream describes a frame.
+        """The channels whose instruction stream sounds in some frame.
 
         A reconstruction holds a stream for every channel, so this is what says which of them
-        play: the rest stand by, exporting nothing and costing nothing, while describing a
-        frame is what puts one in play.
+        play: the rest stand by, exporting nothing and costing nothing, while sounding a frame
+        is what puts one in play.
         """
-        return tuple(channel_name for channel_name, item in self.streams.items() if item.instructions)
+        return tuple(channel_name for channel_name, item in self.streams.items() if item.sounds)
 
     @staticmethod
     def _get_exporter_class(instruction: InstructionUnion) -> ExporterTypeUnion:
@@ -264,29 +264,99 @@ class Reconstruction(DataModel):
         audio_filepath: Tuple[Path, ...],
         stems_data: StemsData,
     ) -> Self:
-        instructions_data: List[InstructionsItem] = []
-        for channel_name in ChannelName.items():
-            channel_instructions = list(instructions.get(channel_name, ()))
-            if not channel_instructions:
-                instructions_data.append(InstructionsItem.resting(channel_name))
-                continue
+        """A fresh document holding the streams a conversion chose and the record it made.
 
-            exporter_class = cls._get_exporter_class(channel_instructions[0])
-            instructions_data.append(
-                InstructionsItem.create(
-                    channel_name=channel_name,
-                    instructions=channel_instructions,
-                    initial_pitch=cls._derive_initial_pitch(channel_instructions),
-                    held_features=exporter_class.unstated_features(channel_instructions),  # type: ignore[arg-type]
-                )
-            )
+        A channel whose stream sounds in no frame stands by, so it takes the stream of a channel
+        that describes none and the record lets go of it. The paths name the recordings in entry
+        order, so they reach the record before it settles.
 
+        Args:
+            instructions: What each channel plays, one instruction per frame.
+            config: The configuration the conversion ran under.
+            coefficient: The working-level coefficient the recordings were scaled by.
+            audio_filepath: Where each recording was read from, one path per entry.
+            stems_data: The record of the recordings behind every frame.
+
+        Returns:
+            Self: The document the conversion made.
+        """
+        streams = {
+            channel_name: cls._converted_stream(channel_name, list(instructions.get(channel_name, ())))
+            for channel_name in ChannelName.items()
+        }
+        instructions_data, settled = cls._settled(streams, stems_data.with_sources(audio_filepath))
         return cls(
             id=uuid4().hex,
             instructions_data=instructions_data,
-            stems_data=stems_data.with_sources(audio_filepath),
+            stems_data=settled,
             config=config,
             coefficient=coefficient,
+        )
+
+    @classmethod
+    def _converted_stream(
+        cls,
+        channel_name: ChannelName,
+        instructions: List[InstructionUnion],
+    ) -> InstructionsItem:
+        """The stream a conversion leaves one channel, anchored to the contour it plays.
+
+        A channel that sounds nowhere stands by, resting at the reference its first envelope
+        will sound at.
+        """
+        if not sounds(instructions):
+            return InstructionsItem.resting(channel_name)
+
+        exporter_class = cls._get_exporter_class(instructions[0])
+        return InstructionsItem.create(
+            channel_name=channel_name,
+            instructions=instructions,
+            initial_pitch=cls._derive_initial_pitch(instructions),
+            held_features=exporter_class.unstated_features(instructions),  # type: ignore[arg-type]
+        )
+
+    @staticmethod
+    def _settled(
+        streams: Mapping[ChannelName, InstructionsItem],
+        stems_data: StemsData,
+    ) -> Tuple[List[InstructionsItem], StemsData]:
+        """Every channel's stream in channel order, and the record answering for the channels in play.
+
+        Every change to a document passes through here, so a channel resting through every frame
+        stands by whatever silenced it: a conversion, an edit or a removal.
+        """
+        ordered = [streams[channel_name] for channel_name in ChannelName.items()]
+        playing = frozenset(item.channel_name for item in ordered if item.sounds)
+        return (
+            ordered,
+            stems_data.settled(playing),
+        )
+
+    def rewritten(
+        self,
+        streams: Mapping[ChannelName, InstructionsItem],
+        stems_data: StemsData,
+    ) -> Reconstruction:
+        """A fresh document holding ``streams`` and ``stems_data``, settled like any other change.
+
+        The identifier, metadata, configuration and working level carry over, so the result is
+        the same document describing what the gesture left.
+
+        Args:
+            streams: Every channel's stream, keyed by channel.
+            stems_data: The record of the recordings behind those streams.
+
+        Returns:
+            Reconstruction: The rewritten document.
+        """
+        instructions_data, settled = self._settled(streams, stems_data)
+        return Reconstruction(
+            metadata=self.metadata,
+            id=self.id,
+            config=self.config,
+            instructions_data=instructions_data,
+            stems_data=settled,
+            coefficient=self.coefficient,
         )
 
     @classmethod
@@ -298,7 +368,8 @@ class Reconstruction(DataModel):
         path: Tuple[Path, ...],
         stems_data: StemsData,
     ) -> Optional[Self]:
-        if all(not stream for stream in state.instructions.values()):
+        """The document a conversion's state describes, absent where no channel sounds anywhere."""
+        if not any(sounds(stream) for stream in state.instructions.values()):
             logger.warning(f"Reconstruction for file: {path} is empty")
             return None
 
@@ -329,8 +400,9 @@ class Reconstruction(DataModel):
         The record follows the frames: each of them keeps the recording that held it, one the
         edit quiets rests, and one it brings into play is the reader's own. ``heard`` names the
         recordings the edit reaches on this channel, so a frame of a recording left out of it
-        stands as it is. A channel the edit clears of every frame stands by and stays editable;
-        its audio is read afresh from the stream it now carries.
+        stands as it is. A channel the edit leaves resting through every frame stands by and
+        stays editable, keeping the reference and the held dimensions handed in; its audio is
+        read afresh from the stream it now carries.
 
         Args:
             channel_name: The channel the edit writes.
@@ -353,12 +425,12 @@ class Reconstruction(DataModel):
             initial_pitch=initial_pitch,
             held_features=held_features,
         )
-        self.instructions_data = [streams[name] for name in ChannelName.items()]
-        self.stems_data = StemsData(
-            config=self.stems_data.config,
-            sources=self.stems_data.sources,
-            assignments=self._assignments_with(channel_name, carried.stem_ids),
+        instructions_data, settled = self._settled(
+            streams,
+            self.stems_data.with_assignments(self._assignments_with(channel_name, carried.stem_ids)),
         )
+        self.instructions_data = instructions_data
+        self.stems_data = settled
         self._invalidate_derived_caches(self)
 
     def _assignments_with(
@@ -366,17 +438,9 @@ class Reconstruction(DataModel):
         channel_name: ChannelName,
         stem_ids: List[int],
     ) -> List[ChannelAssignment]:
-        """The per-channel record with one channel's owners replaced, in channel order.
-
-        A channel the edit leaves with no frame stands by, so it leaves the record along with
-        its stream.
-        """
+        """The per-channel record with one channel's owners replaced, in channel order."""
         replaced = {item.channel_name: item for item in self.stems_data.assignments}
-        if stem_ids:
-            replaced[channel_name] = ChannelAssignment(channel_name=channel_name, stem_ids=stem_ids)
-        else:
-            replaced.pop(channel_name, None)
-
+        replaced[channel_name] = ChannelAssignment(channel_name=channel_name, stem_ids=stem_ids)
         return [replaced[name] for name in ChannelName.items() if name in replaced]
 
     @property

@@ -109,10 +109,7 @@ class TestTheEnvelopesOfWhatIsHeard:
         reconstruction: Reconstruction,
         envelopes: ChannelEnvelopesViewModel,
     ) -> None:
-        """Each channel that sounds is read as the document writes it.
-
-        A channel written down to rests alone stays in play, since every reader hears a rest.
-        """
+        """Each channel that sounds is read as the document writes it, rests and all."""
         whole = reconstruction.export()
         sounding = {name: features for name, features in whole.items() if features.has_frames}
         assert sounding

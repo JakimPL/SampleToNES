@@ -3,7 +3,7 @@ from typing import AbstractSet, Dict, List, Mapping, Sequence
 import numpy as np
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.instructions import InstructionUnion
+from sampletones_core.instructions import InstructionUnion, sounds
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.ownership import heard_frame
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
@@ -75,8 +75,8 @@ def _heard_stream(
     """The stream a reader hears: silence where a recording is left out, cut where hearing ends.
 
     A rest answers to no recording, so every reader hears it and it stands where it is written.
-    That keeps a channel written down to rests alone in play, and leaves a channel whose sound
-    the reader's choice took away standing by, however many rests it also holds.
+    A channel whose heard part sounds in no frame reads as standing by, however many rests it
+    holds, which is how the document itself stores a channel resting through every frame.
     """
     if not stream:
         return list(stream)
@@ -84,19 +84,14 @@ def _heard_stream(
     null: InstructionUnion = type(stream[0]).null_instruction()
     masked: List[InstructionUnion] = []
     last_heard = 0
-    sounds = False
     for frame, instruction in enumerate(stream):
         if _is_heard(stem_ids, frame, heard):
             masked.append(instruction)
             last_heard = frame + 1
-            sounds = sounds or instruction.on
         else:
             masked.append(null)
 
-    if sounds or not any(instruction.on for instruction in stream):
-        return masked[:last_heard]
-
-    return []
+    return masked[:last_heard] if sounds(masked) else []
 
 
 def _is_heard(stem_ids: Sequence[int], frame: int, heard: AbstractSet[int]) -> bool:

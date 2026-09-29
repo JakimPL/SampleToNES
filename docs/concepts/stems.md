@@ -83,8 +83,8 @@ holds its channel's null instruction over a silent frame and records the resting
 streams, rendered approximations and the per-frame stem record therefore all run parallel to the frames
 they describe: frame *i* of a channel is frame *i* of the recording. A frame the decoder settles on a
 silent instruction records the resting stem id too, so the id and the silence name the same frames. A
-channel that rests through every frame is [standing by](../glossary.md#standing-by) and has no stream at
-all.
+channel that rests through every frame is [standing by](../glossary.md#standing-by), whatever left it
+silent, and has no stream at all.
 
 This is what makes a channel count and a hierarchy usable. Without it, a frame a count left unclaimed
 would shorten that channel's streams and carry its later frames early. What the channel plays would drift
