@@ -4,6 +4,7 @@ from .implementation.noise import NoiseExporter
 from .implementation.pulse import PulseExporter
 from .implementation.triangle import TriangleExporter
 from .maps import CHANNEL_TO_EXPORTER_MAP, INSTRUCTION_TO_EXPORTER_MAP
+from .sounding import stands_by
 from .tonal import TonalExporter
 from .types import ExporterClass, ExporterT, ExporterTypeUnion, ExporterUnion
 
@@ -21,4 +22,5 @@ __all__ = [
     "TonalExporter",
     "TriangleExporter",
     "playing_channels",
+    "stands_by",
 ]

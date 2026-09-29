@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, Set
 
 from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
 from sampletones_application.layout.behavior.scheduling.scheduling import (
@@ -21,7 +21,7 @@ from sampletones_application.view_model.reconstruction.update import (
 )
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_core.exporters import Features, playing_channels
+from sampletones_core.exporters import Features, playing_channels, stands_by
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import features_footprint
 from sampletones_shared.types.callback import VoidCallback
@@ -44,6 +44,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self._scheduling = scheduling
 
         self._pending_reconstruction_update: Optional[ReconstructionUpdate] = None
+        self._silenced: Set[ChannelName] = set()
 
         self.on_view_changed: Optional[Callable[[ReconstructionInstrumentsViewModel], None]] = None
         self.on_feature_data_changed: Optional[Callable[[Optional[ChannelEnvelopesViewModel]], None]] = None
@@ -83,15 +84,43 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         return {INSTRUMENT_CHANNEL: instrument.features}
 
     def refresh_view(self) -> None:
-        """Reports which channels play and the sizes they occupy, leaving the displayed envelopes as they are.
+        """Reports which channels play and the sizes they occupy, redrawing only a channel an edit silenced.
 
         A regeneration replaces what an instrument exports, so the byte figures and the standing-by
         channels settle on it. The envelopes themselves are left to the edit that started the
-        regeneration, so a field the user is still typing in keeps what they wrote.
+        regeneration, so a field the user is still typing in keeps what they wrote. A channel the
+        edit silenced stands by in the document once the regeneration lands, holding no frame, so
+        the panel draws it empty and the next edit starts from what the document holds.
         """
         self.call(
             self.on_view_changed,
             self._build_view_model(self._current_generators()),
+        )
+        self._redraw_silenced()
+
+    def _redraw_silenced(self) -> None:
+        """Draws the channels an edit silenced as the document now holds them, once they stand by there."""
+        envelopes = self._reconstruction_envelopes()
+        if envelopes is None:
+            return
+
+        standing = {
+            channel_name: envelopes[channel_name]
+            for channel_name in self._silenced
+            if not envelopes[channel_name].has_frames
+        }
+        if not standing:
+            return
+
+        self._silenced.difference_update(standing)
+        self.call(
+            self.on_feature_data_changed,
+            ChannelEnvelopesViewModel(
+                channels=standing,
+                ownership={
+                    channel_name: lane for channel_name, lane in envelopes.ownership.items() if channel_name in standing
+                },
+            ),
         )
 
     def _current_generators(self) -> Optional[Dict[ChannelName, Features]]:
@@ -182,12 +211,13 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         A conversion states the value it found, and moving it rebuilds the channel's frames around
         the new origin, so the edit travels back out through the regeneration.
         """
-        features = self._get_features(channel_name)
+        features = self._get_features(channel_name).model_copy(update={"initial_pitch": value})
+        self._note_silenced(channel_name, features)
         self._schedule_reconstruction_update(
             ReconstructionUpdate(
                 channel_name,
                 FeatureKey.INITIAL_PITCH,
-                features.model_copy(update={"initial_pitch": value}),
+                features,
             )
         )
 
@@ -206,8 +236,16 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
             return
 
         features = self._get_features(channel_name).with_envelope(feature_key, envelope)
+        self._note_silenced(channel_name, features)
         self._report_edited_size(channel_name, features)
         self._schedule_reconstruction_update(ReconstructionUpdate(channel_name, feature_key, features))
+
+    def _note_silenced(self, channel_name: ChannelName, features: Features) -> None:
+        """Remembers whether the latest edit of a channel silences it, which its regeneration then shows."""
+        if stands_by(channel_name, features):
+            self._silenced.add(channel_name)
+        else:
+            self._silenced.discard(channel_name)
 
     def _write_instrument_envelope(
         self,
@@ -234,8 +272,10 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         """Reports what the edited envelope costs as the edit arrives, ahead of its regeneration.
 
         Measuring the envelope the user just wrote keeps the figures answering what is on screen
-        while the reconstruction is still being rebuilt. The regenerated instruments report again
-        once they land, so the figures settle on the exported form.
+        while the reconstruction is still being rebuilt. The channel is measured as the
+        regeneration will leave it, so an edit silencing every frame reads as standing by at once,
+        with no frame and no figure. The regenerated instruments report again once they land, so
+        the figures settle on the exported form.
         """
         channels = self._current_generators()
         if channels is None:
@@ -243,8 +283,19 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
 
         self.call(
             self.on_view_changed,
-            self._build_view_model({**channels, channel_name: features}),
+            self._build_view_model({**channels, channel_name: self._as_regenerated(channel_name, features)}),
         )
+
+    def _as_regenerated(self, channel_name: ChannelName, features: Features) -> Features:
+        """The envelopes a channel holds once the regeneration has rebuilt it from its latest edit.
+
+        A channel the edit silenced rests through every frame, which the document stands by,
+        describing no frame.
+        """
+        if channel_name in self._silenced:
+            return features.leave_to_channel(features.envelopes)
+
+        return features
 
     def _schedule_reconstruction_update(
         self,
