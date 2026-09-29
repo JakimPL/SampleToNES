@@ -98,6 +98,8 @@ from sampletones_core.constants.enums import (
     GeneratorName,
 )
 from sampletones_core.exporters import Features
+from sampletones_core.exports.ceilings import FormatShortening, format_shortenings
+from sampletones_core.exports.format import ExportFormat
 from sampletones_core.features import (
     BEND_FEATURES,
     CHANNEL_GENERATOR_KIND,
@@ -106,10 +108,6 @@ from sampletones_core.features import (
 )
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.features.text import format_envelope, parse_envelope
-from sampletones_core.formats.famitracker.sequences.features import (
-    is_shortened,
-    stored_envelope,
-)
 from sampletones_core.utils.pitch_kind import (
     PERIOD_VALUE_KIND,
     PITCH_VALUE_KIND,
@@ -1007,18 +1005,32 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         *_args: Any,
         **_kwargs: Any,
     ) -> str:
-        """Describes the sequence input, naming what a FamiTracker file holds of an over-long one."""
+        """Describes the sequence input, naming what each tracker export keeps of an over-long one."""
         envelope = self._standing_sequence(channel_name, feature_key)
-        if is_shortened(feature_key, envelope):
+        shortenings = format_shortenings(feature_key, envelope)
+        if shortenings:
+            separator = self._language_manager["reconstructions.instruments.template.kept_separator"]
             return self._language_manager["reconstructions.instruments.message.status_sequence_too_long"].format(
                 instrument_feature=feature_key.capitalized,
                 items=len(envelope.items),
-                limit=len(stored_envelope(feature_key, envelope).items),
+                kept=separator.join(self._kept_by(shortening) for shortening in shortenings),
             )
 
         return self._language_manager["reconstructions.instruments.message.status_sequence"].format(
             instrument_feature=feature_key.capitalized
         )
+
+    def _kept_by(self, shortening: FormatShortening) -> str:
+        """Names one tracker export beside the items it keeps of a dimension."""
+        match shortening.export_format:
+            case ExportFormat.FAMITRACKER:
+                template = self._language_manager["reconstructions.instruments.template.kept_famitracker"]
+            case ExportFormat.BITPHASE:
+                template = self._language_manager["reconstructions.instruments.template.kept_bitphase"]
+            case ExportFormat.BITPHASE_PRESET:
+                template = self._language_manager["reconstructions.instruments.template.kept_bitphase_preset"]
+
+        return template.format(limit=shortening.kept)
 
     def _standing_sequence(
         self,
@@ -1034,14 +1046,14 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         feature_key: FeatureKey,
         envelope: Envelope[int],
     ) -> None:
-        """Holds the dimension the input now shows, colored by how a FamiTracker export treats its length.
+        """Holds the dimension the input now shows, colored by how the tracker exports treat its length.
 
-        A sequence a FamiTracker file holds only part of carries the warning color, so which
-        dimensions reach that file whole is visible before an export.
+        A sequence any tracker export holds only part of carries the warning color, so which
+        dimensions reach every file whole is visible before an export.
         """
         self._sequences[(channel_name, feature_key)] = envelope
         raw_data_tag = self._get_feature_text_tag(channel_name, feature_key)
-        theme = self.warning_input_theme if is_shortened(feature_key, envelope) else self.theme
+        theme = self.warning_input_theme if format_shortenings(feature_key, envelope) else self.theme
         theme.bind_to_item(raw_data_tag)
 
     def _parse_raw_data_input(

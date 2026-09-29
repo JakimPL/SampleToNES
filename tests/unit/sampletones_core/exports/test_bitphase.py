@@ -9,6 +9,7 @@ import pytest
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
+from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.implementation.bitphase import (
     BitphaseBackend,
@@ -24,6 +25,9 @@ from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.bitphase.specification.macros import MAX_MACRO_LENGTH, NesMacroField
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.voice import voice_channels
 from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import EXT_FILE_BITPHASE, EXT_FILE_JSON
 from tests.suite.silent_rows import name_a_missing_voice
@@ -32,6 +36,7 @@ NES_FREQUENCY: Final[int] = 60
 REFERENCE_PITCH: Final[int] = 60
 ENVELOPE_FRAMES: Final[int] = 16
 LONG_ENVELOPE_FRAMES: Final[int] = 600
+LONGER_ENVELOPE_FRAMES: Final[int] = 700
 PROJECT_TITLE: Final[str] = "Demo"
 
 
@@ -135,6 +140,24 @@ class TestWriteInstrument:
         assert len(macros[NesMacroField.VOLUME_OR_RATE]["values"]) == MAX_MACRO_LENGTH
         assert len(document["tables"][0]["rows"]) == LONG_ENVELOPE_FRAMES
 
+    def test_an_envelope_within_a_macro_reports_nothing(self, backend: BitphaseBackend, tmp_path: Path) -> None:
+        artifact = backend.write_instrument(
+            tmp_path / f"Short{EXT_FILE_BITPHASE}",
+            build_instrument("Short", MAX_MACRO_LENGTH),
+        )
+        assert artifact.truncation is None
+
+    def test_an_envelope_beyond_a_macro_reports_both_counts(self, backend: BitphaseBackend, tmp_path: Path) -> None:
+        artifact = backend.write_instrument(
+            tmp_path / f"Long{EXT_FILE_BITPHASE}",
+            build_instrument("Long", LONG_ENVELOPE_FRAMES),
+        )
+        assert artifact.truncation == EnvelopeTruncation(
+            frames=MAX_MACRO_LENGTH,
+            source_frames=LONG_ENVELOPE_FRAMES,
+            instruments=1,
+        )
+
 
 class TestWriteSample:
     def test_every_slice_lands_in_one_document(self, backend: BitphaseBackend, tmp_path: Path) -> None:
@@ -155,6 +178,22 @@ class TestWriteSample:
         backend.write_sample(destination, build_sample("Kick", build_instrument("Kick", ENVELOPE_FRAMES)))
 
         assert read_document(destination)["name"] == "Kick"
+
+    def test_the_report_spans_every_shortened_slice(self, backend: BitphaseBackend, tmp_path: Path) -> None:
+        request = build_sample(
+            "Pad",
+            build_instrument("Short", ENVELOPE_FRAMES),
+            build_instrument("Long", LONG_ENVELOPE_FRAMES),
+            build_instrument("Longer", LONGER_ENVELOPE_FRAMES),
+        )
+
+        artifact = backend.write_sample(tmp_path / f"Pad{EXT_FILE_BITPHASE}", request)
+
+        assert artifact.truncation == EnvelopeTruncation(
+            frames=MAX_MACRO_LENGTH,
+            source_frames=LONGER_ENVELOPE_FRAMES,
+            instruments=2,
+        )
 
 
 class TestWriteProject:
@@ -206,6 +245,39 @@ class TestWriteProject:
 
         assert artifact.skipped_rows == ()
 
+    def test_a_project_whose_slices_outrun_a_macro_reports_it(
+        self,
+        backend: BitphaseBackend,
+        project: Project,
+        tmp_path: Path,
+    ) -> None:
+        """A hand-written instrument becomes a slice on every channel it sounds on, so each of them
+        counts as a shortened instrument.
+        """
+        pad = Instrument(
+            name="Pad",
+            envelopes=InstrumentEnvelopes(volume=Envelope(items=(15,) * LONG_ENVELOPE_FRAMES)),
+        )
+        project.voices.append(pad)
+
+        artifact = backend.write_project(tmp_path / f"Demo{EXT_FILE_BITPHASE}", ProjectExport(project=project))
+
+        assert artifact.truncation == EnvelopeTruncation(
+            frames=MAX_MACRO_LENGTH,
+            source_frames=LONG_ENVELOPE_FRAMES,
+            instruments=len(voice_channels(pad)),
+        )
+
+    def test_a_project_within_a_macro_reports_nothing(
+        self,
+        backend: BitphaseBackend,
+        project: Project,
+        tmp_path: Path,
+    ) -> None:
+        artifact = backend.write_project(tmp_path / f"Demo{EXT_FILE_BITPHASE}", ProjectExport(project=project))
+
+        assert artifact.truncation is None
+
 
 class TestThePresetBackend:
     def test_the_backend_names_its_format(self, preset_backend: BitphasePresetBackend) -> None:
@@ -256,6 +328,41 @@ class TestThePresetBackend:
         preset_backend.write_sample(destination, build_sample("Kick", build_instrument("Kick", ENVELOPE_FRAMES)))
 
         assert destination.parent.is_dir()
+
+    def test_a_preset_beyond_a_macro_reports_both_counts(
+        self,
+        preset_backend: BitphasePresetBackend,
+        tmp_path: Path,
+    ) -> None:
+        artifact = preset_backend.write_instrument(
+            tmp_path / f"Long{EXT_FILE_JSON}",
+            build_instrument("Long", LONG_ENVELOPE_FRAMES),
+        )
+        assert artifact.truncation == EnvelopeTruncation(
+            frames=MAX_MACRO_LENGTH,
+            source_frames=LONG_ENVELOPE_FRAMES,
+            instruments=1,
+        )
+
+    def test_a_set_of_presets_reports_every_shortened_slice(
+        self,
+        preset_backend: BitphasePresetBackend,
+        tmp_path: Path,
+    ) -> None:
+        request = build_sample(
+            "Pad",
+            build_instrument("Short", ENVELOPE_FRAMES),
+            build_instrument("Long", LONG_ENVELOPE_FRAMES),
+            build_instrument("Longer", LONGER_ENVELOPE_FRAMES),
+        )
+
+        artifact = preset_backend.write_sample(tmp_path / f"Pad{EXT_FILE_JSON}", request)
+
+        assert artifact.truncation == EnvelopeTruncation(
+            frames=MAX_MACRO_LENGTH,
+            source_frames=LONGER_ENVELOPE_FRAMES,
+            instruments=2,
+        )
 
     def test_a_project_is_refused(
         self,

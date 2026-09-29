@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Final, List, cast
+from typing import Dict, Final, FrozenSet, List, cast
 from unittest.mock import MagicMock
 
 import dearpygui.dearpygui as dpg
@@ -47,6 +47,8 @@ from sampletones_application.view_model.shared.ownership import (
 from sampletones_core.constants.enums import ChannelName, FeatureKey, GeneratorName
 from sampletones_core.constants.general import PITCH_BEND_MAX, PITCH_BEND_MIN
 from sampletones_core.exporters.feature import Features
+from sampletones_core.exports.ceilings import FORMAT_STORED_LENGTHS
+from sampletones_core.exports.format import ExportFormat
 from sampletones_core.features import CHANNEL_GENERATOR_KIND, supported_features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
@@ -58,6 +60,13 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
 SEQUENCE_STATUS_KEY: Final[str] = "reconstructions.instruments.message.status_sequence"
+KEPT_KEYS: Final[Dict[ExportFormat, str]] = {
+    ExportFormat.FAMITRACKER: "reconstructions.instruments.template.kept_famitracker",
+    ExportFormat.BITPHASE: "reconstructions.instruments.template.kept_bitphase",
+    ExportFormat.BITPHASE_PRESET: "reconstructions.instruments.template.kept_bitphase_preset",
+}
+PAST_A_SEQUENCE: Final[int] = 300
+PAST_A_MACRO: Final[int] = 600
 
 LARGEST_PULSE: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=9, sequence_bytes=768)
 LARGEST_TRIANGLE: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=7, sequence_bytes=512)
@@ -470,6 +479,72 @@ class TestSequenceStatusMessage:
         message = panel._sequence_status_message(ChannelName.PULSE1, FeatureKey.VOLUME)
         assert "300" in message
         assert str(MAX_SEQUENCE_ITEMS) in message
+
+
+class TestTheExportsASequenceStatusNames(BaseTestSuite):
+    """Every tracker export stores a bounded number of items, so the status line names each export
+    that shortens the dimension beside what it keeps, and leaves out the ones that store it whole.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        feature_key: FeatureKey
+        item_count: int
+        expected: FrozenSet[ExportFormat]
+
+    test_cases = (
+        TestCase(
+            feature_key=FeatureKey.VOLUME,
+            item_count=PAST_A_SEQUENCE,
+            expected=frozenset({ExportFormat.FAMITRACKER}),
+            label="volume_past_a_sequence",
+        ),
+        TestCase(
+            feature_key=FeatureKey.VOLUME,
+            item_count=PAST_A_MACRO,
+            expected=frozenset(
+                {
+                    ExportFormat.FAMITRACKER,
+                    ExportFormat.BITPHASE,
+                    ExportFormat.BITPHASE_PRESET,
+                }
+            ),
+            label="volume_past_a_macro",
+        ),
+        TestCase(
+            feature_key=FeatureKey.ARPEGGIO,
+            item_count=PAST_A_MACRO,
+            expected=frozenset(
+                {
+                    ExportFormat.FAMITRACKER,
+                    ExportFormat.BITPHASE_PRESET,
+                }
+            ),
+            label="arpeggio_past_a_macro",
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_status_names_each_export_that_shortens_the_dimension(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        test_case: TestCase,
+    ) -> None:
+        envelope = sequence(test_case.item_count)
+        panel._show_sequence(ChannelName.PULSE1, test_case.feature_key, envelope)
+
+        message = panel._sequence_status_message(ChannelName.PULSE1, test_case.feature_key)
+
+        named = {
+            export_format
+            for export_format, stored_length in FORMAT_STORED_LENGTHS.items()
+            if panel._language_manager[KEPT_KEYS[export_format]].format(
+                limit=stored_length(test_case.feature_key, envelope),
+            )
+            in message
+        }
+        assert named == test_case.expected
+        assert str(test_case.item_count) in message
 
 
 class TestSizeFields(BaseTestSuite):

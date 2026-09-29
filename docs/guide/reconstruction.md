@@ -74,6 +74,9 @@ Each channel has its own set:
 Type `|` before a value to mark where the sequence repeats while a note is held. `15 14 | 12 10` plays
 the attack once and then loops the last two values.
 
+A sequence turns the warning color when it is too long for an export. Point at it, and the status bar
+says how many values each export keeps.
+
 Clear a sequence to use the channel's own setting. For example, an instrument with an empty volume
 sequence plays at the volume the channel is set to. Each channel shows how many bytes its instrument
 takes on the NES, so you can see how much space an edit uses.

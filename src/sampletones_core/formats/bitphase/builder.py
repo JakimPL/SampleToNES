@@ -6,6 +6,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.exporters.skipped import BuiltDocument, find_skipped_rows
 from sampletones_core.exporters.slices import iterate_voice_slices
+from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.formats.bitphase.envelopes import (
     ChannelEnvelopes,
@@ -60,6 +61,7 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     VOLUME_OFF,
     NoteName,
 )
+from sampletones_core.formats.bitphase.truncation import document_truncation
 from sampletones_core.formats.bitphase.tuning import concert_frequency, generate_tuning_table
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
@@ -346,11 +348,21 @@ def _build_voice_table(
     *,
     maximum_table_id: int,
     tuning_table: Tuple[int, ...],
-) -> Tuple[List[SliceVoice], SliceVoiceTable]:
+) -> Tuple[
+    List[SliceVoice],
+    SliceVoiceTable,
+    Optional[EnvelopeTruncation],
+]:
+    """Builds an instrument and a table for every voice slice, with what the macros shortened.
+
+    Each slice becomes an instrument of its own, so the report counts the slices a macro shortened.
+    """
     voices: List[SliceVoice] = []
     by_reference: SliceVoiceTable = {}
+    truncations: List[Optional[EnvelopeTruncation]] = []
 
     for index, voice_slice in enumerate(iterate_voice_slices(project)):
+        truncations.append(document_truncation(voice_slice.features))
         envelopes = features_to_envelopes(
             voice_slice.features,
             voice_slice.channel,
@@ -367,7 +379,11 @@ def _build_voice_table(
         voices.append(voice)
         by_reference[voice_slice.key] = voice
 
-    return voices, by_reference
+    return (
+        voices,
+        by_reference,
+        EnvelopeTruncation.summarize(truncations),
+    )
 
 
 def _volume_column(volume: Optional[int]) -> int:
@@ -567,20 +583,22 @@ def project_to_bitphase(project: Project) -> BitphaseProject:
 
 
 def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
-    """Maps a project onto the Bitphase document IR and lists the rows it had to leave silent.
+    """Maps a project onto the Bitphase document IR and lists what it had to leave out.
 
     The song carries the project's tempo as a groove, which is the initial speed on its own
     where every row lasts alike and a table the patterns trigger where the rows differ. It plays
     at the tuning the project's samples were reconstructed at, and at concert pitch where the
     project holds no sample. A row naming a voice on a channel the voice has no instrument for
     plays nothing in the song, so the document holds a note cut there and the row is listed
-    beside it.
+    beside it. A dimension longer than a macro holds keeps its opening values, and the slices
+    shortened that way are reported beside the rows.
 
     Args:
         project: The project to write.
 
     Returns:
-        BuiltDocument[BitphaseProject]: The document to serialize and the rows left silent.
+        BuiltDocument[BitphaseProject]: The document to serialize, the rows left silent and the
+            slices shortened.
 
     Raises:
         ValueError: If the project holds more than Bitphase has room for, if its samples were
@@ -590,7 +608,7 @@ def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
     a4_tuning = concert_frequency(tuning_from_project(project))
     tuning_table = generate_tuning_table(DEFAULT_CPU_FREQUENCY, a4_tuning=a4_tuning)
     groove = _project_groove(project)
-    voices, by_reference = _build_voice_table(
+    voices, by_reference, truncation = _build_voice_table(
         project,
         maximum_table_id=_maximum_slice_table_id(groove),
         tuning_table=tuning_table,
@@ -626,4 +644,5 @@ def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
             instruments=tuple(voice.instrument for voice in voices),
         ),
         skipped_rows=find_skipped_rows(project.song, by_reference),
+        truncation=truncation,
     )

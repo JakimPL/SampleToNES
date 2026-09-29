@@ -247,6 +247,9 @@ A voice plays on the channels its instruments cover. Where a row names a voice o
 FamiTracker and Bitphase files hold a note cut on that row, which is how the song plays it. The dialog
 that announces the export lists those rows by frame, channel and row.
 
+FamiTracker and Bitphase files have room for a limited number of values per sequence. A longer sequence
+is cut short, and the dialog says how many instruments were shortened.
+
 An NSF program has room for 32 KB, so the app tells you when a song is too long. See [NSF
 export](../formats/nsf.md) and [song compression](../concepts/compression.md).
 

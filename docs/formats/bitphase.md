@@ -256,7 +256,7 @@ is the same cell you would see in the tracker.
 
 | Quantity | Bitphase limit | Exporter behavior |
 | --- | --- | --- |
-| Values per instrument macro | 1–512 | writes the opening values of a longer dimension, and keeps a volume's closing silence |
+| Values per instrument macro | 1–512 | writes the opening values of a longer dimension, keeps a volume's closing silence, and reports what it left out |
 | Rows per table | unbounded | writes the contour, or the groove, whole |
 | Effect columns per channel | 1–4 | writes one, which the groove trigger takes on the DPCM channel |
 | Instruments | the instrument column holds 2 base-36 digits, so 1–1295 | raises past 1295 |
@@ -279,10 +279,15 @@ document whose later voices cannot be named. A song whose rows vary spends one o
 so the slices a document holds are those the table column can still name.
 
 **The macro limit is the one a reconstruction meets by itself.** A dimension reaches it at 512 frames,
-which is 8.5 s at 60 Hz. Each field is counted on its own, so a flat duty or a held level costs one value,
-and the contour the table carries keeps its whole length. A volume dimension keeps its closing silence as
+which is 8.5 s at 60 Hz. Each field is counted on its own, so a flat duty or a held level costs one value.
+In a `.btp` the contour the table carries keeps its whole length. A preset folds the contour into
+`toneAdd`, so there the contour stops at 512 values too. A volume dimension keeps its closing silence as
 its last value, because the note has to end. [The FamiTracker export](famitracker.md#b-the-2a03-instrument)
 meets its own limit by the same rule.
+
+**The export reports what it left out.** Every scope reports the instruments a macro shortened: an
+instrument by the values it kept of the values it had, a reconstruction and a project by how many
+instruments were shortened. A project counts each slice as one instrument.
 
 ## G. Data without a counterpart
 

@@ -8,6 +8,7 @@ from sampletones_application.categories.export import ExportMessages
 from sampletones_application.categories.exports import EXPORT_INSTRUMENT_FILTERS
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.categories.truncation import TruncationMessages
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.export.instrument import (
@@ -398,28 +399,24 @@ class ReconstructionTabCoordinator:
     def _export_message(
         self,
         success: str,
-        shortened: str,
+        shortened: TruncationMessages,
         truncation: Optional[EnvelopeTruncation],
     ) -> str:
-        """Follows the success line with the frames the FamiTracker sequence limit left out.
+        """Follows the success line with the frames the format's value limit left out.
 
         Args:
             success: The message shown for a complete export.
-            shortened: The template describing what a shortened export carries.
+            shortened: The words describing what a shortened export carries.
             truncation: The shortening the export underwent, or ``None`` when it fit whole.
 
         Returns:
             str: The message for the export result dialog.
         """
-        if truncation is None:
+        notice = shortened.notice(truncation)
+        if notice is None:
             return success
 
-        note = shortened.format(
-            frames=truncation.frames,
-            source_frames=truncation.source_frames,
-            instruments=truncation.instruments,
-        )
-        return f"{success}\n\n{note}"
+        return f"{success}\n\n{notice}"
 
     def _update_reconstruction_view(
         self,

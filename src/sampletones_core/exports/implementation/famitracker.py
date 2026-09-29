@@ -1,9 +1,9 @@
 from pathlib import Path
-from typing import Final, FrozenSet, List, Optional
+from typing import Final, FrozenSet
 
 from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
-from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.artifact import ExportArtifact
+from sampletones_core.exports.batch import write_instrument_files
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.progress import ExportReporter, announce
 from sampletones_core.exports.request import (
@@ -22,7 +22,6 @@ from sampletones_core.formats.famitracker.specification.instruments import (
 )
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
 from sampletones_shared.utils.progress import silent_reporter
-from sampletones_shared.utils.system.paths import get_filename
 
 SUPPORTED_SCOPES: FrozenSet[ExportScope] = frozenset(ExportScope)
 
@@ -76,29 +75,12 @@ class FamiTrackerBackend:
         request: SampleExport,
         report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-
-        written = len(request.instruments)
-        announce(report, ExportStage.WRITING, NOTHING_WRITTEN, written)
-
-        paths: List[Path] = []
-        truncations: List[Optional[EnvelopeTruncation]] = []
-        for index, instrument in enumerate(request.instruments, start=ONE_FILE):
-            filepath = destination.with_name(
-                get_filename(
-                    instrument.name,
-                    EXT_FILE_INSTRUMENT,
-                )
-            )
-            artifact = self.write_instrument(filepath, instrument, silent_reporter)
-            paths.extend(artifact.paths)
-            truncations.append(artifact.truncation)
-            announce(report, ExportStage.WRITING, index, written)
-
-        return ExportArtifact(
-            paths=tuple(paths),
-            truncation=EnvelopeTruncation.summarize(truncations),
-            skipped_rows=NO_SKIPPED_ROWS,
+        return write_instrument_files(
+            destination,
+            request,
+            report,
+            extension=EXT_FILE_INSTRUMENT,
+            write_instrument=self.write_instrument,
         )
 
     def write_project(
@@ -108,7 +90,11 @@ class FamiTrackerBackend:
         report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
         announce(report, ExportStage.WRITING, NOTHING_WRITTEN, ONE_FILE)
-        skipped_rows = write_ftm(destination, request.project)
+        built = write_ftm(destination, request.project)
         announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
 
-        return ExportArtifact(paths=(destination,), truncation=None, skipped_rows=skipped_rows)
+        return ExportArtifact(
+            paths=(destination,),
+            truncation=built.truncation,
+            skipped_rows=built.skipped_rows,
+        )

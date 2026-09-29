@@ -229,9 +229,10 @@ writes the release item, so a volume dimension is one item longer than the frame
 written at, and a writer applies its own format's limit at export. A dimension over the limit is written
 as its opening items. A volume dimension keeps its release as the last item, because the note has to end,
 so the release displaces the last sounding item that would not fit. A reconstruction reaches the limit at
-252 frames, since its volume carries the release past them. At the default 30 fps that is 8.4 s. The
-export reports what it left out. [The Bitphase export](bitphase.md#f-bitphase-capacity-limits) shortens a
-dimension by the same rule, at its own limit.
+252 frames, since its volume carries the release past them. At the default 30 fps that is 8.4 s. Every
+scope reports what it left out: an instrument by the items it kept of the items it had, a reconstruction's
+instruments and a module by how many instruments were shortened. [The Bitphase
+export](bitphase.md#f-bitphase-capacity-limits) shortens a dimension by the same rule, at its own limit.
 
 **Empty dimensions.** An empty dimension is written as a disabled sequence. This differs from a sequence
 with a single zero: a disabled slot leaves that dimension to the channel, while a one-item sequence sets
@@ -312,7 +313,7 @@ that ends its note.
 | --- | --- | --- | --- |
 | Instruments | 64 total | unbounded (1–4 per sample, one per hand-written instrument) | raises when the instruments exceed 64 |
 | Sequences per kind | 128 | unbounded | raises when a kind's pool exceeds 128 |
-| Items per sequence | 252 | one item per frame, plus the volume's release; unbounded | keeps the opening items, a volume dimension ending at its release, and reports what it left out |
+| Items per sequence | 252 | one item per frame, plus the volume's release; unbounded | keeps the opening items, a volume dimension ending at its release, and reports what it left out in every scope, the module included |
 | Patterns per channel | 128 (indices 0–127) | pool keyed by arbitrary ints | raises when a pattern index exceeds 127 |
 | Order frames | 128 | unbounded | raises when the order exceeds 128 frames |
 | Pattern length (rows) | 256 | 1–256 (`rows_per_pattern`) | matches; no guard needed |

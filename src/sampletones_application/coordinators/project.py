@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Dict, Mapping, Optional, Tuple
+from typing import Dict, List, Mapping, Optional, Tuple
 
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
@@ -12,6 +12,7 @@ from sampletones_application.categories.exports import EXPORT_PROJECT_ELEMENTS
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.skipped import SkippedRowMessages
+from sampletones_application.categories.truncation import TruncationMessages
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.logic.project.controller import ProjectController
@@ -36,6 +37,7 @@ from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_core.exporters.skipped import SkippedRow
+from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.scope import ExportScope
@@ -88,6 +90,7 @@ class ProjectCoordinator:
         self._dialogs = dialogs
         self._language_manager = language_manager
         self._skipped_row_messages = SkippedRowMessages.build(language_manager)
+        self._truncation_messages = TruncationMessages.for_project(language_manager)
         self._on_tab_switch = on_tab_switch
         self._project_manager.session.on_state_changed = on_session_state_changed
 
@@ -321,12 +324,13 @@ class ProjectCoordinator:
                 kind=ExportKind.PROJECT,
                 export_format=ExportFormat() as export_format,
                 skipped_rows=skipped_rows,
+                truncation=truncation,
             ):
                 self._present(
                     partial(
                         self._dialogs.show_info,
                         TAG_GLOBAL_DIALOG_MODULE_EXPORTED,
-                        self._exported_message(export_format, skipped_rows),
+                        self._exported_message(export_format, skipped_rows, truncation),
                         self._title(GlobalDialogTitleElements.PROJECT_EXPORTED),
                     )
                 )
@@ -347,14 +351,22 @@ class ProjectCoordinator:
         self,
         export_format: ExportFormat,
         skipped_rows: Tuple[SkippedRow, ...],
+        truncation: Optional[EnvelopeTruncation],
     ) -> str:
-        """The report of a written project, followed by the rows the format wrote as a note cut."""
-        message = self._message(EXPORT_PROJECT_ELEMENTS[export_format].exported_message)
-        notice = self._skipped_row_messages.notice(skipped_rows, self._project_manager.current.voices)
-        if notice is None:
-            return message
+        """The report of a written project, followed by what the format left out of it.
 
-        return f"{message}\n\n{notice}"
+        The rows the format wrote as a note cut come first, then the instruments whose envelopes it
+        shortened.
+        """
+        paragraphs: List[str] = [self._message(EXPORT_PROJECT_ELEMENTS[export_format].exported_message)]
+        for notice in (
+            self._skipped_row_messages.notice(skipped_rows, self._project_manager.current.voices),
+            self._truncation_messages.notice(truncation),
+        ):
+            if notice is not None:
+                paragraphs.append(notice)
+
+        return "\n\n".join(paragraphs)
 
     def _present(self, raise_dialog: VoidCallback) -> None:
         """Raises ``raise_dialog`` once the frame the export window left the screen in has finished."""

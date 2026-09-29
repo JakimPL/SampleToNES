@@ -1,13 +1,15 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.skipped import BuiltDocument, find_skipped_rows
 from sampletones_core.exporters.slices import (
+    InstrumentEntry,
     InstrumentSlot,
     InstrumentTable,
     iterate_instrument_entries,
 )
+from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.model.module import (
     FamiTrackerModule,
@@ -24,6 +26,7 @@ from sampletones_core.formats.famitracker.notes import (
 )
 from sampletones_core.formats.famitracker.sequences.features import (
     features_to_instrument_sequences,
+    features_truncation,
 )
 from sampletones_core.formats.famitracker.specification.channels import (
     CHANNEL_COUNT_2A03,
@@ -99,10 +102,19 @@ def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], Inst
     Raises:
         ValueError: If the project holds more instruments than FamiTracker has room for.
     """
+    return _instrument_table(tuple(iterate_instrument_entries(project)))
+
+
+def _instrument_table(entries: Sequence[InstrumentEntry]) -> Tuple[List[Instrument2A03], InstrumentTable]:
+    """Builds the instruments the entries describe and the table a pattern row resolves through.
+
+    Raises:
+        ValueError: If the entries hold more instruments than FamiTracker has room for.
+    """
     instruments: List[Instrument2A03] = []
     slots: InstrumentTable = {}
 
-    for entry in iterate_instrument_entries(project):
+    for entry in entries:
         if entry.index >= MAX_INSTRUMENTS:
             raise ValueError(f"Module exceeds the FamiTracker limit of {MAX_INSTRUMENTS} instruments")
 
@@ -260,15 +272,18 @@ def project_to_module(project: Project) -> FamiTrackerModule:
 
 
 def build_module(project: Project) -> BuiltDocument[FamiTrackerModule]:
-    """Maps a project onto the FamiTracker module IR and lists the rows it had to leave silent.
+    """Maps a project onto the FamiTracker module IR and lists what it had to leave out.
 
     A row naming a voice on a channel the voice has no instrument for plays nothing in the song,
-    so the module holds a note cut there and the row is listed beside it.
+    so the module holds a note cut there and the row is listed beside it. A dimension longer than a
+    sequence holds keeps its opening items, and the instruments shortened that way are reported
+    beside the rows.
 
     Raises:
         ValueError: If the project holds more than FamiTracker has room for.
     """
-    instruments, slots = build_instrument_table(project)
+    entries = tuple(iterate_instrument_entries(project))
+    instruments, slots = _instrument_table(entries)
     song = project.song
     settings = project.settings
     info = project.info
@@ -319,4 +334,5 @@ def build_module(project: Project) -> BuiltDocument[FamiTrackerModule]:
             comment=info.comment,
         ),
         skipped_rows=find_skipped_rows(song, slots),
+        truncation=EnvelopeTruncation.summarize([features_truncation(entry.features) for entry in entries]),
     )

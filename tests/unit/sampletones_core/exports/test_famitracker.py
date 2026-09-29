@@ -19,6 +19,8 @@ from sampletones_core.formats.famitracker.specification.sequences import (
 )
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_shared.exceptions import OperationCanceled
 from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_MODULE
@@ -29,6 +31,7 @@ NES_FREQUENCY: Final[int] = 60
 ENVELOPE_FRAMES: Final[int] = 4
 AFTER_THE_FIRST_FILE: Final[int] = 2
 ONE_FILE: Final[int] = 1
+LONG_ENVELOPE_FRAMES: Final[int] = 600
 
 
 def build_features(frames: int, *, duty_cycle_frames: Optional[int] = None) -> Features:
@@ -207,6 +210,37 @@ class TestWriteProject:
         artifact = backend.write_project(tmp_path / f"Demo{EXT_FILE_MODULE}", ProjectExport(project=self._project()))
 
         assert artifact.skipped_rows == ()
+
+    def test_a_project_whose_instruments_outrun_a_sequence_reports_it(
+        self,
+        backend: FamiTrackerBackend,
+        tmp_path: Path,
+    ) -> None:
+        """A hand-written instrument is one FamiTracker instrument, whichever channels it sounds on."""
+        project = self._project()
+        project.voices.append(
+            Instrument(
+                name="Pad",
+                envelopes=InstrumentEnvelopes(volume=Envelope(items=(15,) * LONG_ENVELOPE_FRAMES)),
+            )
+        )
+
+        artifact = backend.write_project(tmp_path / f"Demo{EXT_FILE_MODULE}", ProjectExport(project=project))
+
+        assert artifact.truncation == EnvelopeTruncation(
+            frames=MAX_SEQUENCE_ITEMS,
+            source_frames=LONG_ENVELOPE_FRAMES,
+            instruments=1,
+        )
+
+    def test_a_project_within_a_sequence_reports_nothing(
+        self,
+        backend: FamiTrackerBackend,
+        tmp_path: Path,
+    ) -> None:
+        artifact = backend.write_project(tmp_path / f"Demo{EXT_FILE_MODULE}", ProjectExport(project=self._project()))
+
+        assert artifact.truncation is None
 
 
 class TestWhatABatchSaysAboutItself:

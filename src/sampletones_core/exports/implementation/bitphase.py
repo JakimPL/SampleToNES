@@ -1,8 +1,10 @@
 from pathlib import Path
-from typing import Final, FrozenSet, List
+from typing import Final, FrozenSet
 
 from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
+from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.artifact import ExportArtifact
+from sampletones_core.exports.batch import write_instrument_files
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.progress import ExportReporter, announce
 from sampletones_core.exports.request import (
@@ -19,14 +21,13 @@ from sampletones_core.formats.bitphase.builder import (
     sample_to_bitphase,
 )
 from sampletones_core.formats.bitphase.preset import instrument_to_preset, write_preset
+from sampletones_core.formats.bitphase.truncation import document_truncation, preset_truncation
 from sampletones_shared.paths.extensions import EXT_FILE_BITPHASE, EXT_FILE_JSON
 from sampletones_shared.utils.progress import silent_reporter
-from sampletones_shared.utils.system.paths import get_filename
 
 DOCUMENT_SCOPES: FrozenSet[ExportScope] = frozenset(ExportScope)
 PRESET_SCOPES: FrozenSet[ExportScope] = frozenset({ExportScope.INSTRUMENT, ExportScope.SAMPLE})
 
-WHOLE_ENVELOPE: None = None
 NOTHING_WRITTEN: Final[int] = 0
 ONE_FILE: Final[int] = 1
 
@@ -37,7 +38,8 @@ class BitphaseBackend:
     A ``.btp`` holds a whole document, so every scope lands in one file: an instrument
     and a reconstruction each become a playable document whose pattern triggers the
     instruments it carries. A macro holds the values of one dimension, up to the 512 a
-    Bitphase instrument stores, and a table carries a contour of any length.
+    Bitphase instrument stores, and a table carries a contour of any length. Every scope
+    reports the instruments a macro shortened.
     """
 
     @property
@@ -61,7 +63,11 @@ class BitphaseBackend:
         write_btp(destination, instrument_to_bitphase(request))
         announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
 
-        return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE, skipped_rows=NO_SKIPPED_ROWS)
+        return ExportArtifact(
+            paths=(destination,),
+            truncation=document_truncation(request.features),
+            skipped_rows=NO_SKIPPED_ROWS,
+        )
 
     def write_sample(
         self,
@@ -73,7 +79,13 @@ class BitphaseBackend:
         write_btp(destination, sample_to_bitphase(request))
         announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
 
-        return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE, skipped_rows=NO_SKIPPED_ROWS)
+        return ExportArtifact(
+            paths=(destination,),
+            truncation=EnvelopeTruncation.summarize(
+                [document_truncation(instrument.features) for instrument in request.instruments],
+            ),
+            skipped_rows=NO_SKIPPED_ROWS,
+        )
 
     def write_project(
         self,
@@ -88,7 +100,7 @@ class BitphaseBackend:
 
         return ExportArtifact(
             paths=(destination,),
-            truncation=WHOLE_ENVELOPE,
+            truncation=built.truncation,
             skipped_rows=built.skipped_rows,
         )
 
@@ -99,7 +111,9 @@ class BitphasePresetBackend:
     The panel reads one instrument per file into the slot the user has selected, so a
     whole reconstruction lands as a set of them beside the chosen destination, one file
     per channel slice named after the instrument. A preset carries macros alone, so its
-    pitch contour rides in the tone offset each tick takes.
+    pitch contour rides in the tone offset each tick takes, and every dimension, the contour
+    among them, keeps the values a macro holds. Every scope reports the instruments a macro
+    shortened.
     """
 
     @property
@@ -123,7 +137,11 @@ class BitphasePresetBackend:
         write_preset(destination, instrument_to_preset(request))
         announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)
 
-        return ExportArtifact(paths=(destination,), truncation=WHOLE_ENVELOPE, skipped_rows=NO_SKIPPED_ROWS)
+        return ExportArtifact(
+            paths=(destination,),
+            truncation=preset_truncation(request.features),
+            skipped_rows=NO_SKIPPED_ROWS,
+        )
 
     def write_sample(
         self,
@@ -131,23 +149,13 @@ class BitphasePresetBackend:
         request: SampleExport,
         report: ExportReporter = silent_reporter,
     ) -> ExportArtifact:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-
-        written = len(request.instruments)
-        announce(report, ExportStage.WRITING, NOTHING_WRITTEN, written)
-
-        paths: List[Path] = []
-        for index, instrument in enumerate(request.instruments, start=ONE_FILE):
-            filepath = destination.with_name(
-                get_filename(
-                    instrument.name,
-                    EXT_FILE_JSON,
-                )
-            )
-            paths.extend(self.write_instrument(filepath, instrument, silent_reporter).paths)
-            announce(report, ExportStage.WRITING, index, written)
-
-        return ExportArtifact(paths=tuple(paths), truncation=WHOLE_ENVELOPE, skipped_rows=NO_SKIPPED_ROWS)
+        return write_instrument_files(
+            destination,
+            request,
+            report,
+            extension=EXT_FILE_JSON,
+            write_instrument=self.write_instrument,
+        )
 
     def write_project(
         self,

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,6 +13,7 @@ from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
 from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS, SkippedRow
+from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
@@ -235,6 +236,36 @@ class TestAFormatWithASetupOpensIt:
         save_dialog.assert_not_called()
 
 
+@pytest.fixture(name="coordinator")
+def coordinator_fixture(monkeypatch: pytest.MonkeyPatch) -> ProjectCoordinator:
+    """A coordinator reporting a finished export at once, in the shipped language."""
+    monkeypatch.setattr(
+        project_module.FrameCallbackManager,
+        "set_frame_callback",
+        lambda callback: callback(),
+    )
+    project_manager = MagicMock()
+    project_manager.current = Project.create(title="Demo", author="Tester", settings=ProjectSettings())
+    return ProjectCoordinator(
+        MagicMock(),
+        project_manager,
+        MagicMock(),
+        MagicMock(),
+        export_backends={},
+        format_setups={},
+        dialogs=MagicMock(),
+        language_manager=LanguageManager(LANG_EN),
+        on_tab_switch=MagicMock(),
+        on_session_state_changed=MagicMock(),
+    )
+
+
+def announced(coordinator: ProjectCoordinator) -> str:
+    """The message the dialog announcing an export shows."""
+    message: str = coordinator._dialogs.show_info.call_args.args[1]
+    return message
+
+
 class TestAWrittenProjectReportsTheRowsLeftSilent:
     """A project holding rows that name a voice with no instrument still exports, and the dialog
     announcing it lists those rows where the reader finds them in the tracker."""
@@ -258,43 +289,13 @@ class TestAWrittenProjectReportsTheRowsLeftSilent:
             row_index=index,
         )
 
-    @pytest.fixture(name="coordinator")
-    def coordinator_fixture(self, monkeypatch: pytest.MonkeyPatch) -> ProjectCoordinator:
-        monkeypatch.setattr(
-            project_module.FrameCallbackManager,
-            "set_frame_callback",
-            lambda callback: callback(),
-        )
-        project_manager = MagicMock()
-        project_manager.current = Project.create(title="Demo", author="Tester", settings=ProjectSettings())
-        return ProjectCoordinator(
-            MagicMock(),
-            project_manager,
-            MagicMock(),
-            MagicMock(),
-            export_backends={},
-            format_setups={},
-            dialogs=MagicMock(),
-            language_manager=LanguageManager(LANG_EN),
-            on_tab_switch=MagicMock(),
-            on_session_state_changed=MagicMock(),
-        )
-
-    @staticmethod
-    def _announced(coordinator: ProjectCoordinator) -> str:
-        message: str = coordinator._dialogs.show_info.call_args.args[1]
-        return message
-
     def test_a_project_with_an_instrument_for_every_row_announces_the_export_alone(
         self,
         coordinator: ProjectCoordinator,
     ) -> None:
         coordinator._on_export_result(self._success(NO_SKIPPED_ROWS))
 
-        assert (
-            self._announced(coordinator)
-            == LanguageManager(LANG_EN)["global.dialog.message.project_exported_successfully"]
-        )
+        assert announced(coordinator) == LanguageManager(LANG_EN)["global.dialog.message.project_exported_successfully"]
 
     def test_the_rows_follow_the_announcement(
         self,
@@ -302,7 +303,7 @@ class TestAWrittenProjectReportsTheRowsLeftSilent:
     ) -> None:
         coordinator._on_export_result(self._success((self._row(26),)))
 
-        lines = self._announced(coordinator).splitlines()
+        lines = announced(coordinator).splitlines()
         assert lines[0] == "FamiTracker module exported successfully."
         assert lines[-1].endswith("Frame 03, Pulse 1, row 1A: ..")
 
@@ -315,4 +316,74 @@ class TestAWrittenProjectReportsTheRowsLeftSilent:
 
         coordinator._on_export_result(self._success(rows))
 
-        assert self._announced(coordinator).endswith(f"and {left_out} more")
+        assert announced(coordinator).endswith(f"and {left_out} more")
+
+
+class TestAWrittenProjectReportsTheInstrumentsShortened:
+    """A format stores a bounded number of values per dimension, so the dialog announcing a
+    project export says how many instruments it shortened."""
+
+    @staticmethod
+    def _success(
+        truncation: Optional[EnvelopeTruncation],
+        skipped_rows: tuple[SkippedRow, ...],
+    ) -> ExportSuccess:
+        return ExportSuccess(
+            kind=ExportKind.PROJECT,
+            filepath=Path("song.btp"),
+            export_format=ExportFormat.BITPHASE,
+            truncation=truncation,
+            skipped_rows=skipped_rows,
+        )
+
+    def test_a_shortened_project_export_names_what_it_left_out(
+        self,
+        coordinator: ProjectCoordinator,
+    ) -> None:
+        truncation = EnvelopeTruncation(frames=512, source_frames=600, instruments=3)
+
+        coordinator._on_export_result(self._success(truncation, NO_SKIPPED_ROWS))
+
+        paragraphs = announced(coordinator).split("\n\n")
+        assert paragraphs == [
+            LanguageManager(LANG_EN)["global.dialog.message.bitphase_project_exported_successfully"],
+            LanguageManager(LANG_EN)["global.dialog.template.export_truncated"].format(
+                frames=truncation.frames,
+                source_frames=truncation.source_frames,
+                instruments=truncation.instruments,
+            ),
+        ]
+
+    def test_a_whole_project_export_adds_no_notice(
+        self,
+        coordinator: ProjectCoordinator,
+    ) -> None:
+        coordinator._on_export_result(self._success(None, NO_SKIPPED_ROWS))
+
+        assert (
+            announced(coordinator)
+            == LanguageManager(LANG_EN)["global.dialog.message.bitphase_project_exported_successfully"]
+        )
+
+    def test_the_instruments_shortened_follow_the_rows_left_silent(
+        self,
+        coordinator: ProjectCoordinator,
+    ) -> None:
+        silent = SkippedRow(
+            voice_id=MISSING_VOICE_ID,
+            channel=SILENT_CHANNEL,
+            order_position=0,
+            row_index=0,
+        )
+
+        truncation = EnvelopeTruncation(frames=512, source_frames=600, instruments=1)
+
+        coordinator._on_export_result(self._success(truncation, (silent,)))
+
+        paragraphs = announced(coordinator).split("\n\n")
+        assert paragraphs[1].startswith(LanguageManager(LANG_EN)["global.dialog.message.export_skipped_rows"])
+        assert paragraphs[2] == LanguageManager(LANG_EN)["global.dialog.template.export_truncated"].format(
+            frames=truncation.frames,
+            source_frames=truncation.source_frames,
+            instruments=truncation.instruments,
+        )

@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from typing import Container, Final, Generic, List, Tuple, TypeVar
+from typing import Container, Final, Generic, List, Optional, Tuple, TypeVar
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.project.song import Song
 from sampletones_core.project.voices.note_on import NoteOn
 
@@ -33,15 +34,18 @@ NO_SKIPPED_ROWS: Final[Tuple[SkippedRow, ...]] = ()
 
 @dataclass(frozen=True)
 class BuiltDocument(Generic[DocumentT]):
-    """A format's document with the rows its build left silent.
+    """A format's document with what its build left out: the rows it silenced and the envelopes it shortened.
 
     Attributes:
         document: What the format serializes.
         skipped_rows: The rows written as a note cut for lack of an instrument.
+        truncation: The instruments the format's value limit shortened, and ``None`` where every
+            instrument is held whole.
     """
 
     document: DocumentT
     skipped_rows: Tuple[SkippedRow, ...]
+    truncation: Optional[EnvelopeTruncation]
 
 
 def find_skipped_rows(

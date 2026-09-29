@@ -3,11 +3,12 @@ from typing import Final, Optional, Sequence
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.constants.general import MAX_VOLUME, SILENT_VOLUME
 from sampletones_core.exporters.feature import Features
+from sampletones_core.exporters.truncation import is_shortened
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.sequences.features import (
     features_to_instrument_sequences,
     features_truncation,
-    is_shortened,
+    stored_length,
 )
 from sampletones_core.formats.famitracker.specification.sequences import (
     LOOP_FROM_START,
@@ -234,15 +235,15 @@ class TestTheReleaseAnExportKeeps:
 
 class TestWhetherAnExportShortensADimension:
     def test_a_dimension_within_the_limit_is_written_whole(self) -> None:
-        assert is_shortened(FeatureKey.VOLUME, envelope(released(MAX_SEQUENCE_ITEMS))) is False
+        assert is_shortened(FeatureKey.VOLUME, envelope(released(MAX_SEQUENCE_ITEMS)), stored_length) is False
 
     def test_a_dimension_past_the_limit_is_shortened(self) -> None:
-        assert is_shortened(FeatureKey.VOLUME, envelope(released(MAX_SEQUENCE_ITEMS + 1))) is True
+        assert is_shortened(FeatureKey.VOLUME, envelope(released(MAX_SEQUENCE_ITEMS + 1)), stored_length) is True
 
     def test_keeping_the_release_still_counts_as_shortening(self) -> None:
         """The release survives, so one sounding item is what the file leaves out."""
         source = envelope(released(MAX_SEQUENCE_ITEMS + 1))
-        assert is_shortened(FeatureKey.VOLUME, source) is True
+        assert is_shortened(FeatureKey.VOLUME, source, stored_length) is True
 
 
 class TestWhatAnExportReportsLeavingOut:

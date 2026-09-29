@@ -2,7 +2,10 @@ from typing import Dict, Final, Optional
 
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.exporters.feature import Features
-from sampletones_core.exporters.truncation import EnvelopeTruncation
+from sampletones_core.exporters.truncation import (
+    EnvelopeTruncation,
+    instrument_truncation,
+)
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.features.limits import within_limit
 from sampletones_core.formats.famitracker.model.sequence import InstrumentSequence
@@ -15,7 +18,6 @@ from sampletones_core.formats.famitracker.specification.sequences import (
     SequenceKind,
 )
 
-ONE_INSTRUMENT: Final[int] = 1
 NO_ARPEGGIO_STEP: Final[int] = 0
 
 
@@ -60,10 +62,10 @@ def stored_envelope(
     return within_limit(feature_key, envelope, MAX_SEQUENCE_ITEMS)
 
 
-def is_shortened(feature_key: FeatureKey, envelope: Envelope[int]) -> bool:
-    """Whether a FamiTracker file leaves items out of this dimension.
+def stored_length(feature_key: FeatureKey, envelope: Envelope[int]) -> int:
+    """The items a FamiTracker file holds of one dimension.
 
-    A reader watching an envelope grow and an export reporting what it wrote read the same answer,
+    A reader watching an envelope grow and an export reporting what it wrote read this one answer,
     so the length a file holds is decided in one place.
 
     Args:
@@ -71,9 +73,9 @@ def is_shortened(feature_key: FeatureKey, envelope: Envelope[int]) -> bool:
         envelope: The dimension as the instrument carries it.
 
     Returns:
-        bool: Whether the file holds fewer items than the dimension carries.
+        int: The items its sequence stores.
     """
-    return len(stored_envelope(feature_key, envelope).items) < len(envelope.items)
+    return len(stored_envelope(feature_key, envelope).items)
 
 
 def features_truncation(features: Features) -> Optional[EnvelopeTruncation]:
@@ -86,19 +88,7 @@ def features_truncation(features: Features) -> Optional[EnvelopeTruncation]:
         Optional[EnvelopeTruncation]: The shortening the file imposes, and ``None`` where every
             dimension is held whole.
     """
-    source_frames = features.frame_count
-    stored = max(
-        (len(envelope.items) for envelope in _stored_envelopes(features).values()),
-        default=0,
-    )
-    if stored >= source_frames:
-        return None
-
-    return EnvelopeTruncation(
-        frames=stored,
-        source_frames=source_frames,
-        instruments=ONE_INSTRUMENT,
-    )
+    return instrument_truncation(features, stored_length)
 
 
 def _pinned(stored: Dict[SequenceKind, Envelope[int]]) -> Dict[SequenceKind, Envelope[int]]:
