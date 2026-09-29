@@ -501,7 +501,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         """Shows what the panel has in front of it, marking the channels standing by.
 
         A reconstruction shows a tab per channel, and every channel is editable for as long as it
-        is open, so writing an envelope into a channel standing by is what puts it in play; a
+        is open, so writing a sounding envelope into a channel standing by is what puts it in play; a
         muted tab label and a withheld export say which channels are there. An instrument is one
         set every channel reads, so it shows a single tab under its own name, and the audition
         takes the pitch stepper's place: a row states the note a hand-written voice sounds at, and
