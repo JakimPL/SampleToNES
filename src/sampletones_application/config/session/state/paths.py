@@ -4,17 +4,12 @@ from pydantic import BaseModel, Field, field_serializer
 
 from sampletones_shared.paths.user import (
     CONFIG_PATH,
-    LIBRARY_DIRECTORY,
     PROJECTS_DIRECTORY,
     RECONSTRUCTIONS_DIRECTORY,
 )
 
 
 class LastPaths(BaseModel):
-    library: Path = Field(
-        default=LIBRARY_DIRECTORY,
-        description="The last used library directory path.",
-    )
     reconstruction: Path = Field(
         default=RECONSTRUCTIONS_DIRECTORY,
         description="The last used directory of saved reconstruction files.",
@@ -41,7 +36,6 @@ class LastPaths(BaseModel):
     )
 
     @field_serializer(
-        "library",
         "reconstruction",
         "audio_input",
         "config",

@@ -130,12 +130,6 @@ class ApplicationStateManager:
     def get_config_path(self) -> Path:
         return self.state.last_paths.config
 
-    def set_library_path(self, path: Path) -> None:
-        self.state.last_paths.library = get_directory(path)
-
-    def get_library_path(self) -> Path:
-        return self.state.last_paths.library
-
     def set_instrument_path(self, path: Path) -> None:
         self.state.last_paths.instrument = get_directory(path)
 

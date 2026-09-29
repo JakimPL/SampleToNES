@@ -629,7 +629,6 @@ class MainTabCoordinator:
     @ignore_none_path
     def _handle_select_library_directory(self, directory: Path) -> None:
         self._advanced_settings_panel.change_library_directory(directory)
-        self._session_manager.set_library_path(directory)
 
     def _select_output_directory(self) -> None:
         directory = select_directory_dialog(

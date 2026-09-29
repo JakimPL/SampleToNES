@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Type
+from typing import Final, Type
 from unittest.mock import patch
 
 import pytest
@@ -10,6 +10,8 @@ from sampletones_application.config.managers.state import ApplicationStateManage
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_application.tags.reconstructions import TAG_RECONSTRUCTIONS_BROWSER_PANEL
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_BROWSER_PANEL
+
+RETIRED_LAST_PATH: Final[str] = "library"
 
 
 @pytest.fixture
@@ -27,6 +29,32 @@ class TestApplicationStateManagerRecovery:
 
         assert manager.advanced_settings is True
         assert manager.window_width == ApplicationState().viewport.width
+
+    def test_a_retired_last_path_leaves_the_others_standing(self, tmp_path: Path) -> None:
+        """A state file naming a last path this build has retired loads with every path it still keeps."""
+        path = tmp_path / "state.yaml"
+        path.write_text(
+            yaml.safe_dump(
+                {
+                    "last_paths": {
+                        RETIRED_LAST_PATH: str(tmp_path / "instructions"),
+                        "project": str(tmp_path),
+                    },
+                }
+            )
+        )
+
+        manager = ApplicationStateManager(path)
+
+        assert manager.get_project_path() == tmp_path
+
+    def test_the_next_save_drops_a_retired_last_path(self, tmp_path: Path) -> None:
+        path = tmp_path / "state.yaml"
+        path.write_text(yaml.safe_dump({"last_paths": {RETIRED_LAST_PATH: str(tmp_path)}}))
+
+        ApplicationStateManager(path).save()
+
+        assert RETIRED_LAST_PATH not in yaml.safe_load(path.read_text())["last_paths"]
 
 
 class TestApplicationStateManagerInit:
@@ -182,14 +210,6 @@ class TestApplicationStateManagerLastPaths:
     ) -> None:
         manager.set_config_path(tmp_path / "config.json")
         assert isinstance(manager.get_config_path(), Path)
-
-    def test_set_library_path_stores_directory(
-        self,
-        manager: ApplicationStateManager,
-        tmp_path: Path,
-    ) -> None:
-        manager.set_library_path(tmp_path / "lib.json")
-        assert isinstance(manager.get_library_path(), Path)
 
     def test_set_instrument_path_stores_directory(
         self,

@@ -119,9 +119,6 @@ currently out of line. An entry leaves when the code meets the contract again.
   privates by hand, so those cases describe a method and not the wired object. A case reading the
   coordinator's own behavior cannot see a hook left unset. Building the object in that file closes the
   gap.
-* `state.last_paths.library` is written and never read. `SessionManager.set_library_path` records the
-  directory a library was chosen from, and no caller reaches `get_library_path`. Either the dialog reads
-  the remembered path or the field and its accessors go.
 * Which recordings a mix is built from is decided in `ui/` until **Add** is pressed. The chooser holds the
   pick as its own set and asks the view model how a gesture moves it, so a projection computes state
   transitions. The logic layer hears only the answer. Principles 3 and 4 put that machine in `logic/`,

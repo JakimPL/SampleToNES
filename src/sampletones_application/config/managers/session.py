@@ -129,12 +129,6 @@ class SessionManager:
     def get_config_path(self) -> Path:
         return self._state_manager.get_config_path()
 
-    def set_library_path(self, path: Path) -> None:
-        self._state_manager.set_library_path(path)
-
-    def get_library_path(self) -> Path:
-        return self._state_manager.get_library_path()
-
     def set_instrument_path(self, path: Path) -> None:
         self._state_manager.set_instrument_path(path)
 
