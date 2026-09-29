@@ -5,12 +5,14 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.configs.library import InstructionsLibraryConfig
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     ChannelName,
 )
 from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.exporters.skipped import SkippedRow
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.bitphase.builder import build_bitphase, project_to_bitphase
 from sampletones_core.formats.bitphase.model.pattern import BitphaseRow, EffectCell
 from sampletones_core.formats.bitphase.model.project import BitphaseProject
@@ -19,6 +21,7 @@ from sampletones_core.formats.bitphase.notes import (
     pitch_to_note_index,
 )
 from sampletones_core.formats.bitphase.specification.channels import ChannelIndex
+from sampletones_core.formats.bitphase.specification.chip import DEFAULT_A4_TUNING, DEFAULT_CPU_FREQUENCY
 from sampletones_core.formats.bitphase.specification.effects import (
     NO_EFFECT_PARAMETER,
     SPEED_EFFECT_DELAY,
@@ -34,6 +37,7 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     VOLUME_OFF,
     NoteName,
 )
+from sampletones_core.formats.bitphase.tuning import DEFAULT_TUNING_TABLE, generate_tuning_table
 from sampletones_core.instructions.implementation.pulse import PulseInstruction
 from sampletones_core.instructions.implementation.triangle import TriangleInstruction
 from sampletones_core.instructions.instruction import Instruction
@@ -43,9 +47,12 @@ from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.song import Song
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures import IdentifiedCollection
 from tests.suite.stems import single_entry_stems_data
@@ -63,45 +70,64 @@ EMPTY_ROW: Final[int] = 6
 SILENCED_ROW: Final[int] = 7
 GROOVE_TEMPO: Final[int] = 210
 GROOVE_TICKS: Final[Tuple[int, ...]] = (5, 4, 4, 4, 5, 4, 4, 4)
+RETUNED_A4_FREQUENCY: Final[float] = 432.0
 
 
 def build_reconstruction(
     instructions: Mapping[ChannelName, Sequence[Instruction]],
+    *,
+    config: Config,
 ) -> Reconstruction:
     approximations = {channel: np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32) for channel in instructions}
     return Reconstruction.create(
         instructions=instructions,
-        config=Config(),
+        config=config,
         coefficient=1.0,
         audio_filepath=(Path("/dev/null"),),
         stems_data=single_entry_stems_data(list(DEFAULT_CHANNELS), instructions),
     )
 
 
-def pulse_sample(name: str, pitch: int) -> Sample:
+def pulse_sample(
+    name: str,
+    pitch: int,
+    *,
+    config: Config,
+) -> Sample:
     instructions = [PulseInstruction(on=True, pitch=pitch, volume=15, duty_cycle=0)]
     return Sample(
         name=name,
-        reconstruction=build_reconstruction({ChannelName.PULSE1: instructions}),
+        reconstruction=build_reconstruction(
+            {ChannelName.PULSE1: instructions},
+            config=config,
+        ),
     )
 
 
-def triangle_sample(name: str, pitch: int) -> Sample:
+def triangle_sample(
+    name: str,
+    pitch: int,
+    *,
+    config: Config,
+) -> Sample:
     instructions = [TriangleInstruction(on=True, pitch=pitch)]
     return Sample(
         name=name,
-        reconstruction=build_reconstruction({ChannelName.TRIANGLE: instructions}),
+        reconstruction=build_reconstruction(
+            {ChannelName.TRIANGLE: instructions},
+            config=config,
+        ),
     )
 
 
 @pytest.fixture(name="lead")
 def lead_fixture() -> Sample:
-    return pulse_sample("Lead", LEAD_PITCH)
+    return pulse_sample("Lead", LEAD_PITCH, config=Config())
 
 
 @pytest.fixture(name="bass")
 def bass_fixture() -> Sample:
-    return triangle_sample("Bass", BASS_PITCH)
+    return triangle_sample("Bass", BASS_PITCH, config=Config())
 
 
 @pytest.fixture(name="source")
@@ -367,3 +393,43 @@ class TestARowWithNoInstrumentOnItsChannel:
 
     def test_a_project_naming_only_voices_with_instruments_reports_nothing(self, source: Project) -> None:
         assert build_bitphase(source).skipped_rows == ()
+
+
+class TestAProjectSoundsItsSamplesTuning:
+    """A song plays at one tuning, and a project's samples state it by agreeing on it, so the song
+    takes the tuning they were reconstructed at.
+    """
+
+    @pytest.fixture(name="retuned_config")
+    def retuned_config_fixture(self) -> Config:
+        return Config(library=InstructionsLibraryConfig(a4_frequency=RETUNED_A4_FREQUENCY))
+
+    @pytest.fixture(name="lead")
+    def lead_fixture(self, retuned_config: Config) -> Sample:
+        return pulse_sample("Lead", LEAD_PITCH, config=retuned_config)
+
+    @pytest.fixture(name="bass")
+    def bass_fixture(self, retuned_config: Config) -> Sample:
+        return triangle_sample("Bass", BASS_PITCH, config=retuned_config)
+
+    def test_the_song_takes_the_tuning_its_samples_share(self, document: BitphaseProject) -> None:
+        song = document.songs[0]
+        assert song.a4_tuning_hz == RETUNED_A4_FREQUENCY
+        assert song.tuning_table == generate_tuning_table(DEFAULT_CPU_FREQUENCY, a4_tuning=RETUNED_A4_FREQUENCY)
+
+    def test_samples_reconstructed_at_different_tunings_are_refused(self, source: Project) -> None:
+        """One table sounds one tuning, so a project whose samples disagree has no song to write."""
+        source.voices.append(triangle_sample("Concert bass", BASS_PITCH, config=Config()))
+        with pytest.raises(ValueError, match=str(RETUNED_A4_FREQUENCY)):
+            build_bitphase(source)
+
+    def test_a_project_of_instruments_alone_plays_at_concert_pitch(self) -> None:
+        voices: IdentifiedCollection[VoiceUnion] = IdentifiedCollection()
+        voices.append(Instrument(name="Lead", envelopes=InstrumentEnvelopes(volume=Envelope(items=(15, 0)))))
+        project = Project.create(title="Instruments", author="Tester", settings=ProjectSettings())
+        project.voices = voices
+
+        song = project_to_bitphase(project).songs[0]
+
+        assert song.a4_tuning_hz == DEFAULT_A4_TUNING
+        assert song.tuning_table == DEFAULT_TUNING_TABLE

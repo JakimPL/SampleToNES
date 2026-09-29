@@ -13,7 +13,10 @@ from sampletones_core.formats.bitphase.specification.chip import (
     TUNING_TABLE_LENGTH,
     ChipVariant,
 )
-from sampletones_core.formats.bitphase.tuning import generate_tuning_table
+from sampletones_core.formats.bitphase.tuning import concert_frequency, generate_tuning_table
+from sampletones_shared.constants.music import OCTAVE_SEMITONES
+from sampletones_shared.music import Tuning
+from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
 BITPHASE_NTSC_TABLE: Final[Tuple[int, ...]] = (
@@ -39,6 +42,8 @@ SLOW_CLOCK: Final[int] = 1000
 RAISED_A4_TUNING: Final[float] = 432.0
 RAISED_A4_PERIOD: Final[int] = 259
 NARROW_TIMER_LIMIT: Final[int] = 255
+C5_PITCH: Final[int] = 72
+SEMITONES_FROM_A4_TO_C5: Final[int] = 3
 
 
 @pytest.fixture(name="ntsc_table")
@@ -178,3 +183,39 @@ class TestTableShape:
             max_period=NARROW_TIMER_LIMIT,
         )
         assert max(table) == NARROW_TIMER_LIMIT
+
+
+class TestTheFrequencyASongCentersOn(BaseTestSuite):
+    """A song names its tuning by the frequency of its concert-pitch index, so a tuning whose
+    reference names another pitch is read out at that index.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        tuning: Tuning
+        expected: float
+
+    test_cases = (
+        TestCase(
+            tuning=Tuning(),
+            expected=DEFAULT_A4_TUNING,
+            label="concert",
+        ),
+        TestCase(
+            tuning=Tuning(a4_frequency=RAISED_A4_TUNING),
+            expected=RAISED_A4_TUNING,
+            label="retuned",
+        ),
+        TestCase(
+            tuning=Tuning(
+                a4_frequency=RAISED_A4_TUNING * 2 ** (SEMITONES_FROM_A4_TO_C5 / OCTAVE_SEMITONES),
+                a4_pitch=C5_PITCH,
+            ),
+            expected=RAISED_A4_TUNING,
+            label="named_at_c5",
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_it_is_the_frequency_the_concert_index_sounds_at(self, test_case: TestCase) -> None:
+        assert concert_frequency(test_case.tuning) == pytest.approx(test_case.expected)

@@ -117,8 +117,17 @@ period    = round(chipFrequency / 16 / frequency)   clamped to 1..2047
 ```
 
 Rounding matches JavaScript's `Math.round` (half away from zero on positives), so a table built here
-equals the one Bitphase derives from the same settings. The exporter writes NTSC (1 789 773 Hz) at concert
-pitch. PAL (1 662 607 Hz) and Dendy (1 773 448 Hz) are named in `specification/chip.py`.
+equals the one Bitphase derives from the same settings. The exporter writes NTSC (1 789 773 Hz). PAL
+(1 662 607 Hz) and Dendy (1 773 448 Hz) are named in `specification/chip.py`.
+
+**The song plays at the work's tuning.** `a4TuningHz` is the frequency the reconstruction's tuning gives
+pitch 69, the pitch at index 45. A tuning whose reference names another pitch is read out at pitch 69 all
+the same. The table is built from that frequency. Bitphase builds the table again from `a4TuningHz` and
+`chipFrequency` when it loads a song (`resolveTuningTable` in `src/lib/chips/nes/schema.ts`), so the
+exporter writes the two fields in step. An instrument or a reconstruction takes its own tuning. A project
+takes the tuning its samples were reconstructed at, and a project with no sample plays at A4 = 440 Hz. One
+table sounds one tuning, so a project whose samples were reconstructed at different tunings is refused, as
+the [NSF export](../development/player.md#the-song-a-file-carries) refuses it.
 
 **A note index is the absolute pitch less 24.** Indices 0–95 cover pitches 24–119, the span the FamiTracker
 exporter clamps to. A pattern cell stores the index as a semitone and an octave, which playback resolves
@@ -155,8 +164,9 @@ channel has.
 An instrument preset has no table, so its pitch movement is the per-tick `toneAdd` each tick applies to
 the note's own period. One offset carries the contour and the bend together. The offsets are measured
 against the pitch the slice was reconstructed at, under the tuning a freshly created Bitphase document
-plays: NTSC at concert pitch. The noise channel takes its period from the note, so a preset for it has a
-flat offset.
+plays: NTSC at concert pitch. A preset loads into a document that keeps its own tuning, so a preset stays
+at concert pitch whatever the reconstruction was tuned at. The noise channel takes its period from the
+note, so a preset for it has a flat offset.
 
 ### C.4 The bend rides the tone offset
 
@@ -171,7 +181,7 @@ is the `toneAdd` macro, one value per tick.
 | moves the note by the table step, then reads that note's period | each value is measured from the note its own contour step reaches, so a transposed trigger keeps its bend |
 | adds `toneAdd` to that period | the two bend dimensions added together, one value per tick |
 | leaves `toneAccumulation` clear | a whole offset per tick, not a step added to a running one |
-| silences a channel whose period reaches zero | an offset bounded to keep the period within 1–2047, the rule the timer follows |
+| silences a channel whose period reaches zero | an offset bounded to keep the period within 1–2047, the rule the timer follows, measured from the period the song's own table gives the note |
 
 The squares and the triangle read the offset. The noise channel takes its period from the note alone, so
 a noise slice writes no `toneAdd`. A slice that sounds every tick on its own note writes none either, so
@@ -252,6 +262,7 @@ is the same cell you would see in the tracker.
 | Instruments | the instrument column holds 2 base-36 digits, so 1–1295 | raises past 1295 |
 | Tables | the table column holds 1 base-36 digit, so ids 0–34 | raises past 35 tables, one of which a groove takes |
 | Note range | the 96-entry tuning table, pitch 24–119 | clamps to the nearest playable note |
+| A4 tuning | 220–880 Hz, the range the song settings offer (`src/lib/chips/nes/schema.ts`) | writes the work's tuning, and raises past that range |
 | Volume column | `-1` silences (the tracker shows `0`), `0` carries the level forward (shown blank), 1–15 set the level | writes the row's level, and `-1` where a row asks for silence |
 | Pattern length (rows) | 1–256 | clamps the preview pattern; a project keeps `rows_per_pattern` |
 | Order positions | unbounded | matches |
@@ -277,10 +288,6 @@ meets its own limit by the same rule.
 
 **`ProjectInfo.comment`** has no counterpart in a Bitphase document, which has a name and an author only,
 so the exporter leaves the comment out.
-
-**A document is written at concert pitch.** `a4TuningHz` and the tuning table are written at A4 = 440 Hz,
-so a reconstruction tuned elsewhere sounds a document at the pitch Bitphase gives a new one. The distance
-is recorded in [bugs and to-dos](../development/bugs-and-todos.md).
 
 **A field a reconstruction does not decide gets no macro.** The hardware envelope, the length counter, the
 phase retrigger, the sweep and the tone accumulator each take the default in section B. Bitphase also

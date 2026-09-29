@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, Sequence, Tuple
 
 from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName, FeatureKey
 from sampletones_core.exporters.bend import bend_envelope
@@ -102,10 +102,21 @@ def _contour(features: Features, channel: ChannelName) -> Envelope[int]:
     return arpeggio.with_items(tuple(_table_offset(channel, step) for step in arpeggio.items))
 
 
-def _silent_slice(features: Features, channel: ChannelName) -> ChannelEnvelopes:
+def _silent_slice(
+    features: Features,
+    channel: ChannelName,
+    *,
+    tuning_table: Sequence[int],
+) -> ChannelEnvelopes:
     """The smallest instrument Bitphase plays, which is what a slice describing no frame writes."""
     return ChannelEnvelopes(
-        macros=_macro_bag(SILENT_VOLUME_ENVELOPE, features, channel, FLAT_CONTOUR),
+        macros=_macro_bag(
+            SILENT_VOLUME_ENVELOPE,
+            features,
+            channel,
+            FLAT_CONTOUR,
+            tuning_table=tuning_table,
+        ),
         table_rows=FLAT_CONTOUR.items,
         table_loop=LOOP_FROM_START,
         ticks=0,
@@ -117,6 +128,8 @@ def _macro_bag(
     features: Features,
     channel: ChannelName,
     contour: Envelope[int],
+    *,
+    tuning_table: Sequence[int],
 ) -> MacroBag:
     """The fields the slice decides, the triangle channel leaving its one waveform alone."""
     macros = {NesMacroField.VOLUME_OR_RATE: macro(volume)}
@@ -124,23 +137,29 @@ def _macro_bag(
         macros[NesMacroField.PULSE_WIDTH] = macro(_waveform_envelope(features, channel))
 
     if channel in TONE_CHANNELS:
-        bend = _bend_envelope(features, contour)
+        bend = _bend_envelope(features, contour, tuning_table=tuning_table)
         if bend.written:
             macros[NesMacroField.TONE_ADD] = macro(bend)
 
     return macros
 
 
-def _bend_envelope(features: Features, contour: Envelope[int]) -> Envelope[int]:
+def _bend_envelope(
+    features: Features,
+    contour: Envelope[int],
+    *,
+    tuning_table: Sequence[int],
+) -> Envelope[int]:
     """The period offsets a slice's bend asks of each tick, measured from the note it sounds on.
 
     The table moves the note before Bitphase reads its period, and the tone offset is added to that
-    period, so each tick is measured from the note its own contour step reaches. A slice that sounds
-    every tick on its note asks for no offset at all.
+    period, so each tick is measured from the note its own contour step reaches, in the song's own
+    tuning table. A slice that sounds every tick on its note asks for no offset at all.
 
     Args:
         features: The per-dimension envelopes describing the slice.
         contour: The semitone steps the table moves the note by.
+        tuning_table: The period the song gives each note index.
 
     Returns:
         Envelope[int]: The offset per tick, empty where the slice sounds on its note throughout.
@@ -151,7 +170,7 @@ def _bend_envelope(features: Features, contour: Envelope[int]) -> Envelope[int]:
 
     base_index = pitch_to_note_index(features.initial_pitch)
     offsets = tuple(
-        sounding_offset(contour_period(base_index, _step(contour, tick)), steps)
+        sounding_offset(contour_period(tuning_table, base_index, _step(contour, tick)), steps)
         for tick, steps in enumerate(bend.items)
     )
     return bend.with_items(offsets)
@@ -166,14 +185,16 @@ def _step(contour: Envelope[int], tick: int) -> int:
 def features_to_envelopes(
     features: Features,
     channel: ChannelName,
+    *,
+    tuning_table: Sequence[int],
 ) -> ChannelEnvelopes:
     """Converts one channel slice's envelopes into the macros and table Bitphase reads it from.
 
     Volume becomes the instrument's per-tick level, the duty cycle becomes the channel's
     waveform field, the arpeggio becomes the table contour that moves the note, and a bend
-    becomes the offset each tick adds to the period that note resolves to. Each keeps the
-    length and the repeat point it was written at, so a dimension holding one value all
-    through costs that one value.
+    becomes the offset each tick adds to the period that note resolves to in the tuning table
+    the instrument plays under. Each keeps the length and the repeat point it was written at,
+    so a dimension holding one value all through costs that one value.
 
     A slice describing no frame comes back as the one silent value that is the smallest
     instrument Bitphase plays.
@@ -181,15 +202,23 @@ def features_to_envelopes(
     Args:
         features: The per-dimension envelopes describing the slice.
         channel: The NES channel the slice was reconstructed for.
+        tuning_table: The period each note index resolves to where the instrument plays, which
+            bounds every tick's tone offset.
 
     Returns:
         ChannelEnvelopes: The macros, contour and repeat points describing the slice.
     """
     if not features.frame_count:
-        return _silent_slice(features, channel)
+        return _silent_slice(features, channel, tuning_table=tuning_table)
 
     contour = _contour(features, channel)
-    macros = _macro_bag(_volume_envelope(features), features, channel, contour)
+    macros = _macro_bag(
+        _volume_envelope(features),
+        features,
+        channel,
+        contour,
+        tuning_table=tuning_table,
+    )
 
     return ChannelEnvelopes(
         macros=macros,

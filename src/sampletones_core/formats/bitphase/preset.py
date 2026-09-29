@@ -29,9 +29,10 @@ def _tone_offsets(
     A preset holds macros alone, so the movement a table would drive rides in the tone offset
     each tick takes, beside the bend the slice sounds. The offsets are measured against the
     pitch the slice was reconstructed at, under the tuning the NTSC system gives at concert
-    pitch, which is what a freshly created Bitphase document plays. The noise channel takes its
-    period from the note rather than from a period offset, so its offsets stay flat and the note
-    carries the pitch.
+    pitch, which is what a freshly created Bitphase document plays. A preset loads into a
+    document that keeps its own tuning, so the offsets stay at that tuning whatever the slice was
+    tuned at. The noise channel takes its period from the note, so its offsets stay flat and the
+    note carries the pitch.
     """
     if channel == ChannelName.NOISE:
         return (NO_TONE_OFFSET,) * len(contour)
@@ -42,7 +43,7 @@ def _tone_offsets(
 
     offsets = []
     for tick, semitones in enumerate(contour):
-        moved = contour_period(base_index, semitones) - base_period
+        moved = contour_period(DEFAULT_TUNING_TABLE, base_index, semitones) - base_period
         offsets.append(sounding_offset(base_period, moved + _value(bend, tick)))
 
     return tuple(offsets)
@@ -60,6 +61,7 @@ def instrument_to_preset(request: InstrumentExport) -> BitphaseInstrumentPreset:
     envelopes = features_to_envelopes(
         request.features,
         request.channel,
+        tuning_table=DEFAULT_TUNING_TABLE,
     )
     offsets = _tone_offsets(
         request.features,

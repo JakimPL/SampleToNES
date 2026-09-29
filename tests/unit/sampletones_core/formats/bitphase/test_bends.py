@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Final, List, Optional, Sequence
 
 import pytest
@@ -8,6 +9,8 @@ from sampletones_core.formats.bitphase.envelopes import features_to_envelopes
 from sampletones_core.formats.bitphase.notes import pitch_to_note_index
 from sampletones_core.formats.bitphase.preset import instrument_to_preset
 from sampletones_core.formats.bitphase.specification.chip import (
+    DEFAULT_A4_TUNING,
+    DEFAULT_CPU_FREQUENCY,
     MAX_TUNING_PERIOD,
     MIN_TUNING_PERIOD,
 )
@@ -17,7 +20,9 @@ from sampletones_core.formats.bitphase.specification.instruments import (
     NO_TONE_OFFSET,
 )
 from sampletones_core.formats.bitphase.specification.macros import NesMacroField
-from sampletones_core.formats.bitphase.tuning import DEFAULT_TUNING_TABLE
+from sampletones_core.formats.bitphase.tuning import DEFAULT_TUNING_TABLE, generate_tuning_table
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 from .conftest import REFERENCE_PITCH, build_features, build_instrument
 
@@ -26,6 +31,9 @@ BEND_ENVELOPE: Final[List[int]] = [0, -3, -7, -12]
 PITCH_CONTOUR: Final[List[int]] = [0, 5, 7, 12]
 BASE_INDEX: Final[int] = pitch_to_note_index(REFERENCE_PITCH)
 BASE_PERIOD: Final[int] = DEFAULT_TUNING_TABLE[BASE_INDEX]
+LOW_PITCH: Final[int] = 33
+LOWERED_A4_TUNING: Final[float] = 432.0
+DOWNWARD_BEND: Final[int] = 100
 
 
 def offsets(
@@ -41,7 +49,11 @@ def offsets(
         bend=bend,
         coarse_bend=coarse_bend,
     )
-    macro = features_to_envelopes(features, channel).macros.get(NesMacroField.TONE_ADD)
+    macro = features_to_envelopes(
+        features,
+        channel,
+        tuning_table=DEFAULT_TUNING_TABLE,
+    ).macros.get(NesMacroField.TONE_ADD)
     return [] if macro is None else list(macro.values)
 
 
@@ -69,6 +81,7 @@ class TestTheBendReachesTheToneOffset:
         written = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, bend=BEND_ENVELOPE),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert written.macros[NesMacroField.TONE_ADD].loop == len(BEND_ENVELOPE) - 1
 
@@ -97,6 +110,45 @@ class TestABendThePeriodRangeHolds:
     def test_every_offset_fits_the_field(self) -> None:
         written = offsets(bend=[MAX_TONE_ADD] * len(VOLUME_ENVELOPE))
         assert all(MIN_TONE_ADD <= offset <= MAX_TONE_ADD for offset in written)
+
+
+class TestTheTableABendIsBoundedBy(BaseTestSuite):
+    """Bitphase adds the offset to the period the song's own table gives the note, so the offset
+    is bounded against that table. A lowered tuning lengthens a low note's period to the longest
+    the timer holds, which leaves a downward bend no room at all.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        a4_tuning: float
+
+    test_cases = (
+        TestCase(
+            a4_tuning=DEFAULT_A4_TUNING,
+            label="concert",
+        ),
+        TestCase(
+            a4_tuning=LOWERED_A4_TUNING,
+            label="lowered",
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_bend_past_the_longest_period_stops_there(self, test_case: TestCase) -> None:
+        tuning_table = generate_tuning_table(DEFAULT_CPU_FREQUENCY, a4_tuning=test_case.a4_tuning)
+        features = build_features(
+            VOLUME_ENVELOPE,
+            bend=[DOWNWARD_BEND] * len(VOLUME_ENVELOPE),
+            initial_pitch=LOW_PITCH,
+        )
+        written = features_to_envelopes(
+            features,
+            ChannelName.PULSE1,
+            tuning_table=tuning_table,
+        ).macros[NesMacroField.TONE_ADD]
+
+        base_period = tuning_table[pitch_to_note_index(LOW_PITCH)]
+        assert all(base_period + offset == MAX_TUNING_PERIOD for offset in written.values)
 
 
 class TestAPresetCarriesBothMovements:

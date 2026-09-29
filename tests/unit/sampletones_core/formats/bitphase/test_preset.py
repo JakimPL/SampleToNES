@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Dict, Final, List
 
@@ -17,6 +18,7 @@ from sampletones_core.formats.bitphase.specification.instruments import (
 )
 from sampletones_core.formats.bitphase.specification.macros import NesMacroField
 from sampletones_core.formats.bitphase.tuning import DEFAULT_TUNING_TABLE
+from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import EXT_FILE_JSON
 
 from .conftest import REFERENCE_PITCH, build_features, build_instrument
@@ -25,6 +27,8 @@ VOLUME_ENVELOPE: Final[List[int]] = [15, 10, 5, 0]
 PITCH_CONTOUR: Final[List[int]] = [0, 3, 7, 12]
 NOISE_PERIOD: Final[int] = 4
 PRESET_KEYS: Final[List[str]] = ["chipType", "name", "macros"]
+BEND_ENVELOPE: Final[List[int]] = [0, -3, -7, -12]
+LOWERED_A4_FREQUENCY: Final[float] = 432.0
 
 
 def levels(preset: BitphaseInstrumentPreset) -> List[int]:
@@ -102,6 +106,20 @@ class TestThePitchContourRidesInTheToneOffset:
             ),
         )
         assert set(offsets(preset)) == {NO_TONE_OFFSET}
+
+
+class TestAPresetStaysAtConcertPitch:
+    """A preset loads into a document that keeps its own tuning, so its offsets are measured under
+    the tuning a new Bitphase document plays whatever the slice was tuned at.
+    """
+
+    def test_its_offsets_are_the_ones_a_concert_pitch_slice_writes(self) -> None:
+        slice_at_concert_pitch = build_instrument(
+            "Lead",
+            build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR, bend=BEND_ENVELOPE),
+        )
+        retuned = replace(slice_at_concert_pitch, tuning=Tuning(a4_frequency=LOWERED_A4_FREQUENCY))
+        assert offsets(instrument_to_preset(retuned)) == offsets(instrument_to_preset(slice_at_concert_pitch))
 
 
 class TestThePresetFile:

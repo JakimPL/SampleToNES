@@ -28,8 +28,6 @@ dimension the import starts carrying.
   driver and `NoteOff` to gain one.
 * Arpeggio modes. A sequence's `setting` byte says absolute. Fixed, relative and scheme need an enum of
   their own, and scheme needs the item bit-packing FamiTracker gives it.
-* A Bitphase document is written at concert pitch whatever the reconstruction was tuned at. The song
-  builder reads the default tuning and leaves the request's own tuning unread.
 * A Bitphase export shortens a dimension past 512 values and reports nothing. The FamiTracker export
   reports what it left out, and the instruments panel draws its warning from that report alone.
 * The sample column reads the sample still playing from the top of each frame, so a frame's first rows

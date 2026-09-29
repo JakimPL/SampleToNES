@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, List, Tuple
 
@@ -23,6 +24,7 @@ from sampletones_core.formats.bitphase.specification.instruments import (
 from sampletones_core.formats.bitphase.specification.macros import MAX_MACRO_LENGTH
 from sampletones_core.timers.arithmetic import bent_timer
 from sampletones_core.timers.utils import get_timer_table
+from sampletones_shared.constants.music import OCTAVE_SEMITONES
 from sampletones_shared.music import Tuning
 from tests.suite.bitphase import (
     LoadedInstrument,
@@ -31,6 +33,7 @@ from tests.suite.bitphase import (
     parse_btp,
     sounded_period,
 )
+from tests.suite.case import BaseRegularTestCase
 
 NES_FREQUENCY: Final[int] = 60
 REFERENCE_PITCH: Final[int] = 60
@@ -40,9 +43,47 @@ BEND_STEPS: Final[Tuple[int, ...]] = (0, -4, -9, -15, -22, -30)
 COARSE_STEPS: Final[Tuple[int, ...]] = (0, 0, 0, 1, 1, 2)
 TICKS_SAMPLED: Final[int] = 64
 PERIOD_OVER_TIMER: Final[int] = 1
+LOWERED_A4_FREQUENCY: Final[float] = 432.0
+C5_PITCH: Final[int] = 72
+SEMITONES_FROM_A4_TO_C5: Final[int] = 3
 
 
-def bent_slice(channel: ChannelName) -> InstrumentExport:
+@dataclass(frozen=True, kw_only=True)
+class TuningCase(BaseRegularTestCase):
+    tuning: Tuning
+
+
+TUNING_CASES: Final[Tuple[TuningCase, ...]] = (
+    TuningCase(
+        tuning=Tuning(),
+        label="concert",
+    ),
+    TuningCase(
+        tuning=Tuning(a4_frequency=LOWERED_A4_FREQUENCY),
+        label="lowered",
+    ),
+    TuningCase(
+        tuning=Tuning(
+            a4_frequency=LOWERED_A4_FREQUENCY * 2 ** (SEMITONES_FROM_A4_TO_C5 / OCTAVE_SEMITONES),
+            a4_pitch=C5_PITCH,
+        ),
+        label="named_at_c5",
+    ),
+)
+
+
+@pytest.fixture(
+    name="test_case",
+    params=TUNING_CASES,
+    ids=lambda test_case: test_case.label,
+)
+def test_case_fixture(request: pytest.FixtureRequest) -> TuningCase:
+    """The tuning a reconstruction was built against, once per case."""
+    test_case: TuningCase = request.param
+    return test_case
+
+
+def bent_slice(channel: ChannelName, tuning: Tuning) -> InstrumentExport:
     """One bent channel slice, moving its note by a contour and its period by a bend."""
     return InstrumentExport(
         name=f"Bent ({channel})",
@@ -56,17 +97,20 @@ def bent_slice(channel: ChannelName) -> InstrumentExport:
             duty_cycle=None,
         ),
         nes_frequency=NES_FREQUENCY,
-        tuning=Tuning(),
+        tuning=tuning,
     )
 
 
 @pytest.fixture(name="bent_document")
-def bent_document_fixture(tmp_path: Path) -> LoadedProject:
+def bent_document_fixture(tmp_path: Path, test_case: TuningCase) -> LoadedProject:
     request = SampleExport(
         name="Bent",
-        instruments=(bent_slice(ChannelName.PULSE1), bent_slice(ChannelName.TRIANGLE)),
+        instruments=(
+            bent_slice(ChannelName.PULSE1, test_case.tuning),
+            bent_slice(ChannelName.TRIANGLE, test_case.tuning),
+        ),
         nes_frequency=NES_FREQUENCY,
-        tuning=Tuning(),
+        tuning=test_case.tuning,
     )
     destination = tmp_path / "Bent.btp"
     write_btp(destination, sample_to_bitphase(request))
@@ -80,14 +124,16 @@ def voices(document: LoadedProject) -> List[Tuple[LoadedInstrument, LoadedTable]
 class TestAPeriodTheEngineResolves:
     """Bitphase reads a period out of three readings at once — the note the pattern names, the
     step its table stands at, and the offset its instrument's tone macro holds — so the period
-    a tick sounds is what those three make of the document as written.
+    a tick sounds is what those three make of the document as written, at whatever tuning the
+    reconstruction was built against.
     """
 
     def test_every_tick_sounds_the_divider_the_reconstruction_renders(
         self,
         bent_document: LoadedProject,
+        test_case: TuningCase,
     ) -> None:
-        timers = get_timer_table(Tuning())
+        timers = get_timer_table(test_case.tuning)
         table = bent_document.songs[0].tuning_table
         note_index = pitch_to_note_index(REFERENCE_PITCH)
 

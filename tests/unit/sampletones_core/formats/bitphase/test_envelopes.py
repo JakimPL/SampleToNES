@@ -19,6 +19,7 @@ from sampletones_core.formats.bitphase.specification.instruments import (
     SILENT_VOLUME,
 )
 from sampletones_core.formats.bitphase.specification.macros import MAX_MACRO_LENGTH, NesMacroField
+from sampletones_core.formats.bitphase.tuning import DEFAULT_TUNING_TABLE
 
 from .conftest import build_features, looping
 
@@ -54,6 +55,7 @@ class TestEachDimensionBecomesItsOwnMacro:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert volume_values(envelopes) == VOLUME_ENVELOPE
 
@@ -61,6 +63,7 @@ class TestEachDimensionBecomesItsOwnMacro:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert list(envelopes.table_rows) == PITCH_CONTOUR
 
@@ -73,6 +76,7 @@ class TestEachDimensionBecomesItsOwnMacro:
         envelopes = features_to_envelopes(
             build_features([15], duty_cycle=[case.duty_cycle]),
             case.channel,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert waveform_values(envelopes) == [case.pulse_width]
 
@@ -81,6 +85,7 @@ class TestEachDimensionBecomesItsOwnMacro:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, duty_cycle=[3] * len(VOLUME_ENVELOPE)),
             ChannelName.TRIANGLE,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert set(envelopes.macros) == {NesMacroField.VOLUME_OR_RATE}
 
@@ -88,6 +93,7 @@ class TestEachDimensionBecomesItsOwnMacro:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert waveform_values(envelopes) == [FLAT_PULSE_WIDTH]
 
@@ -96,6 +102,7 @@ class TestEachDimensionBecomesItsOwnMacro:
         envelopes = features_to_envelopes(
             build_features([15] * len(steps), arpeggio=steps),
             ChannelName.NOISE,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert list(envelopes.table_rows) == [(-step) % NUM_PERIODS for step in steps]
 
@@ -109,6 +116,7 @@ class TestEachDimensionKeepsItsOwnLength:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR[:2]),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert len(volume_values(envelopes)) == len(VOLUME_ENVELOPE)
         assert len(envelopes.table_rows) == 2
@@ -117,6 +125,7 @@ class TestEachDimensionKeepsItsOwnLength:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=[]),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert list(envelopes.table_rows) == [NO_TABLE_OFFSET]
 
@@ -124,6 +133,7 @@ class TestEachDimensionKeepsItsOwnLength:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR[:2]),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert envelopes.ticks == len(VOLUME_ENVELOPE)
 
@@ -133,6 +143,7 @@ class TestThePointADimensionRepeatsFrom:
         envelopes = features_to_envelopes(
             looping(build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR), 0),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert envelopes.macros[NesMacroField.VOLUME_OR_RATE].loop == LOOP_FROM_START
         assert envelopes.table_loop == LOOP_FROM_START
@@ -142,6 +153,7 @@ class TestThePointADimensionRepeatsFrom:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert envelopes.macros[NesMacroField.VOLUME_OR_RATE].loop == len(VOLUME_ENVELOPE) - 1
         assert envelopes.table_loop == len(PITCH_CONTOUR) - 1
@@ -151,6 +163,7 @@ class TestThePointADimensionRepeatsFrom:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         macro = envelopes.macros[NesMacroField.VOLUME_OR_RATE]
         assert macro.values[macro.loop] == SILENT_VOLUME
@@ -160,6 +173,7 @@ class TestThePointADimensionRepeatsFrom:
         envelopes = features_to_envelopes(
             looping(build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR), 0 if loop else None),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert all(macro.loop < len(macro.values) for macro in envelopes.macros.values())
         assert envelopes.table_loop < len(envelopes.table_rows)
@@ -174,6 +188,7 @@ class TestASliceThatLeavesItsVolumeToTheChannel:
         envelopes = features_to_envelopes(
             build_features([], arpeggio=PITCH_CONTOUR),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert volume_values(envelopes) == [MAX_VOLUME_OR_RATE]
 
@@ -181,6 +196,7 @@ class TestASliceThatLeavesItsVolumeToTheChannel:
         envelopes = features_to_envelopes(
             build_features([], arpeggio=PITCH_CONTOUR),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert list(envelopes.table_rows) == PITCH_CONTOUR
 
@@ -189,6 +205,7 @@ class TestASliceThatLeavesItsVolumeToTheChannel:
         envelopes = features_to_envelopes(
             build_features([], duty_cycle=duty_cycles),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert waveform_values(envelopes) == duty_cycles
 
@@ -199,13 +216,18 @@ class TestADimensionPastWhatAMacroStores:
         envelopes = features_to_envelopes(
             build_features([MAX_VOLUME_OR_RATE] * (MAX_MACRO_LENGTH + 8), arpeggio=contour),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert len(volume_values(envelopes)) == MAX_MACRO_LENGTH
 
     def test_a_volume_ending_in_silence_keeps_that_silence(self) -> None:
         """A shortened volume that dropped its note-off would sound on for as long as the note does."""
         volume = [MAX_VOLUME_OR_RATE] * (MAX_MACRO_LENGTH + 8) + [SILENT_VOLUME]
-        envelopes = features_to_envelopes(build_features(volume), ChannelName.PULSE1)
+        envelopes = features_to_envelopes(
+            build_features(volume),
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
+        )
         assert volume_values(envelopes)[-1] == SILENT_VOLUME
 
     def test_the_table_carries_a_contour_of_any_length(self) -> None:
@@ -213,6 +235,7 @@ class TestADimensionPastWhatAMacroStores:
         envelopes = features_to_envelopes(
             build_features([MAX_VOLUME_OR_RATE], arpeggio=contour),
             ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert len(envelopes.table_rows) == len(contour)
 
@@ -224,7 +247,11 @@ class TestAnEmptySlice:
 
     @pytest.fixture(name="envelopes")
     def envelopes_fixture(self) -> ChannelEnvelopes:
-        return features_to_envelopes(build_features([]), ChannelName.PULSE1)
+        return features_to_envelopes(
+            build_features([]),
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
+        )
 
     def test_it_holds_one_silent_level(self, envelopes: ChannelEnvelopes) -> None:
         assert volume_values(envelopes) == [SILENT_VOLUME]

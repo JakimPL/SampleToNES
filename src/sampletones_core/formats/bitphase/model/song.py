@@ -6,9 +6,10 @@ from sampletones_core.formats.bitphase.model.config import BITPHASE_MODEL_CONFIG
 from sampletones_core.formats.bitphase.model.pattern import BitphasePattern
 from sampletones_core.formats.bitphase.specification.chip import (
     CHIP_TYPE_NES,
-    DEFAULT_A4_TUNING,
     DEFAULT_CHIP_VARIANT,
+    MAX_A4_TUNING,
     MAX_INITIAL_SPEED,
+    MIN_A4_TUNING,
     MIN_INITIAL_SPEED,
     ChipVariant,
 )
@@ -24,6 +25,10 @@ class BitphaseSong(BaseModel):
     ``interrupt_frequency`` is the engine tick rate in Hz, so it carries the rate a
     reconstruction's envelopes were measured at; ``initial_speed`` is how many of those
     ticks each pattern line lasts.
+
+    ``a4_tuning_hz`` and ``tuning_table`` state one tuning together. Bitphase builds the table
+    again from that frequency and the chip clock when it loads a song, so the two are written in
+    step, and the frequency stays within the range the tracker's settings offer.
     """
 
     model_config = BITPHASE_MODEL_CONFIG
@@ -65,7 +70,9 @@ class BitphaseSong(BaseModel):
         description="Engine tick rate in Hz.",
     )
     a4_tuning_hz: float = Field(
-        default=DEFAULT_A4_TUNING,
+        ...,
+        ge=MIN_A4_TUNING,
+        le=MAX_A4_TUNING,
         description="Concert pitch the tuning table centers on.",
     )
     virtual_channel_map: Dict[int, int] = Field(

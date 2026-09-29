@@ -1,16 +1,22 @@
+from typing import Sequence
+
 from sampletones_core.formats.bitphase.specification.chip import (
     MAX_TUNING_PERIOD,
     MIN_TUNING_PERIOD,
 )
 from sampletones_core.formats.bitphase.specification.instruments import MAX_TONE_ADD, MIN_TONE_ADD
 from sampletones_core.formats.bitphase.specification.patterns import MAX_NOTE_INDEX, MIN_NOTE_INDEX
-from sampletones_core.formats.bitphase.tuning import DEFAULT_TUNING_TABLE
 
 
-def contour_period(base_index: int, step: int) -> int:
+def contour_period(
+    tuning_table: Sequence[int],
+    base_index: int,
+    step: int,
+) -> int:
     """The period the note a contour step moves to sounds at.
 
     Args:
+        tuning_table: The period the song gives each note index.
         base_index: Note index the slice was reconstructed at.
         step: Semitones the contour moves the note by.
 
@@ -18,7 +24,7 @@ def contour_period(base_index: int, step: int) -> int:
         int: The period of the note the step reaches, held inside the tuning table.
     """
     index = min(max(base_index + step, MIN_NOTE_INDEX), MAX_NOTE_INDEX)
-    return DEFAULT_TUNING_TABLE[index]
+    return tuning_table[index]
 
 
 def sounding_offset(base_period: int, offset: int) -> int:

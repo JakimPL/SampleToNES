@@ -34,9 +34,7 @@ from sampletones_core.formats.bitphase.specification.channels import (
     ChannelIndex,
 )
 from sampletones_core.formats.bitphase.specification.chip import (
-    CPU_FREQUENCIES,
-    DEFAULT_A4_TUNING,
-    DEFAULT_CHIP_VARIANT,
+    DEFAULT_CPU_FREQUENCY,
     MAX_INITIAL_SPEED,
     MIN_INITIAL_SPEED,
 )
@@ -62,9 +60,10 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     VOLUME_OFF,
     NoteName,
 )
-from sampletones_core.formats.bitphase.tuning import generate_tuning_table
+from sampletones_core.formats.bitphase.tuning import concert_frequency, generate_tuning_table
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
+from sampletones_core.project.tuning import tuning_from_project
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.timing import Groove, Meter, RowRate, calculate_groove
@@ -197,18 +196,22 @@ def _build_song(
     speed: int,
     nes_frequency: int,
     pattern_length: int,
+    a4_tuning: float,
+    tuning_table: Tuple[int, ...],
 ) -> BitphaseSong:
-    chip_frequency = CPU_FREQUENCIES[DEFAULT_CHIP_VARIANT]
+    """Gathers the patterns into a song played at the tuning its instruments were built for.
+
+    The song states its concert pitch beside the table built from it, which is the pair Bitphase
+    reads a tuning from.
+    """
     return BitphaseSong(
         patterns=patterns,
-        tuning_table=generate_tuning_table(
-            chip_frequency,
-            a4_tuning=DEFAULT_A4_TUNING,
-        ),
+        tuning_table=tuning_table,
         initial_speed=speed,
         default_pattern_length=pattern_length,
-        chip_frequency=chip_frequency,
+        chip_frequency=DEFAULT_CPU_FREQUENCY,
         interrupt_frequency=nes_frequency,
+        a4_tuning_hz=a4_tuning,
     )
 
 
@@ -261,7 +264,8 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
 
     Every channel slice becomes an instrument and the table that carries its pitch
     contour, and one pattern triggers each slice on the channel it was reconstructed
-    for, so opening the document and pressing play sounds the reconstruction.
+    for, so opening the document and pressing play sounds the reconstruction. The song
+    plays at the tuning the reconstruction was built against.
 
     Args:
         request: The reconstruction's slices.
@@ -270,8 +274,11 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
         BitphaseProject: The document to serialize.
 
     Raises:
-        ValueError: If the reconstruction holds more slices than Bitphase has room for.
+        ValueError: If the reconstruction holds more slices than Bitphase has room for, or its
+            concert pitch lies outside the range a Bitphase song takes.
     """
+    a4_tuning = concert_frequency(request.tuning)
+    tuning_table = generate_tuning_table(DEFAULT_CPU_FREQUENCY, a4_tuning=a4_tuning)
     voices = [
         _build_slice_voice(
             index,
@@ -281,6 +288,7 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
             features_to_envelopes(
                 instrument.features,
                 instrument.channel,
+                tuning_table=tuning_table,
             ),
             maximum_table_id=MAX_TABLE_ID,
         )
@@ -300,6 +308,8 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
                 speed=PREVIEW_SPEED,
                 nes_frequency=request.nes_frequency,
                 pattern_length=length,
+                a4_tuning=a4_tuning,
+                tuning_table=tuning_table,
             ),
         ),
         pattern_order=order,
@@ -311,11 +321,16 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
 def instrument_to_bitphase(request: InstrumentExport) -> BitphaseProject:
     """Builds a playable Bitphase document holding one channel slice.
 
+    The song plays at the tuning the slice's reconstruction was built against.
+
     Args:
         request: The slice to write.
 
     Returns:
         BitphaseProject: The document to serialize.
+
+    Raises:
+        ValueError: If the slice's concert pitch lies outside the range a Bitphase song takes.
     """
     sample = SampleExport(
         name=request.name,
@@ -330,6 +345,7 @@ def _build_voice_table(
     project: Project,
     *,
     maximum_table_id: int,
+    tuning_table: Tuple[int, ...],
 ) -> Tuple[List[SliceVoice], SliceVoiceTable]:
     voices: List[SliceVoice] = []
     by_reference: SliceVoiceTable = {}
@@ -338,6 +354,7 @@ def _build_voice_table(
         envelopes = features_to_envelopes(
             voice_slice.features,
             voice_slice.channel,
+            tuning_table=tuning_table,
         )
         voice = _build_slice_voice(
             index,
@@ -553,9 +570,11 @@ def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
     """Maps a project onto the Bitphase document IR and lists the rows it had to leave silent.
 
     The song carries the project's tempo as a groove, which is the initial speed on its own
-    where every row lasts alike and a table the patterns trigger where the rows differ. A row
-    naming a voice on a channel the voice has no instrument for plays nothing in the song, so the
-    document holds a note cut there and the row is listed beside it.
+    where every row lasts alike and a table the patterns trigger where the rows differ. It plays
+    at the tuning the project's samples were reconstructed at, and at concert pitch where the
+    project holds no sample. A row naming a voice on a channel the voice has no instrument for
+    plays nothing in the song, so the document holds a note cut there and the row is listed
+    beside it.
 
     Args:
         project: The project to write.
@@ -564,12 +583,17 @@ def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
         BuiltDocument[BitphaseProject]: The document to serialize and the rows left silent.
 
     Raises:
-        ValueError: If the project holds more than Bitphase has room for.
+        ValueError: If the project holds more than Bitphase has room for, if its samples were
+            reconstructed at different tunings, or if their concert pitch lies outside the range
+            a Bitphase song takes.
     """
+    a4_tuning = concert_frequency(tuning_from_project(project))
+    tuning_table = generate_tuning_table(DEFAULT_CPU_FREQUENCY, a4_tuning=a4_tuning)
     groove = _project_groove(project)
     voices, by_reference = _build_voice_table(
         project,
         maximum_table_id=_maximum_slice_table_id(groove),
+        tuning_table=tuning_table,
     )
     groove_table = (
         None
@@ -593,6 +617,8 @@ def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
                     speed=groove.ticks[GROOVE_TRIGGER_ROW],
                     nes_frequency=settings.nes_frequency,
                     pattern_length=project.song.rows_per_pattern,
+                    a4_tuning=a4_tuning,
+                    tuning_table=tuning_table,
                 ),
             ),
             pattern_order=tuple(pattern.id for pattern in patterns),
