@@ -61,20 +61,43 @@ class SequencerRowViewModel(BaseModel, frozen=True):
     naming only hand-written instruments spans none, since each of those sounds on the one
     channel it is named in.
     """
+    carried_channels: FrozenSet[ChannelName]
+    """Channels a sample is playing on at this row, whichever row of the frame started it.
+
+    The reading runs down the frame from its first row, so a channel cut since, or now carrying an
+    instrument, falls out of it. A row naming no sample hands its pitch and volume to these.
+    """
 
     @property
-    def subcolumn_channels(self) -> FrozenSet[ChannelName]:
-        """Channels every sample column summary spans.
+    def note_channels(self) -> FrozenSet[ChannelName]:
+        """Channels the sample column's voice slot summarizes.
 
-        A sample governs the channels its reconstruction covers, so its subcolumns
-        summarize exactly those. Transpose and volume stand on their own, so a row
-        naming no sample spans every channel.
+        A sample governs the channels its reconstruction covers, so the slot summarizes exactly
+        those. A row naming no sample spans every channel, so a row cut on each reads as a cut.
         """
         return self.sample_channels or frozenset(self.cells)
 
     @property
+    def offset_channels(self) -> FrozenSet[ChannelName]:
+        """Channels the sample column's pitch and volume summarize, and write to.
+
+        A row placing a sample spans that sample's channels, and a row below it the channels a
+        sample is still playing on. A row where no sample plays spans none and reads empty.
+        """
+        return self.sample_channels or self.carried_channels
+
+    @property
+    def takes_offsets(self) -> bool:
+        """Whether a pitch or a volume typed in the sample column reaches a channel of this row."""
+        return bool(self.offset_channels)
+
+    @property
     def sample(self) -> str:
-        return self._aggregate(_sample_reading, display_id(None))
+        return self._aggregate(
+            _sample_reading,
+            display_id(None),
+            self.note_channels,
+        )
 
     @property
     def sample_kind(self) -> Optional[VoiceKind]:
@@ -89,25 +112,34 @@ class SequencerRowViewModel(BaseModel, frozen=True):
 
     @property
     def transpose(self) -> str:
-        return self._aggregate(lambda cell: cell.transpose, display_transpose(None))
+        return self._aggregate(
+            lambda cell: cell.transpose,
+            display_transpose(None),
+            self.offset_channels,
+        )
 
     @property
     def volume(self) -> str:
-        return self._aggregate(lambda cell: cell.volume, display_volume(None))
+        return self._aggregate(
+            lambda cell: cell.volume,
+            display_volume(None),
+            self.offset_channels,
+        )
 
     def _aggregate(
         self,
         select: Callable[[SequencerCellViewModel], str],
         default: str,
+        channels: FrozenSet[ChannelName],
     ) -> str:
-        """Summarize one subcolumn across the channels the sample column spans.
+        """Summarize one subcolumn across the channels the sample column spans in it.
 
         The summary holds a value only where every channel agrees on it, so
         :data:`MIXED` marks each way they can differ: a sample missing from one of
         its channels, a transpose set on some of them, or a row cut on some and
-        blank on the rest. A row with no cells at all shows the empty default.
+        blank on the rest. A subcolumn spanning no channel shows the empty default.
         """
-        values: Set[str] = {select(self.cells[channel]) for channel in self.subcolumn_channels}
+        values: Set[str] = {select(self.cells[channel]) for channel in channels}
         return aggregate_labels(values, default=default)
 
 

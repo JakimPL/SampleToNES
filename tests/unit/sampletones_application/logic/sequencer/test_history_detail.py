@@ -99,6 +99,25 @@ class TestTrackerDetails:
             ("+05", HistoryDetailRole.TRANSPOSE),
         ]
 
+    def test_a_volume_in_the_sample_column_names_the_channels_still_playing_the_sample(self) -> None:
+        controller = _controller()
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
+            name="lead",
+        )
+        SequencerTrackerLogic(controller).place_note(0, None, sample.id)
+        formatter = _formatter(controller)
+
+        segments = formatter.edit_row(2, None, None, None, 8)
+
+        assert _pairs(segments) == [
+            ("00", HistoryDetailRole.FRAME),
+            ("PT", HistoryDetailRole.CHANNEL),
+            ("02", HistoryDetailRole.ROW),
+            ("v", HistoryDetailRole.VOLUME),
+            ("8", HistoryDetailRole.VOLUME),
+        ]
+
     def test_note_off_sample_column_lists_every_channel(self) -> None:
         controller = _controller()
         formatter = _formatter(controller)

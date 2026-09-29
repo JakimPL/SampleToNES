@@ -200,6 +200,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._header_columns: Dict[Sender, Optional[ChannelName]] = {}
         self._editable_cells: EditableCells[CellKey] = EditableCells()
         self._current_row_count: int = 0
+        self._rows_taking_offsets: FrozenSet[int] = frozenset()
         self._highlighted_row: Optional[int] = None
         self._displayed_frame: Optional[int] = None
         self._playing_frame: Optional[int] = None
@@ -481,6 +482,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         """
         cell_values = self._compute_cell_values(view_model)
         cell_kinds = self._compute_cell_kinds(view_model)
+        self._rows_taking_offsets = frozenset(row.index for row in view_model.rows if row.takes_offsets)
         self._show_frame(view_model.frame_index)
         if len(view_model.rows) != self._current_row_count:
             self._rebuild_table(view_model, cell_values, cell_kinds)
@@ -1045,6 +1047,9 @@ class GUISequencerTrackerPanel(GUIPanel):
         """
         row, channel = action.row, action.channel
 
+        if not self._offset_lands(action):
+            return
+
         if action.note_off:
             self._show_voice(row, channel, NOTE_OFF, None)
             self.call(self.on_set_note_off, row, channel)
@@ -1084,6 +1089,21 @@ class GUISequencerTrackerPanel(GUIPanel):
             action.transpose,
             action.volume,
         )
+
+    def _offset_lands(self, action: EditAction) -> bool:
+        """Whether the pitch or volume an edit carries has a channel to reach.
+
+        A channel column writes its own channel. The sample column writes the channels a sample is
+        playing on at the row, so on a row where none plays the edit is turned away here, and the
+        cell keeps showing the value it held.
+        """
+        if action.channel is not None:
+            return True
+
+        if action.transpose is None and action.volume is None:
+            return True
+
+        return action.row in self._rows_taking_offsets
 
     def _show_voice(
         self,

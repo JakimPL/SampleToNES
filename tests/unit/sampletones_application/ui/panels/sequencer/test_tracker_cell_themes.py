@@ -139,7 +139,12 @@ def _row(
         if kind is VoiceKind.SAMPLE:
             sample_channels = frozenset({channel})
 
-    return SequencerRowViewModel(index=index, cells=cells, sample_channels=sample_channels)
+    return SequencerRowViewModel(
+        index=index,
+        cells=cells,
+        sample_channels=sample_channels,
+        carried_channels=sample_channels,
+    )
 
 
 class TestWhatColorAVoiceSlotWears:

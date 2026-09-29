@@ -308,7 +308,8 @@ conversion found for each channel.
 The tracker's leftmost data column. It places a sample across every channel the sample's reconstruction
 covers, and clears the rest of the row. It takes samples only, because an instrument sounds on the one
 channel that names it. Its cell summarizes what those channels hold and reads `?` where they disagree.
-See [The sequencer](guide/sequencer.md#writing-a-pattern).
+A pitch or a volume typed in it changes the channels still playing a sample, and it takes none where no
+sample is playing. See [The sequencer](guide/sequencer.md#writing-a-pattern).
 
 ### Instrument
 

@@ -39,8 +39,8 @@ class Grid:
 def grid() -> Grid:
     """A frame short enough for a case to state whole, holding a sample over two of the channels.
 
-    Which channels a sample governs is what the sample column fans a shift out over, so a governed
-    row and an ungoverned one both stand available to a case.
+    Which channels a sample plays on is what the sample column fans a shift out over, so a row
+    placing it, a row below it and a row where nothing plays all stand available to a case.
     """
     controller = ProjectController(ProjectManager())
     logic = SequencerTrackerLogic(controller)
@@ -157,16 +157,31 @@ class TestAdjustTranspose(BaseTestSuite):
             ),
         ),
         TestCase(
-            label="an ungoverned sample column reaches every channel",
+            label="a sample column where no sample plays moves nothing",
             region=_region(
                 (None, SubColumn.VOICE),
                 (None, SubColumn.VOLUME),
             ),
             delta=3,
+            expected=(EMPTY, EMPTY, EMPTY),
+        ),
+        TestCase(
+            label="a sample column below a sample reaches the channels it still plays on",
+            frame=(
+                f"{LEAD} ... . | {LEAD} ... . | .. ... . | .. ... .",
+                ".. ... . | ~~ ... . | .. ... . | .. ... .",
+            ),
+            region=_region(
+                (None, SubColumn.VOICE),
+                (None, SubColumn.VOLUME),
+                first_row=2,
+                last_row=2,
+            ),
+            delta=3,
             expected=(
-                ".. +03 . | .. +03 . | .. +03 . | .. +03 .",
-                EMPTY,
-                EMPTY,
+                "00 ... . | 00 ... . | .. ... . | .. ... .",
+                ".. ... . | ~~ ... . | .. ... . | .. ... .",
+                ".. +03 . | .. ... . | .. ... . | .. ... .",
             ),
         ),
         TestCase(

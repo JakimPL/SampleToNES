@@ -187,15 +187,69 @@ class TestSampleColumn:
 
     def test_a_column_its_channels_disagree_over_leaves_its_key_out(
         self,
+        controller: ProjectController,
         logic: SequencerTrackerLogic,
         reader: TrackerBlockReader,
     ) -> None:
-        """No sample governs the row, so the column spans every channel and only one holds a value."""
+        """The sample spans two channels and only one of them holds a transpose."""
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
+            name="lead",
+        )
+        logic.place_note(0, None, sample.id)
         logic.set_cell_subcolumn(0, ChannelName.PULSE1, transpose=5)
 
         block = reader.read(_cell(0, None, SubColumn.TRANSPOSE))
 
         assert _key(SubColumn.TRANSPOSE) not in block.transposes
+
+    def test_a_row_where_no_sample_plays_carries_its_offsets_as_empty(
+        self,
+        logic: SequencerTrackerLogic,
+        reader: TrackerBlockReader,
+    ) -> None:
+        """The column's pitch and volume reach no channel there, so they read empty, as the grid
+        shows them, whatever the channel columns hold."""
+        logic.set_cell_subcolumn(0, ChannelName.PULSE1, transpose=5, volume=3)
+
+        block = reader.read(_column(None))
+
+        assert block.transposes[_key(SubColumn.TRANSPOSE)] is None
+        assert block.volumes[_key(SubColumn.VOLUME)] is None
+
+    def test_offsets_below_a_sample_read_the_channels_it_still_plays_on(
+        self,
+        controller: ProjectController,
+        logic: SequencerTrackerLogic,
+        reader: TrackerBlockReader,
+    ) -> None:
+        """The triangle was cut since the sample began, so its own volume stays out of the reading."""
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
+            name="lead",
+        )
+        logic.place_note(0, None, sample.id)
+        logic.cut_note(1, ChannelName.TRIANGLE)
+        logic.set_cell_subcolumn(2, ChannelName.PULSE1, volume=4)
+        logic.set_cell_subcolumn(2, ChannelName.TRIANGLE, volume=9)
+
+        block = reader.read(_cell(2, None, SubColumn.VOLUME))
+
+        assert block.volumes[_key(SubColumn.VOLUME)] == 4
+
+    def test_a_cut_row_copied_through_the_sample_column_keeps_its_cut(
+        self,
+        logic: SequencerTrackerLogic,
+        reader: TrackerBlockReader,
+    ) -> None:
+        """No sample plays on a row cut on every channel, and its voice slot still speaks for all four."""
+        logic.cut_note(0, None)
+
+        block = reader.read(_column(None))
+
+        assert block.notes[_key(SubColumn.VOICE)] == NoteOff()
+        assert block.transposes[_key(SubColumn.TRANSPOSE)] is None
+        assert block.volumes[_key(SubColumn.VOLUME)] is None
 
     def test_a_half_cut_row_leaves_its_note_out(
         self,
@@ -236,10 +290,16 @@ class TestOffsets:
 
     def test_a_mixed_edge_column_leaves_only_itself_out(
         self,
+        controller: ProjectController,
         logic: SequencerTrackerLogic,
         reader: TrackerBlockReader,
     ) -> None:
         """The last slot reads as nothing, and the cells beside it keep the offsets they stand at."""
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.PULSE2]),
+            name="chord",
+        )
+        logic.place_note(0, None, sample.id)
         logic.set_cell_subcolumn(0, ChannelName.PULSE1, volume=2)
 
         block = reader.read(

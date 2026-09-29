@@ -64,6 +64,9 @@ The [**Sample** column](../glossary.md#sample-column) places a sample on every c
 uses, and clears the other channels of the row. It takes samples only. To place an instrument, use
 the column of the channel you want it on.
 
+A pitch or a volume typed in the **Sample** column changes the channels still playing a sample.
+Where no sample is playing, the column takes no pitch or volume.
+
 A `?` in the **Sample** column means the channels of that row play different voices.
 
 ## Typing a pitch
@@ -203,7 +206,7 @@ In the **Tracker**, transpose and volume keys change every cell in the selection
 | `Alt+Shift+Up` / `Alt+Shift+Down` | Change the volume by four steps |
 
 With nothing selected, the keys change the cell under the cursor. The same commands are on the
-right-click menu.
+right-click menu. In the **Sample** column, they change the channels still playing a sample.
 
 ## Undoing a change
 

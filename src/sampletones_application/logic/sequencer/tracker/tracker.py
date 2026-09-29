@@ -1,4 +1,4 @@
-from typing import Callable, Dict, FrozenSet, List, Optional, Set
+from typing import Callable, Dict, FrozenSet, List, Mapping, Optional, Set
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.view_model.sequencer.kind import (
@@ -169,8 +169,8 @@ class SequencerTrackerLogic(CallbackMixin):
         """Empties one subcolumn of a cell.
 
         From the sample column the voice slot reaches every channel, since the sample
-        it names is the row's whole note, while transpose and volume follow the
-        channels that column governs.
+        it names is the row's whole note, while transpose and volume reach the
+        channels a sample plays on at the row, as :meth:`relevant_channels` reads them.
         """
         voice = subcolumn is SubColumn.VOICE
         transpose = subcolumn is SubColumn.TRANSPOSE
@@ -455,11 +455,11 @@ class SequencerTrackerLogic(CallbackMixin):
         transpose: Optional[int] = None,
         volume: Optional[int] = None,
     ) -> None:
-        """Synchronizes a subcolumn across the row's relevant channels.
+        """Writes a transpose or a volume to the channels a sample plays on at the row.
 
-        Transpose and volume exist independently of the voice slot: they follow the
-        sample's channels when one is present, and otherwise reach every channel, so
-        a value typed in the sample column always lands somewhere.
+        A row placing a sample reaches that sample's whole span, and a row below it reaches
+        the channels the sample is still playing on, as :meth:`relevant_channels` reads them.
+        A row where no sample plays takes nothing, and gains no pattern.
         """
         for channel in self._subcolumn_generators(row_index):
             self.set_row(
@@ -573,12 +573,23 @@ class SequencerTrackerLogic(CallbackMixin):
         return self._used_generators(sample)
 
     def relevant_channels(self, row_index: int) -> List[ChannelName]:
-        """The channels a sample-column subcolumn edit reaches at ``row_index``.
+        """The channels a sample-column transpose or volume edit reaches at ``row_index``.
 
-        Follows the row's sample channels when one governs it, and otherwise every
-        channel, matching where :meth:`set_sample_subcolumn` writes.
+        These are the channels the row's samples span where it names any, and otherwise the
+        channels a sample from an earlier row of the frame is still playing on, matching where
+        :meth:`set_sample_subcolumn` writes. A row where no sample plays reaches none.
         """
         return self._subcolumn_generators(row_index)
+
+    def note_channels(self, row_index: int) -> List[ChannelName]:
+        """The channels the sample column's voice slot reads at ``row_index``.
+
+        The slot speaks for the samples a row names, and for every channel on a row naming
+        none, so a row cut on every channel reads, and copies, as a cut. Mirrors
+        :attr:`SequencerRowViewModel.note_channels`.
+        """
+        spanned = self.referenced_channels(row_index) or frozenset(ChannelName.items())
+        return [channel for channel in ChannelName.items() if channel in spanned]
 
     def _pattern_index_at_frame(self, channel: ChannelName) -> Optional[int]:
         song = self._controller.project.song
@@ -612,24 +623,36 @@ class SequencerTrackerLogic(CallbackMixin):
         return list(voice_channels(voice))
 
     def _subcolumn_generators(self, row_index: int) -> List[ChannelName]:
-        """Channels a sample-column transpose/volume edit writes to.
+        """Channels a sample-column transpose or volume edit writes to.
 
-        Falls back to every channel when no sample constrains the row, mirroring
-        :attr:`SequencerRowViewModel.subcolumn_channels`.
+        A row naming a sample reaches that sample's span. A row naming none reaches the channels
+        whose voice in force is a sample, read down the frame the way :meth:`carried_voice` reads
+        it, so a channel cut since or now carrying an instrument takes nothing. Mirrors
+        :attr:`SequencerRowViewModel.offset_channels`.
         """
-        referenced = self.referenced_channels(row_index)
-        if not referenced:
-            return ChannelName.items()
+        spanned = self.referenced_channels(row_index) or self._sample_carriers(
+            {channel: self.carried_voice(channel, row_index) for channel in ChannelName.items()}
+        )
+        return [channel for channel in ChannelName.items() if channel in spanned]
 
-        return [channel for channel in ChannelName.items() if channel in referenced]
+    @staticmethod
+    def _sample_carriers(
+        carried: Mapping[ChannelName, Optional[VoiceUnion]],
+    ) -> FrozenSet[ChannelName]:
+        """The channels among ``carried`` whose voice in force is a sample."""
+        return frozenset(
+            channel
+            for channel, voice in carried.items()
+            if voice is not None and voice_kind(voice).places_across_channels
+        )
 
     def referenced_channels(self, row_index: int) -> FrozenSet[ChannelName]:
         """The channels spanned by the samples a row names.
 
         Reads the row from every channel's pattern, so it reports a sample's whole
         span even where some of its cells stand empty. A row naming no sample
-        references no channel, which is what :meth:`relevant_channels` widens to
-        every channel.
+        references no channel, and :meth:`relevant_channels` then reads the samples
+        still playing from earlier rows.
         """
         rows: Dict[ChannelName, Optional[Row]] = {}
         for channel in ChannelName.items():
@@ -687,7 +710,8 @@ class SequencerTrackerLogic(CallbackMixin):
         """One grid line, with each channel read in the terms of the voice it is carrying.
 
         ``carried`` walks down the frame with the rows, so a line bending a note it did not start
-        still reads in that voice's terms.
+        still reads in that voice's terms, and the channels still playing a sample are the ones a
+        pitch or a volume typed in the sample column reaches.
         """
         rows: Dict[ChannelName, Optional[Row]] = {}
         cells: Dict[ChannelName, SequencerCellViewModel] = {}
@@ -706,6 +730,7 @@ class SequencerTrackerLogic(CallbackMixin):
             index=index,
             cells=cells,
             sample_channels=self._referenced_generators_from_rows(rows),
+            carried_channels=self._sample_carriers(carried),
         )
 
     def _carried_voice(

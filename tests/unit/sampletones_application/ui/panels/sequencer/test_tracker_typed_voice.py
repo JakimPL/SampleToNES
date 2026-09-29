@@ -12,20 +12,24 @@ from sampletones_application.view_model.sequencer.voices import (
     VoiceKind,
 )
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.utils.display import display_id
+from sampletones_core.utils.display import display_id, display_volume
 
 SAMPLE_INDEX = 0
 INSTRUMENT_INDEX = 1
 STORED_LABEL = display_id(None)
+STORED_VOLUME = display_volume(None)
+TYPED_VOLUME = 10
 
 Write = Tuple[int, Optional[ChannelName], Optional[str]]
+Offset = Tuple[int, Optional[ChannelName], Optional[int], Optional[int]]
 
 
 class Panel:
     """A tracker panel holding the pool and the cell cache a typed edit reads and writes.
 
-    The commit path touches only those two and the ``on_set_row`` hook, so the widgets the labels
-    are drawn on stay out of it and the reading under test is what the cache is left holding.
+    The commit path touches only those two, the rows the sample column takes a pitch or a volume
+    on, and the ``on_set_row`` hook, so the widgets the labels are drawn on stay out of it and the
+    reading under test is what the cache is left holding. No row starts out playing a sample.
     """
 
     def __init__(self) -> None:
@@ -46,10 +50,22 @@ class Panel:
                 ),
             ),
         )
+        self.panel._rows_taking_offsets = frozenset()
         self.writes: List[Write] = []
-        self.panel.on_set_row = lambda row, channel, voice_id, transpose, volume: self.writes.append(
-            (row, channel, voice_id)
-        )
+        self.offsets: List[Offset] = []
+        self.panel.on_set_row = self._record
+
+    def _record(
+        self,
+        row: int,
+        channel: Optional[ChannelName],
+        voice_id: Optional[str],
+        transpose: Optional[int],
+        volume: Optional[int],
+    ) -> None:
+        self.writes.append((row, channel, voice_id))
+        if transpose is not None or volume is not None:
+            self.offsets.append((row, channel, transpose, volume))
 
     def type_voice(self, index: int, channel: Optional[ChannelName]) -> None:
         self.panel._handle_edit_action(
@@ -62,9 +78,24 @@ class Panel:
             )
         )
 
+    def type_volume(self, volume: int, channel: Optional[ChannelName]) -> None:
+        self.panel._handle_edit_action(
+            EditAction(
+                row=0,
+                channel=channel,
+                sample_index=None,
+                transpose=None,
+                volume=volume,
+            )
+        )
+
     def shown(self, channel: Optional[ChannelName]) -> str:
         """The label the cell cache holds, which is what the cell shows once the commit settles."""
         return self.panel._editable_cells.values.get((0, channel, SubColumn.VOICE), STORED_LABEL)
+
+    def shown_volume(self, channel: Optional[ChannelName]) -> str:
+        """The volume the cell cache holds, which is what the cell shows once the commit settles."""
+        return self.panel._editable_cells.values.get((0, channel, SubColumn.VOLUME), STORED_VOLUME)
 
     def kind(self, channel: Optional[ChannelName]) -> Optional[VoiceKind]:
         """The kind the cell cache holds, which is the color the slot takes with its number."""
@@ -159,3 +190,34 @@ class TestWhatColorATypedVoiceTakes:
         )
 
         assert panel.kind(ChannelName.TRIANGLE) is None
+
+
+class TestTypingAnOffsetInTheSampleColumn:
+    """The sample column takes a pitch or a volume on a row where a sample plays."""
+
+    def test_a_volume_typed_where_no_sample_plays_leaves_the_cell_showing_what_it_held(
+        self,
+        panel: Panel,
+    ) -> None:
+        """The project would take nothing, so a cell taking the value optimistically would keep it."""
+        panel.type_volume(TYPED_VOLUME, None)
+
+        assert panel.writes == []
+        assert panel.shown_volume(None) == STORED_VOLUME
+
+    def test_a_volume_typed_where_a_sample_plays_is_written(self, panel: Panel) -> None:
+        panel.panel._rows_taking_offsets = frozenset({0})
+
+        panel.type_volume(TYPED_VOLUME, None)
+
+        assert panel.offsets == [(0, None, None, TYPED_VOLUME)]
+        assert panel.shown_volume(None) == display_volume(TYPED_VOLUME)
+
+    def test_a_volume_typed_in_a_channel_column_is_written_where_no_sample_plays(
+        self,
+        panel: Panel,
+    ) -> None:
+        panel.type_volume(TYPED_VOLUME, ChannelName.PULSE1)
+
+        assert panel.offsets == [(0, ChannelName.PULSE1, None, TYPED_VOLUME)]
+        assert panel.shown_volume(ChannelName.PULSE1) == display_volume(TYPED_VOLUME)

@@ -1,5 +1,5 @@
 from collections.abc import Hashable
-from typing import Callable, Dict, Optional, TypeVar
+from typing import Callable, Dict, List, Optional, TypeVar
 
 from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.slot import (
@@ -49,7 +49,9 @@ class TrackerBlockReader:
 
         A cell holding a definite value keeps it, an empty one keeps its emptiness, and a cell
         whose channels disagree leaves its key out — which is what carries the sample column's
-        mixed reading over as a value the paste passes by.
+        mixed reading over as a value the paste passes by. A sample column cell answering for no
+        channel, a pitch or a volume where no sample plays, keeps the empty reading its grid
+        shows there.
         """
         values: Dict[BlockKey, ValueT] = {}
         for row_offset, row_index in enumerate(region.rows):
@@ -57,14 +59,20 @@ class TrackerBlockReader:
                 if slot.subcolumn is not subcolumn:
                     continue
 
-                agreement = self._agree(row_index, slot.channel, select)
-                if agreement.is_unanimous:
-                    values[
-                        (
-                            row_offset,
-                            region.first_slot + position - base,
-                        )
-                    ] = agreement.value
+                key = (
+                    row_offset,
+                    region.first_slot + position - base,
+                )
+                agreement = self._agree(
+                    row_index,
+                    slot.channel,
+                    subcolumn,
+                    select,
+                )
+                if agreement.is_absent:
+                    values[key] = select(None)
+                elif agreement.is_unanimous:
+                    values[key] = agreement.value
 
         return values
 
@@ -72,13 +80,15 @@ class TrackerBlockReader:
         self,
         row_index: int,
         channel: Optional[ChannelName],
+        subcolumn: SubColumn,
         select: Callable[[Optional[Row]], ValueT],
     ) -> Agreement[ValueT]:
         """What a column holds at a cell: a channel's own value, or the one its channels share.
 
         A channel column answers for itself, so it is a group of one and always agrees. The sample
-        column answers for the channels it governs, which is the group its display summarizes too,
-        so a block states about a cell exactly what the grid it came from shows there.
+        column answers for the channels it spans in that subcolumn, which is the group its display
+        summarizes too, so a block states about a cell exactly what the grid it came from shows
+        there.
         """
         if channel is not None:
             return Agreement.collapse([select(self._tracker.row(channel, row_index))])
@@ -86,12 +96,28 @@ class TrackerBlockReader:
         return Agreement.collapse(
             select(
                 self._tracker.row(
-                    channel,
+                    spanned,
                     row_index,
                 )
             )
-            for channel in self._tracker.relevant_channels(row_index)
+            for spanned in self._sample_column_span(row_index, subcolumn)
         )
+
+    def _sample_column_span(
+        self,
+        row_index: int,
+        subcolumn: SubColumn,
+    ) -> List[ChannelName]:
+        """The channels the sample column answers for in one subcolumn of a row.
+
+        The voice slot speaks for the samples the row names, and the pitch and volume for the
+        channels a value typed there reaches.
+        """
+        match subcolumn:
+            case SubColumn.VOICE:
+                return self._tracker.note_channels(row_index)
+            case SubColumn.TRANSPOSE | SubColumn.VOLUME:
+                return self._tracker.relevant_channels(row_index)
 
     @staticmethod
     def _note_of(row: Optional[Row]) -> Optional[BlockNote]:

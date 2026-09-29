@@ -1,3 +1,8 @@
+from dataclasses import dataclass
+from typing import Final, Tuple
+
+import pytest
+
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
@@ -11,7 +16,22 @@ from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.utils.display import NOTE_OFF, display_id
 from sampletones_shared.constants.symbols import MIXED
-from tests.suite.sequencer import UNKNOWN_SAMPLE_ID, sample_reconstruction
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
+from tests.suite.sequencer import (
+    UNKNOWN_SAMPLE,
+    UNKNOWN_SAMPLE_ID,
+    fill_frame,
+    render_frame,
+    render_slots,
+    sample_reconstruction,
+)
+
+FRAME_ROWS: Final[int] = 4
+EMPTY: Final[str] = ".. ... . | .. ... . | .. ... . | .. ... ."
+LEAD: Final[str] = "00"
+BASS: Final[str] = "01"
+PAD: Final[str] = "02"
 
 
 def _controller() -> ProjectController:
@@ -42,6 +62,42 @@ def _place_voice(
     )
 
 
+@dataclass(frozen=True, kw_only=True)
+class Grid:
+    """A four-row frame with two samples and an instrument, the state a sample-column case starts from."""
+
+    controller: ProjectController
+    logic: SequencerTrackerLogic
+    voice_ids: Tuple[str, ...]
+
+
+@pytest.fixture
+def grid() -> Grid:
+    """A frame short enough for a case to state whole, beside a sample over the first pulse and the
+    triangle, one over the second pulse, and an instrument.
+
+    Which channels a sample plays on is what the sample column's pitch and volume follow, and the
+    instrument is what takes a channel away from a sample playing above it.
+    """
+    controller = _controller()
+    logic = SequencerTrackerLogic(controller)
+    logic.set_rows_per_pattern(FRAME_ROWS)
+    lead = controller.add_sample(
+        sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
+        name="lead",
+    )
+    bass = controller.add_sample(
+        sample_reconstruction([ChannelName.PULSE2]),
+        name="bass",
+    )
+    pad = controller.add_instrument(new_instrument("pad"))
+    return Grid(
+        controller=controller,
+        logic=logic,
+        voice_ids=(lead.id, bass.id, pad.id),
+    )
+
+
 class TestClearCell:
     def test_a_channel_cell_clears_only_that_channel(self) -> None:
         controller = _controller()
@@ -57,7 +113,8 @@ class TestClearCell:
     def test_the_sample_column_clears_every_channel(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        logic.set_sample_subcolumn(0, transpose=5)
+        for channel in ChannelName.items():
+            logic.set_row(channel, 0, transpose=5)
 
         logic.clear_cell(0, None)
 
@@ -144,15 +201,6 @@ class TestWriteCell:
         assert isinstance(command, NoteOn)
         assert command.voice_id == sample.id
         assert _row(controller, ChannelName.PULSE1).command is None
-
-    def test_a_transpose_in_the_sample_column_reaches_every_channel(self) -> None:
-        controller = _controller()
-        logic = SequencerTrackerLogic(controller)
-
-        logic.write_cell(0, None, None, 5, None)
-
-        for channel in ChannelName.items():
-            assert _row(controller, channel).transpose == 5
 
     def test_a_volume_in_a_channel_cell_leaves_the_rest_of_the_cell_standing(self) -> None:
         controller = _controller()
@@ -258,12 +306,15 @@ class TestReferencedChannels:
         )
 
     def test_a_row_naming_no_sample_references_no_channel(self) -> None:
+        """Nothing plays there either, so a pitch or a volume reaches no channel while the voice
+        slot still reads every one of them."""
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         logic.set_note_off(ChannelName.PULSE1, 0)
 
         assert logic.referenced_channels(0) == frozenset()
-        assert logic.relevant_channels(0) == ChannelName.items()
+        assert logic.relevant_channels(0) == []
+        assert logic.note_channels(0) == ChannelName.items()
 
 
 class TestSetNoteOff:
@@ -378,20 +429,6 @@ class TestSampleSubcolumn:
             row = _row(controller, channel)
             assert row.transpose is None
             assert row.volume is None
-
-    def test_synchronizes_across_all_channels_when_no_sample_is_referenced(
-        self,
-    ) -> None:
-        controller = _controller()
-        logic = SequencerTrackerLogic(controller)
-
-        logic.set_sample_subcolumn(0, transpose=5, volume=10)
-
-        for channel in ChannelName.items():
-            row = _row(controller, channel)
-            assert row.command is None
-            assert row.transpose == 5
-            assert row.volume == 10
 
     def test_clear_removes_one_subcolumn_across_relevant_channels(self) -> None:
         controller = _controller()
@@ -683,3 +720,176 @@ class TestWhatTheSampleColumnReads:
         assert cells[ChannelName.PULSE1].kind is VoiceKind.SAMPLE
         assert cells[ChannelName.NOISE].kind is VoiceKind.INSTRUMENT
         assert cells[ChannelName.TRIANGLE].kind is None
+
+
+class TestTheSampleColumnFollowsTheSampleInForce:
+    """A pitch or a volume typed in the sample column reaches the channels a sample is playing on."""
+
+    def test_a_volume_below_a_placed_sample_reaches_the_channels_it_plays(self, grid: Grid) -> None:
+        fill_frame(
+            grid.logic,
+            (f"{LEAD} ... . | .. ... . | {LEAD} ... . | .. ... .",),
+            voice_ids=grid.voice_ids,
+        )
+
+        grid.logic.write_cell(2, None, None, None, 10)
+
+        assert render_frame(grid.logic) == (
+            "00 ... . | .. ... . | 00 ... . | .. ... .",
+            EMPTY,
+            ".. ... A | .. ... . | .. ... A | .. ... .",
+            EMPTY,
+        )
+
+    def test_a_channel_cut_since_the_sample_began_takes_nothing(self, grid: Grid) -> None:
+        fill_frame(
+            grid.logic,
+            (
+                f"{LEAD} ... . | .. ... . | {LEAD} ... . | .. ... .",
+                ".. ... . | .. ... . | ~~ ... . | .. ... .",
+            ),
+            voice_ids=grid.voice_ids,
+        )
+
+        grid.logic.write_cell(2, None, None, 3, None)
+
+        assert render_frame(grid.logic)[2] == ".. +03 . | .. ... . | .. ... . | .. ... ."
+
+    def test_a_channel_now_carrying_an_instrument_takes_nothing(self, grid: Grid) -> None:
+        fill_frame(
+            grid.logic,
+            (
+                f"{LEAD} ... . | .. ... . | {LEAD} ... . | .. ... .",
+                f".. ... . | .. ... . | {PAD} ... . | .. ... .",
+            ),
+            voice_ids=grid.voice_ids,
+        )
+
+        grid.logic.write_cell(2, None, None, None, 10)
+
+        assert render_frame(grid.logic)[2] == ".. ... A | .. ... . | .. ... . | .. ... ."
+
+    def test_a_row_where_no_sample_plays_writes_nothing_and_creates_no_pattern(self, grid: Grid) -> None:
+        position = grid.controller.project.song.order_length()
+        grid.controller.append_frame()
+        grid.logic.select_frame(position)
+
+        grid.logic.write_cell(0, None, None, 5, None)
+        grid.logic.write_cell(0, None, None, None, 10)
+
+        assert render_slots(grid.controller, position) == ".. .. .. .."
+
+    def test_a_row_placing_a_sample_keeps_its_whole_span(self, grid: Grid) -> None:
+        """The sample the row names decides, so its empty triangle cell takes the value and the
+        second pulse, still playing a sample from above, keeps its own."""
+        fill_frame(
+            grid.logic,
+            (
+                f".. ... . | {BASS} ... . | .. ... . | .. ... .",
+                f"{LEAD} ... . | .. ... . | .. ... . | .. ... .",
+            ),
+            voice_ids=grid.voice_ids,
+        )
+
+        grid.logic.write_cell(1, None, None, None, 10)
+
+        assert render_frame(grid.logic)[1] == "00 ... A | .. ... . | .. ... A | .. ... ."
+
+    def test_the_sample_in_force_starts_over_at_each_frame(self, grid: Grid) -> None:
+        """The reading runs down one frame, so the next frame's first row carries no sample."""
+        fill_frame(
+            grid.logic,
+            (f"{LEAD} ... . | .. ... . | {LEAD} ... . | .. ... .",),
+            voice_ids=grid.voice_ids,
+        )
+        position = grid.controller.project.song.order_length()
+        grid.controller.append_frame()
+        grid.logic.select_frame(position)
+        fill_frame(
+            grid.logic,
+            (EMPTY, EMPTY, EMPTY, ".. ... 5 | .. ... . | .. ... 5 | .. ... ."),
+            voice_ids=grid.voice_ids,
+        )
+
+        grid.logic.write_cell(0, None, None, None, 10)
+
+        assert render_frame(grid.logic)[0] == EMPTY
+
+
+class TestTheSampleColumnReadsWhereItWrites(BaseTestSuite):
+    """The grid summarizes the sample column over the channels an edit there reaches.
+
+    Each frame is read row by row, so the cell a reader types into and the cells that value lands
+    in stay one group whatever the frame holds.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        frame: Tuple[str, ...]
+
+    test_cases = (
+        TestCase(
+            label="a sample playing down the frame",
+            frame=(f"{LEAD} ... . | .. ... . | {LEAD} ... . | .. ... .",),
+        ),
+        TestCase(
+            label="a channel cut and another taken by an instrument",
+            frame=(
+                f"{LEAD} ... . | {BASS} ... . | {LEAD} ... . | .. ... .",
+                ".. ... . | .. ... . | ~~ ... . | .. ... .",
+                f"{PAD} ... . | .. ... . | .. ... . | .. ... .",
+            ),
+        ),
+        TestCase(
+            label="a second sample placed below the first",
+            frame=(
+                f".. ... . | {BASS} ... . | .. ... . | .. ... .",
+                f"{LEAD} ... . | .. ... . | .. ... . | .. ... .",
+            ),
+        ),
+        TestCase(
+            label="nothing playing beside values in the channel columns",
+            frame=(
+                ".. +02 . | .. ... 5 | .. ... . | .. ... .",
+                f".. ... . | .. ... . | .. ... . | {PAD} ... .",
+            ),
+        ),
+        TestCase(
+            label="a sample the project no longer holds",
+            frame=(f"{UNKNOWN_SAMPLE} ... . | .. ... . | .. ... . | .. ... .",),
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_pitch_and_a_volume_are_read_where_they_are_written(
+        self,
+        grid: Grid,
+        test_case: TestCase,
+    ) -> None:
+        fill_frame(grid.logic, test_case.frame, voice_ids=grid.voice_ids)
+
+        rows = grid.logic.build_grid().rows
+
+        for row in rows:
+            assert frozenset(grid.logic.relevant_channels(row.index)) == row.offset_channels
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_voice_is_read_where_it_is_written(
+        self,
+        grid: Grid,
+        test_case: TestCase,
+    ) -> None:
+        fill_frame(grid.logic, test_case.frame, voice_ids=grid.voice_ids)
+
+        rows = grid.logic.build_grid().rows
+
+        for row in rows:
+            assert frozenset(grid.logic.note_channels(row.index)) == row.note_channels

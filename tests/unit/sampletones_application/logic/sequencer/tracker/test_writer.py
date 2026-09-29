@@ -231,12 +231,33 @@ class TestPaste(BaseTestSuite):
             expected=(EMPTY, EMPTY, EMPTY, EMPTY),
         ),
         TestCase(
-            label="an empty transpose through an ungoverned sample column clears every channel",
+            label="an empty transpose through the sample column clears the channels a sample still plays on",
+            frame=(
+                f"{LEAD} ... . | {LEAD} ... . | .. ... . | .. ... .",
+                ".. +02 . | .. +02 . | .. +02 . | .. +02 .",
+            ),
+            block=("...",),
+            first_subcolumn=SubColumn.TRANSPOSE,
+            origin=TrackerCell(row=1, channel=None),
+            expected=(
+                "00 ... . | 00 ... . | .. ... . | .. ... .",
+                ".. ... . | .. ... . | .. +02 . | .. +02 .",
+                EMPTY,
+                EMPTY,
+            ),
+        ),
+        TestCase(
+            label="an empty transpose through the sample column where no sample plays clears nothing",
             frame=(".. +02 . | .. +02 . | .. +02 . | .. +02 .",),
             block=("...",),
             first_subcolumn=SubColumn.TRANSPOSE,
             origin=TrackerCell(row=0, channel=None),
-            expected=(EMPTY, EMPTY, EMPTY, EMPTY),
+            expected=(
+                ".. +02 . | .. +02 . | .. +02 . | .. +02 .",
+                EMPTY,
+                EMPTY,
+                EMPTY,
+            ),
         ),
         TestCase(
             label="a transpose through a governed sample column reaches its channels alone",

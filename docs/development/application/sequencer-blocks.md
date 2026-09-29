@@ -31,7 +31,7 @@ The block's map alone carries the state, so every consumer reads it the same way
 | Empty | Key present, holding `None` | Emptiness: the target is cleared |
 | Mixed | Key absent | Nothing: the target keeps what it had |
 
-Mixed is what an aggregate cell reads when the channels beneath it disagree, the same `?` the grid displays. Display and clipboard route through one rule, `Agreement` (`sampletones_shared/utils/agreement.py`), so a block says about a cell exactly what the table it was read from shows there.
+Mixed is what an aggregate cell reads when the channels beneath it disagree, the same `?` the grid displays. An aggregate cell that answers for no channel reads as empty, the way the grid draws it. The tracker's pitch and volume do so on a row where no sample is playing. Display and clipboard route through one rule, `Agreement` (`sampletones_shared/utils/agreement.py`), so a block says about a cell exactly what the table it was read from shows there.
 
 Absence also settles the order's growth (below): a column a block says nothing about reaches nothing.
 
