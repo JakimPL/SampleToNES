@@ -104,9 +104,9 @@ The precedence order of the levels in a stems setup. The levels pick channels in
 
 ### Drive
 
-How hard a stem pushes a channel. It is set per channel when a conversion is set up. `1.00` is the level
-the recording was measured at. A higher drive reaches for a louder match, which suits a part that sits
-quietly under the others.
+How hard a stem pushes a channel while it converts. It is set per channel when a conversion is set up.
+`1.00` is the level the recording was measured at. A higher drive reaches for louder notes, which saturates
+the part and gives it a distortion-like edge.
 
 ### Instruction library
 

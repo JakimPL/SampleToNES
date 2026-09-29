@@ -43,7 +43,8 @@ recording added, channel by channel. The saved reconstruction keeps every channe
 uncheck.
 
 Each recording has a color. The bars under the waveform use it to show which recording played each
-stretch of each channel.
+stretch of each channel. A recording you uncheck keeps its color there, drawn faint, so you can still see
+where it played.
 
 The **Instruments** panel follows the same checkboxes. It shows only what you have checked, its sizes
 measure only that, and an edit changes only that. To reshape one recording's part of a channel, uncheck the others first.

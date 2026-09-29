@@ -233,7 +233,7 @@ Coordinators are the glue between the UI, logic and service layers. Each owns th
 
 `config/` holds `ConfigManager` (the domain generation configuration) and `SessionManager` (the runtime session: last paths, audio device, window geometry). A session file outlives the files and folders it names, so each path it holds is read against the disk where it is used. A dialog opens at the nearest folder still standing, and a file that fails to open is let go of as it fails. The package is presentation-free. It records a load outcome as domain data (`ConfigLoadOutcome`) for `ConfigCoordinator` to present.
 
-`categories/` holds `LanguageManager` and the vocabulary a lookup is spelled in (principle 8). It also holds the message bundles that resolve a whole conversation's words in one place, so a coordinator reads its texts once and hands the bundle to whoever phrases the outcome.
+`categories/` holds `LanguageManager` and the vocabulary a lookup is spelled in (principle 8). It also holds the words a whole conversation is phrased from, in two kinds. A bundle resolves every text one conversation needs in one place, so a coordinator reads it once and hands it to whoever phrases the outcome. A phrasing is a function called where its line is written, so a language chosen mid-run reaches the next reading. `time_estimation` is one: a run's status line calls it on every report.
 
 `constants/` holds application-scope facts that carry no behavior, one module per subject. A fact shared beyond the application belongs to `sampletones_shared/constants/`.
 

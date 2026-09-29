@@ -13,7 +13,6 @@ behind. Each entry says what is owed and why, and the code and the change that c
 * Keyboard navigation of the converter's list of gathered recordings: a cursor the arrow keys move, `Home`
   and `End`, and folders opened and closed from the keyboard.
 * Waveform LOD for zooming
-* Alt for scrolling graphs
 * Drag and drop
 * Multiple Reconstruction views
 * In-project sample selection in Reconstruction view
@@ -135,28 +134,15 @@ currently out of line. An entry leaves when the code meets the contract again.
   while it stands in `logic/`. It reports through optional hooks and not the result union, and the
   coordinator crosses to the render thread on its behalf. Moving it would buy the exhaustive `match` every
   other long operation reports through.
-* Every gesture in the converter re-derives the whole setup. A gesture hands `ConverterLogic._settle` a
-  state whose recordings are new objects, so the readings are taken cold and the garbage collector's own
-  share falls inside them. On a very large folder that is long enough to feel as a pause before a widget
-  is touched, and all of it repeats work, since one recording changed. The answer is to hold the rows
-  against the gathering that produced them and derive entries for the recordings a gesture moved.
+* Every gesture in the converter re-derives the whole setup. A gesture hands `ConverterLogic._rewrite` a
+  state whose recordings are new objects, so the rows and the batch entries are read from it cold, and the
+  garbage collector's own share falls inside them. On a very large folder that is long enough to feel as a
+  pause before a widget is touched, and all of it repeats work, since one recording changed. The answer is
+  to hold the rows against the gathering that produced them and derive entries for the recordings a gesture
+  moved.
 * Several directories under `ui/` have modules without an `__init__.py`, which makes each a namespace
   package. A tool reading the tree treats such a directory as a root it can import from, so a module
   inside one answers for a standard-library name of the same word (`ui/elements/trace.py` against
   `trace`). Giving each directory an `__init__.py` closes the whole class.
 
 ## Bugs
-
-* A channel whose every frame rests reads as standing by for the reader, while `playing_channels` and the
-  export still count it. The panel and the size figures therefore disagree about a channel whose volume was
-  written down to nothing.
-* `_on_bar_point_clicked` composes a raw-data tag the text field does not have, so its write finds nothing
-  and the field catches up only when the edit returns through the regeneration.
-* A reconstruction written before the recorded sources moved onto the stems record reads with none of them.
-  The browser, original playback and the Stems card then see a detached document, where the file names its
-  recordings under the top-level `audio_filepath`. The 2.2 conversion step still owes folding those paths
-  onto `StemsData.sources`, along with the per-entry drives and channel count a mid-branch 2.2 file has at
-  the top of its setup.
-* `ReconstructionStage.RENDERING` keeps the weight it was measured at, while a conversion no longer
-  renders. A bar therefore covers that share faster than `STAGE_WEIGHTS` says. Re-measuring the stages over
-  whole runs settles the new figures.

@@ -73,9 +73,9 @@ per channel:
 - **on** repeats the checkbox in the list, so you can also switch a channel there.
 - [**bend**](../glossary.md#bend) tunes each note to the recording's exact pitch. **Pulse 1**, **Pulse 2** and **Triangle**
   have it, and noise does not.
-- [**drive**](../glossary.md#drive) sets how hard the recording pushes that channel. `1.00` is the level the recording was
-  measured at, and up to `5.00` pushes it harder, which suits a part that sits quietly under the
-  others. Drag the slider, or Ctrl-click it to type a value.
+- [**drive**](../glossary.md#drive) sets how hard the recording pushes that channel while it converts. `1.00` is the
+  level the recording was measured at, and up to `5.00` reaches for louder notes, which saturates the part
+  and gives it a distortion-like edge. Drag the slider, or Ctrl-click it to type a value.
 
 **Channels at once**, below the lines, sets how many of its channels the recording may sound in a
 single frame. Set it to 1 to hear the recording on one channel at a time. It never sounds more
